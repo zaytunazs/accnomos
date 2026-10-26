@@ -1,0 +1,16 @@
+[project]
+name = "accnomos-evals"
+version = "0.1.0"
+description = "Synthetic gold set + harness grading Meta model outputs (extraction, categorisation, review). Claude is the grader, never in the runtime."
+requires-python = ">=3.12"
+dependencies = ["httpx>=0.27", "pydantic>=2.9", "accnomos-ledger"]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["harness"]

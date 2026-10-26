@@ -1,0 +1,49 @@
+# Secrets — never committed
+.env
+.env.*
+!.env.example
+**/key.properties
+**/*.jks
+**/*.keystore
+**/*.p12
+**/*.pem
+*.token
+hmrc-test-user*.json
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+.pnpm-store/
+*.tsbuildinfo
+next-env.d.ts
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+dist/
+*.egg-info/
+
+# Flutter / Android
+apps/mobile/.dart_tool/
+apps/mobile/build/
+apps/mobile/.flutter-plugins*
+apps/mobile/android/.gradle/
+apps/mobile/android/local.properties
+apps/mobile/android/app/.cxx/
+apps/mobile/.idea/
+*.iml
+
+# Evals / data
+evals/runs/
+data/private/
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.vscode/
+*.log
