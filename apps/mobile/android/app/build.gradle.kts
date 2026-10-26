@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -31,10 +33,10 @@ android {
 
     // Upload-key signing. android/key.properties is git-ignored and created by the owner
     // with tools/make_upload_key.ps1. Without it, release builds fall back to the debug key.
-    val keyProps = java.util.Properties()
+    val keyProps = Properties()
     val keyPropsFile = rootProject.file("key.properties")
     if (keyPropsFile.exists()) {
-        keyProps.load(java.io.FileInputStream(keyPropsFile))
+        keyPropsFile.inputStream().use { keyProps.load(it) }
     }
     signingConfigs {
         create("upload") {
