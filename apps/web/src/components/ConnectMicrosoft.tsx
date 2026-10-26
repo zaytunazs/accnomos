@@ -52,7 +52,12 @@ export default function ConnectMicrosoft() {
       setRoot(item);
       setPhase("ready");
     } catch (e) {
-      setError((e as Error).message);
+      const msg = (e as Error).message;
+      setError(
+        msg.includes("PendingProvisioning") || msg.includes("pending provisioning")
+          ? "Your OneDrive hasn't been set up by Microsoft yet (new accounts take a few minutes). Open onedrive.live.com once, wait for 'My files' to appear, then try again."
+          : msg,
+      );
       setPhase("error");
     }
   }
@@ -85,7 +90,7 @@ export default function ConnectMicrosoft() {
         </div>
       )}
 
-      {phase === "signed-in" && (
+      {(phase === "signed-in" || (phase === "error" && account)) && (
         <button onClick={createFolder} className={`${btn} w-full bg-[#0F6E63] text-white`}>
           Create my Accnomos folder
         </button>

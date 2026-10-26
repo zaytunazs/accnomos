@@ -70,11 +70,6 @@ export function itemPath(account: AccountInfo, relPath = ""): string {
   return relPath ? `/me/drive/root:/Accnomos/${enc}` : "/me/drive/root:/Accnomos";
 }
 
-function childrenPath(account: AccountInfo, relPath = ""): string {
-  const p = itemPath(account, relPath);
-  return p.includes(":/") ? `${p}:/children` : `${p}/children`;
-}
-
 export async function ensureRoot(account: AccountInfo): Promise<DriveItem> {
   const token = await getToken(storageScopesFor(account));
   if (isPersonalAccount(account)) {
@@ -90,6 +85,10 @@ export async function ensureRoot(account: AccountInfo): Promise<DriveItem> {
   }
 }
 
+/**
+ * Get-or-create a folder. Lookup is path-based; creation is id-based
+ * (POST /me/drive/items/{parentId}/children) because POST on the `special/approot` alias returns 400.
+ */
 export async function ensureFolder(account: AccountInfo, relPath: string): Promise<DriveItem> {
   const token = await getToken(storageScopesFor(account));
   try {
@@ -97,7 +96,8 @@ export async function ensureFolder(account: AccountInfo, relPath: string): Promi
   } catch {
     const parts = relPath.split("/");
     const name = parts.pop()!;
-    return graph<DriveItem>(token, childrenPath(account, parts.join("/")), {
+    const parent = parts.length ? await ensureFolder(account, parts.join("/")) : await ensureRoot(account);
+    return graph<DriveItem>(token, `/me/drive/items/${parent.id}/children`, {
       method: "POST",
       body: JSON.stringify({ name, folder: {}, "@microsoft.graph.conflictBehavior": "fail" }),
     });
