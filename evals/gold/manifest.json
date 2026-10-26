@@ -1,0 +1,366 @@
+{
+ "generated_by": "qwen3.8-27b on DGX Spark",
+ "count": 60,
+ "items": [
+  {
+   "file": "001_standard.json",
+   "case": "standard",
+   "gross": 51.9,
+   "sha256": "3859c86a4b332618fdf2c406a88ce77ba2dcf90019870d025123c04be3f92794"
+  },
+  {
+   "file": "002_mixed.json",
+   "case": "mixed",
+   "gross": 9.99,
+   "sha256": "4eb09059bfa51950653c525b453802c13dd88ae5208fff9bf64533f93bae44a2"
+  },
+  {
+   "file": "003_reduced.json",
+   "case": "reduced",
+   "gross": 102.8,
+   "sha256": "5c0e46519f8d837b634a366d32e09ee663b8c9a1e935be67cf5c73878a8251d4"
+  },
+  {
+   "file": "004_zero.json",
+   "case": "zero",
+   "gross": 34.24,
+   "sha256": "a7d2935d44761ec7b9fbfb1e6cee0331551e116147c8bd63c878b3632c298f69"
+  },
+  {
+   "file": "005_no_vat_number.json",
+   "case": "no_vat_number",
+   "gross": 368.5,
+   "sha256": "e6323d2bc906854bfce7636b580859285086b818c985f6b76035019c67cb5bd4"
+  },
+  {
+   "file": "006_cash_no_vat.json",
+   "case": "cash_no_vat",
+   "gross": 5.0,
+   "sha256": "66622e8e28f2b72d891923a6cbbc6410f03f448537e52873547642da119673d9"
+  },
+  {
+   "file": "007_full_invoice.json",
+   "case": "full_invoice",
+   "gross": 1206.48,
+   "sha256": "50da0c332cdc82c1cee4c4788652989bc042b765976f667fa09e597e6ac4b9ce"
+  },
+  {
+   "file": "008_sales_invoice.json",
+   "case": "sales_invoice",
+   "gross": 2689.2,
+   "sha256": "38dcd80ec6bd04a52f49cfca56778ba0284da282f66e5f780d480ec02aafee2c"
+  },
+  {
+   "file": "009_exempt.json",
+   "case": "exempt",
+   "gross": 6.5,
+   "sha256": "703bcb81ebbe7a8bbb83e28d8c53274ecec81e0e9512fc428fb169546718409a"
+  },
+  {
+   "file": "010_foreign.json",
+   "case": "foreign",
+   "gross": 1050.0,
+   "sha256": "a089cb6a35e83e5eb66b95719f8011074c2db9da89380986f172276be463d4ce"
+  },
+  {
+   "file": "011_standard.json",
+   "case": "standard",
+   "gross": 65.4,
+   "sha256": "761128405e4bf1b9a371cdcb02e2b3caeabbbc2bec24a0072a6cb68166ed34f4"
+  },
+  {
+   "file": "012_standard.json",
+   "case": "standard",
+   "gross": 42.0,
+   "sha256": "a45b594a76a10268c7ae677a1aa2bb17308bd77fe1f3156f2a3792ca1748ba6c"
+  },
+  {
+   "file": "013_mixed.json",
+   "case": "mixed",
+   "gross": 19.22,
+   "sha256": "7b0bd7b522860e70fd0acee893ff5cdaef3593e8c1c9a3e80bd7e28a0d474896"
+  },
+  {
+   "file": "014_reduced.json",
+   "case": "reduced",
+   "gross": 89.78,
+   "sha256": "64efa8253a5f04e4c1cc90f14823e25161cec245f6912e2a7f21abe08d6cdbbf"
+  },
+  {
+   "file": "015_zero.json",
+   "case": "zero",
+   "gross": 60.97,
+   "sha256": "7d431d3c68047449267112f2e6ae7c5d75a4a4a3de3ed84ee5005a576892cf38"
+  },
+  {
+   "file": "016_no_vat_number.json",
+   "case": "no_vat_number",
+   "gross": 291.0,
+   "sha256": "592ac38b51910203e7ea81b811179d3ecb7e24403c3f22fe3a9cc072bf22cc44"
+  },
+  {
+   "file": "017_cash_no_vat.json",
+   "case": "cash_no_vat",
+   "gross": 4.5,
+   "sha256": "5fdab32416512f6b5b421fa65c43ed0b0f3763e90ec41322317eac3a9802e854"
+  },
+  {
+   "file": "018_full_invoice.json",
+   "case": "full_invoice",
+   "gross": 529.08,
+   "sha256": "c4a2c55423e0863cfd5ca63554506b0aa60d69465ee560af234e4e5b795c376f"
+  },
+  {
+   "file": "019_sales_invoice.json",
+   "case": "sales_invoice",
+   "gross": 4437.9,
+   "sha256": "71e2d87f5e4cfc772c55c37e2fab6f4dfaebb18c80877893da34db550bf8c40c"
+  },
+  {
+   "file": "020_exempt.json",
+   "case": "exempt",
+   "gross": 30.25,
+   "sha256": "fa0e231f42321387b1e127b63b49218e08730879287dc8ff419ef0aaf6258ccd"
+  },
+  {
+   "file": "021_foreign.json",
+   "case": "foreign",
+   "gross": 375.0,
+   "sha256": "aa87d6edf96beeea3bdc9c071a0d99d3d352cd8f33ee0cb1f2aad02cbf3de24f"
+  },
+  {
+   "file": "022_standard.json",
+   "case": "standard",
+   "gross": 38.27,
+   "sha256": "332b50d6e275723ed00e84d9f238a19e9617b349b12b7554414248a826c8bd5c"
+  },
+  {
+   "file": "023_standard.json",
+   "case": "standard",
+   "gross": 32.7,
+   "sha256": "55847d28065586b4ec71958e115e0cc153b3e74a8e77e6301c1c3da03ba778bb"
+  },
+  {
+   "file": "024_mixed.json",
+   "case": "mixed",
+   "gross": 15.19,
+   "sha256": "0cbca54d96b051ed8954932ac4f3c751647216ecf6f4cfce800f690ff35cb76a"
+  },
+  {
+   "file": "025_reduced.json",
+   "case": "reduced",
+   "gross": 134.49,
+   "sha256": "12dc1a28d10c2c717b37e2a6fc826908d69d6b75852794213fa7faa1055f0b3c"
+  },
+  {
+   "file": "026_zero.json",
+   "case": "zero",
+   "gross": 504.5,
+   "sha256": "2e629a352f84656ea9102830473d9773a3748c2e632306fe5799bd71b81bd5c9"
+  },
+  {
+   "file": "027_no_vat_number.json",
+   "case": "no_vat_number",
+   "gross": 322.0,
+   "sha256": "9e2aeb404cdf1dd91f6c451a77e97d82f73a6f9886539371532fdc949335885a"
+  },
+  {
+   "file": "028_cash_no_vat.json",
+   "case": "cash_no_vat",
+   "gross": 8.5,
+   "sha256": "01aa9a51cba1735947d347ab2cc21277544f6aec0bcafe08a691a08fecf87cd3"
+  },
+  {
+   "file": "029_full_invoice.json",
+   "case": "full_invoice",
+   "gross": 643.8,
+   "sha256": "b28a31db3b86583e56cbc93572319db50bdadea01fda961dcdc395901f017335"
+  },
+  {
+   "file": "030_sales_invoice.json",
+   "case": "sales_invoice",
+   "gross": 4692.6,
+   "sha256": "1997b4f16d3e1e43f6764ae84fa9c645eaeb7dac0a4a74111ebaedc4549e31c8"
+  },
+  {
+   "file": "031_exempt.json",
+   "case": "exempt",
+   "gross": 19.5,
+   "sha256": "cfad91014db8f6db6d4d4c26125b86b22e6ac3e3e40af0b1dd136cf7ddbde320"
+  },
+  {
+   "file": "032_foreign.json",
+   "case": "foreign",
+   "gross": 125.0,
+   "sha256": "9a0df3376d563375143f679414a5378a5601ddf8ff5d025be6ec8e65e18c3a81"
+  },
+  {
+   "file": "033_standard.json",
+   "case": "standard",
+   "gross": 126.0,
+   "sha256": "003935f1339a426b982a2f175a6932896da684c34333aaaba76e292d14f4c9cf"
+  },
+  {
+   "file": "034_standard.json",
+   "case": "standard",
+   "gross": 14.39,
+   "sha256": "d8aa1b5f3269fd4f728b9f6cf70bfe43a8e5deae5bb570013a97f124ef9bc996"
+  },
+  {
+   "file": "035_mixed.json",
+   "case": "mixed",
+   "gross": 12.65,
+   "sha256": "672faf5c08e6c99b4a570b6b305b74206ce5498f070cb7eefc391a7877436560"
+  },
+  {
+   "file": "036_reduced.json",
+   "case": "reduced",
+   "gross": 267.89,
+   "sha256": "0c6a471f71044ede3ad5f6cc5a00242c0996e928b4ee200e33e218aee0f3d4ac"
+  },
+  {
+   "file": "037_zero.json",
+   "case": "zero",
+   "gross": 357.92,
+   "sha256": "c77851b7878d754829de0963f16112a7a7ee929bf0c56030bf58b1b5723b3a29"
+  },
+  {
+   "file": "038_no_vat_number.json",
+   "case": "no_vat_number",
+   "gross": 231.24,
+   "sha256": "a534507ba1e46643c4094ecd0403534d725aa3a4fd34c74615469ee8ea283e9c"
+  },
+  {
+   "file": "039_cash_no_vat.json",
+   "case": "cash_no_vat",
+   "gross": 6.5,
+   "sha256": "2d46d58c54c959a16330036d26826f6cb565aa69e597e549fa70f31e2204d46b"
+  },
+  {
+   "file": "040_full_invoice.json",
+   "case": "full_invoice",
+   "gross": 2460.36,
+   "sha256": "b04a04b81129e758c446f4937c95511073b5a78293967f2a5bb15416713354f0"
+  },
+  {
+   "file": "041_sales_invoice.json",
+   "case": "sales_invoice",
+   "gross": 5259.6,
+   "sha256": "1fd4077310b013bb8e5bb0813b6889ec8a8bc736a9c016f8d76244aa814106c1"
+  },
+  {
+   "file": "042_exempt.json",
+   "case": "exempt",
+   "gross": 16.25,
+   "sha256": "ab2b8b3c59ab29d3289908cce07ee7ab266275f3d7059da3577f36dfd3ab6da3"
+  },
+  {
+   "file": "043_foreign.json",
+   "case": "foreign",
+   "gross": 557.5,
+   "sha256": "797473a23ad81c6287fea56f15a4743f1988a1302df188a77fbee82ad43939cb"
+  },
+  {
+   "file": "044_standard.json",
+   "case": "standard",
+   "gross": 63.96,
+   "sha256": "5190580d44c2444c58304e6948203dd885c99f6254091911ac2581319ec1fd9c"
+  },
+  {
+   "file": "045_standard.json",
+   "case": "standard",
+   "gross": 100.2,
+   "sha256": "95e62c50e316c0bb65447910c56c219fff4691ca5d177a5e63fc097e64601dae"
+  },
+  {
+   "file": "046_mixed.json",
+   "case": "mixed",
+   "gross": 6.83,
+   "sha256": "d2d2d04e2d2765010a875ff0eedab3c93f34a42f23f8fbab49a76de81f9289ce"
+  },
+  {
+   "file": "047_reduced.json",
+   "case": "reduced",
+   "gross": 67.36,
+   "sha256": "00055dac41d7444b481b1e896baebd2256b1abd845ae6e5346ab367894cdc9be"
+  },
+  {
+   "file": "048_zero.json",
+   "case": "zero",
+   "gross": 28.48,
+   "sha256": "22cb81282516626216704698560d0afd978c7f7b60f555b0d54b18423f0a86ee"
+  },
+  {
+   "file": "049_no_vat_number.json",
+   "case": "no_vat_number",
+   "gross": 270.0,
+   "sha256": "8d09f82e68e43fb9900d428b4e06c5bad27bd43d081fe1dccb2b4b4db0b799fa"
+  },
+  {
+   "file": "050_cash_no_vat.json",
+   "case": "cash_no_vat",
+   "gross": 1.95,
+   "sha256": "f6a60a12f0a406e180a9a18a0e0a94cb1caf3c5c1afb808218faeec432f5cce2"
+  },
+  {
+   "file": "051_full_invoice.json",
+   "case": "full_invoice",
+   "gross": 1252.5,
+   "sha256": "189f5772e5ba0931711dc95761fc28611391443db062d7dc63dfce071f94fb70"
+  },
+  {
+   "file": "052_sales_invoice.json",
+   "case": "sales_invoice",
+   "gross": 10128.0,
+   "sha256": "83dddd4c2e07b06c40fc3e992d70bf78d992fb2918b35b520511d9582f1fbca8"
+  },
+  {
+   "file": "053_exempt.json",
+   "case": "exempt",
+   "gross": 29.0,
+   "sha256": "bf8f37daf70da13b29de70fbd8b2b0adbf39a42b993457283fa5511749c17305"
+  },
+  {
+   "file": "054_foreign.json",
+   "case": "foreign",
+   "gross": 3020.0,
+   "sha256": "a4c756b05eeaa3c18a3e3217477939f26e4ebd964b1f9b140fe31d5215a2486d"
+  },
+  {
+   "file": "055_standard.json",
+   "case": "standard",
+   "gross": 22.86,
+   "sha256": "bf1e300de12976f73beba8d6daf3bc044cdfd45695a1c0481bd4b50087edddae"
+  },
+  {
+   "file": "056_standard.json",
+   "case": "standard",
+   "gross": 49.38,
+   "sha256": "a376e7faf48544e08c182af29e941423edf22c21125b9ad661f63e9dc5236da8"
+  },
+  {
+   "file": "057_mixed.json",
+   "case": "mixed",
+   "gross": 28.11,
+   "sha256": "66d39b14b9c914102f49deced8979213d77700a5b12663eca1d8fbe9b3e19c46"
+  },
+  {
+   "file": "058_reduced.json",
+   "case": "reduced",
+   "gross": 152.78,
+   "sha256": "d51bf490da1a8aabd43342bfb2a09d378fa801fbbdcd20b8162f81c7a4bb464a"
+  },
+  {
+   "file": "059_zero.json",
+   "case": "zero",
+   "gross": 65.74,
+   "sha256": "9b9d7c1b910993c9ed2fcc3bcd47f331e0ec0053393a91bf98af032471d67f0a"
+  },
+  {
+   "file": "060_no_vat_number.json",
+   "case": "no_vat_number",
+   "gross": 235.48,
+   "sha256": "22dbf71700938ce248fd51589c59a8dd7072d816006629df8906a54f715413ba"
+  }
+ ]
+}

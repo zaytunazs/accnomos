@@ -1,0 +1,32 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Harrow & Finch Trading Ltd",
+  "vat_number": null,
+  "address": "14 Mill Lane, Bristol, BS1 6QR"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Industrial Shelving Unit (Steel, 4-tier)",
+   "qty": 2,
+   "unit_price": 145.5,
+   "net": 291.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 291.0,
+ "vat_total": 0.0,
+ "gross_total": 291.0,
+ "payment_method": "card",
+ "card_last4": "8821",
+ "category_hint": "Office Equipment",
+ "printed_text": "HARROW & FINCH TRADING LTD\n14 Mill Lane\nBristol BS1 6QR\n------------------------\n14/08/2026 10:42\nRef: R-20260814-773\n------------------------\n2 x Steel Shelving 4-tier   291.00\n------------------------\nSUBTOTAL:                291.00\nVAT:                       0.00\nTOTAL:                   291.00\n------------------------\nPAID BY: CARD ****8821\nTHANK YOU FOR SHOPPING\n------------------------",
+ "notes": "Simplified receipt. No VAT number displayed. Total exceeds £250. VAT shown as 0.00 (likely flat rate or exempt/simplified scheme context, but strictly no VAT registration number present).",
+ "gold_case": "no_vat_number",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

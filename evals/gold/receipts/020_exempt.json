@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Northgate Premium Post Services Ltd",
+  "vat_number": null,
+  "address": "14 High Street, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "John Miller"
+ },
+ "invoice_number": "RCP-2026-88312",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Tracked Special Delivery - International",
+   "qty": 1,
+   "unit_price": 24.5,
+   "net": 24.5,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Insurance Cover (Up to £1000)",
+   "qty": 1,
+   "unit_price": 5.75,
+   "net": 5.75,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 30.25,
+ "vat_total": 0.0,
+ "gross_total": 30.25,
+ "payment_method": "card",
+ "card_last4": "4921",
+ "category_hint": "Postage and Courier",
+ "printed_text": "NORTHGATE PREMIUM POST SERVICES LTD\n14 High Street, Leeds, LS1 2AB\nTel: 0113 456 7890\n\nReceipt No: RCP-2026-88312\nDate: 14/08/2026\nTime: 10:45 AM\nCustomer: John Miller\n\n---------------------------------\nItem Description                 Amt\n---------------------------------\nTracked Spec Delivery Int'l    24.50\nInsurance Cover (Up to £1000)    5.75\n---------------------------------\nSUBTOTAL                        30.25\nVAT (0%)                         0.00\nTOTAL DUE                       30.25\n\nPaid by: CARD ***4921\nSTATUS: PAID\n\nVAT EXEMPT - POSTAGE & COURIER\nThank you for using Northgate.\n---------------------------------",
+ "notes": "VAT exempt transaction under UK VAT regulations for postal services.",
+ "gold_case": "exempt",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

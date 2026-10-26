@@ -1,0 +1,40 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Fable & Thread Books Ltd",
+  "vat_number": null,
+  "address": "142 High Street, Whittleton, ST12 4QZ"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-09-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Children's Picture Book: The Star Gazer",
+   "qty": 2,
+   "unit_price": 7.99,
+   "net": 15.98,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Kids Cotton T-Shirt (Size 6-7)",
+   "qty": 1,
+   "unit_price": 12.5,
+   "net": 12.5,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 28.48,
+ "vat_total": 0.0,
+ "gross_total": 28.48,
+ "payment_method": "card",
+ "card_last4": "8291",
+ "category_hint": "books/children's clothing",
+ "printed_text": "FABLE & THREAD BOOKS LTD\n142 High Street\nWhittleton, ST12 4QZ\n\n09/14/2026  14:23\nTerminal 02  Operator: JS\n--------------------------------\n\nITEM              QTY   PRICE\n--------------------------------\nStar Gazer Pic      2    7.99\nKids Tee 6-7        1   12.50\n--------------------------------\n\nNET TOTAL           28.48\nVAT (0%)            0.00\n--------------------------------\nGROSS TOTAL         28.48\n\nCARD VISA ***8291\nPAID              28.48\n\nTHANK YOU FOR SHOPPING\nZERO RATED ITEMS\n",
+ "notes": "Purchase of zero-rated goods including books and children's clothing. No VAT charged.",
+ "gold_case": "zero",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

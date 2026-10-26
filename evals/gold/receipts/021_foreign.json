@@ -1,0 +1,42 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "De Vries & Zonen Trading BV",
+  "vat_number": "NL861234567B01",
+  "address": "Kanaalweg 42, 3011 AB Rotterdam, Netherlands"
+ },
+ "customer": {
+  "name": "Thames Valley Retail Ltd"
+ },
+ "invoice_number": "INV-2026-8891",
+ "date": "2026-08-14",
+ "currency": "EUR",
+ "lines": [
+  {
+   "description": "Industrial Packaging Tape",
+   "qty": 50,
+   "unit_price": 4.5,
+   "net": 225.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Logistics Fuel Surcharge",
+   "qty": 1,
+   "unit_price": 150.0,
+   "net": 150.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 375.0,
+ "vat_total": 0.0,
+ "gross_total": 375.0,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Office Supplies",
+ "printed_text": "DE VRIES & ZONEN TRADING BV\nKanaalweg 42, 3011 AB Rotterdam\nVAT: NL861234567B01\n\nINVOICE: INV-2026-8891\nDATE: 14/08/2026\n\nBILL TO:\nThames Valley Retail Ltd\n\nLINE ITEMS:\n50 x Industrial Packaging Tape @ 4.50 = 225.00\n1 x Logistics Fuel Surcharge @ 150.00 = 150.00\n\nSUBTOTAL: 375.00 EUR\nVAT (21%): 0.00 EUR\nTOTAL DUE: 375.00 EUR\n\nNOTE: Reverse Charge applies.\nVAT to be accounted for by customer.",
+ "notes": "Cross-border supply. Reverse charge mechanism applies. UK customer responsible for VAT.",
+ "gold_case": "foreign",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,50 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Ironwood Metalworks Ltd",
+  "vat_number": "GB987654321",
+  "address": "Unit 4, Steelworks Estate, Sheffield, S10 2AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "INV-2026-0492",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Stainless Steel Hinges (100x150mm)",
+   "qty": 25,
+   "unit_price": 12.5,
+   "net": 312.5,
+   "vat_rate": 20,
+   "vat": 62.5
+  },
+  {
+   "description": "Heavy Duty Iron Hinges (200x250mm)",
+   "qty": 10,
+   "unit_price": 45.0,
+   "net": 450.0,
+   "vat_rate": 20,
+   "vat": 90.0
+  },
+  {
+   "description": "Custom Steel Brackets (Bespoke)",
+   "qty": 15,
+   "unit_price": 18.75,
+   "net": 281.25,
+   "vat_rate": 20,
+   "vat": 56.25
+  }
+ ],
+ "net_total": 1043.75,
+ "vat_total": 208.75,
+ "gross_total": 1252.5,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Hardware",
+ "printed_text": "IRONWOOD METALWORKS LTD\nUnit 4, Steelworks Estate\nSheffield, S10 2AB\nVAT No: GB987654321\n\nINVOICE NO: INV-2026-0492\nDATE: 14/08/2026\n\nBILL TO:\nBramblewood Joinery Ltd\n\nDESCRIPTION          QTY   UNIT PRICE   NET TOTAL\nSteel Hinges          25    12.50       312.50\nIron Hinges           10    45.00       450.00\nSteel Brackets        15    18.75       281.25\n\n------------------------------------\nNET TOTAL:                 1,043.75\nVAT (20%):                    208.75\n------------------------------------\nGROSS TOTAL:                1,252.50\n\nPAYMENT DUE WITHIN 30 DAYS\nBANK TRANSFER PREFERRED\n\nTHANK YOU FOR YOUR BUSINESS",
+ "notes": "Please make payment to account ending 4492. Reference: INV-2026-0492.",
+ "gold_case": "full_invoice",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

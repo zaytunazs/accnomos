@@ -1,0 +1,50 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Fictional Plastics Ltd",
+  "vat_number": "GB 123456789",
+  "address": "42 Industrial Estate, Manchester, M1 4AB"
+ },
+ "customer": {
+  "name": "Acme Widgets PLC"
+ },
+ "invoice_number": "INV-2026-0092",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "High-Density Polyethylene Sheets 10x10cm",
+   "qty": 5,
+   "unit_price": 12.5,
+   "net": 62.5,
+   "vat_rate": 20,
+   "vat": 12.5
+  },
+  {
+   "description": "Industrial Adhesive Glue 500ml",
+   "qty": 2,
+   "unit_price": 8.75,
+   "net": 17.5,
+   "vat_rate": 20,
+   "vat": 3.5
+  },
+  {
+   "description": "Packaging Tape Rolls",
+   "qty": 1,
+   "unit_price": 25.0,
+   "net": 25.0,
+   "vat_rate": 20,
+   "vat": 5.0
+  }
+ ],
+ "net_total": 105.0,
+ "vat_total": 21.0,
+ "gross_total": 126.0,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Office Supplies",
+ "printed_text": "Fictional Plastics Ltd\n42 Industrial Estate\nManchester, M1 4AB\nVAT: GB 123456789\n\nInvoice #INV-2026-0092\nDate: 2026-08-14\n\nAcme Widgets PLC\n\n--------------------------------\nHigh-Density Poly Sheets 5 @ 12.50 = 62.50\nIndustrial Adhesive 2 @ 8.75 = 17.50\nPackaging Tape 1 @ 25.00 = 25.00\n--------------------------------\nNet Total: £105.00\nVAT (20%): £21.00\nGross Total: £126.00\n\nPayment: Bank Transfer\nThank you for your business.",
+ "notes": "Standard rated purchase under £250 threshold.",
+ "gold_case": "standard",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

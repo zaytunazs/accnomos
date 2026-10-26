@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "De Vries & Sons Trading",
+  "vat_number": "NL000000000B01",
+  "address": "Kanaalstraat 12, 1011 AB Amsterdam, Netherlands"
+ },
+ "customer": {
+  "name": "Thameside Office Supplies Ltd"
+ },
+ "invoice_number": "RC-2026-867896",
+ "date": "2026-08-14",
+ "currency": "EUR",
+ "lines": [
+  {
+   "description": "Premium A4 Recycled Paper (80gsm)",
+   "qty": 50,
+   "unit_price": 2.45,
+   "net": 122.5,
+   "vat_rate": null,
+   "vat": 0.0
+  },
+  {
+   "description": "Ergonomic Desk Chair (Black Mesh)",
+   "qty": 3,
+   "unit_price": 145.0,
+   "net": 435.0,
+   "vat_rate": null,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 557.5,
+ "vat_total": 0.0,
+ "gross_total": 557.5,
+ "payment_method": "card",
+ "card_last4": "8342",
+ "category_hint": "Office Equipment & Supplies",
+ "printed_text": "DE VRIES & SONS TRADING\nKanaalstraat 12\n1011 AB Amsterdam, NL\nVAT: NL000000000B01\n\nDATE: 2026-08-14\nINVOICE: RC-2026-867896\nCUSTOMER: Thameside Office Supplies Ltd\n\nQTY   DESC                    UNIT     NET\n50    Paper A4 80gsm           2.45    122.50\n3     Desk Chair Mesh          145.00  435.00\n------------------------------------------\nNET TOTAL:                     557.50\nVAT (Reverse Charge):           0.00\n------------------------------------------\nGRAND TOTAL (EUR):            557.50\n\nPAYMENT: Card ****8342\n\nNOTE: VAT on this supply is subject to the\nreverse charge mechanism. No Dutch VAT is\ncharged. You are required to account for\nVAT in your UK return.\n\nTHANK YOU FOR YOUR BUSINESS",
+ "notes": "Reverse charge applies. Ensure UK VAT is accounted for in the customer's VAT return.",
+ "gold_case": "foreign",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,40 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Novex Office Supplies Ltd",
+  "vat_number": "GB 882431902",
+  "address": "14 Industrial Park, Leeds, LS10 1AB"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "A4 Paper Ream (80gsm)",
+   "qty": 2,
+   "unit_price": 12.5,
+   "net": 25.0,
+   "vat_rate": 20,
+   "vat": 5.0
+  },
+  {
+   "description": "Gel Pens Black (10pk)",
+   "qty": 1,
+   "unit_price": 18.25,
+   "net": 18.25,
+   "vat_rate": 20,
+   "vat": 3.65
+  }
+ ],
+ "net_total": 43.25,
+ "vat_total": 8.65,
+ "gross_total": 51.9,
+ "payment_method": "card",
+ "card_last4": "4821",
+ "category_hint": "office_supplies",
+ "printed_text": "NOVEX OFFICE SUPPLIES LTD\n14 Industrial Park, Leeds\nVAT: GB 882431902\nDate: 2026-08-14\n--------------------------------\n2 x A4 Paper Ream (80gsm)    25.00\n1 x Gel Pens Black (10pk)    18.25\n--------------------------------\nNet: 43.25\nVAT @ 20%: 8.65\n--------------------------------\nTOTAL: 51.90\nPaid by Card ****4821\nThank you for your business!",
+ "notes": "Standard rated purchase",
+ "gold_case": "standard",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

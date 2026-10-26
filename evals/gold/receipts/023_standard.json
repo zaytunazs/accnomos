@@ -1,0 +1,48 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Thornfield & Co. Stationery",
+  "vat_number": "GB 123 456 789",
+  "address": "42 Market Square, York, YO1 7AY"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "A4 White Paper Ream 80gsm",
+   "qty": 2,
+   "unit_price": 4.5,
+   "net": 9.0,
+   "vat_rate": 20,
+   "vat": 1.8
+  },
+  {
+   "description": "Ballpoint Pens Blue 12pk",
+   "qty": 1,
+   "unit_price": 6.25,
+   "net": 6.25,
+   "vat_rate": 20,
+   "vat": 1.25
+  },
+  {
+   "description": "Stapler Heavy Duty",
+   "qty": 1,
+   "unit_price": 12.0,
+   "net": 12.0,
+   "vat_rate": 20,
+   "vat": 2.4
+  }
+ ],
+ "net_total": 27.25,
+ "vat_total": 5.45,
+ "gross_total": 32.7,
+ "payment_method": "card",
+ "card_last4": "4832",
+ "category_hint": "Stationery",
+ "printed_text": "THORNFIELD & CO. STATIONERY\n42 Market Square, York\nVAT No: GB 123 456 789\n\nDATE: 14/08/2026\nREF: #88214\n\nA4 Paper 80gsm        x2  @ 4.50  9.00\nBallpoints Blue 12pk  x1  @ 6.25  6.25\nStapler Heavy Duty    x1  @ 12.00 12.00\n\n----------------------------------\nSUBTOTAL:                 27.25\nVAT (20%):                 5.45\n----------------------------------\nTOTAL:                    32.70\n\nPAYMENT: CARD ****4832\nTHANK YOU FOR SHOPPING WITH US",
+ "notes": "Standard receipt for office supplies purchase.",
+ "gold_case": "standard",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

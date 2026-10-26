@@ -1,0 +1,64 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Northfield FreshMart",
+  "vat_number": "GB123456789",
+  "address": "42 High Street, Leeds, LS1 5AB"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Whole Milk 2L",
+   "qty": 2.0,
+   "unit_price": 1.25,
+   "net": 2.5,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Sliced Bread 500g",
+   "qty": 1.0,
+   "unit_price": 1.49,
+   "net": 1.49,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Chicken Breast 500g",
+   "qty": 1.0,
+   "unit_price": 4.99,
+   "net": 4.99,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Chocolate Bar",
+   "qty": 3.0,
+   "unit_price": 0.99,
+   "net": 2.97,
+   "vat_rate": 20,
+   "vat": 0.6
+  },
+  {
+   "description": "Soft Drink 500ml",
+   "qty": 2.0,
+   "unit_price": 1.1,
+   "net": 2.2,
+   "vat_rate": 20,
+   "vat": 0.44
+  }
+ ],
+ "net_total": 14.15,
+ "vat_total": 1.04,
+ "gross_total": 15.19,
+ "payment_method": "card",
+ "card_last4": "4821",
+ "category_hint": "Supermarket Receipt",
+ "printed_text": "NORTHFIELD FRESHMART\n42 High Street, Leeds\nLS1 5AB\nVAT No: GB123456789\n--------------------------------\n14/08/2026  14:32  Cashier 04\n--------------------------------\n2 x Whole Milk 2L       2.50\n1 x Sliced Bread 500g   1.49\n1 x Chicken Breast 500g 4.99\n3 x Chocolate Bar       2.97\n2 x Soft Drink 500ml    2.20\n--------------------------------\nNET TOTAL:          14.15\nVAT @ 0%:            0.00\nVAT @ 20%:           1.04\n--------------------------------\nGRAND TOTAL:        15.19\nCARD PAYMENT:        15.19\nCARD TYPE:   VISA **** 4821\nAUTH CODE:   882341\n--------------------------------\nTHANK YOU FOR SHOPPING\n",
+ "notes": "Test case mixed. Supplier: Northfield FreshMart. Date: 2026-08-14.",
+ "gold_case": "mixed",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

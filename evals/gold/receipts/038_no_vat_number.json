@@ -1,0 +1,48 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Holloway & Finch Hardware Ltd",
+  "vat_number": null,
+  "address": "Unit 4, Silver Lane Industrial Park, Preston, PR1 4XY"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "18V Cordless Drill (Black)",
+   "qty": 1,
+   "unit_price": 189.99,
+   "net": 189.99,
+   "vat_rate": null,
+   "vat": 0.0
+  },
+  {
+   "description": "Bit Set 30pc",
+   "qty": 2,
+   "unit_price": 14.5,
+   "net": 29.0,
+   "vat_rate": null,
+   "vat": 0.0
+  },
+  {
+   "description": "Safety Goggles",
+   "qty": 1,
+   "unit_price": 12.25,
+   "net": 12.25,
+   "vat_rate": null,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 231.24,
+ "vat_total": 0.0,
+ "gross_total": 231.24,
+ "payment_method": "card",
+ "card_last4": "4921",
+ "category_hint": "tools",
+ "printed_text": "Holloway & Finch Hardware Ltd\nUnit 4, Silver Lane Industrial Park\nPreston, PR1 4XY\n-----------------------------\n14/08/2026 14:22  Cashier: J. Smith\n-----------------------------\n1x 18V Cordless Drill        189.99\n2x Bit Set 30pc               29.00\n1x Safety Goggles             12.25\n-----------------------------\nSubtotal                      231.24\nVAT Exempt/Zero Rated          0.00\nTOTAL GBP                     231.24\n-----------------------------\nPaid by Card (****4921)\nThank you for your business\nThis is not a VAT invoice",
+ "notes": "Receipt issued under simplified procedure; no VAT number displayed as supplier is not VAT registered.",
+ "gold_case": "no_vat_number",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

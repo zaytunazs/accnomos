@@ -1,0 +1,32 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Greenwich Bay Car Park Ltd",
+  "vat_number": null,
+  "address": "12 Harbour View, Greenwich, SE10 8XX"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Standard Parking - 4 Hours",
+   "qty": 1,
+   "unit_price": 8.5,
+   "net": 8.5,
+   "vat_rate": null,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 8.5,
+ "vat_total": 0.0,
+ "gross_total": 8.5,
+ "payment_method": "cash",
+ "card_last4": null,
+ "category_hint": "transport_parking",
+ "printed_text": "GREENWICH BAY CAR PARK LTD\n12 HARBOUR VIEW\nGREENWICH, SE10 8XX\n\n14/08/2026 10:42 AM\nTXN: #0094821\n\nITEM                QTY   RATE    AMOUNT\nSTD PARK 4 HRS       1    8.50     8.50\n\n--------------------------------------\nNET TOTAL                             8.50\nVAT (EXEMPT)                          0.00\nGROSS TOTAL                           8.50\n\nPAID CASH                             8.50\nCHANGE                                0.00\n\nTHANK YOU\nPLEASE RETAIN RECEIPT",
+ "notes": "Case id: cash_no_vat. Exempt service, no VAT details on receipt.",
+ "gold_case": "cash_no_vat",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

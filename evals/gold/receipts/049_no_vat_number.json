@@ -1,0 +1,40 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Hargreaves & Son Hardware Ltd",
+  "vat_number": null,
+  "address": "42 Industrial Estate, Leeds, LS10 1AB"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Professional Cordless Impact Driver Kit",
+   "qty": 1,
+   "unit_price": 185.5,
+   "net": 185.5,
+   "vat_rate": null,
+   "vat": 0.0
+  },
+  {
+   "description": "Heavy Duty Socket Set (1/2 inch)",
+   "qty": 2,
+   "unit_price": 42.25,
+   "net": 84.5,
+   "vat_rate": null,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 270.0,
+ "vat_total": 0.0,
+ "gross_total": 270.0,
+ "payment_method": "card",
+ "card_last4": "4492",
+ "category_hint": "tools_equipment",
+ "printed_text": "HARGREAVES & SON HARDWARE LTD\n42 Industrial Estate, Leeds, LS10 1AB\nPhone: 0113 496 0012\nDate: 14/08/2026  Time: 10:45 AM\n\n-----------------------------\nITEM              QTY   PRICE\n-----------------------------\nImpact Driver Kit  1     185.50\nSoc Set 1/2\"       2      84.50\n-----------------------------\n\nTOTAL                     270.00\nCARD ***4492\n\nTHANK YOU FOR SHOPPING\nTHIS IS NOT A VAT INVOICE",
+ "notes": "Simplified receipt for purchase over £250. No VAT number displayed. Supplier is fictional.",
+ "gold_case": "no_vat_number",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

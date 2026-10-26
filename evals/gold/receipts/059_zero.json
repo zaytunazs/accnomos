@@ -1,0 +1,48 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Fictional Bookworm & Threads Ltd",
+  "vat_number": null,
+  "address": "14 Puddleduck Lane, Oakhampton, OX1 2ZZ"
+ },
+ "customer": null,
+ "invoice_number": "RCP-2026-08-14-992",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Picture Book: The Dragon's Garden",
+   "qty": 2,
+   "unit_price": 9.5,
+   "net": 19.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Children's Cotton T-Shirt (Blue, Size 8)",
+   "qty": 3,
+   "unit_price": 7.25,
+   "net": 21.75,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Kids' Denim Jacket (Grey, Size 10)",
+   "qty": 1,
+   "unit_price": 24.99,
+   "net": 24.99,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 65.74,
+ "vat_total": 0.0,
+ "gross_total": 65.74,
+ "payment_method": "card",
+ "card_last4": "8831",
+ "category_hint": "zero-rated books and children's clothing",
+ "printed_text": "FICTIONAL BOOKWORM & THREADS LTD\n14 Puddleduck Lane, Oakhampton, OX1 2ZZ\nT: 01234 567890 | W: fictionalbooks.co.uk\n\nReceipt No: RCP-2026-08-14-992\nDate: 2026-08-14 14:32\n\n----------------------------------------\n2x Picture Book: The Dragon's Garden  19.00\n3x Children's Cotton T-Shirt (Blue)   21.75\n1x Kids' Denim Jacket (Grey)         24.99\n----------------------------------------\nSubtotal (Net):                      65.74\nVAT (0%):                            0.00\n----------------------------------------\nTOTAL:                               65.74\n\nPayment: Card ****8831\n\nTHANK YOU FOR SHOPPING WITH US\nAll sales final. No refunds without proof.\n----------------------------------------",
+ "notes": "Zero-rated items purchased for personal use. VAT shown as £0.00 per HMRC guidelines for zero-rated goods.",
+ "gold_case": "zero",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

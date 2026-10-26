@@ -1,0 +1,50 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Northgate Energy Solutions Ltd",
+  "vat_number": "GB 123 456 789",
+  "address": "Unit 4, Industrial Park, Leeds, LS10 1AB"
+ },
+ "customer": {
+  "name": "J. Smith"
+ },
+ "invoice_number": "INV-2026-8921",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Domestic Electricity Supply",
+   "qty": 1,
+   "unit_price": 145.2,
+   "net": 145.2,
+   "vat_rate": 5,
+   "vat": 7.26
+  },
+  {
+   "description": "Domestic Gas Supply",
+   "qty": 1,
+   "unit_price": 98.5,
+   "net": 98.5,
+   "vat_rate": 5,
+   "vat": 4.93
+  },
+  {
+   "description": "Admin & Service Charge",
+   "qty": 1,
+   "unit_price": 10.0,
+   "net": 10.0,
+   "vat_rate": 20,
+   "vat": 2.0
+  }
+ ],
+ "net_total": 253.7,
+ "vat_total": 14.19,
+ "gross_total": 267.89,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "utility_energy",
+ "printed_text": "NORTHGATE ENERGY SOLUTIONS LTD\nUnit 4, Industrial Park\nLeeds, LS10 1AB\nVAT No: GB 123 456 789\n--------------------------------\nDate: 2026-08-14\nRef: INV-2026-8921\nCustomer: J. Smith\n--------------------------------\nDOMESTIC ELECTRICITY      145.20\nDOMESTIC GAS               98.50\nADMIN CHARGE               10.00\n--------------------------------\nNET TOTAL                  253.70\nVAT (5%)                   12.19\nVAT (20%)                   2.00\nTOTAL VAT                   14.19\n--------------------------------\nGROSS TOTAL                267.89\n--------------------------------\nPAYMENT: DIRECT DEBIT\nTHANK YOU FOR YOUR BUSINESS",
+ "notes": "Reduced rate applied to essential energy supplies.",
+ "gold_case": "reduced",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

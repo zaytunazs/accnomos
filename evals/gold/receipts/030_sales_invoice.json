@@ -1,0 +1,52 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "Unit 4, The Old Mill, High Street, Oakford, GU2 9XY"
+ },
+ "customer": {
+  "name": "Harrowgate Interiors",
+  "vat_number": null,
+  "address": "12 Merchant Row, London, W1V 4JD"
+ },
+ "invoice_number": "INV-2026-3019",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Custom Oak Kitchen Units (Base & Wall)",
+   "qty": 1.0,
+   "unit_price": 2450.0,
+   "net": 2450.0,
+   "vat_rate": 20,
+   "vat": 490.0
+  },
+  {
+   "description": "Installation & Fitting Labour",
+   "qty": 12.0,
+   "unit_price": 95.0,
+   "net": 1140.0,
+   "vat_rate": 20,
+   "vat": 228.0
+  },
+  {
+   "description": "Internal Fittings (Handles & Hinges)",
+   "qty": 1.0,
+   "unit_price": 320.5,
+   "net": 320.5,
+   "vat_rate": 20,
+   "vat": 64.1
+  }
+ ],
+ "net_total": 3910.5,
+ "vat_total": 782.1,
+ "gross_total": 4692.6,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery",
+ "printed_text": "Bramblewood Joinery Ltd\nVAT: GB 123 4567 89\nUnit 4, The Old Mill, High Street, Oakford, GU2 9XY\n\nInvoice To: Harrowgate Interiors\n12 Merchant Row, London, W1V 4JD\nInvoice No: INV-2026-3019\nDate: 2026-08-14\n\nDescription                          Qty   Rate     Net\nCustom Oak Kitchen Units (Base &     1.00  2450.00  2450.00\nWall)\nInstallation & Fitting Labour       12.00    95.00  1140.00\nInternal Fittings (Handles &         1.00   320.50   320.50\nHinges)\n\nNet Total:                         3910.50\nVAT (20%):                           782.10\nGross Total:                        4692.60\n\nPayment Method: Bank Transfer\nDue Date: 2026-09-13\n\nThank you for your business.",
+ "notes": "Standard rate joinery work. VAT 20% applicable. Payment due within 30 days.",
+ "gold_case": "sales_invoice",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

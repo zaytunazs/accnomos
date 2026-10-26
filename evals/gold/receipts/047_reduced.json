@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Thames & Vale Energy Ltd",
+  "vat_number": "GB 482 910 557",
+  "address": "Unit 4, Riverside Trading Park, Oxford, OX1 4JD"
+ },
+ "customer": {
+  "name": "Mr. H. P. Sterling"
+ },
+ "invoice_number": "REC-772818-09",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Domestic Gas Supply (Oct 2026 - Jan 2027)",
+   "qty": 1,
+   "unit_price": 42.15,
+   "net": 42.15,
+   "vat_rate": 5,
+   "vat": 2.11
+  },
+  {
+   "description": "Standing Charge",
+   "qty": 4,
+   "unit_price": 5.5,
+   "net": 22.0,
+   "vat_rate": 5,
+   "vat": 1.1
+  }
+ ],
+ "net_total": 64.15,
+ "vat_total": 3.21,
+ "gross_total": 67.36,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Energy",
+ "printed_text": "THAMES & VALE ENERGY LTD\nUnit 4, Riverside Trading Park\nOxford, OX1 4JD\nVAT No: GB 482 910 557\n\n--------------------------------\nRECEIPT #REC-772818-09\nDATE: 14/08/2026\nCUST: Mr. H. P. Sterling\nPAYMENT: DIRECT DEBIT\n--------------------------------\n\nDESCR              NET     VAT\nDom Gas Supply    42.15   2.11\nStanding Charge   22.00   1.10\n\n--------------------------------\nNET TOTAL:          £64.15\nVAT (5%):           £3.21\n--------------------------------\nGROSS TOTAL:        £67.36\n--------------------------------\nThank you for choosing T&V Energy.",
+ "notes": "Reduced 5% VAT applied for domestic energy costs as per current UK regulations.",
+ "gold_case": "reduced",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

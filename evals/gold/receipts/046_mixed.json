@@ -1,0 +1,64 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Bramblewick Fresh Mart",
+  "vat_number": "GB 482 910 442",
+  "address": "14 Oak Lane, Hemsworth, HD9 7PL"
+ },
+ "customer": null,
+ "invoice_number": "RCPT-2026-8821",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Free Range Eggs (12 pack)",
+   "qty": 1,
+   "unit_price": 2.4,
+   "net": 2.4,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Whole Milk 2L",
+   "qty": 1,
+   "unit_price": 1.65,
+   "net": 1.65,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Bananas (kg)",
+   "qty": 0.75,
+   "unit_price": 1.1,
+   "net": 0.83,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Pot Noodle Beef Flavour",
+   "qty": 1,
+   "unit_price": 0.85,
+   "net": 0.71,
+   "vat_rate": 20,
+   "vat": 0.14
+  },
+  {
+   "description": "Chocolate Bar 45g",
+   "qty": 1,
+   "unit_price": 1.1,
+   "net": 0.92,
+   "vat_rate": 20,
+   "vat": 0.18
+  }
+ ],
+ "net_total": 6.51,
+ "vat_total": 0.32,
+ "gross_total": 6.83,
+ "payment_method": "card",
+ "card_last4": "4821",
+ "category_hint": "Groceries",
+ "printed_text": "Bramblewick Fresh Mart\n14 Oak Lane, Hemsworth\nTel: 01423 555 019\nVAT Reg: 482 910 442\n--------------------------------\n14/08/2026 10:42 AM  Till 4\n--------------------------------\nEggs 12pk              2.40\nWhole Milk 2L          1.65\nBananas (0.75kg)       0.83\nPot Noodle Beef        0.71\nChoc Bar 45g           0.92\n--------------------------------\nSUBTOTAL               6.51\nVAT 0% (Food)          0.00\nVAT 20% (Other)        0.32\n--------------------------------\nTOTAL                  6.83\nCARD VISA ****4821     6.83\n--------------------------------\nThank you for shopping with us!\nPlease take your receipt.",
+ "notes": "Mixed VAT rates applied correctly. Zero-rated food items are exempt from VAT calculation, while standard-rated items are subject to 20% VAT. Net amounts for standard-rated items are back-calculated from the gross price.",
+ "gold_case": "mixed",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

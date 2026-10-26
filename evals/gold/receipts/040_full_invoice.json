@@ -1,0 +1,58 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Oakthorn Timber & Milling Co.",
+  "vat_number": "GB987451203",
+  "address": "42 Mill Lane, Ashford, Kent, TN24 0XQ"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "INV-2026-802446",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Kiln-Dried Red Oak Boards 15mm",
+   "qty": 50,
+   "unit_price": 12.5,
+   "net": 625.0,
+   "vat_rate": 20,
+   "vat": 125.0
+  },
+  {
+   "description": "Structural Pine Beams 2x6 inch",
+   "qty": 12,
+   "unit_price": 85.4,
+   "net": 1024.8,
+   "vat_rate": 20,
+   "vat": 204.96
+  },
+  {
+   "description": "Industrial Wood Glue Pails (20L)",
+   "qty": 4,
+   "unit_price": 45.0,
+   "net": 180.0,
+   "vat_rate": 20,
+   "vat": 36.0
+  },
+  {
+   "description": "Precision Measuring Saws",
+   "qty": 2,
+   "unit_price": 110.25,
+   "net": 220.5,
+   "vat_rate": 20,
+   "vat": 44.1
+  }
+ ],
+ "net_total": 2050.3,
+ "vat_total": 410.06,
+ "gross_total": 2460.36,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Construction Materials",
+ "printed_text": "OAKTHORN TIMBER & MILLING CO.\n42 Mill Lane, Ashford, Kent, TN24 0XQ\nVAT Reg: GB987451203\n----------------------------------------\nINVOICE NO: INV-2026-802446\nDATE: 2026-08-14\nDUE DATE: 2026-09-13\n----------------------------------------\nCUSTOMER:\nBramblewood Joinery Ltd\n----------------------------------------\nDESC                QTY  UNIT   NET     VAT\nKiln-Dried Oak     50  12.50  625.00 125.00\nPine Beams 2x6      12  85.40 1024.80 204.96\nWood Glue 20L        4  45.00  180.00  36.00\nMeasuring Saws       2 110.25  220.50  44.10\n----------------------------------------\nNET TOTAL:           £2050.30\nVAT (20%):           £ 410.06\nGRAND TOTAL:         £2460.36\n----------------------------------------\nPayment: Bank Transfer\nAccount: 11223344 | Sort: 60-89-00",
+ "notes": "Payment due within 30 days. Please quote invoice number on all remittances.",
+ "gold_case": "full_invoice",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

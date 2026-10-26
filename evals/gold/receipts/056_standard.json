@@ -1,0 +1,48 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Hollow Oak Paper Goods Ltd",
+  "vat_number": "GB 123 456 789",
+  "address": "14 Mill Lane, Sheffield, S10 2AB"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "A4 Recycled Paper 80gsm",
+   "qty": 2,
+   "unit_price": 4.95,
+   "net": 9.9,
+   "vat_rate": 20,
+   "vat": 1.98
+  },
+  {
+   "description": "Stapler 26-6mm",
+   "qty": 1,
+   "unit_price": 12.5,
+   "net": 12.5,
+   "vat_rate": 20,
+   "vat": 2.5
+  },
+  {
+   "description": "Ink Cartridge Black",
+   "qty": 1,
+   "unit_price": 18.75,
+   "net": 18.75,
+   "vat_rate": 20,
+   "vat": 3.75
+  }
+ ],
+ "net_total": 41.15,
+ "vat_total": 8.23,
+ "gross_total": 49.38,
+ "payment_method": "card",
+ "card_last4": "4821",
+ "category_hint": "stationery",
+ "printed_text": "HOLLOW OAK PAPER GOODS LTD\n14 Mill Lane, Sheffield, S10 2AB\nVAT No: GB 123 456 789\nDate: 2026-08-14 10:42\n--------------------------------\nQty  Description              Unit    Net\n2    A4 Recycled Paper 80gsm   4.95   9.90\n1    Stapler 26-6mm           12.50  12.50\n1    Ink Cartridge Black       18.75  18.75\n--------------------------------\nSubtotal:                  41.15\nVAT (20%):                   8.23\n--------------------------------\nTOTAL:                       49.38\nCard ****4821 Approved\nTHANK YOU FOR YOUR BUSINESS",
+ "notes": "Standard receipt for office supplies",
+ "gold_case": "standard",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

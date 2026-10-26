@@ -1,0 +1,48 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Northgate Paper Supplies Ltd",
+  "vat_number": "GB123456789",
+  "address": "Unit 4, Industrial Park, Leeds, LS10 1AB"
+ },
+ "customer": null,
+ "invoice_number": "R-8064-221",
+ "date": "2026-09-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "A4 Photocopy Paper (500 sheets)",
+   "qty": 2,
+   "unit_price": 4.5,
+   "net": 9.0,
+   "vat_rate": 20,
+   "vat": 1.8
+  },
+  {
+   "description": "Staples Heavy Duty (Box of 1000)",
+   "qty": 1,
+   "unit_price": 3.25,
+   "net": 3.25,
+   "vat_rate": 20,
+   "vat": 0.65
+  },
+  {
+   "description": "Whiteboard Markers Black (Set of 4)",
+   "qty": 1,
+   "unit_price": 6.8,
+   "net": 6.8,
+   "vat_rate": 20,
+   "vat": 1.36
+  }
+ ],
+ "net_total": 19.05,
+ "vat_total": 3.81,
+ "gross_total": 22.86,
+ "payment_method": "card",
+ "card_last4": "4921",
+ "category_hint": "office_supplies",
+ "printed_text": "NORTHGATE PAPER SUPPLIES LTD\nUnit 4, Industrial Park, Leeds, LS10 1AB\nVAT No: GB123456789\n--------------------------------\nReceipt No: R-8064-221\nDate: 2026-09-14 Time: 10:42\n--------------------------------\n2 x A4 Photocopy Paper (500)     9.00\n1 x Staples Heavy Duty (Box)     3.25\n1 x Whiteboard Markers Black     6.80\n--------------------------------\nNet Total:                       19.05\nVAT (20%):                       3.81\nGross Total:                     22.86\n--------------------------------\nPaid by Card ending 4921\nAmount: £22.86\nThank you for your business.",
+ "notes": "Standard rate purchase of office consumables.",
+ "gold_case": "standard",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

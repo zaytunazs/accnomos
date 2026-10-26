@@ -1,0 +1,56 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Northgate Value Mart",
+  "vat_number": "GB123456789",
+  "address": "42 High Street, Milton Keynes, MK1 1AA"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-15",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Wholemeal Bread 800g",
+   "qty": 2,
+   "unit_price": 1.5,
+   "net": 3.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Chicken Breast 500g",
+   "qty": 1,
+   "unit_price": 4.25,
+   "net": 4.25,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Mineral Water 6x1.5L",
+   "qty": 1,
+   "unit_price": 2.1,
+   "net": 2.1,
+   "vat_rate": 20,
+   "vat": 0.42
+  },
+  {
+   "description": "Chocolate Bar 100g",
+   "qty": 3,
+   "unit_price": 0.8,
+   "net": 2.4,
+   "vat_rate": 20,
+   "vat": 0.48
+  }
+ ],
+ "net_total": 11.75,
+ "vat_total": 0.9,
+ "gross_total": 12.65,
+ "payment_method": "card",
+ "card_last4": "4921",
+ "category_hint": "groceries",
+ "printed_text": "NORTHGATE VALUE MART\n42 High Street, Milton Keynes\nTel: 01908 123456\nVAT No: GB123456789\n------------------------\n15/08/2026 14:32\nCashier: 07\n------------------------\n2x Wholemeal Bread 800g   3.00\n1x Chicken Breast 500g   4.25\n1x Mineral Water 6x1.5L  2.10\n3x Chocolate Bar 100g    2.40\n------------------------\nNet Total                 11.75\nVAT @ 0%                   0.00\nVAT @ 20%                  0.90\n------------------------\nTOTAL                     12.65\nCARD **** 4921            12.65\nCASH BACK                  0.00\nCHANGE                      0.00\n------------------------\nTHANK YOU FOR SHOPPING\nSAVE THIS RECEIPT",
+ "notes": "Fictional supermarket receipt demonstrating mixed VAT rates.",
+ "gold_case": "mixed",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

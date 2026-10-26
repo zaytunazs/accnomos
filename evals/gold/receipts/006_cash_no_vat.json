@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Northgate Civic Parking Ltd",
+  "vat_number": null,
+  "address": "42 Market Square, Leeds, LS1 1AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-09-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bus Ticket: Single Journey (Adult)",
+   "qty": 1.0,
+   "unit_price": 2.5,
+   "net": 2.5,
+   "vat_rate": null,
+   "vat": 0.0
+  },
+  {
+   "description": "Bus Ticket: Single Journey (Child)",
+   "qty": 2.0,
+   "unit_price": 1.25,
+   "net": 2.5,
+   "vat_rate": null,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 5.0,
+ "vat_total": 0.0,
+ "gross_total": 5.0,
+ "payment_method": "cash",
+ "card_last4": null,
+ "category_hint": "Transport",
+ "printed_text": "NORTHGATE CIVIC PARKING LTD\n--------------------------------\n42 Market Square, Leeds\nLS1 1AB\n--------------------------------\nDATE: 14/09/2026 10:42 AM\nTERMINAL: BUS STOP 04\n--------------------------------\n1 x ADULT SINGLE .............. 2.50\n2 x CHILD SINGLE ............... 2.50\n--------------------------------\nTOTAL DUE: GBP 5.00\nPAID (CASH): GBP 5.00\nCHANGE: GBP 0.00\n--------------------------------\nTHANK YOU FOR TRAVELING\n--------------------------------\nNO VAT BREAKDOWN SHOWN\n--------------------------------",
+ "notes": "Cash transaction for public transport tickets. No VAT number displayed on supplier entity. No VAT breakdown in line items.",
+ "gold_case": "cash_no_vat",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

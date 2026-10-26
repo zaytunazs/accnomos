@@ -1,0 +1,50 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Oakfield Timber Supply Co",
+  "vat_number": "GB987654321",
+  "address": "42 Industrial Road, Manchester, M14 5LP"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "INV-2026-8842",
+ "date": "2026-09-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Solid Oak Flooring 20mm",
+   "qty": 50,
+   "unit_price": 18.5,
+   "net": 925.0,
+   "vat_rate": 20,
+   "vat": 185.0
+  },
+  {
+   "description": "Wood Glue 500ml",
+   "qty": 10,
+   "unit_price": 4.2,
+   "net": 42.0,
+   "vat_rate": 20,
+   "vat": 8.4
+  },
+  {
+   "description": "Sanding Discs Assorted",
+   "qty": 3,
+   "unit_price": 12.8,
+   "net": 38.4,
+   "vat_rate": 20,
+   "vat": 7.68
+  }
+ ],
+ "net_total": 1005.4,
+ "vat_total": 201.08,
+ "gross_total": 1206.48,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Materials",
+ "printed_text": "OAKFIELD TIMBER SUPPLY CO\n42 Industrial Road\nManchester M14 5LP\nVAT No: GB987654321\n\nINVOICE No: INV-2026-8842\nDATE: 2026-09-14\nDUE DATE: 2026-10-14\n\nCUSTOMER: Bramblewood Joinery Ltd\n\n-----------------------------\nDESC                  QTY   UNIT    NET\nSolid Oak Flooring    50   18.50   925.00\nWood Glue 500ml       10    4.20    42.00\nSanding Discs         3    12.80    38.40\n-----------------------------\nNET TOTAL             1005.40\nVAT (20%)             201.08\nTOTAL DUE             1206.48\n\nPAYMENT: BANK TRANSFER\n\nTHANK YOU FOR YOUR BUSINESS",
+ "notes": "Goods delivered to site 14/09/2026",
+ "gold_case": "full_invoice",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

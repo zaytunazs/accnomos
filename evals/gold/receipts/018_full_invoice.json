@@ -1,0 +1,50 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Oakhurst Timber & Tools",
+  "vat_number": "GB987654321",
+  "address": "42 Industrial Way, Leeds, LS12 3XY"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "OXT-2026-8842",
+ "date": "2026-09-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Premium Oak Boards (4x1) 4ft",
+   "qty": 25,
+   "unit_price": 12.5,
+   "net": 312.5,
+   "vat_rate": 20,
+   "vat": 62.5
+  },
+  {
+   "description": "Heavy Duty Circular Saw Blade 10\"",
+   "qty": 2,
+   "unit_price": 45.0,
+   "net": 90.0,
+   "vat_rate": 20,
+   "vat": 18.0
+  },
+  {
+   "description": "Wood Glue (PVA) 5L",
+   "qty": 1,
+   "unit_price": 38.4,
+   "net": 38.4,
+   "vat_rate": 20,
+   "vat": 7.68
+  }
+ ],
+ "net_total": 440.9,
+ "vat_total": 88.18,
+ "gross_total": 529.08,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery Materials & Tools",
+ "printed_text": "OAKHURST TIMBER & TOOLS\n42 Industrial Way, Leeds, LS12 3XY\nVAT No: GB987654321\n\nINVOICE: OXT-2026-8842\nDATE: 2026-09-14\nDUE: 2026-10-14\n\nCUSTOMER:\nBramblewood Joinery Ltd\n\nDESCRIPTION         QTY  UNIT      NET     VAT\n------------------------------------------\nOak Boards (4x1)    25   12.50   312.50   62.50\nSaw Blade 10\"        2   45.00    90.00   18.00\nWood Glue 5L         1   38.40    38.40    7.68\n------------------------------------------\nNET TOTAL:                  440.90\nVAT TOTAL (20%):             88.18\nGROSS TOTAL:                 529.08\n\nPAYMENT: BANK TRANSFER\n",
+ "notes": "Terms: Net 30 days. Please quote invoice number on remittance.",
+ "gold_case": "full_invoice",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

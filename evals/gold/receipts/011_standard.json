@@ -1,0 +1,48 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Northgate Office Supplies Ltd",
+  "vat_number": "GB987654321",
+  "address": "12 Industrial Park, Leeds, LS10 1AB"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "A4 Copy Paper 80gsm",
+   "qty": 5,
+   "unit_price": 4.5,
+   "net": 22.5,
+   "vat_rate": 20,
+   "vat": 4.5
+  },
+  {
+   "description": "Stapler Heavy Duty",
+   "qty": 2,
+   "unit_price": 12.0,
+   "net": 24.0,
+   "vat_rate": 20,
+   "vat": 4.8
+  },
+  {
+   "description": "Ballpoint Pens (Blue)",
+   "qty": 10,
+   "unit_price": 0.8,
+   "net": 8.0,
+   "vat_rate": 20,
+   "vat": 1.6
+  }
+ ],
+ "net_total": 54.5,
+ "vat_total": 10.9,
+ "gross_total": 65.4,
+ "payment_method": "card",
+ "card_last4": "4821",
+ "category_hint": "stationery",
+ "printed_text": "NORTHGATE OFFICE SUPPLIES LTD\n12 Industrial Park\nLeeds LS10 1AB\nVAT No: GB987654321\n\nDate: 2026-08-14\nReceipt No: RCPT-997375\n\n--------------------------------\nItem              Qty  Price  Total\nA4 Paper 80gsm      5   4.50   22.50\nStapler HD          2  12.00   24.00\nPens Blue          10   0.80    8.00\n--------------------------------\nSubtotal:                 54.50\nVAT (20%):                 10.90\nTOTAL:                     65.40\n\nPaid by Card ****4821\nTHANK YOU FOR YOUR BUSINESS",
+ "notes": "Standard rated purchase receipt. Seed 997375.",
+ "gold_case": "standard",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

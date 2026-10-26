@@ -1,0 +1,50 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Thornbury & Finch Books Ltd",
+  "vat_number": null,
+  "address": "14 Oakwood Lane, Exeter, EX1 2AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": "PI-2026-8942",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Children's Illustrated Novel 'The Moonlit Garden'",
+   "qty": 1,
+   "unit_price": 12.99,
+   "net": 12.99,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Toddler's Cotton T-Shirt (Size 2-3)",
+   "qty": 2,
+   "unit_price": 8.5,
+   "net": 17.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Board Book 'Little Foxes Sleep'",
+   "qty": 1,
+   "unit_price": 4.25,
+   "net": 4.25,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 34.24,
+ "vat_total": 0.0,
+ "gross_total": 34.24,
+ "payment_method": "card",
+ "card_last4": "7391",
+ "category_hint": "zero-rated_goods",
+ "printed_text": "THORNBURO & FINCH BOOKS LTD\n14 Oakwood Lane, Exeter, EX1 2AB\n\nINVOICE: PI-2026-8942\nDATE: 2026-08-14\n\n-----------------------------\nITEM                 QTY  AMOUNT\n-----------------------------\nChils Novel Moonlit    1   12.99\nToddler T-Shirt        2   17.00\nBoard Book Little Fox  1    4.25\n-----------------------------\nNET TOTAL              34.24\nVAT (0%)               0.00\n-----------------------------\nGRAND TOTAL            34.24\n\nPAID BY CARD ****7391\nTHANK YOU FOR SHOPPING\n",
+ "notes": "Zero-rated supply. Books and children's clothing are exempt/zero-rated under UK VAT rules. Supplier is not VAT registered.",
+ "gold_case": "zero",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

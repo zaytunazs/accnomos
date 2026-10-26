@@ -1,0 +1,40 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Havoc Hardware & Tools Ltd",
+  "vat_number": null,
+  "address": "Unit 4, Ironworks Industrial Park, Manchester, M14 5QD"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-12",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Heavy Duty Steel Shelving Unit",
+   "qty": 1.0,
+   "unit_price": 285.0,
+   "net": 285.0,
+   "vat_rate": null,
+   "vat": 0.0
+  },
+  {
+   "description": "Industrial Grade Hammer",
+   "qty": 2.0,
+   "unit_price": 18.5,
+   "net": 37.0,
+   "vat_rate": null,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 322.0,
+ "vat_total": 0.0,
+ "gross_total": 322.0,
+ "payment_method": "card",
+ "card_last4": "4892",
+ "category_hint": "Office Equipment",
+ "printed_text": "HAVOC HARDWARE & TOOLS LTD\nUnit 4, Ironworks Industrial Park\nManchester, M14 5QD\nTel: 0161 555 0192\n------------------------\nDate: 2026-08-12\nTime: 14:22\n\nItem Details:\n1 x Heavy Duty Steel Shelving   285.00\n2 x Industrial Grade Hammer      37.00\n------------------------\nTOTAL                           322.00\n\nCard Payment\nAuthorised\nLast 4: 4892\n\nTHANK YOU FOR SHOPPING WITH US\nThis is not a VAT invoice\n------------------------",
+ "notes": "Simplified receipt for transaction under cash register. No VAT registration number displayed.",
+ "gold_case": "no_vat_number",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

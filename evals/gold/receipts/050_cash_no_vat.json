@@ -1,0 +1,32 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Metropolitan Transit Services Ltd",
+  "vat_number": null,
+  "address": "12 Station Road, Manchester, M1 4AB"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Single Bus Fare - Zone A",
+   "qty": 1,
+   "unit_price": 1.95,
+   "net": 1.95,
+   "vat_rate": null,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 1.95,
+ "vat_total": 0.0,
+ "gross_total": 1.95,
+ "payment_method": "cash",
+ "card_last4": null,
+ "category_hint": "public_transport",
+ "printed_text": "METROPOLITAN TRANSIT SERVICES LTD\n12 Station Road, Manchester, M1 4AB\n----------------------------------------\nDate: 14/08/2026  Time: 09:42 AM\nTerminal: Manchester Central\n----------------------------------------\nSingle Bus Fare - Zone A ....... 1.95\n----------------------------------------\nTOTAL DUE ........................ 1.95\n----------------------------------------\nPaid in CASH .................... 1.95\nCHANGE .......................... 0.00\n----------------------------------------\nTHANK YOU FOR RIDING WITH US\nNo VAT is charged on this service\n----------------------------------------",
+ "notes": "Seed 569910. Fictional supplier. No VAT breakdown as per transport exemption.",
+ "gold_case": "cash_no_vat",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

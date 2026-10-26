@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Thornbury Stationery Co.",
+  "vat_number": "GB 987654321",
+  "address": "14 Oak Street, York, YO1 5AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "A4 Recycled Paper (500 sheets)",
+   "qty": 2,
+   "unit_price": 3.5,
+   "net": 7.0,
+   "vat_rate": 20,
+   "vat": 1.4
+  },
+  {
+   "description": "Gel Pens (Black, 10 pack)",
+   "qty": 1,
+   "unit_price": 4.99,
+   "net": 4.99,
+   "vat_rate": 20,
+   "vat": 1.0
+  }
+ ],
+ "net_total": 11.99,
+ "vat_total": 2.4,
+ "gross_total": 14.39,
+ "payment_method": "card",
+ "card_last4": "8842",
+ "category_hint": "Office Supplies",
+ "printed_text": "THORNBURY STATIONERY CO.\n14 Oak Street, York YO1 5AB\nVAT No: GB 987654321\nDate: 14/08/2026 10:42\n-----------------------------\nA4 Paper 500s       2 x 3.50 = 7.00\nGel Pens Black     1 x 4.99 = 4.99\n-----------------------------\nNet Total:               11.99\nVAT (20%):                2.40\nGROSS TOTAL:             14.39\n-----------------------------\nPayment: CARD ****8842\nAmount Paid:             14.39\nChange:                    0.00\nThank you for your business!",
+ "notes": "Standard purchase receipt for office supplies. Seed 151209.",
+ "gold_case": "standard",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

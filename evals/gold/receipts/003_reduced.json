@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Nimbus Home Energy Ltd",
+  "vat_number": "GB 987 654 321",
+  "address": "Unit 4, Solaris Park, Manchester, M1 4AB"
+ },
+ "customer": {
+  "name": "John Smith"
+ },
+ "invoice_number": "INV-2026-99214",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Domestic Electricity Supply - Reduced Rate",
+   "qty": 1,
+   "unit_price": 85.4,
+   "net": 85.4,
+   "vat_rate": 5,
+   "vat": 4.27
+  },
+  {
+   "description": "Standing Charge (Monthly)",
+   "qty": 1,
+   "unit_price": 12.5,
+   "net": 12.5,
+   "vat_rate": 5,
+   "vat": 0.63
+  }
+ ],
+ "net_total": 97.9,
+ "vat_total": 4.9,
+ "gross_total": 102.8,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Energy",
+ "printed_text": "NIMBUS HOME ENERGY LTD\nUnit 4, Solaris Park, Manchester, M1 4AB\nVAT No: GB 987 654 321\n--------------------------------\nInvoice: INV-2026-99214\nDate: 2026-08-14\nCustomer: John Smith\n--------------------------------\nDescription                Qty  Net     VAT\nDomestic Elec Supply        1  85.40    4.27\nStanding Charge             1  12.50    0.63\n--------------------------------\nNet Total:                 97.90\nVAT Total (5%):             4.90\n--------------------------------\nGROSS TOTAL:              102.80\n--------------------------------\nPayment: Direct Debit\nThank you for your business.",
+ "notes": "Domestic energy bills are subject to the reduced 5% VAT rate in the UK.",
+ "gold_case": "reduced",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

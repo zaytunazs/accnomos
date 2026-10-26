@@ -1,0 +1,32 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Northgate Transit Solutions Ltd",
+  "vat_number": null,
+  "address": "14 Station Road, Leeds, LS1 2AB"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Daily Car Park Entry - Level 2",
+   "qty": 1,
+   "unit_price": 4.5,
+   "net": 4.5,
+   "vat_rate": null,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 4.5,
+ "vat_total": 0.0,
+ "gross_total": 4.5,
+ "payment_method": "cash",
+ "card_last4": null,
+ "category_hint": "Travel & Transport",
+ "printed_text": "NORTHGATE TRANSIT SOLUTIONS LTD\n14 Station Road, Leeds LS1 2AB\nDate: 2026-08-14 14:32:05\n---------------------------------\nTicket Type: Car Park Daily\nLocation: Level 2, Bay C\n---------------------------------\n1 x Daily Entry @ 4.50 ..... 4.50\n---------------------------------\nTOTAL DUE: GBP 4.50\nPAID IN CASH: GBP 5.00\nCHANGE DUE: GBP 0.50\n---------------------------------\nThank you for parking with us.\nNo VAT shown as exempt supply.",
+ "notes": "Cash transaction for car parking. No VAT number displayed. Exempt supply.",
+ "gold_case": "cash_no_vat",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,74 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "GreenLeaf Markets Ltd",
+  "vat_number": "GB 99887766",
+  "address": "Unit 4, Industrial Estate, Birmingham, B1 2AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Whole Milk 2L",
+   "qty": 2.0,
+   "unit_price": 1.25,
+   "net": 2.5,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Chicken Breast 500g",
+   "qty": 1.0,
+   "unit_price": 4.99,
+   "net": 4.99,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Potato Chips 150g",
+   "qty": 3.0,
+   "unit_price": 1.8,
+   "net": 5.4,
+   "vat_rate": 20,
+   "vat": 1.08
+  },
+  {
+   "description": "Energy Drink 500ml",
+   "qty": 2.0,
+   "unit_price": 1.1,
+   "net": 2.2,
+   "vat_rate": 20,
+   "vat": 0.44
+  },
+  {
+   "description": "Frozen Pizza Pepperoni",
+   "qty": 1.0,
+   "unit_price": 5.5,
+   "net": 5.5,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Chocolate Bar 100g",
+   "qty": 4.0,
+   "unit_price": 1.25,
+   "net": 5.0,
+   "vat_rate": 20,
+   "vat": 1.0
+  }
+ ],
+ "net_total": 25.59,
+ "vat_total": 2.52,
+ "gross_total": 28.11,
+ "payment_method": "card",
+ "card_last4": "8821",
+ "category_hint": "mixed",
+ "printed_text": "GreenLeaf Markets Ltd\nUnit 4, Industrial Estate\nBirmingham, B1 2AB\nVAT No: GB 99887766\n----------------------\nDate: 2026-08-14\nTime: 14:32\n----------------------\nWhole Milk 2L        x2   2.50  0%\nChicken Breast 500g  x1   4.99  0%\nPotato Chips 150g    x3   5.40  20%\nEnergy Drink 500ml   x2   2.20  20%\nFrozen Pizza Pepper  x1   5.50  0%\nChocolate Bar 100g   x4   5.00  20%\n----------------------\nNet Total            25.59\nVAT (0%)             0.00\nVAT (20%)            2.52\n----------------------\nGROSS TOTAL          28.11\nPaid by Card ****8821\nTHANK YOU FOR SHOPPING",
+ "notes": "Fictional receipt for testing mixed VAT rates.",
+ "gold_case": "mixed",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

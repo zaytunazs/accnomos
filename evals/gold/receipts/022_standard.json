@@ -1,0 +1,50 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Brentford Office Supplies Ltd",
+  "vat_number": "GB 987654321",
+  "address": "Unit 4, Industrial Park, Brentford, TW8 9EF"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "A4 Copy Paper 80gsm",
+   "qty": 5,
+   "unit_price": 4.5,
+   "net": 22.5,
+   "vat_rate": 20,
+   "vat": 4.5
+  },
+  {
+   "description": "Gel Pens Black 10pk",
+   "qty": 2,
+   "unit_price": 3.2,
+   "net": 6.4,
+   "vat_rate": 20,
+   "vat": 1.28
+  },
+  {
+   "description": "Sticky Notes Assorted",
+   "qty": 1,
+   "unit_price": 2.99,
+   "net": 2.99,
+   "vat_rate": 20,
+   "vat": 0.6
+  }
+ ],
+ "net_total": 31.89,
+ "vat_total": 6.38,
+ "gross_total": 38.27,
+ "payment_method": "card",
+ "card_last4": "4421",
+ "category_hint": "Office Supplies",
+ "printed_text": "Brentford Office Supplies Ltd\nUnit 4, Industrial Park\nBrentford, TW8 9EF\nVAT Reg: GB 987654321\nDate: 2026-08-14 14:32\n--------------------------------\nITEM                 QTY  PRICE\n--------------------------------\nA4 Copy Paper 80gsm     5   4.50\nGel Pens Black 10pk     2   3.20\nSticky Notes Assorted   1   2.99\n--------------------------------\nSUBTOTAL (NET)          31.89\nVAT (20%)                6.38\n--------------------------------\nTOTAL (GROSS)           38.27\n--------------------------------\nPAID BY: CARD ****4421\nTHANK YOU FOR SHOPPING WITH US",
+ "notes": "Standard VAT rate applied to all items. Fictional supplier.",
+ "gold_case": "standard",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

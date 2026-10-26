@@ -1,0 +1,40 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Northgate Paper Supply Ltd",
+  "vat_number": "GB 123456789",
+  "address": "12 Industrial Park, Newcastle upon Tyne, NE1 6QD"
+ },
+ "customer": null,
+ "invoice_number": "REC-2026-8891",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "A4 Recycled Paper 80gsm 500 Sheets",
+   "qty": 5.0,
+   "unit_price": 3.5,
+   "net": 17.5,
+   "vat_rate": 20,
+   "vat": 3.5
+  },
+  {
+   "description": "A4 Cardstock 300gsm 250 Sheets",
+   "qty": 2.0,
+   "unit_price": 8.75,
+   "net": 17.5,
+   "vat_rate": 20,
+   "vat": 3.5
+  }
+ ],
+ "net_total": 35.0,
+ "vat_total": 7.0,
+ "gross_total": 42.0,
+ "payment_method": "card",
+ "card_last4": "4821",
+ "category_hint": "Office Supplies",
+ "printed_text": "NORTHGATE PAPER SUPPLY LTD\n12 Industrial Park\nNewcastle upon Tyne NE1 6QD\nVAT No: GB 123456789\nDate: 2026-08-14 10:42 AM\nReceipt No: REC-2026-8891\n--------------------------------\n5x A4 Recycled Paper 80gsm    17.50\n2x A4 Cardstock 300gsm         17.50\n--------------------------------\nNet Total:                  35.00\nVAT (20%):                   7.00\n--------------------------------\nGROSS TOTAL:                42.00\n--------------------------------\nPaid by Card ****4821\nAUTH CODE: 998234\nTHANK YOU FOR YOUR BUSINESS\nPLEASE KEEP THIS RECEIPT",
+ "notes": "Standard purchase of office stationery.",
+ "gold_case": "standard",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

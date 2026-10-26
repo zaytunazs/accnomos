@@ -1,0 +1,66 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Marrs & Ockway Provisions Ltd",
+  "vat_number": "GB123456789",
+  "address": "Unit 4, Highfield Retail Park, Ockham, RH1 2QF"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-09-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Whole Milk 2L",
+   "qty": 1,
+   "unit_price": 1.25,
+   "net": 1.25,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Sourdough Loaf 800g",
+   "qty": 1,
+   "unit_price": 3.4,
+   "net": 3.4,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Free Range Eggs (10)",
+   "qty": 1,
+   "unit_price": 2.1,
+   "net": 2.1,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Dish Soap 500ml",
+   "qty": 1,
+   "unit_price": 1.8,
+   "net": 1.8,
+   "vat_rate": 20,
+   "vat": 0.36
+  },
+  {
+   "description": "Palm Oil Soap Bar",
+   "qty": 2,
+   "unit_price": 0.45,
+   "net": 0.9,
+   "vat_rate": 20,
+   "vat": 0.18
+  }
+ ],
+ "net_total": 9.45,
+ "vat_total": 0.54,
+ "gross_total": 9.99,
+ "payment_method": "card",
+ "card_last4": "4421",
+ "category_hint": "grocery_mixed",
+ "printed_text": "MARRS & OCKWAY PROVISIONS\nVAT No: GB123456789\nUnit 4, Highfield Retail Park\nOckham RH1 2QF\n\nDate: 14/09/2026 10:42 AM\nCashier: 042\n\n1 Whole Milk 2L          1.25\n1 Sourdough Loaf         3.40\n1 Free Range Eggs        2.10\n1 Dish Soap 500ml        1.80\n2 Palm Oil Soap Bar      0.90\n\nNET TOTAL:              9.45\nVAT @ 0%:               0.00\nVAT @ 20%:              0.54\n------------------------\nGROSS TOTAL:            9.99\n\nPAID BY CARD ****4421\nTHANK YOU FOR SHOPPING\n",
+ "notes": "Seed 950778. Mixed zero-rated and standard-rated items.",
+ "gold_case": "mixed",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

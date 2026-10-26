@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Harrow Post & Parcel Ltd",
+  "vat_number": null,
+  "address": "14 High Street, Harrow, HA1 1AA"
+ },
+ "customer": {
+  "name": "J. Smith"
+ },
+ "invoice_number": "RC-699044-772",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "First Class Postage (Large Letter)",
+   "qty": 2,
+   "unit_price": 3.55,
+   "net": 7.1,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Packaging Material (Bubble Wrap Roll)",
+   "qty": 1,
+   "unit_price": 12.4,
+   "net": 12.4,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 19.5,
+ "vat_total": 0.0,
+ "gross_total": 19.5,
+ "payment_method": "cash",
+ "card_last4": null,
+ "category_hint": "postage",
+ "printed_text": "HARROW POST & PARCEL LTD\n14 High Street, Harrow\nHA1 1AA\nTEL: 020 8955 1234\n--------------------------------\nDATE: 2026-08-14\nRECEIPT: RC-699044-772\n--------------------------------\n2 x 1st Class Large Letter     7.10\n1 x Bubble Wrap Roll          12.40\n--------------------------------\nNET TOTAL                    19.50\nVAT (0%)                       0.00\n--------------------------------\nTOTAL PAID                   19.50\n--------------------------------\nPAID BY CASH\nVAT EXEMPT SUPPLY\nTHANK YOU FOR YOUR BUSINESS",
+ "notes": "Postage services and associated packaging materials are subject to 0% VAT under UK VAT regulations.",
+ "gold_case": "exempt",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

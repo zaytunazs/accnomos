@@ -1,0 +1,40 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Nimbus Children's Books & Attire Ltd",
+  "vat_number": "GB123456789",
+  "address": "42 Fable Lane, Reading, RG1 2AB"
+ },
+ "customer": null,
+ "invoice_number": "INV-2026-00948",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Hardcover Storybooks (Assorted)",
+   "qty": 12.0,
+   "unit_price": 14.5,
+   "net": 174.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Cotton T-shirt Sets (3-pack)",
+   "qty": 8.0,
+   "unit_price": 22.99,
+   "net": 183.92,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 357.92,
+ "vat_total": 0.0,
+ "gross_total": 357.92,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Zero-rated goods (Books & Children's Clothing)",
+ "printed_text": "NIMBUS CHILDREN'S BOOKS & ATTIRE LTD\nVAT Reg: GB123456789\n42 Fable Lane, Reading, RG1 2AB\n------------------------------------\nINVOICE NO: INV-2026-00948\nDATE: 2026-08-14\n------------------------------------\nDESC                      QTY  UNIT     NET\nHardcover Storybooks     12   14.50   174.00\nCotton T-shirt Sets       8   22.99   183.92\n------------------------------------\nNET TOTAL:                   357.92\nVAT (0%):                      0.00\n------------------------------------\nGROSS TOTAL:                 357.92\n------------------------------------\nPAYMENT METHOD: BANK TRANSFER\n------------------------------------\nThank you for your business.",
+ "notes": "All items supplied are zero-rated under UK VAT rules (Books and children's clothing). No VAT charged.",
+ "gold_case": "zero",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

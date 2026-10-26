@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Aethelgard Postal Services Ltd",
+  "vat_number": null,
+  "address": "14 Beacon Lane, Bristol, BS2 8QX"
+ },
+ "customer": {
+  "name": "M. Henderson"
+ },
+ "invoice_number": null,
+ "date": "2026-09-12",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Registered Special Delivery - International (France)",
+   "qty": 2,
+   "unit_price": 12.5,
+   "net": 25.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Insurance Excess Fee",
+   "qty": 1,
+   "unit_price": 4.0,
+   "net": 4.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 29.0,
+ "vat_total": 0.0,
+ "gross_total": 29.0,
+ "payment_method": "card",
+ "card_last4": "4821",
+ "category_hint": "postage_insurance_exempt",
+ "printed_text": "AETHELGARD POSTAL SERVICES LTD\n14 Beacon Lane, Bristol, BS2 8QX\nTel: 0117 555 0199\n\nDate: 12/09/2026 14:32\nCashier: J. Thorne\n--------------------------------\nRegistered Special Delivery  2 @ 12.50  25.00\nInsurance Excess Fee          1 @ 4.00    4.00\n--------------------------------\nSUBTOTAL                      29.00\nVAT (0%)                       0.00\nTOTAL PAYABLE                 29.00\n--------------------------------\nPAYMENT: CARD ****4821\nVAT EXEMPT SUPPLY\n--------------------------------\nTHANK YOU FOR YOUR BUSINESS",
+ "notes": "VAT exempt supply under Section 29(1) VATA 1994 (Postage and Insurance services).",
+ "gold_case": "exempt",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

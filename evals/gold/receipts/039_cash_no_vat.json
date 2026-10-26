@@ -1,0 +1,32 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Milton & Sons Parking Ltd",
+  "vat_number": null,
+  "address": "12 High Street, Milton Keynes, MK9 3AB"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-09-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "2-Hour Parking - Zone B",
+   "qty": 1.0,
+   "unit_price": 6.5,
+   "net": 6.5,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 6.5,
+ "vat_total": 0.0,
+ "gross_total": 6.5,
+ "payment_method": "cash",
+ "card_last4": null,
+ "category_hint": "Cash car-parking ticket",
+ "printed_text": "MILTON & SONS PARKING LTD\n12 High Street, Milton Keynes\nMK9 3AB\n\nDATE: 14/09/2026 10:24\nREF: CSHP-993821\n\n----------------------------------\n2-Hour Parking - Zone B\n  1 @ 6.50                 6.50\n----------------------------------\nTOTAL PAYABLE:             6.50\nPAID IN CASH:             6.50\nCHANGE DUE:               0.00\n\nNO VAT CHARGED\nTHANK YOU FOR YOUR BUSINESS",
+ "notes": "No VAT breakdown or supplier VAT number provided as per request.",
+ "gold_case": "cash_no_vat",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

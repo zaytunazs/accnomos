@@ -1,0 +1,58 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Northgate Timber & Hardware Supplies",
+  "vat_number": "GB987654321",
+  "address": "Unit 4, Industrial Park, Leeds, LS10 1AB, United Kingdom"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "INV-2026-008975",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Oak Solid Sawn Timber 4x2in (3m length)",
+   "qty": 12,
+   "unit_price": 24.5,
+   "net": 294.0,
+   "vat_rate": 20,
+   "vat": 58.8
+  },
+  {
+   "description": "Cabinet Hinges (Brass, 100mm)",
+   "qty": 50,
+   "unit_price": 1.25,
+   "net": 62.5,
+   "vat_rate": 20,
+   "vat": 12.5
+  },
+  {
+   "description": "Industrial Sandpaper Assortment (P80-P240)",
+   "qty": 5,
+   "unit_price": 18.0,
+   "net": 90.0,
+   "vat_rate": 20,
+   "vat": 18.0
+  },
+  {
+   "description": "Water-based Wood Stain - Walnut (5L)",
+   "qty": 2,
+   "unit_price": 45.0,
+   "net": 90.0,
+   "vat_rate": 20,
+   "vat": 18.0
+  }
+ ],
+ "net_total": 536.5,
+ "vat_total": 107.3,
+ "gross_total": 643.8,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "trade_materials",
+ "printed_text": "NORTHGATE TIMBER & HARDWARE\nVAT Reg: GB987654321\nUnit 4, Industrial Park\nLeeds, LS10 1AB\n\nINVOICE NO: INV-2026-008975\nDATE: 14/08/2026\nDUE DATE: 14/09/2026\n\nBILL TO:\nBramblewood Joinery Ltd\n\nLINE ITEMS:\n1. Oak Solid Sawn Timber    12 @ 24.50 = 294.00\n2. Cabinet Hinges           50 @  1.25 =  62.50\n3. Sandpaper Assortment      5 @ 18.00 =  90.00\n4. Wood Stain Walnut        2 @ 45.00 =  90.00\n\nSUBTOTAL:        536.50\nVAT (20%):       107.30\nTOTAL DUE:       643.80\n\nPAY BY BANK TRANSFER\nTHANK YOU FOR YOUR BUSINESS",
+ "notes": "Please quote invoice number on payment. Goods dispatched via carrier.",
+ "gold_case": "full_invoice",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

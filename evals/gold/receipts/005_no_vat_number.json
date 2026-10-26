@@ -1,0 +1,48 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Hargreaves & Sons Ironmongery",
+  "vat_number": null,
+  "address": "42 Mill Lane, Sheffield, S1 3GH"
+ },
+ "customer": null,
+ "invoice_number": null,
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Heavy Duty Steel Padlock",
+   "qty": 1,
+   "unit_price": 45.5,
+   "net": 45.5,
+   "vat_rate": null,
+   "vat": 0.0
+  },
+  {
+   "description": "Industrial Hinged Door Latch",
+   "qty": 2,
+   "unit_price": 125.0,
+   "net": 250.0,
+   "vat_rate": null,
+   "vat": 0.0
+  },
+  {
+   "description": "Stainless Steel Hinges (Pair)",
+   "qty": 4,
+   "unit_price": 18.25,
+   "net": 73.0,
+   "vat_rate": null,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 368.5,
+ "vat_total": 0.0,
+ "gross_total": 368.5,
+ "payment_method": "card",
+ "card_last4": "9304",
+ "category_hint": "Construction Materials",
+ "printed_text": "HARGREAVES & SONS IRONMONGERY\n42 Mill Lane, Sheffield, S1 3GH\nTel: 0114 555 0192\nDate: 14/08/2026 Time: 10:42\n--------------------------------\nItem                   Qty  Price\nHeavy Duty Steel Padlock   1  45.50\nIndustrial Hinge Latch     2 250.00\nStainless Hinges (Pair)    4  73.00\n--------------------------------\nTOTAL                    368.50\n--------------------------------\nCARD APPROVED  ****9304\nNo VAT charged.\nThank you for shopping with us!",
+ "notes": "Simplified receipt showing no VAT registration number despite value exceeding £250.",
+ "gold_case": "no_vat_number",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

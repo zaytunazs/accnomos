@@ -1,0 +1,50 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "Unit 4, Oakfield Business Park, Harrogate, HG1 5XY"
+ },
+ "customer": {
+  "name": "Sterling & Co. Architects"
+ },
+ "invoice_number": "INV-2026-40756",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Custom oak kitchen carcasses - internal joinery",
+   "qty": 12,
+   "unit_price": 185.0,
+   "net": 2220.0,
+   "vat_rate": 20,
+   "vat": 444.0
+  },
+  {
+   "description": "Handcrafted floating wall units in walnut",
+   "qty": 6,
+   "unit_price": 240.5,
+   "net": 1443.0,
+   "vat_rate": 20,
+   "vat": 288.6
+  },
+  {
+   "description": "Installation and fitting labor",
+   "qty": 16,
+   "unit_price": 45.0,
+   "net": 720.0,
+   "vat_rate": 20,
+   "vat": 144.0
+  }
+ ],
+ "net_total": 4383.0,
+ "vat_total": 876.6,
+ "gross_total": 5259.6,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery/Contractor",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\nVAT No: GB 123 4567 89\nUnit 4, Oakfield Business Park\nHarrogate, HG1 5XY\n-----------------------------\nINVOICE NO: INV-2026-40756\nDATE: 14/08/2026\n\nBILL TO:\nSterling & Co. Architects\n\nDESCRIPTION          QTY   RATE     AMOUNT\nCustom oak kitchens  12    185.00   2220.00\nWalnut wall units    6     240.50   1443.00\nInstallation labor   16     45.00    720.00\n-----------------------------\nNET TOTAL                          4383.00\nVAT (20%)                            876.60\n-----------------------------\nTOTAL DUE                          5259.60\n\nPAYMENT: Bank Transfer\nThank you for your business.",
+ "notes": "Payment due within 30 days. Please reference invoice number.",
+ "gold_case": "sales_invoice",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

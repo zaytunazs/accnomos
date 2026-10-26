@@ -1,0 +1,40 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Fable & Fable Kids",
+  "vat_number": "GB 987654321",
+  "address": "12 Storybook Lane, Littlehampton, West Sussex, BN17 5QD"
+ },
+ "customer": null,
+ "invoice_number": "INV-2026-0765",
+ "date": "2026-09-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Children's Tunic Dress - Blue",
+   "qty": 2,
+   "unit_price": 18.5,
+   "net": 37.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Picture Book: The Moon Garden",
+   "qty": 3,
+   "unit_price": 7.99,
+   "net": 23.97,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 60.97,
+ "vat_total": 0.0,
+ "gross_total": 60.97,
+ "payment_method": "card",
+ "card_last4": "4521",
+ "category_hint": "Zero-rated children's clothing and books",
+ "printed_text": "FABLE & FABLE KIDS\n12 Storybook Lane\nLittlehampton, BN17 5QD\n\nInvoice No: INV-2026-0765\nDate: 14/09/2026\n\nDESCRIPTION                 AMOUNT\n--------------------------------\n2 x Tunic Dress Blue       37.00\n3 x The Moon Garden        23.97\n--------------------------------\nNET TOTAL                  60.97\nVAT (0%)                    0.00\n--------------------------------\nGROSS TOTAL                60.97\n\nPaid by Card ****4521\nThank you for shopping with us.",
+ "notes": "Zero-rated supply for children's clothing and books under HMRC rules.",
+ "gold_case": "zero",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

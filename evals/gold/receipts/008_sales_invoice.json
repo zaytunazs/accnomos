@@ -1,0 +1,50 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Halloway & Sons Interiors"
+ },
+ "invoice_number": "BRW-2026-0570",
+ "date": "2026-09-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Handcrafted Oak Dining Table (1800mm)",
+   "qty": 1,
+   "unit_price": 1450.0,
+   "net": 1450.0,
+   "vat_rate": 20,
+   "vat": 290.0
+  },
+  {
+   "description": "Solid Walnut Wall Shelving Unit",
+   "qty": 2,
+   "unit_price": 320.5,
+   "net": 641.0,
+   "vat_rate": 20,
+   "vat": 128.2
+  },
+  {
+   "description": "Installation and Fitting Service",
+   "qty": 1,
+   "unit_price": 150.0,
+   "net": 150.0,
+   "vat_rate": 20,
+   "vat": 30.0
+  }
+ ],
+ "net_total": 2241.0,
+ "vat_total": 448.2,
+ "gross_total": 2689.2,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery and Carpentry",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane, Leeds, LS1 2AB\nVAT Reg: GB 123 4567 89\n\nINVOICE: BRW-2026-0570\nDATE: 14/09/2026\nCUSTOMER: Halloway & Sons Interiors\n\nDESCRIPTION              QTY    UNIT PRICE    NET TOTAL\nHandcrafted Oak Table     1      1450.00      1450.00\nWalnut Shelving Unit      2       320.50       641.00\nInstallation Service      1       150.00       150.00\n-----------------------------------------------\nNET TOTAL:                              2241.00\nVAT (20%):                               448.20\n-----------------------------------------------\nTOTAL DUE:                               2689.20\n\nPAYMENT: BANK TRANSFER\nACCOUNT: BRAMBLEWOOD LTD\nSORT CODE: 10-89-01\nACCOUNT NO: 55229988\n\nTHANK YOU FOR YOUR BUSINESS.",
+ "notes": "Payment due within 14 days. Please quote invoice number.",
+ "gold_case": "sales_invoice",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

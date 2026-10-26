@@ -1,0 +1,34 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Fictional Volt & Spark Energy Ltd",
+  "vat_number": "GB 987654321",
+  "address": "Unit 4, Digital Data Park, Manchester, M1 2AB"
+ },
+ "customer": {
+  "name": "J. Doe"
+ },
+ "invoice_number": "INV-689344-001",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Domestic Gas & Electricity Supply (Reduced VAT)",
+   "qty": 1,
+   "unit_price": 145.5,
+   "net": 145.5,
+   "vat_rate": 5,
+   "vat": 7.28
+  }
+ ],
+ "net_total": 145.5,
+ "vat_total": 7.28,
+ "gross_total": 152.78,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Energy",
+ "printed_text": "FICTIONAL VOLT & SPARK ENERGY LTD\nVAT No: GB 987654321\nUnit 4, Digital Data Park\nManchester, M1 2AB\n\nInvoice: INV-689344-001\nDate:    14/08/2026\nCustomer: J. Doe\n\n--------------------------------\nItem                 Qty   Amount\n--------------------------------\nDomestic Gas & Elec      1   145.50\n(5% VAT rate applied)\n--------------------------------\nNet Total:                145.50\nVAT (5%):                   7.28\n--------------------------------\nGRAND TOTAL:              152.78\n\nPayment: Direct Debit\nThank you for your business.",
+ "notes": "Bill issued at reduced 5% VAT rate for domestic energy supply.",
+ "gold_case": "reduced",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,50 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Northgate Stationery Ltd",
+  "vat_number": "GB 987654321",
+  "address": "42 High Street, Leeds, LS1 1AA"
+ },
+ "customer": {
+  "name": "Acme Consulting Group"
+ },
+ "invoice_number": "NI-2026-0452",
+ "date": "2026-09-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "A4 Copy Paper (500 sheets)",
+   "qty": 10,
+   "unit_price": 2.5,
+   "net": 25.0,
+   "vat_rate": 20,
+   "vat": 5.0
+  },
+  {
+   "description": "Pens (Box of 10)",
+   "qty": 5,
+   "unit_price": 3.2,
+   "net": 16.0,
+   "vat_rate": 20,
+   "vat": 3.2
+  },
+  {
+   "description": "Sticky Notes (Jumbo)",
+   "qty": 3,
+   "unit_price": 4.1,
+   "net": 12.3,
+   "vat_rate": 20,
+   "vat": 2.46
+  }
+ ],
+ "net_total": 53.3,
+ "vat_total": 10.66,
+ "gross_total": 63.96,
+ "payment_method": "card",
+ "card_last4": "4421",
+ "category_hint": "Office Supplies",
+ "printed_text": "NORTHGATE STATIONERY LTD\n42 High Street, Leeds, LS1 1AA\nVAT No: GB 987654321\n\nINV: NI-2026-0452\nDate: 2026-09-14\nBill To: Acme Consulting Group\n--------------------------------\nDescription           Qty  Price  Total\n--------------------------------\nA4 Copy Paper (500)    10   2.50   25.00\nPens (Box of 10)        5   3.20   16.00\nSticky Notes (Jumbo)    3   4.10   12.30\n--------------------------------\nSubtotal:                       53.30\nVAT (20%):                       10.66\n--------------------------------\nTOTAL:                           63.96\n\nPaid by Card **** 4421\nThank you for your business!",
+ "notes": "Standard purchase receipt. Fictional supplier.",
+ "gold_case": "standard",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

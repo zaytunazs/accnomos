@@ -1,0 +1,42 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "VondelTech Solutions BV",
+  "vat_number": "NL867123459B01",
+  "address": "Keizersgracht 402, 1017 AA Amsterdam, Netherlands"
+ },
+ "customer": {
+  "name": "Thames Valley Ltd"
+ },
+ "invoice_number": "INV-2026-814040",
+ "date": "2026-09-14",
+ "currency": "EUR",
+ "lines": [
+  {
+   "description": "Industrial Server Rack Unit",
+   "qty": 2,
+   "unit_price": 450.0,
+   "net": 900.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Cabling and Assembly Service",
+   "qty": 1,
+   "unit_price": 150.0,
+   "net": 150.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 1050.0,
+ "vat_total": 0.0,
+ "gross_total": 1050.0,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "IT Hardware",
+ "printed_text": "VONDELTech SOLUTIONS BV\nKeizersgracht 402\n1017 AA Amsterdam\nVAT: NL867123459B01\n\nInvoice: INV-2026-814040\nDate: 2026-09-14\nCustomer: Thames Valley Ltd\n\n--------------------------------\nDesc                    Qty   Price\n--------------------------------\nServer Rack             2    450.00\nCabling Service         1    150.00\n--------------------------------\nNet Total              1050.00\nVAT (Reverse Charge)       0.00\nGross Total            1050.00\n--------------------------------\n\nNOTE: VAT reverse charge\napplies. Recipient is\nliable to declare VAT.\n\nBank Transfer to:\nIBAN: NL91 ABNA 0417\n164002",
+ "notes": "Reverse charge applies for UK-registered customer.",
+ "gold_case": "foreign",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

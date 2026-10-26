@@ -1,0 +1,50 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Zephyr Energy Ltd",
+  "vat_number": "GB123456789",
+  "address": "14 Windmill Lane, Leeds, LS1 4AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-09-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Domestic Electricity Supply (Q3)",
+   "qty": 1,
+   "unit_price": 125.5,
+   "net": 125.5,
+   "vat_rate": 5,
+   "vat": 6.28
+  },
+  {
+   "description": "Standing Charge",
+   "qty": 1,
+   "unit_price": 2.1,
+   "net": 2.1,
+   "vat_rate": 5,
+   "vat": 0.11
+  },
+  {
+   "description": "Customer Service Charge",
+   "qty": 1,
+   "unit_price": 0.5,
+   "net": 0.5,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 128.1,
+ "vat_total": 6.39,
+ "gross_total": 134.49,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Energy",
+ "printed_text": "ZEPHYR ENERGY LTD\n14 Windmill Lane\nLeeds LS1 4AB\nVAT No: GB123456789\n\nDate: 14/09/2026\nCustomer: 885149\n\nITEM                 QTY   AMOUNT\nDom Elec Supply (Q3)  1     125.50\nStanding Charge       1       2.10\nCust Svc Charge       1       0.50\n\nNet Total             128.10\nVAT (5%)               6.39\nVAT (0%)               0.00\n------------------------\nTOTAL DUE             134.49\n\nPayment: Direct Debit\nThank you for your business.",
+ "notes": "Reduced 5% VAT applied to domestic energy supply. Customer service charge is zero-rated.",
+ "gold_case": "reduced",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

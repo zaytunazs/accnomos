@@ -1,0 +1,42 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Whimsy Wardrobe Ltd",
+  "vat_number": "GB 123 456 789",
+  "address": "42 Fable Lane, York, YO10 4AB"
+ },
+ "customer": {
+  "name": "Harper & Sons Books"
+ },
+ "invoice_number": "INV-2026-9982",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Children's Cardboard Picture Book - 'The Little Fox'",
+   "qty": 50,
+   "unit_price": 4.99,
+   "net": 249.5,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Organic Cotton T-Shirt - Green - Size 10-12",
+   "qty": 30,
+   "unit_price": 8.5,
+   "net": 255.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 504.5,
+ "vat_total": 0.0,
+ "gross_total": 504.5,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "zero-rated purchase (books/children's clothing)",
+ "printed_text": "WHIMSY WARDROBE LTD\n42 FABLE LANE, YORK YO10 4AB\nVAT NO: GB 123 456 789\n\nINVOICE: INV-2026-9982\nDATE: 14/08/2026\nCUSTOMER: HARPERS & SONS BOOKS\n\nDESCRIPTION               QTY  UNIT  NET\n----------------------------------------\nChildren's Picture Book   50   4.99 249.50\nT-Shirt Green 10-12       30   8.50 255.00\n----------------------------------------\nNET TOTAL                            504.50\nVAT (0% ZERO RATED)                   0.00\nGROSS TOTAL                            504.50\n\nPAYMENT: BANK TRANSFER\nTHANK YOU FOR YOUR BUSINESS",
+ "notes": "Zero-rated goods as per UK VAT rules. Books and children's clothing are exempt/zero-rated.",
+ "gold_case": "zero",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

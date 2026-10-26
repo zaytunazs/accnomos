@@ -1,0 +1,50 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Industrial Estate, Ashford, Kent, TN24 0XY"
+ },
+ "customer": {
+  "name": "Hollow Oak Interiors Ltd"
+ },
+ "invoice_number": "BRW-2026-0894",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Custom Oak Kitchen Worktops - 3.2m run",
+   "qty": 3.2,
+   "unit_price": 450.0,
+   "net": 1440.0,
+   "vat_rate": 20,
+   "vat": 288.0
+  },
+  {
+   "description": "Bespoke Base Units - 4 off",
+   "qty": 4,
+   "unit_price": 1250.0,
+   "net": 5000.0,
+   "vat_rate": 20,
+   "vat": 1000.0
+  },
+  {
+   "description": "Wall Hanging - 2.5m",
+   "qty": 2.5,
+   "unit_price": 800.0,
+   "net": 2000.0,
+   "vat_rate": 20,
+   "vat": 400.0
+  }
+ ],
+ "net_total": 8440.0,
+ "vat_total": 1688.0,
+ "gross_total": 10128.0,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Carpentry & Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\nVAT GB 123 4567 89\n14 Industrial Estate\nAshford, Kent, TN24 0XY\n\nINVOICE No: BRW-2026-0894\nDate: 2026-08-14\n\nBILL TO:\nHollow Oak Interiors Ltd\n\nDESCRIPTION                 AMOUNT\n----------------------------------\nOak Worktops (3.2m)       1,440.00\nBespoke Base Units (4)    5,000.00\nWall Hanging (2.5m)       2,000.00\n\n----------------------------------\nNET TOTAL:                   8,440.00\nVAT (20%):                    1,688.00\n----------------------------------\nGRAND TOTAL:                10,128.00\n\nPAYMENT DUE: 14 DAYS",
+ "notes": "Standard terms apply. Please quote invoice number on remittance.",
+ "gold_case": "sales_invoice",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

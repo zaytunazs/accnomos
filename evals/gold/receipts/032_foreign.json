@@ -1,0 +1,34 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Van Dijk & Sons Ltd",
+  "vat_number": "NL858234901B01",
+  "address": "Havenstraat 44, 3011 AB Rotterdam, Netherlands"
+ },
+ "customer": {
+  "name": "UK Trading Entity"
+ },
+ "invoice_number": "RC-895716",
+ "date": "2026-08-14",
+ "currency": "EUR",
+ "lines": [
+  {
+   "description": "Industrial Fasteners",
+   "qty": 50,
+   "unit_price": 2.5,
+   "net": 125.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 125.0,
+ "vat_total": 0.0,
+ "gross_total": 125.0,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "reverse_charge",
+ "printed_text": "VAN DIJK & SONS LTD\nHavenstraat 44\n3011 AB Rotterdam\nNL VAT: NL858234901B01\n\nRC-895716\n14/08/2026 10:45\n\nINDUSTRIAL FASTENERS\n50 @ 2.50         125.00\n\nNET TOTAL:          125.00\nVAT (REVERSE CHARGE): 0.00\nGRAND TOTAL:        125.00\n\nPAYMENT: BANK TRANSFER\n\nREVERSE CHARGE\nVAT is due on this invoice.\nThe customer is required to\naccount for VAT in their\nown VAT return.",
+ "notes": "Fictional data for testing reverse charge VAT scenarios with Dutch suppliers.",
+ "gold_case": "foreign",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

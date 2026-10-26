@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Van Der Berg Electronics BV",
+  "vat_number": "NL863124759B01",
+  "address": "Keizersgracht 145, 1015 CJ Amsterdam, Netherlands"
+ },
+ "customer": {
+  "name": "Thames Digital Solutions Ltd"
+ },
+ "invoice_number": "RC-2026-89421",
+ "date": "2026-08-14",
+ "currency": "EUR",
+ "lines": [
+  {
+   "description": "Dell Precision 5680 Workstation",
+   "qty": 2,
+   "unit_price": 1450.0,
+   "net": 2900.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Calibration Service Fee",
+   "qty": 1,
+   "unit_price": 120.0,
+   "net": 120.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": 3020.0,
+ "vat_total": 0.0,
+ "gross_total": 3020.0,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Hardware Procurement",
+ "printed_text": "VAN DER BERG ELECTRONICS BV\n================================\nRC-2026-89421 | 14-AUG-2026\n================================\nCustomer: Thames Digital Solutions\n\nDESCRIPTION              AMT\nDell Precision 5680    2900.00\nCalibration Service      120.00\n--------------------------------\nNET TOTAL              3020.00\nVAT (Reverse Charge)     0.00\nGROSS TOTAL            3020.00\n\nREVERSE CHARGE APPLIES\nBuyer to account for VAT\n================================\nThank you for your business",
+ "notes": "Reverse charge mechanism applies for B2B intra-community supply. No VAT charged on this receipt.",
+ "gold_case": "foreign",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

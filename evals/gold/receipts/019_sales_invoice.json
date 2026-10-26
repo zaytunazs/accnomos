@@ -1,0 +1,58 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "42 Oak Avenue, Leeds, LS1 4AB, UK"
+ },
+ "customer": {
+  "name": "Hartwell Property Maintenance"
+ },
+ "invoice_number": "SI-2026-179954",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Solid Oak Double Doors (Internal)",
+   "qty": 2,
+   "unit_price": 850.0,
+   "net": 1700.0,
+   "vat_rate": 20,
+   "vat": 340.0
+  },
+  {
+   "description": "Custom Built-in Wardrobe Units",
+   "qty": 1,
+   "unit_price": 1250.5,
+   "net": 1250.5,
+   "vat_rate": 20,
+   "vat": 250.1
+  },
+  {
+   "description": "Installation & Fitting Labour",
+   "qty": 12.5,
+   "unit_price": 45.0,
+   "net": 562.5,
+   "vat_rate": 20,
+   "vat": 112.5
+  },
+  {
+   "description": "Specialty Hardware & Handles",
+   "qty": 1,
+   "unit_price": 185.25,
+   "net": 185.25,
+   "vat_rate": 20,
+   "vat": 37.05
+  }
+ ],
+ "net_total": 3698.25,
+ "vat_total": 739.65,
+ "gross_total": 4437.9,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery/Carpentry",
+ "printed_text": "Bramblewood Joinery Ltd\n42 Oak Avenue, Leeds, LS1 4AB\nVAT Reg: GB 123 4567 89\n\nINVOICE: SI-2026-179954\nDATE: 2026-08-14\nCUSTOMER: Hartwell Property Maintenance\n\nDESCRIPTION                  QTY   RATE     NET\nSolid Oak Double Doors        2    850.00  1700.00\nCustom Built-in Wardrobes     1   1250.50  1250.50\nInstallation & Fitting       12.5    45.00   562.50\nSpecialty Hardware & Handles  1    185.25   185.25\n--------------------------------------------------------\nSUBTOTAL (Net)                                   3698.25\nVAT (20%)                                        739.65\n--------------------------------------------------------\nTOTAL (Gross)                                    4437.90\n\nPayment due within 30 days via bank transfer.\nThank you for your business.",
+ "notes": "Seed 179954. Standard rated goods and services. Payment via bank transfer to account number 12345678.",
+ "gold_case": "sales_invoice",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}
