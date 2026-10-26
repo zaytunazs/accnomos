@@ -1,0 +1,18 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Signing you in…</title>
+  <meta name="robots" content="noindex">
+  <style>body{margin:0;font-family:system-ui,sans-serif;background:#F4F3EE;color:#1B1F24;display:flex;align-items:center;justify-content:center;height:100vh}</style>
+</head>
+<body>
+  <p>Signing you in to Accnomos…</p>
+  <!-- MSAL v5 redirect bridge. This page must run no other script and no router (Microsoft guidance).
+       The bundle is built from @azure/msal-browser/redirect-bridge by `pnpm bridge` (see package.json). -->
+  <script type="module">
+    import { broadcastResponseToMainFrame } from "/auth/msal-redirect-bridge.js";
+    broadcastResponseToMainFrame();
+  </script>
+</body>
+</html>

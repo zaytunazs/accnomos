@@ -1,27 +1,31 @@
 {
-  "name": "web",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "next": "16.4.3",
-    "react": "19.3.0",
-    "react-dom": "19.3.0"
-  },
-  "devDependencies": {
-    "@tailwindcss/turbopack": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.4.3",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  },
-  "packageManager": "pnpm@11.9.0"
+    "name":  "web",
+    "version":  "0.1.0",
+    "private":  true,
+    "scripts":  {
+                    "dev":  "next dev",
+                    "build":  "next build",
+                    "start":  "next start",
+                    "lint":  "eslint",
+                    "bridge":  "esbuild node_modules/@azure/msal-browser/dist/redirect_bridge/index.mjs --bundle --format=esm --minify --outfile=public/auth/msal-redirect-bridge.js"
+                },
+    "dependencies":  {
+                         "@azure/msal-browser":  "^5.26.0",
+                         "@azure/msal-react":  "^5.7.3",
+                         "next":  "16.4.3",
+                         "react":  "19.3.0",
+                         "react-dom":  "19.3.0"
+                     },
+    "devDependencies":  {
+                            "@tailwindcss/turbopack":  "^4",
+                            "@types/node":  "^20",
+                            "@types/react":  "^19",
+                            "@types/react-dom":  "^19",
+                            "esbuild":  "^0.28.2",
+                            "eslint":  "^9",
+                            "eslint-config-next":  "16.4.3",
+                            "tailwindcss":  "^4",
+                            "typescript":  "^5"
+                        },
+    "packageManager":  "pnpm@11.9.0"
 }
