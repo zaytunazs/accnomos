@@ -75,10 +75,10 @@ async def health() -> dict:
 @app.post("/ai/test", response_model=AiTestResult)
 async def ai_test(cfg: AiConfig, x_meta_api_key: str | None = Header(default=None)) -> AiTestResult:
     """F2: 'Test connection' button. Lists models with the user's key, or pings the user's local agent."""
-    if cfg.base_url and not base_url_allowed(cfg.base_url):
-        raise HTTPException(400, "base_url is not on this server's allow-list (AI_ALLOWED_BASE_URLS)")
-    if is_test_mode():  # the stub AI stands in for whatever the user typed
+    if is_test_mode():  # the stub AI stands in for whatever the user typed, so its URL is never called
         cfg = AiConfig(mode="local", base_url=stub_ai_base(), model=TEST_AI_MODEL)
+    elif cfg.base_url and not base_url_allowed(cfg.base_url):
+        raise HTTPException(400, "base_url is not on this server's allow-list (AI_ALLOWED_BASE_URLS)")
     async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=5.0), follow_redirects=False) as client:
         if cfg.mode == "key":
             if not x_meta_api_key:
