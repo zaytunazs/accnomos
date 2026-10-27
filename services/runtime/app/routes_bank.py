@@ -9,7 +9,9 @@ matches can be marked as a transfer, ignored, or turned into an expense proposal
     GET  /suggestions                  proposed matches (amount ±1p, date ±5 days or up to 60 days later
                                        on terms, counterparty)
     GET  /unmatched                    open lines with no suggestion, each with a suggested action
-    POST /lines/{id}/match             confirm: {"event_id": ...} or {"event_ids": [...]}
+    POST /lines/{id}/match             confirm: {"event_id": ...} or {"event_ids": [...]}; a document already
+                                       settled is refused (409) — money already recorded is linked to its
+                                       payment's entry instead, so it is counted once (app/payments.py)
     POST /lines/{id}/unmatch           reopen a matched, transfer or ignored line
     POST /lines/{id}/transfer          mark as transfer
     POST /lines/{id}/ignore            ignore
@@ -27,6 +29,7 @@ from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from accnomos_ledger.bank import BankCsvError, BankLine, BankLineStatus, reconciled_to
+from accnomos_ledger.events import LedgerEvent
 from accnomos_ledger.matching import Match, settlement_pence
 from app.ai.config import ai_config_from_request
 from app.bank_actions import UnmatchedLine, create_expense_proposal, unmatched_lines
@@ -40,6 +43,8 @@ from app.bank_reconcile import (
 )
 from app.bank_rules import BankRule, BankRuleAction, BankRuleMatch, load_bank_rules, save_bank_rules
 from app.books import BankImport, BankMatchError, BankStatement, Books
+from app.contacts import load_ledger
+from app.payments import MoneyEvent, money_events
 from app.routes_books import get_books, require_user
 from app.schemas import Proposal
 from app.validation import StrictBody, UnsafeName, check_name
@@ -58,6 +63,18 @@ class EventBrief(BaseModel):
     date: date
     counterparty: str | None
     amount_pence: int  # signed bank movement: purchases negative
+    label: str | None = None  # a recorded payment or refund: what it is ("Recorded payment of £405.00 on ...")
+
+
+def _brief(e: LedgerEvent, money_by: dict[str, MoneyEvent]) -> EventBrief:
+    m = money_by.get(e.id)
+    return EventBrief(
+        id=e.id,
+        date=e.date,
+        counterparty=e.counterparty,
+        amount_pence=m.bank_pence if m else settlement_pence(e),
+        label=m.label if m else None,
+    )
 
 
 class Suggestion(Match):
@@ -124,14 +141,12 @@ async def suggestions(books: Books = Depends(get_books)) -> list[Suggestion]:
     lines = await books.stored_bank_lines()
     by_line = {ln.id: ln for ln in lines}
     events = {e.id: e for e in await books.live_events()}
+    money_by = money_events(await load_ledger(books))
     return [
         Suggestion(
             **m.model_dump(),
             line=by_line[m.line_id],
-            events=[
-                EventBrief(id=e.id, date=e.date, counterparty=e.counterparty, amount_pence=settlement_pence(e))
-                for e in (events[i] for i in m.event_ids)
-            ],
+            events=[_brief(events[i], money_by) for i in m.event_ids],
         )
         for m in await books.bank_suggestions(lines)
     ]
@@ -277,7 +292,7 @@ async def reorder_bank_rules(
 
 
 class ApproveBody(StrictBody):
-    kind: Literal["exact", "rule", "ai"]
+    kind: Literal["exact", "refund", "rule", "ai"]
     ai: AiSuggestion | None = None  # the AI suggestion shown, for kind "ai" (they expire server-side)
 
 
@@ -337,7 +352,8 @@ async def rule_draft(
 async def reconcile_approve(
     line_id: str, body: ApproveBody, books: Books = Depends(get_books), user: str = Depends(require_user)
 ) -> ApproveResult:
-    """Approve one suggestion: exact records the match; rule/AI posts through Review approval."""
+    """Approve one suggestion: exact records the match; refund records the refund of a contact's credit and matches
+    the line to it; rule/AI posts through Review approval."""
     try:
         out = await approve_line(books, line_id, body.kind, user, body.ai)
     except FileNotFoundError as exc:

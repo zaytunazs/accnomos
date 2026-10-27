@@ -18,7 +18,7 @@ from app import credit_notes as cn_
 from app import credits as cr_
 from app import invoicing as inv_
 from app import payments as pay_
-from app.books import Books
+from app.books import BankMatchError, Books
 from app.contacts import documents as cb_documents
 from app.credit_notes import CreditLineIn, CreditNote, CreditNoteDraft
 from app.invoicing import InvoiceError, InvoiceStateError
@@ -175,6 +175,22 @@ async def record(
     """Record a payment and its split (Dr 1200 Bank / Cr 1100 Debtors, or Dr 2100 Creditors / Cr 1200 Bank)."""
     try:
         return await pay_.record_payment(books, body, user)
+    except InvoiceError as exc:
+        raise _http(exc) from exc
+
+
+@router.post("/payments/from-bank-line/{line_id}", response_model=PaymentRecord)
+async def from_bank_line(
+    line_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> PaymentRecord:
+    """*Post as payment*: a line matched straight to invoices or bills on the Bank page becomes a recorded payment for
+    the same split (posted to 1200 Bank and Debtors/Creditors), and the line is matched to it."""
+    try:
+        return await pay_.payment_from_bank_line(books, line_id, user)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="No such bank line") from exc
+    except BankMatchError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
     except InvoiceError as exc:
         raise _http(exc) from exc
 
