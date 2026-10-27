@@ -15,6 +15,17 @@ function resolveFile(urlPath) {
   const rel = normalize(decodeURIComponent(urlPath)).replace(/^([/\\])+/, "");
   const base = join(root, rel);
   if (!base.startsWith(root)) return null;
+  // Next.js static export keeps each route's RSC prefetch payload at
+  // `<route>/__next.<first>/<rest...>/__PAGE__.txt`, while the client asks for
+  // `<route>/__next.<dotted-route>.__PAGE__.txt` (dots, as `next start` serves).
+  // Map the dotted form onto the on-disk file so prefetches complete like prod.
+  const m = /(^|[\\/])__next\.(.*)\.__PAGE__\.txt$/.exec(rel);
+  if (m && m[2].length > 0) {
+    const parts = m[2].split(".");
+    const dir = m[1] ? rel.slice(0, m.index + m[1].length) : "";
+    const mapped = join(root, dir, `__next.${parts[0]}`, ...parts.slice(1), "__PAGE__.txt");
+    if (mapped.startsWith(root) && existsSync(mapped) && statSync(mapped).isFile()) return mapped;
+  }
   for (const p of [base, `${base}.html`, join(base, "index.html")]) {
     if (existsSync(p) && statSync(p).isFile()) return p;
   }
