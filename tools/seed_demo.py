@@ -880,10 +880,9 @@ async def _seed_graph(args: argparse.Namespace, plan: Plan, token: str) -> int:
         print(f"Books folder: {storage._root_drive_path or root.name}")
         if not root_is_accnomos(args.account, root.name):
             print(
-                f"That is not the Accnomos folder: for a personal account the app folder belongs to the app that "
-                f"issued "
-                f"the token ({root.name!r} here). Copy the token from the Accnomos web app "
-                f"instead (tools/seed_demo.md).",
+                "That is not the Accnomos folder: for a personal account the app folder belongs to the app that "
+                f"issued the token ({root.name!r} here). Copy the token from the Accnomos web app instead "
+                "(tools/seed_demo.md).",
                 file=sys.stderr,
             )
             return 1

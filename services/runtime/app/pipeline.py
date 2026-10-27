@@ -1,4 +1,8 @@
-"""Image in, `Proposal` out: hash -> crop -> extract -> repair -> checks -> (second read if unsure) -> decide -> verify (if passed) -> journal -> filename."""  # noqa: E501
+"""Image in, `Proposal` out.
+
+hash -> crop -> extract -> repair -> checks -> (second read if unsure) -> decide -> verify (if passed) -> journal
+-> filename.
+"""
 
 from __future__ import annotations
 
