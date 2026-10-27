@@ -139,6 +139,10 @@ def judge_section(judge: dict[str, Any], recs: list[dict[str, Any]]) -> list[str
     agree = sum((d["final_severity"] == "none") == code_ok[f] for f, d in by_file.items())
     out += ["", f"Final judge verdict agrees with the code comparison (fields only) on {agree}/{len(by_file)} documents.", "",
             "Most frequent judge-flagged fields (final verdicts): " + (", ".join(f"{k} {v}" for k, v in fields.most_common(8)) or "none")]
+    out += ["", "Caveat: the judge is noisy and not a ground truth. It flagged line-item wording and category on most documents "
+            "(`lines` 167, `category*` 65) and disagreed with the code comparison on nearly every first pass, and "
+            f"{s['severity'].get('unparsed', 0)} verdicts did not parse as JSON (likely the 800-token reply cap). "
+            "Treat the code-scored field accuracy above as the headline; use the judge only to spot-check `major` verdicts."]
     return out
 
 
