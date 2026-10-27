@@ -175,7 +175,8 @@ export function VatCheckButton({ account, vrn, name, contactId, initial, onCheck
       <button type="button" className={`${secondary} self-start`} disabled={busy} onClick={() => void run()} aria-label={`Check VAT number ${vrn} with HMRC`}>
         {busy ? "Checking…" : "Check VAT number"}
       </button>
-      <div role="status" className="text-[13px]">
+      {/* aria-live without role="status": cards and panels already have one status line each */}
+      <div aria-live="polite" className="text-[13px]">
         {check && (
           <p className={check.registered ? "font-semibold text-ink" : "font-semibold text-warn-ink"}>
             {vatCheckText(check)}

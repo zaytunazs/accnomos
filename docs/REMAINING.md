@@ -38,6 +38,9 @@ Severity:
 | Medium | No call from the app to HMRC's sandbox has been made end to end; `/vat` submission is built and type-checked only. Never production. |
 | Medium | The runtime makes no HMRC obligations call, so "submitted" means a receipt our own submission saved; a return filed elsewhere shows as open. |
 | Low | The runtime's own period key (`26A4`) is a placeholder, the same for all three months of a monthly quarter; submission uses HMRC's key. |
+| Medium | Company and VAT look-ups have only run against fakes: no Companies House key or HMRC sandbox call yet. Production needs the owner's HMRC production application with the Check a UK VAT number v2.0 subscription (`docs/PRODUCTION.md`). |
+| Low | The runtime reaches the relay from one IP, so every user's VAT checks share the relay's per-IP limit (60 a minute by default). The `/vat` page copy still says "(sandbox)" and must follow `/health`'s `sandbox` flag before going live. |
+| Low | A VAT check on a Review card is kept only when a contact already has that VAT number; for a brand-new supplier it is cached in the runtime process for 24 h and checked again after a restart. |
 | Low | `?today=` on `/books/vat` and `/books/vat/periods` moves "current" and `can_submit`; the web gate is advisory. |
 | Low | No flat-rate scheme, annual accounting scheme or fuel scale-charge calculation. |
 
