@@ -57,6 +57,12 @@ void main() {
 
   testWidgets('home tiles say "Connect to see" when signed out',
       (tester) async {
+    // Tall surface: the connect button sits below the fold otherwise, and
+    // ListView only builds visible children.
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(shell(const Scaffold(body: HomeScreen())));
     await tester.pumpAndSettle();
     expect(find.text('CASH IN BANK'), findsOneWidget);
