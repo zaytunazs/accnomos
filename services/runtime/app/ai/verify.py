@@ -38,7 +38,7 @@ from app.schemas import ExtractedDoc, FieldAgreement, Verification, strict_json_
 
 TIMEOUT_S = 180.0
 BASETEN_BASE = "https://inference.baseten.co/v1"
-DEFAULT_BASETEN_MODEL = "meta-models/muse-spark-open"  # slug not yet confirmed against Baseten's docs
+DEFAULT_BASETEN_MODEL = "meta-models/muse-spark-open"  # as Baseten's /v1/models lists it (checked 27 Oct 2026)
 
 BackendKind = Literal["baseten", "meta", "ollama"]
 
