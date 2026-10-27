@@ -28,7 +28,7 @@ Severity:
 
 | Severity | Item |
 |---|---|
-| Low | `/books/vat` entry counts include sales and purchases only: a reversal changes the amounts but not the count shown next to boxes 1–4 and 6–7. |
+
 | Low | Key-mode extraction (muse-spark-1.3) is unit-tested only. |
 | Low | An undo is dated like the original; if that VAT period was submitted, the correction belongs in the current period. |
 

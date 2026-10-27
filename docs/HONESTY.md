@@ -35,7 +35,7 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 - **No separate LLM Reviewer.** The card's "why" line is composed by code ("Checker, code"). Models write words only in *Ask*, inbox triage, reminder drafts and the planner rationale, each checked by code. The signed-out mock-up on `/vat` has a "Reviewer's note (Muse Spark)"; it is labelled sample but no such reviewer runs.
 - Key-mode extraction (muse-spark-1.3) is unit-tested only.
 - **Ledger files are not tamper-evident** (no signatures, no hash chain). An undo is a reversing entry dated like the original; if that VAT period was already submitted, the correction belongs in the current period.
-- `/books/vat` entry counts include sales and purchases only; a reversal changes the amounts but not the count next to boxes 1–4 and 6–7, while box 5's count includes it (`routes_vat.py`).
+- `/books/vat` entry counts put a reversal against the box it reverses, and the page header says how many of the period's entries are undone (e.g. "3 entries, 1 undone").
 - **No real HEIC from a phone has been read, and no real supplier PDF.** HEIC → JPEG (`pillow-heif` 1.8.1) and PDF
   reading (`pypdfium2` 5.14.0, locked in `uv.lock`) are tested with the real libraries, but only on files the tests make
   (a HEIC written by `pillow-heif`, PDFs written by `fpdf2`). The Docker image has not been built with them.

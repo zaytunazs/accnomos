@@ -9,7 +9,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
-from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return
+from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return, reverses_sale
 from app.books import Books
 from app.books import today as current_date  # `today` is a query parameter below
 from app.deadlines import (
@@ -50,6 +50,7 @@ class VatReturnView(BaseModel):
     warnings: list[str]
     hmrc_body: dict
     events_in_period: int
+    undone_in_period: int  # reversing events among them (each nets off the entry it reverses)
 
 
 LABELS = {
@@ -164,8 +165,9 @@ async def vat_return(
     period_key = period_key or period_key_for(start)
     events = await books.list_events(start, end)
     ret = compute_vat_return(events, period_key, start, end)
-    sales = [e for e in events if e.kind == "sale"]
-    purchases = [e for e in events if e.kind == "purchase"]
+    # A reversal counts against the box it reverses (same predicate as the amounts above).
+    sales = [e for e in events if e.kind == "sale" or reverses_sale(e)]
+    purchases = [e for e in events if e.kind == "purchase" or (e.kind == "reversal" and not reverses_sale(e))]
     counts = {
         1: len(sales),
         2: 0,
@@ -193,6 +195,7 @@ async def vat_return(
         warnings=ret.warnings,
         hmrc_body=ret.to_hmrc(finalised=False),
         events_in_period=len(events),
+        undone_in_period=sum(1 for e in events if e.kind == "reversal"),
     )
 
 
