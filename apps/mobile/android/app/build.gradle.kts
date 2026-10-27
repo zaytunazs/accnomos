@@ -43,7 +43,7 @@ android {
             if (keyPropsFile.exists()) {
                 keyAlias = keyProps["keyAlias"] as String
                 keyPassword = keyProps["keyPassword"] as String
-                storeFile = file(keyProps["storeFile"] as String)
+                storeFile = rootProject.file(keyProps["storeFile"] as String)  // relative to android/
                 storePassword = keyProps["storePassword"] as String
             }
         }
