@@ -868,13 +868,7 @@ async def _invoice_pdf(books: Books, inv_mod: ModuleType, inv: Any) -> bytes:
     from app.pdf import render_invoice  # only with invoicing
 
     profile = await inv_mod.load_profile(books)
-    logo = None
-    if profile.logo_path:
-        try:
-            logo = await books.storage.read(profile.logo_path)
-        except FileNotFoundError:
-            logo = None
-    return render_invoice(inv, profile, logo)
+    return render_invoice(inv, profile, await inv_mod.load_logo(books, profile))
 
 
 async def run_invoice(action: ProposedAction, ctx: Context) -> tuple[str, dict[str, Any]]:

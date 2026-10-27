@@ -31,6 +31,7 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.deadlines import STAGGER_START_MONTH, filing_deadline, period_containing, period_label, previous_period
 from app.jobs import Job
+from app.validation import StrictBody
 
 TZ = ZoneInfo("Europe/London")
 DEFAULT_START, DEFAULT_END = "08:00", "17:30"
@@ -59,9 +60,9 @@ Kind = Literal["visit", "travel", "lunch", "admin", "existing"]
 # --------------------------------------------------------------------------- #
 
 
-class Constraints(BaseModel):
-    start: str | None = Field(None, description="HH:MM, start of the working day (default 08:00)")
-    end: str | None = Field(None, description="HH:MM, end of the working day (default 17:30)")
+class Constraints(StrictBody):
+    start: str | None = Field(None, max_length=5, description="HH:MM, start of the working day (default 08:00)")
+    end: str | None = Field(None, max_length=5, description="HH:MM, end of the working day (default 17:30)")
     max_visits: int | None = Field(None, ge=1, le=MAX_VISITS)
 
     @field_validator("start", "end")
@@ -78,7 +79,7 @@ class Constraints(BaseModel):
         return self
 
 
-class VatSettings(BaseModel):
+class VatSettings(StrictBody):
     """The business's VAT periods, as kept in the app (Settings); same meaning as GET /books/deadlines."""
 
     stagger: int | None = Field(None, ge=1, le=3)
@@ -86,11 +87,11 @@ class VatSettings(BaseModel):
     months: Literal[1, 3] = 3
 
 
-class PlanItem(BaseModel):
+class PlanItem(StrictBody):
     kind: Kind
     start: datetime
     end: datetime
-    job_id: str | None = None
+    job_id: str | None = Field(None, max_length=32)
     title: str = Field(min_length=1, max_length=255)
     location: str | None = Field(None, max_length=500)
 

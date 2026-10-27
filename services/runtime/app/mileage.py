@@ -35,6 +35,7 @@ from app.books import SYSTEM, Books, now
 from app.checks import decide
 from app.journal import VAT_CONTROL, draft_journal
 from app.schemas import MILEAGE_CATEGORY, Check, ExtractedDoc, ExtractedLine, MileageClaim, Proposal
+from app.validation import LENIENT, Day, StrictBody
 
 VEHICLES = f"{SYSTEM}/Vehicles/vehicles.json"
 MILEAGE = f"{SYSTEM}/Mileage"
@@ -129,8 +130,8 @@ def _new_id() -> str:
     return uuid4().hex
 
 
-class Vehicle(BaseModel):
-    id: str = Field(default_factory=_new_id)
+class Vehicle(StrictBody):
+    id: str = Field(default_factory=_new_id, max_length=32)
     name: str = Field(min_length=1, max_length=60)
     registration: str | None = Field(None, max_length=12)  # as the user typed it, upper-cased
     kind: VehicleKind
@@ -153,19 +154,19 @@ class Vehicle(BaseModel):
         return f"{self.name} ({self.registration})" if self.registration else self.name
 
 
-class MileageEntry(BaseModel):
+class MileageEntry(StrictBody):
     """One business journey. `from` is a Python keyword, so the field is `from_` with the alias "from"."""
 
-    model_config = ConfigDict(populate_by_name=True)
+    model_config = ConfigDict(populate_by_name=True, extra="forbid")
 
-    id: str = Field(default_factory=_new_id)
-    vehicle_id: str
-    date: date
+    id: str = Field(default_factory=_new_id, max_length=32)
+    vehicle_id: str = Field(max_length=32)
+    date: Day
     from_: str = Field("", alias="from", max_length=120)
     to: str = Field("", max_length=120)
     miles: float = Field(gt=0, le=2000)
     purpose: str = Field(min_length=1, max_length=200)
-    job_id: str | None = None  # a job in _System/Jobs/jobs.json, as on purchases
+    job_id: str | None = Field(None, max_length=32)  # a job in _System/Jobs/jobs.json, as on purchases
     source: Literal["manual", "proposal"] = "manual"
 
     @field_validator("miles")
@@ -202,14 +203,14 @@ async def load_vehicles(books: Books) -> list[Vehicle]:
     """Raises MileageError when a hand-edited vehicles.json can't be read."""
     raw = await books.read_json(VEHICLES, [])
     try:
-        return [Vehicle.model_validate(v) for v in raw]
+        return [Vehicle.model_validate(v, **LENIENT) for v in raw]
     except (ValidationError, TypeError) as exc:
         raise MileageError("The vehicles file could not be read") from exc
 
 
 async def _change_vehicles(books: Books, change: Callable[[list[Vehicle]], list[Vehicle]]) -> None:
     def apply(raw: list[dict]) -> list[dict]:
-        return [v.model_dump(mode="json") for v in change([Vehicle.model_validate(v) for v in raw])]
+        return [v.model_dump(mode="json") for v in change([Vehicle.model_validate(v, **LENIENT) for v in raw])]
 
     await books._update_json(VEHICLES, [], apply)
 
@@ -221,7 +222,7 @@ def _mileage_path(tax_year: str) -> str:
 
 def _parse(raw: bytes | None) -> list[MileageEntry]:
     try:
-        return [MileageEntry.model_validate_json(x) for x in (raw or b"").decode().splitlines() if x.strip()]
+        return [MileageEntry.model_validate_json(x, **LENIENT) for x in (raw or b"").decode().splitlines() if x.strip()]
     except ValidationError as exc:
         raise MileageError("A mileage log file could not be read") from exc
 

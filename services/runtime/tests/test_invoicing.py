@@ -12,6 +12,7 @@ import pytest
 from accnomos_connectors import FakeMailSender, FakeStorageProvider
 from accnomos_ledger.vat import compute_vat_return
 from fastapi.testclient import TestClient
+from pydantic import ValidationError
 
 from app import invoicing as inv_
 from app import jobs
@@ -118,11 +119,14 @@ def test_lines_priced_in_pence_with_vat_rounded_per_line():
     assert net == sum(ln.net_pence for ln in lines) == 43281 and vat == 6850
 
 
-def test_totals_sent_by_a_client_are_ignored():
-    draft = InvoiceDraft.model_validate({
-        "customer": CUSTOMER, "lines": [{"description": "x", "quantity": 1, "unit_price_pence": 1000, "net_pence": 1, "vat_pence": 1}],
-        "total_pence": 5,
-    })
+def test_totals_sent_by_a_client_are_refused_and_code_prices_the_lines():
+    with pytest.raises(ValidationError) as exc:
+        InvoiceDraft.model_validate({
+            "customer": CUSTOMER, "lines": [{"description": "x", "quantity": 1, "unit_price_pence": 1000, "net_pence": 1, "vat_pence": 1}],
+            "total_pence": 5,
+        })
+    assert {e["type"] for e in exc.value.errors()} == {"extra_forbidden"}
+    draft = InvoiceDraft.model_validate({"customer": CUSTOMER, "lines": [{"description": "x", "quantity": 1, "unit_price_pence": 1000}]})
     inv = inv_.build_invoice("INV-0001", draft, InvoiceProfile(), USER, TODAY)
     assert (inv.net_pence, inv.vat_pence, inv.total_pence) == (1000, 200, 1200)
     assert inv.due_date == TODAY + timedelta(days=30)

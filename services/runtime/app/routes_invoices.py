@@ -11,7 +11,6 @@ from __future__ import annotations
 import base64
 import hashlib
 from collections.abc import AsyncIterator
-from datetime import date
 
 from accnomos_connectors.base import MailSender
 from accnomos_connectors.msgraph import GraphMailSender
@@ -26,6 +25,7 @@ from app.books import Books, now
 from app.invoicing import Invoice, InvoiceCustomer, InvoiceDraft, InvoiceError, InvoiceProfile, InvoiceStateError, InvoiceStatus
 from app.pdf import render_invoice
 from app.routes_books import get_books, require_user
+from app.validation import Day, StrictBody
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 LOGO_MAX = 1024 * 1024
@@ -64,18 +64,9 @@ def _confirmed(confirm: bool) -> None:
         raise HTTPException(status_code=400, detail="Nothing was sent: confirm in the app first (confirm: true)")
 
 
-async def _logo(books: Books, profile: InvoiceProfile) -> bytes | None:
-    if not profile.logo_path:
-        return None
-    try:
-        return await books.storage.read(profile.logo_path)
-    except FileNotFoundError:
-        return None
-
-
 async def _render(books: Books, inv: Invoice) -> bytes:
     profile = await inv_.load_profile(books)
-    return render_invoice(inv, profile, await _logo(books, profile))
+    return render_invoice(inv, profile, await inv_.load_logo(books, profile))
 
 
 # --------------------------------------------------------------------------- #
@@ -196,9 +187,9 @@ async def pdf(number: str, books: Books = Depends(get_books)) -> PdfResult:
     )
 
 
-class SendBody(BaseModel):
+class SendBody(StrictBody):
     confirm: StrictBool = False  # set by the app only after the user confirmed in the dialog; "yes" or 1 is not true
-    to: str | None = None
+    to: str | None = Field(None, max_length=254)
     subject: str | None = Field(None, max_length=200)
     body: str | None = Field(None, max_length=5000)
 
@@ -220,10 +211,10 @@ async def send(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-class PaidBody(BaseModel):
+class PaidBody(StrictBody):
     payment_ref: str | None = Field(None, max_length=120)
-    paid_on: date | None = None
-    bank_line_id: str | None = None  # link the bank line this payment came in on (GET /{number}/bank-candidates)
+    paid_on: Day | None = None
+    bank_line_id: str | None = Field(None, max_length=64, pattern=r"^[0-9a-f]+$")  # link the bank line this payment came in on (GET /{number}/bank-candidates)
 
 
 @router.post("/{number}/mark-paid", response_model=InvoiceRow)
@@ -243,7 +234,7 @@ async def bank_candidates(number: str, books: Books = Depends(get_books)) -> lis
     return await inv_.bank_candidates(books, await _get(books, number))
 
 
-class VoidBody(BaseModel):
+class VoidBody(StrictBody):
     reason: str = Field(min_length=1, max_length=300)
 
 
@@ -267,9 +258,9 @@ async def reminder_draft(
     return await remind.draft_reminder(inv, await inv_.load_profile(books), cfg, now().date())
 
 
-class ReminderSendBody(BaseModel):
+class ReminderSendBody(StrictBody):
     confirm: StrictBool = False
-    to: str
+    to: str = Field(max_length=254)
     subject: str = Field(max_length=200)
     body: str = Field(max_length=5000)
 

@@ -313,21 +313,21 @@ class AskModelOutput(BaseModel):
 ActionKind = Literal["create_invoice", "chase_invoice", "log_mileage", "log_timesheet"]
 
 
-class ProposedAction(BaseModel):
+class ProposedAction(StrictBody):
     """Something Ask offers to do (app/actions.py). Kept by the client only and posted back to approve.
 
     `preview` is the payload code resolved and priced; `signature` is an HMAC over everything else, so the
     runtime executes exactly what the user saw and nothing else.
     """
 
-    id: str
+    id: str = Field(max_length=32, pattern=r"^[0-9a-f]{32}$")
     kind: ActionKind
-    summary_md: str
-    preview: dict[str, Any]
-    confirm_text: str
+    summary_md: str = Field(max_length=20_000)
+    preview: dict[str, Any]  # bounded by the 256 KB body cap; covered by the signature
+    confirm_text: str = Field(max_length=400)
     created_at: datetime
     expires_at: datetime
-    signature: str = ""
+    signature: str = Field("", max_length=64)
 
 
 class Clarification(BaseModel):

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from datetime import date
+from typing import Annotated
 
 from accnomos_connectors import CalendarProvider
 from accnomos_connectors.msgraph import GraphCalendarProvider
@@ -23,6 +24,7 @@ from app.books import Books, today
 from app.plan_apply import ApplyResult, PlanConflict, PlanError, apply_plan
 from app.planner import TZ, Constraints, PlanItem, VatSettings, build_plan, plan_hash, vat_due
 from app.routes_books import get_books, require_user
+from app.validation import Day, StrictBody
 
 router = APIRouter(prefix="/plan", tags=["plan"])
 
@@ -51,11 +53,12 @@ def optional_ai(request: Request) -> AiConfig | None:
         return None
 
 
-class PlanRequest(BaseModel):
-    date: date
+class PlanRequest(StrictBody):
+    date: Day
     constraints: Constraints | None = None
     vat: VatSettings | None = None
-    job_ids: list[str] | None = Field(None, max_length=200, description="only these jobs (default: every open job)")
+    job_ids: list[Annotated[str, Field(max_length=32)]] | None = Field(
+        None, max_length=200, description="only these jobs (default: every open job)")
 
 
 class PlanResponse(BaseModel):
@@ -68,8 +71,8 @@ class PlanResponse(BaseModel):
     fallback_reason: str | None = None
 
 
-class ApplyRequest(BaseModel):
-    date: date
+class ApplyRequest(StrictBody):
+    date: Day
     plan: list[PlanItem] = Field(max_length=40)
 
 
