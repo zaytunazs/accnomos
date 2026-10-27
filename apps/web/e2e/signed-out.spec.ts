@@ -75,11 +75,16 @@ async function checkPage(page: Page, route: string) {
 
   if (CONNECT_PAGES.has(route)) return; // the destination itself carries no CTA
 
-  // The one CTA wording for the page, always to /connect.
+  // The one CTA wording for the page, always to step 1 of the connect wizard
+  // (/connect) with a ?next= return to this page.
   const ctas = page.getByRole("link", { name: ctaName(route) });
   await expect(ctas.first(), `${route}: CTA "${ctaName(route)}"`).toBeVisible();
   for (const cta of await ctas.all()) {
-    await expect(cta, `${route}: CTA destination`).toHaveAttribute("href", "/connect");
+    const href = await cta.getAttribute("href");
+    expect(href, `${route}: CTA has a destination`).not.toBeNull();
+    const url = new URL(href!, "http://localhost");
+    expect(url.pathname, `${route}: CTA destination`).toBe("/connect");
+    expect(url.searchParams.get("next"), `${route}: CTA returns here`).toBe(route);
   }
 
   // Every enabled button does something observable (navigation, dialog,

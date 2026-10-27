@@ -30,7 +30,7 @@ test("Home dashboard: tiles, deadlines and activity from the books, no signed-ou
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Review", exact: true })).toBeVisible();
 });
 
-test("setup checklist: signed in and incomplete, each row links to its Settings section; Dismiss is remembered", async ({ page }) => {
+test("setup checklist: signed in and incomplete, each row resumes its connect step; Dismiss is remembered", async ({ page }) => {
   await signIn(page);
   await createBooksFolder(page);
 
@@ -39,25 +39,24 @@ test("setup checklist: signed in and incomplete, each row links to its Settings 
   await expect(setup).toBeVisible();
   await expect(setup).toContainText(/\d of 7 done/);
   const row = (name: string) => setup.getByRole("link", { name: new RegExp(`^${name.replace(/[+()]/g, "\\$&")} — `) });
-  await expect(row("Connect OneDrive")).toHaveAccessibleName("Connect OneDrive — review in Settings"); // signed in, so done
-  await expect(row("Business name + VAT number")).toHaveAccessibleName("Business name + VAT number — set up in Settings");
+  await expect(row("Connect OneDrive")).toHaveAccessibleName("Connect OneDrive — review in Connect"); // signed in, so done
+  await expect(row("Business name + VAT number")).toHaveAccessibleName("Business name + VAT number — set up in Connect");
   const links = {
-    "Connect OneDrive": "/settings#settings-connections",
-    "Choose your AI": "/settings#settings-ai",
-    "Business name + VAT number": "/settings#settings-business",
-    "VAT period": "/settings#settings-vat-periods",
+    "Connect OneDrive": "/connect",
+    "Choose your AI": "/connect/ai",
+    "Business name + VAT number": "/connect/business",
+    "VAT period": "/connect/business",
     "Invoice profile": "/settings#settings-invoice-profile",
     "Import Outlook contacts": "/settings#settings-intake",
-    "Try a receipt": "/review",
+    "Try a receipt": "/connect/ready",
   };
   for (const [name, href] of Object.entries(links)) await expect(row(name)).toHaveAttribute("href", href);
-  await expect(row("Try a receipt")).toHaveAccessibleName("Try a receipt — try it in Review"); // contains the visible "Try it"
+  await expect(row("Try a receipt")).toHaveAccessibleName("Try a receipt — try it in Connect"); // contains the visible "Try it"
 
-  // A row opens Settings on the right tab, scrolled to its section.
+  // A row resumes its wizard step.
   await row("VAT period").click();
-  await expect(page).toHaveURL(/\/settings#settings-vat-periods$/);
-  await expect(page.getByRole("tab", { name: "Business" })).toHaveAttribute("aria-selected", "true");
-  await expect(page.locator("#settings-vat-periods")).toBeInViewport();
+  await expect(page).toHaveURL(/\/connect\/business$/);
+  await expect(page.getByLabel("Business name")).toBeVisible();
 
   await page.goto("/");
   await setup.getByRole("button", { name: "Dismiss" }).click();

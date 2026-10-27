@@ -36,7 +36,7 @@ export default function Pitch() {
           </h2>
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link
-              href="/connect"
+              href="/connect?next=%2F"
               className="whitespace-nowrap rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark"
             >
               Connect your OneDrive

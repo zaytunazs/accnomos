@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useState, type ReactNode } from "react";
 
 const card = "rounded-2xl border border-border bg-white p-5 sm:p-6";
@@ -130,6 +131,11 @@ export function ErrorNote({
 
 /** Every page shows this one strip when the runtime answers 401: sign in again, not a raw message. */
 export function AuthErrorStrip() {
+  const path = usePathname() ?? "/";
+  const href =
+    path === "/connect" || path.startsWith("/connect/")
+      ? "/connect"
+      : `/connect?next=${encodeURIComponent(path)}`;
   return (
     <div
       role="alert"
@@ -139,7 +145,7 @@ export function AuthErrorStrip() {
         Your sign-in has expired. Sign in again to continue — nothing is lost.
       </p>
       <Link
-        href="/connect"
+        href={href}
         className="shrink-0 whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark"
       >
         Sign in again

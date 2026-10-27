@@ -11,6 +11,15 @@ const DISMISS_KEY = "accnomos.setup.dismissed";
 const TRIED_KEY = "accnomos.setup.tried-receipt";
 export const CONTACTS_IMPORTED_KEY = "accnomos.setup.contacts-imported";
 
+/** Remember the sample receipt was tried, so the step stays ticked. */
+export function markReceiptTried(): void {
+  try {
+    window.localStorage.setItem(TRIED_KEY, "1");
+  } catch {
+    /* storage unavailable — the step shows as unticked next visit */
+  }
+}
+
 /** Remember that the Outlook contacts import ran once, so the optional step stays ticked. */
 export function markContactsImported(): void {
   try {
@@ -78,10 +87,13 @@ export default function SetupChecklist() {
       setTriedReceipt(readFlag(TRIED_KEY));
       setContactsImported(readFlag(CONTACTS_IMPORTED_KEY));
       const business = loadBusiness();
+      const vrn = (business?.vatNumber ?? "").trim();
       setLocal({
         ai: aiTested(loadAiConfig()),
         business:
-          business !== null && business.name.trim() !== "" && validateVatNumber(business.vatNumber) === null,
+          business !== null &&
+          business.name.trim() !== "" &&
+          (business.vatRegistered === false || vrn === "" || validateVatNumber(vrn) === null),
         vat: business !== null,
       });
       if (!account) setProfileDone(false);
@@ -101,28 +113,28 @@ export default function SetupChecklist() {
       id: "onedrive",
       label: "Connect OneDrive",
       hint: "Signed in — your books live in your own folder",
-      href: "/settings#settings-connections",
+      href: "/connect",
       done: true,
     },
     {
       id: "ai",
       label: "Choose your AI",
       hint: "A local address or a key, tested and answering",
-      href: "/settings#settings-ai",
+      href: "/connect/ai",
       done: local.ai,
     },
     {
       id: "business",
       label: "Business name + VAT number",
       hint: "Who the books belong to",
-      href: "/settings#settings-business",
+      href: "/connect/business",
       done: local.business,
     },
     {
       id: "vat",
       label: "VAT period",
       hint: "Quarterly stagger or start month",
-      href: "/settings#settings-vat-periods",
+      href: "/connect/business",
       done: local.vat,
     },
     {
@@ -143,8 +155,8 @@ export default function SetupChecklist() {
     {
       id: "receipt",
       label: "Try a receipt",
-      hint: "Add one on Review and approve the reading",
-      href: "/review",
+      hint: "Add the sample receipt and approve the reading",
+      href: "/connect/ready",
       done: triedReceipt,
     },
   ];
@@ -194,7 +206,7 @@ export default function SetupChecklist() {
             </div>
             <Link
               href={s.href}
-              aria-label={`${s.label} — ${s.done ? "review" : s.id === "receipt" ? "try it" : "set up"} in ${s.href.startsWith("/settings") ? "Settings" : "Review"}`}
+              aria-label={`${s.label} — ${s.done ? "review" : s.id === "receipt" ? "try it" : "set up"} in ${s.href.startsWith("/settings") ? "Settings" : s.href.startsWith("/connect") ? "Connect" : "Review"}`}
               onClick={
                 s.id === "receipt"
                   ? () => {
