@@ -5,7 +5,7 @@ Layout (relative to the books root):
     00 Inbox/                      new documents land here
     01 Receipts/{yyyy-mm}/         filed purchases and receipts
     02 Sales invoices/
-    03 Bank statements/{yyyy-mm}/  imported bank statement CSVs
+    03 Bank statements/            imported bank statement CSVs, "{last date}_{bank}.csv"
     04 Needs a look/               anything a human should check
     05 VAT returns/  06 Reports/
     _System/docs/{sha256}.json     one per processed document (its hash is the duplicate key)
@@ -30,7 +30,7 @@ from datetime import UTC, date, datetime
 from typing import Any, Literal
 
 from accnomos_connectors.base import ConflictError, FileRef, StorageProvider
-from accnomos_ledger.bank import BankLine, BankLineStatus, parse_bank_csv
+from accnomos_ledger.bank import BankLine, BankLineStatus, BankName, detect_bank, parse_bank_csv
 from accnomos_ledger.events import LedgerEvent
 from accnomos_ledger.matching import Match, suggest_matches
 from pydantic import BaseModel, Field
@@ -119,12 +119,35 @@ class BankMatchError(ValueError):
     """A bank line cannot be matched (or unmatched) as asked."""
 
 
+_DONE = {"matched": "matched", "transfer": "marked as a transfer", "ignored": "ignored"}
+
+
 class BankImport(BaseModel):
     sha256: str
     filed_path: str | None
     lines: int
     new_lines: int
     duplicate_file: bool = False
+    bank: BankName = "bank"
+
+
+class BankStatement(BaseModel):
+    """One imported statement file, summarised from its stored lines."""
+
+    path: str
+    bank: str
+    first_date: date
+    last_date: date
+    lines: int
+    resolved: int  # matched, transfer or ignored
+    money_in_pence: int
+    money_out_pence: int  # negative
+
+
+def bank_of(path: str) -> str:
+    """'03 Bank statements/2026-10-20_starling (2).csv' -> 'starling'; older names give 'bank'."""
+    m = re.match(r"\d{4}-\d{2}-\d{2}_([a-z]+)", _split(path)[1])
+    return m.group(1) if m else "bank"
 
 
 class Books:
@@ -373,27 +396,46 @@ class Books:
         return sorted(out, key=lambda ln: (ln.date, ln.id))
 
     async def import_bank_csv(self, data: bytes, name: str, user: str = "user") -> BankImport:
-        """Parse, file the statement under "03 Bank statements/{yyyy-mm}/" and store its lines.
+        """Parse, file the statement as "03 Bank statements/{last date}_{bank}.csv" and store its lines.
 
-        Re-importing the same file changes nothing; lines already imported from another statement
-        (overlapping date ranges) are skipped. Raises accnomos_ledger.bank.BankCsvError.
+        Re-importing the same file (same sha256) changes nothing; lines already imported from another
+        statement (overlapping date ranges) are skipped. Raises accnomos_ledger.bank.BankCsvError.
         """
         sha = hashlib.sha256(data).hexdigest()
         store = f"{BANK_LINES}/{sha}.json"
         name = _split(name.replace("\\", "/"))[1] or "statement.csv"
         lines = parse_bank_csv(data, name)
+        bank = detect_bank(data)
         if await self.exists(store):
-            return BankImport(sha256=sha, filed_path=None, lines=len(lines), new_lines=0, duplicate_file=True)
+            return BankImport(sha256=sha, filed_path=None, lines=len(lines), new_lines=0, duplicate_file=True, bank=bank)
         known = {ln.id for ln in await self.stored_bank_lines()}
         fresh = [ln for ln in lines if ln.id not in known]
-        folder = f"{BANK}/{_month(max((ln.date for ln in lines), default=now().date()))}"
-        filed = await self.free_path(folder, name)
+        last = max((ln.date for ln in lines), default=now().date())
+        filed = await self.free_path(BANK, f"{last.isoformat()}_{bank}.csv")
         await self.storage.write(filed, data)
         for ln in fresh:
             ln.source_file = filed
         await self.write_json(store, [ln.model_dump(mode="json") for ln in fresh])
-        await self.audit(f"user:{user}", "bank_imported", {"sha256": sha, "path": filed, "lines": len(lines), "new": len(fresh)})
-        return BankImport(sha256=sha, filed_path=filed, lines=len(lines), new_lines=len(fresh))
+        await self.audit(f"user:{user}", "bank_imported", {
+            "sha256": sha, "path": filed, "uploaded_as": name, "bank": bank, "lines": len(lines), "new": len(fresh),
+        })
+        return BankImport(sha256=sha, filed_path=filed, lines=len(lines), new_lines=len(fresh), bank=bank)
+
+    async def bank_statements(self) -> list[BankStatement]:
+        """Imported statements, newest last date first, summarised from their stored lines."""
+        by_file: dict[str, list[BankLine]] = {}
+        for ln in await self.stored_bank_lines():
+            by_file.setdefault(ln.source_file, []).append(ln)
+        out = [
+            BankStatement(
+                path=path, bank=bank_of(path), first_date=min(ln.date for ln in lines),
+                last_date=max(ln.date for ln in lines), lines=len(lines), resolved=sum(ln.resolved for ln in lines),
+                money_in_pence=sum(ln.amount_pence for ln in lines if ln.amount_pence > 0),
+                money_out_pence=sum(ln.amount_pence for ln in lines if ln.amount_pence < 0),
+            )
+            for path, lines in by_file.items()
+        ]
+        return sorted(out, key=lambda s: (s.last_date, s.path), reverse=True)
 
     async def card_hints(self) -> dict[str, str]:
         """Event id -> card last 4 digits, from the documents behind posted proposals."""
@@ -404,7 +446,7 @@ class Books:
 
     async def bank_suggestions(self, lines: list[BankLine] | None = None) -> list[Match]:
         lines = await self.stored_bank_lines() if lines is None else lines
-        if all(ln.status == "matched" for ln in lines):
+        if all(ln.resolved for ln in lines):
             return []
         return suggest_matches(lines, await self.live_events(), await self.card_hints())
 
@@ -419,7 +461,7 @@ class Books:
         lines = await self.stored_bank_lines()
         suggested = {m.line_id: m for m in await self.bank_suggestions(lines)}
         for ln in lines:
-            if ln.status != "matched" and (m := suggested.get(ln.id)):
+            if not ln.resolved and (m := suggested.get(ln.id)):
                 ln.status, ln.matched_event_id, ln.matched_event_ids = "suggested", m.event_id, m.event_ids
         return [ln for ln in lines if status is None or ln.status == status]
 
@@ -443,8 +485,8 @@ class Books:
         """Record that bank line `line_id` pays for the event(s). Raises FileNotFoundError / BankMatchError."""
         ids = [event_ids] if isinstance(event_ids, str) else list(dict.fromkeys(event_ids))
         path, line = await self._find_line(line_id)
-        if line.status == "matched":
-            raise BankMatchError("This bank line is already matched; unmatch it first")
+        if line.resolved:
+            raise BankMatchError(f"This bank line is already {_DONE[line.status]}; undo that first")
         if not ids:
             raise BankMatchError("Choose the ledger entry this payment is for")
         posted = {e.id for e in await self.live_events()}
@@ -460,14 +502,35 @@ class Books:
         return line.model_copy(update=update)
 
     async def unmatch(self, line_id: str, user: str) -> BankLine:
+        """Reopen a line: undo a match, a "transfer" or an "ignore"."""
         path, line = await self._find_line(line_id)
-        if line.status != "matched":
+        if not line.resolved:
             raise BankMatchError("This bank line is not matched")
         update: dict[str, Any] = {"status": "unmatched", "matched_event_id": None, "matched_event_ids": []}
         await self._set_line(path, line_id, update)
-        await self.audit(f"user:{user}", "bank_unmatched", {"line": line_id, "events": line.event_ids(), "file": path})
+        await self.audit(f"user:{user}", "bank_unmatched", {
+            "line": line_id, "was": line.status, "events": line.event_ids(), "file": path,
+        })
         await self.rebuild_safely(user)
         return line.model_copy(update=update)
+
+    async def mark_line(self, line_id: str, status: Literal["transfer", "ignored"], user: str) -> BankLine:
+        """Settle an open line without a ledger entry: money between own accounts, or nothing to book."""
+        path, line = await self._find_line(line_id)
+        if line.resolved:
+            raise BankMatchError(f"This bank line is already {_DONE[line.status]}; undo that first")
+        await self._set_line(path, line_id, {"status": status})
+        await self.audit(f"user:{user}", f"bank_{status}", {"line": line_id, "file": path})
+        await self.rebuild_safely(user)
+        return line.model_copy(update={"status": status})
+
+    async def link_proposal(self, line_id: str, proposal_id: str) -> None:
+        path, _ = await self._find_line(line_id)
+        await self._set_line(path, line_id, {"proposal_id": proposal_id})
+
+    async def find_bank_line(self, line_id: str) -> BankLine:
+        """Raises FileNotFoundError."""
+        return (await self._find_line(line_id))[1]
 
     # ------------------------------------------------------------------ #
     # Books.xlsx projection (H25: written as a file, no Graph workbook API)

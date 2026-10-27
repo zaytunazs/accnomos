@@ -81,15 +81,16 @@ def _audit(fake: FakeStorageProvider) -> list[dict]:
 def test_import_suggest_match_unmatch_routes(client: TestClient, fake: FakeStorageProvider) -> None:
     r = client.post("/books/bank/import", headers=H, files={"file": ("oct.csv", STATEMENT, "text/csv")})
     assert r.status_code == 200, r.text
-    assert r.json()["filed_path"] == "03 Bank statements/2026-10/oct.csv" and r.json()["new_lines"] == 3
-    assert fake.files["03 Bank statements/2026-10/oct.csv"] == STATEMENT
+    assert r.json()["filed_path"] == "03 Bank statements/2026-10-23_bank.csv" and r.json()["new_lines"] == 3
+    assert fake.files["03 Bank statements/2026-10-23_bank.csv"] == STATEMENT
     assert len([p for p in fake.files if p.startswith(f"{BANK_LINES}/")]) == 1
     again = client.post("/books/bank/import", headers=H, files={"file": ("copy.csv", STATEMENT, "text/csv")}).json()
     assert again["duplicate_file"] and again["new_lines"] == 0
 
     sugg = client.get("/books/bank/suggestions", headers=H).json()
     assert sorted(s["event_id"] for s in sugg) == ["e" * 32, "f" * 32] and all(s["kind"] == "exact" for s in sugg)
-    assert client.get("/books/bank/summary", headers=H).json() == {"total": 3, "matched": 0, "suggested": 2, "unmatched": 1}
+    assert client.get("/books/bank/summary", headers=H).json() == {"total": 3, "matched": 0, "suggested": 2, "unmatched": 1,
+                                                                   "transfer": 0, "ignored": 0, "reconciled_to": None}
 
     screwfix = next(s for s in sugg if s["event_id"] == "e" * 32)
     r = client.post(f"/books/bank/lines/{screwfix['line_id']}/match", headers=H, json={"event_id": "e" * 32})
@@ -100,7 +101,8 @@ def test_import_suggest_match_unmatch_routes(client: TestClient, fake: FakeStora
     r = client.post(f"/books/bank/lines/{coffee['id']}/match", headers=H, json={"event_id": "e" * 32})
     assert r.status_code == 409 and "already matched" in r.json()["detail"]
     assert client.post("/books/bank/lines/0000000000000000/match", headers=H, json={"event_id": "x"}).status_code == 404
-    assert client.get("/books/bank/summary", headers=H).json() == {"total": 3, "matched": 1, "suggested": 1, "unmatched": 1}
+    assert client.get("/books/bank/summary", headers=H).json() == {"total": 3, "matched": 1, "suggested": 1, "unmatched": 1, "transfer": 0, "ignored": 0,
+            "reconciled_to": "2026-10-21"}
     assert [ln["matched_event_id"] for ln in client.get("/books/bank/lines?status=matched", headers=H).json()] == ["e" * 32]
 
     r = client.post(f"/books/bank/lines/{screwfix['line_id']}/unmatch", headers=H)
