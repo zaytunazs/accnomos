@@ -315,7 +315,9 @@ class _Reads:
         return TileError(error=TILE_ERROR) if self.failed.intersection(needs) else value
 
 
-async def build(books: Books, today: date, first_vat_month: int, vat_months: int) -> Dashboard:
+async def build(
+    books: Books, today: date, first_vat_month: int, vat_months: int, *, vat_assumed: bool = False
+) -> Dashboard:
     reads = _Reads()
 
     async def load_proposals() -> dict[str, Proposal]:
@@ -334,7 +336,7 @@ async def build(books: Books, today: date, first_vat_month: int, vat_months: int
         return owed_to_you(ledger, invoices, today)
 
     async def vat() -> Deadlines:
-        return compute_deadlines(ledger.events, today, first_vat_month, vat_months)
+        return compute_deadlines(ledger.events, today, first_vat_month, vat_months, assumed=vat_assumed)
 
     async def cash() -> Cash:
         return cash_position(ledger.bank_lines)

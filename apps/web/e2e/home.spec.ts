@@ -21,6 +21,8 @@ test("Home dashboard: tiles, deadlines and activity from the books, no signed-ou
   await expect(deadlines).toContainText("11 days left");
   await expect(deadlines).toContainText("£8.65 to reclaim (estimated)");
   await expect(deadlines).toContainText("31 DEC: VAT period Oct–Dec 2026 ends");
+  // No business settings saved: the runtime assumed stagger 1 and the tile says so.
+  await expect(deadlines).toContainText("Assuming Mar/Jun/Sep/Dec quarters — set yours in Settings");
 
   await expect(page.getByRole("region", { name: "Recent activity" })).toContainText("Posted Novex Office Supplies Ltd £51.90 to the ledger");
 
@@ -88,4 +90,18 @@ test("signed out: the pitch, the connect banner and the sample books", async ({ 
   await page.goto("/");
   await expect(page.getByRole("link", { name: "See the demo books" })).toBeVisible();
   await expect(page.getByText("Not connected yet?")).toBeVisible();
+});
+
+test("Home deadlines: a VAT stagger saved in Settings is used and nothing is called an assumption", async ({ page, runtime }) => {
+  await signIn(page);
+  await createBooksFolder(page);
+  await runtime.postGold();
+  await page.addInitScript(() => {
+    window.localStorage.setItem("accnomos.business", JSON.stringify({ vatPeriod: "quarterly", stagger: "2" }));
+  });
+
+  await page.goto("/");
+  const deadlines = page.getByRole("region", { name: "Deadlines" });
+  await expect(deadlines).toContainText("VAT period"); // loaded
+  await expect(deadlines).not.toContainText("Assuming");
 });

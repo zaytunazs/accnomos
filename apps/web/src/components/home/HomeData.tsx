@@ -44,7 +44,10 @@ export function HomeData({ children }: { children: React.ReactNode }) {
       }
       if (!account) return setState({ mode: "sample" });
       setState({ mode: "loading", account });
-      const vat = deadlinesQuery(loadBusiness()); // null for annual returns: the runtime's VAT block is ignored
+      // null for annual returns (the runtime's VAT block is ignored). With no saved business the query is empty, so
+      // the runtime assumes calendar quarters and says so (`vat.assumed`) instead of the app sending a default.
+      const business = loadBusiness();
+      const vat = business ? deadlinesQuery(business) : "";
       try {
         // Today in the UK, not the runtime's time zone (UTC is a day behind just after midnight BST).
         const data = await runtime.dashboard(account, `${vat ? `${vat}&` : ""}today=${todayIso()}`);

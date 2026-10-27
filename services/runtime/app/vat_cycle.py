@@ -20,6 +20,7 @@ class VatCycle:
 
     start_month: int = 1
     months: int = 3
+    assumed: bool = False  # quarterly with no stagger or start month sent: calendar quarters were assumed, not chosen
 
     def current(self, today: date) -> tuple[date, date]:
         return period_containing(today, self.start_month, self.months)
@@ -35,4 +36,5 @@ def vat_cycle(
         raise HTTPException(status_code=422, detail="months must be 3 (quarterly) or 1 (monthly)")
     if stagger is not None and start_month is not None and stagger_of(start_month) != stagger:
         raise HTTPException(status_code=400, detail="stagger and start_month disagree; send one of them")
-    return VatCycle(start_month or STAGGER_START_MONTH[stagger or 1], months)
+    assumed = months == 3 and stagger is None and start_month is None
+    return VatCycle(start_month or STAGGER_START_MONTH[stagger or 1], months, assumed)

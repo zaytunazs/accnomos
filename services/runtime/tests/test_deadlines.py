@@ -135,3 +135,20 @@ async def test_deadlines_route_custom_start_month_and_no_return_due(client) -> N
 
 def test_deadlines_needs_a_token() -> None:
     assert TestClient(app).get("/books/deadlines").status_code == 401
+
+
+async def test_deadlines_say_when_the_stagger_was_assumed(client) -> None:
+    tc, _books = client
+    # Nothing saved in Settings, so nothing sent: calendar quarters, and the response says it assumed them.
+    assumed = tc.get("/books/deadlines?today=2026-10-27", headers=H).json()
+    assert assumed["assumed"] is True and assumed["stagger"] == 1
+    # Sent on purpose, even stagger 1: not an assumption. Monthly returns have no stagger to assume.
+    for query in ("stagger=1", "stagger=2", "start_month=5", "months=1"):
+        body = tc.get(f"/books/deadlines?{query}&today=2026-10-27", headers=H).json()
+        assert body["assumed"] is False, query
+
+
+async def test_dashboard_vat_block_carries_assumed(client) -> None:
+    tc, _books = client
+    assert tc.get("/books/dashboard?today=2026-10-27", headers=H).json()["vat"]["assumed"] is True
+    assert tc.get("/books/dashboard?stagger=1&today=2026-10-27", headers=H).json()["vat"]["assumed"] is False

@@ -272,6 +272,7 @@ class Deadlines(BaseModel):
     stagger: int | None  # HMRC stagger 1/2/3 for quarterly returns
     current: PeriodDeadline  # the period we are in now: Box 5 is an estimate so far
     due: PeriodDeadline | None  # the period that has ended but whose return is not yet due, if any
+    assumed: bool = False  # no stagger was sent (none saved in Settings): calendar quarters (stagger 1) were assumed
     rule: str = "Return and payment due 1 calendar month and 7 days after the period ends (VAT Notice 700/12)."
 
 
@@ -304,7 +305,7 @@ async def deadlines(
     """Current VAT period, the return that is due next, days remaining and the Box 5 estimate (code, not a model)."""
     first, months, today = cycle.start_month, cycle.months, today or current_date()
     window = deadline_window(today, first, months)
-    return compute_deadlines(await books.list_events(*window), today, first, months)
+    return compute_deadlines(await books.list_events(*window), today, first, months, assumed=cycle.assumed)
 
 
 def deadline_window(today: date, first: int, months: int) -> tuple[date, date]:
@@ -313,7 +314,9 @@ def deadline_window(today: date, first: int, months: int) -> tuple[date, date]:
     return previous_period(cur_start, months)[0], cur_end
 
 
-def compute_deadlines(events: list[LedgerEvent], today: date, first: int, months: int) -> Deadlines:
+def compute_deadlines(
+    events: list[LedgerEvent], today: date, first: int, months: int, *, assumed: bool = False
+) -> Deadlines:
     cur_start, cur_end = period_containing(today, first, months)
     prev_start, prev_end = previous_period(cur_start, months)
     events = [e for e in events if prev_start <= e.date <= cur_end]
@@ -325,4 +328,5 @@ def compute_deadlines(events: list[LedgerEvent], today: date, first: int, months
         stagger=stagger_of(first) if months == 3 else None,
         current=_period_deadline(events, cur_start, cur_end, months, today),
         due=due,
+        assumed=assumed,
     )

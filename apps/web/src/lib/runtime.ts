@@ -1064,6 +1064,8 @@ export interface RtDeadlines {
   stagger: number | null;
   current: RtPeriodDeadline;
   due: RtPeriodDeadline | null;
+  /** True when no stagger was sent (none saved in Settings), so calendar quarters (stagger 1) were assumed. */
+  assumed?: boolean;
   rule: string;
 }
 

@@ -130,6 +130,14 @@ export default function Deadlines() {
           ))}
         </div>
       )}
+      {vat?.assumed && (
+        <p className="text-[13px] font-semibold text-warn-ink">
+          Assuming Mar/Jun/Sep/Dec quarters —{" "}
+          <Link href="/settings#settings-vat-periods" className="font-bold underline">
+            set yours in Settings
+          </Link>
+        </p>
+      )}
       {live && (
         <>
           <p className="text-[13px] font-medium text-muted">

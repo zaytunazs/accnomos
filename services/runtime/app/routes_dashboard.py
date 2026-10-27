@@ -22,4 +22,6 @@ async def get_dashboard(
 ) -> dashboard.Dashboard:
     """Cash, owed to and by you, the VAT estimate and deadline, what needs attention, recent activity and the
     last Autopilot, intake and triage runs. Reads only; no model calls."""
-    return await dashboard.build(books, today or now().date(), cycle.start_month, cycle.months)
+    return await dashboard.build(
+        books, today or now().date(), cycle.start_month, cycle.months, vat_assumed=cycle.assumed
+    )
