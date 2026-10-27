@@ -15,6 +15,8 @@ export type Stagger = "1" | "2" | "3" | "custom";
 export interface Business {
   name: string;
   vatNumber: string;
+  /** False when "I'm not VAT-registered" was ticked: VAT steps stay hidden. */
+  vatRegistered: boolean;
   vatPeriod: VatPeriod;
   periodEnd: PeriodEnd; // kept in step with `stagger` for older readers
   stagger: Stagger;
@@ -43,6 +45,7 @@ export const MONTH_NAMES = [
 export const DEFAULT_BUSINESS: Business = {
   name: "",
   vatNumber: "",
+  vatRegistered: true,
   vatPeriod: "quarterly",
   periodEnd: "Mar/Jun/Sep/Dec",
   stagger: "1",
@@ -70,6 +73,7 @@ export function loadBusiness(): Business | null {
     return {
       ...DEFAULT_BUSINESS,
       ...parsed,
+      vatRegistered: parsed.vatRegistered !== false,
       stagger,
       customStartMonth: month >= 1 && month <= 12 ? month : 1,
       flatRate: parsed.flatRate === true,

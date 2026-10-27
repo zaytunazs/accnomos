@@ -12,6 +12,7 @@ import {
   type VatPeriod,
 } from "@/lib/business";
 import VatStaggerField from "@/components/onboarding/VatStaggerField";
+import { useNextParam, withNext } from "@/components/connect/ConnectSteps";
 
 const PERIODS: { value: VatPeriod; label: string }[] = [
   { value: "quarterly", label: "Quarterly" },
@@ -19,11 +20,13 @@ const PERIODS: { value: VatPeriod; label: string }[] = [
   { value: "annual", label: "Annual" },
 ];
 
+/** Connect step 3: the name, an optional VAT number, and the VAT period — or nothing VAT at all. */
 export default function BusinessForm() {
   const router = useRouter();
+  const next = useNextParam();
   const [form, setForm] = useState<Business>(DEFAULT_BUSINESS);
+  const [nameError, setNameError] = useState<string | null>(null);
   const [vatError, setVatError] = useState<string | null>(null);
-  const [emailError, setEmailError] = useState<string | null>(null);
 
   useEffect(() => {
     const saved = loadBusiness();
@@ -42,16 +45,15 @@ export default function BusinessForm() {
 
   function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    const vatMessage = validateVatNumber(form.vatNumber);
-    const emailMessage =
-      form.email.trim() === "" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())
-        ? null
-        : "Enter a valid email address.";
+    const nameMessage = form.name.trim() === "" ? "Enter your business name." : null;
+    // The VAT number is optional: only a filled-in one is checked.
+    const vatMessage =
+      !form.vatRegistered || form.vatNumber.trim() === "" ? null : validateVatNumber(form.vatNumber);
+    setNameError(nameMessage);
     setVatError(vatMessage);
-    setEmailError(emailMessage);
-    if (vatMessage || emailMessage) return;
-    saveBusiness({ ...form, name: form.name.trim(), vatNumber: form.vatNumber.trim(), email: form.email.trim() });
-    router.push("/connect/ready");
+    if (nameMessage || vatMessage) return;
+    saveBusiness({ ...form, name: form.name.trim(), vatNumber: form.vatNumber.trim() });
+    router.push(withNext("/connect/ready", next));
   }
 
   return (
@@ -62,131 +64,116 @@ export default function BusinessForm() {
         </label>
         <input
           id="business-name"
-          className={input}
+          className={`${input} ${nameError ? "border-warn-border" : ""}`}
           autoComplete="organization"
+          aria-invalid={nameError ? true : undefined}
+          aria-describedby={nameError ? "business-name-error" : undefined}
           value={form.name}
-          onChange={(e) => set("name", e.target.value)}
-        />
-      </div>
-
-      <div className="rounded-2xl border border-border bg-white p-4">
-        <label className={label} htmlFor="vat-number">
-          VAT number
-        </label>
-        <input
-          id="vat-number"
-          className={`${input} ${vatError ? "border-warn-border" : ""}`}
-          placeholder="GB 123 4567 89"
-          autoComplete="off"
-          inputMode="text"
-          aria-invalid={vatError ? true : undefined}
-          aria-describedby={vatError ? "vat-error" : "vat-help"}
-          value={form.vatNumber}
           onChange={(e) => {
-            set("vatNumber", e.target.value);
-            if (vatError) setVatError(validateVatNumber(e.target.value));
-          }}
-          onBlur={(e) => {
-            if (e.target.value.trim() !== "") setVatError(validateVatNumber(e.target.value));
+            set("name", e.target.value);
+            if (nameError && e.target.value.trim() !== "") setNameError(null);
           }}
         />
-        {vatError ? (
-          <p id="vat-error" role="alert" className="mt-2 text-xs font-semibold text-warn-ink">
-            {vatError}
-          </p>
-        ) : (
-          <p id="vat-help" className="mt-2 text-xs text-muted">
-            Found on your VAT certificate; we check the format
+        {nameError && (
+          <p id="business-name-error" role="alert" className="mt-2 text-xs font-semibold text-warn-ink">
+            {nameError}
           </p>
         )}
       </div>
 
-      <fieldset className="rounded-2xl border border-border bg-white p-4">
-        <legend className={label}>VAT return period</legend>
-        <div className="mt-2 grid grid-cols-3 gap-2" role="radiogroup" aria-label="VAT return period">
-          {PERIODS.map((p) => {
-            const active = form.vatPeriod === p.value;
-            return (
-              <button
-                key={p.value}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => set("vatPeriod", p.value)}
-                className={`h-11 rounded-xl border text-[15px] font-bold ${
-                  active ? "border-2 border-teal bg-teal-tint text-teal-dark" : "border-border text-ink"
-                }`}
-              >
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
-      </fieldset>
-
-      {form.vatPeriod === "quarterly" && (
-        <div className="rounded-2xl border border-border bg-white p-4">
-          <VatStaggerField
-            stagger={form.stagger}
-            customStartMonth={form.customStartMonth}
-            onChange={(stagger, customStartMonth) => setForm((prev) => ({ ...prev, stagger, customStartMonth }))}
+      <div className="rounded-2xl border border-border bg-white p-4">
+        <label className="flex cursor-pointer items-start gap-3" htmlFor="not-vat-registered">
+          <input
+            id="not-vat-registered"
+            type="checkbox"
+            className="mt-0.5 h-5 w-5 shrink-0 accent-teal"
+            checked={!form.vatRegistered}
+            onChange={(e) => {
+              set("vatRegistered", !e.target.checked);
+              if (e.target.checked) setVatError(null);
+            }}
           />
-        </div>
-      )}
-
-      <div className="rounded-2xl border border-border bg-white p-4">
-        <div className="flex items-center justify-between gap-3">
-          <label className="text-[15px] font-extrabold text-ink" htmlFor="flat-rate">
-            Flat rate scheme?
-          </label>
-          <button
-            id="flat-rate"
-            type="button"
-            role="switch"
-            aria-checked={form.flatRate}
-            onClick={() => set("flatRate", !form.flatRate)}
-            className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
-              form.flatRate ? "bg-teal" : "bg-border"
-            }`}
-          >
-            <span
-              aria-hidden="true"
-              className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all ${
-                form.flatRate ? "left-6" : "left-1"
-              }`}
-            />
-          </button>
-        </div>
-        <p className="mt-1 text-xs text-muted">Not supported yet — standard scheme only</p>
-      </div>
-
-      <div className="rounded-2xl border border-border bg-white p-4">
-        <label className={label} htmlFor="contact-email">
-          Contact email
+          <span>
+            <span className="text-[15px] font-extrabold text-ink">I&apos;m not VAT-registered</span>
+            <span className="mt-0.5 block text-xs text-muted">
+              Tick this if you don&apos;t charge VAT — the VAT steps stay hidden.
+            </span>
+          </span>
         </label>
-        <input
-          id="contact-email"
-          type="email"
-          className={`${input} ${emailError ? "border-warn-border" : ""}`}
-          autoComplete="email"
-          aria-invalid={emailError ? true : undefined}
-          aria-describedby={emailError ? "email-error" : undefined}
-          value={form.email}
-          onChange={(e) => {
-            set("email", e.target.value);
-            if (emailError) setEmailError(null);
-          }}
-        />
-        {emailError && (
-          <p id="email-error" role="alert" className="mt-2 text-xs font-semibold text-warn-ink">
-            {emailError}
-          </p>
-        )}
       </div>
+
+      {form.vatRegistered && (
+        <>
+          <div className="rounded-2xl border border-border bg-white p-4">
+            <label className={label} htmlFor="vat-number">
+              VAT number <span className="font-normal">(optional)</span>
+            </label>
+            <input
+              id="vat-number"
+              className={`${input} ${vatError ? "border-warn-border" : ""}`}
+              placeholder="GB 123 4567 89"
+              autoComplete="off"
+              inputMode="text"
+              aria-invalid={vatError ? true : undefined}
+              aria-describedby={vatError ? "vat-error" : "vat-help"}
+              value={form.vatNumber}
+              onChange={(e) => {
+                set("vatNumber", e.target.value);
+                if (vatError) setVatError(e.target.value.trim() === "" ? null : validateVatNumber(e.target.value));
+              }}
+              onBlur={(e) => {
+                if (e.target.value.trim() !== "") setVatError(validateVatNumber(e.target.value));
+              }}
+            />
+            {vatError ? (
+              <p id="vat-error" role="alert" className="mt-2 text-xs font-semibold text-warn-ink">
+                {vatError}
+              </p>
+            ) : (
+              <p id="vat-help" className="mt-2 text-xs text-muted">
+                Leave it blank if you don&apos;t know it yet — found on your VAT certificate
+              </p>
+            )}
+          </div>
+
+          <fieldset className="rounded-2xl border border-border bg-white p-4">
+            <legend className={label}>VAT return period</legend>
+            <div className="mt-2 grid grid-cols-3 gap-2" role="radiogroup" aria-label="VAT return period">
+              {PERIODS.map((p) => {
+                const active = form.vatPeriod === p.value;
+                return (
+                  <button
+                    key={p.value}
+                    type="button"
+                    role="radio"
+                    aria-checked={active}
+                    onClick={() => set("vatPeriod", p.value)}
+                    className={`h-11 rounded-xl border text-[15px] font-bold ${
+                      active ? "border-2 border-teal bg-teal-tint text-teal-dark" : "border-border text-ink"
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                );
+              })}
+            </div>
+          </fieldset>
+
+          {form.vatPeriod === "quarterly" && (
+            <div className="rounded-2xl border border-border bg-white p-4">
+              <VatStaggerField
+                stagger={form.stagger}
+                customStartMonth={form.customStartMonth}
+                onChange={(stagger, customStartMonth) => setForm((prev) => ({ ...prev, stagger, customStartMonth }))}
+              />
+            </div>
+          )}
+        </>
+      )}
 
       <div className="flex flex-wrap gap-3">
         <Link
-          href="/connect/ai"
+          href={withNext("/connect/ai", next)}
           className="inline-flex h-12 items-center rounded-xl border border-border bg-white px-5 text-[15px] font-bold text-ink"
         >
           Back
