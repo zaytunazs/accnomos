@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
+import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
 import { LoadingSkeleton, ReaderErrorNote } from "@/components/States";
 import { loadAiConfig, RUNTIME_URL } from "@/lib/ai-config";
@@ -154,17 +155,37 @@ export default function AskThread() {
         title="Ask"
         description="Ask your books in plain English. Numbers are calculated by code from your ledger; your AI only writes the words, and every answer shows the files it used."
         action={
-          mode === "loading" ? null : live ? (
-            <p className="text-[13px] font-semibold text-muted">
-              Answering with <strong className="text-ink">{model ?? "the reader's default AI"}</strong> ·{" "}
-              <Link href="/settings" className="whitespace-nowrap font-bold text-teal underline underline-offset-2">
-                change
-              </Link>
-            </p>
-          ) : (
-            <p className="w-fit rounded-full bg-ink px-3 py-1 text-[12px] font-bold tracking-wide whitespace-nowrap text-ground">
-              SAMPLE — FICTIONAL COMPANY
-            </p>
+          mode === "loading" ? null : (
+            <div className="flex items-center gap-2">
+              {live ? (
+                <p className="text-[13px] font-semibold text-muted">
+                  Answering with <strong className="text-ink">{model ?? "the reader's default AI"}</strong> ·{" "}
+                  <Link href="/settings" className="whitespace-nowrap font-bold text-teal underline underline-offset-2">
+                    change
+                  </Link>
+                </p>
+              ) : (
+                <p className="w-fit rounded-full bg-ink px-3 py-1 text-[12px] font-bold tracking-wide whitespace-nowrap text-ground">
+                  SAMPLE — FICTIONAL COMPANY
+                </p>
+              )}
+              <Explain title="Where answers come from">
+                <p>
+                  Numbers by code, words by model. Code gathers the facts from your ledger first;
+                  your AI (Muse Glimmer on your machine, or Muse Spark with your key) only writes
+                  the explanation around them. Every figure in the answer is checked against those
+                  facts — an invented number is replaced by the quoted facts.
+                </p>
+                <p>
+                  Each answer shows its key numbers and the files it used. “Worked out by code”
+                  means the model was unavailable and code answered from the ledger alone.
+                </p>
+                <p>
+                  Spoken questions are transcribed by Muse Voice Transcribe (key mode only) and
+                  then go through the same grounded Ask. Audio is not kept.
+                </p>
+              </Explain>
+            </div>
           )
         }
       />

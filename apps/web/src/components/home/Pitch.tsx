@@ -52,6 +52,12 @@ export default function Pitch() {
             >
               See the demo books
             </Link>
+            <Link
+              href="/how-it-works"
+              className="whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold text-teal-dark hover:bg-ground"
+            >
+              How it works
+            </Link>
           </div>
         </div>
         <div
