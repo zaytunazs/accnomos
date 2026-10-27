@@ -11,7 +11,7 @@ const manrope = Manrope({
 
 export const metadata: Metadata = {
   title: "Accnomos",
-  description: "Sample bookkeeping review inbox — demo data only",
+  description: "Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

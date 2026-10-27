@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import AppNav from "./AppNav";
+import DemoBanner from "./DemoBanner";
 
 function LogoMark() {
   return (
@@ -29,9 +30,7 @@ function LogoMark() {
 export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <p className="bg-ink px-4 py-2 text-center text-[13px] font-bold text-ground">
-        SAMPLE — FICTIONAL COMPANY · Bramblewood Joinery Ltd · demo data only
-      </p>
+      <DemoBanner />
       <div className="flex flex-1 flex-col min-[900px]:flex-row">
         <aside className="flex w-full shrink-0 flex-col gap-6 border-b border-border bg-white p-5 min-[900px]:w-[232px] min-[900px]:border-b-0 min-[900px]:border-r">
           <div className="flex items-center gap-2.5">
