@@ -168,6 +168,11 @@ SUMMARIES: dict[str, Summary] = {
     "bank_transfer": lambda r, w: "Marked a bank line as a transfer between your own accounts",
     "bank_ignored": lambda r, w: "Marked a bank line as nothing to book",
     "bank_expense_proposed": lambda r, w: "Proposed an expense from a bank line",
+    "bank_rule_created": lambda r, w: "Added a bank rule",
+    "bank_rule_updated": lambda r, w: "Edited a bank rule",
+    "bank_rule_deleted": lambda r, w: "Deleted a bank rule",
+    "bank_rules_reordered": lambda r, w: "Reordered the bank rules",
+    "bank_reconciled": lambda r, w: f"Reconciled a bank line ({r.get('kind') or 'match'}) through Review approval",
     # Sales invoices
     "invoice_profile_saved": lambda r, w: "Saved your invoice details",
     "invoice_created": lambda r, w: f"Created invoice {_inv(r)}" + _pounds(r, "total_pence"),

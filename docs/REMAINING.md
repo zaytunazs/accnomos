@@ -46,9 +46,9 @@ Severity:
 | Severity | Item |
 |---|---|
 | Medium | Barclays, Starling, Tide, Monzo and HSBC/Lloyds layouts follow public formats and have not been checked against real exports. Unknown headers fall back to `bank`. |
-| Medium | A re-export that overlaps an earlier one gets a different sha256; if every line was already imported, the CSV is filed but has no stored lines and does not appear under Statements. |
+| Medium | Bank-rule AI codings have run against the test stub only (`testmode.bank_ai_reply`); no real Glimmer/Meta call has coded a line end to end. |
 | Low | `suggested_filename` on bank-line expense proposals ends in `.csv` and uses the raw description; nothing reads it. |
-| Low | The web "Confirm all exact matches" penny rule has no automated test. |
+| Low | The phone lists bank rules read-only; adding or editing rules needs the web app (on purpose). |
 
 ## Contacts
 
@@ -110,7 +110,7 @@ Severity:
 |---|---|
 | Medium | Play signing hash → Entra is pending (maintainers' status): a release or Play build may not be able to sign in. The app defaults to the debug key's hash (`broker_redirect_uri_registered: false`). |
 | Medium | The phone saves a VAT stagger in Settings but sends it nowhere, so Home, the dashboard and the VAT picker use calendar quarters. |
-| Low | The Meta API key is not in secure storage (`apps/mobile/lib/services/settings.dart`). Payroll is read-only; Bank only confirms certain matches; no HMRC filing. |
+| Low | The Meta API key is not in secure storage (`apps/mobile/lib/services/settings.dart`). Payroll is read-only; Bank only confirms certain matches and lists bank rules; no HMRC filing. |
 
 ## Security and deployment
 

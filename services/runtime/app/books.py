@@ -431,9 +431,14 @@ class Books:
     async def import_bank_csv(self, data: bytes, name: str, user: str = "user") -> BankImport:
         """Parse, file the statement as "04 Bank statements/{last date}_{bank}.csv" and store its lines.
 
-        Re-importing the same file (same sha256) changes nothing; lines already imported from another
-        statement (overlapping date ranges) are skipped. Raises accnomos_ledger.bank.BankCsvError.
+        Re-importing the same file (same sha256) changes nothing. A re-export that overlaps an
+        earlier one still adds its new lines: de-dup is by (date, amount, normalised description,
+        balance), not by file hash, so only lines already imported are skipped. A re-export with
+        nothing new is a no-op too (no second filed copy, no empty statement). Raises
+        accnomos_ledger.bank.BankCsvError.
         """
+        from app.bank_rules import normalise_description  # lazy: bank_rules imports this module
+
         sha = hashlib.sha256(data).hexdigest()
         store = f"{BANK_LINES}/{sha}.json"
         name = _split(name.replace("\\", "/"))[1] or "statement.csv"
@@ -443,8 +448,19 @@ class Books:
             return BankImport(
                 sha256=sha, filed_path=None, lines=len(lines), new_lines=0, duplicate_file=True, bank=bank
             )
-        known = {ln.id for ln in await self.stored_bank_lines()}
-        fresh = [ln for ln in lines if ln.id not in known]
+        known = {
+            (ln.date, ln.amount_pence, normalise_description(ln.description), ln.balance_pence)
+            for ln in await self.stored_bank_lines()
+        }
+        fresh = [
+            ln
+            for ln in lines
+            if (ln.date, ln.amount_pence, normalise_description(ln.description), ln.balance_pence) not in known
+        ]
+        if not fresh:
+            return BankImport(
+                sha256=sha, filed_path=None, lines=len(lines), new_lines=0, duplicate_file=True, bank=bank
+            )
         last = max((ln.date for ln in lines), default=today())
         filed = await self.free_path(BANK, f"{last.isoformat()}_{bank}.csv")
         await self.storage.write(filed, data)
