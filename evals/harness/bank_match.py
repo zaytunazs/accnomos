@@ -172,9 +172,10 @@ def report_md(res: dict[str, Any]) -> str:
         "",
         "## Reading the numbers",
         "",
-        "- Before the matcher fix in this branch (`d706f04`, ±5 days for everything) the same run gave precision 51/51 and recall",
+        "- With the matcher as it was on main at `d706f04` (±5 days for everything) the same run gave precision 51/51 and recall",
         "  51/106 (48 %): no direct debit and only 8 of 31 BACS / customer payments matched, because they arrive more than 5 days",
-        "  after the document. Payments on terms may now be up to 60 days later, carried by the counterparty's name (never `exact`).",
+        "  after the document. Payments on terms may now be up to 60 days later, only when the line carries the counterparty's",
+        "  name, and never as `exact`.",
         f"- Part payments are not supported: one event paid by two bank lines is never suggested ({parts.get('found', 0)}/"
         f"{parts.get('truth', 0)} part rows found). Confirming two lines against one event would also need `Books.confirm_match`"
         " to accept it.",

@@ -234,7 +234,7 @@ def report_md(res: dict[str, Any]) -> str:
         "## Triage",
         "",
         f"- Keep/drop agrees with the expectation on **{pct(t['keep_drop_agree'], t['scored'])}** unambiguous messages"
-        f" ({20 - t['scored']} 'either' messages not scored)",
+        f" ({len(t['rows']) - t['scored']} 'either' messages not scored)",
         f"- Code filter dropped: {', '.join(f'{k} {v}' for k, v in t['skipped'].items())}; {t['threads']} threads listed",
     ]
     if t["model"]:

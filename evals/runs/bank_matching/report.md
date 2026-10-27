@@ -22,9 +22,10 @@ from `Books.bank_suggestions` (same call as `/books/bank/lines`). Scored against
 
 ## Reading the numbers
 
-- Before the matcher fix in this branch (`d706f04`, ±5 days for everything) the same run gave precision 51/51 and recall
+- With the matcher as it was on main at `d706f04` (±5 days for everything) the same run gave precision 51/51 and recall
   51/106 (48 %): no direct debit and only 8 of 31 BACS / customer payments matched, because they arrive more than 5 days
-  after the document. Payments on terms may now be up to 60 days later, carried by the counterparty's name (never `exact`).
+  after the document. Payments on terms may now be up to 60 days later, only when the line carries the counterparty's
+  name, and never as `exact`.
 - Part payments are not supported: one event paid by two bank lines is never suggested (0/20 part rows found). Confirming two lines against one event would also need `Books.confirm_match` to accept it.
 - Supplier credit-note refunds into Tide are bank-settled events with no transfer marker in the description (the parser
   keeps Tide's `Transaction Information`, not its `Transaction Type`), so a refund more than 5 days after the credit note
