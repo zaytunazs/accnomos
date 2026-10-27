@@ -4,30 +4,220 @@ import { FOLDER } from "@/lib/folders";
 
 export const metadata = { title: "How it works · Accnomos" };
 
-const loop = [
+const CHECKED = "27 Oct 2026";
+
+interface Feature {
+  id: string;
+  title: string;
+  does: string;
+  ai: string;
+  code: string;
+  gap: string;
+}
+
+const features: Feature[] = [
   {
-    title: "Snap",
-    body: "Photograph or upload a receipt, or let Outlook intake copy emailed invoices into 00 Inbox. Files are filed by code and never deleted.",
+    id: "receipts",
+    title: "Receipts: snap, check, approve",
+    does: "Photograph or upload a receipt, or drop it in 00 Inbox. It is read, checked against plain rules, and held on the Review page until you tap Approve or Reject. Approval writes one balanced ledger event that is never edited or deleted; Undo adds a reversing event.",
+    ai: "The AI reads the document into a strict list: supplier, VAT number, date, lines, net, VAT and total. It also guesses the category.",
+    code: "Code checks the reading: lines and totals add up, VAT maths and rates are right, the VAT number has the right shape, it is not a duplicate, it is in pounds, the date is valid and confidence is high enough. Anything that fails waits in Needs a look.",
+    gap: "Not verified yet: key-mode reading (Muse Spark) is unit-tested only; HEIC photos are copied but not read; evals use made-up receipts, so real phone photos will score lower.",
   },
   {
-    title: "Read",
-    body: "Muse Glimmer 30B reads the document on your own machine (local mode), or Muse Spark reads it with your Meta API key (key mode), into a strict JSON schema: supplier, VAT number, date, lines, net, VAT and total.",
+    id: "books",
+    title: "Books.xlsx: a copy you can read",
+    does: "After every approval, rejection, undo, bank match, invoice, payroll, mileage or job change, the app rebuilds Books.xlsx from the event files. It has 12 sheets (Summary, Ledger, Accounts, VAT, Customers, Suppliers, Bank, Proposals, Jobs, Vehicles, Payroll and a README). It is a read-only copy: do not edit it, it is overwritten.",
+    ai: "No AI. The file is built by code from the ledger events.",
+    code: "Code reads every event file, works out each sheet, and writes the whole workbook again. If one rebuild fails it is logged and your action still stands.",
+    gap: "Not verified yet: the file has never been opened in Excel from a real OneDrive.",
   },
   {
-    title: "Check",
-    body: "Plain code — never the model — checks the reading: lines add up, totals add up, VAT maths and rates are right, the VAT number has the right shape, it is not a duplicate, it is in pounds, the date is valid and confidence is high enough. A second model then reads the image again without seeing the first answer, and code compares six fields. Anything that fails lands in Needs a look.",
+    id: "vat-periods",
+    title: "VAT periods and deadlines",
+    does: "The VAT page shows a period picker (the current period and the 8 before it) based on the stagger saved in Settings, and works out the nine boxes for the picked period. Home shows the next return date, the payment date and Box 5 so far.",
+    ai: "No AI. Dates and boxes are worked out by code.",
+    code: "Code picks the period from your stagger (1, 2, 3, a custom start month, or monthly), counts only approved sales and purchases, and truncates boxes 6 to 9 to whole pounds.",
+    gap: "Not verified yet: annual accounting and flat-rate schemes are not covered; “submitted” only means our own submission saved a receipt, so a return filed elsewhere still shows as open.",
   },
   {
-    title: "You approve",
-    body: "Every proposal waits on the Review page until you tap Approve or Reject. Nothing reaches your books before that tap — unless you saved an Autopilot rule for that supplier and switched Autopilot on.",
+    id: "hmrc",
+    title: "HMRC sandbox submission",
+    does: "On the VAT page you connect to HMRC (sandbox), see open obligations, confirm the nine boxes, tick the legal declaration and press Submit. The receipt is saved to 06 VAT returns in your OneDrive. That tap is always yours.",
+    ai: "No AI anywhere in this flow.",
+    code: "Code sends the nine boxes through the relay, which holds the HMRC client secret and adds the fraud-prevention headers. The relay checks the boxes before forwarding.",
+    gap: "Not verified yet: the full browser flow has never been run end to end against HMRC’s sandbox; production filing is not built.",
   },
   {
-    title: "Code posts",
-    body: "Approval writes one immutable, balanced ledger event into _System/Ledger/events, files the document, and rebuilds Books.xlsx from the events. Undo never edits or deletes: it adds a reversing event.",
+    id: "ask",
+    title: "Ask, typed and spoken",
+    does: "Ask answers questions about your books (“how much did I spend with Screwfix?”) and can plan a day (“plan my Thursday”). The web streams the answer: key figures first, then the wording. On the mic button you can speak the question instead of typing it.",
+    ai: "The model only writes the words. Key figures and quotes come from a facts pack that code builds from your ledger, and code checks every figure the model writes.",
+    code: "Code routes the question to the right books and period, checks each figure against the facts, and replaces any invented or wrong-period figure with the quoted facts.",
+    gap: "Not verified yet: voice (Muse Voice Transcribe) works in key mode only and its request format comes from research notes, never checked live; no live mic run on any browser or phone. Bank, payroll, jobs and deadlines are not in the facts pack.",
   },
   {
-    title: "VAT",
-    body: "The nine VAT boxes are calculated by deterministic code from the events you approved. You then connect HMRC (sandbox), tick the legal declaration and submit — that tap is always yours.",
+    id: "actions",
+    title: "Actions: words become a card you approve",
+    does: "Say or type “send a £100 invoice to JM Trading” or “log 7.5 hours for Sam on Elm Road” and Ask shows a card saying what will happen, to whom, the amount and VAT. Nothing is created, logged or sent until you tap Approve. Change puts the question back; Reject is logged.",
+    ai: "The model returns only a structured intent: names as said, amounts as said, dates as said. It never prices a line.",
+    code: "Code finds each name in your own lists (fuzzy match, asks “which Hartley?” when unsure), refuses any figure you did not say, sets the VAT code, prices every line in pence, signs the card (15-minute expiry) and runs it exactly once.",
+    gap: "Not verified yet: never run against a real model or a real mailbox; without a signing key set, a restart can make a card fail.",
+  },
+  {
+    id: "autopilot",
+    title: "Autopilot L1 and L2",
+    does: "Level L1 (the default) only proposes: matching cards say they match your rule and you can approve them together. At L2 a receipt from a saved supplier posts without a tap, only when every check passes with no warnings. Every post is logged and has Undo for 30 days.",
+    ai: "No AI. The decision is a list of plain checks.",
+    code: "Code teaches the rule from your ticked approval (one per supplier), then on each scan requires: same supplier, same VAT number and treatment, total above zero and at most twice the usual, and every check passing with no warning.",
+    gap: "Not verified yet: no end-to-end run on real data; the phone never sends the “off” flag, so scans from the phone always run Autopilot when a rule exists.",
+  },
+  {
+    id: "verifier",
+    title: "Verifier: a second reading",
+    does: "When the first reading passes every code check, a second model reads the same image again with a different prompt, without seeing the first answer. Code compares six fields (supplier, VAT number, date, net, VAT, total). If all six agree the card says so; any disagreement sends the proposal to Needs a look with both readings side by side.",
+    ai: "The second model only reads the image again. It never sees the first answer and it never decides.",
+    code: "Code compares the six fields (names ignoring case and Ltd/Limited, dates by value, money to the penny, VAT numbers by digits). Nobody picks or merges values: you approve the first reading or reject.",
+    gap: "Not verified yet: local mode verifies with Glimmer and key mode with Muse Spark unless the server owner sets a Baseten key; the Baseten model name is unconfirmed and no real Baseten or Meta verifier call has ever been made. Measured catch rate: 0 extra catches in 20 documents, 1 false alarm on a mixed-rate receipt.",
+  },
+  {
+    id: "outlook",
+    title: "Outlook intake: emailed bills",
+    does: "Switch on Outlook intake in Settings, then tap Check my inbox now. Likely receipts and invoices from the last 14 days are copied into 00 Inbox, deduplicated, with a log in _System/Intake. Mail is never sent, moved, marked read or deleted.",
+    ai: "No AI. Plain code filters decide what looks like a receipt.",
+    code: "Code reads message dates, senders, subjects and attachments (PDF, JPEG, PNG, HEIC between 10 KB and 15 MB), keeps senders outside your domain with receipt-like words, and skips what was already copied.",
+    gap: "Not verified yet: never run against a real mailbox; HEIC files are copied but wait unread; photos forwarded by a colleague on your own domain are dropped.",
+  },
+  {
+    id: "inbox",
+    title: "Inbox triage and to-dos",
+    does: "Home’s Inbox card lists the last 7 days of business email (customers, suppliers, HMRC, your accountant), each thread with a one-line summary, a suggested reply and the to-dos in it. Draft in Outlook saves a reply to your Drafts; Add puts a to-do in _System/Todos. Nothing is ever sent.",
+    ai: "Your own AI (your key or your local model) suggests the category, summary, reply and to-dos. Email text is passed as untrusted data and the model is told never to follow instructions inside emails.",
+    code: "Code reads only the Inbox folder’s sender, subject, date and 255-character preview (never full bodies), drops newsletters, no-reply senders and your own domain, then checks everything the model returns: one of five categories, one line, no links, no figures the emails did not contain, real dates only.",
+    gap: "Not verified yet: never run against a real mailbox or model; a failed second Graph call can leave an empty draft; a thread you already answered can still say Reply because Sent Items are not read.",
+  },
+  {
+    id: "bank",
+    title: "Bank statements",
+    does: "Drop a CSV on the Bank page (Barclays, Starling, Tide, Monzo-style and HSBC/Lloyds paid-in/paid-out layouts are sniffed). The file is saved, the same file twice is a no-op, and each line gets a suggested match to a posted entry. Confirm records which entry the line pays for; unmatched lines can become an expense proposal, a transfer, or be ignored, each undoable.",
+    ai: "No AI. Matching is amount (±1p), date (±5 days) and counterparty name.",
+    code: "Code parses the CSV, files it by last date and bank, suggests matches, and records your Confirm without posting anything new.",
+    gap: "Not verified yet: layouts follow public formats and have not been checked against real exports; part payments are never suggested (one entry paid by two lines finds no match).",
+  },
+  {
+    id: "contacts",
+    title: "Contacts",
+    does: "Customers and suppliers are built from your ledger (one contact per VAT number, else per name). Each has a statement with a running balance and an Aged balances tab (0–30/31–60/61–90/90+ days from the document date). Edit keeps your changes across Refresh; Import from Outlook fills blank emails and phones.",
+    ai: "No AI.",
+    code: "Code rebuilds contacts from the event files on each call; only names and details are saved, in _System/Contacts/contacts.json. Money is always worked out again from the events.",
+    gap: "Not verified yet: never run against a real OneDrive or Outlook; admin consent on work accounts is untested; a matched bank line counts as full payment, so part payments drop out of Aged balances.",
+  },
+  {
+    id: "invoices",
+    title: "Sales invoicing",
+    does: "New invoice → draft saved with the next number → preview renders an A4 PDF (your details, logo, VAT summary by rate, bank details) → Send via Outlook only after you tick the confirmation → the sale is posted once, with the sent PDF kept. Reminder drafts, Mark paid and Void (a reversal, never a delete) are on each invoice.",
+    ai: "The model only drafts the reminder wording from facts code gives it (never your bank details); code checks every figure. Everything else is code.",
+    code: "Code prices each line (net = qty × price, VAT per line, half up to the penny), numbers drafts in order, emails first then marks sent then posts, so a retry never emails twice or posts twice.",
+    gap: "Not verified yet: never sent from a real mailbox; no credit notes; Mark paid posts nothing to the bank account; a paid invoice cannot be voided.",
+  },
+  {
+    id: "jobs",
+    title: "Jobs, staff and timesheets",
+    does: "The Jobs page lists jobs with hours, labour, materials and what is still to invoice. Staff and their cost/charge rates live in Settings. Each job has a timesheet (staff, date, hours in quarter steps, note, billable). Review can tag a purchase to a job on Approve; Invoice these hours prefills an invoice draft.",
+    ai: "No AI.",
+    code: "Code stores jobs, staff and timesheet entries in _System/Jobs, _System/Staff and _System/Timesheets, tags purchase nets as job materials, and proposes one invoice line per person (hours × charge rate).",
+    gap: "Not verified yet: never run against a real OneDrive; “invoiced” value and margin use each person’s current charge rate, so changing a rate restates past jobs.",
+  },
+  {
+    id: "vehicles",
+    title: "Vehicles and mileage",
+    does: "The Vehicles page lists personal and business-owned vehicles and a mileage log (vehicle, date, from, to, miles in 0.1 steps, purpose). Business miles build up the HMRC approved allowance (cars and vans 45p to 10,000 miles then 25p; motorbikes 24p; bikes 20p). Claim this quarter’s mileage makes one expense proposal per quarter for you to approve in Review.",
+    ai: "No AI.",
+    code: "Code holds the rate table in one place, works out the allowance per tax year (6 April to 5 April), locks claimed journeys until the claim is undone, and tags fuel receipts to your only active business vehicle at scan time.",
+    gap: "Not verified yet: never run against a real OneDrive; the fuel scale charge is shown as “ask your accountant” text and is not calculated.",
+  },
+  {
+    id: "payroll",
+    title: "Pay runs (estimates only)",
+    does: "Payroll prepares a month’s pay run from timesheets (hours × each person’s rate), shows estimated PAYE, employee NI, net pay and employer NI, exports a CSV for your payroll provider to 05 Payroll, and on Confirm posts the provider’s actual gross and employer NI as two balanced adjustments. Accnomos does not run payroll, file RTI or pay HMRC.",
+    ai: "No AI.",
+    code: "Code works out the estimates from one 2026–27 rate table, saves the run in _System/Payroll/runs, labels every figure an estimate, and only posts the actuals you type in.",
+    gap: "Not verified yet: rates were checked against GOV.UK by hand on 27 Oct 2026 with no test pinning them — re-check each April. Monthly pay only, tax code 1257L month-1 basis, England/NI rates, NI category A; no loans, pensions, statutory pay, benefits or salary sacrifice.",
+  },
+  {
+    id: "planner",
+    title: "Day planner",
+    does: "Plan today on Home, Plan a day with these jobs on Jobs, or “plan my Thursday” in Ask proposes a working day from your Outlook calendar, open jobs and any VAT return due within 7 days. Apply writes the new items as [Accnomos] events. Nothing is written before Apply.",
+    ai: "The model only writes the plain-English rationale from the finished plan. Code rejects any rationale quoting a time or figure not in the plan and writes its own instead.",
+    code: "Code groups open jobs by postcode district, orders districts so the route sweeps, allows 2 h visits (or the job’s visit length), 30/60 min travel, lunch and an admin hour, never overlapping existing events, in Europe/London on the quarter hour.",
+    gap: "Not verified yet: never run against a real calendar; travel times are rules of thumb, not routing; only the default calendar; first-time calendar consent loses the plan (plan again and tap Apply again).",
+  },
+  {
+    id: "files",
+    title: "Files: your folder, shown as is",
+    does: "The Files page lists the real books folder from OneDrive (00 to 07 with file counts, plus _System collapsed), with Open links and Rebuild Books.xlsx on demand. Signed out it shows the sample tree.",
+    ai: "No AI.",
+    code: "Code lists the folder through Graph and rebuilds the spreadsheet from the events when asked.",
+    gap: "Not verified yet: never checked against a real OneDrive; a folder’s file count can include nested folders.",
+  },
+  {
+    id: "android",
+    title: "Android app",
+    does: "The phone app signs in, captures receipts, and covers Review (approve, edit, reject, Autopilot undo), Ask with mic and action cards, Home, VAT with a period picker, and Files, Contacts, Invoices, Jobs, Vehicles, Bank and read-only Payroll under More. There is no HMRC filing on the phone.",
+    ai: "Same split as the web: the AI reads documents and writes words; code checks and posts.",
+    code: "The phone calls the same runtime routes as the web.",
+    gap: "Not verified yet: the Flutter app has never been built, analysed or tested in this pass; the Play release signing hash may not be registered so sign-in can fail; the VAT stagger is saved but never sent, so VAT uses calendar quarters; the Meta key is not in secure storage.",
+  },
+];
+
+const faqs: { q: string; a: string }[] = [
+  {
+    q: "Where is my data?",
+    a: "In your own OneDrive, in a folder called Accnomos (Apps/Accnomos on a personal account, /Accnomos on a work account). There is no Accnomos database and we keep no copy. Open the folder any time: receipts by month, invoices, bank statements, VAT returns, Books.xlsx and the _System ledger underneath.",
+  },
+  {
+    q: "Can it file my VAT by itself?",
+    a: "No. The nine boxes are worked out by code, but nothing is sent until you tick the legal declaration and press Submit. Filing is sandbox only: no production filing is built.",
+  },
+  {
+    q: "What if the AI is wrong?",
+    a: "Three things stand between a wrong reading and your books: plain code checks (maths, VAT, duplicates, currency, dates, confidence), a second independent reading that code compares field by field, and your Approve tap. Anything unsure waits in Needs a look with the reason shown.",
+  },
+  {
+    q: "What does the verifier do?",
+    a: "It reads the same photo again with a different prompt, without seeing the first answer. Code compares supplier, VAT number, date, net, VAT and total. All six must agree or the proposal waits for you with both readings side by side. It never picks or merges values.",
+  },
+  {
+    q: "Why do I need a Meta key or a local model?",
+    a: "The reading and answering models run either on a machine you control (Muse Glimmer on Ollama, local mode) or through a Meta API key you paste in (key mode). In local mode documents go only to Ollama. In key mode with no key header, the server’s own key is used as a fallback.",
+  },
+  {
+    q: "Can I delete everything?",
+    a: "Yes. Delete the Accnomos folder in your OneDrive and sign out. Because we hold no copy, that removes everything. Undo inside the app never deletes: it adds a reversing entry so the trail stays complete.",
+  },
+  {
+    q: "What does Autopilot post on its own?",
+    a: "Only a receipt matching a rule you saved (same supplier, VAT number and treatment, total at most twice the usual) with every code check passing and no warnings, verifier agreeing, at level L2. L1 (the default) only proposes. It never invents rules and never posts sales, mileage or anything unsure.",
+  },
+  {
+    q: "Does it ever send email by itself?",
+    a: "No. Invoices, reminders and inbox replies are drafts until you confirm each one in turn: invoice sending needs your ticked confirmation, replies wait in Outlook Drafts for you to press Send, and triage never sends at all.",
+  },
+  {
+    q: "What does “estimate” mean on Payroll?",
+    a: "The tax and NI figures are a rough guide for monthly pay under tax code 1257L (month-1 basis, England/NI rates, NI category A). Your payroll provider works out the real amounts; Confirm posts the actuals you type in, not the estimate. Accnomos never files RTI or pays HMRC.",
+  },
+  {
+    q: "What can it see in my mailbox and calendar?",
+    a: "Only what each feature asks for, when you first use it: Outlook intake and triage read the Inbox list (triage sees sender, subject, date and a 255-character preview, never full bodies); drafts need Mail.ReadWrite; sending invoices needs Mail.Send; planning reads the calendar first and only writes on Apply. Details are in the privacy policy’s data map.",
+  },
+  {
+    q: "What has not been tested on real services?",
+    a: "Almost everything beyond one hand-run receipt flow: key-mode models, the Baseten verifier, SAM crop, voice, HMRC end to end, real OneDrive, mailbox, calendar and phone runs are tested on fakes or not yet run. The full list is in docs/HONESTY.md and each section above says what is not verified yet.",
+  },
+  {
+    q: "How do I check this page against the code?",
+    a: "Each section names the behaviour; the contracts live in docs/ARCHITECTURE.md, AUTOPILOT.md, ACTIONS.md, INBOX.md, PLANNER.md and HONESTY.md, tested by services/runtime/tests and the Playwright suite (pnpm run e2e). This page was last checked against main on 27 Oct 2026.",
   },
 ];
 
@@ -126,28 +316,63 @@ export default function HowItWorksPage() {
         title="How it works"
         description="Snap a receipt, check what the AI read, approve it, and code does the books. Your data stays in your OneDrive throughout."
       />
+      <p className="text-sm text-muted">Last checked against main on {CHECKED}.</p>
 
-      <section aria-labelledby="loop-heading" className="rounded-2xl border border-border bg-white p-5 sm:p-6">
-        <h2 id="loop-heading" className="text-xl font-extrabold tracking-tight">
-          The loop
-        </h2>
-        <ol className="mt-4 flex flex-col gap-4">
-          {loop.map((step, i) => (
-            <li key={step.title} className="flex gap-3">
-              <span
-                aria-hidden="true"
-                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-teal-tint text-[15px] font-extrabold text-teal-dark"
-              >
-                {i + 1}
-              </span>
-              <div className="min-w-0">
-                <p className="text-[15px] font-extrabold">{step.title}</p>
-                <p className="mt-0.5 text-[15px] leading-7 text-muted">{step.body}</p>
-              </div>
+      <nav aria-label="Contents" className="rounded-2xl border border-border bg-white p-5">
+        <h2 className="text-lg font-extrabold tracking-tight">Contents</h2>
+        <ul className="mt-2 grid grid-cols-1 gap-1 text-[15px] min-[560px]:grid-cols-2">
+          {features.map((f) => (
+            <li key={f.id}>
+              <Link href={`#${f.id}`} className="font-semibold text-teal-dark underline hover:text-teal">
+                {f.title}
+              </Link>
             </li>
           ))}
-        </ol>
-      </section>
+          <li>
+            <Link href="#data" className="font-semibold text-teal-dark underline hover:text-teal">
+              Where your data lives
+            </Link>
+          </li>
+          <li>
+            <Link href="#models" className="font-semibold text-teal-dark underline hover:text-teal">
+              Which model does what
+            </Link>
+          </li>
+          <li>
+            <Link href="#never" className="font-semibold text-teal-dark underline hover:text-teal">
+              What is never automatic
+            </Link>
+          </li>
+          <li>
+            <Link href="#faq" className="font-semibold text-teal-dark underline hover:text-teal">
+              FAQ
+            </Link>
+          </li>
+        </ul>
+      </nav>
+
+      {features.map((f) => (
+        <section key={f.id} aria-labelledby={`${f.id}-heading`} className="rounded-2xl border border-border bg-white p-5 sm:p-6">
+          <h2 id={`${f.id}-heading`} className="text-xl font-extrabold tracking-tight">
+            {f.title}
+          </h2>
+          <p className="mt-2 text-[15px] leading-7">{f.does}</p>
+          <ul className="mt-3 space-y-2 text-[15px] leading-7">
+            <li>
+              <span className="font-bold">The AI: </span>
+              <span className="text-muted">{f.ai}</span>
+            </li>
+            <li>
+              <span className="font-bold">The code: </span>
+              <span className="text-muted">{f.code}</span>
+            </li>
+            <li>
+              <span className="font-bold">Not verified yet: </span>
+              <span className="text-muted">{f.gap}</span>
+            </li>
+          </ul>
+        </section>
+      ))}
 
       <section aria-labelledby="data-heading" className="flex flex-col gap-3">
         <div>
@@ -189,6 +414,20 @@ export default function HowItWorksPage() {
             <li key={item}>{item}</li>
           ))}
         </ul>
+      </section>
+
+      <section aria-labelledby="faq-heading" className="rounded-2xl border border-border bg-white p-5 sm:p-6">
+        <h2 id="faq-heading" className="text-xl font-extrabold tracking-tight">
+          FAQ
+        </h2>
+        <div className="mt-2 flex flex-col gap-5">
+          {faqs.map((f) => (
+            <div key={f.q}>
+              <h3 className="text-[16px] font-extrabold">{f.q}</h3>
+              <p className="mt-1 text-[15px] leading-7 text-muted">{f.a}</p>
+            </div>
+          ))}
+        </div>
       </section>
 
       <section aria-labelledby="next-heading" className="flex flex-wrap gap-2">
