@@ -123,6 +123,14 @@ class JournalLine(BaseModel):
     vat_code: str | None = None
 
 
+class AutopilotDecision(BaseModel):
+    """What Autopilot decided for a proposal and why (app/autopilot.py)."""
+
+    auto_approve: bool
+    reasons: list[str]
+    supplier_key: str | None = None
+
+
 class Proposal(BaseModel):
     id: str
     doc_sha256: str
@@ -143,6 +151,8 @@ class Proposal(BaseModel):
     decided_at: datetime | None = None
     event_id: str | None = None
     reject_reason: str | None = None
+    autopilot: AutopilotDecision | None = None
+    undone_events: list[str] = Field(default_factory=list)  # ledger events reversed by an undo, oldest first
 
 
 # --------------------------------------------------------------------------- #

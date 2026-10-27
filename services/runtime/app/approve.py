@@ -1,17 +1,22 @@
 """A human decides: approve (post a balanced ledger event) or reject (park the document for a look).
 
-Agents never approve: `user` is always the person who tapped the button.
+Agents never approve on their own: `user` is the person who tapped the button, or "autopilot" when
+the scan applies a rule that person saved with "Always do this" (app/autopilot.py). Any posting can
+be undone, which appends a reversal event; nothing in the ledger is ever edited or deleted.
 """
 
 from __future__ import annotations
 
+import hashlib
 import re
 from datetime import date
 from typing import Any
 
 from accnomos_ledger.events import LedgerEvent, Line, VatCode
 
+from app.autopilot import AUTOPILOT, rule_from_proposal, save_rule
 from app.books import NEEDS_A_LOOK, Books, Rule, RuleMatch, now
+from app.checks import decide
 from app.journal import VAT_CONTROL, draft_journal, with_expense_account
 from app.schemas import CATEGORIES, ExtractedDoc, JournalLine, Proposal
 
@@ -70,9 +75,12 @@ def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEve
     sale = doc.doc_type == "sales_invoice"
     vat = sum((j.credit_pence if sale else j.debit_pence) for j in journal if j.account == VAT_CONTROL)
     gross = sum(j.debit_pence for j in journal)
+    # One event per approval: a retried approval cannot post twice. After an undo the proposal
+    # can be approved again, so each later approval gets its own (still deterministic) id.
+    event_id = hashlib.sha256(f"{p.id}:{len(p.undone_events)}".encode()).hexdigest()[:32] if p.undone_events else p.id
     try:
         return LedgerEvent(
-            id=p.id,  # one event per proposal: a retried approval cannot post twice
+            id=event_id,
             kind="sale" if sale else "purchase", date=when, lines=lines, evidence=[p.doc_sha256],
             approved_by=user, approved_at=now(), proposal_id=p.id, net=gross - vat, vat=vat,
             counterparty=(doc.customer_name if sale else None) or doc.supplier_name,
@@ -89,9 +97,11 @@ async def _open_proposal(books: Books, proposal_id: str) -> Proposal:
 
 
 async def approve(
-    books: Books, proposal_id: str, user: str, edits: dict[str, Any] | None = None, always: bool = False
+    books: Books, proposal_id: str, user: str, edits: dict[str, Any] | None = None, always: bool = False,
+    *, rebuild: bool = True,
 ) -> Proposal:
-    """Post the proposal to the ledger as `user`; with `always`, remember the supplier's account."""
+    """Post the proposal to the ledger as `user`; with `always`, remember this supplier's treatment
+    (the account rule and the Autopilot rule)."""
     p = await _open_proposal(books, proposal_id)
     apply_edits(p, edits or {})
     p.journal_draft = final_journal(p)
@@ -105,12 +115,21 @@ async def approve(
     p.status, p.event_id, p.decided_by, p.decided_at = "posted", event.id, user, now()
     await books.update_proposal(p)
     rule = await _remember(books, p, user) if always else None
-    await books.audit(f"user:{user}", "approved", {
+    auto_rule = rule_from_proposal(p, user) if always else None
+    if auto_rule:
+        await save_rule(books, auto_rule)
+    await books.audit(_actor(user), "approved", {
         "proposal": p.id, "event": event.id, "event_path": event_path, "doc": p.doc_sha256,
         "edits": sorted((edits or {}).keys()), "rule": rule.match.supplier_regex if rule else None,
+        "autopilot_rule": auto_rule.supplier_key if auto_rule else None,
     })
-    await books.rebuild_safely(user)
+    if rebuild:
+        await books.rebuild_safely(user)
     return p
+
+
+def _actor(user: str) -> str:
+    return AUTOPILOT if user == AUTOPILOT else f"user:{user}"
 
 
 async def _remember(books: Books, p: Proposal, user: str) -> Rule | None:
@@ -132,4 +151,66 @@ async def reject(books: Books, proposal_id: str, user: str, reason: str) -> Prop
     await books.update_proposal(p)
     await books.audit(f"user:{user}", "rejected", {"proposal": p.id, "doc": p.doc_sha256, "reason": reason, "path": p.file_path})
     await books.rebuild_safely(user)
+    return p
+
+
+def reversal_of(event: LedgerEvent, user: str) -> LedgerEvent:
+    """The event that cancels `event`: every line on the other side, same date, amounts and evidence.
+
+    Dated like the original so the VAT return for that period nets to nothing (vat.py counts
+    reversals negatively). Its id is derived from the original's, so a retried undo cannot post twice.
+    """
+    return LedgerEvent(
+        id=hashlib.sha256(f"{event.id}:undo".encode()).hexdigest()[:32], kind="reversal", date=event.date,
+        lines=[Line(account=ln.account, debit=ln.credit, credit=ln.debit, vat_code=ln.vat_code, memo=f"Undo of {event.id}")
+               for ln in event.lines],
+        evidence=event.evidence, approved_by=user, approved_at=now(), proposal_id=event.proposal_id,
+        reverses=event.id, net=event.net, vat=event.vat, counterparty=event.counterparty,
+    )
+
+
+async def undo(books: Books, event_id: str, user: str) -> tuple[LedgerEvent, Proposal | None]:
+    """Append a reversal of `event_id` and put its proposal back in Review. Raises FileNotFoundError
+    for an unknown event, ProposalStateError when it is already undone, ApprovalError otherwise."""
+    original = await books.get_event(event_id)
+    if original.kind == "reversal":
+        raise ApprovalError("This entry is itself an undo")
+    if any(e.reverses == event_id for e in await books.list_events()):
+        raise ProposalStateError("Already undone")
+    if any(event_id in ln.event_ids() for ln in await books.stored_bank_lines() if ln.status == "matched"):
+        raise ApprovalError("A bank line is matched to this entry; unmatch it first")
+    reversal = reversal_of(original, user)
+    try:
+        path = await books.post_event(reversal)
+    except FileExistsError as exc:
+        raise ProposalStateError("Already undone") from exc
+    p = await _reopen(books, original)
+    await books.audit(f"user:{user}", "undone", {
+        "event": event_id, "reversal": reversal.id, "reversal_path": path, "proposal": original.proposal_id,
+        "originally_approved_by": original.approved_by,
+    })
+    if original.approved_by == AUTOPILOT:
+        await books.audit_autopilot({
+            "action": "undone", "by": user, "event": event_id, "reversal": reversal.id, "proposal": original.proposal_id,
+        })
+    await books.rebuild_safely(user)
+    return reversal, p
+
+
+async def _reopen(books: Books, event: LedgerEvent) -> Proposal | None:
+    """Back to proposed (or needs a look, if a check fails) so the user can decide again."""
+    if not event.proposal_id:
+        return None
+    try:
+        p = await books.get_proposal(event.proposal_id)
+    except FileNotFoundError:
+        return None
+    if p.status != "posted" or p.event_id != event.id:
+        return p
+    p.status = decide(p.checks)[0]
+    p.event_id, p.decided_by, p.decided_at = None, None, None
+    p.undone_events.append(event.id)
+    if p.file_path:
+        await books.file_document(p, p.file_path)
+    await books.update_proposal(p)
     return p
