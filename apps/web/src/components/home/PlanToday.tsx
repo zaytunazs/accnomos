@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ExplainMore from "@/components/ExplainMore";
 import PlanCard, { dayLabel } from "@/components/plan/PlanCard";
 import { todayIso, useAccount } from "@/components/jobs/useAccount";
 
@@ -28,13 +29,18 @@ export default function PlanToday() {
 
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-white px-4 py-3">
-      <p className="text-sm font-semibold text-muted">
-        {account === null
-          ? "Sign in to plan your day from your calendar and open jobs."
-          : day
-            ? `Opening the plan for ${dayLabel(day)}…`
-            : "Visits grouped by postcode, travel, lunch and admin, around what is already in your calendar."}
-      </p>
+      <div className="flex min-w-0 flex-1 items-start gap-2">
+        <p className="min-w-0 flex-1 text-sm font-semibold text-muted">
+          {account === null
+            ? "Sign in to plan your day from your calendar and open jobs."
+            : day
+              ? `Opening the plan for ${dayLabel(day)}…`
+              : "Visits grouped by postcode, travel, lunch and admin, around what is already in your calendar."}
+        </p>
+        <ExplainMore title="How the day planner works" anchor="planner">
+          Code orders visits by postcode district around your calendar; the model only writes the rationale. Apply asks for calendar write permission and creates the events once per plan.
+        </ExplainMore>
+      </div>
       <button
         type="button"
         disabled={!account}

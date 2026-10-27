@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ExplainMore from "@/components/ExplainMore";
 import type { RtDashboard } from "@/lib/runtime";
 import { tiles as sampleTiles, type Tile } from "@/lib/sample-home";
 import { pounds, shortDate, Skeleton, UNKNOWN, useHome } from "./HomeData";
@@ -89,14 +90,30 @@ export default function Tiles() {
   );
 }
 
+const TILE_HELP: Record<string, { title: string; anchor: string; text: string }> = {
+  "Cash in bank": { title: "What Cash in bank means", anchor: "bank", text: "The balance from your imported statements, worked out by code. Import a statement and match a line to see it here." },
+  "Owed to you": { title: "What Owed to you means", anchor: "invoices", text: "Unpaid sales from your ledger, worked out by code. A matched bank line counts as full payment." },
+  "Owed by you": { title: "What Owed by you means", anchor: "bank", text: "Unpaid purchase bills from your ledger, worked out by code." },
+  "VAT estimate": { title: "What the VAT estimate means", anchor: "vat-periods", text: "Box 5 so far from approved entries, worked out by code for your VAT period. Annual returns are not estimated yet." },
+  "Needs attention": { title: "What Needs attention means", anchor: "receipts", text: "Proposals to approve, files needing a look, unmatched bank lines and overdue invoices. Nothing here posts by itself." },
+};
+
 function TileCard({ tile }: { tile: Tile }) {
   const warn = tile.tone === "warn";
+  const help = TILE_HELP[tile.label.split(" · ")[0]] ?? TILE_HELP[tile.label];
   const subClass = warn
     ? "text-sm font-bold text-warn-ink underline"
     : `text-[13px] font-semibold ${tile.tone === "amber" ? "text-amber" : "text-muted"}`;
   return (
     <div role="group" aria-label={tile.label} className={`rounded-2xl border p-4 ${warn ? "border-warn-border bg-warn-bg" : "border-border bg-white"}`}>
-      <p className={`text-sm font-semibold ${warn ? "text-warn-ink" : "text-muted"}`}>{tile.label}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className={`text-sm font-semibold ${warn ? "text-warn-ink" : "text-muted"}`}>{tile.label}</p>
+        {help && (
+          <ExplainMore title={help.title} anchor={help.anchor}>
+            {help.text}
+          </ExplainMore>
+        )}
+      </div>
       <p className={`mt-1 text-2xl font-extrabold tracking-tight ${warn ? "text-warn-ink" : "text-ink"}`}>{tile.value}</p>
       {tile.href ? (
         <Link href={tile.href} className={`mt-1 inline-block hover:underline ${subClass}`}>

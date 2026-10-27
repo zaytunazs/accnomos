@@ -1,5 +1,6 @@
 "use client";
 
+import ExplainMore from "@/components/ExplainMore";
 import type { RtPeriodDeadline } from "@/lib/runtime";
 import { deadlines as sampleDeadlines, type Deadline } from "@/lib/sample-home";
 import { Skeleton, UNKNOWN, useHome } from "./HomeData";
@@ -79,12 +80,17 @@ export default function Deadlines() {
 
   return (
     <section aria-labelledby="deadlines-heading" className="flex flex-col gap-3">
-      <h2
-        id="deadlines-heading"
-        className="text-lg font-extrabold tracking-tight"
-      >
-        Deadlines
-      </h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2
+          id="deadlines-heading"
+          className="text-lg font-extrabold tracking-tight"
+        >
+          Deadlines
+        </h2>
+        <ExplainMore title="How deadlines are worked out" anchor="vat-periods">
+          Deadlines and Box 5 so far are worked out by code from approved entries and your VAT stagger in Settings. With no business settings saved, stagger 1 is assumed.
+        </ExplainMore>
+      </div>
       <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-3">
         {tiles.map((d) => (
           <div

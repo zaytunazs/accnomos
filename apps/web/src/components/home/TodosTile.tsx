@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import ExplainMore from "@/components/ExplainMore";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
 import { RuntimeErrorNote } from "@/components/States";
 import { runtime, type RtTodo } from "@/lib/runtime";
@@ -46,7 +47,12 @@ export default function TodosTile() {
 
   return (
     <section aria-labelledby="home-todos" className="rounded-2xl border border-border bg-white p-4">
-      <h2 id="home-todos" className="text-sm font-semibold text-muted">To-dos</h2>
+      <div className="flex items-center justify-between gap-2">
+        <h2 id="home-todos" className="text-sm font-semibold text-muted">To-dos</h2>
+        <ExplainMore title="How to-dos work" anchor="inbox">
+          To-dos come from your inbox triage when you tap Add, and live in your OneDrive. Done removes one; nothing here sends email.
+        </ExplainMore>
+      </div>
       <p className="mt-1 text-2xl font-extrabold tracking-tight text-ink">{todos ? todos.length : "–"}</p>
       <p className={`text-[13px] font-semibold ${late ? "text-warn-ink" : "text-muted"}`}>
         {account === null ? "Sign in to keep a to-do list" : late ? `${late} overdue` : "Add them from your inbox"}

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import ExplainMore from "@/components/ExplainMore";
 import type { AccountInfo } from "@azure/msal-browser";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
 import { RuntimeErrorNote } from "@/components/States";
@@ -84,7 +85,12 @@ export default function InboxTriage() {
   if (!on) {
     return (
       <section aria-labelledby="home-inbox" className="rounded-2xl border border-border bg-white px-4 py-3">
-        <h2 id="home-inbox" className="text-[17px] font-extrabold text-ink">Inbox</h2>
+        <div className="flex items-start justify-between gap-2">
+          <h2 id="home-inbox" className="text-[17px] font-extrabold text-ink">Inbox</h2>
+          <ExplainMore title="How inbox triage works" anchor="inbox">
+            Triage reads only the sender, subject, date and short preview of the last 7 days, and your AI suggests a summary, reply and to-dos that code checks. Drafts wait in Outlook; nothing is ever sent.
+          </ExplainMore>
+        </div>
         <p className="mt-1 text-sm text-muted">
           A one-line summary of the week&apos;s emails from customers, suppliers, HMRC and your accountant, with suggested
           replies and to-dos.{" "}
@@ -103,15 +109,20 @@ export default function InboxTriage() {
   return (
     <section aria-labelledby="home-inbox" className="rounded-2xl border border-border bg-white px-4 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 id="home-inbox" className="text-[17px] font-extrabold text-ink">Inbox</h2>
-          <p className="text-[13px] font-medium text-muted">
-            {busy
-              ? "Reading the last 7 days…"
-              : last
-                ? `Last triage: ${ago(last.at)} · ${business.length} business thread${business.length === 1 ? "" : "s"}`
-                : "Last 7 days, business email only"}
-          </p>
+        <div className="flex min-w-0 items-start gap-2">
+          <div className="min-w-0">
+            <h2 id="home-inbox" className="text-[17px] font-extrabold text-ink">Inbox</h2>
+            <p className="text-[13px] font-medium text-muted">
+              {busy
+                ? "Reading the last 7 days…"
+                : last
+                  ? `Last triage: ${ago(last.at)} · ${business.length} business thread${business.length === 1 ? "" : "s"}`
+                  : "Last 7 days, business email only"}
+            </p>
+          </div>
+          <ExplainMore title="How inbox triage works" anchor="inbox">
+            Triage reads only the sender, subject, date and short preview of the last 7 days, and your AI suggests a summary, reply and to-dos that code checks. Drafts wait in Outlook; nothing is ever sent.
+          </ExplainMore>
         </div>
         <button
           type="button"
