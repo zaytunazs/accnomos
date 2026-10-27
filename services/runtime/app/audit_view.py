@@ -15,6 +15,7 @@ table still shows, as its own name ("Vehicle serviced"). Lines that do not parse
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import posixpath
@@ -467,12 +468,14 @@ async def read(
     # month early: read one month more of that log.
     action_months = months_between((lo.replace(day=1) - timedelta(days=1)).date(), last)
 
-    books_lines = [ln for m in months for ln in await _lines(books, f"{AUDIT}/{m}.jsonl")]
+    per_month = await asyncio.gather(*(_lines(books, f"{AUDIT}/{m}.jsonl") for m in months))
+    books_lines = [ln for lines in per_month for ln in lines]
     named = any(isinstance(r := ln.get("refs"), dict) and r.get("proposal") for ln in books_lines)
     names = await _supplier_names(books) if named else {}
     entries = [e for ln in books_lines if (e := from_books_line(ln, names))]
-    for m in action_months:
-        entries += [e for ln in await _lines(books, f"{ACTIONS_AUDIT}/{m}.jsonl") if (e := from_action_line(ln))]
+    per_actions = await asyncio.gather(*(_lines(books, f"{ACTIONS_AUDIT}/{m}.jsonl") for m in action_months))
+    for batch in per_actions:
+        entries += [e for ln in batch if (e := from_action_line(ln))]
 
     kept = [e for e in entries if lo <= e.ts < hi and matches(e, actor, kind)]
     kept.sort(key=lambda e: e.ts, reverse=True)

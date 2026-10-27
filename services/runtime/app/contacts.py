@@ -28,6 +28,7 @@ the user owes the contact.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import re
 import uuid
@@ -164,20 +165,30 @@ async def load_ledger(books: Books) -> Ledger:
     from app.credit_notes import list_credit_notes  # both import this module
     from app.invoicing import list_invoices
 
+    # The seven reads are independent and go out together, in two waves: invoices and credit notes (for refs),
+    # then events, proposals, bank lines, payments and credit uses.
+    invoices, credit_notes = await asyncio.gather(list_invoices(books), list_credit_notes(books))
+    events, proposals, bank_lines, records, uses = await asyncio.gather(
+        books.list_events(),
+        books.list_proposals(),
+        books.stored_bank_lines(),
+        load_records(books),
+        load_uses(books),
+    )
     refs: dict[str, str] = {}
     dues: dict[str, date] = {}
-    for inv in await list_invoices(books):
+    for inv in invoices:
         if inv.event_id:
             refs[inv.event_id], dues[inv.event_id] = inv.number, inv.due_date
-    for cn in await list_credit_notes(books):
+    for cn in credit_notes:
         if cn.event_id:
             refs[cn.event_id] = cn.number
     return Ledger(
-        events=await books.list_events(),
-        proposals={p.id: p for p in await books.list_proposals()},
-        bank_lines=await books.stored_bank_lines(),
-        records=await load_records(books),
-        uses=await load_uses(books),
+        events=events,
+        proposals={p.id: p for p in proposals},
+        bank_lines=bank_lines,
+        records=records,
+        uses=uses,
         refs=refs,
         dues=dues,
     )

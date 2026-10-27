@@ -29,6 +29,7 @@ tests/test_integration.py checks that everything written fits it.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
@@ -184,7 +185,17 @@ def bank_of(path: str) -> str:
 class Books:
     """Typed operations on the books folder over any StorageProvider."""
 
-    def __init__(self, storage: StorageProvider) -> None:
+    def __init__(self, storage: StorageProvider, cache_key: str | None = None) -> None:
+        """`cache_key` (a hash identifying the user, see app/cache.py) switches on per-request
+        memoisation of repeated reads plus the per-user cache of immutable event files. Without
+        it the storage is used as given, one round trip per read."""
+        if cache_key is not None:
+            from app.cache import RequestMemoStorage
+
+            if not isinstance(storage, RequestMemoStorage):
+                storage = RequestMemoStorage(storage, cache_key)
+            elif storage.user_key is None:
+                storage.user_key = cache_key
         self.storage = storage
 
     # ------------------------------------------------------------------ #
@@ -288,12 +299,14 @@ class Books:
         return Proposal.model_validate_json(await self.storage.read(f"{PROPOSALS}/{proposal_id}.json"))
 
     async def list_proposals(self, status: ProposalStatus | None = None) -> list[Proposal]:
-        out: list[Proposal] = []
-        for f in await self.list_files(PROPOSALS):
-            if f.name.endswith(".json"):
-                p = Proposal.model_validate_json(await self.storage.read(f.path))
-                if status is None or p.status == status:
-                    out.append(p)
+        files = [f for f in await self.list_files(PROPOSALS) if f.name.endswith(".json")]
+
+        async def read_one(path: str) -> Proposal:
+            return Proposal.model_validate_json(await self.storage.read(path))
+
+        out = [
+            p for p in await asyncio.gather(*(read_one(f.path) for f in files)) if status is None or p.status == status
+        ]
         return sorted(out, key=lambda p: p.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
 
     # ------------------------------------------------------------------ #
@@ -341,14 +354,19 @@ class Books:
             months = [m for m in months if m >= start.strftime("%Y-%m")]
         if end:
             months = [m for m in months if m <= end.strftime("%Y-%m")]
-        entries: list[tuple[str, LedgerEvent]] = []
-        for m in sorted(months):
+
+        async def read_month(m: str) -> list[tuple[str, LedgerEvent]]:
+            out: list[tuple[str, LedgerEvent]] = []
             for f in await self.list_files(f"{EVENTS}/{m}"):
                 if not f.name.endswith(".json"):
                     continue
                 ev = LedgerEvent.model_validate_json(await self.storage.read(f.path))
                 if (start is None or ev.date >= start) and (end is None or ev.date <= end):
-                    entries.append((f.path, ev))
+                    out.append((f.path, ev))
+            return out
+
+        per_month = await asyncio.gather(*(read_month(m) for m in sorted(months)))
+        entries = [pe for month_entries in per_month for pe in month_entries]
         entries.sort(key=lambda pe: (pe[1].date, pe[1].approved_at))
         return entries
 
@@ -423,9 +441,8 @@ class Books:
 
     async def stored_bank_lines(self) -> list[BankLine]:
         """Every imported bank line as stored, oldest first."""
-        out: list[BankLine] = []
-        for f in await self._bank_files():
-            out += await self._read_bank_file(f.path)
+        per_file = await asyncio.gather(*(self._read_bank_file(f.path) for f in await self._bank_files()))
+        out: list[BankLine] = [ln for lines in per_file for ln in lines]
         return sorted(out, key=lambda ln: (ln.date, ln.id))
 
     async def import_bank_csv(self, data: bytes, name: str, user: str = "user") -> BankImport:

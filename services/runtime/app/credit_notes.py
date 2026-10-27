@@ -23,6 +23,7 @@ Statuses: issued -> void. Voiding appends a reversal of the credit note (nothing
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import hashlib
 from collections import defaultdict
@@ -145,11 +146,16 @@ async def list_credit_notes(books: Books, invoice: str | None = None) -> list[Cr
         files = await books.list_files(CREDIT_NOTES)
     except FileNotFoundError:
         return []
-    for f in files:
-        if f.name.endswith(".json") and ID_RE.fullmatch(f.name.removesuffix(".json")):
-            cn = CreditNote.model_validate_json(await books.storage.read(f.path), **LENIENT)
-            if invoice is None or cn.invoice == invoice:
-                out.append(cn)
+    matching = [f for f in files if f.name.endswith(".json") and ID_RE.fullmatch(f.name.removesuffix(".json"))]
+
+    async def read_one(path: str) -> CreditNote:
+        return CreditNote.model_validate_json(await books.storage.read(path), **LENIENT)
+
+    out = [
+        cn
+        for cn in await asyncio.gather(*(read_one(f.path) for f in matching))
+        if invoice is None or cn.invoice == invoice
+    ]
     return sorted(out, key=lambda c: (c.issue_date, c.number), reverse=True)
 
 

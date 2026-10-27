@@ -10,6 +10,7 @@ isolated: it propagates, so the whole request is a 401 and the app signs the use
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -272,9 +273,10 @@ def last_runs(audit: Sequence[dict[str, Any]], autopilot: Sequence[dict[str, Any
 async def read_audit(books: Books, folder: str, months: int = AUDIT_MONTHS) -> list[dict[str, Any]]:
     """Lines of the last `months` monthly files in `folder`, with `ts` parsed; lines that do not parse are skipped."""
     files = sorted((f for f in await books.list_files(folder) if MONTH_FILE.fullmatch(f.name)), key=lambda f: f.name)
-    out: list[dict[str, Any]] = []
-    for f in files[-months:]:
-        for raw in (await books.storage.read(f.path)).decode("utf-8", "replace").splitlines():
+
+    async def read_one(path: str) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for raw in (await books.storage.read(path)).decode("utf-8", "replace").splitlines():
             try:
                 line = json.loads(raw)
                 line["ts"] = datetime.fromisoformat(line["ts"])
@@ -282,7 +284,10 @@ async def read_audit(books: Books, folder: str, months: int = AUDIT_MONTHS) -> l
                 continue
             if isinstance(line, dict) and line["ts"].tzinfo is not None:
                 out.append(line)
-    return out
+        return out
+
+    per_file = await asyncio.gather(*(read_one(f.path) for f in files[-months:]))
+    return [line for lines in per_file for line in lines]
 
 
 class _Reads:
@@ -326,10 +331,13 @@ async def build(
         return {p.id: p for p in await books.list_proposals()}
 
     # The ledger's three parts are read on their own, so one hand-edited file only blanks the tiles that need it.
-    events = await reads.run("ledger", books.list_events)
-    proposals = await reads.run("proposals", load_proposals)
-    bank_lines = await reads.run("bank", books.stored_bank_lines)
-    records = await reads.run("payments", lambda: load_records(books))
+    # The independent reads go out together: each is one Graph round trip per file.
+    events, proposals, bank_lines, records = await asyncio.gather(
+        reads.run("ledger", books.list_events),
+        reads.run("proposals", load_proposals),
+        reads.run("bank", books.stored_bank_lines),
+        reads.run("payments", lambda: load_records(books)),
+    )
     ledger = cb.Ledger(
         events=events or [], proposals=proposals or {}, bank_lines=bank_lines or [], records=records or []
     )
@@ -350,9 +358,13 @@ async def build(
     # Owed needs the events and the bank lines (payments); proposals only add labels.
     owed_pair = await reads.run("owed", money) if events is not None and bank_lines is not None else None
     overdue = owed_pair[0].overdue if owed_pair else None
-    audit = await reads.run("audit", lambda: read_audit(books, AUDIT)) or []
-    autopilot = await reads.run("autopilot audit", lambda: read_audit(books, AUTOPILOT_AUDIT)) or []
-    last_scan = await reads.run("last scan", books.last_scan)
+    audit, autopilot, last_scan = await asyncio.gather(
+        reads.run("audit", lambda: read_audit(books, AUDIT)),
+        reads.run("autopilot audit", lambda: read_audit(books, AUTOPILOT_AUDIT)),
+        reads.run("last scan", books.last_scan),
+    )
+    audit = audit or []
+    autopilot = autopilot or []
     cash_tile = await reads.run("cash", cash) if bank_lines is not None else None
     vat_tile = await reads.run("vat", vat) if events is not None else None
     return Dashboard(

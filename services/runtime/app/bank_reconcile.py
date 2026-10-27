@@ -22,6 +22,7 @@ rule or AI coding builds a proposal from the line and posts it through the same
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from typing import Any, Literal
 
@@ -119,17 +120,22 @@ async def suggest_exact(books: Books, line: Any) -> ExactSuggestion | None:
     if not haystack.strip():
         return None
 
-    taken = {i for ln in await books.stored_bank_lines() if ln.status == "matched" for i in ln.event_ids()}
     from app.contacts import load_ledger
     from app.payments import settled_documents
 
-    taken |= settled_documents(await load_ledger(books))  # already paid another way: never matched again
+    async def open_for_match() -> list:
+        try:
+            return await inv_.list_invoices(books, "sent")
+        except ValueError:  # a hand-edited invoices file must not stop the rest of the page
+            log.warning("invoices file unreadable; skipping invoice exact matches")
+            return []
 
-    try:
-        open_invoices = await inv_.list_invoices(books, "sent")
-    except ValueError:  # a hand-edited invoices file must not stop the rest of the page
-        log.warning("invoices file unreadable; skipping invoice exact matches")
-        open_invoices = []
+    # The four reads are independent; each is one Graph round trip per file.
+    bank_lines, ledger, open_invoices, live = await asyncio.gather(
+        books.stored_bank_lines(), load_ledger(books), open_for_match(), books.live_events()
+    )
+    taken = {i for ln in bank_lines if ln.status == "matched" for i in ln.event_ids()}
+    taken |= settled_documents(ledger)  # already paid another way: never matched again
     for inv in open_invoices:
         if inv.event_id is None or inv.event_id in taken:
             continue
@@ -147,7 +153,7 @@ async def suggest_exact(books: Books, line: Any) -> ExactSuggestion | None:
 
     # Bills: posted purchases waiting for payment, with the supplier's invoice
     # number on the proposal behind them.
-    for event in await books.live_events():
+    for event in live:
         if event.kind != "purchase" or event.id in taken:
             continue
         if settlement_pence(event) != line.amount_pence:
@@ -278,11 +284,15 @@ async def reconcile_lines(
     for line in stored:
         if line.resolved:
             continue
-        exact = await suggest_exact(books, line)
         if ledger is None:
             ledger = await load_ledger(books)
-        refund = await suggest_refund(books, line, ledger)
-        rule = await suggest_rule(books, line)
+        # The three code suggestions are independent; the model one stays last (it is the only one with side effects
+        # on latency, one model call per line when asked).
+        exact, refund, rule = await asyncio.gather(
+            suggest_exact(books, line),
+            suggest_refund(books, line, ledger),
+            suggest_rule(books, line),
+        )
         ai = await suggest_ai(line, cfg, accounts) if with_ai and cfg is not None else None
         if exact is None and refund is None and rule is None and ai is None:
             continue
