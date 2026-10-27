@@ -242,7 +242,6 @@ export const runtime = {
   aged: (a: AccountInfo) => call<RtAged>(a, "/contacts/aged"),
 };
 
-/** Jobs, staff and timesheets (services/runtime/app/jobs.py). Money is integer pence; hours are 0.25 steps. */
 /** Day planner (services/runtime/app/planner.py, routes_plan.py). Times carry their UK offset. */
 export interface RtPlanItem {
   kind: "visit" | "travel" | "lunch" | "admin" | "existing";
@@ -291,6 +290,7 @@ export interface RtPlanApplied {
   mileage_proposals: RtMileageProposal[];
 }
 
+/** Jobs, staff and timesheets (services/runtime/app/jobs.py). Money is integer pence; hours are 0.25 steps. */
 export interface RtJobIn {
   name: string;
   customer_id: string | null;
