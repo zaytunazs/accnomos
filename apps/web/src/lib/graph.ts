@@ -83,6 +83,17 @@ export async function getRoot(account: AccountInfo): Promise<DriveItem> {
   return graph<DriveItem>(token, `${itemPath(account)}?$select=id,name,webUrl,size,lastModifiedDateTime,folder`);
 }
 
+/** OneDrive web URL of one file or folder in the books tree, for opening a cited file. Null when it cannot be read. */
+export async function getFileWebUrl(account: AccountInfo, relPath: string): Promise<string | null> {
+  try {
+    const token = await getToken(storageScopesFor(account));
+    const item = await graph<DriveItem>(token, `${itemPath(account, relPath)}?$select=webUrl`);
+    return item.webUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
 /** Direct children of a folder in the books tree ("" = the root), following Graph's paging. Read-only. */
 export async function listChildren(account: AccountInfo, relPath = ""): Promise<DriveItem[]> {
   const token = await getToken(storageScopesFor(account));
