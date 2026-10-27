@@ -894,3 +894,220 @@ async def import_outlook(books: Books, entries: Sequence[AddressBookContact], ad
     await save_contacts(books, merged)
     await books.audit(f"user:{user}", "contacts_imported", {"source": "outlook", **result.model_dump()})
     return result
+
+
+# --------------------------------------------------------------------------- #
+# Possible duplicates: candidates by code (the AI only ever gives its view)
+# --------------------------------------------------------------------------- #
+
+#: Pairs the user said are not the same business: sorted id pairs, never suggested again.
+NOT_SAME = f"{SYSTEM}/Contacts/not_same.json"
+#: Merge records, one file per merge, so a merge can be undone exactly.
+MERGES = f"{SYSTEM}/Contacts/merges"
+
+#: Name words too common to link two contacts on their own.
+_STOP_WORDS = frozenset(
+    {"ltd", "limited", "plc", "llp", "uk", "co", "company", "services", "group", "holdings", "the", "and"}
+)
+
+
+def normalise_email(raw: str | None) -> str | None:
+    """Lower-cased email, or None when there is none (or nothing shaped like one)."""
+    v = (raw or "").strip().lower()
+    return v if v and EMAIL_RE.fullmatch(v) else None
+
+
+def normalise_phone(raw: str | None) -> str | None:
+    """UK phone number as digits starting with 0 (`+44 117 ...`, `0044...` and spaces/dashes all count)."""
+    if not raw or not raw.strip():
+        return None
+    digits = re.sub(r"\D", "", raw)
+    if digits.startswith("0044"):
+        digits = "0" + digits[4:]
+    elif digits.startswith("44") and len(digits) > 10:
+        digits = "0" + digits[2:]
+    return digits if len(digits) >= 7 else None
+
+
+def _name_tokens(c: Contact) -> set[str]:
+    """Significant words in the contact's names: its key and aliases, split up, stop words dropped."""
+    out: set[str] = set()
+    for key in (c.normalised_key, *c.aliases):
+        out.update(t for t in key.split("-") if len(t) >= 4 and t not in _STOP_WORDS)
+    return out
+
+
+def _email_domain(email: str | None) -> str | None:
+    """`screwfix.com` from `name@screwfix.com` (free mail providers count too: they are still evidence)."""
+    if not email or "@" not in email:
+        return None
+    return email.rsplit("@", 1)[1].strip().lower().removeprefix("www.") or None
+
+
+def _domain_tokens(domain: str) -> set[str]:
+    return {t for t in re.split(r"[^a-z0-9]+", domain.lower()) if len(t) >= 4 and t not in _STOP_WORDS}
+
+
+class DuplicateAI(BaseModel):
+    """The model's view of one candidate group: advisory only, never acted on by code alone."""
+
+    same: bool
+    confidence: float = Field(ge=0, le=1)
+    keep_name: str = ""
+    reason: str = ""
+
+
+class DuplicateGroup(BaseModel):
+    contact_ids: list[str]
+    evidence: list[str]
+    blocked: bool = False  # different VAT numbers: code never suggests these as the same business
+    ai: DuplicateAI | None = None
+
+
+def _pair_evidence(a: Contact, b: Contact) -> tuple[list[str], bool]:
+    """(evidence strings, whether the VAT numbers conflict). Empty evidence means no candidate pair."""
+    evidence: list[str] = []
+    va, vb = (a.vrn or "").strip().upper(), (b.vrn or "").strip().upper()
+    conflict = bool(va and vb and va != vb)
+    if va and va == vb:
+        evidence.append(f"same VAT number {va}")
+    ea, eb = normalise_email(a.email), normalise_email(b.email)
+    if ea and ea == eb:
+        evidence.append(f"same email {ea}")
+    pa, pb = normalise_phone(a.phone), normalise_phone(b.phone)
+    if pa and pa == pb:
+        evidence.append(f"same phone {pa}")
+    keys_a, keys_b = {a.normalised_key, *a.aliases}, {b.normalised_key, *b.aliases}
+    if keys_a & keys_b:
+        evidence.append(f"same normalised name {(keys_a & keys_b).pop()}")
+    else:
+        ta, tb = _name_tokens(a), _name_tokens(b)
+        if shared := sorted(ta & tb):
+            evidence.append(f"share name {('word' if len(shared) == 1 else 'words')}: {', '.join(shared)}")
+        da, db = _email_domain(ea), _email_domain(eb)
+        for dom, other_tokens, other_name in ((da, tb, b.name), (db, ta, a.name)):
+            if dom and _domain_tokens(dom) & other_tokens:
+                evidence.append(f"email domain {dom} matches {other_name!r}")
+                break
+    return evidence, conflict
+
+
+def _dismissed_key(ids: Sequence[str]) -> list[str]:
+    return sorted(ids)
+
+
+async def load_not_same(books: Books) -> set[tuple[str, str]]:
+    """Id pairs the user said are not the same business (a hand-edited file never breaks the read)."""
+    try:
+        raw = await books.read_json(NOT_SAME, [])
+    except ValueError:
+        return set()
+    out: set[tuple[str, str]] = set()
+    for pair in raw if isinstance(raw, list) else []:
+        if isinstance(pair, list) and len(pair) == 2 and all(isinstance(x, str) for x in pair):
+            out.add((pair[0], pair[1]) if pair[0] <= pair[1] else (pair[1], pair[0]))
+    return out
+
+
+async def remember_not_same(books: Books, ids: Sequence[str], user: str) -> None:
+    """Remember that these contacts are not the same business; they are never suggested again."""
+    key = _dismissed_key([i for i in ids if i])
+    if len(key) < 2:
+        raise ValueError("Need at least two contacts to dismiss")
+    pairs = await load_not_same(books)
+    changed = False
+    for i in range(len(key)):
+        for j in range(i + 1, len(key)):
+            if (key[i], key[j]) not in pairs:
+                pairs.add((key[i], key[j]))
+                changed = True
+    if changed:
+        await books._update_json(NOT_SAME, [], lambda _old: sorted([list(p) for p in pairs]))
+    await books.audit(f"user:{user}", "contacts_not_same", {"contacts": key})
+
+
+def find_duplicate_groups(
+    contacts: Sequence[Contact], dismissed: set[tuple[str, str]] | None = None
+) -> list[DuplicateGroup]:
+    """Candidate duplicate groups by code. A pair links only on hard evidence (shared email, phone, VAT
+    number, normalised name or email domain); a close name alone never links across different VAT numbers.
+    Groups carrying two different VAT numbers are marked `blocked`: never suggested as the same business."""
+    dismissed = dismissed or set()
+    parent = {c.id: c.id for c in contacts}
+
+    def root(x: str) -> str:
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    pair_evidence: dict[tuple[str, str], tuple[list[str], bool]] = {}
+    for i in range(len(contacts)):
+        for j in range(i + 1, len(contacts)):
+            a, b = contacts[i], contacts[j]
+            key = (a.id, b.id) if a.id <= b.id else (b.id, a.id)
+            if key in dismissed:
+                continue
+            evidence, conflict = _pair_evidence(a, b)
+            if not evidence:
+                continue
+            hard = any(
+                e.startswith(("same email", "same phone", "same VAT", "same normalised", "email domain"))
+                for e in evidence
+            )
+            if not hard and conflict:
+                continue  # a close name across different VAT numbers: two businesses, not a candidate
+            parent[root(a.id)] = root(b.id)
+            pair_evidence[key] = (evidence, conflict)
+    groups: dict[str, list[Contact]] = {}
+    for c in contacts:
+        groups.setdefault(root(c.id), []).append(c)
+    out: list[DuplicateGroup] = []
+    for members in groups.values():
+        for part in _split_dismissed(members, dismissed):
+            if len(part) < 2:
+                continue
+            evidence: list[str] = []
+            blocked = len({(c.vrn or "").strip().upper() for c in part if c.vrn}) > 1
+            for i in range(len(part)):
+                for j in range(i + 1, len(part)):
+                    key = (part[i].id, part[j].id)
+                    key = key if key[0] <= key[1] else (key[1], key[0])
+                    ev, conflict = pair_evidence.get(key, ([], False))
+                    if conflict:
+                        blocked = True
+                    for e in ev:
+                        if e not in evidence:
+                            evidence.append(e)
+            if blocked:
+                vrns = sorted({(c.vrn or "").strip().upper() for c in part if c.vrn})
+                if len(vrns) > 1:
+                    evidence.append(f"different VAT numbers: {', '.join(vrns)}")
+            out.append(
+                DuplicateGroup(
+                    contact_ids=sorted(c.id for c in part), evidence=sorted(evidence), blocked=blocked
+                )
+            )
+    return sorted(out, key=lambda g: g.contact_ids)
+
+
+def _split_dismissed(members: list[Contact], dismissed: set[tuple[str, str]]) -> list[list[Contact]]:
+    """Split a linked component so no dismissed pair shares a group: repeatedly drop the member with
+    the most dismissals inside the group (ties: the smallest id, so it is deterministic)."""
+    remaining = sorted(members, key=lambda c: c.id)
+    while True:
+        counts: dict[str, int] = {c.id: 0 for c in remaining}
+        for i in range(len(remaining)):
+            for j in range(i + 1, len(remaining)):
+                key = (remaining[i].id, remaining[j].id)
+                key = key if key[0] <= key[1] else (key[1], key[0])
+                if key in dismissed:
+                    counts[remaining[i].id] += 1
+                    counts[remaining[j].id] += 1
+        worst = max(counts.values(), default=0)
+        if not worst:
+            return [remaining]
+        drop = sorted(cid for cid, n in counts.items() if n == worst)[0]
+        remaining = [c for c in remaining if c.id != drop]
+        if len(remaining) < 2:
+            return []
