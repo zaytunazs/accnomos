@@ -153,10 +153,14 @@ def _lines_to_net(doc: ExtractedDoc) -> int:
         or any(ln.vat_rate is None for ln in doc.lines)
     ):
         return 0
-    split = [(round(a * 100 / (100 + (ln.vat_rate or 0))), ln) for a, ln in zip(incl, doc.lines)]
-    if abs(sum(n for n, _ in split) - net) > tol or abs(sum(a - n for a, (n, _) in zip(incl, split)) - vat) > tol:
+    # incl is built from doc.lines and split from incl, so the lengths always match
+    split = [(round(a * 100 / (100 + (ln.vat_rate or 0))), ln) for a, ln in zip(incl, doc.lines, strict=True)]
+    if (
+        abs(sum(n for n, _ in split) - net) > tol
+        or abs(sum(a - n for a, (n, _) in zip(incl, split, strict=True)) - vat) > tol
+    ):
         return 0
-    for a, (n, ln) in zip(incl, split):
+    for a, (n, ln) in zip(incl, split, strict=True):
         ln.net, ln.vat = n / 100, (a - n) / 100
     return len(split)
 
@@ -172,10 +176,14 @@ def _fix_unit_prices(doc: ExtractedDoc) -> int:
     fixed = 0
     for ln in doc.lines:
         ext = round(ln.qty * ln.unit_price * 100)
-        if ln.qty > 1 and abs(ext - p(ln.net)) > 1 and abs(ext - p(ln.net + ln.vat)) > 1:
-            if abs(p(ln.unit_price) - p(ln.net)) <= 1 or abs(p(ln.unit_price) - p(ln.net + ln.vat)) <= 1:
-                ln.unit_price = round(ln.unit_price / ln.qty, 2)
-                fixed += 1
+        if (
+            ln.qty > 1
+            and abs(ext - p(ln.net)) > 1
+            and abs(ext - p(ln.net + ln.vat)) > 1
+            and (abs(p(ln.unit_price) - p(ln.net)) <= 1 or abs(p(ln.unit_price) - p(ln.net + ln.vat)) <= 1)
+        ):
+            ln.unit_price = round(ln.unit_price / ln.qty, 2)
+            fixed += 1
     return fixed
 
 

@@ -54,14 +54,14 @@ from app import invoicing, jobs, mileage  # noqa: E402
 from app.approve import approve  # noqa: E402
 from app.autopilot import supplier_key  # noqa: E402
 from app.books import Books, DocMeta, now  # noqa: E402
-from app.checks import (
+from app.checks import (  # noqa: E402  sys.path first
     FULL_INVOICE_THRESHOLD_GBP,
     UNKNOWN_SUPPLIER,
     SupplierKnowledge,
     decide,
     normalise_vat_number,
     run_checks,
-)  # noqa: E402
+)
 from app.deadlines import STAGGER_START_MONTH, add_months, period_containing, period_label, previous_period  # noqa: E402
 from app.journal import BANK, VAT_CONTROL, draft_journal  # noqa: E402
 from app.paths import INBOX, readme_text  # noqa: E402
