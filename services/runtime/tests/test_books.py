@@ -236,7 +236,9 @@ H = {"X-Graph-Token": "tok", "X-User": "sam@example.co.uk", "X-AI-Mode": "local"
 
 def test_routes_scan_approve_reject_summary(client: TestClient, fake: FakeStorageProvider) -> None:
     fake.files.update({"00 Inbox/a.jpg": SCREWFIX, "00 Inbox/b.jpg": TOOLSTATION, "00 Inbox/c.jpg": SCREWFIX})
-    scanned = client.post("/books/scan", headers=H).json()
+    result = client.post("/books/scan", headers=H).json()
+    scanned = result["proposals"]
+    assert result["errors"] == []
     assert [p["status"] for p in scanned] == ["proposed", "proposed", "needs_a_look"]
     a, b, _dup = (p["id"] for p in scanned)
 
