@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { createBooksFolder, expect, signIn, test } from "./fixtures";
 
 test("three actions in the books show on /audit with who did them; filters and CSV export work", async ({ page, runtime }) => {
+  test.slow(); // three real actions plus a CSV download: runs past 30 s when the full suite loads the machine
   await signIn(page);
   await createBooksFolder(page);
 
