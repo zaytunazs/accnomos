@@ -204,10 +204,7 @@ async def undo_route(
     if submitted is not None:
         current = cycle.current(day)
         reversal_date, submitted_label, current_label = day, period_label(*submitted), period_label(*current)
-        reason = (
-            f"Your return for {submitted_label} was already submitted, "
-            f"so this correction goes in {current_label}."
-        )
+        reason = f"Your return for {submitted_label} was already submitted, so this correction goes in {current_label}."
     try:
         reversal, p = await undo(books, event_id, user, reversal_date=reversal_date)
     except FileNotFoundError as exc:

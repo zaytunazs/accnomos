@@ -120,9 +120,7 @@ def install_log_scrubbing() -> None:
             # Re-scrub even when an inner install already formatted it: its secrets are a
             # different service's (empty here), and scrubbing is idempotent. Without this, two
             # installs in one process (the combined pytest run) leak through the inner one's text.
-            record.exc_text = scrub(
-                record.exc_text or logging.Formatter().formatException(record.exc_info)
-            )
+            record.exc_text = scrub(record.exc_text or logging.Formatter().formatException(record.exc_info))
         return record
 
     logging.setLogRecordFactory(factory)

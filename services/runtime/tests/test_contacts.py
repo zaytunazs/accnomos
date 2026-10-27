@@ -572,9 +572,7 @@ def test_phone_import_rejects_bad_rows(client: TestClient, fake: FakeStorageProv
     """A bad email is a 400 that writes nothing; an unknown field is a 422."""
     client.post("/contacts/refresh", headers=H)
     before = fake.files[cb.CONTACTS]
-    r = client.post(
-        "/contacts/import-phone", headers=H, json={"contacts": [{"name": "Mum", "email": "nope"}]}
-    )
+    r = client.post("/contacts/import-phone", headers=H, json={"contacts": [{"name": "Mum", "email": "nope"}]})
     assert r.status_code == 400
     assert fake.files[cb.CONTACTS] == before
     assert "contacts_imported" not in _audit(fake)
@@ -584,7 +582,10 @@ def test_phone_import_rejects_bad_rows(client: TestClient, fake: FakeStorageProv
         json={"contacts": [{"name": "Mum", "kind": "customer", "nickname": "Mum"}]},
     )
     assert r.status_code == 422
-    assert client.post("/contacts/import-phone", headers={"X-Graph-Token": "tok"}, json={"contacts": []}).status_code == 400
+    assert (
+        client.post("/contacts/import-phone", headers={"X-Graph-Token": "tok"}, json={"contacts": []}).status_code
+        == 400
+    )
 
 
 def test_phone_import_never_overwrites() -> None:

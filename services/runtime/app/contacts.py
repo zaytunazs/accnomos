@@ -964,9 +964,7 @@ def merge_phone_picks(
     return sorted(book, key=lambda c: c.name.lower()), result
 
 
-async def import_phone(
-    books: Books, entries: Sequence[PhonePickedContact], user: str
-) -> ImportResult:
+async def import_phone(books: Books, entries: Sequence[PhonePickedContact], user: str) -> ImportResult:
     """Save the phone-picked contacts into contacts.json (read-only on the
     phone side: nothing is written back to the phone)."""
     contacts, _, _ = await contact_book(books)

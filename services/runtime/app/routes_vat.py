@@ -24,12 +24,12 @@ from app.deadlines import (
 )
 from app.paths import SYSTEM, VAT_RETURNS
 from app.routes_books import get_books, require_user
+from app.vat_cycle import VatCycle, vat_cycle
 
 #: HMRC obligations the web app fetched through the relay and posted back, so a return
 #: filed elsewhere still shows as submitted. The runtime holds no HMRC token; this file
 #: is the only thing it can know about HMRC's own list.
 OBLIGATIONS_PATH = f"{SYSTEM}/vat/obligations.json"
-from app.vat_cycle import VatCycle, vat_cycle
 
 router = APIRouter(prefix="/books", tags=["vat"])
 
@@ -209,7 +209,9 @@ async def vat_return(
     }
     amounts = box_amounts(ret)
     receipt_key = (await submitted_periods(books)).get((start, end))
-    fulfilled = next((o for o in await read_obligations(books) if (o.start, o.end) == (start, end) and o.status == "F"), None)
+    fulfilled = next(
+        (o for o in await read_obligations(books) if (o.start, o.end) == (start, end) and o.status == "F"), None
+    )
     if fulfilled is not None:
         period_key, submitted, source, received = fulfilled.periodKey, True, "hmrc", fulfilled.received
     elif receipt_key is not None:
@@ -288,12 +290,8 @@ async def vat_periods(
         match = obligations.get((s, e))
         fulfilled = match if match is not None and match.status == "F" else None
         key = (fulfilled.periodKey if fulfilled else None) or submitted.get((s, e))
-        source: Literal["hmrc", "accnomos"] | None = (
-            "hmrc" if fulfilled else ("accnomos" if key is not None else None)
-        )
-        status: Literal["open", "submitted", "none"] = (
-            "submitted" if key else "open" if (i == 0 or entries) else "none"
-        )
+        source: Literal["hmrc", "accnomos"] | None = "hmrc" if fulfilled else ("accnomos" if key is not None else None)
+        status: Literal["open", "submitted", "none"] = "submitted" if key else "open" if (i == 0 or entries) else "none"
         periods.append(
             VatPeriod(
                 period=period_id(s, cycle.months),
@@ -323,7 +321,10 @@ async def post_obligations(
     (periodKey, start, end, due, status O/F, received); replaces what was stored before."""
     await books.write_json(
         OBLIGATIONS_PATH,
-        {"obligations": [o.model_dump(mode="json") for o in body.obligations], "updated_at": current_date().isoformat()},
+        {
+            "obligations": [o.model_dump(mode="json") for o in body.obligations],
+            "updated_at": current_date().isoformat(),
+        },
     )
     return {"stored": len(body.obligations)}
 

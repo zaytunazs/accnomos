@@ -160,9 +160,7 @@ async def import_phone(
         return await cb.import_phone(
             books,
             [
-                cb.PhonePickedContact(
-                    name=c.name, kind=c.kind, email=c.email, phone=c.phone, address=c.address
-                )
+                cb.PhonePickedContact(name=c.name, kind=c.kind, email=c.email, phone=c.phone, address=c.address)
                 for c in body.contacts
             ],
             user,
