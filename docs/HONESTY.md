@@ -20,8 +20,8 @@ in `apps/web` passes; the Playwright suite was not re-run. `ruff` has not been r
 ## HMRC
 
 - **Sandbox only.** The relay defaults to `test-api.service.hmrc.gov.uk`; no production credentials, no real filing.
-- The browser flow (connect → obligations → declaration → submit → receipt in `05 VAT returns/`) is built and type-checked but has **not been run end to end** against HMRC's sandbox. Relay tests mock HMRC.
-- **The runtime makes no call to HMRC's obligations endpoint.** The relay has one and *Connect to HMRC* uses it, but `/books/vat/periods` cannot, because the runtime holds no HMRC token. So "submitted" means "a receipt our own submission saved in `05 VAT returns/`": a return filed elsewhere, or a deleted receipt, shows as open.
+- The browser flow (connect → obligations → declaration → submit → receipt in `06 VAT returns/`) is built and type-checked but has **not been run end to end** against HMRC's sandbox. Relay tests mock HMRC.
+- **The runtime makes no call to HMRC's obligations endpoint.** The relay has one and *Connect to HMRC* uses it, but `/books/vat/periods` cannot, because the runtime holds no HMRC token. So "submitted" means "a receipt our own submission saved in `06 VAT returns/`": a return filed elsewhere, or a deleted receipt, shows as open.
 - The runtime's own period key (`26A4` style, saved as `calculated_for`) is a placeholder; submission uses HMRC's key. For monthly returns all three months of a quarter get the same placeholder.
 - `GET /books/vat` accepts `?today=`, so a client can move "current" and with it `can_submit`; the web gate is advisory and HMRC decides what can be filed.
 - No flat-rate scheme, no annual accounting scheme, no fuel scale-charge calculation.
@@ -36,7 +36,7 @@ in `apps/web` passes; the Playwright suite was not re-run. `ruff` has not been r
 - HEIC photos are copied by Outlook intake but not read yet.
 - `POST /books/approve/{id}` is kept as an alias for web builds deployed before the integration review; remove it after the next deploy.
 - The 6 April tax-year rule is written twice (`contacts.uk_tax_year_start`, `mileage.tax_year_of`); both are tested.
-- `06 Reports/` is created at onboarding and nothing writes to it. `03 Sales/invoices` and `04 Payroll` share their numbers with `03 Bank statements` and `04 Needs a look`.
+- `07 Reports/` is created at onboarding and nothing writes to it. The folder names now have one source (`services/runtime/app/paths.py`); existing users' old-named folders are renamed once on first contact (`app/layout.py`), which has only been tested on fake storage, not on a real OneDrive.
 - `services/runtime/tests/test_integration.py` holds the runtime to the documented folder layout only for the features its scenario exercises (not invoicing, payroll, planner, to-dos, action audit).
 
 ## Models

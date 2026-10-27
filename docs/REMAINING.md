@@ -23,7 +23,7 @@ Severity:
 | Low | `ruff` has not been run on `main`. |
 | Low | `POST /books/approve/{id}` is an alias kept for older web builds; remove it after the next deploy. |
 | Low | The 6 April tax-year rule is written twice (`contacts.uk_tax_year_start`, `mileage.tax_year_of`). Both are tested. |
-| Low | `06 Reports/` is created at onboarding but nothing writes to it. `03 Sales/invoices` and `04 Payroll` reuse the numbers of `03 Bank statements` and `04 Needs a look`. |
+| Low | `07 Reports/` is created at onboarding but nothing writes to it. The one-time rename of old-named folders (`app/layout.py`) needs a run against a real OneDrive (personal and work), including a folder that is open in the OneDrive client. |
 | Low | No web unit tests; pages are covered by `pnpm run build` and the Playwright suite, whose CI job has never run on GitHub. |
 ## Read → approve → ledger, Undo, VAT return
 

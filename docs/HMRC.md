@@ -28,7 +28,7 @@ Code: `apps/web/src/lib/hmrc.ts`, `apps/web/src/components/vat/ConnectHmrc.tsx`,
    `chargeRefNumber` (when present) and HMRC's correlation ID.
 7. **Keep a copy.** `return.json` (body, period, ledger event IDs, declaration time) and `receipt.json` (HMRC response,
    correlation/receipt IDs, the fraud-prevention headers actually sent) are written to
-   `05 VAT returns/<periodKey>/` in your OneDrive books folder through Microsoft Graph.
+   `06 VAT returns/<periodKey>/` in your OneDrive books folder through Microsoft Graph.
 
 Tokens are refreshed through `POST /hmrc/refresh` a minute before `expires_at`. If refresh fails, the page forgets the
 session and asks you to connect again. **Disconnect** clears `sessionStorage`.
@@ -43,7 +43,7 @@ and submission calls. Leave it empty for HMRC's default sandbox response.
 | Relay (`api.accnomos.com/hmrc`, `/vat`) | HMRC client ID and **client secret** only. Short in-memory caches: the app-restricted token, and 30 s of refresh results so racing refreshes share one HMRC call | Process memory; never on disk or in logs |
 | Browser `sessionStorage` | HMRC access + refresh token, `expires_at`; PKCE verifier + state while the redirect is in flight | Until the tab closes or you press Disconnect |
 | Browser `localStorage` | `accnomos.device_id` (random UUID for Gov-Client-Device-ID), `accnomos.business.vrn` | Until you clear site data |
-| Your OneDrive | `05 VAT returns/<periodKey>/return.json` and `receipt.json` | Yours |
+| Your OneDrive | `06 VAT returns/<periodKey>/return.json` and `receipt.json` | Yours |
 
 User tokens reach the relay only in the `X-HMRC-Access-Token` header of each request. The relay accepts browser calls
 (CORS) only from the origins in `RELAY_ALLOWED_REDIRECTS`, plus `http://localhost` for development.
