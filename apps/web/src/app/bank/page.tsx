@@ -1,6 +1,8 @@
 import LiveBank from "@/components/bank/LiveBank";
 import ExplainMore from "@/components/ExplainMore";
 
+export const metadata = { title: "Bank statement lines · Accnomos" };
+
 export default function BankPage() {
   return (
     <div className="flex flex-col gap-5">

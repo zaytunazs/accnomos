@@ -1,6 +1,8 @@
 import ExplainMore from "@/components/ExplainMore";
 import JobsList from "@/components/jobs/JobsList";
 
+export const metadata = { title: "Jobs · Accnomos" };
+
 export default function JobsPage() {
   return (
     <div className="flex flex-col gap-5">

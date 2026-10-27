@@ -1,6 +1,8 @@
 import ExplainMore from "@/components/ExplainMore";
 import LiveContacts from "@/components/contacts/LiveContacts";
 
+export const metadata = { title: "Contacts · Accnomos" };
+
 export default function ContactsPage() {
   return (
     <div className="flex flex-col gap-5">
