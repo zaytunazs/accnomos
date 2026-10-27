@@ -119,8 +119,9 @@ def install_log_scrubbing() -> None:
     def factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
         record = make(*args, **kwargs)
         scrub_record(record)
-        if record.exc_info and not record.exc_text:
-            record.exc_text = scrub(logging.Formatter().formatException(record.exc_info))
+        if record.exc_info:  # scrub again even if set: another installed factory (the other service's copy,
+            # in one test process) may have filled it with its own request's secrets in mind
+            record.exc_text = scrub(record.exc_text or logging.Formatter().formatException(record.exc_info))
         return record
 
     logging.setLogRecordFactory(factory)
