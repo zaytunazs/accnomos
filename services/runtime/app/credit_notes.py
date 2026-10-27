@@ -35,7 +35,8 @@ from accnomos_connectors.base import MailSender, OutgoingAttachment, OutgoingMai
 from accnomos_ledger.events import LedgerEvent, Line, VatCode
 from app import paths
 from app.approve import reversal_of
-from app.books import Books, now, today as london_today
+from app.books import Books, now
+from app.books import today as london_today
 from app.invoicing import (
     EMAIL_RE,
     ID_RE,

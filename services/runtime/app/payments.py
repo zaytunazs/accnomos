@@ -29,7 +29,8 @@ from pydantic import BaseModel, Field
 
 from accnomos_ledger.events import LedgerEvent, Line
 from app.approve import reversal_of
-from app.books import BankMatchError, Books, now, today as london_today
+from app.books import BankMatchError, Books, now
+from app.books import today as london_today
 from app.contacts import Doc, Ledger, documents, load_ledger
 from app.invoicing import Invoice, InvoiceError, InvoiceStateError, list_invoices, money, save_invoice
 from app.journal import BANK, CASH, CREDITORS, DEBTORS
