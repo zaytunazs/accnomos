@@ -1,9 +1,12 @@
 "use client";
 
 import type { AccountInfo } from "@azure/msal-browser";
+import { RUNTIME_URL } from "./ai-config";
 import { getToken, isPersonalAccount, storageScopesFor } from "./msal";
 
-const GRAPH = "https://graph.microsoft.com/v1.0";
+/** Test-mode builds talk to the runtime's Graph look-alike over its fake storage (services/runtime/app/testmode.py). */
+const GRAPH =
+  process.env.NEXT_PUBLIC_TEST_MODE === "1" ? `${RUNTIME_URL}/__test/graph/v1.0` : "https://graph.microsoft.com/v1.0";
 
 /** PRD §4.1 folder tree. Personal accounts: OneDrive app folder (Apps/Accnomos). Work accounts: /Accnomos in the root. */
 export const FOLDERS = [
