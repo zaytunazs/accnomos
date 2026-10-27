@@ -7,7 +7,7 @@ Play "What's new" (348 characters):
 Bank rules can be added, edited and deleted on the phone. Settings has
 Your data: export everything as one zip to your OneDrive. The audit
 trail has who, what and date filters like the web. Anything still
-web-only (statement upload, HMRC filing, merges) now shows a "Do this
+web-only (statement upload, HMRC filing) now shows a "Do this
 on the web" row with the exact page. Parity table: apps/mobile/PARITY.md.
 
 Not yet run on a phone: the new rule sheet, export button, audit

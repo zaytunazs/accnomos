@@ -39,8 +39,8 @@ phone, the rest behind a "Do this on the web" row) · **web-only**
 | `/bank` rules reorder | web-only | Ordering 200 ids is fiddly on a phone; "Do this on the web" → `/bank` |
 | `/contacts` list, balances, statements, edit, payment terms | done | `ContactsScreen` |
 | `/contacts` import from Outlook / add from phone | done | Settings/Contacts import + `phone_import_sheet` |
-| `/contacts` merge duplicates + undo merge | web-only | Side-by-side AI judgement needs a wide screen; link → `/contacts` |
-| `/contacts` HMRC VAT-number check | web-only | Sandbox check with explanatory copy lives on the web; link → `/contacts` |
+| `/contacts` merge duplicates + not the same + undo merge | done | Contacts › Possible duplicates (`widgets/duplicates.dart`, 0.3.3+7) |
+| `/contacts` HMRC VAT-number check, Companies House look-up | done | Contact edit and Review card (`widgets/lookups.dart`, 0.3.3+7) |
 | `/contacts` apply credit / refund credit | done | Contacts detail (`applyCredit`, `refundCredit`) |
 | `/jobs` list + quick timesheet add | done | `JobsScreen` + `AddTimesheetScreen` |
 | `/jobs` job detail, job CRUD, timesheet edit/delete, invoice-from-job | web-only | Desk work with rates and hours tables; links → `/jobs` |

@@ -11,7 +11,6 @@ import '../widgets/duplicates.dart';
 import '../widgets/lookups.dart';
 import '../widgets/vat_status.dart';
 import 'contact_edit_sheet.dart';
-import '../widgets/web_only.dart';
 import 'payments_sheets.dart';
 import 'phone_import_sheet.dart';
 import 'settings_screen.dart';
@@ -360,14 +359,6 @@ class _ContactsScreenState extends State<ContactsScreen> {
                   itemBuilder: (context, i) =>
                       _row(context, rows[i], sample: sample),
                 ),
-        ),
-        const Padding(
-          padding: EdgeInsets.fromLTRB(16, 0, 16, 16),
-          child: WebOnlyCard(
-            message:
-                'Merging possible duplicates and the HMRC VAT-number check happen on the web.',
-            page: '/contacts',
-          ),
         ),
       ],
     );
