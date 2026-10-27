@@ -20,7 +20,7 @@ import httpx
 from pydantic import ValidationError
 
 from app.ai.config import AiConfig
-from app.schemas import CATEGORIES, ExtractedDoc, extraction_json_schema
+from app.schemas import CATEGORIES, CODE_CATEGORIES, ExtractedDoc, extraction_json_schema
 
 TIMEOUT_S = 180.0
 SUPPORTED_MIME = {"image/jpeg", "image/png", "image/webp"}
@@ -167,6 +167,8 @@ async def extract_document(
 
     obj = parse_model_json(text)
     normalise_rates(obj)
+    if obj.get("category_guess") in CODE_CATEGORIES:  # only code writes these (e.g. the mileage allowance)
+        obj["category_guess"] = "Sundry"
     try:
         doc = ExtractedDoc.model_validate(obj)
     except ValidationError as exc:

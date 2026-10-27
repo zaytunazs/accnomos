@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 import uuid
 from datetime import date
@@ -14,7 +15,7 @@ from accnomos_ledger.events import LedgerEvent, VatCode
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import mileage as m  # noqa: E402
-from app.approve import ApprovalError, approve, undo  # noqa: E402
+from app.approve import ApprovalError, approve, reject, undo  # noqa: E402
 from app.autopilot import load_rules as load_autopilot_rules  # noqa: E402
 from app.books import EVENTS, Books  # noqa: E402
 from app.journal import OWNER_LOAN, draft_journal  # noqa: E402
@@ -212,6 +213,37 @@ async def test_claim_is_a_proposal_and_idempotent_per_period(books: Books, fake:
     await m.add_entry(books, trip(golf, "2025-12-02", 10.0), USER)  # refreshes the claim waiting in Review
     refreshed = await books.get_proposal(p.id)
     assert refreshed.extracted.gross_total == 60.03 and refreshed.created_at == p.created_at
+
+
+async def test_rejected_claim_is_replaced_by_a_new_one(books: Books) -> None:
+    golf = await m.add_vehicle(books, car(), USER)
+    await m.add_entry(books, trip(golf, "2025-10-10", 100.0), USER)
+    first, _ = await m.propose_allowance(books, "2025-26", "Q3")
+    await reject(books, first.id, USER, "wrong quarter")
+    second, created = await m.propose_allowance(books, "2025-26", "Q3")
+    assert created and second.id != first.id and second.extracted.gross_total == 45.0
+    assert (await books.get_proposal(first.id)).status == "rejected"
+
+
+async def test_model_cannot_pick_the_code_only_mileage_category(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.ai import extract
+    from app.ai.config import AiConfig
+
+    reply = {
+        "doc_type": "purchase_invoice", "supplier_name": "Shell", "supplier_vat_number": None, "customer_name": None,
+        "invoice_number": None, "date": "2025-10-10", "currency": "GBP",
+        "lines": [{"description": "Unleaded", "qty": 1, "unit_price": 50, "net": 50, "vat_rate": None, "vat": 0}],
+        "net_total": 50, "vat_total": 0, "gross_total": 50, "payment_method": None, "card_last4": None,
+        "category_guess": MILEAGE_CATEGORY, "confidence": 0.9,
+    }
+
+    async def fake_ollama(*_a: object, **_k: object) -> tuple[str, dict]:
+        return json.dumps(reply), {}
+
+    monkeypatch.setattr(extract, "_call_ollama", fake_ollama)
+    doc, _ = await extract.extract_document(b"x", "image/png", AiConfig(mode="local", base_url="http://ollama.invalid", model="stub"))
+    assert doc.category_guess == "Sundry"
+    assert draft_journal(doc)[-1].account != OWNER_LOAN
 
 
 async def test_nothing_to_claim(books: Books) -> None:
