@@ -243,7 +243,7 @@ class Invoice(BaseModel):
     reversal_event_id: str | None = None
     reminders: list[Reminder] = []
 
-    def days_overdue(self, today: date) -> int | None:
+    def overdue_days(self, today: date) -> int | None:
         """Days past the due date while unpaid (0 or less: not due yet); None when not awaiting payment."""
         return (today - self.due_date).days if self.status == "sent" else None
 
