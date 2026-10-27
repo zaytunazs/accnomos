@@ -232,6 +232,7 @@ class AccountPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
       initialValue: value,
+      isExpanded: true,
       decoration: sheetField('Account'),
       items: const [
         DropdownMenuItem(
@@ -894,6 +895,7 @@ class _ApplyCreditSheetState extends State<_ApplyCreditSheet> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _creditId,
+              isExpanded: true,
               decoration: sheetField('Credit'),
               items: [
                 for (final credit in widget.credits)
@@ -922,6 +924,7 @@ class _ApplyCreditSheetState extends State<_ApplyCreditSheet> {
             else
               DropdownButtonFormField<String>(
                 initialValue: _docId,
+                isExpanded: true,
                 decoration: sheetField('Invoice or bill'),
                 items: [
                   for (final doc in docs)
@@ -1136,6 +1139,7 @@ class _RefundSheetState extends State<_RefundSheet> {
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
               initialValue: _creditId,
+              isExpanded: true,
               decoration: sheetField('Credit'),
               items: [
                 for (final credit in widget.credits)
