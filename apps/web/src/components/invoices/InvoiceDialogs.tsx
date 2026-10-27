@@ -9,6 +9,34 @@ import { runtime, ukDate, type RtBankLine, type RtInvoice, type RtInvoicePdf, ty
 
 type Done = (inv: RtInvoice) => void;
 
+/** Drafted → sent → reminded → paid/void, each with its date once reached. */
+export function StatusTimeline({ invoice }: { invoice: RtInvoice }) {
+  const lastReminder = invoice.reminders[invoice.reminders.length - 1];
+  const steps: { label: string; at: string | null; detail?: string }[] = [
+    { label: "Drafted", at: invoice.issue_date },
+    { label: "Sent", at: invoice.sent_at, detail: invoice.sent_to ? `to ${invoice.sent_to}` : undefined },
+    {
+      label: invoice.reminders.length > 1 ? `Reminded (${invoice.reminders.length})` : "Reminded",
+      at: lastReminder?.sent_at ?? null,
+    },
+    invoice.status === "void"
+      ? { label: "Void", at: invoice.voided_at, detail: invoice.void_reason ?? undefined }
+      : { label: "Paid", at: invoice.paid_at },
+  ];
+  return (
+    <ol aria-label="Invoice history" className="mt-4 space-y-2 border-t border-border pt-3">
+      {steps.map((s) => (
+        <li key={s.label} className="flex items-baseline justify-between gap-3 text-sm">
+          <span className={s.at ? "font-bold" : "text-muted"}>
+            {s.label}{s.detail ? ` · ${s.detail}` : ""}
+          </span>
+          <span className="tabular-nums text-muted">{s.at ? ukDate(s.at) : "—"}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function errorText(e: unknown): string | null {
   const msg = (e as Error).message;
   if (msg === "redirecting for consent") return null; // back from Microsoft, the user taps Send again
@@ -142,7 +170,10 @@ export function PreviewSendDialog({ account, invoice, onClose, onDone }: { accou
             </div>
           ) : (
             <>
-              <EmailFields email={email} onChange={setEmail} idPrefix="send" />
+              <EmailFields email={email} onChange={(e) => { setEmail(e); setConfirmed(false); }} idPrefix="send" />
+              <p className="mt-2 text-sm text-muted">
+                The invoice goes as an attachment named <strong className="text-ink">{invoice.number}.pdf</strong>.
+              </p>
               <Confirm checked={confirmed} onChange={setConfirmed}>
                 I have checked this invoice. Email it to {email.to || "the customer"} from my Outlook, and record the sale
                 of {money(invoice.total_pence)} in my books.
@@ -157,6 +188,7 @@ export function PreviewSendDialog({ account, invoice, onClose, onDone }: { accou
           </div>
         </>
       )}
+      {!draft && <StatusTimeline invoice={invoice} />}
       {note && <div className="mt-3"><Note note={note} /></div>}
     </Modal>
   );
@@ -267,9 +299,9 @@ export function ReminderDialog({ account, invoice, onClose, onDone }: { account:
             {draft.fallback_reason
               ? `Written by Accnomos from the invoice (${draft.fallback_reason})`
               : `Drafted by ${draft.model}; every figure checked against the invoice.`}{" "}
-            Nothing is sent until you confirm. The invoice PDF is attached.
+            Nothing is sent until you confirm. The invoice PDF ({invoice.number}.pdf) is attached.
           </p>
-          <EmailFields email={email} onChange={setEmail} idPrefix="remind" />
+          <EmailFields email={email} onChange={(e) => { setEmail(e); setConfirmed(false); }} idPrefix="remind" />
           <Confirm checked={confirmed} onChange={setConfirmed}>
             I have read this reminder. Email it to {email.to || "the customer"} from my Outlook.
           </Confirm>
