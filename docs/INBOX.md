@@ -109,6 +109,10 @@ extractor prompt, goes through the same checks and becomes the same Review card.
 | Scanned PDF (no text layer) | page 1 rendered, nothing else | the PDF |
 | Email body (`.eml.txt`) | the text only: sender, date, subject, then the body | the `.txt` |
 
+Any other file (a `notes.txt`, a `.docx`, a `.zip`) is left in `00 Inbox` untouched: only an email body saved by
+Outlook intake (`.eml.txt`) counts as a text document. PDFs are read one at a time on a server (PDFium is not
+thread-safe), so several PDFs uploaded at once queue for a moment.
+
 - **A multi-page PDF is one document.** Every page's text is extracted (so the page count is known), but only page 1's
   text and image go to the model: on almost every invoice the supplier, date, VAT number and totals are on page 1. A
   total printed only on page 2 is missed, and the card says "PDF, N pages: page 1 read".

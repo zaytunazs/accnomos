@@ -36,10 +36,9 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 - Key-mode extraction (muse-spark-1.3) is unit-tested only.
 - **Ledger files are not tamper-evident** (no signatures, no hash chain). An undo is a reversing entry dated like the original; if that VAT period was already submitted, the correction belongs in the current period.
 - `/books/vat` entry counts include sales and purchases only; a reversal changes the amounts but not the count next to boxes 1–4 and 6–7, while box 5's count includes it (`routes_vat.py`).
-- **No real HEIC from a phone has been read.** HEIC → JPEG (`pillow-heif`) and PDF reading (`pypdfium2`) were written
-  without either library installed where the tests ran: those paths are tested with stand-ins and refusals, and the
-  tests that use the real libraries skip. `uv.lock` was not regenerated for them (no network); run `uv lock` and the
-  skipped tests in `test_formats.py` / `test_security_formats.py` before relying on them.
+- **No real HEIC from a phone has been read, and no real supplier PDF.** HEIC → JPEG (`pillow-heif` 1.8.1) and PDF
+  reading (`pypdfium2` 5.14.0, locked in `uv.lock`) are tested with the real libraries, but only on files the tests make
+  (a HEIC written by `pillow-heif`, PDFs written by `fpdf2`). The Docker image has not been built with them.
 - A multi-page PDF is read from page 1 only (a total printed only on page 2 is missed); a scanner batch of several
   receipts in one PDF is read as one document and not split.
 - Receipts in an email body are found by a code rule tested on six fictional emails, not on real Uber, Amazon or SaaS
