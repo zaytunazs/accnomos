@@ -45,10 +45,24 @@ async def get_books(request: Request) -> AsyncIterator[Books]:
         await storage.aclose()
 
 
+# Settings travel as headers on every call (apps/web runtimeHeaders(), apps/mobile RuntimeClient._headers):
+# X-Graph-Token + X-Account-Kind (get_books), X-AI-* + X-Meta-Api-Key (app.ai.config.ai_config_from_request),
+# X-User (require_user / optional_user), X-Business-Name (business_name). Read them only through these.
+
+
 def require_user(x_user: str | None = Header(default=None)) -> str:
     if not x_user or not x_user.strip():
         raise HTTPException(status_code=400, detail="X-User header required")
     return x_user.strip()
+
+
+def optional_user(x_user: str | None = Header(default=None)) -> str | None:
+    return (x_user or "").strip() or None
+
+
+def business_name(x_business_name: str | None = Header(default=None)) -> str | None:
+    """The user's business name, so the reader can tell their sales invoices from purchases."""
+    return (x_business_name or "").strip() or None
 
 
 class ApproveBody(StrictBody):
@@ -90,11 +104,11 @@ async def scan(
     limit: int = Query(10, ge=1, le=50),
     books: Books = Depends(get_books),
     cfg: AiConfig = Depends(ai_config_from_request),
-    x_business_name: str | None = Header(default=None),
+    business: str | None = Depends(business_name),
     x_autopilot: str | None = Header(default=None),
 ) -> ScanResult:
     autopilot_on = (x_autopilot or "on").strip().lower() != "off"
-    proposals, errors = await scan_inbox_detailed(books, cfg, limit, x_business_name, autopilot_on)
+    proposals, errors = await scan_inbox_detailed(books, cfg, limit, business, autopilot_on)
     return ScanResult(proposals=proposals, errors=errors)
 
 

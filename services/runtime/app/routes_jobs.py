@@ -140,7 +140,7 @@ async def mark_invoiced(
         raise _http(exc) from exc
     await books.audit(f"user:{user}", "timesheets_invoiced",
                       {"job": job_id, "invoice": body.invoice_id, "entries": [e.id for e in marked]})
-    await books.rebuild_safely(user)
+    await books.rebuild_safely(f"user:{user}")
     return marked
 
 

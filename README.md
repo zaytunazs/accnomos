@@ -14,12 +14,15 @@ Your books are files in your own OneDrive (no Accnomos database); Meta models re
 |---|---|
 | `apps/web` | Next.js PWA (Home · Review · Ask · Bank · VAT return · Jobs · Contacts · Vehicles · Files · Settings) |
 | `apps/mobile` | Flutter Android app (Home · Review · Ask · VAT; Files is a placeholder), same runtime API |
+
+| `apps/mobile` | Flutter Android app (Home · Review · Ask · VAT return · Settings), same runtime API |
 | `services/runtime` | Stateless Agent Runtime (FastAPI): receives the user's cloud token + AI config per request, keeps nothing |
 | `services/hmrc-relay` | Stateless HMRC relay: holds the HMRC client secret, adds fraud-prevention headers |
 | `packages/ledger` | Append-only ledger events, projections, deterministic VAT 9-box engine, tests |
-| `packages/connectors` | `StorageProvider` / `MailProvider` / `CalendarProvider` interfaces, Microsoft Graph implementations, fake provider + contract tests |
+| `packages/connectors` | `StorageProvider` / `MailProvider` / `ContactsProvider` / `CalendarProvider` interfaces, Microsoft Graph implementations, fake provider + contract tests |
 | `evals` | Synthetic gold set and the eval harness that grades Meta model outputs |
 | `tools` | Owner-run scripts (keystore, dev helpers) |
+| `docs` | `ARCHITECTURE.md` (folder layout, headers, audit format), `DEV.md`, `HMRC.md`, `AUTOPILOT.md`, `REMAINING.md`, `reviews/` |
 
 ## Meta models used (runtime path)
 
@@ -33,7 +36,7 @@ Your books are files in your own OneDrive (no Accnomos database); Meta models re
 
 Muse Image made the brand artwork at build time. Costs, fallbacks and eval numbers: `docs/META_MODELS.md`.
 
-## What works today (verified live, updated as we go)
+## What works today
 
 | Date | Verified |
 |---|---|
@@ -71,6 +74,38 @@ invoice cannot be voided, and credit notes are not built yet.
 | 27 Oct | **Bank statements (F7) in the web app:** `/bank` → drop a CSV (Barclays, Starling, Tide, Monzo-style headers sniffed; HSBC/Lloyds paid-in/paid-out also read) → saved as `03 Bank statements/<last date>_<bank>.csv`, same file twice is a no-op (sha256) → suggested matches to posted entries (amount ±1p, date ±5 days, counterparty name) with *Confirm* → unmatched lines get *Create expense proposal* (lands on Review, no VAT claimed) / *Mark as transfer* / *Ignore*, each undoable → *Reconciled to date* tile; `Books.xlsx` Bank sheet shows status, matched event and proposal. Gold CSVs in `evals/gold/bank/` with ledger + runtime tests; web build passes; not yet run against a real OneDrive |
 | 27 Oct | **Vehicles and mileage:** `/vehicles` lists vehicles (personal or business-owned), a mileage log with a quick-add row (vehicle, date, from, to, miles in 0.1 steps, purpose), tiles for business miles, allowance so far, cars and vans against 10,000 miles, and tagged business-vehicle costs, and a quarter table. The allowance uses HMRC approved mileage rates from one table in `services/runtime/app/mileage.py`: cars and vans 45p for the first 10,000 business miles of the tax year (6 April–5 April, all cars and vans together), then 25p; motorcycles 24p; bicycles 20p. Business vehicles get no allowance. *Claim this quarter's mileage* (`POST /mileage/propose-allowance`) creates one expense proposal per tax-year quarter: category *Motor — mileage allowance*, VAT code N, credited to *2300 Owner / director loan*. You approve it in Review; it is never posted automatically, can't be edited, and never becomes an Autopilot rule. Once a claim is posted, its journeys and anything dated before it are locked until the claim is undone. Fuel, parking, toll and repair receipts are tagged to your only active business vehicle at scan time; otherwise Review offers a vehicle picker (`vehicle_id` on approve). VAT codes on fuel stay as read from the receipt; the fuel scale charge is shown as "ask your accountant" text and not calculated. Files: `_System/Vehicles/vehicles.json`, `_System/Mileage/<tax-year>.jsonl`. Books.xlsx gets a `Vehicles` sheet (current tax year; refreshed at the next rebuild, not on every journey). Thresholds, tax-year boundaries, idempotent claims, locking and routes are tested on fake storage (`services/runtime/tests/test_mileage.py`); web build passes; not yet run against a real OneDrive |
 | 27 Oct | **Pay runs (estimates only — not payroll, not RTI):** Accnomos does **not** run payroll, file RTI (FPS/EPS) or pay HMRC; your payroll provider (or HMRC Basic PAYE Tools) does. `/payroll` prepares a month's pay run from timesheets (hours × each person's hourly rate from the Jobs page), lets you edit hours, rates and notes, and shows estimated PAYE, employee NI, net pay and employer NI, every figure badged "Estimate — your payroll provider calculates the actual tax and NI". *Export CSV* saves `04 Payroll/<yyyy-mm>.csv` (one row per employee, label and limits at the top) for your provider. *Confirm* takes **the provider's actual** gross pay and employer NI (not the estimate) and posts two balanced adjustments on the pay date: Dr *7000 Gross wages* / Cr *2210 Payroll liabilities*, Dr *7010 Employer's NI* / Cr *2210*; *Reopen* reverses them. **Limits of the estimate:** monthly pay only, annual thresholds ÷ 12 (so estimated tax is usually about 20p a month higher than HMRC's 1257L tables); gross is always hours × rate (adjust hours or rate for a salary, overtime or bonus); tax code 1257L only on a non-cumulative (month 1) basis; England and Northern Ireland rates (not Scottish or Welsh); NI category A only; student and postgraduate loans, pensions, statutory pay (SSP, SMP…), benefits in kind, salary sacrifice and the Employment Allowance are not included. Rates are the 2026–27 figures in one table, `services/runtime/app/payroll_rates.py`, with the GOV.UK source URL. Files: `_System/Payroll/runs/<yyyy-mm>.json`. Books.xlsx gets a `Payroll` sheet. Pro-rating, thresholds and bands, export shape, balanced confirm events, the estimate label in every file, and routes are tested on fake storage (`services/runtime/tests/test_payroll.py`); web build passes; not yet run against a real OneDrive; rates not yet re-checked against GOV.UK |
+Status words: **works end-to-end** (run live against a real OneDrive / model), **works with fakes / needs a live
+run** (tests pass against fake storage, mailbox or model; not yet run live), **UI only** (screens with sample
+data, no backend), **not started**. Last checked 27 Oct 2026 against `main`: runtime 271 tests, ledger and
+connectors 50, relay 39, web build passes. The Android app was not analysed (no Flutter on the review machine).
+What is still open is in `docs/REMAINING.md`.
+
+| Feature | Status | Evidence and gaps |
+|---|---|---|
+| Microsoft sign-in and books folder setup | **works end-to-end** | 26 Oct: MSAL v5 on a personal account; `Apps/Accnomos` tree and `README.txt` created in OneDrive. Work accounts not tried |
+| Read a receipt → proposal → Approve → ledger event | **works end-to-end** | 27 Oct: upload to `00 Inbox` → Muse Glimmer 30B on our DGX Spark (40 s, 9/9 code checks) → Approve → event in `_System/Ledger/events`. Key mode (muse-spark-1.3) unit-tested only |
+| VAT return: 9 boxes by code | **works end-to-end** | 27 Oct: `/books/vat` from the approved events above. Undone sales and purchases net off on the right side (fixed in this review) |
+| Extraction quality (eval) | **works end-to-end** | 60 synthetic messy receipts, Glimmer local: supplier, VAT and gross 100 %, date 98 %, net 97 %, decision 88 % — `evals/REPORT_glimmer_messy_60_2026-10-27.md` |
+| Undo an approval | **works with fakes / needs a live run** | Posts a reversal event, puts the proposal back in Review, rebuilds Books.xlsx; refused while a bank line is matched |
+| HMRC VAT submission (sandbox) | **works with fakes / needs a live run** | Relay OAuth, fraud headers v3.3 and MTD endpoints tested against mocks; `/vat` *Connect to HMRC* → obligations → declaration → submit → `05 VAT returns/<periodKey>/` built and type-checked. No sandbox call yet. `docs/HMRC.md` |
+| Verifier (second reading) | **works with fakes / needs a live run** | Glimmer/Glimmer eval on 20 messy receipts: 17/18 verified agreed, 1 false alarm, 0 extra catches (`evals/REPORT_verifier_glimmer_messy_20_2026-10-27.md`). Not run in the app; Baseten and key paths unit-tested only |
+| Document crop | **works with fakes / needs a live run** | Code method on 20 synthetic scenes: mean IoU 0.88. SAM 3.1 path off by default (wire format unverified) |
+| Autopilot L1 | **works with fakes / needs a live run** | Rules from *Always do this*; posts only when every check passes and the total is ≤ 2× usual; *Approved by Autopilot* list with Undo. `docs/AUTOPILOT.md` |
+| Ask your books (typed) | **works with fakes / needs a live run** | Facts pack by code, every figure in the answer checked; tests use a stubbed model |
+| Ask by voice | **works with fakes / needs a live run** | ffmpeg → `muse-voice-transcribe-1.0` (key mode only); tested on a generated tone and stubbed HTTP. Request format not checked against dev.meta.ai |
+| Outlook intake | **works with fakes / needs a live run** | `Mail.Read` only; copies likely receipts to `00 Inbox`, deduplicated. Fake mailbox tests. See below |
+| Books.xlsx | **works with fakes / needs a live run** | 11 sheets rebuilt after every approve, reject, undo, bank action and on demand; one integration test builds it from every feature at once. Not yet opened in Excel from a real OneDrive |
+| Files page | **works with fakes / needs a live run** | Lists the real folder from Graph when signed in; build-checked only |
+| VAT deadlines | **works with fakes / needs a live run** | Current period, due date (1 month + 7 days), days left and Box 5 so far; date maths unit-tested. Annual accounting not covered |
+| Bank statements | **works with fakes / needs a live run** | CSV import (Barclays, Starling, Tide, Monzo, HSBC/Lloyds layouts modelled, not checked against real exports), suggested matches, transfer/ignore, expense proposals, *Reconciled to date*. Gold CSVs in `evals/gold/bank/` |
+| Contacts | **works with fakes / needs a live run** | Customers and suppliers from the ledger, statements, aged balances, *Import from Outlook* (`Contacts.Read`) |
+| Jobs, staff and timesheets | **works with fakes / needs a live run** | Jobs, timesheets in 0.25 h steps, labour/materials/margin, invoice lines from unbilled hours. Values use each person's *current* charge rate |
+| Vehicles and mileage | **works with fakes / needs a live run** | HMRC approved mileage rates (45p/25p, 24p, 20p), claims as proposals owed to the owner, locking after a claim, vehicle costs tagged at scan |
+| Android app | **works with fakes / needs a live run** | Sign-in, capture to `00 Inbox`, Review (approve/edit/reject), Ask, VAT return; built for the emulator. Home tiles are sample data. Bank, Jobs, Contacts, Vehicles and Files are web only |
+| Home tiles and activity (web) | **UI only** | Cash in bank, owed to you, VAT estimate and the activity feed are sample data; only *Deadlines* is live |
+| Sales invoicing | **not started** | Jobs propose invoice lines; nothing creates or sends an invoice |
+| Google Drive | **not started** | OneDrive only |
+| Multi-step commands (muse-wonder) | **not started** | |
 
 ## Outlook intake
 

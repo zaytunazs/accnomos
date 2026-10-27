@@ -319,8 +319,11 @@ async def test_rebuild_failure_never_blocks_the_action(fake: FakeStorageProvider
 
     monkeypatch.setattr(projection, "build_books_xlsx", boom)
     books = Books(fake)
-    assert await books.rebuild_safely(USER) is None
+    assert await books.rebuild_safely(f"user:{USER}") is None
     assert _audit(fake)[-1]["action"] == "books_rebuild_failed" and "disk full" in _audit(fake)[-1]["refs"]["error"]
+    assert _audit(fake)[-1]["actor"] == f"user:{USER}"
+    assert await books.rebuild_safely("agent:autopilot") is None
+    assert _audit(fake)[-1]["actor"] == "agent:autopilot"  # not "user:autopilot"
 
 
 def test_rebuild_route_and_summary_books_url(client: TestClient, fake: FakeStorageProvider) -> None:

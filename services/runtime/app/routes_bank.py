@@ -91,7 +91,7 @@ async def import_csv(
     except BankCsvError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not result.duplicate_file:
-        await books.rebuild_safely(user)
+        await books.rebuild_safely(f"user:{user}")
     return result
 
 

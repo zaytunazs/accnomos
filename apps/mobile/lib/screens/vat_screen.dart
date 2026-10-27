@@ -96,7 +96,7 @@ class _VatScreenState extends State<VatScreen> {
         backgroundColor: AccnomosColors.ground,
         elevation: 0,
         title: Text(
-          'VAT',
+          'VAT return',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         actions: [

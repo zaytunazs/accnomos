@@ -9,8 +9,8 @@ import 'theme.dart';
 /// Accnomos — bookkeeping and VAT for UK small businesses.
 /// Your books stay in your own cloud. Meta AI does the work.
 ///
-/// v0.1.0: app shell (Home · Review · Ask · Files). Features arrive day by day;
-/// see CHANGELOG.md in the repo.
+/// v0.1.0: app shell (Home · Review · Ask · VAT return). Bank, Jobs, Contacts,
+/// Vehicles and Files are on the web app only for now.
 void main() => runApp(const AccnomosApp());
 
 class AccnomosApp extends StatelessWidget {
@@ -54,7 +54,7 @@ class _ShellState extends State<Shell> {
 
   /// Review, Ask and VAT bring their own app bars, so the shell only
   /// titles the tabs that do not.
-  bool get _hasOwnAppBar => _tab == 1 || _tab == 2 || _tab == 3;
+  bool get _hasOwnAppBar => _tab != 0;
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +64,7 @@ class _ShellState extends State<Shell> {
           : AppBar(
               backgroundColor: AccnomosColors.ground,
               elevation: 0,
-              title: Text(_tab == 4 ? 'Files' : 'Home',
+              title: Text('Home',
                   style: Theme.of(context).textTheme.headlineSmall),
               actions: _tab == 0
                   ? [
@@ -94,8 +94,6 @@ class _ShellState extends State<Shell> {
                 ReviewScreen(),
                 AskScreen(),
                 VatScreen(),
-                _Placeholder('Files',
-                    'A live view of the Accnomos folder in your own cloud storage.'),
               ],
             ),
           ),
@@ -112,9 +110,7 @@ class _ShellState extends State<Shell> {
           NavigationDestination(
               icon: Icon(Icons.chat_bubble_outline), label: 'Ask'),
           NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined), label: 'VAT'),
-          NavigationDestination(
-              icon: Icon(Icons.folder_outlined), label: 'Files'),
+              icon: Icon(Icons.receipt_long_outlined), label: 'VAT return'),
         ],
       ),
     );
@@ -172,7 +168,7 @@ class _HomeTab extends StatelessWidget {
             _Tile(label: 'Cash in bank', value: '—', note: 'Connect to see'),
             _Tile(label: 'Owed to you', value: '—', note: 'Connect to see'),
             _Tile(label: 'VAT estimate', value: '—', note: 'Calculated by code'),
-            _Tile(label: 'Needs attention', value: '0', note: 'Nothing waiting'),
+            _Tile(label: 'Needs a look', value: '0', note: 'Nothing waiting'),
           ],
         ),
         const SizedBox(height: 20),
@@ -232,40 +228,6 @@ class _Tile extends StatelessWidget {
           Text(note,
               style: const TextStyle(
                   fontSize: 12, color: AccnomosColors.muted)),
-        ],
-      ),
-    );
-  }
-}
-
-class _Placeholder extends StatelessWidget {
-  const _Placeholder(this.title, this.body);
-  final String title;
-  final String body;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-                color: AccnomosColors.tealTint,
-                borderRadius: BorderRadius.circular(16)),
-            child: const Icon(Icons.hourglass_top,
-                color: AccnomosColors.tealDark),
-          ),
-          const SizedBox(height: 14),
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 6),
-          Text(body,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: AccnomosColors.muted, height: 1.4)),
         ],
       ),
     );

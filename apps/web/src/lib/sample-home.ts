@@ -23,7 +23,7 @@ export const tiles: Tile[] = [
     sub: "Calculated by code from approved entries",
   },
   {
-    label: "Needs attention",
+    label: "Needs a look",
     value: "3",
     sub: "Review now →",
     tone: "warn",

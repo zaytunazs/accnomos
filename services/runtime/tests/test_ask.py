@@ -96,6 +96,17 @@ def test_periods():
     assert previous_period(odd) == AskPeriod(start=date(2026, 8, 31), end=date(2026, 9, 9))
 
 
+def test_an_undone_sale_counts_against_sales():
+    """The facts use the same side as the VAT return for what approve.undo actually posts."""
+    from app.approve import reversal_of
+    from app.facts import side
+
+    sale = _ev("sale", date(2026, 9, 1), 10000, 2000, "Hollins Ltd")
+    buy = _ev("purchase", date(2026, 9, 2), 5000, 1000, "Screwfix")
+    assert side(sale) == ("sales", 1) and side(reversal_of(sale, "sam@example.co.uk")) == ("sales", -1)
+    assert side(buy) == ("purchases", 1) and side(reversal_of(buy, "sam@example.co.uk")) == ("purchases", -1)
+
+
 async def test_facts_pack(facts: dict):
     this, prev, d = facts["this_period"], facts["previous_period"], facts["derived"]
     assert this["vat"]["box1"] == "2500.00" and this["vat"]["box4"] == "418.41" and this["vat"]["box5"] == "2081.59"

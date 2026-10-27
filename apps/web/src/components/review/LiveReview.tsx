@@ -97,7 +97,7 @@ export function toUi(p: RtProposal): UiProposal {
     paidBy: x.card_last4 ? `Card ending ${x.card_last4}` : (x.payment_method ?? "—"),
     lines,
     reviewerNote: why,
-    ...withCrop(verifierView(p), `${p.model} · ${p.elapsed_s.toFixed(1)} s${cropped}`),
+    ...withCrop(verifierView(p), `checks by code: ${verified.filter((c) => c.ok).length} of ${verified.length} passed · ${p.model} · ${p.elapsed_s.toFixed(1)} s${cropped}`),
   };
 }
 

@@ -391,10 +391,6 @@ def with_totals(contacts: Sequence[Contact], ledger: Ledger, year_start: date, t
 # --------------------------------------------------------------------------- #
 
 
-async def load_contacts(books: Books) -> list[Contact]:
-    return [Contact.model_validate(c) for c in await books.read_json(CONTACTS, [])]
-
-
 async def save_contacts(books: Books, contacts: Sequence[Contact]) -> None:
     payload = [c.model_dump(mode="json") for c in sorted(contacts, key=lambda c: c.name.lower())]
     await books._update_json(CONTACTS, [], lambda _old: payload)
@@ -411,7 +407,7 @@ async def contact_book(books: Books, ledger: Ledger | None = None) -> tuple[list
 async def refresh(books: Books, user: str | None = None) -> tuple[list[Contact], Ledger]:
     contacts, ledger, _ = await contact_book(books)
     await save_contacts(books, contacts)
-    await books.audit(f"user:{user}" if user else "system", "contacts_refreshed", {"contacts": len(contacts)})
+    await books.audit(f"user:{user}" if user else "agent:contacts", "contacts_refreshed", {"contacts": len(contacts)})
     return contacts, ledger
 
 

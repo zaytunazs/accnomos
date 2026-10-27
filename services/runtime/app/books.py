@@ -22,6 +22,8 @@ Layout (relative to the books root):
     _System/Payroll/runs/{yyyy-mm}.json   pay runs (estimates) prepared from timesheets (app/payroll.py)
     04 Payroll/{yyyy-mm}.csv       pay run exports for the payroll provider
     Books.xlsx                     read-only spreadsheet projection, rebuilt after every decision
+The folder layout (every path, who writes it, which files are append-only) is in docs/ARCHITECTURE.md;
+tests/test_integration.py checks that everything written fits it.
 """
 
 from __future__ import annotations
@@ -239,11 +241,6 @@ class Books:
         """Matching rule (the most recently added wins), or None."""
         return next((r for r in reversed(rules) if r.matches(doc)), None)
 
-    async def apply_rules(self, doc: ExtractedDoc) -> str | None:
-        """Account a stored rule says `doc` belongs to, or None."""
-        rule = self.match_rule(doc, await self.load_rules())
-        return rule.account if rule else None
-
     # ------------------------------------------------------------------ #
     # Documents and proposals
     # ------------------------------------------------------------------ #
@@ -256,8 +253,6 @@ class Books:
 
     async def save_proposal(self, p: Proposal) -> None:
         await self.write_json(f"{PROPOSALS}/{p.id}.json", p.model_dump(mode="json"))
-
-    update_proposal = save_proposal
 
     async def get_proposal(self, proposal_id: str) -> Proposal:
         """Raises FileNotFoundError (also for ids that are not plain hex, to keep paths inside _System)."""
@@ -278,17 +273,18 @@ class Books:
     # Audit, ledger, cursors
     # ------------------------------------------------------------------ #
 
-    async def audit(self, actor: str, action: str, refs: dict[str, Any]) -> None:
-        """Append one JSON line to _System/audit/{yyyy-mm}.jsonl."""
+    async def audit(self, actor: str, action: str, refs: dict[str, Any], folder: str = AUDIT) -> None:
+        """Append one line {"ts", "actor", "action", "refs"} to {folder}/{yyyy-mm}.jsonl (_System/audit by default).
+
+        `actor` is "user:{email}" for something a person did, or "agent:{name}" for something done for them.
+        """
         ts = now()
         line = json.dumps({"ts": ts.isoformat(), "actor": actor, "action": action, "refs": refs}, ensure_ascii=False)
-        await self._update(f"{AUDIT}/{_month(ts)}.jsonl", lambda old: (old or b"") + line.encode() + b"\n")
+        await self._update(f"{folder}/{_month(ts)}.jsonl", lambda old: (old or b"") + line.encode() + b"\n")
 
-    async def audit_autopilot(self, entry: dict[str, Any]) -> None:
-        """Append one JSON line to _System/audit/autopilot/{yyyy-mm}.jsonl."""
-        ts = now()
-        line = json.dumps({"ts": ts.isoformat(), **entry}, ensure_ascii=False)
-        await self._update(f"{AUTOPILOT_AUDIT}/{_month(ts)}.jsonl", lambda old: (old or b"") + line.encode() + b"\n")
+    async def audit_autopilot(self, actor: str, action: str, refs: dict[str, Any]) -> None:
+        """The same line in _System/audit/autopilot/{yyyy-mm}.jsonl: Autopilot's own record, with its reasons."""
+        await self.audit(actor, action, refs, folder=AUTOPILOT_AUDIT)
 
     async def post_event(self, event: LedgerEvent) -> str:
         """Write an immutable ledger event and return its path. Refuses to overwrite."""
@@ -506,7 +502,7 @@ class Books:
         update: dict[str, Any] = {"status": "matched", "matched_event_id": ids[0], "matched_event_ids": ids}
         await self._set_line(path, line_id, update)
         await self.audit(f"user:{user}", "bank_matched", {"line": line_id, "events": ids, "file": path})
-        await self.rebuild_safely(user)
+        await self.rebuild_safely(f"user:{user}")
         return line.model_copy(update=update)
 
     async def unmatch(self, line_id: str, user: str) -> BankLine:
@@ -519,7 +515,7 @@ class Books:
         await self.audit(f"user:{user}", "bank_unmatched", {
             "line": line_id, "was": line.status, "events": line.event_ids(), "file": path,
         })
-        await self.rebuild_safely(user)
+        await self.rebuild_safely(f"user:{user}")
         return line.model_copy(update=update)
 
     async def mark_line(self, line_id: str, status: Literal["transfer", "ignored"], user: str) -> BankLine:
@@ -529,7 +525,7 @@ class Books:
             raise BankMatchError(f"This bank line is already {_DONE[line.status]}; undo that first")
         await self._set_line(path, line_id, {"status": status})
         await self.audit(f"user:{user}", f"bank_{status}", {"line": line_id, "file": path})
-        await self.rebuild_safely(user)
+        await self.rebuild_safely(f"user:{user}")
         return line.model_copy(update={"status": status})
 
     async def link_proposal(self, line_id: str, proposal_id: str) -> None:
@@ -578,14 +574,14 @@ class Books:
             log.warning("Books.xlsx is %d bytes, over the %d byte simple-upload size", len(data), WORKBOOK_LIMIT)
         return await self.storage.write(WORKBOOK, data)
 
-    async def rebuild_safely(self, user: str) -> FileRef | None:
+    async def rebuild_safely(self, actor: str) -> FileRef | None:
         """rebuild(), but never fails the user's action: errors are logged and audited."""
         try:
             return await self.rebuild()
         except Exception as exc:  # noqa: BLE001  the spreadsheet is a convenience copy of the books
             log.exception("Books.xlsx rebuild failed")
             try:
-                await self.audit(f"user:{user}", "books_rebuild_failed", {"error": f"{type(exc).__name__}: {exc}"})
+                await self.audit(actor, "books_rebuild_failed", {"error": f"{type(exc).__name__}: {exc}"})
             except Exception:  # noqa: BLE001
                 log.exception("could not audit the failed Books.xlsx rebuild")
             return None

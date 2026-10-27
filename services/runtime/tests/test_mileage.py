@@ -486,6 +486,9 @@ def test_vehicle_and_mileage_routes(client, fake: FakeStorageProvider) -> None:
     r = client.post("/mileage", headers=H, json=trip_body)
     assert r.status_code == 200 and r.json()["from"] == "Leeds" and r.json()["source"] == "manual"
     eid = r.json()["id"]
+    sneaky = client.post("/mileage", headers=H, json={**trip_body, "source": "proposal"}).json()
+    assert sneaky["source"] == "manual"  # only code makes journeys from proposals
+    assert client.delete(f"/mileage/{sneaky['id']}", headers=H).status_code == 200
     assert client.post("/mileage", headers=H, json={**trip_body, "miles": 1.25}).status_code == 422
     assert client.patch(f"/mileage/{eid}", headers=H, json={"miles": 100}).json()["miles"] == 100
     assert client.patch(f"/mileage/{eid}", headers=H, json={"vehicle_id": "f" * 32}).status_code == 400

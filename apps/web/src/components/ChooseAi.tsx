@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import {
-  aiHeaders,
   DEFAULT_KEY,
   DEFAULT_LOCAL,
   loadAiConfig,
@@ -11,13 +10,9 @@ import {
   type AiConfig,
   type AiMode,
 } from "@/lib/ai-config";
+import { runtimeAiTest, type RtAiTest } from "@/lib/runtime";
 
-interface TestResult {
-  ok: boolean;
-  mode: string;
-  model?: string;
-  detail: string;
-}
+type TestResult = RtAiTest;
 
 export default function ChooseAi() {
   const [mode, setMode] = useState<AiMode>("local");
@@ -45,13 +40,7 @@ export default function ChooseAi() {
     setTesting(true);
     setResult(null);
     try {
-      const res = await fetch(`${RUNTIME_URL}/ai/test`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", ...aiHeaders(current) },
-        body: JSON.stringify({ mode: current.mode, base_url: current.baseUrl, model: current.model }),
-      });
-      const data = (await res.json()) as TestResult;
-      setResult(res.ok ? data : { ok: false, mode, detail: `runtime returned ${res.status}` });
+      setResult(await runtimeAiTest(current));
     } catch (e) {
       setResult({ ok: false, mode, detail: `Could not reach the runtime at ${RUNTIME_URL}: ${(e as Error).message}` });
     } finally {

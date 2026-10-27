@@ -92,8 +92,8 @@ async def _autopilot_post(books: Books, p: Proposal, rule: autopilot.AutopilotRu
         await books.save_proposal(p)
         return p
     await autopilot.record_hit(books, rule.supplier_key)
-    await books.audit_autopilot({
-        "action": "approved", "proposal": p.id, "event": posted.event_id, "doc": p.doc_sha256,
+    await books.audit_autopilot(autopilot.ACTOR, "approved", {
+        "proposal": p.id, "event": posted.event_id, "doc": p.doc_sha256,
         "supplier_key": rule.supplier_key, "gross_pence": autopilot.pence(p.extracted.gross_total),
         "typical_gross_pence": rule.typical_gross_pence, "rule_from_proposal": rule.created_from_proposal_id,
         "reasons": p.autopilot.reasons if p.autopilot else [],
@@ -151,5 +151,5 @@ async def scan_inbox_detailed(
         out.append(p)
     await books.record_scan(now())
     if any(p.decided_by == autopilot.AUTOPILOT for p in out):
-        await books.rebuild_safely(autopilot.AUTOPILOT)
+        await books.rebuild_safely(autopilot.ACTOR)
     return out, errors

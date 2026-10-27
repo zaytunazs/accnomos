@@ -8,13 +8,14 @@ from collections.abc import AsyncIterator
 
 from accnomos_connectors.base import MailProvider
 from accnomos_connectors.msgraph import GraphMailProvider
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app.books import Books
 from app.intake import IntakeResult, scan_mail
 from app.routes_books import get_books
 from app.validation import StrictBody
+from app.routes_books import get_books, optional_user
 
 router = APIRouter(prefix="/mail", tags=["mail"])
 
@@ -41,10 +42,10 @@ async def mail_scan(
     body: MailScanBody | None = None,
     books: Books = Depends(get_books),
     mail: MailProvider = Depends(get_mail),
-    x_user: str | None = Header(default=None),
+    user: str | None = Depends(optional_user),
 ) -> IntakeResult:
     body = body or MailScanBody()
     return await scan_mail(
         books, mail, since_days=body.since_days, dry_run=body.dry_run,
-        user=(x_user or "").strip() or None, max_messages=body.max_messages,
+        user=user, max_messages=body.max_messages,
     )

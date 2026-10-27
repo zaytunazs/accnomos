@@ -31,6 +31,7 @@ from app.journal import VAT_CONTROL
 from app.schemas import AutopilotDecision, JournalLine, Proposal
 
 AUTOPILOT = "autopilot"  # approved_by on events Autopilot posts
+ACTOR = "agent:autopilot"  # its audit lines
 MAX_TIMES_TYPICAL = 2
 KEY_RE = re.compile(r"[a-z0-9]+(?:-[a-z0-9]+)*")
 _TRAILING = {"ltd", "limited", "plc", "llp", "uk", "co"}

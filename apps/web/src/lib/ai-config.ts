@@ -35,14 +35,6 @@ export function saveAiConfig(cfg: AiConfig): void {
   }
 }
 
-export function clearAiConfig(): void {
-  try {
-    window.localStorage.removeItem(KEY);
-  } catch {
-    /* ignore */
-  }
-}
-
 /** Headers the runtime reads (see services/runtime/app/ai/config.py). */
 export function aiHeaders(cfg: AiConfig): Record<string, string> {
   const h: Record<string, string> = { "X-AI-Mode": cfg.mode, "X-AI-Base-Url": cfg.baseUrl, "X-AI-Model": cfg.model };

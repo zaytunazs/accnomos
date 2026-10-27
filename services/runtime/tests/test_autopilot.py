@@ -162,10 +162,12 @@ async def test_matching_clean_proposal_is_auto_approved_with_audit(fake: FakeSto
     assert (await books.get_proposal(p.id)).status == "posted"
 
     (line,) = _jsonl(fake, f"{AUTOPILOT_AUDIT}/")
-    assert (line["action"], line["proposal"], line["event"], line["supplier_key"]) == ("approved", p.id, event.id, "screwfix")
-    assert (line["gross_pence"], line["typical_gross_pence"]) == (4110, 3847)
+    refs = line["refs"]
+    assert (line["actor"], line["action"]) == ("agent:autopilot", "approved")
+    assert (refs["proposal"], refs["event"], refs["supplier_key"]) == (p.id, event.id, "screwfix")
+    assert (refs["gross_pence"], refs["typical_gross_pence"]) == (4110, 3847)
     main = [a for a in _jsonl(fake, f"{AUDIT}/2") if a["action"] == "approved"]
-    assert main[-1]["actor"] == "autopilot"
+    assert main[-1]["actor"] == "agent:autopilot"
     assert (await autopilot.load_rules(books))[0].hits == 1
 
 

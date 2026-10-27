@@ -43,8 +43,8 @@ anything that a code check is unsure about.
 
 3. **It posts the normal way.** A match goes through the same approval code as your Approve button.
    The ledger event says `approved_by: "autopilot"`. One line goes to your audit trail
-   (`_System/audit/{yyyy-mm}.jsonl`, actor `autopilot`), and one goes to
-   `_System/audit/autopilot/{yyyy-mm}.jsonl` with the amounts, the rule and the reasons.
+   (`_System/audit/{yyyy-mm}.jsonl`, actor `agent:autopilot`), and a line of the same shape goes to
+   `_System/audit/autopilot/{yyyy-mm}.jsonl` with the amounts, the rule and the reasons in `refs`.
    OneDrive paths ignore case, so this is the `_System/Audit/autopilot/` folder.
 
 4. **You can undo.** Review lists *Approved by Autopilot (n)* for 30 days, each with **Undo**.

@@ -14,6 +14,7 @@ from typing import Any
 
 from accnomos_ledger.events import LedgerEvent, Line, VatCode
 
+from app.autopilot import ACTOR as AUTOPILOT_ACTOR
 from app.autopilot import AUTOPILOT, rule_from_proposal, save_rule
 from app.books import NEEDS_A_LOOK, Books, Rule, RuleMatch, now
 from app.checks import decide
@@ -122,7 +123,7 @@ async def approve(
     if p.file_path and p.file_path.startswith(f"{NEEDS_A_LOOK}/"):
         await books.file_document(p, p.file_path, books.filing_folder(p.extracted))
     p.status, p.event_id, p.decided_by, p.decided_at = "posted", event.id, user, now()
-    await books.update_proposal(p)
+    await books.save_proposal(p)
     rule = await _remember(books, p, user) if always else None
     auto_rule = rule_from_proposal(p, user) if always else None
     if auto_rule:
@@ -133,7 +134,7 @@ async def approve(
         "autopilot_rule": auto_rule.supplier_key if auto_rule else None, "job": p.job_id, "vehicle": p.vehicle_id,
     })
     if rebuild:
-        await books.rebuild_safely(user)
+        await books.rebuild_safely(_actor(user))
     return p
 
 
@@ -173,7 +174,7 @@ async def _vehicle_tag(books: Books, p: Proposal, vehicle_id: Any) -> str | None
 
 
 def _actor(user: str) -> str:
-    return AUTOPILOT if user == AUTOPILOT else f"user:{user}"
+    return AUTOPILOT_ACTOR if user == AUTOPILOT else f"user:{user}"
 
 
 async def _remember(books: Books, p: Proposal, user: str) -> Rule | None:
@@ -192,9 +193,9 @@ async def reject(books: Books, proposal_id: str, user: str, reason: str) -> Prop
     if p.file_path:
         await books.file_document(p, p.file_path, NEEDS_A_LOOK)
     p.status, p.reject_reason, p.decided_by, p.decided_at = "rejected", reason, user, now()
-    await books.update_proposal(p)
+    await books.save_proposal(p)
     await books.audit(f"user:{user}", "rejected", {"proposal": p.id, "doc": p.doc_sha256, "reason": reason, "path": p.file_path})
-    await books.rebuild_safely(user)
+    await books.rebuild_safely(f"user:{user}")
     return p
 
 
@@ -234,10 +235,10 @@ async def undo(books: Books, event_id: str, user: str) -> tuple[LedgerEvent, Pro
         "originally_approved_by": original.approved_by,
     })
     if original.approved_by == AUTOPILOT:
-        await books.audit_autopilot({
-            "action": "undone", "by": user, "event": event_id, "reversal": reversal.id, "proposal": original.proposal_id,
+        await books.audit_autopilot(f"user:{user}", "undone", {
+            "event": event_id, "reversal": reversal.id, "proposal": original.proposal_id,
         })
-    await books.rebuild_safely(user)
+    await books.rebuild_safely(f"user:{user}")
     return reversal, p
 
 
@@ -256,5 +257,5 @@ async def _reopen(books: Books, event: LedgerEvent) -> Proposal | None:
     p.undone_events.append(event.id)
     if p.file_path:
         await books.file_document(p, p.file_path)
-    await books.update_proposal(p)
+    await books.save_proposal(p)
     return p
