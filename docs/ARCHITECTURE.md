@@ -115,7 +115,20 @@ never approve; Autopilot is recorded as `autopilot`). Nothing is edited; **undo 
 original. The nine VAT boxes come from `compute_vat_return`, plain code, boxes 6–9 truncated to whole pounds.
 
 **Audit lines** are one JSON object per line: `{"ts", "actor", "action", "refs"}`. `actor` is `user:<email>` for something a
-person did, or `agent:<name>` (`extractor`, `intake`, `autopilot`, `mileage`, `contacts`, `triage`) for something done for them.
+person did, or `agent:<name>` (`extractor`, `intake`, `autopilot`, `mileage`, `contacts`, `triage`, `folder-layout`) for
+something done for them. Applying a day plan is the user's action (`plan_applied`); there is no `agent:planner` writer yet.
+Chat and voice actions write their own lines to `audit/actions/` (`{"ts", "action_id", "kind", "event", "user", …}`, `event`
+= approving · executed · failed · rejected), and Autopilot's postings are repeated with its reasons in `audit/autopilot/`.
+
+**Reading it back:** `GET /audit?from=&to=&actor=&kind=&limit=` (`app/audit_view.py`, read-only) reads the month files of
+`audit/` and `audit/actions/` for the range (one extra month of `actions/`, which files by the month an action was proposed),
+newest first, at most 500. `audit/autopilot/` is not read, because every line in it is already in `audit/`. Each line becomes
+`{ts, actor, actor_kind: user|agent, actor_label, event, summary, refs: {proposal, event, invoice, action, file}}`; the
+summary comes from one table, `SUMMARIES` (a kind not in it shows as its own name), and `approving` rows are skipped (the
+`executed`, `failed` or `rejected` row that follows is the outcome). `actor` matches `user`, `agent`, an agent name or a full
+actor; `kind` matches an event or a prefix family (`invoice` is every `invoice_*`). Days are UTC. A test fails if a
+`Books.audit` call in `app/` writes a kind with no sentence. The web `/audit` page and the Android *Audit trail* screen are
+the only readers besides the Home dashboard's recent activity.
 
 ## The agent pipeline
 
