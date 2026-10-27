@@ -119,9 +119,10 @@ export default function ReviewImage({ source, crop, label }: { source: ImageSour
           wake();
           setOpen(true);
         }}
-        aria-label={`Open the document for ${label}${cropped ? " (original and crop side by side)" : ""}`}
         className={`${frame} relative cursor-zoom-in`}
       >
+        {/* Named by its content, not aria-label, so the visible "Loading…" or "Cropped" stays part of the name (WCAG 2.5.3). */}
+        <span className="sr-only">Open the document for {label}{cropped ? " (original and crop side by side)" : ""} </span>
         {!url ? (
           "Loading…"
         ) : isPdf ? (

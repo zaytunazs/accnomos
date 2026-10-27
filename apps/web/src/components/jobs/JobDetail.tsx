@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import {
@@ -99,9 +99,16 @@ export default function JobDetail() {
     });
   }
 
-  if (!id) return <p className="text-sm text-muted">No job chosen. <Link href="/jobs" className="font-bold text-teal-dark underline">Back to jobs</Link></p>;
-  if (account === null) return <p className="text-sm text-muted">Sign in to see this job.</p>;
-  if (!summary) return <p className="text-sm text-muted">{note ?? "Loading…"}</p>;
+  // Until the job is known the page still has its level-one heading.
+  const bare = (body: ReactNode) => (
+    <div>
+      <h1 className="text-3xl font-extrabold tracking-tight">Job</h1>
+      <p className="mt-2 text-sm text-muted">{body}</p>
+    </div>
+  );
+  if (!id) return bare(<>No job chosen. <Link href="/jobs" className="font-bold text-teal-dark underline">Back to jobs</Link></>);
+  if (account === null) return bare("Sign in to see this job.");
+  if (!summary) return bare(note ?? "Loading…");
 
   const job = summary.job;
   const names = Object.fromEntries(staff.map((s) => [s.id, s.role ? `${s.name} (${s.role})` : s.name]));

@@ -5,7 +5,7 @@ export const metadata = { title: "About your business · Accnomos" };
 
 export default function BusinessPage() {
   return (
-    <main className="mx-auto max-w-xl px-4 py-10">
+    <div className="mx-auto max-w-xl px-4 py-10">
       <p className="text-xs font-bold uppercase tracking-wider text-teal-dark">Step 3 of 4</p>
       <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-ink">About your business</h1>
       <p className="mt-2 text-[15px] leading-relaxed text-muted">
@@ -18,6 +18,6 @@ export default function BusinessPage() {
         </p>
         <InvoiceProfileForm card="rounded-2xl border border-border bg-white p-4" heading="text-[17px] font-extrabold text-ink" />
       </div>
-    </main>
+    </div>
   );
 }

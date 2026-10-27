@@ -24,8 +24,10 @@ export default function DemoBanner() {
   if (!isSamplePage(path)) return null;
   if (signedIn === true) return null;
   return (
-    <p className="bg-ink px-4 py-2 text-center text-[13px] font-bold text-ground">
-      SAMPLE — FICTIONAL COMPANY · demo data only
-    </p>
+    <aside aria-label="Sample data">
+      <p className="bg-ink px-4 py-2 text-center text-[13px] font-bold text-ground">
+        SAMPLE — FICTIONAL COMPANY · demo data only
+      </p>
+    </aside>
   );
 }

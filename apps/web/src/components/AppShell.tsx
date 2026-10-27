@@ -33,7 +33,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <div className="flex min-h-full flex-1 flex-col">
       <DemoBanner />
       {/* Phone header: logo plus Settings, shown only while the sidebar is hidden. */}
-      <div className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-border bg-white px-4 py-2.5 min-[900px]:hidden">
+      <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-border bg-white px-4 py-2.5 min-[900px]:hidden">
         <span className="flex min-w-0 items-center gap-2.5">
           <LogoMark />
           <span className="truncate text-lg font-extrabold tracking-tight">
@@ -46,7 +46,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
         >
           Settings
         </Link>
-      </div>
+      </header>
       <div className="flex flex-1 flex-col min-[900px]:flex-row">
         <aside className="hidden w-full shrink-0 flex-col gap-6 border-b border-border bg-white p-5 min-[900px]:flex min-[900px]:w-[232px] min-[900px]:border-b-0 min-[900px]:border-r">
           <div className="flex items-center gap-2.5">

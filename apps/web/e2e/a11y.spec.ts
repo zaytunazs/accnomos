@@ -46,3 +46,17 @@ test.describe("axe, signed in", () => {
 
   for (const path of PAGES) test(`${path}`, ({ page }) => audit(page, path));
 });
+
+// The sidebar and the wide layouts only exist from 900 px: a few pages there too, both states.
+test.describe("axe at 1280 px", () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  for (const path of ["/", "/review", "/settings", "/files"]) {
+    test(`${path}, signed out`, ({ page }) => audit(page, path));
+    test(`${path}, signed in`, async ({ page, runtime }) => {
+      await signIn(page);
+      await createBooksFolder(page);
+      await runtime.postGold();
+      await audit(page, path);
+    });
+  }
+});
