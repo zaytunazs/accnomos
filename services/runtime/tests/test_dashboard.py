@@ -295,6 +295,50 @@ def test_broken_ledger_event_blanks_vat_and_owed(client: TestClient, fake: FakeS
     assert d["attention"]["proposed"] == 1
 
 
+def test_provider_failure_on_one_read_marks_only_its_tiles(
+    client: TestClient, books: Books, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def boom() -> list[BankLine]:
+        raise OSError("disk went away")
+
+    monkeypatch.setattr(books, "stored_bank_lines", boom)
+    r = client.get(f"/books/dashboard?stagger=1&today={TODAY}", headers=H)
+    assert r.status_code == 200, r.text
+    d = r.json()
+    for tile in ("cash", "owed_to_you", "owed_by_you", "attention"):
+        assert set(d[tile]) == {"error"} and d[tile]["error"], tile
+    assert "disk went away" not in r.text  # no internals in the payload
+    assert d["vat"]["due"]["label"] == "Jul–Sep 2026" and len(d["activity"]) == 10
+    assert d["unavailable"] == ["bank"]
+
+
+def test_graph_server_error_on_audit_read_keeps_the_tiles(
+    client: TestClient, books: Books, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from accnomos_connectors.msgraph import GraphError
+
+    async def boom(_books: Books, _folder: str, months: int = 2) -> list[dict]:
+        raise GraphError(503, "busy")
+
+    monkeypatch.setattr(dashboard, "read_audit", boom)
+    d = client.get(f"/books/dashboard?stagger=1&today={TODAY}", headers=H).json()
+    assert d["cash"]["balance_pence"] == 540000 and d["activity"] == []
+    assert {"audit", "autopilot audit"} <= set(d["unavailable"])
+
+
+@pytest.mark.parametrize("status", [401, 403])
+def test_graph_auth_failure_is_still_a_401(
+    client: TestClient, books: Books, monkeypatch: pytest.MonkeyPatch, status: int
+) -> None:
+    from accnomos_connectors.msgraph import GraphError
+
+    async def boom() -> list[BankLine]:
+        raise GraphError(status, "token expired")
+
+    monkeypatch.setattr(books, "stored_bank_lines", boom)
+    assert client.get(f"/books/dashboard?today={TODAY}", headers=H).status_code == 401
+
+
 def test_bad_vat_months(client: TestClient) -> None:
     assert client.get(f"/books/dashboard?months=2&today={TODAY}", headers=H).status_code == 422
 

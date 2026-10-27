@@ -1077,25 +1077,36 @@ export interface RtDashboardRun {
   at: string;
   summary: string | null;
 }
+/** A tile the runtime could not read just now (a storage or Graph failure on that read); the rest still load. */
+export interface RtTileError {
+  error: string;
+}
+export function isTileError(x: unknown): x is RtTileError {
+  return typeof x === "object" && x !== null && "error" in x && typeof (x as RtTileError).error === "string";
+}
+/** The tile's data, or null when it is missing or came back as an error. */
+export function tileData<T>(x: T | RtTileError | null | undefined): T | null {
+  return x === null || x === undefined || isTileError(x) ? null : x;
+}
 export interface RtDashboard {
   today: string;
-  cash: {
+  cash: ({
     balance_pence: number | null; // closing balance on the latest statement with a matched line
     as_of: string | null;
     bank: string | null;
     statement: string | null;
     reconciled_to: string | null;
-  } | null;
-  owed_to_you: (RtOwed & { overdue: number | null; overdue_pence: number | null; most_overdue_days: number | null }) | null;
-  owed_by_you: RtOwed | null;
-  vat: RtDeadlines | null;
-  attention: {
+  } | RtTileError) | null;
+  owed_to_you: (RtOwed & { overdue: number | null; overdue_pence: number | null; most_overdue_days: number | null }) | RtTileError | null;
+  owed_by_you: RtOwed | RtTileError | null;
+  vat: RtDeadlines | RtTileError | null;
+  attention: ({
     proposed: number;
     needs_a_look: number;
     unmatched_bank_lines: number;
     overdue_invoices: number | null;
     total: number;
-  } | null;
+  } | RtTileError) | null;
   activity: { at: string; actor: string; action: string; text: string; tone: "ok" | "warn" }[];
   runs: Record<"scan" | "autopilot" | "intake" | "triage", RtDashboardRun | null>;
   unavailable: string[];

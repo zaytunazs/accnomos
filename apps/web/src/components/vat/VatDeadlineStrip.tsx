@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Skeleton, useHome } from "@/components/home/HomeData";
+import { tileData } from "@/lib/runtime";
 import { deadlines as sampleDeadlines } from "@/lib/sample-home";
 
 /** "7 Nov" from "2026-11-07", without going through a time zone. */
@@ -41,8 +42,9 @@ export default function VatDeadlineStrip() {
     );
   }
 
-  if (home.mode === "live" && !home.annualVat && home.data.vat) {
-    const next = home.data.vat.due ?? home.data.vat.current;
+  if (home.mode === "live" && !home.annualVat && tileData(home.data.vat)) {
+    const vat = tileData(home.data.vat)!;
+    const next = vat.due ?? vat.current;
     return (
       <Strip
         title={`VAT return ${next.label} due ${shortUk(next.deadline)}`}

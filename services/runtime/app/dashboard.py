@@ -3,6 +3,9 @@
 Read, never written: ledger events, proposals, bank lines, sales invoices and the last two months of audit files.
 Each section is worked out on its own; one that cannot be read (a hand-edited file that no longer parses) comes
 back as null and is named in `unavailable`, so the app shows "—" for that tile and the rest still work.
+A provider-level failure (storage or Graph down for one read) is isolated the same way: the tiles that needed that
+read come back as `{"error": "..."}` and the rest are still returned. An auth failure (Graph 401/403) is not
+isolated: it propagates, so the whole request is a 401 and the app signs the user in again.
 """
 
 from __future__ import annotations
@@ -16,6 +19,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from accnomos_connectors.msgraph import GraphError
 from accnomos_ledger.bank import BankLine, reconciled_to
 from app import contacts as cb
 from app import invoicing
@@ -79,13 +83,22 @@ class Runs(BaseModel):
     triage: Run | None  # last inbox triage
 
 
+class TileError(BaseModel):
+    """A tile whose data could not be read just now (storage or Graph failed for that read)."""
+
+    error: str
+
+
+TILE_ERROR = "Couldn't load this just now"
+
+
 class Dashboard(BaseModel):
     today: date
-    cash: Cash | None
-    owed_to_you: OwedToYou | None
-    owed_by_you: Owed | None
-    vat: Deadlines | None
-    attention: Attention | None
+    cash: Cash | TileError | None
+    owed_to_you: OwedToYou | TileError | None
+    owed_by_you: Owed | TileError | None
+    vat: Deadlines | TileError | None
+    attention: Attention | TileError | None
     activity: list[ActivityItem]
     runs: Runs
     unavailable: list[str]  # sections that could not be worked out: show "—"
@@ -270,25 +283,48 @@ async def read_audit(books: Books, folder: str, months: int = AUDIT_MONTHS) -> l
     return out
 
 
-async def _try[T](name: str, missing: list[str], work: Callable[[], Awaitable[T]]) -> T | None:
-    try:
-        return await work()
-    except ValueError:  # pydantic ValidationError and bad JSON in a hand-edited file
-        log.exception("dashboard: %s could not be worked out", name)
-        missing.append(name)
-        return None
+class _Reads:
+    """Runs each read on its own. A parse error blanks the tile (null, named in `unavailable`); any other failure
+    except an auth one marks the tiles that needed it with a TileError. Auth failures propagate (401)."""
+
+    def __init__(self) -> None:
+        self.missing: list[str] = []
+        self.failed: set[str] = set()
+
+    async def run[T](self, name: str, work: Callable[[], Awaitable[T]]) -> T | None:
+        try:
+            return await work()
+        except ValueError:  # pydantic ValidationError and bad JSON in a hand-edited file
+            log.exception("dashboard: %s could not be worked out", name)
+            self.missing.append(name)
+            return None
+        except GraphError as exc:
+            if exc.status in (401, 403):
+                raise  # re-sign-in, not a tile problem
+            return self._fail(name)
+        except Exception:  # noqa: BLE001 - one provider-level read must not take the other tiles down
+            return self._fail(name)
+
+    def _fail(self, name: str) -> None:
+        log.exception("dashboard: %s could not be read", name)
+        self.missing.append(name)
+        self.failed.add(name)
+
+    def tile[T](self, value: T | None, *needs: str) -> T | TileError | None:
+        """`value`, or a TileError when a read it needed failed at provider level."""
+        return TileError(error=TILE_ERROR) if self.failed.intersection(needs) else value
 
 
 async def build(books: Books, today: date, first_vat_month: int, vat_months: int) -> Dashboard:
-    missing: list[str] = []
+    reads = _Reads()
 
     async def load_proposals() -> dict[str, Proposal]:
         return {p.id: p for p in await books.list_proposals()}
 
     # The ledger's three parts are read on their own, so one hand-edited file only blanks the tiles that need it.
-    events = await _try("ledger", missing, books.list_events)
-    proposals = await _try("proposals", missing, load_proposals)
-    bank_lines = await _try("bank", missing, books.stored_bank_lines)
+    events = await reads.run("ledger", books.list_events)
+    proposals = await reads.run("proposals", load_proposals)
+    bank_lines = await reads.run("bank", books.stored_bank_lines)
     ledger = cb.Ledger(events=events or [], proposals=proposals or {}, bank_lines=bank_lines or [])
 
     async def load_invoices() -> list[invoicing.Invoice]:
@@ -303,19 +339,28 @@ async def build(books: Books, today: date, first_vat_month: int, vat_months: int
     async def cash() -> Cash:
         return cash_position(ledger.bank_lines)
 
-    invoices = await _try("invoices", missing, load_invoices)
+    invoices = await reads.run("invoices", load_invoices)
     # Owed needs the events and the bank lines (payments); proposals only add labels.
-    owed_pair = await _try("owed", missing, money) if events is not None and bank_lines is not None else None
+    owed_pair = await reads.run("owed", money) if events is not None and bank_lines is not None else None
     overdue = owed_pair[0].overdue if owed_pair else None
-    audit = await read_audit(books, AUDIT)
+    audit = await reads.run("audit", lambda: read_audit(books, AUDIT)) or []
+    autopilot = await reads.run("autopilot audit", lambda: read_audit(books, AUTOPILOT_AUDIT)) or []
+    last_scan = await reads.run("last scan", books.last_scan)
+    cash_tile = await reads.run("cash", cash) if bank_lines is not None else None
+    vat_tile = await reads.run("vat", vat) if events is not None else None
     return Dashboard(
         today=today,
-        cash=await _try("cash", missing, cash) if bank_lines is not None else None,
-        owed_to_you=owed_pair[0] if owed_pair else None,
-        owed_by_you=owed_pair[1] if owed_pair else None,
-        vat=await _try("vat", missing, vat) if events is not None else None,
-        attention=attention(ledger, overdue) if proposals is not None and bank_lines is not None else None,
+        cash=reads.tile(cash_tile, "bank"),
+        owed_to_you=reads.tile(owed_pair[0] if owed_pair else None, "ledger", "bank"),
+        owed_by_you=reads.tile(owed_pair[1] if owed_pair else None, "ledger", "bank"),
+        vat=reads.tile(vat_tile, "ledger"),
+        attention=reads.tile(
+            attention(ledger, overdue) if proposals is not None and bank_lines is not None else None,
+            "ledger",
+            "proposals",
+            "bank",
+        ),
         activity=recent_activity(audit, ledger),
-        runs=last_runs(audit, await read_audit(books, AUTOPILOT_AUDIT), await books.last_scan()),
-        unavailable=missing,
+        runs=last_runs(audit, autopilot, last_scan),
+        unavailable=reads.missing,
     )

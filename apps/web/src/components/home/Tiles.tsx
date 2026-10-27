@@ -3,15 +3,18 @@
 import Link from "next/link";
 import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
-import type { RtDashboard } from "@/lib/runtime";
+import { isTileError, type RtDashboard } from "@/lib/runtime";
 import { tiles as sampleTiles, type Tile } from "@/lib/sample-home";
 import Greeting from "./Greeting";
 import { pounds, SampleTag, shortDate, Skeleton, UNKNOWN, useHome } from "./HomeData";
+
+const COULDNT_LOAD = "Couldn't load this just now";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
 function cashTile(cash: RtDashboard["cash"]): Tile {
   const label = "Cash in bank";
+  if (isTileError(cash)) return { label, value: UNKNOWN, sub: COULDNT_LOAD };
   if (!cash) return { label, value: UNKNOWN, sub: "Could not read the bank statements" };
   if (cash.balance_pence === null) return { label, value: UNKNOWN, sub: "Import a statement and match a line", href: "/bank" };
   const reconciled = cash.reconciled_to ? ` · reconciled to ${shortDate(cash.reconciled_to)}` : "";
@@ -20,6 +23,7 @@ function cashTile(cash: RtDashboard["cash"]): Tile {
 
 function owedToYouTile(owed: RtDashboard["owed_to_you"]): Tile {
   const label = "Owed to you";
+  if (isTileError(owed)) return { label, value: UNKNOWN, sub: COULDNT_LOAD };
   if (!owed) return { label, value: UNKNOWN, sub: "Could not read the ledger" };
   if (owed.overdue)
     return {
@@ -31,6 +35,7 @@ function owedToYouTile(owed: RtDashboard["owed_to_you"]): Tile {
 
 function owedByYouTile(owed: RtDashboard["owed_by_you"]): Tile {
   const label = "Owed by you";
+  if (isTileError(owed)) return { label, value: UNKNOWN, sub: COULDNT_LOAD };
   if (!owed) return { label, value: UNKNOWN, sub: "Could not read the ledger" };
   const oldest = owed.oldest_days !== null ? `, oldest ${plural(owed.oldest_days, "day")}` : "";
   return { label, value: pounds(owed.total_pence), sub: owed.documents ? `${plural(owed.documents, "unpaid bill")}${oldest}` : "Nothing unpaid" };
@@ -38,6 +43,7 @@ function owedByYouTile(owed: RtDashboard["owed_by_you"]): Tile {
 
 function vatTile(vat: RtDashboard["vat"], annual: boolean): Tile {
   if (annual) return { label: "VAT estimate", value: UNKNOWN, sub: "Annual returns are not estimated yet" };
+  if (isTileError(vat)) return { label: "VAT estimate", value: UNKNOWN, sub: COULDNT_LOAD };
   if (!vat) return { label: "VAT estimate", value: UNKNOWN, sub: "Could not work out the VAT period" };
   const next = vat.due ?? vat.current; // the return to file next
   const amount = `£${Math.round(Number(next.box5)).toLocaleString("en-GB")}`;
@@ -49,6 +55,7 @@ function vatTile(vat: RtDashboard["vat"], annual: boolean): Tile {
 
 function attentionTile(a: RtDashboard["attention"]): Tile {
   const label = "Needs attention";
+  if (isTileError(a)) return { label, value: UNKNOWN, sub: COULDNT_LOAD };
   if (!a) return { label, value: UNKNOWN, sub: "Could not read your books" };
   if (!a.total) return { label, value: "0", sub: "Nothing waiting" };
   const parts = [

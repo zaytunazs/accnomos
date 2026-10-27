@@ -4,7 +4,7 @@ import Link from "next/link";
 import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
 import VatDeadlineStrip from "@/components/vat/VatDeadlineStrip";
-import type { RtPeriodDeadline } from "@/lib/runtime";
+import { isTileError, tileData, type RtPeriodDeadline } from "@/lib/runtime";
 import { deadlines as sampleDeadlines, type Deadline } from "@/lib/sample-home";
 import { SampleTag, Skeleton, UNKNOWN, useHome } from "./HomeData";
 
@@ -70,12 +70,14 @@ function TileSkeleton() {
 export default function Deadlines() {
   const home = useHome();
   const sample = home.mode === "sample";
-  const vat = home.mode === "live" && !home.annualVat ? home.data.vat : null;
+  const vat = home.mode === "live" && !home.annualVat ? tileData(home.data.vat) : null;
+  const vatFailed = home.mode === "live" && !home.annualVat && isTileError(home.data.vat);
   const live = vat ? { tiles: toTiles(vat.current, vat.due), rule: vat.rule } : null;
   const tiles: Deadline[] | null =
     sample ? sampleDeadlines
     : live ? live.tiles
     : home.mode === "live" && home.annualVat ? unknownTiles("Annual VAT returns are not worked out yet")
+    : vatFailed ? unknownTiles("Couldn't load this just now")
     : home.mode === "live" || home.mode === "error" ? unknownTiles("Could not work out your VAT period")
     : null;
 
