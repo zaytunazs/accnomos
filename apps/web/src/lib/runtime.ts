@@ -268,7 +268,65 @@ export const runtime = {
     call<{ proposal: RtProposal; created: boolean }>(a, `/mileage/propose-allowance?tax_year=${taxYear}&period=${period}`, {
       method: "POST",
     }),
+  /** /payroll/runs (services/runtime/app/routes_payroll.py): estimates for the payroll provider; only confirm posts. */
+  payrollRuns: (a: AccountInfo) => call<RtPayRunList>(a, "/payroll/runs"),
+  preparePayRun: (a: AccountInfo, period: string, payDate?: string | null) =>
+    call<RtPayRun>(a, "/payroll/runs/prepare", { method: "POST", body: JSON.stringify({ period, pay_date: payDate ?? null }) }),
+  editPayRun: (a: AccountInfo, period: string, lines: RtPayLineEdit[], payDate?: string | null) =>
+    call<RtPayRun>(a, `/payroll/runs/${period}`, { method: "PUT", body: JSON.stringify({ lines, pay_date: payDate ?? null }) }),
+  /** Saves 04 Payroll/<period>.csv in OneDrive and returns the CSV text. */
+  exportPayRun: (a: AccountInfo, period: string) =>
+    call<{ path: string; csv: string; estimate: string }>(a, `/payroll/runs/${period}/export`, { method: "POST" }),
+  /** The figures your payroll provider calculated, not the estimate. */
+  confirmPayRun: (a: AccountInfo, period: string, actualGrossPence: number, actualErNiPence: number) =>
+    call<RtPayRun>(a, `/payroll/runs/${period}/confirm`, {
+      method: "POST",
+      body: JSON.stringify({ actual_gross_pence: actualGrossPence, actual_er_ni_pence: actualErNiPence }),
+    }),
+  reopenPayRun: (a: AccountInfo, period: string) => call<RtPayRun>(a, `/payroll/runs/${period}/reopen`, { method: "POST" }),
 };
+
+/** Pay runs (services/runtime/app/payroll.py). Pence throughout; every est_* figure is an estimate. */
+export interface RtPayLine {
+  staff_id: string;
+  hours: number;
+  rate_pence: number;
+  gross_pence: number;
+  est_paye_pence: number;
+  est_ee_ni_pence: number;
+  est_er_ni_pence: number;
+  est_net_pence: number;
+  notes: string;
+}
+export interface RtPayLineEdit {
+  staff_id: string;
+  hours: number;
+  rate_pence: number;
+  notes: string;
+}
+export interface RtPayRun {
+  period_start: string;
+  period_end: string;
+  pay_date: string;
+  lines: RtPayLine[];
+  status: "draft" | "confirmed";
+  confirmed_gross_pence: number | null;
+  confirmed_er_ni_pence: number | null;
+  confirmed_by: string | null;
+  confirmed_at: string | null;
+  event_ids: string[];
+  undone_event_ids: string[];
+  warnings: string[];
+  estimate: string;
+  limits: string[];
+}
+export interface RtPayRunList {
+  runs: RtPayRun[];
+  estimate: string;
+  limits: string[];
+  tax_year: string;
+  source_url: string;
+}
 
 /** Jobs, staff and timesheets (services/runtime/app/jobs.py). Money is integer pence; hours are 0.25 steps. */
 export interface RtJobIn {
