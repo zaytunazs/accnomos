@@ -370,6 +370,55 @@ class RuntimeClient {
     }
   }
 
+  /// `POST /actions/approve`: runs the proposal once and returns the result's
+  /// markdown summary (e.g. "Logged 7.5 hours for Sam on Elm Road.").
+  Future<String> approveAction(ProposedAction action) =>
+      _action('approve', action, 'Could not approve that');
+
+  /// `POST /actions/reject`: nothing happens except a line in the audit log.
+  Future<String> rejectAction(ProposedAction action) =>
+      _action('reject', action, 'Could not reject that');
+
+  Future<String> _action(
+    String verb,
+    ProposedAction action,
+    String what,
+  ) async {
+    _requireBooks();
+    final uri = Uri.parse('${settings.runtimeUrl}/actions/$verb');
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {..._headers, 'Content-Type': 'application/json'},
+            body: json.encode({'action': action.raw}),
+          )
+          .timeout(_timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        String? detail;
+        try {
+          detail = (json.decode(response.body) as Map)['detail']?.toString();
+        } catch (_) {
+          detail = null;
+        }
+        if (detail != null) throw RuntimeException(detail);
+        _fail(response.statusCode, response.body.trim());
+      }
+      final body = json.decode(response.body) as Map<String, dynamic>;
+      return (body['summary_md'] ?? 'Rejected. Nothing was done.').toString();
+    } on TimeoutException {
+      throw RuntimeException('$what: the reader took too long.');
+    } on SocketException {
+      throw RuntimeException(
+          'Could not reach the reader at ${settings.runtimeUrl}. '
+          'Is it running?');
+    } on RuntimeException {
+      rethrow;
+    } catch (e) {
+      throw RuntimeException('$what. $e');
+    }
+  }
+
   Never _fail(int status, String body) {
     final detail = body.length > 300 ? '${body.substring(0, 300)}…' : body;
     throw RuntimeException(

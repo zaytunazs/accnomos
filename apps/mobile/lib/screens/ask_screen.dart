@@ -17,6 +17,11 @@ class _Turn {
   final String question;
   AskAnswer? answer;
   String? error;
+
+  /// For a proposed action: the result once approved or rejected.
+  String? actionResult;
+  String? actionError;
+  bool actionBusy = false;
 }
 
 /// Ask your books a question.
@@ -89,17 +94,8 @@ class _AskScreenState extends State<AskScreen> {
     });
     _scrollToEnd();
     try {
-      final token = await _auth.token();
-      final user = _account?.username ?? settings.userEmail;
-      final answer = await RuntimeClient(
-        settings,
-        books: BooksAuth(
-          graphToken: token,
-          accountKind: _auth.kind == AccountKind.work ? 'work' : 'personal',
-          user: (user != null && user.isNotEmpty) ? user : null,
-          businessName: settings.businessName,
-        ),
-      ).ask(question, history: history);
+      final client = await _client(settings);
+      final answer = await client.ask(question, history: history);
       if (!mounted) return;
       setState(() => turn.answer = answer);
     } catch (e) {
@@ -109,6 +105,45 @@ class _AskScreenState extends State<AskScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
       _scrollToEnd();
+    }
+  }
+
+  Future<RuntimeClient> _client(AppSettings settings) async {
+    final token = await _auth.token();
+    final user = _account?.username ?? settings.userEmail;
+    return RuntimeClient(
+      settings,
+      books: BooksAuth(
+        graphToken: token,
+        accountKind: _auth.kind == AccountKind.work ? 'work' : 'personal',
+        user: (user != null && user.isNotEmpty) ? user : null,
+        businessName: settings.businessName,
+      ),
+    );
+  }
+
+  /// Approve or reject a proposed action. Nothing happens before this.
+  Future<void> _decide(_Turn turn, {required bool approve}) async {
+    final settings = _settings;
+    final action = turn.answer?.proposedAction;
+    if (settings == null || action == null || turn.actionBusy) return;
+    setState(() {
+      turn.actionBusy = true;
+      turn.actionError = null;
+    });
+    try {
+      final client = await _client(settings);
+      final result = approve
+          ? await client.approveAction(action)
+          : await client.rejectAction(action);
+      if (!mounted) return;
+      setState(() => turn.actionResult = result);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() =>
+          turn.actionError = e.toString().replaceFirst('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => turn.actionBusy = false);
     }
   }
 
@@ -203,7 +238,9 @@ class _AskScreenState extends State<AskScreen> {
       for (final t in _turns) ...[
         _questionBubble(t.question),
         const SizedBox(height: 12),
-        if (t.answer != null)
+        if (t.answer?.proposedAction != null)
+          _actionCard(t)
+        else if (t.answer != null)
           _liveAnswer(t.answer!)
         else if (t.error != null)
           _warnBox('Couldn\'t get an answer. ${t.error}')
@@ -355,6 +392,89 @@ class _AskScreenState extends State<AskScreen> {
                         ),
                       ),
                     ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  /// A proposed action: what will happen, then Approve / Reject.
+  Widget _actionCard(_Turn t) {
+    final a = t.answer!.proposedAction!;
+    final expires = a.expiresAt;
+    final expired = expires != null && DateTime.now().isAfter(expires);
+    // The runtime escapes names in its markdown; this renderer shows text only.
+    String plain(String md) => md
+        .replaceAll(RegExp(r'^> ?', multiLine: true), '')
+        .replaceAllMapped(RegExp(r'\\(.)'), (m) => m.group(1)!);
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AccnomosColors.teal, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'PROPOSED · NEEDS YOUR OK',
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w700,
+              color: AccnomosColors.teal,
+            ),
+          ),
+          const SizedBox(height: 8),
+          ..._markdown(plain(a.summaryMd)),
+          for (final w in a.warnings) ...[
+            const SizedBox(height: 8),
+            _warnBox(w),
+          ],
+          const SizedBox(height: 12),
+          if (t.actionResult != null)
+            Text(
+              plain(t.actionResult!).replaceAll('**', ''),
+              style: const TextStyle(
+                color: AccnomosColors.teal,
+                fontWeight: FontWeight.w700,
+                height: 1.4,
+              ),
+            )
+          else ...[
+            Text(
+              expired
+                  ? 'This proposal has expired; ask again.'
+                  : '${a.confirmText}?',
+              style: const TextStyle(
+                fontWeight: FontWeight.w700,
+                color: AccnomosColors.ink,
+              ),
+            ),
+            if (t.actionError != null) ...[
+              const SizedBox(height: 8),
+              _warnBox(t.actionError!),
+            ],
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AccnomosColors.teal,
+                  ),
+                  onPressed: t.actionBusy || expired
+                      ? null
+                      : () => _decide(t, approve: true),
+                  child: Text(t.actionBusy ? 'Working…' : 'Approve'),
+                ),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed:
+                      t.actionBusy ? null : () => _decide(t, approve: false),
+                  child: const Text('Reject'),
+                ),
               ],
             ),
           ],

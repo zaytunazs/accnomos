@@ -310,12 +310,44 @@ class AskModelOutput(BaseModel):
     confidence: Confidence
 
 
+ActionKind = Literal["create_invoice", "chase_invoice", "log_mileage", "log_timesheet"]
+
+
+class ProposedAction(BaseModel):
+    """Something Ask offers to do (app/actions.py). Kept by the client only and posted back to approve.
+
+    `preview` is the payload code resolved and priced; `signature` is an HMAC over everything else, so the
+    runtime executes exactly what the user saw and nothing else.
+    """
+
+    id: str
+    kind: ActionKind
+    summary_md: str
+    preview: dict[str, Any]
+    confirm_text: str
+    created_at: datetime
+    expires_at: datetime
+    signature: str = ""
+
+
+class Clarification(BaseModel):
+    """Ask understood an action but needs one more thing before it can propose it (e.g. which customer)."""
+
+    kind: ActionKind
+    field: str  # customer | invoice | job | staff | vehicle | amount | hours | miles | date
+    question_md: str
+    candidates: list[str] = []
+    ref: str | None = None  # the words the user used ("Hartley"), so the app can re-ask with a candidate in their place
+
+
 class AskAnswer(AskModelOutput):
     """The checked answer sent to the app."""
 
     model: str
     period: AskPeriod
     fallback_reason: str | None = None  # set when the model's words were replaced by the facts themselves
+    proposed_action: ProposedAction | None = None  # approve with POST /actions/approve; nothing happens before
+    clarification: Clarification | None = None
 
 
 class AskVoiceAnswer(AskAnswer):

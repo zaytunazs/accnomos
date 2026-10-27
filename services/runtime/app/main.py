@@ -143,4 +143,6 @@ from app.routes_vehicles import router as vehicles_router  # noqa: E402  /vehicl
 app.include_router(vehicles_router)
 from app.routes_invoices import router as invoices_router  # noqa: E402  /invoices/*
 app.include_router(invoices_router)
+from app.routes_actions import router as actions_router  # noqa: E402  /actions/approve, /actions/reject
+app.include_router(actions_router)
 

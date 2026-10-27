@@ -23,6 +23,11 @@ services:
       AI_ALLOWED_BASE_URLS: ${AI_ALLOWED_BASE_URLS:-http://192.168.1.176:11434}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://accnomos.com,https://app.accnomos.com,http://localhost:3000}
       RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-60}
+      # Signs chat/voice action proposals so they survive a restart (docs/ACTIONS.md). Set in .env; never commit it.
+      ACTIONS_SIGNING_KEY: ${ACTIONS_SIGNING_KEY:-}
+      BASETEN_API_KEY: ${BASETEN_API_KEY:-}
+      VERIFIER: ${VERIFIER:-}
+      VERIFIER_MODEL: ${VERIFIER_MODEL:-}
     # Uploads over 1 MB spool to /tmp, and ffmpeg converts voice there: 25 MB uploads need the headroom.
     tmpfs: ["/tmp:size=256m,mode=1777"]
     extra_hosts: ["host.docker.internal:host-gateway"]

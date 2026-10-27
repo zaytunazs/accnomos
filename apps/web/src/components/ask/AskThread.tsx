@@ -7,6 +7,7 @@ import { loadAiConfig, RUNTIME_URL } from "@/lib/ai-config";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { runtime, type RtAskAnswer, type RtAskTurn } from "@/lib/runtime";
 import { sampleAnswer, sampleQuestion } from "@/lib/sample-ask";
+import ActionCard, { ClarifyCard, withPicked } from "./ActionCard";
 import AnswerCard from "./AnswerCard";
 import MicButton from "./MicButton";
 
@@ -42,6 +43,7 @@ export default function AskThread() {
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
   const [voiceOff, setVoiceOff] = useState<string | null>("Sign in to ask by voice");
   const end = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const asked = useRef(false);
 
   function historyOf(before: Turn[]): RtAskTurn[] {
@@ -177,12 +179,32 @@ export default function AskThread() {
             <p className="rounded-2xl bg-ground p-5 text-[15px] leading-7 text-muted">
               Try “Why is my VAT different from last quarter?”, “Who did I spend most with?” or “What&apos;s waiting
               for me to approve?”. Answers cover your current VAT quarter and the one before.
+              <br />
+              Or tell it what to do: “Send a £100 invoice to JM Trading for this month&apos;s work” or “Log 7.5 hours
+              for Sam on the Elm Road job”. You&apos;ll see exactly what will happen first; nothing is done until you
+              approve it.
             </p>
           )}
           {turns.map((t, i) => (
             <div key={i} className="flex flex-col gap-3">
               <Question text={t.question} />
-              {t.answer ? (
+              {t.answer?.proposed_action && account ? (
+                <ActionCard
+                  action={t.answer.proposed_action}
+                  account={account}
+                  onChange={() => {
+                    setInput(t.question);
+                    inputRef.current?.focus();
+                  }}
+                />
+              ) : t.answer?.clarification ? (
+                <ClarifyCard
+                  clarification={t.answer.clarification}
+                  onPick={(name) => {
+                    if (account && !busy) void ask(withPicked(t.question, t.answer!.clarification!, name), account, turns);
+                  }}
+                />
+              ) : t.answer ? (
                 <AnswerCard answer={t.answer} />
               ) : t.error ? (
                 <p className="rounded-2xl border border-warn-border bg-warn-bg p-4 text-[14px] leading-6 text-warn-ink">
@@ -205,6 +227,7 @@ export default function AskThread() {
         </label>
         <input
           id="ask-input"
+          ref={inputRef}
           type="text"
           maxLength={500}
           value={input}
