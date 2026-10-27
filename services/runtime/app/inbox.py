@@ -1,4 +1,8 @@
-"""Scan "00 Inbox": extract each new document, apply rules, save a proposal and file the document."""
+"""Scan "00 Inbox": extract each new document, apply rules, save a proposal and file the document.
+
+Proposals that match an Autopilot rule and pass every check are then posted by Autopilot
+(app/autopilot.py); everything else waits in Review.
+"""
 
 from __future__ import annotations
 
@@ -7,13 +11,15 @@ import uuid
 
 from accnomos_connectors.base import FileRef
 
+from app import autopilot
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError
+from app.approve import ApprovalError, approve
 from app.books import INBOX, Books, DocMeta, Rule, now
 from app.checks import decide
 from app.journal import with_expense_account
 from app.pipeline import process_image, sha256_hex
-from app.schemas import Check, ExtractedDoc, Proposal
+from app.schemas import AutopilotDecision, Check, ExtractedDoc, Proposal
 
 log = logging.getLogger(__name__)
 
@@ -63,13 +69,35 @@ async def _propose(books: Books, f: FileRef, mime: str, cfg: AiConfig, known: se
     return p
 
 
-async def scan_inbox(books: Books, cfg: AiConfig, limit: int = 10, business_name: str | None = None) -> list[Proposal]:
+async def _autopilot_post(books: Books, p: Proposal, rule: autopilot.AutopilotRule) -> Proposal:
+    """Post `p` as Autopilot through the normal approve path, with an audit line; on failure leave it in Review."""
+    try:
+        posted = await approve(books, p.id, autopilot.AUTOPILOT, autopilot.edits_for(rule), rebuild=False)
+    except ApprovalError as exc:
+        p.autopilot = AutopilotDecision(auto_approve=False, reasons=[f"Could not post: {exc}"], supplier_key=rule.supplier_key)
+        await books.save_proposal(p)
+        return p
+    await autopilot.record_hit(books, rule.supplier_key)
+    await books.audit_autopilot({
+        "action": "approved", "proposal": p.id, "event": posted.event_id, "doc": p.doc_sha256,
+        "supplier_key": rule.supplier_key, "gross_pence": autopilot.pence(p.extracted.gross_total),
+        "typical_gross_pence": rule.typical_gross_pence, "rule_from_proposal": rule.created_from_proposal_id,
+        "reasons": p.autopilot.reasons if p.autopilot else [],
+    })
+    return posted
+
+
+async def scan_inbox(
+    books: Books, cfg: AiConfig, limit: int = 10, business_name: str | None = None, autopilot_on: bool = True,
+) -> list[Proposal]:
     """Backwards-compatible wrapper: proposals only."""
-    proposals, _ = await scan_inbox_detailed(books, cfg, limit, business_name)
+    proposals, _ = await scan_inbox_detailed(books, cfg, limit, business_name, autopilot_on)
     return proposals
 
 
-async def scan_inbox_detailed(books: Books, cfg: AiConfig, limit: int = 10, business_name: str | None = None) -> tuple[list[Proposal], list[dict]]:
+async def scan_inbox_detailed(
+    books: Books, cfg: AiConfig, limit: int = 10, business_name: str | None = None, autopilot_on: bool = True,
+) -> tuple[list[Proposal], list[dict]]:
     """Process up to `limit` documents from the Inbox and return the new proposals.
 
     A file whose hash we have already seen is not skipped silently: the DUPLICATE check sends it
@@ -79,6 +107,7 @@ async def scan_inbox_detailed(books: Books, cfg: AiConfig, limit: int = 10, busi
     await books.ensure_tree()
     known = await books.known_hashes()
     rules = await books.load_rules()
+    auto_rules = await autopilot.load_rules(books)
     out: list[Proposal] = []
     errors: list[dict] = []
     candidates = [(f, mime) for f in await books.list_files(INBOX) if (mime := mime_for(f.name))]
@@ -97,8 +126,15 @@ async def scan_inbox_detailed(books: Books, cfg: AiConfig, limit: int = 10, busi
                 sha256=p.doc_sha256, source_name=f.name, mime=mime, size=f.size, proposal_id=p.id, filed_path=p.file_path,
             ))
             known.add(p.doc_sha256)
+        rule = autopilot.match(p, auto_rules)
+        if rule is not None:
+            p.autopilot = autopilot.evaluate(p, rule, autopilot_on)
         await books.save_proposal(p)
         await books.audit(ACTOR, "proposed", {"proposal": p.id, "doc": p.doc_sha256, "status": p.status, "path": p.file_path})
+        if rule is not None and p.autopilot and p.autopilot.auto_approve:
+            p = await _autopilot_post(books, p, rule)
         out.append(p)
     await books.record_scan(now())
+    if any(p.decided_by == autopilot.AUTOPILOT for p in out):
+        await books.rebuild_safely(autopilot.AUTOPILOT)
     return out, errors
