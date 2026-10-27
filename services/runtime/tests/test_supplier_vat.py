@@ -180,6 +180,14 @@ async def test_seen_vat_number_finds_the_contact_whatever_the_name(fake: FakeSto
     assert cb.supplier_knowledge(await cb.stored_contacts(books), sale).vat_status == "unknown"
 
 
+async def test_a_renamed_supplier_is_still_found_by_its_old_name(fake: FakeStorageProvider, books: Books) -> None:
+    told = await cb.set_vat_status(books, IRONMONGER, "not_registered", "agent:test")
+    renamed = await cb.edit(books, told.id, {"name": "Hargreaves Hardware"}, USER)
+    assert cb.supplier_key(IRONMONGER) in renamed.aliases
+    (p,) = await _scan(fake, books, b"iron-1")  # the receipt still prints the old name: found by alias
+    assert p.status == "proposed" and _question(p) is None
+
+
 def test_a_contact_with_a_vat_number_counts_as_registered() -> None:
     old = cb.Contact(id="0" * 16, kind="supplier", name="Howdens", normalised_key="howdens", vrn="GB123456789")
     assert cb.supplier_knowledge([old], _doc("Howdens", 300.0)).vat_status == "registered"
@@ -223,3 +231,15 @@ async def test_contacts_route_shows_and_edits_vat_status(client: TestClient, fak
 
     r = client.put(f"/contacts/{row['id']}", json={"vat_status": "registered"}, headers=H)
     assert r.json()["vat_status"] == "registered"
+
+
+async def test_approve_route_takes_the_tick(client: TestClient, fake: FakeStorageProvider, books: Books) -> None:
+    asked, vat = await _scan(fake, books, b"iron-1", b"iron-3")
+    url = "/books/proposals/{}/approve"
+    r = client.post(url.format(vat.id), json={"edits": {NOT_VAT_REGISTERED: True}}, headers=H)
+    assert r.status_code == 400 and "charges VAT" in r.json()["detail"] and CONTACTS not in fake.files
+    assert client.post(url.format(asked.id), json={"edits": {NOT_VAT_REGISTERED: 1}}, headers=H).status_code == 400
+
+    r = client.post(url.format(asked.id), json={"edits": {NOT_VAT_REGISTERED: True}}, headers=H)
+    assert r.status_code == 200 and r.json()["status"] == "posted"
+    assert _stored(fake)[IRONMONGER]["vat_status"] == "not_registered"
