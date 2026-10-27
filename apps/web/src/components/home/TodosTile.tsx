@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
+import { RuntimeErrorNote } from "@/components/States";
 import { runtime, type RtTodo } from "@/lib/runtime";
 import { dueLabel, overdue, TODOS_CHANGED } from "@/lib/triage";
 
@@ -50,7 +51,7 @@ export default function TodosTile() {
       <p className={`text-[13px] font-semibold ${late ? "text-warn-ink" : "text-muted"}`}>
         {account === null ? "Sign in to keep a to-do list" : late ? `${late} overdue` : "Add them from your inbox"}
       </p>
-      {error && <p role="alert" className="mt-2 text-[13px] font-bold text-warn-ink">{error}</p>}
+      {error && <RuntimeErrorNote message={error} />}
       {todos && todos.length > 0 && (
         <ul className="mt-3 space-y-1.5">
           {todos.slice(0, SHOWN).map((t) => (

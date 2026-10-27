@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import PlanCard from "@/components/plan/PlanCard";
+import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import { pence, runtime, type RtJobSummary } from "@/lib/runtime";
 import { errorText, todayIso, useAccount } from "./useAccount";
 
@@ -18,17 +19,26 @@ export default function JobsList() {
   const [showClosed, setShowClosed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [planDate, setPlanDate] = useState("");
   const [planning, setPlanning] = useState<string | null>(null);
+  const newJobRef = useRef<HTMLInputElement>(null);
+
+  const fail = useCallback((e: unknown) => {
+    const msg = errorText(e);
+    if (isAuthError(msg) || isServerError(msg)) setError(msg);
+    else setNote(msg);
+  }, []);
 
   const load = useCallback(async () => {
     if (!account) return;
     try {
       setJobs(await runtime.jobs(account));
+      setError(null);
     } catch (e) {
-      setNote(errorText(e));
+      fail(e);
     }
-  }, [account]);
+  }, [account, fail]);
 
   useEffect(() => {
     queueMicrotask(load);
@@ -50,7 +60,7 @@ export default function JobsList() {
       setNote("Job added.");
       await load();
     } catch (err) {
-      setNote(errorText(err));
+      fail(err);
     } finally {
       setBusy(false);
     }
@@ -133,6 +143,22 @@ export default function JobsList() {
         )}
       </section>
 
+      {error && <RuntimeErrorNote message={error} />}
+      {jobs.length === 0 && (
+        <EmptyState
+          title="No jobs yet"
+          body="Jobs track hours, labour and materials per site, and what is still to invoice."
+          action={
+            <button
+              type="button"
+              onClick={() => newJobRef.current?.focus()}
+              className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
+            >
+              Add your first job
+            </button>
+          }
+        />
+      )}
       {open.length > 0 &&
         (planning && account ? (
           <PlanCard account={account} date={planning} jobIds={open.map((s) => s.job.id)} onClose={() => setPlanning(null)} />
@@ -167,6 +193,7 @@ export default function JobsList() {
         <label className="flex min-w-56 flex-1 flex-col gap-1 text-sm font-bold text-ink">
           New job
           <input
+            ref={newJobRef}
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="e.g. Kitchen refit, 12 Elm Road"

@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
-import { LoadingSkeleton, ReaderErrorNote } from "@/components/States";
+import { EmptyState, LoadingSkeleton, ReaderErrorNote, RuntimeErrorNote } from "@/components/States";
 import { loadAiConfig, RUNTIME_URL } from "@/lib/ai-config";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { runtime, runtimeHealth, type RtAskAnswer, type RtAskTurn } from "@/lib/runtime";
@@ -205,14 +205,19 @@ export default function AskThread() {
       {live && (
         <div className="flex flex-col gap-4" aria-live="polite">
           {turns.length === 0 && (
-            <p className="rounded-2xl bg-ground p-5 text-[15px] leading-7 text-muted">
-              Try “Why is my VAT different from last quarter?”, “Who did I spend most with?” or “What&apos;s waiting
-              for me to approve?”. Answers cover your current VAT quarter and the one before.
-              <br />
-              Or tell it what to do: “Send a £100 invoice to JM Trading for this month&apos;s work” or “Log 7.5 hours
-              for Sam on the Elm Road job”. You&apos;ll see exactly what will happen first; nothing is done until you
-              approve it.
-            </p>
+            <EmptyState
+              title="No questions yet"
+              body="Your conversation history appears here — every answer is worked out by code from your ledger. Try “Why is my VAT different from last quarter?” below."
+              action={
+                <button
+                  type="button"
+                  onClick={() => inputRef.current?.focus()}
+                  className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
+                >
+                  Ask your first question
+                </button>
+              }
+            />
           )}
           {turns.map((t, i) => (
             <div key={i} className="flex flex-col gap-3">
@@ -236,9 +241,7 @@ export default function AskThread() {
               ) : t.answer ? (
                 <AnswerCard answer={t.answer} />
               ) : t.error ? (
-                <p className="rounded-2xl border border-warn-border bg-warn-bg p-4 text-[14px] leading-6 text-warn-ink">
-                  Couldn&apos;t get an answer. {t.error}
-                </p>
+                <RuntimeErrorNote message={t.error} title="Couldn't get an answer" />
               ) : (
                 <LoadingSkeleton lines={2} label="Reading your books…" />
               )}

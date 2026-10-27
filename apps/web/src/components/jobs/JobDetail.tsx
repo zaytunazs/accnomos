@@ -14,6 +14,7 @@ import {
   type RtTimesheetEntry,
 } from "@/lib/runtime";
 import { errorText, todayIso, useAccount } from "./useAccount";
+import { RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 
 const hrs = (h: number) => h.toLocaleString("en-GB", { maximumFractionDigits: 2 });
 const card = "rounded-2xl border border-border bg-white p-4";
@@ -31,7 +32,14 @@ export default function JobDetail() {
   const [invoiceNo, setInvoiceNo] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [row, setRow] = useState({ staff_id: "", date: todayIso(), hours: "", note: "", billable: true });
+
+  const fail = useCallback((err: unknown) => {
+    const msg = errorText(err);
+    if (isAuthError(msg) || isServerError(msg)) setError(msg);
+    else setNote(msg);
+  }, []);
 
   const load = useCallback(async () => {
     if (!account || !id) return;
@@ -40,11 +48,12 @@ export default function JobDetail() {
       setSummary(s);
       setEntries(e);
       setStaff(st);
+      setError(null);
       setRow((r) => (r.staff_id ? r : { ...r, staff_id: st.find((m) => m.active)?.id ?? "" }));
     } catch (err) {
-      setNote(errorText(err));
+      fail(err);
     }
-  }, [account, id]);
+  }, [account, id, fail]);
 
   useEffect(() => {
     queueMicrotask(load);
@@ -53,12 +62,13 @@ export default function JobDetail() {
   async function act(label: string, fn: () => Promise<unknown>, done?: string) {
     setBusy(label);
     setNote(null);
+    setError(null);
     try {
       await fn();
       if (done) setNote(done);
       await load();
     } catch (err) {
-      setNote(errorText(err));
+      fail(err);
     } finally {
       setBusy(null);
     }
@@ -349,6 +359,7 @@ export default function JobDetail() {
         </section>
       )}
 
+      {error && <RuntimeErrorNote message={error} />}
       {note && (
         <p role="status" className="text-sm font-bold text-teal-dark">
           {note}

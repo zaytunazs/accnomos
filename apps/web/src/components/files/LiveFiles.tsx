@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import FileTree, { FileIcon, FolderIcon } from "@/components/files/FileTree";
-import { EmptyState, ErrorNote, LoadingSkeleton } from "@/components/States";
+import { EmptyState, ErrorNote, LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import { FOLDERS, getRoot, listChildren, type DriveItem } from "@/lib/graph";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { runtime } from "@/lib/runtime";
@@ -249,6 +249,20 @@ export default function LiveFiles() {
 
       {live ? (
         <>
+          {tree.folders.reduce((n, f) => n + f.files, tree.files.length) === 0 && (
+            <EmptyState
+              title="Your folder is empty"
+              body="Receipts, statements and your Books.xlsx appear here once you add and approve your first documents."
+              action={
+                <Link
+                  href="/review"
+                  className="inline-flex h-11 items-center whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
+                >
+                  Add a receipt
+                </Link>
+              }
+            />
+          )}
           <LiveTree tree={tree} />
           <p className="text-[13px] font-medium text-muted">
             {plural(tree.folders.reduce((n, f) => n + f.files, tree.files.length), "file")} outside _System · {size(tree.root.size)} in
@@ -276,10 +290,14 @@ export default function LiveFiles() {
       ) : (
         <>
           {state === "error" && (
-            <ErrorNote
-              title="Couldn't read your folder"
-              body={note ? `${note} Showing the sample instead.` : "Showing the sample instead."}
-            />
+            note && (isAuthError(note) || isServerError(note)) ? (
+              <RuntimeErrorNote message={note} title="Couldn't read your folder" />
+            ) : (
+              <ErrorNote
+                title="Couldn't read your folder"
+                body={note ? `${note} Showing the sample instead.` : "Showing the sample instead."}
+              />
+            )
           )}
           <p className="text-[13px] font-medium text-muted">
             {state === "error" ? "Could not read your folder; showing the sample instead. " : "Sample folder. "}

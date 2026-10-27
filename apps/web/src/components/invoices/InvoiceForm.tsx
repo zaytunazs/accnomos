@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { PreviewSendDialog } from "@/components/invoices/InvoiceDialogs";
 import { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
 import { linePence, liveTotals, money, parsePounds, poundsInput, thousandths, todayIso, useMsAccount, VAT_CODES } from "@/lib/invoices";
+import { RuntimeErrorNote } from "@/components/States";
 import { runtime, type RtInvoice, type RtInvoiceCustomer, type RtInvoiceDraft, type RtSalesVatCode } from "@/lib/runtime";
 
 interface LineForm {
@@ -247,7 +248,7 @@ export default function InvoiceForm() {
         <textarea id="inv-notes" rows={2} className={fieldArea} value={notes} onChange={(e) => setNotes(e.target.value)} />
       </section>
 
-      {error && <p role="alert" className="text-sm font-bold text-warn-ink">{error}</p>}
+      {error && <RuntimeErrorNote message={error} />}
       <div className="flex flex-wrap gap-3">
         <Link href="/invoices" className={`${secondaryButton} inline-flex items-center`}>Cancel</Link>
         <button type="submit" disabled={busy || !account} className={secondaryButton}>{busy ? "Saving…" : "Save draft"}</button>

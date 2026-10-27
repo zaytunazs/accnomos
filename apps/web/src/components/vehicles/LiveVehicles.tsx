@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
+import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import {
   gbp,
@@ -49,6 +50,14 @@ export default function LiveVehicles() {
   const [summary, setSummary] = useState<RtMileageSummary | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<{ text: string; review?: boolean } | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const newVehicleRef = useRef<HTMLInputElement>(null);
+
+  function fail(e: unknown) {
+    const msg = errorText(e);
+    if (isAuthError(msg) || isServerError(msg)) setError(msg);
+    else setNote({ text: msg });
+  }
   const [newVehicle, setNewVehicle] = useState({ name: "", registration: "", kind: "car" as RtVehicleKind, owned_by: "personal" as "personal" | "business" });
   const [trip, setTrip] = useState({ vehicle_id: "", date: londonToday(), from: "", to: "", miles: "", purpose: "" });
 
@@ -72,7 +81,7 @@ export default function LiveVehicles() {
         await load(acct, currentYear);
         setState("live");
       } catch (e) {
-        setNote({ text: errorText(e) });
+        fail(e);
         setState("off");
       }
     })();
@@ -82,13 +91,14 @@ export default function LiveVehicles() {
   async function act(key: string, fn: () => Promise<unknown>, done?: string, ty: string = taxYear) {
     if (!account) return;
     setBusy(key);
+    setError(null);
     try {
       await fn();
       if (done) setNote({ text: done });
       setTaxYear(ty);
       await load(account, ty);
     } catch (e) {
-      setNote({ text: errorText(e) });
+      fail(e);
     } finally {
       setBusy(null);
     }
@@ -118,6 +128,7 @@ export default function LiveVehicles() {
   if (state === "off")
     return (
       <div className="flex flex-col gap-3">
+        {error && <RuntimeErrorNote message={error} />}
         {note && <p className="rounded-xl bg-ground px-4 py-2 text-sm text-muted">{note.text}</p>}
         <p className="rounded-2xl border border-border bg-white p-6 text-[15px] leading-7 text-muted">
           Sign in with Microsoft to keep your vehicles and mileage log in your own OneDrive. Personal cars and vans used
@@ -169,6 +180,23 @@ export default function LiveVehicles() {
             </Link>
           )}
         </p>
+      )}
+      {error && <RuntimeErrorNote message={error} />}
+
+      {vehicles.length === 0 && entries.length === 0 && (
+        <EmptyState
+          title="No vehicles yet"
+          body="Add a vehicle below to log business journeys and build up your HMRC mileage allowance."
+          action={
+            <button
+              type="button"
+              onClick={() => newVehicleRef.current?.focus()}
+              className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
+            >
+              Add your first vehicle
+            </button>
+          }
+        />
       )}
 
       {summary && (
@@ -399,7 +427,7 @@ export default function LiveVehicles() {
         >
           <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
             Name
-            <input required maxLength={60} value={newVehicle.name} onChange={(e) => setNewVehicle({ ...newVehicle, name: e.target.value })} className={input} placeholder="Ford Transit" />
+            <input ref={newVehicleRef} required maxLength={60} value={newVehicle.name} onChange={(e) => setNewVehicle({ ...newVehicle, name: e.target.value })} className={input} placeholder="Ford Transit" />
           </label>
           <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
             Registration (optional)

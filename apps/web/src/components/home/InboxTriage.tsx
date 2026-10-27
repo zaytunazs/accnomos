@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
+import { RuntimeErrorNote } from "@/components/States";
 import { ago } from "@/lib/intake";
 import { runtime, type RtDraftReply, type RtTriage, type RtTriageCategory, type RtTriageThread } from "@/lib/runtime";
 import {
@@ -123,7 +124,7 @@ export default function InboxTriage() {
       </div>
 
       {account === null && <p className="mt-2 text-sm text-muted">Sign in with Microsoft to see your inbox here.</p>}
-      {error && <p role="alert" className="mt-2 text-sm font-bold text-warn-ink">Could not read your inbox: {error}</p>}
+      {error && <RuntimeErrorNote message={error} title="Could not read your inbox" />}
       {result && !busy && threads.length === 0 && (
         <p className="mt-2 text-sm text-muted">Nothing from customers, suppliers, HMRC or your accountant this week.</p>
       )}
