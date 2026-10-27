@@ -1,7 +1,9 @@
 # Project description (draft for the Meta Global AI Developer Hackathon, Indie track)
 
-Every claim below is taken from `README.md` ("What works today"), `docs/HONESTY.md` and `docs/META_MODELS.md` as at 27 Oct 2026.
-The 150-word text is 147 words and the 400-word text exactly 400 (whitespace-separated words between the rules; the form's counter may differ, so trim a sentence if it objects). The "ran live" runs are the maintainers' own with no committed log (`docs/HONESTY.md`), so say "our record", not "verified". The 88 % figure is all fields right on 200 synthetic documents (`evals/REPORT_glimmer_messy_200_2026-10-27.md`); the same first 60 documents score 73 % in their own report and 82 % in the 200-document one, because the scoring changed (a `side` field was added and the expected status made explicit). Quote the 200-document run, not a mix. Owner: Zohaib Sharif, Zaytuna Business Services Ltd (solo).
+Refreshed 27 Oct 2026. Every claim below comes from `README.md`, `docs/HONESTY.md`, `docs/submission/META_MODELS.md` and the reports named there. Owner: Zohaib Sharif, Zaytuna Business Services Ltd (solo).
+The 150-word text is 149 words and the 400-word text 399 (whitespace-separated words between the rules); the form's counter may differ, so trim a sentence if it objects.
+Rules for editing: the "ran live" runs are the maintainers' own with no committed log (`docs/HONESTY.md`), so say "our record", not "verified". Quote the 200-document extraction run (88 %), not a mix with the older 60-document one. The Autopilot figures are for Glimmer 30B on synthetic documents and are quoted with their caveat; do not shorten them to "0 false posts".
+**Not yet in the text:** numbers for Muse Spark Open. When `evals/runs/spark_open_200` finishes, add one sentence with its measured figures and the same caveat (synthetic, 200 receipts); until then the text says "one live call".
 
 ## Tagline
 
@@ -12,23 +14,29 @@ The 150-word text is 147 words and the 400-word text exactly 400 (whitespace-sep
 ## 150-word version
 
 ---
-Accnomos is bookkeeping and MTD VAT for UK small businesses. Upload a receipt and a Meta model (Muse Glimmer 30B on our own hardware, or Muse Spark with your key) reads it into strict JSON. Code then checks the arithmetic, VAT number and period, and code compares six fields against a second, differently prompted reading. You approve, and an immutable ledger event is written. The nine VAT boxes are calculated by code, never by a model, and a sandbox HMRC submission is built into the web app.
+Accnomos is bookkeeping and MTD VAT for UK small businesses. Your books are files in your own OneDrive; we keep no database.
 
-There is no Accnomos database: the books are files in the user's own OneDrive, and our servers keep nothing.
+Meta models read the paperwork: Muse Glimmer 30B on our own hardware, or Muse Spark 1.3 with your key, with Muse Spark Open on Baseten as an independent second reader. Code checks the arithmetic, you approve, and code calculates the nine VAT boxes. Around that sit contacts, invoicing with part payments and credit notes, bank rules, reconciliation, reports, an audit trail, chat and voice actions, and an Android app.
 
-Honestly: the read, approve, ledger, VAT-boxes path ran live on 26–27 Oct on a personal account; almost everything else is tested on fakes. HMRC is sandbox only and has not yet been run end to end. All demo data is synthetic.
+Autopilot is off by default. Measured on Glimmer over 467 synthetic documents, verifier on: no false posts on 154 clean ones, but 17 overall, all re-dated copies of posted receipts.
+
+Honestly: only sign-in, receipt-to-VAT-boxes and the Glimmer evals ran for real; the rest is tested on fakes. HMRC is sandbox only and not yet run end to end.
 ---
 
 ## 400-word version
 
 ---
-**The problem.** A VAT-registered UK small business must keep digital records and file its VAT return through Making Tax Digital-compatible software, and someone has to turn a shoebox of receipts into those records: the owner's evenings, or a bookkeeper's fee. Accnomos asks whether AI can do the typing while the owner keeps control of both the decisions and the records.
+**The problem.** A VAT-registered UK small business must keep digital records and file through Making Tax Digital software, and someone has to turn a shoebox of receipts into those records. Accnomos asks whether AI can do the typing while the owner keeps control.
 
-**The approach.** Accnomos splits the work three ways. *AI proposes*: a Meta model reads a receipt or invoice and returns structured fields. *The user approves*: nothing is posted until they tap Approve, and Autopilot, which posts without a tap, is off by default and only applies to suppliers the user has made a rule for, with Undo. *Code calculates*: arithmetic checks, VAT treatment, ledger events, the nine VAT boxes, invoice totals, mileage and pay-run estimates are all deterministic code with tests. Models write words only (Ask, reminder drafts, inbox summaries, the planner's rationale), and any figure in a model's answer that is not in the user's books is replaced by the facts.
+**The approach.** *AI proposes*: a Meta model reads a receipt, invoice or credit note into strict JSON. *You approve*: nothing posts until you tap Approve. *Code calculates*: arithmetic checks, VAT treatment, ledger events, the nine VAT boxes, invoice totals, payments, credit notes, reports, mileage and pay-run estimates are deterministic code with tests. Models write words only; a figure in an answer that is not in your books is replaced by the facts.
 
-**Your books, your OneDrive.** The runtime is stateless: each request carries the user's Microsoft token and AI settings and nothing is kept. The ledger is append-only event files in a `_System` folder, and `Books.xlsx` is regenerated from them for the accountant. If the user disconnects Accnomos, every file is still theirs.
+**Your books, your OneDrive.** The runtime is stateless. The ledger is append-only event files in your OneDrive, and `Books.xlsx` is regenerated for your accountant. Disconnect and every file is still yours.
 
-**What is built.** Receipt scan, review and approve; an independent second-reading verifier; the VAT return by period with deadlines; an HMRC sandbox submission flow through a relay that holds only the client secret; Ask (typed and voice); bank-statement matching; sales invoicing with PDF and Outlook send; jobs and timesheets; mileage; pay-run estimates; Outlook intake and triage; a day planner; a Next.js PWA and an Android app. Meta models: Muse Glimmer 30B, Muse Spark 1.3, Muse Spark Open, Muse Voice Transcribe, SAM 3.1 (off by default) and Muse Image (brand art).
+**What is built.** Receipt scan, review and an independent second reading; contacts with statements and ageing; invoicing with PDF, Outlook send, part payments and credit notes; bank import with rules and reconciliation; reports; an audit trail of every action; the VAT return by period with an HMRC sandbox flow; jobs, mileage and pay-run estimates; Outlook intake; Ask, plus chat and voice actions that show a card and wait for Approve; a web app and an Android app.
 
-**What is honest.** The read-to-VAT-boxes path ran live (our record; no log committed) on a personal Microsoft account with Glimmer on our DGX Spark. On 200 synthetic messy documents Glimmer got every field right on 88%. Most other features are tested on in-memory fakes only. HMRC is sandbox only and never run end to end; key-mode Spark, Baseten, SAM and Voice have never been called for real; the Android app has not been analysed or tested; payroll is an estimate, not RTI. `docs/HONESTY.md` lists every known gap.
+**The Meta models.** Muse Glimmer 30B (open weights, our DGX Spark) reads locally. Muse Spark 1.3 does the same with your key. Muse Spark Open on Baseten is the key-mode verifier: wired, with one live call, 27 October, reading a gold receipt in 7 s. Muse Voice Transcribe takes spoken questions. SAM 3.1 crops photos, off by default. Muse Image made the brand art.
+
+**Measured, and its limits.** On 200 synthetic messy documents Glimmer got every field right on 88 %. Autopilot (posting without a tap, only for suppliers you have a rule for) was tested on 467 documents with the verifier on: no false posts on 154 clean ones, but 17 overall (3.6 %), all re-dated copies of receipts already posted.
+
+**Honest status.** Sign-in and receipt-to-VAT-boxes ran live on a personal account (our record). The rest is tested on fakes. HMRC is sandbox only and not yet run end to end; Spark 1.3, Voice and SAM have never been called live; no real-phone Android sign-in is recorded. Demo data is synthetic. `docs/HONESTY.md` lists every gap.
 ---
