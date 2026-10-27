@@ -55,6 +55,8 @@ python tools/seed_demo.py --business "Bramblewood Joinery Ltd"               # a
 The token is read from a hidden prompt or from `ACCNOMOS_GRAPH_TOKEN`. It is never accepted as an argument, so it stays out of
 shell history, and it is kept in memory only. Expect a few minutes: the seed makes several hundred Graph calls.
 
+* A wrong or expired token stops the seed with a message, not a traceback. If it expires part-way (the run takes a few
+  minutes; tokens last about an hour), the folder is part-filled: copy a fresh token and run again with `--wipe`.
 * A folder that already has ledger entries is refused. To start again, add `--wipe`. It lists what is in the Accnomos folder
   and deletes it only if you type `y`. Nothing outside that folder is touched, and OneDrive keeps the deleted items in its recycle bin.
 * `--stagger 2` or `--stagger 3` if the account's *Settings → VAT periods* uses another stagger (the seeded periods follow it).
@@ -89,5 +91,6 @@ throwaway account, or before seeding this one.
 ## Tests
 
 `services/runtime/tests/test_seed_demo.py` checks the plan (counts, balance, date spread, labels, other staggers and days)
-and runs the whole seed on the in-memory fake OneDrive. The Graph run is skipped unless `ACCNOMOS_SEED_GRAPH_TOKEN` is set.
+and runs the whole seed on the in-memory fake OneDrive as of 27 Oct 2026, checking the VAT boxes, invoice totals, bank
+matches, contact counts and miles quoted above. The Graph run is skipped unless `ACCNOMOS_SEED_GRAPH_TOKEN` is set.
 With only the token it just reads the folder. With `ACCNOMOS_SEED_GRAPH_WRITE=1` as well, it seeds that account (a fresh one).

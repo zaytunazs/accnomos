@@ -14,6 +14,9 @@ drawn by `tools/make_sample_receipt.py`). 2 Nov falls in the VAT quarter contain
 4. A sandbox HMRC test user: `POST /hmrc/test-user` on the relay gives `userId`, `password`, `vrn`. Keep them on a card.
 5. Download the sample receipt to the laptop. Android: debug build installed and signed in. Empty `00 Inbox`.
 
+For judges who want to click through six months of books rather than one receipt, `tools/seed_demo.md` fills a
+**separate** throwaway account; don't seed the account used for this script (it leaves 25 documents in `00 Inbox`).
+
 ## Script
 
 | Time | Click | Say |
