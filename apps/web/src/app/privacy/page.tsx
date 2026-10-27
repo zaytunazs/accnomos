@@ -37,6 +37,39 @@ export default function PrivacyPage() {
       </section>
 
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
+        <h2 className="text-xl font-bold">Data map</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[480px] text-left text-[14px]">
+            <thead>
+              <tr className="border-b border-border text-[13px] font-bold text-muted">
+                <th scope="col" className="py-2 pr-3">Data</th>
+                <th scope="col" className="py-2 pr-3">Where it lives</th>
+                <th scope="col" className="py-2">Who can see it</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { data: "Receipts, invoices, ledger events, VAT returns, Books.xlsx", where: "Your OneDrive Accnomos folder", who: "You — plus anyone you share that OneDrive with" },
+                { data: "Microsoft sign-in (name, e-mail)", where: "This browser's sign-in cache", who: "You, shown as who is signed in" },
+                { data: "Your Meta API key and AI address", where: "This device only", who: "Sent per request over HTTPS so the runtime can call the model for you; never logged or stored" },
+                { data: "HMRC tokens", where: "This browser tab only", who: "Gone when the tab closes or you disconnect" },
+                { data: "Device ID and VAT number", where: "This device only", who: "Sent to HMRC as fraud-prevention data when you submit" },
+                { data: "Spoken questions", where: "Nowhere — converted then discarded", who: "Nobody keeps the audio" },
+                { data: "Mail read during intake", where: "Memory only; copies land in your OneDrive", who: "You" },
+                { data: "Server access logs (IP, path, time, up to 30 days)", where: "Our hosts", who: "The service operator, for security" },
+              ].map((row) => (
+                <tr key={row.data} className="border-t border-border align-top first:border-t-0">
+                  <td className="py-2 pr-3 font-semibold">{row.data}</td>
+                  <td className="py-2 pr-3">{row.where}</td>
+                  <td className="py-2">{row.who}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
         <h2 className="text-xl font-bold">Third parties</h2>
         <ul className="list-disc space-y-2 pl-5">
           <li>Microsoft (sign-in and OneDrive) — under your Microsoft account terms.</li>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
+import Explain from "@/components/Explain";
 import { EmptyState, LoadingSkeleton } from "@/components/States";
 import { autopilotOn, gbp, runtime, setAutopilotOn, type RtRule } from "@/lib/runtime";
 
@@ -52,9 +53,30 @@ export default function AutopilotRules({ card, heading }: { card: string; headin
   return (
     <section aria-labelledby="settings-rules" className={card}>
       <div className="flex items-center justify-between gap-3">
-        <h3 id="settings-rules" className={heading}>
-          Autopilot rules
-        </h3>
+        <div className="flex items-center gap-2">
+          <h3 id="settings-rules" className={heading}>
+            Autopilot rules
+          </h3>
+          <Explain title="What Autopilot will and will not post">
+            <p>
+              Autopilot only posts at level L2, and only a purchase that matches a rule you saved
+              by ticking “Always do this” — same supplier, same VAT number, same VAT treatment,
+              and a total no more than twice the usual. Every code check must pass with no
+              warnings, including the second reading agreeing.
+            </p>
+            <p>
+              Each posting goes through the normal approval code, is audited, and stays listed
+              under Approved by Autopilot for 30 days with Undo. Undo adds a reversing entry and
+              puts the proposal back in Review.
+            </p>
+            <p>
+              It will never create a rule on its own, never post sales invoices or mileage
+              claims, never post above twice the usual, never post when a check warns, and never
+              delete or edit a ledger event. Anything else waits in Review with a line saying why
+              Autopilot left it for you.
+            </p>
+          </Explain>
+        </div>
         <button
           type="button"
           role="switch"

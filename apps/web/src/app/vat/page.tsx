@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
 import SubmitSheet from "@/components/vat/SubmitSheet";
 import LiveVat from "@/components/vat/LiveVat";
@@ -26,10 +27,33 @@ export default function VatPage() {
         title="VAT return"
         description={`Q3 2026 · ${vatMeta.period}`}
         action={
-          <p className="flex items-center gap-2 text-[14px] font-semibold whitespace-nowrap text-muted">
-            <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-teal" />
-            {vatMeta.status}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="flex items-center gap-2 text-[14px] font-semibold whitespace-nowrap text-muted">
+              <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-teal" />
+              {vatMeta.status}
+            </p>
+            <Explain title="How each box is worked out">
+              <p>
+                Every box is calculated by code from the ledger events you approved — no model is
+                involved. Only lines with VAT codes S, R, Z, E or N count; O (outside the scope
+                of UK VAT) is left out. Undoing an entry nets it off through its reversing event.
+              </p>
+              <ul className="list-disc space-y-1 pl-5">
+                <li><strong>Box 1</strong> — VAT on your sales in the period.</li>
+                <li><strong>Box 2</strong> — VAT on acquisitions from Northern Ireland and the EU. Zero if you only trade in Great Britain.</li>
+                <li><strong>Box 3</strong> — Box 1 plus Box 2.</li>
+                <li><strong>Box 4</strong> — VAT reclaimed on your purchases in the period.</li>
+                <li><strong>Box 5</strong> — what you owe: Box 3 minus Box 4.</li>
+                <li><strong>Box 6</strong> — total sales excluding VAT, in whole pounds.</li>
+                <li><strong>Box 7</strong> — total purchases excluding VAT, in whole pounds.</li>
+                <li><strong>Boxes 8 and 9</strong> — goods supplied to, or acquired from, Northern Ireland and the EU. Zero if you only trade in Great Britain.</li>
+              </ul>
+              <p>
+                Boxes 1 to 5 are kept to the penny; Boxes 6 to 9 are whole pounds, rounded down.
+                Tap an entry count to see the entries behind a box on the Review page.
+              </p>
+            </Explain>
+          </div>
         }
       />
       <LiveVat />

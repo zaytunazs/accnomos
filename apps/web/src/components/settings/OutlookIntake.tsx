@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
+import Explain from "@/components/Explain";
 import { accountKind, getMsal, getToken, mailScopesFor, msalConfigured, storageScopesFor } from "@/lib/msal";
 import { intakeOn, recordInboxCheck, setIntakeOn } from "@/lib/intake";
 import { runtime, type RtMailScan } from "@/lib/runtime";
@@ -77,9 +78,31 @@ export default function OutlookIntake({ card, heading }: { card: string; heading
     <section aria-labelledby="settings-intake" className={card}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h3 id="settings-intake" className={heading}>
-            Outlook intake
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 id="settings-intake" className={heading}>
+              Outlook intake
+            </h3>
+            <Explain title="What Outlook intake reads and writes">
+              <p>
+                When you tap “Check my inbox now”, Accnomos looks at emails with attachments from
+                the last 14 days. Plain code — no AI — keeps files that look like receipts or
+                invoices: PDF, JPEG, PNG or HEIC attachments between 10 KB and 15 MB, from a
+                sender outside your own domain, with words like receipt, invoice or VAT in the
+                subject or file name.
+              </p>
+              <p>
+                Read: the message date, sender, subject and those attachments. Written, all in
+                your own folder: the file as 00 Inbox/&lt;date&gt;_&lt;sender&gt;_&lt;name&gt;, a
+                seen-list so nothing is copied twice, and a dated log.
+              </p>
+              <p>
+                Never: sending, moving, flagging, marking as read or deleting mail; reading
+                message bodies; or keeping anything on our server. The last check time is kept
+                only in this browser. HEIC photos are copied but wait in 00 Inbox until the
+                reader supports them.
+              </p>
+            </Explain>
+          </div>
           <p className="mt-1 text-sm text-muted">
             Copies receipts and invoices attached to your emails into <span className="font-bold">00 Inbox</span>.
             Mail is only read: nothing is moved, marked or deleted.

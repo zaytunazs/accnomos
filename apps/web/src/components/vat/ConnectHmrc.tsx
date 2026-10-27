@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
+import Explain from "@/components/Explain";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { fetchLiveVat, type RtVatView } from "@/lib/runtime";
 import { ensureFolder, putSmallFile } from "@/lib/graph";
@@ -236,8 +237,27 @@ export default function ConnectHmrc() {
         <h2 id="hmrc-heading" className="text-lg font-extrabold">
           Connect to HMRC
         </h2>
-        <span className="rounded-full border border-warn-border bg-warn-bg px-3 py-1 text-[13px] font-bold text-warn-ink">
-          Sandbox · test data only
+        <span className="flex items-center gap-2">
+          <span className="rounded-full border border-warn-border bg-warn-bg px-3 py-1 text-[13px] font-bold text-warn-ink">
+            Sandbox · test data only
+          </span>
+          <Explain title="What sandbox means">
+            <p>
+              This talks to HMRC&apos;s test service, not the live tax system. You sign in with a
+              sandbox Government Gateway test user, and nothing here files a real return — there
+              are no production HMRC credentials anywhere in Accnomos.
+            </p>
+            <p>
+              You sign in on HMRC&apos;s own site; we never see your HMRC password. The access
+              token stays in this browser tab only and is gone when you close it. Our relay holds
+              only the HMRC application secret and adds the fraud-prevention headers HMRC
+              requires with each call.
+            </p>
+            <p>
+              Nothing is sent until you tick the legal declaration and press Submit. The return
+              and HMRC&apos;s receipt are then saved to 05 VAT returns in your OneDrive.
+            </p>
+          </Explain>
         </span>
       </div>
 
