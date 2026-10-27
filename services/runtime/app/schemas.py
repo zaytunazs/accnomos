@@ -10,10 +10,10 @@ optionals expressed as `anyOf [..., null]`, no `$ref`/`oneOf`/`allOf`.
 from __future__ import annotations
 
 import copy
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 DocType = Literal["receipt", "purchase_invoice", "sales_invoice"]
 PaymentMethod = Literal["card", "cash", "bank_transfer", "direct_debit", "cheque", "unknown"]
@@ -193,7 +193,79 @@ def _strictify(node: Any, defs: dict[str, Any]) -> Any:
     return out
 
 
+def strict_json_schema(model: type[BaseModel]) -> dict[str, Any]:
+    """Strict JSON schema for any pydantic model, valid for both Ollama and Meta."""
+    raw = model.model_json_schema()
+    return _strictify(raw, raw.get("$defs", {}))
+
+
 def extraction_json_schema() -> dict[str, Any]:
     """Strict JSON schema for `ExtractedDoc`, valid for both Ollama and Meta."""
-    raw = ExtractedDoc.model_json_schema()
-    return _strictify(raw, raw.get("$defs", {}))
+    return strict_json_schema(ExtractedDoc)
+
+
+# --------------------------------------------------------------------------- #
+# Ask your books (POST /books/ask). Numbers come from code, words from the model.
+# --------------------------------------------------------------------------- #
+
+ASK_ANSWER_MAX = 1200
+ASK_HISTORY_MAX = 6
+AskActionKind = Literal["open_review", "open_vat", "chase_supplier", "none"]
+Confidence = Literal["high", "medium", "low"]
+
+
+class AskPeriod(BaseModel):
+    start: date
+    end: date
+
+    @model_validator(mode="after")
+    def _ordered(self) -> AskPeriod:
+        if self.end < self.start:
+            raise ValueError("period end is before its start")
+        return self
+
+
+class AskTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    text: str = Field(max_length=2000)
+
+
+class AskRequest(BaseModel):
+    question: str = Field(min_length=1, max_length=500)
+    period: AskPeriod | None = None
+    history: list[AskTurn] = Field(default_factory=list)
+
+    @field_validator("history")
+    @classmethod
+    def _recent(cls, v: list[AskTurn]) -> list[AskTurn]:
+        return v[-ASK_HISTORY_MAX:]
+
+
+class KeyNumber(BaseModel):
+    label: str
+    value: str
+    source: str
+
+
+class SuggestedAction(BaseModel):
+    label: str
+    kind: AskActionKind
+    arg: str | None
+
+
+class AskModelOutput(BaseModel):
+    """What the model returns. Length and count limits are enforced in code (strict mode rejects them)."""
+
+    answer_md: str
+    key_numbers: list[KeyNumber]
+    citations: list[str]
+    suggested_actions: list[SuggestedAction]
+    confidence: Confidence
+
+
+class AskAnswer(AskModelOutput):
+    """The checked answer sent to the app."""
+
+    model: str
+    period: AskPeriod
+    fallback_reason: str | None = None  # set when the model's words were replaced by the facts themselves

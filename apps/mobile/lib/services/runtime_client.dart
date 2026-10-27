@@ -4,6 +4,7 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 
+import '../models/ask_answer.dart';
 import 'settings.dart';
 
 /// Error from the reader service. [message] is safe to show in the UI.
@@ -320,6 +321,52 @@ class RuntimeClient {
       rethrow;
     } catch (e) {
       throw RuntimeException('Could not load the VAT return. $e');
+    }
+  }
+
+  /// Ask the books a question. `POST /books/ask` → a checked [AskAnswer].
+  /// [periodStart]/[periodEnd] are `YYYY-MM-DD`; omit both for the current
+  /// VAT quarter. Only the last six [history] turns are sent.
+  Future<AskAnswer> ask(
+    String question, {
+    String? periodStart,
+    String? periodEnd,
+    List<AskTurn> history = const [],
+  }) async {
+    _requireBooks();
+    final uri = Uri.parse('${settings.runtimeUrl}/books/ask');
+    final recent =
+        history.length > 6 ? history.sublist(history.length - 6) : history;
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {..._headers, 'Content-Type': 'application/json'},
+            body: json.encode({
+              'question': question,
+              'period': periodStart != null && periodEnd != null
+                  ? {'start': periodStart, 'end': periodEnd}
+                  : null,
+              'history': [for (final t in recent) t.toJson()],
+            }),
+          )
+          .timeout(_timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        _fail(response.statusCode, response.body.trim());
+      }
+      return AskAnswer.fromJson(
+          json.decode(response.body) as Map<String, dynamic>);
+    } on TimeoutException {
+      throw RuntimeException(
+          'Answering took too long. Check your AI and try again.');
+    } on SocketException {
+      throw RuntimeException(
+          'Could not reach the reader at ${settings.runtimeUrl}. '
+          'Is it running?');
+    } on RuntimeException {
+      rethrow;
+    } catch (e) {
+      throw RuntimeException('Could not get an answer. $e');
     }
   }
 

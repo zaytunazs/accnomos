@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from accnomos_ledger import compute_vat_return
+from accnomos_ledger import VatReturn, compute_vat_return
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
@@ -54,6 +54,19 @@ def quarter_bounds(today: date) -> tuple[date, date, str]:
     return prev_q_start, prev_q_end, key
 
 
+def period_key_for(start: date) -> str:
+    return f"{start.year % 100:02d}A{(start.month - 1) // 3 + 1}"
+
+
+def box_amounts(ret: VatReturn) -> dict[int, str]:
+    """The 9 boxes as HMRC will receive them: pounds to 2 dp for 1-5, whole pounds for 6-9."""
+    return {
+        1: f"{ret.vat_due_sales:.2f}", 2: f"{ret.vat_due_acquisitions:.2f}", 3: f"{ret.total_vat_due:.2f}",
+        4: f"{ret.vat_reclaimed:.2f}", 5: f"{ret.net_vat_due:.2f}", 6: str(ret.total_sales_ex_vat),
+        7: str(ret.total_purchases_ex_vat), 8: str(ret.goods_supplied_ni_eu), 9: str(ret.acquisitions_ni_eu),
+    }
+
+
 @router.get("/vat", response_model=VatReturnView)
 async def vat_return(
     start: date | None = Query(None),
@@ -64,17 +77,13 @@ async def vat_return(
     if start is None or end is None:
         s, e, k = quarter_bounds(date.today())
         start, end, period_key = start or s, end or e, period_key or k
-    period_key = period_key or f"{start.year % 100:02d}A{(start.month - 1) // 3 + 1}"
+    period_key = period_key or period_key_for(start)
     events = await books.list_events(start, end)
     ret = compute_vat_return(events, period_key, start, end)
     sales = [e for e in events if e.kind == "sale"]
     purchases = [e for e in events if e.kind == "purchase"]
     counts = {1: len(sales), 2: 0, 3: len(sales), 4: len(purchases), 5: len(events), 6: len(sales), 7: len(purchases), 8: 0, 9: 0}
-    amounts = {
-        1: f"{ret.vat_due_sales:.2f}", 2: f"{ret.vat_due_acquisitions:.2f}", 3: f"{ret.total_vat_due:.2f}",
-        4: f"{ret.vat_reclaimed:.2f}", 5: f"{ret.net_vat_due:.2f}", 6: str(ret.total_sales_ex_vat),
-        7: str(ret.total_purchases_ex_vat), 8: str(ret.goods_supplied_ni_eu), 9: str(ret.acquisitions_ni_eu),
-    }
+    amounts = box_amounts(ret)
     return VatReturnView(
         period_key=period_key, start=start, end=end,
         boxes=[VatBox(box=i, label=LABELS[i], amount=amounts[i], entries=counts[i]) for i in range(1, 10)],
