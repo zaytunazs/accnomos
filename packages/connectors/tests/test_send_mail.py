@@ -60,18 +60,43 @@ async def test_send_without_consent_raises_graph_error():
     assert err.value.status == 403
 
 
-async def test_send_refuses_attachments_over_3mb():
+def _mail_with(n: int) -> OutgoingMail:
+    att = OutgoingAttachment(name="x.pdf", content_type="application/pdf", data=b"x" * n)
+    return MAIL.model_copy(update={"attachments": [att]})
+
+
+async def test_send_checks_the_encoded_request_not_the_raw_bytes():
+    """Graph's 4 MB applies to the base64 JSON body: 3.1 MB raw (the old 3 MiB cap let it through) is about
+    4.2 MB once encoded and is refused; 2.9 MB raw (about 3.9 MB encoded) still goes."""
     calls: list[httpx.Request] = []
-    big = MAIL.model_copy(
-        update={
-            "attachments": [
-                OutgoingAttachment(name="x.pdf", content_type="application/pdf", data=b"x" * (3 * 1024 * 1024 + 1))
-            ]
-        }
-    )
+
+    def handler(r: httpx.Request) -> httpx.Response:
+        calls.append(r)
+        return httpx.Response(202)
+
+    sender = _sender(handler)
+    await sender.send(_mail_with(2_900_000))
+    assert len(calls) == 1 and len(calls[0].content) <= GraphMailSender.MAX_REQUEST_BYTES
+    with pytest.raises(ValueError, match="too big"):
+        await sender.send(_mail_with(3_100_000))
+    assert len(calls) == 1  # nothing was sent for the second
+
+
+async def test_send_boundary_is_exact_on_the_request_size():
+    seen: list[int] = []
+
+    def handler(r: httpx.Request) -> httpx.Response:
+        seen.append(len(r.content))
+        return httpx.Response(202)
+
+    sender = _sender(handler)
+    await sender.send(_mail_with(30_000))  # 30,000 is a multiple of 3: base64 grows by exactly 4 per 3 bytes
+    sender.MAX_REQUEST_BYTES = seen[0]  # the limit is now exactly this request's size
+    await sender.send(_mail_with(30_000))  # at the limit: sent
+    assert seen == [seen[0], seen[0]]
     with pytest.raises(ValueError):
-        await _sender(lambda r: calls.append(r) or httpx.Response(202)).send(big)
-    assert calls == []
+        await sender.send(_mail_with(30_003))  # one more base64 quad: one byte-group over
+    assert len(seen) == 2
 
 
 async def test_fake_sender_records_and_can_fail():

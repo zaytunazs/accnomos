@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import base64
 import html
+import json
 import re
 from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime, time, timedelta
@@ -527,14 +528,15 @@ class GraphContactsProvider(_GraphHttp, ContactsProvider):
 
 
 class GraphMailSender(_GraphHttp, MailSender):
-    """`POST /me/sendMail` (`Mail.Send`), saved to the user's Sent Items. Attachments go inline as base64,
-    which Graph accepts up to 3 MB per message; an invoice PDF is far smaller."""
+    """`POST /me/sendMail` (`Mail.Send`), saved to the user's Sent Items. Attachments go inline as base64 in one
+    JSON request, which Graph limits to 4 MB; an invoice PDF is far smaller. The limit applies to the encoded
+    request (base64 is 4/3 of the raw bytes, plus the JSON around it), so it is checked on the bytes actually
+    sent. Larger attachments would need a draft and an attachment upload session, which this sender does not do:
+    it refuses with a clear error before anything is sent."""
 
-    MAX_INLINE = 3 * 1024 * 1024
+    MAX_REQUEST_BYTES = 4_000_000  # a cautious reading of Graph's "4 MB"
 
     async def send(self, mail: OutgoingMail) -> None:
-        if sum(len(a.data) for a in mail.attachments) > self.MAX_INLINE:
-            raise ValueError("Attachments are over 3 MB, too big to send in one go")
         message = {
             "subject": mail.subject,
             "body": {"contentType": "Text", "content": mail.body_text},
@@ -549,7 +551,16 @@ class GraphMailSender(_GraphHttp, MailSender):
                 for a in mail.attachments
             ],
         }
-        await self._request("POST", f"{GRAPH}/me/sendMail", json={"message": message, "saveToSentItems": True})
+        content = json.dumps({"message": message, "saveToSentItems": True}, separators=(",", ":")).encode()
+        if len(content) > self.MAX_REQUEST_BYTES:
+            raw = sum(len(a.data) for a in mail.attachments)
+            raise ValueError(
+                f"The email is too big to send in one go ({raw / 1_000_000:.1f} MB of attachments; "
+                f"about {self.MAX_REQUEST_BYTES * 3 // 4 / 1_000_000:.1f} MB is the most Outlook accepts here)"
+            )
+        await self._request(
+            "POST", f"{GRAPH}/me/sendMail", content=content, headers={"Content-Type": "application/json"}
+        )
 
 
 def _graph_utc(value: dict[str, Any] | None) -> datetime:
