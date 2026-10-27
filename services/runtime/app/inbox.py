@@ -1,11 +1,17 @@
 """Scan 00 Inbox: extract each new document, apply rules, save a proposal and file the document.
 
+Photos (JPEG/PNG/WebP/HEIC), PDFs and email bodies saved as text (`.eml.txt`) are read; app/formats.py says how.
+A HEIC photo is swapped for a JPEG in the Inbox (the HEIC is kept in `_System/Originals`), so the card can show it.
+A file over 25 MB is not read and stays in the Inbox, reported as an error; any other file that cannot be read
+(too many pixels or pages, damaged, password-protected) becomes a needs-a-look card that says why.
+
 Proposals that match an Autopilot rule and pass every check are then posted by Autopilot
 (app/autopilot.py); everything else waits in Review.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import uuid
 from dataclasses import dataclass
@@ -17,33 +23,25 @@ from app import contacts as contact_book
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError
 from app.approve import ApprovalError, approve
-from app.books import Books, DocMeta, Rule, now
+from app.books import SYSTEM, Books, DocMeta, Rule, now
 from app.checks import SupplierKnowledge, decide
+from app.formats import MAX_BYTES, FormatError, guess_mime, prepare
 from app.invoicing import load_profile
 from app.journal import with_expense_account
 from app.mileage import MileageError, Vehicle, load_vehicles, prefill_vehicle
 from app.paths import INBOX
-from app.pipeline import process_image, sha256_hex
+from app.pipeline import process_document, sha256_hex
 from app.schemas import AutopilotDecision, Check, ExtractedDoc, Proposal
 
 log = logging.getLogger(__name__)
 
-IMAGE_MIME = {".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp"}
-PDF_MIME = "application/pdf"
 ACTOR = "agent:extractor"
+ORIGINALS = f"{SYSTEM}/Originals"  # HEIC photos, once their JPEG is in the Inbox
 
 
-def mime_for(name: str) -> str | None:
-    """MIME type for the documents we accept, by extension; None for anything else."""
-    ext = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
-    return IMAGE_MIME.get(ext) or (PDF_MIME if ext == ".pdf" else None)
-
-
-def pdf_placeholder(name: str, digest: str) -> Proposal:
-    """A needs-a-look proposal for a PDF we cannot read yet; the user types the amounts in on approval."""
-    check = Check(
-        code="PDF_UNSUPPORTED", ok=False, severity="fail", message="PDFs can't be read yet; please check by hand"
-    )
+def unreadable_placeholder(name: str, digest: str, reason: str) -> Proposal:
+    """A needs-a-look proposal for a file we cannot read; the user types the amounts in on approval."""
+    check = Check(code="UNREADABLE", ok=False, severity="fail", message=f"Not read: {reason}. Please check it by hand")
     doc = ExtractedDoc(
         doc_type="purchase_invoice",
         supplier_name=name.rsplit(".", 1)[0],
@@ -86,6 +84,16 @@ def apply_rule(p: Proposal, rule: Rule | None) -> None:
     p.checks.append(Check(code="RULE_APPLIED", ok=True, severity="warn", message=msg))
 
 
+async def _swap_for_jpeg(books: Books, f: FileRef, jpeg: bytes) -> FileRef:
+    """Put the JPEG made from a HEIC photo in the Inbox in its place. The HEIC is moved, never deleted."""
+    stem = f.name.rsplit(".", 1)[0]
+    dest = await books.free_path(INBOX, f"{stem}.jpg")
+    ref = await books.storage.write(dest, jpeg, create_only=True)
+    await books.storage.ensure_folder(ORIGINALS)
+    await books.storage.move(f.path, await books.free_path(ORIGINALS, f.name))
+    return FileRef(id=ref.id, path=dest, name=dest.rsplit("/", 1)[-1], size=len(jpeg), etag=ref.etag)
+
+
 async def _propose(
     books: Books,
     f: FileRef,
@@ -97,17 +105,22 @@ async def _propose(
     vehicles: list[Vehicle] | None = None,
     period: tuple[date, date] | None = None,
     vat: VatContext | None = None,
-) -> Proposal:
+) -> tuple[Proposal, FileRef, str]:
+    """The proposal, the file to file (a HEIC's JPEG, else `f`) and that file's MIME type."""
     data = await books.storage.read(f.path)
-    if mime == PDF_MIME:
-        return pdf_placeholder(f.name, sha256_hex(data))
+    try:
+        prep = await asyncio.to_thread(prepare, data, f.name)
+    except FormatError as exc:
+        return unreadable_placeholder(f.name, sha256_hex(data), str(exc)), f, mime
+    if prep.converted_from and prep.image is not None:
+        f, data = await _swap_for_jpeg(books, f, prep.image), prep.image
     start, end = period or (None, None)
     vat = vat or VatContext([], True)
-    p = await process_image(
-        data,
-        mime,
+    p = await process_document(
+        prep,
         cfg,
         known_hashes=frozenset(known),
+        digest=sha256_hex(data),
         business_name=business_name,
         period_start=start,
         period_end=end,
@@ -116,7 +129,7 @@ async def _propose(
     )
     apply_rule(p, books.match_rule(p.extracted, rules))
     prefill_vehicle(p, vehicles or [])
-    return p
+    return p, f, prep.source_mime
 
 
 @dataclass
@@ -220,10 +233,17 @@ async def scan_inbox_detailed(
     vat = await vat_context(books)
     out: list[Proposal] = []
     errors: list[dict] = []
-    candidates = [(f, mime) for f in await books.list_files(INBOX) if (mime := mime_for(f.name))]
+    candidates: list[tuple[FileRef, str]] = []
+    for f in await books.list_files(INBOX):
+        if not (mime := guess_mime(f.name)):
+            continue
+        if f.size > MAX_BYTES:  # never downloaded; stays in the Inbox until the user replaces it
+            errors.append({"path": f.path, "error": f"File is over {MAX_BYTES // (1024 * 1024)} MB; not read"})
+            continue
+        candidates.append((f, mime))
     for f, mime in candidates[:limit]:  # failures count too: `limit` caps model calls
         try:
-            p = await _propose(books, f, mime, cfg, known, rules, business_name, vehicles, period, vat)
+            p, f, mime = await _propose(books, f, mime, cfg, known, rules, business_name, vehicles, period, vat)
         except ExtractionError as exc:
             log.warning("extraction failed for %s: %s", f.path, exc)
             await books.audit(ACTOR, "extract_failed", {"path": f.path, "error": str(exc)[:200]})

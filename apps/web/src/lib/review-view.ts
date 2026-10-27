@@ -75,7 +75,7 @@ export function toUi(p: RtProposal): UiProposal {
   const fails = p.checks.filter((c) => !c.ok);
   // One line per failed check; the verifier's own disagreement is shown by its table, not repeated here.
   const failedChecks = fails.filter((c) => c.code !== "VERIFIER_AGREES").map((c) => ({ text: c.message, warn: c.severity === "warn" }));
-  const verified = p.checks.filter((c) => !["CROP", "VEHICLE", "MILEAGE", "SECOND_READ", "TOTALS_REPAIRED", "LINES_REPAIRED"].includes(c.code)); // notes, not checks
+  const verified = p.checks.filter((c) => !["CROP", "SOURCE", "VEHICLE", "MILEAGE", "SECOND_READ", "TOTALS_REPAIRED", "LINES_REPAIRED"].includes(c.code)); // notes, not checks
   const cropped = p.crop && p.crop.method !== "none" ? ` · ${p.crop.note}` : "";
   const mileageNote = p.checks.find((c) => c.code === "MILEAGE");
   const repaired = p.repaired_by_code?.length

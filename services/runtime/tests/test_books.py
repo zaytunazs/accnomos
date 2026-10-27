@@ -98,7 +98,7 @@ async def test_scan_files_good_receipt_and_parks_duplicate(fake: FakeStorageProv
             "00 Inbox/a-receipt.jpg": SCREWFIX,
             "00 Inbox/b-copy.jpg": SCREWFIX,  # same bytes again
             "00 Inbox/c-invoice.pdf": b"%PDF-1.7",
-            "00 Inbox/notes.txt": b"hello",
+            "00 Inbox/notes.docx": b"hello",
         }
     )
     proposals = await scan_inbox(books, CFG)
@@ -108,8 +108,8 @@ async def test_scan_files_good_receipt_and_parks_duplicate(fake: FakeStorageProv
     assert dup.status == "needs_a_look" and dup.file_path == "02 Needs a look/2026-10-21 Screwfix £38.47.jpg"
     assert any(c.code == "DUPLICATE" and not c.ok for c in dup.checks)
     assert pdf.status == "needs_a_look" and pdf.file_path == "02 Needs a look/c-invoice.pdf"
-    assert [c.code for c in pdf.checks] == ["PDF_UNSUPPORTED"]
-    assert [p for p in fake.files if p.startswith("00 Inbox/")] == ["00 Inbox/notes.txt"]
+    assert [c.code for c in pdf.checks] == ["UNREADABLE"]  # a truncated PDF (or no PDF reader on this server)
+    assert [p for p in fake.files if p.startswith("00 Inbox/")] == ["00 Inbox/notes.docx"]
     assert await books.known_hashes() == {good.doc_sha256, pdf.doc_sha256}
     assert len([p for p in fake.files if p.startswith(f"{DOCS}/")]) == 2
     assert {p.id for p in await books.list_proposals()} == {good.id, dup.id, pdf.id}
