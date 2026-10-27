@@ -83,6 +83,16 @@ async def test_to_wav_rejects_rubbish_and_tiny_clips():
     assert short.value.status == 422 and "too short" in str(short.value)
 
 
+@needs_ffmpeg
+async def test_to_wav_keeps_no_audio_on_disk(tmp_path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(voice.tempfile, "tempdir", str(tmp_path))
+    await voice.to_wav(_tone_wav(), "audio/wav")
+    with pytest.raises(voice.VoiceError) as bad:
+        await voice.to_wav(b"not audio" * 50, "audio/webm")
+    assert list(tmp_path.iterdir()) == []
+    assert str(tmp_path) not in str(bad.value)  # the server's temp path isn't echoed to the user
+
+
 async def test_to_wav_size_limits_need_no_ffmpeg():
     with pytest.raises(voice.VoiceError) as empty:
         await voice.to_wav(b"")
@@ -246,6 +256,24 @@ def test_voice_route_maps_transcribe_errors(client: TestClient, monkeypatch: pyt
     monkeypatch.setattr(voice, "transcribe", fail)
     r = client.post("/books/ask/voice", headers=KEY_HEADERS, files={"audio": ("q.wav", _tone_wav(), "audio/wav")})
     assert r.status_code == 401 and "rejected" in r.json()["detail"]
+
+
+@needs_ffmpeg
+def test_voice_route_overlong_transcript_is_422(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    async def ramble(*_a, **_k) -> str:
+        return "and another thing " * 40
+
+    monkeypatch.setattr(voice, "transcribe", ramble)
+    r = client.post("/books/ask/voice", headers=KEY_HEADERS, files={"audio": ("q.wav", _tone_wav(), "audio/wav")})
+    assert r.status_code == 422 and "too long" in r.json()["detail"]
+
+
+def test_health_reports_voice(client: TestClient, monkeypatch: pytest.MonkeyPatch):
+    import app.main
+
+    assert client.get("/health").json()["voice"] is (voice.ffmpeg_path() is not None)
+    monkeypatch.setattr(app.main, "FFMPEG", None)
+    assert client.get("/health").json()["voice"] is False
 
 
 def test_voice_route_bad_period_is_422(client: TestClient):
