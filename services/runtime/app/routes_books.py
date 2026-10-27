@@ -42,14 +42,17 @@ async def get_books(request: Request) -> AsyncIterator[Books]:
         raise HTTPException(status_code=400, detail="X-Account-Kind must be 'personal' or 'work'")
     if is_test_mode():
         from app import testmode
+        from app.cache import user_cache_key
 
-        books = Books((await testmode.state()).storage)
+        books = Books((await testmode.state()).storage, cache_key=user_cache_key(token, testmode.tenant()))
         await layout.on_first_contact(books, token, cache=False)  # fake storage is reset between tests
         yield books
         return
+    from app.cache import user_cache_key
+
     storage = GraphStorageProvider(token, kind)  # type: ignore[arg-type]
     try:
-        books = Books(storage)
+        books = Books(storage, cache_key=user_cache_key(token))
         await layout.on_first_contact(books, token)  # old folder names -> current ones, once (app/layout.py)
         yield books
     finally:

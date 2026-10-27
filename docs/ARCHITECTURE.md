@@ -135,6 +135,19 @@ actor; `kind` matches an event or a prefix family (`invoice` is every `invoice_*
 through this route; the Home dashboard reads `audit/` for recent activity, and `app/actions.py` reads its own log so an
 action never runs twice.
 
+## Round trips and caching
+
+Every read of the books is a Graph call, so the runtime avoids repeating them (`services/runtime/app/cache.py`):
+
+* Per request: a `Books` built with a `cache_key` memoises repeated `list`/`read` calls (each folder is listed
+  once) and reads independent files together with `asyncio.gather`. A write or move forgets exactly the paths it
+  changed, so a request always reads its own writes.
+* Across requests: only posted ledger events (`_System/Ledger/events/…`, immutable once written) are kept, in a
+  small in-process LRU (1,000 files / 8 MB) keyed by a hash of the caller's token (plus the test tenant in test
+  mode). Never cached across users; never cached mutable files beyond one request. The key holds a hash, not the token.
+
+Speed on a real-sized seeded book, measured on fakes with simulated latency: `evals/runs/bench_runtime/report.md`.
+
 ## The agent pipeline
 
 `app/pipeline.py` (scan) and `app/inbox.py` (posting during a scan):

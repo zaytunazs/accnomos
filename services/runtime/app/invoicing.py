@@ -29,6 +29,7 @@ Sending and chasing need the user's explicit confirmation in the app (`confirm: 
 
 from __future__ import annotations
 
+import asyncio
 import contextlib
 import hashlib
 import re
@@ -358,12 +359,20 @@ async def save_invoice(books: Books, inv: Invoice) -> None:
 
 async def list_invoices(books: Books, status: InvoiceStatus | None = None) -> list[Invoice]:
     """Newest number first."""
-    out: list[Invoice] = []
-    for f in await books.list_files(INVOICES):
-        if f.name.endswith(".json") and ID_RE.fullmatch(f.name.removesuffix(".json")):
-            inv = Invoice.model_validate_json(await books.storage.read(f.path), **LENIENT)
-            if status is None or inv.status == status:
-                out.append(inv)
+    files = [
+        f
+        for f in await books.list_files(INVOICES)
+        if f.name.endswith(".json") and ID_RE.fullmatch(f.name.removesuffix(".json"))
+    ]
+
+    async def read_one(path: str) -> Invoice:
+        return Invoice.model_validate_json(await books.storage.read(path), **LENIENT)
+
+    out = [
+        inv
+        for inv in await asyncio.gather(*(read_one(f.path) for f in files))
+        if status is None or inv.status == status
+    ]
     return sorted(out, key=lambda i: (i.issue_date, i.number), reverse=True)
 
 

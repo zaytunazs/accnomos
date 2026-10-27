@@ -21,6 +21,7 @@ matches can be marked as a transfer, ignored, or turned into an expense proposal
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Awaitable, Callable
 from datetime import date
 from typing import Literal
@@ -138,10 +139,10 @@ async def lines(status: BankLineStatus | None = None, books: Books = Depends(get
 
 @router.get("/suggestions", response_model=list[Suggestion])
 async def suggestions(books: Books = Depends(get_books)) -> list[Suggestion]:
-    lines = await books.stored_bank_lines()
+    lines, live, ledger = await asyncio.gather(books.stored_bank_lines(), books.live_events(), load_ledger(books))
     by_line = {ln.id: ln for ln in lines}
-    events = {e.id: e for e in await books.live_events()}
-    money_by = money_events(await load_ledger(books))
+    events = {e.id: e for e in live}
+    money_by = money_events(ledger)
     return [
         Suggestion(
             **m.model_dump(),
