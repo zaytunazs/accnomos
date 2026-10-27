@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from datetime import date
 
 from accnomos_connectors.base import FileRef
 
@@ -63,12 +64,15 @@ def apply_rule(p: Proposal, rule: Rule | None) -> None:
 
 async def _propose(
     books: Books, f: FileRef, mime: str, cfg: AiConfig, known: set[str], rules: list[Rule], business_name: str | None = None,
-    vehicles: list[Vehicle] | None = None,
+    vehicles: list[Vehicle] | None = None, period: tuple[date, date] | None = None,
 ) -> Proposal:
     data = await books.storage.read(f.path)
     if mime == PDF_MIME:
         return pdf_placeholder(f.name, sha256_hex(data))
-    p = await process_image(data, mime, cfg, known_hashes=frozenset(known), business_name=business_name)
+    start, end = period or (None, None)
+    p = await process_image(
+        data, mime, cfg, known_hashes=frozenset(known), business_name=business_name, period_start=start, period_end=end,
+    )
     apply_rule(p, books.match_rule(p.extracted, rules))
     prefill_vehicle(p, vehicles or [])
     return p
@@ -103,20 +107,23 @@ async def _autopilot_post(books: Books, p: Proposal, rule: autopilot.AutopilotRu
 
 async def scan_inbox(
     books: Books, cfg: AiConfig, limit: int = 10, business_name: str | None = None, autopilot_on: bool = True,
+    period: tuple[date, date] | None = None,
 ) -> list[Proposal]:
     """Backwards-compatible wrapper: proposals only."""
-    proposals, _ = await scan_inbox_detailed(books, cfg, limit, business_name, autopilot_on)
+    proposals, _ = await scan_inbox_detailed(books, cfg, limit, business_name, autopilot_on, period)
     return proposals
 
 
 async def scan_inbox_detailed(
     books: Books, cfg: AiConfig, limit: int = 10, business_name: str | None = None, autopilot_on: bool = True,
+    period: tuple[date, date] | None = None,
 ) -> tuple[list[Proposal], list[dict]]:
     """Process up to `limit` documents from the Inbox and return the new proposals.
 
     A file whose hash we have already seen is not skipped silently: the DUPLICATE check sends it
     to "04 Needs a look", so the Inbox never keeps files the user thinks were handled. Files the
-    model cannot read stay in the Inbox for the next scan.
+    model cannot read stay in the Inbox for the next scan. `period` is the current VAT period: a document
+    dated outside it gets a DATE_IN_PERIOD warning (never a fail; the ledger keeps the document's date).
     """
     await books.ensure_tree()
     known = await books.known_hashes()
@@ -128,7 +135,7 @@ async def scan_inbox_detailed(
     candidates = [(f, mime) for f in await books.list_files(INBOX) if (mime := mime_for(f.name))]
     for f, mime in candidates[:limit]:  # failures count too: `limit` caps model calls
         try:
-            p = await _propose(books, f, mime, cfg, known, rules, business_name, vehicles)
+            p = await _propose(books, f, mime, cfg, known, rules, business_name, vehicles, period)
         except ExtractionError as exc:
             log.warning("extraction failed for %s: %s", f.path, exc)
             await books.audit(ACTOR, "extract_failed", {"path": f.path, "error": str(exc)[:200]})
