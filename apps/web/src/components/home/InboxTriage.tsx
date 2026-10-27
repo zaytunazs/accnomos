@@ -6,7 +6,7 @@ import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
 import type { AccountInfo } from "@azure/msal-browser";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
-import { RuntimeErrorNote } from "@/components/States";
+import { RuntimeErrorNote, parseRuntimeError } from "@/components/States";
 import { ago } from "@/lib/intake";
 import { runtime, type RtDraftReply, type RtTriage, type RtTriageCategory, type RtTriageThread } from "@/lib/runtime";
 import {
@@ -222,7 +222,7 @@ function ThreadRow({
     } catch (e) {
       if ((e as Error).message === "redirecting for consent") return;
       takePendingDraft();
-      setNote(`Could not save the draft: ${errorText(e)}`);
+      setNote(`Could not save the draft: ${parseRuntimeError(errorText(e) ?? "the draft was not saved.").detail || "try again."}`);
     } finally {
       setDrafting(false);
     }
@@ -245,7 +245,7 @@ function ThreadRow({
         delete next[i];
         return next;
       });
-      setNote(`Could not add the to-do: ${errorText(e)}`);
+      setNote(`Could not add the to-do: ${parseRuntimeError(errorText(e) ?? "the to-do was not added.").detail || "try again."}`);
     }
   }
 

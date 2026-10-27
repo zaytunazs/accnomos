@@ -12,6 +12,7 @@ import {
   LoadingSkeleton,
   ReaderErrorNote,
   RuntimeErrorNote,
+  SamplePill,
   isReaderError,
 } from "@/components/States";
 import { getFileBlob } from "@/lib/graph";
@@ -65,6 +66,7 @@ function SampleReview({ note: initialNote, level }: { note: string | null; level
   return (
     <div className="flex min-w-0 flex-col gap-4">
       <p className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-warn-border bg-warn-bg px-4 py-2 text-sm text-warn-ink">
+        <SamplePill />
         <span>
           <strong>Fictional Bramblewood Joinery Ltd books.</strong>{" "}
           Decisions here stay in this tab; nothing is posted anywhere.

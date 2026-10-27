@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
-import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import { EmptyState, LoadingSkeleton, RuntimeErrorNote, parseRuntimeError } from "@/components/States";
 import SignInCta from "@/components/SignInCta";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import {
@@ -55,9 +55,7 @@ export default function LiveVehicles() {
   const newVehicleRef = useRef<HTMLInputElement>(null);
 
   function fail(e: unknown) {
-    const msg = errorText(e);
-    if (isAuthError(msg) || isServerError(msg)) setError(msg);
-    else setNote({ text: msg });
+    setError(errorText(e));
   }
   const [newVehicle, setNewVehicle] = useState({ name: "", registration: "", kind: "car" as RtVehicleKind, owned_by: "personal" as "personal" | "business" });
   const [trip, setTrip] = useState({ vehicle_id: "", date: londonToday(), from: "", to: "", miles: "", purpose: "" });
@@ -125,13 +123,13 @@ export default function LiveVehicles() {
       });
       await load(account, taxYear);
     } catch (e) {
-      setNote({ text: errorText(e) });
+      setNote({ text: parseRuntimeError(errorText(e)).detail || "The mileage claim did not go through — try again." });
     } finally {
       setBusy(null);
     }
   }
 
-  if (state === "checking") return <p className="text-sm text-muted">Loading your vehicles…</p>;
+  if (state === "checking") return <LoadingSkeleton lines={3} label="Loading your vehicles…" />;
   if (state === "off")
     return (
       <div className="flex flex-col gap-3">

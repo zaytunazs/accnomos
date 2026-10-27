@@ -5,6 +5,7 @@ import PrintButton from "@/components/PrintButton";
 import SignedOutOnly from "@/components/SignedOutOnly";
 import SignInCta from "@/components/SignInCta";
 import BoxExplain from "@/components/vat/BoxExplain";
+import { SamplePill } from "@/components/States";
 import SubmitSheet from "@/components/vat/SubmitSheet";
 import LiveVat from "@/components/vat/LiveVat";
 import ConnectHmrc from "@/components/vat/ConnectHmrc";
@@ -73,6 +74,7 @@ export default function VatPage() {
       <SignedOutOnly>
         <div className="flex flex-col gap-6">
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-medium text-muted">
+            <SamplePill />
             <span>A mock-up of a finished return ({vatMeta.period}). Fictional figures.</span>
             <SignInCta />
             <span className="hidden print:inline">Estimate until submitted.</span>

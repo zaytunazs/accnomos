@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import BooksCard from "@/components/files/BooksCard";
 import SignInCta from "@/components/SignInCta";
-import FilePreview from "@/components/files/FilePreview";
+import dynamic from "next/dynamic";
 import FileTree from "@/components/files/FileTree";
 import FilesTree, {
   OpenLink,
@@ -17,13 +17,19 @@ import FilesTree, {
   type Selection,
 } from "@/components/files/FilesTree";
 import UploadToInbox from "@/components/review/UploadToInbox";
-import { EmptyState, ErrorNote, LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import { EmptyState, ErrorNote, LoadingSkeleton, RuntimeErrorNote, SamplePill } from "@/components/States";
 import { FOLDERS } from "@/lib/folders";
 import { getRoot, listChildren, type DriveItem } from "@/lib/graph";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { runtime, type RtLayout } from "@/lib/runtime";
 
 const ORDER = FOLDERS.filter((f) => !f.includes("/"));
+
+/** The file preview loads only when a file is picked, never on first paint. */
+const FilePreview = dynamic(() => import("@/components/files/FilePreview"), {
+  ssr: false,
+  loading: () => <p className="text-sm text-muted">Loading preview…</p>,
+});
 
 async function loadTree(account: AccountInfo): Promise<FilesTreeData> {
   const [root, top] = await Promise.all([getRoot(account), listChildren(account)]);
@@ -348,17 +354,16 @@ export default function LiveFiles() {
         />
       ) : (
         <>
-          {state === "error" && (
-            note && (isAuthError(note) || isServerError(note)) ? (
-              <RuntimeErrorNote message={note} title="Couldn't read your folder" />
-            ) : (
-              <ErrorNote
-                title="Couldn't read your folder"
-                body={note ? `${note} Showing the sample instead.` : "Showing the sample instead."}
-              />
-            )
-          )}
+          {state === "error" && note ? (
+            <RuntimeErrorNote message={note} title="Couldn't read your folder" />
+          ) : state === "error" ? (
+            <ErrorNote
+              title="Couldn't read your folder"
+              body="Showing the sample instead."
+            />
+          ) : null}
           <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] font-medium text-muted">
+            <SamplePill />
             <span>{state === "error" ? "Could not read your folder; showing the sample instead." : "Sample folder with fictional files."}</span>
             {state === "demo" && <SignInCta />}
           </p>

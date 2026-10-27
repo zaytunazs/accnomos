@@ -324,6 +324,15 @@ export default function AskThread() {
               <EmptyState
                 title="No questions yet"
                 body="Your conversation history appears here — every answer is worked out by code from your ledger."
+                action={
+                  <button
+                    type="button"
+                    onClick={() => inputRef.current?.focus()}
+                    className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
+                  >
+                    Ask your first question
+                  </button>
+                }
               />
               {suggestions && (
                 <div className="flex flex-col gap-2">

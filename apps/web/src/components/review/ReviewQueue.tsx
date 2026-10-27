@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import EditSheet from "@/components/review/EditSheet";
+import dynamic from "next/dynamic";
 import Explain from "@/components/Explain";
 import Modal from "@/components/review/Modal";
 import ProposalCard from "@/components/review/ProposalCard";
@@ -31,6 +31,16 @@ interface Decision<H> {
 }
 
 const label = (p: RtProposal) => `${p.extracted.supplier_name} · ${gbp(p.extracted.gross_total)}`;
+
+/** The edit form (and lib/review-edit) loads only when Edit is tapped, never on first paint. */
+const EditSheet = dynamic(() => import("@/components/review/EditSheet"), {
+  ssr: false,
+  loading: () => (
+    <Modal label="Edit" onClose={() => {}}>
+      <p className="text-sm text-muted">Loading…</p>
+    </Modal>
+  ),
+});
 const isTyping = (t: EventTarget | null) =>
   t instanceof HTMLElement && (t.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(t.tagName) || !!t.closest("dialog[open]"));
 

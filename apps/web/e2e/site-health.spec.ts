@@ -36,6 +36,7 @@ test("a runtime 500 shows its correlation id, with copy", async ({ page, context
   const note = page.getByRole("alert").filter({ hasText: /Something went wrong on our side/ });
   await expect(note).toBeVisible();
   await expect(note).toContainText("corr-e2e-500");
+  await expect(note.getByRole("button", { name: "Try again" })).toBeVisible();
   await note.getByRole("button", { name: "Copy" }).click();
   const clip = await page.evaluate(() => navigator.clipboard.readText());
   expect(clip).toBe("Accnomos error (status 500): Ledger read failed [ref corr-e2e-500]");

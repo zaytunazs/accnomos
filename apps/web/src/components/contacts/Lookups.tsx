@@ -11,6 +11,7 @@ import {
   type RtLookupStatus,
   type RtVatCheck,
 } from "@/lib/runtime";
+import { parseRuntimeError } from "@/components/States";
 
 /**
  * Official look-ups (services/runtime/app/company_lookup.py). AI proposes, user approves: a Companies House match
@@ -93,7 +94,7 @@ export function CompanyLookup({ account, initialQuery, onPick }: {
           {busy ? "Looking…" : "Look up"}
         </button>
       </div>
-      {err && <p role="alert" className="text-sm font-semibold text-warn-ink">{err}</p>}
+      {err && <p role="alert" className="text-sm font-semibold text-warn-ink">{parseRuntimeError(err).detail || "The look-up did not answer — try again."}</p>}
       {items && (
         <div role="status" className="text-[13px] font-medium text-muted">
           {items.length === 0 ? "No companies found." : `${items.length} found. Pick one to fill the name, company number and address; nothing is saved until you press Save.`}
@@ -192,7 +193,7 @@ export function VatCheckButton({ account, vrn, name, contactId, initial, onCheck
           </p>
         )}
       </div>
-      {err && <p role="alert" className="text-[13px] font-semibold text-warn-ink">{err}</p>}
+      {err && <p role="alert" className="text-[13px] font-semibold text-warn-ink">{parseRuntimeError(err).detail || "The check did not answer — try again."}</p>}
     </div>
   );
 }

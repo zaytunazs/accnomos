@@ -3,7 +3,7 @@
 import { useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import Modal, { fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
-import { RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import { RuntimeErrorNote, isAuthError, isServerError, parseRuntimeError } from "@/components/States";
 import { money, parsePounds, poundsInput, todayIso } from "@/lib/invoices";
 import { runtime, ukDate, type RtCredit, type RtOpenItem } from "@/lib/runtime";
 
@@ -21,7 +21,7 @@ export function errorText(e: unknown): string | null {
 
 function Note({ note }: { note: string }) {
   if (isAuthError(note) || isServerError(note)) return <RuntimeErrorNote message={note} />;
-  return <p role="alert" className="mt-3 text-sm font-bold text-warn-ink">{note}</p>;
+  return <p role="alert" className="mt-3 text-sm font-bold text-warn-ink">{parseRuntimeError(note).detail || note}</p>;
 }
 
 const docLabel = (d: RtOpenItem) =>
