@@ -7,7 +7,7 @@ import { useMsAccount } from "@/lib/invoices";
 import { runtime, type RtInvoiceProfile } from "@/lib/runtime";
 
 const EMPTY: RtInvoiceProfile = {
-  name: "", address: "", email: null, phone: null, vrn: null, company_number: null,
+  name: "", address: "", email: null, phone: null, vrn: null, vat_registered: true, company_number: null,
   bank: { account_name: "", sort_code: "", account_number: "", iban: null }, logo_path: null, terms_days: 30, footer_note: null,
 };
 
@@ -96,6 +96,23 @@ export default function InvoiceProfileForm({ card, heading }: { card: string; he
               <input id="ip-vrn" className={fieldInput} placeholder="GB 123 4567 89" value={form.vrn ?? ""} onChange={(e) => set("vrn", e.target.value)} />
               <p className="mt-1 text-xs text-muted">Leave blank if you are not VAT registered: invoices then cannot charge VAT.</p>
             </div>
+            <label className="flex min-h-11 cursor-pointer items-start gap-3 text-[15px] font-semibold sm:col-span-2">
+              <input
+                type="checkbox"
+                className="mt-0.5 h-5 w-5 shrink-0 accent-teal"
+                checked={(form.vat_registered ?? true) || !!form.vrn?.trim()}
+                disabled={!!form.vrn?.trim()}
+                onChange={(e) => set("vat_registered", e.target.checked)}
+              />
+              <span>
+                This business is VAT-registered
+                <span className="block text-xs font-normal text-muted">
+                  {form.vrn?.trim()
+                    ? "Yes, it has a VAT number. Receipts need the supplier's VAT number for the VAT to be reclaimed."
+                    : "Untick if it isn't: you reclaim no VAT, so receipts are never questioned for a missing VAT number."}
+                </span>
+              </span>
+            </label>
             <div className="sm:col-span-2">
               <label className={fieldLabel} htmlFor="ip-address">Address</label>
               <textarea id="ip-address" rows={3} className={fieldArea} value={form.address} onChange={(e) => set("address", e.target.value)} />

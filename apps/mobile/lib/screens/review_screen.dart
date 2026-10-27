@@ -43,6 +43,24 @@ class _ReviewScreenState extends State<ReviewScreen> {
   int _index = 0;
   final Map<String, bool> _alwaysDo = {};
 
+  /// "<supplier> isn't VAT-registered", ticked on cards that ask about it.
+  final Map<String, bool> _notRegistered = {};
+
+  /// The tick as an approve edit, merged into what else is sent.
+  Map<String, dynamic>? _withVatTick(
+      Proposal proposal, Map<String, dynamic>? edits) {
+    if (!proposal.asksVatStatus || !(_notRegistered[proposal.id] ?? false)) {
+      return edits;
+    }
+    return {...?edits, notVatRegisteredEdit: true};
+  }
+
+  String _approvedNote(Proposal proposal) =>
+      proposal.asksVatStatus && (_notRegistered[proposal.id] ?? false)
+          ? 'Approved · posted to your books · ${proposal.supplier} '
+              'remembered as not VAT-registered'
+          : 'Approved · posted to your books';
+
   AppSettings? _settings;
   Account? _account;
   bool _authChecked = false;
@@ -474,6 +492,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       final client = await _booksClient();
       final response = await client.approve(
         proposal.id,
+        edits: _withVatTick(proposal, null),
         always: _alwaysDo[proposal.id] ?? false,
       );
       if (!mounted) return;
@@ -485,7 +504,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         _lastWhat = '${proposal.supplier} · ${_gbp(proposal.total)}';
       });
       _sayDecision(
-        'Approved · posted to your books',
+        _approvedNote(proposal),
         onUndo: eventId == null ? null : _undoLastDecision,
       );
     } catch (e) {
@@ -521,7 +540,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
       final client = await _booksClient();
       final response = await client.approve(
         proposal.id,
-        edits: result.edits.isEmpty ? null : result.edits,
+        edits: _withVatTick(
+            proposal, result.edits.isEmpty ? null : result.edits),
         always: _alwaysDo[proposal.id] ?? false,
       );
       if (!mounted) return;
@@ -533,7 +553,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         _lastWhat = '${proposal.supplier} · ${_gbp(proposal.total)}';
       });
       _sayDecision(
-        'Approved · posted to your books',
+        _approvedNote(proposal),
         onUndo: eventId == null ? null : _undoLastDecision,
       );
     } catch (e) {
@@ -1380,6 +1400,35 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 
+  Widget _notRegisteredRow(Proposal proposal) {
+    return Container(
+      margin: const EdgeInsets.only(top: 4),
+      decoration: BoxDecoration(
+        color: _warnBg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _warnBorder),
+      ),
+      child: Row(
+        children: [
+          Checkbox(
+            key: ValueKey('review-not-vat-registered-${proposal.id}'),
+            value: _notRegistered[proposal.id] ?? false,
+            activeColor: AccnomosColors.teal,
+            onChanged: (v) =>
+                setState(() => _notRegistered[proposal.id] = v ?? false),
+          ),
+          Expanded(
+            child: Text(
+              "${proposal.supplier} isn't VAT-registered "
+              "(approving remembers this)",
+              style: const TextStyle(color: _warnInk, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _alwaysRow(Proposal proposal) {
     return Row(
       children: [
@@ -1509,6 +1558,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
           _failedChecksBox(proposal),
           _verifierBox(proposal),
           _cropLine(proposal),
+          if (proposal.asksVatStatus) _notRegisteredRow(proposal),
           const SizedBox(height: 4),
           _alwaysRow(proposal),
           const SizedBox(height: 8),

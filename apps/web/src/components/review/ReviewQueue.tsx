@@ -37,6 +37,12 @@ const QUIET = new Set(["Autopilot is switched off", "No Autopilot rule for this 
 /** "Check DUPLICATE failed: Looks like…" → "Looks like…": never show a raw check code. */
 const plainAutopilot = (r: string) => r.replace(/^Check [A-Z][A-Z0-9_]* (failed|warned):\s*/, "");
 
+/** The runtime's "Is <supplier> VAT-registered?" check (services/runtime/app/checks.py); the card offers the tick for it. */
+export const SUPPLIER_VAT_UNKNOWN = "SUPPLIER_VAT_UNKNOWN";
+/** The approve edit that records the supplier as not VAT-registered (services/runtime/app/approve.py). */
+export const NOT_VAT_REGISTERED = "supplier_not_vat_registered";
+export const asksVatStatus = (p: RtProposal) => p.checks.some((c) => c.code === SUPPLIER_VAT_UNKNOWN && !c.ok);
+
 const btn = "h-11 whitespace-nowrap rounded-xl px-4 text-[15px] font-bold disabled:opacity-60 sm:px-5";
 const primary = `${btn} bg-teal text-white hover:bg-teal-dark`;
 const secondary = `${btn} border border-border bg-white hover:bg-ground`;
@@ -73,6 +79,7 @@ export default function ReviewQueue<H>({
   const [rejecting, setRejecting] = useState<string | null>(null);
   const [bulk, setBulk] = useState(false);
   const [remember, setRemember] = useState<Record<string, boolean>>({});
+  const [notRegistered, setNotRegistered] = useState<Record<string, boolean>>({});
   const [history, setHistory] = useState<Decision<H>[]>([]);
   const [focusNext, setFocusNext] = useState<string | null>(null);
   const cards = useRef(new Map<string, HTMLElement>());
@@ -136,15 +143,17 @@ export default function ReviewQueue<H>({
     const next = neighbour([p.id]);
     return run(p.id, async () => {
       const always = rememberable && (remember[p.id] ?? false);
-      const merged = { ...(approveEdits?.(p) ?? {}), ...(sheetEdits ?? {}) };
+      const tick = asksVatStatus(p) && notRegistered[p.id] ? { [NOT_VAT_REGISTERED]: true } : {};
+      const merged = { ...(approveEdits?.(p) ?? {}), ...tick, ...(sheetEdits ?? {}) };
       const edits = Object.keys(merged).length ? merged : undefined;
       const handle = await adapter.approve(p, { remember: always, edits });
       const sale = p.extracted.doc_type === "sales_invoice";
-      const done = !always
+      const learnt = NOT_VAT_REGISTERED in merged ? ` · ${p.extracted.supplier_name} remembered as not VAT-registered` : "";
+      const done = (!always
         ? "Approved · posted to your books"
         : sale || p.mileage_claim
           ? `Approved · posted to your books (Autopilot rules are for ${sale ? "purchases" : "receipts"} only)`
-          : `Approved · Autopilot will do this for ${p.extracted.supplier_name} next time`;
+          : `Approved · Autopilot will do this for ${p.extracted.supplier_name} next time`) + learnt;
       setHistory((h) => [...h, { kind: "approve", ids: [p.id], what: label(p), handles: handle ? [handle] : [] }]);
       setEditing(null);
       onNote(`${done} · U to undo`);
@@ -341,6 +350,20 @@ export default function ReviewQueue<H>({
             }
             actions={
               <>
+                {asksVatStatus(p) && (
+                  <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-warn-border bg-warn-bg px-4 py-2 text-[15px] font-semibold text-warn-ink">
+                    <input
+                      type="checkbox"
+                      className="h-5 w-5 shrink-0 accent-teal"
+                      checked={notRegistered[p.id] ?? false}
+                      onChange={(e) => setNotRegistered((r) => ({ ...r, [p.id]: e.target.checked }))}
+                    />
+                    <span>
+                      {p.extracted.supplier_name} isn&apos;t VAT-registered
+                      <span className="block text-[13px] font-medium">Approving remembers this, so their receipts aren&apos;t questioned again</span>
+                    </span>
+                  </label>
+                )}
                 {/* Never wraps: three short buttons fit a 390 px phone. */}
                 <div className="flex flex-nowrap gap-2">
                   <button

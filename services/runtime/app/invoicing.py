@@ -127,6 +127,9 @@ class InvoiceProfile(StrictBody):
     email: str | None = Field(None, max_length=254)
     phone: str | None = Field(None, max_length=40)
     vrn: str | None = Field(None, max_length=20)  # VAT registration number; without it an invoice cannot charge VAT
+    # Settings › Business. False only when the user says so: receipts then never need a supplier's VAT number,
+    # because the business reclaims no VAT. A VRN above always means registered (`is_vat_registered`).
+    vat_registered: bool = True
     company_number: str | None = Field(None, max_length=20)
     bank: BankDetails = Field(default_factory=BankDetails)
     logo_path: str | None = Field(None, max_length=100)  # LOGO_PATHS only (POST /invoices/profile/logo sets it)
@@ -145,6 +148,10 @@ class InvoiceProfile(StrictBody):
     @classmethod
     def _blank_is_none(cls, v: str | None) -> str | None:
         return v.strip() or None if v is not None else None
+
+    @property
+    def is_vat_registered(self) -> bool:
+        return self.vat_registered or self.vrn is not None
 
 
 async def load_profile(books: Books) -> InvoiceProfile:

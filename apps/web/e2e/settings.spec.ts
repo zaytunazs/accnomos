@@ -70,3 +70,20 @@ test("deep links open the right tab: #settings-staff, and Home's #automation", a
   await expect(page.getByRole("tab", { name: "Automation" })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("region", { name: "Inbox triage" })).toBeVisible();
 });
+
+test("Business: 'VAT-registered' is saved to the invoice profile; a VAT number always means registered", async ({ page, runtime }) => {
+  await page.goto("/settings");
+  const business = await settingsTab(page, "Business");
+  const profile = business.getByRole("region", { name: "On your invoices" });
+  const registered = profile.getByRole("checkbox", { name: /This business is VAT-registered/ });
+  await profile.getByLabel("VAT registration number").fill("");
+  await expect(registered).toBeChecked(); // the default: receipts need the supplier's VAT number
+  await registered.uncheck();
+  await profile.getByRole("button", { name: "Save invoice details" }).click();
+  await expect(profile.getByRole("status")).toContainText("Saved in your OneDrive");
+  expect((await runtime.api<{ vat_registered: boolean }>("GET", "/invoices/profile")).vat_registered).toBe(false);
+
+  await profile.getByLabel("VAT registration number").fill("GB 123 4567 89");
+  await expect(registered).toBeChecked();
+  await expect(registered).toBeDisabled();
+});

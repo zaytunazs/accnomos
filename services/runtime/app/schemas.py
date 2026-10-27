@@ -23,6 +23,8 @@ Severity = Literal["fail", "warn"]
 Status = Literal["proposed", "needs_a_look"]
 #: Lifecycle of a stored proposal: extraction decides proposed/needs_a_look, the user decides the rest.
 ProposalStatus = Literal["proposed", "needs_a_look", "posted", "rejected"]
+#: Whether a supplier charges VAT, as the books remember it (app/contacts.py): learnt on approval, editable on Contacts.
+VatStatus = Literal["registered", "not_registered", "unknown"]
 
 #: Categories offered to the model (also enforced as an enum in the JSON schema).
 CATEGORIES: tuple[str, ...] = (

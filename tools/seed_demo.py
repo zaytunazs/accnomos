@@ -18,6 +18,8 @@ by app code; nothing here writes JSON by hand. What it posts:
   mileage allowance claim and three sales invoices.
 * 25 more documents left in "00 Inbox", dated in the current period, for the judge to scan; two of them will land
   in "Needs a look" (an EUR invoice and a malformed VAT number).
+* Before any of that, four suppliers marked "not VAT-registered" in the contacts: their receipts over £250 charge no
+  VAT and show no VAT number, which for a supplier the books don't know means "Is <supplier> VAT-registered?".
 
 The documents are read by nobody: their proposals carry the gold set's fields (model "seed:gold-reading"),
 the same "perfect reading" test mode uses. Code still runs every check and drafts every journal.
@@ -53,7 +55,7 @@ from app import invoicing, jobs, mileage  # noqa: E402
 from app.approve import approve  # noqa: E402
 from app.autopilot import supplier_key  # noqa: E402
 from app.books import Books, DocMeta, now  # noqa: E402
-from app.checks import decide, run_checks  # noqa: E402
+from app.checks import FULL_INVOICE_THRESHOLD_GBP, UNKNOWN_SUPPLIER, SupplierKnowledge, decide, normalise_vat_number, run_checks  # noqa: E402
 from app.deadlines import STAGGER_START_MONTH, add_months, period_containing, period_label, previous_period  # noqa: E402
 from app.journal import BANK, VAT_CONTROL, draft_journal  # noqa: E402
 from app.paths import INBOX, readme_text  # noqa: E402
@@ -129,6 +131,7 @@ class Plan:
     claim_day: date  # the mileage claim is dated (and covers journeys up to) this day
     invoices: list[PlannedInvoice]
     customers: dict[str, dict[str, str]]  # name -> contact edits (email, address)
+    not_vat_registered: list[str]  # suppliers recorded as not VAT-registered before any document is proposed
     job_customers: dict[str, str]  # job key -> customer name
     statements: list[tuple[str, bytes]] = field(default_factory=list)  # (upload name, CSV bytes)
 
@@ -199,8 +202,9 @@ def build_plan(business: str = GOLD_BUSINESS, today: date | None = None, stagger
     start, end = older[0], newer[1]
     # The plan is tuned to the original hand-checked set (001-060); later generated documents (061+) are for the eval only.
     golds = {f: g for f, g in gold_receipts().items() if f[:3].isdigit() and int(f[:3]) <= 60}
+    not_registered = sorted({_supplier(g) for g in golds.values() if _charges_no_vat_over_250(g)})
     usable = {f: g for f, g in golds.items() if rewritable(g) and f not in INBOX_NEEDS_A_LOOK}
-    usable = {f: g for f, g in usable.items() if _passes(g)}
+    usable = {f: g for f, g in usable.items() if _passes(g, not_registered)}
     sales = sorted(f for f, g in usable.items() if g["doc_type"] == "sales_invoice" and f != INBOX_SALE
                    and (g.get("supplier") or {}).get("name") == GOLD_BUSINESS)
     utilities = sorted(f for f, g in usable.items() if g.get("payment_method") == "direct debit" and f not in sales)
@@ -293,16 +297,34 @@ def build_plan(business: str = GOLD_BUSINESS, today: date | None = None, stagger
     ]
     plan = Plan(business=business, today=today, periods=[older, newer], current=current, posted=posted, inbox=inbox,
                 staff=staff, jobs=plan_jobs, timesheets=timesheets, vehicle=vehicle, journeys=journeys,
-                claim_day=newer[1], invoices=invoices, customers=customers,
+                claim_day=newer[1], invoices=invoices, customers=customers, not_vat_registered=not_registered,
                 job_customers={k: cust for k, (_, cust, _, _) in job_defs.items()})
     plan.statements = [_statement(plan, lo, hi, n) for n, (lo, hi) in enumerate(plan.periods)]
     return plan
 
 
-def _passes(gold: dict[str, Any]) -> bool:
+def _supplier(gold: dict[str, Any]) -> str:
+    return ExtractedDoc.model_validate(extracted_from_gold(gold)).supplier_name
+
+
+def _charges_no_vat_over_250(gold: dict[str, Any]) -> bool:
+    """A purchase over £250 with no VAT and no VAT number (gold 005, 016, 027, 049). From a supplier the books don't
+    know, the scan asks "Is <supplier> VAT-registered?"; the fictional company knows these four aren't, so the seed
+    records that in their contacts first, as ticking "isn't VAT-registered" on an earlier receipt would have."""
+    doc = ExtractedDoc.model_validate(extracted_from_gold(gold))
+    return (doc.doc_type != "sales_invoice" and doc.currency == "GBP" and doc.vat_total <= 0
+            and normalise_vat_number(doc.supplier_vat_number) is None and doc.gross_total > FULL_INVOICE_THRESHOLD_GBP)
+
+
+def _knowledge(doc: ExtractedDoc, not_registered: list[str]) -> SupplierKnowledge:
+    return SupplierKnowledge("not_registered") if doc.supplier_name in not_registered else UNKNOWN_SUPPLIER
+
+
+def _passes(gold: dict[str, Any], not_registered: list[str]) -> bool:
     """Every check passes on a perfect reading (EUR and the malformed VAT number do not)."""
     doc = ExtractedDoc.model_validate(extracted_from_gold(gold))
-    return gold.get("currency", "GBP") == "GBP" and decide(run_checks(doc, known_hashes=set(), this_hash=""))[0] == "proposed"
+    checks = run_checks(doc, known_hashes=set(), this_hash="", supplier=_knowledge(doc, not_registered))
+    return gold.get("currency", "GBP") == "GBP" and decide(checks)[0] == "proposed"
 
 
 # --------------------------------------------------------------------------- #
@@ -401,6 +423,7 @@ def describe(plan: Plan) -> str:
         f"Jobs: {', '.join(j.name for j in plan.jobs.values())}; {len(plan.timesheets)} timesheet entries",
         f"Vehicle: {plan.vehicle.label()}, {len(plan.journeys)} journeys",
         f"Bank statements: {', '.join(name for name, _ in plan.statements)}",
+        f"Not VAT-registered (recorded first): {', '.join(plan.not_vat_registered)}",
         "Then: contacts refreshed from the ledger, Books.xlsx rebuilt.",
     ]
     return "\n".join(lines)
@@ -445,8 +468,9 @@ async def _propose(books: Books, d: PlannedDoc, plan: Plan) -> Proposal:
     digest = sha256_hex(data)
     doc = d.doc()
     start, end = period_containing(d.date, plan.current[0].month)  # checked when it arrived, in its own period
+    supplier = contacts_mod.supplier_knowledge(await contacts_mod.stored_contacts(books), doc)  # as the scan looks it up
     checks = repair(doc, plan.business) + run_checks(
-        doc, known_hashes=await books.known_hashes(), this_hash=digest, period_start=start, period_end=end,
+        doc, known_hashes=await books.known_hashes(), this_hash=digest, period_start=start, period_end=end, supplier=supplier,
     )
     status, reasons = decide(checks)
     p = Proposal(
@@ -484,6 +508,10 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
     claim_ids = {j.id for j in plan.claim_journeys()}
     for j in plan.journeys:
         await mileage.add_entry(books, j.model_copy(update={"vehicle_id": vehicle.id}), USER)
+
+    say(f"{len(plan.not_vat_registered)} suppliers that aren't VAT-registered")
+    for name in plan.not_vat_registered:
+        await contacts_mod.set_vat_status(books, name, "not_registered", ACTOR)
 
     say(f"{len(plan.posted)} documents: upload, propose, approve")
     sales: dict[str, str] = {}  # invoice number -> event, for the customers' payments

@@ -8,6 +8,7 @@ be undone, which appends a reversal event; nothing in the ledger is ever edited 
 from __future__ import annotations
 
 import hashlib
+import logging
 import re
 from datetime import date
 from typing import Any
@@ -18,13 +19,18 @@ from app.autopilot import ACTOR as AUTOPILOT_ACTOR
 from app.autopilot import AUTOPILOT, rule_from_proposal, save_rule
 from app.books import Books, Rule, RuleMatch, now
 from app.paths import NEEDS_A_LOOK, upgrade
-from app.checks import decide
+from app.checks import decide, normalise_vat_number
+from app.contacts import learn_from_approval
 from app.journal import VAT_CONTROL, draft_journal, with_expense_account
 from app.mileage import load_vehicles
 from app.schemas import CATEGORIES, ExtractedDoc, JournalLine, Proposal
 
+log = logging.getLogger(__name__)
+
 #: Edits the review screen may send; `category` maps to the document's category_guess.
 DOC_EDITS = {"category", "net_total", "vat_total", "gross_total", "date", "supplier_name", "doc_type", "payment_method"}
+#: The card's "<supplier> isn't VAT-registered" tick: approving with it records the supplier as not registered.
+NOT_VAT_REGISTERED = "supplier_not_vat_registered"
 OPEN = ("proposed", "needs_a_look")
 
 
@@ -39,11 +45,13 @@ class ProposalStateError(ApprovalError):
 def apply_edits(p: Proposal, edits: dict[str, Any]) -> None:
     """Apply the user's corrections to the document and the expense account, then redraw the journal.
     (`job_id` and `vehicle_id` are checked against their files and applied by approve().)"""
-    unknown = set(edits) - DOC_EDITS - {"account", "job_id", "vehicle_id"}
+    unknown = set(edits) - DOC_EDITS - {"account", "job_id", "vehicle_id", NOT_VAT_REGISTERED}
     if unknown:
         raise ApprovalError(f"Can't edit {', '.join(sorted(unknown))}")
     if p.mileage_claim and edits:
         raise ApprovalError("A mileage claim is calculated by code: change the mileage log on Vehicles instead")
+    if NOT_VAT_REGISTERED in edits and not isinstance(edits[NOT_VAT_REGISTERED], bool):
+        raise ApprovalError(f"{NOT_VAT_REGISTERED} is true or false")
     if "category" in edits and edits["category"] not in CATEGORIES:
         raise ApprovalError(f"Unknown category {edits['category']!r}")
     updates = {("category_guess" if k == "category" else k): v for k, v in edits.items() if k in DOC_EDITS}
@@ -115,6 +123,9 @@ async def approve(
     if "vehicle_id" in (edits or {}):
         p.vehicle_id = await _vehicle_tag(books, p, (edits or {})["vehicle_id"])
     always = always and p.mileage_claim is None  # Autopilot never posts a mileage claim
+    not_registered = bool((edits or {}).get(NOT_VAT_REGISTERED))
+    if not_registered:
+        _check_not_registered(p.extracted)
     p.journal_draft = final_journal(p)
     event = build_event(p, p.journal_draft, user)
     try:
@@ -125,6 +136,10 @@ async def approve(
         await books.file_document(p, p.file_path, books.filing_folder(p.extracted))
     p.status, p.event_id, p.decided_by, p.decided_at = "posted", event.id, user, now()
     await books.save_proposal(p)
+    try:
+        await learn_from_approval(books, p, _actor(user), not_registered)
+    except ValueError:  # a hand-broken contacts.json: the posting stands, the supplier is just not remembered
+        log.warning("contacts file unreadable; supplier VAT status not recorded for %s", p.id)
     rule = await _remember(books, p, user) if always else None
     auto_rule = rule_from_proposal(p, user) if always else None
     if auto_rule:
@@ -172,6 +187,16 @@ async def _vehicle_tag(books: Books, p: Proposal, vehicle_id: Any) -> str | None
     if v.owned_by != "business":
         raise ApprovalError(f"{v.name} is a personal vehicle: the mileage allowance covers its running costs, so receipts aren't tagged to it")
     return v.id
+
+
+def _check_not_registered(doc: ExtractedDoc) -> None:
+    """The tick only makes sense on a purchase with no VAT and no VAT number."""
+    if doc.doc_type == "sales_invoice":
+        raise ApprovalError("Only a supplier can be marked as not VAT-registered")
+    if normalise_vat_number(doc.supplier_vat_number):
+        raise ApprovalError("This receipt shows a VAT number, so the supplier is VAT-registered")
+    if doc.vat_total > 0:
+        raise ApprovalError("This receipt charges VAT, so the supplier can't be marked as not VAT-registered")
 
 
 def _actor(user: str) -> str:

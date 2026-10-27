@@ -636,7 +636,9 @@ export const pence = (p: number) => gbp(p / 100);
 
 
 /** Contacts (services/runtime/app/contacts.py). Pence are signed from the user's side: + they owe you, − you owe them. */
-export type RtContactField = "name" | "kind" | "vrn" | "email" | "phone" | "address" | "default_category" | "default_vat_code";
+export type RtContactField = "name" | "kind" | "vrn" | "email" | "phone" | "address" | "default_category" | "default_vat_code" | "vat_status";
+/** Whether a supplier charges VAT, as the books remember it: learnt on approval, editable on Contacts. */
+export type RtVatStatus = "registered" | "not_registered" | "unknown";
 export interface RtContact {
   id: string;
   kind: "customer" | "supplier" | "both";
@@ -649,6 +651,7 @@ export interface RtContact {
   default_category: string | null;
   default_vat_code: string | null;
   source: "ledger" | "outlook" | "manual";
+  vat_status?: RtVatStatus; // absent from runtimes before 27 Oct 2026: read as "unknown"
   aliases: string[];
   edited: string[];
   created_at: string;
@@ -822,6 +825,8 @@ export interface RtInvoiceProfile {
   email: string | null;
   phone: string | null;
   vrn: string | null;
+  /** Settings › Business. False: receipts never need a supplier's VAT number (nothing is reclaimed). A VRN means true. */
+  vat_registered?: boolean;
   company_number: string | null;
   bank: { account_name: string; sort_code: string; account_number: string; iban: string | null };
   logo_path: string | null;

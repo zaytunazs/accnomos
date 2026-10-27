@@ -76,6 +76,7 @@ class Proposal {
     this.lineCount = 0,
     this.filePath,
     this.localImagePath,
+    this.asksVatStatus = false,
   });
 
   final String id;
@@ -140,6 +141,11 @@ class Proposal {
 
   /// Supplier VAT number exactly as read (the runtime keeps it as read).
   final String? supplierVrn;
+
+  /// The runtime asked "Is <supplier> VAT-registered?" (failed check
+  /// `SUPPLIER_VAT_UNKNOWN`: over £250, no VAT, no VAT number, a supplier the
+  /// books don't know). The card then offers the "isn't VAT-registered" tick.
+  final bool asksVatStatus;
 
   /// Number of extracted lines (the VAT tolerance grows with it, like the
   /// runtime's VAT_MATH check).
@@ -344,6 +350,8 @@ class Proposal {
       expenseAccount: expenseAccountOfJournal(journalList),
       lineCount: lineCount,
       filePath: (filePath != null && filePath.isNotEmpty) ? filePath : null,
+      asksVatStatus: checks.any(
+          (c) => c['code'] == supplierVatUnknown && c['ok'] != true),
     );
   }
 
@@ -412,6 +420,7 @@ class Proposal {
       lineCount: lineCount,
       filePath: filePath,
       localImagePath: localImagePath ?? this.localImagePath,
+      asksVatStatus: asksVatStatus,
     );
   }
 
@@ -511,6 +520,14 @@ String _shown(Object? value) {
   final text = value.toString();
   return text.isEmpty ? 'none' : text;
 }
+
+/// The runtime check "Is <supplier> VAT-registered?"
+/// (services/runtime/app/checks.py).
+const supplierVatUnknown = 'SUPPLIER_VAT_UNKNOWN';
+
+/// The approve edit that records the supplier as not VAT-registered
+/// (services/runtime/app/approve.py `NOT_VAT_REGISTERED`).
+const notVatRegisteredEdit = 'supplier_not_vat_registered';
 
 /// Check codes that are notes (crop chip, mileage, repairs, second read), not
 /// checks; never counted as passed. Mirrors the web's `toUi`.

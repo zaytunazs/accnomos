@@ -39,15 +39,16 @@ from pydantic import BaseModel, Field
 
 from app.autopilot import supplier_key
 from app.books import SYSTEM, Books, now
-from app.checks import normalise_vat_number
+from app.checks import UNKNOWN_SUPPLIER, SupplierKnowledge, normalise_vat_number
 from app.journal import CREDITORS, DEBTORS, VAT_CONTROL
-from app.schemas import CATEGORIES, Proposal
+from app.schemas import CATEGORIES, ExtractedDoc, Proposal, VatStatus
 
 CONTACTS = f"{SYSTEM}/Contacts/contacts.json"
 ContactKind = Literal["customer", "supplier", "both"]
 ContactSource = Literal["ledger", "outlook", "manual"]
 Side = Literal["sale", "purchase"]
-EDITABLE = ("name", "kind", "vrn", "email", "phone", "address", "default_category", "default_vat_code")
+EDITABLE = ("name", "kind", "vrn", "email", "phone", "address", "default_category", "default_vat_code", "vat_status")
+VAT_STATUSES = ("registered", "not_registered", "unknown")
 BUCKETS = ("0-30", "31-60", "61-90", "90+")
 ID_RE = re.compile(r"[0-9a-f]{16}")
 EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
@@ -65,6 +66,7 @@ class Contact(BaseModel):
     default_category: str | None = None
     default_vat_code: str | None = None
     source: ContactSource = "ledger"
+    vat_status: VatStatus = "unknown"  # learnt on approval (`learn_vat_status`) or set on Contacts; see `supplier_knowledge`
     aliases: list[str] = []  # other normalised names that mean this contact (old names, other spellings)
     edited: list[str] = []  # fields the user changed; refreshing leaves them alone
     created_at: datetime = Field(default_factory=now)
@@ -396,6 +398,11 @@ async def save_contacts(books: Books, contacts: Sequence[Contact]) -> None:
     await books._update_json(CONTACTS, [], lambda _old: payload)
 
 
+async def stored_contacts(books: Books) -> list[Contact]:
+    """contacts.json as saved, without the ledger (cheap: one file). Raises ValueError when it is malformed."""
+    return [Contact.model_validate(c) for c in await books.read_json(CONTACTS, None) or []]
+
+
 async def contact_book(books: Books, ledger: Ledger | None = None) -> tuple[list[Contact], Ledger, bool]:
     """(stored contacts merged with the ledger, the ledger, whether contacts.json exists). Writes nothing."""
     ledger = ledger or await load_ledger(books)
@@ -443,6 +450,10 @@ def apply_edit(c: Contact, edits: dict[str, Any], others: Sequence[Contact], at:
             raise ContactEditError(f"Unknown category {v!r}")
         elif k == "default_vat_code" and v and v not in {code.value for code in VatCode}:
             raise ContactEditError(f"Unknown VAT code {v!r}")
+        elif k == "vat_status":
+            v = v or "unknown"
+            if v not in VAT_STATUSES:
+                raise ContactEditError("VAT status must be registered, not_registered or unknown")
         clean[k] = v
     if "name" in clean and (key := supplier_key(clean["name"])) != c.normalised_key:
         if c.normalised_key not in c.aliases:
@@ -467,6 +478,81 @@ async def edit(books: Books, cid: str, edits: dict[str, Any], user: str) -> Cont
     await save_contacts(books, contacts)
     await books.audit(f"user:{user}", "contact_edited", {"contact": cid, "fields": sorted(edits)})
     return c
+
+
+# --------------------------------------------------------------------------- #
+# What the books know about a supplier's VAT registration
+# --------------------------------------------------------------------------- #
+
+
+def supplier_knowledge(contacts: Iterable[Contact], doc: ExtractedDoc) -> SupplierKnowledge:
+    """The contact behind the document's supplier (by VAT number, normalised name or alias), as the VAT check needs it.
+    A contact with a VAT number on file and no status yet counts as registered."""
+    if doc.doc_type == "sales_invoice":
+        return UNKNOWN_SUPPLIER
+    c = find(contacts, supplier_key(doc.supplier_name), normalise_vat_number(doc.supplier_vat_number))
+    if c is None:
+        return UNKNOWN_SUPPLIER
+    status: VatStatus = c.vat_status if c.vat_status != "unknown" else "registered" if c.vrn else "unknown"
+    return SupplierKnowledge(vat_status=status, vrn=c.vrn)
+
+
+def learnt_vat_status(doc: ExtractedDoc, not_registered_tick: bool) -> VatStatus | None:
+    """What approving `doc` teaches about its supplier: a VAT number means registered; the "isn't VAT-registered"
+    tick on a zero-VAT receipt with no VAT number means not registered; anything else teaches nothing."""
+    if doc.doc_type == "sales_invoice" or not supplier_key(doc.supplier_name):
+        return None
+    if normalise_vat_number(doc.supplier_vat_number):
+        return "registered"
+    if not_registered_tick and doc.vat_total <= 0:
+        return "not_registered"
+    return None
+
+
+def remember_vat_status(contacts: Sequence[Contact], name: str, status: VatStatus, vrn: str | None = None,
+                        at: datetime | None = None) -> tuple[list[Contact], Contact, bool]:
+    """(the book, the supplier's contact, whether anything changed). The contact is created when the book has
+    no-one by that name or VAT number yet, with the id a later ledger refresh would give it."""
+    at = at or now()
+    book = [c.model_copy(deep=True) for c in contacts]
+    key = supplier_key(name)
+    c = find(book, key, vrn)
+    created = c is None
+    if c is None:
+        c = Contact(id=contact_id(key, vrn), kind="supplier", name=name.strip(), normalised_key=key, created_at=at, updated_at=at)
+        book.append(c)
+    before = (c.vat_status, c.vrn)
+    c.vat_status = status
+    if vrn and not c.vrn and "vrn" not in c.edited:
+        c.vrn = vrn
+    changed = created or (c.vat_status, c.vrn) != before
+    if changed:
+        c.updated_at = at
+    return sorted(book, key=lambda x: x.name.lower()), c, changed
+
+
+async def set_vat_status(books: Books, name: str, status: VatStatus, actor: str, vrn: str | None = None) -> Contact | None:
+    """Record a supplier's VAT status in contacts.json: one read and, only if it changes, one write (the ledger is
+    not loaded). Returns the contact when it changed."""
+    if not remember_vat_status(await stored_contacts(books), name, status, vrn)[2]:
+        return None
+    changed: list[Contact] = []
+
+    def update(old: list[dict[str, Any]]) -> list[dict[str, Any]]:  # again on what is stored now
+        book, c, _ = remember_vat_status([Contact.model_validate(x) for x in old or []], name, status, vrn)
+        changed.append(c)
+        return [x.model_dump(mode="json") for x in book]
+
+    await books._update_json(CONTACTS, [], update)
+    await books.audit(actor, "contact_vat_status", {"contact": changed[0].id, "vat_status": status})
+    return changed[0]
+
+
+async def learn_from_approval(books: Books, p: Proposal, actor: str, not_registered_tick: bool = False) -> Contact | None:
+    status = learnt_vat_status(p.extracted, not_registered_tick)
+    if status is None:
+        return None
+    return await set_vat_status(books, p.extracted.supplier_name, status, actor, normalise_vat_number(p.extracted.supplier_vat_number))
 
 
 class ImportResult(BaseModel):

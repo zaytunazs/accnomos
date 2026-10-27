@@ -30,7 +30,7 @@
  "gross_pence": 84345,
  "vat_code": "T9",
  "side": "purchase",
- "expected_status": "proposed",
+ "expected_status": "needs_a_look",
  "is_credit_note": false,
  "payment_method": "card",
  "card_last4": "6880",
