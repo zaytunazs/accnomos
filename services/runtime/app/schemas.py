@@ -81,6 +81,9 @@ class ExtractedDoc(BaseModel):
     supplier_vat_number: str | None
     customer_name: str | None
     invoice_number: str | None
+    original_invoice_number: str | None = Field(
+        default=None, description="credit_note only: the number of the invoice it credits, if printed; else null"
+    )
     date: str = Field(description="YYYY-MM-DD")
     currency: str = Field(description="ISO code, e.g. GBP")
     lines: list[ExtractedLine]
@@ -112,7 +115,7 @@ class ExtractedDoc(BaseModel):
     def _clamp(cls, v: float) -> float:
         return min(1.0, max(0.0, float(v)))
 
-    @field_validator("supplier_vat_number", "card_last4", "invoice_number", "customer_name")
+    @field_validator("supplier_vat_number", "card_last4", "invoice_number", "customer_name", "original_invoice_number")
     @classmethod
     def _blank_is_none(cls, v: str | None) -> str | None:
         return v.strip() or None if isinstance(v, str) else v

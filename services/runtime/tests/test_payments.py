@@ -734,3 +734,38 @@ async def test_credit_routes(client, books: Books, sender: FakeMailSender):
     st = client.get(f"/contacts/{contact['id']}/statement", headers=H).json()
     assert [c["id"] for c in st["credits"]] == [cid]
     assert [d["reference"] for d in st["open_documents"]] == [b.number]
+
+
+async def test_a_supplier_credit_note_naming_its_bill_is_allocated_to_it(books: Books):
+    bill = await _post(books, _bill(240.00, 40.00))  # H-77
+    other = _bill(120.00, 20.00, day="2026-09-03")
+    other.invoice_number = "H-78"
+    await _post(books, other)
+    doc = _bill(-60.00, -10.00, day="2026-10-05", doc_type="credit_note")
+    doc.original_invoice_number = "Inv no. h 77"  # as printed: spacing, case and a prefix differ
+    cn = await _post(books, doc)
+    ev = await books.get_event(cn.event_id or "")
+    assert ev.credits == bill.event_id
+    ledger = await pay_.load_ledger(books)
+    s = ledger.settlement()
+    assert s.outstanding(bill.event_id or "") == 18000 and s.credits == []  # off the bill, not a loose credit
+    (h77,) = [d for d in pay_.open_documents(ledger, "purchase") if d.reference == "H-77"]
+    assert h77.outstanding_pence == 18000
+
+
+async def test_a_supplier_credit_note_for_an_unknown_bill_stays_a_credit(books: Books):
+    await _post(books, _bill(240.00, 40.00))
+    doc = _bill(-60.00, -10.00, day="2026-10-05", doc_type="credit_note")
+    doc.original_invoice_number = "H-99"
+    cn = await _post(books, doc)
+    assert (await books.get_event(cn.event_id or "")).credits is None
+    (credit,) = (await pay_.load_ledger(books)).settlement().credits
+    assert (credit.side, credit.amount_pence) == ("purchase", 6000)
+
+
+def test_credit_note_invoice_numbers_are_compared_as_printed():
+    from app.approve import same_number
+
+    assert same_number("Inv no. H 77", "H-77") and same_number("H77", "h-77") and same_number("#H-77", "H-77")
+    assert not same_number("H-177", "77") and not same_number("H-77", "H-78") and not same_number("Credit", "Credit")
+    assert not same_number(None, "H-77") and not same_number("H-77", None)

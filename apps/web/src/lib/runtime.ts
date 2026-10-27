@@ -41,6 +41,7 @@ export interface RtExtracted {
   supplier_vat_number: string | null;
   customer_name: string | null;
   invoice_number: string | null;
+  original_invoice_number?: string | null; // a supplier credit note: the bill it credits, if printed
   date: string;
   currency: string;
   lines: RtLine[];
