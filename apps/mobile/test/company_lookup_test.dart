@@ -23,7 +23,6 @@ void main() {
     ValueChanged<Map<String, dynamic>>? onPick,
     VoidCallback? onNotConfigured,
   }) async {
-    String? picked;
     return MaterialApp(
       home: Scaffold(
         body: CompanyLookupSection(

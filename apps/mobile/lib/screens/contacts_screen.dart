@@ -810,21 +810,20 @@ class _ContactDetailState extends State<ContactDetailScreen> {
   }
 
   /// Edit name, company number and registered address. A Companies House
-  /// match fills the three fields; nothing is saved until Save.
+  /// match fills the three fields; nothing is saved until Save. Signed
+  /// out, edits stay on the phone like the rest of the sample.
   Future<void> _openEdit() async {
     final record = _contact;
     if (record == null) return;
-    if (widget.sampleMode) {
-      _snack('Sample contact — sign in to save.');
-      return;
-    }
-    RuntimeClient client;
-    try {
-      client = await booksClient(
-          widget.settings, widget.auth, widget.account);
-    } catch (e) {
-      _snack(friendly(e));
-      return;
+    RuntimeClient? client;
+    if (!widget.sampleMode) {
+      try {
+        client = await booksClient(
+            widget.settings, widget.auth, widget.account);
+      } catch (e) {
+        _snack(friendly(e));
+        return;
+      }
     }
     if (!mounted) return;
     final edits = await showModalBottomSheet<Map<String, dynamic>>(
@@ -838,9 +837,10 @@ class _ContactDetailState extends State<ContactDetailScreen> {
           initialCompanyNumber:
               (record['company_number'] ?? '').toString(),
           initialAddress: (record['address'] ?? '').toString(),
-          companiesHouse: _lookups?['companies_house'] == true,
+          companiesHouse: !widget.sampleMode &&
+              _lookups?['companies_house'] == true,
           onSearch: (q) async {
-            final found = await client.lookupCompanies(q);
+            final found = await client!.lookupCompanies(q);
             final items = found['items'];
             if (items is! List) return const <Map<String, dynamic>>[];
             return [
@@ -852,12 +852,16 @@ class _ContactDetailState extends State<ContactDetailScreen> {
       ),
     );
     if (edits == null) return;
+    if (widget.sampleMode) {
+      setState(() => _contact = {...record, ...edits});
+      return;
+    }
     try {
       final updated =
-          await client.editContact(widget.contactId, edits);
+          await client!.editContact(widget.contactId, edits);
       if (!mounted) return;
       setState(() {
-        _contact = {...?record, ...updated};
+        _contact = {...record, ...updated};
       });
       _snack('Contact saved.');
     } catch (e) {
@@ -1160,6 +1164,16 @@ class _ContactDetailState extends State<ContactDetailScreen> {
           widget.name,
           style: Theme.of(context).textTheme.titleMedium,
         ),
+        actions: [
+          if (!_loading && _error == null)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined),
+              tooltip: 'Edit contact',
+              constraints:
+                  const BoxConstraints(minWidth: 48, minHeight: 48),
+              onPressed: _openEdit,
+            ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
@@ -1205,8 +1219,6 @@ class _ContactDetailState extends State<ContactDetailScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _companyCard(),
-        const SizedBox(height: 12),
         _vatCard(),
         const SizedBox(height: 12),
         Container(
@@ -1249,14 +1261,16 @@ class _ContactDetailState extends State<ContactDetailScreen> {
         _agedCard(),
         const SizedBox(height: 12),
         _termsCard(),
+        const SizedBox(height: 12),
+        _companyCard(),
       ],
     );
   }
 
-  /// Legal name, company number and registered address, with Edit. A
-  /// Companies House match fills the three fields; nothing is saved until
-  /// Save. The look-up stays hidden while the runtime is not configured
-  /// for it.
+  /// Legal name, company number and registered address. Editing (with the
+  /// Companies House look-up) lives behind the app-bar Edit action, so this
+  /// card adds no height above the fold; a match fills the three fields and
+  /// nothing is saved until Save.
   Widget _companyCard() {
     final record = _contact;
     if (record == null) return const SizedBox.shrink();
@@ -1272,25 +1286,11 @@ class _ContactDetailState extends State<ContactDetailScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              const Expanded(
-                child: Text(
-                  'Company',
-                  style:
-                      TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-                ),
-              ),
-              TextButton(
-                style: TextButton.styleFrom(
-                  foregroundColor: AccnomosColors.tealDark,
-                  minimumSize: const Size(48, 48),
-                ),
-                onPressed: _openEdit,
-                child: const Text('Edit'),
-              ),
-            ],
+          const Text(
+            'Company',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
           ),
+          const SizedBox(height: 4),
           Text(
             'Company number: ${number.isEmpty ? '—' : number}',
             style: const TextStyle(color: AccnomosColors.muted),

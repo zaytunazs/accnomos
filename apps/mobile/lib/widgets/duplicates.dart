@@ -443,26 +443,43 @@ class _MergeSheetState extends State<_MergeSheet> {
               style: const TextStyle(color: AccnomosColors.muted),
             ),
             const SizedBox(height: 8),
-            for (final m in widget.members)
-              RadioListTile<String>(
-                value: (m['id'] ?? '').toString(),
-                groupValue: _keepId,
-                contentPadding: EdgeInsets.zero,
-                title: Text((m['name'] ?? 'Unnamed').toString()),
-                subtitle: ((m['vrn'] ?? '').toString().isNotEmpty ||
-                        (m['email'] ?? '').toString().isNotEmpty)
-                    ? Text([
-                        if ((m['vrn'] ?? '').toString().isNotEmpty)
-                          'VAT ${(m['vrn'] ?? '').toString()}',
-                        if ((m['email'] ?? '').toString().isNotEmpty)
-                          (m['email'] ?? '').toString(),
-                      ].join(' · '))
-                    : null,
-                onChanged: (v) => setState(() {
-                  _keepId = v ?? _keepId;
-                  _name.text = m['name']?.toString() ?? _name.text;
-                }),
+            RadioGroup<String>(
+              groupValue: _keepId,
+              onChanged: (v) {
+                if (v == null) return;
+                final picked = widget.members.firstWhere(
+                  (c) => (c['id'] ?? '').toString() == v,
+                  orElse: () => const <String, dynamic>{},
+                );
+                setState(() {
+                  _keepId = v;
+                  final name = (picked['name'] ?? '').toString();
+                  if (name.isNotEmpty) _name.text = name;
+                });
+              },
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  for (final m in widget.members)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title:
+                          Text((m['name'] ?? 'Unnamed').toString()),
+                      subtitle: ((m['vrn'] ?? '').toString().isNotEmpty ||
+                              (m['email'] ?? '').toString().isNotEmpty)
+                          ? Text([
+                              if ((m['vrn'] ?? '').toString().isNotEmpty)
+                                'VAT ${(m['vrn'] ?? '').toString()}',
+                              if ((m['email'] ?? '').toString().isNotEmpty)
+                                (m['email'] ?? '').toString(),
+                            ].join(' · '))
+                          : null,
+                      leading: Radio<String>(
+                          value: (m['id'] ?? '').toString()),
+                    ),
+                ],
               ),
+            ),
             TextField(
               controller: _name,
               decoration: const InputDecoration(

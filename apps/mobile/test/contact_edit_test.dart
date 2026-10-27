@@ -1,6 +1,10 @@
 import 'package:accnomos_mobile/screens/contact_edit_sheet.dart';
+import 'package:accnomos_mobile/screens/contacts_screen.dart';
+import 'package:accnomos_mobile/services/auth.dart';
+import 'package:accnomos_mobile/services/settings.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// The contact edit sheet: Companies House fills name, number and address;
 /// nothing is saved until Save.
@@ -103,6 +107,34 @@ void main() {
     await tester.tap(find.text('Save'));
     await tester.pump();
     expect(find.text('Give the contact a name.'), findsOneWidget);
+  });
+
+  testWidgets('detail opens the sheet from the app bar', (tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final settings = await AppSettings.load();
+    await tester.pumpWidget(MaterialApp(
+      home: ContactDetailScreen(
+        contactId: 'sample-brixton-timber',
+        name: 'Brixton Timber Co',
+        settings: settings,
+        auth: AuthService(),
+        account: null,
+        contact: const {
+          'id': 'sample-brixton-timber',
+          'kind': 'supplier',
+          'name': 'Brixton Timber Co',
+          'vat_status': 'registered',
+          'vrn': 'GB 123 4567 89',
+        },
+        sampleMode: true,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    // Editing lives behind the app-bar Edit action.
+    await tester.tap(find.byTooltip('Edit contact'));
+    await tester.pumpAndSettle();
+    expect(find.text('Company number'), findsOneWidget);
+    expect(find.text('Save'), findsOneWidget);
   });
 
   testWidgets('sheet does not overflow at 360 dp', (tester) async {
