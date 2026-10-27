@@ -3,6 +3,7 @@ signatures, approve-once and reject, and the /books/ask + /actions routes, over 
 
 from __future__ import annotations
 
+import asyncio
 import json
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -352,6 +353,106 @@ async def test_approved_cannot_be_rejected(books: Books):
     await actions.approve(action, ctx)
     with pytest.raises(actions.ActionError):
         await actions.reject(action, ctx)
+
+
+@pytest.mark.parametrize("field", ["id", "created_at", "kind", "summary_md", "confirm_text"])
+async def test_replaying_a_card_with_any_signed_field_changed_is_refused(books: Books, field: str):
+    """A new id or month would start a fresh audit trail (and run again); every field is under the signature."""
+    action = await timesheet_action(books)
+    ctx = actions.Context(books=books, user=USER, graph_token=TOKEN)
+    await actions.approve(action, ctx)
+    changed = {"id": "f" * 32, "created_at": action.created_at - timedelta(days=40), "kind": "log_mileage",
+               "summary_md": action.summary_md + " ", "confirm_text": "OK"}[field]
+    with pytest.raises(actions.ActionError) as exc:
+        await actions.approve(action.model_copy(update={field: changed}), ctx)
+    assert exc.value.status == 403
+    assert len(await jobs.load_entries(books)) == 1
+
+
+class _Interleaving(FakeStorageProvider):
+    """Yields to the event loop around every read and write, so two requests really interleave."""
+
+    async def read(self, path: str) -> bytes:
+        await asyncio.sleep(0)
+        return await super().read(path)
+
+    async def write(self, path: str, data: bytes, **kw: Any):  # type: ignore[override]
+        await asyncio.sleep(0)
+        return await super().write(path, data, **kw)
+
+
+@pytest.mark.parametrize("first_of_the_month", [True, False])
+async def test_two_approvals_at_once_execute_once(books: Books, monkeypatch: pytest.MonkeyPatch, first_of_the_month: bool):
+    """Two taps (or two devices) at the same moment: one runs, the other gets a 409. Also when the month's actions
+    log does not exist yet, where only a create-only write stops both from 'creating' it."""
+    action = await timesheet_action(books)
+    racy = Books(_Interleaving())
+    racy.storage.files = books.storage.files  # same OneDrive, interleaving storage
+    if not first_of_the_month:
+        await racy.storage.write(f"_System/audit/actions/{action.created_at:%Y-%m}.jsonl", b"")
+    runs: list[str] = []
+
+    async def slow(a: ProposedAction, c: actions.Context) -> tuple[str, dict]:
+        runs.append(a.id)
+        await asyncio.sleep(0.01)
+        return "ok", {}
+
+    monkeypatch.setitem(actions.EXECUTORS, "log_timesheet", slow)
+    ctx = actions.Context(books=racy, user=USER, graph_token=TOKEN)
+    got = await asyncio.gather(actions.approve(action, ctx), actions.approve(action, ctx), return_exceptions=True)
+    assert runs == [action.id]
+    assert sorted(type(g).__name__ for g in got) == ["ActionError", "ActionResult"]
+    assert next(g for g in got if isinstance(g, actions.ActionError)).status == 409
+
+
+async def test_a_stale_approving_lock_is_never_rerun_and_rejecting_clears_it(books: Books, monkeypatch: pytest.MonkeyPatch):
+    action = await timesheet_action(books)
+    ctx = actions.Context(books=books, user=USER, graph_token=TOKEN)
+    path = f"_System/audit/actions/{action.created_at:%Y-%m}.jsonl"
+    died = {"ts": (datetime.now(UTC) - timedelta(minutes=5)).isoformat(), "action_id": action.id, "kind": action.kind,
+            "event": "approving", "user": USER}
+    await books.storage.write(path, (json.dumps(died) + "\n").encode())
+    with pytest.raises(actions.ActionError) as exc:  # fresh: maybe still running
+        await actions.approve(action, ctx)
+    assert exc.value.status == 409 and "already being approved" in str(exc.value)
+    with pytest.raises(actions.ActionError):
+        await actions.reject(action, ctx)
+
+    died["ts"] = (datetime.now(UTC) - actions.APPROVING_STALE - timedelta(seconds=1)).isoformat()
+    await books.storage.write(path, (json.dumps(died) + "\n").encode())
+    with pytest.raises(actions.ActionError) as exc:  # stale: still not run again, but the user is told what to do
+        await actions.approve(action, ctx)
+    assert exc.value.status == 409 and "did not finish" in str(exc.value)
+    assert await jobs.load_entries(books) == []
+    await actions.reject(action, ctx, "checked: it never happened")
+    rows = [json.loads(ln) for ln in (await books.storage.read(path)).decode().splitlines()]
+    assert rows[-1]["event"] == "rejected" and rows[-1]["cleared"] == "stale approving" and rows[-1]["user"] == USER
+    with pytest.raises(actions.ActionError) as exc:
+        await actions.approve(action, ctx)
+    assert exc.value.status == 409 and await jobs.load_entries(books) == []
+
+
+async def test_in_test_mode_a_card_is_bound_to_its_tenant(books: Books, monkeypatch: pytest.MonkeyPatch):
+    """Test mode picks the fake OneDrive by X-Test-Tenant whatever the token, so the tenant is part of the key."""
+    from app import testmode
+
+    monkeypatch.setenv("ACCNOMOS_TEST_MODE", "1")
+    token = testmode._TENANT.set("worker-1")
+    try:
+        action = await timesheet_action(books)
+        actions.verify(action, TOKEN)
+    finally:
+        testmode._TENANT.reset(token)
+    token = testmode._TENANT.set("worker-2")
+    try:
+        with pytest.raises(actions.ActionError) as exc:
+            actions.verify(action, TOKEN)
+        assert exc.value.status == 403
+    finally:
+        testmode._TENANT.reset(token)
+    monkeypatch.delenv("ACCNOMOS_TEST_MODE")
+    with pytest.raises(actions.ActionError):  # and a test-mode card means nothing to a production runtime
+        actions.verify(action, TOKEN)
 
 
 async def test_invoice_approval_uses_the_invoicing_module(books: Books):

@@ -12,6 +12,10 @@ The proposal is not stored anywhere: the client keeps it and posts it back. It i
 is derived from the runtime's key and a hash of the caller's Graph token, so a changed amount, recipient or
 expiry, or a proposal replayed from another sign-in, is refused. Approving writes an audit line first
 (_System/audit/actions/<yyyy-mm>.jsonl, the month the action was proposed), so the same action id executes once.
+
+If the runtime dies between that `approving` line and the result, the action is never run again on its own (the
+first run may have emailed already). After APPROVING_STALE the user is told to check, and POST /actions/reject
+with the same card clears it (a `rejected` line with `cleared: "stale approving"`); then they ask again.
 """
 
 from __future__ import annotations
@@ -39,7 +43,7 @@ from pydantic import BaseModel, Field, ValidationError
 from app import contacts as contacts_
 from app import jobs as jobs_
 from app.ai import ask as ask_ai
-from app.ai.config import AiConfig
+from app.ai.config import AiConfig, is_test_mode
 from app.ai.extract import ExtractionError, parse_model_json
 from app.autopilot import supplier_key
 from app.books import AUDIT, SYSTEM, Books, now
@@ -49,6 +53,7 @@ ACTIONS_AUDIT = f"{AUDIT}/actions"
 VEHICLES = f"{SYSTEM}/Vehicles/vehicles.json"  # vehicles & mileage contract (app/mileage.py when it lands)
 INVOICE_PROFILE = f"{SYSTEM}/Invoicing/profile.json"  # app/invoicing.py owns it; read-only here
 TTL = timedelta(minutes=15)
+APPROVING_STALE = timedelta(minutes=10)  # an `approving` line this old belongs to a run that died (see the docstring)
 MATCH_AT = 0.8  # difflib ratio a name must reach to be picked without asking
 NEAR_AT = 0.5  # shown as "did you mean" when nothing reaches MATCH_AT
 CLEAR_LEAD = 0.1  # several reach MATCH_AT: the best is picked only this far ahead of the next, otherwise ask
@@ -687,8 +692,18 @@ _RUNTIME_KEY = os.environ.get("ACTIONS_SIGNING_KEY", "").encode() or secrets.tok
 
 
 def _key(graph_token: str) -> bytes:
-    token_hash = hashlib.sha256(graph_token.encode()).digest()
+    token_hash = hashlib.sha256(graph_token.encode() + _tenant()).digest()
     return hmac.new(_RUNTIME_KEY, token_hash, hashlib.sha256).digest()
+
+
+def _tenant() -> bytes:
+    """Test mode only: the X-Test-Tenant (one fake OneDrive each, whatever token is sent), so a proposal made in
+    one tenant cannot be approved in another. Empty in production, where the token alone picks the OneDrive."""
+    if not is_test_mode():
+        return b""
+    from app import testmode
+
+    return b"\x00tenant:" + testmode.tenant().encode()
 
 
 def _payload(action: ProposedAction) -> bytes:
@@ -823,6 +838,9 @@ async def _claim(books: Books, action: ProposedAction, user: str) -> dict[str, A
         if last and last.get("event") == "rejected":
             raise ActionError("You rejected this proposal; ask again to make a new one.", 409)
         if last and last.get("event") == "approving":
+            if _stale(last):
+                raise ActionError("The earlier approval of this action did not finish, so it may or may not have happened. "
+                                  "Check, then reject this card and ask again if it is still needed.", 409)
             raise ActionError("This action is already being approved. If nothing happened, check before asking again.", 409)
         return (raw or b"") + _line(row)  # a failed attempt may be retried
 
@@ -831,6 +849,13 @@ async def _claim(books: Books, action: ProposedAction, user: str) -> dict[str, A
     except _Stop as stop:
         return stop.row
     return None
+
+
+def _stale(row: dict[str, Any], at: datetime | None = None) -> bool:
+    try:
+        return (at or now()) - datetime.fromisoformat(row["ts"]) > APPROVING_STALE
+    except (KeyError, TypeError, ValueError):
+        return False
 
 
 Executor = Callable[[ProposedAction, Context], Awaitable[tuple[str, dict[str, Any]]]]
@@ -955,15 +980,19 @@ async def approve(action: ProposedAction, ctx: Context) -> ActionResult:
 async def reject(action: ProposedAction, ctx: Context, reason: str | None = None) -> None:
     """Record that the user said no. Nothing else happens; a rejected action cannot be approved later.
 
-    An expired proposal can still be rejected (it is only audited); one already approved cannot.
+    An expired proposal can still be rejected (it is only audited); one already approved cannot. Rejecting is
+    also how an `approving` line older than APPROVING_STALE is cleared (the run that wrote it died).
     """
     verify(action, ctx.graph_token, check_expiry=False)
     row = {"ts": now().isoformat(), "action_id": action.id, "kind": action.kind, "event": "rejected", "user": ctx.user,
            "reason": (reason or "").strip()[:300] or None, "summary_md": action.summary_md}
 
     def change(raw: bytes | None) -> bytes:
-        events = [r.get("event") for r in _rows(raw) if r.get("action_id") == action.id]
-        if events and events[-1] in ("approving", "executed"):
+        events = [r for r in _rows(raw) if r.get("action_id") == action.id]
+        last = events[-1] if events else None
+        if last and last.get("event") == "approving" and _stale(last):
+            return (raw or b"") + _line({**row, "cleared": "stale approving"})
+        if last and last.get("event") in ("approving", "executed"):
             raise ActionError("This action was already approved.", 409)
         return (raw or b"") + _line(row)
 

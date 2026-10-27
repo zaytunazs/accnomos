@@ -38,6 +38,13 @@ async def test_if_match_conflict(storage):
         await storage.write("_System/rules.json", b'{"b":2}', if_match=ref.etag)
 
 
+async def test_create_only_refuses_an_existing_file(storage):
+    await storage.write("_System/audit/actions/2026-10.jsonl", b"first\n", create_only=True)
+    with pytest.raises(FileExistsError):
+        await storage.write("_System/audit/actions/2026-10.jsonl", b"second\n", create_only=True)
+    assert await storage.read("_System/audit/actions/2026-10.jsonl") == b"first\n"
+
+
 async def test_move_a_folder_with_everything_in_it(storage):
     await storage.write("03 Bank statements/2026/a.csv", b"a")
     await storage.write("03 Bank statements/b.csv", b"b")

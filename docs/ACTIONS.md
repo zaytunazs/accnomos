@@ -45,11 +45,15 @@ the whole hour; if the token is refreshed between Ask and Approve, the user has 
 ## Once only
 
 Approving first appends an `approving` line to `_System/audit/actions/<yyyy-mm>.jsonl` (the month the action
-was proposed), using the same If-Match read-modify-write as every other file. Then it runs the action and appends
-`executed` with the result. Approving again returns the first result (`status: already_done`) and does nothing.
-If running fails, a `failed` line is written and the user can try again. If the runtime dies between `approving`
-and `executed`, the action stays blocked ("already being approved"), not retried, because it may have half run.
-The user checks the timesheet or invoice and asks again if needed. A timesheet entry's id is the first 12
+was proposed), using the same If-Match read-modify-write as every other file (create-only when the month's file
+does not exist yet, so two approvals at the same moment cannot both "create" it). Then it runs the action and
+appends `executed` with the result. Approving again returns the first result (`status: already_done`) and does
+nothing; a second approval racing the first gets a 409. If running fails, a `failed` line is written and the user
+can try again. If the runtime dies between `approving` and `executed`, the action is never run again on its own,
+because it may have half run (an email may have gone). For 10 minutes (`APPROVING_STALE`) approving answers
+"already being approved"; after that it says the earlier approval did not finish. The user checks the timesheet,
+mileage log or invoice, then rejects the card (`POST /actions/reject` with the same card, the Reject button),
+which writes a `rejected` line with `cleared: "stale approving"`, and asks again if it is still needed. A timesheet entry's id is the first 12
 characters of the action id, so it can be traced back to the audit line. A rejected action can't be approved,
 and an approved one can't be rejected.
 

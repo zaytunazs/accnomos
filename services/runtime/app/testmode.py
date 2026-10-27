@@ -211,6 +211,11 @@ STATE = State()  # no X-Test-Tenant header: the unit tests and a runtime started
 STATES: dict[str, State] = {"": STATE}
 
 
+def tenant() -> str:
+    """This request's X-Test-Tenant ("" without the header)."""
+    return _TENANT.get()
+
+
 def current() -> State:
     """This request's fakes: one set per X-Test-Tenant, so Playwright workers never see each other's OneDrive."""
     return STATES.setdefault(_TENANT.get(), State())

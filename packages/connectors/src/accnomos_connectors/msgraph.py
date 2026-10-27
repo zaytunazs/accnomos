@@ -253,22 +253,23 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
         resp = await self._request("GET", self._item_url(path, "content"), follow_redirects=True)
         return resp.content
 
-    async def write(self, path: str, data: bytes, *, if_match: str | None = None) -> FileRef:
+    async def write(self, path: str, data: bytes, *, if_match: str | None = None, create_only: bool = False) -> FileRef:
         path = path.strip("/")
         if _parent(path):
             await self._folder(_parent(path))
         headers = {"If-Match": if_match} if if_match else {}
         if len(data) <= SIMPLE_UPLOAD_MAX:
-            resp = await self._request(
+            resp = await self._request(  # conflictBehavior=fail: an existing file -> 409 -> FileExistsError
                 "PUT", self._item_url(path, "content"), content=data,
+                params={"@microsoft.graph.conflictBehavior": "fail"} if create_only else None,
                 headers={**headers, "Content-Type": "application/octet-stream"},
             )
             return _to_ref(resp.json(), path)
-        return await self._upload_large(path, data, headers)
+        return await self._upload_large(path, data, headers, create_only)
 
-    async def _upload_large(self, path: str, data: bytes, headers: dict[str, str]) -> FileRef:
+    async def _upload_large(self, path: str, data: bytes, headers: dict[str, str], create_only: bool = False) -> FileRef:
         """Upload session + one PUT of the whole body (Graph accepts fragments up to 60 MiB)."""
-        body = {"item": {"@microsoft.graph.conflictBehavior": "replace"}}
+        body = {"item": {"@microsoft.graph.conflictBehavior": "fail" if create_only else "replace"}}
         session = (
             await self._request("POST", self._item_url(path, "createUploadSession"), json=body, headers=headers)
         ).json()
