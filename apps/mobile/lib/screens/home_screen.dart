@@ -1,4 +1,3 @@
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 
@@ -264,28 +263,38 @@ class AssumedStaggerNote extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RichText(
-      text: TextSpan(
-        style: const TextStyle(
-            color: Color(0xFF8A3F06),
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            height: 1.4),
-        children: [
-          const TextSpan(text: 'Assuming Mar/Jun/Sep/Dec quarters — '),
-          TextSpan(
-            text: 'set yours in Settings',
-            style: const TextStyle(
-                fontWeight: FontWeight.w800,
-                decoration: TextDecoration.underline),
-            recognizer: TapGestureRecognizer()
-              ..onTap = () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const SettingsScreen()),
-                  ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          'Assuming Mar/Jun/Sep/Dec quarters —',
+          style: TextStyle(
+              color: Color(0xFF8A3F06),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.4),
+        ),
+        TextButton(
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           ),
-        ],
-      ),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const SettingsScreen()),
+          ),
+          child: const Text(
+            'set yours in Settings',
+            style: TextStyle(
+                color: Color(0xFF8A3F06),
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                decoration: TextDecoration.underline,
+                height: 1.4),
+          ),
+        ),
+      ],
     );
   }
 }
