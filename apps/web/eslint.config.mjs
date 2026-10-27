@@ -5,6 +5,25 @@ import nextTs from "eslint-config-next/typescript";
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
+  // MSAL is loaded with import() on first use (lib/msal.ts, docs/PERF.md); a value import anywhere puts
+  // ~68 kB gzipped back into every page's first-load JS.
+  {
+    files: ["src/**/*.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@azure/msal-browser",
+              allowTypeImports: true,
+              message: "Type-only imports here; lib/msal.ts loads the library with import() (docs/PERF.md).",
+            },
+          ],
+        },
+      ],
+    },
+  },
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
