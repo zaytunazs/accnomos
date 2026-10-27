@@ -47,3 +47,7 @@ data/private/
 Thumbs.db
 .vscode/
 *.log
+
+# local HMRC sandbox artefacts (test-user credentials)
+.hmrc-test-user.json
+.relay-local.log*
