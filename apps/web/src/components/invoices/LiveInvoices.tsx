@@ -88,9 +88,15 @@ export default function LiveInvoices() {
   const load = useCallback(async () => {
     if (!account) return;
     try {
-      setInvoices(await runtime.invoices(account));
-      setCredits(await runtime.creditNotes(account).catch(() => []));
-      setOnAccount(await runtime.credits(account, "sale").catch(() => []));
+      // Together, so a row never shows Apply credit / Refund from an older list than its own figures.
+      const [list, notes, onAcc] = await Promise.all([
+        runtime.invoices(account),
+        runtime.creditNotes(account).catch(() => []),
+        runtime.credits(account, "sale").catch(() => []),
+      ]);
+      setInvoices(list);
+      setCredits(notes);
+      setOnAccount(onAcc);
       setError(null);
     } catch (e) {
       setError((e as Error).message);
