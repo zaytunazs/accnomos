@@ -109,6 +109,7 @@ async def approve(
         "proposal": p.id, "event": event.id, "event_path": event_path, "doc": p.doc_sha256,
         "edits": sorted((edits or {}).keys()), "rule": rule.match.supplier_regex if rule else None,
     })
+    await books.rebuild_safely(user)
     return p
 
 
@@ -130,4 +131,5 @@ async def reject(books: Books, proposal_id: str, user: str, reason: str) -> Prop
     p.status, p.reject_reason, p.decided_by, p.decided_at = "rejected", reason, user, now()
     await books.update_proposal(p)
     await books.audit(f"user:{user}", "rejected", {"proposal": p.id, "doc": p.doc_sha256, "reason": reason, "path": p.file_path})
+    await books.rebuild_safely(user)
     return p

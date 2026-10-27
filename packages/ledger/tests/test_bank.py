@@ -1,0 +1,136 @@
+"""Bank CSV parsing (made-up UK exports) and bank-line ↔ ledger-event matching."""
+
+from datetime import date, datetime
+
+import pytest
+from accnomos_ledger import LedgerEvent, Line, VatCode
+from accnomos_ledger.bank import BankCsvError, line_id, parse_amount, parse_bank_csv, parse_date
+from accnomos_ledger.matching import settlement_pence, suggest_matches, tokens
+
+STARLING = b"""Date,Counter Party,Reference,Type,Amount (GBP),Balance (GBP),Spending Category,Notes
+21/10/2026,SCREWFIX DIRECT,CARD 1234,CARD PAYMENT,-38.47,961.53,SHOPPING,
+22/10/2026,Acme Kitchens Ltd,INV-0042,FASTER PAYMENT,"1,200.00","2,161.53",INCOME,
+"""
+
+LLOYDS = b"""Transaction Date,Transaction Type,Sort Code,Account Number,Transaction Description,Debit Amount,Credit Amount,Balance
+21/10/2026,DEB,'30-99-50,12345678,TOOLSTATION 1234 CD 1234,12.00,,988.00
+23-10-2026,FPI,'30-99-50,12345678,ACME KITCHENS INV 43,,250.50,"1,238.50"
+"""
+
+HSBC = """Statement for SAMPLE — FICTIONAL COMPANY LTD
+Account,12345678
+
+Date,Details,Paid out,Paid in,Balance,Ref
+21 Oct 2026,VISA CARD PAYMENT SCREWFIX 1234,(£38.47),,£961.53 CR,
+2026-10-24,BANK CHARGES,5.00 DR,,956.53CR,FEE
+24 Oct 2026,ACME KITCHENS,,£99.99,"1,056.52 CR",REF9
+""".encode("cp1252")
+
+
+def test_starling_signed_amount_column() -> None:
+    a, b = parse_bank_csv(STARLING, "starling.csv")
+    assert (a.date, a.amount_pence, a.description, a.reference, a.balance_pence) == (
+        date(2026, 10, 21), -3847, "SCREWFIX DIRECT", "CARD 1234", 96153)
+    assert (b.amount_pence, b.balance_pence, b.source_file, b.status) == (120000, 216153, "starling.csv", "unmatched")
+    assert a.id == line_id(a.date, -3847, "SCREWFIX DIRECT", 96153) and len(a.id) == 16
+
+
+def test_lloyds_debit_and_credit_columns() -> None:
+    out, inn = parse_bank_csv(LLOYDS, "lloyds.csv")
+    assert (out.amount_pence, out.description, out.balance_pence) == (-1200, "TOOLSTATION 1234 CD 1234", 98800)
+    assert (inn.date, inn.amount_pence, inn.balance_pence) == (date(2026, 10, 23), 25050, 123850)
+
+
+def test_hsbc_preamble_parentheses_cr_dr_and_text_dates() -> None:
+    card, fee, receipt = parse_bank_csv(HSBC, "hsbc.csv")
+    assert (card.date, card.amount_pence, card.balance_pence) == (date(2026, 10, 21), -3847, 96153)
+    assert (fee.date, fee.amount_pence, fee.reference) == (date(2026, 10, 24), -500, "FEE")
+    assert (receipt.amount_pence, receipt.balance_pence) == (9999, 105652)
+
+
+def test_amounts_and_dates() -> None:
+    assert parse_amount("£1,234.50") == 123450
+    assert parse_amount("(12.00)") == parse_amount("12.00 DR") == parse_amount("-12") == -1200
+    assert parse_amount("12.00CR") == 1200 and parse_amount("") is None and parse_amount("n/a") is None
+    assert parse_date("21 Oct 2026") == parse_date("21-10-2026") == parse_date("2026-10-21") == date(2026, 10, 21)
+
+
+def test_identical_rows_without_balance_get_distinct_ids() -> None:
+    data = b"Date,Description,Amount\n21/10/2026,Coffee,-2.50\n21/10/2026,Coffee,-2.50\n"
+    a, b = parse_bank_csv(data, "x.csv")
+    assert a.id != b.id
+
+
+def test_not_a_statement() -> None:
+    with pytest.raises(BankCsvError):
+        parse_bank_csv(b"name,email\nSam,sam@example.co.uk\n", "x.csv")
+
+
+# --------------------------------------------------------------------------- #
+# Matching
+# --------------------------------------------------------------------------- #
+
+
+def _purchase(gross: int, when: date, who: str, eid: str) -> LedgerEvent:
+    net = round(gross / 1.2)
+    return LedgerEvent(
+        id=eid, kind="purchase", date=when, counterparty=who, net=net, vat=gross - net,
+        approved_by="sam@example.co.uk", approved_at=datetime(2026, 10, 25, 9, 0),
+        lines=[Line(account="5100 Tools", debit=net, vat_code=VatCode.STANDARD),
+               Line(account="2200 VAT control", debit=gross - net), Line(account="1200 Bank", credit=gross)],
+    )
+
+
+def _sale(gross: int, when: date, who: str, eid: str) -> LedgerEvent:
+    return LedgerEvent(
+        id=eid, kind="sale", date=when, counterparty=who, net=gross, vat=0,
+        approved_by="sam@example.co.uk", approved_at=datetime(2026, 10, 25, 9, 0),
+        lines=[Line(account="1100 Debtors", debit=gross), Line(account="4000 Sales", credit=gross, vat_code=VatCode.ZERO)],
+    )
+
+
+def _lines(csv: bytes) -> list:
+    return parse_bank_csv(csv, "s.csv")
+
+
+def test_settlement_and_tokens() -> None:
+    assert settlement_pence(_purchase(3847, date(2026, 10, 21), "Screwfix", "e1")) == -3847
+    assert settlement_pence(_sale(120000, date(2026, 10, 22), "Acme", "e2")) == 120000
+    assert tokens("VISA CARD PAYMENT SCREWFIX 1234 POS") == {"screwfix"}
+
+
+def test_exact_match_same_day_with_name_and_card() -> None:
+    lines = _lines(STARLING)
+    events = [_purchase(3847, date(2026, 10, 21), "Screwfix", "e1"), _sale(120000, date(2026, 10, 22), "Acme Kitchens", "e2")]
+    m1, m2 = sorted(suggest_matches(lines, events, {"e1": "1234"}), key=lambda m: m.event_id)
+    assert (m1.line_id, m1.event_id, m1.kind, m1.score) == (lines[0].id, "e1", "exact", 1.0)
+    assert "card last 4 digits" in m1.reasons and "exact amount" in m1.reasons
+    assert (m2.line_id, m2.kind) == (lines[1].id, "exact")
+
+
+def test_date_window_three_days_and_closer_scores_higher() -> None:
+    lines = _lines(b"Date,Description,Amount\n24/10/2026,Payment,-38.47\n")
+    three = suggest_matches(lines, [_purchase(3847, date(2026, 10, 21), "Screwfix", "e1")])
+    one = suggest_matches(lines, [_purchase(3847, date(2026, 10, 23), "Screwfix", "e1")])
+    four = suggest_matches(lines, [_purchase(3847, date(2026, 10, 20), "Screwfix", "e1")])
+    assert three[0].kind == one[0].kind == "suggested" and one[0].score > three[0].score
+    assert four == []
+    wrong_amount = suggest_matches(lines, [_purchase(3848, date(2026, 10, 24), "Screwfix", "e1")])
+    assert wrong_amount == []
+
+
+def test_one_bank_line_pays_several_same_day_events() -> None:
+    lines = _lines(b"Date,Description,Amount\n21/10/2026,SCREWFIX DIRECT,-60.00\n")
+    events = [_purchase(2500, date(2026, 10, 21), "Screwfix", "a"), _purchase(3500, date(2026, 10, 21), "Screwfix", "b"),
+              _purchase(1000, date(2026, 10, 21), "Toolstation", "c")]
+    (m,) = suggest_matches(lines, events)
+    assert sorted(m.event_ids) == ["a", "b"] and m.kind == "exact" and "sum of 2 events" in m.reasons
+
+
+def test_never_matches_an_event_twice() -> None:
+    lines = _lines(b"Date,Description,Amount\n21/10/2026,Screwfix,-38.47\n22/10/2026,Screwfix,-38.47\n")
+    (m,) = suggest_matches(lines, [_purchase(3847, date(2026, 10, 21), "Screwfix", "e1")])
+    assert m.line_id == lines[0].id  # the same-day line wins
+
+    lines[0].status, lines[0].matched_event_id = "matched", "e1"
+    assert suggest_matches(lines, [_purchase(3847, date(2026, 10, 21), "Screwfix", "e1")]) == []

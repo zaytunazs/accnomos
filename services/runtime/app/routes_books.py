@@ -59,6 +59,7 @@ class Summary(BaseModel):
     needs_a_look: int
     posted_this_month: int
     last_scan: datetime | None
+    books_url: str | None = None  # Books.xlsx in the user's storage, when the provider gives a web link
 
 
 async def _proposal(books: Books, proposal_id: str) -> Proposal:
@@ -133,4 +134,18 @@ async def summary(books: Books = Depends(get_books)) -> Summary:
             p.status == "posted" and p.decided_at is not None and p.decided_at.strftime("%Y-%m") == month for p in every
         ),
         last_scan=await books.last_scan(),
+        books_url=workbook.web_url if (workbook := await books.workbook_ref()) else None,
     )
+
+
+class RebuildResult(BaseModel):
+    path: str
+    size: int
+    books_url: str | None
+
+
+@router.post("/rebuild", response_model=RebuildResult)
+async def rebuild(books: Books = Depends(get_books)) -> RebuildResult:
+    """Regenerate Books.xlsx now (it is also rebuilt after every approve, reject and bank match)."""
+    ref = await books.rebuild()
+    return RebuildResult(path=ref.path, size=ref.size, books_url=ref.web_url)
