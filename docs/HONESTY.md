@@ -110,7 +110,7 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 - Home *Deadlines* assumes stagger 1 when no business settings are saved, without saying so; with annual accounting the tiles show "—" and "Annual VAT returns are not worked out yet". `GET /books/deadlines` returns `start_month` normalised to 1–3.
 - On Files a top-level folder's "N files" adds its sub-folders' `childCount`.
 - The whole dashboard request fails (401/502 for a Graph error, 500 otherwise) if an audit or storage read fails at the provider level; only parse errors are isolated per tile. A failed pull-to-refresh on the phone keeps the old figures under a "Could not load your figures" line; the tiles are not marked stale.
-- The web sidebar always says "AI: local Meta agent (Glimmer 30B)", whatever AI is set in Settings. Ask uses the period picked on `/vat` but has no picker of its own.
+- The web sidebar names the saved AI choice (Glimmer on your machine, Muse Spark on your key, or the stub in test mode). Ask uses the period picked on `/vat` but has no picker of its own.
 
 ## Android
 

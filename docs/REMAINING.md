@@ -18,7 +18,7 @@ Severity:
 | Medium | `flutter analyze` and `flutter test` have never been run on the current `apps/mobile`. |
 | Medium | The rate limit and the relay's spent-state set are per process; the relay must run one worker. |
 | Low | The shared `.venv` on the Spark can import another checkout's `accnomos_ledger`/`accnomos_connectors`; run `uv sync --all-packages` where you serve from. |
-| Low | The web sidebar always says "AI: local Meta agent (Glimmer 30B)", whatever AI is set in Settings. |
+
 | Low | `ruff` has not been run on `main`. |
 | Low | `POST /books/approve/{id}` is an alias kept for older web builds; remove it after the next deploy. |
 | Low | The 6 April tax-year rule is written twice (`contacts.uk_tax_year_start`, `mileage.tax_year_of`). Both are tested. |
