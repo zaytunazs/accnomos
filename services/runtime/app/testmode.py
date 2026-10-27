@@ -373,7 +373,7 @@ _ROOTS = ("me/drive/special/approot", "me/drive/root:/Accnomos")
 
 
 @router.api_route("/graph/v1.0/{rest:path}", methods=["GET", "POST", "PUT"])
-async def graph(rest: str, request: Request) -> JSONResponse:
+async def graph(rest: str, request: Request) -> Response:
     """The handful of Graph calls apps/web/src/lib/graph.ts makes, path-addressed under the books root."""
     st = (await state()).storage
     method = request.method
@@ -413,7 +413,11 @@ async def graph(rest: str, request: Request) -> JSONResponse:
         ref = await st.write(rel, await request.body())
         return JSONResponse(_drive_item(ref), status_code=201)
     if action == "content":
-        return _not_found(rel) if rel not in st.files else JSONResponse({"error": {"code": "useDownloadUrl"}}, status_code=400)
+        if rel not in st.files:
+            return _not_found(rel)
+        ext = rel.rsplit(".", 1)[-1].lower()  # the Review preview reads the filed receipt
+        mime = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp", "pdf": "application/pdf"}
+        return Response(st.files[rel], media_type=mime.get(ext, "application/octet-stream"))
     if action == "children":
         if rel not in st.folders:
             return _not_found(rel)
