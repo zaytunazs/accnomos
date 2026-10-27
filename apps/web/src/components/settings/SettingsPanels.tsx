@@ -11,6 +11,7 @@ import StaffEditor from "@/components/settings/StaffEditor";
 import VatPeriodSettings from "@/components/settings/VatPeriodSettings";
 import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
 import WorkingHours from "@/components/settings/WorkingHours";
+import { hasMsalSignIn } from "@/lib/signed-in";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
 type GroupId = "connection" | "ai" | "automation" | "business";
@@ -102,7 +103,7 @@ export default function SettingsPanels() {
           const k = window.localStorage.key(i);
           if (k) keys.push(k);
         }
-        setSignedIn(keys.some((k) => k.startsWith("msal.")));
+        setSignedIn(hasMsalSignIn(keys, (k) => window.localStorage.getItem(k)));
       } catch {
         setSignedIn(false);
       }
