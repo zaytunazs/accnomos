@@ -629,6 +629,27 @@ class RuntimeClient {
   Future<Map<String, dynamic>> bankSummary() =>
       _map('GET', '/books/bank/summary', what: 'load the bank summary');
 
+  // Sales invoices (/invoices/*). Money is integer pence; `days_overdue`
+  // is worked out by the runtime and only set while sent and unpaid.
+
+  /// [status]: draft, sent, paid or void.
+  Future<List<Map<String, dynamic>>> invoices({String? status}) =>
+      _list('GET', '/invoices',
+          query: {'status': ?status}, what: 'load sales invoices');
+
+  // Pay runs (/payroll/runs). Pence throughout; every est_* figure is an
+  // estimate for the payroll provider — the phone never confirms.
+
+  /// All pay runs, newest first. `GET /payroll/runs` → `{runs, estimate,
+  /// limits, tax_year, source_url}`.
+  Future<Map<String, dynamic>> payrollRuns() =>
+      _map('GET', '/payroll/runs', what: 'load pay runs');
+
+  /// One pay run with its lines. `GET /payroll/runs/{period}`.
+  Future<Map<String, dynamic>> payrollRun(String period) => _map(
+      'GET', '/payroll/runs/${_seg(period)}',
+      what: 'load that pay run');
+
   Future<Map<String, dynamic>> bankMatch(String lineId, List<String> eventIds) =>
       _map('POST', '/books/bank/lines/${_seg(lineId)}/match',
           body: {'event_ids': eventIds}, what: 'confirm that match');

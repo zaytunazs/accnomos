@@ -20,6 +20,8 @@ class AppSettings {
     this.userEmail,
     this.businessName,
     this.vatNumber,
+    this.vatStagger = 1,
+    this.vatStartMonth,
   });
 
   /// Address of the reader service. The default is the Android emulator's
@@ -50,6 +52,15 @@ class AppSettings {
   /// stored on-device and not sent anywhere yet.
   final String? vatNumber;
 
+  /// HMRC VAT stagger group (1–3) for quarterly returns, mirroring the
+  /// web's `accnomos.business` stagger. Sent as `stagger=` to
+  /// `GET /books/deadlines`.
+  final int vatStagger;
+
+  /// Month (1–12) a custom quarter starts in. When set, the deadlines
+  /// call sends `start_month=` instead of `stagger=`.
+  final int? vatStartMonth;
+
   static const _kRuntimeUrl = 'accnomos.runtimeUrl';
   static const _kAiMode = 'accnomos.aiMode';
   static const _kAiBaseUrl = 'accnomos.aiBaseUrl';
@@ -58,6 +69,8 @@ class AppSettings {
   static const _kUserEmail = 'accnomos.userEmail';
   static const _kBusinessName = 'accnomos.businessName';
   static const _kVatNumber = 'accnomos.vatNumber';
+  static const _kVatStagger = 'accnomos.vatStagger';
+  static const _kVatStartMonth = 'accnomos.vatStartMonth';
 
   /// Load saved settings, falling back to defaults for anything missing.
   static Future<AppSettings> load() async {
@@ -71,8 +84,16 @@ class AppSettings {
       userEmail: prefs.getString(_kUserEmail),
       businessName: prefs.getString(_kBusinessName),
       vatNumber: prefs.getString(_kVatNumber),
+      vatStagger: _clampStagger(prefs.getInt(_kVatStagger)),
+      vatStartMonth: _clampMonth(prefs.getInt(_kVatStartMonth)),
     );
   }
+
+  static int _clampStagger(int? value) =>
+      value == null || value < 1 || value > 3 ? 1 : value;
+
+  static int? _clampMonth(int? value) =>
+      value == null || value < 1 || value > 12 ? null : value;
 
   /// Persist the current values.
   Future<void> save() async {
@@ -100,6 +121,12 @@ class AppSettings {
       await prefs.remove(_kVatNumber);
     } else {
       await prefs.setString(_kVatNumber, vatNumber!);
+    }
+    await prefs.setInt(_kVatStagger, vatStagger);
+    if (vatStartMonth == null) {
+      await prefs.remove(_kVatStartMonth);
+    } else {
+      await prefs.setInt(_kVatStartMonth, vatStartMonth!);
     }
   }
 }

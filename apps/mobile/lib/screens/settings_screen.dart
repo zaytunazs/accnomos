@@ -29,6 +29,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _businessName = TextEditingController();
   final _vrn = TextEditingController();
   String? _vrnError;
+  final _startMonth = TextEditingController();
+  String? _startMonthError;
+  int _stagger = 1;
 
   AppSettings? _initial;
   Account? _account;
@@ -55,6 +58,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _businessName.text = settings.businessName ?? '';
         _vrn.text = settings.vatNumber ?? '';
         _mode = settings.aiMode;
+        _stagger = settings.vatStagger;
+        _startMonth.text = settings.vatStartMonth?.toString() ?? '';
       });
     });
     _auth.account().then((account) {
@@ -71,7 +76,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _apiKey.dispose();
     _businessName.dispose();
     _vrn.dispose();
+    _startMonth.dispose();
     super.dispose();
+  }
+
+  /// Month 1–12 from the custom start-month field, or null when empty.
+  /// Out-of-range text returns -1 so saving can flag it.
+  int? _startMonthValue() {
+    final text = _startMonth.text.trim();
+    if (text.isEmpty) return null;
+    final month = int.tryParse(text);
+    if (month == null || month < 1 || month > 12) return -1;
+    return month;
   }
 
   AppSettings _current() => AppSettings(
@@ -86,6 +102,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ? null
             : _businessName.text.trim(),
         vatNumber: _vrn.text.trim().isEmpty ? null : _vrn.text.trim(),
+        vatStagger: _stagger,
+        vatStartMonth: _startMonthValue() == -1 ? null : _startMonthValue(),
       );
 
   Future<void> _signIn() async {
@@ -161,8 +179,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() => _vrnError = vrnProblem);
       return;
     }
+    if (_startMonthValue() == -1) {
+      setState(() =>
+          _startMonthError = 'Enter a month 1–12, or leave it empty.');
+      return;
+    }
     setState(() {
       _vrnError = null;
+      _startMonthError = null;
       _saving = true;
     });
     await _current().save();
@@ -209,6 +233,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   onChanged: (_) {
                     if (_vrnError != null) {
                       setState(() => _vrnError = vrnError(_vrn.text));
+                    }
+                  },
+                ),
+                const SizedBox(height: 16),
+                const Text('VAT quarter',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AccnomosColors.ink)),
+                const SizedBox(height: 4),
+                const Text(
+                    'Your HMRC stagger group. The Home tab uses it for the next VAT deadline.',
+                    style: TextStyle(
+                        color: AccnomosColors.muted,
+                        fontSize: 12,
+                        height: 1.4)),
+                const SizedBox(height: 8),
+                SegmentedButton<int>(
+                  segments: const [
+                    ButtonSegment(value: 1, label: Text('1')),
+                    ButtonSegment(value: 2, label: Text('2')),
+                    ButtonSegment(value: 3, label: Text('3')),
+                  ],
+                  selected: {_stagger},
+                  onSelectionChanged: (selected) =>
+                      setState(() => _stagger = selected.first),
+                ),
+                const SizedBox(height: 16),
+                _field(
+                  label: 'Quarter starts in month (optional)',
+                  helper: 'Only when your quarters start in a custom '
+                      'month, e.g. 5 for May. Takes precedence over the stagger group above.',
+                  controller: _startMonth,
+                  error: _startMonthError,
+                  onChanged: (_) {
+                    if (_startMonthError != null) {
+                      setState(() => _startMonthError = null);
                     }
                   },
                 ),

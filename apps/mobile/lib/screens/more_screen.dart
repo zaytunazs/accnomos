@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'bank_screen.dart';
 import 'contacts_screen.dart';
 import 'files_screen.dart';
 import 'invoices_screen.dart';
 import 'jobs_screen.dart';
+import 'payroll_screen.dart';
 import 'vehicles_screen.dart';
 
 /// "More" tab: keeps the bottom bar at five items while the new thin
@@ -56,6 +58,18 @@ class MoreScreen extends StatelessWidget {
             title: 'Vehicles',
             note: 'Mileage and allowance',
             screen: VehiclesScreen(),
+          ),
+          _Entry(
+            icon: Icons.account_balance_outlined,
+            title: 'Bank',
+            note: 'Statements and unmatched lines',
+            screen: BankScreen(),
+          ),
+          _Entry(
+            icon: Icons.payments_outlined,
+            title: 'Payroll',
+            note: 'Pay runs — estimates, read only',
+            screen: PayrollScreen(),
           ),
         ],
       ),
