@@ -69,6 +69,27 @@ def test_misread_vat_fixed_when_net_and_gross_agree_at_the_rate() -> None:
     assert doc.vat_total == 10.00
 
 
+def test_totals_repair_messages_are_worded_exactly() -> None:
+    # The messages are shown to the user; pinned so line-wrapping in the source can't change them.
+    cases = [
+        (
+            _doc([_ln(4, 6.50, 26.00, 5.20), _ln(4, 3.80, 15.20, 3.04)], net=41.20, vat=6.86, gross=41.20),
+            "Net £41.20 was the VAT-inclusive total; net set to total £41.20 − VAT £6.86 = £34.34",
+        ),
+        (
+            _doc([_ln(1, 50.00, 50.00, 10.00)], net=50.00, vat=1.00, gross=60.00),
+            "VAT £1.00 did not fit net £50.00 and total £60.00 at 20%; VAT set to £10.00",
+        ),
+        (
+            _doc([_ln(1, 221.50, 221.50, 36.93)], net=221.50, vat=36.93, gross=258.43),
+            "VAT had been added on top of the VAT-inclusive total £221.50; total set to £221.50, net to £184.57",
+        ),
+    ]
+    for doc, msg in cases:
+        chk = repair_vat_inclusive_totals(doc)
+        assert chk is not None and chk.message == msg
+
+
 def test_consistent_reading_is_left_alone() -> None:
     doc = _doc([_ln(1, 50.00, 50.00, 10.00)], net=50.00, vat=10.00, gross=60.00)
     assert repair_vat_inclusive_totals(doc) is None

@@ -18,6 +18,7 @@ from app import invoicing as inv_
 from app import jobs
 from app.ai import remind
 from app.ai.config import AiConfig
+from app.approve import reversal_of
 from app.books import AUDIT, Books
 from app.invoicing import (
     PROFILE,
@@ -355,6 +356,18 @@ async def test_voiding_a_sent_invoice_reverses_the_sale(books: Books, sender: Fa
     assert voided.reversal_event_id == events[1].id
     ret = compute_vat_return(events, "x", date(2026, 10, 1), date(2026, 12, 31))
     assert str(ret.vat_due_sales) == "0.00" and ret.total_sales_ex_vat == 0 and str(ret.vat_reclaimed) == "0.00"
+
+
+async def test_voiding_after_the_reversal_was_already_posted_does_not_post_it_twice(
+    books: Books, sender: FakeMailSender
+):
+    # A void that posted its reversal and then failed before saving the invoice: the retry must still finish.
+    sent = await _sent(books, sender)
+    await books.post_event(reversal_of(await books.get_event(sent.event_id), USER))
+    voided = await inv_.void_invoice(books, sent.number, USER, "wrong customer")
+    events = await books.list_events()
+    assert [e.kind for e in events] == ["sale", "reversal"]
+    assert voided.status == "void" and voided.reversal_event_id == events[1].id
 
 
 async def test_mark_paid_links_a_bank_line(books: Books, sender: FakeMailSender):

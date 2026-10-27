@@ -449,8 +449,12 @@ async def test_approve_tags_a_business_vehicle_and_counts_its_costs(books: Books
     for x in (p, q, r):
         await books.save_proposal(x)
 
-    with pytest.raises(ApprovalError, match="personal vehicle"):
+    with pytest.raises(ApprovalError) as personal:
         await approve(books, p.id, USER, {"vehicle_id": golf.id})
+    assert str(personal.value) == (
+        f"{golf.name} is a personal vehicle: the mileage allowance covers its running costs, "
+        "so receipts aren't tagged to it"
+    )
     with pytest.raises(ApprovalError, match="No such vehicle"):
         await approve(books, p.id, USER, {"vehicle_id": "f" * 32})
     assert (await approve(books, p.id, USER, {"vehicle_id": works.id})).vehicle_id == works.id
