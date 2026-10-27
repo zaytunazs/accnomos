@@ -38,8 +38,8 @@ Each item is checked by `services/runtime/tests/test_deploy_hardening.py` unless
       nosniff`, `Referrer-Policy: no-referrer`, `Permissions-Policy` (camera, microphone, geolocation, payment, usb
       off), `X-Frame-Options: DENY`, `Content-Security-Policy: default-src 'none'; frame-ancestors 'none'`.
 - [x] No `add_header` inside a `location` (it would silently drop the server-level headers there).
-- [x] Body caps: 256 KB everywhere, 25 MB on `/extract`, `/books/ask/voice`, `/books/bank/import`. The services
-      enforce the same caps themselves.
+- [x] Body caps: 256 KB everywhere, 25 MB on `/extract`, `/books/ask/voice`, `/books/bank/import`, 2 MB on
+      `/invoices/profile/logo`. The services enforce the same caps themselves.
 - [x] Client address: the **last** `X-Forwarded-For` hop (the one the front proxy appended), never the raw
       client-supplied chain and never `CF-Connecting-IP`, which the edge strips. Used for HMRC fraud headers and rate limits.
 - [x] `X-Forwarded-Proto` passed through from the front proxy (absent → `https`), so the services can refuse
