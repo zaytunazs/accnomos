@@ -92,4 +92,6 @@ from app.routes_ask import router as ask_router  # noqa: E402  POST /books/ask
 app.include_router(ask_router)
 from app.routes_mail import router as mail_router  # noqa: E402  POST /mail/scan
 app.include_router(mail_router)
+from app.routes_invoices import router as invoices_router  # noqa: E402  /invoices/*
+app.include_router(invoices_router)
 
