@@ -292,3 +292,19 @@ async def test_429_retries_with_retry_after_then_gives_up():
     with pytest.raises(GraphError) as exc:
         await _provider(lambda r: httpx.Response(503), slept=slept).read("a.txt")
     assert exc.value.status == 503
+
+
+async def test_set_token_is_used_from_the_next_request_on():
+    seen: list[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req.headers["Authorization"])
+        return httpx.Response(200, json=_item("ROOT", "Accnomos", True))
+
+    p = _provider(handler)
+    await p.ensure_root()
+    p.set_token(" fresh ")
+    await p.ensure_root()
+    assert seen == ["Bearer tok", "Bearer fresh"]
+    with pytest.raises(ValueError):
+        p.set_token("  ")
