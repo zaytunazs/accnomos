@@ -186,6 +186,15 @@ def test_every_outbound_http_client_has_a_timeout():
     assert found >= 5
 
 
+def test_relay_copy_of_the_middleware_has_not_drifted():
+    """services/hmrc-relay/relay/security.py is a copy (separate image); the request handling must stay identical."""
+    def handler(path: Path) -> str:
+        text = path.read_text()
+        return text[text.index("    async def __call__"):]
+
+    assert handler(ROOT / "services/runtime/app/security.py") == handler(ROOT / "services/hmrc-relay/relay/security.py")
+
+
 # --- 3. CORS ------------------------------------------------------------------------------------------------------
 
 def test_cors_preflight_is_exact_and_cached(tc):

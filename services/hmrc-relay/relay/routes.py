@@ -63,9 +63,11 @@ UserToken = Annotated[str, Depends(user_token)]
 # --- bodies ----------------------------------------------------------------------------------------------
 
 class Envelope(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # subclasses inherit it
+
     client_facts: ClientFacts
     method: Method
-    gov_test_scenario: str | None = None
+    gov_test_scenario: str | None = Field(None, pattern=r"^[A-Z0-9_]{1,80}$")
 
 
 class DateRange(Envelope):
@@ -113,12 +115,16 @@ class ReturnBody(Envelope):
 
 
 class RefreshBody(BaseModel):
-    refresh_token: str = Field(min_length=1)
+    model_config = ConfigDict(extra="forbid")
+
+    refresh_token: str = Field(min_length=1, max_length=4096)
 
 
 class ExchangeBody(BaseModel):
-    code: str
-    state: str
+    model_config = ConfigDict(extra="forbid")
+
+    code: str = Field(min_length=1, max_length=2048)
+    state: str = Field(min_length=1, max_length=2048)
     code_verifier: str = Field(min_length=43, max_length=128)
 
 

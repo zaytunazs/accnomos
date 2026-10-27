@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     # Origins (scheme://host[:port]) the OAuth callback may redirect tokens to. http://localhost and
     # http://127.0.0.1 (any port) are always allowed for development.
     relay_allowed_redirects: str = ""
+    # Requests per minute per client IP (in memory, per process); 0 turns the limit off.
+    rate_limit_per_min: int = 60
 
     @property
     def sandbox(self) -> bool:
