@@ -21,6 +21,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 from app.books import Books, now
+from app.validation import LENIENT, StrictBody
 
 BANK_RULES = "_System/bank_rules.json"
 
@@ -106,7 +107,7 @@ def _has_nested_quantifier(pattern: str) -> bool:
     return False
 
 
-class BankRuleMatch(BaseModel):
+class BankRuleMatch(StrictBody):
     op: MatchOp = "contains"
     value: str = Field(min_length=1, max_length=MAX_VALUE_LEN)
 
@@ -118,7 +119,7 @@ class BankRuleMatch(BaseModel):
         return v
 
 
-class BankRuleAction(BaseModel):
+class BankRuleAction(StrictBody):
     account: str = Field(min_length=1, max_length=MAX_ACTION_LEN)
     vat_code: str | None = Field(default=None, max_length=4)
     contact: str | None = Field(default=None, max_length=MAX_ACTION_LEN)
@@ -182,7 +183,7 @@ async def load_bank_rules(books: Books) -> list[BankRule]:
     out: list[BankRule] = []
     for raw in await books.read_json(BANK_RULES, []):
         try:
-            out.append(BankRule.model_validate(raw))
+            out.append(BankRule.model_validate(raw, **LENIENT))
         except ValueError:
             continue
     return out

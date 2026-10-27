@@ -260,7 +260,7 @@ async def delete_bank_rule(
 
 
 class ReorderBody(StrictBody):
-    ids: list[str]
+    ids: list[str] = Field(max_length=200)  # every id is checked against the saved rules
 
 
 @router.post("/rules/reorder", response_model=list[BankRule])

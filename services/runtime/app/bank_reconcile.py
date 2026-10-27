@@ -23,8 +23,9 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from app.ai.config import AiConfig
-from app.bank_rules import BankRule, first_match, load_bank_rules
+from app.bank_rules import MAX_ACTION_LEN, BankRule, first_match, load_bank_rules
 from app.books import BankMatchError, Books
+from app.validation import StrictBody
 
 log = logging.getLogger(__name__)
 
@@ -43,10 +44,10 @@ BANK_SUGGEST_PROMPT = (
 
 
 class AiCoding(BaseModel):
-    account: str = Field(min_length=1)
-    vat_code: str | None = None
-    contact: str | None = None
-    reason: str = ""
+    account: str = Field(min_length=1, max_length=MAX_ACTION_LEN)
+    vat_code: str | None = Field(default=None, max_length=4)
+    contact: str | None = Field(default=None, max_length=MAX_ACTION_LEN)
+    reason: str = Field(default="", max_length=500)
 
 
 class ExactSuggestion(BaseModel):
@@ -67,13 +68,13 @@ class RuleSuggestion(BaseModel):
     reasons: list[str]
 
 
-class AiSuggestion(BaseModel):
+class AiSuggestion(StrictBody):
     kind: Literal["ai"] = "ai"
-    account: str
-    vat_code: str | None = None
-    contact: str | None = None
-    reason: str
-    by: str = AI_LABEL
+    account: str = Field(min_length=1, max_length=MAX_ACTION_LEN)
+    vat_code: str | None = Field(default=None, max_length=4)
+    contact: str | None = Field(default=None, max_length=MAX_ACTION_LEN)
+    reason: str = Field(default="", max_length=500)
+    by: str = Field(default=AI_LABEL, max_length=40)
 
 
 class ReconcileRow(BaseModel):
