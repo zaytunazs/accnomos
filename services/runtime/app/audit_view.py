@@ -284,6 +284,14 @@ SUMMARIES: dict[str, Summary] = {
         }.get(str(r.get("report")), "a report")
         + f" to {REPORTS} as a spreadsheet"
     ),
+    # Load sample books (app/sample_books.py)
+    "sample_books_started": lambda r, w: (
+        f"Started loading the sample books ({r.get('business') or 'a fictional company'})"
+    ),
+    "sample_books_loaded": lambda r, w: (
+        f"Loaded the sample books ({r.get('business') or 'a fictional company'}): "
+        f"{_plural(_n(r, 'events'), 'ledger entry', 'ledger entries')}"
+    ),
     # To-dos and housekeeping
     "todo_added": lambda r, w: "Added a to-do",
     "todo_deleted": lambda r, w: "Ticked off a to-do",

@@ -467,7 +467,10 @@ async def reset(seed: str | None = None) -> dict[str, Any]:
 
 
 def enable() -> None:
-    """Called once by app.main when ACCNOMOS_TEST_MODE=1."""
+    """Called once by app.main when ACCNOMOS_TEST_MODE=1. Refused in the Docker image (ACCNOMOS_IMAGE=1): it carries
+    evals/gold for Load sample books, so the stub AI could read receipts there, and test mode must never run."""
+    if os.getenv("ACCNOMOS_IMAGE") == "1":
+        raise RuntimeError("ACCNOMOS_TEST_MODE=1 is refused in the runtime image (ACCNOMOS_IMAGE=1)")
     os.environ.setdefault("ACCNOMOS_TEST_TODAY", DEFAULT_TODAY)
     os.environ.setdefault("CROP_MODE", "off")  # the stub knows the uploaded bytes, not a re-encoded crop
     # The browser's Graph and AI calls come here instead of Microsoft/Ollama; they must not eat the per-IP budget.
