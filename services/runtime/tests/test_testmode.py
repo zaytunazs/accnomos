@@ -317,7 +317,7 @@ async def test_runtime_dependencies_use_the_fakes(client: TestClient) -> None:
 
     gen = get_books(Req())  # type: ignore[arg-type]
     books = await gen.__anext__()
-    assert books.storage is testmode.STATE.storage
+    assert getattr(books.storage, "inner", books.storage) is testmode.STATE.storage  # under the request memo (app/cache.py)
     await books.storage.write(f"{INBOX}/a.png", b"x")
     assert "00 Inbox/a.png" in client.get("/__test/state").json()["files"]
 

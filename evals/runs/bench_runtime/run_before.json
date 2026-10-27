@@ -1,0 +1,174 @@
+{
+  "mode": "before",
+  "latency_ms": 120,
+  "business": "Bramblewood Joinery Ltd",
+  "today": "2026-10-27",
+  "events": 59,
+  "routes": {
+    "dashboard": {
+      "calls": {
+        "list": 12,
+        "read": 118,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 130,
+      "seconds": 16.3
+    },
+    "review list": {
+      "calls": {
+        "list": 1,
+        "read": 47,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 48,
+      "seconds": 6.03
+    },
+    "VAT return": {
+      "calls": {
+        "list": 2,
+        "read": 1,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 3,
+      "seconds": 0.37
+    },
+    "VAT periods": {
+      "calls": {
+        "list": 8,
+        "read": 60,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 68,
+      "seconds": 8.55
+    },
+    "report P&L": {
+      "calls": {
+        "list": 1,
+        "read": 0,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 1,
+      "seconds": 0.13
+    },
+    "report aged": {
+      "calls": {
+        "list": 11,
+        "read": 118,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 129,
+      "seconds": 16.27
+    },
+    "report VAT": {
+      "calls": {
+        "list": 7,
+        "read": 59,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 66,
+      "seconds": 8.28
+    },
+    "report trend": {
+      "calls": {
+        "list": 7,
+        "read": 59,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 66,
+      "seconds": 8.3
+    },
+    "contacts list": {
+      "calls": {
+        "list": 11,
+        "read": 118,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 129,
+      "seconds": 16.19
+    },
+    "contact statement": {
+      "calls": {
+        "list": 11,
+        "read": 118,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 129,
+      "seconds": 16.21
+    },
+    "bank lines": {
+      "calls": {
+        "list": 20,
+        "read": 225,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 245,
+      "seconds": 30.76
+    },
+    "bank reconcile": {
+      "calls": {
+        "list": 351,
+        "read": 3316,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 3667,
+      "seconds": 463.76
+    },
+    "invoices list": {
+      "calls": {
+        "list": 12,
+        "read": 123,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 135,
+      "seconds": 17.24
+    },
+    "audit day": {
+      "calls": {
+        "list": 1,
+        "read": 50,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 51,
+      "seconds": 8.18
+    },
+    "dashboard-revisit (warm)": {
+      "calls": {
+        "list": 12,
+        "read": 118,
+        "write": 0,
+        "move": 0,
+        "ensure": 0
+      },
+      "round_trips": 130,
+      "seconds": 17.35
+    }
+  }
+}

@@ -79,3 +79,4 @@ Thumbs.db
 
 # local virtualenv used by maintainers (symlinked from worktrees)
 .v
+!evals/runs/bench_runtime/
