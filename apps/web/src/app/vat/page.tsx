@@ -59,6 +59,10 @@ export default function VatPage() {
       <LiveVat />
       <ConnectHmrc />
 
+      {/* Rendered signed in too, when the global DemoBanner is hidden, so it carries its own label. */}
+      <p className="text-[13px] font-medium text-muted">
+        Below: a mock-up of a finished return, not your books. SAMPLE — FICTIONAL COMPANY
+      </p>
       <div className="flex flex-col gap-6 min-[1000px]:flex-row min-[1000px]:items-start">
         <section
           aria-labelledby="vat-boxes-heading"
