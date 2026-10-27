@@ -93,8 +93,9 @@ def fallback_draft(facts: dict[str, Any]) -> tuple[str, str]:
         line = f"{follow}invoice {n} for {amount} was due on {due} and is now {days} day{'s' if days != 1 else ''} overdue."
         ask = "Could you let me know when it will be paid? If it is already on its way, thank you, and please ignore this."
     else:
-        line = f"{follow}a quick reminder that invoice {n} for {amount} is due on {due}."
+        line = f"{follow}this is a quick reminder that invoice {n} for {amount} is due on {due}."
         ask = "Thank you in advance."
+    line = line[0].upper() + line[1:]  # "Following up…: invoice" keeps its lower case; a bare sentence starts with a capital
     where = " The payment details are on the attached invoice." if facts["payment_details_on_invoice"] else ""
     body = "\n".join(["Hello,", "", line + where, "", ask, "", "Kind regards,", *([facts["business_name"]] if facts["business_name"] else [])])
     return f"Reminder: invoice {n} ({amount})", body

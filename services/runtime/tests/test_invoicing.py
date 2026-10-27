@@ -406,6 +406,39 @@ def test_reminder_routes_draft_then_send_only_when_confirmed(client: TestClient,
     assert mail.body_text.endswith("Sam") and mail.attachments[0].data == sender.sent[0].attachments[0].data
 
 
+def test_fallback_reminder_reads_as_sentences():
+    inv = inv_.build_invoice("INV-0001", _draft(issue_date="2026-10-01", due_date="2026-11-10"), InvoiceProfile(), USER)
+    inv.status = "sent"
+    profile = InvoiceProfile.model_validate(PROFILE_JSON)
+    _, body = remind.fallback_draft(remind.reminder_facts(inv, profile, TODAY))  # not due yet
+    assert "\nThis is a quick reminder that invoice INV-0001" in body and body.endswith("Sam Builds Ltd")
+    _, body = remind.fallback_draft(remind.reminder_facts(inv, profile, date(2026, 11, 11)))
+    assert "\nInvoice INV-0001 for £405.00 was due on 10 November 2026 and is now 1 day overdue." in body
+    inv.reminders.append(inv_.Reminder(sent_at=inv.created_at, sent_by=USER, to="a@b.example", subject="x"))
+    _, body = remind.fallback_draft(remind.reminder_facts(inv, InvoiceProfile(), date(2026, 11, 20)))
+    assert "\nFollowing up on my earlier email: invoice INV-0001" in body and body.endswith("Kind regards,")
+
+
+def test_pdf_survives_unicode_text_and_any_logo():
+    import io
+
+    from PIL import Image
+
+    png = io.BytesIO()
+    Image.new("RGB", (60, 20), (13, 110, 110)).save(png, format="PNG")
+    draft = _draft([{"description": "Café refit — “phase 2” 日本", "quantity": "1", "unit_price_pence": 10000}],
+                   notes="Thanks – see you soon…")
+    inv = inv_.build_invoice("INV-0001", draft, InvoiceProfile.model_validate(PROFILE_JSON), USER)
+    for logo in (png.getvalue(), b"not an image", None):
+        assert render_invoice(inv, InvoiceProfile.model_validate(PROFILE_JSON), logo).startswith(b"%PDF")
+
+
+def test_logo_over_1_mb_refused(client: TestClient, fake: FakeStorageProvider):
+    big = b"\x89PNG" + b"0" * (1024 * 1024)
+    assert client.post("/invoices/profile/logo", files={"file": ("l.png", big, "image/png")}, headers=H).status_code == 413
+    assert "_System/Invoicing/logo.png" not in fake.files
+
+
 def test_routes_need_a_token():
     from app.main import app
 
