@@ -36,6 +36,15 @@ Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI De
 | muse-wonder-1.0 | Plans multi-step commands |
 | Muse Spark Open (Baseten) | Independent verifier (optional) |
 
+## What works today (verified live, updated as we go)
+
+| Date | Verified |
+|---|---|
+| 26 Oct | Microsoft sign-in (MSAL v5 + redirect bridge) on a personal account; `Apps/Accnomos` tree + README created in the user's OneDrive |
+| 27 Oct | Upload → `00 Inbox` → scan → **Muse Glimmer 30B on our DGX Spark** reads the receipt (40 s, 9/9 code checks) → proposal in `_System/proposals` → **Approve** → immutable ledger event in `_System/Ledger/events` → **VAT 9 boxes computed by code** from those events (`/books/vat`) |
+| 27 Oct | Eval on 60 synthetic messy receipts (Glimmer, local): supplier 100%, VAT total 100%, gross 100%, date 98%, net 97%; proposed/needs-a-look decision 88% — `evals/REPORT_glimmer_messy_60_2026-10-27.md` |
+| 27 Oct | HMRC relay: OAuth, fraud-prevention headers v3.3, VAT MTD endpoints — unit-tested against mocks; sandbox call pending credentials |
+
 ## Honesty notes
 
 - Everything in this repository was written during the hackathon building period. Pre-existing items: none in the code; the
