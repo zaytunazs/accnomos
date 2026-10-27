@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
-import { RUNTIME_URL, runtimeHeaders } from "@/lib/runtime";
+import { runtimeHeaders } from "@/lib/runtime";
+import { RUNTIME_URL } from "@/lib/ai-config";
 
 interface Box {
   box: number;
