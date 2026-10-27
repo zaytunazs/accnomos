@@ -257,7 +257,8 @@ def verification_md(v: dict[str, Any]) -> str:
         f"## Verifier: {v['verifier']}",
         "",
         f"Docs: {v['docs']} | passed checks (so verified): {v['passed_checks']} | verified OK: {v['verified']} | "
-        f"verifier errors: {v['verifier_errors']} | all fields agree: {fmt(v['agree_all'])} | mean {v['mean_verifier_s']} s",
+        f"verifier errors: {v['verifier_errors']} | all fields agree:"
+        f" {fmt(v['agree_all'])} | mean {v['mean_verifier_s']} s",
         "",
         "| Doc outcome (graded against gold) | Docs |",
         "|---|---:|",
@@ -266,7 +267,10 @@ def verification_md(v: dict[str, Any]) -> str:
         f"| Disagreed, Extractor wrong (caught) | {o['disagreed_and_extractor_wrong']} |",
         f"| Disagreed, Extractor right (false alarm) | {o['disagreed_but_extractor_right']} |",
         "",
-        "| Field | Agree | Extractor right | Verifier right | Agreed, both wrong | Disagreed, Extractor wrong | Disagreed, Extractor right |",
+        (
+            "| Field | Agree | Extractor right | Verifier right | Agreed, both"
+            " wrong | Disagreed, Extractor wrong | Disagreed, Extractor right |"
+        ),
         "|---|---:|---:|---:|---:|---:|---:|",
         *(
             f"| {k} | {fmt(f['agree'])} | {fmt(f['extractor_right'])} | {fmt(f['verifier_right'])} | "

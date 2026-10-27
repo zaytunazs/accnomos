@@ -21,7 +21,8 @@ OUT = pathlib.Path(
 BRIEF = (
     "Accnomos is a UK small-business bookkeeping app: receipts are read by AI, the owner approves each entry, "
     "and the VAT return is computed by code. Brand feel: calm, trustworthy, modern, warm off-white paper and deep teal "
-    "(#0F6E63) with a darker teal (#0A4F47) and charcoal (#1B1F24). No text, no letters, no numbers, no logos of other companies."
+    "(#0F6E63) with a darker teal (#0A4F47) and charcoal (#1B1F24)."
+    " No text, no letters, no numbers, no logos of other companies."
 )
 
 PROMPTS = {
@@ -36,7 +37,8 @@ PROMPTS = {
         "off-white shapes, generous empty space on the right third for a headline to be added later. No text at all."
     ),
     "hero": (
-        f"{BRIEF} Design a website hero illustration, landscape: a tradesperson's phone photographing a crumpled receipt, "
+        f"{BRIEF} Design a website hero illustration, landscape: a"
+        " tradesperson's phone photographing a crumpled receipt, "
         "which turns into neat ledger lines with a teal tick; flat vector style, warm off-white and teal palette, "
         "no text, no faces."
     ),

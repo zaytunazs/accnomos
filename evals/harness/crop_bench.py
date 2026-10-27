@@ -181,7 +181,10 @@ def summarise(res: dict[str, Any]) -> str:
         "Scenes are synthetic (flat colours, drawn mug/pen/hand), so real phone photos will score lower.",
         "Kept = share of the receipt inside that box. Cropped = a box was returned rather than the original.",
         "",
-        "| Method | Cropped | Mean IoU | Median IoU | IoU ≥ 0.8 | Kept ≥ 99 % | Full-frame IoU (baseline) | Mean time |",
+        (
+            "| Method | Cropped | Mean IoU | Median IoU | IoU ≥ 0.8"
+            " | Kept ≥ 99 % | Full-frame IoU (baseline) | Mean time |"
+        ),
         "|---|---|---|---|---|---|---|---|",
     ]
     base = [crop.iou((0, 0, *r["size"]), r["truth"]) for r in rows]

@@ -1,8 +1,8 @@
 """Resolve 'both added' conflict hunks by keeping HEAD then THEIRS, in every conflicted file git reports.
 
 Usage: python tools/resolve_keep_both.py [--table-first]
-Safe only for additive conflicts (new rows, imports, routers, cards). Prints the files it touched; refuses hunks where both sides
-modify the same line (same first line) so a human can look.
+Safe only for additive conflicts (new rows, imports, routers, cards). Prints the files it touched;
+refuses hunks where both sides modify the same line (same first line) so a human can look.
 """
 
 import re

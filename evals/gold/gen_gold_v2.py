@@ -275,7 +275,10 @@ def plan() -> list[dict]:
         3,
         case="edge_multi_rate",
         doc_type="receipt",
-        sub="small general store or garden centre selling standard-rated goods, zero-rated food or books, and one reduced-rate (5%) item such as a child car seat",
+        sub=(
+            "small general store or garden centre selling standard-rated goods, zero-rated food or books,"
+            " and one reduced-rate (5%) item such as a child car seat"
+        ),
         vrn=1.0,
         pay="card",
         items=(4, 7),
@@ -295,7 +298,10 @@ def plan() -> list[dict]:
         2,
         case="edge_reverse_charge",
         doc_type="purchase_invoice",
-        sub="labour-only construction subcontractor (groundworks, roofing, bricklaying, plastering, scaffolding) invoicing services under the domestic reverse charge, so VAT is not charged",
+        sub=(
+            "labour-only construction subcontractor (groundworks, roofing, bricklaying, plastering, scaffolding)"
+            " invoicing services under the domestic reverse charge, so VAT is not charged"
+        ),
         vrn=1.0,
         pay="bank_transfer",
         items=(1, 3),
@@ -305,7 +311,10 @@ def plan() -> list[dict]:
         3,
         case="edge_foreign_gbp",
         doc_type="receipt",
-        sub="foreign supplier (Ireland, USA, Germany) of a cloud service, hotel stay or trade-show ticket, charged to a UK card in GBP",
+        sub=(
+            "foreign supplier (Ireland, USA, Germany) of a cloud service, hotel stay or trade-show ticket,"
+            " charged to a UK card in GBP"
+        ),
         vrn=0.0,
         pay="card",
         items=(1, 1),
@@ -315,7 +324,10 @@ def plan() -> list[dict]:
         2,
         case="edge_handwritten",
         doc_type="receipt",
-        sub="market trader or yard selling non-food goods (firewood, timber offcuts, plants, second-hand tools) who writes the items and total by hand",
+        sub=(
+            "market trader or yard selling non-food goods (firewood, timber offcuts, plants, second-hand tools)"
+            " who writes the items and total by hand"
+        ),
         vrn=0.5,
         pay="cash",
         items=(2, 4),
@@ -347,7 +359,10 @@ def ask(prompt: str, seed: int) -> dict:
         "messages": [
             {
                 "role": "system",
-                "content": "You invent entirely fictional UK businesses and people for accounting test documents. Never use real company names.",
+                "content": (
+                    "You invent entirely fictional UK businesses and people for accounting test documents."
+                    " Never use real company names."
+                ),
             },
             {"role": "user", "content": prompt},
         ],
@@ -377,9 +392,12 @@ def persona(spec: dict, rng: random.Random, i: int, taken: set[str]) -> dict:
     price_note = "shelf prices INCLUDING VAT" if spec["doc_type"] == "receipt" else "prices EXCLUDING VAT"
     for attempt in range(6):
         prompt = (
-            f"Invent a fictional UK supplier: {spec['sub']}, based in or near {town}{' (outside the UK: local-style address)' if foreign else ''}. Its name must be made up and must not "
-            f"resemble any real company. Also invent a customer business name (a small UK firm, not a person) and a contact person.\n"
-            f"List exactly {n} line item(s) it would sell, with realistic UK {price_note} in pounds for one unit (qty 1-12).\n"
+            f"Invent a fictional UK supplier: {spec['sub']}, based in or near {town}"
+            f"{' (outside the UK: local-style address)' if foreign else ''}. Its name must be made up and must not "
+            f"resemble any real company. Also invent a customer business name (a small UK firm, not a person)"
+            f" and a contact person.\n"
+            f"List exactly {n} line item(s) it would sell, with realistic UK {price_note} in pounds"
+            f" for one unit (qty 1-12).\n"
             'Return ONLY JSON: {"supplier_name":str,"street":str,"postcode":str,"phone":str,"customer_name":str,'
             '"contact":str,"category_hint":str,"reason":str,"items":[{"description":str,"qty":int,"unit_price":number'
             + (',"vat_rate":0|5|20' if spec.get("rate") == "mixed" else "")
@@ -539,7 +557,8 @@ def text_invoice(
     out += ["", f"To: {cust['name']}", "", f"{'DESCRIPTION':<18}{'QTY':>4}{'UNIT':>9}{'NET':>10}{'VAT%':>5}", "-" * W]
     for ln in lines:
         out.append(
-            f"{ln['description'][:18]:<18}{ln['qty']:>4g}{m(round(ln['unit_price'] * 100)):>9}{m(ln['net']):>10}{ln['vat_rate']:>5g}"
+            f"{ln['description'][:18]:<18}{ln['qty']:>4g}{m(round(ln['unit_price'] * 100)):>9}"
+            f"{m(ln['net']):>10}{ln['vat_rate']:>5g}"
         )
     out += [
         "-" * W,
@@ -662,7 +681,9 @@ def build(i: int, spec: dict, taken: set[str]) -> dict:
             inv_no = ("CN-" + inv_no) if sale else f"CN{rng.randint(1000, 9999)}"
         due = date_fmt(when + timedelta(days=rng.choice((14, 30))), rng)
     pay_text = {
-        "bank_transfer": f"Pay by BACS: Sort 40-{rng.randint(10, 99)}-{rng.randint(10, 99)}  Acc {rng.randint(10**7, 10**8 - 1)}",
+        "bank_transfer": (
+            f"Pay by BACS: Sort 40-{rng.randint(10, 99)}-{rng.randint(10, 99)}  Acc {rng.randint(10**7, 10**8 - 1)}"
+        ),
         "direct_debit": f"Direct debit will be collected on {date_fmt(when + timedelta(days=10), rng)}",
         "card": "Paid by card - thank you",
         "cash": "Paid cash",

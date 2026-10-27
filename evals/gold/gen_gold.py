@@ -23,32 +23,39 @@ CASES = [
     ("zero", "a zero-rated purchase (books/children's clothing) with VAT £0.00 shown"),
     (
         "no_vat_number",
-        "a purchase over £250 whose receipt shows NO VAT registration number (a simplified receipt) - not a valid VAT invoice",
+        "a purchase over £250 whose receipt shows NO VAT registration number (a simplified receipt)"
+        " - not a valid VAT invoice",
     ),
     ("cash_no_vat", "a cash car-parking ticket or bus ticket with no VAT breakdown and no supplier VAT number"),
     (
         "full_invoice",
-        "a full VAT invoice over £250 with invoice number, supplier VAT number, customer name 'Bramblewood Joinery Ltd', due date",
+        "a full VAT invoice over £250 with invoice number, supplier VAT number,"
+        " customer name 'Bramblewood Joinery Ltd', due date",
     ),
     (
         "sales_invoice",
-        "a SALES invoice issued BY 'Bramblewood Joinery Ltd' (VAT GB 123 4567 89) TO a customer for joinery work, standard-rated",
+        "a SALES invoice issued BY 'Bramblewood Joinery Ltd' (VAT GB 123 4567 89)"
+        " TO a customer for joinery work, standard-rated",
     ),
     ("exempt", "an insurance or postage receipt that is VAT exempt"),
     (
         "arith_error",
-        "a receipt where the printed VAT total is deliberately £0.10 wrong versus net*rate (an error the checker must catch)",
+        "a receipt where the printed VAT total is deliberately £0.10 wrong versus net*rate"
+        " (an error the checker must catch)",
     ),
     ("foreign", "a EUR receipt from a Dutch supplier with reverse-charge wording"),
 ]
 SCHEMA_HINT = """Return ONLY a JSON object:
 {"doc_type":"receipt|purchase_invoice|sales_invoice","supplier":{"name":str,"vat_number":str|null,"address":str},
  "customer":{"name":str|null},"invoice_number":str|null,"date":"YYYY-MM-DD" (between 2026-07-01 and 2026-10-25),
- "currency":"GBP"|"EUR","lines":[{"description":str,"qty":number,"unit_price":number,"net":number,"vat_rate":0|5|20|null,"vat":number}],
+ "currency":"GBP"|"EUR","lines":[{"description":str,"qty":number,"unit_price":number,"net":number,\
+"vat_rate":0|5|20|null,"vat":number}],
  "net_total":number,"vat_total":number,"gross_total":number,"payment_method":"card|cash|bank transfer|direct debit",
- "card_last4":str|null,"category_hint":str,"printed_text":str (the receipt exactly as it would be printed, 8-25 lines, monospace, with totals),
+ "card_last4":str|null,"category_hint":str,"printed_text":str (the receipt exactly as it would be printed, \
+8-25 lines, monospace, with totals),
  "notes":str}
-All suppliers must be FICTIONAL UK trade names (never real companies). Amounts to 2 dp. net+vat=gross for every line and in totals (except the deliberate arith_error case)."""
+All suppliers must be FICTIONAL UK trade names (never real companies). Amounts to 2 dp. \
+net+vat=gross for every line and in totals (except the deliberate arith_error case)."""
 
 
 def ask(prompt):
@@ -99,7 +106,8 @@ while len(manifest) < N and i < N * 3:
     case, desc = CASES[i % len(CASES)]
     try:
         d = ask(
-            f"Generate {desc}. Case id: {case}. Vary supplier, town, date and amounts (seed {random.randint(1, 10**6)}).\n{SCHEMA_HINT}"
+            f"Generate {desc}. Case id: {case}. Vary supplier, town, date and amounts"
+            f" (seed {random.randint(1, 10**6)}).\n{SCHEMA_HINT}"
         )
     except Exception as e:
         print("ERR", i, e, flush=True)
