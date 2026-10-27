@@ -345,14 +345,18 @@ def plan_hash(day: date, items: Sequence[PlanItem]) -> str:
 # --------------------------------------------------------------------------- #
 
 WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday")
-_INTENT_RE = re.compile(r"\b(plan|schedule|organi[sz]e)\b", re.I)
+# The verb must lead straight to the day ("plan my Thursday", "schedule tomorrow"), so a books question that
+# merely mentions planning and a day ("should I schedule the payment on Friday?") stays a question.
+_DAY_WORD = rf"(?:day|today|tomorrow|{'|'.join(WEEKDAYS)}|\d{{4}}-\d{{2}}-\d{{2}})"
+_INTENT_RE = re.compile(rf"\b(?:plan|schedule|organi[sz]e)\s+(?:(?:out|my|the|for|next|on)\s+){{0,2}}{_DAY_WORD}\b", re.I)
 
 
 def plan_intent(text: str, today: date) -> date | None:
     """The day a "plan my …" request is about, or None when the text is not asking for a day plan.
 
     'plan my day' / 'plan today' -> today; 'plan tomorrow'; 'plan my Thursday' -> the next Thursday on or
-    after today; 'plan next Thursday' -> strictly after today; 'plan 2026-11-05'.
+    after today; 'plan next Thursday' -> strictly after today; 'plan 2026-11-05'. The verb must be followed
+    by the day (at most two of out/my/the/for/next/on between them).
     """
     if not _INTENT_RE.search(text):
         return None

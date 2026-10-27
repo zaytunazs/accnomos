@@ -216,6 +216,12 @@ def test_plan_hash_ignores_order_and_offset_spelling() -> None:
     ("plan 2026-11-05", date(2026, 11, 5)),
     ("How much VAT do I owe on Thursday?", None),
     ("plan for retirement", None),
+    ("Plan my day on Thursday", date(2026, 10, 29)),
+    ("schedule the day", TODAY),
+    # Questions about the books that happen to say plan/schedule and a day stay questions.
+    ("Should I schedule the supplier payment on Friday?", None),
+    ("I plan to pay HMRC tomorrow, can I afford it?", None),
+    ("What did I plan to spend today?", None),
 ])
 def test_plan_intent(text: str, want: date | None) -> None:
     assert plan_intent(text, TODAY) == want
