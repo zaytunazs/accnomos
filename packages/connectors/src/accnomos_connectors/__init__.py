@@ -9,9 +9,11 @@ from accnomos_connectors.base import (
     FileRef,
     MailMessage,
     MailProvider,
+    ConflictError,
     StorageProvider,
 )
 from accnomos_connectors.fake import FakeStorageProvider
+from accnomos_connectors.msgraph import GraphError, GraphStorageProvider
 
 __all__ = [
     "CalendarProvider",
@@ -19,5 +21,8 @@ __all__ = [
     "MailMessage",
     "MailProvider",
     "StorageProvider",
+    "ConflictError",
     "FakeStorageProvider",
+    "GraphError",
+    "GraphStorageProvider",
 ]

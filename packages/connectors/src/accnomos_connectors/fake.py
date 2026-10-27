@@ -44,7 +44,10 @@ class FakeStorageProvider(StorageProvider):
         return out
 
     async def read(self, path: str) -> bytes:
-        return self.files[path.strip("/")]
+        path = path.strip("/")
+        if path not in self.files:
+            raise FileNotFoundError(path)
+        return self.files[path]
 
     async def write(self, path: str, data: bytes, *, if_match: str | None = None) -> FileRef:
         path = path.strip("/")
@@ -58,6 +61,12 @@ class FakeStorageProvider(StorageProvider):
 
     async def move(self, path: str, new_path: str) -> FileRef:
         path, new_path = path.strip("/"), new_path.strip("/")
+        if path not in self.files:
+            raise FileNotFoundError(path)
+        if new_path in self.files:
+            raise FileExistsError(new_path)
+        if "/" in new_path:
+            await self.ensure_folder(new_path.rsplit("/", 1)[0])
         self.files[new_path] = self.files.pop(path)
         self._log.append(("move", f"{path} -> {new_path}"))
         return self._ref(new_path)

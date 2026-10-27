@@ -71,3 +71,16 @@ async def ai_test(cfg: AiConfig, x_meta_api_key: str | None = Header(default=Non
 from app.routes_extract import router as extract_router  # noqa: E402  POST /extract
 app.include_router(extract_router)
 
+from accnomos_connectors.msgraph import GraphError  # noqa: E402
+from fastapi import Request  # noqa: E402
+from fastapi.responses import JSONResponse  # noqa: E402
+
+from app.routes_books import router as books_router  # noqa: E402  /books/*
+app.include_router(books_router)
+
+
+@app.exception_handler(GraphError)
+async def graph_error(_request: Request, exc: GraphError) -> JSONResponse:
+    """Expired/insufficient Graph token -> 401 so the app re-authenticates; anything else -> 502."""
+    status = 401 if exc.status in (401, 403) else 502
+    return JSONResponse(status_code=status, content={"detail": str(exc)})

@@ -144,3 +144,13 @@ def draft_journal(doc: ExtractedDoc) -> list[JournalLine]:
 
 def is_balanced(journal: list[JournalLine]) -> bool:
     return sum(j.debit_pence for j in journal) == sum(j.credit_pence for j in journal)
+
+
+def with_expense_account(journal: list[JournalLine], account: str) -> list[JournalLine]:
+    """Purchase journal with every expense debit moved to `account` (VAT and settlement untouched)."""
+    if any(j.account == DEBTORS for j in journal):  # sales: no expense leg to override
+        return journal
+    return [
+        j.model_copy(update={"account": account}) if j.debit_pence and j.account != VAT_CONTROL else j
+        for j in journal
+    ]
