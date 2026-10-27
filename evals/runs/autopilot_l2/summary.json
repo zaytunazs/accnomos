@@ -1,0 +1,1114 @@
+{
+  "on": {
+    "meta": {
+      "verifier": "on",
+      "backend": "ollama:muse-glimmer:30b",
+      "config": {
+        "mode": "local",
+        "base_url": "http://localhost:11434",
+        "model": "muse-glimmer:30b"
+      },
+      "today": "2026-10-27",
+      "rules": {
+        "history": 26,
+        "regular": 123
+      },
+      "pass": "inbox",
+      "limit": 0,
+      "shard": "1/1",
+      "passes": [
+        "inbox",
+        "clean_1of2",
+        "clean_2of2",
+        "messy_1of2",
+        "messy_2of2",
+        "dupes"
+      ]
+    },
+    "all": {
+      "docs": 467,
+      "errors": 0,
+      "would_post": 149,
+      "proposed": 196,
+      "needs_a_look": 122,
+      "false_posts": 17,
+      "correct_posts": 132,
+      "should_post": 200,
+      "missed_posts": 75,
+      "false_post_rate": 0.0364,
+      "false_share_of_posts": 0.1141,
+      "missed_rate": 0.375
+    },
+    "history_rules_only": {
+      "docs": 467,
+      "errors": 0,
+      "would_post": 17,
+      "proposed": 196,
+      "needs_a_look": 122,
+      "false_posts": 17,
+      "correct_posts": 0,
+      "should_post": 0,
+      "missed_posts": 0,
+      "false_post_rate": 0.0364,
+      "false_share_of_posts": 1.0,
+      "missed_rate": null
+    },
+    "by_class": {
+      "clean": {
+        "docs": 154,
+        "errors": 0,
+        "would_post": 55,
+        "proposed": 65,
+        "needs_a_look": 34,
+        "false_posts": 0,
+        "correct_posts": 55,
+        "should_post": 81,
+        "missed_posts": 28,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": 0.0,
+        "missed_rate": 0.3457
+      },
+      "messy": {
+        "docs": 139,
+        "errors": 0,
+        "would_post": 46,
+        "proposed": 47,
+        "needs_a_look": 46,
+        "false_posts": 0,
+        "correct_posts": 46,
+        "should_post": 69,
+        "missed_posts": 28,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": 0.0,
+        "missed_rate": 0.4058
+      },
+      "handwritten": {
+        "docs": 8,
+        "errors": 0,
+        "would_post": 0,
+        "proposed": 5,
+        "needs_a_look": 3,
+        "false_posts": 0,
+        "correct_posts": 0,
+        "should_post": 6,
+        "missed_posts": 6,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": null,
+        "missed_rate": 1.0
+      },
+      "duplicate": {
+        "docs": 102,
+        "errors": 0,
+        "would_post": 17,
+        "proposed": 68,
+        "needs_a_look": 17,
+        "false_posts": 17,
+        "correct_posts": 0,
+        "should_post": 0,
+        "missed_posts": 0,
+        "false_post_rate": 0.1667,
+        "false_share_of_posts": 1.0,
+        "missed_rate": null
+      },
+      "no_vrn": {
+        "docs": 64,
+        "errors": 0,
+        "would_post": 31,
+        "proposed": 11,
+        "needs_a_look": 22,
+        "false_posts": 0,
+        "correct_posts": 31,
+        "should_post": 44,
+        "missed_posts": 13,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": 0.0,
+        "missed_rate": 0.2955
+      }
+    },
+    "by_pass": {
+      "inbox": {
+        "docs": 25,
+        "errors": 0,
+        "would_post": 17,
+        "proposed": 4,
+        "needs_a_look": 4,
+        "false_posts": 0,
+        "correct_posts": 17,
+        "should_post": 22,
+        "missed_posts": 5,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": 0.0,
+        "missed_rate": 0.2273
+      },
+      "clean": {
+        "docs": 200,
+        "errors": 0,
+        "would_post": 66,
+        "proposed": 90,
+        "needs_a_look": 44,
+        "false_posts": 8,
+        "correct_posts": 58,
+        "should_post": 89,
+        "missed_posts": 33,
+        "false_post_rate": 0.04,
+        "false_share_of_posts": 0.1212,
+        "missed_rate": 0.3708
+      },
+      "messy": {
+        "docs": 200,
+        "errors": 0,
+        "would_post": 66,
+        "proposed": 73,
+        "needs_a_look": 61,
+        "false_posts": 9,
+        "correct_posts": 57,
+        "should_post": 89,
+        "missed_posts": 37,
+        "false_post_rate": 0.045,
+        "false_share_of_posts": 0.1364,
+        "missed_rate": 0.4157
+      },
+      "dupes": {
+        "docs": 42,
+        "errors": 0,
+        "would_post": 0,
+        "proposed": 29,
+        "needs_a_look": 13,
+        "false_posts": 0,
+        "correct_posts": 0,
+        "should_post": 0,
+        "missed_posts": 0,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": null,
+        "missed_rate": null
+      }
+    },
+    "by_duplicate_kind": {
+      "new_photo": {
+        "docs": 32,
+        "errors": 0,
+        "would_post": 0,
+        "proposed": 29,
+        "needs_a_look": 3,
+        "false_posts": 0,
+        "correct_posts": 0,
+        "should_post": 0,
+        "missed_posts": 0,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": null,
+        "missed_rate": null
+      },
+      "exact_file": {
+        "docs": 10,
+        "errors": 0,
+        "would_post": 0,
+        "proposed": 0,
+        "needs_a_look": 10,
+        "false_posts": 0,
+        "correct_posts": 0,
+        "should_post": 0,
+        "missed_posts": 0,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": null,
+        "missed_rate": null
+      },
+      "seeded_copy": {
+        "docs": 60,
+        "errors": 0,
+        "would_post": 17,
+        "proposed": 39,
+        "needs_a_look": 4,
+        "false_posts": 17,
+        "correct_posts": 0,
+        "should_post": 0,
+        "missed_posts": 0,
+        "false_post_rate": 0.2833,
+        "false_share_of_posts": 1.0,
+        "missed_rate": null
+      }
+    },
+    "two_x": {
+      "refused_with_2x_among_reasons": 8,
+      "refused_by_2x_alone": 0,
+      "of_which_would_be_false_posts": 0,
+      "of_which_would_be_correct_posts": 0
+    },
+    "seconds": {
+      "mean": 44.1,
+      "median": 42.3,
+      "p95": 66.5,
+      "max": 89.7
+    },
+    "verifier_seconds": {
+      "mean": 9.8,
+      "median": 8.9,
+      "p95": 14.5,
+      "max": 17.5
+    },
+    "refusal_reasons": {
+      "CONFIDENCE warned": 62,
+      "Looks like a document already in the boo": 62,
+      "ARITH_TOTALS warned": 60,
+      "ARITH_LINES warned": 57,
+      "VERIFIER_AGREES failed": 25,
+      "VAT_NUMBER_REQUIRED failed": 20,
+      "VAT treatment differs": 17,
+      "ARITH_TOTALS failed": 17,
+      "VAT number differs": 12,
+      "DUPLICATE failed": 9,
+      "over 2x": 8,
+      "ARITH_LINES failed": 6,
+      "VAT_MATH failed": 6,
+      "zero total": 4,
+      "VAT_NUMBER_FORMAT failed": 3,
+      "DATE_IN_PERIOD warned": 3
+    },
+    "false_posts": [
+      {
+        "id": "clean/006_cash_no_vat.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "NORTHGATE CIVIC PARKING LTD",
+          "supplier_vat_number": null,
+          "date": "2026-09-14",
+          "net_total": 5.0,
+          "vat_total": 0.0,
+          "gross_total": 5.0
+        }
+      },
+      {
+        "id": "clean/009_exempt.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "CRIMSON POST & PARCEL LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-14",
+          "net_total": 6.5,
+          "vat_total": 0.0,
+          "gross_total": 6.5
+        }
+      },
+      {
+        "id": "clean/011_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "NORTHGATE OFFICE SUPPLIES LTD",
+          "supplier_vat_number": "GB987654321",
+          "date": "2026-08-14",
+          "net_total": 54.5,
+          "vat_total": 10.9,
+          "gross_total": 65.4
+        }
+      },
+      {
+        "id": "clean/016_no_vat_number.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "HARROW & FINCH TRADING LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-14",
+          "net_total": 291.0,
+          "vat_total": 0.0,
+          "gross_total": 291.0
+        }
+      },
+      {
+        "id": "clean/017_cash_no_vat.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "NORTHGATE TRANSIT SOLUTIONS LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-14",
+          "net_total": 4.5,
+          "vat_total": 0.0,
+          "gross_total": 4.5
+        }
+      },
+      {
+        "id": "clean/022_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "Brentford Office Supplies Ltd",
+          "supplier_vat_number": "GB 987654321",
+          "date": "2026-08-14",
+          "net_total": 31.89,
+          "vat_total": 6.38,
+          "gross_total": 38.27
+        }
+      },
+      {
+        "id": "clean/023_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "purchase_invoice",
+          "supplier_name": "THORNFIELD & CO. STATIONERY",
+          "supplier_vat_number": "GB 123 456 789",
+          "date": "2026-08-14",
+          "net_total": 27.25,
+          "vat_total": 5.45,
+          "gross_total": 32.7
+        }
+      },
+      {
+        "id": "clean/027_no_vat_number.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "HAVOC HARDWARE & TOOLS LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-12",
+          "net_total": 322.0,
+          "vat_total": 0.0,
+          "gross_total": 322.0
+        }
+      },
+      {
+        "id": "messy/001_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "NOVEX OFFICE SUPPLIES LTD",
+          "supplier_vat_number": "GB 882431902",
+          "date": "2026-08-14",
+          "net_total": 43.25,
+          "vat_total": 8.65,
+          "gross_total": 51.9
+        }
+      },
+      {
+        "id": "messy/002_mixed.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "MARRS & OCKWAY PROVISIONS",
+          "supplier_vat_number": "GB123456789",
+          "date": "2026-09-14",
+          "net_total": 9.45,
+          "vat_total": 0.54,
+          "gross_total": 9.99
+        }
+      },
+      {
+        "id": "messy/009_exempt.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "CRIMSON POST & PARCEL LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-14",
+          "net_total": 6.5,
+          "vat_total": 0.0,
+          "gross_total": 6.5
+        }
+      },
+      {
+        "id": "messy/011_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "NORTHGATE OFFICE SUPPLIES LTD",
+          "supplier_vat_number": "GB987654321",
+          "date": "2026-08-14",
+          "net_total": 54.5,
+          "vat_total": 10.9,
+          "gross_total": 65.4
+        }
+      },
+      {
+        "id": "messy/016_no_vat_number.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "HARROW & FINCH TRADING LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-14",
+          "net_total": 291.0,
+          "vat_total": 0.0,
+          "gross_total": 291.0
+        }
+      },
+      {
+        "id": "messy/017_cash_no_vat.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "NORTHGATE TRANSIT SOLUTIONS LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-14",
+          "net_total": 4.5,
+          "vat_total": 0.0,
+          "gross_total": 4.5
+        }
+      },
+      {
+        "id": "messy/022_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "Brentford Office Supplies Ltd",
+          "supplier_vat_number": "GB 987654321",
+          "date": "2026-08-14",
+          "net_total": 31.89,
+          "vat_total": 6.38,
+          "gross_total": 38.27
+        }
+      },
+      {
+        "id": "messy/023_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "THORNFIELD & CO. STATIONERY",
+          "supplier_vat_number": "GB 123 456 789",
+          "date": "2026-08-14",
+          "net_total": 27.25,
+          "vat_total": 5.45,
+          "gross_total": 32.7
+        }
+      },
+      {
+        "id": "messy/025_reduced.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "purchase_invoice",
+          "supplier_name": "ZEPHYR ENERGY LTD",
+          "supplier_vat_number": "GB123456789",
+          "date": "2026-09-14",
+          "net_total": 128.1,
+          "vat_total": 6.39,
+          "gross_total": 134.49
+        }
+      }
+    ]
+  },
+  "off": {
+    "meta": {
+      "verifier": "off",
+      "backend": null,
+      "config": {
+        "mode": "local",
+        "base_url": "http://localhost:11434",
+        "model": "muse-glimmer:30b"
+      },
+      "today": "2026-10-27",
+      "rules": {
+        "history": 26,
+        "regular": 123
+      },
+      "pass": "inbox",
+      "limit": 0,
+      "shard": "1/1",
+      "passes": [
+        "inbox",
+        "clean_1of2",
+        "clean_2of2",
+        "messy_1of2",
+        "dupes"
+      ]
+    },
+    "all": {
+      "docs": 367,
+      "errors": 0,
+      "would_post": 126,
+      "proposed": 196,
+      "needs_a_look": 45,
+      "false_posts": 17,
+      "correct_posts": 109,
+      "should_post": 148,
+      "missed_posts": 42,
+      "false_post_rate": 0.0463,
+      "false_share_of_posts": 0.1349,
+      "missed_rate": 0.2838
+    },
+    "history_rules_only": {
+      "docs": 367,
+      "errors": 0,
+      "would_post": 16,
+      "proposed": 196,
+      "needs_a_look": 45,
+      "false_posts": 16,
+      "correct_posts": 0,
+      "should_post": 0,
+      "missed_posts": 0,
+      "false_post_rate": 0.0436,
+      "false_share_of_posts": 1.0,
+      "missed_rate": null
+    },
+    "by_class": {
+      "clean": {
+        "docs": 154,
+        "errors": 0,
+        "would_post": 63,
+        "proposed": 80,
+        "needs_a_look": 11,
+        "false_posts": 1,
+        "correct_posts": 62,
+        "should_post": 81,
+        "missed_posts": 20,
+        "false_post_rate": 0.0065,
+        "false_share_of_posts": 0.0159,
+        "missed_rate": 0.2469
+      },
+      "messy": {
+        "docs": 55,
+        "errors": 0,
+        "would_post": 18,
+        "proposed": 30,
+        "needs_a_look": 7,
+        "false_posts": 0,
+        "correct_posts": 18,
+        "should_post": 24,
+        "missed_posts": 8,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": 0.0,
+        "missed_rate": 0.3333
+      },
+      "handwritten": {
+        "docs": 5,
+        "errors": 0,
+        "would_post": 0,
+        "proposed": 4,
+        "needs_a_look": 1,
+        "false_posts": 0,
+        "correct_posts": 0,
+        "should_post": 4,
+        "missed_posts": 4,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": null,
+        "missed_rate": 1.0
+      },
+      "duplicate": {
+        "docs": 102,
+        "errors": 0,
+        "would_post": 16,
+        "proposed": 72,
+        "needs_a_look": 14,
+        "false_posts": 16,
+        "correct_posts": 0,
+        "should_post": 0,
+        "missed_posts": 0,
+        "false_post_rate": 0.1569,
+        "false_share_of_posts": 1.0,
+        "missed_rate": null
+      },
+      "no_vrn": {
+        "docs": 51,
+        "errors": 0,
+        "would_post": 29,
+        "proposed": 10,
+        "needs_a_look": 12,
+        "false_posts": 0,
+        "correct_posts": 29,
+        "should_post": 39,
+        "missed_posts": 10,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": 0.0,
+        "missed_rate": 0.2564
+      }
+    },
+    "by_pass": {
+      "inbox": {
+        "docs": 25,
+        "errors": 0,
+        "would_post": 18,
+        "proposed": 5,
+        "needs_a_look": 2,
+        "false_posts": 0,
+        "correct_posts": 18,
+        "should_post": 22,
+        "missed_posts": 4,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": 0.0,
+        "missed_rate": 0.1818
+      },
+      "clean": {
+        "docs": 200,
+        "errors": 0,
+        "would_post": 73,
+        "proposed": 106,
+        "needs_a_look": 21,
+        "false_posts": 9,
+        "correct_posts": 64,
+        "should_post": 89,
+        "missed_posts": 26,
+        "false_post_rate": 0.045,
+        "false_share_of_posts": 0.1233,
+        "missed_rate": 0.2921
+      },
+      "messy": {
+        "docs": 100,
+        "errors": 0,
+        "would_post": 35,
+        "proposed": 54,
+        "needs_a_look": 11,
+        "false_posts": 8,
+        "correct_posts": 27,
+        "should_post": 37,
+        "missed_posts": 12,
+        "false_post_rate": 0.08,
+        "false_share_of_posts": 0.2286,
+        "missed_rate": 0.3243
+      },
+      "dupes": {
+        "docs": 42,
+        "errors": 0,
+        "would_post": 0,
+        "proposed": 31,
+        "needs_a_look": 11,
+        "false_posts": 0,
+        "correct_posts": 0,
+        "should_post": 0,
+        "missed_posts": 0,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": null,
+        "missed_rate": null
+      }
+    },
+    "by_duplicate_kind": {
+      "new_photo": {
+        "docs": 32,
+        "errors": 0,
+        "would_post": 0,
+        "proposed": 31,
+        "needs_a_look": 1,
+        "false_posts": 0,
+        "correct_posts": 0,
+        "should_post": 0,
+        "missed_posts": 0,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": null,
+        "missed_rate": null
+      },
+      "exact_file": {
+        "docs": 10,
+        "errors": 0,
+        "would_post": 0,
+        "proposed": 0,
+        "needs_a_look": 10,
+        "false_posts": 0,
+        "correct_posts": 0,
+        "should_post": 0,
+        "missed_posts": 0,
+        "false_post_rate": 0.0,
+        "false_share_of_posts": null,
+        "missed_rate": null
+      },
+      "seeded_copy": {
+        "docs": 60,
+        "errors": 0,
+        "would_post": 16,
+        "proposed": 41,
+        "needs_a_look": 3,
+        "false_posts": 16,
+        "correct_posts": 0,
+        "should_post": 0,
+        "missed_posts": 0,
+        "false_post_rate": 0.2667,
+        "false_share_of_posts": 1.0,
+        "missed_rate": null
+      }
+    },
+    "two_x": {
+      "refused_with_2x_among_reasons": 5,
+      "refused_by_2x_alone": 0,
+      "of_which_would_be_false_posts": 0,
+      "of_which_would_be_correct_posts": 0
+    },
+    "seconds": {
+      "mean": 38.9,
+      "median": 36.7,
+      "p95": 59.2,
+      "max": 87.5
+    },
+    "verifier_seconds": {
+      "mean": null,
+      "median": null,
+      "p95": null,
+      "max": null
+    },
+    "refusal_reasons": {
+      "Looks like a document already in the boo": 62,
+      "ARITH_LINES warned": 51,
+      "ARITH_TOTALS warned": 48,
+      "CONFIDENCE warned": 40,
+      "ARITH_TOTALS failed": 12,
+      "VAT_NUMBER_REQUIRED failed": 12,
+      "VAT treatment differs": 11,
+      "VAT number differs": 10,
+      "DUPLICATE failed": 9,
+      "over 2x": 5,
+      "ARITH_LINES failed": 4,
+      "VAT_NUMBER_FORMAT failed": 3,
+      "zero total": 3,
+      "DATE_IN_PERIOD warned": 3,
+      "VAT_MATH failed": 3
+    },
+    "false_posts": [
+      {
+        "id": "clean/006_cash_no_vat.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "NORTHGATE CIVIC PARKING LTD",
+          "supplier_vat_number": null,
+          "date": "2026-09-14",
+          "net_total": 5.0,
+          "vat_total": 0.0,
+          "gross_total": 5.0
+        }
+      },
+      {
+        "id": "clean/009_exempt.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "CRIMSON POST & PARCEL LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-14",
+          "net_total": 6.5,
+          "vat_total": 0.0,
+          "gross_total": 6.5
+        }
+      },
+      {
+        "id": "clean/011_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "NORTHGATE OFFICE SUPPLIES LTD",
+          "supplier_vat_number": "GB987654321",
+          "date": "2026-08-14",
+          "net_total": 54.5,
+          "vat_total": 10.9,
+          "gross_total": 65.4
+        }
+      },
+      {
+        "id": "clean/016_no_vat_number.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "HARROW & FINCH TRADING LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-14",
+          "net_total": 291.0,
+          "vat_total": 0.0,
+          "gross_total": 291.0
+        }
+      },
+      {
+        "id": "clean/017_cash_no_vat.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "NORTHGATE TRANSIT SOLUTIONS LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-14",
+          "net_total": 4.5,
+          "vat_total": 0.0,
+          "gross_total": 4.5
+        }
+      },
+      {
+        "id": "clean/022_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "Brentford Office Supplies Ltd",
+          "supplier_vat_number": "GB 987654321",
+          "date": "2026-08-14",
+          "net_total": 31.89,
+          "vat_total": 6.38,
+          "gross_total": 38.27
+        }
+      },
+      {
+        "id": "clean/023_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "purchase_invoice",
+          "supplier_name": "THORNFIELD & CO. STATIONERY",
+          "supplier_vat_number": "GB 123 456 789",
+          "date": "2026-08-14",
+          "net_total": 27.25,
+          "vat_total": 5.45,
+          "gross_total": 32.7
+        }
+      },
+      {
+        "id": "clean/027_no_vat_number.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "HAVOC HARDWARE & TOOLS LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-12",
+          "net_total": 322.0,
+          "vat_total": 0.0,
+          "gross_total": 322.0
+        }
+      },
+      {
+        "id": "clean/142_pi_software.json",
+        "class": "clean",
+        "diffs": [
+          "date"
+        ],
+        "duplicate": false,
+        "expected_status": "proposed",
+        "rule_origin": "regular",
+        "extracted": {
+          "doc_type": "purchase_invoice",
+          "supplier_name": "HALIFAX DIGITAL FOUNDRY",
+          "supplier_vat_number": "GB 054 5917 57",
+          "date": "2026-11-10",
+          "net_total": 775.0,
+          "vat_total": 155.0,
+          "gross_total": 930.0
+        }
+      },
+      {
+        "id": "messy/001_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "NOVEX OFFICE SUPPLIES LTD",
+          "supplier_vat_number": "GB 882431902",
+          "date": "2026-08-14",
+          "net_total": 43.25,
+          "vat_total": 8.65,
+          "gross_total": 51.9
+        }
+      },
+      {
+        "id": "messy/009_exempt.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "CRIMSON POST & PARCEL LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-14",
+          "net_total": 6.5,
+          "vat_total": 0.0,
+          "gross_total": 6.5
+        }
+      },
+      {
+        "id": "messy/011_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "NORTHGATE OFFICE SUPPLIES LTD",
+          "supplier_vat_number": "GB987654321",
+          "date": "2026-08-14",
+          "net_total": 54.5,
+          "vat_total": 10.9,
+          "gross_total": 65.4
+        }
+      },
+      {
+        "id": "messy/016_no_vat_number.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "HARROW & FINCH TRADING LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-14",
+          "net_total": 291.0,
+          "vat_total": 0.0,
+          "gross_total": 291.0
+        }
+      },
+      {
+        "id": "messy/017_cash_no_vat.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "NORTHGATE TRANSIT SOLUTIONS LTD",
+          "supplier_vat_number": null,
+          "date": "2026-08-14",
+          "net_total": 4.5,
+          "vat_total": 0.0,
+          "gross_total": 4.5
+        }
+      },
+      {
+        "id": "messy/022_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "Brentford Office Supplies Ltd",
+          "supplier_vat_number": "GB 987654321",
+          "date": "2026-08-14",
+          "net_total": 31.89,
+          "vat_total": 6.38,
+          "gross_total": 38.27
+        }
+      },
+      {
+        "id": "messy/023_standard.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "receipt",
+          "supplier_name": "THORNFIELD & CO. STATIONERY",
+          "supplier_vat_number": "GB 123 456 789",
+          "date": "2026-08-14",
+          "net_total": 27.25,
+          "vat_total": 5.45,
+          "gross_total": 32.7
+        }
+      },
+      {
+        "id": "messy/025_reduced.json",
+        "class": "duplicate",
+        "diffs": [],
+        "duplicate": true,
+        "expected_status": "proposed",
+        "rule_origin": "history",
+        "extracted": {
+          "doc_type": "purchase_invoice",
+          "supplier_name": "ZEPHYR ENERGY LTD",
+          "supplier_vat_number": "GB123456789",
+          "date": "2026-09-14",
+          "net_total": 128.1,
+          "vat_total": 6.39,
+          "gross_total": 134.49
+        }
+      }
+    ]
+  }
+}
