@@ -329,3 +329,13 @@ def test_rebuild_route_and_summary_books_url(client: TestClient, fake: FakeStora
     assert r.status_code == 200 and r.json()["path"] == WORKBOOK and r.json()["size"] > 0
     assert WORKBOOK in fake.files
     assert "books_url" in client.get("/books/summary", headers=H).json()
+
+
+def test_books_xlsx_never_writes_text_as_a_formula():
+    """A supplier called '=HYPERLINK(...)' on a receipt must land as text, not as a formula (CSV/XLSX injection)."""
+    from app.projection import _safe_text
+
+    assert _safe_text('=HYPERLINK("http://x")') == "'=HYPERLINK(\"http://x\")"
+    assert _safe_text("@Screwfix") == "'@Screwfix"
+    assert _safe_text("-12.50") == "-12.50"  # a negative amount as text is left alone
+    assert _safe_text(-1250) == -1250 and _safe_text(None) is None

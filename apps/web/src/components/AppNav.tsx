@@ -11,6 +11,7 @@ const links = [
   { href: "/bank", label: "Bank" },
   { href: "/vat", label: "VAT return" },
   { href: "/jobs", label: "Jobs" },
+  { href: "/payroll", label: "Payroll" },
   { href: "/contacts", label: "Contacts" },
   { href: "/vehicles", label: "Vehicles" },
   { href: "/files", label: "Files" },

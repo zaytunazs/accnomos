@@ -20,8 +20,9 @@ def resolve(text: str, path: str) -> str:
             return h_rows + "\n" + theirs.rstrip("\n") + "\n" + ("\n" + h_rest if h_rest else "")
         if path.endswith((".ts", ".tsx")):
             # Both sides appended members to the same `runtime = {...}` object: merge inside one closing `};`.
-            if "\n};\n" in head and "\n};\n" in theirs:
-                hm, hr = head.split("\n};\n", 1); tm, tr = theirs.split("\n};\n", 1)
+            closer = re.compile(r"\n};?\n")
+            if closer.search(head) and closer.search(theirs):
+                hm, hr = closer.split(head, 1); tm, tr = closer.split(theirs, 1)
                 return hm + "\n" + tm + "\n};\n" + hr + tr
             # Git's common-suffix trimming can swallow a `}` that closes HEAD's last interface: put it back when HEAD's
             # last line is still inside a block and THEIRS starts a new top-level declaration.

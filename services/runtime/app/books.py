@@ -19,6 +19,8 @@ Layout (relative to the books root):
     _System/Jobs/jobs.json  _System/Staff/staff.json  _System/Timesheets/{yyyy-mm}.jsonl   (app/jobs.py)
     _System/Contacts/contacts.json customers and suppliers (app/contacts.py); no money is stored there
     _System/Vehicles/vehicles.json  _System/Mileage/{tax-year}.jsonl   vehicles and business journeys (app/mileage.py)
+    _System/Payroll/runs/{yyyy-mm}.json   pay runs (estimates) prepared from timesheets (app/payroll.py)
+    04 Payroll/{yyyy-mm}.csv       pay run exports for the payroll provider
     Books.xlsx                     read-only spreadsheet projection, rebuilt after every decision
 """
 
@@ -543,8 +545,8 @@ class Books:
     # ------------------------------------------------------------------ #
 
     async def rebuild(self) -> FileRef:
-        """Regenerate Books.xlsx at the root from the events, bank lines, open proposals, contacts, jobs and vehicles."""
-        from app import mileage
+        """Regenerate Books.xlsx at the root from the events, bank lines, open proposals, contacts, jobs, vehicles and pay runs."""
+        from app import mileage, payroll
         from app.contacts import contact_book, load_ledger
         from app.jobs import summaries
         from app.projection import build_books_xlsx
@@ -562,10 +564,16 @@ class Books:
         except mileage.MileageError:  # a hand-edited vehicles or mileage file must not stop the rest of the workbook
             log.exception("Vehicles sheet left empty: a vehicles or mileage file could not be read")
             vehicles = None
+        try:
+            runs, names = await payroll.list_runs(self), await payroll.staff_names(self)
+        except ValueError:  # a hand-edited pay run or staff file must not stop the rest of the workbook
+            log.exception("Payroll sheet left empty: a pay run file could not be read")
+            runs, names = [], {}
         proposals = [p for p in every if p.status in ("proposed", "needs_a_look")]
         proposals.sort(key=lambda p: p.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
         data = build_books_xlsx(ledger.events, await self.list_bank_lines(), proposals,
-                                jobs=jobs, contacts=contacts, ledger=ledger, mileage=vehicles)
+                                jobs=jobs, contacts=contacts, ledger=ledger, mileage=vehicles,
+                                payroll=runs, staff_names=names)
         if len(data) > WORKBOOK_LIMIT:
             log.warning("Books.xlsx is %d bytes, over the %d byte simple-upload size", len(data), WORKBOOK_LIMIT)
         return await self.storage.write(WORKBOOK, data)

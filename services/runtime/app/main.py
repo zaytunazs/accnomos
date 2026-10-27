@@ -145,4 +145,6 @@ from app.routes_invoices import router as invoices_router  # noqa: E402  /invoic
 app.include_router(invoices_router)
 from app.routes_actions import router as actions_router  # noqa: E402  /actions/approve, /actions/reject
 app.include_router(actions_router)
+from app.routes_payroll import router as payroll_router  # noqa: E402  /payroll/runs
+app.include_router(payroll_router)
 
