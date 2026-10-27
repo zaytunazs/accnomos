@@ -70,6 +70,9 @@ def test_the_seed_plan_gives_every_pass_its_documents() -> None:
     purchases = sum(d.extracted["doc_type"] != "sales_invoice" for d in plan.posted)
     assert count == {"inbox": 25, "clean": 200, "messy": 200, "dupes": purchases + sim.EXACT_DUPES}
     assert all(sim.period_of(d, plan)[0] <= date.fromisoformat(d.gold["date"]) for d in docs)
+    halves = [sim.shard_of(docs, k, 2) for k in (1, 2)]
+    assert sorted(d.id for h in halves for d in h) == sorted(d.id for d in docs)
+    assert sum(d.pass_ == "clean" for d in halves[0]) == 100
     seeded = {d.gold for d in plan.posted}
     assert {d.gold_file for d in docs if d.dup == "seeded_copy" and d.pass_ == "clean"} == seeded
 

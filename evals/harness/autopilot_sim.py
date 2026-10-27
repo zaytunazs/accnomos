@@ -193,6 +193,16 @@ def documents(plan: sd.Plan, golds: dict[str, dict[str, Any]], passes: list[str]
     return docs
 
 
+def shard_of(docs: list[Doc], k: int, n: int) -> list[Doc]:
+    """The k-th of n contiguous slices of each pass (1-based)."""
+    out = []
+    for pass_ in PASSES:
+        batch = [d for d in docs if d.pass_ == pass_]
+        size = -(-len(batch) // n)
+        out += batch[(k - 1) * size:k * size]
+    return out
+
+
 def period_of(d: Doc, plan: sd.Plan) -> tuple[date, date]:
     return period_containing(date.fromisoformat(d.gold["date"]), plan.current[0].month)
 
@@ -331,17 +341,19 @@ async def simulate(args: argparse.Namespace) -> list[Path]:
     base, origin = await build_books(plan, golds)
     print(f"Books seeded with {Counter(origin.values())} rules in {time.perf_counter() - t0:.1f}s", flush=True)
     docs = documents(plan, golds, args.passes, args.limit)
+    k, n = map(int, args.shard.split("/"))
+    docs = shard_of(docs, k, n) if n > 1 else docs
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     paths = []
-    for pass_ in PASSES:  # one file per pass, so a pass can be re-run (or run in its own process) on its own
+    for pass_ in PASSES:  # one file per pass (and shard), so each can be re-run on its own
         batch = [d for d in docs if d.pass_ == pass_]
         if not batch:
             continue
-        path = out / f"verifier_{args.verifier}_{pass_}.jsonl"
+        path = out / f"verifier_{args.verifier}_{pass_}{f'_{k}of{n}' if n > 1 else ''}.jsonl"
         meta = {"verifier": args.verifier, "backend": (b.label() if (b := select_backend(cfg)) else None),
                 "config": cfg.public(), "today": TODAY.isoformat(), "rules": dict(Counter(origin.values())), "pass": pass_,
-                "limit": args.limit}
+                "limit": args.limit, "shard": args.shard}
         with path.open("w", encoding="utf-8") as sink:
             sink.write(json.dumps({"meta": meta}) + "\n")
             await run_pass(base, origin, batch, cfg, plan, sink)
@@ -359,13 +371,11 @@ def load(out: Path, mode: str) -> tuple[dict[str, Any], list[dict[str, Any]]] | 
     meta: dict[str, Any] | None = None
     recs: list[dict[str, Any]] = []
     for pass_ in PASSES:
-        path = out / f"verifier_{mode}_{pass_}.jsonl"
-        if not path.exists():
-            continue
-        lines = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
-        meta = meta or lines[0]["meta"] | {"passes": []}
-        meta["passes"].append(pass_)
-        recs += lines[1:]
+        for path in sorted(out.glob(f"verifier_{mode}_{pass_}*.jsonl")):  # the whole pass, or its shards
+            lines = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
+            meta = meta or lines[0]["meta"] | {"passes": []}
+            meta["passes"].append(path.stem.removeprefix(f"verifier_{mode}_"))
+            recs += lines[1:]
     return (meta, recs) if meta else None
 
 
@@ -561,6 +571,8 @@ def main() -> None:
     ap.add_argument("--verifier", choices=("on", "off"), default="on")
     ap.add_argument("--passes", default=",".join(PASSES), help=f"comma-separated, from {', '.join(PASSES)}")
     ap.add_argument("--limit", type=int, default=0, help="first N documents per pass (0 = all)")
+    ap.add_argument("--shard", default="1/1", help="k/n: only the k-th of n contiguous slices of each pass, each on fresh "
+                    "books (for runs that must fit a time limit)")
     ap.add_argument("--model", default=None, help="override OLLAMA_MODEL")
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--report", action="store_true", help="only write report.md and summary.json from the runs in --out")
