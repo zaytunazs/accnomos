@@ -36,7 +36,7 @@ test("job + staff + timesheet → proposed invoice lines", async ({ page }) => {
   await page.getByRole("region", { name: "Invoice" }).getByRole("button", { name: "Invoice these hours" }).click();
   await expect(page).toHaveURL(/\/invoices\/new\?from=job$/);
   const lines = page.getByRole("region", { name: "Lines" });
-  await expect(lines).toContainText("Hours from Kitchen refit, 12 Harbour Lane.");
+  await expect(lines).toContainText("Lines from job Kitchen refit, 12 Harbour Lane.");
   await expect(lines.getByLabel("Description")).toHaveValue(/^Kitchen refit, 12 Harbour Lane: Joiner \(Alex Carter\), labour /);
   await expect(lines.getByLabel("Qty")).toHaveValue("6");
   await expect(lines.getByLabel("Unit", { exact: true })).toHaveValue("hours");
