@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
+import PageHeader from "@/components/PageHeader";
+import { LoadingSkeleton, ReaderErrorNote } from "@/components/States";
 import { loadAiConfig, RUNTIME_URL } from "@/lib/ai-config";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { runtime, type RtAskAnswer, type RtAskTurn } from "@/lib/runtime";
@@ -92,7 +94,10 @@ export default function AskThread() {
   }, []);
 
   useEffect(() => {
-    end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+    const reduceMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    end.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "end" });
   }, [turns]);
 
   function submit(e: FormEvent) {
@@ -103,32 +108,31 @@ export default function AskThread() {
   const live = mode === "live";
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-extrabold tracking-tight">Ask</h1>
-        <p className="mt-1 text-[15px] leading-7 text-muted">
-          Ask your books in plain English. Numbers are calculated by code from your ledger; your AI only writes the
-          words, and every answer shows the files it used.
-          {live && (
-            <>
-              {" "}
+      <PageHeader
+        title="Ask"
+        description="Ask your books in plain English. Numbers are calculated by code from your ledger; your AI only writes the words, and every answer shows the files it used."
+        action={
+          mode === "loading" ? null : live ? (
+            <p className="text-[13px] font-semibold text-muted">
               Answering with <strong className="text-ink">{model ?? "the reader's default AI"}</strong> ·{" "}
-              <Link href="/settings" className="font-bold text-teal underline underline-offset-2">
+              <Link href="/settings" className="whitespace-nowrap font-bold text-teal underline underline-offset-2">
                 change
               </Link>
-            </>
-          )}
-        </p>
-      </div>
+            </p>
+          ) : (
+            <p className="w-fit rounded-full bg-ink px-3 py-1 text-[12px] font-bold tracking-wide whitespace-nowrap text-ground">
+              SAMPLE — FICTIONAL COMPANY
+            </p>
+          )
+        }
+      />
 
       {mode === "sample" && (
         <div className="flex flex-col gap-4">
-          <p className="w-fit rounded-full bg-ink px-3 py-1 text-[12px] font-bold tracking-wide text-ground">
-            SAMPLE — FICTIONAL COMPANY
-          </p>
           {offline && (
-            <p className="rounded-xl border border-warn-border bg-warn-bg p-3 text-[14px] leading-6 text-warn-ink">
-              Your reader service at {RUNTIME_URL} isn&apos;t answering, so this is the sample conversation.
-            </p>
+            <ReaderErrorNote
+              detail={`The app tried ${RUNTIME_URL}, so this is the sample conversation.`}
+            />
           )}
           <Question text={sampleQuestion} />
           <AnswerCard answer={sampleAnswer} />
@@ -153,9 +157,7 @@ export default function AskThread() {
                   Couldn&apos;t get an answer. {t.error}
                 </p>
               ) : (
-                <p className="rounded-2xl border border-border bg-white p-4 text-[14px] text-muted">
-                  Reading your books…
-                </p>
+                <LoadingSkeleton lines={2} label="Reading your books…" />
               )}
             </div>
           ))}
@@ -187,14 +189,14 @@ export default function AskThread() {
           <button
             type="submit"
             disabled={busy || !input.trim()}
-            className="flex h-10 shrink-0 items-center rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-50"
+            className="flex h-10 shrink-0 items-center whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-50"
           >
             {busy ? "Asking…" : "Ask"}
           </button>
         ) : (
           <Link
             href={offline ? "/settings" : "/connect"}
-            className="flex h-10 shrink-0 items-center rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
+            className="flex h-10 shrink-0 items-center whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
           >
             {offline ? "Settings" : "Sign in"}
           </Link>

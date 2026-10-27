@@ -40,7 +40,7 @@ export default function AskBar() {
       </button>
       <button
         type="submit"
-        className="flex h-10 shrink-0 items-center rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
+        className="flex h-10 shrink-0 items-center whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
       >
         Ask
       </button>

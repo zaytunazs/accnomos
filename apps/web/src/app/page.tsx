@@ -6,6 +6,8 @@ import LastInboxCheck from "@/components/home/LastInboxCheck";
 import Tiles from "@/components/home/Tiles";
 import Pitch from "@/components/home/Pitch";
 
+export const metadata = { title: "Home · Accnomos" };
+
 export default function HomePage() {
   return (
     <div className="flex flex-col gap-5">
@@ -14,7 +16,7 @@ export default function HomePage() {
         <p className="text-sm font-semibold text-muted">Not connected yet?</p>
         <Link
           href="/connect"
-          className="shrink-0 rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark"
+          className="shrink-0 whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark"
         >
           Connect your OneDrive
         </Link>

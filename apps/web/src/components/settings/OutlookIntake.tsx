@@ -106,7 +106,7 @@ export default function OutlookIntake({ card, heading }: { card: string; heading
             type="button"
             onClick={() => check(false)}
             disabled={busy !== null}
-            className="h-11 rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60"
+            className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60"
           >
             {busy === "scan" ? "Checking your inbox…" : "Check my inbox now"}
           </button>
@@ -160,7 +160,7 @@ export default function OutlookIntake({ card, heading }: { card: string; heading
         </div>
       )}
 
-      {note && <p className="mt-3 text-sm font-bold text-teal-dark">{note}</p>}
+      {note && <p role="status" className="mt-3 text-sm font-bold text-teal-dark">{note}</p>}
     </section>
   );
 }

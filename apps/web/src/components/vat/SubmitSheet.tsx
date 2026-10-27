@@ -34,13 +34,13 @@ export default function SubmitSheet() {
         <button
           type="button"
           onClick={() => setOpen(true)}
-          className="h-11 rounded-xl bg-teal px-6 text-[15px] font-bold text-white hover:bg-teal-dark"
+          className="h-11 whitespace-nowrap rounded-xl bg-teal px-6 text-[15px] font-bold text-white hover:bg-teal-dark"
         >
           Submit to HMRC (sandbox)
         </button>
         <button
           type="button"
-          className="h-11 rounded-xl border border-border bg-white px-6 text-[15px] font-bold hover:bg-ground"
+          className="h-11 whitespace-nowrap rounded-xl border border-border bg-white px-6 text-[15px] font-bold hover:bg-ground"
         >
           Export calc sheet
         </button>

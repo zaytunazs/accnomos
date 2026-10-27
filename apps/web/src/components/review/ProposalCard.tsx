@@ -63,10 +63,19 @@ export default function ProposalCard({ proposal, remember, onRememberChange, hid
       </div>
 
       <div className="mt-5 overflow-hidden rounded-xl border border-border">
-        <table className="w-full text-left text-[15px]">
-          <caption className="bg-ground px-4 py-2 text-left text-[13px] font-bold text-muted">
-            Proposed entry / What it means
-          </caption>
+        <p className="bg-ground px-4 py-2 text-[13px] font-bold text-muted">
+          Proposed entry / What it means
+        </p>
+        {/* Phone: stacked lines. Wider screens: the two-column table. */}
+        <ul className="flex flex-col divide-y divide-border min-[560px]:hidden">
+          {proposal.lines.map((line) => (
+            <li key={line.account} className="px-4 py-3">
+              <p className="text-[15px] font-bold">{line.account}</p>
+              <p className="mt-0.5 text-[14px] text-muted">{line.meaning}</p>
+            </li>
+          ))}
+        </ul>
+        <table className="hidden w-full text-left text-[15px] min-[560px]:table">
           <tbody>
             {proposal.lines.map((line) => (
               <tr
@@ -92,19 +101,19 @@ export default function ProposalCard({ proposal, remember, onRememberChange, hid
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
-          className="h-11 rounded-xl bg-teal px-6 text-[15px] font-bold text-white hover:bg-teal-dark"
+          className="h-11 whitespace-nowrap rounded-xl bg-teal px-6 text-[15px] font-bold text-white hover:bg-teal-dark"
         >
           Approve
         </button>
         <button
           type="button"
-          className="h-11 rounded-xl border border-border bg-white px-6 text-[15px] font-bold hover:bg-ground"
+          className="h-11 whitespace-nowrap rounded-xl border border-border bg-white px-6 text-[15px] font-bold hover:bg-ground"
         >
           Edit
         </button>
         <button
           type="button"
-          className="h-11 rounded-xl border border-border bg-white px-6 text-[15px] font-bold hover:bg-ground"
+          className="h-11 whitespace-nowrap rounded-xl border border-border bg-white px-6 text-[15px] font-bold hover:bg-ground"
         >
           Reject
         </button>

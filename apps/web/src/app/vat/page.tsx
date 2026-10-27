@@ -1,15 +1,18 @@
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 import SubmitSheet from "@/components/vat/SubmitSheet";
 import LiveVat from "@/components/vat/LiveVat";
 import ConnectHmrc from "@/components/vat/ConnectHmrc";
 import { box4SampleRows, vatBoxes, vatMeta } from "@/lib/sample-vat";
+
+export const metadata = { title: "VAT return · Accnomos" };
 
 function EntriesCell({ box, count }: { box: number; count: number }) {
   return (
     <Link
       href="/review"
       aria-label={`View ${count} entries for Box ${box}`}
-      className="font-bold text-teal underline underline-offset-2 hover:text-teal-dark"
+      className="whitespace-nowrap font-bold text-teal underline underline-offset-2 hover:text-teal-dark"
     >
       {count}
     </Link>
@@ -19,22 +22,18 @@ function EntriesCell({ box, count }: { box: number; count: number }) {
 export default function VatPage() {
   return (
     <div className="flex flex-col gap-6">
+      <PageHeader
+        title="VAT return"
+        description={`Q3 2026 · ${vatMeta.period}`}
+        action={
+          <p className="flex items-center gap-2 text-[14px] font-semibold whitespace-nowrap text-muted">
+            <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-teal" />
+            {vatMeta.status}
+          </p>
+        }
+      />
       <LiveVat />
       <ConnectHmrc />
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <p className="text-[13px] font-semibold text-muted">
-            {vatMeta.period}
-          </p>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-tight">
-            {vatMeta.title}
-          </h1>
-        </div>
-        <p className="flex items-center gap-2 text-[14px] font-semibold text-muted">
-          <span aria-hidden="true" className="h-2 w-2 rounded-full bg-teal" />
-          {vatMeta.status}
-        </p>
-      </div>
 
       <div className="flex flex-col gap-6 min-[1000px]:flex-row min-[1000px]:items-start">
         <section
@@ -44,7 +43,45 @@ export default function VatPage() {
           <h2 id="vat-boxes-heading" className="sr-only">
             VAT boxes
           </h2>
-          <div className="overflow-x-auto">
+          {/* Phone: one card per box. Wider screens: the 9-box table. */}
+          <ul className="flex flex-col gap-3 sm:hidden">
+            {vatBoxes.map((row) => (
+              <li
+                key={row.box}
+                className={`rounded-xl border p-4 ${
+                  row.highlight
+                    ? "border-teal bg-teal-tint"
+                    : row.shaded
+                      ? "border-border bg-ground"
+                      : "border-border bg-white"
+                }`}
+              >
+                <div className="flex items-baseline justify-between gap-2">
+                  <p className="text-[15px] font-extrabold">
+                    Box {row.box} · {row.what}
+                  </p>
+                </div>
+                <div className="mt-1 flex items-baseline justify-between gap-2">
+                  <p
+                    className={`tabular-nums ${row.large ? "text-lg font-extrabold" : "font-bold"}`}
+                  >
+                    {row.amount}
+                  </p>
+                  {row.entries !== null ? (
+                    <EntriesCell box={row.box} count={row.entries} />
+                  ) : (
+                    <span aria-hidden="true" className="text-muted">
+                      —
+                    </span>
+                  )}
+                </div>
+                {row.warning ? (
+                  <p className="mt-1 text-[13px] font-bold text-warn-ink">{row.warning}</p>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto sm:block">
             <table className="w-full text-left text-[15px]">
               <thead>
                 <tr className="border-b border-border text-[13px] font-bold text-muted">

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
+import { EmptyState, LoadingSkeleton } from "@/components/States";
 import { autopilotOn, gbp, runtime, setAutopilotOn, type RtRule } from "@/lib/runtime";
 
 /** Settings › Autopilot rules: the rules in _System/Rules/rules.json, with Remove, and the master switch. */
@@ -71,11 +72,50 @@ export default function AutopilotRules({ card, heading }: { card: string; headin
         same and the total is no more than twice the usual. {on ? "" : "Switched off on this device: every scan waits for you."}
       </p>
       {rules === null ? (
-        <p className="mt-3 text-sm text-muted">{account ? "Loading…" : "Sign in to see the rules in your OneDrive."}</p>
+        account ? (
+          <div className="mt-3">
+            <LoadingSkeleton lines={2} label="Loading your Autopilot rules…" />
+          </div>
+        ) : (
+          <p className="mt-3 text-sm text-muted">Sign in to see the rules in your OneDrive.</p>
+        )
       ) : rules.length === 0 ? (
-        <p className="mt-3 text-sm text-muted">No rules yet.</p>
+        <div className="mt-3">
+          <EmptyState
+            title="No rules yet"
+            body="Tick “Always do this” when you approve and the rule will appear here."
+          />
+        </div>
       ) : (
-        <div className="mt-3 overflow-x-auto">
+        <>
+          {/* Phone: one card per rule. Wider screens: the rules table. */}
+          <ul className="mt-3 flex flex-col gap-2 sm:hidden">
+            {rules.map((rule) => (
+              <li
+                key={rule.supplier_key}
+                className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-[15px] font-bold">
+                    {rule.supplier_name || rule.supplier_key}
+                  </p>
+                  <p className="mt-0.5 text-[13px] text-muted">
+                    {rule.category} · {rule.vat_code ?? "no code"} · usually {gbp(rule.typical_gross_pence / 100)} · used {rule.hits}×
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={busy !== null}
+                  onClick={() => remove(rule.supplier_key)}
+                  aria-label={`Remove rule for ${rule.supplier_name || rule.supplier_key}`}
+                  className="h-9 shrink-0 whitespace-nowrap rounded-xl border border-border bg-white px-3 text-[13px] font-bold text-ink disabled:opacity-60"
+                >
+                  {busy === rule.supplier_key ? "Removing…" : "Remove"}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="mt-3 hidden overflow-x-auto sm:block">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="text-xs font-bold text-muted">
@@ -111,7 +151,8 @@ export default function AutopilotRules({ card, heading }: { card: string; headin
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+        </>
       )}
       {note && (
         <p role="status" className="mt-2 text-sm font-bold text-teal-dark">
