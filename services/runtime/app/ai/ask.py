@@ -215,6 +215,8 @@ def ground(out: AskModelOutput, facts: dict[str, Any], model: str) -> AskAnswer:
     for a in out.suggested_actions:
         if a.kind == "chase_supplier" and (not a.arg or a.arg.strip().lower() not in names):
             continue  # never chase a supplier the books don't know
+        if a.kind == "plan_day":
+            continue  # only code offers a day plan (app/routes_ask.py)
         actions.append(SuggestedAction(label=_clip(a.label, LABEL_MAX), kind=a.kind, arg=_clip(a.arg, LABEL_MAX) if a.arg else None))
 
     return AskAnswer(
