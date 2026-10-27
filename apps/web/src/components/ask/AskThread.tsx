@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { loadAiConfig, RUNTIME_URL } from "@/lib/ai-config";
 import { getMsal, msalConfigured } from "@/lib/msal";
-import { runtime, type RtAskAnswer, type RtAskTurn } from "@/lib/runtime";
+import { runtime, runtimeHealth, type RtAskAnswer, type RtAskTurn } from "@/lib/runtime";
 import { sampleAnswer, sampleQuestion } from "@/lib/sample-ask";
 import AnswerCard from "./AnswerCard";
 import MicButton from "./MicButton";
@@ -103,10 +103,7 @@ export default function AskThread() {
         setInput(q);
         return setMode("sample");
       }
-      const health = await fetch(`${RUNTIME_URL}/health`).then(
-        (r) => (r.ok ? (r.json() as Promise<{ voice?: boolean }>) : null),
-        () => null,
-      );
+      const health = await runtimeHealth();
       if (!health) {
         setOffline(true);
         return setMode("sample");

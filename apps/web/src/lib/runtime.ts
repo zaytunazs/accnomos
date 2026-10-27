@@ -1,7 +1,7 @@
 "use client";
 
 import type { AccountInfo } from "@azure/msal-browser";
-import { aiHeaders, loadAiConfig, RUNTIME_URL } from "./ai-config";
+import { aiHeaders, loadAiConfig, RUNTIME_URL, type AiConfig } from "./ai-config";
 import { accountKind, contactsScopesFor, getToken, isPersonalAccount, mailScopesFor, storageScopesFor } from "./msal";
 
 /** Runtime wire types (services/runtime/app/schemas.py). */
@@ -144,8 +144,36 @@ async function call<T>(account: AccountInfo, path: string, init: RequestInit = {
   const json = typeof init.body === "string"; // FormData sets its own multipart Content-Type
   const headers = { ...(await runtimeHeaders(account, extraScopes)), ...(json ? { "Content-Type": "application/json" } : {}) };
   const res = await fetch(`${RUNTIME_URL}${path}`, { ...init, headers: { ...headers, ...(init.headers ?? {}) } });
-  if (!res.ok) throw new Error(`runtime ${init.method ?? "GET"} ${path} -> ${res.status}: ${(await res.text()).slice(0, 300)}`);
-  return (await res.json()) as T;
+  if (!res.ok) throw new Error(await errorDetail(res, `${init.method ?? "GET"} ${path}`));
+  return (res.status === 204 ? undefined : await res.json()) as T;
+}
+
+export interface RtAiTest {
+  ok: boolean;
+  mode: string;
+  model?: string | null;
+  detail: string;
+}
+
+/** POST /ai/test: does this AI config answer? No sign-in needed; nothing is saved. */
+export async function runtimeAiTest(cfg: AiConfig): Promise<RtAiTest> {
+  const res = await fetch(`${RUNTIME_URL}/ai/test`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...aiHeaders(cfg) },
+    body: JSON.stringify({ mode: cfg.mode, base_url: cfg.baseUrl, model: cfg.model }),
+  });
+  if (!res.ok) return { ok: false, mode: cfg.mode, detail: `runtime returned ${res.status}` };
+  return (await res.json()) as RtAiTest;
+}
+
+/** GET /health: no sign-in needed. Null when the runtime does not answer. */
+export async function runtimeHealth(): Promise<{ ok: boolean; voice?: boolean } | null> {
+  try {
+    const res = await fetch(`${RUNTIME_URL}/health`);
+    return res.ok ? ((await res.json()) as { ok: boolean; voice?: boolean }) : null;
+  } catch {
+    return null;
+  }
 }
 
 export const runtime = {
@@ -155,9 +183,10 @@ export const runtime = {
       headers: autopilotOn() ? {} : { "X-Autopilot": "off" },
     }),
   proposals: (a: AccountInfo, status?: string) => call<RtProposal[]>(a, `/books/proposals${status ? `?status=${status}` : ""}`),
+  proposal: (a: AccountInfo, id: string) => call<RtProposal>(a, `/books/proposals/${id}`),
   /** `edits.job_id` tags a purchase to a job (its net then counts as a job cost). */
   approve: (a: AccountInfo, id: string, body: { edits?: Record<string, unknown>; remember?: boolean }) =>
-    call<RtProposal>(a, `/books/approve/${id}`, { method: "POST", body: JSON.stringify(body) }),
+    call<RtProposal>(a, `/books/proposals/${id}/approve`, { method: "POST", body: JSON.stringify(body) }),
   undo: (a: AccountInfo, eventId: string) =>
     call<{ proposal: RtProposal | null }>(a, `/books/undo/${eventId}`, { method: "POST" }),
   rules: (a: AccountInfo) => call<RtRule[]>(a, "/books/rules"),
@@ -196,6 +225,7 @@ export const runtime = {
   createJob: (a: AccountInfo, body: RtJobIn) => call<RtJob>(a, "/jobs", { method: "POST", body: JSON.stringify(body) }),
   updateJob: (a: AccountInfo, id: string, body: RtJobIn) =>
     call<RtJob>(a, `/jobs/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteJob: (a: AccountInfo, id: string) => call<void>(a, `/jobs/${encodeURIComponent(id)}`, { method: "DELETE" }),
   /** Proposed lines from unbilled billable hours; marks nothing. */
   jobInvoiceLines: (a: AccountInfo, id: string) =>
     call<RtInvoiceProposal>(a, `/jobs/${encodeURIComponent(id)}/invoice-lines`, { method: "POST" }),
@@ -209,9 +239,12 @@ export const runtime = {
   createStaff: (a: AccountInfo, body: RtStaffIn) => call<RtStaff>(a, "/staff", { method: "POST", body: JSON.stringify(body) }),
   updateStaff: (a: AccountInfo, id: string, body: RtStaffIn) =>
     call<RtStaff>(a, `/staff/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(body) }),
+  deleteStaff: (a: AccountInfo, id: string) => call<void>(a, `/staff/${encodeURIComponent(id)}`, { method: "DELETE" }),
   timesheets: (a: AccountInfo, jobId: string) => call<RtTimesheetEntry[]>(a, `/timesheets?job_id=${encodeURIComponent(jobId)}`),
   addTimesheet: (a: AccountInfo, body: RtTimesheetIn) =>
     call<RtTimesheetEntry>(a, "/timesheets", { method: "POST", body: JSON.stringify(body) }),
+  updateTimesheet: (a: AccountInfo, id: string, patch: Partial<RtTimesheetIn>) =>
+    call<RtTimesheetEntry>(a, `/timesheets/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(patch) }),
   deleteTimesheet: (a: AccountInfo, id: string) =>
     call<RtTimesheetEntry>(a, `/timesheets/${encodeURIComponent(id)}`, { method: "DELETE" }),
   /** /contacts/* (services/runtime/app/routes_contacts.py): money is worked out from the ledger on each call. */
@@ -230,12 +263,10 @@ export const runtime = {
   /** /books/bank/* (services/runtime/app/routes_bank.py): statements, matches and unmatched lines. */
   bank: {
     /** POST /books/bank/import: multipart upload; the same file twice is a no-op (sha256). */
-    upload: async (a: AccountInfo, file: File) => {
+    upload: (a: AccountInfo, file: File) => {
       const form = new FormData();
       form.append("file", file, file.name);
-      const res = await fetch(`${RUNTIME_URL}/books/bank/import`, { method: "POST", headers: await runtimeHeaders(a), body: form });
-      if (!res.ok) throw new Error(await errorDetail(res, `upload ${file.name}`));
-      return (await res.json()) as RtBankImport;
+      return call<RtBankImport>(a, "/books/bank/import", { method: "POST", body: form });
     },
     statements: (a: AccountInfo) => call<RtBankStatement[]>(a, "/books/bank/statements"),
     lines: (a: AccountInfo, status?: RtBankLineStatus) =>
@@ -261,6 +292,8 @@ export const runtime = {
   mileage: (a: AccountInfo, taxYear: string) => call<RtMileageEntry[]>(a, `/mileage?tax_year=${taxYear}`),
   addMileage: (a: AccountInfo, e: Omit<RtMileageEntry, "id" | "source">) =>
     call<RtMileageEntry>(a, "/mileage", { method: "POST", body: JSON.stringify(e) }),
+  updateMileage: (a: AccountInfo, id: string, patch: Partial<Omit<RtMileageEntry, "id" | "source">>) =>
+    call<RtMileageEntry>(a, `/mileage/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
   deleteMileage: (a: AccountInfo, id: string) => call<RtMileageEntry>(a, `/mileage/${id}`, { method: "DELETE" }),
   mileageSummary: (a: AccountInfo, taxYear: string) => call<RtMileageSummary>(a, `/mileage/summary?tax_year=${taxYear}`),
   /** POST /mileage/propose-allowance: the quarter's allowance as a proposal in Review (one per quarter). */

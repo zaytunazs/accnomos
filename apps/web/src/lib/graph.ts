@@ -25,11 +25,13 @@ export const README_TEXT = `These are your books.
 
 This folder was created by Accnomos. Everything the app knows about your business is in here, in plain files:
 - 00 Inbox: drop receipts, invoices or statements here (photo, PDF, email attachment) and Accnomos will read them.
-- 01-03: documents Accnomos has filed, renamed like "2026-10-21 Screwfix £38.47.pdf".
+- 01-02: documents Accnomos has filed, renamed like "2026-10-21 Screwfix £38.47.pdf".
+- 03 Bank statements: the statement files you imported.
 - 04 Needs a look: anything odd (duplicates, missing VAT number, unreadable), with a reason.
 - 05 VAT returns: the 9-box calculation and HMRC receipt for each period.
-- Books.xlsx: your ledger, rebuilt from the event files in _System/Ledger/events.
-- _System: rules you approved, the audit log, and the raw ledger events. Append-only; nothing is ever deleted.
+- Books.xlsx: a spreadsheet of your books, rebuilt from the files in _System. Do not edit it; it is overwritten.
+- _System: the ledger events and the audit log (never edited: a correction is a new entry that reverses
+  the old one), plus rules you approved, contacts, jobs, staff, timesheets, vehicles and your mileage log.
 
 You can open all of this without the app. If you disconnect Accnomos, the files stay yours.
 Sample data is labelled "SAMPLE — FICTIONAL COMPANY".
