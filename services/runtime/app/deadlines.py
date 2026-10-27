@@ -51,3 +51,34 @@ def period_label(start: date, end: date) -> str:
     if start.year == end.year:
         return f"{MONTHS[start.month - 1]}–{MONTHS[end.month - 1]} {end.year}"
     return f"{MONTHS[start.month - 1]} {start.year}–{MONTHS[end.month - 1]} {end.year}"
+
+
+def period_id(start: date, months: int = 3) -> str:
+    """'2026-Q4' (the 4th quarter that starts in 2026 for this stagger) or '2026-11' for a monthly period."""
+    if months == 1:
+        return f"{start.year}-{start.month:02d}"
+    return f"{start.year}-Q{(start.month - 1) // 3 + 1}"
+
+
+def period_from_id(pid: str, start_month: int, months: int = 3) -> tuple[date, date]:
+    """Inverse of `period_id`: 'yyyy-Qn' is the n-th quarter starting in year yyyy; 'yyyy-mm' a month. Raises ValueError."""
+    year_s, _, rest = pid.partition("-")
+    if not (year_s.isdigit() and len(year_s) == 4):
+        raise ValueError(f"period {pid!r} should look like 2026-Q4 or 2026-11")
+    year = int(year_s)
+    if months == 3 and len(rest) == 2 and rest[0] == "Q" and rest[1] in "1234":
+        first = stagger_of(start_month)  # the stagger's first start month in a year: 1, 2 or 3
+        start = date(year, first + 3 * (int(rest[1]) - 1), 1)
+    elif months == 1 and len(rest) == 2 and rest.isdigit() and 1 <= int(rest) <= 12:
+        start = date(year, int(rest), 1)
+    else:
+        raise ValueError(f"period {pid!r} doesn't fit {'quarterly' if months == 3 else 'monthly'} returns")
+    return start, add_months(start, months) - timedelta(days=1)
+
+
+def recent_periods(today: date, start_month: int, months: int = 3, previous: int = 8) -> list[tuple[date, date]]:
+    """The period containing `today`, then the `previous` periods before it, newest first."""
+    out = [period_containing(today, start_month, months)]
+    for _ in range(previous):
+        out.append(previous_period(out[-1][0], months))
+    return out
