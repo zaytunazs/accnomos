@@ -43,14 +43,19 @@ class BooksAuth {
 /// services/runtime (the screens use a few of them so far).
 class RuntimeClient {
   RuntimeClient(this.settings, {this.books, http.Client? httpClient})
-      : _http = httpClient ?? http.Client();
+      : _httpOverride = httpClient;
   final AppSettings settings;
 
   /// Present for every books call; null when nobody is signed in.
   final BooksAuth? books;
 
-  /// Transport for every call; tests inject a recording fake.
-  final http.Client _http;
+  /// Test transport, used instead of a fresh client for every call.
+  final http.Client? _httpOverride;
+
+  /// Transport for every call: the injected fake in tests, otherwise a new
+  /// client each time (created at call time, so `http.runWithClient`
+  /// zone mocks keep working as they did for the top-level functions).
+  http.Client get _http => _httpOverride ?? http.Client();
 
   /// The saved VAT stagger as the runtime's query, like the web's
   /// `vatQuery()` in `apps/web/src/lib/vat-period.ts`: `start_month=` when
