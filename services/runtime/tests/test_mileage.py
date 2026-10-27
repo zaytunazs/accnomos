@@ -377,3 +377,79 @@ async def test_approve_tags_a_business_vehicle_and_counts_its_costs(books: Books
         await m.delete_entry(books, e.id, USER)
     with pytest.raises(m.MileageError, match="tagged"):
         await m.delete_vehicle(books, works.id, USER)
+
+
+async def test_scan_prefills_the_only_business_vehicle(books: Books, fake: FakeStorageProvider, monkeypatch: pytest.MonkeyPatch) -> None:
+    from app import pipeline
+    from app.ai.config import AiConfig
+    from app.inbox import scan_inbox
+
+    async def fake_extract(data: bytes, mime: str, cfg: object) -> tuple[ExtractedDoc, dict[str, str]]:
+        return _receipt() if data == b"fuel" else _receipt("Materials", "Screwfix", "Screws"), {"backend": "stub", "model": "stub"}
+
+    monkeypatch.setattr(pipeline, "extract_document", fake_extract)
+    works = await m.add_vehicle(books, car(name="Transit", kind="van", owned_by="business"), USER)
+    fake.files.update({"00 Inbox/fuel.jpg": b"fuel", "00 Inbox/screws.jpg": b"screws"})
+    out = await scan_inbox(books, AiConfig(mode="local", base_url="http://ollama.invalid", model="stub"), autopilot_on=False)
+    assert sorted((p.extracted.supplier_name, p.vehicle_id) for p in out) == [("Screwfix", None), ("Shell", works.id)]
+
+
+# --------------------------------------------------------------------------- #
+# HTTP
+# --------------------------------------------------------------------------- #
+
+H = {"X-Graph-Token": "tok", "X-User": USER}
+
+
+@pytest.fixture
+def client(fake: FakeStorageProvider):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+    from app.routes_books import get_books
+
+    async def override() -> Books:
+        return Books(fake)
+
+    app.dependency_overrides[get_books] = override
+    yield TestClient(app)
+    app.dependency_overrides.clear()
+
+
+def test_vehicle_and_mileage_routes(client, fake: FakeStorageProvider) -> None:
+    r = client.post("/vehicles", headers=H, json={"name": "Golf", "kind": "car", "owned_by": "personal", "registration": "ab12 cde"})
+    assert r.status_code == 200 and r.json()["registration"] == "AB12 CDE"
+    vid = r.json()["id"]
+    assert client.post("/vehicles", headers=H, json={"name": "X", "kind": "lorry", "owned_by": "personal"}).status_code == 422
+    assert client.patch(f"/vehicles/{vid}", headers=H, json={"name": "VW Golf"}).json()["name"] == "VW Golf"
+    assert client.patch("/vehicles/" + "f" * 32, headers=H, json={"name": "x"}).status_code == 404
+
+    trip_body = {"vehicle_id": vid, "date": "2025-10-10", "from": "Leeds", "to": "York", "miles": 25.4, "purpose": "Quote", "job_id": None}
+    assert client.post("/mileage", headers={"X-Graph-Token": "tok"}, json=trip_body).status_code == 400  # no X-User
+    r = client.post("/mileage", headers=H, json=trip_body)
+    assert r.status_code == 200 and r.json()["from"] == "Leeds" and r.json()["source"] == "manual"
+    eid = r.json()["id"]
+    assert client.post("/mileage", headers=H, json={**trip_body, "miles": 1.25}).status_code == 422
+    assert client.patch(f"/mileage/{eid}", headers=H, json={"miles": 100}).json()["miles"] == 100
+    assert client.patch(f"/mileage/{eid}", headers=H, json={"vehicle_id": "f" * 32}).status_code == 400
+    assert [e["id"] for e in client.get("/mileage?tax_year=2025-26", headers=H).json()] == [eid]
+    assert client.get("/mileage?tax_year=2025", headers=H).status_code == 400
+
+    s = client.get("/mileage/summary?tax_year=2025-26", headers=H).json()
+    assert s["allowance_pence"] == 4500 and s["threshold_miles"] == 10_000 and s["threshold_crossed_on"] is None
+    assert s["vehicles"][0]["miles"] == 100 and len(s["quarters"]) == 4 and len(s["rates"]) == 4
+
+    r = client.post("/mileage/propose-allowance?tax_year=2025-26&period=Q3", headers=H)
+    assert r.status_code == 200 and r.json()["created"] and r.json()["proposal"]["extracted"]["gross_total"] == 45.0
+    pid = r.json()["proposal"]["id"]
+    r = client.post("/mileage/propose-allowance?tax_year=2025-26&period=Q3", headers=H)
+    assert not r.json()["created"] and r.json()["proposal"]["id"] == pid
+    assert client.post("/mileage/propose-allowance?tax_year=2025-26&period=Q2", headers=H).status_code == 400
+    assert client.post("/mileage/propose-allowance?tax_year=2025-26&period=Q9", headers=H).status_code == 400
+    assert "Books.xlsx" in fake.files
+
+    assert client.post(f"/books/approve/{pid}", headers=H, json={}).json()["status"] == "posted"
+    assert client.patch(f"/mileage/{eid}", headers=H, json={"miles": 1}).status_code == 409
+    assert client.delete(f"/mileage/{eid}", headers=H).status_code == 409
+    assert client.delete(f"/vehicles/{vid}", headers=H).status_code == 400
+    assert client.delete("/mileage/" + "f" * 32, headers=H).status_code == 404
