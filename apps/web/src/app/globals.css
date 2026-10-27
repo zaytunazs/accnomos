@@ -52,6 +52,25 @@ body {
   animation: vat-update 0.25s ease-out;
 }
 
+/* Contacts statement: print the statement on its own, without the app chrome
+   (the page marks interactive parts print:hidden; this hides the shell). */
+@media print {
+  body:has([data-contacts-statement]) header,
+  body:has([data-contacts-statement]) footer,
+  body:has([data-contacts-statement]) nav {
+    display: none !important;
+  }
+  [data-contacts-statement] {
+    color: #000;
+  }
+  [data-contacts-statement] table {
+    font-size: 12px;
+  }
+  [data-contacts-statement] tr {
+    break-inside: avoid;
+  }
+}
+
 /* Keyboard shortcut hints (Review). */
 .kbd {
   display: inline-block;
