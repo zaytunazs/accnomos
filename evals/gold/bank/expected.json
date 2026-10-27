@@ -1,0 +1,64 @@
+{
+  "label": "SAMPLE - FICTIONAL COMPANY",
+  "note": "Posted ledger events for the four gold statements and what each statement line should become. gross_pence is positive; purchases settle from 1200 Bank, sales to 1100 Debtors.",
+  "events": [
+    {"id": "gold-bc-screwfix", "kind": "purchase", "date": "2026-09-30", "gross_pence": 3847, "counterparty": "Screwfix"},
+    {"id": "gold-bc-acme", "kind": "sale", "date": "2026-10-01", "gross_pence": 120000, "counterparty": "Acme Kitchens Ltd"},
+    {"id": "gold-bc-toolstation", "kind": "purchase", "date": "2026-10-08", "gross_pence": 1200, "counterparty": "Toolstation"},
+    {"id": "gold-bc-travis", "kind": "purchase", "date": "2026-10-15", "gross_pence": 4500, "counterparty": "Travis Perkins"},
+    {"id": "gold-st-wickes", "kind": "purchase", "date": "2026-10-04", "gross_pence": 8999, "counterparty": "Wickes"},
+    {"id": "gold-st-brightside", "kind": "sale", "date": "2026-10-02", "gross_pence": 240000, "counterparty": "Brightside Lettings Ltd"},
+    {"id": "gold-td-shell", "kind": "purchase", "date": "2026-10-01", "gross_pence": 6230, "counterparty": "Shell"},
+    {"id": "gold-td-northgate", "kind": "sale", "date": "2026-10-03", "gross_pence": 96000, "counterparty": "Northgate Builders Ltd"},
+    {"id": "gold-td-adobe", "kind": "purchase", "date": "2026-10-12", "gross_pence": 1997, "counterparty": "Adobe Systems Software Ireland Ltd"},
+    {"id": "gold-mz-harbour", "kind": "sale", "date": "2026-10-05", "gross_pence": 64000, "counterparty": "Harbour Cafe Ltd"},
+    {"id": "gold-mz-screwfix", "kind": "purchase", "date": "2026-10-09", "gross_pence": 2499, "counterparty": "Screwfix"},
+    {"id": "gold-mz-zurich", "kind": "purchase", "date": "2026-10-18", "gross_pence": 4120, "counterparty": "Zurich Insurance"}
+  ],
+  "statements": {
+    "barclays.csv": {
+      "bank": "barclays", "layout": "signed amount", "last_date": "2026-10-20",
+      "lines": [
+        {"description": "SCREWFIX DIRECT ON 30 SEP CLP", "amount_pence": -3847, "match": "gold-bc-screwfix", "kind": "exact"},
+        {"description": "ACME KITCHENS LTD INV-0042 BGC", "amount_pence": 120000, "match": "gold-bc-acme", "kind": "exact"},
+        {"description": "TO SAVINGS 40-11-22 87654321 TFR", "amount_pence": -50000, "action": "mark_transfer"},
+        {"description": "TOOLSTN 0412 CD 1234", "amount_pence": -1200, "match": "gold-bc-toolstation", "kind": "exact"},
+        {"description": "BUSINESS ACCOUNT FEE", "amount_pence": -650, "action": "create_expense_proposal"},
+        {"description": "TRAVIS PERKINS 0099 ON 15 OCT", "amount_pence": -4501, "match": "gold-bc-travis", "kind": "suggested"}
+      ]
+    },
+    "starling.csv": {
+      "bank": "starling", "layout": "signed amount + balance", "last_date": "2026-10-21",
+      "lines": [
+        {"description": "Opening Balance", "amount_pence": 0, "action": "ignore"},
+        {"description": "WICKES", "amount_pence": -8999, "match": "gold-st-wickes", "kind": "exact"},
+        {"description": "Brightside Lettings", "amount_pence": 240000, "match": "gold-st-brightside", "kind": "suggested"},
+        {"description": "Starling Savings Space", "amount_pence": -80000, "action": "mark_transfer"},
+        {"description": "EE LIMITED", "amount_pence": -3600, "action": "create_expense_proposal"},
+        {"description": "Unknown Payee", "amount_pence": 15000, "action": "ignore"}
+      ]
+    },
+    "tide.csv": {
+      "bank": "tide", "layout": "paid in / paid out", "last_date": "2026-10-22",
+      "lines": [
+        {"description": "Shell Fuel 4411", "amount_pence": -6230, "match": "gold-td-shell", "kind": "exact"},
+        {"description": "Northgate Builders Ltd", "amount_pence": 96000, "match": "gold-td-northgate", "kind": "exact"},
+        {"description": "Transfer to own account", "amount_pence": -25000, "action": "mark_transfer"},
+        {"description": "ADOBE CREATIVE CLD", "amount_pence": -1997, "match": "gold-td-adobe", "kind": "suggested"},
+        {"description": "Tide monthly fee", "amount_pence": -999, "action": "create_expense_proposal"},
+        {"description": "Shell Fuel 4411", "amount_pence": -5810, "action": "create_expense_proposal"}
+      ]
+    },
+    "monzo.csv": {
+      "bank": "monzo", "layout": "signed amount", "last_date": "2026-10-25",
+      "lines": [
+        {"description": "Pret A Manger", "amount_pence": -785, "action": "create_expense_proposal"},
+        {"description": "Harbour Cafe Ltd", "amount_pence": 64000, "match": "gold-mz-harbour", "kind": "exact"},
+        {"description": "Tax Pot", "amount_pence": -30000, "action": "mark_transfer"},
+        {"description": "Screwfix", "amount_pence": -2499, "match": "gold-mz-screwfix", "kind": "exact"},
+        {"description": "Zurich Insurance", "amount_pence": -4120, "match": "gold-mz-zurich", "kind": "exact"},
+        {"description": "Amazon", "amount_pence": -1549, "action": "create_expense_proposal"}
+      ]
+    }
+  }
+}

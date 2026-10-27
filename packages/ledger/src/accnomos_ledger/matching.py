@@ -1,7 +1,8 @@
 """Suggest which posted ledger event each bank line pays for. Deterministic scoring, no model.
 
-Score (0-1): exact amount 0.5 (required), date 0.3 on the day falling 0.05 a day to ±3 days,
-counterparty/description token overlap up to 0.2, card last 4 digits in the description +0.1.
+Score (0-1): amount within ±1p required (0.5 exact, 0.45 a penny out), date 0.3 on the day falling
+0.05 a day to ±5 days, counterparty similarity up to 0.2 (share of the counterparty's words found in the
+description; near-spellings such as "toolstn"/"toolstation" count), card last 4 digits +0.1.
 ≥0.9 is an "exact" suggestion, 0.6-0.9 "suggested", anything lower is dropped.
 One bank line may also pay 2-3 same-counterparty events dated the same day. No event is used twice.
 """
@@ -11,6 +12,7 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from collections.abc import Iterable, Sequence
+from difflib import SequenceMatcher
 from itertools import combinations
 from typing import Literal
 
@@ -20,7 +22,8 @@ from accnomos_ledger.bank import BankLine
 from accnomos_ledger.events import LedgerEvent
 
 EXACT, SUGGEST = 0.9, 0.6
-MAX_DAYS = 3
+MAX_DAYS = 5
+PENNY = 1  # amount tolerance in pence: card terminals and some invoices round differently
 #: Accounts whose movement is the money that actually left or arrived (the settlement leg).
 SETTLEMENT_PREFIXES = ("1200", "1210", "2100", "1100")
 NOISE_PHRASES = ("card payment", "contactless", "direct debit", "faster payment", "standing order")
@@ -64,9 +67,26 @@ def _date_score(line: BankLine, event: LedgerEvent) -> tuple[float, str] | None:
     return 0.3 - 0.05 * days, "same day" if days == 0 else f"{days} day{'s' if days > 1 else ''} apart"
 
 
+def _abbreviates(short: str, long: str) -> bool:
+    """'toolstn' abbreviates 'toolstation': same first four letters, the rest in order."""
+    rest = iter(long)
+    return short[:4] == long[:4] and all(c in rest for c in short)
+
+
+def _similar(word: str, words: set[str]) -> bool:
+    """`word` is in `words`, or (4+ letters) abbreviates / is abbreviated by / is a near-spelling of one."""
+    if word in words:
+        return True
+    if len(word) < 4:
+        return False
+    return any(len(w) >= 4 and (_abbreviates(word, w) or _abbreviates(w, word)
+                                or SequenceMatcher(None, word, w).ratio() >= 0.85) for w in words)
+
+
 def _name_score(line: BankLine, counterparty: str | None) -> tuple[float, str | None]:
     want = tokens(counterparty)
-    common = want & tokens(f"{line.description} {line.reference or ''}")
+    have = tokens(f"{line.description} {line.reference or ''}")
+    common = {w for w in want if _similar(w, have)}
     if not want or not common:
         return 0.0, None
     return 0.2 * len(common) / len(want), f"name: {' '.join(sorted(common))}"
@@ -74,12 +94,14 @@ def _name_score(line: BankLine, counterparty: str | None) -> tuple[float, str | 
 
 def _score(line: BankLine, events: Sequence[LedgerEvent], card_last4: dict[str, str]) -> tuple[float, list[str]] | None:
     """Score a line against one event or a same-day group; None when amount or date rule out a match."""
-    if line.amount_pence == 0 or sum(settlement_pence(e) for e in events) != line.amount_pence:
+    off = abs(sum(settlement_pence(e) for e in events) - line.amount_pence)
+    if line.amount_pence == 0 or off > PENNY:
         return None
     dated = _date_score(line, events[0])
     if dated is None:
         return None
-    reasons = ["exact amount" if len(events) == 1 else f"sum of {len(events)} events", dated[1]]
+    amount = "exact amount" if len(events) == 1 else f"sum of {len(events)} events"
+    reasons = [f"{amount}, 1p out" if off else amount, dated[1]]
     name, why = _name_score(line, events[0].counterparty)
     if why:
         reasons.append(why)
@@ -88,7 +110,7 @@ def _score(line: BankLine, events: Sequence[LedgerEvent], card_last4: dict[str, 
     card = 0.1 if any(d and re.search(rf"(?<!\d){re.escape(d)}(?!\d)", text) for d in last4) else 0.0
     if card:
         reasons.append("card last 4 digits")
-    return round(min(1.0, 0.5 + dated[0] + name + card), 3), reasons
+    return round(min(1.0, 0.5 - 0.05 * off + dated[0] + name + card), 3), reasons
 
 
 def _match(line: BankLine, group: Sequence[LedgerEvent], scored: tuple[float, list[str]]) -> Match | None:
@@ -137,13 +159,14 @@ def _assign(candidates: list[Match], used_events: set[str], taken_lines: set[str
 def suggest_matches(
     lines: Sequence[BankLine], events: Sequence[LedgerEvent], card_last4: dict[str, str] | None = None
 ) -> list[Match]:
-    """Best match per open bank line. Lines already matched keep their events out of play.
+    """Best match per open bank line. Lines already matched keep their events out of play;
+    lines marked as a transfer or ignored are not matched at all.
 
     `card_last4` optionally maps event id -> last four card digits from the evidence document.
     """
     hints = card_last4 or {}
     used = {eid for ln in lines if ln.status == "matched" for eid in ln.event_ids()}
-    taken = {ln.id for ln in lines if ln.status == "matched"}
+    taken = {ln.id for ln in lines if ln.resolved}
     open_lines = [ln for ln in lines if ln.id not in taken]
     free = [e for e in events if e.id not in used and settlement_pence(e)]
     chosen = _assign(_singles(open_lines, free, hints), used, taken)

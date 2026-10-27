@@ -13,7 +13,7 @@ from datetime import UTC, date, datetime
 from typing import TYPE_CHECKING
 
 from accnomos_ledger import compute_vat_return
-from accnomos_ledger.bank import BankLine
+from accnomos_ledger.bank import BankLine, reconciled_to
 from accnomos_ledger.events import LedgerEvent
 from openpyxl import Workbook
 from openpyxl.styles import Font
@@ -215,13 +215,15 @@ def _summary(ws: Worksheet, events: Sequence[LedgerEvent], bank_lines: Sequence[
         ("Bank lines", len(bank_lines)),
         ("Bank lines matched", sum(ln.status == "matched" for ln in bank_lines)),
         ("Bank lines unmatched", sum(ln.status == "unmatched" for ln in bank_lines)),
+        ("Bank lines transfers or ignored", sum(ln.status in ("transfer", "ignored") for ln in bank_lines)),
+        ("Bank reconciled to", reconciled_to(bank_lines)),
         ("Proposals waiting", len(proposals)),
     ]
     _table(ws, ("Measure", "Value"), rows, widths=(28, 18))
     for (label, cell) in ws.iter_rows(min_row=2, max_col=2):
         if label.value.endswith("£"):
             cell.number_format = GBP
-        elif label.value in ("First entry", "Last entry"):
+        elif label.value in ("First entry", "Last entry", "Bank reconciled to"):
             cell.number_format = DATE
         elif label.value == "Generated at":
             cell.number_format = "dd/mm/yyyy hh:mm"
@@ -230,11 +232,12 @@ def _summary(ws: Worksheet, events: Sequence[LedgerEvent], bank_lines: Sequence[
 def _bank(ws: Worksheet, lines: Sequence[BankLine]) -> None:
     rows = (
         (ln.date, ln.description, ln.reference, pounds(ln.amount_pence), pounds(ln.balance_pence), ln.status,
-         ", ".join(ln.event_ids()) or None, ln.source_file)
+         ", ".join(ln.event_ids()) or None, ln.source_file, ln.proposal_id)
         for ln in lines
     )
-    header = ("Date", "Description", "Reference", "Amount £", "Balance £", "Status", "Matched event", "Statement")
-    _table(ws, header, rows, money=(4, 5), dates=(1,), widths=(12, 40, 18, 12, 12, 11, 34, 50))
+    header = ("Date", "Description", "Reference", "Amount £", "Balance £", "Status", "Matched event", "Statement",
+              "Expense proposal")
+    _table(ws, header, rows, money=(4, 5), dates=(1,), widths=(12, 40, 18, 12, 12, 11, 34, 50, 34))
 
 
 def _proposals(ws: Worksheet, proposals: Sequence[Proposal]) -> None:
