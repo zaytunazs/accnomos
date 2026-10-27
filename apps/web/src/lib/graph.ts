@@ -143,6 +143,14 @@ export async function putSmallFile(account: AccountInfo, relPath: string, conten
   return (await res.json()) as DriveItem;
 }
 
+/** A file in the books folder as a Blob (the Review preview). Read-only; straight from the user's OneDrive. */
+export async function getFileBlob(account: AccountInfo, relPath: string): Promise<Blob> {
+  const token = await getToken(storageScopesFor(account));
+  const res = await fetch(`${GRAPH}${itemPath(account, relPath)}:/content`, { headers: { Authorization: `Bearer ${token}` } });
+  if (!res.ok) throw new Error(`read ${relPath} -> ${res.status}`);
+  return res.blob();
+}
+
 export interface SetupProgress {
   step: string;
   done: number;

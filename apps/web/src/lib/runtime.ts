@@ -73,6 +73,9 @@ export interface RtProposal {
   crop?: { method: "sam" | "code" | "none"; box: [number, number, number, number] | null; note: string } | null;
   verification?: RtVerification | null;
   source_path?: string;
+  /** Where the document is filed now, relative to the books folder (read through Graph for the preview). */
+  file_path?: string | null;
+  source_name?: string | null;
   decided_by?: string | null;
   decided_at?: string | null;
   event_id?: string | null;
@@ -105,6 +108,15 @@ export function autopilotOn(): boolean {
     return window.localStorage.getItem(AUTOPILOT_LEVEL_KEY) === "L2";
   } catch {
     return false;
+  }
+}
+/** Settings › Autopilot level; L1 when nothing (or something unknown) is saved. */
+export function autopilotLevel(): "L0" | "L1" | "L2" {
+  try {
+    const v = window.localStorage.getItem(AUTOPILOT_LEVEL_KEY);
+    return v === "L0" || v === "L2" ? v : "L1";
+  } catch {
+    return "L1";
   }
 }
 export function setAutopilotOn(on: boolean): void {

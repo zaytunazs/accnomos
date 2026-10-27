@@ -117,6 +117,16 @@ def test_test_routes_skip_the_rate_limit(test_env: None, monkeypatch: pytest.Mon
     c = TestClient(app)
     assert all(c.get("/__test/gold").status_code == 200 for _ in range(5))
     assert [c.get("/books/x").status_code for _ in range(3)] == [404, 404, 429]
+def test_headers_skip_the_allow_list_only_because_the_stub_is_forced(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The web e2e sends the stub URL as X-AI-Base-Url; test mode accepts it but still never calls it."""
+    headers = {"X-AI-Mode": "local", "X-AI-Base-Url": "http://evil.example:11434"}
+    monkeypatch.delenv("ACCNOMOS_TEST_MODE", raising=False)
+    with pytest.raises(ValueError, match="allow-list"):
+        AiConfig.from_headers(headers)
+    monkeypatch.setenv("ACCNOMOS_TEST_MODE", "1")
+    monkeypatch.delenv("ACCNOMOS_TEST_AI_BASE", raising=False)
+    monkeypatch.delenv("PORT", raising=False)
+    assert AiConfig.from_headers(headers).base_url == STUB
 
 
 def test_every_gold_receipt_reads_and_standard_ones_pass() -> None:
@@ -176,6 +186,9 @@ def test_graph_lookalike_shares_storage_with_runtime(client: TestClient) -> None
     inbox = client.get(f"{g}/me/drive/special/approot:/00 Inbox:/children").json()["value"]
     assert [(i["name"], i["file"]["mimeType"]) for i in inbox] == [("r.png", "image/png")]
     assert client.get(f"{g}/me/drive/root:/Accnomos/00 Inbox/r.png").json()["name"] == "r.png"  # work-account paths
+    got = client.get(f"{g}/me/drive/special/approot:/00 Inbox/r.png:/content")  # the Review preview read
+    assert got.status_code == 200 and got.content == png and got.headers["content-type"] == "image/png"
+    assert client.get(f"{g}/me/drive/special/approot:/00 Inbox/nope.png:/content").status_code == 404
 
 
 def test_graph_lookalike_errors_are_graph_shaped(client: TestClient) -> None:

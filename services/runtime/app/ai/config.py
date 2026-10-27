@@ -95,7 +95,7 @@ class AiConfig(BaseModel):
         """
         get = lambda k: (headers.get(k) or headers.get(k.lower()) or None)  # noqa: E731
         base_url = get("X-AI-Base-Url")
-        if base_url and not base_url_allowed(base_url):
+        if base_url and not is_test_mode() and not base_url_allowed(base_url):  # test mode never uses it (resolve)
             raise ValueError("X-AI-Base-Url is not on this server's allow-list (AI_ALLOWED_BASE_URLS)")
         return cls.resolve(
             mode=get("X-AI-Mode"),

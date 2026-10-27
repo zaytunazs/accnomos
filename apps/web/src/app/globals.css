@@ -37,3 +37,17 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* Keyboard shortcut hints (Review). */
+.kbd {
+  display: inline-block;
+  min-width: 1.4em;
+  padding: 0 0.3em;
+  border: 1px solid var(--color-border);
+  border-bottom-width: 2px;
+  border-radius: 0.3rem;
+  background: #fff;
+  font: 700 12px/1.5 ui-monospace, monospace;
+  text-align: center;
+  color: var(--color-ink);
+}

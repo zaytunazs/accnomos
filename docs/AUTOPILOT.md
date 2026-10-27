@@ -55,6 +55,15 @@ anything that a code check is unsure about.
    entry (unmatch it first) or if the entry has already been undone. Once undone, neither the entry
    nor its reversal can be matched to a bank line.
 
+5. **At L1, Review shows the matches.** The web Review page checks each waiting proposal against your
+   saved rules in the browser, with the conditions above (`apps/web/src/lib/review-rules.ts` mirrors
+   `autopilot.py`). A matching card says *Matches your Autopilot rule for …*; with two or more matches,
+   *Approve all N rule matches* asks once, then sends one normal `POST /books/proposals/{id}/approve`
+   per proposal with the rule's category and account as `edits`. There is no bulk route. Pressing U straight
+   after reverses the whole batch through `POST /books/undo/{event_id}`. At L0 and L2 nothing is offered.
+   The verifier's agreement is not part of this browser-side check; a disagreement already fails a check,
+   so such a card never matches.
+
 ## What it never does
 
 - Never creates a rule on its own: only your ticked approval does.
