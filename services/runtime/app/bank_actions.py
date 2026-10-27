@@ -84,7 +84,7 @@ async def create_expense_proposal(books: Books, line_id: str, user: str) -> Prop
     await books.save_proposal(p)
     await books.link_proposal(line_id, p.id)
     await books.audit(f"user:{user}", "bank_expense_proposed", {"line": line_id, "proposal": p.id})
-    await books.rebuild_safely(user)
+    await books.rebuild_safely(f"user:{user}")
     return p
 
 

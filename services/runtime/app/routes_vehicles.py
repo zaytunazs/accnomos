@@ -148,7 +148,7 @@ async def propose_allowance(
     except MileageError as exc:
         raise _http(exc) from exc
     if created:
-        await books.rebuild_safely(user)
+        await books.rebuild_safely(f"user:{user}")
     return ClaimResult(proposal=proposal, created=created)
 
 

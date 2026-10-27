@@ -134,7 +134,7 @@ async def approve(
         "autopilot_rule": auto_rule.supplier_key if auto_rule else None, "job": p.job_id, "vehicle": p.vehicle_id,
     })
     if rebuild:
-        await books.rebuild_safely(user)
+        await books.rebuild_safely(_actor(user))
     return p
 
 
@@ -195,7 +195,7 @@ async def reject(books: Books, proposal_id: str, user: str, reason: str) -> Prop
     p.status, p.reject_reason, p.decided_by, p.decided_at = "rejected", reason, user, now()
     await books.save_proposal(p)
     await books.audit(f"user:{user}", "rejected", {"proposal": p.id, "doc": p.doc_sha256, "reason": reason, "path": p.file_path})
-    await books.rebuild_safely(user)
+    await books.rebuild_safely(f"user:{user}")
     return p
 
 
@@ -238,7 +238,7 @@ async def undo(books: Books, event_id: str, user: str) -> tuple[LedgerEvent, Pro
         await books.audit_autopilot(f"user:{user}", "undone", {
             "event": event_id, "reversal": reversal.id, "proposal": original.proposal_id,
         })
-    await books.rebuild_safely(user)
+    await books.rebuild_safely(f"user:{user}")
     return reversal, p
 
 

@@ -477,7 +477,7 @@ class Books:
         update: dict[str, Any] = {"status": "matched", "matched_event_id": ids[0], "matched_event_ids": ids}
         await self._set_line(path, line_id, update)
         await self.audit(f"user:{user}", "bank_matched", {"line": line_id, "events": ids, "file": path})
-        await self.rebuild_safely(user)
+        await self.rebuild_safely(f"user:{user}")
         return line.model_copy(update=update)
 
     async def unmatch(self, line_id: str, user: str) -> BankLine:
@@ -490,7 +490,7 @@ class Books:
         await self.audit(f"user:{user}", "bank_unmatched", {
             "line": line_id, "was": line.status, "events": line.event_ids(), "file": path,
         })
-        await self.rebuild_safely(user)
+        await self.rebuild_safely(f"user:{user}")
         return line.model_copy(update=update)
 
     async def mark_line(self, line_id: str, status: Literal["transfer", "ignored"], user: str) -> BankLine:
@@ -500,7 +500,7 @@ class Books:
             raise BankMatchError(f"This bank line is already {_DONE[line.status]}; undo that first")
         await self._set_line(path, line_id, {"status": status})
         await self.audit(f"user:{user}", f"bank_{status}", {"line": line_id, "file": path})
-        await self.rebuild_safely(user)
+        await self.rebuild_safely(f"user:{user}")
         return line.model_copy(update={"status": status})
 
     async def link_proposal(self, line_id: str, proposal_id: str) -> None:
@@ -543,14 +543,14 @@ class Books:
             log.warning("Books.xlsx is %d bytes, over the %d byte simple-upload size", len(data), WORKBOOK_LIMIT)
         return await self.storage.write(WORKBOOK, data)
 
-    async def rebuild_safely(self, user: str) -> FileRef | None:
+    async def rebuild_safely(self, actor: str) -> FileRef | None:
         """rebuild(), but never fails the user's action: errors are logged and audited."""
         try:
             return await self.rebuild()
         except Exception as exc:  # noqa: BLE001  the spreadsheet is a convenience copy of the books
             log.exception("Books.xlsx rebuild failed")
             try:
-                await self.audit(f"user:{user}", "books_rebuild_failed", {"error": f"{type(exc).__name__}: {exc}"})
+                await self.audit(actor, "books_rebuild_failed", {"error": f"{type(exc).__name__}: {exc}"})
             except Exception:  # noqa: BLE001
                 log.exception("could not audit the failed Books.xlsx rebuild")
             return None

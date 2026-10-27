@@ -151,5 +151,5 @@ async def scan_inbox_detailed(
         out.append(p)
     await books.record_scan(now())
     if any(p.decided_by == autopilot.AUTOPILOT for p in out):
-        await books.rebuild_safely(autopilot.AUTOPILOT)
+        await books.rebuild_safely(autopilot.ACTOR)
     return out, errors
