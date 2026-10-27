@@ -16,7 +16,7 @@ from collections import defaultdict
 from enum import StrEnum
 
 from app.checks import normalise_vat_number, p
-from app.schemas import ExtractedDoc, ExtractedLine, JournalLine
+from app.schemas import MILEAGE_CATEGORY, ExtractedDoc, ExtractedLine, JournalLine
 
 try:
     from accnomos_ledger.events import VatCode
@@ -37,12 +37,15 @@ CASH = "1210 Cash"
 CREDITORS = "2100 Creditors"
 DEBTORS = "1100 Debtors"
 SALES = "4000 Sales"
+#: The business owes the owner/director the mileage allowance: they paid for the journeys themselves.
+OWNER_LOAN = "2300 Owner / director loan"
 
 CATEGORY_ACCOUNTS: dict[str, str] = {
     "Materials": "5000 Materials",
     "Tools & small equipment": "5100 Tools & small equipment",
     "Office supplies": "7500 Office supplies",
     "Motor expenses": "7300 Motor expenses",
+    MILEAGE_CATEGORY: "7310 Motor — mileage allowance",
     "Travel": "7400 Travel",
     "Subsistence": "7410 Subsistence",
     "Software & subscriptions": "7510 Software & subscriptions",
@@ -82,6 +85,8 @@ def _doc_rate(doc: ExtractedDoc) -> float | None:
 
 
 def _settlement_account(doc: ExtractedDoc) -> str:
+    if doc.category_guess == MILEAGE_CATEGORY:
+        return OWNER_LOAN
     match doc.payment_method:
         case "cash":
             return CASH
