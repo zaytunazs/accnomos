@@ -1,0 +1,187 @@
+"""Wire and domain schemas for document extraction and proposals.
+
+`ExtractedDoc` is what the vision model returns. `extraction_json_schema()` turns
+its pydantic schema into the *strict* JSON-schema dialect that both backends
+accept (Meta Model API `strict: true` and Ollama `format`): every object closed
+with `additionalProperties: false`, every property listed in `required`,
+optionals expressed as `anyOf [..., null]`, no `$ref`/`oneOf`/`allOf`.
+"""
+
+from __future__ import annotations
+
+import copy
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field, field_validator
+
+DocType = Literal["receipt", "purchase_invoice", "sales_invoice"]
+PaymentMethod = Literal["card", "cash", "bank_transfer", "direct_debit", "cheque", "unknown"]
+Severity = Literal["fail", "warn"]
+Status = Literal["proposed", "needs_a_look"]
+
+#: Categories offered to the model (also enforced as an enum in the JSON schema).
+CATEGORIES: tuple[str, ...] = (
+    "Tools & small equipment",
+    "Materials",
+    "Office supplies",
+    "Motor expenses",
+    "Travel",
+    "Subsistence",
+    "Software & subscriptions",
+    "Telephone & internet",
+    "Rent",
+    "Utilities",
+    "Insurance",
+    "Professional fees",
+    "Advertising",
+    "Postage",
+    "Bank charges",
+    "Sales",
+    "Sundry",
+)
+
+
+def _money(v: float) -> float:
+    return round(float(v), 2)
+
+
+class ExtractedLine(BaseModel):
+    """One printed line item. Amounts in document currency, 2 dp."""
+
+    description: str
+    qty: float
+    unit_price: float
+    net: float
+    vat_rate: float | None = Field(description="0, 5 or 20; null if not shown")
+    vat: float
+
+    @field_validator("unit_price", "net", "vat")
+    @classmethod
+    def _round_money(cls, v: float) -> float:
+        return _money(v)
+
+
+class ExtractedDoc(BaseModel):
+    """Structured reading of one receipt or invoice."""
+
+    doc_type: DocType
+    supplier_name: str
+    supplier_vat_number: str | None
+    customer_name: str | None
+    invoice_number: str | None
+    date: str = Field(description="YYYY-MM-DD")
+    currency: str = Field(description="ISO code, e.g. GBP")
+    lines: list[ExtractedLine]
+    net_total: float
+    vat_total: float
+    gross_total: float
+    payment_method: PaymentMethod | None
+    card_last4: str | None
+    category_guess: str = Field(json_schema_extra={"enum": list(CATEGORIES)})
+    confidence: float = Field(description="0-1 self-estimate")
+
+    @field_validator("net_total", "vat_total", "gross_total")
+    @classmethod
+    def _round_money(cls, v: float) -> float:
+        return _money(v)
+
+    @field_validator("currency")
+    @classmethod
+    def _upper_currency(cls, v: str) -> str:
+        return v.strip().upper() or "GBP"
+
+    @field_validator("category_guess")
+    @classmethod
+    def _known_category(cls, v: str) -> str:
+        return v if v in CATEGORIES else "Sundry"
+
+    @field_validator("confidence")
+    @classmethod
+    def _clamp(cls, v: float) -> float:
+        return min(1.0, max(0.0, float(v)))
+
+    @field_validator("supplier_vat_number", "card_last4", "invoice_number", "customer_name")
+    @classmethod
+    def _blank_is_none(cls, v: str | None) -> str | None:
+        return v.strip() or None if isinstance(v, str) else v
+
+
+class Check(BaseModel):
+    code: str
+    ok: bool
+    severity: Severity
+    message: str
+
+
+class JournalLine(BaseModel):
+    account: str
+    debit_pence: int = 0
+    credit_pence: int = 0
+    vat_code: str | None = None
+
+
+class Proposal(BaseModel):
+    id: str
+    doc_sha256: str
+    extracted: ExtractedDoc
+    checks: list[Check]
+    status: Status
+    reasons: list[str]
+    suggested_filename: str
+    journal_draft: list[JournalLine]
+    model: str
+    elapsed_s: float
+
+
+# --------------------------------------------------------------------------- #
+# Strict JSON schema
+# --------------------------------------------------------------------------- #
+
+_DROP_KEYS = {"title", "default", "minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "examples"}
+
+
+def _is_nullable(s: dict[str, Any]) -> bool:
+    if s.get("type") == "null":
+        return True
+    if isinstance(s.get("type"), list) and "null" in s["type"]:
+        return True
+    return any(_is_nullable(b) for b in s.get("anyOf", []))
+
+
+def _strictify(node: Any, defs: dict[str, Any]) -> Any:
+    """Recursively inline $refs, drop non-strict keywords and close objects."""
+    if isinstance(node, list):
+        return [_strictify(n, defs) for n in node]
+    if not isinstance(node, dict):
+        return node
+
+    if "$ref" in node:
+        name = node["$ref"].rsplit("/", 1)[-1]
+        merged = {**copy.deepcopy(defs[name]), **{k: v for k, v in node.items() if k != "$ref"}}
+        return _strictify(merged, defs)
+
+    out: dict[str, Any] = {}
+    for key, value in node.items():
+        if key in _DROP_KEYS or key == "$defs":
+            continue
+        if key == "properties":
+            out[key] = {p: _strictify(s, defs) for p, s in value.items()}
+        else:
+            out[key] = _strictify(value, defs)
+
+    if out.get("type") == "object" or "properties" in out:
+        props: dict[str, Any] = out.setdefault("properties", {})
+        originally_required = set(node.get("required", []))
+        for name, schema in props.items():
+            if name not in originally_required and not _is_nullable(schema):
+                props[name] = {"anyOf": [schema, {"type": "null"}]}
+        out["type"] = "object"
+        out["required"] = list(props)
+        out["additionalProperties"] = False
+    return out
+
+
+def extraction_json_schema() -> dict[str, Any]:
+    """Strict JSON schema for `ExtractedDoc`, valid for both Ollama and Meta."""
+    raw = ExtractedDoc.model_json_schema()
+    return _strictify(raw, raw.get("$defs", {}))

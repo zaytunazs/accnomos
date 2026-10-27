@@ -11,6 +11,7 @@ members = ["services/runtime", "services/hmrc-relay", "packages/ledger", "packag
 [tool.uv.sources]
 accnomos-ledger = { workspace = true }
 accnomos-connectors = { workspace = true }
+accnomos-runtime = { workspace = true }
 
 [tool.ruff]
 line-length = 110

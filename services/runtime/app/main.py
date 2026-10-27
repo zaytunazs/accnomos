@@ -67,3 +67,7 @@ async def ai_test(cfg: AiConfig, x_meta_api_key: str | None = Header(default=Non
             want = cfg.model or os.getenv("OLLAMA_MODEL", "muse-glimmer:30b")
             return AiTestResult(ok=want in names, mode="local", model=want, detail=f"models: {', '.join(names)}")
     raise HTTPException(400, "mode must be 'key' or 'local'")
+
+from app.routes_extract import router as extract_router  # noqa: E402  POST /extract
+app.include_router(extract_router)
+
