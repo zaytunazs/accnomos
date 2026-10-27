@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import json
 from datetime import date, datetime, time, timedelta
+from itertools import pairwise
 
 import pytest
 from fastapi.testclient import TestClient
@@ -42,7 +43,7 @@ def visits(plan: planner.Plan) -> list[PlanItem]:
 
 def assert_no_overlaps(plan: planner.Plan, existing: list[CalendarEvent] = ()) -> None:  # type: ignore[assignment]
     mine = sorted((i for i in plan.items if i.kind != "existing"), key=lambda i: i.start)
-    for a, b in zip(mine, mine[1:]):
+    for a, b in pairwise(mine):
         assert a.end <= b.start, f"{a.title} overlaps {b.title}"
     for i in mine:
         for ev in existing:

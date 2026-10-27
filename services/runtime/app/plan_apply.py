@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import date, datetime, timedelta
+from itertools import pairwise
 from typing import Any
 
 from pydantic import BaseModel
@@ -85,7 +86,7 @@ def validate(day: date, items: Sequence[PlanItem]) -> list[PlanItem]:
     for i in new:
         if i.start < start or i.end > end:
             raise PlanError(f"“{i.title}” is not on {day.isoformat()}")
-    for a, b in zip(new, new[1:]):
+    for a, b in pairwise(new):
         if overlaps((a.start, a.end), (b.start, b.end)):
             raise PlanError(f"“{a.title}” and “{b.title}” overlap")
     return new

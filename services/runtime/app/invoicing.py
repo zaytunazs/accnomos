@@ -25,6 +25,7 @@ Sending and chasing need the user's explicit confirmation in the app (`confirm: 
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import re
 from collections import defaultdict
@@ -351,17 +352,18 @@ async def allocate_number(books: Books) -> str:
 
     A number is never reused: unwanted drafts are voided, not deleted, which keeps the sequence unbroken.
     """
+    got: dict[str, Any] = {}
+
+    def bump(seq: dict[str, Any]) -> dict[str, Any]:
+        prefix = str(seq.get("prefix", DEFAULT_SEQUENCE["prefix"])).upper()
+        if not PREFIX_RE.fullmatch(prefix):
+            prefix = DEFAULT_SEQUENCE["prefix"]
+        n = max(1, int(seq.get("next", 1)))
+        got["number"] = f"{prefix}{n:04d}"
+        return {**seq, "prefix": prefix, "next": n + 1}
+
     for _ in range(50):
-        got: dict[str, Any] = {}
-
-        def bump(seq: dict[str, Any]) -> dict[str, Any]:
-            prefix = str(seq.get("prefix", DEFAULT_SEQUENCE["prefix"])).upper()
-            if not PREFIX_RE.fullmatch(prefix):
-                prefix = DEFAULT_SEQUENCE["prefix"]
-            n = max(1, int(seq.get("next", 1)))
-            got["number"] = f"{prefix}{n:04d}"
-            return {**seq, "prefix": prefix, "next": n + 1}
-
+        got.clear()
         await books._update_json(SEQUENCE, dict(DEFAULT_SEQUENCE), bump)
         if not await books.exists(_path(got["number"])):  # sequence.json reset or hand-edited backwards
             return got["number"]
@@ -736,10 +738,8 @@ async def void_invoice(books: Books, number: str, user: str, reason: str) -> Inv
         if any(inv.event_id in ln.event_ids() for ln in await books.stored_bank_lines() if ln.status == "matched"):
             raise InvoiceStateError("A bank line is matched to this invoice; unmatch it first")
         reversal = reversal_of(await books.get_event(inv.event_id), user)
-        try:
+        with contextlib.suppress(FileExistsError):
             await books.post_event(reversal)
-        except FileExistsError:
-            pass
         inv.reversal_event_id = reversal.id
     inv.status, inv.voided_at, inv.void_reason = "void", now(), reason.strip()
     await save_invoice(books, inv)

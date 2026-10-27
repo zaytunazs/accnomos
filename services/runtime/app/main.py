@@ -17,11 +17,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
 from app import layout
-from app.ai.config import base_url_allowed
+from app.ai.config import TEST_AI_MODEL, base_url_allowed, is_test_mode, stub_ai_base
 from app.security import SecurityMiddleware, install_log_scrubbing, scrub
 
 install_log_scrubbing()
-from app.ai.config import TEST_AI_MODEL, is_test_mode, stub_ai_base
 
 app = FastAPI(title="Accnomos Agent Runtime", version="0.1.0")
 STARTED = time.time()

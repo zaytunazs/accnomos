@@ -91,9 +91,13 @@ def test_no_folder_name_literal_outside_paths_py() -> None:
         tree = ast.parse(p.read_text(encoding="utf-8"))
         docs = _docstrings(tree)
         for node in ast.walk(tree):
-            if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in docs:
-                if _hit(node.value):
-                    bad.append(f"{p.relative_to(ROOT)}:{node.lineno}: {node.value[:60]!r}")
+            if (
+                isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and id(node) not in docs
+                and _hit(node.value)
+            ):
+                bad.append(f"{p.relative_to(ROOT)}:{node.lineno}: {node.value[:60]!r}")
     assert not bad, "import the name from app/paths.py instead:\n" + "\n".join(bad)
 
 

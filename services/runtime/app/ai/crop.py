@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import io
 import json
 import logging
@@ -278,10 +279,8 @@ def parse_sam_boxes(data: dict[str, Any]) -> list[tuple[Box, float | None]]:
             _walk(json.loads(text), found)
         except json.JSONDecodeError:
             start, end = text.find("{"), text.rfind("}")
-            try:
+            with contextlib.suppress(json.JSONDecodeError):
                 _walk(json.loads(text[start : end + 1]), found) if 0 <= start < end else None
-            except json.JSONDecodeError:
-                pass
             if not found:
                 found = [(b, None) for q in _QUAD.findall(text) if (b := _as_box([float(n) for n in q]))]
     return found

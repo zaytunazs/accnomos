@@ -18,6 +18,7 @@ Money is integer pence throughout; hours are quarter-hour steps (app/jobs.py).
 from __future__ import annotations
 
 import calendar
+import contextlib
 import csv
 import io
 import logging
@@ -485,10 +486,9 @@ async def reopen(books: Books, period: str, user: str) -> PayRun:
     if run.status != "confirmed":
         raise PayrollConflict(f"The {period} pay run isn't confirmed")
     for event_id in run.event_ids:
-        try:
-            await undo(books, event_id, user)  # ApprovalError (e.g. a matched bank line) stops here
-        except (ProposalStateError, FileNotFoundError):
-            pass  # already undone by hand, or never written
+        # Already undone by hand, or never written, is fine; ApprovalError (e.g. a matched bank line) stops here.
+        with contextlib.suppress(ProposalStateError, FileNotFoundError):
+            await undo(books, event_id, user)
     run = run.model_copy(
         update={
             "status": "draft",

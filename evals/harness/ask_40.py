@@ -272,9 +272,7 @@ def has_gold(gold: str, text: str) -> bool:
     vals = _values(text)
     if want in vals:
         return True
-    if gold in SMALL and re.search(rf"\b({SMALL[gold]})\b", text, re.IGNORECASE):
-        return True
-    return False
+    return bool(gold in SMALL and re.search(rf"\b({SMALL[gold]})\b", text, re.IGNORECASE))
 
 
 def shipped_text(a: AskAnswer) -> str:

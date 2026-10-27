@@ -11,6 +11,7 @@ Nothing here posts to the ledger.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import re
 import uuid
@@ -116,9 +117,7 @@ async def unmatched_lines(books: Books) -> list[UnmatchedLine]:
     for ln in await books.list_bank_lines("unmatched"):
         status = None
         if ln.proposal_id:
-            try:
+            with contextlib.suppress(FileNotFoundError):
                 status = (await books.get_proposal(ln.proposal_id)).status
-            except FileNotFoundError:
-                pass
         out.append(UnmatchedLine(line=ln, suggested=suggest_action(ln), proposal_status=status))
     return out

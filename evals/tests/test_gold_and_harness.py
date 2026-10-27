@@ -22,7 +22,7 @@ NEW = [p for p in sorted(GOLD_DIR.glob("*.json")) if int(p.name[:3]) >= 61]
 
 def _vrn_ok(v: str) -> bool:
     d = re.sub(r"\D", "", v)
-    w = sum(int(c) * k for c, k in zip(d[:7], range(8, 1, -1))) + int(d[7:])
+    w = sum(int(c) * k for c, k in zip(d[:7], range(8, 1, -1), strict=False)) + int(d[7:])
     return len(d) == 9 and (w % 97 == 0 or (w + 55) % 97 == 0)
 
 

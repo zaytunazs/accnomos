@@ -407,7 +407,7 @@ def persona(spec: dict, rng: random.Random, i: int, taken: set[str]) -> dict:
 def vrn(rng: random.Random) -> str:
     """Fictional-looking GB VRN: leading 0 block, valid mod-97 checksum (old 9-digit scheme)."""
     d = [0, rng.randint(0, 9), rng.randint(0, 9)] + [rng.randint(0, 9) for _ in range(4)]
-    s = sum(x * w for x, w in zip(d, (8, 7, 6, 5, 4, 3, 2)))
+    s = sum(x * w for x, w in zip(d, (8, 7, 6, 5, 4, 3, 2), strict=True))
     chk = 97 - (s % 97)
     digits = "".join(map(str, d)) + f"{chk:02d}"
     return f"GB {digits[:3]} {digits[3:7]} {digits[7:]}"
@@ -601,7 +601,7 @@ def build(i: int, spec: dict, taken: set[str]) -> dict:
         for k, r_ in enumerate((20, 0, 5)):
             if k < len(rates):
                 rates[k] = r_
-        for it, r_ in zip(items, rates):
+        for it, r_ in zip(items, rates, strict=True):
             lines.append(gross_line(it["description"], it["qty"], float(it["unit_price"]), r_))
     elif rate == 0 or rate == 5 or rate == 20 and case == "utility":
         for it in items:

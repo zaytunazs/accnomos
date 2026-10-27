@@ -17,6 +17,7 @@ explanation arrives in one piece; OpenAI-compatible servers send it token by tok
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import re
 from collections import defaultdict
@@ -563,10 +564,8 @@ class AnswerText:
                 width = 12 if raw[i + 2 : i + 4].lower() in ("d8", "d9", "da", "db") else 6  # a surrogate pair
                 if i + width > len(raw):
                     break
-                try:
+                with contextlib.suppress(ValueError):
                     new.append(json.loads(f'"{raw[i : i + width]}"'))
-                except ValueError:
-                    pass
                 i += width
         self._pos = i
         text = "".join(new)

@@ -232,7 +232,10 @@ def missing(headers: Mapping[str, str], method: Method) -> list[str]:
     For mobile, Gov-Vendor-Version is also reported if it lacks the app *and* server pairs the spec requires.
     """
     gaps = [name for name in REQUIRED[method] if name not in headers]
-    if method == "MOBILE_APP_VIA_SERVER" and "Gov-Vendor-Version" in headers:
-        if headers["Gov-Vendor-Version"].count("=") < 2:
-            gaps.append("Gov-Vendor-Version")
+    if (
+        method == "MOBILE_APP_VIA_SERVER"
+        and "Gov-Vendor-Version" in headers
+        and headers["Gov-Vendor-Version"].count("=") < 2
+    ):
+        gaps.append("Gov-Vendor-Version")
     return gaps

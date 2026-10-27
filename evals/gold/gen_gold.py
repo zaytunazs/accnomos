@@ -78,9 +78,9 @@ def ask(prompt):
 def valid(d, case):
     try:
         lines = d["lines"]
-        net = round(sum(l["net"] for l in lines), 2)
-        vat = round(sum(l["vat"] for l in lines), 2)
-        ok_lines = all(abs(l["net"] + l["vat"] - round(l["net"] + l["vat"], 2)) < 0.011 for l in lines)
+        net = round(sum(ln["net"] for ln in lines), 2)
+        vat = round(sum(ln["vat"] for ln in lines), 2)
+        ok_lines = all(abs(ln["net"] + ln["vat"] - round(ln["net"] + ln["vat"], 2)) < 0.011 for ln in lines)
         totals_ok = abs(net - d["net_total"]) < 0.011 and abs(net + vat - d["gross_total"]) < 0.011
         vat_ok = abs(vat - d["vat_total"]) < 0.011
         if case == "arith_error":

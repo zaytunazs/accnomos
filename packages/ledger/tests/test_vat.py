@@ -111,19 +111,6 @@ def test_outside_period_and_no_vat_receipt():
     assert str(ret.vat_reclaimed) == "0.00" and ret.total_purchases_ex_vat == 4
 
 
-def reversal(ev: LedgerEvent) -> LedgerEvent:
-    """What approve.undo posts: every line on the other side, same date and amounts."""
-    return LedgerEvent(
-        kind="reversal",
-        date=ev.date,
-        net=ev.net,
-        vat=ev.vat,
-        reverses=ev.id,
-        lines=[Line(account=ln.account, debit=ln.credit, credit=ln.debit, vat_code=ln.vat_code) for ln in ev.lines],
-        **APPROVED,
-    )
-
-
 def test_undone_sale_nets_off_sales_and_undone_purchase_nets_off_purchases():
     s, p = sale(10000, 2000, date(2026, 9, 1)), purchase(5000, 1000, date(2026, 9, 2))
     ret = compute_vat_return([s, reversal(s), p], "26A3", date(2026, 7, 1), date(2026, 9, 30))

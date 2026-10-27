@@ -72,7 +72,7 @@ def _fit_font(lines: list[str]) -> Font:
 def _paper(text: str, rng: random.Random) -> Image.Image:
     lines = text.expandtabs(4).splitlines() or [""]
     hand = [ln.startswith("~") for ln in lines]  # '~' marks a handwritten line
-    lines = [ln[1:] if h else ln for ln, h in zip(lines, hand)]
+    lines = [ln[1:] if h else ln for ln, h in zip(lines, hand, strict=True)]
     font = _fit_font(lines)
     asc, desc = font.getmetrics() if hasattr(font, "getmetrics") else (12, 4)
     lh = int((asc + desc) * 1.25)
