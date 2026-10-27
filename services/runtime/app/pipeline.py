@@ -14,7 +14,7 @@ from app.ai.extract import extract_document
 from app.ai.verify import verify
 from app.checks import decide, run_checks
 from app.journal import draft_journal
-from app.repair import repair
+from app.repair import REPAIR_CODES, repair
 from app.schemas import Check, ExtractedDoc, Proposal, Verification
 
 _FIELD_LABEL = {
@@ -104,6 +104,7 @@ async def process_image(
         journal_draft=draft_journal(doc),
         model=f"{meta['backend']}:{meta['model']}",
         verification=verification,
+        repaired_by_code=[c.message for c in repairs if c.code in REPAIR_CODES],
         elapsed_s=round(time.perf_counter() - t0, 3),
         crop=cropped.public(),
     )

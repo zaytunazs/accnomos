@@ -2,6 +2,7 @@
 
 Found by the Claude-as-judge pass over 60 synthetic receipts (27 Oct): two systematic model errors
 that code can correct safely, each recorded as a Check so the user sees what was changed.
+Repairs to figures (REPAIR_CODES) are also listed on the proposal as `repaired_by_code`; never silent.
 """
 
 from __future__ import annotations
@@ -9,6 +10,7 @@ from __future__ import annotations
 import difflib
 import re
 
+from app.checks import gbp, p
 from app.schemas import Check, ExtractedDoc
 
 _STOP = re.compile(r"\b(ltd|limited|plc|llp|the|and|&|co|company|uk)\b", re.I)
@@ -47,6 +49,51 @@ def orient_doc_type(doc: ExtractedDoc, business_name: str | None) -> Check | Non
     return None
 
 
+def _single_rate(doc: ExtractedDoc) -> float | None:
+    """The one non-zero VAT rate every line carries, else None (mixed, unknown or no lines)."""
+    rates = {ln.vat_rate for ln in doc.lines}
+    if len(rates) != 1 or None in rates:
+        return None
+    rate = rates.pop()
+    return rate if rate else None
+
+
+def repair_vat_inclusive_totals(doc: ExtractedDoc) -> Check | None:
+    """Fix totals where the VAT-inclusive TOTAL was read as the net. Only from the document's own figures.
+
+    Three signatures (VAT > 0 in each; when every line has one rate, the repaired VAT must be that rate of
+    the repaired net, to the same tolerance VAT_MATH uses):
+    * net == gross and net + VAT != gross: the total was copied into net, so net = gross - VAT;
+    * net x (1 + rate) == gross but VAT != gross - net: VAT misread, so VAT = gross - net;
+    * net + VAT == gross but VAT is the VAT *share* of net (net x rate / (100 + rate)), not rate x net:
+      the printed total was taken as net and VAT added on top, so gross = that total, net = total - VAT.
+    """
+    net, vat, gross = p(doc.net_total), p(doc.vat_total), p(doc.gross_total)
+    if vat <= 0:
+        return None
+    rate = _single_rate(doc)
+    tol = 2 + len(doc.lines)
+
+    def vat_fits(n: int) -> bool:
+        return rate is None or abs(round(n * rate / 100) - vat) <= tol
+
+    if abs(net + vat - gross) > 1:
+        if abs(net - gross) <= 1 and vat_fits(gross - vat):
+            doc.net_total = (gross - vat) / 100
+            msg = f"Net {gbp(net)} was the VAT-inclusive total; net set to total {gbp(gross)} − VAT {gbp(vat)} = {gbp(gross - vat)}"
+        elif rate is not None and abs(round(net * (100 + rate) / 100) - gross) <= 1:
+            doc.vat_total = (gross - net) / 100
+            msg = f"VAT {gbp(vat)} did not fit net {gbp(net)} and total {gbp(gross)} at {rate:g}%; VAT set to {gbp(gross - net)}"
+        else:
+            return None
+    elif rate is not None and abs(round(net * rate / 100) - vat) > tol and abs(round(net * rate / (100 + rate)) - vat) <= tol:
+        doc.gross_total, doc.net_total = net / 100, (net - vat) / 100
+        msg = f"VAT had been added on top of the VAT-inclusive total {gbp(net)}; total set to {gbp(net)}, net to {gbp(net - vat)}"
+    else:
+        return None
+    return Check(code="TOTALS_REPAIRED", ok=True, severity="warn", message=msg)
+
+
 def repair_line_totals(doc: ExtractedDoc) -> Check | None:
     """Fix lines where the printed line TOTAL was read as the unit price and multiplied by qty again.
 
@@ -78,6 +125,10 @@ def repair_line_totals(doc: ExtractedDoc) -> Check | None:
     return Check(code="LINES_REPAIRED", ok=True, severity="warn", message=f"{fixed} line(s): printed line total had been read as unit price; corrected")
 
 
+REPAIR_CODES = ("TOTALS_REPAIRED", "LINES_REPAIRED")
+
+
 def repair(doc: ExtractedDoc, business_name: str | None) -> list[Check]:
-    notes = [orient_doc_type(doc, business_name), repair_line_totals(doc)]
+    """Orientation, then totals, then lines."""
+    notes = [orient_doc_type(doc, business_name), repair_vat_inclusive_totals(doc), repair_line_totals(doc)]
     return [n for n in notes if n is not None]
