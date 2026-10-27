@@ -71,6 +71,19 @@ export default function AppShell({ children }: { children: ReactNode }) {
         </aside>
         <main className="min-w-0 flex-1 px-4 pb-28 pt-6 sm:px-8 min-[900px]:py-8 min-[900px]:pb-8">
           <div className="mx-auto w-full max-w-3xl">{children}</div>
+          <footer className="mx-auto mt-10 w-full max-w-3xl border-t border-border pt-4 pb-2">
+            <nav aria-label="About" className="flex flex-wrap gap-x-5 gap-y-2 text-sm font-semibold text-muted">
+              <Link href="/how-it-works" className="hover:text-teal-dark hover:underline underline-offset-2">
+                How it works
+              </Link>
+              <Link href="/privacy" className="hover:text-teal-dark hover:underline underline-offset-2">
+                Privacy
+              </Link>
+              <Link href="/settings" className="hover:text-teal-dark hover:underline underline-offset-2">
+                Settings
+              </Link>
+            </nav>
+          </footer>
         </main>
       </div>
       {/* Phone tab bar (Home, Review, Ask, VAT, Files) lives in AppNav. */}
