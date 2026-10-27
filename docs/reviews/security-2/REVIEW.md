@@ -1,40 +1,61 @@
-# Review: second security pass
+# Review: `claude/security-2`
 
-What was added after the first pass (`docs/reviews/security/REVIEW.md`): invoices, chat and voice actions, the day
-planner, inbox triage and draft replies, to-dos, payroll, the folder migration, test mode, the relay's client-address
-change and the Graph calls that send mail, create events and rename folders.
+Second security pass (brief in `TASK_BRIEF.md`; the implementer's own record is `docs/reviews/security-2/REVIEW.md`).
 
-## How it was checked
+## What was checked
 
-- Every router registered in `services/runtime/app/main.py` was read, with `app/actions.py`, `invoicing.py`,
-  `pdf.py`, `plan_apply.py`, `layout.py`, `paths.py`, `testmode.py`, `msgraph.py` and the relay diff since `09eab66`.
-- The rules that apply to every route are now tests that walk the registered routes or parse `app/` (AST), so a new
-  router cannot skip them: `services/runtime/tests/test_security_routes.py`.
-- Tests: runtime 740 passed (677 before), connectors 43 (37), relay 102 (unchanged), `pnpm run build` passes.
+- **Suites run:** `packages/connectors` 43 passed, `packages/ledger` 35 passed, `services/hmrc-relay` 102 passed,
+  `services/runtime` 741 passed + 1 skipped (740 before the test added here). `apps/web` `pnpm run build` passes
+  (no web files changed on this branch; run anyway because the implementer's record says it passed).
+- **Diff read in full** (`git diff origin/main...HEAD`, 35 files): `StrictBody`/`Day`/`Pence` and `LENIENT`
+  reading back user files (checked pydantic 2.14's `extra=` override reaches nested models, so hand-edited
+  invoices and vehicles still open); create-only writes in `Books._update`, the fake provider and Graph
+  (`conflictBehavior=fail` → 409 → `FileExistsError`; test-mode storage is the fake provider, so e2e is unaffected);
+  the Graph-origin check in `_request` (needs the trailing `/`, so `graph.microsoft.com.evil` is refused); stale
+  `approving` handling in approve and reject; the tenant bound into the signing key only in test mode; logo
+  sniffing, Pillow decode and 4000 px limit; `load_logo` reading only the two upload targets; the fpdf page alias;
+  the 2 MB logo cap in the middleware and nginx; audit actors (`user:` prefix on rebuilds); CORS `PATCH`.
+- **Product rules:** no user database (everything stays in the user's OneDrive); actions are still proposed by
+  the model, approved by the user and priced by code; money remains integer pence; no synthetic data was added.
+- **Brief items that the diff doesn't touch:** `routes_mail.py` (draft replies are `html.escape`d in
+  `msgraph.py`, tested in `packages/connectors/tests/test_mail.py`), `routes_contacts.py` and
+  `routes_dashboard.py`. They are covered by the route-walking tests in `test_security_routes.py` (strict
+  bodies, length caps, `X-User` on writes).
+- **Docs:** `docs/SECURITY.md`, `docs/ACTIONS.md`, `docs/HONESTY.md`, `docs/REMAINING.md`, `deploy/README.md`
+  match the code. README *What works today* did not mention the second pass, so I added it.
 
-## Findings
+## What I fixed
 
-| Severity | Where | Finding | Outcome |
-|---|---|---|---|
-| High | `books.py` `_update`, `actions.py` | A new file was written with no precondition, so when the month's actions log did not exist yet two approvals at the same moment both claimed the action and both ran it (an invoice could be emailed twice) | Fixed: create-only writes (`create_only`, Graph `conflictBehavior=fail`). `test_two_approvals_at_once_execute_once` fails without the fix |
-| Medium | `msgraph.py` `_request` | The Graph token was attached to any `nextLink`, `deltaLink` or cursor URL | Fixed: refused outside `https://graph.microsoft.com/`. `test_the_token_never_follows_a_link_off_graph` |
-| Medium | `routes_invoices.py` logo | The declared `Content-Type` was trusted, so any bytes became `logo.png` and reached Pillow in the PDF renderer; no pixel limit | Fixed: magic bytes, decode, 4000 px. `test_logo_is_sniffed_decoded_and_size_checked` |
-| Medium | `invoicing.py` `logo_path` | The profile could point the logo at any file under `_System/Invoicing/`, and a hand-edited profile at any file at all | Fixed: only the two upload targets are accepted or read. `test_a_hand_edited_logo_path_is_not_read` |
-| Medium | 20 body models (actions, invoices, plan, payroll, mileage) | Unknown fields silently accepted; several free-text fields without a length cap | Fixed: `StrictBody` everywhere, caps added. `test_every_request_body_forbids_unknown_fields`, `test_every_free_text_field_in_a_body_has_a_length_cap` |
-| Low | invoice, payroll, plan, mileage, timesheet bodies | Dates accepted Unix timestamps and datetimes; pence accepted `12.0`, `"12"`, `true` | Fixed: `Day`, `Pence`. `test_dates_and_money_are_parsed_strictly` |
-| Low | `actions.py` | No way out of a stuck `approving` line | Fixed: never re-run; after 10 minutes rejecting the card clears it (`docs/ACTIONS.md`). `test_a_stale_approving_lock_is_never_rerun_and_rejecting_clears_it` |
-| Low | `actions.py` (test mode) | A card signed in one `X-Test-Tenant` verified in another | Fixed: the tenant is part of the key in test mode. `test_in_test_mode_a_card_is_bound_to_its_tenant` |
-| Low | `invoicing.py`, `payroll.py` | A failed Books.xlsx rebuild was audited under the bare e-mail address, not `user:` | Fixed. `test_every_audit_actor_is_user_or_agent` |
-| Low | `actions.py` `run_mileage` | Approving a mileage action always failed (empty purpose; `add_entry` called without the user, so no `user:` audit) | Fixed. `test_approved_mileage_is_logged_and_audited_as_the_user` |
-| Low | `security.py`, `deploy/nginx.conf` | A 1 MB logo could not arrive (256 KB cap) and the edge had no location for it | Fixed: 2 MB on that path in both. `test_edge_nginx_lets_every_upload_route_through_at_the_runtimes_cap` |
-| Low | `pdf.py` | fpdf2 replaced `{nb}` anywhere in the document, so typed-in text could change | Fixed: private alias, control characters stripped. `test_pdf_text_cannot_use_fpdfs_page_count_alias` |
-| Low | `main.py` CORS | `PATCH` (vehicle and mileage edits from the web app) was refused in the browser | Fixed. `test_cors_allows_every_method_a_route_uses_and_no_other` |
-| Low | `routes_jobs.py` | `MarkInvoicedBody.entry_ids` had no item limit (left open by the first pass) | Fixed: 1000 ids of up to 32 characters |
-| Info | test mode | Inert without `ACCNOMOS_TEST_MODE=1` | Confirmed and now tested in a fresh interpreter; workflows checked |
-| Info | relay | Client address from the last `X-Forwarded-For` hop; `CF-Connecting-IP` no longer read (closes the first pass's open item) | Confirmed |
-| Accepted | see `docs/SECURITY.md` | Test-mode tenants by header; Graph's download redirect; one shared rate limit; to-do links; prompt injection in triage and reminders; free-form `preview`; per-process signing key; `/pdf` without `X-User`; `/health` counts | Recorded with reasons in *Accepted after the second pass* |
+- `8d1d286`: a new test. A real PNG between 1 MB and 2 MB gets past the middleware's body cap and must be
+  refused by the route's own 1 MB check (413, nothing written). The brief asked for the 1 MB limit, but no test
+  covered that band.
+- `02dddc1`: the README Security row now covers the second pass, lists `test_security_routes.py`, and names
+  the open item about the action card.
 
-## Not done
+No code defects needed fixing. One thing I checked and left alone: in `run_mileage` the `[:200]` cut only
+applies to the "from to to" fallback, not to `job_name`. That is safe, because `Job.name` is already capped at
+200 and loaded with that check.
 
-- Nothing was run against `api.accnomos.com`, the images were not built and `nginx -t` was not run (config tests only).
-- The action card in the web app does not yet explain the stale-lock path; the API and `docs/ACTIONS.md` do.
+## What remains
+
+- The web action card does not explain the stale-`approving` path (wait 10 minutes, check, Reject, ask again);
+  only the API message and `docs/ACTIONS.md` do.
+- Nothing was run against a real Graph tenant, model or `api.accnomos.com`; the images were not built and
+  `nginx -t` was not run (the deploy files are checked by config tests only).
+- The logo upload shares the general per-IP rate limit (60/min), which allows up to about 120 MB a minute from
+  one address. This is accepted in `docs/SECURITY.md`; volumetric protection is left to the front proxy.
+- Without `ACTIONS_SIGNING_KEY` the signing key is random per process (cards fail after a restart or across
+  replicas). This is documented, not changed.
+- `TASK_BRIEF.md` is committed at the repo root (the `wip` checkpoint `921e48c`); drop it before merging if
+  briefs shouldn't live in `main`.
+
+## How to verify by hand
+
+Run `pytest -q` in `packages/connectors`, `packages/ledger`, `services/hmrc-relay` and `services/runtime`, and
+`pnpm run build` in `apps/web`; all should pass. Then start the runtime (`uvicorn app.main:app` in
+`services/runtime`, `ACCNOMOS_TEST_MODE` unset) and confirm `POST /__test/reset` returns 404. With a test-mode
+runtime (`ACCNOMOS_TEST_MODE=1`), post a GIF renamed to `logo.png` to `/invoices/profile/logo` with
+`X-Graph-Token` and `X-User` set and expect 415. Post a 5000×1 PNG and expect 413. Post a small real PNG and
+expect 200 with `logo_path: "_System/Invoicing/logo.png"`. Post an invoice draft with `"issue_date": 1700000000`
+or `"unit_price_pence": 12.5` and expect 422. In Ask, make a timesheet card and approve it twice: the second
+answer is `already_done` and only one timesheet entry exists.
