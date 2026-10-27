@@ -169,6 +169,71 @@ def test_unknown_fields_on_the_new_routes_are_a_422(client: TestClient, method: 
 
 
 # --------------------------------------------------------------------------- #
+# Outbound: Graph (the connector), allow-listed AI base URLs, Baseten. No URL from a document, email or to-do.
+# --------------------------------------------------------------------------- #
+
+APP = __import__("pathlib").Path(__file__).resolve().parents[1] / "app"
+NET_MODULES = {"httpx", "requests", "urllib.request", "aiohttp", "socket", "http.client", "urllib3"}
+#: The only runtime modules that may import an HTTP library, and what they call.
+TALKS_HTTP = {
+    "main.py": "/ai/test: the allow-listed AI base URL",
+    "ai/ask.py": "cfg.base_url", "ai/extract.py": "cfg.base_url", "ai/crop.py": "cfg.base_url (SAM, key mode)",
+    "ai/voice.py": "cfg.base_url", "ai/verify.py": "cfg.base_url or BASETEN_BASE",
+    "ai/remind.py": "httpx errors only", "ai/plan.py": "httpx errors only", "ai/triage.py": "httpx errors only",
+}
+
+
+def _modules_importing_http() -> set[str]:
+    import ast
+
+    found = set()
+    for path in APP.rglob("*.py"):
+        for node in ast.walk(ast.parse(path.read_text())):
+            names = ([a.name for a in node.names] if isinstance(node, ast.Import)
+                     else [node.module or ""] if isinstance(node, ast.ImportFrom) else [])
+            if any(n in NET_MODULES or n.split(".")[0] in {"httpx", "requests", "aiohttp", "urllib3"} for n in names):
+                found.add(path.relative_to(APP).as_posix())
+    return found
+
+
+def test_only_known_modules_can_make_http_calls():
+    assert _modules_importing_http() == set(TALKS_HTTP)
+
+
+def test_every_runtime_http_call_goes_to_an_allow_listed_base_and_follows_no_redirects():
+    """Request URLs are f"{<base_url>}/..." where the base is the AI config (allow-listed in app/ai/config.py),
+    the verifier backend (that config, or the BASETEN_BASE constant) or /ai/test's checked `base`; never a URL
+    read from a document, an email, a to-do or a model reply. And no client follows a redirect off that host."""
+    import ast
+
+    calls = 0
+    for rel in TALKS_HTTP:
+        for node in ast.walk(ast.parse((APP / rel).read_text())):
+            if isinstance(node, ast.Call) and ast.unparse(node.func) in ("httpx.AsyncClient", "httpx.Client"):
+                assert not any(k.arg == "follow_redirects" and ast.unparse(k.value) != "False" for k in node.keywords), rel
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ("get", "post")
+                    and ast.unparse(node.func.value) in ("client", "http")):
+                calls += 1
+                url = node.args[0]
+                assert isinstance(url, ast.JoinedStr) and isinstance(url.values[0], ast.FormattedValue), f"{rel}:{node.lineno}"
+                assert ast.unparse(url.values[0].value) in ("cfg.base_url", "be.base_url", "base", "cfg.base_url.rstrip('/')"), \
+                    f"{rel}:{node.lineno} {ast.unparse(url)}"
+    assert calls >= 9
+
+
+def test_the_verifier_only_leaves_for_baseten_or_the_users_own_ai():
+    from app.ai.config import AiConfig
+    from app.ai.verify import BASETEN_BASE, select_backend
+
+    assert BASETEN_BASE.startswith("https://inference.baseten.co")
+    local = AiConfig(mode="local", base_url="http://127.0.0.1:11434", model="m")
+    assert select_backend(local, {"BASETEN_API_KEY": "k"}).base_url == local.base_url  # type: ignore[union-attr]
+    key = AiConfig(mode="key", base_url="https://api.meta.ai/v1", model="m", api_key="k")
+    assert select_backend(key, {"BASETEN_API_KEY": "b"}).base_url == BASETEN_BASE  # type: ignore[union-attr]
+    assert select_backend(key, {}).base_url == key.base_url  # type: ignore[union-attr]
+
+
+# --------------------------------------------------------------------------- #
 # Upload caps and rate limits on the logo route
 # --------------------------------------------------------------------------- #
 

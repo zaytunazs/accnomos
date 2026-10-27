@@ -94,6 +94,28 @@ async def test_write_412_raises_conflict_and_sends_if_match():
         await g.write("_System/rules.json", b"[]", if_match='"old"')
 
 
+@pytest.mark.parametrize("link", [
+    "https://evil.example/v1.0/me/drive/root/delta?token=x",
+    "http://graph.microsoft.com/v1.0/me/drive/root/delta",      # downgraded scheme
+    "https://graph.microsoft.com.evil.example/v1.0/x",          # look-alike host
+    "https://graph.microsoft.com@evil.example/v1.0/x",          # userinfo trick
+])
+async def test_the_token_never_follows_a_link_off_graph(link: str):
+    """A nextLink or delta cursor is followed with the bearer token, so only Graph's own origin is accepted."""
+    hosts: list[str] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        hosts.append(req.url.host)
+        return httpx.Response(200, json={"value": [], "@odata.nextLink": link})
+
+    g = _provider(handler)
+    with pytest.raises(ValueError, match="outside https://graph.microsoft.com"):
+        await g.changes(None)
+    with pytest.raises(ValueError):
+        await g.changes(link)
+    assert hosts == ["graph.microsoft.com"]  # only the first, genuine page was requested
+
+
 async def test_create_only_asks_graph_to_fail_on_an_existing_file():
     seen: list[str] = []
 

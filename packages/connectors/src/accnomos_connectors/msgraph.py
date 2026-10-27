@@ -40,7 +40,8 @@ from accnomos_connectors.base import (
     StorageProvider,
 )
 
-GRAPH = "https://graph.microsoft.com/v1.0"
+GRAPH_ORIGIN = "https://graph.microsoft.com"
+GRAPH = f"{GRAPH_ORIGIN}/v1.0"
 SIMPLE_UPLOAD_MAX = 4 * 1024 * 1024
 MAX_RETRIES = 3
 MAX_RETRY_AFTER_S = 30.0
@@ -114,7 +115,12 @@ class _GraphHttp:
     async def _request(
         self, method: str, url: str, *, auth: bool = True, ok404: bool = False, **kw: Any
     ) -> httpx.Response:
-        """Send with retries on 429/503 (honouring Retry-After) and map errors to exceptions."""
+        """Send with retries on 429/503 (honouring Retry-After) and map errors to exceptions.
+
+        The user's token only ever goes to Graph: a nextLink, deltaLink or cursor naming any other host is refused
+        before anything is sent. Pre-authenticated URLs (upload sessions) are called with auth=False."""
+        if auth and not url.startswith(f"{GRAPH_ORIGIN}/"):
+            raise ValueError(f"refusing to send the Graph token outside {GRAPH_ORIGIN}")
         headers = {**(self._auth if auth else {}), **kw.pop("headers", {})}
         for attempt in range(MAX_RETRIES + 1):
             resp = await self._client.request(method, url, headers=headers, **kw)
