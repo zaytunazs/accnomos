@@ -1,0 +1,60 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Lincolnshire Locksmith & Hardware Ltd",
+  "vat_number": "GB 054 5559 57",
+  "address": "14 Grantham Road, Lincoln, LN2 1AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-02",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Brass Mortice Lock 64mm",
+   "qty": 2,
+   "unit_price": 20.415,
+   "net": 40.83,
+   "vat_rate": 20,
+   "vat": 8.17,
+   "vat_code": "T1"
+  },
+  {
+   "description": "SS Deadbolt 38mm",
+   "qty": 1,
+   "unit_price": 15.62,
+   "net": 15.62,
+   "vat_rate": 20,
+   "vat": 3.13,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Door Closer 350mm",
+   "qty": 1,
+   "unit_price": 35.0,
+   "net": 35.0,
+   "vat_rate": 20,
+   "vat": 7.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 91.45,
+ "vat_total": 18.3,
+ "gross_total": 109.75,
+ "net_pence": 9145,
+ "vat_pence": 1830,
+ "gross_pence": 10975,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "5134",
+ "category_hint": "Ironmongers",
+ "printed_text": "    LINCOLNSHIRE LOCKSMITH & HARDWARE LTD\n               14 Grantham Road\n               Lincoln LN2 1AB\n               Tel 01522 555012\n            VAT No GB 054 5559 57\n\n02/07/26                                 12:33\n----------------------------------------------\n2 x Brass Mortice Lock 64mm              49.00\nSS Deadbolt 38mm                         18.75\nDoor Closer 350mm                        42.00\n----------------------------------------------\nTOTAL                                  £109.75\nVAT 20%  net 91.45                       18.30\nCARD ****5134 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_trade",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

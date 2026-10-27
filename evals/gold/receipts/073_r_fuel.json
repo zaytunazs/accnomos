@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Northumbria Rapid Fuels Ltd",
+  "vat_number": "GB 011 1897 06",
+  "address": "14 The Dene, Durham, DH1 3QT"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-10-23",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "UNLEADED",
+   "qty": 42.86,
+   "unit_price": 1.3224,
+   "net": 56.68,
+   "vat_rate": 20,
+   "vat": 11.34,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 56.68,
+ "vat_total": 11.34,
+ "gross_total": 68.02,
+ "net_pence": 5668,
+ "vat_pence": 1134,
+ "gross_pence": 6802,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "3912",
+ "category_hint": "Forecourt Convenience Goods",
+ "printed_text": "         NORTHUMBRIA RAPID FUELS LTD\n                 14 The Dene\n                Durham DH1 3QT\n            VAT No GB 011 1897 06\n\n23 Oct 2026                              12:28\nPUMP 4\n----------------------------------------------\nUNLEADED\n42.86 L @ 158.7p/L\nFUEL                                    £68.02\n----------------------------------------------\nTOTAL                                   £68.02\nVAT 20%  net 56.68                       11.34\nCARD ****3912\n\n                 Drive safely\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_fuel",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

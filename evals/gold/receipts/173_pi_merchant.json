@@ -1,0 +1,69 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Calder Valley Timber & Joinery Supplies",
+  "vat_number": "GB 073 6259 56",
+  "address": "Unit 4, Mill Lane, Halifax, HX3 5QZ"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "CVT-85616",
+ "date": "2026-08-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Solid Oak Door Frame, 84in x 4in",
+   "qty": 2,
+   "unit_price": 45.5,
+   "net": 91.0,
+   "vat_rate": 20,
+   "vat": 18.2,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Reclaimed Pine Plank, 12ft x 6in",
+   "qty": 5,
+   "unit_price": 38.0,
+   "net": 190.0,
+   "vat_rate": 20,
+   "vat": 38.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Brass Archimedes Hinge, 4in",
+   "qty": 12,
+   "unit_price": 4.75,
+   "net": 57.0,
+   "vat_rate": 20,
+   "vat": 11.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Wood Filler, Sanded Colour, 250g Tub",
+   "qty": 3,
+   "unit_price": 6.2,
+   "net": 18.6,
+   "vat_rate": 20,
+   "vat": 3.72,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 356.6,
+ "vat_total": 71.32,
+ "gross_total": 427.92,
+ "net_pence": 35660,
+ "vat_pence": 7132,
+ "gross_pence": 42792,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Timber Merchants",
+ "printed_text": "CALDER VALLEY TIMBER & JOINERY SUPPLIES\nUnit 4, Mill Lane\nHalifax HX3 5QZ\nTel 01422 245 678\nVAT Reg No: GB 073 6259 56\n\n                 TAX INVOICE\nNo:   CVT-85616\nDate: 14 Aug 2026\nDue:  13/09/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nSolid Oak Door Fra   2    45.50     91.00   20\nReclaimed Pine Pla   5    38.00    190.00   20\nBrass Archimedes H  12     4.75     57.00   20\nWood Filler, Sande   3     6.20     18.60   20\n----------------------------------------------\nNET TOTAL                               356.60\nVAT 20%  net 356.60                      71.32\nTOTAL DUE                              £427.92\n\n\nPay by BACS: Sort 40-35-97  Acc 12938552\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_merchant",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

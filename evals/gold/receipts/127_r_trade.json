@@ -1,0 +1,60 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Halifax Timber & Tool Co",
+  "vat_number": "GB 017 0070 27",
+  "address": "12 Mill Lane, Halifax, HX1 1QT"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-08-25",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "2x4x8ft T&G Softwood Board",
+   "qty": 4,
+   "unit_price": 15.4175,
+   "net": 61.67,
+   "vat_rate": 20,
+   "vat": 12.33,
+   "vat_code": "T1"
+  },
+  {
+   "description": "100mm x 50mm x 2.4m Redwood Post",
+   "qty": 2,
+   "unit_price": 20.825,
+   "net": 41.65,
+   "vat_rate": 20,
+   "vat": 8.33,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Box of 100x 1.25\" Framing Nails",
+   "qty": 1,
+   "unit_price": 5.62,
+   "net": 5.62,
+   "vat_rate": 20,
+   "vat": 1.13,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 108.94,
+ "vat_total": 21.79,
+ "gross_total": 130.73,
+ "net_pence": 10894,
+ "vat_pence": 2179,
+ "gross_pence": 13073,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "6926",
+ "category_hint": "timber_yard",
+ "printed_text": "           HALIFAX TIMBER & TOOL CO\n                 12 Mill Lane\n               Halifax HX1 1QT\n              Tel 01422 555 019\n            VAT No GB 017 0070 27\n\n25/08/2026                               15:53\n----------------------------------------------\n4 x 2x4x8ft T&G Softwood Board           74.00\n2 x 100mm x 50mm x 2.4m Redwood Post     49.98\nBox of 100x 1.25\" Framing Nails           6.75\n----------------------------------------------\nTOTAL                                  £130.73\nVAT 20%  net 108.94                      21.79\nCARD ****6926 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_trade",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

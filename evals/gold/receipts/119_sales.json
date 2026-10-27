@@ -1,0 +1,51 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "North Yorkshire Property Ltd"
+ },
+ "invoice_number": "BRW-2026-0572",
+ "date": "2026-09-18",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bespoke Oak Staircase (12 risers, open tread)",
+   "qty": 1,
+   "unit_price": 3500.0,
+   "net": 3500.0,
+   "vat_rate": 20,
+   "vat": 700.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Pine Fitted Wardrobe (2400x600mm)",
+   "qty": 2,
+   "unit_price": 850.0,
+   "net": 1700.0,
+   "vat_rate": 20,
+   "vat": 340.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 5200.0,
+ "vat_total": 1040.0,
+ "gross_total": 6240.0,
+ "net_pence": 520000,
+ "vat_pence": 104000,
+ "gross_pence": 624000,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01423 456789\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0572\nDate: 18/09/26\nDue:  02/10/2026\n\nTo: North Yorkshire Property Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBespoke Oak Stairc   1 3,500.00  3,500.00   20\nSolid Pine Fitted    2   850.00  1,700.00   20\n----------------------------------------------\nNET TOTAL                             5,200.00\nVAT 20%  net 5,200.00                 1,040.00\nTOTAL DUE                            £6,240.00\n\n\nPay by BACS: Sort 40-56-49  Acc 93935382\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

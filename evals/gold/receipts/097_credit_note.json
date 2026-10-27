@@ -1,0 +1,42 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Huddersfield Heritage Restorations"
+ },
+ "invoice_number": "CN-BRW-2026-0783",
+ "date": "2026-08-29",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Custom oak door frame, 2000mm x 760mm, with ironmongery",
+   "qty": 1,
+   "unit_price": 450.0,
+   "net": -450.0,
+   "vat_rate": 20,
+   "vat": -90.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": -450.0,
+ "vat_total": -90.0,
+ "gross_total": -540.0,
+ "net_pence": -45000,
+ "vat_pence": -9000,
+ "gross_pence": -54000,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": true,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Cabinetmaking",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01274 555 0192\nVAT Reg No: GB 123 4567 89\n\n                 CREDIT NOTE\nNo:   CN-BRW-2026-0783\nDate: 29/08/2026\nRe invoice BRW-2026-0559\n\nTo: Huddersfield Heritage Restorations\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nCustom oak door fr   1   450.00   -450.00   20\n----------------------------------------------\nNET TOTAL                              -450.00\nVAT 20%  net -450.00                    -90.00\nTOTAL CREDIT                          £-540.00\n\nReason: Price adjustment due to specification change on original order\n\nCredit to be refunded / offset on account\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "credit_note",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

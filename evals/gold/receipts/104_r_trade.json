@@ -1,0 +1,60 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Harrowgate Ironmongers & Co",
+  "vat_number": "GB 026 5192 84",
+  "address": "42 Copperfield Lane, York, YO1 9QZ"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-01",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Solid Oak Interior Door Handle Set (Brass)",
+   "qty": 2,
+   "unit_price": 37.5,
+   "net": 75.0,
+   "vat_rate": 20,
+   "vat": 15.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Brass Cylinder Mortise Lock 30mm",
+   "qty": 3,
+   "unit_price": 15.4167,
+   "net": 46.25,
+   "vat_rate": 20,
+   "vat": 9.25,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Stainless Steel Hinge 75mm x 75mm",
+   "qty": 12,
+   "unit_price": 3.5417,
+   "net": 42.5,
+   "vat_rate": 20,
+   "vat": 8.5,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 163.75,
+ "vat_total": 32.75,
+ "gross_total": 196.5,
+ "net_pence": 16375,
+ "vat_pence": 3275,
+ "gross_pence": 19650,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "1691",
+ "category_hint": "Ironmongers",
+ "printed_text": "         HARROWGATE IRONMONGERS & CO\n             42 Copperfield Lane\n                 York YO1 9QZ\n              Tel 01904 555 0192\n            VAT No GB 026 5192 84\n\n01/07/2026                               18:49\n----------------------------------------------\n2 x Solid Oak Interior Door Handle Set ( 90.00\n3 x Brass Cylinder Mortise Lock 30mm     55.50\n12 x Stainless Steel Hinge 75mm x 75mm   51.00\n----------------------------------------------\nTOTAL                                  £196.50\nVAT 20%  net 163.75                      32.75\nCARD ****1691 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_trade",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

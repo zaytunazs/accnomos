@@ -1,0 +1,60 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "LeedsLogic SaaS Ltd",
+  "vat_number": "GB 028 9222 69",
+  "address": "14 Mill Lane, Leeds, LS1 5HL"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "LSL-95216",
+ "date": "2026-10-13",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Annual Subscription - Blueprint CAD Pro (Single Seat)",
+   "qty": 1,
+   "unit_price": 499.0,
+   "net": 499.0,
+   "vat_rate": 20,
+   "vat": 99.8,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Annual Subscription - LedgerLink Accounts (Team Plan)",
+   "qty": 1,
+   "unit_price": 899.0,
+   "net": 899.0,
+   "vat_rate": 20,
+   "vat": 179.8,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Annual Subscription - StockPilot Inventory Control (Standard)",
+   "qty": 1,
+   "unit_price": 350.0,
+   "net": 350.0,
+   "vat_rate": 20,
+   "vat": 70.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 1748.0,
+ "vat_total": 349.6,
+ "gross_total": 2097.6,
+ "net_pence": 174800,
+ "vat_pence": 34960,
+ "gross_pence": 209760,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "5975",
+ "category_hint": "Software Subscription",
+ "printed_text": "LEEDSLOGIC SAAS LTD\n14 Mill Lane\nLeeds LS1 5HL\nTel 0113 496 0123\nVAT Reg No: GB 028 9222 69\n\n                 TAX INVOICE\nNo:   LSL-95216\nDate: 13-10-2026\nDue:  27/10/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nAnnual Subscriptio   1   499.00    499.00   20\nAnnual Subscriptio   1   899.00    899.00   20\nAnnual Subscriptio   1   350.00    350.00   20\n----------------------------------------------\nNET TOTAL                             1,748.00\nVAT 20%  net 1,748.00                   349.60\nTOTAL DUE                            £2,097.60\n\n\nPaid by card - thank you\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_software",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

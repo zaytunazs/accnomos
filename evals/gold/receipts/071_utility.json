@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "LincConnect Mobile Solutions Ltd",
+  "vat_number": "GB 024 1760 08",
+  "address": "14 Grantham Road, Lincoln, LN2 4YX"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "LMS-92838",
+ "date": "2026-08-07",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Monthly Business Mobile Line (Standard Data 10GB)",
+   "qty": 2,
+   "unit_price": 25.0,
+   "net": 50.0,
+   "vat_rate": 20,
+   "vat": 10.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Unlimited Business Mobile Line (High Data 50GB)",
+   "qty": 1,
+   "unit_price": 45.0,
+   "net": 45.0,
+   "vat_rate": 20,
+   "vat": 9.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 95.0,
+ "vat_total": 19.0,
+ "gross_total": 114.0,
+ "net_pence": 9500,
+ "vat_pence": 1900,
+ "gross_pence": 11400,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Business Mobile Contracts",
+ "printed_text": "LINCCONNECT MOBILE SOLUTIONS LTD\n14 Grantham Road\nLincoln LN2 4YX\nTel 0115 944 7821\nVAT Reg No: GB 024 1760 08\n\n                 TAX INVOICE\nNo:   LMS-92838\nDate: 07/08/26\nDue:  06/09/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nMonthly Business M   2    25.00     50.00   20\nUnlimited Business   1    45.00     45.00   20\n----------------------------------------------\nNET TOTAL                                95.00\nVAT 20%  net 95.00                       19.00\nTOTAL DUE                              £114.00\n\n\nDirect debit will be collected on 17 Aug 2026\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

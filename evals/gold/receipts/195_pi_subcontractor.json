@@ -1,0 +1,42 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Harrow & Finch Skilled Trades Ltd",
+  "vat_number": "GB 092 6952 34",
+  "address": "14 Oakwood Lane, Chester, CH2 3PL"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "HFS-65764",
+ "date": "2026-10-16",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "French Polishing - Standard Oak Table Top (2.5m x 1m)",
+   "qty": 1,
+   "unit_price": 450.0,
+   "net": 450.0,
+   "vat_rate": 20,
+   "vat": 90.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 450.0,
+ "vat_total": 90.0,
+ "gross_total": 540.0,
+ "net_pence": 45000,
+ "vat_pence": 9000,
+ "gross_pence": 54000,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "French Polishing",
+ "printed_text": "HARROW & FINCH SKILLED TRADES LTD\n14 Oakwood Lane\nChester CH2 3PL\nTel 01244 789012\nVAT Reg No: GB 092 6952 34\n\n                 TAX INVOICE\nNo:   HFS-65764\nDate: 16/10/2026\nDue:  15-11-2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nFrench Polishing -   1   450.00    450.00   20\n----------------------------------------------\nNET TOTAL                               450.00\nVAT 20%  net 450.00                      90.00\nTOTAL DUE                              £540.00\n\n\nPay by BACS: Sort 40-85-87  Acc 70587852\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_subcontractor",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

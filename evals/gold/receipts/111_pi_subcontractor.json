@@ -1,0 +1,60 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "J. Oates & Sons",
+  "vat_number": "GB 049 2982 38",
+  "address": "14 Mill Road, Barnsley, S70 2AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "JOS-83537",
+ "date": "2026-10-06",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Skim coat plastering - per square meter",
+   "qty": 24,
+   "unit_price": 12.5,
+   "net": 300.0,
+   "vat_rate": 20,
+   "vat": 60.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Electrical socket replacement - per unit",
+   "qty": 6,
+   "unit_price": 35.0,
+   "net": 210.0,
+   "vat_rate": 20,
+   "vat": 42.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "French polishing - per hour",
+   "qty": 4,
+   "unit_price": 45.0,
+   "net": 180.0,
+   "vat_rate": 20,
+   "vat": 36.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 690.0,
+ "vat_total": 138.0,
+ "gross_total": 828.0,
+ "net_pence": 69000,
+ "vat_pence": 13800,
+ "gross_pence": 82800,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "trades",
+ "printed_text": "J. OATES & SONS\n14 Mill Road\nBarnsley S70 2AB\nTel 01226 550192\nVAT Reg No: GB 049 2982 38\n\n                 TAX INVOICE\nNo:   JOS-83537\nDate: 06/10/26\nDue:  05 Nov 2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nSkim coat plasteri  24    12.50    300.00   20\nElectrical socket    6    35.00    210.00   20\nFrench polishing -   4    45.00    180.00   20\n----------------------------------------------\nNET TOTAL                               690.00\nVAT 20%  net 690.00                     138.00\nTOTAL DUE                              £828.00\n\n\nPay by BACS: Sort 40-29-49  Acc 54814361\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_subcontractor",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

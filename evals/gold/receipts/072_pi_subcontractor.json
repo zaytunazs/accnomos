@@ -1,0 +1,69 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Harrowgate Precision Trades",
+  "vat_number": "GB 003 8899 59",
+  "address": "14 Mill Lane, York, YO24 3QT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "HPT-43872",
+ "date": "2026-08-21",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Skilled French Polishing (per hour)",
+   "qty": 8,
+   "unit_price": 45.0,
+   "net": 360.0,
+   "vat_rate": 20,
+   "vat": 72.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "First Fix Electrics Installation (per point)",
+   "qty": 12,
+   "unit_price": 35.0,
+   "net": 420.0,
+   "vat_rate": 20,
+   "vat": 84.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Plastering Repair & Skim Coat (per square meter)",
+   "qty": 20,
+   "unit_price": 12.5,
+   "net": 250.0,
+   "vat_rate": 20,
+   "vat": 50.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Specialist Delivery & Site Setup (per visit)",
+   "qty": 1,
+   "unit_price": 60.0,
+   "net": 60.0,
+   "vat_rate": 20,
+   "vat": 12.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 1090.0,
+ "vat_total": 218.0,
+ "gross_total": 1308.0,
+ "net_pence": 109000,
+ "vat_pence": 21800,
+ "gross_pence": 130800,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Subcontractor Labour & Finishes",
+ "printed_text": "HARROWGATE PRECISION TRADES\n14 Mill Lane\nYork YO24 3QT\nTel 01904 678 901\nVAT Reg No: GB 003 8899 59\n\n                 TAX INVOICE\nNo:   HPT-43872\nDate: 21/08/2026\nDue:  04/09/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nSkilled French Pol   8    45.00    360.00   20\nFirst Fix Electric  12    35.00    420.00   20\nPlastering Repair   20    12.50    250.00   20\nSpecialist Deliver   1    60.00     60.00   20\n----------------------------------------------\nNET TOTAL                             1,090.00\nVAT 20%  net 1,090.00                   218.00\nTOTAL DUE                            £1,308.00\n\n\nPay by BACS: Sort 40-47-78  Acc 44860068\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_subcontractor",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Wrenwood Finishing & Fit-Out",
+  "vat_number": "GB 076 1018 85",
+  "address": "14 Grantham Road, Lincoln, LN1 3AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "WFF-99650",
+ "date": "2026-07-04",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Electrical socket replacement and testing",
+   "qty": 2,
+   "unit_price": 45.0,
+   "net": 90.0,
+   "vat_rate": 20,
+   "vat": 18.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "French polishing of wooden door frame",
+   "qty": 1,
+   "unit_price": 120.0,
+   "net": 120.0,
+   "vat_rate": 20,
+   "vat": 24.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 210.0,
+ "vat_total": 42.0,
+ "gross_total": 252.0,
+ "net_pence": 21000,
+ "vat_pence": 4200,
+ "gross_pence": 25200,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Trade Services",
+ "printed_text": "WRENWOOD FINISHING & FIT-OUT\n14 Grantham Road\nLincoln LN1 3AB\nTel 01522 480 419\nVAT Reg No: GB 076 1018 85\n\n                 TAX INVOICE\nNo:   WFF-99650\nDate: 04/07/26\nDue:  18 Jul 2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nElectrical socket    2    45.00     90.00   20\nFrench polishing o   1   120.00    120.00   20\n----------------------------------------------\nNET TOTAL                               210.00\nVAT 20%  net 210.00                      42.00\nTOTAL DUE                              £252.00\n\n\nPay by BACS: Sort 40-38-64  Acc 94776459\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_subcontractor",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Grantham Grange Building Supplies",
+  "vat_number": "GB 074 1617 75",
+  "address": "14 Mill Lane, Lincoln, NG32 1AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "CN9649",
+ "date": "2026-08-06",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "110mm PVC Rainwater Downpipe",
+   "qty": 2,
+   "unit_price": 18.5,
+   "net": -37.0,
+   "vat_rate": 20,
+   "vat": -7.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "110mm PVC Downpipe Corner Bend",
+   "qty": 1,
+   "unit_price": 4.2,
+   "net": -4.2,
+   "vat_rate": 20,
+   "vat": -0.84,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": -41.2,
+ "vat_total": -8.24,
+ "gross_total": -49.44,
+ "net_pence": -4120,
+ "vat_pence": -824,
+ "gross_pence": -4944,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": true,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "PVC Pipe Fittings",
+ "printed_text": "GRANTHAM GRANGE BUILDING SUPPLIES\n14 Mill Lane\nLincoln NG32 1AB\nTel 01476 555 019\nVAT Reg No: GB 074 1617 75\n\n                 CREDIT NOTE\nNo:   CN9649\nDate: 06/08/26\nRe invoice GGB-75001\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\n110mm PVC Rainwate   2    18.50    -37.00   20\n110mm PVC Downpipe   1     4.20     -4.20   20\n----------------------------------------------\nNET TOTAL                               -41.20\nVAT 20%  net -41.20                      -8.24\nTOTAL CREDIT                           £-49.44\n\nReason: Damaged goods upon delivery\n\nCredit to be refunded / offset on account\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "credit_note",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,78 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Northbridge Interiors"
+ },
+ "invoice_number": "BRW-2026-0778",
+ "date": "2026-08-03",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bespoke Oak Staircase, 3.5m run, with solid balusters",
+   "qty": 1,
+   "unit_price": 4200.0,
+   "net": 4200.0,
+   "vat_rate": 20,
+   "vat": 840.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Walnut Kitchen Worktop, 4.0m x 0.6m, mitred edges",
+   "qty": 1,
+   "unit_price": 1850.0,
+   "net": 1850.0,
+   "vat_rate": 20,
+   "vat": 370.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Fitted Wardrobe, 1.8m wide, sliding doors, internal shelving",
+   "qty": 2,
+   "unit_price": 1200.0,
+   "net": 2400.0,
+   "vat_rate": 20,
+   "vat": 480.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Restoration of Victorian Front Door, 18th-century pine, repainting",
+   "qty": 1,
+   "unit_price": 650.0,
+   "net": 650.0,
+   "vat_rate": 20,
+   "vat": 130.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Bespoke Bookcase, Cherry wood, 2.1m high, with glass doors",
+   "qty": 1,
+   "unit_price": 980.0,
+   "net": 980.0,
+   "vat_rate": 20,
+   "vat": 196.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 10080.0,
+ "vat_total": 2016.0,
+ "gross_total": 12096.0,
+ "net_pence": 1008000,
+ "vat_pence": 201600,
+ "gross_pence": 1209600,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Bespoke Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 0113 496 8201\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0778\nDate: 03 Aug 2026\nDue:  02/09/2026\n\nTo: Northbridge Interiors\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBespoke Oak Stairc   1 4,200.00  4,200.00   20\nSolid Walnut Kitch   1 1,850.00  1,850.00   20\nFitted Wardrobe, 1   2 1,200.00  2,400.00   20\nRestoration of Vic   1   650.00    650.00   20\nBespoke Bookcase,    1   980.00    980.00   20\n----------------------------------------------\nNET TOTAL                            10,080.00\nVAT 20%  net 10,080.00                2,016.00\nTOTAL DUE                           £12,096.00\n\n\nPay by BACS: Sort 40-99-72  Acc 91359334\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

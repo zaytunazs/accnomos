@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Nidderdale Digital Systems",
+  "vat_number": "GB 001 5710 35",
+  "address": "12 Mill Lane, Skipton, BD23 1AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "NDS-21261",
+ "date": "2026-09-10",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Annual Licence - NidderView CAD Pro (1 Seat)",
+   "qty": 1,
+   "unit_price": 850.0,
+   "net": 850.0,
+   "vat_rate": 20,
+   "vat": 170.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Annual Licence - CloudStock Inventory Module (Unlimited SKUs)",
+   "qty": 1,
+   "unit_price": 420.0,
+   "net": 420.0,
+   "vat_rate": 20,
+   "vat": 84.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 1270.0,
+ "vat_total": 254.0,
+ "gross_total": 1524.0,
+ "net_pence": 127000,
+ "vat_pence": 25400,
+ "gross_pence": 152400,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "8026",
+ "category_hint": "SaaS Subscription",
+ "printed_text": "NIDDERDALE DIGITAL SYSTEMS\n12 Mill Lane\nSkipton BD23 1AB\nTel 01756 712345\nVAT Reg No: GB 001 5710 35\n\n                 TAX INVOICE\nNo:   NDS-21261\nDate: 10 Sep 2026\nDue:  24/09/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nAnnual Licence - N   1   850.00    850.00   20\nAnnual Licence - C   1   420.00    420.00   20\n----------------------------------------------\nNET TOTAL                             1,270.00\nVAT 20%  net 1,270.00                   254.00\nTOTAL DUE                            £1,524.00\n\n\nPaid by card - thank you\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_software",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

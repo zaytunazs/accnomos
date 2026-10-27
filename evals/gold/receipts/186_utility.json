@@ -1,0 +1,60 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Nidderdale Thermal Solutions Ltd",
+  "vat_number": "GB 024 5663 83",
+  "address": "42 Bridgegate, Ripon, HG4 2RF"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "NTS-93511",
+ "date": "2026-09-16",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Reduced Rate Gas Unit (MWh)",
+   "qty": 8,
+   "unit_price": 52.4,
+   "net": 419.2,
+   "vat_rate": 5,
+   "vat": 20.96,
+   "vat_code": "T5"
+  },
+  {
+   "description": "Standing Charge (Monthly)",
+   "qty": 1,
+   "unit_price": 18.5,
+   "net": 18.5,
+   "vat_rate": 5,
+   "vat": 0.92,
+   "vat_code": "T5"
+  },
+  {
+   "description": "Meter Reading Service",
+   "qty": 1,
+   "unit_price": 6.0,
+   "net": 6.0,
+   "vat_rate": 5,
+   "vat": 0.3,
+   "vat_code": "T5"
+  }
+ ],
+ "net_total": 443.7,
+ "vat_total": 22.18,
+ "gross_total": 465.88,
+ "net_pence": 44370,
+ "vat_pence": 2218,
+ "gross_pence": 46588,
+ "vat_code": "T5",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Domestic Gas Supply",
+ "printed_text": "NIDDERDALE THERMAL SOLUTIONS LTD\n42 Bridgegate\nRipon HG4 2RF\nTel 01765 555019\nVAT Reg No: GB 024 5663 83\n\n                 TAX INVOICE\nNo:   NTS-93511\nDate: 16-09-2026\nDue:  16 Oct 2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nReduced Rate Gas U   8    52.40    419.20    5\nStanding Charge (M   1    18.50     18.50    5\nMeter Reading Serv   1     6.00      6.00    5\n----------------------------------------------\nNET TOTAL                               443.70\nVAT 5%  net 443.70                       22.18\nTOTAL DUE                              £465.88\n\n\nDirect debit will be collected on 26 Sep 2026\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

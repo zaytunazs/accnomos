@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Alpine Cloud Solutions GmbH",
+  "vat_number": null,
+  "address": "Maximilianstraße 102, Munich, 80539"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-06",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "1 Year Subscription - Standard Tier Cloud Hosting",
+   "qty": 1,
+   "unit_price": 843.45,
+   "net": 843.45,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  }
+ ],
+ "net_total": 843.45,
+ "vat_total": 0.0,
+ "gross_total": 843.45,
+ "net_pence": 84345,
+ "vat_pence": 0,
+ "gross_pence": 84345,
+ "vat_code": "T9",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "6880",
+ "category_hint": "Cloud Service",
+ "printed_text": "         ALPINE CLOUD SOLUTIONS GMBH\n             Maximilianstraße 102\n                 Munich 80539\n             Tel +49 89 9876 5432\n\n06/07/26                                 15:16\n----------------------------------------------\n1 Year Subscription - Standard Tier Clo 843.45\n----------------------------------------------\nEUR 939.15 @ 0.8981 = GBP 843.45\nAmount charged to card (GBP)\nTOTAL                                  £843.45\nCARD ****6880 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "EUR 939.15 @ 0.8981 = GBP 843.45",
+ "gold_case": "edge_foreign_gbp",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

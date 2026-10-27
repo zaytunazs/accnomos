@@ -1,0 +1,42 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Bramley Bespoke Interiors"
+ },
+ "invoice_number": "CN-BRW-2026-0582",
+ "date": "2026-10-06",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Custom Oak Shaker-Style Wall Panelling (100mm wide)",
+   "qty": 1,
+   "unit_price": 45.5,
+   "net": -45.5,
+   "vat_rate": 20,
+   "vat": -9.1,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": -45.5,
+ "vat_total": -9.1,
+ "gross_total": -54.6,
+ "net_pence": -4550,
+ "vat_pence": -910,
+ "gross_pence": -5460,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": true,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01422 555 0192\nVAT Reg No: GB 123 4567 89\n\n                 CREDIT NOTE\nNo:   CN-BRW-2026-0582\nDate: 06/10/26\nRe invoice BRW-2026-0544\n\nTo: Bramley Bespoke Interiors\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nCustom Oak Shaker-   1    45.50    -45.50   20\n----------------------------------------------\nNET TOTAL                               -45.50\nVAT 20%  net -45.50                      -9.10\nTOTAL CREDIT                           £-54.60\n\nReason: Price adjustment due to change in timber species\n\nCredit to be refunded / offset on account\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "credit_note",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,87 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Hawthorne Valley Trade Supplies",
+  "vat_number": "GB 058 3175 61",
+  "address": "Unit 4, Calder Road Industrial Estate, Halifax, HX3 0JN"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-18",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "19mm S4S Oak Plank (2.4m x 145mm)",
+   "qty": 2,
+   "unit_price": 35.415,
+   "net": 70.83,
+   "vat_rate": 20,
+   "vat": 14.17,
+   "vat_code": "T1"
+  },
+  {
+   "description": "19mm S4S Pine Board (3.0m x 100mm)",
+   "qty": 5,
+   "unit_price": 10.666,
+   "net": 53.33,
+   "vat_rate": 20,
+   "vat": 10.67,
+   "vat_code": "T1"
+  },
+  {
+   "description": "50mm x 50mm Hardwood Dado",
+   "qty": 3,
+   "unit_price": 7.04,
+   "net": 21.12,
+   "vat_rate": 20,
+   "vat": 4.23,
+   "vat_code": "T1"
+  },
+  {
+   "description": "100mm x 25mm Softwood Moulding (2.4m)",
+   "qty": 4,
+   "unit_price": 7.6675,
+   "net": 30.67,
+   "vat_rate": 20,
+   "vat": 6.13,
+   "vat_code": "T1"
+  },
+  {
+   "description": "80mm x 40mm Structural Glulam Beam (4.0m)",
+   "qty": 1,
+   "unit_price": 95.83,
+   "net": 95.83,
+   "vat_rate": 20,
+   "vat": 19.17,
+   "vat_code": "T1"
+  },
+  {
+   "description": "25mm x 50mm Softwood Battens (3.0m)",
+   "qty": 6,
+   "unit_price": 3.8333,
+   "net": 23.0,
+   "vat_rate": 20,
+   "vat": 4.6,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 294.78,
+ "vat_total": 58.97,
+ "gross_total": 353.75,
+ "net_pence": 29478,
+ "vat_pence": 5897,
+ "gross_pence": 35375,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "8294",
+ "category_hint": "Timber yard",
+ "printed_text": "       HAWTHORNE VALLEY TRADE SUPPLIES\n    Unit 4, Calder Road Industrial Estate\n               Halifax HX3 0JN\n              Tel 01422 714 892\n            VAT No GB 058 3175 61\n\n18-07-2026                               15:26\n----------------------------------------------\n2 x 19mm S4S Oak Plank (2.4m x 145mm)    85.00\n5 x 19mm S4S Pine Board (3.0m x 100mm)   64.00\n3 x 50mm x 50mm Hardwood Dado            25.35\n4 x 100mm x 25mm Softwood Moulding (2.4m 36.80\n80mm x 40mm Structural Glulam Beam (4.0 115.00\n6 x 25mm x 50mm Softwood Battens (3.0m)  27.60\n----------------------------------------------\nTOTAL                                  £353.75\nVAT 20%  net 294.78                      58.97\nCARD ****8294 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_trade",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

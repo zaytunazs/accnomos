@@ -1,0 +1,70 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Brackenfell Timber & Tonic",
+  "vat_number": "GB 095 9165 24",
+  "address": "14 Old Mill Lane, Carlisle, CA2 5XZ"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-09-25",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Seasoned Birch Logs (1 Bundle)",
+   "qty": 4,
+   "unit_price": 15.4175,
+   "net": 61.67,
+   "vat_rate": 20,
+   "vat": 12.33,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Pine Offcut Chunks (5kg Sack)",
+   "qty": 2,
+   "unit_price": 5.165,
+   "net": 10.33,
+   "vat_rate": 20,
+   "vat": 2.07,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Used Steel Shovel (Class B)",
+   "qty": 1,
+   "unit_price": 12.49,
+   "net": 12.49,
+   "vat_rate": 20,
+   "vat": 2.5,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Potted Bay Tree (2ft)",
+   "qty": 3,
+   "unit_price": 8.1267,
+   "net": 24.38,
+   "vat_rate": 20,
+   "vat": 4.87,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 108.87,
+ "vat_total": 21.77,
+ "gross_total": 130.64,
+ "net_pence": 10887,
+ "vat_pence": 2177,
+ "gross_pence": 13064,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "cash",
+ "card_last4": null,
+ "category_hint": "Yard goods: firewood, timber, plants, tools",
+ "printed_text": "          BRACKENFELL TIMBER & TONIC\n               14 Old Mill Lane\n               Carlisle CA2 5XZ\n              Tel 01228 459 221\n            VAT No GB 095 9165 24\n\n25/09/2026                               18:50\n----------------------------------------------\n~4 x Seasoned Birch Logs (1 Bundle)  74.00\n~2 x Pine Offcut Chunks (5kg Sack)  12.40\n~1 x Used Steel Shovel (Class B)  14.99\n~3 x Potted Bay Tree (2ft)  29.25\n----------------------------------------------\n~TOTAL  £130.64\n~VAT incl.\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "edge_handwritten",
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "damage": "handwritten"
+}

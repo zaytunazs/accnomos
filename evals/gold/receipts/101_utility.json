@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Thornbury Flow Systems Ltd",
+  "vat_number": "GB 072 5449 62",
+  "address": "Unit 4, Millgate Trading Park, Leeds, LS10 1JZ"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "TFS-61324",
+ "date": "2026-09-29",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Quarterly Business Water Abstraction Charge",
+   "qty": 1,
+   "unit_price": 1450.5,
+   "net": 1450.5,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  },
+  {
+   "description": "Quarterly Business Sewerage Disposal Fee",
+   "qty": 1,
+   "unit_price": 980.25,
+   "net": 980.25,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  }
+ ],
+ "net_total": 2430.75,
+ "vat_total": 0.0,
+ "gross_total": 2430.75,
+ "net_pence": 243075,
+ "vat_pence": 0,
+ "gross_pence": 243075,
+ "vat_code": "T0",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Business water and sewerage",
+ "printed_text": "THORNBURY FLOW SYSTEMS LTD\nUnit 4, Millgate Trading Park\nLeeds LS10 1JZ\nTel 0113 496 0215\nVAT Reg No: GB 072 5449 62\n\n                 TAX INVOICE\nNo:   TFS-61324\nDate: 29-09-2026\nDue:  29 Oct 2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nQuarterly Business   1 1,450.50  1,450.50    0\nQuarterly Business   1   980.25    980.25    0\n----------------------------------------------\nNET TOTAL                             2,430.75\nVAT                                       0.00\nTOTAL DUE                            £2,430.75\n\n\nDirect debit will be collected on 09/10/2026\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

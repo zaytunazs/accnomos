@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Bluebell Valley Systems Ltd",
+  "vat_number": "GB 030 8952 78",
+  "address": "14 Market Square, Chester, CH1 2LT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "CN1415",
+ "date": "2026-08-30",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Annual License - Project Management Suite (Enterprise)",
+   "qty": 1,
+   "unit_price": 1250.0,
+   "net": -1250.0,
+   "vat_rate": 20,
+   "vat": -250.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Priority Technical Support Retainer (Monthly)",
+   "qty": 3,
+   "unit_price": 450.0,
+   "net": -1350.0,
+   "vat_rate": 20,
+   "vat": -270.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": -2600.0,
+ "vat_total": -520.0,
+ "gross_total": -3120.0,
+ "net_pence": -260000,
+ "vat_pence": -52000,
+ "gross_pence": -312000,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": true,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Software",
+ "printed_text": "BLUEBELL VALLEY SYSTEMS LTD\n14 Market Square\nChester CH1 2LT\nTel 01244 555 091\nVAT Reg No: GB 030 8952 78\n\n                 CREDIT NOTE\nNo:   CN1415\nDate: 30/08/2026\nRe invoice BVS-50800\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nAnnual License - P   1 1,250.00 -1,250.00   20\nPriority Technical   3   450.00 -1,350.00   20\n----------------------------------------------\nNET TOTAL                            -2,600.00\nVAT 20%  net -2,600.00                 -520.00\nTOTAL CREDIT                        £-3,120.00\n\nReason: Cancellation of annual SaaS subscription due to service termination agreement.\n\nCredit to be refunded / offset on account\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "credit_note",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

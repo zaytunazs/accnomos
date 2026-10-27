@@ -1,0 +1,60 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Northbridge Retail Ltd"
+ },
+ "invoice_number": "BRW-2026-0819",
+ "date": "2026-09-19",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bespoke Oak Front Door with Ironmongery",
+   "qty": 1,
+   "unit_price": 1850.0,
+   "net": 1850.0,
+   "vat_rate": 20,
+   "vat": 370.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Fitted Wardrobe Unit (2.4m x 2.2m) in Painted Birch",
+   "qty": 2,
+   "unit_price": 920.0,
+   "net": 1840.0,
+   "vat_rate": 20,
+   "vat": 368.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Restoration of Heritage Sash Window (Double Glazed)",
+   "qty": 3,
+   "unit_price": 450.0,
+   "net": 1350.0,
+   "vat_rate": 20,
+   "vat": 270.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 5040.0,
+ "vat_total": 1008.0,
+ "gross_total": 6048.0,
+ "net_pence": 504000,
+ "vat_pence": 100800,
+ "gross_pence": 604800,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Bespoke Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01904 556789\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0819\nDate: 19/09/2026\nDue:  03 Oct 2026\n\nTo: Northbridge Retail Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBespoke Oak Front    1 1,850.00  1,850.00   20\nFitted Wardrobe Un   2   920.00  1,840.00   20\nRestoration of Her   3   450.00  1,350.00   20\n----------------------------------------------\nNET TOTAL                             5,040.00\nVAT 20%  net 5,040.00                 1,008.00\nTOTAL DUE                            £6,048.00\n\n\nPay by BACS: Sort 40-56-97  Acc 61221647\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Hartburn Forecourt Services Ltd",
+  "vat_number": "GB 079 0398 36",
+  "address": "12 King St, Newcastle, NE1 8JQ"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-10-11",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "SUPER UNLEADED",
+   "qty": 47.27,
+   "unit_price": 1.1642,
+   "net": 55.03,
+   "vat_rate": 20,
+   "vat": 11.01,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 55.03,
+ "vat_total": 11.01,
+ "gross_total": 66.04,
+ "net_pence": 5503,
+ "vat_pence": 1101,
+ "gross_pence": 6604,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "6402",
+ "category_hint": "Forecourt Operator",
+ "printed_text": "       HARTBURN FORECOURT SERVICES LTD\n                  12 King St\n              Newcastle NE1 8JQ\n            VAT No GB 079 0398 36\n\n11/10/26                                 15:38\nPUMP 7\n----------------------------------------------\nSUPER UNLEADED\n47.27 L @ 139.7p/L\nFUEL                                    £66.04\n----------------------------------------------\nTOTAL                                   £66.04\nVAT 20%  net 55.03                       11.01\nCARD ****6402\n\n                 Drive safely\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_fuel",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

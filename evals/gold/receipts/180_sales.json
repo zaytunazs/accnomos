@@ -1,0 +1,60 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Harrogate Heritage Interiors Ltd"
+ },
+ "invoice_number": "BRW-2026-0731",
+ "date": "2026-07-13",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bespoke Oak Stair Tread (1000mm x 300mm x 35mm)",
+   "qty": 12,
+   "unit_price": 185.0,
+   "net": 2220.0,
+   "vat_rate": 20,
+   "vat": 444.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Walnut Door Frame (Internal, Primed)",
+   "qty": 4,
+   "unit_price": 320.0,
+   "net": 1280.0,
+   "vat_rate": 20,
+   "vat": 256.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Fitted Wardrobe Shelving Kit (Hardwood)",
+   "qty": 2,
+   "unit_price": 450.0,
+   "net": 900.0,
+   "vat_rate": 20,
+   "vat": 180.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 4400.0,
+ "vat_total": 880.0,
+ "gross_total": 5280.0,
+ "net_pence": 440000,
+ "vat_pence": 88000,
+ "gross_pence": 528000,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Bespoke Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01274 982341\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0731\nDate: 13/07/2026\nDue:  27/07/26\n\nTo: Harrogate Heritage Interiors Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBespoke Oak Stair   12   185.00  2,220.00   20\nSolid Walnut Door    4   320.00  1,280.00   20\nFitted Wardrobe Sh   2   450.00    900.00   20\n----------------------------------------------\nNET TOTAL                             4,400.00\nVAT 20%  net 4,400.00                   880.00\nTOTAL DUE                            £5,280.00\n\n\nPay by BACS: Sort 40-71-23  Acc 89004166\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

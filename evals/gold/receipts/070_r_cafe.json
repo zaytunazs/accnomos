@@ -1,0 +1,69 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Wakefield Whisk & Wheat",
+  "vat_number": "GB 081 7240 77",
+  "address": "14 Millgate Lane, Wakefield, WF1 2LH"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-09-12",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Chicken & Pesto Puff Pastry Wrap",
+   "qty": 5,
+   "unit_price": 3.75,
+   "net": 18.75,
+   "vat_rate": 20,
+   "vat": 3.75,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Roast Beef & Horseradish Sandwich",
+   "qty": 3,
+   "unit_price": 4.3333,
+   "net": 13.0,
+   "vat_rate": 20,
+   "vat": 2.6,
+   "vat_code": "T1"
+  },
+  {
+   "description": "House Blend Ground Coffee (250g)",
+   "qty": 2,
+   "unit_price": 7.46,
+   "net": 14.92,
+   "vat_rate": 20,
+   "vat": 2.98,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Assorted Fruit Platter (Medium)",
+   "qty": 1,
+   "unit_price": 5.62,
+   "net": 5.62,
+   "vat_rate": 20,
+   "vat": 1.13,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 52.29,
+ "vat_total": 10.46,
+ "gross_total": 62.75,
+ "net_pence": 5229,
+ "vat_pence": 1046,
+ "gross_pence": 6275,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "7572",
+ "category_hint": "Café & Sandwich Bar",
+ "printed_text": "           WAKEFIELD WHISK & WHEAT\n               14 Millgate Lane\n              Wakefield WF1 2LH\n              Tel 01924 555 019\n            VAT No GB 081 7240 77\n\n12/09/2026                               08:43\n----------------------------------------------\n5 x Chicken & Pesto Puff Pastry Wrap     22.50\n3 x Roast Beef & Horseradish Sandwich    15.60\n2 x House Blend Ground Coffee (250g)     17.90\nAssorted Fruit Platter (Medium)           6.75\n----------------------------------------------\nTOTAL                                   £62.75\nVAT 20%  net 52.29                       10.46\nCARD ****7572 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_cafe",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

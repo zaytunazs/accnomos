@@ -1,0 +1,96 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Oakhurst Timber & Glazing Co.",
+  "vat_number": "GB 045 6237 75",
+  "address": "14 Industrial Way, Kirkstall, Bradford, LS4 2AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "OTG-17486",
+ "date": "2026-10-18",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Solid Oak Frame & Panel Door Skin (1.8m x 0.8m)",
+   "qty": 2,
+   "unit_price": 185.5,
+   "net": 371.0,
+   "vat_rate": 20,
+   "vat": 74.2,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Softwood Beaded Board (1.2m length)",
+   "qty": 10,
+   "unit_price": 4.25,
+   "net": 42.5,
+   "vat_rate": 20,
+   "vat": 8.5,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Double Glazed Unit (Clear, 600x400mm)",
+   "qty": 6,
+   "unit_price": 45.0,
+   "net": 270.0,
+   "vat_rate": 20,
+   "vat": 54.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Internal Architrave (White Primed, 2.4m)",
+   "qty": 8,
+   "unit_price": 12.75,
+   "net": 102.0,
+   "vat_rate": 20,
+   "vat": 20.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Timber Window Sill (Pine, 1.2m)",
+   "qty": 4,
+   "unit_price": 18.3,
+   "net": 73.2,
+   "vat_rate": 20,
+   "vat": 14.64,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Joinery Glazing Putty (500g Tub)",
+   "qty": 3,
+   "unit_price": 6.45,
+   "net": 19.35,
+   "vat_rate": 20,
+   "vat": 3.87,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Hinge Pack (4 No. 75mm Concealed Hinges)",
+   "qty": 2,
+   "unit_price": 14.9,
+   "net": 29.8,
+   "vat_rate": 20,
+   "vat": 5.96,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 907.85,
+ "vat_total": 181.57,
+ "gross_total": 1089.42,
+ "net_pence": 90785,
+ "vat_pence": 18157,
+ "gross_pence": 108942,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Timber & Glazing Supplies",
+ "printed_text": "OAKHURST TIMBER & GLAZING CO.\n14 Industrial Way, Kirkstall\nBradford LS4 2AB\nTel 0113 456 7890\nVAT Reg No: GB 045 6237 75\n\n                 TAX INVOICE\nNo:   OTG-17486\nDate: 18/10/2026\nDue:  17/11/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nSolid Oak Frame &    2   185.50    371.00   20\nSoftwood Beaded Bo  10     4.25     42.50   20\nDouble Glazed Unit   6    45.00    270.00   20\nInternal Architrav   8    12.75    102.00   20\nTimber Window Sill   4    18.30     73.20   20\nJoinery Glazing Pu   3     6.45     19.35   20\nHinge Pack (4 No.    2    14.90     29.80   20\n----------------------------------------------\nNET TOTAL                               907.85\nVAT 20%  net 907.85                     181.57\nTOTAL DUE                            £1,089.42\n\n\nPay by BACS: Sort 40-20-28  Acc 46177146\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_merchant",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

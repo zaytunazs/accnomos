@@ -1,0 +1,78 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Penrith Heritage Restoration Co."
+ },
+ "invoice_number": "BRW-2026-0680",
+ "date": "2026-08-02",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bespoke Oak Staircase Stringer Set",
+   "qty": 2,
+   "unit_price": 1450.0,
+   "net": 2900.0,
+   "vat_rate": 20,
+   "vat": 580.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Restored Victorian Internal Door (Painted)",
+   "qty": 1,
+   "unit_price": 850.0,
+   "net": 850.0,
+   "vat_rate": 20,
+   "vat": 170.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Fitted Wardrobe Unit (3-Door, Soft Close)",
+   "qty": 1,
+   "unit_price": 2200.0,
+   "net": 2200.0,
+   "vat_rate": 20,
+   "vat": 440.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Bespoke Kitchen Island Worktop (Walnut)",
+   "qty": 1,
+   "unit_price": 1800.0,
+   "net": 1800.0,
+   "vat_rate": 20,
+   "vat": 360.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Custom Hallway Console Table",
+   "qty": 1,
+   "unit_price": 650.0,
+   "net": 650.0,
+   "vat_rate": 20,
+   "vat": 130.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 8400.0,
+ "vat_total": 1680.0,
+ "gross_total": 10080.0,
+ "net_pence": 840000,
+ "vat_pence": 168000,
+ "gross_pence": 1008000,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01756 555012\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0680\nDate: 02/08/26\nDue:  16-08-2026\n\nTo: Penrith Heritage Restoration Co.\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBespoke Oak Stairc   2 1,450.00  2,900.00   20\nRestored Victorian   1   850.00    850.00   20\nFitted Wardrobe Un   1 2,200.00  2,200.00   20\nBespoke Kitchen Is   1 1,800.00  1,800.00   20\nCustom Hallway Con   1   650.00    650.00   20\n----------------------------------------------\nNET TOTAL                             8,400.00\nVAT 20%  net 8,400.00                 1,680.00\nTOTAL DUE                           £10,080.00\n\n\nPay by BACS: Sort 40-77-29  Acc 83438006\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

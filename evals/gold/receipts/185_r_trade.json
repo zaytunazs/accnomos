@@ -1,0 +1,78 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Hollis & Vane Trade Supplies",
+  "vat_number": "GB 008 6622 82",
+  "address": "14 Ironbridge Road, Wakefield, WF1 2QX"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-16",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Treated Softwood Post 90x90mm x 2.4m",
+   "qty": 4,
+   "unit_price": 12.0825,
+   "net": 48.33,
+   "vat_rate": 20,
+   "vat": 9.67,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Galvanized Nails 75mm (Box of 250)",
+   "qty": 2,
+   "unit_price": 7.49,
+   "net": 14.98,
+   "vat_rate": 20,
+   "vat": 3.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Hinged Gate 900x1000mm Pressure Treated",
+   "qty": 1,
+   "unit_price": 70.83,
+   "net": 70.83,
+   "vat_rate": 20,
+   "vat": 14.17,
+   "vat_code": "T1"
+  },
+  {
+   "description": "External Timber Screws 4.0x75mm (Box of 200)",
+   "qty": 3,
+   "unit_price": 10.3733,
+   "net": 31.12,
+   "vat_rate": 20,
+   "vat": 6.23,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Decking Oil 5L (Satin Finish)",
+   "qty": 2,
+   "unit_price": 20.825,
+   "net": 41.65,
+   "vat_rate": 20,
+   "vat": 8.33,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 206.91,
+ "vat_total": 41.4,
+ "gross_total": 248.31,
+ "net_pence": 20691,
+ "vat_pence": 4140,
+ "gross_pence": 24831,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "4796",
+ "category_hint": "Timber yard",
+ "printed_text": "         HOLLIS & VANE TRADE SUPPLIES\n              14 Ironbridge Road\n              Wakefield WF1 2QX\n              Tel 01924 555 019\n            VAT No GB 008 6622 82\n\n16/07/2026                               16:34\n----------------------------------------------\n4 x Treated Softwood Post 90x90mm x 2.4m 58.00\n2 x Galvanized Nails 75mm (Box of 250)   17.98\nHinged Gate 900x1000mm Pressure Treated  85.00\n3 x External Timber Screws 4.0x75mm (Box 37.35\n2 x Decking Oil 5L (Satin Finish)        49.98\n----------------------------------------------\nTOTAL                                  £248.31\nVAT 20%  net 206.91                      41.40\nCARD ****4796 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_trade",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

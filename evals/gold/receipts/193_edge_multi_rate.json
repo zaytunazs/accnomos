@@ -1,0 +1,87 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Durham Daisies Depot",
+  "vat_number": "GB 044 0659 85",
+  "address": "12-14 Green Lane, Durham, DH1 5QT"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-10-16",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Premium Potting Soil 5L",
+   "qty": 10,
+   "unit_price": 3.75,
+   "net": 37.5,
+   "vat_rate": 20,
+   "vat": 7.5,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Organic Chilli Seeds Packet",
+   "qty": 12,
+   "unit_price": 2.25,
+   "net": 27.0,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  },
+  {
+   "description": "Standard Gardening Gloves",
+   "qty": 5,
+   "unit_price": 5.714,
+   "net": 28.57,
+   "vat_rate": 5,
+   "vat": 1.43,
+   "vat_code": "T5"
+  },
+  {
+   "description": "Fresh Garden Herbs Mix",
+   "qty": 8,
+   "unit_price": 2.9162,
+   "net": 23.33,
+   "vat_rate": 20,
+   "vat": 4.67,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Hardcover Botany Guide",
+   "qty": 2,
+   "unit_price": 12.49,
+   "net": 24.98,
+   "vat_rate": 20,
+   "vat": 5.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Infant Car Seat (Blue)",
+   "qty": 1,
+   "unit_price": 45.0,
+   "net": 45.0,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  }
+ ],
+ "net_total": 186.38,
+ "vat_total": 18.6,
+ "gross_total": 204.98,
+ "net_pence": 18638,
+ "vat_pence": 1860,
+ "gross_pence": 20498,
+ "vat_code": "MIXED",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "5815",
+ "category_hint": "Garden & Home Goods",
+ "printed_text": "             DURHAM DAISIES DEPOT\n               12-14 Green Lane\n                Durham DH1 5QT\n              Tel 0191 456 7890\n            VAT No GB 044 0659 85\n\n16/10/26                                 15:06\n----------------------------------------------\n10 x Premium Potting Soil 5L             45.00\n12 x Organic Chilli Seeds Packet         27.00\n5 x Standard Gardening Gloves            30.00\n8 x Fresh Garden Herbs Mix               28.00\n2 x Hardcover Botany Guide               29.98\nInfant Car Seat (Blue)                   45.00\n----------------------------------------------\nTOTAL                                  £204.98\nVAT 20%  net 85.81                       17.17\nVAT 5%  net 28.57                         1.43\nVAT 0%  net 72.00                         0.00\nCARD ****5815 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "edge_multi_rate",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

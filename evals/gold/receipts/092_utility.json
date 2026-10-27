@@ -1,0 +1,60 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Northern Grid Energy Solutions",
+  "vat_number": "GB 006 9783 55",
+  "address": "14 Industrial Way, Ripon, HG4 2LP"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "NGE-10213",
+ "date": "2026-10-23",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Business Electricity Usage (kWh)",
+   "qty": 10,
+   "unit_price": 0.18,
+   "net": 1.85,
+   "vat_rate": 20,
+   "vat": 0.37,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Standing Charge (Daily)",
+   "qty": 1,
+   "unit_price": 0.72,
+   "net": 0.72,
+   "vat_rate": 20,
+   "vat": 0.14,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Climate Change Levy (kWh)",
+   "qty": 10,
+   "unit_price": 0.01,
+   "net": 0.1,
+   "vat_rate": 20,
+   "vat": 0.02,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 2.67,
+ "vat_total": 0.53,
+ "gross_total": 3.2,
+ "net_pence": 267,
+ "vat_pence": 53,
+ "gross_pence": 320,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Business Electricity Supply",
+ "printed_text": "NORTHERN GRID ENERGY SOLUTIONS\n14 Industrial Way\nRipon HG4 2LP\nTel 01765 123456\nVAT Reg No: GB 006 9783 55\n\n                 TAX INVOICE\nNo:   NGE-10213\nDate: 23 Oct 2026\nDue:  06-11-2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBusiness Electrici  10     0.18      1.85   20\nStanding Charge (D   1     0.72      0.72   20\nClimate Change Lev  10     0.01      0.10   20\n----------------------------------------------\nNET TOTAL                                 2.67\nVAT 20%  net 2.67                         0.53\nTOTAL DUE                                £3.20\n\n\nDirect debit will be collected on 02 Nov 2026\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

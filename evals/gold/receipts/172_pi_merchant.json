@@ -1,0 +1,69 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Northumbrian Oak & Ash Ltd",
+  "vat_number": "GB 043 8941 58",
+  "address": "Unit 4, Fenwick Industrial Park, Newcastle, NE3 4PX"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "NOA-65470",
+ "date": "2026-07-07",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Kiln Dried Oak Plank 25mm x 150mm x 2400mm",
+   "qty": 4,
+   "unit_price": 18.5,
+   "net": 74.0,
+   "vat_rate": 20,
+   "vat": 14.8,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Ash Battens 25mm x 50mm x 3000mm",
+   "qty": 10,
+   "unit_price": 4.2,
+   "net": 42.0,
+   "vat_rate": 20,
+   "vat": 8.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Redwood Door Core 44mm x 900mm x 2050mm",
+   "qty": 2,
+   "unit_price": 65.0,
+   "net": 130.0,
+   "vat_rate": 20,
+   "vat": 26.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Moulded Oak Skirting Board 150mm x 2400mm",
+   "qty": 8,
+   "unit_price": 12.75,
+   "net": 102.0,
+   "vat_rate": 20,
+   "vat": 20.4,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 348.0,
+ "vat_total": 69.6,
+ "gross_total": 417.6,
+ "net_pence": 34800,
+ "vat_pence": 6960,
+ "gross_pence": 41760,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Timber and Hardwood Boards",
+ "printed_text": "NORTHUMBRIAN OAK & ASH LTD\nUnit 4, Fenwick Industrial Park\nNewcastle NE3 4PX\nTel 0191 555 0192\nVAT Reg No: GB 043 8941 58\n\n                 TAX INVOICE\nNo:   NOA-65470\nDate: 07/07/26\nDue:  06/08/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nKiln Dried Oak Pla   4    18.50     74.00   20\nSolid Ash Battens   10     4.20     42.00   20\nRedwood Door Core    2    65.00    130.00   20\nMoulded Oak Skirti   8    12.75    102.00   20\n----------------------------------------------\nNET TOTAL                               348.00\nVAT 20%  net 348.00                      69.60\nTOTAL DUE                              £417.60\n\n\nPay by BACS: Sort 40-53-11  Acc 84624912\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_merchant",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

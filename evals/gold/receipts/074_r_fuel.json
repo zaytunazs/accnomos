@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Wrexham Valley Fuels Ltd",
+  "vat_number": "GB 084 8332 49",
+  "address": "42 Industrial Estate Road, Chester, CH2 4QN"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-10-15",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "DIESEL",
+   "qty": 23.06,
+   "unit_price": 1.2199,
+   "net": 28.13,
+   "vat_rate": 20,
+   "vat": 5.63,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 28.13,
+ "vat_total": 5.63,
+ "gross_total": 33.76,
+ "net_pence": 2813,
+ "vat_pence": 563,
+ "gross_pence": 3376,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "2108",
+ "category_hint": "Petrol Station Forecourt Operator",
+ "printed_text": "           WREXHAM VALLEY FUELS LTD\n          42 Industrial Estate Road\n               Chester CH2 4QN\n            VAT No GB 084 8332 49\n\n15 Oct 2026                              10:12\nPUMP 1\n----------------------------------------------\nDIESEL\n23.06 L @ 146.4p/L\nFUEL                                    £33.76\n----------------------------------------------\nTOTAL                                   £33.76\nVAT 20%  net 28.13                        5.63\nCARD ****2108\n\n                 Drive safely\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_fuel",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

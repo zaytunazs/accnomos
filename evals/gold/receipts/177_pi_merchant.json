@@ -1,0 +1,87 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Thornfield Oak & Edge Ltd",
+  "vat_number": "GB 093 5809 38",
+  "address": "42 Industrial Way, Lincoln, Lincoln, LN6 3QR"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "TOE-72818",
+ "date": "2026-08-17",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Kiln-dried Oak Plank 150mm x 19mm x 2.4m",
+   "qty": 4,
+   "unit_price": 45.5,
+   "net": 182.0,
+   "vat_rate": 20,
+   "vat": 36.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Pine Edge Banding 25mm x 2.5mm x 10m",
+   "qty": 2,
+   "unit_price": 12.75,
+   "net": 25.5,
+   "vat_rate": 20,
+   "vat": 5.1,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Water-based Wood Filler (White) 500ml Tub",
+   "qty": 1,
+   "unit_price": 18.9,
+   "net": 18.9,
+   "vat_rate": 20,
+   "vat": 3.78,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Cabinet Hinge Soft-Close 35mm",
+   "qty": 12,
+   "unit_price": 3.25,
+   "net": 39.0,
+   "vat_rate": 20,
+   "vat": 7.8,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Woodworking Sandpaper Sheet 120 Grit (Assorted)",
+   "qty": 5,
+   "unit_price": 4.1,
+   "net": 20.5,
+   "vat_rate": 20,
+   "vat": 4.1,
+   "vat_code": "T1"
+  },
+  {
+   "description": "PVA Wood Adhesive High-Strength 500ml",
+   "qty": 3,
+   "unit_price": 9.8,
+   "net": 29.4,
+   "vat_rate": 20,
+   "vat": 5.88,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 315.3,
+ "vat_total": 63.06,
+ "gross_total": 378.36,
+ "net_pence": 31530,
+ "vat_pence": 6306,
+ "gross_pence": 37836,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Timber Merchant",
+ "printed_text": "THORNFIELD OAK & EDGE LTD\n42 Industrial Way, Lincoln\nLincoln LN6 3QR\nTel 0115 948 2210\nVAT Reg No: GB 093 5809 38\n\n                 TAX INVOICE\nNo:   TOE-72818\nDate: 17-08-2026\nDue:  16/09/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nKiln-dried Oak Pla   4    45.50    182.00   20\nSolid Pine Edge Ba   2    12.75     25.50   20\nWater-based Wood F   1    18.90     18.90   20\nCabinet Hinge Soft  12     3.25     39.00   20\nWoodworking Sandpa   5     4.10     20.50   20\nPVA Wood Adhesive    3     9.80     29.40   20\n----------------------------------------------\nNET TOTAL                               315.30\nVAT 20%  net 315.30                      63.06\nTOTAL DUE                              £378.36\n\n\nPay by BACS: Sort 40-62-98  Acc 18996144\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_merchant",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

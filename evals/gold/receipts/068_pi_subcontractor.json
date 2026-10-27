@@ -1,0 +1,42 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Aldergate Craft Services",
+  "vat_number": "GB 026 8952 49",
+  "address": "14 Millbrook Terrace, Carlisle, CA2 5QL"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "ACS-93436",
+ "date": "2026-10-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "French polishing: standard oak table (120cm x 80cm)",
+   "qty": 1,
+   "unit_price": 185.0,
+   "net": 185.0,
+   "vat_rate": 20,
+   "vat": 37.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 185.0,
+ "vat_total": 37.0,
+ "gross_total": 222.0,
+ "net_pence": 18500,
+ "vat_pence": 3700,
+ "gross_pence": 22200,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "French Polishing",
+ "printed_text": "ALDERGATE CRAFT SERVICES\n14 Millbrook Terrace\nCarlisle CA2 5QL\nTel 07700 900123\nVAT Reg No: GB 026 8952 49\n\n                 TAX INVOICE\nNo:   ACS-93436\nDate: 14-10-2026\nDue:  13-11-2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nFrench polishing:    1   185.00    185.00   20\n----------------------------------------------\nNET TOTAL                               185.00\nVAT 20%  net 185.00                      37.00\nTOTAL DUE                              £222.00\n\n\nPay by BACS: Sort 40-32-41  Acc 96128944\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_subcontractor",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

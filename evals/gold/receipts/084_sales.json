@@ -1,0 +1,69 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Harrogate Heritage Restorations Ltd"
+ },
+ "invoice_number": "BRW-2026-0731",
+ "date": "2026-08-19",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bespoke Oak Internal Door (Flush, 84x72in)",
+   "qty": 1,
+   "unit_price": 650.0,
+   "net": 650.0,
+   "vat_rate": 20,
+   "vat": 130.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Custom Fitted Wardrobe (Walnut, 1.2m wide)",
+   "qty": 1,
+   "unit_price": 1450.0,
+   "net": 1450.0,
+   "vat_rate": 20,
+   "vat": 290.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Restored Georgian Staircase Stringers (Pair)",
+   "qty": 1,
+   "unit_price": 820.0,
+   "net": 820.0,
+   "vat_rate": 20,
+   "vat": 164.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Bespoke Kitchen Unit (Carved Oak, 900mm base)",
+   "qty": 2,
+   "unit_price": 985.0,
+   "net": 1970.0,
+   "vat_rate": 20,
+   "vat": 394.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 4890.0,
+ "vat_total": 978.0,
+ "gross_total": 5868.0,
+ "net_pence": 489000,
+ "vat_pence": 97800,
+ "gross_pence": 586800,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Bespoke Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01765 448 291\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0731\nDate: 19 Aug 2026\nDue:  18/09/2026\n\nTo: Harrogate Heritage Restorations Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBespoke Oak Intern   1   650.00    650.00   20\nCustom Fitted Ward   1 1,450.00  1,450.00   20\nRestored Georgian    1   820.00    820.00   20\nBespoke Kitchen Un   2   985.00  1,970.00   20\n----------------------------------------------\nNET TOTAL                             4,890.00\nVAT 20%  net 4,890.00                   978.00\nTOTAL DUE                            £5,868.00\n\n\nPay by BACS: Sort 40-29-98  Acc 43806218\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

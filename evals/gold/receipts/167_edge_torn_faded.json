@@ -1,0 +1,70 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Thornfield & Co. Provisions",
+  "vat_number": "GB 027 5206 93",
+  "address": "14 Walmgate, York, YO1 9JF"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-09-08",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Strong White Flour 5kg Bag",
+   "qty": 4,
+   "unit_price": 4.1575,
+   "net": 16.63,
+   "vat_rate": 20,
+   "vat": 3.33,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Fine Sea Salt 1kg Jar",
+   "qty": 2,
+   "unit_price": 2.915,
+   "net": 5.83,
+   "vat_rate": 20,
+   "vat": 1.17,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Active Yeast Cubes 500g",
+   "qty": 3,
+   "unit_price": 5.2067,
+   "net": 15.62,
+   "vat_rate": 20,
+   "vat": 3.13,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Dairy Butter 250g Block",
+   "qty": 6,
+   "unit_price": 2.3333,
+   "net": 14.0,
+   "vat_rate": 20,
+   "vat": 2.8,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 52.08,
+ "vat_total": 10.43,
+ "gross_total": 62.51,
+ "net_pence": 5208,
+ "vat_pence": 1043,
+ "gross_pence": 6251,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "1108",
+ "category_hint": "Baking Supplies",
+ "printed_text": "         THORNFIELD & CO. PROVISIONS\n                 14 Walmgate\n                 York YO1 9JF\n              Tel 01904 555 012\n            VAT No GB 027 5206 93\n\n08-09-2026                               08:39\n----------------------------------------------\n4 x Strong White Flour 5kg Bag           19.96\n2 x Fine Sea Salt 1kg Jar                 7.00\n3 x Active Yeast Cubes 500g              18.75\n6 x Dairy Butter 250g Block              16.80\n----------------------------------------------\nTOTAL                                   £62.51\nVAT 20%  net 52.08                       10.43\nCARD ****1108 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY\n\n",
+ "notes": "",
+ "gold_case": "edge_torn_faded",
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "damage": "faded"
+}

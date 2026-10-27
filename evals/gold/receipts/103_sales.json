@@ -1,0 +1,51 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Thornfield Interiors Ltd"
+ },
+ "invoice_number": "BRW-2026-0581",
+ "date": "2026-09-07",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Oak Fitted Wardrobe Unit (2.4m x 2.2m)",
+   "qty": 2,
+   "unit_price": 1850.0,
+   "net": 3700.0,
+   "vat_rate": 20,
+   "vat": 740.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Walnut Staircase (Straight Run, 14 Steps)",
+   "qty": 1,
+   "unit_price": 3200.0,
+   "net": 3200.0,
+   "vat_rate": 20,
+   "vat": 640.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 6900.0,
+ "vat_total": 1380.0,
+ "gross_total": 8280.0,
+ "net_pence": 690000,
+ "vat_pence": 138000,
+ "gross_pence": 828000,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery & Furniture",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 0113 456 7890\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0581\nDate: 07-09-2026\nDue:  21/09/26\n\nTo: Thornfield Interiors Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nOak Fitted Wardrob   2 1,850.00  3,700.00   20\nSolid Walnut Stair   1 3,200.00  3,200.00   20\n----------------------------------------------\nNET TOTAL                             6,900.00\nVAT 20%  net 6,900.00                 1,380.00\nTOTAL DUE                            £8,280.00\n\n\nPay by BACS: Sort 40-51-91  Acc 74269600\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Harrogate Highways Fuel Co",
+  "vat_number": "GB 023 8020 19",
+  "address": "14-16 Wharfside Road, Leeds, LS1 4DP"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-12",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "UNLEADED",
+   "qty": 25.68,
+   "unit_price": 1.2808,
+   "net": 32.89,
+   "vat_rate": 20,
+   "vat": 6.58,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 32.89,
+ "vat_total": 6.58,
+ "gross_total": 39.47,
+ "net_pence": 3289,
+ "vat_pence": 658,
+ "gross_pence": 3947,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "7834",
+ "category_hint": "Fuel & Forecourt Supplies",
+ "printed_text": "          HARROGATE HIGHWAYS FUEL CO\n             14-16 Wharfside Road\n                Leeds LS1 4DP\n            VAT No GB 023 8020 19\n\n12-07-2026                               10:39\nPUMP 9\n----------------------------------------------\nUNLEADED\n25.68 L @ 153.7p/L\nFUEL                                    £39.47\n----------------------------------------------\nTOTAL                                   £39.47\nVAT 20%  net 32.89                        6.58\nCARD ****7834\n\n                 Drive safely\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_fuel",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

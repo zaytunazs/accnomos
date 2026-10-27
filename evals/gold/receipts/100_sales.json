@@ -1,0 +1,78 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Hartley Interiors Ltd"
+ },
+ "invoice_number": "BRW-2026-0684",
+ "date": "2026-07-03",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bespoke Oak Staircase with Handrail",
+   "qty": 1,
+   "unit_price": 4500.0,
+   "net": 4500.0,
+   "vat_rate": 20,
+   "vat": 900.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Fitted Wardrobe Unit (3-Door, 2.4m width)",
+   "qty": 2,
+   "unit_price": 850.0,
+   "net": 1700.0,
+   "vat_rate": 20,
+   "vat": 340.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Pine Kitchen Worktop (3m run)",
+   "qty": 1,
+   "unit_price": 620.0,
+   "net": 620.0,
+   "vat_rate": 20,
+   "vat": 124.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Restored Victorian French Door (Pair)",
+   "qty": 1,
+   "unit_price": 1200.0,
+   "net": 1200.0,
+   "vat_rate": 20,
+   "vat": 240.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Custom Internal Door with Architrave",
+   "qty": 3,
+   "unit_price": 180.0,
+   "net": 540.0,
+   "vat_rate": 20,
+   "vat": 108.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 8560.0,
+ "vat_total": 1712.0,
+ "gross_total": 10272.0,
+ "net_pence": 856000,
+ "vat_pence": 171200,
+ "gross_pence": 1027200,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Bespoke Joinery & Woodwork",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01772 555 019\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0684\nDate: 03 Jul 2026\nDue:  02/08/2026\n\nTo: Hartley Interiors Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBespoke Oak Stairc   1 4,500.00  4,500.00   20\nFitted Wardrobe Un   2   850.00  1,700.00   20\nSolid Pine Kitchen   1   620.00    620.00   20\nRestored Victorian   1 1,200.00  1,200.00   20\nCustom Internal Do   3   180.00    540.00   20\n----------------------------------------------\nNET TOTAL                             8,560.00\nVAT 20%  net 8,560.00                 1,712.00\nTOTAL DUE                           £10,272.00\n\n\nPay by BACS: Sort 40-80-11  Acc 21139968\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

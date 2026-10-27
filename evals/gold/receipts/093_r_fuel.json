@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Thornfield Motoring Services",
+  "vat_number": "GB 058 8431 44",
+  "address": "42 Industrial Estate, Hunslet, Leeds, LS10 1QR"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-08-28",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "SUPER UNLEADED",
+   "qty": 44.59,
+   "unit_price": 1.2151,
+   "net": 54.18,
+   "vat_rate": 20,
+   "vat": 10.83,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 54.18,
+ "vat_total": 10.83,
+ "gross_total": 65.01,
+ "net_pence": 5418,
+ "vat_pence": 1083,
+ "gross_pence": 6501,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "6668",
+ "category_hint": "Petrol Station Forecourt",
+ "printed_text": "         THORNFIELD MOTORING SERVICES\n        42 Industrial Estate, Hunslet\n                Leeds LS10 1QR\n            VAT No GB 058 8431 44\n\n28/08/26                                 07:03\nPUMP 1\n----------------------------------------------\nSUPER UNLEADED\n44.59 L @ 145.8p/L\nFUEL                                    £65.01\n----------------------------------------------\nTOTAL                                   £65.01\nVAT 20%  net 54.18                       10.83\nCARD ****6668\n\n                 Drive safely\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_fuel",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

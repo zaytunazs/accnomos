@@ -1,0 +1,78 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Teesdale Interiors Ltd"
+ },
+ "invoice_number": "BRW-2026-0759",
+ "date": "2026-09-30",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bespoke Oak Internal Door with Glass Panel",
+   "qty": 1,
+   "unit_price": 450.0,
+   "net": 450.0,
+   "vat_rate": 20,
+   "vat": 90.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak Stair Stringer & Baluster Set",
+   "qty": 3,
+   "unit_price": 180.5,
+   "net": 541.5,
+   "vat_rate": 20,
+   "vat": 108.3,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Fitted Wardrobe Carcass - 2.4m Width",
+   "qty": 1,
+   "unit_price": 1200.0,
+   "net": 1200.0,
+   "vat_rate": 20,
+   "vat": 240.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Handmade Kitchen Worktop - 3m Linear",
+   "qty": 1,
+   "unit_price": 850.0,
+   "net": 850.0,
+   "vat_rate": 20,
+   "vat": 170.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Restoration Sash Window Frame - 6 Lite",
+   "qty": 2,
+   "unit_price": 675.0,
+   "net": 1350.0,
+   "vat_rate": 20,
+   "vat": 270.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 4391.5,
+ "vat_total": 878.3,
+ "gross_total": 5269.8,
+ "net_pence": 439150,
+ "vat_pence": 87830,
+ "gross_pence": 526980,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Bespoke Joinery & Woodwork",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 0191 330 4521\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0759\nDate: 30/09/26\nDue:  30/10/2026\n\nTo: Teesdale Interiors Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBespoke Oak Intern   1   450.00    450.00   20\nSolid Oak Stair St   3   180.50    541.50   20\nFitted Wardrobe Ca   1 1,200.00  1,200.00   20\nHandmade Kitchen W   1   850.00    850.00   20\nRestoration Sash W   2   675.00  1,350.00   20\n----------------------------------------------\nNET TOTAL                             4,391.50\nVAT 20%  net 4,391.50                   878.30\nTOTAL DUE                            £5,269.80\n\n\nPay by BACS: Sort 40-32-86  Acc 30653463\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

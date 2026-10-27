@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Huddersfield Valet & Display Services Ltd",
+  "vat_number": null,
+  "address": "12 Mill Road, Huddersfield, HD1 2QT"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-08",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Parking 1h",
+   "qty": 1,
+   "unit_price": 2.5,
+   "net": 2.5,
+   "vat_rate": 20,
+   "vat": 0.5,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 2.5,
+ "vat_total": 0.5,
+ "gross_total": 3.0,
+ "net_pence": 250,
+ "vat_pence": 50,
+ "gross_pence": 300,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "needs_a_look",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "6458",
+ "category_hint": "Pay-and-display tokens",
+ "printed_text": "  HUDDERSFIELD VALET & DISPLAY SERVICES LTD\n                 12 Mill Road\n             Huddersfield HD1 2QT\n              Tel 01484 555 0123\n\n08/07/2026                               18:55\n----------------------------------------------\nParking 1h                                3.00\n----------------------------------------------\nTOTAL                                    £3.00\nVAT 20%  net 2.50                         0.50\nCARD ****6458 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_parking",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

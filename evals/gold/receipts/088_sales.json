@@ -1,0 +1,60 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Coastal Interiors Ltd"
+ },
+ "invoice_number": "BRW-2026-0591",
+ "date": "2026-09-18",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Solid Oak Staircase, 14 treads, including newel posts",
+   "qty": 1,
+   "unit_price": 4500.0,
+   "net": 4500.0,
+   "vat_rate": 20,
+   "vat": 900.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Bespoke Kitchen Unit, 6ft base with worktop",
+   "qty": 2,
+   "unit_price": 850.0,
+   "net": 1700.0,
+   "vat_rate": 20,
+   "vat": 340.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Flush Door, 72in x 36in, solid core",
+   "qty": 3,
+   "unit_price": 220.0,
+   "net": 660.0,
+   "vat_rate": 20,
+   "vat": 132.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 6860.0,
+ "vat_total": 1372.0,
+ "gross_total": 8232.0,
+ "net_pence": 686000,
+ "vat_pence": 137200,
+ "gross_pence": 823200,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01482 775 201\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0591\nDate: 18/09/26\nDue:  18-10-2026\n\nTo: Coastal Interiors Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nSolid Oak Staircas   1 4,500.00  4,500.00   20\nBespoke Kitchen Un   2   850.00  1,700.00   20\nFlush Door, 72in x   3   220.00    660.00   20\n----------------------------------------------\nNET TOTAL                             6,860.00\nVAT 20%  net 6,860.00                 1,372.00\nTOTAL DUE                            £8,232.00\n\n\nPay by BACS: Sort 40-54-88  Acc 21548818\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Wakefield Wheel & Watch Ltd",
+  "vat_number": null,
+  "address": "14 Station Approach, Wakefield, WF1 2QF"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-25",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Parking 3h",
+   "qty": 1,
+   "unit_price": 7.22,
+   "net": 7.22,
+   "vat_rate": 20,
+   "vat": 1.44,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 7.22,
+ "vat_total": 1.44,
+ "gross_total": 8.66,
+ "net_pence": 722,
+ "vat_pence": 144,
+ "gross_pence": 866,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "needs_a_look",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "9405",
+ "category_hint": "Pay-and-display machine consumables and signage",
+ "printed_text": "         WAKEFIELD WHEEL & WATCH LTD\n             14 Station Approach\n              Wakefield WF1 2QF\n               Tel 01924 456789\n\n25/07/26                                 11:39\n----------------------------------------------\nParking 3h                                8.66\n----------------------------------------------\nTOTAL                                    £8.66\nVAT 20%  net 7.22                         1.44\nCARD ****9405 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_parking",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,96 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Ripon Oak & Iron Ltd",
+  "vat_number": "GB 030 8135 13",
+  "address": "14 Mill Lane, Ripon, HG4 2QT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "ROI-25983",
+ "date": "2026-08-08",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Air-dried English Oak, 50mm x 100mm, 3m length",
+   "qty": 6,
+   "unit_price": 24.5,
+   "net": 147.0,
+   "vat_rate": 20,
+   "vat": 29.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Ash Edge Banding, 20mm x 2.4m",
+   "qty": 12,
+   "unit_price": 3.8,
+   "net": 45.6,
+   "vat_rate": 20,
+   "vat": 9.12,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Brass Butt Hinges, 75mm, 10-gauge",
+   "qty": 10,
+   "unit_price": 1.25,
+   "net": 12.5,
+   "vat_rate": 20,
+   "vat": 2.5,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Hardwood PVA Glue, 5kg Pail",
+   "qty": 2,
+   "unit_price": 38.0,
+   "net": 76.0,
+   "vat_rate": 20,
+   "vat": 15.2,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Sandpaper Sheets, 120 Grit, 230x280mm (Pack of 50)",
+   "qty": 3,
+   "unit_price": 14.99,
+   "net": 44.97,
+   "vat_rate": 20,
+   "vat": 8.99,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Mortise Tenon Chisel, 14mm, Forged Steel",
+   "qty": 1,
+   "unit_price": 22.75,
+   "net": 22.75,
+   "vat_rate": 20,
+   "vat": 4.55,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Protective Wood Oil, 5L Can",
+   "qty": 4,
+   "unit_price": 29.5,
+   "net": 118.0,
+   "vat_rate": 20,
+   "vat": 23.6,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 466.82,
+ "vat_total": 93.36,
+ "gross_total": 560.18,
+ "net_pence": 46682,
+ "vat_pence": 9336,
+ "gross_pence": 56018,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Timber & Hardware",
+ "printed_text": "RIPON OAK & IRON LTD\n14 Mill Lane\nRipon HG4 2QT\nTel 01765 555 014\nVAT Reg No: GB 030 8135 13\n\n                 TAX INVOICE\nNo:   ROI-25983\nDate: 08-08-2026\nDue:  07/09/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nAir-dried English    6    24.50    147.00   20\nSolid Ash Edge Ban  12     3.80     45.60   20\nBrass Butt Hinges,  10     1.25     12.50   20\nHardwood PVA Glue,   2    38.00     76.00   20\nSandpaper Sheets,    3    14.99     44.97   20\nMortise Tenon Chis   1    22.75     22.75   20\nProtective Wood Oi   4    29.50    118.00   20\n----------------------------------------------\nNET TOTAL                               466.82\nVAT 20%  net 466.82                      93.36\nTOTAL DUE                              £560.18\n\n\nPay by BACS: Sort 40-47-20  Acc 90566310\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_merchant",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,51 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "West Yorkshire Interiors Ltd"
+ },
+ "invoice_number": "BRW-2026-0866",
+ "date": "2026-09-03",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Restoration of existing oak staircase - spindles and treads (standard finish)",
+   "qty": 1,
+   "unit_price": 2450.0,
+   "net": 2450.0,
+   "vat_rate": 20,
+   "vat": 490.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Replacement of newel post with solid oak capping",
+   "qty": 1,
+   "unit_price": 380.0,
+   "net": 380.0,
+   "vat_rate": 20,
+   "vat": 76.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 2830.0,
+ "vat_total": 566.0,
+ "gross_total": 3396.0,
+ "net_pence": 283000,
+ "vat_pence": 56600,
+ "gross_pence": 339600,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Bespoke Staircase Restoration",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01484 555 0192\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0866\nDate: 03 Sep 2026\nDue:  17/09/26\n\nTo: West Yorkshire Interiors Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nRestoration of exi   1 2,450.00  2,450.00   20\nReplacement of new   1   380.00    380.00   20\n----------------------------------------------\nNET TOTAL                             2,830.00\nVAT 20%  net 2,830.00                   566.00\nTOTAL DUE                            £3,396.00\n\n\nPay by BACS: Sort 40-92-53  Acc 81680678\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

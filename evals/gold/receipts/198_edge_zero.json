@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Frostdale Books & Bites",
+  "vat_number": null,
+  "address": "14 Market Cross, Chester, CH1 2AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-08-27",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Children's Cotton T-Shirt (Size 6-7y)",
+   "qty": 2,
+   "unit_price": 8.5,
+   "net": 17.0,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  }
+ ],
+ "net_total": 17.0,
+ "vat_total": 0.0,
+ "gross_total": 17.0,
+ "net_pence": 1700,
+ "vat_pence": 0,
+ "gross_pence": 1700,
+ "vat_code": "T0",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "7874",
+ "category_hint": "Zero-rated goods",
+ "printed_text": "           FROSTDALE BOOKS & BITES\n               14 Market Cross\n               Chester CH1 2AB\n              Tel 01244 555 019\n\n27-08-2026                               11:51\n----------------------------------------------\n2 x Children's Cotton T-Shirt (Size 6-7y 17.00\n----------------------------------------------\nTOTAL                                   £17.00\nCARD ****7874 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "edge_zero",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,60 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Thornfield Digital Systems",
+  "vat_number": "GB 017 2289 85",
+  "address": "14 Anchor Court, Hull, HU1 2AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "TDS-70469",
+ "date": "2026-08-26",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "HullCAD Pro - Annual Subscription",
+   "qty": 2,
+   "unit_price": 240.0,
+   "net": 480.0,
+   "vat_rate": 20,
+   "vat": 96.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "CloudVault Storage - 500GB Plan",
+   "qty": 1,
+   "unit_price": 15.5,
+   "net": 15.5,
+   "vat_rate": 20,
+   "vat": 3.1,
+   "vat_code": "T1"
+  },
+  {
+   "description": "LedgerSync Accounting Module - Quarterly",
+   "qty": 4,
+   "unit_price": 120.0,
+   "net": 480.0,
+   "vat_rate": 20,
+   "vat": 96.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 975.5,
+ "vat_total": 195.1,
+ "gross_total": 1170.6,
+ "net_pence": 97550,
+ "vat_pence": 19510,
+ "gross_pence": 117060,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "1236",
+ "category_hint": "SaaS Subscriptions",
+ "printed_text": "THORNFIELD DIGITAL SYSTEMS\n14 Anchor Court\nHull HU1 2AB\nTel 01482 555 019\nVAT Reg No: GB 017 2289 85\n\n                 TAX INVOICE\nNo:   TDS-70469\nDate: 26/08/2026\nDue:  09/09/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nHullCAD Pro - Annu   2   240.00    480.00   20\nCloudVault Storage   1    15.50     15.50   20\nLedgerSync Account   4   120.00    480.00   20\n----------------------------------------------\nNET TOTAL                               975.50\nVAT 20%  net 975.50                     195.10\nTOTAL DUE                            £1,170.60\n\n\nPaid by card - thank you\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_software",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,60 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Cumbria Voltic Grid",
+  "vat_number": "GB 019 1585 74",
+  "address": "14 Foundry Lane, Carlisle, CA1 1TB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "CVG-29055",
+ "date": "2026-07-17",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Business Electricity Unit Charge (per kWh)",
+   "qty": 5000,
+   "unit_price": 0.07,
+   "net": 375.0,
+   "vat_rate": 20,
+   "vat": 75.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Business Electricity Standing Charge (per day)",
+   "qty": 30,
+   "unit_price": 2.45,
+   "net": 73.5,
+   "vat_rate": 20,
+   "vat": 14.7,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Climate Change Levy (per kWh)",
+   "qty": 5000,
+   "unit_price": 0.01,
+   "net": 47.0,
+   "vat_rate": 20,
+   "vat": 9.4,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 495.5,
+ "vat_total": 99.1,
+ "gross_total": 594.6,
+ "net_pence": 49550,
+ "vat_pence": 9910,
+ "gross_pence": 59460,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Business Electricity Supply",
+ "printed_text": "CUMBRIA VOLTIC GRID\n14 Foundry Lane\nCarlisle CA1 1TB\nTel 01228 456789\nVAT Reg No: GB 019 1585 74\n\n                 TAX INVOICE\nNo:   CVG-29055\nDate: 17/07/26\nDue:  31/07/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBusiness Electrici5000     0.07    375.00   20\nBusiness Electrici  30     2.45     73.50   20\nClimate Change Lev5000     0.01     47.00   20\n----------------------------------------------\nNET TOTAL                               495.50\nVAT 20%  net 495.50                      99.10\nTOTAL DUE                              £594.60\n\n\nDirect debit will be collected on 27-07-2026\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

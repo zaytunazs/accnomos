@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Ripon Riverside Parking Ltd",
+  "vat_number": null,
+  "address": "12 The Drove, Ripon, HG4 1QT"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-08-10",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Parking 6h",
+   "qty": 1,
+   "unit_price": 6.12,
+   "net": 6.12,
+   "vat_rate": 20,
+   "vat": 1.23,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 6.12,
+ "vat_total": 1.23,
+ "gross_total": 7.35,
+ "net_pence": 612,
+ "vat_pence": 123,
+ "gross_pence": 735,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "needs_a_look",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "8405",
+ "category_hint": "Parking Services",
+ "printed_text": "         RIPON RIVERSIDE PARKING LTD\n                 12 The Drove\n                Ripon HG4 1QT\n               Tel 01765 555012\n\n10/08/2026                               10:59\n----------------------------------------------\nParking 6h                                7.35\n----------------------------------------------\nTOTAL                                    £7.35\nVAT 20%  net 6.12                         1.23\nCARD ****8405 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_parking",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

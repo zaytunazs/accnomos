@@ -1,0 +1,87 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Aldercroft Timber & Tool Co",
+  "vat_number": "GB 066 5032 78",
+  "address": "14 Mill Lane, Skipton, BD23 2TX"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "ATT-67044",
+ "date": "2026-08-18",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Oak Frame & Panel Timber, 100x50x3000mm",
+   "qty": 8,
+   "unit_price": 18.5,
+   "net": 148.0,
+   "vat_rate": 20,
+   "vat": 29.6,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Cabinet Grade MDF Board, 18mm, 1200x2400mm",
+   "qty": 12,
+   "unit_price": 14.2,
+   "net": 170.4,
+   "vat_rate": 20,
+   "vat": 34.08,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Woodworking Glue, PVA, 5L Pail",
+   "qty": 2,
+   "unit_price": 42.0,
+   "net": 84.0,
+   "vat_rate": 20,
+   "vat": 16.8,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Orbital Sander Discs, 150mm, Grit 120 (Pack of 50)",
+   "qty": 1,
+   "unit_price": 16.75,
+   "net": 16.75,
+   "vat_rate": 20,
+   "vat": 3.35,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Wood Filler, Water Based, 250ml Tube",
+   "qty": 5,
+   "unit_price": 4.95,
+   "net": 24.75,
+   "vat_rate": 20,
+   "vat": 4.95,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Cabinet Hinges, Soft Close, 75mm x 35mm (Pack of 10)",
+   "qty": 3,
+   "unit_price": 28.4,
+   "net": 85.2,
+   "vat_rate": 20,
+   "vat": 17.04,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 529.1,
+ "vat_total": 105.82,
+ "gross_total": 634.92,
+ "net_pence": 52910,
+ "vat_pence": 10582,
+ "gross_pence": 63492,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Timber & Joinery Supplies",
+ "printed_text": "ALDERCROFT TIMBER & TOOL CO\n14 Mill Lane\nSkipton BD23 2TX\nTel 01756 714 290\nVAT Reg No: GB 066 5032 78\n\n                 TAX INVOICE\nNo:   ATT-67044\nDate: 18-08-2026\nDue:  01/09/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nOak Frame & Panel    8    18.50    148.00   20\nCabinet Grade MDF   12    14.20    170.40   20\nWoodworking Glue,    2    42.00     84.00   20\nOrbital Sander Dis   1    16.75     16.75   20\nWood Filler, Water   5     4.95     24.75   20\nCabinet Hinges, So   3    28.40     85.20   20\n----------------------------------------------\nNET TOTAL                               529.10\nVAT 20%  net 529.10                     105.82\nTOTAL DUE                              £634.92\n\n\nPay by BACS: Sort 40-33-71  Acc 20685646\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_merchant",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

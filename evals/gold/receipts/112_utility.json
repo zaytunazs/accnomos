@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Harrogate Mobile Solutions Ltd",
+  "vat_number": "GB 066 3154 74",
+  "address": "12-14 The Square, Harrogate, Harrogate, HG1 1JD"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "HMS-13875",
+ "date": "2026-08-03",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Standard Business Mobile Line (12GB Data, Unlimited Calls)",
+   "qty": 4,
+   "unit_price": 15.99,
+   "net": 63.96,
+   "vat_rate": 20,
+   "vat": 12.79,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Premium Business Mobile Line (Unlimited Data, 5G Access)",
+   "qty": 2,
+   "unit_price": 24.5,
+   "net": 49.0,
+   "vat_rate": 20,
+   "vat": 9.8,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 112.96,
+ "vat_total": 22.59,
+ "gross_total": 135.55,
+ "net_pence": 11296,
+ "vat_pence": 2259,
+ "gross_pence": 13555,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Telecommunications",
+ "printed_text": "HARROGATE MOBILE SOLUTIONS LTD\n12-14 The Square, Harrogate\nHarrogate HG1 1JD\nTel 01423 987654\nVAT Reg No: GB 066 3154 74\n\n                 TAX INVOICE\nNo:   HMS-13875\nDate: 03 Aug 2026\nDue:  17/08/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nStandard Business    4    15.99     63.96   20\nPremium Business M   2    24.50     49.00   20\n----------------------------------------------\nNET TOTAL                               112.96\nVAT 20%  net 112.96                      22.59\nTOTAL DUE                              £135.55\n\n\nDirect debit will be collected on 13/08/2026\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

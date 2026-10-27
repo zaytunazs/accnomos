@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Tyneside Pump & Go",
+  "vat_number": "GB 034 3203 23",
+  "address": "14 Elswick Road, Newcastle, NE6 3AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-10-23",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "DIESEL",
+   "qty": 51.78,
+   "unit_price": 1.2657,
+   "net": 65.54,
+   "vat_rate": 20,
+   "vat": 13.11,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 65.54,
+ "vat_total": 13.11,
+ "gross_total": 78.65,
+ "net_pence": 6554,
+ "vat_pence": 1311,
+ "gross_pence": 7865,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "4985",
+ "category_hint": "Fuel",
+ "printed_text": "              TYNESIDE PUMP & GO\n               14 Elswick Road\n              Newcastle NE6 3AB\n            VAT No GB 034 3203 23\n\n23/10/26                                 11:24\nPUMP 12\n----------------------------------------------\nDIESEL\n51.78 L @ 151.9p/L\nFUEL                                    £78.65\n----------------------------------------------\nTOTAL                                   £78.65\nVAT 20%  net 65.54                       13.11\nCARD ****4985\n\n                 Drive safely\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_fuel",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

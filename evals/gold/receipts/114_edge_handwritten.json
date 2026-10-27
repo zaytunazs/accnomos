@@ -1,0 +1,61 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Daleside Driftwood Depot",
+  "vat_number": "GB 092 1002 13",
+  "address": "7 Old Mill Lane, Carlisle, CA2 5TX"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-10-20",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Seasoned Oak Firewood Bundle (10kg)",
+   "qty": 4,
+   "unit_price": 10.4175,
+   "net": 41.67,
+   "vat_rate": 20,
+   "vat": 8.33,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Second-Hand Hand Trowel (Well Used)",
+   "qty": 2,
+   "unit_price": 7.49,
+   "net": 14.98,
+   "vat_rate": 20,
+   "vat": 3.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Hardwood Timber Offcut (1.5m)",
+   "qty": 6,
+   "unit_price": 3.5417,
+   "net": 21.25,
+   "vat_rate": 20,
+   "vat": 4.25,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 77.9,
+ "vat_total": 15.58,
+ "gross_total": 93.48,
+ "net_pence": 7790,
+ "vat_pence": 1558,
+ "gross_pence": 9348,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "cash",
+ "card_last4": null,
+ "category_hint": "Non-food yard goods",
+ "printed_text": "           DALESIDE DRIFTWOOD DEPOT\n               7 Old Mill Lane\n               Carlisle CA2 5TX\n              Tel 02920 555 014\n            VAT No GB 092 1002 13\n\n20/10/26                                 15:43\n----------------------------------------------\n~4 x Seasoned Oak Firewood Bundle (10kg)  50.00\n~2 x Second-Hand Hand Trowel (Well Used)  17.98\n~6 x Hardwood Timber Offcut (1.5m)  25.50\n----------------------------------------------\n~TOTAL  £93.48\n~VAT incl.\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "edge_handwritten",
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "damage": "handwritten"
+}

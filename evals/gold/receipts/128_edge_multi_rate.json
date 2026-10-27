@@ -1,0 +1,87 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Hullside Harvest & Home Ltd",
+  "vat_number": "GB 084 9733 26",
+  "address": "14 Anchor Lane, Hull, HU1 2AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-25",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Organic Honey Jar (500g)",
+   "qty": 4,
+   "unit_price": 3.75,
+   "net": 15.0,
+   "vat_rate": 20,
+   "vat": 3.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Hardcover Poetry Anthology",
+   "qty": 2,
+   "unit_price": 14.99,
+   "net": 29.98,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  },
+  {
+   "description": "Premium Child Car Seat (Group 1/2/3)",
+   "qty": 1,
+   "unit_price": 150.0,
+   "net": 150.0,
+   "vat_rate": 5,
+   "vat": 7.5,
+   "vat_code": "T5"
+  },
+  {
+   "description": "Ceramic Herb Planter Pot",
+   "qty": 6,
+   "unit_price": 10.3333,
+   "net": 62.0,
+   "vat_rate": 20,
+   "vat": 12.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "LED Garden Stake Light",
+   "qty": 3,
+   "unit_price": 8.99,
+   "net": 26.97,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  },
+  {
+   "description": "Natural Cotton Garden Gloves",
+   "qty": 5,
+   "unit_price": 6.8,
+   "net": 34.0,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  }
+ ],
+ "net_total": 317.95,
+ "vat_total": 22.9,
+ "gross_total": 340.85,
+ "net_pence": 31795,
+ "vat_pence": 2290,
+ "gross_pence": 34085,
+ "vat_code": "MIXED",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "7424",
+ "category_hint": "Mixed retail stock including garden items, food, books, and safety equipment.",
+ "printed_text": "         HULLSIDE HARVEST & HOME LTD\n                14 Anchor Lane\n                 Hull HU1 2AB\n              Tel 01482 990 123\n            VAT No GB 084 9733 26\n\n25/07/26                                 18:25\n----------------------------------------------\n4 x Organic Honey Jar (500g)             18.00\n2 x Hardcover Poetry Anthology           29.98\nPremium Child Car Seat (Group 1/2/3)    157.50\n6 x Ceramic Herb Planter Pot             74.40\n3 x LED Garden Stake Light               26.97\n5 x Natural Cotton Garden Gloves         34.00\n----------------------------------------------\nTOTAL                                  £340.85\nVAT 20%  net 77.00                       15.40\nVAT 5%  net 150.00                        7.50\nVAT 0%  net 90.95                         0.00\nCARD ****7424 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "edge_multi_rate",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

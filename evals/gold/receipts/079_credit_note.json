@@ -1,0 +1,60 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Northgate Timber & Fixings Ltd",
+  "vat_number": "GB 048 0492 71",
+  "address": "14 Railway Road, Lancaster, LA1 4QW"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "CN8525",
+ "date": "2026-07-04",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "100x50mm Redwood Timber Plank (4m)",
+   "qty": 4,
+   "unit_price": 12.5,
+   "net": -50.0,
+   "vat_rate": 20,
+   "vat": -10.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Galvanised Steel Hinge 100mm",
+   "qty": 6,
+   "unit_price": 3.25,
+   "net": -19.5,
+   "vat_rate": 20,
+   "vat": -3.9,
+   "vat_code": "T1"
+  },
+  {
+   "description": "External Door Seal Kit (Universal Fit)",
+   "qty": 2,
+   "unit_price": 18.9,
+   "net": -37.8,
+   "vat_rate": 20,
+   "vat": -7.56,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": -107.3,
+ "vat_total": -21.46,
+ "gross_total": -128.76,
+ "net_pence": -10730,
+ "vat_pence": -2146,
+ "gross_pence": -12876,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": true,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Construction Materials",
+ "printed_text": "NORTHGATE TIMBER & FIXINGS LTD\n14 Railway Road\nLancaster LA1 4QW\nTel 01524 987 654\nVAT Reg No: GB 048 0492 71\n\n                 CREDIT NOTE\nNo:   CN8525\nDate: 04/07/26\nRe invoice NTF-56091\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\n100x50mm Redwood T   4    12.50    -50.00   20\nGalvanised Steel H   6     3.25    -19.50   20\nExternal Door Seal   2    18.90    -37.80   20\n----------------------------------------------\nNET TOTAL                              -107.30\nVAT 20%  net -107.30                    -21.46\nTOTAL CREDIT                          £-128.76\n\nReason: Damaged goods on delivery\n\nCredit to be refunded / offset on account\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "credit_note",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

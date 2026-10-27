@@ -1,0 +1,60 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Northgate Timber & Fixings",
+  "vat_number": "GB 081 8107 74",
+  "address": "14 Station Road, Chester, CH1 2AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-09-06",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "90x45mm Softwood Board (4.8m)",
+   "qty": 5,
+   "unit_price": 12.084,
+   "net": 60.42,
+   "vat_rate": 20,
+   "vat": 12.08,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Galvanized Wood Screws 75mm (100 pack)",
+   "qty": 2,
+   "unit_price": 5.665,
+   "net": 11.33,
+   "vat_rate": 20,
+   "vat": 2.27,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Structural Timber Glue 50ml Tube",
+   "qty": 1,
+   "unit_price": 3.54,
+   "net": 3.54,
+   "vat_rate": 20,
+   "vat": 0.71,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 75.29,
+ "vat_total": 15.06,
+ "gross_total": 90.35,
+ "net_pence": 7529,
+ "vat_pence": 1506,
+ "gross_pence": 9035,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "7499",
+ "category_hint": "Timber Yard",
+ "printed_text": "          NORTHGATE TIMBER & FIXINGS\n               14 Station Road\n               Chester CH1 2AB\n               Tel 01244 555019\n            VAT No GB 081 8107 74\n\n06-09-2026                               11:45\n----------------------------------------------\n5 x 90x45mm Softwood Board (4.8m)        72.50\n2 x Galvanized Wood Screws 75mm (100 pac 13.60\nStructural Timber Glue 50ml Tube          4.25\n----------------------------------------------\nTOTAL                                   £90.35\nVAT 20%  net 75.29                       15.06\nCARD ****7499 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_trade",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}
