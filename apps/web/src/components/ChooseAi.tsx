@@ -7,6 +7,7 @@ import {
   loadAiConfig,
   RUNTIME_URL,
   saveAiConfig,
+  saveAiTest,
   type AiConfig,
   type AiMode,
 } from "@/lib/ai-config";
@@ -40,9 +41,12 @@ export default function ChooseAi() {
     setTesting(true);
     setResult(null);
     try {
-      setResult(await runtimeAiTest(current));
+      const r = await runtimeAiTest(current);
+      setResult(r);
+      saveAiTest(current, r.ok); // Home's setup checklist reads this, next to the saved config
     } catch (e) {
       setResult({ ok: false, mode, detail: `Could not reach the runtime at ${RUNTIME_URL}: ${(e as Error).message}` });
+      saveAiTest(current, false);
     } finally {
       setTesting(false);
     }
