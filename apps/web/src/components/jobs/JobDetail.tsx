@@ -71,6 +71,7 @@ export default function JobDetail() {
     act("add", async () => {
       await runtime.addTimesheet(account, { ...row, job_id: id, hours, note: row.note.trim() });
       setRow((r) => ({ ...r, hours: "", note: "" }));
+      setProposal(null); // the proposed lines no longer match the hours
     });
   }
 
@@ -242,7 +243,10 @@ export default function JobDetail() {
                       <button
                         type="button"
                         disabled={busy !== null}
-                        onClick={() => account && act(`del-${e.id}`, () => runtime.deleteTimesheet(account, e.id))}
+                        onClick={() => account && act(`del-${e.id}`, async () => {
+                          await runtime.deleteTimesheet(account, e.id);
+                          setProposal(null); // the proposed lines no longer match the hours
+                        })}
                         className="h-9 rounded-xl border border-border bg-white px-3 text-[13px] font-bold text-ink disabled:opacity-60"
                       >
                         {busy === `del-${e.id}` ? "Removing…" : "Remove"}
