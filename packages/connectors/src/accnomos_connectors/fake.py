@@ -7,6 +7,7 @@ from datetime import UTC, datetime
 
 from accnomos_connectors.base import (
     AddressBookContact,
+    CalendarProvider,
     ConflictError,
     ContactsProvider,
     FileRef,
@@ -60,6 +61,26 @@ class FakeContactsProvider(ContactsProvider):
     async def list_contacts(self, max_results: int = 1000) -> list[AddressBookContact]:
         self.calls += 1
         return self.contacts[:max_results]
+
+
+class FakeCalendarProvider(CalendarProvider):
+    """Calendars in memory: `events[calendar_id][key]` = (date, title, body); upserting the same key replaces it."""
+
+    def __init__(self) -> None:
+        self.calendars: dict[str, str] = {}  # name -> id
+        self.events: dict[str, dict[str, tuple[str, str, str]]] = {}
+
+    async def ensure_calendar(self, name: str) -> str:
+        if name not in self.calendars:
+            self.calendars[name] = f"fake-cal:{len(self.calendars) + 1}"
+            self.events[self.calendars[name]] = {}
+        return self.calendars[name]
+
+    async def upsert_all_day_event(self, calendar_id: str, key: str, date: str, title: str, body: str) -> str:
+        if calendar_id not in self.events:
+            raise FileNotFoundError(calendar_id)
+        self.events[calendar_id][key] = (date, title, body)
+        return f"{calendar_id}/{key}"
 
 
 class FakeStorageProvider(StorageProvider):

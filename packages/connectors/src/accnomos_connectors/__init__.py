@@ -15,7 +15,7 @@ from accnomos_connectors.base import (
     ConflictError,
     StorageProvider,
 )
-from accnomos_connectors.fake import FakeContactsProvider, FakeMailProvider, FakeStorageProvider
+from accnomos_connectors.fake import FakeCalendarProvider, FakeContactsProvider, FakeMailProvider, FakeStorageProvider
 from accnomos_connectors.msgraph import GraphContactsProvider, GraphError, GraphMailProvider, GraphStorageProvider
 
 __all__ = [
@@ -28,6 +28,7 @@ __all__ = [
     "MailProvider",
     "StorageProvider",
     "ConflictError",
+    "FakeCalendarProvider",
     "FakeContactsProvider",
     "FakeMailProvider",
     "FakeStorageProvider",
