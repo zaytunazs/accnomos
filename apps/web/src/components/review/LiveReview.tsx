@@ -34,6 +34,8 @@ export function toUi(p: RtProposal): UiProposal {
     return { account: `${label} ${amt}`, amount: amt, meaning };
   });
   const fails = p.checks.filter((c) => !c.ok);
+  const verified = p.checks.filter((c) => c.code !== "CROP"); // the crop note is not a check
+  const cropped = p.crop && p.crop.method !== "none" ? ` · ${p.crop.note}` : "";
   const why = fails.length
     ? `Why it's flagged: ${fails.map((c) => c.message).join("; ")}.`
     : `Why: ${x.lines.length} line${x.lines.length === 1 ? "" : "s"}, totals add up (${x.net_total.toFixed(2)} + ${x.vat_total.toFixed(2)} = ${x.gross_total.toFixed(2)}); category "${x.category_guess}". — Checker, code`;
@@ -50,7 +52,7 @@ export function toUi(p: RtProposal): UiProposal {
     paidBy: x.card_last4 ? `Card ending ${x.card_last4}` : (x.payment_method ?? "—"),
     lines,
     reviewerNote: why,
-    verifierNote: `Checks run by code: ${p.checks.filter((c) => c.ok).length} of ${p.checks.length} passed · ${p.model} · ${p.elapsed_s.toFixed(1)} s`,
+    verifierNote: `Checks run by code: ${verified.filter((c) => c.ok).length} of ${verified.length} passed · ${p.model} · ${p.elapsed_s.toFixed(1)} s${cropped}`,
   };
 }
 

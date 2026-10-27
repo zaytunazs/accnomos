@@ -30,7 +30,23 @@ $env:OLLAMA_BASE='http://<spark>:11434'
 ..\.venv\Scripts\python.exe -m harness.run_extraction --mode local --messy --out runs/<name>   # Glimmer
 ..\.venv\Scripts\python.exe -m harness.run_extraction --mode key   --out runs/<name>          # muse-spark-1.3 (MODEL_API_KEY)
 ..\.venv\Scripts\python.exe -m harness.judge runs/<name> --escalate claude-sonnet-5-5         # Claude as judge (H19)
+..\.venv\Scripts\python.exe -m harness.crop_bench --limit 20                                   # crop IoU; adds SAM if MODEL_API_KEY is set
 ```
+
+## Document crop (before extraction)
+
+`app/ai/crop.py` crops phone photos to the receipt; it never fails the pipeline and returns the
+original whenever it is unsure. The result is on the proposal as `crop` plus an ok `CROP` check.
+
+- `CROP_MODE=auto` (default) | `code` | `off`.
+- `SAM_CROP=1` lets key-mode requests call `sam-3.1` on `{MODEL_API_BASE}/responses` first
+  (~$2.50 per 1k images, two calls when "receipt" finds nothing and "invoice" is tried).
+  **Off by default: the request/response shape is unverified** (the Meta docs were unreachable when
+  it was written). Capture a real response, replace `services/runtime/tests/fixtures/sam_response.json`,
+  and check `parse_sam_boxes` against it before turning it on.
+- Without SAM, Pillow + numpy find the largest bright region (Otsu); accepted at 25–95 % of the frame.
+- Crops keep the upload's format (JPEG, including phone MPO files, PNG, WebP); anything else is passed
+  through uncropped so the MIME type stays true.
 
 ## Deploy
 

@@ -142,6 +142,8 @@ class Proposal(BaseModel):
     journal_draft: list[JournalLine]
     model: str
     elapsed_s: float
+    # How the photo was cropped before extraction: {"method": "sam"|"code"|"none", "box": [x0,y0,x1,y1]|None, "note"}
+    crop: dict[str, Any] | None = None
     # Set once the proposal lives in the user's books (_System/proposals/{id}.json).
     source_name: str | None = None  # original file name in "00 Inbox"
     file_path: str | None = None  # where the document is filed now

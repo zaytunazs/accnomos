@@ -1,4 +1,4 @@
-"""Image in, `Proposal` out: hash -> extract -> checks -> decide -> journal -> filename."""
+"""Image in, `Proposal` out: hash -> crop -> extract -> checks -> decide -> journal -> filename."""
 
 from __future__ import annotations
 
@@ -9,11 +9,12 @@ import uuid
 from datetime import date
 
 from app.ai.config import AiConfig
+from app.ai.crop import crop_document
 from app.ai.extract import extract_document
 from app.checks import decide, run_checks
 from app.journal import draft_journal
 from app.repair import repair
-from app.schemas import ExtractedDoc, Proposal
+from app.schemas import Check, ExtractedDoc, Proposal
 
 _EXT = {"image/jpeg": ".jpg", "image/jpg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 _SYMBOL = {"GBP": "£", "EUR": "€", "USD": "$"}
@@ -43,12 +44,15 @@ async def process_image(
 ) -> Proposal:
     """Turn one document image into a reviewable `Proposal`. Raises `ExtractionError`."""
     t0 = time.perf_counter()
-    digest = sha256_hex(image_bytes)
-    doc, meta = await extract_document(image_bytes, mime, cfg)
+    digest = sha256_hex(image_bytes)  # of the original file: duplicate detection must not depend on cropping
+    cropped = await crop_document(image_bytes, cfg)
+    doc, meta = await extract_document(cropped.image_bytes, mime, cfg)
     repairs = repair(doc, business_name)
     checks = repairs + run_checks(
         doc, known_hashes=known_hashes, this_hash=digest, period_start=period_start, period_end=period_end
     )
+    if cropped.box is not None:  # ok=True: shown as a chip, never a reason
+        checks.append(Check(code="CROP", ok=True, severity="warn", message=f"{cropped.note} {list(cropped.box)}"))
     status, reasons = decide(checks)
     return Proposal(
         id=uuid.uuid4().hex,
@@ -61,4 +65,5 @@ async def process_image(
         journal_draft=draft_journal(doc),
         model=f"{meta['backend']}:{meta['model']}",
         elapsed_s=round(time.perf_counter() - t0, 3),
+        crop=cropped.public(),
     )
