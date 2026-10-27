@@ -123,6 +123,24 @@ class JournalLine(BaseModel):
     vat_code: str | None = None
 
 
+class FieldAgreement(BaseModel):
+    """One field as read by the Extractor and, independently, by the Verifier. Code decides `agree`."""
+
+    extractor: str | float | None
+    verifier: str | float | None
+    agree: bool
+
+
+class Verification(BaseModel):
+    """Second, independent reading of the same image (app/ai/verify.py). Never merged into `extracted`."""
+
+    fields: dict[str, FieldAgreement]
+    agree_all: bool
+    model: str  # "<backend>:<model>", e.g. "baseten:meta-models/muse-spark-open"
+    elapsed_s: float | None = None
+    error: str | None = None  # set when the verifier could not run; `fields` is then empty
+
+
 class Proposal(BaseModel):
     id: str
     doc_sha256: str
@@ -134,6 +152,7 @@ class Proposal(BaseModel):
     journal_draft: list[JournalLine]
     model: str
     elapsed_s: float
+    verification: Verification | None = None  # only when the first reading passed every check
     # Set once the proposal lives in the user's books (_System/proposals/{id}.json).
     source_name: str | None = None  # original file name in "00 Inbox"
     file_path: str | None = None  # where the document is filed now
