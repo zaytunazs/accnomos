@@ -12,7 +12,9 @@ dependencies:
   http: ^1.2.2
   image_picker: ^1.1.2
   msal_auth: ^3.5.3
+  record: ^7.1.2
   shared_preferences: ^2.3.2
+  url_launcher: ^6.3.3
 
 dev_dependencies:
   flutter_test:
