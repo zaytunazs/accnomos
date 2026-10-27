@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 
 const links = [
   { href: "/", label: "Home" },
-  { href: "/review", label: "Review", badge: "3" },
+  { href: "/review", label: "Review" },
   { href: "/ask", label: "Ask" },
   { href: "/bank", label: "Bank" },
   { href: "/vat", label: "VAT return" },
@@ -34,21 +34,13 @@ export default function AppNav() {
             key={link.href}
             href={link.href}
             aria-current={active ? "page" : undefined}
-            className={`flex h-11 items-center justify-between rounded-xl px-4 text-[15px] font-semibold ${
+            className={`flex h-11 items-center rounded-xl px-4 text-[15px] font-semibold ${
               active
                 ? "bg-teal-tint text-teal-dark"
                 : "text-ink hover:bg-ground"
             }`}
           >
             <span>{link.label}</span>
-            {link.badge ? (
-              <span
-                aria-label={`${link.badge} items to review`}
-                className="flex h-6 min-w-6 items-center justify-center rounded-full bg-amber px-2 text-[13px] font-bold text-white"
-              >
-                {link.badge}
-              </span>
-            ) : null}
           </Link>
         );
       })}
