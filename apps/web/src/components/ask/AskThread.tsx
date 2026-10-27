@@ -8,9 +8,10 @@ import { getMsal, msalConfigured } from "@/lib/msal";
 import { runtime, type RtAskAnswer, type RtAskTurn } from "@/lib/runtime";
 import { sampleAnswer, sampleQuestion } from "@/lib/sample-ask";
 import AnswerCard from "./AnswerCard";
+import MicButton from "./MicButton";
 
 interface Turn {
-  question: string;
+  question: string; // empty while a spoken question is being transcribed
   answer?: RtAskAnswer;
   error?: string;
 }
@@ -20,7 +21,11 @@ type Mode = "loading" | "sample" | "live";
 function Question({ text }: { text: string }) {
   return (
     <div className="flex justify-end">
-      <p className="max-w-[min(32rem,85%)] rounded-2xl bg-teal px-4 py-3 text-[15px] leading-6 text-white">{text}</p>
+      {text ? (
+        <p className="max-w-[min(32rem,85%)] rounded-2xl bg-teal px-4 py-3 text-[15px] leading-6 text-white">{text}</p>
+      ) : (
+        <p className="rounded-2xl bg-teal/70 px-4 py-3 text-[15px] italic leading-6 text-white">Transcribing…</p>
+      )}
     </div>
   );
 }
@@ -34,18 +39,24 @@ export default function AskThread() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [model, setModel] = useState<string | null>(null);
+  const [voiceNote, setVoiceNote] = useState<string | null>(null);
+  const [voiceOff, setVoiceOff] = useState<string | null>("Sign in to ask by voice");
   const end = useRef<HTMLDivElement>(null);
   const asked = useRef(false);
 
-  async function ask(question: string, acct: AccountInfo, before: Turn[]) {
-    const q = question.trim();
-    if (!q) return;
-    const history: RtAskTurn[] = before
+  function historyOf(before: Turn[]): RtAskTurn[] {
+    return before
       .filter((t) => t.answer)
       .flatMap((t) => [
         { role: "user" as const, text: t.question },
         { role: "assistant" as const, text: t.answer!.answer_md },
       ]);
+  }
+
+  async function ask(question: string, acct: AccountInfo, before: Turn[]) {
+    const q = question.trim();
+    if (!q) return;
+    const history = historyOf(before);
     setTurns([...before, { question: q }]);
     setInput("");
     setBusy(true);
@@ -59,10 +70,25 @@ export default function AskThread() {
     }
   }
 
+  /** A spoken question: "Transcribing…" bubble, then the transcript replaces it and the answer renders as usual. */
+  async function askVoice(audio: Blob, acct: AccountInfo, before: Turn[]) {
+    setTurns([...before, { question: "" }]);
+    setBusy(true);
+    try {
+      const { transcript, ...answer } = await runtime.askVoice(acct, audio, null, historyOf(before));
+      setTurns([...before, { question: transcript, answer }]);
+    } catch (e) {
+      setTurns([...before, { question: "(voice question)", error: e instanceof Error ? e.message : String(e) }]);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   useEffect(() => {
     (async () => {
       const q = new URLSearchParams(window.location.search).get("q")?.trim() ?? "";
-      setModel(loadAiConfig()?.model ?? null);
+      const ai = loadAiConfig();
+      setModel(ai?.model ?? null);
       let acct: AccountInfo | null = null;
       try {
         if (msalConfigured()) {
@@ -77,11 +103,21 @@ export default function AskThread() {
         setInput(q);
         return setMode("sample");
       }
-      const up = await fetch(`${RUNTIME_URL}/health`).then((r) => r.ok, () => false);
-      if (!up) {
+      const health = await fetch(`${RUNTIME_URL}/health`).then(
+        (r) => (r.ok ? (r.json() as Promise<{ voice?: boolean }>) : null),
+        () => null,
+      );
+      if (!health) {
         setOffline(true);
         return setMode("sample");
       }
+      setVoiceOff(
+        ai?.mode !== "key"
+          ? "Voice needs a Meta API key — switch to key mode in Settings (local AI can't transcribe)"
+          : health.voice === false
+            ? "Voice isn't available on your reader service (ffmpeg is missing)"
+            : null,
+      );
       setAccount(acct);
       setMode("live");
       if (q && !asked.current) {
@@ -183,6 +219,17 @@ export default function AskThread() {
           }
           className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted disabled:opacity-60"
         />
+        {live && (
+          <MicButton
+            disabled={busy || voiceOff !== null}
+            reason={busy ? "Wait for the answer" : (voiceOff ?? undefined)}
+            onRecorded={(audio) => {
+              setVoiceNote(null);
+              if (account) void askVoice(audio, account, turns);
+            }}
+            onError={setVoiceNote}
+          />
+        )}
         {live ? (
           <button
             type="submit"
@@ -200,6 +247,11 @@ export default function AskThread() {
           </Link>
         )}
       </form>
+      {voiceNote && (
+        <p role="status" className="-mt-4 px-2 text-[13px] text-warn-ink">
+          {voiceNote}
+        </p>
+      )}
     </div>
   );
 }
