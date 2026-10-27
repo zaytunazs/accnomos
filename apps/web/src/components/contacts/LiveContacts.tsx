@@ -16,6 +16,7 @@ import {
   type RtContactField,
   type RtContactRow,
   type RtStatement,
+  type RtVatStatus,
 } from "@/lib/runtime";
 import { sampleAged, sampleContacts } from "@/lib/sample-contacts";
 
@@ -112,11 +113,20 @@ function QuickActions({ contact, onStatement, onEdit }: {
   );
 }
 
+/** Contact.vat_status (services/runtime/app/contacts.py): what the VAT number check decides on for this supplier. */
+export const VAT_STATUS_LABEL: Record<RtVatStatus, string> = {
+  registered: "VAT-registered",
+  not_registered: "Not VAT-registered",
+  unknown: "VAT status not known yet",
+};
+const buysFrom = (c: RtContactRow) => c.kind !== "customer";
+
 function ContactSubline({ contact, showKind }: { contact: RtContactRow; showKind: boolean }) {
   return (
     <span className="mt-0.5 flex flex-wrap gap-x-3 gap-y-0.5 text-[13px] font-medium text-muted">
       {showKind && <span>{KIND_LABEL[contact.kind]}</span>}
       {contact.vrn && <span>VAT {contact.vrn}</span>}
+      {buysFrom(contact) && contact.vat_status === "not_registered" && <span>{VAT_STATUS_LABEL.not_registered}</span>}
       {contact.email && <span className="break-all">{contact.email}</span>}
       <span>{lastActivity(contact)}</span>
     </span>
@@ -233,7 +243,7 @@ type Form = Record<RtContactField, string>;
 function toForm(c: RtContactRow): Form {
   return {
     name: c.name, kind: c.kind, vrn: c.vrn ?? "", email: c.email ?? "", phone: c.phone ?? "", address: c.address ?? "",
-    default_category: c.default_category ?? "", default_vat_code: c.default_vat_code ?? "",
+    default_category: c.default_category ?? "", default_vat_code: c.default_vat_code ?? "", vat_status: c.vat_status ?? "unknown",
   };
 }
 
@@ -293,6 +303,21 @@ function EditForm({ contact, onSave, onCancel }: {
         GB followed by 9 or 12 digits; spaces are fine. Leave blank if they have none.
       </span>
       {vrnError && <p role="alert" className="text-sm font-semibold text-warn-ink">{vrnError}</p>}
+      {buysFrom(contact) && (
+        <>
+          <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
+            VAT status
+            <select className={input} value={form.vat_status} onChange={set("vat_status")} aria-describedby="vat-status-hint">
+              <option value="registered">{VAT_STATUS_LABEL.registered}</option>
+              <option value="not_registered">{VAT_STATUS_LABEL.not_registered}</option>
+              <option value="unknown">Not known: ask me over £250</option>
+            </select>
+          </label>
+          <span id="vat-status-hint" className="text-[13px] font-medium text-muted">
+            A receipt over £250 with no VAT and no VAT number is only questioned while this is not known. Learnt when you approve.
+          </span>
+        </>
+      )}
       <AliasChips aliases={contact.aliases} />
       {field("email", "Email", "email")}
       {field("phone", "Phone", "tel")}
@@ -425,7 +450,9 @@ function SidePanel({ contact, account, editing, onEditingChange, onSaved, onClos
   }
 
   const details: [string, string | null][] = [
-    ["VAT number", contact.vrn], ["Email", contact.email], ["Phone", contact.phone], ["Address", contact.address],
+    ["VAT number", contact.vrn],
+    ["VAT status", buysFrom(contact) ? VAT_STATUS_LABEL[contact.vat_status ?? "unknown"] : null],
+    ["Email", contact.email], ["Phone", contact.phone], ["Address", contact.address],
     ["Usual category", contact.default_category],
   ];
   return (

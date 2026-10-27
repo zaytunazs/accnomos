@@ -13,16 +13,22 @@ test("contacts: list from the books, edit one, its statement", async ({ page, ru
   await page.getByRole("button", { name: "Novex Office Supplies Ltd" }).click();
   const panel = page.getByRole("complementary", { name: "Novex Office Supplies Ltd: statement" });
   await expect(panel).toContainText("Supplier");
+  await expect(panel).toContainText("VAT-registered"); // learnt from the VAT number on the approved receipt
   const statement = panel.getByRole("table");
   await expect(statement.getByRole("row").filter({ hasText: "14 Aug 2026" })).toContainText("£51.90");
 
   await panel.getByRole("button", { name: "Edit" }).click();
   await panel.getByRole("textbox", { name: "Phone" }).fill("0117 496 0123");
+  await expect(panel.getByRole("combobox", { name: "VAT status" })).toHaveValue("registered");
+  await panel.getByRole("combobox", { name: "VAT status" }).selectOption("unknown");
   await panel.getByRole("button", { name: "Save" }).click();
   await expect(panel.getByRole("button", { name: "Edit" })).toBeVisible();
   await expect(panel).toContainText("0117 496 0123");
+  await expect(panel).toContainText("VAT status not known yet");
 
   await page.reload(); // kept in contacts.json in OneDrive
   await page.getByRole("button", { name: "Novex Office Supplies Ltd" }).click();
-  await expect(page.getByRole("complementary", { name: "Novex Office Supplies Ltd: statement" })).toContainText("0117 496 0123");
+  const again = page.getByRole("complementary", { name: "Novex Office Supplies Ltd: statement" });
+  await expect(again).toContainText("0117 496 0123");
+  await expect(again).toContainText("VAT status not known yet");
 });

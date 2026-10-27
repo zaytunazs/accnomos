@@ -208,3 +208,42 @@ test("signed in: U pressed while an approve is in flight undoes it once it lands
   await expect(status).not.toContainText("Nothing to undo yet");
   expect(await events()).toHaveLength(2);
 });
+
+test("signed in: an unknown supplier over £250 with no VAT number is asked about once, then remembered", async ({ page, runtime }) => {
+  await signIn(page);
+  await createBooksFolder(page);
+  await page.goto("/review");
+  const NO_VAT = "005_no_vat_number"; // Hargreaves & Sons Ironmongery, £368.50, "No VAT charged", no VAT number
+  const upload = async (file: string) => {
+    await page.locator('input[type="file"]').first().setInputFiles({ name: `${file}.png`, mimeType: "image/png", buffer: await runtime.goldPng(file) });
+    await expect(page.getByText("1 file added to 00 Inbox")).toBeVisible();
+    await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
+  };
+  const status = page.locator('p[role="status"][aria-live="polite"]');
+  await upload(NO_VAT);
+  await expect(status).toHaveText("1 new proposal");
+
+  const hargreaves = card(page, "Hargreaves & Sons Ironmongery · £368.50");
+  await expect(hargreaves).toContainText("Needs a look.");
+  await expect(hargreaves.getByRole("list", { name: "Checks that need you" })).toContainText(
+    "Is Hargreaves & Sons Ironmongery VAT-registered? Over £250 they should give a VAT invoice",
+  );
+  await expect(page.locator("main")).not.toContainText("SUPPLIER_VAT_UNKNOWN");
+  const tick = hargreaves.getByRole("checkbox", { name: /Hargreaves & Sons Ironmongery isn't VAT-registered/ });
+  await expect(tick).not.toBeChecked();
+  await tick.check();
+
+  const bodies: unknown[] = [];
+  page.on("request", (r) => r.url().includes("/approve") && r.method() === "POST" && bodies.push(r.postDataJSON()));
+  await hargreaves.getByRole("button", { name: /^Approve/ }).click();
+  await expect(status).toHaveText(
+    "Approved · posted to your books · Hargreaves & Sons Ironmongery remembered as not VAT-registered · U to undo",
+  );
+  expect(bodies).toEqual([{ remember: false, edits: { supplier_not_vat_registered: true } }]);
+  const book = await runtime.api<{ contacts: { name: string; vat_status: string }[] }>("GET", "/contacts");
+  expect(book.contacts.find((c) => c.name === "Hargreaves & Sons Ironmongery")?.vat_status).toBe("not_registered");
+
+  await upload(GOLD); // a card without the question offers no tick
+  await expect(status).toHaveText("1 new proposal");
+  await expect(card(page, "Novex Office Supplies Ltd · £51.90").getByRole("checkbox", { name: /VAT-registered/ })).toHaveCount(0);
+});
