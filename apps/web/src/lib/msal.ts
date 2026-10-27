@@ -32,7 +32,7 @@ export function getMsal(): Promise<IPublicClientApplication> {
       auth: {
         clientId,
         authority,
-        redirectUri: `${window.location.origin}/auth/callback`,
+        redirectUri: `${window.location.origin}/auth/callback.html`,
         postLogoutRedirectUri: window.location.origin,
       },
       cache: { cacheLocation: "localStorage" },

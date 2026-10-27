@@ -1,8 +1,12 @@
 import type { NextConfig } from "next";
 
+// The PWA is a static site: all state lives in the browser (MSAL tokens, AI config) and the
+// stateless runtime is called directly. Static export lets Plesk (or any host) serve it.
+// The MSAL redirect page is the static file /auth/callback.html (no rewrite needed).
 const nextConfig: NextConfig = {
-  cacheComponents: true,
-  partialPrefetching: true,
+  output: "export",
+  trailingSlash: false,
+  images: { unoptimized: true },
   turbopack: {
     rules: {
       "*.css": {
@@ -10,10 +14,6 @@ const nextConfig: NextConfig = {
         as: "*.css",
       },
     },
-  },
-  async rewrites() {
-    // MSAL v5 needs a redirect page with no app JS/router: serve the static bridge page at /auth/callback.
-    return [{ source: "/auth/callback", destination: "/auth/callback.html" }];
   },
 };
 
