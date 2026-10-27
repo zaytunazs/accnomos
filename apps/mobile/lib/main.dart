@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'screens/ask_screen.dart';
 import 'screens/review_screen.dart';
+import 'screens/settings_screen.dart';
 import 'theme.dart';
 
 /// Accnomos — bookkeeping and VAT for UK small businesses.
@@ -64,6 +65,22 @@ class _ShellState extends State<Shell> {
               elevation: 0,
               title: Text(_tab == 3 ? 'Files' : 'Home',
                   style: Theme.of(context).textTheme.headlineSmall),
+              actions: _tab == 0
+                  ? [
+                      IconButton(
+                        icon: const Icon(Icons.settings_outlined),
+                        tooltip: 'Settings',
+                        constraints: const BoxConstraints(
+                            minWidth: 48, minHeight: 48),
+                        onPressed: () =>
+                            Navigator.of(context).push(
+                          MaterialPageRoute(
+                              builder: (_) =>
+                                  const SettingsScreen()),
+                        ),
+                      ),
+                    ]
+                  : null,
             ),
       body: Column(
         children: [
