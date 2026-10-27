@@ -407,7 +407,7 @@ def _upscale(image_bytes: bytes) -> bytes:
     if fmt not in _FORMATS:  # re-encoding would no longer match the caller's MIME type
         return image_bytes
     img = ImageOps.exif_transpose(src)
-    scale =min(REREAD_SCALE, REREAD_MAX_SIDE / max(img.size))
+    scale = min(REREAD_SCALE, REREAD_MAX_SIDE / max(img.size))
     if scale > 1:
         img = img.resize((round(img.width * scale), round(img.height * scale)), Image.Resampling.LANCZOS)
     img = ImageOps.autocontrast(img.convert("RGB"), cutoff=1)  # lifts faded thermal print and pale ink

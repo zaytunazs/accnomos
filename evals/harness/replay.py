@@ -20,7 +20,7 @@ from harness.run_extraction import FIELDS, GOLD_DIR, score  # noqa: F401 (sets s
 
 from app.checks import decide, run_checks  # noqa: E402
 from app.repair import REPAIR_CODES, repair  # noqa: E402
-from app.schemas import ExtractedDoc  # noqa: E402
+from app.schemas import Check, ExtractedDoc  # noqa: E402
 
 MONEY = ("net_total", "vat_total", "gross_total")
 
@@ -35,7 +35,7 @@ def replay(proposal: dict, business_name: str | None) -> dict:
     repairs = repair(doc, business_name)
     kept = [c for c in proposal["checks"] if c["code"] in ("CROP", "VERIFIER_AGREES")]
     checks = repairs + run_checks(doc, known_hashes=frozenset(), this_hash="x")
-    status, _ = decide(checks + [type(checks[0]).model_validate(c) for c in kept])
+    status, _ = decide(checks + [Check.model_validate(c) for c in kept])
     return {
         **proposal,
         "extracted": doc.model_dump(mode="json"),

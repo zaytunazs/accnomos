@@ -18,6 +18,7 @@ from typing import Any
 from harness.run_extraction import FIELDS, GOLD_DIR, gold_side, score
 
 NEW_FROM = 61
+# The note of the first 200-document run (27 Oct); pass it with --note to rebuild that report.
 RUN_NOTE = ("no extraction code was changed. Differences from the 60-document report: `side` is a new scored field, expected "
             "status is explicit per document on 061-200, and the books owner's name is passed to the pipeline so sale/purchase "
             "orientation runs.")
@@ -165,7 +166,7 @@ def main() -> None:
     ap.add_argument("--diagnoses", type=Path)
     ap.add_argument("--fixes", type=Path)
     ap.add_argument("--candidates", action="store_true")
-    ap.add_argument("--note", default=RUN_NOTE, help="sentence after the run command (what changed in this run)")
+    ap.add_argument("--note", default=RUN_NOTE, help="sentence after the run command: what changed in this run (the default is the 27 Oct run's; pass your own for any later run)")
     ap.add_argument("--rescore", action="store_true", help="write re-scored results back into the run's NNN_*.json (do before the judge)")
     args = ap.parse_args()
     recs = load(args.run, args.rescore)
