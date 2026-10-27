@@ -10,6 +10,7 @@ optionals expressed as `anyOf [..., null]`, no `$ref`/`oneOf`/`allOf`.
 from __future__ import annotations
 
 import copy
+from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator
@@ -18,6 +19,8 @@ DocType = Literal["receipt", "purchase_invoice", "sales_invoice"]
 PaymentMethod = Literal["card", "cash", "bank_transfer", "direct_debit", "cheque", "unknown"]
 Severity = Literal["fail", "warn"]
 Status = Literal["proposed", "needs_a_look"]
+#: Lifecycle of a stored proposal: extraction decides proposed/needs_a_look, the user decides the rest.
+ProposalStatus = Literal["proposed", "needs_a_look", "posted", "rejected"]
 
 #: Categories offered to the model (also enforced as an enum in the JSON schema).
 CATEGORIES: tuple[str, ...] = (
@@ -125,12 +128,21 @@ class Proposal(BaseModel):
     doc_sha256: str
     extracted: ExtractedDoc
     checks: list[Check]
-    status: Status
+    status: ProposalStatus
     reasons: list[str]
     suggested_filename: str
     journal_draft: list[JournalLine]
     model: str
     elapsed_s: float
+    # Set once the proposal lives in the user's books (_System/proposals/{id}.json).
+    source_name: str | None = None  # original file name in "00 Inbox"
+    file_path: str | None = None  # where the document is filed now
+    account_override: str | None = None  # expense account chosen by a rule or the user
+    created_at: datetime | None = None
+    decided_by: str | None = None
+    decided_at: datetime | None = None
+    event_id: str | None = None
+    reject_reason: str | None = None
 
 
 # --------------------------------------------------------------------------- #
