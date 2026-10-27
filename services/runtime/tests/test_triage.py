@@ -322,6 +322,41 @@ def test_todos_routes(client: TestClient) -> None:
     assert client.get("/todos", headers=H).json() == []
 
 
+def test_triage_route_calls_a_model_only_when_the_app_sends_one(client: TestClient, mail: FakeMailProvider, monkeypatch) -> None:
+    mail.add(_msg("a1", "jo@client.co.uk"))
+    calls: list[str] = []
+
+    async def fake_model(messages, cfg):
+        calls.append(cfg.model)
+        return _answer()
+
+    monkeypatch.setattr(triage_ai, "_call_model", fake_model)
+    assert client.post("/mail/triage", headers=H).json()["model"] is None  # no X-AI-Mode: never a server default
+    assert calls == []
+    ai = {"X-AI-Mode": CFG.mode, "X-AI-Base-Url": CFG.base_url, "X-AI-Model": CFG.model}
+    r = client.post("/mail/triage", headers={**H, **ai}).json()
+    assert calls == [CFG.model] and r["model"] == CFG.model and r["threads"][0]["category"] == "customer"
+
+
+def test_draft_reply_without_mail_readwrite_is_401_and_not_audited(client: TestClient, fake: FakeStorageProvider, mail: FakeMailProvider, monkeypatch) -> None:
+    from accnomos_connectors import GraphError
+
+    async def forbidden(message_id, body_text):
+        raise GraphError(403, "ErrorAccessDenied")
+
+    monkeypatch.setattr(mail, "create_reply_draft", forbidden)
+    r = client.post("/mail/draft-reply", json={"message_id": "a1", "body": "Hi"}, headers=H)
+    assert r.status_code == 401  # the app asks for consent again
+    assert not any(ln["action"] == "mail_draft_created" for ln in _audit(fake))
+
+
+def test_todos_file_that_is_not_a_list_is_409_and_left_alone(client: TestClient, fake: FakeStorageProvider) -> None:
+    fake.files[TODOS] = b'{"hand": "edited"}'
+    assert client.get("/todos", headers=H).status_code == 409
+    assert client.post("/todos", json={"text": "Send quote"}, headers=H).status_code == 409
+    assert fake.files[TODOS] == b'{"hand": "edited"}'
+
+
 def test_routes_need_a_graph_token() -> None:
     from app.main import app
 
