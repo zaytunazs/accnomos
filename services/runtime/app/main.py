@@ -106,4 +106,6 @@ if not FFMPEG:
     logging.getLogger("accnomos.runtime").warning("ffmpeg not found: voice questions (/books/ask/voice) are disabled")
 from app.routes_contacts import router as contacts_router  # noqa: E402  /contacts/*
 app.include_router(contacts_router)
+from app.routes_vehicles import router as vehicles_router  # noqa: E402  /vehicles, /mileage
+app.include_router(vehicles_router)
 

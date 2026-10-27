@@ -42,6 +42,9 @@ CATEGORIES: tuple[str, ...] = (
     "Sales",
     "Sundry",
 )
+#: The approved mileage allowance (app/mileage.py). Only code writes this category: it is not offered to the model.
+MILEAGE_CATEGORY = "Motor — mileage allowance"
+CODE_CATEGORIES: tuple[str, ...] = (MILEAGE_CATEGORY,)
 
 
 def _money(v: float) -> float:
@@ -96,7 +99,7 @@ class ExtractedDoc(BaseModel):
     @field_validator("category_guess")
     @classmethod
     def _known_category(cls, v: str) -> str:
-        return v if v in CATEGORIES else "Sundry"
+        return v if v in CATEGORIES or v in CODE_CATEGORIES else "Sundry"
 
     @field_validator("confidence")
     @classmethod
@@ -147,6 +150,16 @@ class Verification(BaseModel):
     error: str | None = None  # set when the verifier could not run; `fields` is then empty
 
 
+class MileageClaim(BaseModel):
+    """What a mileage allowance proposal covers (app/mileage.py): the journeys it pays for."""
+
+    tax_year: str  # e.g. "2026-27"
+    period: str  # Q1..Q4 of the tax year
+    covers_to: date  # journeys dated on or before this day, within the period
+    entry_ids: list[str]
+    miles: float
+
+
 class Proposal(BaseModel):
     id: str
     doc_sha256: str
@@ -166,6 +179,8 @@ class Proposal(BaseModel):
     file_path: str | None = None  # where the document is filed now
     account_override: str | None = None  # expense account chosen by a rule or the user
     job_id: str | None = None  # job this purchase is a cost of (_System/Jobs/jobs.json), tagged on approval
+    vehicle_id: str | None = None  # business vehicle this cost belongs to (_System/Vehicles/vehicles.json)
+    mileage_claim: MileageClaim | None = None  # set on mileage allowance proposals, which code builds
     created_at: datetime | None = None
     decided_by: str | None = None
     decided_at: datetime | None = None

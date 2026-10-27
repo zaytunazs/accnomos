@@ -5,7 +5,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import ProposalCard from "@/components/review/ProposalCard";
 import UploadToInbox from "@/components/review/UploadToInbox";
 import { getMsal, msalConfigured } from "@/lib/msal";
-import { gbp, runtime, ukDate, type RtJob, type RtProposal } from "@/lib/runtime";
+import { gbp, runtime, ukDate, type RtJob, type RtProposal, type RtVehicle } from "@/lib/runtime";
 import type { Proposal as UiProposal } from "@/lib/sample-review";
 
 type Mode = "checking" | "demo" | "live";
@@ -70,22 +70,26 @@ export function toUi(p: RtProposal): UiProposal {
     const amt = gbp((l.debit_pence || l.credit_pence) / 100);
     const isVat = l.account.includes("2200");
     const isSettle = l.credit_pence > 0 && !isVat && x.doc_type !== "sales_invoice";
-    const label = isVat ? "VAT to reclaim" : isSettle ? `Paid from ${x.payment_method === "cash" ? "cash" : "business card"}` : l.account.replace(/^\d{4}\s/, "");
-    const meaning = isVat ? "Goes to Box 4" : isSettle ? "Will match a bank line" : `Expense, ${codeMeaning[l.vat_code ?? ""] ?? "VAT as shown"}`;
+    const owed = isSettle && l.account.startsWith("2300"); // mileage allowance: the business owes you
+    const label = isVat ? "VAT to reclaim" : owed ? "Owed to you" : isSettle ? `Paid from ${x.payment_method === "cash" ? "cash" : "business card"}` : l.account.replace(/^\d{4}\s/, "");
+    const meaning = isVat ? "Goes to Box 4" : owed ? "You paid for the journeys; pay yourself back when you like" : isSettle ? "Will match a bank line" : `Expense, ${codeMeaning[l.vat_code ?? ""] ?? "VAT as shown"}`;
     return { account: `${label} ${amt}`, amount: amt, meaning };
   });
   const fails = p.checks.filter((c) => !c.ok);
-  const verified = p.checks.filter((c) => c.code !== "CROP"); // the crop note is not a check
+  const verified = p.checks.filter((c) => !["CROP", "VEHICLE", "MILEAGE"].includes(c.code)); // notes, not checks
   const cropped = p.crop && p.crop.method !== "none" ? ` · ${p.crop.note}` : "";
+  const mileageNote = p.checks.find((c) => c.code === "MILEAGE");
   const why = fails.length
     ? `Why it's flagged: ${fails.map((c) => c.message).join("; ")}.`
-    : `Why: ${x.lines.length} line${x.lines.length === 1 ? "" : "s"}, totals add up (${x.net_total.toFixed(2)} + ${x.vat_total.toFixed(2)} = ${x.gross_total.toFixed(2)}); category "${x.category_guess}". — Checker, code`;
+    : mileageNote
+      ? `Why: ${mileageNote.message}. Your mileage log is the evidence; change it on Vehicles, not here.`
+      : `Why: ${x.lines.length} line${x.lines.length === 1 ? "" : "s"}, totals add up (${x.net_total.toFixed(2)} + ${x.vat_total.toFixed(2)} = ${x.gross_total.toFixed(2)}); category "${x.category_guess}". — Checker, code`;
   return {
     id: p.id,
     supplier: x.supplier_name,
     total: gbp(x.gross_total),
     confidence: `Confidence ${Math.round(x.confidence * 100)}%`,
-    source: local ? "Read by Glimmer 30B on your machine" : "Read by Muse Spark",
+    source: p.mileage_claim ? "Calculated by code from your mileage log" : local ? "Read by Glimmer 30B on your machine" : "Read by Muse Spark",
     date: ukDate(x.date),
     vatNumber: x.supplier_vat_number ? `${x.supplier_vat_number} ✓` : "none shown",
     net: gbp(x.net_total),
@@ -107,6 +111,8 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
   const [autoPosted, setAutoPosted] = useState<RtProposal[]>([]);
   const [openJobs, setOpenJobs] = useState<RtJob[]>([]);
   const [jobFor, setJobFor] = useState<Record<string, string>>({});
+  const [businessVehicles, setBusinessVehicles] = useState<RtVehicle[]>([]);
+  const [vehicleFor, setVehicleFor] = useState<Record<string, string>>({});
 
   const load = useCallback(async (acct: AccountInfo) => {
     const [proposed, flagged, posted] = await Promise.all([
@@ -118,6 +124,8 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
     const since = Date.now() - AUTOPILOT_WINDOW_DAYS * 86_400_000;
     setAutoPosted(posted.filter((p) => p.decided_by === "autopilot" && p.event_id && new Date(p.decided_at ?? 0).getTime() >= since));
     setOpenJobs(await runtime.openJobs(acct).catch(() => [])); // no jobs feature in use: no picker
+    const vehicles = await runtime.vehicles(acct).catch(() => []); // no vehicles file yet: no picker
+    setBusinessVehicles(vehicles.filter((v) => v.owned_by === "business" && v.active));
   }, []);
 
   useEffect(() => {
@@ -247,11 +255,15 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
                 const sale = p.extracted.doc_type === "sales_invoice";
                 const done = !always
                   ? "Approved · posted to your books"
-                  : sale
-                    ? "Approved · posted to your books (Autopilot rules are for purchases only)"
+                  : sale || p.mileage_claim
+                    ? `Approved · posted to your books (Autopilot rules are for ${sale ? "purchases" : "receipts"} only)`
                     : `Approved · Autopilot will do this for ${p.extracted.supplier_name} next time`;
                 const job = sale ? "" : (jobFor[p.id] ?? "");
-                const edits = job ? { job_id: job } : undefined;
+                // Send vehicle_id only when the picker changed it ("" clears a pre-filled vehicle).
+                const picked = vehicleFor[p.id];
+                const vehicleEdit = picked !== undefined && picked !== (p.vehicle_id ?? "") ? { vehicle_id: picked || null } : {};
+                const merged = { ...(job ? { job_id: job } : {}), ...vehicleEdit };
+                const edits = Object.keys(merged).length ? merged : undefined;
                 return act(p.id, () => runtime.approve(account!, p.id, { remember: always, edits }), done);
               }}
               className="h-11 rounded-xl bg-teal px-5 text-[15px] font-bold text-white disabled:opacity-60"
@@ -278,6 +290,26 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
                   {openJobs.map((j) => (
                     <option key={j.id} value={j.id}>{j.name}</option>
                   ))}
+                </select>
+              </label>
+            )}
+            {p.extracted.doc_type !== "sales_invoice" && !p.mileage_claim && (businessVehicles.length > 0 || p.vehicle_id) && (
+              <label className="flex items-center gap-2 text-sm font-bold text-ink">
+                Vehicle
+                <select
+                  value={vehicleFor[p.id] ?? p.vehicle_id ?? ""}
+                  onChange={(e) => setVehicleFor((v) => ({ ...v, [p.id]: e.target.value }))}
+                  className="h-11 rounded-xl border border-border bg-white px-3 font-normal"
+                >
+                  <option value="">None</option>
+                  {businessVehicles.map((v) => (
+                    <option key={v.id} value={v.id}>
+                      {v.registration ? `${v.name} (${v.registration})` : v.name}
+                    </option>
+                  ))}
+                  {p.vehicle_id && !businessVehicles.some((v) => v.id === p.vehicle_id) && (
+                    <option value={p.vehicle_id}>A vehicle no longer active</option>
+                  )}
                 </select>
               </label>
             )}
