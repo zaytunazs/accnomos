@@ -104,4 +104,6 @@ from app.ai.voice import ffmpeg_path  # noqa: E402
 FFMPEG = ffmpeg_path()  # checked once at startup; /books/ask/voice answers 503 without it
 if not FFMPEG:
     logging.getLogger("accnomos.runtime").warning("ffmpeg not found: voice questions (/books/ask/voice) are disabled")
+from app.routes_contacts import router as contacts_router  # noqa: E402  /contacts/*
+app.include_router(contacts_router)
 

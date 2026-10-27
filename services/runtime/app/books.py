@@ -17,6 +17,7 @@ Layout (relative to the books root):
     _System/Rules/rules.json       Autopilot rules, one per supplier (app/autopilot.py)
     _System/audit/autopilot/{yyyy-mm}.jsonl   one line per Autopilot decision that posted something
     _System/Jobs/jobs.json  _System/Staff/staff.json  _System/Timesheets/{yyyy-mm}.jsonl   (app/jobs.py)
+    _System/Contacts/contacts.json customers and suppliers (app/contacts.py); no money is stored there
     Books.xlsx                     read-only spreadsheet projection, rebuilt after every decision
 """
 
@@ -475,20 +476,24 @@ class Books:
     # ------------------------------------------------------------------ #
 
     async def rebuild(self) -> FileRef:
-        """Regenerate Books.xlsx at the root from the events, bank lines and open proposals."""
+        """Regenerate Books.xlsx at the root from the events, bank lines, open proposals and contacts."""
+        from app.contacts import contact_book, load_ledger
         from app.projection import build_books_xlsx
 
         from app.jobs import summaries
 
-        every = await self.list_proposals()
-        events = await self.list_events()
+        ledger = await load_ledger(self)
+        contacts, _, _ = await contact_book(self, ledger)
+        every = list(ledger.proposals.values())
         try:
-            jobs = await summaries(self, events, [p for p in every if p.status == "posted"])
+            jobs = await summaries(self, ledger.events, [p for p in every if p.status == "posted"])
         except ValueError:  # a hand-edited jobs/staff/timesheet file must not stop the rest of the workbook
             log.exception("Jobs sheet left empty: a jobs file could not be read")
             jobs = []
         proposals = [p for p in every if p.status in ("proposed", "needs_a_look")]
-        data = build_books_xlsx(events, await self.list_bank_lines(), proposals, jobs=jobs)
+        proposals.sort(key=lambda p: p.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+        data = build_books_xlsx(ledger.events, await self.list_bank_lines(), proposals,
+                                jobs=jobs, contacts=contacts, ledger=ledger)
         if len(data) > WORKBOOK_LIMIT:
             log.warning("Books.xlsx is %d bytes, over the %d byte simple-upload size", len(data), WORKBOOK_LIMIT)
         return await self.storage.write(WORKBOOK, data)

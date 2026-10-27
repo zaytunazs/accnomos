@@ -6,7 +6,9 @@ import hashlib
 from datetime import UTC, datetime
 
 from accnomos_connectors.base import (
+    AddressBookContact,
     ConflictError,
+    ContactsProvider,
     FileRef,
     MailAttachment,
     MailMessage,
@@ -46,6 +48,18 @@ class FakeMailProvider(MailProvider):
             if a.id == attachment_id:
                 return data
         raise FileNotFoundError(f"{message_id}/{attachment_id}")
+
+
+class FakeContactsProvider(ContactsProvider):
+    """An address book in memory; `calls` counts reads."""
+
+    def __init__(self, contacts: list[AddressBookContact] | None = None) -> None:
+        self.contacts = list(contacts or [])
+        self.calls = 0
+
+    async def list_contacts(self, max_results: int = 1000) -> list[AddressBookContact]:
+        self.calls += 1
+        return self.contacts[:max_results]
 
 
 class FakeStorageProvider(StorageProvider):

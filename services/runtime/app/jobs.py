@@ -29,7 +29,7 @@ from app.schemas import Proposal
 JOBS = f"{SYSTEM}/Jobs/jobs.json"
 STAFF = f"{SYSTEM}/Staff/staff.json"
 TIMESHEETS = f"{SYSTEM}/Timesheets"
-CONTACTS = f"{SYSTEM}/Contacts/contacts.json"  # written by the contacts feature, read here for names only
+from app.contacts import CONTACTS  # noqa: E402  written by the contacts feature, read here for names only
 MAX_HOURS_PER_ENTRY = 24
 ID_RE = re.compile(r"[0-9a-f]{12}")
 MONTH_RE = re.compile(r"\d{4}-\d{2}")

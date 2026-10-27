@@ -351,7 +351,7 @@ async def test_books_xlsx_jobs_sheet(fake: FakeStorageProvider, books: Books) ->
 
     await jobs.add_entry(books, entry(SAM, 8))
     await jobs.add_entry(books, entry(ALEX, 2.5))
-    fake.files[jobs.CONTACTS] = json.dumps([{"id": "c1", "name": "Mrs Patel"}]).encode()
+    fake.files[jobs.CONTACTS] = json.dumps([{"id": "c1", "kind": "customer", "name": "Mrs Patel", "normalised_key": "mrs patel"}]).encode()
     p = await _open(books)
     await approve(books, p.id, USER, {"job_id": JOB.id})  # rebuilds Books.xlsx
     ws = load_workbook(io.BytesIO(fake.files["Books.xlsx"]))["Jobs"]
