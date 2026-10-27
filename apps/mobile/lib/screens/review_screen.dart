@@ -23,6 +23,23 @@ const _warnInk = Color(0xFF8A3F06);
 
 String _gbp(double value) => '£${value.toStringAsFixed(2)}';
 
+/// Snackbar text after an undo. When the undone entry's VAT period was
+/// already submitted, the runtime dates the correction today and says so
+/// (`dated_today` + `reason`): name the open period it lands in. [what]
+/// is the entry ("Screwfix · £38.47"); empty for the Autopilot section.
+@visibleForTesting
+String undoMessage(Map<String, dynamic>? response, String what) {
+  final reason = (response?['reason'] ?? '').toString().trim();
+  if (response?['dated_today'] == true && reason.isNotEmpty) {
+    return what.isEmpty
+        ? '$reason It is back in Review.'
+        : '$reason $what is back in Review.';
+  }
+  return what.isEmpty
+      ? 'Undone · back in your review list'
+      : 'Undone · $what is back in Review';
+}
+
 /// Review queue: a swipeable card per proposed entry.
 ///
 /// Signed in: live proposals from the runtime. Approve/Reject call the
@@ -331,8 +348,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
       // Reverse in the opposite order, so pressing again never reverses
       // an entry twice when one call fails halfway.
       final left = eventIds.reversed.toList();
+      Map<String, dynamic>? undone;
       while (left.isNotEmpty) {
-        await client.undoEvent(left.first);
+        undone = await client.undoEvent(left.first);
         left.removeAt(0);
       }
       if (!mounted) return;
@@ -341,7 +359,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         _lastWhat = '';
       });
       await _reload(quiet: true);
-      _say('Undone · $what is back in Review');
+      _say(undoMessage(undone, what));
     } catch (e) {
       _say(_friendly(e));
     } finally {
@@ -356,12 +374,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
     setState(() => _undoBusy = true);
     try {
       final client = await _booksClient();
-      await client.undoEvent(item.eventId);
+      final undone = await client.undoEvent(item.eventId);
       if (!mounted) return;
       setState(() =>
           _auto = _auto.where((a) => a.eventId != item.eventId).toList());
       await _reload(quiet: true);
-      _say('Undone · back in your review list');
+      _say(undoMessage(undone, ''));
     } catch (e) {
       final message = _friendly(e);
       if (!mounted) return;
