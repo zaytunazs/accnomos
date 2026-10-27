@@ -131,7 +131,7 @@ def _readme(day: date, names: list[str]) -> str:
         "- contacts.json / contacts.csv: names and details only; money is always",
         "  worked out from the ledger events.",
         "- invoices/: every sales invoice draft, sent invoice and bill as JSON, plus",
-        "  invoice-pdfs-index.json: where each invoice PDF lives under 03 Sales",
+        f"  invoice-pdfs-index.json: where each invoice PDF lives under {SALES}",
         "  (the PDFs themselves stay filed there; this export only lists them).",
         "- invoices.csv: one row per invoice.",
         "- payments.json / payments.csv: recorded payments (amount, date, account,",
