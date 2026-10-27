@@ -458,6 +458,40 @@ async def test_the_timeout_is_per_chunk_not_per_answer(monkeypatch: pytest.Monke
         _ = [line async for line in ask_ai._lines(Slow([0.05, 0.05, 0.2]))]
 
 
+def _transport(monkeypatch: pytest.MonkeyPatch, body: str, seen: list[httpx.Request]) -> None:
+    """Every httpx client the backends open answers with `body` (the wire format of a streamed reply)."""
+    real = httpx._client.AsyncClient  # not the name a previous call may have patched
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, text=body)
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+
+
+async def test_stream_json_model_reads_both_wire_formats(monkeypatch: pytest.MonkeyPatch):
+    seen: list[httpx.Request] = []
+    ollama = "\n".join(json.dumps({"message": {"content": c}, "done": False}) for c in ('{"answer_md":"Hi', '."}'))
+    _transport(monkeypatch, ollama + "\n" + json.dumps({"message": {"content": ""}, "done": True}) + "\n", seen)
+    got = [t async for t in ask_ai.stream_json_model([], CFG, {}, "n", 320)]
+    assert got == ['{"answer_md":"Hi', '."}'] and seen[-1].url.path == "/api/chat"
+    assert json.loads(seen[-1].content)["options"]["num_predict"] == 320
+
+    sse = "".join(f"data: {json.dumps({'choices': [{'delta': {'content': c}}]})}\n\n" for c in ("a", "b")) + "data: [DONE]\n\n"
+    _transport(monkeypatch, sse, seen)
+    key = AiConfig(mode="key", base_url="http://api.invalid/v1", model="m", api_key="k")
+    assert [t async for t in ask_ai.stream_json_model([], key, {}, "n", 1500)] == ["a", "b"]
+    assert seen[-1].url.path == "/v1/chat/completions" and json.loads(seen[-1].content)["max_tokens"] == 1500
+
+
+async def test_a_garbled_chunk_gets_the_fallback_not_an_error(facts: dict, monkeypatch: pytest.MonkeyPatch):
+    _transport(monkeypatch, '{"message":{"content":"{\\"answer_md\\""}}\nnot json\n', [])
+    got = await ask_ai.answer("How much VAT do I owe this quarter?", facts, [], CFG)
+    assert got.fallback_reason == "Your AI (local) sent a reply that could not be read." and "£2,081.59" in got.answer_md
+    events = [e async for e in ask_ai.answer_stream("How much VAT do I owe this quarter?", facts, [], CFG)]
+    assert [k for k, _ in events] == ["start", "answer"] and events[-1][1].fallback_reason
+
+
 async def test_ask_route_streams_server_sent_events(books: Books, monkeypatch: pytest.MonkeyPatch):
     from app.main import app
     from app.routes_books import get_books

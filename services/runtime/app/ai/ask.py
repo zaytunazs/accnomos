@@ -522,6 +522,17 @@ async def _lines(response: httpx.Response) -> AsyncIterator[str]:
         yield line
 
 
+def _json_line(line: str) -> dict[str, Any]:
+    """One streamed chunk as an object; a garbled one is model trouble (an httpx error), not a crash."""
+    try:
+        chunk = json.loads(line)
+    except ValueError:
+        raise httpx.DecodingError(f"unreadable chunk: {line[:80]!r}") from None
+    if not isinstance(chunk, dict):
+        raise httpx.DecodingError(f"unexpected chunk: {line[:80]!r}")
+    return chunk
+
+
 async def stream_json_model(
     messages: list[dict[str, str]], cfg: AiConfig, schema: dict[str, Any], name: str, max_tokens: int | None = None,
 ) -> AsyncIterator[str]:
@@ -541,7 +552,7 @@ async def stream_json_model(
                 async for line in _lines(r):
                     if not line.strip():
                         continue
-                    chunk = json.loads(line)
+                    chunk = _json_line(line)
                     if chunk.get("error"):
                         raise httpx.HTTPError(str(chunk["error"]))
                     if text := chunk.get("message", {}).get("content", ""):
@@ -565,7 +576,7 @@ async def stream_json_model(
                 data = line.removeprefix("data:").strip()
                 if data == "[DONE]":
                     return
-                choices = json.loads(data).get("choices") or []
+                choices = _json_line(data).get("choices") or []
                 content = (choices[0].get("delta") or {}).get("content") if choices else None
                 if isinstance(content, list):
                     content = "".join(p.get("text", "") for p in content if isinstance(p, dict))
@@ -629,6 +640,8 @@ def _trouble(exc: Exception, cfg: AiConfig) -> str:
         return f"Your AI ({cfg.mode}) stopped replying for {exc.seconds:.0f} s."
     if isinstance(exc, httpx.HTTPStatusError):
         return f"Your AI ({cfg.mode}) returned HTTP {exc.response.status_code}."
+    if isinstance(exc, httpx.DecodingError):
+        return f"Your AI ({cfg.mode}) sent a reply that could not be read."
     return f"Your AI ({cfg.mode}) could not be reached at {cfg.base_url}."
 
 
