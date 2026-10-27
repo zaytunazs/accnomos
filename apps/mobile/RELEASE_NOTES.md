@@ -1,5 +1,19 @@
 # Release notes — Accnomos mobile
 
+## 0.3.3 (version code 7)
+
+Play "What's new":
+
+Contacts catch up with the web: look up a company on Companies House from
+Edit (pick a match to fill the legal name, company number and registered
+address; nothing saves until Save), check a VAT number on a contact or a
+Review card (HMRC's answer only, never a block on Approve), and work through
+Possible duplicates with Merge, Not the same and Undo. Each look-up stays
+hidden while the reader is not configured for it.
+
+Not yet run on a phone: the look-up sheets, the VAT answer and the
+duplicates flow need a human check on a real device.
+
 ## 0.3.3 (version code 6)
 
 Play "What's new" (440 characters):

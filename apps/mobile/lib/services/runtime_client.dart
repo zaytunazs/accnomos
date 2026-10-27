@@ -824,6 +824,90 @@ class RuntimeClient {
           query: {'as_of': ?asOf},
           what: 'load aged balances');
 
+  // Company and VAT look-ups (`GET /lookup/*`, `POST /contacts/vat-check`)
+  // and possible duplicates (`GET /contacts/duplicates`, merge, undo).
+  // Same paths and bodies as the web's `runtime` in
+  // `apps/web/src/lib/runtime.ts`. Nothing here saves except the VAT check
+  // (kept on the contact) and an approved merge.
+
+  /// `GET /lookup/status` without sign-in: which official look-ups this
+  /// reader offers. Null when the reader does not answer (both stay hidden).
+  Future<Map<String, dynamic>?> lookupStatus() async {
+    try {
+      final response = await http
+          .get(Uri.parse('${settings.runtimeUrl}/lookup/status'))
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return null;
+      final decoded = json.decode(response.body);
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// True when [error] is the reader's 503 `companies_house_not_configured`
+  /// or `vat_check_not_configured`: the look-up stays hidden, never an error.
+  static bool lookupNotConfigured(Object error, String code) =>
+      error is RuntimeException && error.message.contains(code);
+
+  /// `GET /lookup/companies?q=`: Companies House matches for a name (or the
+  /// one company for a company number). Throws [RuntimeException]; callers
+  /// hide the look-up on 503 `companies_house_not_configured`.
+  Future<Map<String, dynamic>> lookupCompanies(String q) => _map(
+      'GET', '/lookup/companies',
+      query: {'q': q}, what: 'look up that company');
+
+  /// `POST /contacts/vat-check`: ask HMRC about [vrn] only when the user
+  /// taps. The answer is kept on the contact with that number. Throws
+  /// [RuntimeException]; callers hide the check on 503
+  /// `vat_check_not_configured`.
+  Future<Map<String, dynamic>> vatCheck({
+    required String vrn,
+    String? name,
+    String? contactId,
+    bool refresh = false,
+  }) =>
+      _map('POST', '/contacts/vat-check',
+          body: {
+            'vrn': vrn,
+            'name': ?name,
+            'contact_id': ?contactId,
+            if (refresh) 'refresh': true,
+          },
+          what: 'check that VAT number');
+
+  /// `GET /contacts/duplicates`: candidate groups by code (shared email,
+  /// phone, VAT number or close name) with the model's view beside each.
+  Future<Map<String, dynamic>> duplicates() =>
+      _map('GET', '/contacts/duplicates', what: 'load possible duplicates');
+
+  /// `POST /contacts/duplicates/dismiss`: remembered, never suggested again.
+  Future<Map<String, dynamic>> dismissDuplicates(List<String> ids) => _map(
+      'POST', '/contacts/duplicates/dismiss',
+      body: {'contact_ids': ids},
+      what: 'note those contacts are not the same');
+
+  /// `POST /contacts/merge`: fold [mergeIds] into [keepId] on approval.
+  /// Returns `{contact, merge_id}`; the id undoes the merge.
+  Future<Map<String, dynamic>> mergeContacts({
+    required String keepId,
+    required List<String> mergeIds,
+    String? name,
+  }) =>
+      _map('POST', '/contacts/merge',
+          body: {
+            'keep_id': keepId,
+            'merge_ids': mergeIds,
+            'name': ?name,
+          },
+          what: 'merge those contacts');
+
+  /// `POST /contacts/merge/{mergeId}/undo`: restore the exact previous
+  /// entries and references.
+  Future<Map<String, dynamic>> undoContactMerge(String mergeId) => _map(
+      'POST', '/contacts/merge/${_seg(mergeId)}/undo',
+      what: 'undo that merge');
+
   // Reports (/reports/*). Worked out by code from the ledger; only export
   // writes (one spreadsheet in 07 Reports). Money is integer pence.
 
