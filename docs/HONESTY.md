@@ -44,7 +44,6 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 - Receipts in an email body are found by a code rule tested on six fictional emails, not on real Uber, Amazon or SaaS
   mail, nor on Graph's HTML-to-text conversion of them.
 - `POST /books/approve/{id}` is kept as an alias for web builds deployed before the integration review; remove it after the next deploy.
-- The 6 April tax-year rule is written twice (`contacts.uk_tax_year_start`, `mileage.tax_year_of`); both are tested.
 - `07 Reports/` is created at onboarding and nothing writes to it. The folder names now have one source (`services/runtime/app/paths.py`); existing users' old-named folders are renamed once on first contact (`app/layout.py`), which has only been tested on fake storage, not on a real OneDrive.
 - `services/runtime/tests/test_integration.py` holds the runtime to the documented folder layout only for the features its scenario exercises (not invoicing, payroll, planner, to-dos, action audit).
 
@@ -74,17 +73,16 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 - No credit notes; *Mark paid* posts nothing (the receipt is not posted to 1200 Bank); a paid invoice cannot be voided.
 - An invoice made from a job's hours marks every entry on a line when it is sent, even if the user changed that line's hours or rate; voiding the invoice does not unmark them (`invoicing.mark_hours`).
 - "Invoiced" value and margin use each person's *current* charge rate; changing a rate restates past jobs.
-- If saving the sent copy fails after the email has gone, the invoice is saved as sent but the sale is not posted until the user retries (the retry exists). `GraphMailSender.MAX_INLINE` (3 MB) checks raw bytes; base64 adds a third, so an attachment near 3 MB can just exceed Graph's 4 MB request limit. In the send dialogs the tick stays ticked if the user edits the message afterwards.
+- If saving the sent copy fails after the email has gone, the invoice is saved as sent but the sale is not posted until the user retries (the retry exists). `GraphMailSender` checks the encoded request against 4 MB and refuses larger ones with an error (about 3 MB of attachments); big attachments (draft plus upload session) are not supported. In the send dialogs the tick stays ticked if the user edits the message afterwards.
 - A matched bank line counts as full payment: part payments, overpayments and credit notes are not modelled, so a part-paid invoice drops out of *Aged balances*. Ageing counts from the document date and ignores the invoice's due date and payment terms. Customer VAT numbers are only set with *Edit*. Outlook contacts added with "also add" are always customers. `contacts.json` is rewritten whole, so two tabs editing at once means last write wins.
 - Plain timesheet edits do not rebuild Books.xlsx. A timesheet whose date moves month is written to the new file before the old one is cleared; a failure between leaves a duplicate, never a loss. A purchase can be tagged to a closed job through the API (on purpose).
 - The web mileage log can add and delete journeys but has no edit control (`PATCH /mileage/{id}` exists). The Review vehicle picker shows only when there is an active business vehicle or the proposal already has one. Vehicle pre-fill at scan uses a category plus keyword list.
-- `MarkInvoicedBody.entry_ids` has no item limit beyond the 256 KB body cap.
 
 ## Payroll
 
 - **Estimates only. Not payroll, not RTI.** No FPS/EPS, no payment to HMRC; your payroll provider does that.
 - The estimate divides annual thresholds by 12 (tax about 20p a month high, NI a few pence off HMRC's tables), monthly pay only, tax code 1257L on a month-1 basis, England/NI rates, NI category A. No student loans, pensions, statutory pay, benefits, salary sacrifice or Employment Allowance; no salaried staff (gross is hours × rate).
-- The 2026–27 rates in `payroll_rates.py` were checked against GOV.UK on 27 Oct 2026 by the payrun branch's author (a code comment and commit message, no other record); no test pins them to the source. Re-check each April.
+- The 2026–27 rates in `payroll_rates.py` were checked against GOV.UK on 27 Oct 2026 by the payrun branch's author (a code comment and commit message, no other record); `tests/test_payroll_rates.py` now pins every constant to the GOV.UK figures (re-read 27 Oct 2026, all matched). Re-check each April.
 - Undoing a payroll ledger entry from outside the Payroll page leaves the run "confirmed" until it is reopened.
 
 ## Bank statements
@@ -107,9 +105,8 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 ## Files, Books.xlsx, dashboard
 
 - Books.xlsx has never been opened in Excel from a real OneDrive.
-- Home *Deadlines* assumes stagger 1 when no business settings are saved, without saying so; with annual accounting the tiles show "—" and "Annual VAT returns are not worked out yet". `GET /books/deadlines` returns `start_month` normalised to 1–3.
-- On Files a top-level folder's "N files" adds its sub-folders' `childCount`.
-- The whole dashboard request fails (401/502 for a Graph error, 500 otherwise) if an audit or storage read fails at the provider level; only parse errors are isolated per tile. A failed pull-to-refresh on the phone keeps the old figures under a "Could not load your figures" line; the tiles are not marked stale.
+- With no business settings saved, Home *Deadlines* assumes stagger 1 and now says so (`assumed: true`; the phone sends no stagger and does not show the note); with annual accounting the tiles show "—" and "Annual VAT returns are not worked out yet". `GET /books/deadlines` returns `start_month` normalised to 1–3.
+- A provider-level read failure now marks only its tiles `{"error": ...}` (Graph 401/403 still fails the whole request, so the app signs in again); the Android app does not read that marker (not run). A failed pull-to-refresh on the phone keeps the old figures under a "Could not load your figures" line; the tiles are not marked stale.
 - The web sidebar always says "AI: local Meta agent (Glimmer 30B)", whatever AI is set in Settings. Ask uses the period picked on `/vat` but has no picker of its own.
 
 ## Android

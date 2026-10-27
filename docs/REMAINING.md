@@ -22,7 +22,6 @@ Severity:
 | Low | The web sidebar always says "AI: local Meta agent (Glimmer 30B)", whatever AI is set in Settings. |
 | Low | `ruff` has not been run on `main`. |
 | Low | `POST /books/approve/{id}` is an alias kept for older web builds; remove it after the next deploy. |
-| Low | The 6 April tax-year rule is written twice (`contacts.uk_tax_year_start`, `mileage.tax_year_of`). Both are tested. |
 | Low | `07 Reports/` is created at onboarding but nothing writes to it. The one-time rename of old-named folders (`app/layout.py`) needs a run against a real OneDrive (personal and work), including a folder that is open in the OneDrive client. |
 | Low | No web unit tests; pages are covered by `pnpm run build` and the Playwright suite, whose CI job has never run on GitHub. |
 ## Read → approve → ledger, Undo, VAT return
@@ -66,9 +65,8 @@ Severity:
 | Severity | Item |
 |---|---|
 | Medium | Books.xlsx has never been opened in Excel from a real OneDrive. |
-| Low | With no saved business settings, Home *Deadlines* assumes stagger 1 without saying so. With annual accounting the tiles show "—" (not worked out yet). `GET /books/deadlines` returns `start_month` normalised to 1–3. |
-| Low | On Files, a top-level folder's "N files" counts nested folders as well as files. |
-| Low | One provider-level read failure fails the whole dashboard request (401/502 for Graph, else 500); only parse errors are isolated per tile. On the phone a failed refresh keeps old figures under an error line; the tiles are not marked stale. |
+| Low | With annual accounting the Deadlines tiles show "—" (not worked out yet). `GET /books/deadlines` returns `start_month` normalised to 1–3. With no stagger sent it returns `"assumed": true` and the web says so; the Android app sends no stagger, so it always gets `assumed` and does not show the note. |
+| Low | On the phone a failed dashboard refresh keeps old figures under an error line; the tiles are not marked stale, and the app does not read the per-tile `{"error"}` marker (its parser treats it as a tile with no figures; not run, no Flutter here). |
 
 ## Invoicing, jobs, vehicles, payroll
 
@@ -77,13 +75,12 @@ Severity:
 | Medium | An invoice made from a job's hours marks every entry on a line when it is sent, even if the user changed that line's hours or rate; voiding the invoice does not unmark them (`invoicing.mark_hours`). |
 | Medium | "Invoiced" value and margin use each person's *current* charge rate; changing a rate restates past jobs. |
 | Medium | Not verified: sending from a real mailbox, the `Mail.Send` consent redirect, the PDF in a real viewer, logo upload to a real OneDrive. |
-| Medium | Payroll is an estimate (annual thresholds ÷ 12, month 1, 1257L, category A, England/NI); the 2026–27 rates were checked against GOV.UK on 27 Oct 2026 by the payrun author only (no test pins them). No RTI. |
+| Medium | Payroll is an estimate (annual thresholds ÷ 12, month 1, 1257L, category A, England/NI); the 2026–27 rates were checked against GOV.UK on 27 Oct 2026 and `tests/test_payroll_rates.py` pins them; re-check each April. No RTI. |
 | Low | No credit notes; *Mark paid* does not post to 1200 Bank; a paid invoice cannot be voided. If the sent copy cannot be saved after the email goes, the sale is not posted until the user retries. |
-| Low | `GraphMailSender.MAX_INLINE` (3 MB) checks raw bytes, so an attachment near 3 MB can just exceed Graph's 4 MB request limit once base64-encoded. The send tick stays ticked after the message is edited. |
+| Low | `GraphMailSender` refuses a message whose encoded request is over 4 MB (about 3 MB of attachments) with an error; sending larger files (draft plus attachment upload session) is not built. The send tick stays ticked after the message is edited. |
 | Low | Plain timesheet edits do not rebuild Books.xlsx. A month-changing edit can leave a duplicate line (never a lost one). A closed job can be tagged through the API (on purpose). |
 | Low | The web mileage log has no edit control (`PATCH /mileage/{id}` exists); vehicles cannot be renamed or deleted from the page; the Review vehicle picker needs an active business vehicle; scan pre-fill uses a keyword list. |
 | Low | Undoing a payroll ledger entry outside the Payroll page leaves the run "confirmed" until reopened. No salaried staff. |
-| Low | `MarkInvoicedBody.entry_ids` has no item limit beyond the 256 KB body cap. |
 
 ## Chat actions, inbox, planner
 
