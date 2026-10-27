@@ -15,6 +15,7 @@ EXIF orientation is applied.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import io
 import json
@@ -48,6 +49,8 @@ NOOP_COVER = 0.95  # a crop keeping more than this of the photo is not worth re-
 WORK_SIDE = 400  # code method works on a downscaled copy (longest side, px)
 
 _FORMATS = {"JPEG": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
+_ALIASES = {"MPO": "JPEG"}  # many phone cameras write multi-picture JPEGs; Pillow reports them as MPO
+_ORIENTATION = 0x0112
 
 
 @dataclass
@@ -340,25 +343,31 @@ def _original(image_bytes: bytes, note: str, **details: Any) -> CropResult:
 async def crop_document(image_bytes: bytes, cfg: AiConfig | None = None) -> CropResult:
     """Crop to the document if we are confident; never raises.
 
-    The cropped image keeps the source format (JPEG/PNG/WebP), so the caller's MIME type still holds.
+    The cropped image keeps the source format (JPEG/PNG/WebP), so the caller's MIME type still holds;
+    any other format is passed through uncropped.
     """
     mode = os.getenv("CROP_MODE", "auto").strip().lower()
     if mode == "off":
         return _original(image_bytes, "cropping off")
     try:
         src = Image.open(io.BytesIO(image_bytes))
-        fmt = src.format if src.format in _FORMATS else "PNG"
+        fmt = _ALIASES.get(src.format or "", src.format or "")
+        rotated = src.getexif().get(_ORIENTATION, 1) not in (1, None)
         img = ImageOps.exif_transpose(src)
         img.load()
     except Exception as exc:  # noqa: BLE001 - unreadable image: let extraction report it
         return _original(image_bytes, f"could not open image: {exc}")
+    if fmt not in _FORMATS:  # re-encoding would no longer match the caller's MIME type
+        return _original(image_bytes, f"format {src.format} not cropped")
 
     details: dict[str, Any] = {}
     box: Box | None = None
     method: CropMethod = "none"
     if mode == "auto" and sam_allowed(cfg):
         try:
-            b64 = base64.b64encode(image_bytes).decode("ascii")
+            # SAM's boxes must be in the same (EXIF-upright) pixels we crop
+            sam_bytes = await asyncio.to_thread(_encode, img, fmt) if rotated else image_bytes
+            b64 = base64.b64encode(sam_bytes).decode("ascii")
             box, details["sam"] = await sam_box(img, f"data:{_FORMATS[fmt]};base64,{b64}", cfg)  # type: ignore[arg-type]
             if box is not None:
                 method = "sam"
@@ -367,7 +376,7 @@ async def crop_document(image_bytes: bytes, cfg: AiConfig | None = None) -> Crop
             details["sam"] = {"reason": f"error: {type(exc).__name__}"}
     if box is None:
         try:
-            box, details["code"] = code_box(img)
+            box, details["code"] = await asyncio.to_thread(code_box, img)  # pure-Python flood fill: off the event loop
             if box is not None:
                 method = "code"
         except Exception as exc:  # noqa: BLE001
@@ -381,7 +390,7 @@ async def crop_document(image_bytes: bytes, cfg: AiConfig | None = None) -> Crop
     if cover(box, img.size) > NOOP_COVER:
         return _original(image_bytes, "document already fills the photo", **details)
     try:
-        out = _encode(img.crop(box), fmt)
+        out = await asyncio.to_thread(_encode, img.crop(box), fmt)
     except Exception as exc:  # noqa: BLE001
         return _original(image_bytes, f"could not encode crop: {exc}", **details)
     label = "Cropped with SAM 3.1" if method == "sam" else "Cropped by code"

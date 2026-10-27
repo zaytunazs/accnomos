@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import io
 import json
 import random
@@ -181,6 +182,39 @@ async def test_sam_falls_back_to_invoice_noun_then_code(monkeypatch):
     monkeypatch.setattr(crop, "_call_sam", boom)
     r = await crop_document(_photo(), KEY_CFG)
     assert r.method == "code" and r.details["sam"]["reason"].startswith("error")
+
+
+async def test_sam_sees_exif_upright_pixels(monkeypatch):
+    monkeypatch.setenv("SAM_CROP", "1")
+    upright = Image.open(io.BytesIO(_photo()))  # 900 x 1200 as the user sees it
+    exif = Image.Exif()
+    exif[0x0112] = 6  # stored rotated; viewers turn it 90° clockwise
+    buf = io.BytesIO()
+    upright.rotate(90, expand=True).save(buf, format="JPEG", exif=exif)
+    sizes: list[tuple[int, int]] = []
+
+    async def fake(noun, data_url, cfg):
+        sizes.append(_size(base64.b64decode(data_url.split(",", 1)[1])))
+        return {"output_text": json.dumps({"box": [190, 140, 660, 1060], "score": 0.9})}
+
+    monkeypatch.setattr(crop, "_call_sam", fake)
+    r = await crop_document(buf.getvalue(), KEY_CFG)
+    assert sizes == [(900, 1200)]
+    assert r.method == "sam" and r.box == pad_box((190, 140, 660, 1060), (900, 1200))
+
+
+async def test_phone_mpo_jpeg_stays_jpeg_and_other_formats_pass_through():
+    img = Image.open(io.BytesIO(_photo()))
+    buf = io.BytesIO()
+    img.save(buf, format="MPO", save_all=True, append_images=[img.copy()])
+    assert Image.open(io.BytesIO(buf.getvalue())).format == "MPO"
+    r = await crop_document(buf.getvalue())
+    assert r.method == "code" and Image.open(io.BytesIO(r.image_bytes)).format == "JPEG"
+
+    gif = io.BytesIO()
+    img.save(gif, format="GIF")
+    r = await crop_document(gif.getvalue())
+    assert r.method == "none" and r.image_bytes == gif.getvalue()
 
 
 def test_request_body_shape():
