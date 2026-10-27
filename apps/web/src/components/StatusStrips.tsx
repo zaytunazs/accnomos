@@ -28,7 +28,8 @@ export function ServiceStrip() {
   }, []);
 
   useEffect(() => {
-    void check();
+    // Defer to avoid a synchronous setState in the effect body.
+    queueMicrotask(() => void check());
     const onOffline = () => {
       ref.current = "offline";
       setState("offline");

@@ -20,7 +20,8 @@ test("reader down: one shared strip with retry; the page keeps what it can", asy
   await page.route("**/health", (route) => route.abort());
   await page.goto("/");
 
-  const strip = page.getByRole("alert", { name: /isn't answering/ });
+  // Live regions take no accessible name from their contents: match on text.
+  const strip = page.getByRole("alert").filter({ hasText: /isn't answering/ });
   await expect(strip).toBeVisible();
   await expect(strip).toContainText("your files are safe in OneDrive");
   // Signed out, the page still renders the sample books underneath.
@@ -34,10 +35,10 @@ test("reader down: one shared strip with retry; the page keeps what it can", asy
 test("offline: the same strip says offline, then recovers", async ({ page }) => {
   await page.route("**/health", (route) => route.abort());
   await page.goto("/");
-  await expect(page.getByRole("alert", { name: /isn't answering/ })).toBeVisible();
+  await expect(page.getByRole("alert").filter({ hasText: /isn't answering/ })).toBeVisible();
 
   await page.evaluate(() => window.dispatchEvent(new Event("offline")));
-  const strip = page.getByRole("alert", { name: /you're offline/i });
+  const strip = page.getByRole("alert").filter({ hasText: /You're offline/i });
   await expect(strip).toBeVisible();
   await expect(strip).toContainText("Uploads will wait and resume");
 
@@ -59,11 +60,11 @@ test("new version: the strip appears when version.json changes, and reload clear
   await page.waitForTimeout(500); // let the first poll take sha as the baseline
   sha = "2222222";
 
-  const strip = page.getByRole("status", { name: /new version is available/i });
+  const strip = page.getByRole("status").filter({ hasText: /new version is available/i });
   await expect(strip).toBeVisible({ timeout: 15_000 });
   await strip.getByRole("button", { name: "Reload" }).click();
   await page.waitForLoadState("load");
   // After the reload the running sha is the baseline again: quiet for a full poll cycle.
   await page.waitForTimeout(4500);
-  await expect(page.getByRole("status", { name: /new version is available/i })).toHaveCount(0);
+  await expect(page.getByRole("status").filter({ hasText: /new version is available/i })).toHaveCount(0);
 });

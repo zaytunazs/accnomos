@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { runtime } from "@/lib/runtime";
 import { READER_BACK } from "@/lib/service-status";
@@ -11,7 +11,7 @@ const MAX = 5 * 1024 * 1024; // the runtime's limit (routes_bank.py MAX_CSV)
 
 /** Drop (or pick) bank statement CSVs. The runtime files each one as "04 Bank statements/{date}_{bank}.csv". */
 export default function BankUpload({ account, onDone }: { account: AccountInfo | null; onDone: () => void }) {
-  const [input, setInput] = useState<HTMLInputElement | null>(null);
+  const input = useRef<HTMLInputElement | null>(null);
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msgs, setMsgs] = useState<string[]>([]);
@@ -81,7 +81,7 @@ export default function BankUpload({ account, onDone }: { account: AccountInfo |
     }
     setMsgs(out);
     setBusy(false);
-    if (input) input.value = "";
+    if (input.current) input.current.value = "";
     onDone();
   }
 
@@ -91,7 +91,7 @@ export default function BankUpload({ account, onDone }: { account: AccountInfo |
         Upload a bank statement
       </h2>
       <input
-        ref={setInput}
+        ref={input}
         type="file"
         accept=".csv,text/csv"
         multiple
@@ -101,7 +101,7 @@ export default function BankUpload({ account, onDone }: { account: AccountInfo |
       <button
         type="button"
         disabled={!account || busy}
-        onClick={() => input?.click()}
+        onClick={() => input.current?.click()}
         onDragOver={(e) => {
           e.preventDefault();
           setOver(true);

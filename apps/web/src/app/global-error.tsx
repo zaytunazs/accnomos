@@ -19,7 +19,7 @@ export default function GlobalError({
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     console.error(error);
-  }, [error });
+  }, [error]);
 
   const ref = /(?:·|\|) ref ([A-Za-z0-9_-]+)/.exec(error.message)?.[1] ?? null;
   const detail = error.message
@@ -73,9 +73,10 @@ export default function GlobalError({
             <button type="button" onClick={reset} style={primary}>
               Try again
             </button>
-            <a href="/" style={button}>
+            {/* No app router this deep: a full navigation, not a Link. */}
+            <button type="button" onClick={() => window.location.assign("/")} style={button}>
               Back to Home
-            </a>
+            </button>
             <button type="button" onClick={copy} style={button}>
               {copied ? "Copied" : "Copy details"}
             </button>
