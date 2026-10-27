@@ -134,8 +134,7 @@ test("signed in: edit sends only changed fields, U undoes through the runtime, p
   await page.locator('input[type="file"]').first().setInputFiles({ name: `${GOLD}.png`, mimeType: "image/png", buffer: await runtime.goldPng() });
   await expect(page.getByText("1 file added to 00 Inbox")).toBeVisible();
   await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
-  // The runtime's first scan builds the stub's gold-receipt caches (over 10 s cold); later scans take ~1 s.
-  await expect(page.locator('p[role="status"][aria-live="polite"]')).toHaveText("1 new proposal", { timeout: 30_000 });
+  await expect(page.locator('p[role="status"][aria-live="polite"]')).toHaveText("1 new proposal"); // caches warmed at startup
   const novex = card(page, "Novex Office Supplies Ltd · £51.90");
   await expect(novex).toBeVisible();
   await expect(page.getByText("SAMPLE — FICTIONAL COMPANY")).toHaveCount(0);

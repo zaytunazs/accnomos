@@ -24,8 +24,7 @@ test("upload a gold receipt → scan → proposal → approve → VAT boxes chan
   await expect(page.getByText("1 file added to 00 Inbox")).toBeVisible();
 
   await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
-  // The runtime's first scan builds the stub's gold-receipt caches (over 10 s cold).
-  await expect(page.locator('p[role="status"][aria-live="polite"]')).toHaveText("1 new proposal", { timeout: 30_000 });
+  await expect(page.locator('p[role="status"][aria-live="polite"]')).toHaveText("1 new proposal"); // caches warmed at startup
   const card = page.getByRole("region", { name: "Novex Office Supplies Ltd · £51.90" });
   await expect(card).toBeVisible();
   await expect(card).toContainText("£43.25 · £8.65 · £51.90");

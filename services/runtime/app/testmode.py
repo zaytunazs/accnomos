@@ -331,6 +331,12 @@ def enable() -> None:
     log.warning("ACCNOMOS_TEST_MODE=1: fake storage/mail/calendar and a stub AI; not for real books")
 
 
+def warm() -> None:
+    """Render every gold receipt and hash it now (~10 s), before /health answers. Done lazily, the first scan blocked
+    the event loop that long, so every parallel Playwright worker's first test timed out behind it."""
+    _by_hash()
+
+
 # --------------------------------------------------------------------------- #
 # Routes
 # --------------------------------------------------------------------------- #

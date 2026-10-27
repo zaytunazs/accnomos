@@ -162,6 +162,7 @@ if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI und
     from app import testmode
 
     testmode.enable()
+    testmode.warm()
     app.add_middleware(testmode.TenantMiddleware)  # added last, so outermost: X-Test-Tenant picks the fakes
     app.include_router(testmode.router)
 
