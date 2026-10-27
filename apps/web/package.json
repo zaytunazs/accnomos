@@ -10,6 +10,7 @@
         "e2e": "pnpm run e2e:build && pnpm run e2e:test",
         "e2e:build": "node e2e/build.mjs",
         "e2e:test": "playwright test",
+        "e2e:demo": "pnpm run e2e:build && E2E_DEMO_SHOTS=1 playwright test --project=demo",
         "size": "node scripts/route-sizes.mjs out",
         "bridge": "esbuild node_modules/@azure/msal-browser/dist/redirect_bridge/index.mjs --bundle --format=esm --minify --outfile=public/auth/msal-redirect-bridge.js"
     },
