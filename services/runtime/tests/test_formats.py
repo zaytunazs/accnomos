@@ -96,9 +96,7 @@ def test_guess_mime() -> None:
     assert guess_mime("notes.txt") is None  # only an email body saved by intake is a text document
 
 
-async def test_a_plain_text_file_in_the_inbox_is_left_alone(
-    models: dict[str, list], fake: FakeStorageProvider
-) -> None:
+async def test_a_plain_text_file_in_the_inbox_is_left_alone(models: dict[str, list], fake: FakeStorageProvider) -> None:
     fake.files["00 Inbox/notes.txt"] = b"Total \xc2\xa35.00 owed to Sam"
     assert await scan_inbox(Books(fake), LOCAL) == []
     assert models["extract"] == [] and "00 Inbox/notes.txt" in fake.files
