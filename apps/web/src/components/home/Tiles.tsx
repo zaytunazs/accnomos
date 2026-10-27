@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import ByWhom from "@/components/ByWhom";
+import ExplainMore from "@/components/ExplainMore";
 import type { RtDashboard } from "@/lib/runtime";
 import { tiles as sampleTiles, type Tile } from "@/lib/sample-home";
 import Greeting from "./Greeting";
@@ -106,7 +108,15 @@ export function TodayCard() {
 
   return (
     <section aria-label="Today" className="col-span-full rounded-2xl border border-border bg-white p-4 sm:p-5">
-      <Greeting />
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <Greeting />
+        </div>
+        <ExplainMore title="Where these figures come from" anchor="books">
+          Cash, what you are owed, what you owe and the VAT so far are worked out by code from your books — the sample
+          Bramblewood figures when signed out. No model writes these numbers.
+        </ExplainMore>
+      </div>
       {tiles === null ? (
         <div aria-busy="true" className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
           {NUMBER_LABELS.map((label) => (
@@ -121,6 +131,11 @@ export function TodayCard() {
         <div aria-live="polite" className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
           {tiles.map((tile) => <NumberBlock key={tile.label} tile={tile} />)}
         </div>
+      )}
+      {sample ? (
+        <ByWhom className="mt-3" code="Sample figures from the fictional Bramblewood books" ai="no AI involved" />
+      ) : (
+        <ByWhom className="mt-3" code="Figures by code from your books" ai="no AI involved" />
       )}
       <div className="mt-4">
         <Link
@@ -150,9 +165,15 @@ export function AttentionCard() {
 
   return (
     <section aria-labelledby="attention-heading" className="flex flex-col rounded-2xl border border-border bg-white p-4 sm:p-5">
-      <h2 id="attention-heading" className="text-lg font-extrabold tracking-tight">
-        Needs attention{sample && <SampleTag />}
-      </h2>
+      <div className="flex items-center gap-2">
+        <h2 id="attention-heading" className="text-lg font-extrabold tracking-tight">
+          Needs attention{sample && <SampleTag />}
+        </h2>
+        <ExplainMore title="What this count is" anchor="receipts">
+          One number for everything waiting: proposals to approve, readings to look at, unmatched bank lines and
+          overdue invoices. Code counts them from your books; you clear them one tap at a time in Review.
+        </ExplainMore>
+      </div>
       {tile === null ? (
         <div aria-busy="true">
           <Skeleton className="mt-2 h-9 w-16" />
@@ -168,6 +189,11 @@ export function AttentionCard() {
           </p>
         </div>
       )}
+      <ByWhom
+        className="mt-2"
+        code={sample ? "Sample count from the fictional Bramblewood books" : "Counted by code from your books"}
+        ai={sample ? "sample readings, not AI" : "proposals read by AI"}
+      />
       <div className="mt-auto pt-4">
         {tile !== null && tile.href ? (
           <Link

@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import ByWhom from "@/components/ByWhom";
+import ExplainMore from "@/components/ExplainMore";
 import { activity as sampleActivity } from "@/lib/sample-home";
 import { SampleTag, Skeleton, useHome } from "./HomeData";
 import type { RtDashboard } from "@/lib/runtime";
@@ -146,9 +148,15 @@ export default function Activity() {
       aria-busy={rows === null && home.mode !== "error"}
       className="flex flex-col rounded-2xl border border-border bg-white p-4 sm:p-5 md:col-span-2 xl:col-span-2"
     >
-      <h2 id="activity-heading" className="text-lg font-extrabold tracking-tight">
-        {heading}{sample && <SampleTag />}
-      </h2>
+      <div className="flex items-center gap-2">
+        <h2 id="activity-heading" className="text-lg font-extrabold tracking-tight">
+          {heading}{sample && <SampleTag />}
+        </h2>
+        <ExplainMore title="What this list is" anchor="data">
+          The latest audit lines from your books — scans, approvals and bank matches — each linking to the thing
+          behind it. They are written by code as things happen.
+        </ExplainMore>
+      </div>
       {home.mode === "error" ? (
         <p className="mt-3 min-h-[3.5rem] text-sm font-medium text-muted">— Could not reach your books: {home.message}</p>
       ) : rows === null ? (
@@ -192,6 +200,7 @@ export default function Activity() {
           ))}
         </div>
       )}
+      <ByWhom className="mt-3" code="Logged by code as things happen" ai="no AI involved" />
       <div className="mt-auto pt-4">
         <Link
           href="/review"

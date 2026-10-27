@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import ByWhom from "@/components/ByWhom";
+import ExplainMore from "@/components/ExplainMore";
 import type { AccountInfo } from "@azure/msal-browser";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
 import { RuntimeErrorNote } from "@/components/States";
@@ -26,6 +28,16 @@ const CATEGORY: Record<RtTriageCategory, { label: string; tone: string }> = {
   accountant: { label: "Accountant", tone: "bg-ground text-ink" },
   other: { label: "Other", tone: "bg-ground text-muted" },
 };
+
+/** The one drawer for the Inbox card header, whichever state it is in. */
+function InboxExplain() {
+  return (
+    <ExplainMore title="What the inbox shows" anchor="inbox">
+      One line per business thread from the last 7 days, with a suggested reply and any to-dos. Your AI writes
+      the summaries; saving makes an Outlook draft, which you send from Outlook — Accnomos never sends.
+    </ExplainMore>
+  );
+}
 
 /**
  * Home › Inbox: the last 7 days of business email, one line each (POST /mail/triage, when Settings › Automation ›
@@ -82,7 +94,10 @@ export default function InboxTriage() {
   if (on === null) {
     return (
       <section aria-labelledby="home-inbox" aria-busy="true" className="rounded-2xl border border-border bg-white p-4 sm:p-5 md:col-span-2 xl:col-span-2">
-        <h2 id="home-inbox" className="text-lg font-extrabold tracking-tight text-ink">Inbox</h2>
+        <div className="flex items-center gap-2">
+          <h2 id="home-inbox" className="text-lg font-extrabold tracking-tight text-ink">Inbox</h2>
+          <InboxExplain />
+        </div>
         <div className="mt-3 flex min-h-[7rem] flex-col gap-2">
           <span aria-hidden="true" className="h-4 w-2/3 animate-pulse rounded-md bg-ground" />
           <span aria-hidden="true" className="h-4 w-1/2 animate-pulse rounded-md bg-ground" />
@@ -94,7 +109,10 @@ export default function InboxTriage() {
   if (!on) {
     return (
       <section aria-labelledby="home-inbox" className="rounded-2xl border border-border bg-white p-4 sm:p-5 md:col-span-2 xl:col-span-2">
-        <h2 id="home-inbox" className="text-lg font-extrabold tracking-tight text-ink">Inbox</h2>
+        <div className="flex items-center gap-2">
+          <h2 id="home-inbox" className="text-lg font-extrabold tracking-tight text-ink">Inbox</h2>
+          <InboxExplain />
+        </div>
         <p className="mt-1 min-h-[7rem] text-sm leading-6 text-muted">
           A one-line summary of the week&apos;s emails from customers, suppliers, HMRC and your accountant, with suggested
           replies and to-dos.{" "}
@@ -114,7 +132,10 @@ export default function InboxTriage() {
     <section aria-labelledby="home-inbox" className="rounded-2xl border border-border bg-white p-4 sm:p-5 md:col-span-2 xl:col-span-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 id="home-inbox" className="text-lg font-extrabold tracking-tight text-ink">Inbox</h2>
+          <div className="flex items-center gap-2">
+            <h2 id="home-inbox" className="text-lg font-extrabold tracking-tight text-ink">Inbox</h2>
+            <InboxExplain />
+          </div>
           <p className="min-h-5 text-[13px] font-medium text-muted">
             {busy
               ? "Reading the last 7 days…"
@@ -165,6 +186,7 @@ export default function InboxTriage() {
           {showOther ? "Hide other email" : `Show ${other.length} other thread${other.length === 1 ? "" : "s"}`}
         </button>
       )}
+      <ByWhom className="mt-3" code="Nothing sent" ai="summaries by your AI" />
     </section>
   );
 }

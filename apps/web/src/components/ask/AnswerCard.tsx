@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
+import ByWhom from "@/components/ByWhom";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getFileWebUrl } from "@/lib/graph";
 import type { RtAskAnswer, RtSuggestedAction } from "@/lib/runtime";
@@ -189,17 +190,19 @@ export default function AnswerCard({
         </ul>
       )}
 
-      <p className="mt-3 text-[13px] text-muted">
-        {pending ? (
-          <>Numbers by code · {answer.model} is writing the explanation; every figure in it is checked before it stays</>
-        ) : answer.model === "code" ? (
-          "Worked out by code"
-        ) : (
-          <>Numbers by code · explanation by {answer.model}</>
-        )}
-        {!pending && answer.confidence !== "high" && ` · confidence ${answer.confidence}`}
-        {elapsed}
-      </p>
+      {(() => {
+        const suffix = `${!pending && answer.confidence !== "high" ? ` · confidence ${answer.confidence}` : ""}${elapsed}`;
+        if (pending)
+          return (
+            <ByWhom
+              className="mt-3"
+              code="Numbers by code"
+              ai={`${answer.model} is writing the explanation; every figure in it is checked before it stays${suffix}`}
+            />
+          );
+        if (answer.model === "code") return <p className="mt-3 text-[13px] text-muted">Worked out by code{suffix}</p>;
+        return <ByWhom className="mt-3" code="Numbers by code" ai={`explanation by ${answer.model}${suffix}`} />;
+      })()}
 
       {actions.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">

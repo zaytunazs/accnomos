@@ -1,4 +1,5 @@
 import type { ReactNode, Ref } from "react";
+import ByWhom from "@/components/ByWhom";
 import type { Proposal } from "@/lib/sample-review";
 
 const facts = [
@@ -158,6 +159,8 @@ export default function ProposalCard({ proposal, remember, onRememberChange, med
           </table>
         )}
       </div>
+
+      <ByWhom className="mt-3" code="Checked by code" ai="read by AI" />
 
       {onRememberChange && (
         <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-[15px] font-semibold">

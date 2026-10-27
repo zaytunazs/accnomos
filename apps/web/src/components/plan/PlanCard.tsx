@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { Markdown } from "@/components/ask/AnswerCard";
+import ByWhom from "@/components/ByWhom";
 import { errorText } from "@/components/jobs/useAccount";
 import { RuntimeErrorNote } from "@/components/States";
 import { loadBusiness, planVat } from "@/lib/business";
@@ -137,9 +138,11 @@ export default function PlanCard({
 
           <div className="mt-4 rounded-xl bg-ground p-4 text-[14px] leading-6">
             <Markdown md={plan.rationale_md} />
-            <p className="mt-2 text-[12px] text-muted">
-              {plan.fallback_reason ?? `Words by ${plan.model}, checked against the plan's times.`}
-            </p>
+            {plan.fallback_reason ? (
+              <p className="mt-2 text-[12px] text-muted">{plan.fallback_reason}</p>
+            ) : (
+              <ByWhom className="mt-2" code="Checked against the plan's times" ai={`words by ${plan.model}`} />
+            )}
           </div>
 
           {plan.warnings.length > 0 && (
