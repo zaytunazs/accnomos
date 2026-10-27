@@ -11,10 +11,19 @@ import time
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 app = FastAPI(title="Accnomos Agent Runtime", version="0.1.0")
 STARTED = time.time()
+
+# Browsers (PWA) call the runtime directly; it keeps nothing, so CORS is the only gate.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000,https://accnomos.com,https://app.accnomos.com").split(",")],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class AiConfig(BaseModel):
