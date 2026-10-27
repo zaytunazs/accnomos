@@ -107,3 +107,5 @@ if not FFMPEG:
 from app.routes_contacts import router as contacts_router  # noqa: E402  /contacts/*
 app.include_router(contacts_router)
 
+from app.routes_plan import router as plan_router  # noqa: E402  /plan/day, /plan/day/apply
+app.include_router(plan_router)
