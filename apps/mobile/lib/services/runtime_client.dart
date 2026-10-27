@@ -832,6 +832,20 @@ class RuntimeClient {
   Future<List<Map<String, dynamic>>> invoiceCustomers() =>
       _list('GET', '/invoices/customers', what: 'load customers');
 
+  /// How the business appears on its invoices (`GET /invoices/profile`,
+  /// kept in the user's OneDrive so every device prints the same).
+  /// Same path the web's `InvoiceProfileForm` reads.
+  Future<Map<String, dynamic>> invoiceProfile() =>
+      _map('GET', '/invoices/profile', what: 'load invoice details');
+
+  /// Save the invoice profile (`PUT /invoices/profile`). [profile] keeps
+  /// the shape `invoiceProfile()` returned, with the edited fields
+  /// replaced — the same body the web sends.
+  Future<Map<String, dynamic>> saveInvoiceProfile(
+          Map<String, dynamic> profile) =>
+      _map('PUT', '/invoices/profile',
+          body: profile, what: 'save invoice details');
+
   // Pay runs (/payroll/runs). Pence throughout; every est_* figure is an
   // estimate for the payroll provider — the phone never confirms.
 
