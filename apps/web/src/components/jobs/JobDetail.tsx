@@ -15,6 +15,7 @@ import {
 } from "@/lib/runtime";
 import { errorText, todayIso, useAccount } from "./useAccount";
 import { RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import WeekGrid from "./WeekGrid";
 
 const hrs = (h: number) => h.toLocaleString("en-GB", { maximumFractionDigits: 2 });
 const card = "rounded-2xl border border-border bg-white p-4";
@@ -170,6 +171,30 @@ export default function JobDetail() {
         </ul>
       )}
 
+      <section aria-labelledby="job-margin" className={card}>
+        <h2 id="job-margin" className={heading}>
+          Margin
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          {pence(summary.margin_pence)} kept on {pence(summary.billable_value_pence)} of billable work, after{" "}
+          {pence(summary.labour_cost_pence)} labour and {pence(summary.materials_pence)} materials.
+        </p>
+        <div
+          className="mt-2 h-2.5 overflow-hidden rounded-full bg-ground"
+          role="img"
+          aria-label={`Margin ${pence(summary.margin_pence)} on ${pence(summary.billable_value_pence)} billable`}
+        >
+          <div
+            className={`h-full rounded-full ${summary.margin_pence < 0 ? "bg-warn-ink" : "bg-teal"}`}
+            style={{ width: `${summary.billable_value_pence > 0 ? Math.max(0, Math.min(100, (summary.margin_pence / summary.billable_value_pence) * 100)) : 0}%` }}
+          />
+        </div>
+      </section>
+
+      {account ? (
+        <WeekGrid account={account} jobId={id} open={open} staff={staff} entries={entries} reload={load} />
+      ) : null}
+
       <section aria-labelledby="job-timesheet" className={card}>
         <h2 id="job-timesheet" className={heading}>
           Timesheet
@@ -179,7 +204,7 @@ export default function JobDetail() {
             Add your staff and their rates in <Link href="/settings" className="font-bold text-teal-dark underline">Settings</Link> first.
           </p>
         )}
-        <form onSubmit={addRow} className="mt-3 overflow-x-auto" aria-label="Add hours">
+        <form onSubmit={addRow} className="relative mt-3 overflow-x-auto" aria-label="Add hours">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="text-xs font-bold text-muted">
@@ -238,7 +263,14 @@ export default function JobDetail() {
                   <td className="py-2 pr-3 text-muted">{ukDate(e.date)}</td>
                   <td className="py-2 pr-3 text-right">{hrs(e.hours)}</td>
                   <td className="py-2 pr-3 text-muted">{e.note || "—"}</td>
-                  <td className="py-2 pr-3 text-muted">{e.invoiced_in ? `Invoiced (${e.invoiced_in})` : e.billable ? "Yes" : "No"}</td>
+                  <td className="py-2 pr-3 text-muted">
+                    {e.invoiced_in ? (
+                      <span className="inline-flex flex-wrap items-center gap-1">
+                        <span className="rounded-full bg-teal-tint px-2 py-0.5 text-[11px] font-extrabold text-teal-dark">Billed</span>
+                        {e.invoiced_in}
+                      </span>
+                    ) : e.billable ? "Yes" : "No"}
+                  </td>
                   <td className="py-2 text-right">
                     {!e.invoiced_in && open && (
                       <button
@@ -287,9 +319,13 @@ export default function JobDetail() {
           <p className="mt-1 text-sm text-muted">Purchases tagged to this job when they were approved in Review (ex VAT).</p>
           <ul className="mt-2 divide-y divide-border text-sm">
             {summary.purchases.map((p) => (
-              <li key={p.event_id} className="flex justify-between gap-3 py-2">
+              <li key={p.event_id} className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2">
                 <span>{ukDate(p.date)} · {p.supplier ?? "Unknown supplier"}</span>
-                <span className="font-bold">{pence(p.net_pence)}</span>
+                <span className="inline-flex items-center gap-2">
+                  <Link href="/review" className="font-bold text-teal-dark underline">Review</Link>
+                  <Link href="/files" className="font-bold text-teal-dark underline">Files</Link>
+                  <span className="font-bold">{pence(p.net_pence)}</span>
+                </span>
               </li>
             ))}
           </ul>
@@ -298,7 +334,7 @@ export default function JobDetail() {
 
       {error && <RuntimeErrorNote message={error} />}
       {note && (
-        <p role="status" className="text-sm font-bold text-teal-dark">
+        <p role="status" aria-live="polite" className="text-sm font-bold text-teal-dark">
           {note}
         </p>
       )}

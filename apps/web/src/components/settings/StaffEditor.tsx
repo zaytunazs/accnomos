@@ -1,8 +1,12 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useState } from "react";
+import Link from "next/link";
 import { pence, runtime, type RtStaff, type RtStaffIn } from "@/lib/runtime";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
+
+const payMonth = () =>
+  new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "Europe/London" });
 
 type Draft = { name: string; role: string; hourly: string; charge: string; active: boolean };
 const EMPTY: Draft = { name: "", role: "", hourly: "", charge: "", active: true };
@@ -45,6 +49,23 @@ export default function StaffEditor({ card, heading }: { card: string; heading: 
     setDraft(s ? { name: s.name, role: s.role, hourly: fromPence(s.hourly_rate_pence), charge: fromPence(s.charge_rate_pence), active: s.active } : EMPTY);
   }
 
+  async function toggleActive(s: RtStaff) {
+    if (!account || editing !== null || busy) return;
+    setBusy(true);
+    try {
+      await runtime.updateStaff(account, s.id, {
+        name: s.name, role: s.role, hourly_rate_pence: s.hourly_rate_pence,
+        charge_rate_pence: s.charge_rate_pence, active: !s.active,
+      });
+      setNote(s.active ? `${s.name} marked inactive — their hours stay on the jobs.` : `${s.name} marked active.`);
+      await load();
+    } catch (err) {
+      setNote(errorText(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!account || !editing) return;
@@ -81,14 +102,16 @@ export default function StaffEditor({ card, heading }: { card: string; heading: 
             Role
             <input value={draft.role} maxLength={120} placeholder="e.g. Electrician" onChange={(e) => setDraft({ ...draft, role: e.target.value })} className={field} />
           </label>
-          <label className="flex flex-col gap-1 text-xs font-bold text-muted">
-            Cost £/h
-            <input required inputMode="decimal" value={draft.hourly} onChange={(e) => setDraft({ ...draft, hourly: e.target.value })} className={`${field} w-24`} />
-          </label>
-          <label className="flex flex-col gap-1 text-xs font-bold text-muted">
-            Charge £/h
-            <input inputMode="decimal" value={draft.charge} placeholder="at cost" onChange={(e) => setDraft({ ...draft, charge: e.target.value })} className={`${field} w-24`} />
-          </label>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1 text-xs font-bold text-muted">
+              Cost £/h
+              <input required inputMode="decimal" value={draft.hourly} onChange={(e) => setDraft({ ...draft, hourly: e.target.value })} className={`${field} w-full`} />
+            </label>
+            <label className="flex flex-col gap-1 text-xs font-bold text-muted">
+              Charge £/h
+              <input inputMode="decimal" value={draft.charge} placeholder="at cost" onChange={(e) => setDraft({ ...draft, charge: e.target.value })} className={`${field} w-full`} />
+            </label>
+          </div>
           <label className="flex h-10 items-center gap-2 text-sm font-semibold text-ink">
             <input type="checkbox" checked={draft.active} onChange={(e) => setDraft({ ...draft, active: e.target.checked })} />
             Active
@@ -118,12 +141,13 @@ export default function StaffEditor({ card, heading }: { card: string; heading: 
       </div>
       <p className="mt-1 text-sm text-muted">
         Who works on your jobs, what an hour costs you and what you charge for it. Only names and roles are kept: no other personal
-        details. People with hours can be marked inactive but not removed.
+        details. People with hours can be marked inactive but not removed. Their hours feed the{" "}
+        <Link href="/payroll" className="font-bold text-teal-dark underline">pay run for {payMonth()}</Link>.
       </p>
       {staff === null ? (
         <p className="mt-3 text-sm text-muted">{account === null ? "Sign in to manage staff." : (note ?? "Loading…")}</p>
       ) : (
-        <div className="mt-3 overflow-x-auto">
+        <div className="relative mt-3 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="text-xs font-bold text-muted">
@@ -154,15 +178,26 @@ export default function StaffEditor({ card, heading }: { card: string; heading: 
                     <td className="py-2 pr-3 text-right">{pence(s.hourly_rate_pence)}</td>
                     <td className="py-2 pr-3 text-right">{s.charge_rate_pence === null ? "at cost" : pence(s.charge_rate_pence)}</td>
                     <td className="py-2 text-right">
-                      <button
-                        type="button"
-                        disabled={editing !== null}
-                        onClick={() => edit(s)}
-                        aria-label={`Edit ${s.name}`}
-                        className="h-9 rounded-xl border border-border bg-white px-3 text-[13px] font-bold text-ink disabled:opacity-60"
-                      >
-                        Edit
-                      </button>
+                      <span className="inline-flex flex-wrap justify-end gap-2">
+                        <button
+                          type="button"
+                          disabled={editing !== null || busy}
+                          onClick={() => toggleActive(s)}
+                          aria-label={s.active ? `Mark ${s.name} inactive` : `Mark ${s.name} active`}
+                          className="h-9 rounded-xl border border-border bg-white px-3 text-[13px] font-bold text-ink disabled:opacity-60"
+                        >
+                          {s.active ? "Mark inactive" : "Mark active"}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={editing !== null}
+                          onClick={() => edit(s)}
+                          aria-label={`Edit ${s.name}`}
+                          className="h-9 rounded-xl border border-border bg-white px-3 text-[13px] font-bold text-ink disabled:opacity-60"
+                        >
+                          Edit
+                        </button>
+                      </span>
                     </td>
                   </tr>
                 ),
@@ -172,7 +207,7 @@ export default function StaffEditor({ card, heading }: { card: string; heading: 
         </div>
       )}
       {note && staff !== null && (
-        <p role="status" className="mt-2 text-sm font-bold text-teal-dark">
+        <p role="status" aria-live="polite" className="mt-2 text-sm font-bold text-teal-dark">
           {note}
         </p>
       )}
