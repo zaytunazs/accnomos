@@ -4,7 +4,7 @@ import { PAGES } from "./pages"; // every page of the static export, at phone wi
 
 /** The pages used most on a phone, with the control each must show without scrolling sideways. */
 const NARROW: [string, string][] = [
-  ["/", "Ask"], ["/review", "Scan 00 Inbox now"], ["/ask", "Ask"], ["/vat", "Ask about Oct–Dec 2026"], ["/settings", "Business"],
+  ["/", "Ask"], ["/review", "Scan 00 Inbox now"], ["/ask", "Ask"], ["/vat", "Add to calendar"], ["/settings", "Business"],
 ];
 
 test.describe("390 px wide (iPhone 12–15)", () => {
