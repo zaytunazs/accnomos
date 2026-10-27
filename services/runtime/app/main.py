@@ -205,3 +205,6 @@ if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI und
 from app.routes_todos import router as todos_router  # noqa: E402  /todos
 
 app.include_router(todos_router)
+from app.routes_audit import router as audit_router  # noqa: E402  GET /audit
+
+app.include_router(audit_router)

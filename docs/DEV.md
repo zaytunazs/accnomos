@@ -70,7 +70,7 @@ pnpm exec playwright test --ui                     # UI mode: pick, watch and ti
 pnpm exec playwright test e2e/review.spec.ts:130 --repeat-each=20   # hunting a flake
 ```
 
-114 tests (38 desktop, 74 phone, 2 demo) take about 80 s locally on 4 workers, including the runtime's start and its ~10 s warm-up; CI runs 3 workers with one retry. Rebuild with
+170 tests (88 desktop, 80 phone, 2 demo) take about 110 s locally on 4 workers, including the runtime's start and its ~10 s warm-up; CI runs 3 workers with one retry. Rebuild with
 `pnpm run e2e:build` after changing anything under `src/`: the tests run against `out-e2e/`, not the dev server.
 Ports are `E2E_WEB_PORT` (3100), `E2E_RUNTIME_PORT` (8781) and `E2E_RELAY_PORT` (8789), read by both the build and
 the config, so set them for both (e.g. `node --env-file=ports.env e2e/build.mjs`). Locally Playwright reuses servers

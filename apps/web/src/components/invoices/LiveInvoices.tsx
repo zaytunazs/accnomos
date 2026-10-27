@@ -51,6 +51,11 @@ export default function LiveInvoices() {
   const [invoices, setInvoices] = useState<RtInvoice[] | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
+  // /invoices?q=INV-0007 (from the audit trail) starts with that search.
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("q");
+    if (q) queueMicrotask(() => setQuery(q));
+  }, []);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);

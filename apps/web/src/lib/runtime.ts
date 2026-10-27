@@ -308,6 +308,8 @@ export const runtime = {
   draftReply: (a: AccountInfo, messageId: string, body: string) =>
     call<RtDraftReply>(a, "/mail/draft-reply", { method: "POST", body: JSON.stringify({ message_id: messageId, body }) },
       mailDraftScopesFor(accountKind(a))),
+  /** GET /audit: the audit trail, newest first (`from`, `to`, `actor`, `kind`, `limit`). Reads only. */
+  audit: (a: AccountInfo, query: string) => call<RtAuditPage>(a, `/audit${query ? `?${query}` : ""}`),
   /** To-dos in _System/Todos/todos.json. */
   todos: (a: AccountInfo) => call<RtTodo[]>(a, "/todos"),
   addTodo: (a: AccountInfo, todo: RtTodoIn) => call<RtTodo>(a, "/todos", { method: "POST", body: JSON.stringify(todo) }),
@@ -1256,6 +1258,23 @@ export interface RtTodoIn {
   due?: string | null;
   source?: { kind?: "mail"; message_id?: string | null; subject?: string; web_link?: string | null } | null;
 }
+/** One audit line, as services/runtime/app/audit_view.py AuditEntry. */
+export interface RtAuditEntry {
+  ts: string;
+  actor: string; // "user:<email>" or "agent:<name>"
+  actor_kind: "user" | "agent";
+  actor_label: string; // "You", "Autopilot", "Intake", "Triage", "Planner", ...
+  event: string; // e.g. "approved"; Ask actions are action_done / action_rejected / action_failed
+  summary: string;
+  refs: { proposal: string | null; event: string | null; invoice: string | null; action: string | null; file: string | null };
+}
+export interface RtAuditPage {
+  start: string;
+  end: string;
+  entries: RtAuditEntry[]; // newest first
+  truncated: boolean;
+}
+
 export interface RtTodo extends RtTodoIn {
   id: string;
   created_at: string;

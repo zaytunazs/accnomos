@@ -279,8 +279,9 @@ export default function SettingsPanels() {
           <h2 id="settings-audit" className={heading}>
             Audit log
           </h2>
-          <Link href="/files" className="mt-2 inline-block text-sm font-bold text-teal-dark">
-            Browse _System/audit in Files
+          <p className="mt-1 text-sm text-muted">Every action in your books, by you or an agent. Read-only.</p>
+          <Link href="/audit" className="mt-2 inline-block text-sm font-bold text-teal-dark">
+            Open the audit trail
           </Link>
         </section>
 

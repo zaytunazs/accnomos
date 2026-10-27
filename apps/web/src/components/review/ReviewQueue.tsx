@@ -143,6 +143,18 @@ export default function ReviewQueue<H>({
     });
   }, [focusNext, items]);
 
+  // /review#proposal-<id> (from the audit trail): scroll to that card once it is on the page.
+  const [hashDone, setHashDone] = useState(false);
+  useEffect(() => {
+    if (hashDone || items.length === 0) return;
+    const raw = /^#proposal-(.+)$/.exec(window.location.hash)?.[1];
+    const id = raw ? decodeURIComponent(raw) : null;
+    queueMicrotask(() => {
+      setHashDone(true);
+      if (id && cards.current.has(id)) setFocusNext(id);
+    });
+  }, [hashDone, items]);
+
   const neighbour = useCallback(
     (ids: string[]) => {
       const gone = new Set(ids);

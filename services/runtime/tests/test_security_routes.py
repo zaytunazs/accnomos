@@ -92,6 +92,7 @@ def test_the_walk_sees_the_new_routers():
         "/jobs",
         "/contacts/{contact_id}",
         "/books/dashboard",
+        "/audit",
     } <= paths
 
 
