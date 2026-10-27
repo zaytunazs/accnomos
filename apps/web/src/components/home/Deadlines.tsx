@@ -56,7 +56,9 @@ export default function Deadlines() {
         await msal.handleRedirectPromise().catch(() => null);
         const acct: AccountInfo | undefined = msal.getActiveAccount() ?? msal.getAllAccounts()[0];
         if (!acct) return;
-        const d = await runtime.deadlines(acct, query);
+        // Today's date in the UK, not the runtime's time zone (UTC would be a day behind just after midnight BST).
+        const today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/London" });
+        const d = await runtime.deadlines(acct, `${query}&today=${today}`);
         setLive({ tiles: toTiles(d.current, d.due), rule: d.rule });
       } catch {
         /* runtime unreachable or token expired: keep the sample */
