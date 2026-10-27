@@ -576,10 +576,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
           child: OutlinedButton(
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               shape: buttonShape,
             ),
             onPressed: () => _say('Editing arrives in the next update.'),
-            child: const Text('Edit'),
+            child: const Text('Edit', softWrap: false),
           ),
         ),
         const SizedBox(width: 8),
@@ -587,10 +588,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
           child: OutlinedButton(
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
+              padding: const EdgeInsets.symmetric(horizontal: 8),
               shape: buttonShape,
             ),
             onPressed: _busy ? null : () => _rejectProposal(proposal),
-            child: const Text('Reject'),
+            child: const Text('Reject', softWrap: false, overflow: TextOverflow.fade),
           ),
         ),
       ],

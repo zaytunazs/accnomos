@@ -1,4 +1,10 @@
+import 'package:flutter/foundation.dart' show kReleaseMode;
 import 'package:shared_preferences/shared_preferences.dart';
+
+/// Release builds talk to the hosted runtime over HTTPS; debug builds default to
+/// the emulator's alias for the dev PC (10.0.2.2) so a local runtime is reachable.
+const String kDefaultRuntimeUrl =
+    kReleaseMode ? 'https://api.accnomos.com' : 'http://10.0.2.2:8780';
 
 /// Runtime + AI settings, persisted on-device.
 ///
@@ -6,7 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// TODO: move apiKey to flutter_secure_storage before any real user data.
 class AppSettings {
   AppSettings({
-    this.runtimeUrl = 'http://10.0.2.2:8780',
+    this.runtimeUrl = kDefaultRuntimeUrl,
     this.aiMode = 'local',
     this.aiBaseUrl = 'http://192.168.1.176:11434',
     this.aiModel = 'muse-glimmer:30b',
@@ -51,7 +57,7 @@ class AppSettings {
   static Future<AppSettings> load() async {
     final prefs = await SharedPreferences.getInstance();
     return AppSettings(
-      runtimeUrl: prefs.getString(_kRuntimeUrl) ?? 'http://10.0.2.2:8780',
+      runtimeUrl: prefs.getString(_kRuntimeUrl) ?? kDefaultRuntimeUrl,
       aiMode: prefs.getString(_kAiMode) ?? 'local',
       aiBaseUrl: prefs.getString(_kAiBaseUrl) ?? 'http://192.168.1.176:11434',
       aiModel: prefs.getString(_kAiModel) ?? 'muse-glimmer:30b',
