@@ -5,12 +5,11 @@ Needs `python-multipart` installed for `UploadFile`.
 
 from __future__ import annotations
 
-from datetime import date
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 
 from app.ai.config import AiConfig, ai_config_from_request
 from app.ai.extract import SUPPORTED_MIME, ExtractionError
+from app.books import today
 from app.pipeline import process_image
 from app.routes_books import business_name
 from app.schemas import Proposal
@@ -42,7 +41,7 @@ async def extract(
     if not data:
         raise HTTPException(status_code=400, detail="Empty upload")
     try:
-        start, end = cycle.current(date.today())
+        start, end = cycle.current(today())
         proposal = await process_image(
             data, mime, cfg, known_hashes=frozenset(_SEEN_HASHES), business_name=business, period_start=start, period_end=end,
         )

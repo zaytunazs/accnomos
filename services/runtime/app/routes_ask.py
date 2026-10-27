@@ -11,7 +11,7 @@ A spoken question is transcribed by Muse Voice (app/ai/voice.py) and then takes 
 
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
@@ -64,7 +64,7 @@ async def _answer(
 
     No period in the request: the current VAT period by the settings sent as `stagger`/`start_month`/`months`."""
     period = req.period or default_period(today(), cycle)
-    if (day := plan_intent(req.question, datetime.now(TZ).date())) is not None:
+    if (day := plan_intent(req.question, today(TZ))) is not None:
         return plan_answer(day, period)
     found = await actions.propose(req.question, books, cfg, token)
     if found is not None:

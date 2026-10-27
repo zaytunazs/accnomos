@@ -75,6 +75,15 @@ def test_forces_stub_ai_and_pins_today(test_env: None) -> None:
     assert today() == date(2026, 10, 27)
 
 
+def test_pinned_today_drives_plan_my_thursday(test_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ask resolved "Thursday" from the real clock, so the e2e plan flow only passed in the week of 27 Oct 2026."""
+    from app.planner import TZ, plan_intent
+
+    monkeypatch.setenv("ACCNOMOS_TEST_TODAY", "2026-10-27")
+    assert today(TZ) == date(2026, 10, 27)  # what routes_ask and routes_plan pass as "today"
+    assert plan_intent("Plan my Thursday", today(TZ)) == date(2026, 10, 29)
+
+
 def test_browser_ai_base_url_is_accepted_then_swapped(test_env: None) -> None:
     """The web build points the browser at the stub; the allow-list must not refuse it (the e2e Ask/AI test 400'd)."""
     cfg = AiConfig.from_headers({"X-AI-Mode": "local", "X-AI-Base-Url": "http://127.0.0.1:8781/__test/ai"})
