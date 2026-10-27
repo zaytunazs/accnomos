@@ -353,6 +353,28 @@ def test_report_routes_read_only(client: TestClient, fake: FakeStorageProvider) 
     assert fake.files == before  # nothing written, not even an audit line
 
 
+def test_aged_report_is_the_contacts_figures(client: TestClient) -> None:
+    report = client.get(f"/reports/aged?as_of={TODAY}", headers=H).json()
+    contacts = client.get(f"/contacts/aged?as_of={TODAY}", headers=H).json()
+    assert report.pop("sample") is False
+    assert report == contacts
+
+
+def test_vat_summary_follows_monthly_returns(client: TestClient) -> None:
+    # Monthly: Jul B C (box 1 20,000, box 4 5,000), Aug D E (6,000, 865), Sep F G G' (0, 0), Oct I (10,000, 0)
+    vat = client.get(f"/reports/vat?periods=4&months=1&today={TODAY}", headers=H).json()
+    assert [p["period"] for p in vat["periods"]] == ["2026-07", "2026-08", "2026-09", "2026-10"]
+    assert [p["net_vat_pence"] for p in vat["periods"]] == [15_000, 5_135, 0, 10_000]
+    assert vat["total_net_vat_pence"] == 30_135
+    assert client.get("/reports/vat?periods=10", headers=H).status_code == 422
+
+
+def test_one_entry_is_singular_on_the_sheet() -> None:
+    data, _ = rp.build_report_xlsx("pl", pl=rp.profit_and_loss(ledger(), date(2026, 8, 1), date(2026, 8, 19)))
+    cells = [c.value for row in load_workbook(io.BytesIO(data))["P&L"].iter_rows() for c in row]
+    assert any(isinstance(v, str) and v.startswith("1 approved entry.") for v in cells)
+
+
 @pytest.mark.parametrize(
     "query",
     ["from=2026-07-01", "to=2026-07-01", "from=2026-09-30&to=2026-07-01", "from=30/09/2026&to=2026-10-01"],
