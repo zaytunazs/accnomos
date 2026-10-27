@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'screens/ask_screen.dart';
+import 'screens/files_screen.dart';
 import 'screens/review_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/vat_screen.dart';
@@ -52,9 +53,9 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int _tab = 0;
 
-  /// Review, Ask and VAT bring their own app bars, so the shell only
-  /// titles the tabs that do not.
-  bool get _hasOwnAppBar => _tab == 1 || _tab == 2 || _tab == 3;
+  /// Review, Ask, VAT and Files bring their own app bars, so the shell
+  /// only titles Home.
+  bool get _hasOwnAppBar => _tab != 0;
 
   @override
   Widget build(BuildContext context) {
@@ -64,7 +65,7 @@ class _ShellState extends State<Shell> {
           : AppBar(
               backgroundColor: AccnomosColors.ground,
               elevation: 0,
-              title: Text(_tab == 4 ? 'Files' : 'Home',
+              title: Text('Home',
                   style: Theme.of(context).textTheme.headlineSmall),
               actions: _tab == 0
                   ? [
@@ -94,8 +95,7 @@ class _ShellState extends State<Shell> {
                 ReviewScreen(),
                 AskScreen(),
                 VatScreen(),
-                _Placeholder('Files',
-                    'A live view of the Accnomos folder in your own cloud storage.'),
+                FilesScreen(),
               ],
             ),
           ),
@@ -238,36 +238,4 @@ class _Tile extends StatelessWidget {
   }
 }
 
-class _Placeholder extends StatelessWidget {
-  const _Placeholder(this.title, this.body);
-  final String title;
-  final String body;
 
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-                color: AccnomosColors.tealTint,
-                borderRadius: BorderRadius.circular(16)),
-            child: const Icon(Icons.hourglass_top,
-                color: AccnomosColors.tealDark),
-          ),
-          const SizedBox(height: 14),
-          Text(title, style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 6),
-          Text(body,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                  color: AccnomosColors.muted, height: 1.4)),
-        ],
-      ),
-    );
-  }
-}

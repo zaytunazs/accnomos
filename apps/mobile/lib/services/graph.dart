@@ -136,6 +136,48 @@ class GraphService {
     );
   }
 
+  /// The books folder itself (or a subfolder such as `05 VAT returns`),
+  /// as raw JSON. Used to resolve the id before listing children.
+  Future<Map<String, dynamic>> folderJson(
+    String token,
+    AccountKind kind, [
+    String relPath = '',
+  ]) async {
+    if (relPath.isEmpty) return ensureRoot(token, kind);
+    return _json(token, itemPath(kind, relPath));
+  }
+
+  /// Children of the books folder (or a subfolder), folders first.
+  /// Counts come from the `folder.childCount` facet; files carry `size`,
+  /// `lastModifiedDateTime` and `webUrl` for the "Open" button.
+  Future<List<DriveItem>> listChildren(
+    String token,
+    AccountKind kind, [
+    String relPath = '',
+  ]) async {
+    final folder = await folderJson(token, kind, relPath);
+    final id = (folder['id'] ?? '').toString();
+    if (id.isEmpty) {
+      throw GraphException('Could not open that folder. Try again.');
+    }
+    final json = await _json(
+        token, '/me/drive/items/$id/children?\$top=200');
+    final raw = json['value'];
+    final items = <DriveItem>[];
+    if (raw is List) {
+      for (final entry in raw) {
+        if (entry is Map) {
+          items.add(DriveItem.fromJson(Map<String, dynamic>.from(entry)));
+        }
+      }
+    }
+    items.sort((a, b) {
+      if (a.isFolder != b.isFolder) return a.isFolder ? -1 : 1;
+      return a.name.toLowerCase().compareTo(b.name.toLowerCase());
+    });
+    return items;
+  }
+
   /// Small-file upload (up to 4 MB), the same call the web's
   /// `UploadToInbox.tsx` makes: Graph PUT to the `00 Inbox` folder.
   Future<void> putFileBytes({
@@ -164,6 +206,90 @@ class GraphService {
   }
 
   void close() => _client.close();
+}
+
+/// One file or folder inside the user's books folder, as returned by
+/// `GET /me/drive/items/{id}/children`.
+class DriveItem {
+  DriveItem({
+    required this.id,
+    required this.name,
+    required this.isFolder,
+    this.childCount,
+    this.size,
+    this.lastModified,
+    this.webUrl,
+  });
+
+  final String id;
+  final String name;
+  final bool isFolder;
+
+  /// Entries inside this folder (the `folder.childCount` facet).
+  final int? childCount;
+
+  /// File size in bytes (files only).
+  final int? size;
+
+  final DateTime? lastModified;
+
+  /// OneDrive web link, opened by the "Open" button.
+  final String? webUrl;
+
+  factory DriveItem.fromJson(Map<String, dynamic> json) {
+    DateTime? modified;
+    final rawDate = json['lastModifiedDateTime']?.toString();
+    if (rawDate != null && rawDate.isNotEmpty) {
+      modified = DateTime.tryParse(rawDate)?.toLocal();
+    }
+    int? childCount;
+    if (json['folder'] is Map) {
+      final count = (json['folder'] as Map)['childCount'];
+      if (count is num) childCount = count.toInt();
+    }
+    int? size;
+    if (json['size'] is num) size = (json['size'] as num).toInt();
+    return DriveItem(
+      id: (json['id'] ?? '').toString(),
+      name: (json['name'] ?? 'Unnamed').toString(),
+      isFolder: json['folder'] is Map,
+      childCount: childCount,
+      size: size,
+      lastModified: modified,
+      webUrl: json['webUrl']?.toString(),
+    );
+  }
+
+  /// `3 items`, `1 item` or `Empty` for folders.
+  String get countLabel {
+    if (!isFolder) return '';
+    final n = childCount ?? 0;
+    if (n == 0) return 'Empty';
+    return '$n item${n == 1 ? '' : 's'}';
+  }
+
+  /// `12.4 KB`, `3.1 MB` or `812 bytes`.
+  String get sizeLabel {
+    final bytes = size ?? 0;
+    if (bytes >= 1024 * 1024) {
+      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+    }
+    if (bytes >= 1024) {
+      return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    }
+    return '$bytes bytes';
+  }
+
+  /// `21 Oct 2026` in UK order, or '' when unknown.
+  String get dateLabel {
+    final d = lastModified;
+    if (d == null) return '';
+    const months = [
+      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+    ];
+    return '${d.day} ${months[d.month - 1]} ${d.year}';
+  }
 }
 
 /// Error from OneDrive. [message] is safe to show in the UI.
