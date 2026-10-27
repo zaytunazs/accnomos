@@ -52,7 +52,8 @@ anything that a code check is unsure about.
    the other side, `kind: "reversal"`, `reverses: <event id>`. The proposal goes back to Review for
    you to decide again. Nothing is edited or deleted. The VAT return for that period nets to zero.
    Undo also works for entries you approved yourself. It is refused if a bank line is matched to the
-   entry (unmatch it first) or if the entry has already been undone.
+   entry (unmatch it first) or if the entry has already been undone. Once undone, neither the entry
+   nor its reversal can be matched to a bank line.
 
 ## What it never does
 
