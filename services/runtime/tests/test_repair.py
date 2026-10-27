@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.checks import decide, run_checks  # noqa: E402
-from app.repair import repair, repair_vat_inclusive_totals  # noqa: E402
+from app.repair import repair, repair_lines, repair_vat_inclusive_totals  # noqa: E402
 from app.schemas import ExtractedDoc, ExtractedLine  # noqa: E402
 
 H = "b" * 64
@@ -98,6 +98,58 @@ def test_repaired_reading_then_passes_with_a_note() -> None:
     notes = repair(doc, None)
     assert [n.code for n in notes][0] == "TOTALS_REPAIRED"
     assert decide(notes + run_checks(doc, known_hashes=frozenset(), this_hash=H))[0] == "proposed"
+
+
+# --- 2b: quantity x unit price per line -----------------------------------------------------
+
+
+def test_doubled_quantity_undone_and_net_anchored_on_the_total() -> None:
+    # 005_no_vat_number: printed line totals 250.00 / 73.00 read as unit prices and multiplied by qty again.
+    doc = _doc(
+        [_ln(1, 45.50, 45.50, 0, None), _ln(2, 250.00, 500.00, 0, None), _ln(4, 73.00, 292.00, 0, None)],
+        net=837.50, vat=0.00, gross=368.50,
+    )
+    chk = repair_lines(doc)
+    assert chk is not None and chk.code == "LINES_REPAIRED"
+    assert [ln.net for ln in doc.lines] == [45.50, 250.00, 73.00]
+    assert [ln.unit_price for ln in doc.lines] == [45.50, 125.00, 18.25]
+    assert doc.net_total == 368.50 and "£837.50" in chk.message
+
+
+def test_only_the_doubled_lines_are_changed() -> None:
+    # Line 1 (2 x 5.00 = 10.00) is right; line 2's total 30.00 was multiplied by 3 again.
+    doc = _doc([_ln(2, 5.00, 10.00, 2.00), _ln(3, 30.00, 90.00, 18.00)], net=40.00, vat=8.00, gross=48.00)
+    assert repair_lines(doc) is not None
+    assert [(ln.net, ln.vat, ln.unit_price) for ln in doc.lines] == [(10.00, 2.00, 5.00), (30.00, 6.00, 10.00)]
+
+
+def test_line_total_in_unit_column_is_not_multiplied_again() -> None:
+    # 057_mixed: lines already add up; "2 x 2.50 = 2.50" means 2.50 is the line total, so unit = 1.25.
+    doc = _doc([_ln(2, 2.50, 2.50, 0.00, 0), _ln(1, 4.99, 4.99, 0.00, 0)], net=7.49, vat=0.00, gross=7.49)
+    chk = repair_lines(doc)
+    assert chk is not None and "unit price" in chk.message
+    assert doc.lines[0].unit_price == 1.25 and doc.lines[0].net == 2.50 and doc.net_total == 7.49
+    assert _status(doc) == "proposed"
+
+
+def test_vat_inclusive_lines_split_into_net_and_vat() -> None:
+    # 081_r_cafe after the totals repair: lines add up to the gross, so each is split at its rate.
+    doc = _doc([_ln(4, 6.50, 26.00, 5.20), _ln(4, 3.80, 15.20, 3.04)], net=34.34, vat=6.86, gross=41.20)
+    assert repair_lines(doc) is not None
+    assert [(ln.net, ln.vat) for ln in doc.lines] == [(21.67, 4.33), (12.67, 2.53)]
+    assert _status(doc) == "proposed"
+
+
+def test_lines_that_already_add_up_are_left_alone() -> None:
+    doc = _doc([_ln(2, 5.00, 10.00, 2.00), _ln(1, 30.00, 30.00, 6.00)], net=40.00, vat=8.00, gross=48.00)
+    assert repair_lines(doc) is None
+
+
+def test_no_line_repair_without_an_exact_match() -> None:
+    # Overshooting lines that no subset of un-doubled lines explains: report, do not guess.
+    doc = _doc([_ln(2, 7.00, 14.00, 2.80), _ln(3, 9.00, 27.00, 5.40)], net=30.00, vat=6.00, gross=36.00)
+    assert repair_lines(doc) is None
+    assert [ln.net for ln in doc.lines] == [14.00, 27.00]
 
 
 async def test_pipeline_records_repaired_by_code(monkeypatch) -> None:

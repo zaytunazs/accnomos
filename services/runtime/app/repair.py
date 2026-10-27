@@ -8,6 +8,7 @@ Repairs to figures (REPAIR_CODES) are also listed on the proposal as `repaired_b
 from __future__ import annotations
 
 import difflib
+import itertools
 import re
 
 from app.checks import gbp, p
@@ -94,41 +95,100 @@ def repair_vat_inclusive_totals(doc: ExtractedDoc) -> Check | None:
     return Check(code="TOTALS_REPAIRED", ok=True, severity="warn", message=msg)
 
 
-def repair_line_totals(doc: ExtractedDoc) -> Check | None:
-    """Fix lines where the printed line TOTAL was read as the unit price and multiplied by qty again.
+def _lines_tol(doc: ExtractedDoc) -> int:
+    return max(1, len(doc.lines) // 2)
 
-    Signature: every multi-quantity line has net == qty x unit_price, the line nets overshoot the
-    printed net total, and using unit_price AS the line net makes the lines add up to the total.
+
+def _undo_double_qty(doc: ExtractedDoc, anchor: int) -> int:
+    """Lines where the printed line TOTAL was read as the unit price and multiplied by qty again.
+
+    Candidates are multi-quantity lines with net == qty x unit_price; the smallest set of them that, taking
+    unit_price AS the line net, makes the lines add up to `anchor` is repaired. Returns lines fixed.
     """
-    multi = [ln for ln in doc.lines if ln.qty and ln.qty > 1]
-    if not multi or not doc.lines:
-        return None
-    net_total = round(doc.net_total * 100)
-    as_is = round(sum(ln.net for ln in doc.lines) * 100)
-    if abs(as_is - net_total) <= max(1, len(doc.lines) // 2):
-        return None  # lines already reconcile
-    repaired = round(sum((ln.unit_price if ln in multi else ln.net) for ln in doc.lines) * 100)
-    gross_total = round(doc.gross_total * 100)
-    repaired_gross = round(sum(((ln.unit_price if ln in multi else ln.net) + (ln.vat if ln not in multi else ln.vat / ln.qty)) for ln in doc.lines) * 100)
-    if abs(repaired - net_total) > max(1, len(doc.lines) // 2) and abs(repaired_gross - gross_total) > max(1, len(doc.lines) // 2):
-        return None
+    tol = _lines_tol(doc)
+    nets = [p(ln.net) for ln in doc.lines]
+    if abs(sum(nets) - anchor) <= tol:
+        return 0
+    cands = [i for i, ln in enumerate(doc.lines) if ln.qty > 1 and abs(p(ln.net) - round(ln.qty * ln.unit_price * 100)) <= 1]
+    if not cands or len(cands) > 12:
+        return 0
+    for size in range(1, len(cands) + 1):
+        for subset in itertools.combinations(cands, size):
+            if abs(sum(nets) - sum(nets[i] - p(doc.lines[i].unit_price) for i in subset) - anchor) <= tol:
+                for i in subset:
+                    ln = doc.lines[i]
+                    line_total = ln.unit_price
+                    ln.net, ln.vat, ln.unit_price = line_total, round(ln.vat / ln.qty, 2), round(line_total / ln.qty, 2)
+                return len(subset)
+    return 0
+
+
+def _lines_to_net(doc: ExtractedDoc) -> int:
+    """Line amounts that add up to the VAT-inclusive total: split each into net + VAT at its own rate.
+
+    Kept only if the split lines then add up to the net and VAT totals. Returns lines changed.
+    """
+    tol = _lines_tol(doc)
+    net, vat, gross = p(doc.net_total), p(doc.vat_total), p(doc.gross_total)
+    incl = [p(ln.net) for ln in doc.lines]
+    if vat <= 0 or abs(sum(incl) - net) <= tol or abs(sum(incl) - gross) > tol or any(ln.vat_rate is None for ln in doc.lines):
+        return 0
+    split = [(round(a * 100 / (100 + (ln.vat_rate or 0))), ln) for a, ln in zip(incl, doc.lines)]
+    if abs(sum(n for n, _ in split) - net) > tol or abs(sum(a - n for a, (n, _) in zip(incl, split)) - vat) > tol:
+        return 0
+    for a, (n, ln) in zip(incl, split):
+        ln.net, ln.vat = n / 100, (a - n) / 100
+    return len(split)
+
+
+def _fix_unit_prices(doc: ExtractedDoc) -> int:
+    """Lines whose printed total (already including the quantity) sits in the unit-price column.
+
+    Only when the lines already add up to the net total, so the net is right and the unit price is not:
+    unit_price = line total / qty; the net is never multiplied again. Returns lines changed.
+    """
+    if abs(sum(p(ln.net) for ln in doc.lines) - p(doc.net_total)) > _lines_tol(doc):
+        return 0
     fixed = 0
-    for ln in multi:
-        if abs(ln.net - ln.qty * ln.unit_price) <= 0.011:
-            line_total = ln.unit_price
-            ln.unit_price = round(line_total / ln.qty, 4)
-            ln.net = round(line_total, 2)
-            ln.vat = round(ln.vat / ln.qty, 2)
-            fixed += 1
-    if not fixed:
+    for ln in doc.lines:
+        ext = round(ln.qty * ln.unit_price * 100)
+        if ln.qty > 1 and abs(ext - p(ln.net)) > 1 and abs(ext - p(ln.net + ln.vat)) > 1:
+            if abs(p(ln.unit_price) - p(ln.net)) <= 1 or abs(p(ln.unit_price) - p(ln.net + ln.vat)) <= 1:
+                ln.unit_price = round(ln.unit_price / ln.qty, 2)
+                fixed += 1
+    return fixed
+
+
+def repair_lines(doc: ExtractedDoc) -> Check | None:
+    """Quantity x unit price, line by line, so the lines add up to the net total.
+
+    The anchor is the net total when net + VAT = gross, else gross - VAT (the printed TOTAL is the figure
+    the model reads most reliably). When undoing a doubled quantity makes the lines meet that anchor and
+    the net total disagreed with it, the net total is set to it too.
+    """
+    if not doc.lines:
         return None
-    return Check(code="LINES_REPAIRED", ok=True, severity="warn", message=f"{fixed} line(s): printed line total had been read as unit price; corrected")
+    net, vat, gross = p(doc.net_total), p(doc.vat_total), p(doc.gross_total)
+    anchor = net if abs(net + vat - gross) <= 1 else gross - vat
+    notes: list[str] = []
+    if doubled := _undo_double_qty(doc, anchor):
+        notes.append(f"{doubled} line(s) had the printed line total multiplied by the quantity again; line total kept")
+        if net != anchor:
+            doc.net_total = anchor / 100
+            notes.append(f"net set to the lines' sum {gbp(anchor)} (total {gbp(gross)} − VAT {gbp(vat)}), was {gbp(net)}")
+    if split := _lines_to_net(doc):
+        notes.append(f"{split} line(s) were VAT-inclusive; split into net and VAT at each line's rate")
+    if units := _fix_unit_prices(doc):
+        notes.append(f"{units} line(s) showed the line total as the unit price; unit price = line total ÷ quantity")
+    if not notes:
+        return None
+    return Check(code="LINES_REPAIRED", ok=True, severity="warn", message="; ".join(notes))
 
 
 REPAIR_CODES = ("TOTALS_REPAIRED", "LINES_REPAIRED")
 
 
 def repair(doc: ExtractedDoc, business_name: str | None) -> list[Check]:
-    """Orientation, then totals, then lines."""
-    notes = [orient_doc_type(doc, business_name), repair_vat_inclusive_totals(doc), repair_line_totals(doc)]
+    """Orientation, then totals, then lines (the line repair anchors on the repaired totals)."""
+    notes = [orient_doc_type(doc, business_name), repair_vat_inclusive_totals(doc), repair_lines(doc)]
     return [n for n in notes if n is not None]
