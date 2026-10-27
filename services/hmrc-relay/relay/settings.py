@@ -51,8 +51,12 @@ class Settings(BaseSettings):
         return {o.strip().rstrip("/").lower() for o in self.relay_allowed_redirects.split(",") if o.strip()}
 
     def redirect_allowed(self, url: str) -> bool:
+        # urlsplit silently drops tabs/newlines and leaves backslashes in the host, while the URL we redirect
+        # to keeps them; refuse such URLs outright rather than compare a cleaned-up copy.
+        if any(c.isspace() or ord(c) < 0x20 or ord(c) == 0x7F or c == "\\" for c in url):
+            return False
         parts = urlsplit(url)
-        if not parts.scheme or not parts.netloc:
+        if not parts.scheme or not parts.netloc or parts.username is not None or parts.password is not None:
             return False
         if parts.scheme == "http" and parts.hostname in {"localhost", "127.0.0.1"}:
             return True

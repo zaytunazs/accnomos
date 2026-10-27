@@ -171,7 +171,7 @@ async def authorize(r: Configured, redirect_to: str, code_challenge: str | None 
 async def callback(r: Configured, state: str, code: str | None = None, error: str | None = None,
                    error_description: str | None = None) -> RedirectResponse:
     """HMRC redirects here. Tokens go back in the URL fragment so they never reach any server's logs."""
-    st = r.oauth.read_state(state)
+    st = r.oauth.read_state(state, use="callback")
     if not r.settings.redirect_allowed(st.redirect_to):
         raise HTTPException(400, "redirect_to is no longer allowed")
     if error or not code:
@@ -189,7 +189,7 @@ async def callback(r: Configured, state: str, code: str | None = None, error: st
 @router.post("/hmrc/exchange")
 async def exchange(r: Configured, body: ExchangeBody) -> dict:
     """PKCE completion: the client posts the code from the fragment plus its code_verifier."""
-    if not r.oauth.read_state(body.state).pkce:
+    if not r.oauth.read_state(body.state, use="exchange").pkce:
         raise HTTPException(400, "state was not issued for a PKCE flow")
     return await r.oauth.exchange_code(body.code, body.code_verifier)
 

@@ -1,7 +1,8 @@
 """HMRC OAuth 2.0: user-restricted (authorisation code + refresh) and application-restricted (client_credentials).
 
 The relay holds the client secret because HMRC requires it at code exchange and at refresh. Tokens are returned
-to the caller and never persisted; the only in-memory copies are the app-restricted token cache and a
+to the caller and never persisted; the only in-memory state is the spent-state set (nonces, never tokens),
+the app-restricted token cache and a
 seconds-long cache of a refresh result, so a duplicate concurrent refresh gets the same answer instead of
 burning the single-use refresh token twice.
 """
@@ -55,8 +56,11 @@ class OAuth:
         self._refresh_results: dict[str, tuple[float, dict]] = {}
         self._app_token: tuple[float, str] | None = None
         self._app_lock = asyncio.Lock()
+        # (step, state nonce) -> expiry: spent states, kept only until they would expire anyway (<= 10 min).
+        self._spent: dict[tuple[str, str], float] = {}
 
     # --- state: signed, self-contained, so the relay needs no session store -------------------------------
+    # One-time use needs the small in-memory spent set above; it is per process, so run one relay worker.
 
     def _state_key(self) -> bytes:
         return hashlib.sha256(b"hmrc-relay-state:" + self.settings.hmrc_client_secret.get_secret_value().encode()).digest()
@@ -69,20 +73,29 @@ class OAuth:
         sig = _b64(hmac.new(self._state_key(), payload.encode(), hashlib.sha256).digest())
         return f"{payload}.{sig}"
 
-    def read_state(self, state: str) -> AuthState:
+    def read_state(self, state: str, use: str | None = None) -> AuthState:
+        """Verify `state`. With `use` ("callback", "exchange") the state is spent for that step: a second
+        use of the same state for the same step is refused until it would have expired anyway."""
         try:
             payload, sig = state.split(".")
             expected = _b64(hmac.new(self._state_key(), payload.encode(), hashlib.sha256).digest())
-            if not hmac.compare_digest(sig, expected):
+            if not hmac.compare_digest(sig.encode(), expected.encode()):
                 raise StateError("bad signature")
             data = json.loads(_unb64(payload))
+            expires, redirect_to, pkce, nonce = float(data["e"]), str(data["r"]), bool(data["p"]), str(data["n"])
         except StateError:
             raise
-        except (ValueError, KeyError) as e:
+        except (ValueError, KeyError, TypeError) as e:
             raise StateError("malformed state") from e
-        if data["e"] < time.time():
+        now = time.time()
+        if expires < now:
             raise StateError("state expired")
-        return AuthState(redirect_to=data["r"], pkce=bool(data["p"]))
+        if use:
+            self._spent = {k: exp for k, exp in self._spent.items() if exp >= now}
+            if (use, nonce) in self._spent:
+                raise StateError("state already used")
+            self._spent[(use, nonce)] = expires
+        return AuthState(redirect_to=redirect_to, pkce=pkce)
 
     def authorize_url(self, redirect_to: str, code_challenge: str | None = None) -> tuple[str, str]:
         state = self.make_state(redirect_to, pkce=bool(code_challenge))
