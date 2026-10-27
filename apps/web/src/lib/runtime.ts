@@ -96,7 +96,43 @@ export const runtime = {
   reject: (a: AccountInfo, id: string, reason: string) =>
     call<RtProposal>(a, `/books/proposals/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
   summary: (a: AccountInfo) => call<RtSummary>(a, "/books/summary"),
+  /** POST /books/ask: numbers from code, words from the user's model, every figure checked against the facts. */
+  ask: (a: AccountInfo, question: string, period?: RtAskPeriod | null, history: RtAskTurn[] = []) =>
+    call<RtAskAnswer>(a, "/books/ask", {
+      method: "POST",
+      body: JSON.stringify({ question, period: period ?? null, history: history.slice(-6) }),
+    }),
 };
+
+/** POST /books/ask (services/runtime/app/routes_ask.py). */
+export interface RtAskPeriod {
+  start: string; // YYYY-MM-DD
+  end: string;
+}
+export interface RtAskTurn {
+  role: "user" | "assistant";
+  text: string;
+}
+export interface RtKeyNumber {
+  label: string;
+  value: string;
+  source: string;
+}
+export interface RtSuggestedAction {
+  label: string;
+  kind: "open_review" | "open_vat" | "chase_supplier" | "none";
+  arg: string | null;
+}
+export interface RtAskAnswer {
+  answer_md: string;
+  key_numbers: RtKeyNumber[];
+  citations: string[];
+  suggested_actions: RtSuggestedAction[];
+  confidence: "high" | "medium" | "low";
+  model: string;
+  period: RtAskPeriod;
+  fallback_reason: string | null; // the model's words were replaced by the facts, quoted by code
+}
 
 /** GET /books/vat (services/runtime/app/routes_vat.py): the 9 boxes computed by code from posted events. */
 export interface RtVatBox {
