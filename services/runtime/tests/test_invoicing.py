@@ -594,6 +594,15 @@ def test_logo_is_sniffed_decoded_and_size_checked(client: TestClient, fake: Fake
     assert not any(p.startswith("_System/Invoicing/logo") for p in fake.files)
 
 
+def test_logo_over_1_mb_is_refused_by_the_route_inside_the_2_mb_body_cap(client: TestClient, fake: FakeStorageProvider):
+    from app.routes_invoices import LOGO_MAX
+
+    data = _png(10, 10) + b"\x00" * LOGO_MAX  # a real PNG with trailing bytes: past the file limit, under the body cap
+    r = client.post("/invoices/profile/logo", files={"file": ("logo.png", data, "image/png")}, headers=H)
+    assert r.status_code == 413 and "1 MB" in r.json()["detail"]
+    assert not any(p.startswith("_System/Invoicing/logo") for p in fake.files)
+
+
 def test_jpeg_logo_is_named_from_its_bytes(client: TestClient, fake: FakeStorageProvider):
     r = client.post("/invoices/profile/logo", files={"file": ("x.png", _png(30, 30, "JPEG"), "image/jpeg")}, headers=H)
     assert r.status_code == 200 and r.json()["logo_path"] == "_System/Invoicing/logo.jpg"
