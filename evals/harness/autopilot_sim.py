@@ -1,3 +1,4 @@
+# ruff: noqa: E501  (report text and table rows are kept on one line each)
 """Autopilot L2 safety eval: rule-based posting over the seeded demo books, scored against gold.
 
     cd evals && python -m harness.autopilot_sim --verifier on    # Glimmer reads twice (extractor + verifier prompt)
