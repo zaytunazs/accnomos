@@ -20,7 +20,7 @@ class AppSettings {
     this.userEmail,
     this.businessName,
     this.vatNumber,
-    this.vatStagger = 1,
+    this.vatStagger,
     this.vatStartMonth,
     this.autopilotLevel = 'L1',
   });
@@ -54,9 +54,10 @@ class AppSettings {
   final String? vatNumber;
 
   /// HMRC VAT stagger group (1–3) for quarterly returns, mirroring the
-  /// web's `accnomos.business` stagger. Sent as `stagger=` to
-  /// `GET /books/deadlines`.
-  final int vatStagger;
+  /// web's `accnomos.business` stagger. Null when never saved: calls then
+  /// send no stagger and the runtime assumes calendar quarters
+  /// (`assumed: true`).
+  final int? vatStagger;
 
   /// Month (1–12) a custom quarter starts in. When set, the deadlines
   /// call sends `start_month=` instead of `stagger=`.
@@ -96,8 +97,8 @@ class AppSettings {
     );
   }
 
-  static int _clampStagger(int? value) =>
-      value == null || value < 1 || value > 3 ? 1 : value;
+  static int? _clampStagger(int? value) =>
+      value == null || value < 1 || value > 3 ? null : value;
 
   static int? _clampMonth(int? value) =>
       value == null || value < 1 || value > 12 ? null : value;
@@ -133,7 +134,11 @@ class AppSettings {
       await prefs.setString(_kVatNumber, vatNumber!);
     }
     await prefs.setString(_kAutopilot, autopilotLevel);
-    await prefs.setInt(_kVatStagger, vatStagger);
+    if (vatStagger == null) {
+      await prefs.remove(_kVatStagger);
+    } else {
+      await prefs.setInt(_kVatStagger, vatStagger!);
+    }
     if (vatStartMonth == null) {
       await prefs.remove(_kVatStartMonth);
     } else {

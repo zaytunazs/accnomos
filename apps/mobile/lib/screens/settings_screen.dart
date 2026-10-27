@@ -158,7 +158,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _businessName.text = settings.businessName ?? '';
     _vrn.text = settings.vatNumber ?? '';
     _mode = settings.aiMode;
-    _stagger = settings.vatStagger;
+    _stagger = settings.vatStagger ?? 1;
     // This screen only offers L1/L2; anything else reads as L1 until saved.
     _level = settings.autopilotLevel == 'L2' ? 'L2' : 'L1';
     _startMonth.text = settings.vatStartMonth?.toString() ?? '';
@@ -938,7 +938,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: AccnomosColors.ink)),
                     const SizedBox(height: 4),
                     const Text(
-                        'Your HMRC stagger group. Saved on this phone only: Home and VAT still use calendar quarters.',
+                        'Your HMRC stagger group. Home, VAT and Reports use it once saved; '
+                        'until then the phone assumes Mar/Jun/Sep/Dec quarters.',
                         style: TextStyle(
                             color: AccnomosColors.muted,
                             fontSize: 12,
