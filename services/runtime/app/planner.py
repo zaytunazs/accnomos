@@ -61,9 +61,9 @@ Kind = Literal["visit", "travel", "lunch", "admin", "existing"]
 
 
 class Constraints(StrictBody):
-    start: str | None = Field(None, max_length=5, description="HH:MM, start of the working day (default 08:00)")
-    end: str | None = Field(None, max_length=5, description="HH:MM, end of the working day (default 17:30)")
-    max_visits: int | None = Field(None, ge=1, le=MAX_VISITS)
+    start: str | None = Field(default=None, max_length=5, description="HH:MM, start of the working day (default 08:00)")
+    end: str | None = Field(default=None, max_length=5, description="HH:MM, end of the working day (default 17:30)")
+    max_visits: int | None = Field(default=None, ge=1, le=MAX_VISITS)
 
     @field_validator("start", "end")
     @classmethod
@@ -82,8 +82,8 @@ class Constraints(StrictBody):
 class VatSettings(StrictBody):
     """The business's VAT periods, as kept in the app (Settings); same meaning as GET /books/deadlines."""
 
-    stagger: int | None = Field(None, ge=1, le=3)
-    start_month: int | None = Field(None, ge=1, le=12)
+    stagger: int | None = Field(default=None, ge=1, le=3)
+    start_month: int | None = Field(default=None, ge=1, le=12)
     months: Literal[1, 3] = 3
 
 
@@ -91,9 +91,9 @@ class PlanItem(StrictBody):
     kind: Kind
     start: datetime
     end: datetime
-    job_id: str | None = Field(None, max_length=32)
+    job_id: str | None = Field(default=None, max_length=32)
     title: str = Field(min_length=1, max_length=255)
-    location: str | None = Field(None, max_length=500)
+    location: str | None = Field(default=None, max_length=500)
 
     @model_validator(mode="after")
     def _times(self) -> PlanItem:

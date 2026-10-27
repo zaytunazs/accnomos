@@ -12,14 +12,17 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel
 
-try:  # FastAPI must see the real class to inject the request
+if TYPE_CHECKING:
     from starlette.requests import Request
-except ImportError:  # harness-only installs without FastAPI
-    Request = Any  # type: ignore[misc,assignment]
+else:
+    try:  # FastAPI must see the real class to inject the request
+        from starlette.requests import Request
+    except ImportError:  # harness-only installs without FastAPI
+        Request = Any
 
 AiMode = Literal["local", "key"]
 

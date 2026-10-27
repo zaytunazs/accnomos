@@ -25,9 +25,9 @@ class TodoError(ValueError):
 
 class TodoSource(StrictBody):
     kind: Literal["mail"] = "mail"
-    message_id: str | None = Field(None, max_length=512)
-    subject: str = Field("", max_length=200)
-    web_link: str | None = Field(None, max_length=2000)
+    message_id: str | None = Field(default=None, max_length=512)
+    subject: str = Field(default="", max_length=200)
+    web_link: str | None = Field(default=None, max_length=2000)
 
     @field_validator("web_link")
     @classmethod

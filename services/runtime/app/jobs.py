@@ -98,7 +98,9 @@ class Job(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     customer_id: str | None = None
     site_address: str | None = None
-    estimate_hours: float | None = Field(None, gt=0, le=MAX_HOURS_PER_ENTRY, description="time on site for one visit")
+    estimate_hours: float | None = Field(
+        default=None, gt=0, le=MAX_HOURS_PER_ENTRY, description="time on site for one visit"
+    )
     status: Literal["open", "closed"] = "open"
     created_at: datetime = Field(default_factory=now)
 
@@ -115,9 +117,9 @@ class StaffMember(BaseModel):
 
     id: str = Field(default_factory=new_id)
     name: str = Field(min_length=1, max_length=120)
-    role: str = Field("", max_length=120)
+    role: str = Field(default="", max_length=120)
     hourly_rate_pence: int = Field(ge=0, description="what an hour costs the business")
-    charge_rate_pence: int | None = Field(None, ge=0, description="what an hour is charged to customers")
+    charge_rate_pence: int | None = Field(default=None, ge=0, description="what an hour is charged to customers")
     active: bool = True
 
     @field_validator("name")
@@ -134,7 +136,7 @@ class TimesheetEntry(BaseModel):
     job_id: str
     date: date
     hours: float
-    note: str = Field("", max_length=500)
+    note: str = Field(default="", max_length=500)
     billable: bool = True
     invoiced_in: str | None = None
 

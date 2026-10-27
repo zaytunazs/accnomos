@@ -141,7 +141,7 @@ def _read_me(ws: Worksheet, generated: datetime) -> None:
 
 
 def _ledger(ws: Worksheet, events: Sequence[LedgerEvent]) -> None:
-    rows = [
+    rows: list[tuple[object, ...]] = [
         (
             e.date,
             e.id,
@@ -213,7 +213,7 @@ def _vat(ws: Worksheet, events: Sequence[LedgerEvent], today: date) -> None:
     _table(ws, header, rows, widths=(6, 36, *([26] * len(returns))))
     for row in ws.iter_rows(min_row=2, min_col=3):
         for cell in row:
-            cell.number_format = GBP if row[0].row <= 6 else WHOLE_GBP
+            cell.number_format = GBP if (row[0].row or 0) <= 6 else WHOLE_GBP
 
 
 def contact_sheet_rows(
@@ -243,7 +243,7 @@ def contact_sheet_rows(
 
 
 def _contacts_sheet(ws: Worksheet, title: str, due: str, rows: Sequence[tuple]) -> None:
-    out = [
+    out: list[tuple[object, ...]] = [
         (n, vrn, pounds(net), pounds(vat), pounds(o), e, pounds(g), last) for n, vrn, net, vat, o, e, g, last in rows
     ]
     out.append(
@@ -317,7 +317,7 @@ def _summary(
     ]
     _table(ws, ("Measure", "Value"), rows, widths=(28, 18))
     for label, cell in ws.iter_rows(min_row=2, max_col=2):
-        if label.value.endswith("£"):
+        if str(label.value).endswith("£"):
             cell.number_format = GBP
         elif label.value in ("First entry", "Last entry", "Bank reconciled to"):
             cell.number_format = DATE
@@ -385,7 +385,7 @@ def _proposals(ws: Worksheet, proposals: Sequence[Proposal]) -> None:
 
 def _jobs(ws: Worksheet, jobs: Sequence[JobSummary]) -> None:
     """Margin = billable value of the hours − labour cost − materials (app/jobs.py summarise)."""
-    rows = [
+    rows: list[tuple[object, ...]] = [
         (
             s.job.name,
             s.customer_name or s.job.customer_id,
@@ -564,7 +564,10 @@ def build_books_xlsx(
     today = generated.date()
     year_start = uk_tax_year_start(today)
     wb = Workbook()
-    sheets = {name: (wb.active if i == 0 else wb.create_sheet()) for i, name in enumerate(SHEETS)}
+    first = wb.active
+    if not isinstance(first, Worksheet):  # a new Workbook always starts with one worksheet
+        raise RuntimeError("openpyxl Workbook() has no first worksheet")
+    sheets = {name: (first if i == 0 else wb.create_sheet()) for i, name in enumerate(SHEETS)}
     for name, ws in sheets.items():
         ws.title = name
     _read_me(sheets["README"], generated)

@@ -23,8 +23,8 @@ class VatCode(StrEnum):
 
 class Line(BaseModel):
     account: str = Field(description="Account code, e.g. '5100 Tools & small equipment', '2200 VAT control'")
-    debit: int = Field(0, ge=0, description="pence")
-    credit: int = Field(0, ge=0, description="pence")
+    debit: int = Field(default=0, ge=0, description="pence")
+    credit: int = Field(default=0, ge=0, description="pence")
     vat_code: VatCode | None = None
     memo: str | None = None
 
@@ -46,9 +46,9 @@ class LedgerEvent(BaseModel):
     approved_by: str = Field(description="user id/email who approved; agents never approve")
     approved_at: datetime
     proposal_id: str | None = None
-    reverses: str | None = Field(None, description="id of the event this one reverses")
-    net: int | None = Field(None, description="pence; the VAT-able net for sales/purchases")
-    vat: int | None = Field(None, description="pence")
+    reverses: str | None = Field(default=None, description="id of the event this one reverses")
+    net: int | None = Field(default=None, description="pence; the VAT-able net for sales/purchases")
+    vat: int | None = Field(default=None, description="pence")
     counterparty: str | None = None
 
     @model_validator(mode="after")

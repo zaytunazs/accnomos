@@ -158,7 +158,7 @@ class LineEdit(StrictBody):
     staff_id: str = Field(max_length=32)
     hours: float | Annotated[str, Field(max_length=12)]
     rate_pence: Pence = Field(ge=0, le=100_000)  # up to £1,000 an hour
-    notes: str = Field("", max_length=300)
+    notes: str = Field(default="", max_length=300)
 
 
 def period_bounds(period: str) -> tuple[date, date]:

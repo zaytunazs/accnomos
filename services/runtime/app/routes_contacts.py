@@ -79,14 +79,16 @@ async def refresh(books: Books = Depends(get_books), user: str = Depends(require
 
 
 class ContactEdit(StrictBody):
-    name: str | None = Field(None, max_length=200)
-    kind: str | None = Field(None, max_length=20)
-    vrn: str | None = Field(None, max_length=20)  # format checked in contacts.edit (GB/XI + 9 or 12 digits, GD/HA)
-    email: str | None = Field(None, max_length=254)
-    phone: str | None = Field(None, max_length=40)
-    address: str | None = Field(None, max_length=500)
-    default_category: str | None = Field(None, max_length=100)
-    default_vat_code: str | None = Field(None, max_length=10)
+    name: str | None = Field(default=None, max_length=200)
+    kind: str | None = Field(default=None, max_length=20)
+    vrn: str | None = Field(
+        default=None, max_length=20
+    )  # format checked in contacts.edit (GB/XI + 9 or 12 digits, GD/HA)
+    email: str | None = Field(default=None, max_length=254)
+    phone: str | None = Field(default=None, max_length=40)
+    address: str | None = Field(default=None, max_length=500)
+    default_category: str | None = Field(default=None, max_length=100)
+    default_vat_code: str | None = Field(default=None, max_length=10)
 
 
 @router.get("/aged", response_model=cb.AgedBalances)

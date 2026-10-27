@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import re
 from datetime import date, datetime
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal, TypedDict
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict
 
@@ -49,7 +49,11 @@ class StrictBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
-LENIENT = {"extra": "ignore"}  # Model.model_validate(raw, **LENIENT) for files in the user's folder
+class _Lenient(TypedDict):
+    extra: Literal["ignore"]
+
+
+LENIENT: _Lenient = {"extra": "ignore"}  # Model.model_validate(raw, **LENIENT) for files in the user's folder
 
 
 class UnsafeName(ValueError):

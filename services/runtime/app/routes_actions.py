@@ -52,7 +52,7 @@ class ApproveBody(StrictBody):
 
 class RejectBody(StrictBody):
     action: ProposedAction
-    reason: str | None = Field(None, max_length=300)
+    reason: str | None = Field(default=None, max_length=300)
 
 
 class Rejected(BaseModel):

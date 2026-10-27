@@ -21,7 +21,7 @@ from pydantic import BaseModel
 from accnomos_ledger.bank import FEE_WORDS, ActionHint, BankLine, suggest_action
 from app.books import BankMatchError, Books, now
 from app.journal import draft_journal
-from app.schemas import Check, ExtractedDoc, Proposal, ProposalStatus
+from app.schemas import Check, ExtractedDoc, PaymentMethod, Proposal, ProposalStatus
 
 MODEL = "bank-line"  # in place of the extraction model's name: no model read anything
 
@@ -34,7 +34,7 @@ class UnmatchedLine(BaseModel):
     proposal_status: ProposalStatus | None = None
 
 
-def _payment_method(text: str) -> str:
+def _payment_method(text: str) -> PaymentMethod:
     if re.search(r"\b(dd|direct debit|directdeb)\b", text, re.IGNORECASE):
         return "direct_debit"
     if re.search(r"\b(card|cd|clp|pos|visa|contactless)\b", text, re.IGNORECASE):

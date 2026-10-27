@@ -147,7 +147,7 @@ class CreateInvoiceIntent(BaseModel):
     amount_includes_vat: bool = False
     lines: list[LineIntent] | None = None
     vat_code: VatCode | None = None
-    due_days: int | None = Field(None, ge=0, le=120)
+    due_days: int | None = Field(default=None, ge=0, le=120)
     send: bool = False
 
 
@@ -343,7 +343,7 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
         if terms is None or not 0 <= terms <= 120 or Decimal(terms) not in said:
             terms = None
         return CreateInvoiceIntent(
-            customer_ref=out.customer_ref.strip(),
+            customer_ref=(out.customer_ref or "").strip(),  # checked non-empty above
             description=month_words(out.description or "Work", today),  # type: ignore[union-attr]
             amount_pence=to_pence(amount) if amount is not None else None,
             amount_includes_vat=bool(out.amount_includes_vat),

@@ -58,7 +58,7 @@ class PlanRequest(StrictBody):
     constraints: Constraints | None = None
     vat: VatSettings | None = None
     job_ids: list[Annotated[str, Field(max_length=32)]] | None = Field(
-        None, max_length=200, description="only these jobs (default: every open job)"
+        default=None, max_length=200, description="only these jobs (default: every open job)"
     )
 
 

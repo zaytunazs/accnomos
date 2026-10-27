@@ -24,6 +24,7 @@ import hashlib
 import json
 import re
 from collections.abc import Callable, Iterable
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from datetime import date
 from typing import Literal
@@ -133,7 +134,7 @@ def _new_id() -> str:
 class Vehicle(StrictBody):
     id: str = Field(default_factory=_new_id, max_length=32)
     name: str = Field(min_length=1, max_length=60)
-    registration: str | None = Field(None, max_length=12)  # as the user typed it, upper-cased
+    registration: str | None = Field(default=None, max_length=12)  # as the user typed it, upper-cased
     kind: VehicleKind
     owned_by: Ownership
     active: bool = True
@@ -162,11 +163,11 @@ class MileageEntry(StrictBody):
     id: str = Field(default_factory=_new_id, max_length=32)
     vehicle_id: str = Field(max_length=32)
     date: Day
-    from_: str = Field("", alias="from", max_length=120)
-    to: str = Field("", max_length=120)
+    from_: str = Field(default="", alias="from", max_length=120)
+    to: str = Field(default="", max_length=120)
     miles: float = Field(gt=0, le=2000)
     purpose: str = Field(min_length=1, max_length=200)
-    job_id: str | None = Field(None, max_length=32)  # a job in _System/Jobs/jobs.json, as on purchases
+    job_id: str | None = Field(default=None, max_length=32)  # a job in _System/Jobs/jobs.json, as on purchases
     source: Literal["manual", "proposal"] = "manual"
 
     @field_validator("miles")
@@ -266,7 +267,7 @@ class JourneyAllowance:
 
 
 def allowances(
-    entries: Iterable[MileageEntry], vehicles: Iterable[Vehicle], claimed: set[str] = frozenset()
+    entries: Iterable[MileageEntry], vehicles: Iterable[Vehicle], claimed: AbstractSet[str] = frozenset()
 ) -> list[JourneyAllowance]:
     """The allowance for each journey of one tax year, in the order the threshold is counted.
 

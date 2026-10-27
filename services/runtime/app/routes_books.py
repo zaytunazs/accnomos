@@ -75,13 +75,13 @@ def business_name(x_business_name: str | None = Header(default=None)) -> str | N
 
 
 class ApproveBody(StrictBody):
-    edits: dict[str, Any] | None = Field(None, max_length=50)
+    edits: dict[str, Any] | None = Field(default=None, max_length=50)
     always: bool = False
     remember: bool = False  # "Always do this for <supplier>"; same as `always`
 
 
 class RejectBody(StrictBody):
-    reason: str = Field("", max_length=1000)
+    reason: str = Field(default="", max_length=1000)
 
 
 class Summary(BaseModel):

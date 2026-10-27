@@ -93,10 +93,10 @@ def uk_date(d: date) -> str:
 
 
 class BankDetails(StrictBody):
-    account_name: str = Field("", max_length=120)
-    sort_code: str = Field("", max_length=20)  # stored as 12-34-56
-    account_number: str = Field("", max_length=20)  # 8 digits
-    iban: str | None = Field(None, max_length=40)
+    account_name: str = Field(default="", max_length=120)
+    sort_code: str = Field(default="", max_length=20)  # stored as 12-34-56
+    account_number: str = Field(default="", max_length=20)  # 8 digits
+    iban: str | None = Field(default=None, max_length=40)
 
     @field_validator("sort_code")
     @classmethod
@@ -123,16 +123,18 @@ class BankDetails(StrictBody):
 class InvoiceProfile(StrictBody):
     """The business as its invoices show it. Stored in _System/Invoicing/profile.json."""
 
-    name: str = Field("", max_length=200)
-    address: str = Field("", max_length=1000)  # several lines
-    email: str | None = Field(None, max_length=254)
-    phone: str | None = Field(None, max_length=40)
-    vrn: str | None = Field(None, max_length=20)  # VAT registration number; without it an invoice cannot charge VAT
-    company_number: str | None = Field(None, max_length=20)
+    name: str = Field(default="", max_length=200)
+    address: str = Field(default="", max_length=1000)  # several lines
+    email: str | None = Field(default=None, max_length=254)
+    phone: str | None = Field(default=None, max_length=40)
+    vrn: str | None = Field(
+        default=None, max_length=20
+    )  # VAT registration number; without it an invoice cannot charge VAT
+    company_number: str | None = Field(default=None, max_length=20)
     bank: BankDetails = Field(default_factory=BankDetails)
-    logo_path: str | None = Field(None, max_length=100)  # LOGO_PATHS only (POST /invoices/profile/logo sets it)
-    terms_days: int = Field(30, ge=0, le=120)
-    footer_note: str | None = Field(None, max_length=1000)
+    logo_path: str | None = Field(default=None, max_length=100)  # LOGO_PATHS only (POST /invoices/profile/logo sets it)
+    terms_days: int = Field(default=30, ge=0, le=120)
+    footer_note: str | None = Field(default=None, max_length=1000)
 
     @field_validator("vrn")
     @classmethod
@@ -178,12 +180,12 @@ async def save_profile(books: Books, profile: InvoiceProfile, user: str) -> Invo
 
 class InvoiceCustomer(StrictBody):
     contact_id: str | None = Field(
-        None, max_length=64
+        default=None, max_length=64
     )  # an id in _System/Contacts/contacts.json, when picked from the contact book
     name: str = Field(min_length=1, max_length=200)
-    email: str | None = Field(None, max_length=254)
-    address: str | None = Field(None, max_length=1000)
-    vrn: str | None = Field(None, max_length=20)
+    email: str | None = Field(default=None, max_length=254)
+    address: str | None = Field(default=None, max_length=1000)
+    vrn: str | None = Field(default=None, max_length=20)
 
     @field_validator("email")
     @classmethod
@@ -197,7 +199,7 @@ class InvoiceCustomer(StrictBody):
 class LineIn(StrictBody):
     description: str = Field(min_length=1, max_length=300)
     quantity: Decimal = Field(gt=0, le=1_000_000, decimal_places=3)
-    unit: str | None = Field(None, max_length=20)  # "hours", "days", "each"
+    unit: str | None = Field(default=None, max_length=20)  # "hours", "days", "each"
     unit_price_pence: Pence = Field(ge=-100_000_000, le=100_000_000)  # negative for a discount line
     vat_code: SalesVatCode = "S"
     timesheet_entry_ids: list[Annotated[str, Field(max_length=32)]] = Field(
@@ -225,9 +227,9 @@ class InvoiceDraft(StrictBody):
     issue_date: Day | None = None  # default: today
     due_date: Day | None = None  # default: issue date + the profile's terms
     lines: list[LineIn] = Field(min_length=1, max_length=100)
-    reference: str | None = Field(None, max_length=60)  # the customer's PO or job number
-    notes: str | None = Field(None, max_length=1000)
-    job_id: str | None = Field(None, max_length=12)  # set when the lines came from a job's hours
+    reference: str | None = Field(default=None, max_length=60)  # the customer's PO or job number
+    notes: str | None = Field(default=None, max_length=1000)
+    job_id: str | None = Field(default=None, max_length=12)  # set when the lines came from a job's hours
 
 
 class Reminder(BaseModel):

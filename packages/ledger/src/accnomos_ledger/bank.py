@@ -250,7 +250,10 @@ def detect_bank(data: bytes) -> BankName:
     """
     at, rows, _ = _header_row(data)
     names = {_norm_header(h) for h in rows[at]}
-    return next((bank for bank, needed in SIGNATURES if needed <= names), "bank")
+    for bank, needed in SIGNATURES:
+        if needed <= names:
+            return bank
+    return "bank"
 
 
 def parse_bank_csv(data: bytes, source_file: str) -> list[BankLine]:

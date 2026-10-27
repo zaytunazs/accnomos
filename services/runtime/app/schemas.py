@@ -337,7 +337,7 @@ class ProposedAction(StrictBody):
     confirm_text: str = Field(max_length=400)
     created_at: datetime
     expires_at: datetime
-    signature: str = Field("", max_length=64)
+    signature: str = Field(default="", max_length=64)
 
 
 class Clarification(BaseModel):

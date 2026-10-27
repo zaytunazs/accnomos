@@ -37,8 +37,8 @@ MAX_CSV = 5 * 1024 * 1024
 
 
 class MatchBody(StrictBody):
-    event_id: str | None = Field(None, max_length=64)
-    event_ids: list[str] | None = Field(None, max_length=200)  # one payment covering several entries
+    event_id: str | None = Field(default=None, max_length=64)
+    event_ids: list[str] | None = Field(default=None, max_length=200)  # one payment covering several entries
 
 
 class EventBrief(BaseModel):

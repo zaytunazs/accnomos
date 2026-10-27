@@ -19,7 +19,7 @@ from app.checks import normalise_vat_number, p
 from app.schemas import MILEAGE_CATEGORY, ExtractedDoc, ExtractedLine, JournalLine
 
 try:
-    from accnomos_ledger.events import VatCode
+    from accnomos_ledger.events import VatCode  # pyright: ignore[reportAssignmentType]  (same members as the fallback)
 except ImportError:  # runtime used without packages/ledger on sys.path
 
     class VatCode(StrEnum):  # type: ignore[no-redef]

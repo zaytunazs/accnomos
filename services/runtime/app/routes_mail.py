@@ -45,9 +45,9 @@ async def get_mail(request: Request) -> AsyncIterator[MailProvider]:
 
 
 class MailScanBody(StrictBody):
-    since_days: int = Field(14, ge=1, le=90)
+    since_days: int = Field(default=14, ge=1, le=90)
     dry_run: bool = False
-    max_messages: int = Field(50, ge=1, le=200)
+    max_messages: int = Field(default=50, ge=1, le=200)
 
 
 @router.post("/scan", response_model=IntakeResult)
@@ -77,8 +77,8 @@ def chosen_ai(request: Request) -> AiConfig | None:
 
 
 class TriageBody(StrictBody):
-    since_days: int = Field(7, ge=1, le=30)
-    max_threads: int = Field(20, ge=1, le=50)
+    since_days: int = Field(default=7, ge=1, le=30)
+    max_threads: int = Field(default=20, ge=1, le=50)
 
 
 @router.post("/triage", response_model=TriageResult)

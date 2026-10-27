@@ -228,9 +228,9 @@ async def pdf(number: str, books: Books = Depends(get_books)) -> PdfResult:
 
 class SendBody(StrictBody):
     confirm: StrictBool = False  # set by the app only after the user confirmed in the dialog; "yes" or 1 is not true
-    to: str | None = Field(None, max_length=254)
-    subject: str | None = Field(None, max_length=200)
-    body: str | None = Field(None, max_length=5000)
+    to: str | None = Field(default=None, max_length=254)
+    subject: str | None = Field(default=None, max_length=200)
+    body: str | None = Field(default=None, max_length=5000)
 
 
 @router.post("/{number}/send", response_model=InvoiceRow)
@@ -256,10 +256,10 @@ async def send(
 
 
 class PaidBody(StrictBody):
-    payment_ref: str | None = Field(None, max_length=120)
+    payment_ref: str | None = Field(default=None, max_length=120)
     paid_on: Day | None = None
     bank_line_id: str | None = Field(
-        None, max_length=64, pattern=r"^[0-9a-f]+$"
+        default=None, max_length=64, pattern=r"^[0-9a-f]+$"
     )  # link the bank line this payment came in on (GET /{number}/bank-candidates)
 
 

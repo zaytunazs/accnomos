@@ -104,6 +104,8 @@ async def submitted_periods(books: Books) -> dict[tuple[date, date], str]:
         if not isinstance(saved, dict):
             continue
         for span in (saved.get("obligation"), saved.get("calculated_for")):
+            if not isinstance(span, dict):
+                continue
             try:
                 out[(date.fromisoformat(span["start"]), date.fromisoformat(span["end"]))] = str(
                     saved.get("periodKey") or folder.name

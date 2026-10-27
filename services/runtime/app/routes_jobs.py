@@ -40,9 +40,9 @@ def _id(value: str) -> str:
 
 class JobIn(StrictBody):
     name: str = Field(min_length=1, max_length=200)
-    customer_id: str | None = Field(None, max_length=64)
-    site_address: str | None = Field(None, max_length=500)
-    estimate_hours: float | None = Field(None, gt=0, le=jobs.MAX_HOURS_PER_ENTRY)
+    customer_id: str | None = Field(default=None, max_length=64)
+    site_address: str | None = Field(default=None, max_length=500)
+    estimate_hours: float | None = Field(default=None, gt=0, le=jobs.MAX_HOURS_PER_ENTRY)
     status: Literal["open", "closed"] = "open"
 
 
@@ -164,9 +164,9 @@ async def mark_invoiced(
 
 class StaffIn(StrictBody):
     name: str = Field(min_length=1, max_length=120)
-    role: str = Field("", max_length=120)
+    role: str = Field(default="", max_length=120)
     hourly_rate_pence: Pence = Field(ge=0, le=100_000)  # up to £1,000 an hour, as payroll
-    charge_rate_pence: Pence | None = Field(None, ge=0, le=100_000)
+    charge_rate_pence: Pence | None = Field(default=None, ge=0, le=100_000)
     active: bool = True
 
 
@@ -223,7 +223,7 @@ class EntryIn(StrictBody):
     job_id: str = Field(max_length=32)
     date: Day
     hours: float
-    note: str = Field("", max_length=500)
+    note: str = Field(default="", max_length=500)
     billable: bool = True
 
 
