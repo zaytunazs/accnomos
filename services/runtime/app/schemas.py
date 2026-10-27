@@ -148,6 +148,7 @@ class Proposal(BaseModel):
     source_name: str | None = None  # original file name in "00 Inbox"
     file_path: str | None = None  # where the document is filed now
     account_override: str | None = None  # expense account chosen by a rule or the user
+    job_id: str | None = None  # job this purchase is a cost of (_System/Jobs/jobs.json), tagged on approval
     created_at: datetime | None = None
     decided_by: str | None = None
     decided_at: datetime | None = None
