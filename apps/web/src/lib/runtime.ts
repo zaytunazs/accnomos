@@ -2,7 +2,7 @@
 
 import type { AccountInfo } from "@azure/msal-browser";
 import { aiHeaders, loadAiConfig, RUNTIME_URL } from "./ai-config";
-import { accountKind, getToken, isPersonalAccount, mailScopesFor, storageScopesFor } from "./msal";
+import { accountKind, contactsScopesFor, getToken, isPersonalAccount, mailScopesFor, storageScopesFor } from "./msal";
 
 /** Runtime wire types (services/runtime/app/schemas.py). */
 export interface RtCheck {
@@ -158,7 +158,102 @@ export const runtime = {
   rebuild: (a: AccountInfo) => call<RtRebuild>(a, "/books/rebuild", { method: "POST" }),
   /** GET /books/deadlines?stagger=1 | start_month=5 | months=1 (see lib/business.ts deadlinesQuery). */
   deadlines: (a: AccountInfo, query: string) => call<RtDeadlines>(a, `/books/deadlines?${query}`),
+  /** /contacts/* (services/runtime/app/routes_contacts.py): money is worked out from the ledger on each call. */
+  contacts: (a: AccountInfo) => call<RtContactList>(a, "/contacts"),
+  refreshContacts: (a: AccountInfo) => call<RtContactList>(a, "/contacts/refresh", { method: "POST" }),
+  editContact: (a: AccountInfo, id: string, edits: Partial<Record<RtContactField, string | null>>) =>
+    call<RtContact>(a, `/contacts/${id}`, { method: "PUT", body: JSON.stringify(edits) }),
+  importOutlookContacts: (a: AccountInfo, addNew: boolean) =>
+    call<RtContactImport>(a, "/contacts/import-outlook", { method: "POST", body: JSON.stringify({ add_new: addNew }) },
+      contactsScopesFor(accountKind(a))),
+  statement: (a: AccountInfo, id: string, from?: string, to?: string) => {
+    const q = new URLSearchParams({ ...(from ? { from } : {}), ...(to ? { to } : {}) }).toString();
+    return call<RtStatement>(a, `/contacts/${id}/statement${q ? `?${q}` : ""}`);
+  },
+  aged: (a: AccountInfo) => call<RtAged>(a, "/contacts/aged"),
 };
+
+/** Contacts (services/runtime/app/contacts.py). Pence are signed from the user's side: + they owe you, − you owe them. */
+export type RtContactField = "name" | "kind" | "vrn" | "email" | "phone" | "address" | "default_category" | "default_vat_code";
+export interface RtContact {
+  id: string;
+  kind: "customer" | "supplier" | "both";
+  name: string;
+  normalised_key: string;
+  vrn: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  default_category: string | null;
+  default_vat_code: string | null;
+  source: "ledger" | "outlook" | "manual";
+  aliases: string[];
+  edited: string[];
+  created_at: string;
+  updated_at: string;
+}
+export interface RtContactTotals {
+  documents: number;
+  ytd_sales_net_pence: number;
+  ytd_sales_vat_pence: number;
+  ytd_purchases_net_pence: number;
+  ytd_purchases_vat_pence: number;
+  open_receivable_pence: number;
+  open_payable_pence: number;
+  balance_pence: number;
+  last_activity: string | null;
+}
+export interface RtContactRow extends RtContact {
+  totals: RtContactTotals;
+}
+export interface RtContactList {
+  year_start: string;
+  today: string;
+  saved: boolean;
+  contacts: RtContactRow[];
+}
+export interface RtStatementLine {
+  date: string;
+  details: string;
+  reference: string | null;
+  event_id: string | null;
+  amount_pence: number;
+  paid_pence: number;
+  balance_pence: number;
+}
+export interface RtStatement {
+  contact: RtContact;
+  start: string | null;
+  end: string | null;
+  opening_balance_pence: number;
+  closing_balance_pence: number;
+  lines: RtStatementLine[];
+}
+export type RtAgedBucket = "0-30" | "31-60" | "61-90" | "90+";
+export interface RtAgedRow {
+  contact_id: string;
+  name: string;
+  buckets: Record<RtAgedBucket, number>;
+  total_pence: number;
+  documents: { event_id: string; date: string; reference: string | null; amount_pence: number; age_days: number; bucket: RtAgedBucket }[];
+}
+export interface RtAgedTable {
+  rows: RtAgedRow[];
+  buckets: Record<RtAgedBucket, number>;
+  total_pence: number;
+}
+export interface RtAged {
+  as_of: string;
+  debtors: RtAgedTable;
+  creditors: RtAgedTable;
+}
+export interface RtContactImport {
+  read: number;
+  matched: number;
+  updated: number;
+  added: number;
+  skipped: number;
+}
 
 /** POST /books/rebuild (services/runtime/app/routes_books.py). */
 export interface RtRebuild {

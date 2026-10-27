@@ -67,6 +67,15 @@ export function mailScopesFor(kind: AccountKind): string[] {
   return ["Mail.Read"];
 }
 
+/**
+ * Contacts › Import from Outlook reads the address book, nothing more. Requested only when the user taps
+ * Import (H26), together with the storage scopes, because the import also writes contacts.json to OneDrive.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function contactsScopesFor(kind: AccountKind): string[] {
+  return ["Contacts.Read"];
+}
+
 /** Access token for the given scopes; falls back to an interactive redirect when consent is needed. */
 export async function getToken(scopes: string[]): Promise<string> {
   const msal = await getMsal();

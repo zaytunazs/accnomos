@@ -8,6 +8,7 @@ const links = [
   { href: "/review", label: "Review", badge: "3" },
   { href: "/ask", label: "Ask" },
   { href: "/vat", label: "VAT return" },
+  { href: "/contacts", label: "Contacts" },
   { href: "/files", label: "Files" },
 ];
 
