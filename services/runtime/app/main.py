@@ -8,29 +8,51 @@ from __future__ import annotations
 
 import logging
 import os
+import re
 import time
 
 import httpx
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
+from app.ai.config import base_url_allowed
+from app.security import SecurityMiddleware, install_log_scrubbing, scrub
+
+install_log_scrubbing()
 app = FastAPI(title="Accnomos Agent Runtime", version="0.1.0")
 STARTED = time.time()
 
-# Browsers (PWA) call the runtime directly; it keeps nothing, so CORS is the only gate.
+
+def cors_origins(raw: str) -> list[str]:
+    """Exact `scheme://host[:port]` origins from CORS_ORIGINS; anything else (a wildcard, a path) is refused."""
+    origins = [o.strip().rstrip("/") for o in raw.split(",") if o.strip()]
+    bad = [o for o in origins if not re.fullmatch(r"https?://[A-Za-z0-9.-]+(:\d{1,5})?", o)]
+    if bad:
+        raise RuntimeError(f"CORS_ORIGINS must list exact origins, not {bad}")
+    return origins
+
+
+# Browsers (PWA) call the runtime directly; it keeps nothing, so CORS is the only gate. The security middleware
+# sits inside CORS so its 4xx/5xx answers still reach the page.
+app.add_middleware(SecurityMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in os.getenv("CORS_ORIGINS", "http://localhost:3000,https://accnomos.com,https://app.accnomos.com").split(",")],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=cors_origins(os.getenv("CORS_ORIGINS", "http://localhost:3000")),
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
+    allow_headers=["Content-Type", "X-Graph-Token", "X-Account-Kind", "X-User", "X-AI-Mode", "X-AI-Base-Url",
+                   "X-AI-Model", "X-Meta-Api-Key", "X-Business-Name", "X-Autopilot"],
+    expose_headers=["X-Correlation-Id", "Retry-After"],
+    max_age=600,
 )
 
 
 class AiConfig(BaseModel):
-    mode: str  # "key" (user's Meta Model API key) | "local" (Ollama/Glimmer on the user's machine)
-    base_url: str | None = None
-    model: str | None = None
+    model_config = ConfigDict(extra="forbid")
+
+    mode: str = Field(max_length=10)  # "key" (user's Meta Model API key) | "local" (Ollama/Glimmer on the user's machine)
+    base_url: str | None = Field(default=None, max_length=300)
+    model: str | None = Field(default=None, max_length=200)
 
 
 class AiTestResult(BaseModel):
@@ -51,7 +73,9 @@ async def health() -> dict:
 @app.post("/ai/test", response_model=AiTestResult)
 async def ai_test(cfg: AiConfig, x_meta_api_key: str | None = Header(default=None)) -> AiTestResult:
     """F2: 'Test connection' button. Lists models with the user's key, or pings the user's local agent."""
-    async with httpx.AsyncClient(timeout=20) as client:
+    if cfg.base_url and not base_url_allowed(cfg.base_url):
+        raise HTTPException(400, "base_url is not on this server's allow-list (AI_ALLOWED_BASE_URLS)")
+    async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=5.0), follow_redirects=False) as client:
         if cfg.mode == "key":
             if not x_meta_api_key:
                 raise HTTPException(400, "X-Meta-Api-Key header required in key mode")
@@ -87,7 +111,7 @@ app.include_router(books_router)
 async def graph_error(_request: Request, exc: GraphError) -> JSONResponse:
     """Expired/insufficient Graph token -> 401 so the app re-authenticates; anything else -> 502."""
     status = 401 if exc.status in (401, 403) else 502
-    return JSONResponse(status_code=status, content={"detail": str(exc)})
+    return JSONResponse(status_code=status, content={"detail": scrub(str(exc))})
 from app.routes_vat import router as vat_router  # noqa: E402  GET /books/vat
 app.include_router(vat_router)
 from app.routes_bank import router as bank_router  # noqa: E402  /books/bank/*
