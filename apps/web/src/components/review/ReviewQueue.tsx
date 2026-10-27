@@ -114,6 +114,8 @@ export default function ReviewQueue<H>({
     [items],
   );
 
+  // U pressed while busy: run once busy clears (see the keys handler), unless what was busy failed.
+  const undoQueued = useRef(false);
   async function run(id: string, fn: () => Promise<void>) {
     setBusy(id);
     onError(null);
@@ -121,6 +123,7 @@ export default function ReviewQueue<H>({
       await fn();
       await afterDecision?.();
     } catch (e) {
+      undoQueued.current = false; // the press meant "undo that", which never happened: don't undo the decision before it
       onError((e as Error).message);
     } finally {
       setBusy(null);
@@ -222,12 +225,22 @@ export default function ReviewQueue<H>({
   // J/K move, A approve, E edit, R reject (confirmed), U undo. Ignored while typing or in a dialog.
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});
   useEffect(() => {
+    if (busy !== null || !undoQueued.current) return;
+    undoQueued.current = false;
+    void undo();
+  }, [busy]); // eslint-disable-line react-hooks/exhaustive-deps -- undo reads this render's history
+  useEffect(() => {
     keys.current = (e) => {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || isTyping(e.target) || modalOpen) return;
       const k = e.key.toLowerCase();
       if (!["j", "k", "a", "e", "r", "u"].includes(k)) return;
       e.preventDefault();
-      if (k === "u") return void (busy === null && undo());
+      if (k === "u") {
+        // The note says "U to undo" before the live reload (afterDecision) clears busy: keep the press, run it then.
+        if (busy !== null) undoQueued.current = true;
+        else undo();
+        return;
+      }
       if (k === "j" || k === "k") {
         if (!items.length) return;
         const at = items.findIndex((p) => p.id === active);

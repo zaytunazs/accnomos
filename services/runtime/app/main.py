@@ -44,7 +44,8 @@ app.add_middleware(
     allow_origins=cors_origins(os.getenv("CORS_ORIGINS", "http://localhost:3000")),
     allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["Content-Type", "X-Graph-Token", "X-Account-Kind", "X-User", "X-AI-Mode", "X-AI-Base-Url",
-                   "X-AI-Model", "X-Meta-Api-Key", "X-Business-Name", "X-Autopilot"],
+                   "X-AI-Model", "X-Meta-Api-Key", "X-Business-Name", "X-Autopilot"]
+    + (["X-Test-Tenant"] if is_test_mode() else []),  # app/testmode.py: one fake OneDrive per Playwright worker
     expose_headers=["X-Correlation-Id", "Retry-After"],
     max_age=600,
 )
@@ -161,6 +162,8 @@ if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI und
     from app import testmode
 
     testmode.enable()
+    testmode.warm()
+    app.add_middleware(testmode.TenantMiddleware)  # added last, so outermost: X-Test-Tenant picks the fakes
     app.include_router(testmode.router)
 
 from app.routes_todos import router as todos_router  # noqa: E402  /todos

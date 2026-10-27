@@ -1,4 +1,4 @@
-"""Test mode (app/testmode.py): gold readings, the stub AI, the Graph look-alike and the shared fake storage."""
+"""Test mode (app/testmode.py): gold readings, the stub AI, the Graph look-alike and the per-tenant fake storage."""
 
 from __future__ import annotations
 
@@ -88,6 +88,32 @@ def test_reset_seeds_the_sample_invoice_profile_and_opt_in_bank_entries(client: 
     assert client.post("/__test/reset?seed=nope").status_code == 400
     client.post("/__test/reset")  # opt-in: the next plain reset drops them again (other specs check VAT figures)
     assert client.get("/__test/state").json()["files"] == [PROFILE]
+
+
+def test_each_x_test_tenant_has_its_own_fakes_and_reset(test_env: None) -> None:
+    from app.invoicing import PROFILE
+
+    app = FastAPI()
+    app.include_router(testmode.router)
+    app.add_middleware(testmode.TenantMiddleware)
+    c = TestClient(app)
+    w0, w1 = {"X-Test-Tenant": "w0"}, {"X-Test-Tenant": "w1"}
+    for h in (w0, w1, {}):
+        assert c.post("/__test/reset", headers=h).json()["ok"]
+    put = "/__test/graph/v1.0/me/drive/special/approot:/00 Inbox/a.png:/content"
+    assert c.put(put, content=b"png", headers=w0).status_code == 201
+
+    files = lambda h: c.get("/__test/state", headers=h).json()["files"]  # noqa: E731
+    assert files(w0) == ["00 Inbox/a.png", PROFILE]
+    assert files(w1) == files({}) == [PROFILE]  # another worker, and no header, never see w0's OneDrive
+    assert c.post("/__test/reset", headers=w1).json()["ok"]
+    assert files(w0) == ["00 Inbox/a.png", PROFILE]  # reset is per tenant
+    assert testmode.STATES["w0"] is not testmode.STATES["w1"] is not testmode.STATE
+
+    # The header is a dict key, nothing more: odd characters are dropped and it is cut at 64; all-odd is the default set.
+    assert c.post("/__test/reset", headers={"X-Test-Tenant": "w2/../" + "x" * 100}).json()["ok"]
+    assert "w2.." + "x" * 60 in testmode.STATES
+    assert files({"X-Test-Tenant": "/ /"}) == files({}) == [PROFILE]
 
 
 def test_pinned_today_drives_plan_my_thursday(test_env: None, monkeypatch: pytest.MonkeyPatch) -> None:

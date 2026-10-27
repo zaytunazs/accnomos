@@ -35,7 +35,7 @@ def _mail_sender(token: str) -> Any:
         if is_test_mode():  # the in-memory sender (GET /__test/state lists what was "sent")
             from app import testmode
 
-            return testmode.STATE.sender
+            return testmode.current().sender
         try:
             from accnomos_connectors.msgraph import GraphMailSender  # type: ignore[attr-defined]
         except ImportError:

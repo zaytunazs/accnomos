@@ -51,7 +51,18 @@ uv sync --all-packages --all-extras                # the runtime must be importa
 cd apps/web; pnpm install; pnpm exec playwright install chromium
 pnpm run e2e                                       # = e2e:build (test-mode export → out-e2e/) + e2e:test
 $env:E2E_PYTHON='..\..\.venv\Scripts\python.exe'; pnpm run e2e:test   # Windows: point at the venv
+pnpm exec playwright test e2e/review.spec.ts       # one spec (after one e2e:build); add :130 for the test on that line
+pnpm exec playwright test -g "plan my Thursday"    # tests whose title matches
+pnpm exec playwright test --project=phone          # only the phone-width tests
+pnpm exec playwright test --ui                     # UI mode: pick, watch and time-travel tests; starts both servers too
+pnpm exec playwright test e2e/review.spec.ts:130 --repeat-each=20   # hunting a flake
 ```
+
+56 tests (31 desktop, 25 phone) take about 40 s locally on 4 workers, including the runtime's start and its ~10 s warm-up; CI runs 3 workers with one retry. Rebuild with
+`pnpm run e2e:build` after changing anything under `src/`: the tests run against `out-e2e/`, not the dev server.
+Ports are `E2E_WEB_PORT` (3100), `E2E_RUNTIME_PORT` (8781) and `E2E_RELAY_PORT` (8789), read by both the build and
+the config, so set them for both (e.g. `node --env-file=ports.env e2e/build.mjs`). Locally Playwright reuses servers
+already on those ports, which may be another checkout's: give each checkout its own ports.
 
 Playwright (`apps/web/playwright.config.ts`, Chromium only) starts both servers itself: the runtime on :8781 with
 `ACCNOMOS_TEST_MODE=1` and a static host for `out-e2e/` on :3100. Each test resets the fakes and fails if any request
@@ -62,15 +73,18 @@ CSV → confirm a match → transfer and expense proposal; Contacts list, edit, 
 lines; Vehicles journey → allowance claim in Review; Payroll prepare → CSV → confirm and post; Settings tabs, deep
 links, VAT period moving the Home deadlines; HMRC card (relay answered by Playwright, no real OAuth); Outlook intake
 dry run; Files. Phone: every page at Pixel 7 width with no horizontal scroll, and Home, Review, Ask, VAT and Settings
-at 390 px with no button cut off. Tests run one at a time (`workers: 1`): they share the runtime's single fake
-OneDrive. CI: `.github/workflows/e2e.yml` (traces uploaded on failure; locally
+at 390 px with no button cut off. Tests run in parallel (`fullyParallel`): `e2e/fixtures.ts` sends `X-Test-Tenant`
+(random per worker process) from the page and from the `request` fixture, and the test-mode runtime keeps one set of
+fakes per tenant, so a worker's reset never touches another's OneDrive. The runtime renders and hashes the 200 gold
+receipts at startup (~10 s) before `/health` answers, so no test waits on that. CI: `.github/workflows/e2e.yml` (traces uploaded on failure; locally
 `pnpm exec playwright show-trace test-results/<test>/trace.zip`).
 
 **Runtime test mode** (`ACCNOMOS_TEST_MODE=1`, `services/runtime/app/testmode.py`). For tests only; the Docker image
 sets it to 0 and does not even contain `evals/gold`, which it needs.
 
 - Storage, mail (read and send), address book and calendar are the in-memory fakes from `accnomos_connectors.fake`,
-  shared by every request whatever token it carries (a token is still required, as in production). Sent mail
+  one set per `X-Test-Tenant` header (no header: one default set), whatever token the request carries (a token is
+  still required, as in production). Sent mail
   (invoices, reminders) is only recorded. The calendar holds a sample VAT deadline and one meeting on Thursday
   29 Oct 2026 for the day planner. The browser's own Graph calls go to a look-alike at `/__test/graph/v1.0` over the
   same storage. `/__test/*` is outside the per-IP rate limit; each reset refills the limit for everything else.
@@ -78,7 +92,7 @@ sets it to 0 and does not even contain `evals/gold`, which it needs.
 - Every AI call is forced to a stub at `/__test/ai` (Ollama-shaped), whatever the request headers say. It reads a
   document only if it is a gold receipt rendered by `evals/harness/render.py` (matched by the PNG's sha256) and
   returns its gold fields; Ask gets an answer built from the facts pack, so grounding passes.
-- `POST /__test/reset` empties storage and reseeds the mailbox (three gold receipts, one newsletter), the calendar and
+- `POST /__test/reset` empties the caller's tenant's storage (no other tenant's) and reseeds the mailbox (three gold receipts, one newsletter), the calendar and
   a sample invoice profile (Sam Builds Ltd, footer "SAMPLE — FICTIONAL COMPANY") so an invoice can be sent straight
   away. `POST /__test/reset?seed=bank` also posts the four entries `evals/gold/bank/barclays.csv` pays for (opt-in:
   they change the VAT figures other specs check). `GET /__test/gold` and `/__test/gold/{name}.png` list and serve the

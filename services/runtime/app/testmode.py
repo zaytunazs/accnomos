@@ -3,9 +3,9 @@
 With it on, the runtime talks to nothing outside this process:
 
 * Storage, mail (read and send), the address book and the calendar are in-memory fakes
-  (accnomos_connectors.fake), shared by every request whatever token it carries, so the browser and the
-  runtime see one OneDrive. Sent mail is only recorded (`GET /__test/state` lists it); day plans read and
-  write the fake calendar.
+  (accnomos_connectors.fake), one set per `X-Test-Tenant` header whatever token the request carries, so the
+  browser and the runtime see one OneDrive per Playwright worker (no header: the default set). Sent mail is
+  only recorded (`GET /__test/state` lists it); day plans read and write the fake calendar.
 * The browser's own Graph calls (folder setup, Files, "Add a receipt") go to a small Graph look-alike at
   `/__test/graph/v1.0`, backed by the same fake storage (the test-mode web build points `lib/graph.ts` there).
 * Every AI call goes to a stub at `/__test/ai` (Ollama-shaped, see app/ai/config.py). It reads a receipt only
@@ -15,7 +15,7 @@ With it on, the runtime talks to nothing outside this process:
   previous VAT quarter, the one still to file (the VAT page and Ask default to the current one, Oct-Dec);
   timestamps stay real.
 
-`POST /__test/reset` empties storage and reseeds the mailbox (three gold receipts by email plus one message
+`POST /__test/reset` empties the caller's tenant's storage and reseeds the mailbox (three gold receipts by email plus one message
 that is not a receipt) and the calendar. `GET /__test/gold` lists the gold receipts; `GET /__test/gold/{file}.png`
 serves one as the PNG the stub recognises.
 """
@@ -29,6 +29,7 @@ import json
 import logging
 import os
 import re
+from contextvars import ContextVar
 from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
@@ -50,6 +51,7 @@ from accnomos_connectors import (
 from accnomos_connectors.base import FileRef
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from app import security
 from app.ai import ask as ask_ai
@@ -203,14 +205,40 @@ class State:
     seeded = False
 
 
-STATE = State()
+TENANT_HEADER = "X-Test-Tenant"
+_TENANT: ContextVar[str] = ContextVar("accnomos_test_tenant", default="")
+STATE = State()  # no X-Test-Tenant header: the unit tests and a runtime started by hand
+STATES: dict[str, State] = {"": STATE}
+
+
+def current() -> State:
+    """This request's fakes: one set per X-Test-Tenant, so Playwright workers never see each other's OneDrive."""
+    return STATES.setdefault(_TENANT.get(), State())
 
 
 async def state() -> State:
-    """The shared fakes, seeded on first use."""
-    if not STATE.seeded:
+    """This tenant's fakes, seeded on first use."""
+    s = current()
+    if not s.seeded:
         await reset()
-    return STATE
+    return s
+
+
+class TenantMiddleware:
+    """Pure ASGI, outermost: sets the tenant for everything the request runs (routes, dependencies, threadpool)."""
+
+    def __init__(self, app: ASGIApp) -> None:
+        self.app = app
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        raw = dict(scope["headers"]).get(TENANT_HEADER.lower().encode(), b"")
+        token = _TENANT.set(re.sub(r"[^A-Za-z0-9_.-]", "", raw.decode("latin-1"))[:64])
+        try:
+            await self.app(scope, receive, send)
+        finally:
+            _TENANT.reset(token)
 
 
 def _sender(gold: dict[str, Any]) -> tuple[str, str]:
@@ -241,12 +269,12 @@ def _bank_event(spec: dict[str, Any]) -> Any:
                        approved_at=datetime(2026, 10, 26, tzinfo=UTC))
 
 
-async def _seed_bank() -> None:
+async def _seed_bank(s: State) -> None:
     """The entries the gold Barclays statement (evals/gold/bank/barclays.csv) pays for, labelled SAMPLE there."""
     from app.books import Books
 
     expected = json.loads((_gold_dir() / "bank" / "expected.json").read_text(encoding="utf-8"))
-    books = Books(STATE.storage)
+    books = Books(s.storage)
     for spec in expected["events"]:
         if spec["id"].startswith("gold-bc-"):
             await books.post_event(_bank_event(spec))
@@ -256,41 +284,42 @@ SEEDS = {"bank": _seed_bank}  # opt-in: they change the VAT figures other flows 
 
 
 async def reset(seed: str | None = None) -> dict[str, Any]:
-    """Empty storage; reseed the mailbox, address book, calendar and invoice profile; then any `seed` from SEEDS."""
+    """This tenant only: empty storage; reseed the mailbox, address book, calendar and invoice profile; then any `seed`."""
     from app.invoicing import PROFILE, InvoiceProfile
 
     if seed is not None and seed not in SEEDS:
         raise HTTPException(400, f"unknown seed {seed!r}; one of {sorted(SEEDS)}")
-    STATE.storage = FakeStorageProvider()
-    await STATE.storage.write(PROFILE, InvoiceProfile.model_validate(SAMPLE_PROFILE).model_dump_json(indent=2).encode())
-    STATE.mail = FakeMailProvider()
-    STATE.sender = FakeMailSender()
-    STATE.contacts = FakeContactsProvider()
-    STATE.calendar = FakeCalendarProvider([PLAN_EVENT])  # something for "plan my Thursday" to plan around
+    s = current()
+    s.storage = FakeStorageProvider()
+    await s.storage.write(PROFILE, InvoiceProfile.model_validate(SAMPLE_PROFILE).model_dump_json(indent=2).encode())
+    s.mail = FakeMailProvider()
+    s.sender = FakeMailSender()
+    s.contacts = FakeContactsProvider()
+    s.calendar = FakeCalendarProvider([PLAN_EVENT])  # something for "plan my Thursday" to plan around
     received = datetime.now(UTC)
     golds = gold_receipts()
     for n, file in enumerate(MAIL_GOLD, start=1):
         gold, png = golds[file], gold_png(file)
         name, address = _sender(gold)
-        STATE.mail.add(
+        s.mail.add(
             MailMessage(id=f"msg-{n}", received_at=received - timedelta(days=n), from_address=address, from_name=name,
                         subject=f"Your receipt from {name}"),
             (MailAttachment(id=f"att-{n}", name=f"receipt-{file.split('_')[0]}.png", content_type="image/png", size=len(png)), png),
         )
-        STATE.contacts.contacts.append(AddressBookContact(id=f"contact-{n}", display_name=name, company_name=name, emails=[address]))
-    STATE.mail.add(  # a newsletter with a calendar invite: intake must skip it
+        s.contacts.contacts.append(AddressBookContact(id=f"contact-{n}", display_name=name, company_name=name, emails=[address]))
+    s.mail.add(  # a newsletter with a calendar invite: intake must skip it
         MailMessage(id="msg-news", received_at=received - timedelta(hours=6), from_address="news@trade-weekly.example",
                     from_name="Trade Weekly", subject="This week's offers"),
         (MailAttachment(id="att-news", name="webinar.ics", content_type="text/calendar", size=900), b"BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n"),
     )
-    cal = await STATE.calendar.ensure_calendar(CALENDAR)
-    await STATE.calendar.upsert_all_day_event(cal, "vat-26A3", "2026-11-07", "VAT return due (Jul–Sep 2026)", SAMPLE)
+    cal = await s.calendar.ensure_calendar(CALENDAR)
+    await s.calendar.upsert_all_day_event(cal, "vat-26A3", "2026-11-07", "VAT return due (Jul–Sep 2026)", SAMPLE)
     if seed:
-        await SEEDS[seed]()
+        await SEEDS[seed](s)
     if security.LIMITER:  # each test starts with a full request budget
         security.LIMITER.reset()
-    STATE.seeded = True
-    return {"ok": True, "mail": len(STATE.mail.messages), "gold": len(golds), "seed": seed}
+    s.seeded = True
+    return {"ok": True, "mail": len(s.mail.messages), "gold": len(golds), "seed": seed}
 
 
 def enable() -> None:
@@ -300,6 +329,12 @@ def enable() -> None:
     # The browser's Graph and AI calls come here instead of Microsoft/Ollama; they must not eat the per-IP budget.
     security.UNLIMITED_PREFIXES = ("/__test/",)
     log.warning("ACCNOMOS_TEST_MODE=1: fake storage/mail/calendar and a stub AI; not for real books")
+
+
+def warm() -> None:
+    """Render every gold receipt and hash it now (~10 s), before /health answers. Done lazily, the first scan blocked
+    the event loop that long, so every parallel Playwright worker's first test timed out behind it."""
+    _by_hash()
 
 
 # --------------------------------------------------------------------------- #
@@ -400,7 +435,7 @@ def _path_of(item_id: str) -> str:
 
 
 def _drive_item(ref: FileRef) -> dict[str, Any]:
-    st = STATE.storage
+    st = current().storage
     path = ref.path.strip("/")
     item: dict[str, Any] = {
         "id": _id(path), "name": ref.name or "Accnomos", "eTag": ref.etag,
@@ -425,7 +460,7 @@ def _not_found(path: str) -> JSONResponse:
 
 
 async def _get(path: str) -> JSONResponse:
-    st = STATE.storage
+    st = current().storage
     if path in st.folders:
         return JSONResponse(_drive_item(FileRef(id="", path=path, name=path.rsplit("/", 1)[-1], is_folder=True)))
     if path in st.files:

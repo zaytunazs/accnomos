@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { test as base, expect, type APIRequestContext, type Page } from "@playwright/test";
 import { RUNTIME_URL } from "./env.mjs";
 
@@ -6,6 +7,11 @@ export const USER = "sam@sambuilds.example";
 export const GOLD = "001_standard"; // Novex Office Supplies Ltd, 14 Aug 2026: net £43.25, VAT £8.65, total £51.90
 
 const RUNTIME_HEADERS = { "X-Graph-Token": "test-token", "X-Account-Kind": "personal", "X-User": USER };
+/**
+ * This worker's own fakes in the runtime (app/testmode.py keys them by X-Test-Tenant), so specs run in parallel.
+ * Random per worker process: a second run that reuses the same runtime (reuseExistingServer) can't reset this one.
+ */
+const TENANT = `w${process.env.TEST_WORKER_INDEX ?? 0}-${randomUUID().slice(0, 8)}`;
 const LOCAL = /^(https?|wss?):\/\/(127\.0\.0\.1|localhost)(:\d+)?\//;
 
 /** Direct calls to the test-mode runtime, for arranging state a spec is not about. */
@@ -125,7 +131,9 @@ export async function pickVatPeriod(page: Page, label: string): Promise<void> {
 }
 
 export const test = base.extend<{ runtime: Runtime; localOnly: void }>({
-  // Every test starts from an empty fake OneDrive and a freshly seeded mailbox.
+  // The page and the `request` fixture both carry the tenant, so the browser and Runtime see one fake OneDrive.
+  extraHTTPHeaders: [async ({ extraHTTPHeaders }, use) => use({ ...extraHTTPHeaders, "X-Test-Tenant": TENANT }), { scope: "test" }],
+  // Every test starts from an empty fake OneDrive (this worker's) and a freshly seeded mailbox.
   runtime: [
     async ({ request }, use) => {
       const runtime = new Runtime(request);
