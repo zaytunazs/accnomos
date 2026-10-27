@@ -106,3 +106,16 @@ async def test_reread_image_upscales_and_keeps_format() -> None:
     big = Image.open(io.BytesIO(await reread_image(_png((1600, 1200)))))
     assert max(big.size) == 2000
     assert await reread_image(b"not an image") == b"not an image"
+
+
+async def test_kept_second_reading_brings_its_own_repairs(reads: Reads) -> None:
+    reads.queue += [_doc(gross=15.00), _doc(net=12.00)]  # second: VAT-inclusive total read as net, repairable
+    p = await pipeline.process_image(_png(), "image/png", LOCAL)
+    assert "kept the second" in _note(p) and p.extracted.net_total == 10.00
+    assert len(p.repaired_by_code) == 1 and "VAT-inclusive total" in p.repaired_by_code[0]
+
+
+async def test_discarded_reading_leaves_no_repair_note(reads: Reads) -> None:
+    reads.queue += [_doc(confidence=0.6), _doc(net=12.00, confidence=0.6)]  # tie: the first (unrepaired) is kept
+    p = await pipeline.process_image(_png(), "image/png", LOCAL)
+    assert "kept the first" in _note(p) and p.repaired_by_code == []
