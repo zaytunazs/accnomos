@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/proposal.dart';
 import '../theme.dart';
+import 'capture_screen.dart';
 
 const _warnBg = Color(0xFFFFF7ED);
 const _warnBorder = Color(0xFFF3C892);
@@ -11,8 +12,8 @@ String _gbp(double value) => '£${value.toStringAsFixed(2)}';
 
 /// Review queue: a swipeable card per proposed entry.
 ///
-/// Approve and Reject move to the next card. The camera action is a
-/// placeholder until capture lands in a later update.
+/// Approve and Reject move to the next card. The camera action opens
+/// capture; a freshly read receipt is prepended and shown first.
 class ReviewScreen extends StatefulWidget {
   const ReviewScreen({super.key});
 
@@ -24,6 +25,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
   final PageController _pages = PageController();
   int _index = 0;
   final Map<String, bool> _alwaysDo = {};
+
+  /// Grows as receipts are captured. Seeded from the demo samples.
+  final List<Proposal> _proposals = List.of(Proposal.samples);
 
   @override
   void dispose() {
@@ -37,8 +41,26 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 
+  /// Prepend a freshly captured proposal and jump to it.
+  void _addProposal(Proposal proposal) {
+    setState(() {
+      _proposals.insert(0, proposal);
+      _index = 0;
+    });
+    _pages.jumpToPage(0);
+  }
+
+  Future<void> _capture() async {
+    final proposal = await Navigator.of(context).push<Proposal>(
+      MaterialPageRoute(builder: (_) => const CaptureScreen()),
+    );
+    if (proposal == null || !mounted) return;
+    _addProposal(proposal);
+    _say('Receipt added to your review list');
+  }
+
   void _advance() {
-    if (_index < Proposal.samples.length - 1) {
+    if (_index < _proposals.length - 1) {
       _pages.nextPage(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
@@ -58,7 +80,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final proposals = Proposal.samples;
+    final proposals = _proposals;
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
@@ -73,8 +95,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             icon: const Icon(Icons.photo_camera_outlined),
             tooltip: 'Photograph a receipt',
             constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-            onPressed: () =>
-                _say('Camera capture arrives in the next update.'),
+            onPressed: _capture,
           ),
         ],
       ),
