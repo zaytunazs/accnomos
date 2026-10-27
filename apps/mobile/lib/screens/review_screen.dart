@@ -774,22 +774,6 @@ class _ReviewScreenState extends State<ReviewScreen> {
           ? const Center(child: CircularProgressIndicator())
           : Column(
               children: [
-                if (!_signedIn)
-                  Container(
-                    width: double.infinity,
-                    color: AccnomosColors.ink,
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 6, horizontal: 12),
-                    child: const Text(
-                      'SAMPLE — FICTIONAL COMPANY · sign in to see your books',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                          color: AccnomosColors.ground,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.6),
-                    ),
-                  ),
                 if (_error != null)
                   Container(
                     width: double.infinity,

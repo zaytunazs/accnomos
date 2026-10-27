@@ -88,9 +88,11 @@ class _ShellState extends State<Shell> {
             ),
       body: Column(
         children: [
-          // Review, Ask, VAT and More draw their own labelled banner under their own app bar;
-          // the shell's banner would sit under the status bar there.
-          if (!_hasOwnAppBar) const _SampleBanner(),
+          // Tabs with their own app bar have no AppBar above this banner, so keep it below the status bar.
+          if (_hasOwnAppBar)
+            const SafeArea(bottom: false, child: _SampleBanner())
+          else
+            const _SampleBanner(),
           Expanded(
             child: IndexedStack(
               index: _tab,
