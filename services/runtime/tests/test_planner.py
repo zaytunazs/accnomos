@@ -419,3 +419,33 @@ async def test_plan_day_route_can_be_limited_to_some_jobs(client: TestClient, fa
     body = {"date": DAY.isoformat(), "job_ids": [f"{1:012x}", f"{3:012x}"]}
     plan = client.post("/plan/day", json=body, headers=H).json()["plan"]
     assert [i["job_id"] for i in plan if i["kind"] == "visit"] == [f"{1:012x}", f"{3:012x}"]
+
+
+def _lunch() -> list[dict[str, str]]:
+    return [{"kind": "lunch", "start": at(12).isoformat(), "end": at(12, 30).isoformat(), "title": "Lunch"}]
+
+
+def test_missing_calendar_scope_is_a_401_so_the_app_asks_again(client: TestClient, calendar: FakeCalendarProvider,
+                                                               monkeypatch: pytest.MonkeyPatch) -> None:
+    from accnomos_connectors import GraphError
+
+    async def forbidden(*_a: object, **_k: object) -> list[CalendarEvent]:
+        raise GraphError(403, "ErrorAccessDenied")
+
+    monkeypatch.setattr(calendar, "list_events", forbidden)
+    assert client.post("/plan/day", json={"date": DAY.isoformat()}, headers=H).status_code == 401
+    assert client.post("/plan/day/apply", json={"date": DAY.isoformat(), "plan": _lunch()}, headers=H).status_code == 401
+    assert calendar.created == []
+
+
+def test_apply_needs_the_user(client: TestClient, calendar: FakeCalendarProvider) -> None:
+    r = client.post("/plan/day/apply", json={"date": DAY.isoformat(), "plan": _lunch()}, headers={"X-Graph-Token": "tok"})
+    assert r.status_code == 400 and calendar.created == []
+
+
+def test_apply_survives_a_damaged_applied_file(client: TestClient, fake: FakeStorageProvider,
+                                               calendar: FakeCalendarProvider) -> None:
+    fake.files[APPLIED] = b'["not", "a", "map"]'
+    r = client.post("/plan/day/apply", json={"date": DAY.isoformat(), "plan": _lunch()}, headers=H)
+    assert r.status_code == 200, r.text
+    assert len(calendar.created) == 1 and r.json()["plan_hash"] in json.loads(fake.files[APPLIED])

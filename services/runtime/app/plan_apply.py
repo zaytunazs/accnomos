@@ -118,8 +118,9 @@ async def apply_plan(books: Books, calendar: CalendarProvider, day: date, items:
     new = validate(day, items)
     h = plan_hash(day, items)
     applied = await books.read_json(APPLIED, {})
-    if h in applied:
-        prior = applied[h]
+    if not isinstance(applied, dict):
+        applied = {}  # hand-edited or damaged: treat as nothing applied (a retry still reuses matching events)
+    if isinstance(prior := applied.get(h), dict):
         return ApplyResult(
             date=day, plan_hash=h, event_ids=list(prior.get("event_ids", [])), created=[], already_applied=True,
             mileage_proposals=mileage(day, new, await vehicles(books)),
@@ -150,7 +151,8 @@ async def apply_plan(books: Books, calendar: CalendarProvider, day: date, items:
 
     ids = [c.event_id for c in created]
 
-    def record(rows: dict[str, Any]) -> dict[str, Any]:
+    def record(rows: Any) -> dict[str, Any]:
+        rows = {k: v for k, v in rows.items() if isinstance(v, dict)} if isinstance(rows, dict) else {}
         rows = {**rows, h: {"date": day.isoformat(), "event_ids": ids, "created_at": now().isoformat()}}
         return dict(sorted(rows.items(), key=lambda kv: kv[1].get("created_at", ""))[-KEEP_APPLIED:])
 
