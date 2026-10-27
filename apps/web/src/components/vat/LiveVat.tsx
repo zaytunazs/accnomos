@@ -3,24 +3,7 @@
 import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
-import { runtimeHeaders } from "@/lib/runtime";
-import { RUNTIME_URL } from "@/lib/ai-config";
-
-interface Box {
-  box: number;
-  label: string;
-  amount: string;
-  entries: number;
-}
-interface VatView {
-  period_key: string;
-  start: string;
-  end: string;
-  boxes: Box[];
-  warnings: string[];
-  events_in_period: number;
-  hmrc_body: Record<string, unknown>;
-}
+import { fetchLiveVat, type RtVatBox as Box, type RtVatView as VatView } from "@/lib/runtime";
 
 const fmt = (b: Box) => (b.box <= 5 ? `£${Number(b.amount).toLocaleString("en-GB", { minimumFractionDigits: 2 })}` : `£${Number(b.amount).toLocaleString("en-GB")}`);
 const uk = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
@@ -38,9 +21,7 @@ export default function LiveVat() {
         await msal.handleRedirectPromise().catch(() => null);
         const acct: AccountInfo | undefined = msal.getActiveAccount() ?? msal.getAllAccounts()[0];
         if (!acct) return setState("off");
-        const res = await fetch(`${RUNTIME_URL}/books/vat`, { headers: await runtimeHeaders(acct) });
-        if (!res.ok) return setState("off");
-        setView((await res.json()) as VatView);
+        setView(await fetchLiveVat(acct));
         setState("live");
       } catch {
         setState("off");
@@ -76,7 +57,7 @@ export default function LiveVat() {
         <p className="mt-3 rounded-xl border border-warn-border bg-warn-bg p-3 text-sm text-warn-ink">{view.warnings.join(" · ")}</p>
       )}
       <p className="mt-3 text-sm text-muted">
-        Net VAT to pay: <strong className="text-ink">{fmt(net)}</strong>. The sample below shows the full layout; HMRC sandbox submission goes through the relay on day 5.
+        Net VAT to pay: <strong className="text-ink">{fmt(net)}</strong>. Connect to HMRC below to submit it to the sandbox.
       </p>
     </section>
   );

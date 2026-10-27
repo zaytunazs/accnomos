@@ -98,6 +98,38 @@ export const runtime = {
   summary: (a: AccountInfo) => call<RtSummary>(a, "/books/summary"),
 };
 
+/** GET /books/vat (services/runtime/app/routes_vat.py): the 9 boxes computed by code from posted events. */
+export interface RtVatBox {
+  box: number;
+  label: string;
+  amount: string; // pounds, 2 dp for boxes 1-5, whole for 6-9
+  entries: number;
+}
+export interface RtVatView {
+  period_key: string;
+  start: string;
+  end: string;
+  boxes: RtVatBox[];
+  event_ids: string[];
+  warnings: string[];
+  events_in_period: number;
+  hmrc_body: Record<string, unknown>;
+}
+
+let liveVat: { account: string; promise: Promise<RtVatView> } | null = null;
+
+/** The live return, fetched once per page per account (LiveVat and ConnectHmrc both read it). */
+export function fetchLiveVat(account: AccountInfo): Promise<RtVatView> {
+  if (!liveVat || liveVat.account !== account.homeAccountId) {
+    const promise = call<RtVatView>(account, "/books/vat");
+    promise.catch(() => {
+      if (liveVat?.promise === promise) liveVat = null; // let a later mount retry
+    });
+    liveVat = { account: account.homeAccountId, promise };
+  }
+  return liveVat.promise;
+}
+
 export const gbp = (n: number) => `£${n.toFixed(2)}`;
 export const ukDate = (iso: string) => {
   const d = new Date(iso);
