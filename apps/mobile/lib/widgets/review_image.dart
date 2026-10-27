@@ -60,6 +60,23 @@ class _ReceiptPaper extends StatelessWidget {
   }
 }
 
+/// The drawn receipt scaled to exactly [width]×[height], so it never
+/// overflows a small thumbnail or a fitted crop.
+Widget _scaledPaper(double width, double height) {
+  return SizedBox(
+    width: width,
+    height: height,
+    child: const FittedBox(
+      fit: BoxFit.fill,
+      child: SizedBox(
+        width: 300,
+        height: 400,
+        child: _ReceiptPaper(),
+      ),
+    ),
+  );
+}
+
 bool _isPdf(Uint8List bytes) {
   return bytes.length > 4 &&
       bytes[0] == 0x25 &&
@@ -105,7 +122,7 @@ class ProposalThumbnail extends StatelessWidget {
                 Image.file(
                   File(path),
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => const _ReceiptPaper(),
+                  errorBuilder: (_, _, _) => _scaledPaper(72, 92),
                 )
               else if (isPdf)
                 const Center(
@@ -115,7 +132,7 @@ class ProposalThumbnail extends StatelessWidget {
                   ),
                 )
               else
-                const _ReceiptPaper(),
+                _scaledPaper(72, 92),
               if (proposal.cropMethod != 'none')
                 const Positioned(
                   left: 4,
@@ -363,8 +380,7 @@ class _PaperDoc extends _Doc {
   @override
   Future<Size> get naturalSize async => _ReceiptPaper.logicalSize;
   @override
-  Widget paint(double width, double height) =>
-      SizedBox(width: width, height: height, child: const _ReceiptPaper());
+  Widget paint(double width, double height) => _scaledPaper(width, height);
 }
 
 class _FileDoc extends _Doc {
@@ -374,7 +390,7 @@ class _FileDoc extends _Doc {
   Future<Size> get naturalSize async {
     try {
       final bytes = await File(path).readAsBytes();
-      return _rasterSize(MemoryImage(bytes));
+      return await _rasterSize(MemoryImage(bytes));
     } catch (_) {
       return _ReceiptPaper.logicalSize;
     }
@@ -385,7 +401,7 @@ class _FileDoc extends _Doc {
         width: width,
         height: height,
         fit: BoxFit.fill,
-        errorBuilder: (_, __, ___) => const _ReceiptPaper(),
+        errorBuilder: (_, _, _) => _scaledPaper(width, height),
       );
 }
 
@@ -400,7 +416,7 @@ class _MemoryDoc extends _Doc {
         width: width,
         height: height,
         fit: BoxFit.fill,
-        errorBuilder: (_, __, ___) => const _ReceiptPaper(),
+        errorBuilder: (_, _, _) => _scaledPaper(width, height),
       );
 }
 
@@ -416,7 +432,7 @@ Future<Size> _rasterSize(ImageProvider provider) {
         info.image.height.toDouble(),
       ));
     },
-    onError: (Object _, StackTrace? __) {
+    onError: (Object _, StackTrace? _) {
       stream.removeListener(listener);
       completer.complete(_ReceiptPaper.logicalSize);
     },

@@ -284,6 +284,7 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
             _label('VAT code'),
             DropdownButtonFormField<String>(
               initialValue: _vatCode,
+              isExpanded: true,
               items: [
                 for (final code in kVatCodes)
                   DropdownMenuItem(
@@ -298,6 +299,7 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
             _label('Category'),
             DropdownButtonFormField<String>(
               initialValue: _category,
+              isExpanded: true,
               items: [
                 for (final category in kCategories)
                   DropdownMenuItem(
