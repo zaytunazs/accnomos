@@ -176,6 +176,55 @@ async function call<T>(account: AccountInfo, path: string, init: RequestInit = {
   return (res.status === 204 ? undefined : await res.json()) as T;
 }
 
+/** The first event of a streamed answer: what code shows before the model has written a word. */
+export type RtAskPreview = Pick<RtAskAnswer, "key_numbers" | "citations" | "suggested_actions" | "model" | "period">;
+
+/**
+ * POST /books/ask?stream=1 (server-sent events): `onStart` gets code's key numbers and citations at once,
+ * `onToken` the explanation as the model writes it (unchecked), and the promise resolves to the checked answer,
+ * the same object the plain call returns. Throws if the stream fails or ends early, so the caller can fall
+ * back to `runtime.ask`.
+ */
+export async function askStream(
+  account: AccountInfo,
+  question: string,
+  period: RtAskPeriod | null,
+  history: RtAskTurn[],
+  on: { onStart?: (p: RtAskPreview) => void; onToken?: (text: string) => void },
+): Promise<RtAskAnswer> {
+  const query = [vatQuery(), "stream=1"].filter(Boolean).join("&");
+  const headers = { ...(await runtimeHeaders(account)), "Content-Type": "application/json", Accept: "text/event-stream" };
+  const res = await fetch(`${RUNTIME_URL}/books/ask?${query}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ question, period: period ?? null, history: history.slice(-6) }),
+  });
+  if (!res.ok) throw new Error(await errorDetail(res, "POST /books/ask?stream=1"));
+  if (!res.body || !res.headers.get("content-type")?.startsWith("text/event-stream")) throw new Error("No event stream");
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) throw new Error("The answer stream ended before the checked answer");
+    buffer += value;
+    let cut: number;
+    while ((cut = buffer.indexOf("\n\n")) >= 0) {
+      const block = buffer.slice(0, cut);
+      buffer = buffer.slice(cut + 2);
+      const event = /^event: (.*)$/m.exec(block)?.[1];
+      const data = /^data: (.*)$/m.exec(block)?.[1];
+      if (!event || data === undefined) continue;
+      const payload: unknown = JSON.parse(data);
+      if (event === "start") on.onStart?.(payload as RtAskPreview);
+      else if (event === "token") on.onToken?.((payload as { text: string }).text);
+      else if (event === "answer") {
+        void reader.cancel();
+        return payload as RtAskAnswer;
+      }
+    }
+  }
+}
+
 export interface RtAiTest {
   ok: boolean;
   mode: string;
