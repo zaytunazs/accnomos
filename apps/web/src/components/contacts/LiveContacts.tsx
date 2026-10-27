@@ -1031,7 +1031,26 @@ export default function LiveContacts() {
     setSelected(id);
     setEditing(false);
     setTab("contacts");
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("id", id);
+      window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+    } catch {
+      /* the address bar is unavailable — the selection still shows */
+    }
   };
+  // A deep link from Reports (?id=): open that contact's statement on arrival.
+  useEffect(() => {
+    try {
+      const id = new URLSearchParams(window.location.search).get("id");
+      if (id) {
+        setSelected(id);
+        setTab("contacts");
+      }
+    } catch {
+      /* no address bar — nothing to open */
+    }
+  }, []);
   const edit = (id: string) => {
     setSelected(id);
     setEditing(true);
