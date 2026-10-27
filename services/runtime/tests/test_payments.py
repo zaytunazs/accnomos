@@ -137,6 +137,20 @@ async def test_a_part_payment_posts_to_the_bank_and_leaves_the_balance_owed(book
     assert cb.aged(contacts, ledger, date(2026, 10, 27)).debtors.rows == []
 
 
+async def test_mark_paid_on_a_part_paid_invoice_records_only_the_balance(books: Books, sender: FakeMailSender):
+    """A stale full total on Mark paid does not overpay: only the £305.00 balance is recorded, and no credit."""
+    inv = await _sent(books, sender)  # £405.00
+    await inv_.mark_paid(books, inv.number, USER, amount_pence=10000, paid_on=date(2026, 9, 20))
+    rest = await inv_.mark_paid(books, inv.number, USER, amount_pence=40500, paid_on=date(2026, 10, 1))
+    assert (rest.status, rest.paid_pence, rest.balance_pence, rest.payment_status) == ("paid", 40500, 0, "paid")
+    m = await _money(books, inv.number)
+    assert [(p.amount_pence, p.applied_pence) for p in m.payments] == [(10000, 10000), (30500, 30500)]
+    assert m.overpaid_pence == 0
+    assert (await pay_.load_ledger(books)).settlement().credits == []
+    banked = [e for e in await books.list_events() if e.kind == "bank"]
+    assert sum(ln.debit for e in banked for ln in e.lines if ln.account == "1200 Bank") == 40500
+
+
 async def test_removing_a_payment_reverses_it_and_the_invoice_is_owed_again(books: Books, sender: FakeMailSender):
     inv = await _sent(books, sender)
     await inv_.mark_paid(books, inv.number, USER)

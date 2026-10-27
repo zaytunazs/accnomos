@@ -79,7 +79,12 @@ def _confirmed(confirm: bool) -> None:
 
 async def _render(books: Books, inv: Invoice) -> bytes:
     profile = await inv_.load_profile(books)
-    return render_invoice(inv, profile, await inv_.load_logo(books, profile))
+    return render_invoice(
+        inv,
+        profile,
+        await inv_.load_logo(books, profile),
+        paid_on=inv.paid_at if inv.status == "paid" else None,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -221,10 +226,12 @@ class PdfResult(BaseModel):
 async def pdf(number: str, books: Books = Depends(get_books)) -> PdfResult:
     """Render the PDF, save it as 03 Sales/invoices/<number>.pdf and return it for the preview.
 
-    Once sent, the PDF that was emailed is returned as it was, so the preview always shows what the customer got.
+    Once sent, the PDF that was emailed is returned as it was, so the preview always shows what the customer got —
+    except when the invoice is paid, when it is rendered again with a PAID stamp and the date (the emailed copy in
+    03 Sales/invoices/sent/ stays as it was).
     """
     inv = await _get(books, number)
-    data = await inv_.sent_pdf(books, number) if inv.status != "draft" else None
+    data = await inv_.sent_pdf(books, number) if inv.status not in ("draft", "paid") else None
     path = f"{inv_.SENT}/{number}.pdf"
     if data is None:
         data, path = await _render(books, inv), f"{inv_.INVOICES}/{number}.pdf"

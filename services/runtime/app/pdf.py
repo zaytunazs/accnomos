@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import io
 import logging
+from datetime import date
 
 from fpdf import FPDF
 from fpdf.enums import XPos, YPos
@@ -76,10 +77,16 @@ def _footer_text(profile: InvoiceProfile) -> str:
 
 
 def render_invoice(
-    inv: Invoice, profile: InvoiceProfile, logo: bytes | None = None, *, credit_for: str | None = None
+    inv: Invoice,
+    profile: InvoiceProfile,
+    logo: bytes | None = None,
+    *,
+    credit_for: str | None = None,
+    paid_on: date | None = None,
 ) -> bytes:
     """The invoice; with `credit_for` (the invoice number), the same layout as a credit note against it
-    (app/credit_notes.CreditNote.as_invoice): no due date or payment terms, "Total credit"."""
+    (app/credit_notes.CreditNote.as_invoice): no due date or payment terms, "Total credit". With `paid_on`,
+    a PAID stamp with the date under the title."""
     credit = credit_for is not None
     pdf = _InvoicePdf(_footer_text(profile))
     pdf.set_title(text(f"{'Credit note' if credit else 'Invoice'} {inv.number}"))
@@ -135,6 +142,12 @@ def render_invoice(
         pdf.set_text_color(*INK)
         pdf.set_font("Helvetica", "B", 9.5)
         pdf.cell(RIGHT - 155, 5.5, text(value), align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        pdf.set_font("Helvetica", "", 9.5)
+    if paid_on and not credit:
+        pdf.set_x(120)
+        pdf.set_text_color(*TEAL)
+        pdf.set_font("Helvetica", "B", 12)
+        pdf.cell(RIGHT - 120, 7, text(f"PAID {uk_date(paid_on)}"), align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
         pdf.set_font("Helvetica", "", 9.5)
 
     # --- Customer block ----------------------------------------------------

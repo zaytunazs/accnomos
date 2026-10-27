@@ -764,6 +764,8 @@ async def mark_paid(
         amount_pence = amount_pence or abs(line.amount_pence)
         payment_ref = payment_ref or line.reference or line.description
     amount = amount_pence or owed
+    if bank_line_id is None and amount > owed and owed < inv.total_pence:
+        amount = owed  # part-paid: Mark paid finishes the balance; a stale total never overpays
     body = payments.PaymentIn(
         side="sale",
         date=paid_on,
