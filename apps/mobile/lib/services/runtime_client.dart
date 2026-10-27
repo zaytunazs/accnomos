@@ -408,6 +408,17 @@ class RuntimeClient {
       return (body['summary_md'] ?? 'Rejected. Nothing was done.').toString();
     } on TimeoutException {
       throw RuntimeException('$what: the reader took too long.');
+    } on SocketException {
+      throw RuntimeException(
+          'Could not reach the reader at ${settings.runtimeUrl}. '
+          'Is it running?');
+    } on RuntimeException {
+      rethrow;
+    } catch (e) {
+      throw RuntimeException('$what. $e');
+    }
+  }
+
   // ------------------------------------------------------------------ //
   // The rest of the runtime's routes, one thin call each. Same paths and
   // bodies as `runtime` in apps/web/src/lib/runtime.ts. Money is integer
@@ -771,7 +782,6 @@ class RuntimeClient {
     } on RuntimeException {
       rethrow;
     } catch (e) {
-      throw RuntimeException('$what. $e');
       throw RuntimeException('Could not $what. $e');
     }
   }
