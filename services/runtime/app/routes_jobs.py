@@ -126,9 +126,10 @@ async def mark_invoiced(
 ) -> list[TimesheetEntry]:
     """Record the invoice the entries were billed on. Call only once the invoice has been sent.
 
-    TODO(invoicing): sales invoicing (routes_invoices.py) is not on main yet. When it lands, its send step
-    should call jobs.mark_invoiced(books, invoice.source_entry_ids, invoice.id) right after the invoice
-    becomes `sent`, and the web should stop calling this route itself.
+    TODO(invoicing): sales invoicing (routes_invoices.py) is on main, but invoices carry no link to timesheet
+    entries and the send step does not call jobs.mark_invoiced, so the user marks hours invoiced here by
+    typing the invoice number. Once an invoice records its entry ids, its send step should call
+    jobs.mark_invoiced right after the invoice becomes `sent`, and the web should stop calling this route.
     """
     try:
         await jobs.get_job(books, _id(job_id))
