@@ -21,13 +21,24 @@ from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
 from datetime import date
+from typing import Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from accnomos_ledger.bank import BankCsvError, BankLine, BankLineStatus, reconciled_to
 from accnomos_ledger.matching import Match, settlement_pence
+from app.ai.config import ai_config_from_request
 from app.bank_actions import UnmatchedLine, create_expense_proposal, unmatched_lines
+from app.bank_reconcile import (
+    AiSuggestion,
+    ReconcileRow,
+    approve_line,
+    reconcile_lines,
+    rule_draft_from_line,
+    suggest_ai,
+)
+from app.bank_rules import BankRule, BankRuleAction, BankRuleMatch, load_bank_rules, save_bank_rules
 from app.books import BankImport, BankMatchError, BankStatement, Books
 from app.routes_books import get_books, require_user
 from app.schemas import Proposal
@@ -164,6 +175,180 @@ async def expense_proposal(
     user: str = Depends(require_user),
 ) -> Proposal:
     return await _line_action(lambda: create_expense_proposal(books, line_id, user))
+
+
+class BankRuleIn(StrictBody):
+    """Create or replace a bank rule: "when the description contains X, code it to Y"."""
+
+    name: str = Field(default="", max_length=120)
+    match: BankRuleMatch
+    amount_min_pence: int | None = None
+    amount_max_pence: int | None = None
+    direction: Literal["in", "out", "either"] = "either"
+    action: BankRuleAction
+
+
+async def _check_rule_body(books: Books, body: BankRuleIn) -> None:
+    """400 when the amount range, VAT code or job does not make sense."""
+    if (
+        body.amount_min_pence is not None
+        and body.amount_max_pence is not None
+        and body.amount_min_pence > body.amount_max_pence
+    ):
+        raise HTTPException(status_code=400, detail="The minimum amount is above the maximum amount")
+    vat = (body.action.vat_code or "").strip().upper() or None
+    if vat not in (None, "S", "R", "Z", "E", "O", "N"):
+        raise HTTPException(status_code=400, detail=f"Unknown VAT code {body.action.vat_code!r}")
+    if body.action.job_id:
+        from app.jobs import load_jobs
+
+        try:
+            known = await load_jobs(books)
+        except ValueError:
+            known = []
+        if not any(j.id == body.action.job_id for j in known):
+            raise HTTPException(status_code=400, detail=f"No such job {body.action.job_id!r}")
+
+
+@router.get("/rules", response_model=list[BankRule])
+async def bank_rules(books: Books = Depends(get_books)) -> list[BankRule]:
+    """Bank rules in evaluation order (first match wins)."""
+    return await load_bank_rules(books)
+
+
+@router.post("/rules", response_model=BankRule, status_code=201)
+async def create_bank_rule(
+    body: BankRuleIn, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> BankRule:
+    await _check_rule_body(books, body)
+    rules = await load_bank_rules(books)
+    rule = BankRule(**body.model_dump(), created_by=user)
+    rules.append(rule)
+    await save_bank_rules(books, rules)
+    await books.audit(f"user:{user}", "bank_rule_created", {"rule": rule.id})
+    return rule
+
+
+@router.put("/rules/{rule_id}", response_model=BankRule)
+async def update_bank_rule(
+    rule_id: str, body: BankRuleIn, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> BankRule:
+    await _check_rule_body(books, body)
+    rules = await load_bank_rules(books)
+    for i, r in enumerate(rules):
+        if r.id == rule_id:
+            rules[i] = BankRule(
+                **body.model_dump(), id=r.id, created_at=r.created_at, created_by=r.created_by or user
+            )
+            await save_bank_rules(books, rules)
+            await books.audit(f"user:{user}", "bank_rule_updated", {"rule": rule_id})
+            return rules[i]
+    raise HTTPException(status_code=404, detail="No such bank rule")
+
+
+@router.delete("/rules/{rule_id}", response_model=BankRule)
+async def delete_bank_rule(
+    rule_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> BankRule:
+    rules = await load_bank_rules(books)
+    gone = next((r for r in rules if r.id == rule_id), None)
+    if gone is None:
+        raise HTTPException(status_code=404, detail="No such bank rule")
+    await save_bank_rules(books, [r for r in rules if r.id != rule_id])
+    await books.audit(f"user:{user}", "bank_rule_deleted", {"rule": rule_id})
+    return gone
+
+
+class ReorderBody(StrictBody):
+    ids: list[str]
+
+
+@router.post("/rules/reorder", response_model=list[BankRule])
+async def reorder_bank_rules(
+    body: ReorderBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> list[BankRule]:
+    """New evaluation order: every rule id exactly once, first match wins."""
+    rules = await load_bank_rules(books)
+    if sorted(body.ids) != sorted(r.id for r in rules):
+        raise HTTPException(status_code=400, detail="Reorder with every rule id exactly once")
+    by_id = {r.id: r for r in rules}
+    ordered = [by_id[i] for i in body.ids]
+    await save_bank_rules(books, ordered)
+    await books.audit(f"user:{user}", "bank_rules_reordered", {"ids": body.ids})
+    return ordered
+
+
+class ApproveBody(StrictBody):
+    kind: Literal["exact", "rule", "ai"]
+    ai: AiSuggestion | None = None  # the AI suggestion shown, for kind "ai" (they expire server-side)
+
+
+class ApproveResult(BaseModel):
+    line: BankLine
+    proposal_id: str | None
+    event_id: str | None
+
+
+@router.get("/reconcile", response_model=list[ReconcileRow])
+async def reconcile(
+    request: Request,
+    ai: bool = False,
+    books: Books = Depends(get_books),
+) -> list[ReconcileRow]:
+    """One row per open line with an exact, rule or AI suggestion. `?ai=1` adds a model call per line."""
+    cfg = ai_config_from_request(request) if ai else None
+    return await reconcile_lines(books, await books.list_bank_lines(), with_ai=ai, cfg=cfg)
+
+
+@router.get("/lines/{line_id}/ai-suggestion", response_model=AiSuggestion | None)
+async def ai_suggestion(
+    line_id: str, request: Request, books: Books = Depends(get_books)
+) -> AiSuggestion | None:
+    """Ask the user's own model to code one line; null when it cannot. Labelled "suggested by AI"."""
+    from app.journal import CATEGORY_ACCOUNTS, SUNDRY
+
+    try:
+        line = await books.find_bank_line(line_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="No such bank line") from exc
+    if line.resolved:
+        raise HTTPException(status_code=409, detail="This bank line is already settled; undo that first")
+    try:
+        cfg = ai_config_from_request(request)
+    except HTTPException:
+        return None
+    return await suggest_ai(line, cfg, sorted(set(CATEGORY_ACCOUNTS.values()) | {SUNDRY}))
+
+
+@router.get("/lines/{line_id}/rule-draft", response_model=BankRule)
+async def rule_draft(
+    line_id: str,
+    account: str | None = None,
+    vat_code: str | None = None,
+    contact: str | None = None,
+    job_id: str | None = None,
+    books: Books = Depends(get_books),
+) -> BankRule:
+    """Pre-fill "Create rule from this" for an approved line."""
+    try:
+        line = await books.find_bank_line(line_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="No such bank line") from exc
+    return rule_draft_from_line(line, account=account, vat_code=vat_code, contact=contact, job_id=job_id)
+
+
+@router.post("/lines/{line_id}/approve", response_model=ApproveResult)
+async def reconcile_approve(
+    line_id: str, body: ApproveBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> ApproveResult:
+    """Approve one suggestion: exact records the match; rule/AI posts through Review approval."""
+    try:
+        out = await approve_line(books, line_id, body.kind, user, body.ai)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="No such bank line") from exc
+    except BankMatchError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    return ApproveResult(**out)
 
 
 @router.get("/summary", response_model=BankSummary)
