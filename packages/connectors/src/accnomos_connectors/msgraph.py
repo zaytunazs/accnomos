@@ -13,6 +13,7 @@ instance, and an instance lives for one request, so the cache never goes stale f
 from __future__ import annotations
 
 import asyncio
+import base64
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -26,6 +27,8 @@ from accnomos_connectors.base import (
     MailAttachment,
     MailMessage,
     MailProvider,
+    MailSender,
+    OutgoingMail,
     StorageProvider,
 )
 
@@ -356,3 +359,27 @@ class GraphMailProvider(_GraphHttp, MailProvider):
     async def download_attachment(self, message_id: str, attachment_id: str) -> bytes:
         url = self._message_url(message_id, f"/attachments/{quote(attachment_id, safe='')}/$value")
         return (await self._request("GET", url, follow_redirects=True)).content
+
+
+class GraphMailSender(_GraphHttp, MailSender):
+    """`POST /me/sendMail` (`Mail.Send`), saved to the user's Sent Items. Attachments go inline as base64,
+    which Graph accepts up to 3 MB per message; an invoice PDF is far smaller."""
+
+    MAX_INLINE = 3 * 1024 * 1024
+
+    async def send(self, mail: OutgoingMail) -> None:
+        if sum(len(a.data) for a in mail.attachments) > self.MAX_INLINE:
+            raise ValueError("Attachments are over 3 MB, too big to send in one go")
+        message = {
+            "subject": mail.subject,
+            "body": {"contentType": "Text", "content": mail.body_text},
+            "toRecipients": [{"emailAddress": {"address": mail.to}}],
+            "attachments": [
+                {
+                    "@odata.type": "#microsoft.graph.fileAttachment", "name": a.name, "contentType": a.content_type,
+                    "contentBytes": base64.b64encode(a.data).decode(),
+                }
+                for a in mail.attachments
+            ],
+        }
+        await self._request("POST", f"{GRAPH}/me/sendMail", json={"message": message, "saveToSentItems": True})

@@ -11,6 +11,8 @@ from accnomos_connectors.base import (
     MailAttachment,
     MailMessage,
     MailProvider,
+    MailSender,
+    OutgoingMail,
     StorageProvider,
 )
 
@@ -46,6 +48,19 @@ class FakeMailProvider(MailProvider):
             if a.id == attachment_id:
                 return data
         raise FileNotFoundError(f"{message_id}/{attachment_id}")
+
+
+class FakeMailSender(MailSender):
+    """Records every message instead of sending it; set `fail` to make the next send raise."""
+
+    def __init__(self) -> None:
+        self.sent: list[OutgoingMail] = []
+        self.fail: Exception | None = None
+
+    async def send(self, mail: OutgoingMail) -> None:
+        if self.fail:
+            raise self.fail
+        self.sent.append(mail)
 
 
 class FakeStorageProvider(StorageProvider):
