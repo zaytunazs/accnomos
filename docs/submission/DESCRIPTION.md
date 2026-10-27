@@ -1,7 +1,7 @@
 # Project description (draft for the Meta Global AI Developer Hackathon, Indie track)
 
 Every claim below is taken from `README.md` ("What works today"), `docs/HONESTY.md` and `docs/META_MODELS.md` as at 27 Oct 2026.
-The 150-word text is 149 words and the 400-word text 395 (`wc -w` on the text between the rules). The "ran live" runs are the maintainers' own with no committed log (`docs/HONESTY.md`), so say "our record", not "verified". The 88 % figure is all fields right on 200 synthetic documents (`evals/REPORT_glimmer_messy_200_2026-10-27.md`); the same first 60 documents score 73 % in their own report and 82 % in the 200-document one, because the scoring changed (a `side` field was added and the expected status made explicit). Quote the 200-document run, not a mix. Owner: Zohaib Sharif, Zaytuna Business Services Ltd (solo).
+The 150-word text is 147 words and the 400-word text exactly 400 (whitespace-separated words between the rules; the form's counter may differ, so trim a sentence if it objects). The "ran live" runs are the maintainers' own with no committed log (`docs/HONESTY.md`), so say "our record", not "verified". The 88 % figure is all fields right on 200 synthetic documents (`evals/REPORT_glimmer_messy_200_2026-10-27.md`); the same first 60 documents score 73 % in their own report and 82 % in the 200-document one, because the scoring changed (a `side` field was added and the expected status made explicit). Quote the 200-document run, not a mix. Owner: Zohaib Sharif, Zaytuna Business Services Ltd (solo).
 
 ## Tagline
 
@@ -12,7 +12,7 @@ The 150-word text is 149 words and the 400-word text 395 (`wc -w` on the text be
 ## 150-word version
 
 ---
-Accnomos is bookkeeping and MTD VAT for UK small businesses. Upload a receipt and a Meta model (Muse Glimmer 30B on our own hardware, or Muse Spark with your key) reads it into strict JSON. Code then checks the arithmetic, VAT number and period, and a second model reads the same image independently; code compares six fields. You approve, and an immutable ledger event is written. The nine VAT boxes are calculated by code, never by a model, and a sandbox HMRC submission is built into the web app.
+Accnomos is bookkeeping and MTD VAT for UK small businesses. Upload a receipt and a Meta model (Muse Glimmer 30B on our own hardware, or Muse Spark with your key) reads it into strict JSON. Code then checks the arithmetic, VAT number and period, and code compares six fields against a second, differently prompted reading. You approve, and an immutable ledger event is written. The nine VAT boxes are calculated by code, never by a model, and a sandbox HMRC submission is built into the web app.
 
 There is no Accnomos database: the books are files in the user's own OneDrive, and our servers keep nothing.
 

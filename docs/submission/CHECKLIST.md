@@ -1,6 +1,6 @@
 # Owner checklist: what only you can do before submitting
 
-Deadline: **Wed 4 Nov 2026, 21:00 ET** (02:00 GMT on Thu 5 Nov; the UK clocks went back on 25 Oct, so ET is five hours behind). Do the items in order: the video depends on 1–4, and the repo check should be last before you flip anything public.
+Deadline: **Wed 4 Nov 2026, 21:00 ET** (02:00 GMT on Thu 5 Nov; UK clocks went back on 25 Oct and US clocks on 1 Nov, so ET is EST, five hours behind). Do the items in order: the video depends on 1–4, and the repo check should be last before you flip anything public.
 `docs/HONESTY.md` says what the maintainers' status is for several items below and that **nothing in the repo records it**, so each item says where to look.
 Tick boxes are yours; nothing here was checked against a live console.
 
@@ -36,8 +36,8 @@ Tick boxes are yours; nothing here was checked against a live console.
 
 ## 5. Docs hygiene (judges will read these)
 
-- [ ] **Remove the stale tables in `README.md`** after the main feature table (from the second "27 Oct | Books.xlsx" row onward through the "Status words" table): they contradict the top table (Sales invoicing "not started", 11 versus 12 sheets, 80 % versus 88 %, "runtime 271 tests"). The files-cited test (`services/runtime/tests/test_docs.py`) checks the README, so run it after editing.
-- [ ] **Test counts:** run `uv run pytest -q` and make README, HONESTY.md and DEMO.md agree (currently runtime 607 versus 638, relay 100 versus 102; e2e 23 versus 44).
+- [x] ~~Remove the stale tables in `README.md`~~: done in the review pass (`REVIEW.md`). If you edit the README again, run `services/runtime/tests/test_docs.py`, which checks the files it cites.
+- [ ] **Test counts:** README, HONESTY.md and DEMO.md now agree with a run on 27 Oct (runtime 642 + 1 skipped, relay 102, ledger 33, connectors 34, evals 153; e2e 44 counted, not run). Re-run `uv run pytest -q` and `pnpm run e2e` if anything merges after this branch, and update all three.
 - [ ] **Fill in the repo URL** on the video's end card (`VIDEO_SCRIPT.md`).
 - [ ] Read `docs/submission/DESCRIPTION.md`; paste the 150- or 400-word text, whichever the form takes. Re-count words in the form's own counter.
 
@@ -51,7 +51,7 @@ Tick boxes are yours; nothing here was checked against a live console.
 ## 7. Make the repo public: secrets check (last)
 
 Run from the repo root on a **fresh clone** as well as this checkout. Where: the terminal, then GitHub → *Settings* → *General* → *Danger Zone* → *Change visibility*.
-A working-tree scan done while drafting (this checkout, 27 Oct) found no key-shaped strings, no committed `.env`, keystore or HMRC test-user file; the **history** was not scanned. Do that yourself:
+The review pass (27 Oct, this checkout, all local refs) ran checks 1–3 below. The only hits were `.env.example` (check 1), the fake token in `test_hardening.py:10` (check 2), and in check 3 a parser line in `86d7073` (`if line.startswith("MODEL_API_KEY=")`) and a `HMRC_CLIENT_SECRET=…` placeholder in `50424fb`. None is a real secret. Check 4 (your real values) only you can do. Re-run all of them on a fresh clone of the remote:
 
 ```bash
 # 1. Forbidden files, ever committed (working tree, then all history)
@@ -67,6 +67,7 @@ git grep -n -i -E '(client_secret|api[_-]?key|secret|password|token)\s*[:=]\s*["
 # 3. The same patterns across all history (slow; read every hit)
 git log --all -p -G'AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{30,}|sk-[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY' --oneline | head -100
 git log --all -p -G'(HMRC_CLIENT_SECRET|MODEL_API_KEY|META_API_KEY|BASETEN_API_KEY)=[^[:space:]]+' --oneline | head -100
+#    expected hits: 86d7073 (a parser line) and 50424fb (a "…" placeholder); nothing else
 
 # 4. Your own values: grep for them directly (paste the real strings, do not save this command)
 git grep -n -F -e '<your HMRC client secret>' -e '<your Meta key>' -e '<your Baseten key>'
@@ -78,7 +79,7 @@ git grep -n '192\.168\.1\.176'                      # your LAN address is the de
 ```
 
 - [ ] If any history hit is real: **rotate that credential first**, then clean history (a fresh public repo is simpler than rewriting). Rotation: HMRC Developer Hub (client secret), Meta developer console (model key), Baseten settings (API key), Entra (no secret: public client).
-- [ ] Check `git remote -v` and `git status`: `TASK_BRIEF.md` files are committed under `docs/reviews/*/` on purpose; the root `TASK_BRIEF.md` is untracked on this branch.
+- [ ] Check `git remote -v` and `git status`: `TASK_BRIEF.md` files are committed under `docs/reviews/*/` on purpose. This branch commits `TASK_BRIEF.md` and `REVIEW.md` at the repo root; move them to `docs/reviews/submission-pack/` when merging, as with the other branches.
 - [ ] Check the `LICENSE` (MIT) and that `README.md`'s first screen says what is and is not working.
 - [ ] Merge `claude/submission-pack` to `main` only after you have read it; **nothing has been pushed**.
 - [ ] After going public, open the repo in a private window and click `README.md` → `docs/HONESTY.md`.

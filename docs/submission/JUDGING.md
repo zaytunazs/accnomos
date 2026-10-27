@@ -17,8 +17,8 @@ Status words follow `README.md`: *run live* = maintainers' own run, no log commi
 | Breadth: bank CSV matching, sales invoicing with PDF and Outlook send, jobs, mileage, pay-run estimates, Outlook intake and triage, day planner, PWA and Android app | README feature table, matching `services/runtime/tests/test_*.py` | Tested on fakes |
 | Process: 24 reviewed branches, each with a second-agent `REVIEW.md` listing what was fixed and what remains | `docs/reviews/*/REVIEW.md` (e.g. `loose-ends-1` found and fixed a double-billing bug) | Documented |
 
-Test counts differ across the docs (runtime 607 in `README.md`, 638 passed and 1 skipped in `docs/reviews/loose-ends-1/REVIEW.md`; relay 100 versus 102). A static count
-of `def test_` in `services/runtime/tests` gives 439 functions, because many tests are parametrised. **Quote none of these numbers until you have run `uv run pytest -q` yourself.**
+Test counts, run on this branch on 27 Oct 2026 (see `REVIEW.md`): runtime 642 passed and 1 skipped, relay 102, ledger 33, connectors 34, evals 153; `README.md` and
+`docs/HONESTY.md` now quote the same. Playwright: 44 tests counted (20 desktop, 24 phone), not re-run. Re-run before quoting if anything merges after this.
 
 ## 2. Use of Meta models
 
@@ -53,7 +53,7 @@ No user research, usage numbers or time-saved measurements exist in the repo. **
 | Seeded demo: `tools/seed_demo.py` fills a throwaway account with six months of fictional books | `tools/seed_demo.md`, `tests/test_seed_demo.py`; **not yet run against a real OneDrive** |
 | Not built: production HMRC filing, Google Drive, credit notes, RTI, `muse-wonder` multi-step planning | `README.md`, `docs/REMAINING.md` |
 
-The e2e test count is stated as 23 in one README row and 44 in another; neither was re-run in this pass.
+The README now states 44 e2e tests (counted from the specs and the two Playwright projects); the suite was not re-run in this pass.
 
 ## 5. Honesty
 
@@ -65,9 +65,8 @@ The e2e test count is stated as 23 in one README row and 44 in another; neither 
 | Real versus faked is spelled out: only sign-in, folder setup and read → approve → ledger → VAT boxes ran live, by the maintainers, with no committed log | `docs/HONESTY.md` ("What is real, and what is not") |
 | AI-assisted authorship disclosed: Claude, Muse Code and a local Qwen wrote code; every merge was reviewed | `README.md` (Honesty notes), `docs/reviews/` |
 
-**Housekeeping before judges read the README:** `README.md` still contains stale leftover tables after the main feature table (a second *Books.xlsx* row with
-fewer sheets, "status 80 %" next to "88 %", a table where *Sales invoicing* is "not started", "runtime 271 tests"). They contradict the top table. Delete them
-or judges will find the contradiction (see `CHECKLIST.md`).
+**README housekeeping:** the stale second status table (Sales invoicing "not started", 11 sheets, "runtime 271 tests") was removed in the review pass, the main
+table now quotes the 200-document eval, and the orphaned changelog rows were moved back into the changelog table.
 
 ## How to run it in 10 minutes (test mode, no accounts)
 
@@ -106,7 +105,7 @@ Open `http://127.0.0.1:3100`, press **Sign in** (a fake account; nothing leaves 
 3. **Approve (post to books)**, then **VAT return**. Test "today" is pinned to 27 Oct 2026 and the gold receipts are dated Jul–Sep, so pick **Jul–Sep 2026** in the picker to see the boxes move.
 4. **Ask**, **Invoices** (create → preview → send: the fake sender only records), **Bank** (import `evals/gold/bank/barclays.csv`), **Jobs**, **Vehicles**, **Payroll**.
 
-I have **not** executed A or B in this pass (`uv run` needed approval that was not available); they are checked against `docs/DEV.md` and the config files by reading.
-Run A once yourself before submitting, and update the line above.
+In the review pass the `pytest` half of A was run (with the shared venv's `pytest` rather than `uv run`, which needed approval); everything passed. The Playwright
+half of A and all of B were **not** executed; they are checked against `docs/DEV.md` and the config files by reading. Run A once yourself before submitting.
 
 **Not reproducible without accounts:** real Microsoft sign-in, real Glimmer or Spark output, HMRC sandbox, Outlook, the Android app. For a real-model run use `docs/DEV.md` (local Ollama with `muse-glimmer:30b`, or your own Meta key) and `evals/` (`python -m harness.run_extraction --mode local --messy`).

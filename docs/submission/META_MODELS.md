@@ -38,7 +38,7 @@ Not used: `muse-wonder-1.0` is not called anywhere.
 - **Why:** no GPU needed; the user brings their own key.
 - **Verified:** `services/runtime/tests` against stubbed HTTP. **Not run in our evals.** No accuracy or latency figure exists for it.
 - **Cost:** not measured; the repo points to dev.meta.ai. In key mode with no `X-Meta-Api-Key` header the runtime falls back to the server's `META_API_KEY`
-  (a known, documented gap: typed and voice Ask would run on the operator's key).
+  (`app/ai/config.py`; a known, documented gap: typed and voice Ask would run on the operator's key). Only *Test connection* (`/ai/test`) insists on the header.
 
 ### Muse Spark Open (Baseten, optional verifier)
 

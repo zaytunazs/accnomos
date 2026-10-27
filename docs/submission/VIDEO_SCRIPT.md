@@ -54,7 +54,7 @@ Do not show: tokens or keys in headers or DevTools, the sandbox test-user passwo
 | Time | Shot | Voice-over | Caption |
 |---|---|---|---|
 | 0:00–0:04 | Home, web 1280 | "Accnomos: bookkeeping and VAT for UK small businesses, with the books in your own OneDrive." | `AI proposes · you approve · code calculates` |
-| 0:04–0:12 | Review: scan (sped up), proposal card with the verifier line | "A Meta model reads the receipt. Code checks it. A second model reads it again, and code compares six fields." | `Muse Glimmer 30B · sped up` |
+| 0:04–0:12 | Review: scan (sped up), proposal card with the verifier line | "A Meta model reads the receipt. Code checks it. A second reading with a different prompt, and code compares six fields." | `Muse Glimmer 30B · sped up` |
 | 0:12–0:17 | Approve click | "You approve. Nothing posts before that." | `Approve → ledger event` |
 | 0:17–0:23 | VAT return: Box 4 £8.65, Box 7 £43 | "The nine VAT boxes are calculated by code, never by a model." | `Calculated by code` |
 | 0:23–0:27 | Phone 390 px, Review | "Same books on your phone." | `390 px` |
