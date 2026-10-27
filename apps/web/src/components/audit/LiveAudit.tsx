@@ -103,6 +103,7 @@ export default function LiveAudit() {
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [state, setState] = useState<"checking" | "demo" | "loading" | "live" | "error">("checking");
   const [entries, setEntries] = useState<RtAuditEntry[]>([]);
+  const [fetchedQuery, setFetchedQuery] = useState<string | null>(null); // the filters the shown list was fetched with
   const [truncated, setTruncated] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [who, setWho] = useState<Who>("all");
@@ -134,14 +135,20 @@ export default function LiveAudit() {
 
   const tooWide = from <= to && daysBefore(to, MAX_DAYS) > from;
 
+  const query = useMemo(
+    () => new URLSearchParams({ from, to, limit: "500", ...filter }).toString(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [from, to, who, kind],
+  );
+
   useEffect(() => {
     if (!account || from > to || tooWide) return;
     let stale = false;
-    const q = new URLSearchParams({ from, to, limit: "500", ...filter });
-    runtime.audit(account, q.toString()).then(
+    runtime.audit(account, query).then(
       (page) => {
         if (stale) return;
         setEntries(page.entries);
+        setFetchedQuery(query);
         setTruncated(page.truncated);
         setNote(null);
         setState("live");
@@ -155,7 +162,8 @@ export default function LiveAudit() {
     return () => {
       stale = true;
     };
-  }, [account, from, to, tooWide, filter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account, from, to, tooWide, who, kind]);
 
   const live = state === "live";
   const sample = state === "demo";
@@ -220,8 +228,12 @@ export default function LiveAudit() {
           {shown.length > 0 && (
             <button
               type="button"
+              // The list is older than the filters while a refetch is in flight: exporting then
+              // would silently write the previous filter's rows, so wait for the fresh list.
+              disabled={live && fetchedQuery !== query}
+              title={live && fetchedQuery !== query ? "Fetching the latest lines…" : undefined}
               onClick={() => downloadCsv(csvFilename("audit"), auditRows(shown), { sample: !live })}
-              className="ml-auto shrink-0 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold"
+              className="ml-auto shrink-0 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold disabled:cursor-wait disabled:opacity-50"
             >
               Export CSV
             </button>
