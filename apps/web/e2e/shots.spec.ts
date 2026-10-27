@@ -23,7 +23,7 @@ import { createBooksFolder, DEMO_DAY, expect, settingsTab, signIn, test } from "
 
 test.skip(process.env.SHOTS !== "1", "submission shots run only with SHOTS=1");
 
-const OUT = path.resolve(__dirname, "../../docs/submission/shots");
+const OUT = path.resolve(__dirname, "../../../docs/submission/shots");
 const LIMIT = 400 * 1024;
 const LABEL = "SAMPLE — FICTIONAL COMPANY · demo data only";
 
@@ -69,8 +69,10 @@ for (const vp of VIEWPORTS) {
 
     test("vat return", async ({ page }) => {
       await page.goto("/vat");
-      await expect(page.getByRole("heading", { name: "VAT return · Q3 2026" })).toBeVisible();
-      await expect(page.getByText("£2,140.00").first()).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "VAT return" })).toBeVisible();
+      await expect(page.getByText("A mock-up of a finished return")).toBeVisible();
+      // Desktop shows the 9-box table, the phone shows one card per box: the other variant is hidden.
+      await expect(page.getByText("£2,140.00").filter({ visible: true }).first()).toBeVisible();
       await shoot(page, "vat", vp.suffix);
     });
 
