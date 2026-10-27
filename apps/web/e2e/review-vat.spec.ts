@@ -18,12 +18,6 @@ test("upload a gold receipt → scan → proposal → approve → VAT boxes chan
   await expect(box(page, "Total purchases excluding VAT")).toHaveText("£0");
 
   await page.goto("/review");
-  await expect(page.getByRole("heading", { name: "Nothing waiting" })).toBeVisible();
-  await page.locator('input[type="file"]').setInputFiles({ name: `${GOLD}.png`, mimeType: "image/png", buffer: await runtime.goldPng() });
-  await expect(page.getByText("1 file added to 00 Inbox")).toBeVisible();
-
-  await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "new proposal" })).toHaveText("1 new proposal");
   await expect(page.getByText("No receipts waiting")).toBeVisible();
   // .first(): the empty state has its own upload button too.
   await page.locator('input[type="file"]').first().setInputFiles({ name: `${GOLD}.png`, mimeType: "image/png", buffer: await runtime.goldPng() });
@@ -36,9 +30,6 @@ test("upload a gold receipt → scan → proposal → approve → VAT boxes chan
   await expect(card).toBeVisible();
   await expect(card).toContainText("£43.25 · £8.65 · £51.90");
 
-  await page.getByRole("button", { name: "Approve (post to books)" }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Approved" })).toHaveText("Approved · posted to your books");
-  await expect(page.getByRole("heading", { name: "Nothing waiting" })).toBeVisible();
   await card.getByRole("button", { name: /^Approve Novex/ }).click();
   await expect(page.locator('p[role="status"][aria-live="polite"]')).toHaveText("Approved · posted to your books · U to undo");
   await expect(page.getByText("No receipts waiting")).toBeVisible();
