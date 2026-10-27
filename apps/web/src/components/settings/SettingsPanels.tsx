@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import AutopilotRules from "@/components/settings/AutopilotRules";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
 
@@ -12,17 +13,6 @@ const AUTOPILOT_OPTIONS: { value: AutopilotLevel; label: string; description: st
   { value: "L0", label: "L0 Suggest", description: "Nothing automatic; everything is a proposal" },
   { value: "L1", label: "L1 Assist", description: "Imports, extracts, files and proposes; never posts or sends" },
   { value: "L2", label: "L2 Autopilot", description: "Also auto-posts items matching an approved rule under £250" },
-];
-
-interface Rule {
-  supplier: string;
-  category: string;
-  code: string;
-}
-
-const SAMPLE_RULES: Rule[] = [
-  { supplier: "Screwfix", category: "Tools & small equipment", code: "S" },
-  { supplier: "Howdens Joinery", category: "Materials", code: "S" },
 ];
 
 function readLocalStorage(key: string): string | null {
@@ -37,7 +27,6 @@ export default function SettingsPanels() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [aiSummary, setAiSummary] = useState("Not set up");
   const [autopilot, setAutopilot] = useState<AutopilotLevel>("L1");
-  const rules: Rule[] = SAMPLE_RULES;
   const [disconnected, setDisconnected] = useState(false);
 
   useEffect(() => {
@@ -166,48 +155,7 @@ export default function SettingsPanels() {
         </div>
       </section>
 
-      <section aria-labelledby="settings-rules" className={card}>
-        <h2 id="settings-rules" className={heading}>
-          Rules learned
-        </h2>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead>
-              <tr className="text-xs font-bold text-muted">
-                <th scope="col" className="py-2 pr-3">
-                  Supplier
-                </th>
-                <th scope="col" className="py-2 pr-3">
-                  Category
-                </th>
-                <th scope="col" className="py-2 pr-3">
-                  Code
-                </th>
-                <th scope="col" className="py-2">
-                  <span className="sr-only">Actions</span>
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {rules.map((rule) => (
-                <tr key={rule.supplier} className="text-ink">
-                  <td className="py-2 pr-3 font-bold">{rule.supplier}</td>
-                  <td className="py-2 pr-3 text-muted">{rule.category}</td>
-                  <td className="py-2 pr-3 text-muted">{rule.code}</td>
-                  <td className="py-2 text-right">
-                    <button
-                      type="button"
-                      className="h-9 rounded-xl border border-border bg-white px-3 text-[13px] font-bold text-ink"
-                    >
-                      Remove
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
+      <AutopilotRules card={card} heading={heading} />
 
       <section aria-labelledby="settings-audit" className={card}>
         <h2 id="settings-audit" className={heading}>
