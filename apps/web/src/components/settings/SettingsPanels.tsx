@@ -12,8 +12,8 @@ const AI_KEY = "accnomos.ai";
 
 const AUTOPILOT_OPTIONS: { value: AutopilotLevel; label: string; description: string }[] = [
   { value: "L0", label: "L0 Suggest", description: "Nothing automatic; everything is a proposal" },
-  { value: "L1", label: "L1 Assist", description: "Imports, extracts, files and proposes; never posts or sends" },
-  { value: "L2", label: "L2 Autopilot", description: "Also auto-posts items matching an approved rule under £250" },
+  { value: "L1", label: "L1 Assist", description: "Imports, extracts, files and proposes; never posts or sends (default)" },
+  { value: "L2", label: "L2 Autopilot", description: "Also posts receipts that match a rule you saved (same supplier, VAT and treatment, ≤ 2× the usual) — each one listed with Undo" },
 ];
 
 function readLocalStorage(key: string): string | null {

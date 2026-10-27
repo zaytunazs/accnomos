@@ -74,20 +74,21 @@ export interface RtRule {
   hits: number;
 }
 
-/** Autopilot master switch: lives on this device only; "off" makes scans send `X-Autopilot: off`. */
-const AUTOPILOT_SWITCH_KEY = "accnomos.autopilot.switch";
+/** Autopilot posting is on only at level L2 (Settings › Autopilot level, localStorage `accnomos.autopilot`).
+ *  L0/L1 (the default) make every scan send `X-Autopilot: off`, so nothing is posted without the user. */
+const AUTOPILOT_LEVEL_KEY = "accnomos.autopilot";
 export function autopilotOn(): boolean {
   try {
-    return window.localStorage.getItem(AUTOPILOT_SWITCH_KEY) !== "off";
+    return window.localStorage.getItem(AUTOPILOT_LEVEL_KEY) === "L2";
   } catch {
-    return true;
+    return false;
   }
 }
 export function setAutopilotOn(on: boolean): void {
   try {
-    window.localStorage.setItem(AUTOPILOT_SWITCH_KEY, on ? "on" : "off");
+    window.localStorage.setItem(AUTOPILOT_LEVEL_KEY, on ? "L2" : "L1");
   } catch {
-    /* storage unavailable — the switch lives for this page only */
+    /* storage unavailable — the choice lives for this page only */
   }
 }
 export interface RtSummary {

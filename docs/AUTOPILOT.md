@@ -81,5 +81,6 @@ Code: `services/runtime/app/autopilot.py` (rules and the decision), `app/inbox.p
 
 - The reversal is dated like the original. If that VAT period has already been submitted, check the
   return before undoing: the correction then belongs in the current period.
-- The Settings *Autopilot level* (L0/L1/L2) selector is separate from the on/off switch and does not
-  yet control rule-based posting.
+- Rule-based posting happens only at Settings › Autopilot level **L2**. The default is L1 (propose only),
+  so a new user never has anything posted without approving it; the on/off switch on the rules card is the
+  same setting.
