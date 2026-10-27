@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'audit_screen.dart';
 import 'bank_screen.dart';
 import 'contacts_screen.dart';
 import 'files_screen.dart';
@@ -70,6 +71,12 @@ class MoreScreen extends StatelessWidget {
             title: 'Payroll',
             note: 'Pay runs — estimates, read only',
             screen: PayrollScreen(),
+          ),
+          _Entry(
+            icon: Icons.history_outlined,
+            title: 'Audit trail',
+            note: 'Who did what in your books — read only',
+            screen: AuditScreen(),
           ),
         ],
       ),

@@ -612,6 +612,18 @@ class RuntimeClient {
     return parts.join('&');
   }
 
+  /// The audit trail, newest first. `GET /audit` → `{start, end, entries,
+  /// truncated}`; each entry `{ts, actor, actor_kind, actor_label, event,
+  /// summary, refs}`. Reads only.
+  Future<Map<String, dynamic>> audit({String? from, String? to, int limit = 200}) =>
+      _map('GET', '/audit',
+          query: {
+            if (from != null) 'from': from,
+            if (to != null) 'to': to,
+            'limit': '$limit',
+          },
+          what: 'load the audit trail');
+
   /// To-dos in `_System/Todos/todos.json`. `GET /todos`, soonest first.
   Future<List<Map<String, dynamic>>> todos() =>
       _list('GET', '/todos', what: 'load to-dos');
