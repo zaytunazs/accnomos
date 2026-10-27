@@ -59,9 +59,7 @@ def judgement_prompt(names: list[dict[str, Any]], evidence: list[str]) -> str:
     return "\n".join(lines)
 
 
-async def judge_duplicate(
-    contacts: list[dict[str, Any]], evidence: list[str], cfg: AiConfig
-) -> dict[str, Any]:
+async def judge_duplicate(contacts: list[dict[str, Any]], evidence: list[str], cfg: AiConfig) -> dict[str, Any]:
     """Ask the user's model about one candidate group; return the validated `{same, confidence,
     keep_name, reason}` view. Raises `JudgementError` when the model cannot answer."""
     from app.contacts import DuplicateAI  # late: app.contacts owns the model; this module only fills it

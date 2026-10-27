@@ -99,24 +99,31 @@ def test_dismiss_never_suggests_again(client: TestClient, fake: FakeStorageProvi
 
 def test_merge_and_undo_round_trip(client: TestClient, fake: FakeStorageProvider) -> None:
     before = json.loads(fake.files[cb.CONTACTS])
-    r = client.post("/contacts/merge", headers=H, json={"keep_id": "a" * 16, "merge_ids": ["b" * 16], "name": "Screwfix Ltd"})
+    r = client.post(
+        "/contacts/merge", headers=H, json={"keep_id": "a" * 16, "merge_ids": ["b" * 16], "name": "Screwfix Ltd"}
+    )
     assert r.status_code == 200, r.text
     assert r.json()["contact"]["phone"] == "0117 496 0123"
     merge_id = r.json()["merge_id"]
     assert {c["id"] for c in json.loads(fake.files[cb.CONTACTS])} == {"a" * 16, "c" * 16, "d" * 16}
 
     u = client.post(f"/contacts/merge/{merge_id}/undo", headers=H)
-    assert u.status_code == 200 and {c["id"] for c in u.json()["contacts"]} == {"a" * 16, "b" * 16, "c" * 16, "d" * 16}
+    assert u.status_code == 200
+    assert {c["id"] for c in u.json()["contacts"]} == {"a" * 16, "b" * 16, "c" * 16, "d" * 16}
     assert json.loads(fake.files[cb.CONTACTS]) == before
     assert client.post(f"/contacts/merge/{merge_id}/undo", headers=H).status_code == 404
     assert client.post("/contacts/merge/0123456789abcdef/undo", headers=H).status_code == 404
 
 
 def test_merge_refusals_are_400(client: TestClient) -> None:
-    assert client.post("/contacts/merge", headers=H, json={"keep_id": "a" * 16, "merge_ids": ["c" * 16, "d" * 16]}).status_code == 400  # VAT conflict
-    assert client.post("/contacts/merge", headers=H, json={"keep_id": "0" * 16, "merge_ids": ["b" * 16]}).status_code == 400
-    assert client.post("/contacts/merge", headers=H, json={"keep_id": "a" * 16, "merge_ids": ["a" * 16]}).status_code == 400
-    assert client.post("/contacts/merge", headers={"X-Graph-Token": "tok"}, json={"keep_id": "a" * 16, "merge_ids": ["b" * 16]}).status_code == 400
+    conflict = {"keep_id": "a" * 16, "merge_ids": ["c" * 16, "d" * 16]}  # different VAT numbers
+    assert client.post("/contacts/merge", headers=H, json=conflict).status_code == 400
+    unknown = {"keep_id": "0" * 16, "merge_ids": ["b" * 16]}
+    assert client.post("/contacts/merge", headers=H, json=unknown).status_code == 400
+    self_merge = {"keep_id": "a" * 16, "merge_ids": ["a" * 16]}
+    assert client.post("/contacts/merge", headers=H, json=self_merge).status_code == 400
+    no_user = {"keep_id": "a" * 16, "merge_ids": ["b" * 16]}
+    assert client.post("/contacts/merge", headers={"X-Graph-Token": "tok"}, json=no_user).status_code == 400
 
 
 def _audit(fake: FakeStorageProvider) -> list[str]:
@@ -129,7 +136,8 @@ def _audit(fake: FakeStorageProvider) -> list[str]:
 
 
 def test_merge_and_dismiss_are_audited(client: TestClient, fake: FakeStorageProvider) -> None:
-    merge_id = client.post("/contacts/merge", headers=H, json={"keep_id": "a" * 16, "merge_ids": ["b" * 16]}).json()["merge_id"]
+    body = {"keep_id": "a" * 16, "merge_ids": ["b" * 16]}
+    merge_id = client.post("/contacts/merge", headers=H, json=body).json()["merge_id"]
     client.post("/contacts/duplicates/dismiss", headers=H, json={"contact_ids": ["c" * 16, "d" * 16]})
     client.post(f"/contacts/merge/{merge_id}/undo", headers=H)
     assert _audit(fake) == ["contacts_merged", "contacts_not_same", "contacts_merge_undone"]

@@ -985,24 +985,25 @@ def merge_contacts(
     kept.normalised_key = new_key
     kept.aliases = sorted(k for k in old_keys if k and k != new_key)
     for c in removed:
-        for field in ("email", "phone"):
-            if not getattr(kept, field) and getattr(c, field):
-                setattr(kept, field, getattr(c, field))
+        for slot in ("email", "phone"):
+            if not getattr(kept, slot) and getattr(c, slot):
+                setattr(kept, slot, getattr(c, slot))
     kept.address = _combine_address(kept.address, [c.address for c in removed])
     if not kept.vrn:
         kept.vrn = next((c.vrn for c in removed if c.vrn), None)
-    kept.vat_status = min(
-        [kept.vat_status, *(c.vat_status for c in removed)], key=lambda s: _VAT_STRICTNESS[s]
-    )
+    kept.vat_status = min([kept.vat_status, *(c.vat_status for c in removed)], key=lambda s: _VAT_STRICTNESS[s])
     if kept.vrn and kept.vat_status == "unknown":
         kept.vat_status = "registered"  # as `supplier_knowledge`: a VAT number on file means registered
     kept.kind = _combine_kind([kept.kind, *(c.kind for c in removed)])
-    for field in ("default_category", "default_vat_code", "terms_days"):
-        if getattr(kept, field) is None:
-            setattr(kept, field, next((getattr(c, field) for c in removed if getattr(c, field) is not None), None))
+    for slot in ("default_category", "default_vat_code", "terms_days"):
+        if getattr(kept, slot) is None:
+            setattr(kept, slot, next((getattr(c, slot) for c in removed if getattr(c, slot) is not None), None))
     kept.edited = sorted(set(kept.edited) | {e for c in removed for e in c.edited})
     if kept.source == "ledger":
-        kept.source = next((c.source for c in removed if c.source != "ledger"), "ledger")
+        for c in removed:
+            if c.source != "ledger":
+                kept.source = c.source
+                break
     kept.created_at = min([kept.created_at, *(c.created_at for c in removed)])
     kept.updated_at = now()
     remaining = [c for c in book if c.id not in set(merged_ids)]
@@ -1060,10 +1061,9 @@ async def _repoint_json_file(
         if key_field == "contact" and isinstance(row.get("action"), dict):
             if isinstance(row["action"].get("contact"), str) and row["action"]["contact"].strip().lower() in lowered:
                 row["action"]["contact"] = keep_name
-        elif key_field == "supplier_key":
-            if row.get("supplier_key") in keys:
-                row["supplier_key"] = keep_key
-                row["supplier_name"] = keep_name
+        elif key_field == "supplier_key" and row.get("supplier_key") in keys:
+            row["supplier_key"] = keep_key
+            row["supplier_name"] = keep_name
     if rows == before:
         return None
     await books._update_json(path, [], lambda _old: rows)
@@ -1086,7 +1086,7 @@ async def merge(
     references = await _repoint_invoices(books, keep_id, [c.id for c in removed])
     removed_names = [c.name for c in removed]
     removed_keys = sorted({c.normalised_key for c in removed} | {a for c in removed for a in c.aliases})
-    for path, field in ((BANK_RULES, "contact"), (AUTOPILOT_RULES, "supplier_key")):
+    for path, key_field in ((BANK_RULES, "contact"), (AUTOPILOT_RULES, "supplier_key")):
         ref = await _repoint_json_file(
             books,
             path,
@@ -1094,7 +1094,7 @@ async def merge(
             keep_key=kept.normalised_key,
             removed_names=removed_names,
             removed_keys=removed_keys,
-            key_field=field,
+            key_field=key_field,
         )
         if ref is not None:
             references.append(ref)
@@ -1148,9 +1148,8 @@ NOT_SAME = f"{SYSTEM}/Contacts/not_same.json"
 #: Merge records, one file per merge, so a merge can be undone exactly.
 MERGES = f"{SYSTEM}/Contacts/merges"
 
-async def judge_groups(
-    groups: Sequence[DuplicateGroup], contacts: Sequence[Contact], cfg: Any
-) -> list[DuplicateGroup]:
+
+async def judge_groups(groups: Sequence[DuplicateGroup], contacts: Sequence[Contact], cfg: Any) -> list[DuplicateGroup]:
     """Fill in each group's `ai` view with the user's model. Blocked groups (different VAT numbers)
     never reach the model: code rules those out itself. A model that cannot answer leaves `ai`
     unset, so the card shows the code evidence alone."""
@@ -1170,9 +1169,7 @@ async def judge_groups(
             continue
         members = [by_id[i].model_dump() for i in g.contact_ids if i in by_id]
         try:
-            g.ai = DuplicateAI.model_validate(
-                await dup_ai.judge_duplicate(members, g.evidence, cfg)
-            )
+            g.ai = DuplicateAI.model_validate(await dup_ai.judge_duplicate(members, g.evidence, cfg))
         except dup_ai.JudgementError:
             g.ai = None
         out.append(g)
@@ -1358,9 +1355,7 @@ def find_duplicate_groups(
                 if len(vrns) > 1:
                     evidence.append(f"different VAT numbers: {', '.join(vrns)}")
             out.append(
-                DuplicateGroup(
-                    contact_ids=sorted(c.id for c in part), evidence=sorted(evidence), blocked=blocked
-                )
+                DuplicateGroup(contact_ids=sorted(c.id for c in part), evidence=sorted(evidence), blocked=blocked)
             )
     return sorted(out, key=lambda g: g.contact_ids)
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -12,7 +12,7 @@ from app import contacts as cb
 from app.autopilot import supplier_key
 from app.bank_rules import BANK_RULES
 from app.books import AUDIT, AUTOPILOT_RULES, Books
-from app.invoicing import InvoiceCustomer, InvoiceDraft
+from app.invoicing import InvoiceDraft
 
 USER = "sam@example.co.uk"
 
@@ -25,12 +25,23 @@ def _contact(cid: str, name: str, **kw) -> cb.Contact:
 
 def test_merge_combines_everything_and_drops_nothing() -> None:
     keep = _contact(
-        "a" * 16, "Screwfix", email="trade@screwfix.com", vat_status="unknown", kind="supplier",
-        default_category="Materials", edited=["email"],
+        "a" * 16,
+        "Screwfix",
+        email="trade@screwfix.com",
+        vat_status="unknown",
+        kind="supplier",
+        default_category="Materials",
+        edited=["email"],
     )
     old = _contact(
-        "b" * 16, "SCREWFIX DIRECT LTD", phone="0117 496 0123", address="1 Trade Park",
-        vat_status="registered", kind="customer", terms_days=14, edited=["phone"],
+        "b" * 16,
+        "SCREWFIX DIRECT LTD",
+        phone="0117 496 0123",
+        address="1 Trade Park",
+        vat_status="registered",
+        kind="customer",
+        terms_days=14,
+        edited=["phone"],
     )
     old.normalised_key = "screwfix-direct"
     old.aliases = ["screwfix-direct-ltd"]
@@ -117,19 +128,30 @@ async def _seed(books: Books) -> tuple[cb.Contact, cb.Contact, str]:
     invoice = await inv.create_invoice(books, draft, USER)
     await books.write_json(
         BANK_RULES,
-        [{"id": "r1", "match": {"op": "contains", "value": "SCREWFIX"}, "action": {"account": "5000 Materials", "contact": "SCREWFIX DIRECT LTD"}}],
+        [
+            {
+                "id": "r1",
+                "match": {"op": "contains", "value": "SCREWFIX"},
+                "action": {"account": "5000 Materials", "contact": "SCREWFIX DIRECT LTD"},
+            }
+        ],
     )
     await books.write_json(
         AUTOPILOT_RULES,
-        [{"supplier_key": "screwfix-direct", "supplier_name": "SCREWFIX DIRECT LTD", "category": "Materials",
-          "side": "purchase", "typical_gross_pence": 1200}],
+        [
+            {
+                "supplier_key": "screwfix-direct",
+                "supplier_name": "SCREWFIX DIRECT LTD",
+                "category": "Materials",
+                "side": "purchase",
+                "typical_gross_pence": 1200,
+            }
+        ],
     )
     return keep, old, invoice.number
 
 
-async def test_merge_repoints_everything_and_undo_restores_exactly(
-    books: Books, fake: FakeStorageProvider
-) -> None:
+async def test_merge_repoints_everything_and_undo_restores_exactly(books: Books, fake: FakeStorageProvider) -> None:
     from app import invoicing as inv
 
     keep, old, number = await _seed(books)
@@ -162,9 +184,13 @@ async def test_merge_repoints_everything_and_undo_restores_exactly(
     assert json.loads(fake.files[f"03 Sales/invoices/{number}.json"]) == invoice_before
     assert json.loads(fake.files[BANK_RULES]) == bank_before
     assert json.loads(fake.files[AUTOPILOT_RULES]) == auto_before
-    assert "contacts_merge_undone" in [
-        json.loads(x)["action"] for p in fake.files if p.startswith(f"{AUDIT}/") for x in fake.files[p].decode().splitlines()
+    undone_actions = [
+        json.loads(x)["action"]
+        for p in fake.files
+        if p.startswith(f"{AUDIT}/")
+        for x in fake.files[p].decode().splitlines()
     ]
+    assert "contacts_merge_undone" in undone_actions
     with pytest.raises(FileNotFoundError):
         await cb.undo_merge(books, merge_id, USER)  # already undone
     with pytest.raises(FileNotFoundError):
@@ -185,11 +211,6 @@ async def test_merge_without_references_still_audits(books: Books, fake: FakeSto
 
 async def test_merged_documents_still_belong_to_the_keeper() -> None:
     """Payments and credits belong to ledger documents, not contact ids: the kept aliases still find them."""
-    from datetime import date as _date
-
-    from datetime import UTC as _UTC
-    from datetime import datetime as _datetime
-
     from accnomos_ledger import LedgerEvent, Line, VatCode
 
     ids = iter(["1" * 32, "2" * 32])
@@ -198,12 +219,14 @@ async def test_merged_documents_still_belong_to_the_keeper() -> None:
         return LedgerEvent(
             id=next(ids),
             kind="purchase",
-            date=_date(2026, 9, 1),
-            lines=[Line(account="5000 Materials", debit=1000, vat_code=VatCode.STANDARD),
-                   Line(account="2100 Creditors", credit=1000)],
+            date=date(2026, 9, 1),
+            lines=[
+                Line(account="5000 Materials", debit=1000, vat_code=VatCode.STANDARD),
+                Line(account="2100 Creditors", credit=1000),
+            ],
             counterparty=who,
             approved_by=USER,
-            approved_at=_datetime(2026, 10, 25, tzinfo=_UTC),
+            approved_at=datetime(2026, 10, 25, tzinfo=UTC),
         )
 
     keep = _contact("a" * 16, "Screwfix")
@@ -213,4 +236,3 @@ async def test_merged_documents_still_belong_to_the_keeper() -> None:
     ledger = cb.Ledger(events=[event("Screwfix"), event("SCREWFIX DIRECT LTD")])
     by_contact = cb.assign(book, cb.documents(ledger))
     assert len(by_contact[kept.id]) == 2
-    assert InvoiceCustomer(contact_id="x", name="n").contact_id == "x"  # unrelated sanity: ids pass through

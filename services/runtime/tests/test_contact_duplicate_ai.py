@@ -76,7 +76,13 @@ def test_schema_is_strict() -> None:
 async def test_local_backend_parses_ollama_reply(fake_http: type[_Client]) -> None:
     import json as _json
 
-    fake_http.reply = {"message": {"content": _json.dumps({"same": True, "confidence": 0.8, "keep_name": "Screwfix", "reason": "Same VAT and email."})}}
+    fake_http.reply = {
+        "message": {
+            "content": _json.dumps(
+                {"same": True, "confidence": 0.8, "keep_name": "Screwfix", "reason": "Same VAT and email."}
+            )
+        }
+    }
     view = await dup.judge_duplicate([{"name": "Screwfix"}], ["same email x"], _cfg("local"))
     assert view == {"same": True, "confidence": 0.8, "keep_name": "Screwfix", "reason": "Same VAT and email."}
     assert fake_http.seen[0]["url"] == "http://stub/api/chat"

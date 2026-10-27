@@ -210,6 +210,7 @@ TALKS_HTTP = {
     "main.py": "/ai/test: the allow-listed AI base URL",
     "ai/ask.py": "cfg.base_url",
     "ai/extract.py": "cfg.base_url",
+    "ai/duplicates.py": "cfg.base_url",
     "ai/crop.py": "cfg.base_url (SAM, key mode)",
     "ai/voice.py": "cfg.base_url",
     "ai/verify.py": "cfg.base_url or BASETEN_BASE",
