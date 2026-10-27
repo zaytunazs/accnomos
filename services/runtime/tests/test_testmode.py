@@ -21,11 +21,11 @@ from app.checks import decide, run_checks
 from app.facts import build_facts, default_period
 from app.routes_actions import _mail_sender
 from app.routes_books import get_books
-from app.routes_invoices import get_sender
-from app.routes_plan import get_calendar
 from app.routes_contacts import get_address_book
+from app.routes_invoices import get_sender
 from app.routes_mail import get_mail
 from app.routes_mail import router as mail_router
+from app.routes_plan import get_calendar
 from app.schemas import AskModelOutput, ExtractedDoc
 
 STUB = "http://127.0.0.1:8780/__test/ai"
@@ -86,6 +86,8 @@ def test_reset_seeds_the_sample_invoice_profile_and_opt_in_bank_entries(client: 
     events = [f for f in client.get("/__test/state").json()["files"] if f.startswith("_System/Ledger/events/")]
     assert len(events) == 4  # the four entries barclays.csv pays for
     assert client.post("/__test/reset?seed=nope").status_code == 400
+    client.post("/__test/reset")  # opt-in: the next plain reset drops them again (other specs check VAT figures)
+    assert client.get("/__test/state").json()["files"] == [PROFILE]
 
 
 def test_pinned_today_drives_plan_my_thursday(test_env: None, monkeypatch: pytest.MonkeyPatch) -> None:

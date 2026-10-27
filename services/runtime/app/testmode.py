@@ -33,8 +33,8 @@ from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from types import ModuleType
-from zoneinfo import ZoneInfo
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from accnomos_connectors import (
     AddressBookContact,
