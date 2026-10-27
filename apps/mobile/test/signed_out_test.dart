@@ -1,4 +1,5 @@
 import 'package:accnomos_mobile/screens/capture_screen.dart';
+import 'package:accnomos_mobile/screens/home_screen.dart';
 import 'package:accnomos_mobile/screens/review_screen.dart';
 import 'package:accnomos_mobile/screens/settings_screen.dart';
 import 'package:accnomos_mobile/screens/vat_screen.dart';
@@ -52,6 +53,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Your VAT return lives in your books'),
         findsOneWidget);
+  });
+
+  testWidgets('home tiles say "Connect to see" when signed out',
+      (tester) async {
+    await tester.pumpWidget(shell(const Scaffold(body: HomeScreen())));
+    await tester.pumpAndSettle();
+    expect(find.text('CASH IN BANK'), findsOneWidget);
+    expect(find.text('Connect to see'), findsNWidgets(3));
+    expect(find.text('Connect your cloud'), findsOneWidget);
   });
 
   testWidgets('capture offers photo buttons when signed out',

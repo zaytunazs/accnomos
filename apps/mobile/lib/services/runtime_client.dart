@@ -302,6 +302,31 @@ class RuntimeClient {
     }
   }
 
+  /// The Home tiles in one call. `GET /books/dashboard` (stagger 1 VAT
+  /// quarters until the app has a VAT period setting). [today] is
+  /// `YYYY-MM-DD` on the phone, so the deadline counts from the user's day.
+  Future<Map<String, dynamic>> dashboard({String? today}) async {
+    _requireBooks();
+    final query = today == null ? '' : '?today=$today';
+    final uri = Uri.parse('${settings.runtimeUrl}/books/dashboard$query');
+    try {
+      final response =
+          await http.get(uri, headers: _headers).timeout(_timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        _fail(response.statusCode, response.body.trim());
+      }
+      return json.decode(response.body) as Map<String, dynamic>;
+    } on SocketException {
+      throw RuntimeException(
+          'Could not reach the reader at ${settings.runtimeUrl}. '
+          'Is it running?');
+    } on RuntimeException {
+      rethrow;
+    } catch (e) {
+      throw RuntimeException('Could not load your figures. $e');
+    }
+  }
+
   /// The 9 VAT boxes for the current period. `GET /books/vat`.
   Future<Map<String, dynamic>> vat() async {
     _requireBooks();
