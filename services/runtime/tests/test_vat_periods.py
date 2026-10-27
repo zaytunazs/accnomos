@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 import pytest
 from accnomos_connectors import FakeStorageProvider
@@ -143,6 +143,40 @@ async def test_scan_warns_but_keeps_the_documents_date() -> None:
     await approve(books, aug.id, "sam@example.co.uk", rebuild=False)
     (ev,) = await books.list_events()
     assert ev.date == date(2026, 8, 14)  # the warning never moves the ledger date
+
+
+def test_scan_route_checks_dates_against_the_period_from_settings(monkeypatch: pytest.MonkeyPatch) -> None:
+    """POST /books/scan takes the same VAT settings as /books/deadlines; `months=1` makes last month 'previous'."""
+    first = date.today().replace(day=1)
+    last_month = first - timedelta(days=1)
+    by_bytes = {b"this": _doc(first.isoformat()), b"last": _doc(last_month.isoformat())}
+
+    async def fake_extract(data: bytes, mime: str, cfg: AiConfig) -> tuple[ExtractedDoc, dict[str, str]]:
+        return by_bytes[data], {"backend": "stub", "model": cfg.model}
+
+    async def no_verifier(*_a: object, **_kw: object) -> None:
+        return None
+
+    monkeypatch.setattr(pipeline, "extract_document", fake_extract)
+    monkeypatch.setattr(pipeline, "verify", no_verifier)
+    fake = FakeStorageProvider()
+    fake.files.update({"00 Inbox/a.jpg": b"this", "00 Inbox/b.jpg": b"last"})
+
+    async def override():
+        yield Books(fake)
+
+    app.dependency_overrides[get_books] = override
+    try:
+        r = TestClient(app).post("/books/scan?months=1", headers={**H, "X-AI-Mode": "local", "X-Autopilot": "off"})
+    finally:
+        app.dependency_overrides.clear()
+    assert r.status_code == 200, r.text
+    by_date = {p["extracted"]["date"]: p for p in r.json()["proposals"]}
+    inside = next(c for c in by_date[first.isoformat()]["checks"] if c["code"] == "DATE_IN_PERIOD")
+    outside = next(c for c in by_date[last_month.isoformat()]["checks"] if c["code"] == "DATE_IN_PERIOD")
+    assert inside["ok"]
+    assert not outside["ok"] and outside["severity"] == "warn" and "falls in the previous period" in outside["message"]
+    assert by_date[last_month.isoformat()]["status"] == "proposed"
 
 
 @pytest.mark.usefixtures("stub_extract")

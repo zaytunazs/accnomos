@@ -54,15 +54,6 @@ LABELS = {
 }
 
 
-def quarter_bounds(today: date) -> tuple[date, date, str]:
-    """Default to the last complete calendar quarter (e.g. on 27 Oct → 1 Jul–30 Sep)."""
-    this_q_start = date(today.year, ((today.month - 1) // 3) * 3 + 1, 1)
-    prev_q_end = this_q_start - date.resolution  # last day of the previous quarter
-    prev_q_start = date(prev_q_end.year, ((prev_q_end.month - 1) // 3) * 3 + 1, 1)
-    key = f"{prev_q_start.year % 100:02d}A{(prev_q_start.month - 1) // 3 + 1}"
-    return prev_q_start, prev_q_end, key
-
-
 def period_key_for(start: date) -> str:
     return f"{start.year % 100:02d}A{(start.month - 1) // 3 + 1}"
 
