@@ -31,7 +31,7 @@ export default defineConfig({
     { name: "phone", use: { ...devices["Pixel 7"] }, testMatch: /(phone|a11y)\.spec\.ts/ },
     // docs/DEMO.md end to end at 1280 × 800 and 390 px (~6 s each, so it stays in CI); `pnpm run e2e:demo` also writes
     // docs/submission/shots/.
-    { name: "demo", use: { ...devices["Desktop Chrome"] }, testMatch: /demo\.spec\.ts/ },
+    { name: "demo", use: { ...devices["Desktop Chrome"] }, testMatch: /demo\.spec\.ts/, timeout: 120_000 }, // the whole script in one test
   ],
   webServer: [
     {

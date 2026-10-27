@@ -64,7 +64,11 @@ test("an instruction → action card; an approval that died halfway says what to
   await page.getByLabel("Ask your books").fill("send a £100 invoice to JM Trading");
   const asked = page.waitForResponse((r) => r.url().startsWith(RUNTIME_URL) && new URL(r.url()).pathname === "/books/ask");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
-  const action = ((await (await asked).json()) as { proposed_action: { id: string; kind: string; created_at: string } }).proposed_action;
+  // The web streams (?stream=1): the checked answer is the final `answer` event; an older reader answers plain JSON.
+  const body = await (await asked).text();
+  const last = body.split("\n").filter((l) => l.startsWith("data:")).pop();
+  const parsed = JSON.parse(last ? last.slice(5).trim() : body) as { proposed_action?: { id: string; kind: string; created_at: string } };
+  const action = (parsed.proposed_action ?? (parsed as { answer?: typeof parsed }).answer?.proposed_action)!;
   const card = page.getByRole("article", { name: "Proposed: Invoice" });
   await expect(card).toContainText("JM Trading Ltd · emailed to accounts@jmtrading.example");
 

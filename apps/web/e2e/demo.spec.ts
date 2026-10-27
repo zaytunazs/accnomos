@@ -57,8 +57,10 @@ for (const vp of VIEWPORTS) {
       await signIn(page, DEMO_DAY);
       await createBooksFolder(page);
       await page.goto("/contacts");
-      await page.getByRole("checkbox", { name: "When importing, also add Outlook contacts that are not in your books (as customers)" }).check();
+      // Import from Outlook now has a review step: see who will be added, tick "also add new", then confirm.
       await page.getByRole("button", { name: "Import from Outlook" }).first().click();
+      await page.getByRole("checkbox", { name: "Also add Outlook entries that are not in your books (as customers)" }).check();
+      await page.getByRole("button", { name: "Confirm import" }).click();
       await expect(page.getByRole("status")).toContainText(/\d+ added/); // JM Trading Ltd and the seeded suppliers
       await page.goto("/");
       await page.getByRole("region", { name: "Get set up" }).getByRole("button", { name: "Dismiss" }).click();
@@ -151,11 +153,10 @@ for (const vp of VIEWPORTS) {
 
       await step(9, "books-xlsx", "Files → Rebuild Books.xlsx → Open", async () => {
         await page.goto("/files");
-        await page.getByRole("button", { name: "Rebuild Books.xlsx" }).click();
-        await expect(page.getByRole("status")).toContainText("Books.xlsx rebuilt from your ledger events");
-        const row = page.getByRole("listitem").filter({ hasText: /^Books\.xlsx/ });
-        // "Open" goes to OneDrive (off 127.0.0.1, so not followed here).
-        await expect(row.getByRole("link", { name: "Open" })).toHaveAttribute("href", /\/Books\.xlsx$/);
+        await page.getByRole("button", { name: "Rebuild now" }).click();
+        await expect(page.getByRole("status").filter({ hasText: "Books.xlsx rebuilt" })).toContainText("Books.xlsx rebuilt from your ledger events");
+        // The Books.xlsx card's OneDrive link (off 127.0.0.1, so not followed here).
+        await expect(page.getByRole("link", { name: /Open.*Books\.xlsx/ }).first()).toHaveAttribute("href", /Books\.xlsx/);
       });
 
       await step(10, "ask", "Ask: How much VAT have I reclaimed this quarter?", async () => {
