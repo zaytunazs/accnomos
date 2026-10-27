@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from pathlib import Path
 
+import httpx
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -226,3 +228,62 @@ async def test_verifier_outage_is_a_warning_not_agreement(stub_models: dict[str,
     assert p.verification is not None and p.verification.error and not p.verification.agree_all
     chk = next(c for c in p.checks if c.code == "VERIFIER_AGREES")
     assert not chk.ok and chk.severity == "warn"
+
+
+# --------------------------------------------------------------------------- #
+# Wire format and malformed responses (fake transport, no network)
+# --------------------------------------------------------------------------- #
+
+
+def test_legal_suffix_dropped_only_at_the_end() -> None:
+    assert field_agree("name", "Smith & Co. Ltd", "Smith and Co")
+    assert not field_agree("name", "UK Fuels Ltd", "Fuels Ltd")
+    assert not field_agree("name", "Co-op Food", "Op Food")
+
+
+def _fake_client(monkeypatch: pytest.MonkeyPatch, handler: object) -> None:
+    real = httpx.AsyncClient
+
+    def factory(*a: object, **kw: object) -> httpx.AsyncClient:
+        kw["transport"] = httpx.MockTransport(handler)  # type: ignore[arg-type]
+        return real(*a, **kw)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(verify_mod.httpx, "AsyncClient", factory)
+
+
+async def test_baseten_request_uses_owner_key_and_never_the_users(monkeypatch: pytest.MonkeyPatch) -> None:
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        content = json.dumps(_reading().model_dump())
+        return httpx.Response(200, json={"choices": [{"message": {"content": content}}]})
+
+    _fake_client(monkeypatch, handler)
+    v = await verify(b"img", _doc(), KEY, env={"BASETEN_API_KEY": "owner-key"})
+    assert v is not None and v.agree_all and v.model == f"baseten:{DEFAULT_BASETEN_MODEL}"
+    (req,) = seen
+    assert str(req.url) == "https://inference.baseten.co/v1/chat/completions"
+    assert req.headers["authorization"] == "Bearer owner-key"
+    body = json.loads(req.content)
+    assert body["model"] == DEFAULT_BASETEN_MODEL
+    assert "user-key" not in req.content.decode() and "user-key" not in str(req.headers)
+    assert "Screwfix" not in json.dumps(body["messages"])  # the first reading is never shown to the verifier
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        httpx.Response(200, text="<html>gateway</html>"),
+        httpx.Response(200, json={"error": "no choices"}),
+        httpx.Response(200, json={"choices": []}),
+        httpx.Response(200, json={"choices": [{"message": {"content": "not json at all"}}]}),
+        httpx.Response(401, json={"error": "bad key"}),
+    ],
+)
+async def test_malformed_verifier_response_is_an_error_not_a_crash(
+    monkeypatch: pytest.MonkeyPatch, response: httpx.Response
+) -> None:
+    _fake_client(monkeypatch, lambda _req: response)
+    v = await verify(b"img", _doc(), KEY, env={})
+    assert v is not None and v.error and not v.agree_all and v.fields == {}

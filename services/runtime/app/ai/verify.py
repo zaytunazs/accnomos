@@ -107,7 +107,7 @@ FIELD_MAP: dict[str, tuple[str, str]] = {
 # Comparison (pure)
 # --------------------------------------------------------------------------- #
 
-_LEGAL_SUFFIX = re.compile(r"\b(ltd|limited|plc|llp|co|company|uk)\b")
+_LEGAL_SUFFIX = re.compile(r"(\s(ltd|limited|plc|llp|co|company|uk))+$")  # trailing only: "UK Fuels" keeps its "uk"
 _PUNCT = str.maketrans({c: " " for c in string.punctuation + "“”–—£"} | {"'": None, "’": None, "‘": None})
 
 
@@ -117,8 +117,8 @@ def normalise_name(s: str | None) -> str:
         return ""
     s = s.replace("&", " and ").translate(_PUNCT)  # before ASCII folding, which would drop curly quotes
     s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii").lower()
-    s = _LEGAL_SUFFIX.sub(" ", s)
-    return " ".join(s.split())
+    s = " ".join(s.split())
+    return _LEGAL_SUFFIX.sub("", s).strip()
 
 
 def vat_digits(s: str | None) -> str:
@@ -245,6 +245,8 @@ async def read_independently(image_bytes: bytes, mime: str, be: VerifierBackend)
         raise ExtractionError(f"verifier {be.kind} HTTP {exc.response.status_code}: {exc.response.text[:300]}") from exc
     except httpx.HTTPError as exc:
         raise ExtractionError(f"verifier {be.kind} unreachable: {exc!r}") from exc
+    except (ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:  # 200 with an unexpected body
+        raise ExtractionError(f"verifier {be.kind} returned an unexpected response: {exc!r}") from exc
     try:
         return VerifierReading.model_validate(parse_model_json(text))
     except ValidationError as exc:
