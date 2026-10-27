@@ -55,26 +55,38 @@ $env:E2E_PYTHON='..\..\.venv\Scripts\python.exe'; pnpm run e2e:test   # Windows:
 
 Playwright (`apps/web/playwright.config.ts`, Chromium only) starts both servers itself: the runtime on :8781 with
 `ACCNOMOS_TEST_MODE=1` and a static host for `out-e2e/` on :3100. Each test resets the fakes and fails if any request
-leaves 127.0.0.1. Flows: connect + folder ready, gold receipt upload → scan → approve → VAT boxes change, Ask key
-numbers, HMRC card (relay answered by Playwright, no real OAuth), Outlook intake dry run, Files, Settings persisting,
-and a phone-width smoke of every page (no horizontal scroll). CI: `.github/workflows/e2e.yml` (traces uploaded on
-failure; locally `pnpm exec playwright show-trace test-results/<test>/trace.zip`).
+leaves 127.0.0.1. One spec per page: connect + folder ready; Home tiles, deadlines and the Review badge; gold receipt
+upload → scan → approve → VAT boxes change for the picked period; Ask key numbers and "plan my Thursday" → day-plan
+card; Invoices create → preview → send behind the confirmation tick (the fake sender records it); Bank gold Barclays
+CSV → confirm a match → transfer and expense proposal; Contacts list, edit, statement; Jobs staff + hours → invoice
+lines; Vehicles journey → allowance claim in Review; Payroll prepare → CSV → confirm and post; Settings tabs, deep
+links, VAT period moving the Home deadlines; HMRC card (relay answered by Playwright, no real OAuth); Outlook intake
+dry run; Files. Phone: every page at Pixel 7 width with no horizontal scroll, and Home, Review, Ask, VAT and Settings
+at 390 px with no button cut off. Tests run one at a time (`workers: 1`): they share the runtime's single fake
+OneDrive. CI: `.github/workflows/e2e.yml` (traces uploaded on failure; locally
+`pnpm exec playwright show-trace test-results/<test>/trace.zip`).
 
 **Runtime test mode** (`ACCNOMOS_TEST_MODE=1`, `services/runtime/app/testmode.py`). For tests only; the Docker image
 sets it to 0 and does not even contain `evals/gold`, which it needs.
 
-- Storage, mail, address book and calendar are the in-memory fakes from `accnomos_connectors.fake`, shared by every
-  request whatever token it carries (a token is still required, as in production). The calendar holds one sample
-  VAT deadline but no runtime route uses a calendar yet, so no e2e flow touches it. The browser's own Graph calls go
-  to a look-alike at `/__test/graph/v1.0` over the same storage.
+- Storage, mail (read and send), address book and calendar are the in-memory fakes from `accnomos_connectors.fake`,
+  shared by every request whatever token it carries (a token is still required, as in production). Sent mail
+  (invoices, reminders) is only recorded. The calendar holds a sample VAT deadline and one meeting on Thursday
+  29 Oct 2026 for the day planner. The browser's own Graph calls go to a look-alike at `/__test/graph/v1.0` over the
+  same storage. `/__test/*` is outside the per-IP rate limit; each reset refills the limit for everything else.
 - The stub AI proves the plumbing, not the models: it never reads a document it was not given the answer to.
 - Every AI call is forced to a stub at `/__test/ai` (Ollama-shaped), whatever the request headers say. It reads a
   document only if it is a gold receipt rendered by `evals/harness/render.py` (matched by the PNG's sha256) and
   returns its gold fields; Ask gets an answer built from the facts pack, so grounding passes.
-- `POST /__test/reset` empties storage and reseeds the mailbox (three gold receipts, one newsletter) and calendar;
-  `GET /__test/gold` and `/__test/gold/{name}.png` list and serve the gold receipts; `GET /__test/state` shows the fakes.
-- "Today" is pinned (`ACCNOMOS_TEST_TODAY`, default 2026-10-27) so the gold quarter (Jul–Sep 2026) is the one VAT and
-  Ask default to; `CROP_MODE` defaults to `off` so the stub sees the uploaded bytes.
+- `POST /__test/reset` empties storage and reseeds the mailbox (three gold receipts, one newsletter), the calendar and
+  a sample invoice profile (Sam Builds Ltd, footer "SAMPLE — FICTIONAL COMPANY") so an invoice can be sent straight
+  away. `POST /__test/reset?seed=bank` also posts the four entries `evals/gold/bank/barclays.csv` pays for (opt-in:
+  they change the VAT figures other specs check). `GET /__test/gold` and `/__test/gold/{name}.png` list and serve the
+  gold receipts; `GET /__test/state` shows the fakes, including what was "sent".
+- "Today" is pinned (`ACCNOMOS_TEST_TODAY`, default 2026-10-27; also for "plan my Thursday", scan and `/extract`):
+  the gold receipts (Jul–Sep 2026) fall in the previous VAT quarter, the one still to file, while VAT and Ask default
+  to the current one (Oct–Dec). The e2e browser clock is set to the same day. `CROP_MODE` defaults to `off` so the
+  stub sees the uploaded bytes.
 
 **Web test build** (`NEXT_PUBLIC_TEST_MODE=1`, made by `e2e/build.mjs`): `src/lib/msal.ts` uses a fake account from
 `msal-test.ts` (no network; "Sign in" sets `msal.accnomos-test.signedIn` in localStorage) and `src/lib/graph.ts` uses

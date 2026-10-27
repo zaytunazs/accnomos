@@ -1,12 +1,16 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { AccountInfo } from "@azure/msal-browser";
+import { useAccount } from "@/components/jobs/useAccount";
+import { runtime } from "@/lib/runtime";
 
 type NavLink = { href: string; label: string; badge?: string; tab?: string };
 const links: NavLink[] = [
   { href: "/", label: "Home", tab: "Home" },
-  { href: "/review", label: "Review", badge: "3", tab: "Review" },
+  { href: "/review", label: "Review", tab: "Review" },
   { href: "/ask", label: "Ask", tab: "Ask" },
   { href: "/invoices", label: "Invoices" },
   { href: "/bank", label: "Bank" },
@@ -17,6 +21,42 @@ const links: NavLink[] = [
   { href: "/vehicles", label: "Vehicles" },
   { href: "/files", label: "Files", tab: "Files" },
 ];
+
+const SAMPLE_WAITING = 1; // signed out, Review shows the one sample proposal
+
+// One count per page shown, shared by the sidebar and the tab bar (both are mounted).
+let waiting: { path: string; count: Promise<number | null> } | null = null;
+
+function countWaiting(account: AccountInfo, path: string): Promise<number | null> {
+  if (waiting?.path !== path) {
+    const count = runtime.proposals(account).then(
+      (all) => all.filter((p) => p.status === "proposed" || p.status === "needs_a_look").length,
+      () => null, // no badge rather than a wrong one
+    );
+    waiting = { path, count };
+  }
+  return waiting.count;
+}
+
+/** The Review badge: proposals waiting for the user (refreshed on every page change), or the sample's one. */
+function useReviewBadge(pathname: string): string | undefined {
+  const account = useAccount();
+  const [count, setCount] = useState<number | null>(null);
+  useEffect(() => {
+    if (account === undefined) return;
+    let stale = false;
+    const count = account ? countWaiting(account, pathname) : Promise.resolve(SAMPLE_WAITING);
+    count.then((n) => !stale && setCount(n));
+    return () => {
+      stale = true;
+    };
+  }, [account, pathname]);
+  return count ? String(count) : undefined;
+}
+
+function withBadges(review: string | undefined): NavLink[] {
+  return links.map((l) => (l.href === "/review" ? { ...l, badge: review } : l));
+}
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -29,7 +69,7 @@ const sidebarGroups: { label: string; hrefs: string[] }[] = [
   { label: "Work", hrefs: ["/jobs", "/contacts", "/vehicles"] },
 ];
 
-function SidebarNav({ pathname }: { pathname: string }) {
+function SidebarNav({ pathname, links }: { pathname: string; links: NavLink[] }) {
   const settingsActive = isActive(pathname, "/settings");
   const byHref = new Map(links.map((link) => [link.href, link]));
 
@@ -62,7 +102,7 @@ function SidebarNav({ pathname }: { pathname: string }) {
                     <span className="min-w-0 truncate">{link.label}</span>
                     {link.badge ? (
                       <span
-                        aria-label={`${link.badge} items to review`}
+                        aria-label={`${link.badge} item${link.badge === "1" ? "" : "s"} to review`}
                         className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-amber px-2 text-[13px] font-bold text-white"
                       >
                         {link.badge}
@@ -90,7 +130,7 @@ function SidebarNav({ pathname }: { pathname: string }) {
   );
 }
 
-function TabBar({ pathname }: { pathname: string }) {
+function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
   return (
     <nav
       aria-label="Sections"
@@ -138,7 +178,8 @@ function TabBar({ pathname }: { pathname: string }) {
 
 export default function AppNav({ variant = "sidebar" }: { variant?: "sidebar" | "tabs" }) {
   const pathname = usePathname();
+  const navLinks = withBadges(useReviewBadge(pathname));
 
-  if (variant === "tabs") return <TabBar pathname={pathname} />;
-  return <SidebarNav pathname={pathname} />;
+  if (variant === "tabs") return <TabBar pathname={pathname} links={navLinks} />;
+  return <SidebarNav pathname={pathname} links={navLinks} />;
 }

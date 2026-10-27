@@ -39,6 +39,8 @@ const HASH_GROUP: Record<string, GroupId> = {
   "settings-autopilot": "automation",
   "settings-rules": "automation",
   "settings-intake": "automation",
+  automation: "automation", // Home's "Turn on Inbox triage in Settings"
+  "settings-automation": "automation",
   "settings-business-hours": "automation",
   "settings-business": "business",
   "settings-vat-periods": "business",
@@ -140,7 +142,20 @@ export default function SettingsPanels() {
     if (!pendingHash.current) return;
     const el = document.getElementById(pendingHash.current);
     pendingHash.current = null;
-    el?.scrollIntoView({ block: "start" });
+    if (!el) return;
+    el.scrollIntoView({ block: "start" });
+    // Sections above it (invoice profile, staff) may still be loading and push it down: keep it in place while
+    // the panel grows, for a few seconds or until the user scrolls or types.
+    const panel = el.closest('[role="tabpanel"]');
+    if (!panel || typeof ResizeObserver === "undefined") return;
+    const keep = new ResizeObserver(() => el.scrollIntoView({ block: "start" }));
+    keep.observe(panel);
+    const stop = () => {
+      keep.disconnect();
+      for (const ev of ["wheel", "touchstart", "keydown"]) window.removeEventListener(ev, stop);
+    };
+    for (const ev of ["wheel", "touchstart", "keydown"]) window.addEventListener(ev, stop, { passive: true });
+    window.setTimeout(stop, 3000);
   });
 
   function onTabKeys(e: React.KeyboardEvent<HTMLDivElement>) {

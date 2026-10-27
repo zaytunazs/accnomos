@@ -42,6 +42,7 @@ UPLOAD_PATHS: frozenset[str] = frozenset()
 UPLOAD_LIMIT = 25 * 1024 * 1024
 JSON_LIMIT = 256 * 1024
 UNLIMITED_PATHS = frozenset({"/health"})  # no rate limit (container healthcheck, uptime probes)
+UNLIMITED_PREFIXES: tuple[str, ...] = ()  # always empty here; the runtime's test mode fills its own copy
 MAX_BUCKETS = 10_000
 
 # --- scrubbing ------------------------------------------------------------------------------------------------
@@ -212,7 +213,8 @@ class SecurityMiddleware:
         _request_secrets.set(tuple(s for v in values for s in {v, v.removeprefix("Bearer ").strip()} if len(s) >= 8))
 
         # 2. rate limit (preflights and health checks are free)
-        if self.limiter and method != "OPTIONS" and path not in UNLIMITED_PATHS:
+        if (self.limiter and method != "OPTIONS" and path not in UNLIMITED_PATHS
+                and not (UNLIMITED_PREFIXES and path.startswith(UNLIMITED_PREFIXES))):
             client = scope.get("client")
             wait = self.limiter.take(client[0] if client else "unknown")
             if wait:

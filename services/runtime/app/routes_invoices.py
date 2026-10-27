@@ -21,7 +21,7 @@ from pydantic import BaseModel, Field, StrictBool
 
 from app import invoicing as inv_
 from app.ai import remind
-from app.ai.config import AiConfig, ai_config_from_request
+from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.books import Books, now
 from app.invoicing import Invoice, InvoiceCustomer, InvoiceDraft, InvoiceError, InvoiceProfile, InvoiceStateError, InvoiceStatus
 from app.pdf import render_invoice
@@ -36,6 +36,11 @@ async def get_sender(request: Request) -> AsyncIterator[MailSender]:
     token = request.headers.get("X-Graph-Token", "").strip().removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")
+    if is_test_mode():  # recorded in memory, listed by GET /__test/state
+        from app import testmode
+
+        yield (await testmode.state()).sender
+        return
     sender = GraphMailSender(token)
     try:
         yield sender

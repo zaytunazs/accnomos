@@ -1,24 +1,72 @@
-import { createBooksFolder, expect, signIn, test } from "./fixtures";
+import { createBooksFolder, expect, settingsTab, signIn, test } from "./fixtures";
 
-test("Settings toggles persist across a reload", async ({ page }) => {
+test.beforeEach(async ({ page }) => {
   await signIn(page);
   await createBooksFolder(page);
+});
+
+test("all four tabs render their sections", async ({ page }) => {
   await page.goto("/settings");
+  const expected = {
+    Connection: ["Connections", "Audit log", "Disconnect"],
+    AI: ["AI", "Second reading (verifier)"],
+    Automation: ["Autopilot level", "Outlook intake", "Inbox triage"],
+    Business: ["On your invoices", "VAT periods"],
+  } as const;
+  for (const [tab, headings] of Object.entries(expected) as [keyof typeof expected, readonly string[]][]) {
+    const panel = await settingsTab(page, tab);
+    for (const name of headings) await expect(panel.getByRole("heading", { name, exact: true })).toBeVisible();
+    await expect(page.getByRole("tabpanel")).toHaveCount(1); // the others are hidden
+  }
+  await expect((await settingsTab(page, "Connection")).getByRole("region", { name: "Connections" })).toContainText("Signed in");
+});
 
-  await expect(page.getByRole("region", { name: "Connections" })).toContainText("Signed in");
-  const autopilot = page.getByRole("radiogroup", { name: "Autopilot level" });
-  const period = page.getByRole("radiogroup", { name: "VAT return period" });
-  const intake = page.getByRole("switch", { name: "Outlook intake" });
+test("Autopilot L2, monthly VAT and Outlook intake persist across a reload; the tab is remembered", async ({ page }) => {
+  await page.goto("/settings");
+  const automation = await settingsTab(page, "Automation");
+  const autopilot = automation.getByRole("radiogroup", { name: "Autopilot level" });
   await expect(autopilot.getByRole("radio", { name: /L1 Assist/ })).toHaveAttribute("aria-checked", "true");
-
   await autopilot.getByRole("radio", { name: /L2 Autopilot/ }).click();
-  await period.getByRole("radio", { name: "Monthly" }).click();
+  const intake = automation.getByRole("switch", { name: "Outlook intake" });
   await intake.click();
   await expect(intake).toHaveAttribute("aria-checked", "true");
 
+  const business = await settingsTab(page, "Business");
+  await business.getByRole("radiogroup", { name: "VAT return period" }).getByRole("radio", { name: "Monthly" }).click();
+
   await page.reload();
+  await expect(page.getByRole("tab", { name: "Business" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("radiogroup", { name: "VAT return period" }).getByRole("radio", { name: "Monthly" })).toHaveAttribute("aria-checked", "true");
+  await settingsTab(page, "Automation");
   await expect(autopilot.getByRole("radio", { name: /L2 Autopilot/ })).toHaveAttribute("aria-checked", "true");
   await expect(autopilot.getByRole("radio", { name: /L1 Assist/ })).toHaveAttribute("aria-checked", "false");
-  await expect(period.getByRole("radio", { name: "Monthly" })).toHaveAttribute("aria-checked", "true");
   await expect(intake).toHaveAttribute("aria-checked", "true");
+});
+
+test("changing the VAT period moves the deadlines on Home", async ({ page }) => {
+  const deadlines = page.getByRole("region", { name: "Deadlines" });
+  await page.goto("/");
+  await expect(deadlines).toContainText("7 NOV: VAT return Jul–Sep 2026 due"); // quarterly, Jan/Apr/Jul/Oct quarters
+  await expect(deadlines).toContainText("31 DEC: VAT period Oct–Dec 2026 ends");
+
+  await page.goto("/settings");
+  const business = await settingsTab(page, "Business");
+  await business.getByRole("radio", { name: "Monthly" }).click();
+  await expect(business.getByRole("status")).toHaveText("Saved on this device.");
+
+  await page.goto("/");
+  await expect(deadlines).toContainText("7 NOV: VAT return Sep 2026 due");
+  await expect(deadlines).toContainText("31 OCT: VAT period Oct 2026 ends");
+});
+
+test("deep links open the right tab: #settings-staff, and Home's #automation", async ({ page }) => {
+  await page.goto("/settings#settings-staff");
+  await expect(page.getByRole("tab", { name: "Business" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#settings-staff")).toBeInViewport();
+
+  await page.goto("/");
+  await page.getByRole("link", { name: "Turn on Inbox triage in Settings" }).click();
+  await expect(page).toHaveURL(/\/settings#automation$/);
+  await expect(page.getByRole("tab", { name: "Automation" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("region", { name: "Inbox triage" })).toBeVisible();
 });

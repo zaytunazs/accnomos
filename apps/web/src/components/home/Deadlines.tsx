@@ -105,7 +105,10 @@ export default function Deadlines() {
               </span>
             </div>
             <div className="min-w-0">
-              <p className="text-[15px] font-bold leading-snug">{d.title}</p>
+              <p className="text-[15px] font-bold leading-snug">
+                {d.month && <span className="sr-only">{d.day} {d.month}: </span>}
+                {d.title}
+              </p>
               <p className="mt-0.5 text-[13px] font-medium leading-snug text-muted">
                 {d.sub}
               </p>

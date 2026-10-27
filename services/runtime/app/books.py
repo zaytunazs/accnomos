@@ -34,7 +34,7 @@ import logging
 import os
 import re
 from collections.abc import Callable
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, tzinfo
 from typing import Any, Literal
 
 from accnomos_connectors.base import ConflictError, FileRef, StorageProvider
@@ -78,11 +78,12 @@ def now() -> datetime:
     return datetime.now(UTC)
 
 
-def today() -> date:
-    """Today, for "the current period" defaults. Test mode (app/testmode.py) pins it with ACCNOMOS_TEST_TODAY."""
+def today(tz: tzinfo | None = None) -> date:
+    """Today (in `tz`, else the server's zone), for "the current period" and "Thursday". Test mode
+    (app/testmode.py) pins it with ACCNOMOS_TEST_TODAY."""
     if is_test_mode() and (pinned := os.getenv("ACCNOMOS_TEST_TODAY")):
         return date.fromisoformat(pinned)
-    return date.today()
+    return datetime.now(tz).date() if tz else date.today()
 
 
 class RuleMatch(BaseModel):

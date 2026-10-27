@@ -58,6 +58,12 @@ export function HomeData({ children }: { children: React.ReactNode }) {
   return <HomeContext.Provider value={state}>{children}</HomeContext.Provider>;
 }
 
+/** Only for visitors who are not signed in (and in the static HTML, before MSAL has answered). */
+export function SignedOut({ children }: { children: React.ReactNode }) {
+  const { mode } = useHome();
+  return mode === "checking" || mode === "sample" ? <>{children}</> : null;
+}
+
 /** A grey bar standing in for text that is still loading. */
 export function Skeleton({ className = "" }: { className?: string }) {
   return <span aria-hidden="true" className={`inline-block animate-pulse rounded-md bg-ground ${className}`} />;

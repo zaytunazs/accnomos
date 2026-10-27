@@ -9,7 +9,7 @@ model fails, the rationale is written by code. Ordering and times are always cod
 from __future__ import annotations
 
 from collections.abc import AsyncIterator
-from datetime import date, datetime
+from datetime import date
 
 from accnomos_connectors import CalendarProvider
 from accnomos_connectors.msgraph import GraphCalendarProvider
@@ -18,8 +18,8 @@ from pydantic import BaseModel, Field
 
 from app import jobs
 from app.ai import plan as plan_ai
-from app.ai.config import AiConfig
-from app.books import Books
+from app.ai.config import AiConfig, is_test_mode
+from app.books import Books, today
 from app.plan_apply import ApplyResult, PlanConflict, PlanError, apply_plan
 from app.planner import TZ, Constraints, PlanItem, VatSettings, build_plan, plan_hash, vat_due
 from app.routes_books import get_books, require_user
@@ -31,6 +31,11 @@ async def get_calendar(request: Request) -> AsyncIterator[CalendarProvider]:
     token = request.headers.get("X-Graph-Token", "").strip().removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")
+    if is_test_mode():
+        from app import testmode
+
+        yield (await testmode.state()).calendar
+        return
     provider = GraphCalendarProvider(token)
     try:
         yield provider
@@ -80,7 +85,7 @@ async def plan_day(
     open_jobs = [j for j in await jobs.load_jobs(books) if j.status == "open" and (wanted is None or j.id in wanted)]
     existing = await calendar.list_events(body.date)
     plan = build_plan(body.date, open_jobs, existing, vat_due(body.date, body.vat), body.constraints,
-                      today=datetime.now(TZ).date())
+                      today=today(TZ))
     text, model, reason = await plan_ai.rationale(plan, cfg)
     return PlanResponse(
         date=body.date, plan=plan.items, rationale_md=text, warnings=plan.warnings,

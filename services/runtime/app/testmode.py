@@ -2,15 +2,18 @@
 
 With it on, the runtime talks to nothing outside this process:
 
-* Storage, mail and the address book are in-memory fakes (accnomos_connectors.fake), shared by every request
-  whatever token it carries, so the browser and the runtime see one OneDrive. A fake calendar is held too.
+* Storage, mail (read and send), the address book and the calendar are in-memory fakes
+  (accnomos_connectors.fake), shared by every request whatever token it carries, so the browser and the
+  runtime see one OneDrive. Sent mail is only recorded (`GET /__test/state` lists it); day plans read and
+  write the fake calendar.
 * The browser's own Graph calls (folder setup, Files, "Add a receipt") go to a small Graph look-alike at
   `/__test/graph/v1.0`, backed by the same fake storage (the test-mode web build points `lib/graph.ts` there).
 * Every AI call goes to a stub at `/__test/ai` (Ollama-shaped, see app/ai/config.py). It reads a receipt only
   if it is a gold receipt rendered by evals/harness/render.py, found by the sha256 of the PNG bytes, and
   answers with that receipt's gold fields; questions get an answer built from the facts pack it is sent.
-* "Today" is pinned to ACCNOMOS_TEST_TODAY (default 2026-10-27) so the gold receipts (Jul-Sep 2026) fall in
-  the quarter the VAT page and Ask default to (the last complete one); timestamps stay real.
+* "Today" is pinned to ACCNOMOS_TEST_TODAY (default 2026-10-27): the gold receipts (Jul-Sep 2026) fall in the
+  previous VAT quarter, the one still to file (the VAT page and Ask default to the current one, Oct-Dec);
+  timestamps stay real.
 
 `POST /__test/reset` empties storage and reseeds the mailbox (three gold receipts by email plus one message
 that is not a receipt) and the calendar. `GET /__test/gold` lists the gold receipts; `GET /__test/gold/{file}.png`
@@ -26,17 +29,20 @@ import json
 import logging
 import os
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from types import ModuleType
 from typing import Any
+from zoneinfo import ZoneInfo
 
 from accnomos_connectors import (
     AddressBookContact,
+    CalendarEvent,
     FakeCalendarProvider,
     FakeContactsProvider,
     FakeMailProvider,
+    FakeMailSender,
     FakeStorageProvider,
     MailAttachment,
     MailMessage,
@@ -45,6 +51,7 @@ from accnomos_connectors.base import FileRef
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
+from app import security
 from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai
 from app.ai import verify as verify_ai
@@ -53,9 +60,16 @@ from app.schemas import CATEGORIES, AskModelOutput
 
 log = logging.getLogger("accnomos.testmode")
 
-DEFAULT_TODAY = "2026-10-27"  # VAT and Ask default to the last complete quarter: Jul-Sep 2026, the gold set's
+DEFAULT_TODAY = "2026-10-27"  # the gold set's quarter (Jul-Sep 2026) is the one still to file; VAT and Ask default to Oct-Dec
 MAIL_GOLD = ("001_standard.json", "011_standard.json", "022_standard.json")  # emailed in by the seeded suppliers
 CALENDAR = "Accnomos"
+SAMPLE = "SAMPLE — FICTIONAL COMPANY"
+# Thursday after the pinned today (Tue 27 Oct 2026): one busy hour in the morning.
+PLAN_EVENT = CalendarEvent(
+    id="evt-sample-thu", subject="Site meeting, Harbour Lane kitchen", location="12 Harbour Lane, Bristol BS1 4RW",
+    start=datetime(2026, 10, 29, 9, 0, tzinfo=ZoneInfo("Europe/London")),
+    end=datetime(2026, 10, 29, 10, 0, tzinfo=ZoneInfo("Europe/London")), body_preview=SAMPLE,
+)
 
 
 def _gold_dir() -> Path:
@@ -183,6 +197,7 @@ def ask_reply(facts: dict[str, Any]) -> dict[str, Any]:
 class State:
     storage: FakeStorageProvider
     mail: FakeMailProvider
+    sender: FakeMailSender
     contacts: FakeContactsProvider
     calendar: FakeCalendarProvider
     seeded = False
@@ -204,12 +219,54 @@ def _sender(gold: dict[str, Any]) -> tuple[str, str]:
     return name, f"accounts@{slug}.example"
 
 
-async def reset() -> dict[str, Any]:
-    """Empty storage; reseed the mailbox, address book and calendar from the gold set."""
+# The business on its invoices, so an invoice can be sent without filling Settings in first.
+SAMPLE_PROFILE = {
+    "name": "Sam Builds Ltd", "address": "1 Sample Street\nBristol\nBS1 1AA", "email": "sam@sambuilds.example",
+    "phone": "0117 496 0000", "vrn": "GB123456789", "terms_days": 30, "footer_note": SAMPLE,
+    "bank": {"account_name": "Sam Builds Ltd", "sort_code": "00-00-00", "account_number": "00000000"},
+}
+
+
+def _bank_event(spec: dict[str, Any]) -> Any:
+    """One posted event from evals/gold/bank/expected.json (purchases paid from 1200 Bank, sales owed in 1100 Debtors)."""
+    from accnomos_ledger import LedgerEvent, Line, VatCode
+
+    gross = spec["gross_pence"]
+    if spec["kind"] == "sale":
+        lines = [Line(account="1100 Debtors", debit=gross), Line(account="4000 Sales", credit=gross, vat_code=VatCode.STANDARD)]
+    else:
+        lines = [Line(account="7999 Sundry expenses", debit=gross, vat_code=VatCode.STANDARD), Line(account="1200 Bank", credit=gross)]
+    return LedgerEvent(id=spec["id"], kind=spec["kind"], date=date.fromisoformat(spec["date"]), lines=lines, net=gross, vat=0,
+                       counterparty=spec["counterparty"], evidence=["ab" * 32], approved_by="sam@sambuilds.example",
+                       approved_at=datetime(2026, 10, 26, tzinfo=UTC))
+
+
+async def _seed_bank() -> None:
+    """The entries the gold Barclays statement (evals/gold/bank/barclays.csv) pays for, labelled SAMPLE there."""
+    from app.books import Books
+
+    expected = json.loads((_gold_dir() / "bank" / "expected.json").read_text(encoding="utf-8"))
+    books = Books(STATE.storage)
+    for spec in expected["events"]:
+        if spec["id"].startswith("gold-bc-"):
+            await books.post_event(_bank_event(spec))
+
+
+SEEDS = {"bank": _seed_bank}  # opt-in: they change the VAT figures other flows check
+
+
+async def reset(seed: str | None = None) -> dict[str, Any]:
+    """Empty storage; reseed the mailbox, address book, calendar and invoice profile; then any `seed` from SEEDS."""
+    from app.invoicing import PROFILE, InvoiceProfile
+
+    if seed is not None and seed not in SEEDS:
+        raise HTTPException(400, f"unknown seed {seed!r}; one of {sorted(SEEDS)}")
     STATE.storage = FakeStorageProvider()
+    await STATE.storage.write(PROFILE, InvoiceProfile.model_validate(SAMPLE_PROFILE).model_dump_json(indent=2).encode())
     STATE.mail = FakeMailProvider()
+    STATE.sender = FakeMailSender()
     STATE.contacts = FakeContactsProvider()
-    STATE.calendar = FakeCalendarProvider()
+    STATE.calendar = FakeCalendarProvider([PLAN_EVENT])  # something for "plan my Thursday" to plan around
     received = datetime.now(UTC)
     golds = gold_receipts()
     for n, file in enumerate(MAIL_GOLD, start=1):
@@ -227,15 +284,21 @@ async def reset() -> dict[str, Any]:
         (MailAttachment(id="att-news", name="webinar.ics", content_type="text/calendar", size=900), b"BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n"),
     )
     cal = await STATE.calendar.ensure_calendar(CALENDAR)
-    await STATE.calendar.upsert_all_day_event(cal, "vat-26A3", "2026-11-07", "VAT return due (Jul–Sep 2026)", "SAMPLE — FICTIONAL COMPANY")
+    await STATE.calendar.upsert_all_day_event(cal, "vat-26A3", "2026-11-07", "VAT return due (Jul–Sep 2026)", SAMPLE)
+    if seed:
+        await SEEDS[seed]()
+    if security.LIMITER:  # each test starts with a full request budget
+        security.LIMITER.reset()
     STATE.seeded = True
-    return {"ok": True, "mail": len(STATE.mail.messages), "gold": len(golds)}
+    return {"ok": True, "mail": len(STATE.mail.messages), "gold": len(golds), "seed": seed}
 
 
 def enable() -> None:
     """Called once by app.main when ACCNOMOS_TEST_MODE=1."""
     os.environ.setdefault("ACCNOMOS_TEST_TODAY", DEFAULT_TODAY)
     os.environ.setdefault("CROP_MODE", "off")  # the stub knows the uploaded bytes, not a re-encoded crop
+    # The browser's Graph and AI calls come here instead of Microsoft/Ollama; they must not eat the per-IP budget.
+    security.UNLIMITED_PREFIXES = ("/__test/",)
     log.warning("ACCNOMOS_TEST_MODE=1: fake storage/mail/calendar and a stub AI; not for real books")
 
 
@@ -247,8 +310,8 @@ router = APIRouter(prefix="/__test", tags=["test mode"], include_in_schema=False
 
 
 @router.post("/reset")
-async def reset_route() -> dict[str, Any]:
-    return await reset()
+async def reset_route(seed: str | None = None) -> dict[str, Any]:
+    return await reset(seed)
 
 
 @router.get("/gold")
@@ -276,6 +339,7 @@ async def state_route() -> dict[str, Any]:
     s = await state()
     return {
         "files": sorted(s.storage.files), "mail_calls": s.mail.calls,
+        "sent": [{"to": m.to, "subject": m.subject, "attachments": [a.name for a in m.attachments]} for m in s.sender.sent],
         "calendar": {cid: {k: list(v) for k, v in ev.items()} for cid, ev in s.calendar.all_day.items()},
     }
 
