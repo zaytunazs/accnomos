@@ -1,0 +1,18 @@
+{
+  "_note": "ILLUSTRATIVE, NOT CAPTURED. Shape assumed from the research note (Responses API; output text carries boxes in source pixels plus base85 masks). Replace with a real sam-3.1 response before enabling SAM_CROP=1.",
+  "id": "resp_fixture",
+  "object": "response",
+  "model": "sam-3.1",
+  "output": [
+    {
+      "type": "message",
+      "role": "assistant",
+      "content": [
+        {
+          "type": "output_text",
+          "text": "{\"detections\": [{\"label\": \"receipt\", \"score\": 0.97, \"box\": [212, 88, 731, 1204], \"mask\": \"0R9~Gb%d?Y\"}, {\"label\": \"receipt\", \"score\": 0.62, \"box\": [800, 900, 960, 1100], \"mask\": \"9jqo^\"}, {\"label\": \"receipt\", \"score\": 0.21, \"box\": [0, 0, 1000, 1300], \"mask\": \"F)Po,\"}]}"
+        }
+      ]
+    }
+  ]
+}
