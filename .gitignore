@@ -43,6 +43,7 @@ evals/runs/*
 !evals/runs/bank_matching/
 !evals/runs/mail_intake/
 !evals/runs/ask_40/
+!evals/runs/supplier_vat_replay/
 !evals/runs/glimmer_messy_200/
 evals/runs/glimmer_messy_200/*
 !evals/runs/glimmer_messy_200/report.md
