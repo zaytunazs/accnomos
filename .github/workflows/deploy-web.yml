@@ -31,6 +31,10 @@ jobs:
           cache-dependency-path: apps/web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
         working-directory: apps/web
+      - name: Write public/version.json (the app's "new version" strip polls it)
+        working-directory: apps/web
+        run: |
+          printf '{"sha":"%s","builtAt":"%s"}\n' "$GITHUB_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > public/version.json
       - run: pnpm lint && pnpm build
         working-directory: apps/web
       - name: Refuse to publish a test-mode build

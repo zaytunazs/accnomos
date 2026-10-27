@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import AppNav from "./AppNav";
 import DemoBanner from "./DemoBanner";
+import { ServiceStrip, VersionStrip } from "./StatusStrips";
 
 function LogoMark() {
   return (
@@ -32,6 +33,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <DemoBanner />
+      {/* Reader trouble and new-version notices: one shared strip each, pages keep what they can below. */}
+      <ServiceStrip />
+      <VersionStrip />
       {/* Phone header: logo plus Settings, shown only while the sidebar is hidden. */}
       <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-border bg-white px-4 py-2.5 min-[900px]:hidden">
         <span className="flex min-w-0 items-center gap-2.5">
