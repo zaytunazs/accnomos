@@ -307,14 +307,16 @@ async def run_pass(base: FakeStorageProvider, origin: dict[str, str], docs: list
     out = []
     for i, d in enumerate(docs, start=1):
         rec = await feed(books, d, cfg, plan, origin)
-        out.append((d, rec))
-        print(f"[{d.pass_} {i}/{len(docs)}] {d.id} {rec['seconds']}s {rec['outcome']}", flush=True)
-    events = {e.id: e.model_dump(mode="json") for e in await books.list_events()}
-    for d, rec in out:
-        grade(rec, d.gold, events.get(rec.get("event_id") or ""))
-        sink.write(json.dumps(rec, ensure_ascii=False) + "\n")
+        event = None
+        if rec.get("event_id"):
+            event = next((e.model_dump(mode="json") for e in await books.list_events() if e.id == rec["event_id"]), None)
+        grade(rec, d.gold, event)
+        sink.write(json.dumps(rec, ensure_ascii=False) + "\n")  # as it goes: a stopped run keeps what it did
         sink.flush()
-    return [rec for _, rec in out]
+        out.append(rec)
+        mark = " FALSE POST" if rec["false_post"] else ""
+        print(f"[{d.pass_} {i}/{len(docs)}] {d.id} {rec['seconds']}s {rec['outcome']}{mark}", flush=True)
+    return out
 
 
 async def simulate(args: argparse.Namespace) -> list[Path]:
