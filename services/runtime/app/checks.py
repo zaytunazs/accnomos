@@ -63,15 +63,24 @@ def check_arith_lines(doc: ExtractedDoc) -> Check:
     if not doc.lines:
         return _chk("ARITH_LINES", True, "warn", "No line items to check")
     if problems:
-        return _chk("ARITH_LINES", False, "fail", "; ".join(problems))
+        # The ledger posts TOTALS; line detail is evidence. Printed receipts often show VAT-inclusive
+        # prices or round VAT per line, so a line mismatch is a warning when the totals themselves hold.
+        severity = "warn" if totals_consistent(doc) else "fail"
+        return _chk("ARITH_LINES", False, severity, "; ".join(problems))
     return _chk("ARITH_LINES", True, "fail", "Line arithmetic adds up")
 
 
+def totals_consistent(doc: ExtractedDoc) -> bool:
+    """net + VAT == gross (to 1p) — the invariant the ledger relies on."""
+    return abs(p(doc.net_total) + p(doc.vat_total) - p(doc.gross_total)) <= 1
+
+
 def check_arith_totals(doc: ExtractedDoc) -> Check:
+    """net+VAT=gross is a hard fail. Lines-vs-totals mismatch is a warning when the totals hold."""
     net, vat, gross = p(doc.net_total), p(doc.vat_total), p(doc.gross_total)
-    problems: list[str] = []
     if abs(net + vat - gross) > 1:
-        problems.append(f"net {gbp(net)} + VAT {gbp(vat)} ≠ gross {gbp(gross)}")
+        return _chk("ARITH_TOTALS", False, "fail", f"net {gbp(net)} + VAT {gbp(vat)} ≠ gross {gbp(gross)}")
+    problems: list[str] = []
     if doc.lines:
         ln_net = sum(p(ln.net) for ln in doc.lines)
         ln_vat = sum(p(ln.vat) for ln in doc.lines)
@@ -81,8 +90,21 @@ def check_arith_totals(doc: ExtractedDoc) -> Check:
         if abs(ln_vat - vat) > vat_tol:
             problems.append(f"lines VAT {gbp(ln_vat)} ≠ VAT total {gbp(vat)}")
     if problems:
-        return _chk("ARITH_TOTALS", False, "fail", "; ".join(problems))
+        return _chk("ARITH_TOTALS", False, "warn", "Totals hold; line detail differs: " + "; ".join(problems))
     return _chk("ARITH_TOTALS", True, "fail", "Totals add up")
+
+
+def check_vat_math(doc: ExtractedDoc) -> Check:
+    """When every line carries the same rate, VAT total must be net total x that rate (±2p + 1p/line)."""
+    rates = {ln.vat_rate for ln in doc.lines if ln.vat_rate is not None}
+    if len(rates) != 1 or any(ln.vat_rate is None for ln in doc.lines):
+        return _chk("VAT_MATH", True, "warn", "Mixed or unknown rates; VAT checked via totals only")
+    rate = rates.pop()
+    expected = round(doc.net_total * rate)  # pence
+    tol = 2 + len(doc.lines)
+    if abs(expected - p(doc.vat_total)) > tol:
+        return _chk("VAT_MATH", False, "fail", f"VAT {doc.vat_total:.2f} ≠ {rate:g}% of net {doc.net_total:.2f} ({expected / 100:.2f})")
+    return _chk("VAT_MATH", True, "fail", f"VAT is {rate:g}% of net")
 
 
 def check_vat_rates(doc: ExtractedDoc) -> Check:
@@ -166,6 +188,7 @@ def run_checks(
     return [
         check_arith_lines(doc),
         check_arith_totals(doc),
+        check_vat_math(doc),
         check_vat_rates(doc),
         check_vat_number_format(doc),
         check_vat_number_required(doc),

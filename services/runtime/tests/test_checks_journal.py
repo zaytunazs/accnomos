@@ -97,7 +97,7 @@ def test_standard_is_proposed(standard: ExtractedDoc) -> None:
 def test_arith_error_needs_a_look(arith_error: ExtractedDoc) -> None:
     status, reasons = _status(arith_error)
     assert status == "needs_a_look"
-    assert "ARITH_TOTALS" in _codes(reasons)
+    assert "VAT_MATH" in _codes(reasons)  # totals hold (33.06+6.41=39.47) but VAT isn't 20% of net
 
 
 def test_over_250_without_vat_number(over_250_no_vat: ExtractedDoc) -> None:
