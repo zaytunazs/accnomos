@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import hashlib
 import re
+import uuid
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
@@ -42,7 +43,7 @@ from accnomos_connectors.base import AddressBookContact
 from accnomos_ledger.bank import BankLine
 from accnomos_ledger.events import LedgerEvent, VatCode
 from app.autopilot import supplier_key
-from app.books import SYSTEM, Books, now
+from app.books import AUTOPILOT_RULES, SYSTEM, Books, now
 from app.checks import UNKNOWN_SUPPLIER, SupplierKnowledge, normalise_vat_number
 from app.journal import CREDITORS, DEBTORS, VAT_CONTROL
 from app.schemas import CATEGORIES, ExtractedDoc, Proposal, VatStatus
@@ -894,6 +895,248 @@ async def import_outlook(books: Books, entries: Sequence[AddressBookContact], ad
     await save_contacts(books, merged)
     await books.audit(f"user:{user}", "contacts_imported", {"source": "outlook", **result.model_dump()})
     return result
+
+
+# --------------------------------------------------------------------------- #
+# Merging: only on the user's approval, by code, and undoable
+# --------------------------------------------------------------------------- #
+
+#: Stricter VAT status first: a registered supplier's VAT is always questioned; unknown last.
+_VAT_STRICTNESS = {"registered": 0, "not_registered": 1, "unknown": 2}
+
+
+class MergeError(ValueError):
+    """The merge cannot be done as asked (unknown id, conflicting VAT numbers, ...)."""
+
+
+class MergedReference(BaseModel):
+    """One file re-pointed at the kept contact: enough to put it back on undo."""
+
+    path: str
+    before: Any
+
+
+class MergeRecord(BaseModel):
+    id: str
+    at: datetime
+    actor: str
+    keep_id: str
+    merged_ids: list[str]
+    name: str  # the kept contact's name after the merge
+    contacts_before: list[dict[str, Any]]  # the exact previous contacts.json entries
+    references: list[MergedReference] = []  # every other file re-pointed
+
+
+def _merge_path(merge_id: str) -> str:
+    return f"{MERGES}/{merge_id}.json"
+
+
+def _combine_kind(kinds: list[ContactKind]) -> ContactKind:
+    kinds = [k for k in kinds if k]
+    if len(set(kinds)) == 1:
+        return kinds[0]
+    return "both"
+
+
+def _combine_address(keep: str | None, others: list[str | None]) -> str | None:
+    """All addresses kept line by line: the kept one's lines first, then any merged line not already in it."""
+    parts = [ln.strip() for ln in (keep or "").splitlines() if ln.strip()]
+    for o in others:
+        for ln in (o or "").splitlines():
+            if ln.strip() and ln.strip() not in parts:
+                parts.append(ln.strip())
+    return "\n".join(parts) or None
+
+
+def merge_contacts(
+    book: Sequence[Contact], keep_id: str, merge_ids: Sequence[str], name: str | None = None
+) -> tuple[list[Contact], Contact, list[Contact]]:
+    """(the book with the merged contacts folded into the kept one, the kept contact, the removed ones).
+
+    Emails and phones: the kept contact's win, blanks filled from the merged ones. Addresses combine
+    line by line, so nothing is dropped. Merged names become aliases, so future documents under those
+    names still match. VAT status keeps the stricter of the two. Raises `MergeError`.
+    """
+    by_id = {c.id: c for c in book}
+    merged_ids = list(dict.fromkeys(merge_ids))
+    if not merged_ids:
+        raise MergeError("Nothing to merge: merge_ids is empty")
+    if keep_id not in by_id:
+        raise MergeError("No such contact to keep")
+    if keep_id in merged_ids:
+        raise MergeError("The kept contact cannot also be merged away")
+    missing = [i for i in merged_ids if i not in by_id]
+    if missing:
+        raise MergeError(f"No such contact: {', '.join(missing)}")
+    kept = by_id[keep_id].model_copy(deep=True)
+    removed = [by_id[i].model_copy(deep=True) for i in merged_ids]
+    vrns = {(c.vrn or "").strip().upper() for c in (kept, *removed) if c.vrn}
+    if len(vrns) > 1:
+        raise MergeError(f"Different VAT numbers ({', '.join(sorted(vrns))}): these are two businesses")
+    if name is not None:
+        if not name.strip() or not supplier_key(name):
+            raise MergeError("Name can't be empty")
+        kept.name = name.strip()
+    old_keys = {kept.normalised_key, *kept.aliases}
+    new_key = supplier_key(kept.name)
+    for c in removed:
+        old_keys.add(c.normalised_key)
+        old_keys.update(c.aliases)
+    kept.normalised_key = new_key
+    kept.aliases = sorted(k for k in old_keys if k and k != new_key)
+    for c in removed:
+        for field in ("email", "phone"):
+            if not getattr(kept, field) and getattr(c, field):
+                setattr(kept, field, getattr(c, field))
+    kept.address = _combine_address(kept.address, [c.address for c in removed])
+    if not kept.vrn:
+        kept.vrn = next((c.vrn for c in removed if c.vrn), None)
+    kept.vat_status = min(
+        [kept.vat_status, *(c.vat_status for c in removed)], key=lambda s: _VAT_STRICTNESS[s]
+    )
+    if kept.vrn and kept.vat_status == "unknown":
+        kept.vat_status = "registered"  # as `supplier_knowledge`: a VAT number on file means registered
+    kept.kind = _combine_kind([kept.kind, *(c.kind for c in removed)])
+    for field in ("default_category", "default_vat_code", "terms_days"):
+        if getattr(kept, field) is None:
+            setattr(kept, field, next((getattr(c, field) for c in removed if getattr(c, field) is not None), None))
+    kept.edited = sorted(set(kept.edited) | {e for c in removed for e in c.edited})
+    if kept.source == "ledger":
+        kept.source = next((c.source for c in removed if c.source != "ledger"), "ledger")
+    kept.created_at = min([kept.created_at, *(c.created_at for c in removed)])
+    kept.updated_at = now()
+    remaining = [c for c in book if c.id not in set(merged_ids)]
+    return (
+        sorted(
+            [kept if c.id == keep_id else c for c in remaining],
+            key=lambda c: c.name.lower(),
+        ),
+        kept,
+        removed,
+    )
+
+
+async def _repoint_invoices(books: Books, keep_id: str, merged_ids: list[str]) -> list[MergedReference]:
+    """Invoices picked from the contact book carry `customer.contact_id`: point merged ones at the keeper."""
+    from app import invoicing as inv  # late: invoicing reads contacts.json but must not import this module
+
+    changed: list[MergedReference] = []
+    for invoice in await inv.list_invoices(books):
+        if invoice.customer.contact_id in merged_ids:
+            before = invoice.model_dump(mode="json")
+            invoice.customer.contact_id = keep_id
+            await inv.save_invoice(books, invoice)
+            changed.append(MergedReference(path=inv._path(invoice.number), before=before))
+    return changed
+
+
+async def _repoint_json_file(
+    books: Books,
+    path: str,
+    *,
+    keep_name: str,
+    keep_key: str,
+    removed_names: list[str],
+    removed_keys: list[str],
+    key_field: str,
+) -> MergedReference | None:
+    """Bank rules (`action.contact`) and Autopilot rules (`supplier_key`) name the contact: point the
+    merged names and keys at the kept one. Returns the change for the merge record, or None."""
+    import copy
+
+    try:
+        raw = await books.read_json(path, [])
+    except ValueError:
+        return None
+    if not isinstance(raw, list):
+        return None
+    before = copy.deepcopy(raw)
+    rows = copy.deepcopy(raw)
+    lowered = {n.strip().lower() for n in removed_names if n.strip()}
+    keys = {k for k in removed_keys if k}
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        if key_field == "contact" and isinstance(row.get("action"), dict):
+            if isinstance(row["action"].get("contact"), str) and row["action"]["contact"].strip().lower() in lowered:
+                row["action"]["contact"] = keep_name
+        elif key_field == "supplier_key":
+            if row.get("supplier_key") in keys:
+                row["supplier_key"] = keep_key
+                row["supplier_name"] = keep_name
+    if rows == before:
+        return None
+    await books._update_json(path, [], lambda _old: rows)
+    return MergedReference(path=path, before=before)
+
+
+async def merge(
+    books: Books, keep_id: str, merge_ids: Sequence[str], name: str | None, user: str
+) -> tuple[Contact, str]:
+    """Merge on the user's approval: fold the contacts into the kept one, re-point every reference
+    (invoices by contact id; bank and Autopilot rules by name and key; payments and credits need
+    nothing: they belong to ledger documents, which the kept contact's aliases still find), audit it,
+    and leave a record so it can be undone exactly. Returns (the kept contact, the merge id)."""
+    from app.bank_rules import BANK_RULES  # late: keep this module's imports light
+
+    contacts, _, _ = await contact_book(books)
+    stored_raw = await books.read_json(CONTACTS, None)
+    stored_before = list(stored_raw) if isinstance(stored_raw, list) else []
+    merged, kept, removed = merge_contacts(contacts, keep_id, list(merge_ids), name)
+    references = await _repoint_invoices(books, keep_id, [c.id for c in removed])
+    removed_names = [c.name for c in removed]
+    removed_keys = sorted({c.normalised_key for c in removed} | {a for c in removed for a in c.aliases})
+    for path, field in ((BANK_RULES, "contact"), (AUTOPILOT_RULES, "supplier_key")):
+        ref = await _repoint_json_file(
+            books,
+            path,
+            keep_name=kept.name,
+            keep_key=kept.normalised_key,
+            removed_names=removed_names,
+            removed_keys=removed_keys,
+            key_field=field,
+        )
+        if ref is not None:
+            references.append(ref)
+    await save_contacts(books, merged)
+    record = MergeRecord(
+        id=uuid.uuid4().hex[:16],
+        at=now(),
+        actor=f"user:{user}",
+        keep_id=keep_id,
+        merged_ids=[c.id for c in removed],
+        name=kept.name,
+        contacts_before=stored_before,
+        references=references,
+    )
+    await books.write_json(_merge_path(record.id), record.model_dump(mode="json"))
+    await books.audit(
+        f"user:{user}",
+        "contacts_merged",
+        {"merge": record.id, "keep": keep_id, "merged": [c.id for c in removed], "name": kept.name},
+    )
+    return kept, record.id
+
+
+async def undo_merge(books: Books, merge_id: str, user: str) -> list[Contact]:
+    """Undo a merge exactly: the previous contacts.json entries and every re-pointed reference go back.
+    Raises FileNotFoundError for an unknown or already-undone merge."""
+    if not re.fullmatch(r"[0-9a-f]{16}", merge_id):
+        raise FileNotFoundError(merge_id)
+    try:
+        raw = await books.read_json(_merge_path(merge_id), None)
+    except ValueError:
+        raise FileNotFoundError(merge_id) from None
+    if raw is None or (isinstance(raw, dict) and raw.get("undone")):
+        raise FileNotFoundError(merge_id)
+    record = MergeRecord.model_validate(raw)
+    await books._update_json(CONTACTS, [], lambda _old: record.contacts_before)
+    for ref in record.references:
+        await books.write_json(ref.path, ref.before)
+    await books.write_json(_merge_path(merge_id), {**record.model_dump(mode="json"), "undone": True})
+    await books.audit(f"user:{user}", "contacts_merge_undone", {"merge": merge_id, "keep": record.keep_id})
+    contacts, _, _ = await contact_book(books)
+    return contacts
 
 
 # --------------------------------------------------------------------------- #
