@@ -122,9 +122,34 @@ export default function PrivacyPage() {
       </section>
 
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
+        <h2 className="text-xl font-bold">Your data: export and leaving</h2>
+        <p>
+          <strong>Export.</strong> Settings → Your data → <em>Export your data</em> saves everything as one zip in{" "}
+          <em>07 Reports/Exports</em> in your OneDrive (<em>accnomos-export-&lt;date&gt;.zip</em>): ledger events,
+          proposals, contacts, invoices with an index of the invoice PDFs, payments, bank lines, rules, the audit
+          trail and the saved VAT returns — plus a README explaining each file and one CSV per main table
+          (ledger lines, contacts, invoices, payments) so it opens in Excel. A second export the same day is kept
+          beside the first, never overwritten.
+        </p>
+        <p>
+          <strong>Where things live.</strong> Your books live in your OneDrive, in the Accnomos app folder. This
+          browser keeps your sign-in, AI choice and settings in its own localStorage (HMRC tokens live only in the
+          tab). The runtime keeps nothing: it works on your OneDrive with the token each request carries and
+          discards everything. There is no Accnomos user database.
+        </p>
+        <p>
+          <strong>Leaving.</strong> Disconnect clears this browser&apos;s sign-in and settings; your files stay in
+          your OneDrive. To delete the books, delete the Accnomos folder in your OneDrive and remove Accnomos at{" "}
+          <a className="font-semibold text-teal underline" href="https://account.live.com/myapps">account.live.com/myapps</a>.
+          No server-side delete is needed, because nothing is stored server-side.
+        </p>
+      </section>
+
+      <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
         <h2 className="text-xl font-bold">Deleting your data</h2>
         <p>
           Delete the <em>Accnomos</em> folder in your OneDrive and sign out of the app. Because we hold no copy, that removes everything.
+          There is no server-side copy to delete.
         </p>
       </section>
 

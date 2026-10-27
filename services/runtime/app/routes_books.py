@@ -17,7 +17,7 @@ from pydantic import BaseModel, Field
 
 from accnomos_connectors.msgraph import GraphStorageProvider
 from accnomos_ledger.events import LedgerEvent
-from app import autopilot, layout
+from app import autopilot, data_export, layout
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.approve import ApprovalError, ProposalStateError, approve, reject, submitted_spans, undo
 from app.books import Books, now
@@ -278,6 +278,33 @@ async def rebuild(books: Books = Depends(get_books)) -> RebuildResult:
     """Regenerate Books.xlsx now (it is also rebuilt after every approve, reject and bank match)."""
     ref = await books.rebuild()
     return RebuildResult(path=ref.path, size=ref.size, books_url=ref.web_url)
+
+
+class ExportResult(BaseModel):
+    path: str  # "07 Reports/Exports/accnomos-export-2026-10-27.zip"
+    name: str
+    size: int
+    files: int  # files inside the zip
+    web_url: str | None
+
+
+@router.post("/export", response_model=ExportResult)
+async def export_books(
+    today: date | None = Query(None, description="for previews and tests; defaults to today"),
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
+) -> ExportResult:
+    """Save everything as one zip in 07 Reports/Exports (a second run the same day gets ' (2)').
+
+    The zip holds the ledger events, proposals, contacts, invoices plus a PDFs
+    index, payments, bank lines, rules, the audit trail and the saved VAT
+    returns, with a README.txt and one CSV per main table (app/data_export.py).
+    Written to the caller's own OneDrive, never streamed anywhere else; audited.
+    """
+    try:
+        return ExportResult(**await data_export.run_export(books, user, today or current_date()))
+    except data_export.ExportTooBig as exc:
+        raise HTTPException(status_code=413, detail=str(exc)) from exc
 
 
 @router.get("/layout", response_model=layout.LayoutStatus)

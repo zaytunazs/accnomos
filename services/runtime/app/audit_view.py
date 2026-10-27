@@ -284,6 +284,8 @@ SUMMARIES: dict[str, Summary] = {
         }.get(str(r.get("report")), "a report")
         + f" to {REPORTS} as a spreadsheet"
     ),
+    # Your data
+    "data_exported": lambda r, w: f"Saved your full data export to {REPORTS}/Exports as a zip",
     # To-dos and housekeeping
     "todo_added": lambda r, w: "Added a to-do",
     "todo_deleted": lambda r, w: "Ticked off a to-do",

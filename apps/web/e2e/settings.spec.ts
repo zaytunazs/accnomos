@@ -5,13 +5,14 @@ test.beforeEach(async ({ page }) => {
   await createBooksFolder(page);
 });
 
-test("all four tabs render their sections", async ({ page }) => {
+test("all five tabs render their sections", async ({ page }) => {
   await page.goto("/settings");
   const expected = {
     Connection: ["Connections", "Audit log", "Disconnect"],
     AI: ["AI", "Second reading (verifier)"],
     Automation: ["Autopilot level", "Outlook intake", "Inbox triage"],
     Business: ["On your invoices", "VAT periods"],
+    "Your data": ["Export your data", "What is stored where", "Leave Accnomos"],
   } as const;
   for (const [tab, headings] of Object.entries(expected) as [keyof typeof expected, readonly string[]][]) {
     const panel = await settingsTab(page, tab);
