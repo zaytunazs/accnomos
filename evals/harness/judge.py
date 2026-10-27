@@ -73,7 +73,6 @@ def judge_one(client: httpx.Client, model: str, gold: dict[str, Any], extracted:
     body = {
         "model": model,
         "max_tokens": 800,
-        "temperature": 0,
         "system": SYSTEM,
         "messages": [
             {
