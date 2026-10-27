@@ -156,7 +156,7 @@ class Verification(BaseModel):
 
     fields: dict[str, FieldAgreement]
     agree_all: bool
-    model: str  # "<backend>:<model>", e.g. "baseten:meta-models/muse-spark-open-1026"
+    model: str  # "<backend>:<model>", e.g. "baseten:meta-models/muse-spark-open"
     elapsed_s: float | None = None
     error: str | None = None  # set when the verifier could not run; `fields` is then empty
 

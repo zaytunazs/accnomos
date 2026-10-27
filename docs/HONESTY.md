@@ -49,7 +49,7 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 
 ## Models
 
-- **Verifier needs a Baseten key.** Muse Spark Open runs only in key mode and only if the server owner sets `BASETEN_API_KEY`; the demo deployment sets none. Without one, key mode verifies with the request's model (muse-spark-1.3 by default) and local mode with Glimmer. No real Baseten or Meta verifier call has ever been made, The Baseten model slug is `meta-models/muse-spark-open-1026`, as Baseten lists it for the owner's account (27 Oct 2026).
+- **Verifier needs a Baseten key.** Muse Spark Open runs only in key mode and only if the server owner sets `BASETEN_API_KEY`; the demo deployment sets none. Without one, key mode verifies with the request's model (muse-spark-1.3 by default) and local mode with Glimmer. No real Baseten or Meta verifier call has ever been made, and the Baseten model slug `meta-models/muse-spark-open` is unconfirmed.
 - The verifier's catch rate is unmeasured (Glimmer checking Glimmer, 20 documents, 0 extra catches). Mixed-rate receipts give false alarms (it reads the standard-rated subtotal as net); the prompt needs a mixed-rate hint. All six fields are decisive, which is stricter than the original brief.
 - The card cannot adopt the second reading: on a disagreement the user can approve the first reading or reject.
 - **SAM 3.1 crop is off by default** (`SAM_CROP=1`); its wire format is unverified and has never run live; the default crop is plain code, measured on synthetic scenes only (mean IoU 0.88). No separate crop chip: the crop note is appended to the card's verifier line.
