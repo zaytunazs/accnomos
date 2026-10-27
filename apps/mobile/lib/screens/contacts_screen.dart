@@ -1041,8 +1041,6 @@ class _ContactDetailState extends State<ContactDetailScreen> {
       children: [
         _vatCard(),
         const SizedBox(height: 12),
-        _termsCard(),
-        const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -1081,6 +1079,8 @@ class _ContactDetailState extends State<ContactDetailScreen> {
           for (final line in rows) _lineCard(line),
         const SizedBox(height: 12),
         _agedCard(),
+        const SizedBox(height: 12),
+        _termsCard(),
       ],
     );
   }
