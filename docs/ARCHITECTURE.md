@@ -122,13 +122,14 @@ Chat and voice actions write their own lines to `audit/actions/` (`{"ts", "actio
 
 **Reading it back:** `GET /audit?from=&to=&actor=&kind=&limit=` (`app/audit_view.py`, read-only) reads the month files of
 `audit/` and `audit/actions/` for the range (one extra month of `actions/`, which files by the month an action was proposed),
-newest first, at most 500. `audit/autopilot/` is not read, because every line in it is already in `audit/`. Each line becomes
+newest first, at most 500 lines and at most 366 days per request. `audit/autopilot/` is not read, because every line in it is already in `audit/`. Each line becomes
 `{ts, actor, actor_kind: user|agent, actor_label, event, summary, refs: {proposal, event, invoice, action, file}}`; the
 summary comes from one table, `SUMMARIES` (a kind not in it shows as its own name), and `approving` rows are skipped (the
 `executed`, `failed` or `rejected` row that follows is the outcome). `actor` matches `user`, `agent`, an agent name or a full
 actor; `kind` matches an event or a prefix family (`invoice` is every `invoice_*`). Days are UTC. A test fails if a
-`Books.audit` call in `app/` writes a kind with no sentence. The web `/audit` page and the Android *Audit trail* screen are
-the only readers besides the Home dashboard's recent activity.
+`Books.audit` call in `app/` writes a kind with no sentence. The web `/audit` page and the Android *Audit trail* screen read it
+through this route; the Home dashboard reads `audit/` for recent activity, and `app/actions.py` reads its own log so an
+action never runs twice.
 
 ## The agent pipeline
 
