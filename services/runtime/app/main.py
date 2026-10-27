@@ -16,6 +16,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
+from app import layout
 from app.ai.config import base_url_allowed
 from app.security import SecurityMiddleware, install_log_scrubbing, scrub
 
@@ -68,7 +69,7 @@ class AiTestResult(BaseModel):
 async def health() -> dict:
     return {
         "ok": True, "service": "runtime", "version": app.version, "uptime_s": int(time.time() - STARTED),
-        "voice": bool(FFMPEG), **({"test_mode": True} if is_test_mode() else {}),
+        "voice": bool(FFMPEG), "folder_layout": layout.health(), **({"test_mode": True} if is_test_mode() else {}),
     }
 
 

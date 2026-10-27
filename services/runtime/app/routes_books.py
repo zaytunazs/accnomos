@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from accnomos_ledger.events import LedgerEvent
 
-from app import autopilot
+from app import autopilot, layout
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.approve import ApprovalError, ProposalStateError, approve, reject, undo
 from app.books import Books, now, today
@@ -42,11 +42,15 @@ async def get_books(request: Request) -> AsyncIterator[Books]:
     if is_test_mode():
         from app import testmode
 
-        yield Books((await testmode.state()).storage)
+        books = Books((await testmode.state()).storage)
+        await layout.on_first_contact(books, token, cache=False)  # fake storage is reset between tests
+        yield books
         return
     storage = GraphStorageProvider(token, kind)  # type: ignore[arg-type]
     try:
-        yield Books(storage)
+        books = Books(storage)
+        await layout.on_first_contact(books, token)  # old folder names -> current ones, once (app/layout.py)
+        yield books
     finally:
         await storage.aclose()
 
@@ -221,3 +225,10 @@ async def rebuild(books: Books = Depends(get_books)) -> RebuildResult:
     """Regenerate Books.xlsx now (it is also rebuilt after every approve, reject and bank match)."""
     ref = await books.rebuild()
     return RebuildResult(path=ref.path, size=ref.size, books_url=ref.web_url)
+
+
+@router.get("/layout", response_model=layout.LayoutStatus)
+async def folder_layout(books: Books = Depends(get_books)) -> layout.LayoutStatus:
+    """Old-named folders, checked now: `moved` is what this call renamed (usually nothing, because get_books has
+    already done it), `conflicts` are old and new folders side by side, which the Files page shows."""
+    return await layout.migrate(books)
