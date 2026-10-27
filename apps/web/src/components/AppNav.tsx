@@ -23,36 +23,58 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+const sidebarGroups: { label: string; hrefs: string[] }[] = [
+  { label: "Books", hrefs: ["/", "/review", "/ask", "/files"] },
+  { label: "Money", hrefs: ["/invoices", "/bank", "/vat", "/payroll"] },
+  { label: "Work", hrefs: ["/jobs", "/contacts", "/vehicles"] },
+];
+
 function SidebarNav({ pathname }: { pathname: string }) {
   const settingsActive = isActive(pathname, "/settings");
+  const byHref = new Map(links.map((link) => [link.href, link]));
 
   return (
-    <nav aria-label="Main" className="hidden flex-col gap-1 min-[900px]:flex">
-      {links.map((link) => {
-        const active = isActive(pathname, link.href);
-        return (
-          <Link
-            key={link.href}
-            href={link.href}
-            aria-current={active ? "page" : undefined}
-            className={`flex h-11 items-center justify-between gap-2 whitespace-nowrap rounded-xl px-4 text-[15px] font-semibold ${
-              active
-                ? "bg-teal-tint text-teal-dark"
-                : "text-ink hover:bg-ground"
-            }`}
+    <nav aria-label="Main" className="hidden flex-col min-[900px]:flex">
+      {sidebarGroups.map((group, i) => (
+        <section key={group.label} aria-labelledby={`nav-group-${group.label.toLowerCase()}`}>
+          <p
+            id={`nav-group-${group.label.toLowerCase()}`}
+            className={`px-4 pb-1 text-[13px] font-bold text-muted ${i === 0 ? "pt-0" : "pt-4"}`}
           >
-            <span className="min-w-0 truncate">{link.label}</span>
-            {link.badge ? (
-              <span
-                aria-label={`${link.badge} items to review`}
-                className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-amber px-2 text-[13px] font-bold text-white"
-              >
-                {link.badge}
-              </span>
-            ) : null}
-          </Link>
-        );
-      })}
+            {group.label}
+          </p>
+          <ul className="flex flex-col gap-1">
+            {group.hrefs.map((href) => {
+              const link = byHref.get(href);
+              if (!link) return null;
+              const active = isActive(pathname, link.href);
+              return (
+                <li key={link.href}>
+                  <Link
+                    href={link.href}
+                    aria-current={active ? "page" : undefined}
+                    className={`flex h-11 items-center justify-between gap-2 whitespace-nowrap rounded-xl px-4 text-[15px] font-semibold ${
+                      active
+                        ? "bg-teal-tint text-teal-dark"
+                        : "text-ink hover:bg-ground"
+                    }`}
+                  >
+                    <span className="min-w-0 truncate">{link.label}</span>
+                    {link.badge ? (
+                      <span
+                        aria-label={`${link.badge} items to review`}
+                        className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-amber px-2 text-[13px] font-bold text-white"
+                      >
+                        {link.badge}
+                      </span>
+                    ) : null}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      ))}
       <div className="mt-4 border-t border-border pt-3">
         <Link
           href="/settings"
