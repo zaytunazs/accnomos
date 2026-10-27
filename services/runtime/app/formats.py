@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import io
 import math
+import threading
 import warnings
 from dataclasses import dataclass, field
 from typing import Literal
@@ -38,6 +39,7 @@ HEIC_MIME = "image/heic"
 _IMAGE_MIME = {"JPEG": "image/jpeg", "MPO": "image/jpeg", "PNG": "image/png", "WEBP": "image/webp"}
 _SAVE_AS = {"MPO": "JPEG"}
 _ORIENTATION = 0x0112
+_PDFIUM_LOCK = threading.Lock()  # PDFium is not thread-safe, not even across separate documents (pypdfium2 docs)
 _HEIF_BRANDS = {b"heic", b"heix", b"hevc", b"hevx", b"heim", b"heis", b"hevm", b"hevs", b"mif1", b"msf1"}
 
 Kind = Literal["image", "pdf", "text"]
@@ -84,7 +86,7 @@ def is_heif(data: bytes) -> bool:
 
 def _wants_text(hint: str) -> bool:
     hint = hint.lower().split(";")[0].strip()
-    return hint == TEXT_MIME or hint.endswith(".txt")
+    return hint == TEXT_MIME or hint.endswith(".eml.txt")
 
 
 def _mb(n: int) -> str:
@@ -169,6 +171,11 @@ def _pdf(data: bytes) -> Prepared:
         import pypdfium2 as pdfium  # type: ignore[import-not-found]
     except ImportError:
         raise FormatError("PDFs can't be read on this server yet") from None
+    with _PDFIUM_LOCK:  # prepare() runs in worker threads; PDFium must never be entered by two at once
+        return _pdf_locked(pdfium, data)
+
+
+def _pdf_locked(pdfium, data: bytes) -> Prepared:  # noqa: ANN001  the pypdfium2 module
     try:
         pdf = pdfium.PdfDocument(data)
     except pdfium.PdfiumError as exc:
@@ -249,11 +256,13 @@ _BY_EXT = {
     ".heic": HEIC_MIME,
     ".heif": "image/heif",
     ".pdf": PDF_MIME,
-    ".txt": TEXT_MIME,
 }
 
 
 def guess_mime(name: str) -> str | None:
-    """MIME type of the documents we accept, by extension; None for anything else."""
+    """MIME type of the documents we accept, by extension; None for anything else. Of text files only an email body
+    saved by Outlook intake (`.eml.txt`) is a document: a `notes.txt` dropped in the Inbox is left alone."""
+    if name.lower().endswith(".eml.txt"):
+        return TEXT_MIME
     ext = "." + name.rsplit(".", 1)[-1].lower() if "." in name else ""
     return _BY_EXT.get(ext)

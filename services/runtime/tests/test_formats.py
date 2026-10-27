@@ -93,6 +93,15 @@ def test_guess_mime() -> None:
     assert guess_mime("2026-10-21_uber.com_Your trip.eml.txt") == "text/plain"
     assert guess_mime("invoice.PDF") == "application/pdf"
     assert guess_mime("terms.zip") is None and guess_mime("README") is None
+    assert guess_mime("notes.txt") is None  # only an email body saved by intake is a text document
+
+
+async def test_a_plain_text_file_in_the_inbox_is_left_alone(
+    models: dict[str, list], fake: FakeStorageProvider
+) -> None:
+    fake.files["00 Inbox/notes.txt"] = b"Total \xc2\xa35.00 owed to Sam"
+    assert await scan_inbox(Books(fake), LOCAL) == []
+    assert models["extract"] == [] and "00 Inbox/notes.txt" in fake.files
 
 
 # --------------------------------------------------------------------------- HEIC
@@ -117,6 +126,16 @@ def test_heic_is_converted_to_an_upright_jpeg() -> None:
     assert p.kind == "image" and p.mime == "image/jpeg" and p.converted_from == "HEIC"
     assert Image.open(io.BytesIO(p.image or b"")).format == "JPEG"
     assert p.source_mime == "image/jpeg"
+
+
+def test_heic_with_exif_orientation_is_turned_once() -> None:
+    pillow_heif = pytest.importorskip("pillow_heif")
+    exif = Image.Exif()
+    exif[0x0112] = 6  # turn 90° clockwise to view
+    buf = io.BytesIO()
+    pillow_heif.from_pillow(Image.new("RGB", (64, 32), "white")).save(buf, quality=80, exif=exif.tobytes())
+    p = prepare(buf.getvalue(), "IMG_4411.HEIC")
+    assert Image.open(io.BytesIO(p.image or b"")).size == (32, 64)  # upright, not turned twice back to 64 × 32
 
 
 # --------------------------------------------------------------------------- PDF
@@ -155,6 +174,34 @@ def test_scanned_pdf_is_read_from_the_image() -> None:
     p = prepare(_pdf([None]), "scan.pdf")
     assert p.kind == "pdf" and p.text is None and p.image
     assert "no text layer" in p.note
+
+
+def test_pdfs_read_in_parallel_threads_never_enter_pdfium_together(monkeypatch: pytest.MonkeyPatch) -> None:
+    """prepare() runs in worker threads (asyncio.to_thread) and PDFium is not thread-safe."""
+    pdfium = pytest.importorskip("pypdfium2")
+    import threading
+    from concurrent.futures import ThreadPoolExecutor
+
+    inside, overlap, guard = [0], [False], threading.Lock()
+    real = pdfium.PdfDocument
+
+    class Watched(real):  # type: ignore[misc, valid-type]
+        def __init__(self, *a: object, **kw: object) -> None:
+            with guard:
+                inside[0] += 1
+                overlap[0] |= inside[0] > 1
+            super().__init__(*a, **kw)
+
+        def close(self) -> None:
+            super().close()
+            with guard:
+                inside[0] -= 1
+
+    monkeypatch.setattr(pdfium, "PdfDocument", Watched)
+    data = _pdf(["Invoice 7\nTotal GBP 10.00", "Terms"])
+    with ThreadPoolExecutor(8) as pool:
+        results = list(pool.map(lambda _: prepare(data, "i.pdf"), range(16)))
+    assert not overlap[0] and all(r.pages == 2 for r in results)
 
 
 def test_pdf_without_a_reader_is_refused_clearly(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -280,3 +327,27 @@ async def test_unreadable_file_becomes_a_card_not_a_stuck_inbox(
     (check,) = p.checks
     assert check.code == "UNREADABLE" and "export the photo as JPEG" in check.message
     assert models["extract"] == []
+
+
+# --------------------------------------------------------------------------- POST /extract
+
+
+def test_extract_route_reads_a_real_pdf(models: dict[str, list]) -> None:
+    pytest.importorskip("pypdfium2")
+    from fastapi.testclient import TestClient
+
+    from app.ai.config import ai_config_from_request
+    from app.main import app
+
+    data = _pdf(["Harrow & Finch Ltd\nInvoice HFS-2\nTotal GBP 18.40", "Terms"])
+    app.dependency_overrides[ai_config_from_request] = lambda: LOCAL
+    try:
+        r = TestClient(app).post("/extract", files={"file": ("inv.pdf", data, "application/pdf")})
+    finally:
+        app.dependency_overrides.pop(ai_config_from_request, None)
+    assert r.status_code == 200, r.text
+    img, mime, text = models["extract"][0]  # (a second read follows: the fake reading is unsure)
+    assert mime == "image/png" and img and "Invoice HFS-2" in (text or "") and "Terms" not in (text or "")
+    body = r.json()
+    assert body["doc_sha256"] == pipeline.sha256_hex(data) and body["suggested_filename"].endswith(".pdf")
+    assert any(c["code"] == "SOURCE" and c["message"] == "PDF, 2 pages: page 1 read" for c in body["checks"])
