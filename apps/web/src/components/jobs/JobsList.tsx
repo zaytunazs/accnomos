@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import PlanCard from "@/components/plan/PlanCard";
 import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
-import { pence, runtime, type RtJobSummary } from "@/lib/runtime";
+import { pence, runtime, type RtContactRow, type RtJobSummary } from "@/lib/runtime";
 import { errorText, todayIso, useAccount } from "./useAccount";
 
 const hrs = (h: number) => `${h.toLocaleString("en-GB", { maximumFractionDigits: 2 })} h`;
@@ -13,10 +13,14 @@ const hrs = (h: number) => `${h.toLocaleString("en-GB", { maximumFractionDigits:
 export default function JobsList() {
   const account = useAccount();
   const [jobs, setJobs] = useState<RtJobSummary[] | null>(null);
+  const [customers, setCustomers] = useState<RtContactRow[]>([]);
   const [name, setName] = useState("");
   const [site, setSite] = useState("");
+  const [customerId, setCustomerId] = useState("");
   const [estimate, setEstimate] = useState("");
-  const [showClosed, setShowClosed] = useState(false);
+  const [filter, setFilter] = useState<"open" | "closed" | "all">("open");
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<"unbilled" | "name">("unbilled");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +37,12 @@ export default function JobsList() {
   const load = useCallback(async () => {
     if (!account) return;
     try {
-      setJobs(await runtime.jobs(account));
+      const [summaries, contacts] = await Promise.all([
+        runtime.jobs(account),
+        runtime.contacts(account).catch(() => null),
+      ]);
+      setJobs(summaries);
+      setCustomers(contacts?.contacts.filter((c) => c.kind === "customer" || c.kind === "both") ?? []);
       setError(null);
     } catch (e) {
       fail(e);
@@ -51,11 +60,12 @@ export default function JobsList() {
     try {
       const hours = Number(estimate);
       await runtime.createJob(account, {
-        name: name.trim(), site_address: site.trim() || null, customer_id: null, status: "open",
+        name: name.trim(), site_address: site.trim() || null, customer_id: customerId || null, status: "open",
         estimate_hours: estimate.trim() && hours > 0 ? hours : null,
       });
       setName("");
       setSite("");
+      setCustomerId("");
       setEstimate("");
       setNote("Job added.");
       await load();
@@ -70,7 +80,20 @@ export default function JobsList() {
   if (jobs === null) return <p className="text-sm text-muted">{note ?? "Loading…"}</p>;
 
   const open = jobs.filter((s) => s.job.status === "open");
-  const shown = showClosed ? jobs : open;
+  const q = query.trim().toLowerCase();
+  const shown = jobs
+    .filter((s) => filter === "all" || s.job.status === filter)
+    .filter((s) =>
+      q === "" ||
+      s.job.name.toLowerCase().includes(q) ||
+      (s.customer_name ?? "").toLowerCase().includes(q) ||
+      (s.job.site_address ?? "").toLowerCase().includes(q),
+    )
+    .sort((a, b) =>
+      sort === "unbilled"
+        ? b.unbilled_value_pence - a.unbilled_value_pence
+        : a.job.name.localeCompare(b.job.name, "en-GB"),
+    );
   const sum = (f: (s: RtJobSummary) => number) => open.reduce((t, s) => t + f(s), 0);
   const tiles = [
     { label: "Open jobs", value: String(open.length), sub: `${jobs.length - open.length} closed` },
@@ -93,17 +116,50 @@ export default function JobsList() {
       </div>
 
       <section aria-labelledby="jobs-table" className={card}>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 id="jobs-table" className="text-[17px] font-extrabold text-ink">
             Jobs
           </h2>
-          <label className="flex items-center gap-2 text-sm font-semibold text-muted">
-            <input type="checkbox" checked={showClosed} onChange={(e) => setShowClosed(e.target.checked)} />
-            Show closed
-          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-sm font-semibold text-muted">
+              Search
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Name, customer or site"
+                className="h-10 rounded-xl border border-border px-3 font-normal text-ink"
+              />
+            </label>
+            <label className="flex items-center gap-2 text-sm font-semibold text-muted">
+              Show
+              <select
+                value={filter}
+                onChange={(e) => setFilter(e.target.value as "open" | "closed" | "all")}
+                className="h-10 rounded-xl border border-border bg-white px-2 font-normal text-ink"
+              >
+                <option value="open">Open</option>
+                <option value="closed">Closed</option>
+                <option value="all">All</option>
+              </select>
+            </label>
+            <label className="flex items-center gap-2 text-sm font-semibold text-muted">
+              Sort
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as "unbilled" | "name")}
+                className="h-10 rounded-xl border border-border bg-white px-2 font-normal text-ink"
+              >
+                <option value="unbilled">Needs invoicing</option>
+                <option value="name">Name A–Z</option>
+              </select>
+            </label>
+          </div>
         </div>
         {shown.length === 0 ? (
-          <p className="mt-3 text-sm text-muted">No {showClosed ? "" : "open "}jobs yet. Add one below.</p>
+          <p className="mt-3 text-sm text-muted">
+            {jobs.length === 0 ? "No jobs yet. Add one below." : "No jobs match. Try another search or filter."}
+          </p>
         ) : (
           <div className="mt-3 overflow-x-auto">
             <table className="w-full text-left text-sm">
@@ -204,6 +260,19 @@ export default function JobsList() {
           Site address with postcode (optional)
           <input value={site} onChange={(e) => setSite(e.target.value)} className="h-11 rounded-xl border border-border px-3 font-normal" />
         </label>
+        <label className="flex min-w-48 flex-1 flex-col gap-1 text-sm font-bold text-ink">
+          Customer (optional)
+          <select
+            value={customerId}
+            onChange={(e) => setCustomerId(e.target.value)}
+            className="h-11 rounded-xl border border-border bg-white px-3 font-normal"
+          >
+            <option value="">No customer yet</option>
+            {customers.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+        </label>
         <label className="flex w-36 flex-col gap-1 text-sm font-bold text-ink">
           Visit length (h)
           <input
@@ -226,7 +295,7 @@ export default function JobsList() {
         </button>
       </form>
       {note && (
-        <p role="status" className="text-sm font-bold text-teal-dark">
+        <p role="status" aria-live="polite" className="text-sm font-bold text-teal-dark">
           {note}
         </p>
       )}
