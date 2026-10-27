@@ -28,7 +28,7 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 - The runtime's own period key (`26A4` style, saved as `calculated_for`) is a placeholder; submission uses HMRC's key. For monthly returns all three months of a quarter get the same placeholder.
 - `GET /books/vat` accepts `?today=`, so a client can move "current" and with it `can_submit`; the web gate is advisory and HMRC decides what can be filed.
 - No flat-rate scheme, no annual accounting scheme, no fuel scale-charge calculation.
-- The runtime's "today" is the **UTC date** (`books.now().date()`; the VAT routes use `books.today()`, the server's local date, which is UTC in the container because no `TZ` is set): between midnight and 1 am in BST an invoice date, a "yesterday" or a due date can be a day behind the UK date. Both clients send `today` to the dashboard, so this mostly affects direct API callers and chat actions.
+- The runtime's "today" is the **London date** (`books.today()`, Europe/London via `zoneinfo` + `tzdata`): `GET /audit` `from`/`to` filter by London day too. Both clients send `today` to the dashboard, so this mostly affects direct API callers and chat actions.
 
 ## Receipts, review and the ledger
 

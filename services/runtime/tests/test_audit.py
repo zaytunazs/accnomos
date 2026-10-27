@@ -227,6 +227,24 @@ def test_default_range_and_bad_requests(client: TestClient) -> None:
     assert client.get("/audit", params={"from": "2025-10-27", "to": DAY}, headers=H).status_code == 200
 
 
+def test_from_to_are_london_days(client: TestClient, fake: FakeStorageProvider) -> None:
+    """00:30 BST on 1 Oct (23:30 UTC on 30 Sep) belongs to 1 Oct, not 30 Sep."""
+    line = {
+        "ts": "2026-10-01T00:30:00+01:00",
+        "actor": f"user:{USER}",
+        "action": "todo_added",
+        "refs": {},
+    }
+    fake.files[f"{AUDIT}/2026-10.jsonl"] += _jsonl(line)
+    first = client.get("/audit", params={"from": "2026-10-01", "to": "2026-10-01"}, headers=H)
+    assert first.status_code == 200, first.text
+    assert [e["ts"] for e in first.json()["entries"]] == ["2026-10-01T00:30:00+01:00"]
+    last = client.get("/audit", params={"from": "2026-09-30", "to": "2026-09-30"}, headers=H)
+    assert last.status_code == 200, last.text
+    # only the September line the fixture already has (16:00 UTC is 17:00 BST, still 30 Sep in London)
+    assert [e["ts"] for e in last.json()["entries"]] == ["2026-09-30T16:00:00Z"]
+
+
 def test_reading_writes_nothing(client: TestClient, fake: FakeStorageProvider) -> None:
     before = dict(fake.files)
     _get(client)

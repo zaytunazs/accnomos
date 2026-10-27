@@ -27,7 +27,7 @@ from pydantic import BaseModel
 
 from app.actions import ACTIONS_AUDIT
 from app.autopilot import AUTOPILOT
-from app.books import AUDIT, Books
+from app.books import AUDIT, LONDON, Books
 from app.invoicing import money
 
 log = logging.getLogger(__name__)
@@ -401,14 +401,17 @@ async def read(
     kind: str | None = None,
     limit: int = MAX_LIMIT,
 ) -> AuditPage:
-    """Lines dated start..end (UTC days, inclusive) from both logs, newest first, at most `limit` (capped at 500)."""
+    """Lines dated start..end (London days, inclusive) from both logs, newest first, at most `limit` (capped at 500)."""
     limit = max(1, min(limit, MAX_LIMIT))
-    lo = datetime.combine(start, time.min, UTC)
-    hi = datetime.combine(end + timedelta(days=1), time.min, UTC)
-    months = months_between(start, end)
+    lo = datetime.combine(start, time.min, LONDON).astimezone(UTC)
+    hi = datetime.combine(end + timedelta(days=1), time.min, LONDON).astimezone(UTC)
+    # Monthly files are keyed by month, so read the months the window touches (older files were keyed by UTC
+    # month, newer ones by London month; the window covers both).
+    last = (hi - timedelta(microseconds=1)).date()
+    months = months_between(lo.date(), last)
     # An action's lines go in the month it was proposed, so one approved just after midnight on the 1st is a
     # month early: read one month more of that log.
-    action_months = months_between((start.replace(day=1) - timedelta(days=1)), end)
+    action_months = months_between((lo.replace(day=1) - timedelta(days=1)).date(), last)
 
     books_lines = [ln for m in months for ln in await _lines(books, f"{AUDIT}/{m}.jsonl")]
     named = any(isinstance(r := ln.get("refs"), dict) and r.get("proposal") for ln in books_lines)
