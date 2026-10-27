@@ -1,4 +1,4 @@
-"""Image in, `Proposal` out: hash -> extract -> checks -> decide -> journal -> filename."""
+"""Image in, `Proposal` out: hash -> extract -> checks -> decide -> verify (if passed) -> journal -> filename."""
 
 from __future__ import annotations
 
@@ -10,10 +10,20 @@ from datetime import date
 
 from app.ai.config import AiConfig
 from app.ai.extract import extract_document
+from app.ai.verify import verify
 from app.checks import decide, run_checks
 from app.journal import draft_journal
 from app.repair import repair
-from app.schemas import ExtractedDoc, Proposal
+from app.schemas import Check, ExtractedDoc, Proposal, Verification
+
+_FIELD_LABEL = {
+    "supplier_name": "supplier",
+    "supplier_vat_number": "VAT number",
+    "date": "date",
+    "net_total": "net",
+    "vat_total": "VAT",
+    "gross_total": "total",
+}
 
 _EXT = {"image/jpeg": ".jpg", "image/jpg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 _SYMBOL = {"GBP": "£", "EUR": "€", "USD": "$"}
@@ -29,6 +39,26 @@ def suggested_filename(doc: ExtractedDoc, mime: str) -> str:
     supplier = re.sub(r"\s+", " ", _UNSAFE.sub(" ", doc.supplier_name)).strip()[:40].strip() or "Unknown"
     symbol = _SYMBOL.get(doc.currency, f"{doc.currency} ")
     return f"{doc.date} {supplier} {symbol}{doc.gross_total:.2f}{_EXT.get(mime.lower(), '.jpg')}"
+
+
+def _shown(v: object) -> str:
+    if v is None or v == "":
+        return "none"
+    return f"{v:.2f}" if isinstance(v, float) else str(v)
+
+
+def verification_check(v: Verification) -> Check:
+    """Disagreement is a hard fail showing both readings; a verifier that could not run is only a warning."""
+    if v.error:
+        return Check(code="VERIFIER_AGREES", ok=False, severity="warn", message=f"Second reading unavailable ({v.model})")
+    if v.agree_all:
+        return Check(code="VERIFIER_AGREES", ok=True, severity="fail", message=f"Verifier agrees · all {len(v.fields)} fields match")
+    diffs = [
+        f"{_FIELD_LABEL.get(name, name)} {_shown(f.extractor)} vs {_shown(f.verifier)}"
+        for name, f in v.fields.items()
+        if not f.agree
+    ]
+    return Check(code="VERIFIER_AGREES", ok=False, severity="fail", message="Second reading differs: " + "; ".join(diffs))
 
 
 async def process_image(
@@ -50,6 +80,12 @@ async def process_image(
         doc, known_hashes=known_hashes, this_hash=digest, period_start=period_start, period_end=period_end
     )
     status, reasons = decide(checks)
+    verification = None
+    if status == "proposed":  # only spend a second model call on readings that passed every check
+        verification = await verify(image_bytes, doc, cfg, mime=mime)
+        if verification is not None:
+            checks.append(verification_check(verification))
+            status, reasons = decide(checks)
     return Proposal(
         id=uuid.uuid4().hex,
         doc_sha256=digest,
@@ -60,5 +96,6 @@ async def process_image(
         suggested_filename=suggested_filename(doc, mime),
         journal_draft=draft_journal(doc),
         model=f"{meta['backend']}:{meta['model']}",
+        verification=verification,
         elapsed_s=round(time.perf_counter() - t0, 3),
     )
