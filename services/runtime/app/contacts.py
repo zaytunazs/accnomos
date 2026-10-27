@@ -60,7 +60,7 @@ from app.settlement import (
 
 CONTACTS = f"{SYSTEM}/Contacts/contacts.json"
 ContactKind = Literal["customer", "supplier", "both"]
-ContactSource = Literal["ledger", "outlook", "manual"]
+ContactSource = Literal["ledger", "outlook", "phone", "manual"]
 Side = Literal["sale", "purchase"]
 EDITABLE = (
     "name",
@@ -893,4 +893,84 @@ async def import_outlook(books: Books, entries: Sequence[AddressBookContact], ad
     merged, result = import_address_book(contacts, entries, add_new)
     await save_contacts(books, merged)
     await books.audit(f"user:{user}", "contacts_imported", {"source": "outlook", **result.model_dump()})
+    return result
+
+
+class PhonePickedContact(BaseModel):
+    """One contact the user picked with the phone's system picker: the name
+    and kind the review sheet confirmed, plus whatever the picker returned."""
+
+    name: str
+    kind: ContactKind = "customer"
+    email: str | None = None
+    phone: str | None = None
+    address: str | None = None
+
+
+def merge_phone_picks(
+    contacts: Sequence[Contact], entries: Sequence[PhonePickedContact], at: datetime | None = None
+) -> tuple[list[Contact], ImportResult]:
+    """Save contacts the user picked on the phone (source "phone"). An entry
+    matching an existing contact fills in a blank email, phone or address;
+    the rest are added with the picked kind. Entries with no usable name are
+    skipped. Nothing already set is ever overwritten.
+
+    Raises ContactEditError for a bad kind or email, like an edit would.
+    """
+    at = at or now()
+    book = [c.model_copy(deep=True) for c in contacts]
+    matched = updated = added = skipped = 0
+    for entry in entries:
+        name = (entry.name or "").strip()
+        key = supplier_key(name) if name else ""
+        if not name or not key:
+            skipped += 1
+            continue
+        email = (entry.email or "").strip() or None
+        phone = (entry.phone or "").strip() or None
+        address = (entry.address or "").strip() or None
+        if email and not EMAIL_RE.fullmatch(email):
+            raise ContactEditError(f"{email} doesn't look like an email address")
+        c = find(book, key, None)
+        if c is None:
+            if entry.kind not in ("customer", "supplier"):
+                raise ContactEditError("Kind must be customer or supplier")
+            book.append(
+                Contact(
+                    id=contact_id(key, None),
+                    kind=entry.kind,  # type: ignore[arg-type]
+                    name=name,
+                    normalised_key=key,
+                    email=email,
+                    phone=phone,
+                    address=address,
+                    source="phone",
+                    created_at=at,
+                    updated_at=at,
+                )
+            )
+            added += 1
+            continue
+        matched += 1
+        changed = False
+        for k, v in (("email", email), ("phone", phone), ("address", address)):
+            if v and not getattr(c, k):
+                setattr(c, k, v)
+                changed = True
+        if changed:
+            c.updated_at = at
+            updated += 1
+    result = ImportResult(read=len(entries), matched=matched, updated=updated, added=added, skipped=skipped)
+    return sorted(book, key=lambda c: c.name.lower()), result
+
+
+async def import_phone(
+    books: Books, entries: Sequence[PhonePickedContact], user: str
+) -> ImportResult:
+    """Save the phone-picked contacts into contacts.json (read-only on the
+    phone side: nothing is written back to the phone)."""
+    contacts, _, _ = await contact_book(books)
+    merged, result = merge_phone_picks(contacts, entries)
+    await save_contacts(books, merged)
+    await books.audit(f"user:{user}", "contacts_imported", {"source": "phone", **result.model_dump()})
     return result

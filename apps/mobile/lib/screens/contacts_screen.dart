@@ -3,15 +3,20 @@ import 'package:msal_auth/msal_auth.dart';
 
 import '../services/auth.dart';
 import '../services/books.dart';
+import '../services/phone_contacts.dart';
 import '../services/settings.dart';
 import '../theme.dart';
 import '../widgets/vat_status.dart';
+import 'phone_import_sheet.dart';
 import 'settings_screen.dart';
 
 /// Contacts from `GET /contacts`: search the list, see each open balance,
 /// and open a statement per contact. Money is worked out by the runtime.
 class ContactsScreen extends StatefulWidget {
-  const ContactsScreen({super.key});
+  const ContactsScreen({super.key, this.phoneContacts});
+
+  /// The system contact picker; injectable so widget tests can mock it.
+  final PhoneContacts? phoneContacts;
 
   @override
   State<ContactsScreen> createState() => _ContactsScreenState();
@@ -84,6 +89,40 @@ class _ContactsScreenState extends State<ContactsScreen> {
     }
   }
 
+  /// Open the system contact picker, then review the picks before
+  /// importing. The picker reads only the contacts the user taps (no
+  /// Contacts permission); the review sheet saves them to the books.
+  Future<void> _addFromPhone() async {
+    final settings = _settings;
+    if (settings == null || _account == null) return;
+    final picker = widget.phoneContacts ?? PhoneContacts();
+    PickedPhoneContact? first;
+    try {
+      first = await picker.pickContact();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(friendly(e))),
+      );
+      return;
+    }
+    if (first == null || !mounted) return;
+    final imported = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => PhoneImportSheet(
+        initialPicks: [first!],
+        onPickAnother: picker.pickContact,
+        onImport: (body) async {
+          final client =
+              await booksClient(settings, _auth, _account);
+          return client.importPhoneContacts(body);
+        },
+      ),
+    );
+    if (imported == true) await _reload();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -96,7 +135,14 @@ class _ContactsScreenState extends State<ContactsScreen> {
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         actions: [
-          if (_account != null)
+          if (_account != null) ...[
+            IconButton(
+              icon: const Icon(Icons.person_add_outlined),
+              tooltip: 'Add from phone',
+              constraints:
+                  const BoxConstraints(minWidth: 48, minHeight: 48),
+              onPressed: _loading ? null : _addFromPhone,
+            ),
             IconButton(
               icon: const Icon(Icons.refresh_outlined),
               tooltip: 'Reload contacts',
@@ -104,6 +150,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                   const BoxConstraints(minWidth: 48, minHeight: 48),
               onPressed: _loading ? null : _reload,
             ),
+          ],
         ],
       ),
       body: !_authChecked || _loading && _rows.isEmpty && _error == null

@@ -799,6 +799,17 @@ class RuntimeClient {
       _map('POST', '/contacts/import-outlook',
           body: {'add_new': addNew}, what: 'import Outlook contacts');
 
+  /// `POST /contacts/import-phone`: save contacts the user picked with the
+  /// phone's system picker. Each entry carries the reviewed `name`, `kind`
+  /// (`customer` or `supplier`) and whatever the picker returned; the
+  /// runtime adds new contacts or fills blank fields and audits the import
+  /// with `source: "phone"`. Nothing is written back to the phone.
+  Future<Map<String, dynamic>> importPhoneContacts(
+          List<Map<String, String?>> contacts) =>
+      _map('POST', '/contacts/import-phone',
+          body: {'contacts': contacts},
+          what: 'import phone contacts');
+
   Future<Map<String, dynamic>> contactStatement(String id,
           {String? from, String? to}) =>
       _map('GET', '/contacts/${_seg(id)}/statement',
