@@ -29,7 +29,7 @@ import json
 import logging
 import os
 import re
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from types import ModuleType
@@ -219,9 +219,50 @@ def _sender(gold: dict[str, Any]) -> tuple[str, str]:
     return name, f"accounts@{slug}.example"
 
 
-async def reset() -> dict[str, Any]:
-    """Empty storage; reseed the mailbox, address book and calendar from the gold set."""
+# The business on its invoices, so an invoice can be sent without filling Settings in first.
+SAMPLE_PROFILE = {
+    "name": "Sam Builds Ltd", "address": "1 Sample Street\nBristol\nBS1 1AA", "email": "sam@sambuilds.example",
+    "phone": "0117 496 0000", "vrn": "GB123456789", "terms_days": 30, "footer_note": SAMPLE,
+    "bank": {"account_name": "Sam Builds Ltd", "sort_code": "00-00-00", "account_number": "00000000"},
+}
+
+
+def _bank_event(spec: dict[str, Any]) -> Any:
+    """One posted event from evals/gold/bank/expected.json (purchases paid from 1200 Bank, sales owed in 1100 Debtors)."""
+    from accnomos_ledger import LedgerEvent, Line, VatCode
+
+    gross = spec["gross_pence"]
+    if spec["kind"] == "sale":
+        lines = [Line(account="1100 Debtors", debit=gross), Line(account="4000 Sales", credit=gross, vat_code=VatCode.STANDARD)]
+    else:
+        lines = [Line(account="7999 Sundry expenses", debit=gross, vat_code=VatCode.STANDARD), Line(account="1200 Bank", credit=gross)]
+    return LedgerEvent(id=spec["id"], kind=spec["kind"], date=date.fromisoformat(spec["date"]), lines=lines, net=gross, vat=0,
+                       counterparty=spec["counterparty"], evidence=["ab" * 32], approved_by="sam@sambuilds.example",
+                       approved_at=datetime(2026, 10, 26, tzinfo=UTC))
+
+
+async def _seed_bank() -> None:
+    """The entries the gold Barclays statement (evals/gold/bank/barclays.csv) pays for, labelled SAMPLE there."""
+    from app.books import Books
+
+    expected = json.loads((_gold_dir() / "bank" / "expected.json").read_text(encoding="utf-8"))
+    books = Books(STATE.storage)
+    for spec in expected["events"]:
+        if spec["id"].startswith("gold-bc-"):
+            await books.post_event(_bank_event(spec))
+
+
+SEEDS = {"bank": _seed_bank}  # opt-in: they change the VAT figures other flows check
+
+
+async def reset(seed: str | None = None) -> dict[str, Any]:
+    """Empty storage; reseed the mailbox, address book, calendar and invoice profile; then any `seed` from SEEDS."""
+    from app.invoicing import PROFILE, InvoiceProfile
+
+    if seed is not None and seed not in SEEDS:
+        raise HTTPException(400, f"unknown seed {seed!r}; one of {sorted(SEEDS)}")
     STATE.storage = FakeStorageProvider()
+    await STATE.storage.write(PROFILE, InvoiceProfile.model_validate(SAMPLE_PROFILE).model_dump_json(indent=2).encode())
     STATE.mail = FakeMailProvider()
     STATE.sender = FakeMailSender()
     STATE.contacts = FakeContactsProvider()
@@ -244,10 +285,12 @@ async def reset() -> dict[str, Any]:
     )
     cal = await STATE.calendar.ensure_calendar(CALENDAR)
     await STATE.calendar.upsert_all_day_event(cal, "vat-26A3", "2026-11-07", "VAT return due (Jul–Sep 2026)", SAMPLE)
+    if seed:
+        await SEEDS[seed]()
     if security.LIMITER:  # each test starts with a full request budget
         security.LIMITER.reset()
     STATE.seeded = True
-    return {"ok": True, "mail": len(STATE.mail.messages), "gold": len(golds)}
+    return {"ok": True, "mail": len(STATE.mail.messages), "gold": len(golds), "seed": seed}
 
 
 def enable() -> None:
@@ -267,8 +310,8 @@ router = APIRouter(prefix="/__test", tags=["test mode"], include_in_schema=False
 
 
 @router.post("/reset")
-async def reset_route() -> dict[str, Any]:
-    return await reset()
+async def reset_route(seed: str | None = None) -> dict[str, Any]:
+    return await reset(seed)
 
 
 @router.get("/gold")

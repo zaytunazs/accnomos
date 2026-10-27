@@ -207,7 +207,7 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
         <button type="button" onClick={scan} disabled={busy !== null} className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white disabled:opacity-60">
           {busy === "scan" ? "Reading your Inbox…" : "Scan 00 Inbox now"}
         </button>
-        <UploadToInbox account={account!} onDone={() => setNote("Added to your Inbox.")} />
+        <UploadToInbox account={account!} onDone={() => setNote(null)} />
         <span className="text-sm text-muted">{items.length} waiting · or drop files into OneDrive › Apps › Accnomos › 00 Inbox</span>
       </div>
       {note && <p role="status" className="rounded-xl bg-teal-tint px-4 py-2 text-sm text-teal-dark">{note}</p>}

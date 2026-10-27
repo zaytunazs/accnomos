@@ -49,33 +49,34 @@ export default function ReviewPage() {
             </Explain>
           }
         />
-        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter reviews">
-          {filters.map((filter) =>
-            filter.warn ? (
-              <span
-                key={filter.label}
-                className="flex h-11 items-center whitespace-nowrap rounded-full border border-warn-border bg-warn-bg px-4 text-[14px] font-bold text-warn-ink"
-              >
-                {filter.label}
-              </span>
-            ) : (
-              <span
-                key={filter.label}
-                className={`flex h-11 items-center whitespace-nowrap rounded-full border px-4 text-[14px] font-bold ${
-                  filter.active
-                    ? "border-teal bg-teal-tint text-teal-dark"
-                    : "border-border bg-white text-muted"
-                }`}
-              >
-                {filter.label}
-              </span>
-            ),
-          )}
-        </div>
       </div>
       <LiveReview
         fallback={
           <>
+            {/* The sample's counts: signed in, LiveReview shows how many are really waiting. */}
+            <div className="flex flex-wrap gap-2" role="group" aria-label="Filter reviews">
+              {filters.map((filter) =>
+                filter.warn ? (
+                  <span
+                    key={filter.label}
+                    className="flex h-11 items-center whitespace-nowrap rounded-full border border-warn-border bg-warn-bg px-4 text-[14px] font-bold text-warn-ink"
+                  >
+                    {filter.label}
+                  </span>
+                ) : (
+                  <span
+                    key={filter.label}
+                    className={`flex h-11 items-center whitespace-nowrap rounded-full border px-4 text-[14px] font-bold ${
+                      filter.active
+                        ? "border-teal bg-teal-tint text-teal-dark"
+                        : "border-border bg-white text-muted"
+                    }`}
+                  >
+                    {filter.label}
+                  </span>
+                ),
+              )}
+            </div>
             <ProposalCard proposal={proposal} />
             <NeedsALookCard />
             <VoiceNoteCard />

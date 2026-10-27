@@ -95,7 +95,7 @@ function TileCard({ tile }: { tile: Tile }) {
     ? "text-sm font-bold text-warn-ink underline"
     : `text-[13px] font-semibold ${tile.tone === "amber" ? "text-amber" : "text-muted"}`;
   return (
-    <div className={`rounded-2xl border p-4 ${warn ? "border-warn-border bg-warn-bg" : "border-border bg-white"}`}>
+    <div role="group" aria-label={tile.label} className={`rounded-2xl border p-4 ${warn ? "border-warn-border bg-warn-bg" : "border-border bg-white"}`}>
       <p className={`text-sm font-semibold ${warn ? "text-warn-ink" : "text-muted"}`}>{tile.label}</p>
       <p className={`mt-1 text-2xl font-extrabold tracking-tight ${warn ? "text-warn-ink" : "text-ink"}`}>{tile.value}</p>
       {tile.href ? (

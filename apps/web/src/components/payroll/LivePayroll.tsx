@@ -157,7 +157,7 @@ export default function LivePayroll() {
       {!run && (
         <p className="rounded-2xl border border-border bg-white p-6 text-[15px] leading-7 text-muted">
           No pay run for {monthName(period)} yet. Preparing one adds up everyone&apos;s timesheet hours for the month at
-          their hourly rate (set on the Jobs page) and estimates the deductions. You can change hours and rates before
+          their hourly rate (set in Settings › Business › Staff) and estimates the deductions. You can change hours and rates before
           exporting.
         </p>
       )}

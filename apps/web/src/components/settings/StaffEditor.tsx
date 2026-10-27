@@ -158,6 +158,7 @@ export default function StaffEditor({ card, heading }: { card: string; heading: 
                         type="button"
                         disabled={editing !== null}
                         onClick={() => edit(s)}
+                        aria-label={`Edit ${s.name}`}
                         className="h-9 rounded-xl border border-border bg-white px-3 text-[13px] font-bold text-ink disabled:opacity-60"
                       >
                         Edit

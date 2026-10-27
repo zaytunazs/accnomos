@@ -1,11 +1,11 @@
-import { createBooksFolder, expect, signIn, test } from "./fixtures";
+import { createBooksFolder, expect, settingsTab, signIn, test } from "./fixtures";
 
 test("Outlook intake: turn on and preview (dry run) copies nothing", async ({ page, runtime }) => {
   await signIn(page);
   await createBooksFolder(page);
 
   await page.goto("/settings");
-  const intake = page.getByRole("region", { name: "Outlook intake" });
+  const intake = (await settingsTab(page, "Automation")).getByRole("region", { name: "Outlook intake" });
   const toggle = intake.getByRole("switch", { name: "Outlook intake" });
   await expect(toggle).toHaveAttribute("aria-checked", "false");
   await toggle.click();
