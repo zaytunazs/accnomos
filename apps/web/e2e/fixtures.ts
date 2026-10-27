@@ -18,8 +18,11 @@ const LOCAL = /^(https?|wss?):\/\/(127\.0\.0\.1|localhost)(:\d+)?\//;
 export class Runtime {
   constructor(private readonly request: APIRequestContext) {}
 
-  /** Empty the fake OneDrive and reseed; `seed: "bank"` also posts the entries evals/gold/bank/barclays.csv pays for. */
-  async reset(seed?: "bank"): Promise<void> {
+  /**
+   * Empty the fake OneDrive and reseed; `seed: "bank"` also posts the entries evals/gold/bank/barclays.csv pays for;
+   * `seed: "demo"` makes today DEMO_DAY for this worker and puts JM Trading Ltd in the Outlook address book.
+   */
+  async reset(seed?: "bank" | "demo"): Promise<void> {
     const r = await this.request.post(`${RUNTIME_URL}/__test/reset${seed ? `?seed=${seed}` : ""}`);
     expect(r.ok(), `POST /__test/reset -> ${r.status()}: is the runtime on ${RUNTIME_URL} in test mode?`).toBeTruthy();
   }
@@ -88,13 +91,15 @@ export class Runtime {
 
 /** The runtime's pinned test-mode "today" (ACCNOMOS_TEST_TODAY), 09:00 in London. */
 export const TODAY = new Date("2026-10-27T09:00:00Z");
+/** docs/DEMO.md's stage date, the runtime's "today" after `runtime.reset("demo")`, 09:00 in London. */
+export const DEMO_DAY = new Date("2026-11-04T09:00:00Z");
 
 /**
  * Signed in with the fake account, AI pointed at the stub. Only fills keys a test has not set itself.
- * The browser clock starts at TODAY (and runs on), so pages that use the device's date agree with the runtime.
+ * The browser clock starts at `today` (and runs on), so pages that use the device's date agree with the runtime.
  */
-export async function signIn(page: Page): Promise<void> {
-  await page.clock.install({ time: TODAY });
+export async function signIn(page: Page, today: Date = TODAY): Promise<void> {
+  await page.clock.install({ time: today });
   await page.addInitScript(
     ({ ai }) => {
       const put = (k: string, v: string) => {

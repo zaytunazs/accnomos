@@ -52,6 +52,25 @@ const TITLES: Record<RtProposedAction["kind"], string> = {
   log_mileage: "Mileage",
 };
 
+/** Where an action's result shows up, for checking after an approval that stopped halfway. */
+const WHERE: Record<RtProposedAction["kind"], string> = {
+  create_invoice: "Invoices",
+  chase_invoice: "the invoice on Invoices",
+  log_timesheet: "the job's timesheet on Jobs",
+  log_mileage: "the mileage log on Vehicles",
+};
+
+/**
+ * What to do after the runtime's two 409s for an `approving` line with no result (docs/ACTIONS.md, "Once only"):
+ * under 10 minutes it may still be running; after that it died and is never run again.
+ */
+function stalledAdvice(message: string, kind: RtProposedAction["kind"]): string {
+  if (/earlier approval of this action did not finish/.test(message))
+    return ` It is never retried on its own: check ${WHERE[kind]}, press Reject to clear this card, and ask again only if it is not there.`;
+  if (/already being approved/.test(message))
+    return ` It is never retried on its own: give it 10 minutes and check ${WHERE[kind]} before you Approve again.`;
+  return "";
+}
 function Details({ action }: { action: RtProposedAction }) {
   if (action.kind === "create_invoice") {
     const p = action.preview as unknown as RtInvoicePreview;
@@ -143,10 +162,13 @@ type State = { step: "ready" | "working" | "rejected" } | { step: "done"; result
 export default function ActionCard({
   action,
   account,
+  receivedAt,
   onChange,
 }: {
   action: RtProposedAction;
   account: AccountInfo;
+  /** When the card arrived by this device's clock; absent (an older saved thread): when it was first shown. */
+  receivedAt?: number;
   /** "Change": put the question back in the box so the user can reword it. */
   onChange: () => void;
 }) {
@@ -155,10 +177,15 @@ export default function ActionCard({
   const warnings = ((action.preview.warnings as string[] | undefined) ?? []).filter(Boolean);
   const expired = lapsed && state.step === "ready";
 
+  // Timed from when the card arrived, not by comparing the server's expiry with this device's clock, which may be off
+  // (one running 15 minutes ahead would show every card as expired); a card restored from the saved thread keeps its
+  // arrival time, so a reload does not restart the clock. The runtime still refuses an expired card on Approve.
   useEffect(() => {
-    const t = setTimeout(() => setLapsed(true), Math.max(0, Date.parse(action.expires_at) - Date.now()));
+    const ttl = Date.parse(action.expires_at) - Date.parse(action.created_at);
+    const left = receivedAt === undefined ? ttl : receivedAt + ttl - Date.now();
+    const t = setTimeout(() => setLapsed(true), Math.max(0, left));
     return () => clearTimeout(t);
-  }, [action.expires_at]);
+  }, [action.created_at, action.expires_at, receivedAt]);
 
   async function approve() {
     setState({ step: "working" });
@@ -209,6 +236,7 @@ export default function ActionCard({
           {state.step === "error" && (
             <p className="mt-2 rounded-xl border border-warn-border bg-warn-bg p-3 text-[14px] leading-6 text-warn-ink" role="alert">
               {state.message}
+              {stalledAdvice(state.message, action.kind)}
             </p>
           )}
           <div className="mt-3 flex flex-wrap gap-2">

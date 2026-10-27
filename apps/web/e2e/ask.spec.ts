@@ -1,4 +1,5 @@
-import { createBooksFolder, expect, pickVatPeriod, signIn, test } from "./fixtures";
+import { createBooksFolder, DEMO_DAY, expect, pickVatPeriod, signIn, test } from "./fixtures";
+import { RUNTIME_URL } from "./env.mjs";
 
 test("ask about the picked VAT period → an answer with key numbers and the files it used", async ({ page, runtime }) => {
   await signIn(page);
@@ -51,4 +52,54 @@ test("“plan my Thursday” → a day-plan card around the calendar", async ({ 
   await plan.getByRole("button", { name: "Discard" }).click();
   await expect(plan).toHaveCount(0);
   await expect(page).toHaveURL(/\/$/);
+});
+
+test("an instruction → action card; an approval that died halfway says what to do, and Reject clears it", async ({ page, runtime }) => {
+  await runtime.reset("demo"); // JM Trading Ltd in the Outlook address book
+  await signIn(page, DEMO_DAY);
+  await createBooksFolder(page);
+  await runtime.api("POST", "/contacts/import-outlook", { add_new: true });
+
+  await page.goto("/ask");
+  await page.getByLabel("Ask your books").fill("send a £100 invoice to JM Trading");
+  const asked = page.waitForResponse((r) => r.url().startsWith(RUNTIME_URL) && new URL(r.url()).pathname === "/books/ask");
+  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  const action = ((await (await asked).json()) as { proposed_action: { id: string; kind: string; created_at: string } }).proposed_action;
+  const card = page.getByRole("article", { name: "Proposed: Invoice" });
+  await expect(card).toContainText("JM Trading Ltd · emailed to accounts@jmtrading.example");
+
+  // The runtime died after writing `approving` 11 minutes ago (docs/ACTIONS.md, "Once only"): it is never run again.
+  const ts = new Date(Date.now() - 11 * 60_000).toISOString().replace("Z", "+00:00");
+  const line = { ts, action_id: action.id, kind: action.kind, event: "approving", user: "sam@sambuilds.example" };
+  await runtime.putFile(`_System/audit/actions/${action.created_at.slice(0, 7)}.jsonl`, `${JSON.stringify(line)}\n`);
+
+  await card.getByRole("button", { name: "Approve" }).click();
+  const alert = card.getByRole("alert");
+  await expect(alert).toContainText("The earlier approval of this action did not finish");
+  await expect(alert).toContainText("It is never retried on its own: check Invoices, press Reject to clear this card, and ask again only if it is not there.");
+  await card.getByRole("button", { name: "Reject" }).click();
+  await expect(card.getByRole("status")).toHaveText("Rejected. Nothing was done.");
+  expect(await runtime.sent()).toEqual([]);
+});
+
+test("an action card restored after a reload keeps its own 15 minutes", async ({ page, runtime }) => {
+  await runtime.reset("demo");
+  await signIn(page, DEMO_DAY);
+  await createBooksFolder(page);
+  await runtime.api("POST", "/contacts/import-outlook", { add_new: true });
+
+  await page.goto("/ask");
+  await page.getByLabel("Ask your books").fill("send a £100 invoice to JM Trading");
+  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  const card = page.getByRole("article", { name: "Proposed: Invoice" });
+  const ready = "Create the invoice and email it to accounts@jmtrading.example?";
+  await expect(card).toContainText(ready);
+
+  // 14 minutes on, the thread comes back from sessionStorage: a minute and a half later the card is past its TTL.
+  await page.clock.fastForward("14:00");
+  await page.reload();
+  await expect(card).toContainText(ready);
+  await page.clock.fastForward("01:30");
+  await expect(card).toContainText("This proposal has expired; ask again.");
+  await expect(card.getByRole("button", { name: "Approve" })).toBeDisabled();
 });
