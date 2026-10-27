@@ -125,6 +125,8 @@ def _score(line: BankLine, events: Sequence[LedgerEvent], card_last4: dict[str, 
     amount = "exact amount" if len(events) == 1 else f"sum of {len(events)} events"
     reasons = [f"{amount}, 1p out" if off else amount, dated[1]]
     name, why = _name_score(line, events[0].counterparty)
+    if dated[2] > MAX_DAYS and not why:  # on terms: only the name ties a late payment to the document
+        return None
     if why:
         reasons.append(why)
     last4 = {card_last4.get(e.id) for e in events} - {None}

@@ -163,6 +163,9 @@ def test_payments_on_terms_may_come_later_but_need_the_name() -> None:
     assert m.kind == "suggested" and "paid 11 days after the document" in m.reasons
     unnamed = _lines(b"Date,Description,Amount\n05/11/2026,ENERGY DD REF 7688713,-594.60\n")
     assert suggest_matches(unnamed, [_purchase(59460, date(2026, 10, 25), "Cumbria Voltic Grid Ltd", "e1")]) == []
+    # Card digits alone (0.5 + 0.1) would reach "suggested": a late payment still needs the name.
+    card = _lines(b"Date,Description,Amount\n05/11/2026,FP 4417 REF 7688713,-594.60\n")
+    assert suggest_matches(card, [_purchase(59460, date(2026, 10, 25), "Cumbria Voltic Grid Ltd", "e1")], {"e1": "4417"}) == []
     # An invoice on terms (debtors): the customer pays weeks later, never before the invoice by more than 5 days.
     paid = _lines(b"Date,Description,Amount\n20/11/2026,ACME KITCHENS INV-0042,1200.00\n")
     (s,) = suggest_matches(paid, [_sale(120000, date(2026, 10, 22), "Acme Kitchens", "e2")])
