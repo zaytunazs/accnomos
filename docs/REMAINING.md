@@ -49,7 +49,7 @@ Severity:
 |---|---|
 | Medium | Barclays, Starling, Tide, Monzo and HSBC/Lloyds layouts follow public formats and have not been checked against real exports. Unknown headers fall back to `bank`. |
 | Medium | Bank-rule AI codings have run against the test stub only (`testmode.bank_ai_reply`); no real Glimmer/Meta call has coded a line end to end. |
-| Low | `suggested_filename` on bank-line expense proposals ends in `.csv` and uses the raw description; nothing reads it. |
+| Low | `suggested_filename` on bank-line expense proposals is a clean description with no extension; nothing reads it. |
 | Low | The phone lists bank rules read-only; adding or editing rules needs the web app (on purpose). |
 
 ## Contacts

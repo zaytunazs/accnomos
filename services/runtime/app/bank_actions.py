@@ -24,6 +24,14 @@ from app.journal import draft_journal
 from app.schemas import Check, ExtractedDoc, PaymentMethod, Proposal, ProposalStatus
 
 MODEL = "bank-line"  # in place of the extraction model's name: no model read anything
+_UNSAFE_FILENAME = re.compile(r'[\\/:*?"<>|\x00-\x1f]+')
+
+
+def suggested_filename_for_line(line: BankLine) -> str:
+    """'2026-10-21 Screwfix': the date and a filesystem-safe description. A bank line has no receipt file of
+    its own, so the name carries no extension (and never .csv)."""
+    desc = re.sub(r"\s+", " ", _UNSAFE_FILENAME.sub(" ", line.description or line.reference or "")).strip(" .")
+    return f"{line.date.isoformat()} {desc[:60] or 'Bank payment'}"
 
 
 class UnmatchedLine(BaseModel):
@@ -81,7 +89,7 @@ def proposal_from_line(line: BankLine) -> Proposal:
         checks=[note],
         status="needs_a_look",
         reasons=[f"{note.code}: {note.message}"],
-        suggested_filename=f"{line.date.isoformat()} {line.description[:40]} £{gross:.2f}.csv",
+        suggested_filename=suggested_filename_for_line(line),
         journal_draft=draft_journal(doc),
         model=MODEL,
         elapsed_s=0.0,

@@ -383,7 +383,7 @@ def proposal_for_coding(line: Any, *, account: str, vat_code: str | None, contac
     import uuid
 
     from accnomos_ledger.bank import FEE_WORDS as _FEES
-    from app.bank_actions import MODEL, _payment_method
+    from app.bank_actions import MODEL, _payment_method, suggested_filename_for_line
     from app.books import now
     from app.journal import CATEGORY_ACCOUNTS, draft_journal
     from app.schemas import Check, ExtractedDoc, Proposal
@@ -444,7 +444,7 @@ def proposal_for_coding(line: Any, *, account: str, vat_code: str | None, contac
         checks=[note],
         status="needs_a_look",
         reasons=[f"{note.code}: {note.message}"],
-        suggested_filename=f"{line.date.isoformat()} {line.description[:40]} £{gross:.2f}.csv",
+        suggested_filename=suggested_filename_for_line(line),
         journal_draft=draft_journal(doc),
         model=MODEL,
         elapsed_s=0.0,
