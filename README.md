@@ -16,7 +16,7 @@ Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI De
 
 | Path | What |
 |---|---|
-| `apps/web` | Next.js PWA (Home · Review · Ask · Files) |
+| `apps/web` | Next.js PWA (Home · Review · Ask · VAT · Jobs · Files) |
 | `apps/mobile` | Flutter Android app, same runtime API |
 | `services/runtime` | Stateless Agent Runtime (FastAPI): receives the user's cloud token + AI config per request, keeps nothing |
 | `services/hmrc-relay` | Stateless HMRC relay: holds the HMRC client secret, adds fraud-prevention headers |
@@ -53,6 +53,7 @@ Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI De
 | 27 Oct | **Books.xlsx:** rebuilt from the event files after every approve, reject and bank match, and on demand (`POST /books/rebuild`, *Rebuild Books.xlsx* on Files). Sheets `README` (says it is generated; do not edit), `Summary`, `Ledger` (with totals row), `Accounts`, `VAT`, `Suppliers`, `Bank`, `Proposals`; £ and dd/mm/yyyy formats, frozen headers. Runtime tests open the workbook with openpyxl on a synthetic ledger and check the totals on `Ledger`, `Suppliers`, `Summary` and `VAT` against the events (a reversal nets off on all four). There is no *undo approval* yet, so there is no undo path to rebuild after. Not yet opened in Excel from a real OneDrive |
 | 27 Oct | **Files page (live):** signed in, lists the real books folder from Graph (00–06 with file counts, sizes, last modified, *Open* links; `_System` collapsed); signed out, the sample tree. Web build passes; not yet checked against a real OneDrive |
 | 27 Oct | **VAT deadlines (F12-lite):** `GET /books/deadlines` works out the current VAT period from the stagger (1/2/3, custom start month, or monthly), the return/payment date (1 month + 7 days after period end), days left and Box 5 so far; Home *Deadlines* uses it when signed in, sample otherwise. Stagger is set in onboarding and Settings (this device only). Date maths unit-tested; annual accounting not covered; not yet run against a real account |
+| 27 Oct | **Jobs, staff and timesheets:** `/jobs` (summary tiles, jobs table, *Add job*) and the job page (timesheet with a quick-add row: staff, date, hours in 0.25 steps, note, billable; labour cost, materials, billable value and margin). Staff and their cost/charge rates in Settings › *Staff* (names and roles only). Review can tag a purchase to a job on Approve; its ex-VAT net counts as job materials until undone. *Create invoice from unbilled hours* proposes one line per person (hours × charge rate, at cost if none is set) and marks nothing; until sales invoicing lands, *Invoice sent: mark these hours invoiced* records the invoice number (`POST /jobs/{id}/mark-invoiced`). Files in `_System/Jobs`, `_System/Staff`, `_System/Timesheets/<yyyy-mm>.jsonl`; Books.xlsx gets a `Jobs` sheet. "Invoiced" and margin value hours at each person's *current* charge rate (not read back from an invoice), so changing a rate changes past figures. Rounding, pence maths, grouping, summaries and routes tested on fake storage (`services/runtime/tests/test_jobs.py`); web build passes; not yet run against a real OneDrive |
 
 ## Outlook intake
 

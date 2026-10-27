@@ -34,8 +34,9 @@ class ProposalStateError(ApprovalError):
 
 
 def apply_edits(p: Proposal, edits: dict[str, Any]) -> None:
-    """Apply the user's corrections to the document and the expense account, then redraw the journal."""
-    unknown = set(edits) - DOC_EDITS - {"account"}
+    """Apply the user's corrections to the document and the expense account, then redraw the journal.
+    (`job_id` is checked against the jobs file and applied by approve().)"""
+    unknown = set(edits) - DOC_EDITS - {"account", "job_id"}
     if unknown:
         raise ApprovalError(f"Can't edit {', '.join(sorted(unknown))}")
     if "category" in edits and edits["category"] not in CATEGORIES:
@@ -104,6 +105,8 @@ async def approve(
     (the account rule and the Autopilot rule)."""
     p = await _open_proposal(books, proposal_id)
     apply_edits(p, edits or {})
+    if "job_id" in (edits or {}):
+        p.job_id = await _job_tag(books, p, (edits or {})["job_id"])
     p.journal_draft = final_journal(p)
     event = build_event(p, p.journal_draft, user)
     try:
@@ -121,11 +124,28 @@ async def approve(
     await books.audit(_actor(user), "approved", {
         "proposal": p.id, "event": event.id, "event_path": event_path, "doc": p.doc_sha256,
         "edits": sorted((edits or {}).keys()), "rule": rule.match.supplier_regex if rule else None,
-        "autopilot_rule": auto_rule.supplier_key if auto_rule else None,
+        "autopilot_rule": auto_rule.supplier_key if auto_rule else None, "job": p.job_id,
     })
     if rebuild:
         await books.rebuild_safely(user)
     return p
+
+
+async def _job_tag(books: Books, p: Proposal, job_id: Any) -> str | None:
+    """A purchase may be tagged to a job in the jobs file (its net then counts as a job cost); None clears it."""
+    if job_id in (None, ""):
+        return None
+    if p.extracted.doc_type == "sales_invoice":
+        raise ApprovalError("Only purchases can be tagged to a job")
+    from app.jobs import load_jobs
+
+    try:
+        known = await load_jobs(books)
+    except ValueError as exc:  # hand-edited jobs.json: say so rather than fail the request
+        raise ApprovalError("The jobs file could not be read, so the purchase can't be tagged") from exc
+    if not any(j.id == job_id for j in known):
+        raise ApprovalError(f"No such job {job_id!r}")
+    return str(job_id)
 
 
 def _actor(user: str) -> str:
