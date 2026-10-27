@@ -147,6 +147,7 @@ export default function InboxTriage() {
         <button
           type="button"
           disabled={!account || busy}
+          title={account ? "Check your inbox now" : "Sign in to check your inbox"}
           onClick={() => account && run(account)}
           className="shrink-0 whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-60"
         >

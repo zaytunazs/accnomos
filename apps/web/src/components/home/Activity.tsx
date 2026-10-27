@@ -129,7 +129,7 @@ export default function Activity() {
   const home = useHome();
   const sample = home.mode === "sample";
   const rows = sample ? sampleRows() : home.mode === "live" ? liveRows(home.data) : null;
-  const heading = sample ? "What the agents did today" : "Recent activity";
+  const heading = sample ? "What the agents did on 26 October" : "Recent activity";
 
   const days: { day: string; label: string; rows: Row[] }[] = [];
   if (rows) {

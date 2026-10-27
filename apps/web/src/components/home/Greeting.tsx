@@ -38,7 +38,7 @@ export default function Greeting() {
       <Header
         date="Monday 26 October"
         title="Good evening, Priya"
-        badge="SAMPLE — FICTIONAL COMPANY · Bramblewood Joinery Ltd"
+        badge="Fictional demo company · Bramblewood Joinery Ltd"
         run="Last Autopilot run 4 min ago · 2 receipts imported from Outlook"
       />
     );

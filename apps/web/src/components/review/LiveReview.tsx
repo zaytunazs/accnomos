@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import ReviewQueue, { type ReviewAdapter } from "@/components/review/ReviewQueue";
+import SignInCta from "@/components/SignInCta";
 import UploadToInbox from "@/components/review/UploadToInbox";
 import {
   EmptyState,
@@ -61,9 +62,12 @@ function SampleReview({ note: initialNote, level }: { note: string | null; level
 
   return (
     <div className="flex min-w-0 flex-col gap-4">
-      <p className="rounded-xl border border-warn-border bg-warn-bg px-4 py-2 text-sm font-bold text-warn-ink">
-        SAMPLE — FICTIONAL COMPANY · Bramblewood Joinery Ltd.{" "}
-        <span className="font-normal">Sign in to review your own receipts. Decisions here stay in this tab; nothing is posted anywhere.</span>
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-xl border border-warn-border bg-warn-bg px-4 py-2 text-sm text-warn-ink">
+        <span>
+          <strong>Fictional Bramblewood Joinery Ltd books.</strong>{" "}
+          Decisions here stay in this tab; nothing is posted anywhere.
+        </span>
+        <SignInCta />
       </p>
       <Notes note={note} error={error} />
       <ReviewQueue items={items} rules={sampleRules} level={level} adapter={adapter} onNote={setNote} onError={setError} />

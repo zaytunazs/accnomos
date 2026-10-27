@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import BankUpload from "@/components/bank/BankUpload";
+import SignInCta from "@/components/SignInCta";
 import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import PrintButton from "@/components/PrintButton";
 import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
@@ -763,11 +764,9 @@ export default function LiveBank() {
 
   if (state === "demo") {
     return (
-      <p className="rounded-2xl border border-border bg-white p-5 text-[15px] font-semibold">
-        <Link href="/connect" className="text-teal-dark underline underline-offset-2">
-          Connect your OneDrive
-        </Link>{" "}
-        to import bank statements. They are saved in your own 04 Bank statements folder.
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-border bg-white p-5 text-[15px] font-semibold">
+        <SignInCta />
+        <span className="font-normal text-muted">to import bank statements. They are saved in your own 04 Bank statements folder.</span>
       </p>
     );
   }

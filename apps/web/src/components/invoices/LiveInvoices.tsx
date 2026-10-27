@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MarkPaidDialog, PreviewSendDialog, ReminderDialog, StatusTimeline, VoidDialog } from "@/components/invoices/InvoiceDialogs";
+import SignInCta from "@/components/SignInCta";
 import { EmptyState, RuntimeErrorNote } from "@/components/States";
 import PrintButton from "@/components/PrintButton";
 import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
@@ -83,8 +84,9 @@ export default function LiveInvoices() {
   if (ready && !account) {
     return (
       <div className="space-y-3">
-        <p className="rounded-2xl bg-ground p-4 text-sm text-muted">
-          Sign in with Microsoft to write invoices; they are saved in your OneDrive under 03 Sales/invoices. Below: SAMPLE — FICTIONAL COMPANY.
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-ground p-4 text-sm text-muted">
+          <SignInCta />
+          <span>to write invoices; they are saved in your OneDrive under 03 Sales/invoices. The list below is a fictional sample.</span>
         </p>
         <div className="flex flex-wrap gap-2 print:hidden">
           <PrintButton />

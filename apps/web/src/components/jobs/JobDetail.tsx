@@ -14,6 +14,7 @@ import {
   type RtTimesheetEntry,
 } from "@/lib/runtime";
 import { errorText, todayIso, useAccount } from "./useAccount";
+import SignInCta from "@/components/SignInCta";
 import { RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import WeekGrid from "./WeekGrid";
 
@@ -108,7 +109,13 @@ export default function JobDetail() {
     </div>
   );
   if (!id) return bare(<>No job chosen. <Link href="/jobs" className="font-bold text-teal-dark underline">Back to jobs</Link></>);
-  if (account === null) return bare("Sign in to see this job.");
+  if (account === null)
+    return bare(
+      <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-2">
+        <SignInCta />
+        <span>to see this job.</span>
+      </span>,
+    );
   if (!summary) return bare(note ?? "Loading…");
 
   const job = summary.job;

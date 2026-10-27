@@ -37,7 +37,7 @@ export default function VatDeadlineStrip() {
   if (home.mode === "sample") {
     const [first] = sampleDeadlines;
     return (
-      <Strip title={`SAMPLE · ${first.title}`} sub={first.sub} plan="2026-11-07" sample />
+      <Strip title={first.title} sub={first.sub} plan="2026-11-07" />
     );
   }
 
@@ -59,12 +59,11 @@ export default function VatDeadlineStrip() {
   return <Strip title="VAT return due" sub="Could not work out your VAT period" plan={null} />;
 }
 
-function Strip({ title, sub, plan, sample = false }: { title: string; sub: string; plan: string | null; sample?: boolean }) {
+function Strip({ title, sub, plan }: { title: string; sub: string; plan: string | null }) {
   return (
     <section aria-label="VAT deadline" className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-2xl border border-border bg-white px-4 py-3">
       <p className="min-w-0 text-[15px]">
         <strong>{title}</strong> <span className="text-muted">· {sub}</span>
-        {sample ? <span className="ml-2 text-[13px] font-medium text-muted">(sample)</span> : null}
       </p>
       {plan ? (
         <Link

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import BooksCard from "@/components/files/BooksCard";
+import SignInCta from "@/components/SignInCta";
 import FilePreview from "@/components/files/FilePreview";
 import FileTree from "@/components/files/FileTree";
 import FilesTree, {
@@ -234,14 +235,9 @@ export default function LiveFiles() {
           >
             Open in OneDrive
           </a>
-        ) : (
-          <Link
-            href={state === "demo" ? "/connect" : "#"}
-            className="shrink-0 whitespace-nowrap rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark"
-          >
-            {state === "demo" ? "Connect your OneDrive" : "Open in OneDrive"}
-          </Link>
-        )}
+        ) : state === "demo" ? (
+          <SignInCta />
+        ) : null}
       </div>
 
       {live ? (
@@ -326,12 +322,7 @@ export default function LiveFiles() {
           title="Folder not set up yet"
           body="Your Accnomos folder in OneDrive hasn't been created."
           action={
-            <Link
-              href="/connect"
-              className="inline-block whitespace-nowrap rounded-xl bg-teal px-5 py-2.5 text-sm font-bold text-white hover:bg-teal-dark"
-            >
-              Finish connecting
-            </Link>
+            <SignInCta className="inline-block whitespace-nowrap rounded-xl bg-teal px-5 py-2.5 text-sm font-bold text-white hover:bg-teal-dark" />
           }
         />
       ) : state === "checking" || state === "loading" ? (
@@ -351,9 +342,9 @@ export default function LiveFiles() {
               />
             )
           )}
-          <p className="text-[13px] font-medium text-muted">
-            {state === "error" ? "Could not read your folder; showing the sample instead. " : "Sample folder. "}
-            SAMPLE — FICTIONAL COMPANY
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] font-medium text-muted">
+            <span>{state === "error" ? "Could not read your folder; showing the sample instead." : "Sample folder with fictional files."}</span>
+            {state === "demo" && <SignInCta />}
           </p>
           <FileTree />
         </>

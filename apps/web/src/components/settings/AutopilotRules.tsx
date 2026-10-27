@@ -5,6 +5,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import ByWhom from "@/components/ByWhom";
 import Explain from "@/components/Explain";
+import SignInCta from "@/components/SignInCta";
 import { EmptyState, LoadingSkeleton } from "@/components/States";
 import { autopilotOn, gbp, runtime, setAutopilotOn, type RtRule } from "@/lib/runtime";
 
@@ -101,7 +102,10 @@ export default function AutopilotRules({ card, heading }: { card: string; headin
             <LoadingSkeleton lines={2} label="Loading your Autopilot rules…" />
           </div>
         ) : (
-          <p className="mt-3 text-sm text-muted">Sign in to see the rules in your OneDrive.</p>
+          <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted">
+            <SignInCta />
+            <span>to see the rules in your OneDrive.</span>
+          </p>
         )
       ) : rules.length === 0 ? (
         <div className="mt-3">
