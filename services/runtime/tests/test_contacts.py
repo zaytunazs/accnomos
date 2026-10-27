@@ -277,9 +277,12 @@ def test_statement_running_balance_payments_and_reversal() -> None:
     assert cb.totals(docs, ledger, date(2026, 9, 1), TODAY).ytd_sales_net_pence == 45000
 
 
-def test_uk_tax_year_start() -> None:
-    assert cb.uk_tax_year_start(date(2026, 4, 5)) == date(2025, 4, 6)
-    assert cb.uk_tax_year_start(date(2026, 4, 6)) == date(2026, 4, 6)
+def test_contacts_year_to_date_starts_on_the_shared_tax_year_rule() -> None:
+    from app.taxyear import uk_tax_year_start
+
+    assert uk_tax_year_start(date(2026, 4, 5)) == date(2025, 4, 6)
+    assert uk_tax_year_start(date(2026, 4, 6)) == date(2026, 4, 6)
+    assert not hasattr(cb, "uk_tax_year_start")  # one definition, in app/taxyear.py
 
 
 # --------------------------------------------------------------------------- #

@@ -593,3 +593,21 @@ def test_vehicle_and_mileage_routes(client, fake: FakeStorageProvider) -> None:
     assert client.delete(f"/mileage/{eid}", headers=H).status_code == 409
     assert client.delete(f"/vehicles/{vid}", headers=H).status_code == 400
     assert client.delete("/mileage/" + "f" * 32, headers=H).status_code == 404
+
+
+def test_tax_year_label_and_contacts_start_share_one_rule() -> None:
+    """mileage.tax_year_of is built on taxyear.uk_tax_year_start (the same rule contacts uses): they cannot drift."""
+    from app.taxyear import uk_tax_year_start
+
+    for d in (
+        date(2026, 4, 5),
+        date(2026, 4, 6),
+        date(2026, 12, 31),
+        date(2027, 1, 1),
+        date(2027, 4, 5),
+        date(2028, 2, 29),
+    ):
+        start = uk_tax_year_start(d)
+        assert (start.month, start.day) == (4, 6) and start <= d
+        assert m.tax_year_of(d).startswith(str(start.year))
+        assert m.tax_year_bounds(m.tax_year_of(d))[0] == start

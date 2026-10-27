@@ -36,6 +36,7 @@ from app.books import SYSTEM, Books, now
 from app.checks import decide
 from app.journal import VAT_CONTROL, draft_journal
 from app.schemas import MILEAGE_CATEGORY, Check, ExtractedDoc, ExtractedLine, MileageClaim, Proposal
+from app.taxyear import uk_tax_year_start
 from app.validation import LENIENT, Day, StrictBody
 
 VEHICLES = f"{SYSTEM}/Vehicles/vehicles.json"
@@ -94,7 +95,7 @@ class LockedError(MileageError):
 
 def tax_year_of(d: date) -> str:
     """'2026-27' for any day from 6 April 2026 to 5 April 2027."""
-    start = d.year if (d.month, d.day) >= (4, 6) else d.year - 1
+    start = uk_tax_year_start(d).year
     return f"{start}-{(start + 1) % 100:02d}"
 
 

@@ -22,6 +22,7 @@ from app.ai.config import is_test_mode
 from app.books import Books, now
 from app.routes_books import get_books, require_user
 from app.schemas import VatStatus
+from app.taxyear import uk_tax_year_start
 from app.validation import StrictBody
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
@@ -52,7 +53,7 @@ class ContactList(BaseModel):
 
 def _year(year_start: date | None) -> tuple[date, date]:
     today = now().date()
-    return year_start or cb.uk_tax_year_start(today), today
+    return year_start or uk_tax_year_start(today), today
 
 
 @router.get("", response_model=ContactList)

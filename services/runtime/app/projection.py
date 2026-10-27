@@ -22,9 +22,10 @@ from accnomos_ledger import compute_vat_return
 from accnomos_ledger.bank import BankLine, reconciled_to
 from accnomos_ledger.events import LedgerEvent
 from app import payroll_rates as R
-from app.contacts import Contact, Ledger, assign, documents, merge_ledger, totals, uk_tax_year_start
+from app.contacts import Contact, Ledger, assign, documents, merge_ledger, totals
 from app.mileage import MileageSummary
 from app.schemas import Proposal
+from app.taxyear import uk_tax_year_start
 
 if TYPE_CHECKING:
     from app.jobs import JobSummary

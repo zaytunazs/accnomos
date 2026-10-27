@@ -80,12 +80,6 @@ def contact_id(key: str, vrn: str | None) -> str:
     return hashlib.sha256(f"{key}|{vrn or ''}".encode()).hexdigest()[:16]
 
 
-def uk_tax_year_start(today: date) -> date:
-    """6 April on or before `today`."""
-    start = date(today.year, 4, 6)
-    return start if today >= start else date(today.year - 1, 4, 6)
-
-
 def find(contacts: Iterable[Contact], key: str, vrn: str | None) -> Contact | None:
     contacts = list(contacts)
     if vrn and (hit := next((c for c in contacts if c.vrn == vrn), None)):
