@@ -300,6 +300,7 @@ class _BankRuleSheetState extends State<BankRuleSheet> {
         const SizedBox(height: 4),
         DropdownButtonFormField<T>(
           initialValue: value,
+          isExpanded: true,
           items: [
             for (final e in items.entries)
               DropdownMenuItem(value: e.key, child: Text(e.value)),

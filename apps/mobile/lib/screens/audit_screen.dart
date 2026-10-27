@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 
@@ -87,11 +88,33 @@ String auditDayHeading(DateTime d) =>
 String _clock(DateTime t) =>
     '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
+/// Builds a [RuntimeClient] for the audit screen. The app builds the
+/// real client (with books credentials when signed in); tests inject a
+/// fake that answers without touching the network.
+typedef AuditClientFactory = RuntimeClient Function(
+    AppSettings settings, BooksAuth? books);
+
 /// The audit trail, read-only: everything done in the books and who did
 /// it — you, or an agent. Who/what/date filters use the same `GET /audit`
 /// query as the web; only the CSV export stays on the web.
 class AuditScreen extends StatefulWidget {
-  const AuditScreen({super.key});
+  const AuditScreen({
+    super.key,
+    @visibleForTesting this.testAccount,
+    @visibleForTesting this.testAccountReady = false,
+    this.clientFactory,
+  });
+
+  /// Signed-in account to use without touching MSAL (tests only).
+  @visibleForTesting
+  final Account? testAccount;
+
+  /// Skip the MSAL account lookup and use [testAccount] as-is (tests only).
+  @visibleForTesting
+  final bool testAccountReady;
+
+  /// Builds the runtime client; null means the real [RuntimeClient].
+  final AuditClientFactory? clientFactory;
 
   @override
   State<AuditScreen> createState() => _AuditScreenState();
@@ -134,10 +157,14 @@ class _AuditScreenState extends State<AuditScreen> {
   Future<void> _load() async {
     final settings = await AppSettings.load();
     Account? account;
-    try {
-      account = await _auth.account();
-    } catch (_) {
-      account = null;
+    if (widget.testAccountReady) {
+      account = widget.testAccount;
+    } else {
+      try {
+        account = await _auth.account();
+      } catch (_) {
+        account = null;
+      }
     }
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -154,6 +181,18 @@ class _AuditScreenState extends State<AuditScreen> {
 
   Future<RuntimeClient> _booksClient() async {
     final settings = _settings!;
+    final factory = widget.clientFactory;
+    if (factory != null) {
+      return factory(
+        settings,
+        BooksAuth(
+          graphToken: 'test-token',
+          accountKind: 'personal',
+          user: _account?.username,
+          businessName: settings.businessName,
+        ),
+      );
+    }
     final token = await _auth.token();
     final user = _account?.username ?? settings.userEmail;
     return RuntimeClient(
