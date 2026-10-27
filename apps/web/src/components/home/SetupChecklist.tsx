@@ -84,14 +84,13 @@ export default function SetupChecklist() {
           business !== null && business.name.trim() !== "" && validateVatNumber(business.vatNumber) === null,
         vat: business !== null,
       });
+      if (!account) setProfileDone(false);
     });
     if (account) {
       runtime
         .invoiceProfile(account)
         .then((p) => setProfileDone(p.name.trim() !== "" && p.address.trim() !== ""))
         .catch(() => setProfileDone(false));
-    } else {
-      setProfileDone(false);
     }
   }, [account]);
 
