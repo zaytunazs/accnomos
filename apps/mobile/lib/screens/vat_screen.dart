@@ -6,6 +6,7 @@ import '../services/auth.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/web_only.dart';
 import 'settings_screen.dart';
 
 const _warnBg = Color(0xFFFFF7ED);
@@ -271,6 +272,11 @@ class _VatScreenState extends State<VatScreen> {
           'Calculated by code from your ledger — never by a model.',
           textAlign: TextAlign.center,
           style: TextStyle(color: AccnomosColors.muted, fontSize: 12),
+        ),
+        const WebOnlyCard(
+          message:
+              'Filing to HMRC (sandbox connect, obligations, declaration and submit) happens on the web.',
+          page: '/vat',
         ),
       ],
     );

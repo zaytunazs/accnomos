@@ -625,15 +625,31 @@ class RuntimeClient {
 
   /// The audit trail, newest first. `GET /audit` → `{start, end, entries,
   /// truncated}`; each entry `{ts, actor, actor_kind, actor_label, event,
-  /// summary, refs}`. Reads only.
-  Future<Map<String, dynamic>> audit({String? from, String? to, int limit = 200}) =>
+  /// summary, refs}`. Reads only. [actor] is `user`, `agent`, an agent
+  /// name such as `autopilot`, or a full actor; [kind] an event such as
+  /// `approved` or a family such as `invoice` — the same filters the web's
+  /// audit page sends.
+  Future<Map<String, dynamic>> audit(
+          {String? from,
+          String? to,
+          String? actor,
+          String? kind,
+          int limit = 200}) =>
       _map('GET', '/audit',
           query: {
             'from': ?from,
             'to': ?to,
+            'actor': ?actor,
+            'kind': ?kind,
             'limit': '$limit',
           },
           what: 'load the audit trail');
+
+  /// `POST /books/export`: everything as one zip in `07 Reports/Exports`
+  /// (a second run the same day is kept beside the first). Posts nothing.
+  /// Same call as the web's Settings › Your data button.
+  Future<Map<String, dynamic>> booksExport() => _map('POST', '/books/export',
+      what: 'export your data');
 
   /// To-dos in `_System/Todos/todos.json`. `GET /todos`, soonest first.
   Future<List<Map<String, dynamic>>> todos() =>
@@ -776,9 +792,30 @@ class RuntimeClient {
       'POST', '/books/bank/lines/${_seg(lineId)}/expense-proposal',
       what: 'propose that expense');
 
-  /// Bank rules (`GET /books/bank/rules`): read-only on the phone.
+  /// Bank rules in evaluation order (first match wins).
+  /// `GET /books/bank/rules`.
   Future<List<Map<String, dynamic>>> bankRules() =>
       _list('GET', '/books/bank/rules', what: 'load bank rules');
+
+  /// `POST /books/bank/rules` (201): "when the description contains X,
+  /// code it to Y". [rule] keeps the runtime's shape: `{name, match: {op,
+  /// value}, amount_min_pence?, amount_max_pence?, direction, action:
+  /// {account, vat_code?, contact?, job_id?}}` — the same body the web's
+  /// `BankRules` form sends.
+  Future<Map<String, dynamic>> createBankRule(Map<String, dynamic> rule) =>
+      _map('POST', '/books/bank/rules',
+          body: rule, what: 'save that rule');
+
+  /// `PUT /books/bank/rules/{id}`: same body as [createBankRule].
+  Future<Map<String, dynamic>> updateBankRule(
+          String id, Map<String, dynamic> rule) =>
+      _map('PUT', '/books/bank/rules/${_seg(id)}',
+          body: rule, what: 'save that rule');
+
+  /// `DELETE /books/bank/rules/{id}`.
+  Future<Map<String, dynamic>> deleteBankRule(String id) => _map(
+      'DELETE', '/books/bank/rules/${_seg(id)}',
+      what: 'delete that rule');
 
   // Contacts (/contacts/*).
 

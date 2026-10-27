@@ -5,7 +5,36 @@ import '../services/auth.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/web_only.dart';
 import 'settings_screen.dart';
+
+/// Who chips: each is one `GET /audit` actor filter (Planner plans are
+/// applied by you, so its chip is the `plan_*` kinds).
+const _whoFilters = <({String key, String label, String? actor, String? kind})>[
+  (key: 'all', label: 'Everyone', actor: null, kind: null),
+  (key: 'you', label: 'You', actor: 'user', kind: null),
+  (key: 'autopilot', label: 'Autopilot', actor: 'autopilot', kind: null),
+  (key: 'intake', label: 'Intake', actor: 'intake', kind: null),
+  (key: 'triage', label: 'Triage', actor: 'triage', kind: null),
+  (key: 'planner', label: 'Planner', actor: null, kind: 'plan'),
+];
+
+/// What dropdown: an event, or a family of events by prefix — the same
+/// list as the web audit page.
+const _kindFilters = [
+  ('', 'Everything'),
+  ('approved', 'Postings'),
+  ('undone', 'Undos'),
+  ('rejected', 'Rejections'),
+  ('proposed', 'Documents read'),
+  ('invoice', 'Invoices'),
+  ('bank', 'Bank'),
+  ('mail', 'Mail'),
+  ('action', 'Ask actions'),
+  ('payroll', 'Payroll'),
+  ('timesheet', 'Timesheets'),
+  ('mileage', 'Mileage'),
+];
 
 /// One line from `GET /audit` (services/runtime/app/audit_view.py).
 class AuditLine {
@@ -58,9 +87,9 @@ String auditDayHeading(DateTime d) =>
 String _clock(DateTime t) =>
     '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 
-/// The audit trail, read-only: the last 31 days of everything done in the
-/// books and who did it — you, or an agent. Filters and CSV export are in
-/// the web app.
+/// The audit trail, read-only: everything done in the books and who did
+/// it — you, or an agent. Who/what/date filters use the same `GET /audit`
+/// query as the web; only the CSV export stays on the web.
 class AuditScreen extends StatefulWidget {
   const AuditScreen({super.key});
 
@@ -77,6 +106,22 @@ class _AuditScreenState extends State<AuditScreen> {
   String? _error;
   List<AuditLine> _lines = const [];
   bool _truncated = false;
+  String _who = 'all';
+  String _kind = '';
+  late DateTime _from;
+  late DateTime _to;
+
+  /// First day shown, `YYYY-MM-DD` in London time.
+  static String _isoDay(DateTime day) =>
+      '${day.year.toString().padLeft(4, '0')}-'
+      '${day.month.toString().padLeft(2, '0')}-'
+      '${day.day.toString().padLeft(2, '0')}';
+
+  ({String? actor, String? kind}) get _auditFilter {
+    final who = _whoFilters.firstWhere((w) => w.key == _who);
+    // The What dropdown wins over the Planner chip's plan_* filter.
+    return (actor: who.actor, kind: _kind.isEmpty ? who.kind : _kind);
+  }
 
   @override
   void initState() {
@@ -94,11 +139,15 @@ class _AuditScreenState extends State<AuditScreen> {
     } catch (_) {
       account = null;
     }
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
     if (!mounted) return;
     setState(() {
       _settings = settings;
       _account = account;
       _authChecked = true;
+      _to = today;
+      _from = today.subtract(const Duration(days: 31));
     });
     if (account != null) await _reload();
   }
@@ -118,12 +167,36 @@ class _AuditScreenState extends State<AuditScreen> {
     );
   }
 
+  Future<void> _pickDate(bool isFrom) async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: isFrom ? _from : _to,
+      firstDate: DateTime(2000),
+      lastDate: DateTime.now().add(const Duration(days: 1)),
+    );
+    if (picked == null || !mounted) return;
+    setState(() {
+      if (isFrom) {
+        _from = picked;
+      } else {
+        _to = picked;
+      }
+    });
+    await _reload();
+  }
+
   Future<void> _reload({bool quiet = false}) async {
     if (_settings == null || _account == null || _loading) return;
     if (!quiet) setState(() => _loading = true);
     setState(() => _error = null);
     try {
-      final data = await (await _booksClient()).audit();
+      final filter = _auditFilter;
+      final data = await (await _booksClient()).audit(
+        from: _isoDay(_from),
+        to: _isoDay(_to),
+        actor: filter.actor,
+        kind: filter.kind,
+      );
       final lines = <AuditLine>[];
       if (data['entries'] is List) {
         for (final e in data['entries'] as List) {
@@ -229,6 +302,99 @@ class _AuditScreenState extends State<AuditScreen> {
     );
   }
 
+  Widget _filters() {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE3E1D8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                for (final w in _whoFilters)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(w.label),
+                      selected: _who == w.key,
+                      onSelected: (_) {
+                        if (_who == w.key) return;
+                        setState(() => _who = w.key);
+                        _reload();
+                      },
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  initialValue: _kind,
+                  decoration: InputDecoration(
+                    labelText: 'What',
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 12),
+                  ),
+                  items: [
+                    for (final k in _kindFilters)
+                      DropdownMenuItem(value: k.$1, child: Text(k.$2)),
+                  ],
+                  onChanged: (v) {
+                    if (v == null || v == _kind) return;
+                    setState(() => _kind = v);
+                    _reload();
+                  },
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => _pickDate(true),
+                  child: Text('From ${_dayLabel(_from)}'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: () => _pickDate(false),
+                  child: Text('To ${_dayLabel(_to)}'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _dayLabel(DateTime d) =>
+      '${d.day} ${_months[d.month - 1].substring(0, 3)} ${d.year}';
+
   Widget _body() {
     final days = auditDays(_lines);
     return RefreshIndicator(
@@ -236,6 +402,8 @@ class _AuditScreenState extends State<AuditScreen> {
       child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          _filters(),
+          const SizedBox(height: 12),
           if (_lines.isEmpty)
             Container(
               width: double.infinity,
@@ -245,7 +413,7 @@ class _AuditScreenState extends State<AuditScreen> {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFE3E1D8)),
               ),
-              child: const Text('Nothing in the last 31 days.',
+              child: const Text('Nothing matches these filters.',
                   style: TextStyle(color: AccnomosColors.muted, height: 1.4)),
             ),
           for (final day in days) ...[
@@ -279,14 +447,12 @@ class _AuditScreenState extends State<AuditScreen> {
           if (_truncated)
             const Padding(
               padding: EdgeInsets.only(top: 4),
-              child: Text('Showing the newest 200 lines. The web app shows more, with filters.',
+              child: Text('Showing the newest 200 lines. Narrow the dates to see more.',
                   style: TextStyle(color: AccnomosColors.muted, fontSize: 12)),
             ),
-          const SizedBox(height: 12),
-          const Text(
-            'Read only. Filters and CSV export are in the web app.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AccnomosColors.muted, fontSize: 12),
+          const WebOnlyCard(
+            message: 'Downloading the trail as a spreadsheet (CSV) happens on the web.',
+            page: '/audit',
           ),
         ],
       ),
