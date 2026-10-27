@@ -71,15 +71,18 @@ Documents, filed by code and never deleted:
 | `05 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | |
 | `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
 | `07 Reports/` | created at onboarding | nothing writes here yet |
+| `Books.xlsx` | runtime, `rebuild_safely` after each ledger-changing action and on *Rebuild* | rewritten whole; sheets `README`, `Summary`, `Ledger`, `Accounts`, `VAT`, `Customers`, `Suppliers`, `Bank`, `Proposals`, `Jobs`, `Vehicles`, `Payroll` (`projection.SHEETS`). A feature whose file cannot be read leaves its sheet empty; a failed rebuild is audited and never fails the user's action |
 
 **Old folder names.** Until 27 Oct 2026 the tree used other names (`paths.RENAMED`: old name → current name, e.g.
 the old name `03 Bank statements` is now `04 Bank statements`). On the first request a sign-in makes, `app/layout.py`
 renames each old-named top-level folder to its current name with one move (a Graph PATCH of the folder's name;
 everything inside goes with it), writes one `folders_renamed` audit line, and never copies or deletes. If the old and
 the new folder both exist it leaves both: `GET /books/layout` lists the pair, the Files page shows a warning, and
-`/health` counts it under `folder_layout` (counts only, no names). Paths saved before the rename (a proposal's
-`file_path`, a bank line's `source_file`) are read through `paths.upgrade()`.
-| `Books.xlsx` | runtime, `rebuild_safely` after each ledger-changing action and on *Rebuild* | rewritten whole; sheets `README`, `Summary`, `Ledger`, `Accounts`, `VAT`, `Customers`, `Suppliers`, `Bank`, `Proposals`, `Jobs`, `Vehicles`, `Payroll` (`projection.SHEETS`). A feature whose file cannot be read leaves its sheet empty; a failed rebuild is audited and never fails the user's action |
+`/health` counts it under `folder_layout` (counts only, no names). Expect this for anyone who raised an invoice before:
+invoicing already wrote `03 Sales/invoices`, so the folder with the old name `02 Sales invoices` (usually empty) stays beside it until the user
+deletes it. Paths saved before the rename (a proposal's `file_path`, a bank line's `source_file`) are not rewritten; they
+go through `paths.upgrade()` when a document is filed and when statements are listed (Bank page, Home). The `Bank` and `Proposals` sheets of
+Books.xlsx still show the path as it was saved.
 
 `_System/` (settings and working data; money is always recomputed from the events):
 
