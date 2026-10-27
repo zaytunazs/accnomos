@@ -464,7 +464,8 @@ class _CaptureScreenState extends State<CaptureScreen>
           try {
             final json =
                 await RuntimeClient(settings).extract(tmp);
-            found.add(Proposal.fromRuntime(json));
+            found.add(Proposal.fromRuntime(json)
+                .copyWith(localImagePath: item.path));
           } finally {
             try {
               await tmp.delete();

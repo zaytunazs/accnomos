@@ -32,6 +32,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _startMonth = TextEditingController();
   String? _startMonthError;
   int _stagger = 1;
+  String _level = 'L1';
 
   AppSettings? _initial;
   Account? _account;
@@ -59,6 +60,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _vrn.text = settings.vatNumber ?? '';
         _mode = settings.aiMode;
         _stagger = settings.vatStagger;
+        _level = settings.autopilotLevel;
         _startMonth.text = settings.vatStartMonth?.toString() ?? '';
       });
     });
@@ -104,6 +106,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         vatNumber: _vrn.text.trim().isEmpty ? null : _vrn.text.trim(),
         vatStagger: _stagger,
         vatStartMonth: _startMonthValue() == -1 ? null : _startMonthValue(),
+        autopilotLevel: _level,
       );
 
   Future<void> _signIn() async {
@@ -271,6 +274,30 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       setState(() => _startMonthError = null);
                     }
                   },
+                ),
+                const SizedBox(height: 16),
+                const Text('Autopilot level',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AccnomosColors.ink)),
+                const SizedBox(height: 4),
+                const Text(
+                    'L1 keeps rule matches waiting for you in Review. '
+                    'L2 posts them on its own. L0 switches Autopilot off.',
+                    style: TextStyle(
+                        color: AccnomosColors.muted,
+                        fontSize: 12,
+                        height: 1.4)),
+                const SizedBox(height: 8),
+                SegmentedButton<String>(
+                  segments: const [
+                    ButtonSegment(value: 'L0', label: Text('L0')),
+                    ButtonSegment(value: 'L1', label: Text('L1')),
+                    ButtonSegment(value: 'L2', label: Text('L2')),
+                  ],
+                  selected: {_level},
+                  onSelectionChanged: (selected) =>
+                      setState(() => _level = selected.first),
                 ),
                 const SizedBox(height: 16),
                 _field(

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:http/http.dart' as http;
 
@@ -181,6 +182,28 @@ class GraphService {
       return a.name.toLowerCase().compareTo(b.name.toLowerCase());
     });
     return items;
+  }
+
+  /// Download a filed document for the Review image viewer: the same
+  /// `:/content` GET the web's `getFileBlob` makes. [relPath] is the
+  /// proposal's `file_path`, relative to the books folder.
+  Future<Uint8List> fileBytes(
+    String token,
+    AccountKind kind,
+    String relPath,
+  ) async {
+    final response = await _client
+        .get(
+          Uri.parse('$_graph${itemPath(kind, relPath)}:/content'),
+          headers: {'Authorization': 'Bearer $token'},
+        )
+        .timeout(const Duration(seconds: 60));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw GraphException(
+        'Could not open that document (status ${response.statusCode}).',
+      );
+    }
+    return response.bodyBytes;
   }
 
   /// Small-file upload (up to 4 MB), the same call the web's

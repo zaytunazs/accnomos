@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
@@ -6,9 +7,12 @@ import 'package:msal_auth/msal_auth.dart';
 import '../models/proposal.dart';
 import '../services/auth.dart';
 import '../services/capture_queue.dart';
+import '../services/graph.dart';
+import '../services/review_rules.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/review_image.dart';
 import 'capture_screen.dart';
 import 'edit_proposal_sheet.dart';
 
@@ -53,6 +57,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
   /// Captured offline (signed-out extract flow) this session.
   final List<Proposal> _captured = [];
 
+  /// Sample ids decided this session (signed-out approvals hide the card;
+  /// Undo brings it back).
+  final Set<String> _dismissed = {};
+
   /// Per-file scan errors from the latest `scan()`.
   List<ScanFileError> _scanErrors = const [];
 
@@ -63,10 +71,23 @@ class _ReviewScreenState extends State<ReviewScreen> {
   bool _undoSupported = false;
   bool _undoBusy = false;
 
+  /// Saved Autopilot rules for the rule-match test (signed in only).
+  List<ReviewRule> _rules = const [];
+
+  /// Event ids from the last approval, for the snackbar Undo action.
+  /// Signed out, the removed cards themselves are kept instead.
+  List<String> _lastEventIds = const [];
+  List<Proposal> _lastRemoved = const [];
+  String _lastWhat = '';
+
   bool get _signedIn => _account != null;
 
-  List<Proposal> get _proposals =>
-      _signedIn ? List.of(_live) : [..._captured, ...Proposal.samples];
+  List<Proposal> get _proposals => _signedIn
+      ? List.of(_live)
+      : [
+          ..._captured,
+          ...Proposal.samples.where((p) => !_dismissed.contains(p.id)),
+        ];
 
   @override
   void initState() {
@@ -85,6 +106,38 @@ class _ReviewScreenState extends State<ReviewScreen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+
+  /// A decision snackbar with an Undo action when [onUndo] is given.
+  void _sayDecision(String message, {Future<void> Function()? onUndo}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        action: onUndo == null
+            ? null
+            : SnackBarAction(
+                label: 'Undo',
+                onPressed: () => unawaited(onUndo()),
+              ),
+      ),
+    );
+  }
+
+  List<ReviewRule> get _effectiveRules =>
+      _signedIn ? _rules : sampleRules;
+
+  /// Rule matches among the visible cards, only when Autopilot is L1
+  /// (at L2 the runtime posts them on its own; at L0 rules are off).
+  Map<String, ReviewRule> _ruleFor(List<Proposal> proposals) {
+    final matches = <String, ReviewRule>{};
+    if ((_settings?.autopilotLevel ?? 'L1') != 'L1') return matches;
+    final rules = _effectiveRules;
+    for (final proposal in proposals) {
+      final rule = matchingRule(proposal.ruleView, rules);
+      if (rule != null) matches[proposal.id] = rule;
+    }
+    return matches;
   }
 
   String _friendly(Object e) => e.toString().replaceFirst('Exception: ', '');
@@ -167,8 +220,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
       if (_live.isNotEmpty && _pages.hasClients) {
         _pages.jumpToPage(_index);
       }
-      // Autopilot entries load separately so the queue never waits on them.
+      // Autopilot entries and rules load separately so the queue never
+      // waits on them.
       unawaited(_loadAutopilot(client));
+      unawaited(_loadRules(client));
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = _friendly(e));
@@ -203,6 +258,75 @@ class _ReviewScreenState extends State<ReviewScreen> {
         _undoSupported = false;
         _auto = const [];
       });
+    }
+  }
+
+  /// Saved rules for the match test; failures leave an empty list so
+  /// no card claims a match it was not shown.
+  Future<void> _loadRules(RuntimeClient client) async {
+    try {
+      final raw = await client.rules();
+      if (!mounted) return;
+      setState(
+          () => _rules = [for (final r in raw) ReviewRule.fromJson(r)]);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _rules = const []);
+    }
+  }
+
+  /// Undo the last decision from the snackbar action. Signed in, each
+  /// kept event id gets `POST /books/undo/{event_id}` (a reversing entry;
+  /// the proposal goes back to Review). Signed out, the removed cards
+  /// are put back where they were.
+  Future<void> _undoLastDecision() async {
+    final eventIds = _lastEventIds;
+    final removed = _lastRemoved;
+    final what = _lastWhat;
+    if (eventIds.isEmpty && removed.isEmpty) {
+      _say('Nothing to undo yet.');
+      return;
+    }
+    if (!_signedIn) {
+      setState(() {
+        for (final proposal in removed) {
+          _dismissed.remove(proposal.id);
+          final isSample =
+              Proposal.samples.any((p) => p.id == proposal.id);
+          if (!isSample && !_captured.any((p) => p.id == proposal.id)) {
+            _captured.insert(0, proposal);
+          }
+        }
+        _index = 0;
+        _lastRemoved = const [];
+        _lastWhat = '';
+      });
+      if (_pages.hasClients) _pages.jumpToPage(0);
+      _say('Undone · $what is back in Review');
+      return;
+    }
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final client = await _booksClient();
+      // Reverse in the opposite order, so pressing again never reverses
+      // an entry twice when one call fails halfway.
+      final left = eventIds.reversed.toList();
+      while (left.isNotEmpty) {
+        await client.undoEvent(left.first);
+        left.removeAt(0);
+      }
+      if (!mounted) return;
+      setState(() {
+        _lastEventIds = const [];
+        _lastWhat = '';
+      });
+      await _reload(quiet: true);
+      _say('Undone · $what is back in Review');
+    } catch (e) {
+      _say(_friendly(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
     }
   }
 
@@ -309,32 +433,61 @@ class _ReviewScreenState extends State<ReviewScreen> {
     }
   }
 
-  void _advance() {
-    if (_index < _proposals.length - 1 && _pages.hasClients) {
-      _pages.nextPage(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOut,
-      );
+  /// Event id from an approve response, for the snackbar Undo action.
+  /// Null when the runtime returned none (then nothing can be undone).
+  String? _eventIdOf(Map<String, dynamic> response) {
+    for (final key in ['event_id', 'eventId']) {
+      final value = response[key]?.toString();
+      if (value != null && value.isNotEmpty) return value;
+    }
+    return null;
+  }
+
+  /// Take a card out of the signed-out list (samples hide, captures leave
+  /// the session list) and remember it for Undo.
+  void _removeLocal(Proposal proposal, {String? what}) {
+    setState(() {
+      _captured.removeWhere((p) => p.id == proposal.id);
+      _dismissed.add(proposal.id);
+      _lastRemoved = [proposal];
+      _lastEventIds = const [];
+      _lastWhat = what ?? '${proposal.supplier} · ${_gbp(proposal.total)}';
+      if (_index >= _proposals.length) {
+        _index = _proposals.isEmpty ? 0 : _proposals.length - 1;
+      }
+    });
+    if (_proposals.isNotEmpty && _pages.hasClients) {
+      _pages.jumpToPage(_index);
     }
   }
 
   Future<void> _approveProposal(Proposal proposal) async {
     if (!_signedIn) {
-      _say('Approved · posted to your books');
-      _advance();
+      _removeLocal(proposal);
+      _sayDecision('Approved · posted to your books',
+          onUndo: _undoLastDecision);
       return;
     }
     if (_busy) return;
     setState(() => _busy = true);
     try {
       final client = await _booksClient();
-      await client.approve(
+      final response = await client.approve(
         proposal.id,
         always: _alwaysDo[proposal.id] ?? false,
       );
       if (!mounted) return;
+      final eventId = _eventIdOf(response);
       _removeLive(proposal.id);
-      _say('Approved · posted to your books');
+      setState(() {
+        _lastEventIds = eventId == null ? const [] : [eventId];
+        _lastRemoved = const [];
+        _lastWhat = '${proposal.supplier} · ${_gbp(proposal.total)}';
+      });
+      _sayDecision(
+        'Approved · posted to your books',
+        onUndo: eventId == null ? null : _undoLastDecision,
+      );
     } catch (e) {
       _say(_friendly(e));
     } finally {
@@ -357,31 +510,32 @@ class _ReviewScreenState extends State<ReviewScreen> {
   /// separate edit endpoint). Signed out, the corrected copy stays local.
   Future<void> _saveAndApprove(Proposal proposal, EditResult result) async {
     if (!_signedIn) {
-      setState(() {
-        final at = _captured.indexWhere((p) => p.id == proposal.id);
-        if (at >= 0) {
-          _captured[at] = result.updated;
-        } else {
-          _captured.insert(0, result.updated);
-          _index = 0;
-        }
-      });
-      if (_pages.hasClients) _pages.jumpToPage(_index);
-      _say('Saved · approved locally');
+      _removeLocal(proposal);
+      _sayDecision('Saved · approved locally',
+          onUndo: _undoLastDecision);
       return;
     }
     if (_busy) return;
     setState(() => _busy = true);
     try {
       final client = await _booksClient();
-      await client.approve(
+      final response = await client.approve(
         proposal.id,
         edits: result.edits.isEmpty ? null : result.edits,
         always: _alwaysDo[proposal.id] ?? false,
       );
       if (!mounted) return;
+      final eventId = _eventIdOf(response);
       _removeLive(proposal.id);
-      _say('Approved · posted to your books');
+      setState(() {
+        _lastEventIds = eventId == null ? const [] : [eventId];
+        _lastRemoved = const [];
+        _lastWhat = '${proposal.supplier} · ${_gbp(proposal.total)}';
+      });
+      _sayDecision(
+        'Approved · posted to your books',
+        onUndo: eventId == null ? null : _undoLastDecision,
+      );
     } catch (e) {
       _say(_friendly(e));
     } finally {
@@ -391,8 +545,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   Future<void> _rejectProposal(Proposal proposal, {String reason = ''}) async {
     if (!_signedIn) {
-      _say('Rejected');
-      _advance();
+      _removeLocal(proposal);
+      _sayDecision('Rejected', onUndo: _undoLastDecision);
       return;
     }
     if (_busy) return;
@@ -402,9 +556,174 @@ class _ReviewScreenState extends State<ReviewScreen> {
       await client.reject(proposal.id, reason: reason);
       if (!mounted) return;
       _removeLive(proposal.id);
-      _say('Rejected');
+      // The runtime has no un-reject: the document is parked in
+      // 04 Needs a look, so no Undo is offered.
+      _say('Rejected · the document is parked in 04 Needs a look');
     } catch (e) {
       _say(_friendly(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Confirm, then approve every rule match: each is a normal approve
+  /// call carrying the rule's edits, exactly as if Approve was pressed
+  /// on it. Signed out, the cards hide locally instead.
+  Future<void> _confirmBulkApprove(
+    List<Proposal> matches,
+    Map<String, ReviewRule> ruleFor,
+  ) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('Approve all ${matches.length} rule matches?'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Each is posted to your books exactly as if you pressed '
+                'Approve on it, with the category and account from your '
+                'rule. Every one can be undone.',
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: ListView(
+                  shrinkWrap: true,
+                  children: [
+                    for (final proposal in matches)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                proposal.supplier,
+                                softWrap: false,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _gbp(proposal.total),
+                              style: const TextStyle(
+                                  fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            style: TextButton.styleFrom(
+                minimumSize: const Size(48, 48)),
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AccnomosColors.teal,
+              minimumSize: const Size(48, 48),
+            ),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Approve ${matches.length}'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true || !mounted) return;
+    await _approveMatches(matches, ruleFor);
+  }
+
+  Future<void> _approveMatches(
+    List<Proposal> matches,
+    Map<String, ReviewRule> ruleFor,
+  ) async {
+    if (!_signedIn) {
+      setState(() {
+        for (final proposal in matches) {
+          _captured.removeWhere((p) => p.id == proposal.id);
+          _dismissed.add(proposal.id);
+        }
+        _lastRemoved = List.of(matches);
+        _lastEventIds = const [];
+        _lastWhat = '${matches.length} rule '
+            'match${matches.length == 1 ? '' : 'es'}';
+        _index = 0;
+      });
+      if (_pages.hasClients) _pages.jumpToPage(0);
+      _sayDecision(
+        'Approved ${matches.length} of ${matches.length} rule matches '
+        '· posted to your books',
+        onUndo: _undoLastDecision,
+      );
+      return;
+    }
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final client = await _booksClient();
+      final eventIds = <String>[];
+      final done = <String>[];
+      final failed = <String>[];
+      for (var i = 0; i < matches.length; i++) {
+        final proposal = matches[i];
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Approving ${i + 1} of ${matches.length}: '
+                  '${proposal.supplier} · ${_gbp(proposal.total)}…'),
+              duration: const Duration(seconds: 1),
+            ),
+          );
+        }
+        try {
+          final rule = ruleFor[proposal.id]!;
+          final response = await client.approve(
+            proposal.id,
+            edits: ruleEdits(proposal.ruleView, rule),
+            always: _alwaysDo[proposal.id] ?? false,
+          );
+          final eventId = _eventIdOf(response);
+          if (eventId != null) eventIds.add(eventId);
+          done.add(proposal.id);
+        } catch (e) {
+          failed.add(
+              '${proposal.supplier}: ${_friendly(e)}');
+        }
+      }
+      if (!mounted) return;
+      for (final id in done) {
+        _live.removeWhere((p) => p.id == id);
+      }
+      if (_index >= _live.length) {
+        _index = _live.isEmpty ? 0 : _live.length - 1;
+      }
+      if (_live.isNotEmpty && _pages.hasClients) {
+        _pages.jumpToPage(_index);
+      }
+      setState(() {
+        _lastEventIds = eventIds;
+        _lastRemoved = const [];
+        _lastWhat =
+            '${done.length} rule match${done.length == 1 ? '' : 'es'}';
+      });
+      if (failed.isNotEmpty) {
+        _say('Not approved: ${failed.join(' · ')}');
+      }
+      _sayDecision(
+        'Approved ${done.length} of ${matches.length} rule matches '
+        '· posted to your books',
+        onUndo: eventIds.isEmpty ? null : _undoLastDecision,
+      );
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -413,6 +732,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
   @override
   Widget build(BuildContext context) {
     final proposals = _proposals;
+    final ruleFor = _ruleFor(proposals);
+    final matches =
+        proposals.where((p) => ruleFor.containsKey(p.id)).toList();
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
@@ -485,6 +807,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 if (_scanErrors.isNotEmpty) _scanErrorBox(),
                 if (_signedIn && _undoSupported && _auto.isNotEmpty)
                   _autopilotSection(),
+                if (matches.isNotEmpty) _bulkBanner(matches, ruleFor),
                 Expanded(
                   child: proposals.isEmpty
                       ? RefreshIndicator(
@@ -553,7 +876,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
                               case ProposalStatus.voiceNote:
                                 return _voiceCard(proposal);
                               case ProposalStatus.proposed:
-                                return _proposedCard(proposal);
+                                return _proposedCard(
+                                  proposal,
+                                  rule: ruleFor[proposal.id],
+                                  matches: matches,
+                                  ruleFor: ruleFor,
+                                );
                             }
                           },
                         ),
@@ -705,17 +1033,32 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 
+  /// Open the full-screen document viewer. Signed in, the filed copy is
+  /// fetched from the user's own OneDrive; otherwise the captured photo
+  /// or the drawn receipt is shown.
+  void _openImage(Proposal proposal) {
+    Future<Uint8List> Function()? remote;
+    final filePath = proposal.filePath;
+    if (_signedIn && filePath != null) {
+      remote = () async {
+        final token = await _auth.token();
+        return GraphService().fileBytes(token, _auth.kind, filePath);
+      };
+    }
+    unawaited(showReviewImage(
+      context,
+      proposal: proposal,
+      remoteBytes: remote,
+    ));
+  }
+
   Widget _header(Proposal proposal, {Color ink = AccnomosColors.ink}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 72,
-          height: 92,
-          decoration: BoxDecoration(
-            color: const Color(0xFFE0E0E0),
-            borderRadius: BorderRadius.circular(8),
-          ),
+        ProposalThumbnail(
+          proposal: proposal,
+          onTap: () => _openImage(proposal),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -779,11 +1122,15 @@ class _ReviewScreenState extends State<ReviewScreen> {
               style: const TextStyle(color: AccnomosColors.muted),
             ),
           ),
-          Text(
-            value,
-            style: const TextStyle(
-              color: AccnomosColors.ink,
-              fontWeight: FontWeight.w700,
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: const TextStyle(
+                color: AccnomosColors.ink,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],
@@ -817,6 +1164,238 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 
+  /// One plain-English line per failed or warning check
+  /// (`checks[].message`; never the check's code).
+  Widget _failedChecksBox(Proposal proposal) {
+    if (proposal.failedChecks.isEmpty) return const SizedBox.shrink();
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _warnBg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _warnBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          for (final check in proposal.failedChecks)
+            Padding(
+              padding: const EdgeInsets.only(top: 2, bottom: 2),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    check.warn ? '! ' : '✕ ',
+                    style: const TextStyle(
+                      color: _warnInk,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  Expanded(
+                    child: Text(
+                      check.text,
+                      style:
+                          const TextStyle(color: _warnInk, height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// The verifier verdict. Disagreements list both readings of each
+  /// disputed field; Edit highlights those fields.
+  Widget _verifierBox(Proposal proposal) {
+    final Color bg;
+    final Color fg;
+    switch (proposal.verifierTone) {
+      case VerifierTone.differ:
+        bg = _warnBg;
+        fg = _warnInk;
+      case VerifierTone.none:
+        bg = AccnomosColors.ground;
+        fg = AccnomosColors.muted;
+      case VerifierTone.agree:
+        bg = AccnomosColors.tealTint;
+        fg = AccnomosColors.tealDark;
+    }
+    final border = proposal.verifierTone == VerifierTone.differ
+        ? Border.all(color: _warnBorder)
+        : null;
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(10),
+        border: border,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            proposal.verifierNote.isEmpty
+                ? 'Second reading not run.'
+                : proposal.verifierNote,
+            style: TextStyle(color: fg, height: 1.4),
+          ),
+          for (final diff in proposal.verifierDiffs)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Text(
+                      diff.field,
+                      style: TextStyle(color: fg, fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      diff.extractor,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: fg,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      diff.verifier,
+                      textAlign: TextAlign.right,
+                      style: TextStyle(
+                        color: fg,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// 'Matches your Autopilot rule…': shown on the card when a saved rule
+  /// matches and Autopilot is L1, with the bulk approval when several match.
+  Widget _ruleNotice(
+    Proposal proposal,
+    ReviewRule rule,
+    List<Proposal> matches,
+    Map<String, ReviewRule> ruleFor,
+  ) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AccnomosColors.tealTint,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            ruleMatchLine(rule, rule.typicalGrossPence),
+            style: const TextStyle(
+              color: AccnomosColors.tealDark,
+              height: 1.4,
+            ),
+          ),
+          if (matches.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AccnomosColors.tealDark,
+                  side: const BorderSide(color: AccnomosColors.tealDark),
+                  minimumSize: const Size(48, 44),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                ),
+                onPressed: _busy
+                    ? null
+                    : () => _confirmBulkApprove(matches, ruleFor),
+                child: Text(
+                  'Approve all ${matches.length} rule matches',
+                  softWrap: false,
+                  overflow: TextOverflow.fade,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Banner above the cards when rule matches wait for review.
+  Widget _bulkBanner(
+    List<Proposal> matches,
+    Map<String, ReviewRule> ruleFor,
+  ) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AccnomosColors.tealTint,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AccnomosColors.tealDark),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '${matches.length} proposal${matches.length == 1 ? '' : 's'} '
+            'match${matches.length == 1 ? 'es' : ''} rules you saved '
+            'and pass${matches.length == 1 ? 'es' : ''} every check. '
+            'Autopilot is at L1, so ${matches.length == 1 ? 'it waits' : 'they wait'} for you.',
+            style: const TextStyle(
+              color: AccnomosColors.tealDark,
+              height: 1.4,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: AccnomosColors.teal,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14)),
+              ),
+              onPressed: _busy
+                  ? null
+                  : () => _confirmBulkApprove(matches, ruleFor),
+              child: Text(
+                'Approve all ${matches.length} rule matches',
+                softWrap: false,
+                overflow: TextOverflow.fade,
+                style: const TextStyle(fontWeight: FontWeight.w800),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _alwaysRow(Proposal proposal) {
     return Row(
       children: [
@@ -842,6 +1421,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         Expanded(
           flex: 2,
           child: FilledButton(
+            key: ValueKey('review-approve-${proposal.id}'),
             style: FilledButton.styleFrom(
               backgroundColor: AccnomosColors.teal,
               minimumSize: const Size.fromHeight(52),
@@ -857,6 +1437,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: OutlinedButton(
+            key: ValueKey('review-edit-${proposal.id}'),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -869,6 +1450,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         const SizedBox(width: 8),
         Expanded(
           child: OutlinedButton(
+            key: ValueKey('review-reject-${proposal.id}'),
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
               padding: const EdgeInsets.symmetric(horizontal: 8),
@@ -897,7 +1479,12 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 
-  Widget _proposedCard(Proposal proposal) {
+  Widget _proposedCard(
+    Proposal proposal, {
+    ReviewRule? rule,
+    required List<Proposal> matches,
+    required Map<String, ReviewRule> ruleFor,
+  }) {
     return _cardShell(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -920,6 +1507,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               ),
             ],
           ),
+          if (rule != null) _ruleNotice(proposal, rule, matches, ruleFor),
           const Divider(height: 24),
           _fieldRow('Category', proposal.category),
           if (proposal.net != null)
@@ -934,12 +1522,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
               bg: AccnomosColors.ground,
               fg: AccnomosColors.ink,
             ),
-          _noteBox(
-            proposal.verifierNote ??
-                'Verifier agrees · all 5 fields match.',
-            bg: AccnomosColors.tealTint,
-            fg: AccnomosColors.tealDark,
-          ),
+          _failedChecksBox(proposal),
+          _verifierBox(proposal),
           _cropLine(proposal),
           const SizedBox(height: 4),
           _alwaysRow(proposal),
@@ -968,6 +1552,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             proposal.reason ?? '',
             style: const TextStyle(color: _warnInk, height: 1.4),
           ),
+          _failedChecksBox(proposal),
           _cropLine(proposal, ink: _warnInk),
           const SizedBox(height: 16),
           SizedBox(

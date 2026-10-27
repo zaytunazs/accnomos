@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:accnomos_mobile/models/proposal.dart';
 import 'package:accnomos_mobile/services/proposal_editing.dart';
 
 void main() {
@@ -128,6 +129,184 @@ void main() {
         currentCategory: 'Materials',
       );
       expect(edits, isEmpty);
+    });
+  });
+
+  group('strict amounts', () {
+    test('rejects three decimals and exponents', () {
+      expect(parsePoundsToPence('12.345'), isNull);
+      expect(parsePoundsToPence('1e3'), isNull);
+      expect(parsePoundsToPence('.5'), isNull);
+      expect(parsePoundsToPence('32.06'), 3206);
+    });
+  });
+
+  group('VAT tolerance grows with the lines', () {
+    test('2p plus one per line passes', () {
+      expect(
+        vatRateDiscrepancy(
+            code: 'S', netPence: 10000, vatPence: 2003, linesCount: 1),
+        isNull,
+      );
+      expect(
+        vatRateDiscrepancy(
+            code: 'S', netPence: 10000, vatPence: 2004, linesCount: 1),
+        isNotNull,
+      );
+    });
+  });
+
+  group('validateEditForm', () {
+    List<EditFieldProblem> valid() => validateEditForm(
+          supplier: 'Screwfix',
+          dateIso: '2026-10-21',
+          netText: '32.06',
+          vatText: '6.41',
+          grossText: '38.47',
+          category: 'Materials',
+          vrnText: 'GB 232 5551 12',
+          initialVrn: 'GB 232 5551 12',
+          vatCode: 'S',
+          linesCount: 1,
+          now: DateTime(2026, 10, 27),
+        );
+
+    test('a correct form has no problems', () {
+      expect(valid(), isEmpty);
+    });
+
+    test('a future date is blocked', () {
+      final problems = validateEditForm(
+        supplier: 'Screwfix',
+        dateIso: '2026-10-28',
+        netText: '32.06',
+        vatText: '6.41',
+        grossText: '38.47',
+        category: 'Materials',
+        vrnText: '',
+        initialVrn: null,
+        vatCode: 'S',
+        linesCount: 1,
+        now: DateTime(2026, 10, 27),
+      );
+      expect(problems.single.field, 'date');
+      expect(problems.single.message, contains('in the future'));
+    });
+
+    test('a changed VAT number cannot be saved', () {
+      final problems = validateEditForm(
+        supplier: 'Screwfix',
+        dateIso: '2026-10-21',
+        netText: '32.06',
+        vatText: '6.41',
+        grossText: '38.47',
+        category: 'Materials',
+        vrnText: 'GB999999999',
+        initialVrn: 'GB 232 5551 12',
+        vatCode: 'S',
+        linesCount: 1,
+        now: DateTime(2026, 10, 27),
+      );
+      expect(problems.single.field, 'vrn');
+      expect(problems.single.message, contains('keeps it as read'));
+    });
+
+    test('a malformed VAT number is flagged', () {
+      final form = valid();
+      expect(form, isEmpty);
+      final problems = validateEditForm(
+        supplier: 'Screwfix',
+        dateIso: '2026-10-21',
+        netText: '32.06',
+        vatText: '6.41',
+        grossText: '38.47',
+        category: 'Materials',
+        vrnText: '123',
+        initialVrn: null,
+        vatCode: 'S',
+        linesCount: 1,
+        now: DateTime(2026, 10, 27),
+      );
+      expect(problems.single.field, 'vrn');
+    });
+  });
+
+  group('verifier view', () {
+    test('agreement names the model and the passes', () {
+      final proposal = Proposal.fromRuntime({
+        'extracted': {
+          'supplier_name': 'Screwfix',
+          'gross_total': 38.47,
+          'net_total': 32.06,
+          'vat_total': 6.41,
+        },
+        'checks': [
+          {'code': 'ARITH_TOTALS', 'ok': true, 'message': 'Totals add up'},
+        ],
+        'status': 'proposed',
+        'model': 'local:glimmer',
+        'verification': {
+          'agree_all': true,
+          'model': 'meta:muse-spark',
+          'fields': {
+            'supplier_name': {
+              'extractor': 'Screwfix',
+              'verifier': 'Screwfix',
+              'agree': true,
+            },
+          },
+        },
+      });
+      expect(proposal.verifierTone, VerifierTone.agree);
+      expect(proposal.verifierNote, contains('all 1 fields match'));
+      expect(proposal.verifierNote, contains('Muse Spark'));
+      expect(proposal.failedChecks, isEmpty);
+      expect(proposal.checksOk, isTrue);
+    });
+
+    test('failed checks stay plain English without the verifier code', () {
+      final proposal = Proposal.fromRuntime({
+        'extracted': {'supplier_name': 'Screwfix', 'gross_total': 38.47},
+        'checks': [
+          {'code': 'DUPLICATE', 'ok': false, 'message': 'Looks like a duplicate'},
+          {
+            'code': 'VERIFIER_AGREES',
+            'ok': false,
+            'message': 'Second reading differs: Date',
+          },
+        ],
+        'status': 'needs_a_look',
+        'reasons': ['DUPLICATE: Looks like a duplicate'],
+        'verification': {
+          'agree_all': false,
+          'model': 'meta:muse-spark',
+          'fields': {
+            'date': {
+              'extractor': '2026-11-02',
+              'verifier': '2026-10-02',
+              'agree': false,
+            },
+          },
+        },
+      });
+      expect(proposal.failedChecks, hasLength(1));
+      expect(proposal.failedChecks.single.text, 'Looks like a duplicate');
+      expect(proposal.checksOk, isFalse);
+      expect(proposal.reason, 'Looks like a duplicate');
+      expect(proposal.verifierTone, VerifierTone.differ);
+      expect(proposal.verifierDiffs, hasLength(1));
+      expect(proposal.verifierDiffs.single.key, 'date');
+      expect(proposal.verifierDiffs.single.field, 'Date');
+    });
+
+    test('no verification stays honest', () {
+      final proposal = Proposal.fromRuntime({
+        'extracted': {'supplier_name': 'Screwfix'},
+        'checks': [],
+        'status': 'proposed',
+      });
+      expect(proposal.verifierTone, VerifierTone.none);
+      expect(proposal.verifierNote, contains('not run'));
     });
   });
 

@@ -1,4 +1,7 @@
+import '../services/review_rules.dart';
+
 /// Static sample proposals for the Review screen. Demo data only.
+///
 ///
 /// Lifecycle of a proposed bookkeeping entry.
 enum ProposalStatus {
@@ -10,6 +13,33 @@ enum ProposalStatus {
 
   /// Spoken note with no VAT receipt attached.
   voiceNote,
+}
+
+/// How the second reading turned out (the web's `verifierTone`).
+enum VerifierTone { agree, differ, none }
+
+/// One failed or warning check, in plain English (`checks[].message`;
+/// never the check's code).
+class ProposalCheck {
+  const ProposalCheck({required this.text, required this.warn});
+  final String text;
+  final bool warn;
+}
+
+/// Both readings of one field the verifier disagreed on. [key] is the
+/// runtime field name (`supplier_name`, …, like the web's VERIFIER_FIELD);
+/// [field] is the plain-English label for the card and the edit sheet.
+class VerifierDiff {
+  const VerifierDiff({
+    required this.key,
+    required this.field,
+    required this.extractor,
+    required this.verifier,
+  });
+  final String key;
+  final String field;
+  final String extractor;
+  final String verifier;
 }
 
 /// One proposed entry shown as a review card.
@@ -28,10 +58,24 @@ class Proposal {
     this.vat,
     this.vatNumber,
     this.reviewerNote,
-    this.verifierNote,
+    this.verifierNote = '',
+    this.verifierTone = VerifierTone.none,
+    this.verifierDiffs = const [],
+    this.failedChecks = const [],
+    this.checksOk = true,
     this.reason,
     this.quote,
     this.cropNote,
+    this.cropMethod = 'none',
+    this.cropBox,
+    this.docType = 'receipt',
+    this.mileageClaim = false,
+    this.vatCodes = const [],
+    this.expenseAccount,
+    this.supplierVrn,
+    this.lineCount = 0,
+    this.filePath,
+    this.localImagePath,
   });
 
   final String id;
@@ -50,7 +94,19 @@ class Proposal {
   final double? vat;
   final String? vatNumber;
   final String? reviewerNote;
-  final String? verifierNote;
+
+  /// The verifier verdict in plain English (never a raw field dump).
+  final String verifierNote;
+  final VerifierTone verifierTone;
+
+  /// Fields the second reading disagreed on (highlighted in Edit).
+  final List<VerifierDiff> verifierDiffs;
+
+  /// One plain-English line per failed or warning check.
+  final List<ProposalCheck> failedChecks;
+
+  /// True when every runtime check passed.
+  final bool checksOk;
   final ProposalStatus status;
 
   /// Set when [status] is [ProposalStatus.needsALook].
@@ -63,12 +119,53 @@ class Proposal {
   /// runtime `Proposal`: SAM when available). Shown on the review card.
   final String? cropNote;
 
-  /// Build a proposal from the runtime `/extract` response shape:
-  /// `extracted` {supplier_name, gross_total, net_total, vat_total, date
-  /// (ISO), supplier_vat_number, category_guess, confidence (0-1),
-  /// payment_method, card_last4}, `status` ("proposed"|"needs_a_look"),
-  /// `reasons` (list of strings), `model`, and `checks`
-  /// (list of {code, ok, message}).
+  /// How the photo was cropped: 'sam', 'code' or 'none'.
+  final String cropMethod;
+
+  /// Crop region `[x0, y0, x1, y1]` in image pixels, if the runtime sent one.
+  final List<double>? cropBox;
+
+  /// Runtime document type ('receipt', 'sales_invoice', …). Sales invoices
+  /// never match an Autopilot rule.
+  final String docType;
+
+  /// Set on mileage allowance claims, which code builds: approved as read.
+  final bool mileageClaim;
+
+  /// VAT codes on the expense lines, e.g. ['S'] (not VAT control).
+  final List<String> vatCodes;
+
+  /// First expense account in the journal draft, for rule edits.
+  final String? expenseAccount;
+
+  /// Supplier VAT number exactly as read (the runtime keeps it as read).
+  final String? supplierVrn;
+
+  /// Number of extracted lines (the VAT tolerance grows with it, like the
+  /// runtime's VAT_MATH check).
+  final int lineCount;
+
+  /// Books-relative path of the document in the user's OneDrive, for the
+  /// image viewer when signed in.
+  final String? filePath;
+
+  /// On-device photo (signed-out capture flow), for the image viewer.
+  final String? localImagePath;
+
+  /// View of this proposal for the Autopilot rule test.
+  ProposalRuleView get ruleView => ProposalRuleView(
+        supplierName: supplier,
+        docType: docType,
+        mileageClaim: mileageClaim,
+        statusProposed: status == ProposalStatus.proposed,
+        checksOk: checksOk,
+        supplierVrn: supplierVrn,
+        vatCodes: vatCodes,
+        grossPence: (total * 100).round(),
+        categoryGuess: category,
+        expenseAccount: expenseAccount,
+      );
+
   /// Build a proposal from a stored books proposal (`GET /books/proposals`,
   /// `POST /books/scan`, `.../approve`, `.../reject` — see
   /// `services/runtime/app/schemas.py`). Same wire shape as [fromRuntime],
@@ -89,7 +186,8 @@ class Proposal {
     final reasons = <String>[];
     if (json['reasons'] is List) {
       for (final r in json['reasons'] as List) {
-        reasons.add(r.toString());
+        final text = plainReason(r.toString());
+        if (text.isNotEmpty) reasons.add(text);
       }
     }
 
@@ -99,6 +197,20 @@ class Proposal {
         if (c is Map) checks.add(Map<String, dynamic>.from(c));
       }
     }
+    final failed = <ProposalCheck>[];
+    for (final c in checks) {
+      if (c['ok'] == true) continue;
+      // The verifier's own disagreement has its own table, not repeated here.
+      if ((c['code'] ?? '').toString() == 'VERIFIER_AGREES') continue;
+      final message =
+          (c['message'] ?? c['code'] ?? '').toString().trim();
+      if (message.isEmpty) continue;
+      failed.add(ProposalCheck(
+        text: message,
+        warn: (c['severity'] ?? '').toString() == 'warn',
+      ));
+    }
+    final checksOk = checks.every((c) => c['ok'] == true);
 
     final statusRaw = (json['status'] as String?) ?? 'proposed';
     final status = statusRaw == 'needs_a_look'
@@ -150,17 +262,54 @@ class Proposal {
         extracted['supplier_vat_number']?.toString().trim() ?? '';
     final category =
         (extracted['category_guess'] as String?)?.trim() ?? '';
+    final docType = (extracted['doc_type'] as String?)?.trim() ?? 'receipt';
+    final lines = extracted['lines'];
+    final lineCount = lines is List ? lines.length : 0;
+    final journal = json['journal_draft'];
+    final journalList = journal is List ? journal : const [];
+    final vatCodes = vatCodesOfJournal(journalList, docType == 'sales_invoice');
 
     String? cropNote;
+    String cropMethod = 'none';
+    List<double>? cropBox;
     final crop = json['crop'];
     if (crop is Map) {
+      final method = (crop['method'] as Object?)?.toString().trim() ?? '';
+      if (method.isNotEmpty) cropMethod = method;
       final note = (crop['note'] as Object?)?.toString().trim();
       if (note != null && note.isNotEmpty) cropNote = note;
+      final box = crop['box'];
+      if (box is List && box.length == 4) {
+        final numbers = <double>[];
+        for (final n in box) {
+          final d = n is num
+              ? n.toDouble()
+              : double.tryParse(n.toString());
+          if (d == null) break;
+          numbers.add(d);
+        }
+        if (numbers.length == 4 &&
+            numbers[2] > numbers[0] &&
+            numbers[3] > numbers[1]) {
+          cropBox = numbers;
+        }
+      }
     }
+
+    final verification = json['verification'];
+    final verifier = _verifierView(
+      verification is Map ? Map<String, dynamic>.from(verification) : null,
+      status: status,
+      checks: checks,
+    );
+
+    final filePath = (json['file_path'] as String?)?.trim();
 
     return Proposal(
       id: id ?? 'runtime-${DateTime.now().millisecondsSinceEpoch}',
       cropNote: cropNote,
+      cropMethod: cropMethod,
+      cropBox: cropBox,
       supplier: supplier.isNotEmpty ? supplier : 'Unknown supplier',
       total: _toDouble(extracted['gross_total']) ?? 0,
       date: _displayDate(extracted['date']),
@@ -172,9 +321,20 @@ class Proposal {
       net: _toDouble(extracted['net_total']),
       vat: _toDouble(extracted['vat_total']),
       vatNumber: vatNumber.isNotEmpty ? vatNumber : null,
+      supplierVrn: vatNumber.isNotEmpty ? vatNumber : null,
       reviewerNote: reviewerNote,
-      verifierNote: '',
+      verifierNote: verifier.verifierNote,
+      verifierTone: verifier.verifierTone,
+      verifierDiffs: verifier.verifierDiffs,
+      failedChecks: failed,
+      checksOk: checksOk,
       reason: reasons.isNotEmpty ? reasons.join(' · ') : null,
+      docType: docType,
+      mileageClaim: json['mileage_claim'] != null,
+      vatCodes: vatCodes,
+      expenseAccount: expenseAccountOfJournal(journalList),
+      lineCount: lineCount,
+      filePath: (filePath != null && filePath.isNotEmpty) ? filePath : null,
     );
   }
 
@@ -209,10 +369,13 @@ class Proposal {
     double? net,
     double? vat,
     String? cropNote,
+    String? localImagePath,
   }) {
     return Proposal(
       id: id,
       cropNote: cropNote ?? this.cropNote,
+      cropMethod: cropMethod,
+      cropBox: cropBox,
       supplier: supplier ?? this.supplier,
       total: total ?? this.total,
       date: date ?? this.date,
@@ -224,10 +387,22 @@ class Proposal {
       net: net ?? this.net,
       vat: vat ?? this.vat,
       vatNumber: vatNumber,
+      supplierVrn: supplierVrn,
       reviewerNote: reviewerNote,
       verifierNote: verifierNote,
+      verifierTone: verifierTone,
+      verifierDiffs: verifierDiffs,
+      failedChecks: failedChecks,
+      checksOk: checksOk,
       reason: reason,
       quote: quote,
+      docType: docType,
+      mileageClaim: mileageClaim,
+      vatCodes: vatCodes,
+      expenseAccount: expenseAccount,
+      lineCount: lineCount,
+      filePath: filePath,
+      localImagePath: localImagePath ?? this.localImagePath,
     );
   }
 
@@ -245,9 +420,17 @@ class Proposal {
       net: 32.06,
       vat: 6.41,
       vatNumber: 'GB 232 5551 12',
+      supplierVrn: 'GB 232 5551 12',
       reviewerNote: 'Screwfix receipt for fixings and drill bits for the Croydon job.',
-      verifierNote: 'Verifier agrees · all 5 fields match.',
+      verifierNote: 'Verifier agrees · all 6 fields match.',
+      verifierTone: VerifierTone.agree,
       status: ProposalStatus.proposed,
+      checksOk: true,
+      vatCodes: ['S'],
+      expenseAccount: '5100 Tools & small equipment',
+      cropNote: 'Cropped by code',
+      cropMethod: 'code',
+      cropBox: [30.0, 40.0, 270.0, 330.0],
     ),
     Proposal(
       id: 'travis-perkins-tp-88213',
@@ -261,8 +444,22 @@ class Proposal {
       net: 177.00,
       vat: 35.40,
       vatNumber: 'GB 440 1234 55',
+      supplierVrn: 'GB 440 1234 55',
       reviewerNote: 'Invoice TP-88213 for timber and sheet materials.',
+      verifierNote: 'Second reading skipped · checks already flagged it.',
+      verifierTone: VerifierTone.none,
       status: ProposalStatus.needsALook,
+      checksOk: false,
+      failedChecks: [
+        ProposalCheck(
+          text: 'Looks like a duplicate of a receipt you approved on '
+              '14 Oct (same supplier, same total, same invoice number '
+              'TP-88213).',
+          warn: false,
+        ),
+      ],
+      vatCodes: ['S'],
+      expenseAccount: '5000 Materials',
       reason:
           'Looks like a duplicate of a receipt you approved on 14 Oct '
           '(same supplier, same total, same invoice number TP-88213).',
@@ -277,7 +474,108 @@ class Proposal {
       source: 'Read on your machine',
       category: 'Travel & parking',
       status: ProposalStatus.voiceNote,
+      verifierNote: 'Second reading not run.',
+      verifierTone: VerifierTone.none,
       quote: 'Paid four pounds cash for parking at the Croydon job',
     ),
   ];
+}
+
+const _verifierFieldLabels = {
+  'supplier_name': 'Supplier',
+  'supplier_vat_number': 'VAT number',
+  'date': 'Date',
+  'net_total': 'Net',
+  'vat_total': 'VAT',
+  'gross_total': 'Total',
+};
+
+String _verifierName(String model) {
+  if (model.startsWith('baseten:')) return 'Muse Spark Open';
+  if (model.startsWith('meta:')) return 'Muse Spark';
+  return model.replaceFirst(RegExp(r'^ollama:'), '');
+}
+
+String _shown(Object? value) {
+  if (value == null) return 'none';
+  if (value is num) return value.toDouble().toStringAsFixed(2);
+  final text = value.toString();
+  return text.isEmpty ? 'none' : text;
+}
+
+/// The verifier verdict in plain English, mirroring the web's
+/// `verifierView`: agree, differ (with both readings of each disputed
+/// field), or none (not run or unavailable). Never claims agreement it
+/// did not see.
+_VerifierView _verifierView(
+  Map<String, dynamic>? verification, {
+  required ProposalStatus status,
+  required List<Map<String, dynamic>> checks,
+}) {
+  final passed = checks.where((c) => c['ok'] == true).length;
+  final passedLine = 'Checks run by code: $passed of ${checks.length} passed';
+  if (verification == null) {
+    final why = status == ProposalStatus.needsALook
+        ? 'skipped, checks already flagged it'
+        : 'not run';
+    return _VerifierView(
+      verifierNote: 'Second reading $why · $passedLine',
+      verifierTone: VerifierTone.none,
+    );
+  }
+  final model = (verification['model'] ?? '').toString();
+  if (verification['error'] != null &&
+      verification['error'].toString().isNotEmpty) {
+    return _VerifierView(
+      verifierNote: 'Second reading unavailable ($model) · $passedLine',
+      verifierTone: VerifierTone.none,
+    );
+  }
+  final fields = verification['fields'];
+  final entries = <MapEntry<String, Map<String, dynamic>>>[];
+  if (fields is Map) {
+    for (final entry in fields.entries) {
+      if (entry.value is Map) {
+        entries.add(MapEntry(entry.key.toString(),
+            Map<String, dynamic>.from(entry.value as Map)));
+      }
+    }
+  }
+  if (verification['agree_all'] == true) {
+    return _VerifierView(
+      verifierNote:
+          'Verifier agrees · all ${entries.length} fields match — '
+          '${_verifierName(model)} · $passedLine',
+      verifierTone: VerifierTone.agree,
+    );
+  }
+  final diffs = <VerifierDiff>[];
+  for (final entry in entries) {
+    if (entry.value['agree'] == true) continue;
+    diffs.add(VerifierDiff(
+      key: entry.key,
+      field: _verifierFieldLabels[entry.key] ?? entry.key,
+      extractor: _shown(entry.value['extractor']),
+      verifier: _shown(entry.value['verifier']),
+    ));
+  }
+  return _VerifierView(
+    verifierNote:
+        'Verifier disagrees on ${diffs.length} of ${entries.length} '
+        'fields — ${_verifierName(model)}. Check the document before you '
+        'approve; Edit highlights them.',
+    verifierTone: VerifierTone.differ,
+    verifierDiffs: diffs,
+  );
+}
+
+class _VerifierView {
+  const _VerifierView({
+    required this.verifierNote,
+    required this.verifierTone,
+    this.verifierDiffs = const [],
+  });
+  final String verifierNote;
+  final VerifierTone verifierTone;
+  final List<VerifierDiff> verifierDiffs;
 }
