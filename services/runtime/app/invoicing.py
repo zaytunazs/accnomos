@@ -30,7 +30,7 @@ import re
 from collections import defaultdict
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from accnomos_connectors.base import MailSender, OutgoingAttachment, OutgoingMail
 from accnomos_ledger.bank import BankLine
@@ -42,12 +42,14 @@ from app.approve import reversal_of
 from app.books import SYSTEM, BankMatchError, Books, now
 from app.checks import normalise_vat_number
 from app.journal import DEBTORS, SALES, VAT_CONTROL
+from app.validation import LENIENT, Day, Pence, StrictBody
 
 INVOICES = paths.INVOICES
 SENT = paths.SENT
 INVOICING = f"{SYSTEM}/Invoicing"
 SEQUENCE = f"{INVOICING}/sequence.json"
 PROFILE = f"{INVOICING}/profile.json"
+LOGO_PATHS = frozenset({f"{INVOICING}/logo.png", f"{INVOICING}/logo.jpg"})  # written by POST /invoices/profile/logo
 CONTACTS = f"{SYSTEM}/Contacts/contacts.json"  # app/contacts.py (claude/contacts) owns this file; read-only here
 
 InvoiceStatus = Literal["draft", "sent", "paid", "void"]
@@ -89,11 +91,11 @@ def uk_date(d: date) -> str:
 # --------------------------------------------------------------------------- #
 
 
-class BankDetails(BaseModel):
-    account_name: str = ""
-    sort_code: str = ""  # stored as 12-34-56
-    account_number: str = ""  # 8 digits
-    iban: str | None = None
+class BankDetails(StrictBody):
+    account_name: str = Field("", max_length=120)
+    sort_code: str = Field("", max_length=20)  # stored as 12-34-56
+    account_number: str = Field("", max_length=20)  # 8 digits
+    iban: str | None = Field(None, max_length=40)
 
     @field_validator("sort_code")
     @classmethod
@@ -117,19 +119,19 @@ class BankDetails(BaseModel):
         return bool(self.sort_code and self.account_number) or bool(self.iban)
 
 
-class InvoiceProfile(BaseModel):
+class InvoiceProfile(StrictBody):
     """The business as its invoices show it. Stored in _System/Invoicing/profile.json."""
 
-    name: str = ""
-    address: str = ""  # several lines
-    email: str | None = None
-    phone: str | None = None
-    vrn: str | None = None  # VAT registration number; without it an invoice cannot charge VAT
-    company_number: str | None = None
+    name: str = Field("", max_length=200)
+    address: str = Field("", max_length=1000)  # several lines
+    email: str | None = Field(None, max_length=254)
+    phone: str | None = Field(None, max_length=40)
+    vrn: str | None = Field(None, max_length=20)  # VAT registration number; without it an invoice cannot charge VAT
+    company_number: str | None = Field(None, max_length=20)
     bank: BankDetails = Field(default_factory=BankDetails)
-    logo_path: str | None = None  # relative to the books root, e.g. _System/Invoicing/logo.png
+    logo_path: str | None = Field(None, max_length=100)  # LOGO_PATHS only (POST /invoices/profile/logo sets it)
     terms_days: int = Field(30, ge=0, le=120)
-    footer_note: str | None = None
+    footer_note: str | None = Field(None, max_length=1000)
 
     @field_validator("vrn")
     @classmethod
@@ -146,12 +148,22 @@ class InvoiceProfile(BaseModel):
 
 
 async def load_profile(books: Books) -> InvoiceProfile:
-    return InvoiceProfile.model_validate(await books.read_json(PROFILE, {}))
+    return InvoiceProfile.model_validate(await books.read_json(PROFILE, {}), **LENIENT)
+
+
+async def load_logo(books: Books, profile: InvoiceProfile) -> bytes | None:
+    """The uploaded logo, or None. Only the two upload targets are read, whatever a hand-edited profile says."""
+    if profile.logo_path not in LOGO_PATHS:
+        return None
+    try:
+        return await books.storage.read(profile.logo_path)
+    except FileNotFoundError:
+        return None
 
 
 async def save_profile(books: Books, profile: InvoiceProfile, user: str) -> InvoiceProfile:
-    if profile.logo_path and not profile.logo_path.startswith(f"{INVOICING}/"):
-        raise InvoiceError(f"The logo must be a file in {INVOICING}")
+    if profile.logo_path and profile.logo_path not in LOGO_PATHS:
+        raise InvoiceError("Upload the logo with the logo button; logo_path cannot point at another file")
     payload = profile.model_dump(mode="json")
     await books._update_json(PROFILE, {}, lambda _old: payload)
     await books.audit(f"user:{user}", "invoice_profile_saved", {"path": PROFILE})
@@ -163,12 +175,12 @@ async def save_profile(books: Books, profile: InvoiceProfile, user: str) -> Invo
 # --------------------------------------------------------------------------- #
 
 
-class InvoiceCustomer(BaseModel):
-    contact_id: str | None = None  # an id in _System/Contacts/contacts.json, when picked from the contact book
+class InvoiceCustomer(StrictBody):
+    contact_id: str | None = Field(None, max_length=64)  # an id in _System/Contacts/contacts.json, when picked from the contact book
     name: str = Field(min_length=1, max_length=200)
-    email: str | None = None
-    address: str | None = None
-    vrn: str | None = None
+    email: str | None = Field(None, max_length=254)
+    address: str | None = Field(None, max_length=1000)
+    vrn: str | None = Field(None, max_length=20)
 
     @field_validator("email")
     @classmethod
@@ -179,13 +191,13 @@ class InvoiceCustomer(BaseModel):
         return v or None
 
 
-class LineIn(BaseModel):
+class LineIn(StrictBody):
     description: str = Field(min_length=1, max_length=300)
     quantity: Decimal = Field(gt=0, le=1_000_000, decimal_places=3)
     unit: str | None = Field(None, max_length=20)  # "hours", "days", "each"
-    unit_price_pence: int = Field(ge=-100_000_000, le=100_000_000)  # negative for a discount line
+    unit_price_pence: Pence = Field(ge=-100_000_000, le=100_000_000)  # negative for a discount line
     vat_code: SalesVatCode = "S"
-    timesheet_entry_ids: list[str] = Field(default_factory=list, max_length=1000)  # hours this line bills (jobs)
+    timesheet_entry_ids: list[Annotated[str, Field(max_length=32)]] = Field(default_factory=list, max_length=1000)  # hours this line bills (jobs)
 
 
 class InvoiceLine(LineIn):
@@ -201,12 +213,12 @@ class VatSummaryRow(BaseModel):
     vat_pence: int
 
 
-class InvoiceDraft(BaseModel):
+class InvoiceDraft(StrictBody):
     """What the user writes. Numbers, line totals and VAT are worked out by code."""
 
     customer: InvoiceCustomer
-    issue_date: date | None = None  # default: today
-    due_date: date | None = None  # default: issue date + the profile's terms
+    issue_date: Day | None = None  # default: today
+    due_date: Day | None = None  # default: issue date + the profile's terms
     lines: list[LineIn] = Field(min_length=1, max_length=100)
     reference: str | None = Field(None, max_length=60)  # the customer's PO or job number
     notes: str | None = Field(None, max_length=1000)
@@ -299,7 +311,7 @@ def _path(number: str) -> str:
 
 async def get_invoice(books: Books, number: str) -> Invoice:
     """Raises FileNotFoundError, also for ids that could step outside the invoices folder."""
-    return Invoice.model_validate_json(await books.storage.read(_path(number)))
+    return Invoice.model_validate_json(await books.storage.read(_path(number)), **LENIENT)
 
 
 async def save_invoice(books: Books, inv: Invoice) -> None:
@@ -312,7 +324,7 @@ async def list_invoices(books: Books, status: InvoiceStatus | None = None) -> li
     out: list[Invoice] = []
     for f in await books.list_files(INVOICES):
         if f.name.endswith(".json") and ID_RE.fullmatch(f.name.removesuffix(".json")):
-            inv = Invoice.model_validate_json(await books.storage.read(f.path))
+            inv = Invoice.model_validate_json(await books.storage.read(f.path), **LENIENT)
             if status is None or inv.status == status:
                 out.append(inv)
     return sorted(out, key=lambda i: (i.issue_date, i.number), reverse=True)
@@ -489,7 +501,7 @@ async def post_sale(books: Books, inv: Invoice, user: str) -> str:
     inv.event_id = event.id
     await save_invoice(books, inv)
     await books.audit(f"user:{user}", "invoice_posted", {"invoice": inv.number, "event": event.id, "event_path": path})
-    await books.rebuild_safely(user)
+    await books.rebuild_safely(f"user:{user}")
     return event.id
 
 
@@ -535,7 +547,7 @@ async def send_invoice(
     if inv.status == "sent" and (not inv.event_id or (inv.timesheet_entry_ids() and not inv.timesheets_marked)):
         await mark_hours(books, inv, user)
         if inv.event_id:
-            await books.rebuild_safely(user)
+            await books.rebuild_safely(f"user:{user}")
         else:
             await post_sale(books, inv, user)
         return inv
@@ -657,5 +669,5 @@ async def void_invoice(books: Books, number: str, user: str, reason: str) -> Inv
         "invoice": number, "reason": inv.void_reason, "reversal": inv.reversal_event_id,
     })
     if inv.reversal_event_id:
-        await books.rebuild_safely(user)
+        await books.rebuild_safely(f"user:{user}")
     return inv

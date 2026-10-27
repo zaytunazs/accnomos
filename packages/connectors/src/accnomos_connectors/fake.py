@@ -177,10 +177,12 @@ class FakeStorageProvider(StorageProvider):
             raise FileNotFoundError(path)
         return self.files[path]
 
-    async def write(self, path: str, data: bytes, *, if_match: str | None = None) -> FileRef:
+    async def write(self, path: str, data: bytes, *, if_match: str | None = None, create_only: bool = False) -> FileRef:
         path = path.strip("/")
         if if_match is not None and path in self.files and self._ref(path).etag != if_match:
             raise ConflictError(path)
+        if create_only and path in self.files:
+            raise FileExistsError(path)
         if "/" in path:
             await self.ensure_folder(path.rsplit("/", 1)[0])
         self.files[path] = data

@@ -66,8 +66,9 @@ class StorageProvider(ABC):
     async def read(self, path: str) -> bytes: ...
 
     @abstractmethod
-    async def write(self, path: str, data: bytes, *, if_match: str | None = None) -> FileRef:
-        """Create or replace. if_match = eTag for optimistic concurrency (412 -> ConflictError)."""
+    async def write(self, path: str, data: bytes, *, if_match: str | None = None, create_only: bool = False) -> FileRef:
+        """Create or replace. if_match = eTag for optimistic concurrency (412 -> ConflictError);
+        create_only = fail with FileExistsError when the file is already there (two writers racing to create it)."""
 
     @abstractmethod
     async def move(self, path: str, new_path: str) -> FileRef:

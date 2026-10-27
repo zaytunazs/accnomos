@@ -27,7 +27,7 @@ from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from fractions import Fraction
-from typing import Literal
+from typing import Annotated, Literal
 
 from accnomos_ledger.events import LedgerEvent, Line
 from pydantic import BaseModel, Field
@@ -36,6 +36,7 @@ from app import payroll_rates as R
 from app.books import SYSTEM, Books, now
 from app.paths import PAYROLL
 from app.jobs import hours_value, load_entries, load_staff, pence_for, quarters
+from app.validation import Pence, StrictBody
 
 log = logging.getLogger(__name__)
 
@@ -152,10 +153,10 @@ class PayRun(BaseModel):
         return sum(ln.est_er_ni_pence for ln in self.lines)
 
 
-class LineEdit(BaseModel):
-    staff_id: str
-    hours: float | str
-    rate_pence: int = Field(ge=0, le=100_000)  # up to £1,000 an hour
+class LineEdit(StrictBody):
+    staff_id: str = Field(max_length=32)
+    hours: float | Annotated[str, Field(max_length=12)]
+    rate_pence: Pence = Field(ge=0, le=100_000)  # up to £1,000 an hour
     notes: str = Field("", max_length=300)
 
 
@@ -389,7 +390,7 @@ async def confirm(books: Books, period: str, gross_pence: int, er_ni_pence: int,
         "period": period, "gross_pence": gross_pence, "er_ni_pence": er_ni_pence, "events": run.event_ids,
         "est_gross_pence": run.est_gross_pence, "est_er_ni_pence": run.est_er_ni_pence,
     })
-    await books.rebuild_safely(user)
+    await books.rebuild_safely(f"user:{user}")
     return run
 
 
@@ -411,5 +412,5 @@ async def reopen(books: Books, period: str, user: str) -> PayRun:
     })
     await _save(books, run)
     await books.audit(f"user:{user}", "payroll_reopened", {"period": period, "undone": run.undone_event_ids})
-    await books.rebuild_safely(user)
+    await books.rebuild_safely(f"user:{user}")
     return run

@@ -92,7 +92,7 @@ Severity:
 | Medium | Not run against a real model, mailbox, calendar or OneDrive. |
 | Medium | Without `ACTIONS_SIGNING_KEY` (empty by default in `deploy/docker-compose.yml`), a restart or several workers make action cards fail with 403. |
 | Medium | First-time calendar consent redirects through Microsoft and loses the plan; plan again and Apply again. |
-| Low | An action stuck in `approving` stays blocked (409) on purpose; no UI clears it. A "send" ends as a draft when `Mail.Send` was never granted. |
+| Low | An action stuck in `approving` is never re-run on its own (409); after 10 minutes rejecting the card clears it, but the app does not yet explain that in the card. A "send" ends as a draft when `Mail.Send` was never granted. |
 | Low | Two Applies at the same moment can both create events (no lock). Planner: Europe/London only, rule-of-thumb travel, only VAT returns count as due, no per-job picker, the rationale model sees event subjects and, with no `X-AI-*` headers, runs on the server's default model. |
 | Low | A bad `X-AI-*` setting makes triage run without a model, saying only "No AI is set up". A failed second Graph call leaves an empty draft in Drafts. Sent Items are not read, so an answered thread can still show *Reply*. |
 

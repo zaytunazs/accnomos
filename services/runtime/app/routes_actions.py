@@ -17,6 +17,7 @@ from app.ai.config import is_test_mode
 from app.books import Books
 from app.routes_books import get_books, require_user
 from app.schemas import ProposedAction
+from app.validation import StrictBody
 
 router = APIRouter(prefix="/actions", tags=["actions"])
 
@@ -45,11 +46,11 @@ def _mail_sender(token: str) -> Any:
     return make
 
 
-class ApproveBody(BaseModel):
+class ApproveBody(StrictBody):
     action: ProposedAction
 
 
-class RejectBody(BaseModel):
+class RejectBody(StrictBody):
     action: ProposedAction
     reason: str | None = Field(None, max_length=300)
 

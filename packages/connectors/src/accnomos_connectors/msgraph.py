@@ -40,7 +40,8 @@ from accnomos_connectors.base import (
     StorageProvider,
 )
 
-GRAPH = "https://graph.microsoft.com/v1.0"
+GRAPH_ORIGIN = "https://graph.microsoft.com"
+GRAPH = f"{GRAPH_ORIGIN}/v1.0"
 SIMPLE_UPLOAD_MAX = 4 * 1024 * 1024
 MAX_RETRIES = 3
 MAX_RETRY_AFTER_S = 30.0
@@ -114,7 +115,12 @@ class _GraphHttp:
     async def _request(
         self, method: str, url: str, *, auth: bool = True, ok404: bool = False, **kw: Any
     ) -> httpx.Response:
-        """Send with retries on 429/503 (honouring Retry-After) and map errors to exceptions."""
+        """Send with retries on 429/503 (honouring Retry-After) and map errors to exceptions.
+
+        The user's token only ever goes to Graph: a nextLink, deltaLink or cursor naming any other host is refused
+        before anything is sent. Pre-authenticated URLs (upload sessions) are called with auth=False."""
+        if auth and not url.startswith(f"{GRAPH_ORIGIN}/"):
+            raise ValueError(f"refusing to send the Graph token outside {GRAPH_ORIGIN}")
         headers = {**(self._auth if auth else {}), **kw.pop("headers", {})}
         for attempt in range(MAX_RETRIES + 1):
             resp = await self._client.request(method, url, headers=headers, **kw)
@@ -253,22 +259,23 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
         resp = await self._request("GET", self._item_url(path, "content"), follow_redirects=True)
         return resp.content
 
-    async def write(self, path: str, data: bytes, *, if_match: str | None = None) -> FileRef:
+    async def write(self, path: str, data: bytes, *, if_match: str | None = None, create_only: bool = False) -> FileRef:
         path = path.strip("/")
         if _parent(path):
             await self._folder(_parent(path))
         headers = {"If-Match": if_match} if if_match else {}
         if len(data) <= SIMPLE_UPLOAD_MAX:
-            resp = await self._request(
+            resp = await self._request(  # conflictBehavior=fail: an existing file -> 409 -> FileExistsError
                 "PUT", self._item_url(path, "content"), content=data,
+                params={"@microsoft.graph.conflictBehavior": "fail"} if create_only else None,
                 headers={**headers, "Content-Type": "application/octet-stream"},
             )
             return _to_ref(resp.json(), path)
-        return await self._upload_large(path, data, headers)
+        return await self._upload_large(path, data, headers, create_only)
 
-    async def _upload_large(self, path: str, data: bytes, headers: dict[str, str]) -> FileRef:
+    async def _upload_large(self, path: str, data: bytes, headers: dict[str, str], create_only: bool = False) -> FileRef:
         """Upload session + one PUT of the whole body (Graph accepts fragments up to 60 MiB)."""
-        body = {"item": {"@microsoft.graph.conflictBehavior": "replace"}}
+        body = {"item": {"@microsoft.graph.conflictBehavior": "fail" if create_only else "replace"}}
         session = (
             await self._request("POST", self._item_url(path, "createUploadSession"), json=body, headers=headers)
         ).json()

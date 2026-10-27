@@ -6,8 +6,6 @@ in Review for the user; nothing here posts to the ledger.
 
 from __future__ import annotations
 
-import datetime as dt
-
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -16,6 +14,7 @@ from app.books import Books, now
 from app.mileage import LockedError, MileageEntry, MileageError, MileageSummary, Ownership, Vehicle, VehicleKind
 from app.routes_books import get_books, require_user
 from app.schemas import Proposal
+from app.validation import Day
 
 router = APIRouter(tags=["vehicles"])
 
@@ -23,8 +22,8 @@ router = APIRouter(tags=["vehicles"])
 class VehiclePatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    name: str | None = None
-    registration: str | None = None
+    name: str | None = Field(None, max_length=60)
+    registration: str | None = Field(None, max_length=12)
     kind: VehicleKind | None = None
     owned_by: Ownership | None = None
     active: bool | None = None
@@ -33,13 +32,13 @@ class VehiclePatch(BaseModel):
 class EntryPatch(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    vehicle_id: str | None = None
-    date: dt.date | None = None  # (`dt.`: a bare `date` default would shadow the type)
-    from_: str | None = Field(None, alias="from")
-    to: str | None = None
+    vehicle_id: str | None = Field(None, max_length=32)
+    date: Day | None = None
+    from_: str | None = Field(None, alias="from", max_length=120)
+    to: str | None = Field(None, max_length=120)
     miles: float | None = None
-    purpose: str | None = None
-    job_id: str | None = None
+    purpose: str | None = Field(None, max_length=200)
+    job_id: str | None = Field(None, max_length=32)
 
 
 class ClaimResult(BaseModel):

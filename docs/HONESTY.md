@@ -56,7 +56,7 @@ in `apps/web` was not re-run in this check (no web files changed); the Playwrigh
 ## Chat and voice actions, Autopilot
 
 - Without `ACTIONS_SIGNING_KEY` (the deploy file passes it through, empty by default), each runtime process makes a random key: after a restart, or with several workers, a card can fail with 403.
-- If the runtime dies between the `approving` and `executed` audit lines, that action stays blocked (409) on purpose; there is no UI to clear it.
+- If the runtime dies between the `approving` and `executed` audit lines, that action is never re-run on its own (409). After 10 minutes, rejecting the card clears it; the user checks whether it happened and asks again.
 - Invoice drafts for chat actions can end as drafts when `Mail.Send` has not been granted; the card cannot request consent.
 - The Autopilot level lives in the browser's `localStorage` (`accnomos.autopilot`; only L2 turns posting on). **The Android app never sends `X-Autopilot`**, so scans from the phone always run Autopilot when a rule exists, even if it is off on the web.
 - Autopilot only handles purchases that match a rule; it never makes rules itself.

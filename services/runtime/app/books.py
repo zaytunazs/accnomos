@@ -197,13 +197,17 @@ class Books:
         return await self.storage.write(path, json.dumps(obj, indent=2, ensure_ascii=False).encode())
 
     async def _update(self, path: str, change: Callable[[bytes | None], bytes]) -> FileRef:
-        """Read-modify-write guarded by If-Match; retried once if someone else wrote in between."""
+        """Read-modify-write guarded by If-Match (or, for a new file, create-only); retried once if someone else
+        wrote in between. Without create-only, two requests creating the same file would both win: the actions log
+        (app/actions.py) relies on exactly one of them seeing the other's claim."""
         for attempt in range(2):
             ref = await self._stat(path)
             current = await self.storage.read(path) if ref else None
             try:
-                return await self.storage.write(path, change(current), if_match=ref.etag if ref else None)
-            except ConflictError:
+                if ref:
+                    return await self.storage.write(path, change(current), if_match=ref.etag)
+                return await self.storage.write(path, change(current), create_only=True)
+            except (ConflictError, FileExistsError):
                 if attempt:
                     raise
         raise AssertionError("unreachable")

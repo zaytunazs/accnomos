@@ -22,13 +22,18 @@ and how to report a problem. Deployment hardening is in [`deploy/README.md`](../
 | Token size | Credential headers over 8 KB → 431 | security middleware | same |
 | Transport | When a proxy sends `X-Forwarded-Proto`, credentials over anything but `https` → 400; HSTS at the edge and on the static site | middleware, `deploy/nginx.conf`, `.htaccess` | same, `test_deploy_hardening.py` |
 | Abuse | Per-IP token bucket, 60/min by default (`RATE_LIMIT_PER_MIN`), 429 + `Retry-After`; `/health` and preflights exempt | middleware | same |
-| Body size | 25 MB on `/extract`, `/books/ask/voice`, `/books/bank/import`; 256 KB everywhere else (relay: 256 KB); by `Content-Length` and by counting streamed bytes; nginx enforces the same | middleware, nginx | same |
+| Body size | 25 MB on `/extract`, `/books/ask/voice`, `/books/bank/import`; 2 MB on `/invoices/profile/logo`; 256 KB everywhere else (relay: 256 KB); by `Content-Length` and by counting streamed bytes; nginx has a location for every route allowed more than 256 KB | middleware, nginx | same, `test_edge_nginx_lets_every_upload_route_through_at_the_runtimes_cap` |
 | Outbound calls | Every httpx client (Graph, Meta, Ollama, SAM, HMRC) has an explicit timeout | each client | `test_every_outbound_http_client_has_a_timeout` |
-| SSRF | A browser can only point the runtime at AI base URLs the server already knows (`OLLAMA_BASE`, `MODEL_API_BASE`, `AI_ALLOWED_BASE_URLS`); `/ai/test` follows no redirects | `app/ai/config.py`, `main.py` | `test_unknown_ai_base_url_refused` |
-| CORS | Exact origins from `CORS_ORIGINS` / `RELAY_ALLOWED_REDIRECTS`; wildcards refused at start-up; explicit methods and headers; preflight cached 10 min; no cookies | `main.py`, `relay/main.py` | `test_cors_*` |
+| SSRF | A browser can only point the runtime at AI base URLs the server already knows (`OLLAMA_BASE`, `MODEL_API_BASE`, `AI_ALLOWED_BASE_URLS`); no AI client follows redirects. The only hosts called are Graph, those AI base URLs, Baseten (`BASETEN_BASE`, verifier in key mode) and, from the browser, the relay. Every request URL is built from one of those bases: nothing in a document, email, to-do or model reply is ever fetched. The Graph token is only sent to `https://graph.microsoft.com/` (a `nextLink`, `deltaLink` or cursor elsewhere is refused) | `app/ai/config.py`, `main.py`, `msgraph.py` | `test_unknown_ai_base_url_refused`, `test_only_known_modules_can_make_http_calls`, `test_every_runtime_http_call_goes_to_an_allow_listed_base_and_follows_no_redirects`, `test_the_token_never_follows_a_link_off_graph` |
+| CORS | Exact origins from `CORS_ORIGINS` / `RELAY_ALLOWED_REDIRECTS`; wildcards refused at start-up; explicit methods (exactly those the routes use) and headers; preflight cached 10 min; no cookies | `main.py`, `relay/main.py` | `test_cors_*` |
 | File names | Uploaded and model-derived names cannot escape the user's folder: `.`/`..`, separators, absolute and drive paths, control characters refused (`check_name`); `Books.free_path` and the Graph provider refuse unsafe segments as a backstop | `app/validation.py`, `books.py`, `msgraph.py`, `pipeline.py` | `test_validation.py` |
-| Request bodies | Every JSON body forbids unknown fields (runtime and relay, including HMRC client facts); free text is length-capped | route models | `test_unknown_fields_are_rejected`, relay `test_unknown_or_malformed_fields_rejected` |
-| Identifiers | VRNs: 9 digits on the relay; GB/XI + 9 or 12 digits, GD/HA on contacts. Period keys `^[A-Za-z0-9#]{4}$`. Proposal, event, bank-line, contact and job ids are hex-only before they touch a path | routes, `books.py`, `contacts.py`, `jobs.py` | `test_vrn_format`, `test_period_key_format`, `test_vat_period_key_format`, `test_contacts.py` |
+| Request bodies | Every JSON body forbids unknown fields (runtime and relay, including HMRC client facts) and every free-text string in it has a length cap, checked over every registered route. Dates are `YYYY-MM-DD` only (`Day`: no timestamps or datetimes); money is whole pence as an integer (`Pence`: no `12.0`, `"12"` or `true`). Totals a client sends for an invoice are refused, not ignored. Files read back from the user's folder are parsed leniently, so a hand-edited file still opens | `app/validation.py`, route models | `test_every_request_body_forbids_unknown_fields`, `test_every_free_text_field_in_a_body_has_a_length_cap`, `test_dates_and_money_are_parsed_strictly`, relay `test_unknown_or_malformed_fields_rejected` |
+| Identity | Every route that writes takes `X-User` (`require_user`), except a short list where the write is an agent's or derived (scan, rebuild, a rendered PDF), each with its reason in the test. Audit lines say `user:<email>` or `agent:<name>`, never a bare address. The Graph token is the only authority: storage is the token's own OneDrive and no route takes an id that selects another one | `routes_*.py`, `books.py` | `test_every_write_route_needs_x_user_or_is_listed_with_a_reason`, `test_every_audit_actor_is_user_or_agent` |
+| Signed actions | Chat and voice actions are HMAC-signed over every field with a key from `ACTIONS_SIGNING_KEY` and the caller's Graph token (plus `X-Test-Tenant` in test mode), compared in constant time, expire after 15 min. An action id executes once: the claim is an If-Match (or, for a new month's log, create-only) write, so two approvals at once run once and a replay returns the first result. A run that died leaves an `approving` line that is never re-run; after 10 min rejecting the card clears it (`docs/ACTIONS.md`) | `app/actions.py`, `books.py` | `test_replaying_a_card_with_any_signed_field_changed_is_refused`, `test_two_approvals_at_once_execute_once`, `test_a_stale_approving_lock_is_never_rerun_and_rejecting_clears_it`, `test_in_test_mode_a_card_is_bound_to_its_tenant` |
+| Outgoing mail and calendar | Invoices, reminders and calendar events are sent as plain text; a draft reply's text is HTML-escaped before it goes above Outlook's quoted thread; nothing is sent without `confirm: true` from the app's dialog, and a draft reply is only ever saved as a draft | `msgraph.py`, `routes_invoices.py`, `routes_mail.py` | `test_send_mail.py`, `test_mail.py`, `test_calendar.py` |
+| Invoice logo and PDF | The logo must be a PNG or JPEG by its magic bytes (matching the declared type), at most 1 MB and 4000 px a side, and decode; it is saved under a name chosen from the bytes, and only `_System/Invoicing/logo.png` or `logo.jpg` is ever read back, whatever `profile.json` says. PDF text is Latin-1 with control characters removed, and fpdf's page-count alias cannot be typed | `routes_invoices.py`, `invoicing.py`, `pdf.py` | `test_logo_is_sniffed_decoded_and_size_checked`, `test_a_hand_edited_logo_path_is_not_read`, `test_pdf_text_cannot_use_fpdfs_page_count_alias` |
+| Test mode | `ACCNOMOS_TEST_MODE=1` exactly turns on the fakes, the stub AI, `/__test/*`, `X-Test-Tenant` and its rate-limit exemption; with it unset, `0`, empty or anything else none of them exists. The Docker image pins it to `0`; the e2e build writes `out-e2e/`, and the deploy workflow refuses an `out/` with test-mode code in it | `app/testmode.py`, `main.py`, `deploy/Dockerfile.runtime`, workflows | `test_without_the_flag_no_test_route_header_or_middleware_exists`, `test_docker_image_pins_it_off`, `test_the_test_mode_web_build_is_never_published` |
+| Identifiers | VRNs: 9 digits on the relay; GB/XI + 9 or 12 digits, GD/HA on contacts. Period keys `^[A-Za-z0-9#]{4}$`. Proposal, event, bank-line, contact, job, mileage and action ids are hex-only, invoice numbers `[A-Z0-9-]` and pay-run periods `YYYY-MM`, before they touch a path | routes, `books.py`, `contacts.py`, `jobs.py` | `test_vrn_format`, `test_period_key_format`, `test_vat_period_key_format`, `test_contacts.py` |
 | OAuth (relay) | `state` is HMAC-SHA256-signed with a key derived from the client secret, compared in constant time, expires after 10 min and is accepted once per step (callback, exchange); PKCE (S256) supported; tokens go back in the URL fragment with `Cache-Control: no-store` and `Referrer-Policy: no-referrer` | `relay/oauth.py`, `relay/routes.py` | `test_state_and_redirects.py` |
 | Redirects (relay) | `redirect_to` must be an exact allowed origin (plus plain-http localhost for development); userinfo, backslashes, whitespace/control characters, other ports, scheme downgrades and look-alike hosts are refused | `relay/settings.py` | `test_redirect_bypass_attempts_refused` |
 | Containers | Pinned bases, non-root, read-only root filesystem, no capabilities, healthchecks, loopback-only ports | `deploy/` | `test_deploy_hardening.py` |
@@ -51,6 +56,37 @@ and how to report a problem. Deployment hardening is in [`deploy/README.md`](../
   web origin could read them.
 - Availability against volumetric attacks (left to the front proxy / Cloudflare), dependency scanning, and secret
   rotation automation.
+
+## Accepted after the second pass
+
+Each of these was looked at in the second review (invoices, actions, planner, triage, to-dos, payroll, folder
+migration, test mode) and left as it is, for the reason given.
+
+- **Test-mode tenants are picked by a header, whatever the token.** That is what lets parallel Playwright workers
+  share one runtime. It exists only with `ACCNOMOS_TEST_MODE=1`, which the image never sets; signed actions include
+  the tenant, so a card cannot cross tenants even there.
+- **Graph downloads follow Graph's redirect.** Reading a file or an attachment answers with a 302 to a
+  pre-authenticated download URL on another Microsoft host. httpx drops the `Authorization` header on that
+  cross-origin hop, so the token stays with Graph. Upload-session URLs are pre-authenticated and called without it.
+- **One rate limit for every route, the logo upload included.** The per-IP bucket (60 a minute) applies to it; at
+  2 MB a request that is at most 120 MB a minute from one address, which the front proxy is there to absorb.
+- **A stuck `approving` action is not cleared automatically.** The run may have emailed before it died, so running it
+  again could send twice. After 10 minutes the user is told to check, and rejecting the card clears it; the card
+  does not yet explain that in the app.
+- **A to-do's link is whatever https link the app sends.** It is the user's own list in their own folder, the runtime
+  never fetches it, and the web opens it with `noopener noreferrer`; `javascript:` and other schemes are refused.
+- **Triage and reminders put email text in front of a model.** A crafted email can steer a suggested reply or to-do.
+  Replies are only saved as Outlook drafts for the user to read and send; reminders are checked by code against the
+  invoice (figures, number, no links) and sent only after the user confirms; to-dos are added only when the user taps
+  *Add*.
+- **`ProposedAction.preview` is free-form JSON.** It is covered by the signature and bounded by the 256 KB body cap;
+  the executors read only the keys they wrote.
+- **Without `ACTIONS_SIGNING_KEY` the signing key is random per process.** Cards then stop working after a restart
+  (the user asks again), and several replicas would refuse each other's cards. Set it whenever there is more than
+  one process.
+- **`POST /invoices/{number}/pdf` writes without `X-User`.** It saves the render of an invoice the user already
+  wrote; there is no new fact to attribute. `/health` reports folder-rename counts summed over all users (no names,
+  no paths).
 
 ## Reporting a vulnerability
 

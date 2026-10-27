@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import io
 from collections.abc import AsyncIterator
-from datetime import date
 
 from accnomos_connectors.base import MailSender
 from accnomos_connectors.msgraph import GraphMailSender
@@ -26,10 +26,13 @@ from app.books import Books, now
 from app.invoicing import Invoice, InvoiceCustomer, InvoiceDraft, InvoiceError, InvoiceProfile, InvoiceStateError, InvoiceStatus
 from app.pdf import render_invoice
 from app.routes_books import get_books, require_user
+from app.validation import Day, StrictBody
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 LOGO_MAX = 1024 * 1024
 LOGO_TYPES = {"image/png": "png", "image/jpeg": "jpg"}
+LOGO_MAGIC = {b"\x89PNG\r\n\x1a\n": "image/png", b"\xff\xd8\xff": "image/jpeg"}
+LOGO_MAX_SIDE = 4000  # pixels; a 1 MB PNG can declare 30,000 x 30,000 and take gigabytes to decode in the PDF
 
 
 async def get_sender(request: Request) -> AsyncIterator[MailSender]:
@@ -64,18 +67,9 @@ def _confirmed(confirm: bool) -> None:
         raise HTTPException(status_code=400, detail="Nothing was sent: confirm in the app first (confirm: true)")
 
 
-async def _logo(books: Books, profile: InvoiceProfile) -> bytes | None:
-    if not profile.logo_path:
-        return None
-    try:
-        return await books.storage.read(profile.logo_path)
-    except FileNotFoundError:
-        return None
-
-
 async def _render(books: Books, inv: Invoice) -> bytes:
     profile = await inv_.load_profile(books)
-    return render_invoice(inv, profile, await _logo(books, profile))
+    return render_invoice(inv, profile, await inv_.load_logo(books, profile))
 
 
 # --------------------------------------------------------------------------- #
@@ -100,17 +94,35 @@ async def put_profile(body: InvoiceProfile, books: Books = Depends(get_books), u
 async def upload_logo(
     file: UploadFile = File(...), books: Books = Depends(get_books), user: str = Depends(require_user),
 ) -> InvoiceProfile:
-    """PNG or JPEG up to 1 MB, saved as _System/Invoicing/logo.png|jpg in the user's folder."""
-    ext = LOGO_TYPES.get((file.content_type or "").lower())
-    if not ext:
-        raise HTTPException(status_code=415, detail="The logo must be a PNG or JPEG")
+    """PNG or JPEG up to 1 MB and 4000 pixels a side, saved as _System/Invoicing/logo.png|jpg in the user's folder.
+
+    The type is read from the bytes (and must agree with the declared one); the image is decoded once here so
+    what the PDF renderer later opens is known to be a real, reasonably sized picture."""
     data = await file.read(LOGO_MAX + 1)
     if len(data) > LOGO_MAX:
         raise HTTPException(status_code=413, detail="The logo is over 1 MB")
-    path = f"{inv_.INVOICING}/logo.{ext}"
+    sniffed = next((kind for magic, kind in LOGO_MAGIC.items() if data.startswith(magic)), None)
+    if sniffed is None or (file.content_type or "").lower() not in (sniffed, "application/octet-stream"):
+        raise HTTPException(status_code=415, detail="The logo must be a PNG or JPEG")
+    _check_logo_image(data)
+    path = f"{inv_.INVOICING}/logo.{LOGO_TYPES[sniffed]}"
     await books.storage.write(path, data)
     profile = (await inv_.load_profile(books)).model_copy(update={"logo_path": path})
     return await inv_.save_profile(books, profile, user)
+
+
+def _check_logo_image(data: bytes) -> None:
+    from PIL import Image  # fpdf2's own dependency
+
+    try:
+        with Image.open(io.BytesIO(data)) as img:
+            if max(img.size) > LOGO_MAX_SIDE:
+                raise HTTPException(status_code=413, detail=f"The logo is over {LOGO_MAX_SIDE} pixels wide or tall")
+            img.verify()
+    except HTTPException:
+        raise
+    except Exception as exc:  # noqa: BLE001  truncated, corrupt, or a decompression bomb
+        raise HTTPException(status_code=415, detail="The logo could not be read as an image") from exc
 
 
 @router.get("/customers", response_model=list[InvoiceCustomer])
@@ -196,9 +208,9 @@ async def pdf(number: str, books: Books = Depends(get_books)) -> PdfResult:
     )
 
 
-class SendBody(BaseModel):
+class SendBody(StrictBody):
     confirm: StrictBool = False  # set by the app only after the user confirmed in the dialog; "yes" or 1 is not true
-    to: str | None = None
+    to: str | None = Field(None, max_length=254)
     subject: str | None = Field(None, max_length=200)
     body: str | None = Field(None, max_length=5000)
 
@@ -220,10 +232,10 @@ async def send(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-class PaidBody(BaseModel):
+class PaidBody(StrictBody):
     payment_ref: str | None = Field(None, max_length=120)
-    paid_on: date | None = None
-    bank_line_id: str | None = None  # link the bank line this payment came in on (GET /{number}/bank-candidates)
+    paid_on: Day | None = None
+    bank_line_id: str | None = Field(None, max_length=64, pattern=r"^[0-9a-f]+$")  # link the bank line this payment came in on (GET /{number}/bank-candidates)
 
 
 @router.post("/{number}/mark-paid", response_model=InvoiceRow)
@@ -243,7 +255,7 @@ async def bank_candidates(number: str, books: Books = Depends(get_books)) -> lis
     return await inv_.bank_candidates(books, await _get(books, number))
 
 
-class VoidBody(BaseModel):
+class VoidBody(StrictBody):
     reason: str = Field(min_length=1, max_length=300)
 
 
@@ -267,9 +279,9 @@ async def reminder_draft(
     return await remind.draft_reminder(inv, await inv_.load_profile(books), cfg, now().date())
 
 
-class ReminderSendBody(BaseModel):
+class ReminderSendBody(StrictBody):
     confirm: StrictBool = False
-    to: str
+    to: str = Field(max_length=254)
     subject: str = Field(max_length=200)
     body: str = Field(max_length=5000)
 

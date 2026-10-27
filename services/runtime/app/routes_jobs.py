@@ -7,8 +7,7 @@ plain timesheet edits do not rebuild it (that would re-read the whole ledger on 
 
 from __future__ import annotations
 
-from datetime import date
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
@@ -17,7 +16,7 @@ from app import jobs
 from app.books import Books
 from app.jobs import Job, JobsError, JobSummary, NotFound, StaffMember, TimesheetEntry
 from app.routes_books import get_books, require_user
-from app.validation import StrictBody
+from app.validation import Day, Pence, StrictBody
 
 router = APIRouter(tags=["jobs"])
 
@@ -117,7 +116,7 @@ async def job_invoice_lines(job_id: str, books: Books = Depends(get_books)) -> j
 
 class MarkInvoicedBody(StrictBody):
     invoice_id: str = Field(min_length=1, max_length=64)
-    entry_ids: list[str] = Field(min_length=1)
+    entry_ids: list[Annotated[str, Field(max_length=32)]] = Field(min_length=1, max_length=1000)
 
 
 @router.post("/jobs/{job_id}/mark-invoiced", response_model=list[TimesheetEntry])
@@ -152,8 +151,8 @@ async def mark_invoiced(
 class StaffIn(StrictBody):
     name: str = Field(min_length=1, max_length=120)
     role: str = Field("", max_length=120)
-    hourly_rate_pence: int = Field(ge=0)
-    charge_rate_pence: int | None = Field(None, ge=0)
+    hourly_rate_pence: Pence = Field(ge=0, le=100_000)  # up to £1,000 an hour, as payroll
+    charge_rate_pence: Pence | None = Field(None, ge=0, le=100_000)
     active: bool = True
 
 
@@ -201,9 +200,9 @@ async def delete_staff(staff_id: str, books: Books = Depends(get_books), user: s
 
 
 class EntryIn(StrictBody):
-    staff_id: str
-    job_id: str
-    date: date
+    staff_id: str = Field(max_length=32)
+    job_id: str = Field(max_length=32)
+    date: Day
     hours: float
     note: str = Field("", max_length=500)
     billable: bool = True

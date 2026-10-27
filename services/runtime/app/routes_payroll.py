@@ -6,8 +6,6 @@ Only confirm (with the actual figures typed in) posts to the ledger.
 
 from __future__ import annotations
 
-import datetime as dt
-
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -17,6 +15,7 @@ from app.approve import ApprovalError
 from app.books import Books
 from app.payroll import LineEdit, PayrollConflict, PayrollError, PayRun
 from app.routes_books import get_books, require_user
+from app.validation import Day, Pence
 
 router = APIRouter(tags=["payroll"])
 
@@ -24,22 +23,22 @@ router = APIRouter(tags=["payroll"])
 class PrepareBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    period: str
-    pay_date: dt.date | None = None
+    period: str = Field(max_length=7)
+    pay_date: Day | None = None
 
 
 class EditBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     lines: list[LineEdit] = Field(max_length=500)
-    pay_date: dt.date | None = None
+    pay_date: Day | None = None
 
 
 class ConfirmBody(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    actual_gross_pence: int = Field(gt=0, le=100_000_000)
-    actual_er_ni_pence: int = Field(ge=0, le=100_000_000)
+    actual_gross_pence: Pence = Field(gt=0, le=100_000_000)
+    actual_er_ni_pence: Pence = Field(ge=0, le=100_000_000)
 
 
 class ExportResult(BaseModel):
