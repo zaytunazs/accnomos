@@ -279,6 +279,39 @@ async def test_rule_approve_posts_review_events(client: TestClient, books: Books
     assert draft["direction"] == "out"
 
 
+async def test_ai_suggestion_uses_model_then_validates(books: Books, monkeypatch) -> None:
+    import json
+
+    from app.ai.config import AiConfig
+    from app.bank_reconcile import suggest_ai
+    from app import bank_reconcile as rec
+
+    async def fake_call(messages, cfg, schema, name):
+        assert messages[0]["content"] == rec.BANK_SUGGEST_PROMPT
+        return json.dumps({"account": "5100 Tools & small equipment", "vat_code": "S",
+                           "contact": "Screwfix", "reason": "says Screwfix"})
+
+    async def fake_fail(messages, cfg, schema, name):
+        raise ConnectionError("model down")
+
+    import app.ai.ask as ask_ai
+
+    monkeypatch.setattr(ask_ai, "call_json_model", fake_call)
+    got = await suggest_ai(_FakeLine(), AiConfig(mode="local", base_url="http://x", model="m"),
+                           ["5100 Tools & small equipment", "7999 Sundry expenses"])
+    assert got is not None and got.account == "5100 Tools & small equipment" and got.by == "suggested by AI"
+
+    monkeypatch.setattr(ask_ai, "call_json_model", fake_fail)
+    assert await suggest_ai(_FakeLine(), AiConfig(mode="local", base_url="http://x", model="m"), ["a"]) is None
+
+
+class _FakeLine:
+    date = date(2026, 10, 21)
+    description = "SCREWFIX DIRECT"
+    reference = None
+    amount_pence = -3847
+
+
 async def test_rule_order_first_match_wins_on_reconcile(client: TestClient, books: Books) -> None:
     client.post("/books/bank/rules", headers=H, json=_rule(name="wide"))
     client.post("/books/bank/rules", headers=H, json=_rule(
