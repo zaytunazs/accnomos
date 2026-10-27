@@ -72,6 +72,8 @@ export interface RtProposal {
   /** How the photo was cropped before extraction; "none" = original used. Chip: crop.note. */
   crop?: { method: "sam" | "code" | "none"; box: [number, number, number, number] | null; note: string } | null;
   verification?: RtVerification | null;
+  /** What code changed in the model's reading before the checks, one plain note each (never silent). */
+  repaired_by_code?: string[];
   source_path?: string;
   /** Where the document is filed now, relative to the books folder (read through Graph for the preview). */
   file_path?: string | null;

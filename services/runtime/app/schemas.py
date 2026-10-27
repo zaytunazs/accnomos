@@ -176,6 +176,8 @@ class Proposal(BaseModel):
     # How the photo was cropped before extraction: {"method": "sam"|"code"|"none", "box": [x0,y0,x1,y1]|None, "note"}
     crop: dict[str, Any] | None = None
     verification: Verification | None = None  # only when the first reading passed every check
+    # What code changed in the model's reading before the checks (app/repair.py), one plain note each; the card says so.
+    repaired_by_code: list[str] = Field(default_factory=list)
     # Set once the proposal lives in the user's books (_System/proposals/{id}.json).
     source_name: str | None = None  # original file name in the Inbox
     file_path: str | None = None  # where the document is filed now

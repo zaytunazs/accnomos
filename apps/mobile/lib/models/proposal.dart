@@ -224,7 +224,8 @@ class Proposal {
 
     String? reviewerNote;
     if (checks.isNotEmpty) {
-      final passed = checks.where((c) => c['ok'] == true).length;
+      final real = checks.where((c) => !_noteCodes.contains(c['code'])).toList();
+      final passed = real.where((c) => c['ok'] == true).length;
       String? firstFailure;
       for (final c in checks) {
         if (c['ok'] != true) {
@@ -236,8 +237,16 @@ class Proposal {
           }
         }
       }
-      reviewerNote = 'Checks: $passed of ${checks.length} passed'
+      reviewerNote = 'Checks: $passed of ${real.length} passed'
           '${firstFailure != null ? ' · $firstFailure' : ''}';
+    }
+    final repaired = json['repaired_by_code'] is List
+        ? (json['repaired_by_code'] as List).map((e) => e.toString()).where((e) => e.isNotEmpty).toList()
+        : const <String>[];
+    if (repaired.isNotEmpty) {
+      // Never silent: the card says code changed the model's figures, and how.
+      final note = "Figures repaired by code from the receipt's own arithmetic: ${repaired.join('; ')}";
+      reviewerNote = reviewerNote == null ? note : '$note · $reviewerNote';
     }
 
     final supplier =
@@ -503,6 +512,12 @@ String _shown(Object? value) {
   return text.isEmpty ? 'none' : text;
 }
 
+/// Check codes that are notes (crop chip, mileage, repairs, second read), not
+/// checks; never counted as passed. Mirrors the web's `toUi`.
+const _noteCodes = {
+  'CROP', 'VEHICLE', 'MILEAGE', 'SECOND_READ', 'TOTALS_REPAIRED', 'LINES_REPAIRED',
+};
+
 /// The verifier verdict in plain English, mirroring the web's
 /// `verifierView`: agree, differ (with both readings of each disputed
 /// field), or none (not run or unavailable). Never claims agreement it
@@ -512,8 +527,9 @@ _VerifierView _verifierView(
   required ProposalStatus status,
   required List<Map<String, dynamic>> checks,
 }) {
-  final passed = checks.where((c) => c['ok'] == true).length;
-  final passedLine = 'Checks run by code: $passed of ${checks.length} passed';
+  final real = checks.where((c) => !_noteCodes.contains(c['code'])).toList();
+  final passed = real.where((c) => c['ok'] == true).length;
+  final passedLine = 'Checks run by code: $passed of ${real.length} passed';
   if (verification == null) {
     final why = status == ProposalStatus.needsALook
         ? 'skipped, checks already flagged it'

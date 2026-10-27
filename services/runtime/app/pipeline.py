@@ -1,4 +1,4 @@
-"""Image in, `Proposal` out: hash -> crop -> extract -> checks -> decide -> verify (if passed) -> journal -> filename."""
+"""Image in, `Proposal` out: hash -> crop -> extract -> repair -> checks -> (second read if unsure) -> decide -> verify (if passed) -> journal -> filename."""
 
 from __future__ import annotations
 
@@ -9,12 +9,12 @@ import uuid
 from datetime import date
 
 from app.ai.config import AiConfig
-from app.ai.crop import crop_document
-from app.ai.extract import extract_document
+from app.ai.crop import crop_document, reread_image
+from app.ai.extract import ExtractionError, extract_document
 from app.ai.verify import verify
 from app.checks import decide, run_checks
 from app.journal import draft_journal
-from app.repair import repair
+from app.repair import REPAIR_CODES, repair
 from app.schemas import Check, ExtractedDoc, Proposal, Verification
 
 _FIELD_LABEL = {
@@ -65,6 +65,24 @@ def verification_check(v: Verification) -> Check:
     return Check(code="VERIFIER_AGREES", ok=False, severity="fail", message="Second reading differs: " + "; ".join(diffs))
 
 
+SECOND_READ_CONFIDENCE = 0.6  # Glimmer's "unsure" value is exactly 0.6 (it never reported lower on the 200-doc eval)
+_ARITH_CODES = ("ARITH_TOTALS", "ARITH_LINES", "VAT_MATH")
+
+
+def second_read_reason(doc: ExtractedDoc, checks: list[Check]) -> str | None:
+    """Why the first reading deserves a second look at higher resolution, or None."""
+    if any(not c.ok and c.severity == "fail" and c.code in _ARITH_CODES for c in checks):
+        return "arithmetic did not add up"
+    if doc.confidence <= SECOND_READ_CONFIDENCE:
+        return f"model confidence {doc.confidence:.2f}"
+    return None
+
+
+def _check_score(checks: list[Check]) -> tuple[int, int]:
+    """(failed, warned) counts; lower is better. Notes (ok=True) never count."""
+    return (sum(not c.ok and c.severity == "fail" for c in checks), sum(not c.ok and c.severity == "warn" for c in checks))
+
+
 async def process_image(
     image_bytes: bytes,
     mime: str,
@@ -79,11 +97,28 @@ async def process_image(
     t0 = time.perf_counter()
     digest = sha256_hex(image_bytes)  # of the original file: duplicate detection must not depend on cropping
     cropped = await crop_document(image_bytes, cfg)
-    doc, meta = await extract_document(cropped.image_bytes, mime, cfg)
-    repairs = repair(doc, business_name)
-    checks = repairs + run_checks(
-        doc, known_hashes=known_hashes, this_hash=digest, period_start=period_start, period_end=period_end
-    )
+
+    async def read(img: bytes) -> tuple[ExtractedDoc, dict, list[Check], list[Check]]:
+        doc, meta = await extract_document(img, mime, cfg)
+        repairs = repair(doc, business_name)
+        checks = run_checks(doc, known_hashes=known_hashes, this_hash=digest, period_start=period_start, period_end=period_end)
+        return doc, meta, repairs, repairs + checks
+
+    doc, meta, repairs, checks = await read(cropped.image_bytes)
+    if why := second_read_reason(doc, checks):  # at most one retry
+        try:
+            second = await read(await reread_image(cropped.image_bytes))
+        except ExtractionError as exc:
+            checks.append(Check(code="SECOND_READ", ok=True, severity="warn", message=f"Re-read ({why}) failed: {exc}; first reading kept"))
+        else:
+            first_score, second_score = _check_score(checks), _check_score(second[3])
+            if second_score < first_score:
+                doc, meta, repairs, checks = second
+            kept = "second" if second_score < first_score else "first"
+            checks.append(Check(code="SECOND_READ", ok=True, severity="warn", message=(
+                f"Re-read at higher resolution ({why}); kept the {kept} reading "
+                f"(checks not passed: first {first_score[0]} failed, {first_score[1]} warned; "
+                f"second {second_score[0]} failed, {second_score[1]} warned)")))
     if cropped.box is not None:  # ok=True: shown as a chip, never a reason
         checks.append(Check(code="CROP", ok=True, severity="warn", message=f"{cropped.note} {list(cropped.box)}"))
     status, reasons = decide(checks)
@@ -104,6 +139,7 @@ async def process_image(
         journal_draft=draft_journal(doc),
         model=f"{meta['backend']}:{meta['model']}",
         verification=verification,
+        repaired_by_code=[c.message for c in repairs if c.code in REPAIR_CODES],
         elapsed_s=round(time.perf_counter() - t0, 3),
         crop=cropped.public(),
     )
