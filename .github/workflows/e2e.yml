@@ -16,7 +16,7 @@ permissions:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 8 # budget: under 4 minutes warm (caches below), the rest is headroom for a cold cache
+    timeout-minutes: 15 # budget: about 4–5 minutes warm (186 tests) (caches below), the rest is headroom for a cold cache
     defaults:
       run:
         working-directory: apps/web
@@ -68,7 +68,7 @@ jobs:
         run: pnpm run e2e:build
 
       - name: Run Playwright (starts the runtime in test mode and serves out-e2e/)
-        timeout-minutes: 4
+        timeout-minutes: 10
         run: pnpm run e2e:test
         env:
           CI: "1"
