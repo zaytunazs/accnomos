@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, datetime, timedelta
 
 import httpx
@@ -99,3 +100,85 @@ async def test_fake_mailbox_filters_by_date_and_attachments():
     fake.add(bare)
     assert [m.id for m in await fake.list_messages(SINCE)] == ["new"]
     assert await fake.download_attachment("new", "a") == b"y"
+
+
+# ---------------------------------------------------------------------- #
+# Inbox triage: list_recent and create_reply_draft
+# ---------------------------------------------------------------------- #
+
+
+async def test_list_recent_reads_the_inbox_folder_with_the_triage_fields_only():
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        assert req.method == "GET"
+        return httpx.Response(200, json={"value": [{
+            "id": "m1", "conversationId": "c1", "receivedDateTime": "2026-10-26T08:00:00Z", "subject": "Quote",
+            "isRead": False, "bodyPreview": "x" * 400, "webLink": "https://outlook.live.com/owa/?ItemID=m1",
+            "from": {"emailAddress": {"name": "Jo", "address": "Jo@Client.co.uk"}},
+        }]})
+
+    async with _provider(handler) as p:
+        out = await p.list_recent(SINCE, 30)
+    url = seen[0].url
+    assert url.path == "/v1.0/me/mailFolders/inbox/messages"
+    assert url.params["$select"] == "id,conversationId,subject,from,receivedDateTime,bodyPreview,isRead,webLink"
+    assert url.params["$filter"] == "receivedDateTime ge 2026-10-13T09:30:00Z"  # no hasAttachments filter
+    assert url.params["$top"] == "30"
+    m = out[0]
+    assert (m.conversation_id, m.from_address, m.is_read, len(m.body_preview)) == ("c1", "jo@client.co.uk", False, 255)
+
+
+async def test_create_reply_draft_is_create_reply_then_patch_and_never_send():
+    seen: list[tuple[str, str, bytes]] = []
+    quoted = '<html><body dir="ltr"><hr>On Monday Jo wrote…</body></html>'
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append((req.method, req.url.raw_path.decode(), req.content))
+        if req.url.path.endswith("/createReply"):
+            return httpx.Response(201, json={
+                "id": "draft/1", "webLink": "https://outlook.live.com/owa/?ItemID=draft1&exvsurl=1",
+                "body": {"contentType": "html", "content": quoted},
+            })
+        return httpx.Response(200, json={"id": "draft/1", "webLink": "https://outlook.live.com/owa/?ItemID=draft1"})
+
+    async with _provider(handler) as p:
+        draft = await p.create_reply_draft("AAMk/1=", "Hi Jo,\nThursday works <fine>.")
+    assert [(m, path) for m, path, _ in seen] == [
+        ("POST", "/v1.0/me/messages/AAMk%2F1%3D/createReply"),
+        ("PATCH", "/v1.0/me/messages/draft%2F1"),
+    ]
+    patched = json.loads(seen[1][2])["body"]
+    assert patched["contentType"] == "html"
+    assert patched["content"] == (
+        '<html><body dir="ltr"><div>Hi Jo,<br>Thursday works &lt;fine&gt;.</div><br><hr>On Monday Jo wrote…</body></html>'
+    )
+    assert draft.id == "draft/1" and draft.web_link == "https://outlook.live.com/owa/?ItemID=draft1"
+    assert not any("send" in path.lower() for _, path, _ in seen)
+
+
+async def test_create_reply_draft_plain_text_body():
+    seen: list[bytes] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req.content)
+        if req.url.path.endswith("/createReply"):
+            return httpx.Response(201, json={"id": "d", "body": {"contentType": "text", "content": "> quoted"}})
+        return httpx.Response(200, json={"id": "d"})
+
+    async with _provider(handler) as p:
+        draft = await p.create_reply_draft("m", "Thanks")
+    assert json.loads(seen[1])["body"] == {"contentType": "text", "content": "Thanks\n\n> quoted"}
+    assert draft.web_link is None
+
+
+async def test_fake_mailbox_lists_recent_and_records_drafts():
+    fake = FakeMailProvider()
+    fake.add(MailMessage(id="old", received_at=SINCE - timedelta(days=1)))
+    fake.add(MailMessage(id="new", received_at=SINCE + timedelta(hours=1), conversation_id="c"))
+    assert [m.id for m in await fake.list_recent(SINCE)] == ["new"]  # attachments not required
+    draft = await fake.create_reply_draft("new", "Hello")
+    assert fake.drafts == [{"id": draft.id, "reply_to": "new", "body": "Hello"}]
+    with pytest.raises(FileNotFoundError):
+        await fake.create_reply_draft("gone", "Hello")

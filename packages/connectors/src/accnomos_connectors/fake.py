@@ -14,6 +14,7 @@ from accnomos_connectors.base import (
     ContactsProvider,
     FileRef,
     MailAttachment,
+    MailDraft,
     MailMessage,
     MailProvider,
     MailSender,
@@ -29,12 +30,26 @@ class FakeMailProvider(MailProvider):
         self.messages: list[MailMessage] = []
         self.attachments: dict[str, list[tuple[MailAttachment, bytes]]] = {}
         self.calls: list[str] = []
+        self.drafts: list[dict[str, str]] = []  # {"id", "reply_to", "body"} per create_reply_draft
 
     def add(self, message: MailMessage, *files: tuple[MailAttachment, bytes]) -> MailMessage:
         message.has_attachments = bool(files)
         self.messages.append(message)
         self.attachments[message.id] = list(files)
         return message
+
+    async def list_recent(self, since: datetime, max_results: int = 100) -> list[MailMessage]:
+        self.calls.append("list_recent")
+        hits = [m for m in self.messages if m.received_at >= since]
+        return sorted(hits, key=lambda m: m.received_at, reverse=True)[:max_results]
+
+    async def create_reply_draft(self, message_id: str, body_text: str) -> MailDraft:
+        self.calls.append(f"create_reply_draft:{message_id}")
+        if not any(m.id == message_id for m in self.messages):
+            raise FileNotFoundError(message_id)
+        draft_id = f"draft-{len(self.drafts) + 1}"
+        self.drafts.append({"id": draft_id, "reply_to": message_id, "body": body_text})
+        return MailDraft(id=draft_id, web_link=f"https://outlook.office.com/mail/drafts/id/{draft_id}")
 
     async def list_messages(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
         self.calls.append("list_messages")

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import OutlookIntake from "@/components/settings/OutlookIntake";
+import InboxTriageSetting from "@/components/settings/InboxTriageSetting";
 import AutopilotRules from "@/components/settings/AutopilotRules";
 import StaffEditor from "@/components/settings/StaffEditor";
 import VatPeriodSettings from "@/components/settings/VatPeriodSettings";
@@ -141,6 +142,15 @@ export default function SettingsPanels() {
       <InvoiceProfileForm card={card} heading={heading} />
 
       <OutlookIntake card={card} heading={heading} />
+
+      <section id="automation" aria-labelledby="settings-automation" className={card}>
+        <h2 id="settings-automation" className={heading}>
+          Automation
+        </h2>
+        <div className="mt-1 divide-y divide-border">
+          <InboxTriageSetting />
+        </div>
+      </section>
 
       <section aria-labelledby="settings-autopilot" className={card}>
         <h2 id="settings-autopilot" className={heading}>

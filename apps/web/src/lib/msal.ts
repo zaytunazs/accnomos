@@ -74,6 +74,15 @@ export function mailScopesFor(kind: AccountKind): string[] {
 }
 
 /**
+ * Inbox triage › *Draft in Outlook* saves a reply in the user's Drafts. Asked for only when the user first taps
+ * it (H26), together with the storage scopes (the runtime writes an audit line). Nothing is ever sent.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function mailDraftScopesFor(kind: AccountKind): string[] {
+  return ["Mail.ReadWrite"];
+}
+
+/**
  * Contacts › Import from Outlook reads the address book, nothing more. Requested only when the user taps
  * Import (H26), together with the storage scopes, because the import also writes contacts.json to OneDrive.
  */

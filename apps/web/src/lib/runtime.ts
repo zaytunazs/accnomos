@@ -10,6 +10,7 @@ import {
   contactsScopesFor,
   getToken,
   isPersonalAccount,
+  mailDraftScopesFor,
   mailScopesFor,
   mailSendScopesFor,
   storageScopesFor,
@@ -232,6 +233,17 @@ export const runtime = {
     }),
   mailScan: (a: AccountInfo, body: { since_days?: number; dry_run?: boolean }) =>
     call<RtMailScan>(a, "/mail/scan", { method: "POST", body: JSON.stringify(body) }, mailScopesFor(accountKind(a))),
+  /** POST /mail/triage: reads Inbox previews (Mail.Read) and changes nothing in the mailbox. */
+  mailTriage: (a: AccountInfo, body: { since_days?: number; max_threads?: number } = {}) =>
+    call<RtTriage>(a, "/mail/triage", { method: "POST", body: JSON.stringify(body) }, mailScopesFor(accountKind(a))),
+  /** POST /mail/draft-reply: saves an Outlook draft, never sends. Asks for Mail.ReadWrite only now. */
+  draftReply: (a: AccountInfo, messageId: string, body: string) =>
+    call<RtDraftReply>(a, "/mail/draft-reply", { method: "POST", body: JSON.stringify({ message_id: messageId, body }) },
+      mailDraftScopesFor(accountKind(a))),
+  /** To-dos in _System/Todos/todos.json. */
+  todos: (a: AccountInfo) => call<RtTodo[]>(a, "/todos"),
+  addTodo: (a: AccountInfo, todo: RtTodoIn) => call<RtTodo>(a, "/todos", { method: "POST", body: JSON.stringify(todo) }),
+  deleteTodo: (a: AccountInfo, id: string) => call<RtTodo>(a, `/todos/${encodeURIComponent(id)}`, { method: "DELETE" }),
   /** POST /books/rebuild: regenerate Books.xlsx from the event files now. */
   rebuild: (a: AccountInfo) => call<RtRebuild>(a, "/books/rebuild", { method: "POST" }),
   /** GET /books/deadlines?stagger=1 | start_month=5 | months=1 (see lib/business.ts deadlinesQuery). */
@@ -992,6 +1004,53 @@ export interface RtMailScan {
   dry_run: boolean;
   errors: { message?: string; attachment?: string; error: string }[];
   items: { name: string; subject: string; from_address: string; score: number }[];
+}
+
+/** POST /mail/triage (services/runtime/app/triage.py). */
+export type RtTriageCategory = "customer" | "supplier" | "hmrc" | "accountant" | "other";
+export interface RtTriageTodo {
+  text: string;
+  due: string | null;
+}
+export interface RtTriageThread {
+  conversation_id: string;
+  message_id: string;
+  subject: string;
+  from_name: string;
+  from_address: string;
+  received_at: string;
+  unread: boolean;
+  message_count: number;
+  web_link: string | null;
+  category: RtTriageCategory;
+  summary: string;
+  needs_reply: boolean;
+  suggested_reply: string | null;
+  todos: RtTriageTodo[];
+  fallback_reason: string | null;
+}
+export interface RtTriage {
+  since_days: number;
+  scanned: number;
+  skipped: Record<string, number>;
+  threads: RtTriageThread[];
+  model: string | null;
+  generated_at: string;
+}
+export interface RtDraftReply {
+  draft_id: string;
+  web_link: string | null;
+}
+/** /todos (services/runtime/app/todos.py). */
+export interface RtTodoIn {
+  text: string;
+  due?: string | null;
+  source?: { kind?: "mail"; message_id?: string | null; subject?: string; web_link?: string | null } | null;
+}
+export interface RtTodo extends RtTodoIn {
+  id: string;
+  created_at: string;
+  created_by: string;
 }
 
 /** GET /books/vat (services/runtime/app/routes_vat.py): the 9 boxes computed by code from posted events. */

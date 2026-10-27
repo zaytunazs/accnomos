@@ -2,9 +2,11 @@ import Link from "next/link";
 import Activity from "@/components/home/Activity";
 import AskBar from "@/components/home/AskBar";
 import Deadlines from "@/components/home/Deadlines";
+import InboxTriage from "@/components/home/InboxTriage";
 import LastInboxCheck from "@/components/home/LastInboxCheck";
 import PlanToday from "@/components/home/PlanToday";
 import Tiles from "@/components/home/Tiles";
+import TodosTile from "@/components/home/TodosTile";
 import Pitch from "@/components/home/Pitch";
 
 export const metadata = { title: "Home · Accnomos" };
@@ -35,6 +37,10 @@ export default function HomePage() {
 
       <AskBar />
       <PlanToday />
+      <div className="grid grid-cols-1 items-start gap-3 min-[900px]:grid-cols-[2fr_1fr]">
+        <InboxTriage />
+        <TodosTile />
+      </div>
       <Tiles />
       <Deadlines />
       <Activity />

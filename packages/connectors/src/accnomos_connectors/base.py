@@ -28,6 +28,16 @@ class MailMessage(BaseModel):
     subject: str = ""
     has_attachments: bool = False
     web_link: str | None = None
+    conversation_id: str = ""  # set by list_recent (inbox triage)
+    body_preview: str = ""  # Graph's first ~255 characters of the body; set by list_recent, never the full body
+    is_read: bool = True
+
+
+class MailDraft(BaseModel):
+    """A reply saved in the user's Drafts folder. Nothing is sent: the user opens `web_link` and sends it."""
+
+    id: str
+    web_link: str | None = None
 
 
 class MailAttachment(BaseModel):
@@ -69,7 +79,9 @@ class StorageProvider(ABC):
 
 
 class MailProvider(ABC):
-    """Read-only access to the user's mailbox: nothing is ever moved, flagged, marked read or deleted."""
+    """Access to the user's mailbox: nothing is ever moved, flagged, marked read, deleted or sent.
+
+    The one write is `create_reply_draft`, which only saves a draft (needs `Mail.ReadWrite`)."""
 
     @abstractmethod
     async def list_messages(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
@@ -81,6 +93,15 @@ class MailProvider(ABC):
 
     @abstractmethod
     async def download_attachment(self, message_id: str, attachment_id: str) -> bytes: ...
+
+    async def list_recent(self, since: datetime, max_results: int = 100) -> list[MailMessage]:
+        """Inbox messages (with or without attachments) received at or after `since`, newest first,
+        with `conversation_id`, `body_preview` and `is_read` filled in."""
+        raise NotImplementedError
+
+    async def create_reply_draft(self, message_id: str, body_text: str) -> MailDraft:
+        """Save a reply to `message_id` in Drafts, `body_text` above the quoted thread. Never sends."""
+        raise NotImplementedError
 
     async def create_draft(self, to: str, subject: str, body_html: str) -> str:
         """Returns the draft id. Sending is a separate, user-tapped action. Not implemented yet."""
