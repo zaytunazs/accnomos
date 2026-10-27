@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ChooseAi from "@/components/ChooseAi";
 import InboxTriageSetting from "@/components/settings/InboxTriageSetting";
+import YourData from "@/components/settings/YourData";
 import OutlookIntake from "@/components/settings/OutlookIntake";
 import AutopilotRules from "@/components/settings/AutopilotRules";
 import BusinessDetails from "@/components/settings/BusinessDetails";
@@ -14,7 +15,7 @@ import WorkingHours from "@/components/settings/WorkingHours";
 import { hasMsalSignIn } from "@/lib/signed-in";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
-type GroupId = "connection" | "ai" | "automation" | "business";
+type GroupId = "connection" | "ai" | "automation" | "business" | "data";
 
 const AUTOPILOT_KEY = "accnomos.autopilot";
 const AI_KEY = "accnomos.ai";
@@ -25,6 +26,7 @@ const GROUPS: { id: GroupId; label: string }[] = [
   { id: "ai", label: "AI" },
   { id: "automation", label: "Automation" },
   { id: "business", label: "Business" },
+  { id: "data", label: "Your data" },
 ];
 
 /** Every deep link target stays working: the hash decides which tab opens. */
@@ -49,6 +51,9 @@ const HASH_GROUP: Record<string, GroupId> = {
   "invoice-profile": "business",
   "invoice-profile-title": "business",
   "settings-staff": "business",
+  "settings-data": "data",
+  "settings-data-export": "data",
+  "settings-leave": "data",
 };
 
 const AUTOPILOT_OPTIONS: { value: AutopilotLevel; label: string; description: string }[] = [
@@ -128,7 +133,7 @@ export default function SettingsPanels() {
       if (rawHash && hashed) pendingHash.current = rawHash;
       const stored = readLocalStorage(GROUP_KEY);
       const remembered =
-        stored === "connection" || stored === "ai" || stored === "automation" || stored === "business"
+        stored === "connection" || stored === "ai" || stored === "automation" || stored === "business" || stored === "data"
           ? stored
           : null;
       setGroup(hashed ?? remembered ?? "connection");
@@ -202,7 +207,7 @@ export default function SettingsPanels() {
         role="tablist"
         aria-label="Settings groups"
         onKeyDown={onTabKeys}
-        className="grid grid-cols-2 gap-2 min-[560px]:grid-cols-4"
+        className="grid grid-cols-2 gap-2 min-[560px]:grid-cols-5"
       >
         {GROUPS.map((g) => {
           const active = group === g.id;
@@ -404,6 +409,16 @@ export default function SettingsPanels() {
         <VatPeriodSettings card={card} heading={heading} />
 
         <StaffEditor card={card} heading={heading} />
+      </div>
+
+      <div
+        role="tabpanel"
+        id="panel-data"
+        aria-labelledby="tab-data"
+        hidden={group !== "data"}
+        className="mt-4 space-y-4"
+      >
+        <YourData card={card} heading={heading} />
       </div>
     </div>
   );

@@ -119,8 +119,8 @@ export async function createBooksFolder(page: Page): Promise<void> {
   await expect(page.getByText("Your folder is ready.")).toBeVisible();
 }
 
-/** Settings is four tabs (Connection, AI, Automation, Business); open one and return its panel. */
-export async function settingsTab(page: Page, name: "Connection" | "AI" | "Automation" | "Business") {
+/** Settings tabs (Connection, AI, Automation, Business, Your data); open one and return its panel. */
+export async function settingsTab(page: Page, name: "Connection" | "AI" | "Automation" | "Business" | "Your data") {
   await page.getByRole("tablist", { name: "Settings groups" }).getByRole("tab", { name, exact: true }).click();
   const panel = page.getByRole("tabpanel", { name });
   await expect(panel).toBeVisible();

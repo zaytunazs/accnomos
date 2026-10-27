@@ -328,6 +328,8 @@ export const runtime = {
   deleteTodo: (a: AccountInfo, id: string) => call<RtTodo>(a, `/todos/${encodeURIComponent(id)}`, { method: "DELETE" }),
   /** POST /books/rebuild: regenerate Books.xlsx from the event files now. */
   rebuild: (a: AccountInfo) => call<RtRebuild>(a, "/books/rebuild", { method: "POST" }),
+  /** POST /books/export: everything as one zip in 07 Reports/Exports; posts nothing. */
+  booksExport: (a: AccountInfo) => call<RtDataExport>(a, "/books/export", { method: "POST" }),
   /** GET /books/layout: renames old-named folders (once) and lists old/new pairs left side by side. */
   layout: (a: AccountInfo) => call<RtLayout>(a, "/books/layout"),
   /** GET /books/deadlines?stagger=1 | start_month=5 | months=1 (see lib/business.ts deadlinesQuery). */
@@ -620,6 +622,14 @@ export interface RtTrendMonth {
 export interface RtTrend {
   months: RtTrendMonth[]; // oldest first
   sample: boolean;
+}
+/** POST /books/export (services/runtime/app/data_export.py): everything as one zip. */
+export interface RtDataExport {
+  path: string; // "07 Reports/Exports/accnomos-export-2026-10-27.zip"
+  name: string;
+  size: number;
+  files: number; // files inside the zip
+  web_url: string | null;
 }
 export type RtReportKind = "pl" | "aged" | "vat" | "trend" | "all";
 export interface RtReportExport {
