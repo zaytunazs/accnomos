@@ -26,6 +26,7 @@ import {
   type RtVatStatus,
 } from "@/lib/runtime";
 import { sampleAged, sampleContacts } from "@/lib/sample-contacts";
+import { CompanyLookup, VatCheckButton, useLookupStatus } from "@/components/contacts/Lookups";
 
 /** services/runtime/app/schemas.py CATEGORIES, minus Sales (a supplier default). */
 const CATEGORIES = [
@@ -267,6 +268,7 @@ function toForm(c: RtContactRow): Form {
   return {
     name: c.name, kind: c.kind, vrn: c.vrn ?? "", email: c.email ?? "", phone: c.phone ?? "", address: c.address ?? "",
     default_category: c.default_category ?? "", default_vat_code: c.default_vat_code ?? "", vat_status: c.vat_status ?? "unknown",
+    company_number: c.company_number ?? "",
     terms_days: c.terms_days === null || c.terms_days === undefined ? "" : String(c.terms_days),
   };
 }
@@ -280,12 +282,15 @@ export function parseTerms(raw: string): number | null | "bad" {
   return n <= 365 ? n : "bad";
 }
 
-function EditForm({ contact, onSave, onCancel }: {
+function EditForm({ contact, account, onSave, onCancel }: {
   contact: RtContactRow;
+  account: AccountInfo | null;
   onSave: (edits: RtContactEdits) => Promise<void>;
   onCancel: () => void;
 }) {
+  const lookups = useLookupStatus();
   const [form, setForm] = useState<Form>(() => toForm(contact));
+  const [filled, setFilled] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [vrnError, setVrnError] = useState<string | null>(null);
   const [termsError, setTermsError] = useState<string | null>(null);
@@ -330,7 +335,19 @@ function EditForm({ contact, onSave, onCancel }: {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
+      {account && lookups?.companies_house && (
+        <CompanyLookup
+          account={account}
+          initialQuery={form.company_number || form.name}
+          onPick={(m) => {
+            setForm((f) => ({ ...f, name: m.name, company_number: m.company_number, address: m.address ?? f.address }));
+            setFilled(`Filled from Companies House${m.sample ? " (SAMPLE)" : ""}: ${m.name}, ${m.company_number}. Check it, then Save.`);
+          }}
+        />
+      )}
+      {filled && <p role="status" className="text-[13px] font-semibold text-teal-dark">{filled}</p>}
       {field("name", "Name")}
+      {field("company_number", "Company number")}
       <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
         Kind
         <select className={input} value={form.kind} onChange={set("kind")}>
@@ -676,7 +693,9 @@ function SidePanel({ contact, account, editing, onEditingChange, onSaved, onClos
     }
   }
 
+  const lookups = useLookupStatus();
   const details: [string, string | null][] = [
+    ["Company number", contact.company_number ?? null],
     ["VAT number", contact.vrn],
     ["VAT status", buysFrom(contact) ? VAT_STATUS_LABEL[contact.vat_status ?? "unknown"] : null],
     ["Email", contact.email], ["Phone", contact.phone], ["Address", contact.address],
@@ -706,7 +725,7 @@ function SidePanel({ contact, account, editing, onEditingChange, onSaved, onClos
 
       {editing ? (
         <div className="print:hidden">
-          <EditForm contact={contact} onSave={save} onCancel={() => onEditingChange(false)} />
+          <EditForm contact={contact} account={account} onSave={save} onCancel={() => onEditingChange(false)} />
         </div>
       ) : (
         <div className="print:hidden">
@@ -721,6 +740,19 @@ function SidePanel({ contact, account, editing, onEditingChange, onSaved, onClos
           <div className="mt-1">
             <AliasChips aliases={contact.aliases} />
           </div>
+          {account && contact.vrn && lookups?.vat_check && (
+            <div className="mt-3">
+              <VatCheckButton
+                key={contact.vrn}
+                account={account}
+                vrn={contact.vrn}
+                name={contact.name}
+                contactId={contact.id}
+                initial={contact.vat_check ?? null}
+                onChecked={() => void onSaved()}
+              />
+            </div>
+          )}
           <div className="mt-3 flex flex-wrap items-center gap-3">
             <p className="text-[15px] tabular-nums">
               <Balance pence={contact.totals.balance_pence} />

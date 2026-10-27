@@ -8,11 +8,13 @@ import SignInCta from "@/components/SignInCta";
 import { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
 import { linePence, liveTotals, money, parsePounds, poundsInput, thousandths, todayIso, useMsAccount, VAT_CODES, type LiveTotals } from "@/lib/invoices";
 import { RuntimeErrorNote } from "@/components/States";
+import { useLookupStatus } from "@/components/contacts/Lookups";
 import {
   INVOICE_DRAFT_KEY,
   runtime,
   type JobInvoiceDraft,
   type RtInvoice,
+  type RtCompanyMatch,
   type RtInvoiceCustomer,
   type RtInvoiceDraft,
   type RtSalesVatCode,
@@ -162,6 +164,33 @@ export default function InvoiceForm() {
     setCustomer(c ? { ...c } : EMPTY_CUSTOMER);
     setDirty(true);
     setQuery("");
+  }
+
+  const lookups = useLookupStatus();
+  const [chItems, setChItems] = useState<RtCompanyMatch[] | null>(null);
+  const [chBusy, setChBusy] = useState(false);
+  const [chError, setChError] = useState<string | null>(null);
+
+  /** Optional Companies House suggestions for a new customer; only on a tap, and only fills the form. */
+  async function searchCompaniesHouse() {
+    if (!account) return;
+    setChBusy(true);
+    setChError(null);
+    try {
+      setChItems((await runtime.lookupCompanies(account, query.trim())).items);
+    } catch (e) {
+      setChItems(null);
+      setChError((e as Error).message.replace(/ \(status \d+[^)]*\)$/, ""));
+    } finally {
+      setChBusy(false);
+    }
+  }
+
+  function pickCompany(m: RtCompanyMatch) {
+    setCustomer({ ...EMPTY_CUSTOMER, name: m.name, address: m.address, email: "" });
+    setDirty(true);
+    setQuery("");
+    setChItems(null);
   }
 
   function pickNew() {
@@ -331,6 +360,32 @@ export default function InvoiceForm() {
                 </button>
               </li>
             </ul>
+          )}
+          {q.length >= 2 && account && lookups?.companies_house && (
+            <div className="mt-2">
+              <button type="button" onClick={() => void searchCompaniesHouse()} disabled={chBusy} className="text-sm font-bold text-teal-dark hover:underline disabled:opacity-60">
+                {chBusy ? "Looking on Companies House…" : `Not in your contacts? Look up “${query.trim()}” on Companies House`}
+              </button>
+              {chError && <p role="alert" className="mt-1 text-sm font-semibold text-warn-ink">{chError}</p>}
+              {chItems && (
+                <p role="status" className="mt-1 text-xs text-muted">
+                  {chItems.length ? "Companies House suggestions: pick one to fill the name and address." : "Companies House found nothing by that name."}
+                </p>
+              )}
+              {chItems && chItems.length > 0 && (
+                <ul aria-label="Companies House suggestions" className="mt-1 divide-y divide-border overflow-hidden rounded-xl border border-border">
+                  {chItems.map((m) => (
+                    <li key={m.company_number}>
+                      <button type="button" onClick={() => pickCompany(m)} className="block w-full px-3 py-2 text-left hover:bg-ground">
+                        <span className="text-[15px] font-bold">{m.name}</span>
+                        {m.sample && <span className="ml-2 text-xs font-bold text-warn-ink">SAMPLE</span>}
+                        <span className="block text-sm text-muted">{m.company_number}{m.address ? ` · ${m.address}` : ""}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           )}
           <p className="mt-1 text-xs text-muted">
             Full details live on the <Link href="/contacts" className="font-bold text-teal-dark">contacts page</Link>.

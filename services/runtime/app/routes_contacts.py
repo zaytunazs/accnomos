@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from accnomos_connectors.base import ContactsProvider
 from accnomos_connectors.msgraph import GraphContactsProvider
+from app import company_lookup as lookup
 from app import contacts as cb
 from app.ai.config import is_test_mode
 from app.books import Books
@@ -92,6 +93,48 @@ class ContactEdit(StrictBody):
     default_vat_code: str | None = Field(None, max_length=10)
     vat_status: VatStatus | None = None  # null means unknown: the VAT check asks again over £250
     terms_days: int | None = Field(None, ge=0, le=365)  # payment terms in days (ageing); null: the 30-day default
+    company_number: str | None = Field(None, max_length=12)  # Companies House number, e.g. 01234567 or SC123456
+
+
+class VatCheckBody(StrictBody):
+    vrn: str = Field(min_length=9, max_length=20)
+    name: str | None = Field(None, max_length=200)  # the supplier name on the receipt; default: the contact's
+    contact_id: str | None = Field(None, max_length=16)
+    requester: str | None = Field(None, max_length=20)  # the user's own VRN: HMRC then returns a consultation number
+    refresh: bool = False  # check again even though the contact has a result for this number
+
+
+class VatCheckResult(BaseModel):
+    check: lookup.VatCheck
+    name_differs: bool  # HMRC's registered name clearly differs from the supplier name: a warning, never a block
+    contact_id: str | None  # the contact the result is now kept on (None: no contact has this number)
+    cached: bool  # the contact already had this result; HMRC was not asked again
+
+
+@router.post("/vat-check", response_model=VatCheckResult)
+async def vat_check(
+    body: VatCheckBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> VatCheckResult:
+    """HMRC Check a UK VAT number (via the relay), only when the user taps *Check VAT number*. The answer is kept
+    on the contact with that VAT number, so the next tap shows it without asking HMRC again."""
+    try:
+        digits = lookup.vat_digits(body.vrn)
+    except lookup.BadQuery as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    vrn = f"GB{digits}"
+    contacts, _, _ = await cb.contact_book(books)
+    c = next((c for c in contacts if c.id == body.contact_id and c.vrn == vrn), None) or next(
+        (c for c in contacts if c.vrn == vrn), None
+    )
+    name = body.name or (c.name if c else None)
+    if c and c.vat_check and c.vat_check.vrn == vrn and not body.refresh:
+        return VatCheckResult(
+            check=c.vat_check, name_differs=lookup.names_differ(name, c.vat_check.name), contact_id=c.id, cached=True
+        )
+    check = await lookup.check_vat(vrn, body.requester)  # LookupFailed -> {"error", "detail"} (app/main.py)
+    kept = await cb.record_vat_check(books, check, user, c.id) if c else None
+    differs = lookup.names_differ(name, check.name)
+    return VatCheckResult(check=check, name_differs=differs, contact_id=kept.id if kept else None, cached=False)
 
 
 @router.get("/aged", response_model=cb.AgedBalances)

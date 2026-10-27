@@ -139,6 +139,20 @@ async def graph_error(_request: Request, exc: GraphError) -> JSONResponse:
     return JSONResponse(status_code=status, content={"detail": scrub(str(exc))})
 
 
+from app.company_lookup import LookupFailed  # noqa: E402
+from app.routes_lookup import router as lookup_router  # noqa: E402  /lookup/* (Companies House, VAT check)
+
+app.include_router(lookup_router)
+
+
+@app.exception_handler(LookupFailed)
+async def lookup_failed(_request: Request, exc: LookupFailed) -> JSONResponse:
+    """Companies House / VAT check failures: `error` is a stable code the app keys on (e.g. 503
+    companies_house_not_configured hides Look up), `detail` is for people."""
+    headers = {"Retry-After": str(exc.retry_after)} if exc.retry_after else None
+    return JSONResponse(status_code=exc.status, content={"error": exc.code, "detail": scrub(str(exc))}, headers=headers)
+
+
 from app.validation import UnsafeName  # noqa: E402
 
 

@@ -5,6 +5,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import ReviewQueue, { type ReviewAdapter } from "@/components/review/ReviewQueue";
 import SignInCta from "@/components/SignInCta";
 import UploadToInbox from "@/components/review/UploadToInbox";
+import { VatCheckButton, useLookupStatus } from "@/components/contacts/Lookups";
 import {
   EmptyState,
   LoadingSkeleton,
@@ -82,6 +83,7 @@ export default function LiveReview() {
   const [mode, setMode] = useState<Mode>("checking");
   const [level, setLevel] = useState<Level>("L1");
   const [account, setAccount] = useState<AccountInfo | null>(null);
+  const lookups = useLookupStatus();
   const [items, setItems] = useState<RtProposal[]>([]);
   const [rules, setRules] = useState<RtRule[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
@@ -189,9 +191,15 @@ export default function LiveReview() {
   function pickers(p: RtProposal) {
     const job = openJobs.length > 0 && p.extracted.doc_type !== "sales_invoice";
     const vehicle = p.extracted.doc_type !== "sales_invoice" && !p.mileage_claim && (businessVehicles.length > 0 || p.vehicle_id);
-    if (!job && !vehicle) return null;
+    // Only on a tap, never on every scan; the answer is kept on the supplier's contact. Never blocks Approve.
+    const vrn = p.extracted.doc_type !== "sales_invoice" ? p.extracted.supplier_vat_number?.trim() : "";
+    const vat = account && vrn && lookups?.vat_check ? (
+      <VatCheckButton key={`${p.id}-${vrn}`} account={account} vrn={vrn} name={p.extracted.supplier_name} />
+    ) : null;
+    if (!job && !vehicle) return vat;
     return (
       <div className="flex flex-wrap gap-2">
+        {vat && <div className="basis-full">{vat}</div>}
         {job && (
           <label className="flex items-center gap-2 text-sm font-bold text-ink">
             Job

@@ -54,7 +54,7 @@ class OAuth:
         self.http = http
         self._refresh_locks: dict[str, tuple[asyncio.Lock, int]] = {}  # sha256(refresh token) -> (lock, users)
         self._refresh_results: dict[str, tuple[float, dict]] = {}
-        self._app_token: tuple[float, str] | None = None
+        self._app_tokens: dict[str, tuple[float, str]] = {}  # scope ("" = none) -> (expiry, access token)
         self._app_lock = asyncio.Lock()
         # (step, state nonce) -> expiry: spent states, kept only until they would expire anyway (<= 10 min).
         self._spent: dict[tuple[str, str], float] = {}
@@ -158,12 +158,16 @@ class OAuth:
             else:
                 self._refresh_locks[key] = (lock, users - 1)
 
-    async def app_token(self) -> str:
-        """Application-restricted bearer (client_credentials), cached in memory until shortly before expiry."""
+    async def app_token(self, scope: str | None = None) -> str:
+        """Application-restricted bearer (client_credentials), cached in memory per scope until shortly before
+        expiry. Check a UK VAT number v2.0 asks for a token with the `read:vat` scope."""
+        key = scope or ""
         async with self._app_lock:
-            if self._app_token and self._app_token[0] > time.monotonic():
-                return self._app_token[1]
-            tok = await self._token({"grant_type": "client_credentials"})
+            hit = self._app_tokens.get(key)
+            if hit and hit[0] > time.monotonic():
+                return hit[1]
+            form = {"grant_type": "client_credentials", **({"scope": scope} if scope else {})}
+            tok = await self._token(form)
             ttl = max(int(tok.get("expires_in", 0)) - APP_TOKEN_MARGIN_S, 0)
-            self._app_token = (time.monotonic() + ttl, tok["access_token"])
+            self._app_tokens[key] = (time.monotonic() + ttl, tok["access_token"])
             return tok["access_token"]
