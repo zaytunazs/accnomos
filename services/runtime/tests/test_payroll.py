@@ -155,7 +155,7 @@ async def test_export_shape(books: Books, fake: FakeStorageProvider) -> None:
     ann, bob = await _setup(books)
     await pr.prepare(books, "2026-10", None, USER)
     path, text = await pr.export(books, "2026-10", USER)
-    assert path == "04 Payroll/2026-10.csv"
+    assert path == "05 Payroll/2026-10.csv"
     assert fake.files[path].decode("utf-8-sig") == text
     rows = list(csv.reader(io.StringIO(text)))
     assert rows[0] == [R.ESTIMATE_LABEL]
@@ -322,7 +322,7 @@ def test_payroll_routes(client, books: Books, fake: FakeStorageProvider) -> None
                       json={"lines": [{"staff_id": ann.id, "hours": 999, "rate_pence": 1}]}).status_code == 400
 
     r = client.post("/payroll/runs/2026-10/export", headers=H)
-    assert r.status_code == 200 and r.json()["path"] == "04 Payroll/2026-10.csv" and R.ESTIMATE_LABEL in r.json()["csv"]
+    assert r.status_code == 200 and r.json()["path"] == "05 Payroll/2026-10.csv" and R.ESTIMATE_LABEL in r.json()["csv"]
 
     bad = {"actual_gross_pence": 0, "actual_er_ni_pence": 0}
     assert client.post("/payroll/runs/2026-10/confirm", headers=H, json=bad).status_code == 422

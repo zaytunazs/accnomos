@@ -152,7 +152,7 @@ def test_bad_edits_are_refused() -> None:
 
 def _bank_line(when: date, amount: int, event_ids: list[str]) -> cb.BankLine:
     return cb.BankLine(id=_id("b", 16), date=when, amount_pence=amount, description="ACME KITCHENS INV 42",
-                       source_file="03 Bank statements/2026-09/sep.csv", status="matched",
+                       source_file="04 Bank statements/2026-09/sep.csv", status="matched",
                        matched_event_id=event_ids[0], matched_event_ids=event_ids)
 
 

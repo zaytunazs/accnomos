@@ -1,13 +1,14 @@
 """The user's books, as files in their own storage. No database: the folder is the source of truth.
 
-Layout (relative to the books root):
+Layout (relative to the books root; the folder names live in app/paths.py):
 
     00 Inbox/                      new documents land here
     01 Receipts/{yyyy-mm}/         filed purchases and receipts
-    02 Sales invoices/
-    03 Bank statements/            imported bank statement CSVs, "{last date}_{bank}.csv"
-    04 Needs a look/               anything a human should check
-    05 VAT returns/  06 Reports/
+    02 Needs a look/               anything a human should check
+    03 Sales/                      filed sales documents; invoices raised here are in 03 Sales/invoices/ (app/invoicing.py)
+    04 Bank statements/            imported bank statement CSVs, "{last date}_{bank}.csv"
+    05 Payroll/{yyyy-mm}.csv       pay run exports for the payroll provider
+    06 VAT returns/  07 Reports/
     _System/docs/{sha256}.json     one per processed document (its hash is the duplicate key)
     _System/proposals/{id}.json    proposals and their decisions
     _System/audit/{yyyy-mm}.jsonl  append-only audit trail
@@ -20,7 +21,6 @@ Layout (relative to the books root):
     _System/Contacts/contacts.json customers and suppliers (app/contacts.py); no money is stored there
     _System/Vehicles/vehicles.json  _System/Mileage/{tax-year}.jsonl   vehicles and business journeys (app/mileage.py)
     _System/Payroll/runs/{yyyy-mm}.json   pay runs (estimates) prepared from timesheets (app/payroll.py)
-    04 Payroll/{yyyy-mm}.csv       pay run exports for the payroll provider
     Books.xlsx                     read-only spreadsheet projection, rebuilt after every decision
 The folder layout (every path, who writes it, which files are append-only) is in docs/ARCHITECTURE.md;
 tests/test_integration.py checks that everything written fits it.
@@ -45,31 +45,21 @@ from pydantic import BaseModel, Field
 
 from app.ai.config import is_test_mode
 from app.checks import parse_iso_date
+from app.paths import (  # noqa: F401  (re-exported: other modules import the folder names from here too)
+    AUDIT, BANK, BANK_LINES, DOCS, EVENTS, INBOX, NEEDS_A_LOOK, PROPOSALS, RECEIPTS, REPORTS, SALES, SYSTEM, TREE,
+    VAT_RETURNS, upgrade,
+)
 from app.schemas import ExtractedDoc, Proposal, ProposalStatus
 from app.validation import check_name
 
-INBOX = "00 Inbox"
-RECEIPTS = "01 Receipts"
-SALES = "02 Sales invoices"
-BANK = "03 Bank statements"
-NEEDS_A_LOOK = "04 Needs a look"
-VAT_RETURNS = "05 VAT returns"
-REPORTS = "06 Reports"
-SYSTEM = "_System"
-DOCS = f"{SYSTEM}/docs"
-PROPOSALS = f"{SYSTEM}/proposals"
-AUDIT = f"{SYSTEM}/audit"
-EVENTS = f"{SYSTEM}/Ledger/events"
 RULES = f"{SYSTEM}/rules.json"
 AUTOPILOT_RULES = f"{SYSTEM}/Rules/rules.json"
 # OneDrive paths are case-insensitive, so this is the same folder as "_System/Audit/autopilot".
 AUTOPILOT_AUDIT = f"{AUDIT}/autopilot"
 CURSORS = f"{SYSTEM}/cursors.json"
-BANK_LINES = f"{SYSTEM}/bank"
 WORKBOOK = "Books.xlsx"
 WORKBOOK_LIMIT = 4 * 1024 * 1024  # simple-upload size; bigger books still upload, but we say so in the log
 
-TREE = (INBOX, RECEIPTS, SALES, BANK, NEEDS_A_LOOK, VAT_RETURNS, REPORTS, DOCS, PROPOSALS, AUDIT, EVENTS, BANK_LINES)
 DEVICE = "runtime"
 log = logging.getLogger(__name__)
 
@@ -163,7 +153,7 @@ class BankStatement(BaseModel):
 
 
 def bank_of(path: str) -> str:
-    """'03 Bank statements/2026-10-20_starling (2).csv' -> 'starling'; older names give 'bank'."""
+    """'04 Bank statements/2026-10-20_starling (2).csv' -> 'starling'; older names give 'bank'."""
     m = re.match(r"\d{4}-\d{2}-\d{2}_([a-z]+)", _split(path)[1])
     return m.group(1) if m else "bank"
 
@@ -380,6 +370,8 @@ class Books:
 
     async def file_document(self, p: Proposal, src_path: str, folder: str | None = None) -> str:
         """Move the document to where `p` says it belongs; records and returns the new path."""
+        if upgrade(src_path) != src_path and not await self.exists(src_path):
+            src_path = upgrade(src_path)  # recorded before its folder was renamed (app/layout.py)
         folder = folder or self.destination_folder(p)
         if _split(src_path)[0] == folder:
             p.file_path = src_path
@@ -410,7 +402,7 @@ class Books:
         return sorted(out, key=lambda ln: (ln.date, ln.id))
 
     async def import_bank_csv(self, data: bytes, name: str, user: str = "user") -> BankImport:
-        """Parse, file the statement as "03 Bank statements/{last date}_{bank}.csv" and store its lines.
+        """Parse, file the statement as "04 Bank statements/{last date}_{bank}.csv" and store its lines.
 
         Re-importing the same file (same sha256) changes nothing; lines already imported from another
         statement (overlapping date ranges) are skipped. Raises accnomos_ledger.bank.BankCsvError.
@@ -439,7 +431,7 @@ class Books:
         """Imported statements, newest last date first, summarised from their stored lines."""
         by_file: dict[str, list[BankLine]] = {}
         for ln in await self.stored_bank_lines():
-            by_file.setdefault(ln.source_file, []).append(ln)
+            by_file.setdefault(upgrade(ln.source_file), []).append(ln)  # where it is now, after a folder rename
         out = [
             BankStatement(
                 path=path, bank=bank_of(path), first_date=min(ln.date for ln in lines),

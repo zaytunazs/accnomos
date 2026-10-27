@@ -34,7 +34,7 @@ class Cash(BaseModel):
     balance_pence: int | None  # closing balance on the latest statement with a matched line; None without one
     as_of: date | None  # the date of that balance
     bank: str | None
-    statement: str | None  # the statement file in "03 Bank statements"
+    statement: str | None  # the statement file in the bank statements folder
     reconciled_to: date | None  # every bank line on or before this date is matched, a transfer or ignored
 
 

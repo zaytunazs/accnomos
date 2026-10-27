@@ -177,7 +177,7 @@ class Proposal(BaseModel):
     crop: dict[str, Any] | None = None
     verification: Verification | None = None  # only when the first reading passed every check
     # Set once the proposal lives in the user's books (_System/proposals/{id}.json).
-    source_name: str | None = None  # original file name in "00 Inbox"
+    source_name: str | None = None  # original file name in the Inbox
     file_path: str | None = None  # where the document is filed now
     account_override: str | None = None  # expense account chosen by a rule or the user
     job_id: str | None = None  # job this purchase is a cost of (_System/Jobs/jobs.json), tagged on approval

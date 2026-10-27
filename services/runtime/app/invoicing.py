@@ -37,14 +37,14 @@ from accnomos_ledger.bank import BankLine
 from accnomos_ledger.events import LedgerEvent, Line, VatCode
 from pydantic import BaseModel, Field, field_validator
 
-from app import jobs
+from app import jobs, paths
 from app.approve import reversal_of
 from app.books import SYSTEM, BankMatchError, Books, now
 from app.checks import normalise_vat_number
 from app.journal import DEBTORS, SALES, VAT_CONTROL
 
-INVOICES = "03 Sales/invoices"
-SENT = f"{INVOICES}/sent"
+INVOICES = paths.INVOICES
+SENT = paths.SENT
 INVOICING = f"{SYSTEM}/Invoicing"
 SEQUENCE = f"{INVOICING}/sequence.json"
 PROFILE = f"{INVOICING}/profile.json"

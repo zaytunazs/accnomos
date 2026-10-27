@@ -81,8 +81,8 @@ def _audit(fake: FakeStorageProvider) -> list[dict]:
 def test_import_suggest_match_unmatch_routes(client: TestClient, fake: FakeStorageProvider) -> None:
     r = client.post("/books/bank/import", headers=H, files={"file": ("oct.csv", STATEMENT, "text/csv")})
     assert r.status_code == 200, r.text
-    assert r.json()["filed_path"] == "03 Bank statements/2026-10-23_bank.csv" and r.json()["new_lines"] == 3
-    assert fake.files["03 Bank statements/2026-10-23_bank.csv"] == STATEMENT
+    assert r.json()["filed_path"] == "04 Bank statements/2026-10-23_bank.csv" and r.json()["new_lines"] == 3
+    assert fake.files["04 Bank statements/2026-10-23_bank.csv"] == STATEMENT
     assert len([p for p in fake.files if p.startswith(f"{BANK_LINES}/")]) == 1
     again = client.post("/books/bank/import", headers=H, files={"file": ("copy.csv", STATEMENT, "text/csv")}).json()
     assert again["duplicate_file"] and again["new_lines"] == 0

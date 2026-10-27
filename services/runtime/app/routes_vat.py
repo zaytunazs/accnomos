@@ -15,7 +15,8 @@ from app.books import today as current_date  # `today` is a query parameter belo
 from app.deadlines import (
     STAGGER_START_MONTH, filing_deadline, period_containing, period_label, previous_period, stagger_of,
 )
-from app.books import VAT_RETURNS, Books
+from app.books import Books
+from app.paths import VAT_RETURNS
 from app.deadlines import filing_deadline, period_from_id, period_id, period_label, previous_period, recent_periods, stagger_of
 from app.routes_books import get_books
 from app.vat_cycle import VatCycle, vat_cycle
@@ -74,7 +75,7 @@ def box_amounts(ret: VatReturn) -> dict[int, str]:
 
 async def submitted_periods(books: Books) -> dict[tuple[date, date], str]:
     """{(start, end): HMRC period key} for each return the web app saved after a relay submission
-    (`05 VAT returns/{periodKey}/return.json`). The runtime holds no HMRC token, so this is what it can know."""
+    (`06 VAT returns/{periodKey}/return.json`). The runtime holds no HMRC token, so this is what it can know."""
     try:
         folders = [f for f in await books.storage.list(VAT_RETURNS) if f.is_folder]
     except FileNotFoundError:
@@ -173,7 +174,7 @@ class VatPeriods(BaseModel):
     months: int
     start_month: int
     periods: list[VatPeriod]  # current first, then the 8 before it
-    status_source: str = "Submitted = a receipt saved in 05 VAT returns after a relay submission; HMRC's own list is in Connect to HMRC."
+    status_source: str = "Submitted = a receipt saved in 06 VAT returns after a relay submission; HMRC's own list is in Connect to HMRC."
 
 
 @router.get("/vat/periods", response_model=VatPeriods)
