@@ -65,6 +65,9 @@ def stub_extract(monkeypatch: pytest.MonkeyPatch) -> None:
         return DOCS[data], {"backend": "stub", "model": cfg.model}
 
     monkeypatch.setattr(pipeline, "extract_document", fake_extract)
+    # No second reading here: a verifier that cannot run is a warning, and Autopilot never posts on a warning
+    # (that is the intended production behaviour; these tests exercise the rules, not the verifier).
+    monkeypatch.setenv("VERIFIER", "off")
 
 
 @pytest.fixture

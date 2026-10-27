@@ -84,3 +84,5 @@ Code: `services/runtime/app/autopilot.py` (rules and the decision), `app/inbox.p
 - Rule-based posting happens only at Settings › Autopilot level **L2**. The default is L1 (propose only),
   so a new user never has anything posted without approving it; the on/off switch on the rules card is the
   same setting.
+- Autopilot posts only when the Verifier (second reading) agrees. If the verifier is switched off or cannot run, the
+  reading carries a warning and the proposal waits for you.
