@@ -48,7 +48,7 @@ function useLazyUrl(source: ImageSource | null) {
 
   const url = source?.url ?? blob?.url ?? null;
   const isPdf = blob?.type === "application/pdf" || /\.pdf$/i.test(source?.url ?? "");
-  return { ref, url: near ? url : null, isPdf, failed };
+  return { ref, url: near ? url : null, isPdf, failed, wake: () => setNear(true) };
 }
 
 /** The box shown on its own: the image scaled so the box fills the frame. Natural size when zoomed. */
@@ -96,7 +96,7 @@ function Pane({ title, note, children, zoomed, onZoom }: { title: string; note: 
 }
 
 export default function ReviewImage({ source, crop, label }: { source: ImageSource | null; crop?: RtProposal["crop"]; label: string }) {
-  const { ref, url, isPdf, failed } = useLazyUrl(source);
+  const { ref, url, isPdf, failed, wake } = useLazyUrl(source);
   const [open, setOpen] = useState(false);
   const [zoom, setZoom] = useState<"original" | "crop" | null>(null);
   const cropped: (Crop & { box: Box }) | null = crop && crop.method !== "none" && crop.box ? (crop as Crop & { box: Box }) : null;
@@ -114,8 +114,11 @@ export default function ReviewImage({ source, crop, label }: { source: ImageSour
       <button
         ref={ref}
         type="button"
-        onClick={() => setOpen(true)}
-        disabled={!url}
+        onFocus={wake} // tabbing to an offscreen card loads it too
+        onClick={() => {
+          wake();
+          setOpen(true);
+        }}
         aria-label={`Open the document for ${label}${cropped ? " (original and crop side by side)" : ""}`}
         className={`${frame} relative cursor-zoom-in`}
       >
@@ -131,7 +134,7 @@ export default function ReviewImage({ source, crop, label }: { source: ImageSour
           <span className="absolute bottom-2 left-2 rounded-full bg-white/90 px-2 py-0.5 text-[12px] font-bold text-teal-dark">Cropped</span>
         )}
       </button>
-      {open && url && (
+      {open && (
         <Modal label={`Document: ${label}`} wide onClose={() => { setOpen(false); setZoom(null); }}>
           <div className="flex items-start justify-between gap-3">
             <h2 className="text-lg font-extrabold tracking-tight">{label}</h2>
@@ -139,7 +142,9 @@ export default function ReviewImage({ source, crop, label }: { source: ImageSour
               Close <span className="sr-only">the document</span><kbd className="ml-1 hidden text-[12px] text-muted sm:inline">Esc</kbd>
             </button>
           </div>
-          {isPdf ? (
+          {!url ? (
+            <p role="status" className="mt-4 text-[15px] text-muted">Loading the document…</p>
+          ) : isPdf ? (
             <iframe src={url} title={`PDF: ${label}`} className="mt-4 h-[75dvh] w-full rounded-xl border border-border" />
           ) : (
             <div className={`mt-4 grid gap-4 ${cropped && !zoom ? "md:grid-cols-2" : ""}`}>

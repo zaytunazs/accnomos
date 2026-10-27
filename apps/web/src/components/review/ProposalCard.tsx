@@ -1,3 +1,4 @@
+import type { ReactNode, Ref } from "react";
 import type { Proposal } from "@/lib/sample-review";
 
 const facts = [
@@ -12,30 +13,47 @@ const facts = [
 
 interface Props {
   proposal: Proposal;
-  /** "Always do this for <supplier>": controlled when the parent sends the approval (live Review). */
+  /** "Always do this for <supplier>": controlled by the parent, which sends the approval. */
   remember?: boolean;
   onRememberChange?: (remember: boolean) => void;
-  /** Hide the sample buttons when the parent renders the real ones. */
-  hideActions?: boolean;
+  /** The document thumbnail (opens the original and the crop). */
+  media?: ReactNode;
+  /** Banners above the card body: needs a look, rule match, Autopilot notes. */
+  notices?: ReactNode;
+  /** Approve · Edit · Reject, and any pickers. */
+  actions?: ReactNode;
+  /** The keyboard's current card: focusable, and outlined. */
+  cardRef?: Ref<HTMLElement>;
+  active?: boolean;
+  onFocus?: () => void;
 }
 
-export default function ProposalCard({ proposal, remember, onRememberChange, hideActions = false }: Props) {
+export default function ProposalCard({ proposal, remember, onRememberChange, media, notices, actions, cardRef, active = false, onFocus }: Props) {
   return (
     <section
+      ref={cardRef}
+      tabIndex={-1}
+      onFocus={onFocus}
       aria-labelledby={`proposal-${proposal.id}`}
-      className="rounded-2xl border border-border bg-white p-5 sm:p-6"
+      aria-current={active ? "true" : undefined}
+      className={`min-w-0 scroll-mt-24 rounded-2xl border bg-white p-4 outline-none sm:p-6 ${
+        active ? "border-teal ring-2 ring-teal" : "border-border"
+      }`}
     >
+      {notices && <div className="mb-4 flex flex-col gap-2">{notices}</div>}
       <div className="flex flex-col gap-5 sm:flex-row">
-        <div
-          aria-hidden="true"
-          className="flex h-[230px] w-[180px] shrink-0 items-center justify-center rounded-xl bg-ground text-sm font-semibold text-muted"
-        >
-          Receipt
-        </div>
+        {media ?? (
+          <div
+            aria-hidden="true"
+            className="flex h-[150px] w-full shrink-0 items-center justify-center rounded-xl bg-ground text-sm font-semibold text-muted sm:h-[230px] sm:w-[180px]"
+          >
+            Receipt
+          </div>
+        )}
         <div className="min-w-0 flex-1">
           <h2
             id={`proposal-${proposal.id}`}
-            className="text-xl font-extrabold tracking-tight"
+            className="break-words text-xl font-extrabold tracking-tight"
           >
             {proposal.supplier} · {proposal.total}
           </h2>
@@ -49,11 +67,11 @@ export default function ProposalCard({ proposal, remember, onRememberChange, hid
           </div>
           <dl className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-4">
             {facts.map((fact) => (
-              <div key={fact.label}>
+              <div key={fact.label} className="min-w-0">
                 <dt className="text-[13px] font-semibold text-muted">
                   {fact.label}
                 </dt>
-                <dd className="mt-0.5 text-[15px] font-bold">
+                <dd className="mt-0.5 break-words text-[15px] font-bold">
                   {fact.value(proposal)}
                 </dd>
               </div>
@@ -61,6 +79,20 @@ export default function ProposalCard({ proposal, remember, onRememberChange, hid
           </dl>
         </div>
       </div>
+
+      {proposal.failedChecks && proposal.failedChecks.length > 0 && (
+        <ul aria-label="Checks that need you" className="mt-4 flex flex-col gap-1 rounded-xl border border-warn-border bg-warn-bg p-3 text-[14px] leading-6 text-warn-ink">
+          {proposal.failedChecks.map((c) => (
+            <li key={c.text} className="flex gap-2">
+              <span aria-hidden="true" className="font-bold">{c.warn ? "!" : "✕"}</span>
+              <span>
+                <span className="sr-only">{c.warn ? "Warning: " : "Check failed: "}</span>
+                {c.text}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
 
       <div className="mt-5 overflow-hidden rounded-xl border border-border">
         <p className="bg-ground px-4 py-2 text-[13px] font-bold text-muted">
@@ -90,11 +122,13 @@ export default function ProposalCard({ proposal, remember, onRememberChange, hid
         </table>
       </div>
 
-      <p className="mt-4 rounded-xl bg-ground p-4 text-[15px] leading-7">
-        {proposal.reviewerNote}
-      </p>
+      {proposal.reviewerNote && (
+        <p className="mt-4 break-words rounded-xl bg-ground p-4 text-[15px] leading-7">
+          {proposal.reviewerNote}
+        </p>
+      )}
       <div
-        className={`mt-3 rounded-xl p-4 text-[15px] leading-7 ${
+        className={`mt-3 break-words rounded-xl p-4 text-[15px] leading-7 ${
           proposal.verifierTone === "differ"
             ? "border border-warn-border bg-warn-bg text-warn-ink"
             : proposal.verifierTone === "none"
@@ -104,7 +138,7 @@ export default function ProposalCard({ proposal, remember, onRememberChange, hid
       >
         <p>{proposal.verifierNote}</p>
         {proposal.verifierDiffs && proposal.verifierDiffs.length > 0 && (
-          <table className="mt-2 w-full text-left text-[14px]">
+          <table className="mt-2 w-full table-fixed text-left text-[14px]">
             <thead>
               <tr>
                 <th className="py-1 pr-3 font-semibold">Field</th>
@@ -115,9 +149,9 @@ export default function ProposalCard({ proposal, remember, onRememberChange, hid
             <tbody>
               {proposal.verifierDiffs.map((d) => (
                 <tr key={d.field} className="border-t border-warn-border">
-                  <td className="py-1 pr-3">{d.field}</td>
-                  <td className="py-1 pr-3 font-bold">{d.extractor}</td>
-                  <td className="py-1 font-bold">{d.verifier}</td>
+                  <td className="break-words py-1 pr-3">{d.field}</td>
+                  <td className="break-words py-1 pr-3 font-bold">{d.extractor}</td>
+                  <td className="break-words py-1 font-bold">{d.verifier}</td>
                 </tr>
               ))}
             </tbody>
@@ -125,38 +159,18 @@ export default function ProposalCard({ proposal, remember, onRememberChange, hid
         )}
       </div>
 
-      {!hideActions && (
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-        <button
-          type="button"
-          className="h-11 whitespace-nowrap rounded-xl bg-teal px-6 text-[15px] font-bold text-white hover:bg-teal-dark"
-        >
-          Approve
-        </button>
-        <button
-          type="button"
-          className="h-11 whitespace-nowrap rounded-xl border border-border bg-white px-6 text-[15px] font-bold hover:bg-ground"
-        >
-          Edit
-        </button>
-        <button
-          type="button"
-          className="h-11 whitespace-nowrap rounded-xl border border-border bg-white px-6 text-[15px] font-bold hover:bg-ground"
-        >
-          Reject
-        </button>
-      </div>
+      {onRememberChange && (
+        <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-[15px] font-semibold">
+          <input
+            type="checkbox"
+            className="h-5 w-5 shrink-0 accent-teal"
+            checked={remember ?? false}
+            onChange={(e) => onRememberChange(e.target.checked)}
+          />
+          Always do this for {proposal.supplier}
+        </label>
       )}
-      <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-[15px] font-semibold">
-        <input
-          type="checkbox"
-          className="h-5 w-5 accent-teal"
-          {...(onRememberChange
-            ? { checked: remember ?? false, onChange: (e: React.ChangeEvent<HTMLInputElement>) => onRememberChange(e.target.checked) }
-            : {})}
-        />
-        Always do this for {proposal.supplier}
-      </label>
+      {actions && <div className="mt-4 flex flex-col gap-3">{actions}</div>}
     </section>
   );
 }
