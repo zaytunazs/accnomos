@@ -134,7 +134,7 @@ export default function FilePreview({
                 {copied ? "Copied" : "Copy"}
               </button>
             </div>
-            <pre className="max-h-[50dvh] min-w-0 overflow-auto rounded-xl bg-ground p-3 text-[12px] leading-5">
+            <pre className="max-h-[50dvh] min-w-0 overflow-auto whitespace-pre-wrap break-words rounded-xl bg-ground p-3 text-[12px] leading-5">
               {text}
             </pre>
             {truncated && <p className="text-[13px] text-muted">Showing the first 100 KB of the file.</p>}
