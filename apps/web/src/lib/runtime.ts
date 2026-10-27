@@ -461,7 +461,82 @@ export const runtime = {
       body: JSON.stringify({ actual_gross_pence: actualGrossPence, actual_er_ni_pence: actualErNiPence }),
     }),
   reopenPayRun: (a: AccountInfo, period: string) => call<RtPayRun>(a, `/payroll/runs/${period}/reopen`, { method: "POST" }),
+
+  /** /reports/* (services/runtime/app/routes_reports.py): by code from the ledger; only export writes (07 Reports). */
+  reports: {
+    /** No span = the VAT period we are in now, by the saved VAT settings. */
+    pl: (a: AccountInfo, span?: { start: string; end: string } | null) =>
+      call<RtProfitAndLoss>(a, withQuery("/reports/pl", [vatQuery(), span ? `from=${span.start}&to=${span.end}` : ""].filter(Boolean).join("&"))),
+    aged: (a: AccountInfo) => call<RtAgedReport>(a, "/reports/aged"),
+    vat: (a: AccountInfo, periods = 4) => call<RtVatSummary>(a, withQuery("/reports/vat", [vatQuery(), `periods=${periods}`].filter(Boolean).join("&"))),
+    trend: (a: AccountInfo) => call<RtTrend>(a, "/reports/trend"),
+    /** Saves 07 Reports/<yyyy-mm-dd>-<name>.xlsx in OneDrive; posts nothing. */
+    export: (a: AccountInfo, body: { report?: RtReportKind; from?: string; to?: string; periods?: number }) =>
+      call<RtReportExport>(a, withQuery("/reports/export", vatQuery()), { method: "POST", body: JSON.stringify(body) }),
+  },
 };
+
+/** Reports (services/runtime/app/reports.py). Pence throughout; VAT boxes 6 and 7 whole pounds. */
+export interface RtPlSection {
+  rows: { account: string; amount_pence: number }[];
+  total_pence: number;
+}
+export interface RtProfitAndLoss {
+  start: string;
+  end: string;
+  label: string;
+  basis: string; // "As approved: …"
+  sales: RtPlSection;
+  cost_of_sales: RtPlSection;
+  gross_profit_pence: number;
+  overheads: RtPlSection;
+  net_profit_pence: number; // negative = a loss
+  entries: number;
+  sample: boolean;
+}
+export interface RtAgedReport extends RtAged {
+  sample: boolean;
+}
+export interface RtVatSummaryPeriod {
+  period: string;
+  start: string;
+  end: string;
+  label: string;
+  vat_on_sales_pence: number;
+  vat_reclaimed_pence: number;
+  net_vat_pence: number; // positive to pay, negative to reclaim
+  sales_ex_vat_pounds: number;
+  purchases_ex_vat_pounds: number;
+  entries: number;
+  warnings: string[];
+}
+export interface RtVatSummary {
+  periods: RtVatSummaryPeriod[]; // oldest first
+  total_net_vat_pence: number;
+  sample: boolean;
+}
+export interface RtTrendMonth {
+  month: string; // "2026-10"
+  label: string; // "Oct 2026"
+  start: string;
+  end: string;
+  sales_pence: number;
+  purchases_pence: number; // cost of sales + overheads
+  net_pence: number;
+}
+export interface RtTrend {
+  months: RtTrendMonth[]; // oldest first
+  sample: boolean;
+}
+export type RtReportKind = "pl" | "aged" | "vat" | "trend" | "all";
+export interface RtReportExport {
+  path: string;
+  name: string;
+  size: number;
+  web_url: string | null;
+  sample: boolean;
+  sheets: string[];
+}
 
 /** Pay runs (services/runtime/app/payroll.py). Pence throughout; every est_* figure is an estimate. */
 export interface RtPayLine {
