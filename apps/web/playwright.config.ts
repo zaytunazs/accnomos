@@ -11,8 +11,9 @@ const python = process.env.E2E_PYTHON ?? "python3";
 
 export default defineConfig({
   testDir: "./e2e",
-  fullyParallel: false,
-  workers: 1, // one shared fake OneDrive in the runtime; every test resets it
+  // Each worker has its own fake OneDrive in the runtime (X-Test-Tenant, e2e/fixtures.ts), so tests run in any order.
+  fullyParallel: true,
+  workers: 4,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   timeout: 30_000,
