@@ -108,4 +108,6 @@ from app.routes_contacts import router as contacts_router  # noqa: E402  /contac
 app.include_router(contacts_router)
 from app.routes_vehicles import router as vehicles_router  # noqa: E402  /vehicles, /mileage
 app.include_router(vehicles_router)
+from app.routes_payroll import router as payroll_router  # noqa: E402  /payroll/runs
+app.include_router(payroll_router)
 
