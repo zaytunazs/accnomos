@@ -30,6 +30,31 @@ def test_edge_nginx_body_caps_and_client_ip():
     assert 'proxy_set_header CF-Connecting-IP "";' in conf
 
 
+def _nginx_cap(conf: str, path: str) -> int:
+    """client_max_body_size (bytes) nginx applies to `path`: an exact location, else a regex one, else the server's."""
+    size = {"k": 1024, "m": 1024 * 1024}
+    blocks = re.findall(r"location\s+(=|~)\s+(\S+)\s*\{([^}]*)\}", conf)
+    for kind, pattern, body in sorted(blocks, key=lambda b: b[0] != "="):  # exact matches win, as in nginx
+        if (path == pattern) if kind == "=" else re.search(pattern, path):
+            m = re.search(r"client_max_body_size (\d+)([km]);", body)
+            if m:
+                return int(m.group(1)) * size[m.group(2)]
+            break
+    m = re.search(r"^\s{4}client_max_body_size (\d+)([km]);", conf, re.M)
+    assert m
+    return int(m.group(1)) * size[m.group(2)]
+
+
+def test_edge_nginx_lets_every_upload_route_through_at_the_runtimes_cap():
+    """A route the runtime takes more than 256 KB on needs its own nginx location, or uploads die at the edge."""
+    from app.security import JSON_LIMIT, SMALL_UPLOADS, UPLOAD_PATHS, body_limit
+
+    conf = (DEPLOY / "nginx.conf").read_text()
+    for path in (*UPLOAD_PATHS, *SMALL_UPLOADS):
+        assert _nginx_cap(conf, path) >= body_limit(path) > JSON_LIMIT, path
+    assert _nginx_cap(conf, "/invoices/INV-0001/send") == JSON_LIMIT  # and nothing else gets more
+
+
 def test_static_site_sends_security_headers():
     htaccess = (ROOT / "apps/web/public/.htaccess").read_text()
     for h in HEADERS:

@@ -471,10 +471,12 @@ def test_list_filters_by_status_and_profile_round_trip(client: TestClient, fake:
     assert prof["vrn"] == "GB123456789" and prof["bank"]["sort_code"] == "12-34-56"
     assert client.put("/invoices/profile", json={**prof, "vrn": "123"}, headers=H).status_code == 422
     assert client.put("/invoices/profile", json={**prof, "logo_path": "../x.png"}, headers=H).status_code == 400
-    r = client.post("/invoices/profile/logo", files={"file": ("logo.png", b"\x89PNG fake", "image/png")}, headers=H)
+    assert client.put("/invoices/profile", json={**prof, "logo_path": "_System/Invoicing/profile.json"}, headers=H).status_code == 400
+    r = client.post("/invoices/profile/logo", files={"file": ("logo.png", _png(60, 20), "image/png")}, headers=H)
     assert r.status_code == 200 and r.json()["logo_path"] == "_System/Invoicing/logo.png"
     assert client.post("/invoices/profile/logo", files={"file": ("l.gif", b"GIF89a", "image/gif")}, headers=H).status_code == 415
-    # an unreadable logo does not stop the PDF
+    # a logo that went bad in the user's folder does not stop the PDF
+    fake.files["_System/Invoicing/logo.png"] = b"\x89PNG not really"
     assert client.post("/invoices/INV-0002/pdf", headers=H).status_code == 200
 
 
@@ -566,6 +568,53 @@ def test_logo_over_1_mb_refused(client: TestClient, fake: FakeStorageProvider):
     big = b"\x89PNG" + b"0" * (1024 * 1024)
     assert client.post("/invoices/profile/logo", files={"file": ("l.png", big, "image/png")}, headers=H).status_code == 413
     assert "_System/Invoicing/logo.png" not in fake.files
+
+
+def _png(w: int, h: int, fmt: str = "PNG") -> bytes:
+    import io
+
+    from PIL import Image
+
+    out = io.BytesIO()
+    Image.new("RGB", (w, h), (13, 110, 110)).save(out, format=fmt)
+    return out.getvalue()
+
+
+@pytest.mark.parametrize(("name", "data", "declared", "status"), [
+    ("logo.png", b"GIF89a" + b"\x00" * 64, "image/png", 415),             # a GIF calling itself a PNG
+    ("logo.png", b"<svg onload=alert(1)>", "image/png", 415),             # markup, not an image
+    ("logo.jpg", "png-bytes", "image/jpeg", 415),                         # declared type disagrees with the bytes
+    ("logo.png", b"\x89PNG\r\n\x1a\n" + b"\x00" * 200, "image/png", 415),  # right magic, not a picture
+    ("logo.png", "wide", "image/png", 413),                               # 5000 px wide: small file, huge to decode
+])
+def test_logo_is_sniffed_decoded_and_size_checked(client: TestClient, fake: FakeStorageProvider, name, data, declared, status):
+    data = {"png-bytes": _png(10, 10), "wide": _png(5000, 1)}.get(data, data)  # type: ignore[call-overload]
+    r = client.post("/invoices/profile/logo", files={"file": (name, data, declared)}, headers=H)
+    assert r.status_code == status, r.text
+    assert not any(p.startswith("_System/Invoicing/logo") for p in fake.files)
+
+
+def test_jpeg_logo_is_named_from_its_bytes(client: TestClient, fake: FakeStorageProvider):
+    r = client.post("/invoices/profile/logo", files={"file": ("x.png", _png(30, 30, "JPEG"), "image/jpeg")}, headers=H)
+    assert r.status_code == 200 and r.json()["logo_path"] == "_System/Invoicing/logo.jpg"
+
+
+async def test_a_hand_edited_logo_path_is_not_read(books: Books, fake: FakeStorageProvider):
+    fake.files["_System/secret.txt"] = b"not for the PDF"
+    profile = InvoiceProfile.model_validate({"logo_path": "_System/secret.txt"})  # as if typed into profile.json
+    assert await inv_.load_logo(books, profile) is None
+
+
+def test_pdf_text_cannot_use_fpdfs_page_count_alias():
+    """fpdf2 swaps "{nb}" for the page count everywhere in the document; typed-in text must come out as typed."""
+    import zlib
+
+    draft = _draft([{"description": "Ref {nb} and {nb}", "quantity": "1", "unit_price_pence": 100}])
+    inv = inv_.build_invoice("INV-0001", draft, InvoiceProfile(name="{nb} Ltd"), USER)
+    pdf = render_invoice(inv, InvoiceProfile(name="{nb} Ltd"))
+    streams = b"".join(zlib.decompress(s) for s in __import__("re").findall(rb"stream\r?\n(.*?)\r?\nendstream", pdf, flags=16))
+    assert b"{nb} Ltd" in streams and b"Ref {nb} and {nb}" in streams
+    assert b"(Page 1 of ) Tj (1) Tj" in streams and b"\x1enb" not in streams  # the footer's own alias still works
 
 
 def test_routes_need_a_token():

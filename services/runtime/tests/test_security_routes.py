@@ -169,6 +169,42 @@ def test_unknown_fields_on_the_new_routes_are_a_422(client: TestClient, method: 
 
 
 # --------------------------------------------------------------------------- #
+# Upload caps and rate limits on the logo route
+# --------------------------------------------------------------------------- #
+
+
+def test_logo_route_has_its_own_small_body_cap():
+    from app.security import JSON_LIMIT, SMALL_UPLOADS, body_limit
+
+    assert body_limit("/invoices/profile/logo") == SMALL_UPLOADS["/invoices/profile/logo"] == 2 * 1024 * 1024
+    assert body_limit("/invoices/profile") == JSON_LIMIT
+
+
+def test_logo_upload_over_the_cap_is_refused_before_the_route_reads_it(client: TestClient, books: Books):
+    big = {"file": ("logo.png", b"\x89PNG\r\n\x1a\n" + b"0" * (3 * 1024 * 1024), "image/png")}
+    r = client.post("/invoices/profile/logo", files=big, headers=H)
+    assert r.status_code == 413 and "2 MB" in r.json()["detail"]
+    assert not books.storage.files
+
+
+def test_logo_upload_counts_against_the_rate_limit():
+    from fastapi import FastAPI
+
+    from app.security import SecurityMiddleware, TokenBucket
+
+    tiny = FastAPI()
+    tiny.add_middleware(SecurityMiddleware, limiter=TokenBucket(2))
+
+    @tiny.post("/invoices/profile/logo")
+    async def logo() -> dict:
+        return {}
+
+    c = TestClient(tiny)
+    codes = [c.post("/invoices/profile/logo", content=b"x").status_code for _ in range(3)]
+    assert codes == [200, 200, 429]
+
+
+# --------------------------------------------------------------------------- #
 # Identity: writes need X-User; audit lines say who (user:) or what (agent:)
 # --------------------------------------------------------------------------- #
 

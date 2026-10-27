@@ -28,13 +28,22 @@ LEFT, RIGHT, WIDTH = 15.0, 195.0, 180.0
 _PLAIN = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"', "–": "-", "—": "-", "…": "...", "•": "-", " ": " ", "€": "EUR "})
 
 
+_CONTROL = {c: None for c in (*range(0x00, 0x20), 0x7F) if c != 0x0A}  # newlines stay (multi-line notes)
+
+
 def text(s: str | None) -> str:
-    return (s or "").translate(_PLAIN).encode("latin-1", "replace").decode("latin-1")
+    """Typed-in text as the core font can draw it: no control characters, Latin-1 only."""
+    return (s or "").translate(_PLAIN).translate(_CONTROL).encode("latin-1", "replace").decode("latin-1")
 
 
 def _qty(inv_line_qty: object) -> str:
     s = f"{inv_line_qty}"
     return s.rstrip("0").rstrip(".") if "." in s else s
+
+
+#: fpdf2 replaces its page-count alias everywhere in the output, typed-in text included; the default "{nb}" could be
+#: typed into a customer name. This one cannot: text() drops control characters.
+PAGES_ALIAS = "\x1enb\x1e"
 
 
 class _InvoicePdf(FPDF):
@@ -43,6 +52,7 @@ class _InvoicePdf(FPDF):
         self._footer_text = footer_text
         self.set_margins(LEFT, 15, 210 - RIGHT)
         self.set_auto_page_break(auto=True, margin=22)
+        self.alias_nb_pages(PAGES_ALIAS)
 
     def footer(self) -> None:
         self.set_y(-15)
@@ -51,7 +61,7 @@ class _InvoicePdf(FPDF):
         self.set_font("Helvetica", "", 8)
         self.set_text_color(*MUTED)
         self.cell(WIDTH * 0.8, 5, text(self._footer_text))
-        self.cell(WIDTH * 0.2, 5, f"Page {self.page_no()} of {{nb}}", align="R")
+        self.cell(WIDTH * 0.2, 5, f"Page {self.page_no()} of {PAGES_ALIAS}", align="R")
 
 
 def _footer_text(profile: InvoiceProfile) -> str:
