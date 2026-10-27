@@ -95,6 +95,15 @@ def test_a_figure_the_user_did_not_say_is_refused():
     assert isinstance(got, Clarification) and got.field == "amount"
 
 
+def test_payment_terms_only_when_the_user_said_them():
+    said = actions.parse_intent(out("create_invoice", customer_ref="JM", amount_text="£100", due_days=7),
+                                "invoice JM £100 due in 7 days", TODAY)
+    assert isinstance(said, actions.CreateInvoiceIntent) and said.due_days == 7
+    made_up = actions.parse_intent(out("create_invoice", customer_ref="JM", amount_text="£100", due_days=60),
+                                   "invoice JM £100", TODAY)
+    assert isinstance(made_up, actions.CreateInvoiceIntent) and made_up.due_days is None  # the profile's terms apply
+
+
 @pytest.mark.parametrize(("said", "pence"), [("£1,250.50", 125_050), ("1.2k", 120_000), ("£99.999", 10_000)])
 def test_amounts_are_parsed_by_code(said: str, pence: int):
     got = actions.parse_intent(out("create_invoice", customer_ref="JM", amount_text=said), f"invoice JM {said}", TODAY)
@@ -222,6 +231,11 @@ def test_vat_per_line_half_up_and_summary_by_code():
         ("S", 12_249, 2_450), ("R", 1_001, 50), ("Z", 1_000, 0),
     ]
     assert (got["net_pence"], got["vat_pence"], got["total_pence"]) == (14_250, 2_500, 16_750)
+
+
+def test_quantities_are_plain_numbers():
+    got = actions.price_lines([("Hours", Decimal(10), 4_500, "S"), ("Metres", Decimal("2.50"), 100, "S"), ("Each", Decimal(1), 1, "Z")])
+    assert [ln["quantity"] for ln in got["lines"]] == ["10", "2.5", "1"]  # never "1E+1"
 
 
 @pytest.mark.parametrize(("gross", "code", "net"), [(12_000, "S", 10_000), (10_000, "S", 8_333), (10_500, "R", 10_000), (999, "Z", 999)])

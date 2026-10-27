@@ -304,11 +304,14 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
             return amount
         if not lines and amount is None:
             return Clarification(kind="create_invoice", field="amount", question_md="How much should the invoice be for?")
+        terms = out.due_days  # terms the user did not say fall back to the profile's, like any other unsaid figure
+        if terms is None or not 0 <= terms <= 120 or Decimal(terms) not in said:
+            terms = None
         return CreateInvoiceIntent(
             customer_ref=out.customer_ref.strip(), description=month_words(out.description or "Work", today),  # type: ignore[union-attr]
             amount_pence=to_pence(amount) if amount is not None else None, amount_includes_vat=bool(out.amount_includes_vat),
             lines=lines or None, vat_code=out.vat_code,
-            due_days=out.due_days if out.due_days is not None and 0 <= out.due_days <= 120 else None, send=bool(out.send),
+            due_days=terms, send=bool(out.send),
         )
     if out.kind == "chase_invoice":
         if not (out.customer_ref or out.invoice_ref):
@@ -457,7 +460,7 @@ def price_lines(lines: Sequence[tuple[str, Decimal, int, str]]) -> dict[str, Any
         net = _half_up(qty * unit)
         vat = line_vat(net, code)
         priced.append({
-            "description": desc, "quantity": str(qty.normalize()) if qty == qty.to_integral() else str(qty),
+            "description": desc, "quantity": format(qty.normalize(), "f"),  # 10 -> "10", not "1E+1"
             "unit_price_pence": unit, "vat_code": code, "vat_rate": RATES[code], "net_pence": net, "vat_pence": vat,
         })
         row = summary.setdefault(code, {"vat_code": code, "vat_rate": RATES[code], "net_pence": 0, "vat_pence": 0})
