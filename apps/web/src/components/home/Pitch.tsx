@@ -60,10 +60,10 @@ export default function Pitch() {
             </Link>
           </div>
         </div>
+        {/* Phones get an 800 px copy (47 kB, not 164 kB); only the matching background is ever fetched (docs/PERF.md). */}
         <div
           aria-hidden="true"
-          className="min-h-[220px] bg-[#0A4F47] bg-cover bg-center"
-          style={{ backgroundImage: "url(/brand/hero.jpg)" }}
+          className="min-h-[220px] bg-[#0A4F47] bg-[url(/brand/hero-800.jpg)] bg-cover bg-center min-[481px]:bg-[url(/brand/hero.jpg)]"
         />
       </div>
       <ul className="grid gap-px border-t border-border bg-border min-[760px]:grid-cols-3">

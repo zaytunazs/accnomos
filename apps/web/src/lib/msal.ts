@@ -1,15 +1,12 @@
 "use client";
 
-import {
-  createStandardPublicClientApplication,
-  InteractionRequiredAuthError,
-  type AccountInfo,
-  type IPublicClientApplication,
-} from "@azure/msal-browser";
+import type { AccountInfo, IPublicClientApplication } from "@azure/msal-browser";
 
 /**
  * Microsoft sign-in for Accnomos (public client, PKCE, no secret). Tokens live only in this browser.
  * Scopes are requested incrementally (decision H26): sign-in + storage first; mail/calendar when first used.
+ * The library (68 kB gzipped) is imported on first use, so it is in no page's first-load JS (docs/PERF.md);
+ * keep every other import of @azure/msal-browser type-only.
  */
 export const SIGN_IN_SCOPES = ["User.Read", "offline_access"];
 export const STORAGE_SCOPES = ["Files.ReadWrite.AppFolder"]; // personal accounts
@@ -34,15 +31,17 @@ export function getMsal(): Promise<IPublicClientApplication> {
     instancePromise = import("./msal-test").then((m) => m.createTestMsal());
   }
   if (!instancePromise) {
-    instancePromise = createStandardPublicClientApplication({
-      auth: {
-        clientId,
-        authority,
-        redirectUri: `${window.location.origin}/auth/callback.html`,
-        postLogoutRedirectUri: window.location.origin,
-      },
-      cache: { cacheLocation: "localStorage" },
-    });
+    instancePromise = import("@azure/msal-browser").then((m) =>
+      m.createStandardPublicClientApplication({
+        auth: {
+          clientId,
+          authority,
+          redirectUri: `${window.location.origin}/auth/callback.html`,
+          postLogoutRedirectUri: window.location.origin,
+        },
+        cache: { cacheLocation: "localStorage" },
+      }),
+    );
   }
   return instancePromise;
 }
@@ -109,6 +108,7 @@ export async function getToken(scopes: string[]): Promise<string> {
     const result = await msal.acquireTokenSilent({ scopes, account });
     return result.accessToken;
   } catch (e) {
+    const { InteractionRequiredAuthError } = await import("@azure/msal-browser");
     if (e instanceof InteractionRequiredAuthError) {
       await msal.acquireTokenRedirect({ scopes, account });
       throw new Error("redirecting for consent");

@@ -63,6 +63,20 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
+/**
+ * The Review count. The link is named by its content ("Review 1 item to review"), never an aria-label, so the
+ * visible "Review 1" is always part of the name (WCAG 2.5.3, axe label-content-name-mismatch).
+ */
+function Badge({ count, className }: { count: string; className: string }) {
+  return (
+    <>
+      {" "}
+      <span className={`flex shrink-0 items-center justify-center rounded-full bg-amber font-bold text-white ${className}`}>{count}</span>
+      <span className="sr-only"> item{count === "1" ? "" : "s"} to review</span>
+    </>
+  );
+}
+
 const sidebarGroups: { label: string; hrefs: string[] }[] = [
   { label: "Books", hrefs: ["/", "/review", "/ask", "/files"] },
   { label: "Money", hrefs: ["/invoices", "/bank", "/vat", "/payroll"] },
@@ -101,12 +115,7 @@ function SidebarNav({ pathname, links }: { pathname: string; links: NavLink[] })
                   >
                     <span className="min-w-0 truncate">{link.label}</span>
                     {link.badge ? (
-                      <span
-                        aria-label={`${link.badge} item${link.badge === "1" ? "" : "s"} to review`}
-                        className="flex h-6 min-w-6 shrink-0 items-center justify-center rounded-full bg-amber px-2 text-[13px] font-bold text-white"
-                      >
-                        {link.badge}
-                      </span>
+                      <Badge count={link.badge} className="h-6 min-w-6 px-2 text-[13px]" />
                     ) : null}
                   </Link>
                 </li>
@@ -144,11 +153,6 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
               key={link.href}
               href={link.href}
               aria-current={active ? "page" : undefined}
-              aria-label={
-                link.badge && !active
-                  ? `${link.tab}, ${link.badge} to review`
-                  : link.tab
-              }
               className={`flex min-w-0 flex-col items-center gap-0.5 px-1 py-2 text-[11px] font-bold whitespace-nowrap ${
                 active ? "text-teal-dark" : "text-muted"
               }`}
@@ -159,14 +163,7 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
               />
               <span className="flex min-w-0 items-center gap-1">
                 <span className="truncate">{link.tab}</span>
-                {link.badge ? (
-                  <span
-                    aria-hidden="true"
-                    className="flex h-4 min-w-4 shrink-0 items-center justify-center rounded-full bg-amber px-1 text-[10px] font-bold text-white"
-                  >
-                    {link.badge}
-                  </span>
-                ) : null}
+                {link.badge ? <Badge count={link.badge} className="h-4 min-w-4 px-1 text-[10px]" /> : null}
               </span>
             </Link>
           );

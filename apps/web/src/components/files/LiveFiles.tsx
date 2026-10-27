@@ -132,16 +132,16 @@ function LiveTree({ tree }: { tree: Tree }) {
         </li>
       ))}
       {tree.system && (
-        <li className="border-b border-border last:border-b-0">
+        <li className="relative border-b border-border last:border-b-0">
           <details>
-            <summary className={`${row} cursor-pointer list-none border-b-0`}>
+            {/* The Open link sits beside the summary, not in it: no link inside the disclosure button. */}
+            <summary className={`${row} cursor-pointer list-none border-b-0 ${tree.system.webUrl ? "pr-16" : ""}`}>
               <FolderIcon />
               <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">
                 {SYSTEM}
                 <span className="ml-2 text-[13px] font-medium text-muted">rules, audit log, ledger events · show</span>
               </span>
               <Meta item={tree.system} />
-              <OpenLink item={tree.system} label="Open" />
             </summary>
             <ul className="border-t border-border">
               {tree.systemChildren.map((c) => (
@@ -153,6 +153,9 @@ function LiveTree({ tree }: { tree: Tree }) {
               ))}
             </ul>
           </details>
+          <span className="absolute right-4 top-0 flex min-h-[44px] items-center">
+            <OpenLink item={tree.system} label="Open" />
+          </span>
         </li>
       )}
     </ul>

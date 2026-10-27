@@ -50,6 +50,8 @@ Each item is checked by `services/runtime/tests/test_deploy_hardening.py` unless
 - [x] HSTS (only when served over TLS), `nosniff`, `Referrer-Policy: strict-origin-when-cross-origin`,
       `Permissions-Policy` (camera and microphone for the app itself only), `X-Frame-Options: DENY`,
       `Content-Security-Policy: frame-ancestors 'none'; base-uri 'self'; object-src 'none'`.
+- [x] `Cache-Control`: `public, max-age=31536000, immutable` for `/_next/static/` (content-hashed); `no-cache`
+      for HTML and everything else, so a deploy is seen at once.
 
 **Configuration** (environment)
 - [x] `CORS_ORIGINS` (runtime) and `RELAY_ALLOWED_REDIRECTS` (relay): exact origins, no wildcards; the runtime

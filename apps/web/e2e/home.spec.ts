@@ -51,7 +51,7 @@ test("setup checklist: signed in and incomplete, each row links to its Settings 
     "Try a receipt": "/review",
   };
   for (const [name, href] of Object.entries(links)) await expect(row(name)).toHaveAttribute("href", href);
-  await expect(row("Try a receipt")).toHaveAccessibleName("Try a receipt — set up in Review");
+  await expect(row("Try a receipt")).toHaveAccessibleName("Try a receipt — try it in Review"); // contains the visible "Try it"
 
   // A row opens Settings on the right tab, scrolled to its section.
   await row("VAT period").click();

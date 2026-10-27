@@ -36,6 +36,15 @@ def test_static_site_sends_security_headers():
         assert re.search(rf"^\s*Header always set {h} ", htaccess, re.M), h
 
 
+def test_static_site_caches_hashed_assets_only():
+    htaccess = (ROOT / "apps/web/public/.htaccess").read_text()
+    # HTML and everything unhashed: revalidate. Only /_next/static/ (content-hashed names) is kept for a year.
+    assert re.search(r'^\s*Header set Cache-Control "no-cache"$', htaccess, re.M)
+    hashed = re.search(r'<If "%\{REQUEST_URI\} =~ m#\^/_next/static/#">\s*Header set Cache-Control "([^"]+)"', htaccess)
+    assert hashed and hashed.group(1) == "public, max-age=31536000, immutable"
+    assert htaccess.count("immutable") == 1
+
+
 @pytest.mark.parametrize("name", ["Dockerfile.runtime", "Dockerfile.relay"])
 def test_dockerfiles_are_pinned_non_root_with_healthcheck(name):
     text = (DEPLOY / name).read_text()

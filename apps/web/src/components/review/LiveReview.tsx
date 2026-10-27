@@ -158,8 +158,9 @@ export default function LiveReview() {
       const auto = r.proposals.filter((p) => p.decided_by === "autopilot").length;
       const n = r.proposals.length - auto;
       const errs = r.errors.map((e) => `${e.path.split("/").pop()}: ${e.error}`).join(" · ");
-      setNote(`${n} new proposal${n === 1 ? "" : "s"}${auto ? ` · ${auto} approved by Autopilot` : ""}${errs ? ` · could not read: ${errs}` : ""}`);
+      // Announced once the cards are on the page, so J (or a screen-reader user) never acts on an empty queue.
       await load(account);
+      setNote(`${n} new proposal${n === 1 ? "" : "s"}${auto ? ` · ${auto} approved by Autopilot` : ""}${errs ? ` · could not read: ${errs}` : ""}`);
     } catch (e) {
       setError((e as Error).message);
     } finally {

@@ -73,10 +73,9 @@ Checked 27 Oct 2026 on this checkout: `pytest -q` passes in `services/runtime` (
 Playwright specs in `apps/web/e2e/`; this check did not re-run it. Nothing in the Flutter app was built, analysed or tested (no Flutter SDK here).
 
 | 27 Oct | **One folder layout:** `00 Inbox`, `01 Receipts`, `02 Needs a look`, `03 Sales` (with `invoices/`, `invoices/sent/`), `04 Bank statements`, `05 Payroll`, `06 VAT returns`, `07 Reports`, `_System`. The names live only in `services/runtime/app/paths.py`; `tools/gen_folders.py` writes the web list, the Android list and the README.txt text from it, and `tests/test_paths.py` fails if a copy drifts or a name is spelt elsewhere in Python. Folders still under an old name are renamed once on the first request after sign-in (moved, never copied or deleted; audited); if old and new both exist the Files page warns and `/health` counts it. Runtime tests on fake storage (`test_layout.py`, `test_paths.py`) and e2e `files.spec.ts`; **not yet run against a real OneDrive** |
-Checked 27 Oct 2026 on this checkout: `pytest -q` passes in `services/runtime` (607 tests), `packages/ledger` (32),
-`packages/connectors` (34) and `services/hmrc-relay` (100). `cd apps/web && pnpm run e2e` is set up to run 23
-Playwright tests; this check did not re-run it. Nothing in the Flutter app was built, analysed or tested (no Flutter SDK here).
-Playwright specs in `apps/web/e2e/` (54 passed on `claude/e2e-green`, 27 Oct, against a runtime venv from outside the repo). Nothing in the Flutter app was built, analysed or tested (no Flutter SDK here).
+Checked 27 Oct 2026 on this checkout (`claude/a11y`): `pytest -q` passes in `services/runtime` (675 passed, 1 skipped),
+`packages/ledger` (33), `packages/connectors` (37), `services/hmrc-relay` (102) and `evals` (153). `cd apps/web && pnpm run e2e`
+runs the Playwright specs in `apps/web/e2e/`: 107 passed, against the system Python's runtime install. Nothing in the Flutter app was built, analysed or tested (no Flutter SDK here).
 **"Tested" means automated tests on fakes:** an in-memory OneDrive, mailbox, calendar and address book
 (`packages/connectors`), a stubbed model, HMRC and Meta mocked over HTTP. That proves our logic, not Microsoft, Meta or HMRC.
 **Runs against real services** were done by hand by the maintainers on 26–27 Oct (a personal Microsoft account, Muse Glimmer 30B

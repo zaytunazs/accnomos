@@ -4,7 +4,7 @@ const UPDATED = "27 October 2026";
 
 export default function PrivacyPage() {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10 text-ink">
+    <div className="mx-auto max-w-2xl px-4 py-10 text-ink">
       <h1 className="text-3xl font-extrabold tracking-tight">Privacy policy</h1>
       <p className="mt-2 text-sm text-muted">Accnomos · Zaytuna Business Services Ltd · last updated {UPDATED}</p>
 
@@ -38,7 +38,8 @@ export default function PrivacyPage() {
 
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
         <h2 className="text-xl font-bold">Data map</h2>
-        <div className="overflow-x-auto">
+        {/* Focusable and named, so a keyboard user can scroll it sideways on a phone. */}
+        <div role="region" aria-label="Data map table" tabIndex={0} className="overflow-x-auto">
           <table className="w-full min-w-[480px] text-left text-[14px]">
             <thead>
               <tr className="border-b border-border text-[13px] font-bold text-muted">
@@ -93,6 +94,6 @@ export default function PrivacyPage() {
           Zaytuna Business Services Ltd, United Kingdom · <a className="font-semibold text-teal underline" href="mailto:admin@zaytunauk.co.uk">admin@zaytunauk.co.uk</a>
         </p>
       </section>
-    </main>
+    </div>
   );
 }

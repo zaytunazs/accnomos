@@ -96,7 +96,9 @@ export default function ReviewQueue<H>({
     const el = focusNext === "top" ? top.current : cards.current.get(focusNext);
     if (!el) return;
     el.focus({ preventScroll: true });
-    el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    // An explicit "smooth" ignores the CSS reduced-motion rule, so ask the setting here.
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ block: "nearest", behavior: reduce ? "auto" : "smooth" });
     queueMicrotask(() => {
       setActive(focusNext === "top" ? null : focusNext);
       setFocusNext(null);
