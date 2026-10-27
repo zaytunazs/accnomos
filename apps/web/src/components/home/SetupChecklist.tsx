@@ -194,7 +194,7 @@ export default function SetupChecklist() {
             </div>
             <Link
               href={s.href}
-              aria-label={`${s.label} — ${s.done ? "review" : "set up"} in Settings`}
+              aria-label={`${s.label} — ${s.done ? "review" : "set up"} in ${s.href.startsWith("/settings") ? "Settings" : "Review"}`}
               onClick={
                 s.id === "receipt"
                   ? () => {
