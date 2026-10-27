@@ -117,8 +117,9 @@ def render_invoice(
         meta = [
             ("Credit note number", inv.number),
             ("Date", uk_date(inv.issue_date)),
-            ("Credits invoice", credit_for or ""),
         ]
+        if credit_for:
+            meta.append(("Credits invoice", credit_for))
     else:
         meta = [
             ("Invoice number", inv.number),
@@ -212,10 +213,15 @@ def render_invoice(
         pdf.set_y(max(vat_bottom, pdf.get_y()) + 8)
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(*INK)
+        credit_words = (
+            f"This credit note reduces invoice {credit_for} by {money(inv.total_pence)}, VAT included."
+            if credit_for
+            else f"This credit note is for {money(inv.total_pence)}, VAT included."
+        )
         pdf.multi_cell(
             WIDTH,
             5,
-            text(f"This credit note reduces invoice {credit_for} by {money(inv.total_pence)}, VAT included."),
+            text(credit_words),
             new_x=XPos.LMARGIN,
             new_y=YPos.NEXT,
         )

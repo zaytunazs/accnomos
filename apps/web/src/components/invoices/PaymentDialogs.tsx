@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import Modal, { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
 import { RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
-import { liveTotals, money, parsePounds, poundsInput, thousandths, todayIso } from "@/lib/invoices";
+import { liveTotals, money, parsePounds, poundsInput, thousandths, todayIso, VAT_CODES } from "@/lib/invoices";
 import {
   runtime,
   ukDate,
@@ -13,6 +13,7 @@ import {
   type RtCreditNotePdf,
   type RtInvoice,
   type RtPaymentStatus,
+  type RtSalesVatCode,
 } from "@/lib/runtime";
 
 /**
@@ -375,6 +376,158 @@ export function CreditNoteDialog({ account, invoice, onClose, onDone }: {
   );
 }
 
+interface StandaloneLine {
+  key: number;
+  description: string;
+  quantity: string;
+  price: string; // unit price in pounds as typed
+  vat_code: RtSalesVatCode;
+}
+
+let nextStandaloneKey = 1;
+
+/** A credit note against no invoice: its own customer, lines and descriptions. Posted at once behind a tick. */
+export function StandaloneCreditNoteDialog({ account, onClose, onDone }: {
+  account: AccountInfo;
+  onClose: () => void;
+  onDone: (cn: RtCreditNote) => void;
+}) {
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [lines, setLines] = useState<StandaloneLine[]>([{ key: nextStandaloneKey++, description: "", quantity: "1", price: "", vat_code: "S" }]);
+  const [day, setDay] = useState(todayIso());
+  const [reason, setReason] = useState("");
+  const [confirmed, setConfirmed] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
+
+  const setLine = (key: number, patch: Partial<StandaloneLine>) =>
+    setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
+
+  const priced = lines.map((l) => ({ quantity: l.quantity, unit_price_pence: parsePounds(l.price) ?? 0, vat_code: l.vat_code }));
+  const preview = liveTotals(priced.filter((l) => thousandths(l.quantity) !== null));
+  const emailOk = !email.trim() || /.+@.+\..+/.test(email.trim());
+  const ready =
+    name.trim() !== "" &&
+    emailOk &&
+    lines.length > 0 &&
+    lines.every((l) => l.description.trim() !== "" && thousandths(l.quantity) !== null && parsePounds(l.price) !== null) &&
+    preview.total > 0 &&
+    reason.trim() !== "" &&
+    confirmed;
+
+  async function save() {
+    setBusy(true);
+    setNote(null);
+    try {
+      onDone(await runtime.createStandaloneCreditNote(account, {
+        customer: { name: name.trim(), email: email.trim() || null },
+        issue_date: day,
+        lines: lines.map((l) => ({
+          description: l.description.trim(),
+          quantity: l.quantity.trim(),
+          unit_price_pence: parsePounds(l.price)!,
+          vat_code: l.vat_code,
+        })),
+        reason: reason.trim(),
+      }));
+    } catch (e) {
+      setNote(errorText(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal id="standalone-credit-note-title" title="New credit note" onClose={onClose} wide>
+      <p className="mt-1 text-sm text-muted">Against no invoice: the amount is left as a credit for the customer, to apply or refund.</p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className={fieldLabel} htmlFor="scn-name">Customer</label>
+          <input id="scn-name" className={fieldInput} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Acme Kitchens Ltd" />
+        </div>
+        <div>
+          <label className={fieldLabel} htmlFor="scn-email">Customer email (optional)</label>
+          <input id="scn-email" type="email" className={fieldInput} value={email} onChange={(e) => setEmail(e.target.value)} />
+        </div>
+      </div>
+      {!emailOk && <p role="alert" className="mt-1 text-sm font-semibold text-warn-ink">That email address does not look right.</p>}
+      <fieldset className="mt-4">
+        <legend className={fieldLabel}>Lines</legend>
+        <ul className="mt-2 space-y-2">
+          {lines.map((l, n) => (
+            <li key={l.key} className="grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-[1fr_5rem_6rem_7rem_auto]">
+              <div>
+                <label className={fieldLabel} htmlFor={`scn-desc-${l.key}`}>Description</label>
+                <input id={`scn-desc-${l.key}`} className={fieldInput} value={l.description} onChange={(e) => setLine(l.key, { description: e.target.value })} placeholder={`Line ${n + 1}`} />
+              </div>
+              <div>
+                <label className={fieldLabel} htmlFor={`scn-qty-${l.key}`}>Qty</label>
+                <input id={`scn-qty-${l.key}`} className={fieldInput} value={l.quantity} onChange={(e) => setLine(l.key, { quantity: e.target.value })} inputMode="decimal" />
+              </div>
+              <div>
+                <label className={fieldLabel} htmlFor={`scn-price-${l.key}`}>Unit price (£)</label>
+                <input id={`scn-price-${l.key}`} className={fieldInput} value={l.price} onChange={(e) => setLine(l.key, { price: e.target.value })} inputMode="decimal" />
+              </div>
+              <div>
+                <label className={fieldLabel} htmlFor={`scn-vat-${l.key}`}>VAT</label>
+                <select id={`scn-vat-${l.key}`} className={fieldInput} value={l.vat_code} onChange={(e) => setLine(l.key, { vat_code: e.target.value as RtSalesVatCode })}>
+                  {VAT_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+                </select>
+              </div>
+              <div className="flex items-end">
+                {lines.length > 1 && (
+                  <button
+                    type="button"
+                    onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))}
+                    className="text-[13px] font-bold text-muted hover:underline"
+                    aria-label={`Remove line ${n + 1}`}
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+        <button
+          type="button"
+          onClick={() => setLines((ls) => [...ls, { key: nextStandaloneKey++, description: "", quantity: "1", price: "", vat_code: "S" }])}
+          className="mt-2 text-[13px] font-bold text-teal-dark hover:underline"
+        >
+          Add another line
+        </button>
+      </fieldset>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div>
+          <label className={fieldLabel} htmlFor="scn-date">Credit note date</label>
+          <input id="scn-date" type="date" className={fieldInput} value={day} onChange={(e) => { setDay(e.target.value); setConfirmed(false); }} />
+        </div>
+        <div>
+          <label className={fieldLabel} htmlFor="scn-reason">Reason</label>
+          <textarea id="scn-reason" rows={1} className={fieldArea} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. goodwill gesture" />
+        </div>
+      </div>
+      <p className="mt-3 text-sm tabular-nums">
+        Credit about <strong>{money(preview.total)}</strong> (net {money(preview.net)}, VAT {money(preview.vat)}); your books work out the
+        exact figures.
+      </p>
+      <label className="mt-4 flex min-h-11 cursor-pointer items-start gap-3 text-[15px] font-semibold">
+        <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1 h-5 w-5 shrink-0 accent-teal" />
+        <span>
+          Record this credit note in my books now. It reverses that amount of the sale with the same VAT rates, in the VAT period of
+          {" "}{day ? ukDate(day) : "its date"}. I can email it afterwards.
+        </span>
+      </label>
+      <div className="mt-4 flex flex-wrap gap-3">
+        <button type="button" onClick={save} disabled={busy || !ready} className={primaryButton}>{busy ? "Saving…" : "Create credit note"}</button>
+        <button type="button" onClick={onClose} className={secondaryButton}>Cancel</button>
+      </div>
+      {note && <div className="mt-3"><Note note={note} /></div>}
+    </Modal>
+  );
+}
+
 /** The credit note's PDF; email it behind a tick, or void it. */
 export function CreditNoteViewDialog({ account, note: cn, onClose, onDone }: {
   account: AccountInfo;
@@ -439,7 +592,7 @@ export function CreditNoteViewDialog({ account, note: cn, onClose, onDone }: {
   return (
     <Modal id="credit-note-view-title" title={`Credit note ${cn.number}`} onClose={onClose} wide>
       <p className="mt-1 text-sm text-muted">
-        {cn.customer.name} · {money(cn.total_pence)} · {ukDate(cn.issue_date)} · against {cn.invoice}
+        {cn.customer.name} · {money(cn.total_pence)} · {ukDate(cn.issue_date)} · {cn.invoice ? `against ${cn.invoice}` : "stand-alone"}
       </p>
       <div className="mt-4 h-[45vh] overflow-hidden rounded-xl border border-border bg-ground">
         {url ? <iframe title={`PDF of ${cn.number}`} src={url} className="h-full w-full" /> : <p className="p-4 text-sm text-muted">Making the PDF…</p>}

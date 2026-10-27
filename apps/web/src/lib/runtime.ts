@@ -493,6 +493,11 @@ export const runtime = {
   ) => call<RtCreditNote>(a, `/invoices/${encodeURIComponent(id)}/credit-notes`, { method: "POST", body: JSON.stringify({ ...body, confirm: true }) }),
   creditNotes: (a: AccountInfo, invoice?: string) =>
     call<RtCreditNote[]>(a, `/credit-notes${invoice ? `?invoice=${encodeURIComponent(invoice)}` : ""}`),
+  /** A stand-alone credit note: its own customer, lines and descriptions; posted at once like one from an invoice. */
+  createStandaloneCreditNote: (
+    a: AccountInfo,
+    body: { customer: { name: string; email?: string | null }; issue_date?: string; lines: { description: string; quantity: string; unit_price_pence: number; vat_code: string }[]; reason: string },
+  ) => call<RtCreditNote>(a, "/credit-notes", { method: "POST", body: JSON.stringify({ ...body, confirm: true }) }),
   creditNotePdf: (a: AccountInfo, id: string) => call<RtCreditNotePdf>(a, `/credit-notes/${encodeURIComponent(id)}/pdf`, { method: "POST" }),
   sendCreditNote: (a: AccountInfo, id: string, email: { to: string; subject: string; body: string }) =>
     call<RtCreditNote>(a, `/credit-notes/${encodeURIComponent(id)}/send`, { method: "POST", body: JSON.stringify({ ...email, confirm: true }) },
@@ -1131,7 +1136,7 @@ export interface RtInvoiceMoney {
 }
 export interface RtCreditNote {
   number: string;
-  invoice: string;
+  invoice: string | null; // null: a stand-alone credit note, against no invoice
   status: "issued" | "void";
   customer: RtInvoiceCustomer;
   issue_date: string;

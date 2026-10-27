@@ -19,7 +19,7 @@ from app import invoicing as inv_
 from app import payments as pay_
 from app.approve import approve, undo
 from app.books import Books, now
-from app.credit_notes import CreditLineIn, CreditNoteDraft
+from app.credit_notes import CreditLineIn, CreditNoteDraft, StandaloneCreditNoteDraft
 from app.invoicing import PROFILE, InvoiceDraft, InvoiceError, InvoiceProfile, InvoiceStateError
 from app.journal import draft_journal
 from app.pdf import render_invoice
@@ -464,6 +464,67 @@ async def test_drafts_cannot_be_credited(books: Books):
     draft = await inv_.create_invoice(books, InvoiceDraft.model_validate({"customer": ACME, "lines": [LABOUR]}), USER)
     with pytest.raises(InvoiceStateError, match="only a sent invoice"):
         await cn_.create_credit_note(books, draft.number, CreditNoteDraft(reason="x"), USER)
+
+
+async def test_standalone_credit_note_posts_and_leaves_a_credit(books: Books, sender: FakeMailSender):
+    """No invoice: its own customer, lines and descriptions, the same CN- numbers and posting; the amount is left
+    as a credit on the customer, and its PDF is a credit note without an invoice line."""
+    cn = await cn_.create_standalone_credit_note(
+        books,
+        StandaloneCreditNoteDraft.model_validate(
+            {
+                "customer": ACME,
+                "lines": [
+                    {"description": "Goodwill gesture", "quantity": "1", "unit_price_pence": 5000, "vat_code": "S"},
+                    {"description": "Return postage", "quantity": "2", "unit": "parcels", "unit_price_pence": 250, "vat_code": "Z"},
+                ],
+                "issue_date": "2026-10-05",
+                "reason": "goodwill",
+            }
+        ),
+        USER,
+    )
+    assert (cn.number, cn.invoice, cn.invoice_event_id, cn.source_lines) == ("CN-0001", None, None, [])
+    assert [ln.description for ln in cn.lines] == ["Goodwill gesture", "Return postage"]
+    assert (cn.net_pence, cn.vat_pence, cn.total_pence) == (5500, 1000, 6500)
+    ev = await books.get_event(cn.event_id or "")
+    assert ev.kind == "reversal" and ev.credits is None and ev.reverses is None and ev.date == date(2026, 10, 5)
+    assert {(ln.account, ln.debit, ln.credit) for ln in ev.lines} == {
+        ("4000 Sales", 5000, 0),
+        ("4000 Sales", 500, 0),
+        ("2200 VAT control", 1000, 0),
+        ("1100 Debtors", 0, 6500),
+    }
+    assert ev.counterparty == "Acme Kitchens Ltd"
+    _, st, t = await _acme(books)  # nothing to credit: the whole amount is on the customer
+    assert (t.customer_credit_pence, st.closing_balance_pence) == (6500, -6500)
+    assert [(c.amount_pence, c.source) for c in st.credits] == [(6500, "credit_note")]
+    events = await books.list_events()
+    q4 = compute_vat_return(events, "q4", date(2026, 10, 1), date(2026, 12, 31))
+    assert (str(q4.vat_due_sales), q4.total_sales_ex_vat) == ("-10.00", -55)
+    pdf = render_invoice(cn.as_invoice(), await inv_.load_profile(books), None, credit_for="")
+    assert pdf.startswith(b"%PDF")
+
+    inv = await _sent(books, sender)  # numbering is shared with credit notes made from an invoice
+    from_inv = await cn_.create_credit_note(books, inv.number, CreditNoteDraft(reason="snagging"), USER)
+    assert from_inv.number == "CN-0002" and from_inv.invoice == inv.number
+
+
+async def test_standalone_credit_note_routes(
+    books: Books, sender: FakeMailSender, client: TestClient, fake: FakeStorageProvider
+):
+    body = {
+        "customer": ACME,
+        "lines": [{"description": "Goodwill gesture", "quantity": "1", "unit_price_pence": 5000, "vat_code": "S"}],
+        "issue_date": "2026-10-05",
+        "reason": "goodwill",
+    }
+    assert client.post("/credit-notes", headers=H, json=body).status_code == 400  # confirm first
+    r = client.post("/credit-notes", headers=H, json={**body, "confirm": True})
+    assert r.status_code == 200, r.text
+    assert (r.json()["number"], r.json()["invoice"], r.json()["total_pence"]) == ("CN-0001", None, 6000)
+    assert client.post("/credit-notes/invalid/void", headers=H, json={"reason": "x"}).status_code == 404
+    assert r.json()["lines"][0]["description"] == "Goodwill gesture"
 
 
 # --------------------------------------------------------------------------- #

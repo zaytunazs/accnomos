@@ -72,3 +72,38 @@ test("record a part payment and a credit note; the balance follows; removing the
   const payments = await runtime.api<{ id: string }[]>("GET", "/payments");
   expect(payments).toEqual([]);
 });
+
+test("a stand-alone credit note has its own lines; the amount stays on account", async ({ page, runtime }) => {
+  await signIn(page);
+  await createBooksFolder(page);
+
+  await page.goto("/invoices");
+  await page.getByRole("button", { name: "New credit note" }).click();
+  const dialog = page.getByRole("dialog", { name: "New credit note" });
+  await dialog.getByLabel("Customer", { exact: true }).fill("Harbour Cafe Ltd");
+  await dialog.getByLabel("Description").fill("Goodwill gesture");
+  await dialog.getByLabel("Qty").fill("1");
+  await dialog.getByLabel("Unit price (£)").fill("50.00");
+  await dialog.getByLabel("Reason").fill("Goodwill");
+  await expect(dialog).toContainText("Credit about £60.00 (net £50.00, VAT £10.00)");
+  const create = dialog.getByRole("button", { name: "Create credit note" });
+  await expect(create).toBeDisabled(); // nothing is posted until the user ticks the confirmation
+  await dialog.getByRole("checkbox", { name: /Record this credit note in my books now/ }).check();
+  await create.click();
+  await expect(page.getByRole("status")).toContainText("CN-0001 for £60.00 recorded for Harbour Cafe Ltd; £60.00 is on account");
+
+  const credits = page.getByRole("region", { name: "Credit notes" });
+  await expect(credits).toContainText("CN-0001 · Harbour Cafe Ltd");
+  await expect(credits).toContainText("stand-alone");
+  await expect(credits).toContainText("£60.00 on account");
+
+  await credits.getByRole("button", { name: "View PDF" }).click();
+  const view = page.getByRole("dialog", { name: "Credit note CN-0001" });
+  await expect(view.getByTitle("PDF of CN-0001")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(view).toBeHidden();
+
+  const files = await runtime.files();
+  expect(files).toContain("03 Sales/credit-notes/CN-0001.json");
+  expect(files).toContain("03 Sales/credit-notes/CN-0001.pdf");
+});

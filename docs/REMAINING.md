@@ -81,7 +81,7 @@ Severity:
 | Medium | "Invoiced" value and margin use each person's *current* charge rate; changing a rate restates past jobs. |
 | Medium | Not verified: sending from a real mailbox, the `Mail.Send` consent redirect, the PDF in a real viewer, logo upload to a real OneDrive. |
 | Medium | Payroll is an estimate (annual thresholds ÷ 12, month 1, 1257L, category A, England/NI); the 2026–27 rates were checked against GOV.UK on 27 Oct 2026 and `tests/test_payroll_rates.py` pins them; re-check each April. No RTI. |
-| Medium | Credit notes: not verified in a real PDF viewer or sent from a real mailbox; made only from a sent invoice (no stand-alone credit note); a credit note's lines are the invoice's lines and prices (no new descriptions). The Android app shows paid and balance but cannot record payments or make credit notes. |
+| Medium | Credit notes: not verified in a real PDF viewer or sent from a real mailbox. The Android app shows paid and balance but cannot record payments or make credit notes. |
 | Low | If the sent copy cannot be saved after the email goes, the sale is not posted until the user retries. |
 | Low | `GraphMailSender` refuses a message whose encoded request is over 4 MB (about 3 MB of attachments) with an error; sending larger files (draft plus attachment upload session) is not built. The send tick stays ticked after the message is edited. |
 | Low | Plain timesheet edits do not rebuild Books.xlsx. A month-changing edit can leave a duplicate line (never a lost one). A closed job can be tagged through the API (on purpose). |

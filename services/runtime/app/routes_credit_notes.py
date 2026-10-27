@@ -20,8 +20,8 @@ from app import invoicing as inv_
 from app import payments as pay_
 from app.books import BankMatchError, Books
 from app.contacts import documents as cb_documents
-from app.credit_notes import CreditLineIn, CreditNote, CreditNoteDraft
-from app.invoicing import InvoiceError, InvoiceStateError
+from app.credit_notes import CreditLineIn, CreditNote, CreditNoteDraft, StandaloneCreditNoteDraft
+from app.invoicing import InvoiceCustomer, InvoiceError, InvoiceStateError, LineIn
 from app.pdf import render_invoice
 from app.routes_books import get_books, require_user
 from app.routes_invoices import EmailDraft, SendBody, VoidBody, get_sender
@@ -72,6 +72,30 @@ async def create(
         raise _http(exc) from exc
 
 
+class StandaloneCreditNoteCreate(StrictBody):
+    confirm: StrictBool = False
+    customer: InvoiceCustomer
+    lines: list[LineIn] = Field(min_length=1, max_length=100)  # the credit note's own lines and descriptions
+    issue_date: Day | None = None
+    reason: str = Field(min_length=1, max_length=300)
+
+
+@router.post("/credit-notes", response_model=CreditNote)
+async def create_standalone(
+    body: StandaloneCreditNoteCreate, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> CreditNote:
+    """A stand-alone credit note, owed to a customer and against no invoice: same CN- numbers and same posting
+    (a reversal with the lines' VAT codes, dated on its own date); the amount is left as a credit on the customer."""
+    _confirmed(body.confirm)
+    draft = StandaloneCreditNoteDraft(
+        customer=body.customer, lines=body.lines, issue_date=body.issue_date, reason=body.reason
+    )
+    try:
+        return await cn_.create_standalone_credit_note(books, draft, user)
+    except InvoiceError as exc:
+        raise _http(exc) from exc
+
+
 @router.get("/credit-notes", response_model=list[CreditNote])
 async def list_credit_notes(
     invoice: str | None = Query(None, max_length=24), books: Books = Depends(get_books)
@@ -94,7 +118,8 @@ class CreditNotePdf(BaseModel):
 
 async def _render(books: Books, cn: CreditNote) -> bytes:
     profile = await inv_.load_profile(books)
-    return render_invoice(cn.as_invoice(), profile, await inv_.load_logo(books, profile), credit_for=cn.invoice)
+    # A stand-alone credit note credits no invoice: "" keeps the credit-note layout without naming one.
+    return render_invoice(cn.as_invoice(), profile, await inv_.load_logo(books, profile), credit_for=cn.invoice or "")
 
 
 @router.post("/credit-notes/{number}/pdf", response_model=CreditNotePdf)
