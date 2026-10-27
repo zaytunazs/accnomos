@@ -64,7 +64,7 @@ class MoreScreen extends StatelessWidget {
           _Entry(
             icon: Icons.account_balance_outlined,
             title: 'Bank',
-            note: 'Statements and unmatched lines',
+            note: 'Statements, unmatched lines and rules',
             screen: BankScreen(),
           ),
           _Entry(

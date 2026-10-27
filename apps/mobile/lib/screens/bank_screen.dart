@@ -6,13 +6,15 @@ import '../services/proposal_editing.dart' show formatPence;
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/web_only.dart';
+import 'bank_rule_sheet.dart';
 import 'settings_screen.dart';
 
-/// Bank, read-only except for confirming a match the runtime is sure
-/// about: statements plus the unmatched lines. A "Confirm match" button
-/// appears only where the runtime returns exactly one suggestion for the
-/// line (`POST /books/bank/lines/{id}/match`); anything ambiguous is
-/// matched from the web app.
+/// Bank: statements, unmatched lines, and rules. Confirming a match is
+/// offered only where the runtime returns exactly one suggestion for the
+/// line (`POST /books/bank/lines/{id}/match`); rules can be added, edited
+/// and deleted here. Anything ambiguous — CSV upload, several possible
+/// matches, rule order — stays in the web app behind a link.
 class BankScreen extends StatefulWidget {
   const BankScreen({super.key});
 
@@ -27,6 +29,7 @@ class _BankScreenState extends State<BankScreen> {
   bool _authChecked = false;
   bool _loading = false;
   bool _confirming = false;
+  String? _deletingRule;
   String? _error;
   String? _notice;
   List<Map<String, dynamic>> _statements = const [];
@@ -248,16 +251,27 @@ class _BankScreenState extends State<BankScreen> {
           else
             for (final line in _unmatched) _lineCard(line),
           const SizedBox(height: 8),
-          _heading('Bank rules'),
+          Row(
+            children: [
+              Expanded(child: _heading('Bank rules')),
+              TextButton.icon(
+                icon: const Icon(Icons.add_outlined, size: 18),
+                label: const Text('Add rule',
+                    style: TextStyle(fontWeight: FontWeight.w800)),
+                onPressed: () => _openRuleSheet(null),
+              ),
+            ],
+          ),
           if (_rules.isEmpty)
-            const _EmptyLine('No bank rules yet — add them in the web app.')
+            const _EmptyLine(
+                'No bank rules yet — add one for repeat payments.')
           else
             for (final rule in _rules) _ruleCard(rule),
-          const SizedBox(height: 12),
-          const Text(
-            'Read-only on the phone, except for confirming a single suggested match — everything else happens in the web app.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AccnomosColors.muted, fontSize: 12),
+          const WebOnlyCard(
+            message:
+                'Uploading a statement CSV, choosing between several matches, '
+                'and changing rule order happen on the web.',
+            page: '/bank',
           ),
         ],
       ),
@@ -426,13 +440,88 @@ class _BankScreenState extends State<BankScreen> {
     );
   }
 
+  /// Add ([existing] null) or edit a rule in a bottom sheet. The sheet
+  /// posts to the runtime; a refusal comes back as the sheet's error.
+  Future<void> _openRuleSheet(Map<String, dynamic>? existing) async {
+    final saved = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => BankRuleSheet(
+        initial: existing,
+        onSave: (body) async {
+          try {
+            final client = await _booksClient();
+            if (existing == null) {
+              await client.createBankRule(body);
+            } else {
+              await client.updateBankRule(
+                  (existing['id'] ?? '').toString(), body);
+            }
+            return null;
+          } catch (e) {
+            return _friendly(e);
+          }
+        },
+      ),
+    );
+    if (saved == true && mounted) {
+      setState(() => _notice =
+          existing == null ? 'Rule added.' : 'Rule saved.');
+      await _reload(quiet: true);
+    }
+  }
+
+  Future<void> _deleteRule(Map<String, dynamic> rule) async {
+    final id = (rule['id'] ?? '').toString();
+    if (id.isEmpty || _deletingRule != null) return;
+    final name = (rule['name'] ?? '').toString();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Delete this rule?'),
+        content: Text(
+            '“${name.isEmpty ? 'Bank rule' : name}” will stop coding bank lines.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Keep it'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+                backgroundColor: AccnomosColors.teal),
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      _deletingRule = id;
+      _notice = null;
+    });
+    try {
+      await (await _booksClient()).deleteBankRule(id);
+      if (!mounted) return;
+      setState(() => _notice = 'Rule deleted.');
+      await _reload(quiet: true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _notice = _friendly(e));
+    } finally {
+      if (mounted) setState(() => _deletingRule = null);
+    }
+  }
+
   Widget _ruleCard(Map<String, dynamic> rule) {
+    final id = (rule['id'] ?? '').toString();
     final name = (rule['name'] ?? '').toString();
     final match = rule['match'] is Map ? Map<String, dynamic>.from(rule['match'] as Map) : <String, dynamic>{};
     final action = rule['action'] is Map ? Map<String, dynamic>.from(rule['action'] as Map) : <String, dynamic>{};
     final account = (action['account'] ?? '').toString();
     final title = name.isEmpty ? 'Bank rule' : name;
     final when = 'When the description ${(match['op'] ?? 'contains').toString()} ${(match['value'] ?? '').toString()}';
+    final deleting = _deletingRule == id;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
@@ -455,6 +544,40 @@ class _BankScreenState extends State<BankScreen> {
                   color: AccnomosColors.ink,
                   fontSize: 13,
                   fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: deleting ? null : () => _openRuleSheet(rule),
+                  child: const Text('Edit'),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton(
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size.fromHeight(44),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: deleting ? null : () => _deleteRule(rule),
+                  child: deleting
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child:
+                              CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Delete'),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );

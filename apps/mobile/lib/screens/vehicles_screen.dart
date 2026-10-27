@@ -5,6 +5,7 @@ import '../services/auth.dart';
 import '../services/books.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/web_only.dart';
 import 'settings_screen.dart';
 
 /// Vehicles from `GET /vehicles`, this quarter's allowance from
@@ -210,6 +211,11 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
             ))
           else
             for (final v in _vehicles) _vehicleCard(v),
+          const WebOnlyCard(
+            message:
+                'Adding vehicles, editing journeys and claiming the quarterly allowance happen on the web.',
+            page: '/vehicles',
+          ),
         ],
       ),
     );

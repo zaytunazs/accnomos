@@ -6,6 +6,7 @@ import '../services/proposal_editing.dart' show formatPence;
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/web_only.dart';
 import 'settings_screen.dart';
 
 /// Pay runs, read-only on the phone: every pay run with its status and
@@ -230,11 +231,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
                     fontSize: 12,
                     height: 1.4)),
           ],
-          const SizedBox(height: 12),
-          const Text(
-            'Estimates only — confirm from the web app.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AccnomosColors.muted, fontSize: 12),
+          const WebOnlyCard(
+            message:
+                'Preparing, editing, exporting and confirming a pay run happen on the web — the phone shows estimates only.',
+            page: '/payroll',
           ),
         ],
       ),
@@ -421,11 +421,10 @@ class PayrollDetailScreen extends StatelessWidget {
                     fontSize: 12,
                     height: 1.4)),
           ],
-          const SizedBox(height: 12),
-          const Text(
-            'Estimates only — confirm from the web app.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AccnomosColors.muted, fontSize: 12),
+          const WebOnlyCard(
+            message:
+                'Preparing, editing, exporting and confirming a pay run happen on the web — the phone shows estimates only.',
+            page: '/payroll',
           ),
         ],
       ),

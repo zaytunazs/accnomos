@@ -5,6 +5,7 @@ import '../services/auth.dart';
 import '../services/books.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/web_only.dart';
 import 'settings_screen.dart';
 
 /// Jobs from `GET /jobs`, plus a quick timesheet entry
@@ -187,17 +188,27 @@ class _JobsScreenState extends State<JobsScreen> {
           ? ListView(
               padding: const EdgeInsets.all(24),
               children: const [
-                Center(child: Text('No jobs yet.'))
+                Center(child: Text('No jobs yet.')),
+                WebOnlyCard(
+                  message:
+                      'Job details, staff rates and invoicing unbilled hours happen on the web.',
+                  page: '/jobs',
+                ),
               ],
             )
           : ListView.separated(
               padding:
                   const EdgeInsets.fromLTRB(16, 8, 16, 88),
-              itemCount: _rows.length,
+              itemCount: _rows.length + 1,
               separatorBuilder: (_, _) =>
                   const SizedBox(height: 8),
-              itemBuilder: (context, i) =>
-                  _row(_rows[i]),
+              itemBuilder: (context, i) => i < _rows.length
+                  ? _row(_rows[i])
+                  : const WebOnlyCard(
+                      message:
+                          'Job details, staff rates and invoicing unbilled hours happen on the web.',
+                      page: '/jobs',
+                    ),
             ),
     );
   }

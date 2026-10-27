@@ -8,6 +8,7 @@ import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../services/sign_in_messages.dart';
 import '../theme.dart';
+import '../widgets/web_only.dart';
 
 const _warnBg = Color(0xFFFFF7ED);
 const _warnBorder = Color(0xFFF3C892);
@@ -36,9 +37,9 @@ const _autopilotOptions = [
   ),
 ];
 
-/// Settings in four expandable groups, mirroring the web's settings panels:
-/// Connection, AI, Automation and Business. Keys and addresses stay on
-/// this phone; only the web's own headers and bodies go to the reader.
+/// Settings in five expandable groups, mirroring the web's settings panels:
+/// Connection, AI, Automation, Business and Your data. Keys and addresses
+/// stay on this phone; only the web's own headers and bodies go to the reader.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
@@ -82,8 +83,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   int _stagger = 1;
   String _level = 'L1';
 
-  /// Groups currently expanded; all four start open.
-  final _open = {'connection', 'ai', 'automation', 'business'};
+  /// Groups currently expanded; all five start open.
+  final _open = {'connection', 'ai', 'automation', 'business', 'data'};
 
   AppSettings? _initial;
   Account? _account;
@@ -117,6 +118,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _profileError;
   String? _profileSaveError;
   bool _savingBusiness = false;
+
+  bool _exporting = false;
+  String? _exportMessage;
+  bool _exportOk = false;
 
   bool get _signedIn => _account != null;
 
@@ -425,6 +430,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _profileError = null;
       _profileSaveError = null;
       _aiTestMessage = null;
+      _exportMessage = null;
+      _exportOk = false;
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Disconnected.')),
@@ -631,6 +638,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _profileLoading = false;
         _profileError = e.toString();
       });
+    }
+  }
+
+  /// Export everything as one zip into 07 Reports/Exports
+  /// (`POST /books/export`, like the web's Your-data button). Posts
+  /// nothing; a second export the same day is kept beside the first.
+  Future<void> _exportData() async {
+    if (_exporting || !_signedIn) return;
+    setState(() {
+      _exporting = true;
+      _exportMessage = null;
+      _exportOk = false;
+    });
+    try {
+      final result = await (await _booksClient()).booksExport();
+      if (!mounted) return;
+      final name = (result['name'] ?? 'export.zip').toString();
+      final files = result['files'];
+      setState(() {
+        _exportOk = true;
+        _exportMessage = files is int
+            ? 'Saved $name ($files files) in your OneDrive, under 07 Reports/Exports.'
+            : 'Saved $name in your OneDrive, under 07 Reports/Exports.';
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _exportOk = false;
+        _exportMessage = e.toString();
+      });
+    } finally {
+      if (mounted) setState(() => _exporting = false);
     }
   }
 
@@ -980,6 +1019,72 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       busy: _savingBusiness,
                       enabled: _signedIn,
                       onPressed: _saveBusiness,
+                    ),
+                  ],
+                ),
+                _groupTile(
+                  id: 'data',
+                  title: 'Your data',
+                  disabledReason: _signedIn
+                      ? null
+                      : 'Sign in with Microsoft to export your books.',
+                  children: [
+                    if (!_signedIn)
+                      _disabledNote(
+                          'Sign in with Microsoft to export your books.'),
+                    const Text('Export your data',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AccnomosColors.ink)),
+                    const SizedBox(height: 4),
+                    const Text(
+                        'Everything as one zip — ledger events, contacts, invoices, payments, bank lines, rules, the audit trail and saved VAT returns, plus a README and one CSV per table. Saved to 07 Reports/Exports in your OneDrive; never overwritten.',
+                        style: TextStyle(
+                            color: AccnomosColors.muted,
+                            fontSize: 12,
+                            height: 1.4)),
+                    const SizedBox(height: 8),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          minimumSize: const Size.fromHeight(48),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14)),
+                        ),
+                        onPressed:
+                            (_exporting || !_signedIn) ? null : _exportData,
+                        child: _exporting
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                    strokeWidth: 2),
+                              )
+                            : const Text('Export your data'),
+                      ),
+                    ),
+                    if (_exportMessage != null) ...[
+                      const SizedBox(height: 8),
+                      _resultBox(
+                          ok: _exportOk, message: _exportMessage!),
+                    ],
+                    const SizedBox(height: 16),
+                    const Text('What is stored where',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color: AccnomosColors.ink)),
+                    const SizedBox(height: 4),
+                    const Text(
+                        'Your books live in your OneDrive, in the Accnomos app folder. This phone keeps your sign-in, AI choice and VAT settings. The reader keeps nothing — it answers and discards everything.',
+                        style: TextStyle(
+                            color: AccnomosColors.muted,
+                            fontSize: 12,
+                            height: 1.4)),
+                    const WebOnlyCard(
+                      message:
+                          'Staff lists, working hours, inbox triage defaults and the invoice logo are edited on the web.',
+                      page: '/settings',
                     ),
                   ],
                 ),
