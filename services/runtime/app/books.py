@@ -5,26 +5,32 @@ Layout (relative to the books root):
     00 Inbox/                      new documents land here
     01 Receipts/{yyyy-mm}/         filed purchases and receipts
     02 Sales invoices/
-    03 Bank statements/
+    03 Bank statements/{yyyy-mm}/  imported bank statement CSVs
     04 Needs a look/               anything a human should check
     05 VAT returns/  06 Reports/
     _System/docs/{sha256}.json     one per processed document (its hash is the duplicate key)
     _System/proposals/{id}.json    proposals and their decisions
     _System/audit/{yyyy-mm}.jsonl  append-only audit trail
     _System/Ledger/events/{yyyy-mm}/{ts}-{device}-{id}.json   immutable ledger events
+    _System/bank/{sha256}.json     bank lines parsed from one statement (matches recorded on them)
     _System/rules.json  _System/cursors.json
+    Books.xlsx                     read-only spreadsheet projection, rebuilt after every decision
 """
 
 from __future__ import annotations
 
+import hashlib
 import json
+import logging
 import re
 from collections.abc import Callable
 from datetime import UTC, date, datetime
 from typing import Any, Literal
 
 from accnomos_connectors.base import ConflictError, FileRef, StorageProvider
+from accnomos_ledger.bank import BankLine, BankLineStatus, parse_bank_csv
 from accnomos_ledger.events import LedgerEvent
+from accnomos_ledger.matching import Match, suggest_matches
 from pydantic import BaseModel, Field
 
 from app.checks import parse_iso_date
@@ -44,9 +50,13 @@ AUDIT = f"{SYSTEM}/audit"
 EVENTS = f"{SYSTEM}/Ledger/events"
 RULES = f"{SYSTEM}/rules.json"
 CURSORS = f"{SYSTEM}/cursors.json"
+BANK_LINES = f"{SYSTEM}/bank"
+WORKBOOK = "Books.xlsx"
+WORKBOOK_LIMIT = 4 * 1024 * 1024  # simple-upload size; bigger books still upload, but we say so in the log
 
-TREE = (INBOX, RECEIPTS, SALES, BANK, NEEDS_A_LOOK, VAT_RETURNS, REPORTS, DOCS, PROPOSALS, AUDIT, EVENTS)
+TREE = (INBOX, RECEIPTS, SALES, BANK, NEEDS_A_LOOK, VAT_RETURNS, REPORTS, DOCS, PROPOSALS, AUDIT, EVENTS, BANK_LINES)
 DEVICE = "runtime"
+log = logging.getLogger(__name__)
 
 
 def now() -> datetime:
@@ -98,6 +108,18 @@ def _with_suffix(name: str, n: int) -> str:
 
 def _month(d: date | datetime) -> str:
     return f"{d.year:04d}-{d.month:02d}"
+
+
+class BankMatchError(ValueError):
+    """A bank line cannot be matched (or unmatched) as asked."""
+
+
+class BankImport(BaseModel):
+    sha256: str
+    filed_path: str | None
+    lines: int
+    new_lines: int
+    duplicate_file: bool = False
 
 
 class Books:
@@ -304,3 +326,142 @@ class Books:
         await self.storage.move(src_path, dest)
         p.file_path = dest
         return dest
+
+    # ------------------------------------------------------------------ #
+    # Bank statements and matching (F7). Matching posts nothing: the bank
+    # movement is already in each event's settlement line; we only record
+    # which event a bank line pays for.
+    # ------------------------------------------------------------------ #
+
+    async def _bank_files(self) -> list[FileRef]:
+        return [f for f in await self.list_files(BANK_LINES) if f.name.endswith(".json")]
+
+    async def _read_bank_file(self, path: str) -> list[BankLine]:
+        return [BankLine.model_validate(x) for x in await self.read_json(path, [])]
+
+    async def stored_bank_lines(self) -> list[BankLine]:
+        """Every imported bank line as stored, oldest first."""
+        out: list[BankLine] = []
+        for f in await self._bank_files():
+            out += await self._read_bank_file(f.path)
+        return sorted(out, key=lambda ln: (ln.date, ln.id))
+
+    async def import_bank_csv(self, data: bytes, name: str, user: str = "user") -> BankImport:
+        """Parse, file the statement under "03 Bank statements/{yyyy-mm}/" and store its lines.
+
+        Re-importing the same file changes nothing; lines already imported from another statement
+        (overlapping date ranges) are skipped. Raises accnomos_ledger.bank.BankCsvError.
+        """
+        sha = hashlib.sha256(data).hexdigest()
+        store = f"{BANK_LINES}/{sha}.json"
+        name = _split(name.replace("\\", "/"))[1] or "statement.csv"
+        lines = parse_bank_csv(data, name)
+        if await self.exists(store):
+            return BankImport(sha256=sha, filed_path=None, lines=len(lines), new_lines=0, duplicate_file=True)
+        known = {ln.id for ln in await self.stored_bank_lines()}
+        fresh = [ln for ln in lines if ln.id not in known]
+        folder = f"{BANK}/{_month(max((ln.date for ln in lines), default=now().date()))}"
+        filed = await self.free_path(folder, name)
+        await self.storage.write(filed, data)
+        for ln in fresh:
+            ln.source_file = filed
+        await self.write_json(store, [ln.model_dump(mode="json") for ln in fresh])
+        await self.audit(f"user:{user}", "bank_imported", {"sha256": sha, "path": filed, "lines": len(lines), "new": len(fresh)})
+        return BankImport(sha256=sha, filed_path=filed, lines=len(lines), new_lines=len(fresh))
+
+    async def card_hints(self) -> dict[str, str]:
+        """Event id -> card last 4 digits, from the documents behind posted proposals."""
+        return {
+            p.event_id: p.extracted.card_last4
+            for p in await self.list_proposals("posted") if p.event_id and p.extracted.card_last4
+        }
+
+    async def bank_suggestions(self, lines: list[BankLine] | None = None) -> list[Match]:
+        lines = await self.stored_bank_lines() if lines is None else lines
+        if all(ln.status == "matched" for ln in lines):
+            return []
+        return suggest_matches(lines, await self.list_events(), await self.card_hints())
+
+    async def list_bank_lines(self, status: BankLineStatus | None = None) -> list[BankLine]:
+        """Bank lines; open lines with a current suggestion show as "suggested" with the suggested event(s)."""
+        lines = await self.stored_bank_lines()
+        suggested = {m.line_id: m for m in await self.bank_suggestions(lines)}
+        for ln in lines:
+            if ln.status != "matched" and (m := suggested.get(ln.id)):
+                ln.status, ln.matched_event_id, ln.matched_event_ids = "suggested", m.event_id, m.event_ids
+        return [ln for ln in lines if status is None or ln.status == status]
+
+    async def _find_line(self, line_id: str) -> tuple[str, BankLine]:
+        """(bank file path, line). Raises FileNotFoundError, also for ids that are not 16 hex digits."""
+        if not re.fullmatch(r"[0-9a-f]{16}", line_id):
+            raise FileNotFoundError(line_id)
+        for f in await self._bank_files():
+            for ln in await self._read_bank_file(f.path):
+                if ln.id == line_id:
+                    return f.path, ln
+        raise FileNotFoundError(line_id)
+
+    async def _set_line(self, path: str, line_id: str, update: dict[str, Any]) -> None:
+        def change(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+            return [{**r, **update} if r.get("id") == line_id else r for r in rows]
+
+        await self._update_json(path, [], change)
+
+    async def confirm_match(self, line_id: str, event_ids: str | list[str], user: str) -> BankLine:
+        """Record that bank line `line_id` pays for the event(s). Raises FileNotFoundError / BankMatchError."""
+        ids = [event_ids] if isinstance(event_ids, str) else list(dict.fromkeys(event_ids))
+        path, line = await self._find_line(line_id)
+        if line.status == "matched":
+            raise BankMatchError("This bank line is already matched; unmatch it first")
+        if not ids:
+            raise BankMatchError("Choose the ledger entry this payment is for")
+        posted = {e.id for e in await self.list_events()}
+        if missing := [i for i in ids if i not in posted]:
+            raise BankMatchError(f"No posted ledger entry {missing[0]}")
+        taken = {i for ln in await self.stored_bank_lines() if ln.status == "matched" for i in ln.event_ids()}
+        if clash := [i for i in ids if i in taken]:
+            raise BankMatchError(f"Ledger entry {clash[0]} is already matched to another bank line")
+        update: dict[str, Any] = {"status": "matched", "matched_event_id": ids[0], "matched_event_ids": ids}
+        await self._set_line(path, line_id, update)
+        await self.audit(f"user:{user}", "bank_matched", {"line": line_id, "events": ids, "file": path})
+        await self.rebuild_safely(user)
+        return line.model_copy(update=update)
+
+    async def unmatch(self, line_id: str, user: str) -> BankLine:
+        path, line = await self._find_line(line_id)
+        if line.status != "matched":
+            raise BankMatchError("This bank line is not matched")
+        update: dict[str, Any] = {"status": "unmatched", "matched_event_id": None, "matched_event_ids": []}
+        await self._set_line(path, line_id, update)
+        await self.audit(f"user:{user}", "bank_unmatched", {"line": line_id, "events": line.event_ids(), "file": path})
+        await self.rebuild_safely(user)
+        return line.model_copy(update=update)
+
+    # ------------------------------------------------------------------ #
+    # Books.xlsx projection (H25: written as a file, no Graph workbook API)
+    # ------------------------------------------------------------------ #
+
+    async def rebuild(self) -> FileRef:
+        """Regenerate Books.xlsx at the root from the events, bank lines and open proposals."""
+        from app.projection import build_books_xlsx
+
+        proposals = [p for p in await self.list_proposals() if p.status in ("proposed", "needs_a_look")]
+        data = build_books_xlsx(await self.list_events(), await self.list_bank_lines(), proposals)
+        if len(data) > WORKBOOK_LIMIT:
+            log.warning("Books.xlsx is %d bytes, over the %d byte simple-upload size", len(data), WORKBOOK_LIMIT)
+        return await self.storage.write(WORKBOOK, data)
+
+    async def rebuild_safely(self, user: str) -> FileRef | None:
+        """rebuild(), but never fails the user's action: errors are logged and audited."""
+        try:
+            return await self.rebuild()
+        except Exception as exc:  # noqa: BLE001  the spreadsheet is a convenience copy of the books
+            log.exception("Books.xlsx rebuild failed")
+            try:
+                await self.audit(f"user:{user}", "books_rebuild_failed", {"error": f"{type(exc).__name__}: {exc}"})
+            except Exception:  # noqa: BLE001
+                log.exception("could not audit the failed Books.xlsx rebuild")
+            return None
+
+    async def workbook_ref(self) -> FileRef | None:
+        return next((f for f in await self.list_files("") if f.name == WORKBOOK), None)

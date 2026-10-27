@@ -86,4 +86,6 @@ async def graph_error(_request: Request, exc: GraphError) -> JSONResponse:
     return JSONResponse(status_code=status, content={"detail": str(exc)})
 from app.routes_vat import router as vat_router  # noqa: E402  GET /books/vat
 app.include_router(vat_router)
+from app.routes_bank import router as bank_router  # noqa: E402  /books/bank/*
+app.include_router(bank_router)
 
