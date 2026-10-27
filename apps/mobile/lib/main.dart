@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'screens/ask_screen.dart';
 import 'screens/review_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/vat_screen.dart';
 import 'theme.dart';
 
 /// Accnomos — bookkeeping and VAT for UK small businesses.
@@ -51,9 +52,9 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int _tab = 0;
 
-  /// Review and Ask bring their own app bars, so the shell only titles
-  /// the tabs that do not.
-  bool get _hasOwnAppBar => _tab == 1 || _tab == 2;
+  /// Review, Ask and VAT bring their own app bars, so the shell only
+  /// titles the tabs that do not.
+  bool get _hasOwnAppBar => _tab == 1 || _tab == 2 || _tab == 3;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +64,7 @@ class _ShellState extends State<Shell> {
           : AppBar(
               backgroundColor: AccnomosColors.ground,
               elevation: 0,
-              title: Text(_tab == 3 ? 'Files' : 'Home',
+              title: Text(_tab == 4 ? 'Files' : 'Home',
                   style: Theme.of(context).textTheme.headlineSmall),
               actions: _tab == 0
                   ? [
@@ -92,6 +93,7 @@ class _ShellState extends State<Shell> {
                 _HomeTab(),
                 ReviewScreen(),
                 AskScreen(),
+                VatScreen(),
                 _Placeholder('Files',
                     'A live view of the Accnomos folder in your own cloud storage.'),
               ],
@@ -109,6 +111,8 @@ class _ShellState extends State<Shell> {
               icon: Icon(Icons.checklist_outlined), label: 'Review'),
           NavigationDestination(
               icon: Icon(Icons.chat_bubble_outline), label: 'Ask'),
+          NavigationDestination(
+              icon: Icon(Icons.receipt_long_outlined), label: 'VAT'),
           NavigationDestination(
               icon: Icon(Icons.folder_outlined), label: 'Files'),
         ],
@@ -178,9 +182,8 @@ class _HomeTab extends StatelessWidget {
               minimumSize: const Size.fromHeight(52),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14))),
-          onPressed: () => ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-                content: Text('Microsoft sign-in arrives in the next update.')),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const SettingsScreen()),
           ),
           child: const Text('Connect your cloud',
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),

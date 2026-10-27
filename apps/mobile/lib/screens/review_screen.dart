@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:msal_auth/msal_auth.dart';
 
 import '../models/proposal.dart';
+import '../services/auth.dart';
+import '../services/runtime_client.dart';
+import '../services/settings.dart';
 import '../theme.dart';
 import 'capture_screen.dart';
 
@@ -12,8 +16,9 @@ String _gbp(double value) => '£${value.toStringAsFixed(2)}';
 
 /// Review queue: a swipeable card per proposed entry.
 ///
-/// Approve and Reject move to the next card. The camera action opens
-/// capture; a freshly read receipt is prepended and shown first.
+/// Signed in: live proposals from the runtime. Approve/Reject call the
+/// runtime and remove the card; "Scan inbox" reads `00 Inbox` and shows
+/// per-file errors. Signed out: the fictional sample cards stay as a demo.
 class ReviewScreen extends StatefulWidget {
   const ReviewScreen({super.key});
 
@@ -23,11 +28,37 @@ class ReviewScreen extends StatefulWidget {
 
 class _ReviewScreenState extends State<ReviewScreen> {
   final PageController _pages = PageController();
+  final AuthService _auth = AuthService();
   int _index = 0;
   final Map<String, bool> _alwaysDo = {};
 
-  /// Grows as receipts are captured. Seeded from the demo samples.
-  final List<Proposal> _proposals = List.of(Proposal.samples);
+  AppSettings? _settings;
+  Account? _account;
+  bool _authChecked = false;
+  bool _loading = false;
+  bool _busy = false;
+  bool _scanning = false;
+  String? _error;
+
+  /// Live proposals when signed in.
+  final List<Proposal> _live = [];
+
+  /// Captured offline (signed-out extract flow) this session.
+  final List<Proposal> _captured = [];
+
+  /// Per-file scan errors from the latest `scan()`.
+  List<ScanFileError> _scanErrors = const [];
+
+  bool get _signedIn => _account != null;
+
+  List<Proposal> get _proposals =>
+      _signedIn ? List.of(_live) : [..._captured, ...Proposal.samples];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
 
   @override
   void dispose() {
@@ -36,31 +67,157 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   void _say(String message) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
   }
 
-  /// Prepend a freshly captured proposal and jump to it.
+  String _friendly(Object e) => e.toString().replaceFirst('Exception: ', '');
+
+  Future<void> _load() async {
+    final settings = await AppSettings.load();
+    Account? account;
+    try {
+      account = await _auth.account();
+    } on MsalException {
+      account = null;
+    }
+    if (!mounted) return;
+    setState(() {
+      _settings = settings;
+      _account = account;
+      _authChecked = true;
+    });
+    if (account != null) await _reload();
+  }
+
+  Future<RuntimeClient> _booksClient() async {
+    final settings = _settings!;
+    final token = await _auth.token();
+    Account? account = _account;
+    try {
+      account = await _auth.account() ?? account;
+    } on MsalException {
+      // Keep the account we already knew about.
+    }
+    if (mounted && account?.username != _account?.username) {
+      setState(() => _account = account);
+    }
+    final user = account?.username ?? settings.userEmail;
+    return RuntimeClient(
+      settings,
+      books: BooksAuth(
+        graphToken: token,
+        accountKind:
+            _auth.kind == AccountKind.work ? 'work' : 'personal',
+        user: (user != null && user.isNotEmpty) ? user : null,
+        businessName: settings.businessName,
+      ),
+    );
+  }
+
+  /// Reload live proposals (signed-in only).
+  Future<void> _reload() async {
+    if (!_signedIn || _loading) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
+    try {
+      final client = await _booksClient();
+      final raw = await client.proposals();
+      if (!mounted) return;
+      final live = <Proposal>[];
+      for (final json in raw) {
+        final status = (json['status'] ?? '').toString();
+        if (status != 'proposed' && status != 'needs_a_look') continue;
+        live.add(Proposal.fromBooksJson(json));
+      }
+      setState(() {
+        _live
+          ..clear()
+          ..addAll(live);
+        if (_index >= _live.length) {
+          _index = _live.isEmpty ? 0 : _live.length - 1;
+        }
+      });
+      if (_live.isNotEmpty && _pages.hasClients) {
+        _pages.jumpToPage(_index);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = _friendly(e));
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// `POST /books/scan`, then reload. Per-file errors stay on screen.
+  Future<void> _scan() async {
+    if (!_signedIn || _scanning) return;
+    setState(() {
+      _scanning = true;
+      _error = null;
+    });
+    try {
+      final client = await _booksClient();
+      final outcome = await client.scan();
+      if (!mounted) return;
+      setState(() => _scanErrors = outcome.errors);
+      await _reload();
+      if (!mounted) return;
+      final n = outcome.proposals.length;
+      final m = outcome.errors.length;
+      _say(m == 0
+          ? 'Scan complete · $n proposal${n == 1 ? '' : 's'}'
+          : 'Scan complete · $n proposal${n == 1 ? '' : 's'}, '
+              '$m file${m == 1 ? '' : 's'} need a look');
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _error = _friendly(e));
+    } finally {
+      if (mounted) setState(() => _scanning = false);
+    }
+  }
+
+  /// Prepend a freshly captured proposal and jump to it (signed-out flow).
   void _addProposal(Proposal proposal) {
     setState(() {
-      _proposals.insert(0, proposal);
+      _captured.insert(0, proposal);
       _index = 0;
     });
-    _pages.jumpToPage(0);
+    if (_pages.hasClients) _pages.jumpToPage(0);
   }
 
   Future<void> _capture() async {
-    final proposal = await Navigator.of(context).push<Proposal>(
+    final result = await Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => const CaptureScreen()),
     );
-    if (proposal == null || !mounted) return;
-    _addProposal(proposal);
-    _say('Receipt added to your review list');
+    if (!mounted) return;
+    if (result == true && _signedIn) {
+      await _reload();
+      _say('Inbox scanned · review list updated');
+    } else if (result is Proposal) {
+      _addProposal(result);
+      _say('Receipt added to your review list');
+    }
+  }
+
+  void _removeLive(String id) {
+    setState(() {
+      _live.removeWhere((p) => p.id == id);
+      if (_index >= _live.length) {
+        _index = _live.isEmpty ? 0 : _live.length - 1;
+      }
+    });
+    if (_live.isNotEmpty && _pages.hasClients) {
+      _pages.jumpToPage(_index);
+    }
   }
 
   void _advance() {
-    if (_index < _proposals.length - 1) {
+    if (_index < _proposals.length - 1 && _pages.hasClients) {
       _pages.nextPage(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOut,
@@ -68,14 +225,49 @@ class _ReviewScreenState extends State<ReviewScreen> {
     }
   }
 
-  void _approve() {
-    _say('Approved · posted to your books');
-    _advance();
+  Future<void> _approveProposal(Proposal proposal) async {
+    if (!_signedIn) {
+      _say('Approved · posted to your books');
+      _advance();
+      return;
+    }
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final client = await _booksClient();
+      await client.approve(
+        proposal.id,
+        always: _alwaysDo[proposal.id] ?? false,
+      );
+      if (!mounted) return;
+      _removeLive(proposal.id);
+      _say('Approved · posted to your books');
+    } catch (e) {
+      _say(_friendly(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
-  void _reject() {
-    _say('Rejected');
-    _advance();
+  Future<void> _rejectProposal(Proposal proposal, {String reason = ''}) async {
+    if (!_signedIn) {
+      _say('Rejected');
+      _advance();
+      return;
+    }
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final client = await _booksClient();
+      await client.reject(proposal.id, reason: reason);
+      if (!mounted) return;
+      _removeLive(proposal.id);
+      _say('Rejected');
+    } catch (e) {
+      _say(_friendly(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
   }
 
   @override
@@ -87,33 +279,158 @@ class _ReviewScreenState extends State<ReviewScreen> {
         backgroundColor: AccnomosColors.ground,
         elevation: 0,
         title: Text(
-          'Review ${_index + 1} of ${proposals.length}',
+          proposals.isEmpty
+              ? 'Review'
+              : 'Review ${_index + 1} of ${proposals.length}',
           style: Theme.of(context).textTheme.headlineSmall,
         ),
         actions: [
+          if (_signedIn)
+            IconButton(
+              icon: _scanning
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : const Icon(Icons.refresh_outlined),
+              tooltip: 'Scan inbox',
+              constraints:
+                  const BoxConstraints(minWidth: 48, minHeight: 48),
+              onPressed: _scanning ? null : _scan,
+            ),
           IconButton(
             icon: const Icon(Icons.photo_camera_outlined),
             tooltip: 'Photograph a receipt',
-            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+            constraints:
+                const BoxConstraints(minWidth: 48, minHeight: 48),
             onPressed: _capture,
           ),
         ],
       ),
-      body: PageView.builder(
-        controller: _pages,
-        itemCount: proposals.length,
-        onPageChanged: (i) => setState(() => _index = i),
-        itemBuilder: (context, i) {
-          final proposal = proposals[i];
-          switch (proposal.status) {
-            case ProposalStatus.needsALook:
-              return _needsALookCard(proposal);
-            case ProposalStatus.voiceNote:
-              return _voiceCard(proposal);
-            case ProposalStatus.proposed:
-              return _proposedCard(proposal);
-          }
-        },
+      body: !_authChecked || _loading
+          ? const Center(child: CircularProgressIndicator())
+          : Column(
+              children: [
+                if (!_signedIn)
+                  Container(
+                    width: double.infinity,
+                    color: AccnomosColors.ink,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 6, horizontal: 12),
+                    child: const Text(
+                      'SAMPLE — FICTIONAL COMPANY · sign in to see your books',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                          color: AccnomosColors.ground,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6),
+                    ),
+                  ),
+                if (_error != null)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: _warnBg,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _warnBorder),
+                    ),
+                    child: Text(_error!,
+                        style:
+                            const TextStyle(color: _warnInk, height: 1.4)),
+                  ),
+                if (_scanErrors.isNotEmpty) _scanErrorBox(),
+                Expanded(
+                  child: proposals.isEmpty
+                      ? Center(
+                          child: Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(
+                              _signedIn
+                                  ? 'Nothing waiting. Photograph a receipt or press “Scan inbox”.'
+                                  : 'Nothing here yet.',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                  color: AccnomosColors.muted,
+                                  height: 1.4),
+                            ),
+                          ),
+                        )
+                      : PageView.builder(
+                          controller: _pages,
+                          itemCount: proposals.length,
+                          onPageChanged: (i) =>
+                              setState(() => _index = i),
+                          itemBuilder: (context, i) {
+                            final proposal = proposals[i];
+                            switch (proposal.status) {
+                              case ProposalStatus.needsALook:
+                                return _needsALookCard(proposal);
+                              case ProposalStatus.voiceNote:
+                                return _voiceCard(proposal);
+                              case ProposalStatus.proposed:
+                                return _proposedCard(proposal);
+                            }
+                          },
+                        ),
+                ),
+              ],
+            ),
+    );
+  }
+
+  Widget _scanErrorBox() {
+    final errors = _scanErrors;
+    return Container(
+      width: double.infinity,
+      constraints: const BoxConstraints(maxHeight: 148),
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: _warnBg,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: _warnBorder),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  '${errors.length} file${errors.length == 1 ? '' : 's'} could not be read',
+                  style: const TextStyle(
+                      color: _warnInk, fontWeight: FontWeight.w700),
+                ),
+              ),
+              InkWell(
+                onTap: () => setState(() => _scanErrors = const []),
+                child: const Padding(
+                  padding: EdgeInsets.all(8),
+                  child: Icon(Icons.close, size: 18, color: _warnInk),
+                ),
+              ),
+            ],
+          ),
+          Flexible(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: errors.length,
+              itemBuilder: (context, i) => Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '• ${errors[i].path}: ${errors[i].error}',
+                  style:
+                      const TextStyle(color: _warnInk, height: 1.4),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -233,7 +550,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 
-  Widget _decisionRow() {
+  Widget _decisionRow(Proposal proposal) {
     final buttonShape = RoundedRectangleBorder(
       borderRadius: BorderRadius.circular(14),
     );
@@ -247,7 +564,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               minimumSize: const Size.fromHeight(52),
               shape: buttonShape,
             ),
-            onPressed: _approve,
+            onPressed: _busy ? null : () => _approveProposal(proposal),
             child: const Text(
               'Approve',
               style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
@@ -272,7 +589,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               minimumSize: const Size.fromHeight(52),
               shape: buttonShape,
             ),
-            onPressed: _reject,
+            onPressed: _busy ? null : () => _rejectProposal(proposal),
             child: const Text('Reject'),
           ),
         ),
@@ -341,7 +658,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
           const SizedBox(height: 4),
           _alwaysRow(proposal),
           const SizedBox(height: 8),
-          _decisionRow(),
+          _decisionRow(proposal),
         ],
       ),
     );
@@ -374,10 +691,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 minimumSize: const Size.fromHeight(52),
                 shape: buttonShape,
               ),
-              onPressed: () {
-                _say('Archived as duplicate');
-                _advance();
-              },
+              onPressed: _busy
+                  ? null
+                  : () => _rejectProposal(proposal,
+                      reason: 'Archived as duplicate'),
               child: const Text(
                 'Archive as duplicate',
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
@@ -445,7 +762,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
           const SizedBox(height: 4),
           _alwaysRow(proposal),
           const SizedBox(height: 8),
-          _decisionRow(),
+          _decisionRow(proposal),
         ],
       ),
     );

@@ -2,8 +2,11 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:msal_auth/msal_auth.dart';
 
 import '../models/proposal.dart';
+import '../services/auth.dart';
+import '../services/graph.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
@@ -12,8 +15,15 @@ const _warnBg = Color(0xFFFFF7ED);
 const _warnBorder = Color(0xFFF3C892);
 const _warnInk = Color(0xFF8A3F06);
 
-/// Photograph or pick a receipt, read it with Meta AI, and hand the
-/// resulting [Proposal] back to the review list.
+/// Max file size for a direct Graph upload (same 4 MB limit as the web intake).
+const _maxUploadBytes = 4 * 1024 * 1024;
+
+/// Photograph or pick a receipt and get it into the books.
+///
+/// Signed in: the photo is uploaded to the user's own `00 Inbox` folder on
+/// OneDrive (Graph PUT, like the web's `UploadToInbox.tsx`), then `scan()` is
+/// called. Pops `true` so Review reloads. Signed out: the receipt is read
+/// directly and the resulting [Proposal] is popped back to the review list.
 class CaptureScreen extends StatefulWidget {
   const CaptureScreen({super.key});
 
@@ -23,18 +33,39 @@ class CaptureScreen extends StatefulWidget {
 
 class _CaptureScreenState extends State<CaptureScreen> {
   final ImagePicker _picker = ImagePicker();
+  final AuthService _auth = AuthService();
   AppSettings? _settings;
+  Account? _account;
+  bool _authChecked = false;
   XFile? _photo;
   bool _reading = false;
   String? _error;
+  String? _doneMessage;
 
   @override
   void initState() {
     super.initState();
-    AppSettings.load().then((settings) {
-      if (mounted) setState(() => _settings = settings);
-    });
+    _load();
   }
+
+  Future<void> _load() async {
+    final settings = await AppSettings.load();
+    Account? account;
+    try {
+      account = await _auth.account();
+    } on MsalException {
+      account = null;
+    }
+    if (mounted) {
+      setState(() {
+        _settings = settings;
+        _account = account;
+        _authChecked = true;
+      });
+    }
+  }
+
+  bool get _signedIn => _account != null;
 
   bool get _localMode => _settings == null || _settings!.aiMode != 'key';
 
@@ -47,6 +78,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
       setState(() {
         _photo = file;
         _error = null;
+        _doneMessage = null;
       });
     } catch (e) {
       if (!mounted) return;
@@ -54,6 +86,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
     }
   }
 
+  /// Signed-out flow: read the receipt directly with the runtime.
   Future<void> _read() async {
     final settings = _settings;
     final photo = _photo;
@@ -75,11 +108,97 @@ class _CaptureScreenState extends State<CaptureScreen> {
     }
   }
 
+  /// Signed-in flow: upload to `00 Inbox`, then scan. Pops `true`.
+  Future<void> _uploadAndScan() async {
+    final settings = _settings;
+    final photo = _photo;
+    if (settings == null || photo == null || _reading) return;
+    setState(() {
+      _reading = true;
+      _error = null;
+      _doneMessage = null;
+    });
+    final graphs = GraphService();
+    try {
+      final bytes = await File(photo.path).readAsBytes();
+      if (bytes.length > _maxUploadBytes) {
+        throw GraphException(
+            'That photo is over 4 MB — please use a smaller photo for now.');
+      }
+      final token = await _auth.token();
+      final kind = _auth.kind;
+      await graphs.ensureFolder(token, kind, '00 Inbox');
+      await graphs.putFileBytes(
+        token: token,
+        kind: kind,
+        relPath: '00 Inbox/${_inboxName(photo.path)}',
+        bytes: bytes,
+        contentType: _contentType(photo.path),
+      );
+      final account = await _auth.account();
+      final user = account?.username ?? settings.userEmail;
+      final outcome = await RuntimeClient(
+        settings,
+        books: BooksAuth(
+          graphToken: await _auth.token(),
+          accountKind: kind == AccountKind.work ? 'work' : 'personal',
+          user: (user != null && user.isNotEmpty) ? user : null,
+          businessName: settings.businessName,
+        ),
+      ).scan();
+      if (!mounted) return;
+      final errors = outcome.errors;
+      if (errors.isEmpty) {
+        Navigator.of(context).pop(true);
+      } else {
+        setState(() {
+          _reading = false;
+          _doneMessage =
+              'Uploaded · ${outcome.proposals.length} proposal${outcome.proposals.length == 1 ? '' : 's'} ready';
+          _error = errors
+              .map((e) => '${e.path}: ${e.error}')
+              .join('\n');
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = _friendly(e);
+        _reading = false;
+      });
+    } finally {
+      graphs.close();
+    }
+  }
+
+  static String _inboxName(String path) {
+    final base = path.split(Platform.pathSeparator).last;
+    final dot = base.lastIndexOf('.');
+    final ext = dot >= 0 ? base.substring(dot).toLowerCase() : '.jpg';
+    final stamp = DateTime.now()
+        .toIso8601String()
+        .replaceAll(RegExp(r'[^0-9]'), '')
+        .substring(0, 14);
+    return 'receipt-$stamp$ext';
+  }
+
+  static String _contentType(String path) {
+    final lower = path.toLowerCase();
+    if (lower.endsWith('.png')) return 'image/png';
+    if (lower.endsWith('.pdf')) return 'application/pdf';
+    if (lower.endsWith('.heic') || lower.endsWith('.heif')) {
+      return 'image/heic';
+    }
+    return 'image/jpeg';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final progressText = _localMode
-        ? 'Reading on your machine… (about 20–60 s)'
-        : 'Reading with Muse Spark…';
+    final progressText = _signedIn
+        ? 'Uploading to your 00 Inbox and scanning…'
+        : _localMode
+            ? 'Reading on your machine… (about 20–60 s)'
+            : 'Reading with Muse Spark…';
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
@@ -90,108 +209,166 @@ class _CaptureScreenState extends State<CaptureScreen> {
           style: Theme.of(context).textTheme.headlineSmall,
         ),
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          if (_photo == null) ...[
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AccnomosColors.teal,
-                  minimumSize: const Size.fromHeight(64),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                onPressed: () => _pick(ImageSource.camera),
-                icon: const Icon(Icons.photo_camera_outlined),
-                label: const Text('Take a photo',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size.fromHeight(64),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                onPressed: () => _pick(ImageSource.gallery),
-                icon: const Icon(Icons.photo_library_outlined),
-                label: const Text('Choose from gallery',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
-              ),
-            ),
-          ] else ...[
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.file(
-                File(_photo!.path),
-                height: 320,
-                width: double.infinity,
-                fit: BoxFit.cover,
-              ),
-            ),
-            const SizedBox(height: 8),
-            TextButton(
-              style: TextButton.styleFrom(
-                  minimumSize: const Size.fromHeight(48)),
-              onPressed: _reading
-                  ? null
-                  : () => setState(() {
-                        _photo = null;
-                        _error = null;
-                      }),
-              child: const Text('Choose a different photo'),
-            ),
-            const SizedBox(height: 4),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AccnomosColors.teal,
-                  minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
-                ),
-                onPressed: (_reading || _settings == null) ? null : _read,
-                child: const Text('Read with Meta AI',
-                    style:
-                        TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-              ),
-            ),
-            if (_reading) ...[
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AccnomosColors.tealTint,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Row(
-                  children: [
-                    const CircularProgressIndicator(
-                        color: AccnomosColors.tealDark),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(progressText,
+      body: !_authChecked
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(
+              padding: const EdgeInsets.all(16),
+              children: [
+                if (_signedIn)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AccnomosColors.tealTint,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Text(
+                      'Signed in — the photo goes to the 00 Inbox folder in your own OneDrive, then the reader scans it.',
+                      style: TextStyle(
+                          color: AccnomosColors.tealDark, height: 1.4),
+                    ),
+                  ),
+                if (_photo == null) ...[
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AccnomosColors.teal,
+                        minimumSize: const Size.fromHeight(64),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () => _pick(ImageSource.camera),
+                      icon: const Icon(Icons.photo_camera_outlined),
+                      label: const Text('Take a photo',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w800, fontSize: 16)),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size.fromHeight(64),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: () => _pick(ImageSource.gallery),
+                      icon: const Icon(Icons.photo_library_outlined),
+                      label: const Text('Choose from gallery',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700, fontSize: 16)),
+                    ),
+                  ),
+                ] else ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.file(
+                      File(_photo!.path),
+                      height: 320,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  TextButton(
+                    style: TextButton.styleFrom(
+                        minimumSize: const Size.fromHeight(48)),
+                    onPressed: _reading
+                        ? null
+                        : () => setState(() {
+                              _photo = null;
+                              _error = null;
+                              _doneMessage = null;
+                            }),
+                    child: const Text('Choose a different photo'),
+                  ),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AccnomosColors.teal,
+                        minimumSize: const Size.fromHeight(52),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14)),
+                      ),
+                      onPressed: (_reading || _settings == null)
+                          ? null
+                          : (_signedIn ? _uploadAndScan : _read),
+                      child: Text(
+                          _signedIn
+                              ? 'Upload and scan'
+                              : 'Read with Meta AI',
                           style: const TextStyle(
-                              color: AccnomosColors.tealDark,
-                              fontWeight: FontWeight.w700,
-                              height: 1.4)),
+                              fontWeight: FontWeight.w800, fontSize: 16)),
+                    ),
+                  ),
+                  if (_reading) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AccnomosColors.tealTint,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: Row(
+                        children: [
+                          const CircularProgressIndicator(
+                              color: AccnomosColors.tealDark),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Text(progressText,
+                                style: const TextStyle(
+                                    color: AccnomosColors.tealDark,
+                                    fontWeight: FontWeight.w700,
+                                    height: 1.4)),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
-                ),
-              ),
-            ],
-          ],
-          if (_error != null) _errorBox(),
-        ],
-      ),
+                ],
+                if (_doneMessage != null)
+                  Container(
+                    width: double.infinity,
+                    margin: const EdgeInsets.only(top: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AccnomosColors.tealTint,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(_doneMessage!,
+                            style: const TextStyle(
+                                color: AccnomosColors.tealDark,
+                                height: 1.4)),
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: FilledButton(
+                            style: FilledButton.styleFrom(
+                              backgroundColor: AccnomosColors.teal,
+                              minimumSize: const Size.fromHeight(48),
+                              shape: RoundedRectangleBorder(
+                                  borderRadius:
+                                      BorderRadius.circular(14)),
+                            ),
+                            onPressed: () =>
+                                Navigator.of(context).pop(true),
+                            child: const Text('Back to review'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                if (_error != null) _errorBox(),
+              ],
+            ),
     );
   }
 
@@ -221,7 +398,9 @@ class _CaptureScreenState extends State<CaptureScreen> {
                 shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(14)),
               ),
-              onPressed: (_photo == null || _reading) ? null : _read,
+              onPressed: (_photo == null || _reading)
+                  ? null
+                  : (_signedIn ? _uploadAndScan : _read),
               child: const Text('Retry'),
             ),
           ),
