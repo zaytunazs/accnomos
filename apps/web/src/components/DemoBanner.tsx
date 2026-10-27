@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
+import { useSignedIn } from "@/lib/signed-in";
 
 /** Pages whose content is sample data until the user signs in. */
 const SAMPLE_PAGES = ["/", "/review", "/ask", "/vat", "/files"];
@@ -19,23 +19,7 @@ function isSamplePage(path: string): boolean {
  */
 export default function DemoBanner() {
   const path = usePathname() ?? "/";
-  const [signedIn, setSignedIn] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    // Defer to avoid a synchronous setState in the effect body.
-    queueMicrotask(() => {
-      try {
-        const keys: string[] = [];
-        for (let i = 0; i < window.localStorage.length; i++) {
-          const k = window.localStorage.key(i);
-          if (k) keys.push(k);
-        }
-        setSignedIn(keys.some((k) => k.startsWith("msal.")));
-      } catch {
-        setSignedIn(false);
-      }
-    });
-  }, [path]);
+  const signedIn = useSignedIn(path);
 
   if (!isSamplePage(path)) return null;
   if (signedIn === true) return null;
