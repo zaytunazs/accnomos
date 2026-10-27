@@ -22,7 +22,7 @@ of each refresh result, so two racing refreshes of the same single-use refresh t
 | `HMRC_VENDOR_VERSION` | Relay version in `Gov-Vendor-Version` | `0.1.0` |
 | `RELAY_PUBLIC_IP` | Relay's public IP (`Gov-Vendor-Public-IP`, `Gov-Vendor-Forwarded by=`) | — |
 | `RELAY_LICENCE_HASH` | Optional. Sent as `Gov-Vendor-License-IDs` | — |
-| `RELAY_ALLOWED_REDIRECTS` | Comma-separated origins `/hmrc/callback` may redirect tokens to, e.g. `https://app.accnomos.co.uk,accnomos://hmrc`. `http://localhost` and `http://127.0.0.1` are always allowed | — |
+| `RELAY_ALLOWED_REDIRECTS` | Comma-separated origins `/hmrc/callback` may redirect tokens to, e.g. `https://app.accnomos.co.uk,accnomos://hmrc`. `http://localhost` and `http://127.0.0.1` are always allowed. The same `http(s)` origins get CORS, since the PWA calls the relay straight from the browser | — |
 
 The relay reads the process environment only. It never reads a `.env` file.
 

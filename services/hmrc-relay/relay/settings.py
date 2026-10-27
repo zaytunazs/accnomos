@@ -46,6 +46,10 @@ class Settings(BaseSettings):
         """Product name as used on the left of `key=value` vendor headers."""
         return self.hmrc_vendor_product_name.lower().replace(" ", "-")
 
+    @property
+    def allowed_origins(self) -> set[str]:
+        return {o.strip().rstrip("/").lower() for o in self.relay_allowed_redirects.split(",") if o.strip()}
+
     def redirect_allowed(self, url: str) -> bool:
         parts = urlsplit(url)
         if not parts.scheme or not parts.netloc:
@@ -53,8 +57,7 @@ class Settings(BaseSettings):
         if parts.scheme == "http" and parts.hostname in {"localhost", "127.0.0.1"}:
             return True
         origin = f"{parts.scheme}://{parts.netloc}".lower()
-        allowed = {o.strip().rstrip("/").lower() for o in self.relay_allowed_redirects.split(",") if o.strip()}
-        return origin in allowed
+        return origin in self.allowed_origins
 
 
 @lru_cache
