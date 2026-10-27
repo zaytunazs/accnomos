@@ -183,6 +183,40 @@ def test_broken_invoice_file_leaves_the_rest(client: TestClient, fake: FakeStora
     assert d["owed_to_you"]["total_pence"] == 81000 and d["cash"]["balance_pence"] == 540000
 
 
+def test_broken_bank_lines_file_blanks_cash_owed_and_attention(client: TestClient, fake: FakeStorageProvider) -> None:
+    fake.files[f"{BANK_LINES}/{'9' * 64}.json"] = b'[{"id": "x"}]'  # hand-edited, missing fields
+    r = client.get(f"/books/dashboard?stagger=1&today={TODAY}", headers=H)
+    assert r.status_code == 200, r.text
+    d = r.json()
+    assert d["unavailable"] == ["bank"]
+    # Without the bank lines payments are unknown, so owed is not guessed; VAT and activity still show.
+    assert d["cash"] is None and d["owed_to_you"] is None and d["owed_by_you"] is None and d["attention"] is None
+    assert d["vat"]["due"]["label"] == "Jul–Sep 2026" and len(d["activity"]) == 10
+
+
+def test_broken_proposal_file_blanks_attention_only(client: TestClient, fake: FakeStorageProvider) -> None:
+    path = next(k for k in fake.files if k.endswith(f"{'a' * 16}.json") and "proposal" in k.lower())
+    fake.files[path] = b'{"id": "broken"}'
+    d = client.get(f"/books/dashboard?stagger=1&today={TODAY}", headers=H).json()
+    assert d["unavailable"] == ["proposals"] and d["attention"] is None
+    assert d["owed_by_you"]["total_pence"] == 24000 and d["cash"]["balance_pence"] == 540000
+    # The activity line still renders, just without the supplier and amount.
+    assert "Posted a document to the ledger" in [a["text"] for a in d["activity"]]
+
+
+def test_broken_ledger_event_blanks_vat_and_owed(client: TestClient, fake: FakeStorageProvider) -> None:
+    path = next(k for k in fake.files if k.endswith(f"{'d' * 32}.json"))
+    fake.files[path] = b"{not json"
+    d = client.get(f"/books/dashboard?stagger=1&today={TODAY}", headers=H).json()
+    assert "ledger" in d["unavailable"]
+    assert d["vat"] is None and d["owed_to_you"] is None and d["cash"]["balance_pence"] == 540000
+    assert d["attention"]["proposed"] == 1
+
+
+def test_bad_vat_months(client: TestClient) -> None:
+    assert client.get(f"/books/dashboard?months=2&today={TODAY}", headers=H).status_code == 422
+
+
 def test_empty_books_and_auth(fake: FakeStorageProvider) -> None:
     from app.main import app
     from app.routes_books import get_books

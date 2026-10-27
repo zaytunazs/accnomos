@@ -21,6 +21,7 @@ from app import contacts as cb
 from app import invoicing
 from app.books import AUDIT, AUTOPILOT_AUDIT, Books, bank_of
 from app.routes_vat import Deadlines, compute_deadlines
+from app.schemas import Proposal
 
 log = logging.getLogger(__name__)
 ACTIVITY_LIMIT = 10
@@ -258,7 +259,15 @@ async def _try[T](name: str, missing: list[str], work: Callable[[], Awaitable[T]
 
 async def build(books: Books, today: date, first_vat_month: int, vat_months: int) -> Dashboard:
     missing: list[str] = []
-    ledger = await cb.load_ledger(books)
+
+    async def load_proposals() -> dict[str, Proposal]:
+        return {p.id: p for p in await books.list_proposals()}
+
+    # The ledger's three parts are read on their own, so one hand-edited file only blanks the tiles that need it.
+    events = await _try("ledger", missing, books.list_events)
+    proposals = await _try("proposals", missing, load_proposals)
+    bank_lines = await _try("bank", missing, books.stored_bank_lines)
+    ledger = cb.Ledger(events=events or [], proposals=proposals or {}, bank_lines=bank_lines or [])
 
     async def load_invoices() -> list[invoicing.Invoice]:
         return await invoicing.list_invoices(books)
@@ -273,16 +282,17 @@ async def build(books: Books, today: date, first_vat_month: int, vat_months: int
         return cash_position(ledger.bank_lines)
 
     invoices = await _try("invoices", missing, load_invoices)
-    owed_pair = await _try("owed", missing, money)
+    # Owed needs the events and the bank lines (payments); proposals only add labels.
+    owed_pair = await _try("owed", missing, money) if events is not None and bank_lines is not None else None
     overdue = owed_pair[0].overdue if owed_pair else None
     audit = await read_audit(books, AUDIT)
     return Dashboard(
         today=today,
-        cash=await _try("cash", missing, cash),
+        cash=await _try("cash", missing, cash) if bank_lines is not None else None,
         owed_to_you=owed_pair[0] if owed_pair else None,
         owed_by_you=owed_pair[1] if owed_pair else None,
-        vat=await _try("vat", missing, vat),
-        attention=attention(ledger, overdue),
+        vat=await _try("vat", missing, vat) if events is not None else None,
+        attention=attention(ledger, overdue) if proposals is not None and bank_lines is not None else None,
         activity=recent_activity(audit, ledger),
         runs=last_runs(audit, await read_audit(books, AUTOPILOT_AUDIT), await books.last_scan()),
         unavailable=missing,
