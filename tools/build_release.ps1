@@ -11,7 +11,10 @@ param(
 )
 Set-Location C:\Users\zohai\dev\accnomos\apps\mobile
 flutter analyze 2>&1 | Select-Object -Last 2
+$out = "build\app\outputs\bundle\release\app-release.aab"
+Remove-Item $out -ErrorAction SilentlyContinue  # never copy a bundle left over from an earlier build
 flutter build appbundle --release "-PmsalSignatureHash=$MsalSigHash" "--dart-define=MSAL_SIG_HASH=$MsalSigHash" 2>&1 | Select-Object -Last 2
+if ($LASTEXITCODE -ne 0 -or -not (Test-Path $out)) { Write-Output "BUILD FAILED: nothing copied"; exit 1 }
 $dst = "C:\Users\zohai\Downloads\coworksetup\CoWork\Projects\Meta Hackathon - AI Accounting\builds\accnomos-$Tag.aab"
-Copy-Item build\app\outputs\bundle\release\app-release.aab $dst -Force
+Copy-Item $out $dst -Force
 Write-Output "AAB: $dst $((Get-Item $dst).Length) bytes (MSAL hash $MsalSigHash)"
