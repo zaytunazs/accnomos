@@ -10,7 +10,9 @@ proposal, with the reasons recorded on it:
 - every code check passed: no failure and no warning;
 - the supplier's VAT number is the one on the rule (no number on either counts as the same);
 - the VAT treatment (VAT codes on the expense lines) is the rule's;
-- the gross is above zero and no more than 2x the rule's typical amount.
+- the gross is above zero and no more than 2x the rule's typical amount;
+- no earlier proposal (waiting, posted or rejected) is from the same supplier with the same date and total,
+  or with the same invoice number: a second photo of a receipt has a new file hash, so DUPLICATE misses it.
 
 The typical amount is the gross of the approval that created the rule; Autopilot never moves it.
 Pure decisions here; the scan (app/inbox.py) posts through the same `approve()` as the Approve button.
@@ -20,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Sequence
 from datetime import datetime
 from typing import Any, Literal
 
@@ -142,8 +145,24 @@ def match(p: Proposal, rules: list[AutopilotRule]) -> AutopilotRule | None:
     return next((r for r in reversed(rules) if r.supplier_key == key), None) if key else None
 
 
-def evaluate(p: Proposal, rule: AutopilotRule | None, enabled: bool = True) -> AutopilotDecision:
-    """auto_approve only when every condition in the module docstring holds; `reasons` says why (not)."""
+def same_document(p: Proposal, earlier: Sequence[Proposal]) -> Proposal | None:
+    """An earlier proposal that reads as the same document: same supplier and date and total, or same invoice number."""
+    doc = p.extracted
+    key, gross, number = supplier_key(doc.supplier_name), pence(doc.gross_total), (doc.invoice_number or "").strip().lower()
+    for o in earlier:
+        od = o.extracted
+        if o.id == p.id or supplier_key(od.supplier_name) != key:
+            continue
+        if (od.date == doc.date and pence(od.gross_total) == gross) or (number and (od.invoice_number or "").strip().lower() == number):
+            return o
+    return None
+
+
+def evaluate(
+    p: Proposal, rule: AutopilotRule | None, enabled: bool = True, earlier: Sequence[Proposal] = (),
+) -> AutopilotDecision:
+    """auto_approve only when every condition in the module docstring holds; `reasons` says why (not).
+    `earlier`: the proposals already in the books, for the same-document condition."""
     key = rule.supplier_key if rule else None
     if not enabled:
         return AutopilotDecision(auto_approve=False, reasons=["Autopilot is switched off"], supplier_key=key)
@@ -169,6 +188,9 @@ def evaluate(p: Proposal, rule: AutopilotRule | None, enabled: bool = True) -> A
         refusals.append("Nothing to post: the total is zero")
     elif gross > MAX_TIMES_TYPICAL * rule.typical_gross_pence:
         refusals.append(f"{gbp(gross)} is more than {MAX_TIMES_TYPICAL}x the usual {gbp(rule.typical_gross_pence)}")
+    if (twin := same_document(p, earlier)) is not None:
+        refusals.append(f"Looks like a document already in the books ({twin.status}, {twin.extracted.date}, "
+                        f"{gbp(pence(twin.extracted.gross_total))}): another photo of it?")
     if refusals:
         return AutopilotDecision(auto_approve=False, reasons=refusals, supplier_key=key)
     ok = [
@@ -176,6 +198,7 @@ def evaluate(p: Proposal, rule: AutopilotRule | None, enabled: bool = True) -> A
         f"All {len(p.checks)} code checks passed",
         f"VAT number {vrn or 'none'} and VAT treatment {codes or 'none'} as on the rule",
         f"{gbp(gross)} is within {MAX_TIMES_TYPICAL}x the usual {gbp(rule.typical_gross_pence)}",
+        "No earlier document with the same supplier, date and total or invoice number",
     ]
     return AutopilotDecision(auto_approve=True, reasons=ok, supplier_key=key)
 
