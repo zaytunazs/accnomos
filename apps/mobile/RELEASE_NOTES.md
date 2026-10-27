@@ -1,5 +1,29 @@
 # Release notes — Accnomos mobile
 
+## 0.3.2 (version code 5)
+
+Play "What's new" (256 characters):
+
+Contacts can now be added from the phone: pick people with Android's
+own contact picker, mark each Customer, Supplier or Skip, and import
+them to your books. Only the contacts you pick are read. No new app
+permission, so no data-safety change for contacts.
+
+## Emulator release check (0.3.2+5, pending a device run)
+
+- `flutter analyze` clean, `flutter test` green (incl. the new
+  `phone_import_test.dart`: mocked picker, kinds, duplicates, failure
+  and 360 dp with no overflow).
+- `uv run pytest services/runtime -q` green for the new
+  `POST /contacts/import-phone` (`test_contacts.py`).
+- No `READ_CONTACTS` in `AndroidManifest.xml`: the picker returns one
+  contact URI with a one-time grant, read for name, emails, phones and
+  postal address only; nothing is written back to the phone.
+- Not yet run on a real phone: picker grant behaviour, repeated picks,
+  the review sheet at small widths, the import summary and audit line,
+  and sign-in-gated visibility still need a human check (see the five
+  checks in the handover).
+
 ## 0.3.1 (version code 4)
 
 Play "What's new" (361 characters):
