@@ -38,6 +38,10 @@ test.describe("signed out: the sample queue", () => {
     await confirm.getByRole("button", { name: "Reject" }).click();
     await expect(card(page, "Screwfix · £38.47")).toHaveCount(0);
     await expect(focusedCard(page)).toHaveText("Screwfix · £21.60");
+    await expect(page.locator('p[role="status"][aria-live="polite"]')).toHaveText("Rejected · U to undo");
+    await page.keyboard.press("u"); // the sample's rejection stays in this tab, so it can come back
+    await expect(card(page, "Screwfix · £38.47")).toBeVisible();
+    await expect(page.getByText("4 waiting for you")).toBeVisible();
   });
 
   test("failed checks are plain English; never a raw code", async ({ page }) => {
@@ -130,7 +134,8 @@ test("signed in: edit sends only changed fields, U undoes through the runtime, p
   await page.locator('input[type="file"]').first().setInputFiles({ name: `${GOLD}.png`, mimeType: "image/png", buffer: await runtime.goldPng() });
   await expect(page.getByText("1 file added to 00 Inbox")).toBeVisible();
   await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
-  await expect(page.locator('p[role="status"][aria-live="polite"]')).toHaveText("1 new proposal");
+  // The runtime's first scan builds the stub's gold-receipt caches (over 10 s cold); later scans take ~1 s.
+  await expect(page.locator('p[role="status"][aria-live="polite"]')).toHaveText("1 new proposal", { timeout: 30_000 });
   const novex = card(page, "Novex Office Supplies Ltd · £51.90");
   await expect(novex).toBeVisible();
   await expect(page.getByText("SAMPLE — FICTIONAL COMPANY")).toHaveCount(0);

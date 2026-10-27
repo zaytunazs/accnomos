@@ -46,13 +46,15 @@ function SampleReview({ note: initialNote, level }: { note: string | null; level
   const adapter = useMemo<ReviewAdapter<string>>(() => {
     const order = sampleProposals().map((p) => p.id); // undo puts a card back where it was
     const remove = (p: RtProposal) => setItems((xs) => xs.filter((x) => x.id !== p.id));
+    const restore = (id: string) =>
+      setItems((xs) =>
+        [...xs.filter((x) => x.id !== id), sampleProposals().find((s) => s.id === id)!].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id)),
+      );
     return {
       approve: async (p) => (remove(p), p.id),
       reject: async (p) => remove(p),
-      undo: async (id) =>
-        setItems((xs) =>
-          [...xs.filter((x) => x.id !== id), sampleProposals().find((s) => s.id === id)!].sort((a, b) => order.indexOf(a.id) - order.indexOf(b.id)),
-        ),
+      undo: async (id) => restore(id),
+      unreject: async (p) => restore(p.id),
       image: (p) => (p.id === "sample-novex" ? { url: SAMPLE_IMAGE } : null),
     };
   }, []);

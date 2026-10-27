@@ -193,7 +193,19 @@ export default function ReviewQueue<H>({
     }
     return run("undo", async () => {
       if (last.kind === "reject") await adapter.unreject!(last.rejected!);
-      else for (const h of last.handles) await adapter.undo(h);
+      else {
+        const left = [...last.handles];
+        try {
+          while (left.length) {
+            await adapter.undo(left[0]);
+            left.shift();
+          }
+        } catch (e) {
+          // Keep only what is still posted, so pressing U again never reverses an entry twice.
+          setHistory((h) => [...h.slice(0, -1), { ...last, handles: left }]);
+          throw e;
+        }
+      }
       setHistory((h) => h.slice(0, -1));
       onNote(
         last.kind === "reject"
@@ -372,8 +384,9 @@ export default function ReviewQueue<H>({
         <Modal label={`Reject ${label(rejectItem)}?`} onClose={() => setRejecting(null)}>
           <h2 className="text-lg font-extrabold tracking-tight">Reject {label(rejectItem)}?</h2>
           <p className="mt-2 text-[15px] leading-7 text-muted">
-            Nothing is posted. The document moves to 04 Needs a look.
-            {adapter.unreject ? " U brings it back." : " This can't be undone from Review."}
+            {adapter.unreject
+              ? "Nothing is posted. U brings it back."
+              : "Nothing is posted. The document moves to 04 Needs a look. This can't be undone from Review."}
           </p>
           <div className="mt-5 flex flex-nowrap gap-2">
             <button type="button" autoFocus onClick={() => reject(rejectItem)} className={`${btn} flex-1 bg-warn-ink text-white`}>
