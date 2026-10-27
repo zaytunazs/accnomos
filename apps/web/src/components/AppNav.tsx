@@ -7,6 +7,7 @@ const links = [
   { href: "/", label: "Home" },
   { href: "/review", label: "Review", badge: "3" },
   { href: "/ask", label: "Ask" },
+  { href: "/bank", label: "Bank" },
   { href: "/vat", label: "VAT return" },
   { href: "/files", label: "Files" },
 ];

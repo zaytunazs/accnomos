@@ -158,7 +158,102 @@ export const runtime = {
   rebuild: (a: AccountInfo) => call<RtRebuild>(a, "/books/rebuild", { method: "POST" }),
   /** GET /books/deadlines?stagger=1 | start_month=5 | months=1 (see lib/business.ts deadlinesQuery). */
   deadlines: (a: AccountInfo, query: string) => call<RtDeadlines>(a, `/books/deadlines?${query}`),
+  /** /books/bank/* (services/runtime/app/routes_bank.py): statements, matches and unmatched lines. */
+  bank: {
+    /** POST /books/bank/import: multipart upload; the same file twice is a no-op (sha256). */
+    upload: async (a: AccountInfo, file: File) => {
+      const form = new FormData();
+      form.append("file", file, file.name);
+      const res = await fetch(`${RUNTIME_URL}/books/bank/import`, { method: "POST", headers: await runtimeHeaders(a), body: form });
+      if (!res.ok) throw new Error(await errorDetail(res, `upload ${file.name}`));
+      return (await res.json()) as RtBankImport;
+    },
+    statements: (a: AccountInfo) => call<RtBankStatement[]>(a, "/books/bank/statements"),
+    lines: (a: AccountInfo, status?: RtBankLineStatus) =>
+      call<RtBankLine[]>(a, `/books/bank/lines${status ? `?status=${status}` : ""}`),
+    suggestions: (a: AccountInfo) => call<RtBankSuggestion[]>(a, "/books/bank/suggestions"),
+    unmatched: (a: AccountInfo) => call<RtUnmatchedLine[]>(a, "/books/bank/unmatched"),
+    summary: (a: AccountInfo) => call<RtBankSummary>(a, "/books/bank/summary"),
+    confirm: (a: AccountInfo, lineId: string, eventIds: string[]) =>
+      call<RtBankLine>(a, `/books/bank/lines/${lineId}/match`, { method: "POST", body: JSON.stringify({ event_ids: eventIds }) }),
+    /** Reopen a matched, transfer or ignored line. */
+    reopen: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/unmatch`, { method: "POST" }),
+    transfer: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/transfer`, { method: "POST" }),
+    ignore: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/ignore`, { method: "POST" }),
+    expenseProposal: (a: AccountInfo, lineId: string) =>
+      call<RtProposal>(a, `/books/bank/lines/${lineId}/expense-proposal`, { method: "POST" }),
+  },
 };
+
+/** FastAPI errors are {"detail": "..."}; show that sentence, not the JSON. */
+async function errorDetail(res: Response, what: string): Promise<string> {
+  const text = await res.text();
+  try {
+    const detail = (JSON.parse(text) as { detail?: unknown }).detail;
+    if (typeof detail === "string") return detail;
+  } catch {
+    /* not JSON */
+  }
+  return `Could not ${what} (${res.status}): ${text.slice(0, 200)}`;
+}
+
+/** /books/bank/* wire types. Amounts are signed pence: money out is negative. Dates are YYYY-MM-DD. */
+export type RtBankLineStatus = "unmatched" | "matched" | "suggested" | "transfer" | "ignored";
+export interface RtBankLine {
+  id: string;
+  date: string;
+  amount_pence: number;
+  description: string;
+  reference: string | null;
+  balance_pence: number | null;
+  source_file: string;
+  matched_event_id: string | null;
+  matched_event_ids: string[];
+  status: RtBankLineStatus;
+  proposal_id: string | null;
+}
+export interface RtBankImport {
+  sha256: string;
+  filed_path: string | null;
+  lines: number;
+  new_lines: number;
+  duplicate_file: boolean;
+  bank: string;
+}
+export interface RtBankStatement {
+  path: string;
+  bank: string;
+  first_date: string;
+  last_date: string;
+  lines: number;
+  resolved: number;
+  money_in_pence: number;
+  money_out_pence: number;
+}
+export interface RtBankSuggestion {
+  line_id: string;
+  event_id: string;
+  event_ids: string[];
+  score: number;
+  kind: "exact" | "suggested";
+  reasons: string[];
+  line: RtBankLine;
+  events: { id: string; date: string; counterparty: string | null; amount_pence: number }[];
+}
+export type RtUnmatchedAction = "create_expense_proposal" | "mark_transfer" | "ignore";
+export interface RtUnmatchedLine {
+  line: RtBankLine;
+  suggested: { action: RtUnmatchedAction; reason: string };
+}
+export interface RtBankSummary {
+  total: number;
+  matched: number;
+  suggested: number;
+  unmatched: number;
+  transfer: number;
+  ignored: number;
+  reconciled_to: string | null;
+}
 
 /** POST /books/rebuild (services/runtime/app/routes_books.py). */
 export interface RtRebuild {
