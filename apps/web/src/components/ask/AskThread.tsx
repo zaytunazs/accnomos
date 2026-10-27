@@ -9,6 +9,7 @@ import { loadAiConfig, RUNTIME_URL } from "@/lib/ai-config";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { runtime, runtimeHealth, type RtAskAnswer, type RtAskTurn } from "@/lib/runtime";
 import { sampleAnswer, sampleQuestion } from "@/lib/sample-ask";
+import { pickedPeriod } from "@/lib/vat-period";
 import ActionCard, { ClarifyCard, withPicked } from "./ActionCard";
 import AnswerCard from "./AnswerCard";
 import MicButton from "./MicButton";
@@ -31,6 +32,12 @@ function Question({ text }: { text: string }) {
       )}
     </div>
   );
+}
+
+/** The period picked on /vat, if any; otherwise null and the runtime uses the current VAT period. */
+function askPeriod() {
+  const p = pickedPeriod();
+  return p ? { start: p.start, end: p.end } : null;
 }
 
 /** Live answers from POST /books/ask when signed in and the runtime answers; otherwise the sample thread. */
@@ -65,7 +72,7 @@ export default function AskThread() {
     setInput("");
     setBusy(true);
     try {
-      const answer = await runtime.ask(acct, q, null, history);
+      const answer = await runtime.ask(acct, q, askPeriod(), history);
       setTurns([...before, { question: q, answer }]);
     } catch (e) {
       setTurns([...before, { question: q, error: e instanceof Error ? e.message : String(e) }]);
@@ -79,7 +86,7 @@ export default function AskThread() {
     setTurns([...before, { question: "" }]);
     setBusy(true);
     try {
-      const { transcript, ...answer } = await runtime.askVoice(acct, audio, null, historyOf(before));
+      const { transcript, ...answer } = await runtime.askVoice(acct, audio, askPeriod(), historyOf(before));
       setTurns([...before, { question: transcript, answer }]);
     } catch (e) {
       setTurns([...before, { question: "(voice question)", error: e instanceof Error ? e.message : String(e) }]);

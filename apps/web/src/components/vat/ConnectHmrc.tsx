@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { fetchLiveVat, type RtVatView } from "@/lib/runtime";
+import { usePickedPeriod } from "@/lib/vat-period";
 import { ensureFolder, putSmallFile } from "@/lib/graph";
 import {
   clientFacts,
@@ -72,6 +73,7 @@ export default function ConnectHmrc() {
   const [declared, setDeclared] = useState(false);
   const [result, setResult] = useState<RelayResult<SubmitReceipt> | null>(null);
   const [saved, setSaved] = useState<"saving" | "saved" | string>("saving");
+  const picked = usePickedPeriod();
 
   useEffect(() => {
     // Take the OAuth fragment before any await so nothing else (MSAL, a reload) sees or re-uses it.
@@ -85,7 +87,6 @@ export default function ConnectHmrc() {
         if (!acct) return setPhase("hidden");
         setAccount(acct);
         setVrn(savedVrn());
-        fetchLiveVat(acct).then(setLive, () => setLive(null));
         if (cb && "error" in cb) {
           disconnect();
           setError(`HMRC sign-in didn't finish: ${cb.description || cb.error}`);
@@ -100,6 +101,23 @@ export default function ConnectHmrc() {
       }
     })();
   }, []);
+
+  // The return for the period picked above (the current one unless another is chosen).
+  useEffect(() => {
+    if (!account) return;
+    let stale = false;
+    fetchLiveVat(account, picked?.period ?? null).then(
+      (v) => {
+        if (stale) return;
+        setLive(v);
+        setStep((s) => (s === "confirm" ? "list" : s)); // a half-made declaration may be for the previous figures
+      },
+      () => !stale && setLive(null),
+    );
+    return () => {
+      stale = true;
+    };
+  }, [account, picked?.period]);
 
   const obligation = obligations?.find((o) => o.periodKey === selected) ?? null;
   const body = useMemo(() => (live && obligation ? toReturnBody(live.hmrc_body, obligation.periodKey) : null), [live, obligation]);
@@ -160,7 +178,7 @@ export default function ConnectHmrc() {
   }
 
   async function submit() {
-    if (!account || !body || !obligation || !live || !declared) return;
+    if (!account || !body || !obligation || !live?.can_submit || !declared) return;
     const v = cleanVrn(vrn);
     setError(null);
     setStep("submitting");
@@ -390,13 +408,20 @@ export default function ConnectHmrc() {
                   </tbody>
                 </table>
               </div>
-              <button type="button" disabled={!obligation || !live} onClick={() => {
+              <button type="button" disabled={!obligation || !live?.can_submit} onClick={() => {
                   setDeclared(false);
                   setStep("confirm");
                 }} className={`${primary} mt-4`}>
                 Prepare submission
               </button>
               {!live && <p className="mt-2 text-sm text-muted">Your live return isn&apos;t available (is the runtime running?), so there is nothing to submit yet.</p>}
+              {live && !live.can_submit && (
+                <p className="mt-2 text-sm text-muted">
+                  {live.submitted
+                    ? `${live.label} has already been submitted.`
+                    : `${live.label} is too far back to submit here: pick the current or previous period above.`}
+                </p>
+              )}
             </div>
           )}
 
