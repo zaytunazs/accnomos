@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import TypeAdapter, ValidationError
 
 from app.ai import ask as ask_ai
@@ -17,7 +17,7 @@ from app.ai import voice
 from app.ai.config import AiConfig, ai_config_from_request
 from app.books import Books
 from app.facts import build_facts, default_period
-from app.routes_books import get_books
+from app.routes_books import business_name, get_books
 from app.schemas import AskAnswer, AskPeriod, AskRequest, AskTurn, AskVoiceAnswer
 
 router = APIRouter(prefix="/books", tags=["ask"])
@@ -35,9 +35,9 @@ async def ask(
     body: AskRequest,
     books: Books = Depends(get_books),
     cfg: AiConfig = Depends(ai_config_from_request),
-    x_business_name: str | None = Header(default=None),
+    business: str | None = Depends(business_name),
 ) -> AskAnswer:
-    return await _answer(body, books, cfg, x_business_name)
+    return await _answer(body, books, cfg, business)
 
 
 @router.post("/ask/voice", response_model=AskVoiceAnswer)
@@ -47,7 +47,7 @@ async def ask_voice(
     history: str | None = Form(default=None),
     books: Books = Depends(get_books),
     cfg: AiConfig = Depends(ai_config_from_request),
-    x_business_name: str | None = Header(default=None),
+    business: str | None = Depends(business_name),
 ) -> AskVoiceAnswer:
     """Spoken question (webm/ogg/m4a/wav) -> WAV via ffmpeg -> Muse Voice Transcribe -> the /books/ask answer.
 
@@ -71,5 +71,5 @@ async def ask_voice(
         req = AskRequest(question=transcript, period=when, history=turns)
     except ValidationError as exc:
         raise HTTPException(422, f"That question is too long ({len(transcript)} characters; keep it under 500)") from exc
-    answer = await _answer(req, books, cfg, x_business_name)
+    answer = await _answer(req, books, cfg, business)
     return AskVoiceAnswer(**answer.model_dump(), transcript=transcript)
