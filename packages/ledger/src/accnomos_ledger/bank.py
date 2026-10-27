@@ -25,6 +25,7 @@ import csv
 import hashlib
 import io
 import re
+from collections.abc import Sequence
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from typing import Literal
@@ -76,6 +77,14 @@ class BankCsvError(ValueError):
     """The file does not look like a bank statement we can read."""
 
 
+def reconciled_to(lines: Sequence[BankLine]) -> date | None:
+    """Latest date up to which every bank line is matched, a transfer or ignored; None if the first day isn't."""
+    open_days = sorted({ln.date for ln in lines if not ln.resolved})
+    done_days = sorted({ln.date for ln in lines if ln.resolved})
+    before = [d for d in done_days if not open_days or d < open_days[0]]
+    return before[-1] if before else None
+
+
 #: What to do with a bank line nothing in the ledger matches.
 UnmatchedAction = Literal["create_expense_proposal", "mark_transfer", "ignore"]
 TRANSFER_WORDS = re.compile(r"\b(transfer|tfr|savings?|own account|between accounts|pot|isa|sweep)\b", re.IGNORECASE)
@@ -96,8 +105,9 @@ def suggest_action(line: BankLine) -> ActionHint:
     if line.amount_pence == 0 or IGNORE_WORDS.search(text):
         return ActionHint(action="ignore", reason="A zero, pending or reversed line has nothing to book")
     if line.amount_pence < 0:
-        why = "A bank fee: book it as bank charges" if FEE_WORDS.search(text) else "Money out with no receipt in the books yet"
-        return ActionHint(action="create_expense_proposal", reason=why)
+        fee = FEE_WORDS.search(text)
+        return ActionHint(action="create_expense_proposal",
+                          reason="A bank fee: book it as bank charges" if fee else "Money out with no receipt in the books yet")
     return ActionHint(action="ignore",
                       reason="Money in with no sale in the books: post the sales invoice, or ignore it if it isn't income")
 
