@@ -75,7 +75,7 @@ test.describe("Review at 390 px", () => {
 
   test("signed-out sample: no horizontal scroll, action rows never wrap, approve and undo work", async ({ page }) => {
     await page.goto("/review");
-    await expect(page.getByText("SAMPLE — FICTIONAL COMPANY · Bramblewood Joinery Ltd.")).toBeVisible();
+    await expect(page.getByText("SAMPLE — FICTIONAL COMPANY · demo data only")).toBeVisible();
     await page.waitForLoadState("networkidle");
     const { scroll, width } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, width: window.innerWidth }));
     expect(scroll, `review is ${scroll}px wide in a ${width}px viewport`).toBeLessThanOrEqual(width);

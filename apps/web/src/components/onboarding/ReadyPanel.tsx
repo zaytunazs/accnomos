@@ -48,12 +48,12 @@ export default function ReadyPanel() {
       </ol>
 
       <div className="flex flex-wrap gap-3">
-        <a
-          href="#"
+        <Link
+          href="/files"
           className="inline-flex h-12 items-center rounded-xl border border-teal bg-white px-5 text-[15px] font-bold text-teal-dark"
         >
-          Open in OneDrive
-        </a>
+          See your files
+        </Link>
         <Link
           href="/"
           className="inline-flex h-12 flex-1 items-center justify-center rounded-xl bg-teal px-5 text-[15px] font-extrabold text-white hover:bg-teal-dark"

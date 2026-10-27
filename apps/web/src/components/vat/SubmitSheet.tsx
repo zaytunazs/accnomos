@@ -102,6 +102,7 @@ export default function SubmitSheet() {
               <button
                 type="button"
                 disabled={!confirmed}
+                title={confirmed ? "Send the return to HMRC's sandbox" : "Tick “I confirm” first"}
                 onClick={() => setSubmitted(true)}
                 className="h-11 rounded-xl bg-teal px-6 text-[15px] font-bold text-white hover:bg-teal-dark disabled:cursor-not-allowed disabled:opacity-50"
               >

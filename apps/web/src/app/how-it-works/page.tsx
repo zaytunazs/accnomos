@@ -357,7 +357,7 @@ export default function HowItWorksPage() {
       </nav>
 
       {features.map((f) => (
-        <section key={f.id} aria-labelledby={`${f.id}-heading`} className="rounded-2xl border border-border bg-white p-5 sm:p-6">
+        <section key={f.id} id={f.id} aria-labelledby={`${f.id}-heading`} className="rounded-2xl border border-border bg-white p-5 sm:p-6 scroll-mt-24">
           <h2 id={`${f.id}-heading`} className="text-xl font-extrabold tracking-tight">
             {f.title}
           </h2>
@@ -379,7 +379,7 @@ export default function HowItWorksPage() {
         </section>
       ))}
 
-      <section aria-labelledby="data-heading" className="flex flex-col gap-3">
+      <section id="data" aria-labelledby="data-heading" className="flex flex-col gap-3 scroll-mt-24">
         <div>
           <h2 id="data-heading" className="text-xl font-extrabold tracking-tight">
             Where your data lives
@@ -392,7 +392,7 @@ export default function HowItWorksPage() {
         <FolderTree />
       </section>
 
-      <section aria-labelledby="models-heading" className="rounded-2xl border border-border bg-white p-5 sm:p-6">
+      <section id="models" aria-labelledby="models-heading" className="rounded-2xl border border-border bg-white p-5 sm:p-6 scroll-mt-24">
         <h2 id="models-heading" className="text-xl font-extrabold tracking-tight">
           Which model does what
         </h2>
@@ -410,7 +410,7 @@ export default function HowItWorksPage() {
         </ul>
       </section>
 
-      <section aria-labelledby="never-heading" className="rounded-2xl border border-teal bg-white p-5 sm:p-6">
+      <section id="never" aria-labelledby="never-heading" className="rounded-2xl border border-teal bg-white p-5 sm:p-6 scroll-mt-24">
         <h2 id="never-heading" className="text-xl font-extrabold tracking-tight">
           What is never automatic
         </h2>
@@ -421,7 +421,7 @@ export default function HowItWorksPage() {
         </ul>
       </section>
 
-      <section aria-labelledby="faq-heading" className="rounded-2xl border border-border bg-white p-5 sm:p-6">
+      <section id="faq" aria-labelledby="faq-heading" className="rounded-2xl border border-border bg-white p-5 sm:p-6 scroll-mt-24">
         <h2 id="faq-heading" className="text-xl font-extrabold tracking-tight">
           FAQ
         </h2>
