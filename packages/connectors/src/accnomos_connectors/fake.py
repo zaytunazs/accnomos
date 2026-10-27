@@ -79,12 +79,16 @@ class FakeMailSender(MailSender):
 
 
 class FakeCalendarProvider(CalendarProvider):
-    """A calendar in memory: seed `events`; `created` lists what `create_event` added (also appended to `events`)."""
+    """A calendar in memory. Day planner side: seed `events`; `created` lists what `create_event` added (also appended
+    to `events`). Deadline side: `calendars[name] -> id` and `all_day[calendar_id][key] = (date, title, body)`;
+    upserting the same key replaces it."""
 
     def __init__(self, events: list[CalendarEvent] | None = None) -> None:
         self.events = list(events or [])
         self.created: list[CalendarEvent] = []
         self.calls: list[str] = []
+        self.calendars: dict[str, str] = {}  # name -> id
+        self.all_day: dict[str, dict[str, tuple[str, str, str]]] = {}
 
     async def list_events(self, day: date, tz: str = "Europe/London") -> list[CalendarEvent]:
         self.calls.append(f"list_events:{day.isoformat()}")
@@ -103,6 +107,18 @@ class FakeCalendarProvider(CalendarProvider):
         self.created.append(event)
         self.events.append(event)
         return event.id
+
+    async def ensure_calendar(self, name: str) -> str:
+        if name not in self.calendars:
+            self.calendars[name] = f"fake-cal:{len(self.calendars) + 1}"
+            self.all_day[self.calendars[name]] = {}
+        return self.calendars[name]
+
+    async def upsert_all_day_event(self, calendar_id: str, key: str, date: str, title: str, body: str) -> str:
+        if calendar_id not in self.all_day:
+            raise FileNotFoundError(calendar_id)
+        self.all_day[calendar_id][key] = (date, title, body)
+        return f"{calendar_id}/{key}"
 
 
 class FakeStorageProvider(StorageProvider):

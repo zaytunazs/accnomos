@@ -23,11 +23,16 @@ const authority = process.env.NEXT_PUBLIC_MS_AUTHORITY ?? "https://login.microso
 
 let instancePromise: Promise<IPublicClientApplication> | null = null;
 
+// `process.env.NEXT_PUBLIC_TEST_MODE === "1"` is written out at each use (not shared as a constant) so the
+// bundler folds it: only a `NEXT_PUBLIC_TEST_MODE=1` build (e2e/build.mjs) contains the fake sign-in, msal-test.ts.
 export function msalConfigured(): boolean {
-  return clientId.length > 0;
+  return process.env.NEXT_PUBLIC_TEST_MODE === "1" || clientId.length > 0;
 }
 
 export function getMsal(): Promise<IPublicClientApplication> {
+  if (process.env.NEXT_PUBLIC_TEST_MODE === "1" && !instancePromise) {
+    instancePromise = import("./msal-test").then((m) => m.createTestMsal());
+  }
   if (!instancePromise) {
     instancePromise = createStandardPublicClientApplication({
       auth: {

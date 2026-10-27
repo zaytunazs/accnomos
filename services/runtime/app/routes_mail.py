@@ -11,6 +11,7 @@ from accnomos_connectors.msgraph import GraphMailProvider
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
+from app.ai.config import is_test_mode
 from app.books import Books
 from app.intake import IntakeResult, scan_mail
 from app.routes_books import get_books
@@ -24,6 +25,11 @@ async def get_mail(request: Request) -> AsyncIterator[MailProvider]:
     token = request.headers.get("X-Graph-Token", "").strip().removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")
+    if is_test_mode():
+        from app import testmode
+
+        yield (await testmode.state()).mail
+        return
     mail = GraphMailProvider(token)
     try:
         yield mail

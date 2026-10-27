@@ -44,6 +44,43 @@ $env:OLLAMA_BASE='http://<spark>:11434'
 ..\.venv\Scripts\python.exe -m harness.crop_bench --limit 20                                   # crop IoU; adds SAM if MODEL_API_KEY is set
 ```
 
+## End-to-end tests (Playwright, test mode)
+
+```powershell
+uv sync --all-packages --all-extras                # the runtime must be importable by E2E_PYTHON (default python3)
+cd apps/web; pnpm install; pnpm exec playwright install chromium
+pnpm run e2e                                       # = e2e:build (test-mode export → out-e2e/) + e2e:test
+$env:E2E_PYTHON='..\..\.venv\Scripts\python.exe'; pnpm run e2e:test   # Windows: point at the venv
+```
+
+Playwright (`apps/web/playwright.config.ts`, Chromium only) starts both servers itself: the runtime on :8781 with
+`ACCNOMOS_TEST_MODE=1` and a static host for `out-e2e/` on :3100. Each test resets the fakes and fails if any request
+leaves 127.0.0.1. Flows: connect + folder ready, gold receipt upload → scan → approve → VAT boxes change, Ask key
+numbers, HMRC card (relay answered by Playwright, no real OAuth), Outlook intake dry run, Files, Settings persisting,
+and a phone-width smoke of every page (no horizontal scroll). CI: `.github/workflows/e2e.yml` (traces uploaded on
+failure; locally `pnpm exec playwright show-trace test-results/<test>/trace.zip`).
+
+**Runtime test mode** (`ACCNOMOS_TEST_MODE=1`, `services/runtime/app/testmode.py`). For tests only; the Docker image
+sets it to 0 and does not even contain `evals/gold`, which it needs.
+
+- Storage, mail, address book and calendar are the in-memory fakes from `accnomos_connectors.fake`, shared by every
+  request whatever token it carries (a token is still required, as in production). The calendar holds one sample
+  VAT deadline but no runtime route uses a calendar yet, so no e2e flow touches it. The browser's own Graph calls go
+  to a look-alike at `/__test/graph/v1.0` over the same storage.
+- The stub AI proves the plumbing, not the models: it never reads a document it was not given the answer to.
+- Every AI call is forced to a stub at `/__test/ai` (Ollama-shaped), whatever the request headers say. It reads a
+  document only if it is a gold receipt rendered by `evals/harness/render.py` (matched by the PNG's sha256) and
+  returns its gold fields; Ask gets an answer built from the facts pack, so grounding passes.
+- `POST /__test/reset` empties storage and reseeds the mailbox (three gold receipts, one newsletter) and calendar;
+  `GET /__test/gold` and `/__test/gold/{name}.png` list and serve the gold receipts; `GET /__test/state` shows the fakes.
+- "Today" is pinned (`ACCNOMOS_TEST_TODAY`, default 2026-10-27) so the gold quarter (Jul–Sep 2026) is the one VAT and
+  Ask default to; `CROP_MODE` defaults to `off` so the stub sees the uploaded bytes.
+
+**Web test build** (`NEXT_PUBLIC_TEST_MODE=1`, made by `e2e/build.mjs`): `src/lib/msal.ts` uses a fake account from
+`msal-test.ts` (no network; "Sign in" sets `msal.accnomos-test.signedIn` in localStorage) and `src/lib/graph.ts` uses
+the runtime's look-alike. A normal `pnpm build` folds both away: `out/` contains no fake account and no `/__test` URL
+(`deploy-web.yml` checks this before publishing).
+
 ## Document crop (before extraction)
 
 `app/ai/crop.py` crops phone photos to the receipt; it never fails the pipeline and returns the

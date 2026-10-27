@@ -18,6 +18,7 @@ jobs:
       NEXT_PUBLIC_MS_AUTHORITY: https://login.microsoftonline.com/common
       NEXT_PUBLIC_RUNTIME_URL: https://api.accnomos.com
       NEXT_PUBLIC_RELAY_URL: https://api.accnomos.com
+      NEXT_PUBLIC_TEST_MODE: "" # the fake sign-in (src/lib/msal-test.ts) is for e2e builds only
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -32,6 +33,12 @@ jobs:
         working-directory: apps/web
       - run: pnpm lint && pnpm build
         working-directory: apps/web
+      - name: Refuse to publish a test-mode build
+        working-directory: apps/web
+        run: |
+          if grep -rlE '__test/(graph|ai)|accnomos-test\.signedIn' out/; then
+            echo "::error::out/ contains test-mode code (fake sign-in or /__test URLs); not publishing"; exit 1
+          fi
       - name: Publish out/ to the site branch (Plesk Git pulls this branch into httpdocs)
         uses: peaceiris/actions-gh-pages@v4
         with:

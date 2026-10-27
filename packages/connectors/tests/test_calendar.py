@@ -109,3 +109,19 @@ async def test_fake_calendar_lists_the_day_and_records_created_events():
                                     datetime(2026, 10, 29, 12, tzinfo=LONDON), "", "Job x")
     assert [e.id for e in cal.created] == [new_id]
     assert len(await cal.list_events(day)) == 2
+
+
+async def test_fake_ensure_calendar_is_idempotent_and_upsert_replaces_by_key():
+    cal = FakeCalendarProvider()
+    cid = await cal.ensure_calendar("Accnomos")
+    assert await cal.ensure_calendar("Accnomos") == cid
+    assert await cal.ensure_calendar("Other") != cid
+
+    ref = await cal.upsert_all_day_event(cid, "vat-26A3", "2026-11-07", "VAT return due", "first")
+    assert await cal.upsert_all_day_event(cid, "vat-26A3", "2026-11-08", "VAT return due", "second") == ref
+    assert cal.all_day[cid] == {"vat-26A3": ("2026-11-08", "VAT return due", "second")}
+
+
+async def test_fake_upsert_into_unknown_calendar_fails():
+    with pytest.raises(FileNotFoundError):
+        await FakeCalendarProvider().upsert_all_day_event("nope", "k", "2026-11-07", "t", "b")

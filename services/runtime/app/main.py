@@ -20,6 +20,8 @@ from app.ai.config import base_url_allowed
 from app.security import SecurityMiddleware, install_log_scrubbing, scrub
 
 install_log_scrubbing()
+from app.ai.config import TEST_AI_MODEL, is_test_mode, stub_ai_base
+
 app = FastAPI(title="Accnomos Agent Runtime", version="0.1.0")
 STARTED = time.time()
 
@@ -66,7 +68,7 @@ class AiTestResult(BaseModel):
 async def health() -> dict:
     return {
         "ok": True, "service": "runtime", "version": app.version, "uptime_s": int(time.time() - STARTED),
-        "voice": bool(FFMPEG),
+        "voice": bool(FFMPEG), **({"test_mode": True} if is_test_mode() else {}),
     }
 
 
@@ -75,6 +77,8 @@ async def ai_test(cfg: AiConfig, x_meta_api_key: str | None = Header(default=Non
     """F2: 'Test connection' button. Lists models with the user's key, or pings the user's local agent."""
     if cfg.base_url and not base_url_allowed(cfg.base_url):
         raise HTTPException(400, "base_url is not on this server's allow-list (AI_ALLOWED_BASE_URLS)")
+    if is_test_mode():  # the stub AI stands in for whatever the user typed
+        cfg = AiConfig(mode="local", base_url=stub_ai_base(), model=TEST_AI_MODEL)
     async with httpx.AsyncClient(timeout=httpx.Timeout(20.0, connect=5.0), follow_redirects=False) as client:
         if cfg.mode == "key":
             if not x_meta_api_key:
@@ -150,3 +154,9 @@ app.include_router(payroll_router)
 
 from app.routes_plan import router as plan_router  # noqa: E402  /plan/day, /plan/day/apply
 app.include_router(plan_router)
+if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI under /__test (app/testmode.py)
+    from app import testmode
+
+    testmode.enable()
+    app.include_router(testmode.router)
+

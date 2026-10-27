@@ -15,13 +15,14 @@ from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from pydantic import TypeAdapter, ValidationError
 
 from app import actions
 from app.ai import ask as ask_ai
 from app.ai import voice
 from app.ai.config import AiConfig, ai_config_from_request
-from app.books import Books
+from app.books import Books, today
 from app.facts import build_facts, default_period
 from app.routes_actions import graph_token
 from app.planner import TZ, plan_intent, uk_day
@@ -57,7 +58,7 @@ def plan_answer(day: date, period: AskPeriod) -> AskAnswer:
 
 async def _answer(req: AskRequest, books: Books, cfg: AiConfig, business: str | None, token: str) -> AskAnswer:
     """Day-plan intent (code, no model) → instruction (proposed action) → question about the books (facts + model)."""
-    period = req.period or default_period(date.today())
+    period = req.period or default_period(today())
     if (day := plan_intent(req.question, datetime.now(TZ).date())) is not None:
         return plan_answer(day, period)
     found = await actions.propose(req.question, books, cfg, token)

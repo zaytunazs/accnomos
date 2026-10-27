@@ -1,0 +1,62 @@
+name: End-to-end tests (Playwright, test mode)
+
+# The test-mode static export (fake Microsoft sign-in) against the runtime with ACCNOMOS_TEST_MODE=1
+# (in-memory OneDrive/Outlook/calendar, stub AI answering from evals/gold). No secrets; nothing leaves the runner.
+on:
+  pull_request:
+    paths: ["apps/web/**", "services/runtime/**", "packages/**", "evals/gold/**", "evals/harness/render.py", ".github/workflows/e2e.yml"]
+  push:
+    branches: [main]
+    paths: ["apps/web/**", "services/runtime/**", "packages/**", "evals/gold/**", "evals/harness/render.py", ".github/workflows/e2e.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+      - name: Install the runtime (uv workspace)
+        run: uv sync --frozen --package accnomos-runtime
+        working-directory: .
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Install Chromium for Playwright
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Build the test-mode export (out-e2e/)
+        run: pnpm run e2e:build
+
+      - name: Run Playwright (starts the runtime in test mode and serves out-e2e/)
+        run: pnpm run e2e:test
+        env:
+          CI: "1"
+          E2E_PYTHON: ${{ github.workspace }}/.venv/bin/python
+
+      - name: Upload traces and report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: |
+            apps/web/test-results/
+            apps/web/playwright-report/
+          retention-days: 14
