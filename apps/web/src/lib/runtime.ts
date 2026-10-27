@@ -371,6 +371,12 @@ export const runtime = {
     return call<RtStatement>(a, `/contacts/${id}/statement${q ? `?${q}` : ""}`);
   },
   aged: (a: AccountInfo) => call<RtAged>(a, "/contacts/aged"),
+  /** POST /contacts/vat-check: HMRC Check a UK VAT number via the relay, only on the user's tap; kept on the contact. */
+  vatCheck: (a: AccountInfo, body: { vrn: string; name?: string | null; contact_id?: string | null; refresh?: boolean }) =>
+    call<RtVatCheckResult>(a, "/contacts/vat-check", { method: "POST", body: JSON.stringify(body) }),
+  /** /lookup/* (services/runtime/app/routes_lookup.py): Companies House suggestions; nothing is saved. */
+  lookupCompanies: (a: AccountInfo, q: string) =>
+    call<RtCompanySearch>(a, `/lookup/companies?${new URLSearchParams({ q }).toString()}`),
   /** /books/bank/* (services/runtime/app/routes_bank.py): statements, matches and unmatched lines. */
   bank: {
     /** POST /books/bank/import: multipart upload; the same file twice is a no-op (sha256). */
@@ -784,7 +790,9 @@ export const pence = (p: number) => gbp(p / 100);
 
 
 /** Contacts (services/runtime/app/contacts.py). Pence are signed from the user's side: + they owe you, − you owe them. */
-export type RtContactField = "name" | "kind" | "vrn" | "email" | "phone" | "address" | "default_category" | "default_vat_code" | "vat_status";
+export type RtContactField =
+  | "name" | "kind" | "vrn" | "email" | "phone" | "address" | "default_category" | "default_vat_code" | "vat_status"
+  | "company_number";
 /** PUT /contacts/{id}: the text fields, plus payment terms in days (null: the 30-day default). */
 export type RtContactEdits = Partial<Record<RtContactField, string | null>> & { terms_days?: number | null };
 /** Whether a supplier charges VAT, as the books remember it: learnt on approval, editable on Contacts. */
@@ -803,11 +811,65 @@ export interface RtContact {
   source: "ledger" | "outlook" | "manual";
   vat_status?: RtVatStatus; // absent from runtimes before 27 Oct 2026: read as "unknown"
   terms_days?: number | null; // payment terms in days; ageing assumes 30 when unset
+  company_number?: string | null; // Companies House number (absent from runtimes before this field)
+  vat_check?: RtVatCheck | null; // the last HMRC VAT check for `vrn`, kept on the contact
   aliases: string[];
   edited: string[];
   created_at: string;
   updated_at: string;
 }
+/** HMRC Check a UK VAT number, as the relay answers it. `source` says sandbox, live or a test-mode sample. */
+export interface RtVatCheck {
+  vrn: string;
+  registered: boolean;
+  name: string | null;
+  address: string | null;
+  consultation_number: string | null;
+  checked_at: string;
+  source: "hmrc-sandbox" | "hmrc" | "sample";
+  checksum_ok?: boolean | null;
+}
+export interface RtVatCheckResult {
+  check: RtVatCheck;
+  name_differs: boolean; // HMRC's name clearly differs from the supplier's: warn, never block
+  contact_id: string | null;
+  cached: boolean;
+}
+export interface RtCompanyMatch {
+  company_number: string;
+  name: string;
+  status: string | null;
+  type: string | null;
+  address: string | null;
+  date_of_creation: string | null;
+  source: string;
+  sample: boolean;
+}
+export interface RtCompanySearch {
+  query: string;
+  items: RtCompanyMatch[];
+}
+export interface RtLookupStatus {
+  companies_house: boolean;
+  vat_check: boolean;
+  sample: boolean;
+}
+
+/** GET /lookup/status: which official look-ups this runtime can do (no sign-in). Null when it can't say. */
+export async function lookupStatus(): Promise<RtLookupStatus | null> {
+  try {
+    const res = await fetch(`${RUNTIME_URL}/lookup/status`);
+    return res.ok ? ((await res.json()) as RtLookupStatus) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** "(HMRC sandbox)" / "(HMRC)" / "(sample)": where a VAT check answer came from, always shown with it. */
+export function vatCheckSourceLabel(source: RtVatCheck["source"]): string {
+  return source === "hmrc" ? "HMRC" : source === "hmrc-sandbox" ? "HMRC sandbox" : "SAMPLE, test mode";
+}
+
 export interface RtContactTotals {
   documents: number;
   ytd_sales_net_pence: number;
