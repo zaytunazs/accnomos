@@ -7,6 +7,7 @@ import '../services/settings.dart';
 import '../theme.dart';
 import 'invoice_send.dart';
 import 'new_invoice_screen.dart';
+import 'payments_sheets.dart';
 import 'settings_screen.dart';
 
 const _statuses = ['all', 'draft', 'sent', 'paid', 'void'];
@@ -342,6 +343,157 @@ class _InvoiceDetailState extends State<InvoiceDetailScreen> {
     }
   }
 
+  void _snack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Record payment sheet → confirm sheet → runtime → refresh.
+  Future<void> _recordPayment(num balance) async {
+    final recorded = await showRecordPaymentSheet(
+      context: context,
+      invoiceNumber: widget.number,
+      balancePence: balance,
+      record: ({required amountPence,
+          required paidOn,
+          required account,
+          paymentRef}) async {
+        final client = await booksClient(
+            widget.settings, widget.auth, widget.account);
+        return client.recordInvoicePayment(
+          widget.number,
+          amountPence: amountPence,
+          paidOn: paidOn,
+          account: account,
+          paymentRef: paymentRef,
+        );
+      },
+    );
+    if (recorded != null && mounted) {
+      _snack('Payment recorded on ${widget.number}.');
+      await _reload();
+    }
+  }
+
+  /// Confirm first, then remove the payment and refresh.
+  Future<void> _removePayment(Map<String, dynamic> payment) async {
+    final id = (payment['id'] ?? '').toString();
+    final description =
+        (payment['description'] ?? 'payment').toString();
+    final confirmed = await showConfirmSheet(
+      context: context,
+      title: 'Remove this payment?',
+      figures: [
+        ConfirmFigure(
+            'Date', ukDate((payment['date'] ?? '').toString())),
+        ConfirmFigure('What', description),
+        ConfirmFigure('Amount',
+            gbp((payment['applied_pence'] ?? 0) as num)),
+      ],
+      confirmLabel: 'Remove',
+      action: () async {
+        final client = await booksClient(
+            widget.settings, widget.auth, widget.account);
+        await client.removeInvoicePayment(widget.number, id);
+      },
+    );
+    if (confirmed && mounted) {
+      _snack('Payment removed from ${widget.number}.');
+      await _reload();
+    }
+  }
+
+  /// Credit-note sheet → confirm sheet → runtime → refresh, naming the CN.
+  Future<void> _createCreditNote(
+      List<Map<String, dynamic>> lines) async {
+    final created = await showCreateCreditNoteSheet(
+      context: context,
+      invoiceNumber: widget.number,
+      lines: lines,
+      create: (
+          {required reason,
+          issueDate,
+          creditLines}) async {
+        final client = await booksClient(
+            widget.settings, widget.auth, widget.account);
+        return client.createCreditNote(
+          widget.number,
+          reason: reason,
+          issueDate: issueDate,
+          lines: creditLines,
+        );
+      },
+    );
+    if (created != null && mounted) {
+      final cn = (created['number'] ?? '').toString();
+      _snack(cn.isEmpty
+          ? 'Credit note created.'
+          : 'Credit note $cn created.');
+      await _reload();
+    }
+  }
+
+  /// Void with a reason; the runtime refuses while payments, a matched line
+  /// or issued credit notes stand, and its sentence shows in the sheet.
+  Future<void> _voidInvoice(num total, num paid, num credited) async {
+    final reason = TextEditingController();
+    final typed = await showDialog<String>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Void this invoice?'),
+        content: TextField(
+          controller: reason,
+          decoration: const InputDecoration(
+            labelText: 'Reason',
+            hintText: 'e.g. raised by mistake',
+            border: OutlineInputBorder(),
+          ),
+          maxLength: 300,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AccnomosColors.teal,
+            ),
+            onPressed: () =>
+                Navigator.of(dialogContext).pop(reason.text.trim()),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+    reason.dispose();
+    if (typed == null || typed.isEmpty || !mounted) return;
+    final confirmed = await showConfirmSheet(
+      // ignore: use_build_context_synchronously
+      context: context,
+      title: 'Void ${widget.number}?',
+      figures: [
+        ConfirmFigure('Total', gbp(total)),
+        ConfirmFigure('Paid', gbp(paid)),
+        ConfirmFigure('Credited', gbp(credited)),
+        ConfirmFigure('Reason', typed),
+      ],
+      confirmLabel: 'Void invoice',
+      action: () async {
+        final client = await booksClient(
+            widget.settings, widget.auth, widget.account);
+        final updated =
+            await client.voidInvoice(widget.number, typed);
+        if (mounted) setState(() => _invoice = updated);
+      },
+    );
+    if (confirmed && mounted) {
+      _snack('${widget.number} voided.');
+      await _reload();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -388,6 +540,17 @@ class _InvoiceDetailState extends State<InvoiceDetailScreen> {
         money is Map ? (money['credited_pence'] ?? 0) as num : null;
     final balance =
         money is Map ? (money['balance_pence'] ?? 0) as num : null;
+    final payments = [
+      if (money is Map && money['payments'] is List)
+        for (final p in money['payments'] as List)
+          if (p is Map) Map<String, dynamic>.from(p),
+    ];
+    final creditNotes = [
+      if (money is Map && money['credit_notes'] is List)
+        for (final c in money['credit_notes'] as List)
+          if (c is Map) Map<String, dynamic>.from(c),
+    ];
+    final total = (inv['total_pence'] ?? 0) as num;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -434,6 +597,10 @@ class _InvoiceDetailState extends State<InvoiceDetailScreen> {
             ],
           ),
         ),
+        if (money is Map) ...[
+          const SizedBox(height: 12),
+          _paymentsCard(payments, creditNotes),
+        ],
         const SizedBox(height: 12),
         for (final line in rows) _lineCard(line),
         if (status == 'draft') ...[
@@ -447,7 +614,131 @@ class _InvoiceDetailState extends State<InvoiceDetailScreen> {
             child: const Text('Send via Outlook'),
           ),
         ],
+        if (status == 'sent' && balance != null) ...[
+          const SizedBox(height: 12),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: AccnomosColors.teal,
+              minimumSize: const Size.fromHeight(52),
+            ),
+            onPressed: () => _recordPayment(balance),
+            child: const Text('Record payment'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+            ),
+            onPressed: () => _createCreditNote(rows),
+            child: const Text('Create credit note'),
+          ),
+          const SizedBox(height: 8),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+            ),
+            onPressed: () => _voidInvoice(
+                total, paid ?? 0, credited ?? 0),
+            child: const Text('Void invoice'),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Voiding is refused while payments or credit notes stand — remove them first.',
+            style: TextStyle(
+              color: AccnomosColors.muted,
+              fontSize: 12,
+            ),
+          ),
+        ],
       ],
+    );
+  }
+
+  /// Payments and credit notes from the runtime, each payment with Remove.
+  Widget _paymentsCard(
+      List<Map<String, dynamic>> payments,
+      List<Map<String, dynamic>> creditNotes) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE3E1D8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Payments and history',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          ),
+          const SizedBox(height: 8),
+          if (payments.isEmpty && creditNotes.isEmpty)
+            const Text(
+              'No payments yet.',
+              style: TextStyle(color: AccnomosColors.muted),
+            )
+          else ...[
+            for (final payment in payments)
+              _paymentRow(payment),
+            for (final note in creditNotes)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Credit note ${(note['number'] ?? '').toString()} · '
+                        '${gbp((note['applied_pence'] ?? 0) as num)}',
+                        style: const TextStyle(
+                            color: AccnomosColors.muted),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _paymentRow(Map<String, dynamic> payment) {
+    final description =
+        (payment['description'] ?? 'Payment').toString();
+    final date = ukDate((payment['date'] ?? '').toString());
+    final reference = (payment['reference'] ?? '').toString();
+    final applied = gbp((payment['applied_pence'] ?? 0) as num);
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$date · $description'
+                  '${reference.isNotEmpty ? ' · $reference' : ''}',
+                ),
+                Text(
+                  applied,
+                  style: const TextStyle(
+                      fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: () => _removePayment(payment),
+            style: TextButton.styleFrom(
+              minimumSize: const Size(48, 48),
+            ),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
     );
   }
 

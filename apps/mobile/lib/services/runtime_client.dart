@@ -789,7 +789,7 @@ class RuntimeClient {
       _map('POST', '/contacts/refresh', what: 'refresh contacts');
 
   Future<Map<String, dynamic>> editContact(
-          String id, Map<String, String?> edits) =>
+          String id, Map<String, dynamic> edits) =>
       _map('PUT', '/contacts/${_seg(id)}',
           body: edits, what: 'save that contact');
 
@@ -927,6 +927,133 @@ class RuntimeClient {
           Map<String, dynamic> profile) =>
       _map('PUT', '/invoices/profile',
           body: profile, what: 'save invoice details');
+
+  // Payments, credit notes and credits. Same paths and bodies as the web's
+  // `runtime` in apps/web/src/lib/runtime.ts; money is integer pence and
+  // dates are `YYYY-MM-DD`. Every figure is worked out by the runtime.
+
+  /// `POST /invoices/{number}/payments`: part of the balance, all of it, or
+  /// more (the rest stays as a credit on the customer). [account] is
+  /// `1200 Bank` or `1210 Cash`.
+  Future<Map<String, dynamic>> recordInvoicePayment(
+    String number, {
+    int? amountPence,
+    String? paidOn,
+    String account = '1200 Bank',
+    String? paymentRef,
+  }) =>
+      _map('POST', '/invoices/${_seg(number)}/payments',
+          body: {
+            'amount_pence': ?amountPence,
+            'paid_on': ?paidOn,
+            'account': account,
+            if (paymentRef != null && paymentRef.isNotEmpty)
+              'payment_ref': paymentRef,
+          },
+          what: 'record that payment');
+
+  /// `DELETE /invoices/{number}/payments/{paymentId}`: take a payment back.
+  Future<Map<String, dynamic>> removeInvoicePayment(
+          String number, String paymentId) =>
+      _map('DELETE',
+          '/invoices/${_seg(number)}/payments/${_seg(paymentId)}',
+          what: 'remove that payment');
+
+  /// `POST /invoices/{number}/void` with a reason. Refused (409/400 with the
+  /// runtime's sentence) while payments, a matched line or issued credit
+  /// notes stand.
+  Future<Map<String, dynamic>> voidInvoice(String number, String reason) =>
+      _map('POST', '/invoices/${_seg(number)}/void',
+          body: {'reason': reason}, what: 'void that invoice');
+
+  /// `POST /invoices/{number}/credit-notes`: credit the whole invoice or
+  /// chosen [lines] (`[{line, quantity}]`). Posts at once; the call is made
+  /// only from the confirmation sheet, so `confirm` is always true here.
+  Future<Map<String, dynamic>> createCreditNote(
+    String number, {
+    required String reason,
+    String? issueDate,
+    List<Map<String, String>>? lines,
+  }) =>
+      _map('POST', '/invoices/${_seg(number)}/credit-notes',
+          body: {
+            'confirm': true,
+            'reason': reason,
+            'issue_date': ?issueDate,
+            'lines': ?lines,
+          },
+          what: 'create that credit note');
+
+  /// `GET /credit-notes`, optionally for one invoice.
+  Future<List<Map<String, dynamic>>> creditNotes({String? invoice}) => _list(
+      'GET', '/credit-notes',
+      query: {'invoice': ?invoice},
+      what: 'load credit notes');
+
+  /// `POST /payments`: a payment split across open documents (bills to pay
+  /// on the phone: side `purchase`). [body] keeps the runtime's shape:
+  /// `{side, date?, amount_pence?, account?, reference?, allocations}`.
+  Future<Map<String, dynamic>> recordPayment(Map<String, dynamic> body) =>
+      _map('POST', '/payments', body: body, what: 'record that payment');
+
+  /// `DELETE /payments/{id}`: reverse a recorded payment.
+  Future<Map<String, dynamic>> removePayment(String id) => _map(
+      'DELETE', '/payments/${_seg(id)}',
+      what: 'remove that payment');
+
+  /// `GET /payments/open`: documents with something left to pay (`side`
+  /// `sale` or `purchase`, default `purchase` like the runtime).
+  Future<List<Map<String, dynamic>>> openDocuments({String? side}) => _list(
+      'GET', '/payments/open',
+      query: {'side': ?side},
+      what: 'load open documents');
+
+  /// `GET /credits`: money left on contacts' accounts, credit by credit.
+  Future<List<Map<String, dynamic>>> credits({String? side}) => _list(
+      'GET', '/credits',
+      query: {'side': ?side},
+      what: 'load credits');
+
+  /// `POST /credits/apply`: put a credit towards another open document of
+  /// the same contact. Nothing is posted.
+  Future<Map<String, dynamic>> applyCredit({
+    required String credit,
+    required String eventId,
+    int? amountPence,
+    String? date,
+  }) =>
+      _map('POST', '/credits/apply',
+          body: {
+            'credit': credit,
+            'event_id': eventId,
+            'amount_pence': ?amountPence,
+            'date': ?date,
+          },
+          what: 'apply that credit');
+
+  /// `POST /credits/refund`: pay a credit back. Posted by the runtime.
+  Future<Map<String, dynamic>> refundCredit({
+    required String credit,
+    int? amountPence,
+    String? date,
+    String account = '1200 Bank',
+    String? reference,
+  }) =>
+      _map('POST', '/credits/refund',
+          body: {
+            'credit': credit,
+            'amount_pence': ?amountPence,
+            'date': ?date,
+            'account': account,
+            if (reference != null && reference.isNotEmpty)
+              'reference': reference,
+          },
+          what: 'refund that credit');
+
+  /// `DELETE /credits/uses/{useId}`: take an apply or refund back.
+  Future<Map<String, dynamic>> removeCreditUse(String useId) => _map(
+      'DELETE', '/credits/uses/${_seg(useId)}',
+      what: 'take back that credit use');
 
   // Pay runs (/payroll/runs). Pence throughout; every est_* figure is an
   // estimate for the payroll provider — the phone never confirms.
