@@ -3,6 +3,7 @@
 import type { AccountInfo } from "@azure/msal-browser";
 import { aiHeaders, loadAiConfig, RUNTIME_URL, type AiConfig } from "./ai-config";
 import type { PlanVat } from "./business";
+import { vatQuery } from "./vat-period";
 import {
   accountKind,
   CALENDAR_READ_SCOPES,
@@ -15,6 +16,9 @@ import {
   mailSendScopesFor,
   storageScopesFor,
 } from "./msal";
+
+/** `path?query`, or just `path` when the query is empty. */
+const withQuery = (path: string, query: string) => (query ? `${path}?${query}` : path);
 
 /** Runtime wire types (services/runtime/app/schemas.py). */
 export interface RtCheck {
@@ -190,7 +194,8 @@ export async function runtimeHealth(): Promise<{ ok: boolean; voice?: boolean } 
 
 export const runtime = {
   scan: (a: AccountInfo) =>
-    call<{ proposals: RtProposal[]; errors: { path: string; error: string }[] }>(a, "/books/scan", {
+    // The saved VAT settings set the period that scanned dates are checked against (DATE_IN_PERIOD warning).
+    call<{ proposals: RtProposal[]; errors: { path: string; error: string }[] }>(a, withQuery("/books/scan", vatQuery()), {
       method: "POST",
       headers: autopilotOn() ? {} : { "X-Autopilot": "off" },
     }),
@@ -209,7 +214,7 @@ export const runtime = {
   summary: (a: AccountInfo) => call<RtSummary>(a, "/books/summary"),
   /** POST /books/ask: numbers from code, words from the user's model, every figure checked against the facts. */
   ask: (a: AccountInfo, question: string, period?: RtAskPeriod | null, history: RtAskTurn[] = []) =>
-    call<RtAskAnswer>(a, "/books/ask", {
+    call<RtAskAnswer>(a, withQuery("/books/ask", vatQuery()), {
       method: "POST",
       body: JSON.stringify({ question, period: period ?? null, history: history.slice(-6) }),
     }),
@@ -220,7 +225,7 @@ export const runtime = {
     form.append("audio", audio, `question.${ext}`);
     if (period) form.append("period", JSON.stringify(period));
     form.append("history", JSON.stringify(history.slice(-6)));
-    return call<RtAskVoiceAnswer>(a, "/books/ask/voice", { method: "POST", body: form });
+    return call<RtAskVoiceAnswer>(a, withQuery("/books/ask/voice", vatQuery()), { method: "POST", body: form });
   },
   /** POST /actions/approve: run a proposed action exactly as Ask returned it (signed; refused if changed or expired). */
   approveAction: (a: AccountInfo, action: RtProposedAction) =>
@@ -250,6 +255,9 @@ export const runtime = {
   deadlines: (a: AccountInfo, query: string) => call<RtDeadlines>(a, `/books/deadlines?${query}`),
   /** GET /books/dashboard: the Home tiles in one call (same VAT query as deadlines, plus `today`). */
   dashboard: (a: AccountInfo, query: string) => call<RtDashboard>(a, `/books/dashboard?${query}`),
+
+  /** GET /books/vat/periods: the current VAT period and the 8 before it, by the saved VAT settings. */
+  vatPeriods: (a: AccountInfo) => call<RtVatPeriods>(a, withQuery("/books/vat/periods", vatQuery())),
 
   /** POST /plan/day: proposes a day and writes nothing. Asks for Calendars.Read the first time. */
   planDay: (a: AccountInfo, body: RtPlanRequest) =>
@@ -1100,6 +1108,11 @@ export interface RtVatView {
   period_key: string;
   start: string;
   end: string;
+  period: string; // "2026-Q4" (quarterly) or "2026-11" (monthly)
+  label: string; // "Oct–Dec 2026"
+  current: boolean;
+  submitted: boolean; // a relay submission receipt is saved in 05 VAT returns
+  can_submit: boolean; // current or previous period and not yet submitted
   boxes: RtVatBox[];
   event_ids: string[];
   warnings: string[];
@@ -1107,16 +1120,40 @@ export interface RtVatView {
   hmrc_body: Record<string, unknown>;
 }
 
-let liveVat: { account: string; promise: Promise<RtVatView> } | null = null;
+/** GET /books/vat/periods (services/runtime/app/routes_vat.py). */
+export interface RtVatPeriod {
+  period: string;
+  start: string;
+  end: string;
+  label: string;
+  current: boolean;
+  deadline: string;
+  status: "open" | "submitted" | "none";
+  hmrc_period_key: string | null;
+  entries: number;
+  can_submit: boolean;
+}
+export interface RtVatPeriods {
+  today: string;
+  months: number;
+  start_month: number;
+  periods: RtVatPeriod[]; // current first, then the 8 before it
+  status_source: string;
+}
 
-/** The live return, fetched once per page per account (LiveVat and ConnectHmrc both read it). */
-export function fetchLiveVat(account: AccountInfo): Promise<RtVatView> {
-  if (!liveVat || liveVat.account !== account.homeAccountId) {
-    const promise = call<RtVatView>(account, "/books/vat");
+let liveVat: { key: string; promise: Promise<RtVatView> } | null = null;
+
+/** The live return for `period` (null = the current one), fetched once per page per account and period
+ *  (LiveVat and ConnectHmrc both read it). */
+export function fetchLiveVat(account: AccountInfo, period: string | null = null): Promise<RtVatView> {
+  const query = [vatQuery(), period ? `period=${encodeURIComponent(period)}` : ""].filter(Boolean).join("&");
+  const key = `${account.homeAccountId}?${query}`;
+  if (!liveVat || liveVat.key !== key) {
+    const promise = call<RtVatView>(account, withQuery("/books/vat", query));
     promise.catch(() => {
       if (liveVat?.promise === promise) liveVat = null; // let a later mount retry
     });
-    liveVat = { account: account.homeAccountId, promise };
+    liveVat = { key, promise };
   }
   return liveVat.promise;
 }

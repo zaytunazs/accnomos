@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import date
 from typing import Literal
 
@@ -14,7 +15,10 @@ from app.books import today as current_date  # `today` is a query parameter belo
 from app.deadlines import (
     STAGGER_START_MONTH, filing_deadline, period_containing, period_label, previous_period, stagger_of,
 )
+from app.books import VAT_RETURNS, Books
+from app.deadlines import filing_deadline, period_from_id, period_id, period_label, previous_period, recent_periods, stagger_of
 from app.routes_books import get_books
+from app.vat_cycle import VatCycle, vat_cycle
 
 router = APIRouter(prefix="/books", tags=["vat"])
 
@@ -30,6 +34,11 @@ class VatReturnView(BaseModel):
     period_key: str
     start: date
     end: date
+    period: str  # the period used, "2026-Q4" (quarterly) or "2026-11" (monthly)
+    label: str  # "Oct–Dec 2026"
+    current: bool  # the period we are in now
+    submitted: bool  # a relay submission receipt is saved for it
+    can_submit: bool  # current or previous period, not yet submitted
     boxes: list[VatBox]
     event_ids: list[str]
     warnings: list[str]
@@ -50,15 +59,6 @@ LABELS = {
 }
 
 
-def quarter_bounds(today: date) -> tuple[date, date, str]:
-    """Default to the last complete calendar quarter (e.g. on 27 Oct → 1 Jul–30 Sep)."""
-    this_q_start = date(today.year, ((today.month - 1) // 3) * 3 + 1, 1)
-    prev_q_end = this_q_start - date.resolution  # last day of the previous quarter
-    prev_q_start = date(prev_q_end.year, ((prev_q_end.month - 1) // 3) * 3 + 1, 1)
-    key = f"{prev_q_start.year % 100:02d}A{(prev_q_start.month - 1) // 3 + 1}"
-    return prev_q_start, prev_q_end, key
-
-
 def period_key_for(start: date) -> str:
     return f"{start.year % 100:02d}A{(start.month - 1) // 3 + 1}"
 
@@ -72,16 +72,72 @@ def box_amounts(ret: VatReturn) -> dict[int, str]:
     }
 
 
+async def submitted_periods(books: Books) -> dict[tuple[date, date], str]:
+    """{(start, end): HMRC period key} for each return the web app saved after a relay submission
+    (`05 VAT returns/{periodKey}/return.json`). The runtime holds no HMRC token, so this is what it can know."""
+    try:
+        folders = [f for f in await books.storage.list(VAT_RETURNS) if f.is_folder]
+    except FileNotFoundError:
+        return {}
+    async def receipt(folder: str) -> object:
+        try:
+            return await books.read_json(f"{folder}/return.json", None)
+        except ValueError:  # a hand-edited or half-written file: that period just doesn't count as submitted
+            return None
+
+    receipts = await asyncio.gather(*(receipt(f.path) for f in folders))
+    out: dict[tuple[date, date], str] = {}
+    for folder, saved in zip(folders, receipts, strict=True):
+        if not isinstance(saved, dict):
+            continue
+        for span in (saved.get("obligation"), saved.get("calculated_for")):
+            try:
+                out[(date.fromisoformat(span["start"]), date.fromisoformat(span["end"]))] = str(saved.get("periodKey") or folder.name)
+            except (KeyError, TypeError, ValueError):
+                continue
+    return out
+
+
+def _resolve(
+    cycle: VatCycle, today: date, period: str | None, period_start: date | None, period_end: date | None,
+) -> tuple[date, date]:
+    if period_start is not None or period_end is not None:
+        if period_start is None or period_end is None:
+            raise HTTPException(status_code=422, detail="send both period_start and period_end")
+        if period_end < period_start:
+            raise HTTPException(status_code=422, detail="period_end is before period_start")
+        if period is not None:
+            raise HTTPException(status_code=400, detail="send period or period_start/period_end, not both")
+        return period_start, period_end
+    if period is not None:
+        try:
+            return period_from_id(period, cycle.start_month, cycle.months)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+    return cycle.current(today)
+
+
+def can_submit(start: date, cycle: VatCycle, today: date, submitted: bool) -> bool:
+    """Only the current period or the one just before it, and only while it hasn't been submitted."""
+    cur_start, _ = cycle.current(today)
+    return not submitted and start in (cur_start, previous_period(cur_start, cycle.months)[0])
+
+
 @router.get("/vat", response_model=VatReturnView)
 async def vat_return(
-    start: date | None = Query(None),
-    end: date | None = Query(None),
+    period_start: date | None = Query(None, description="ISO date; send with period_end"),
+    period_end: date | None = Query(None, description="ISO date; send with period_start"),
+    period: str | None = Query(None, pattern=r"^\d{4}-(Q[1-4]|\d{2})$", description="2026-Q4 (quarterly) or 2026-11 (monthly)"),
+    start: date | None = Query(None, include_in_schema=False),  # older clients: same as period_start
+    end: date | None = Query(None, include_in_schema=False),
     period_key: str | None = Query(None, pattern=r"^[A-Za-z0-9#]{4}$"),  # HMRC period key, e.g. 26A3
+    today: date | None = Query(None, description="for previews and tests; defaults to today"),
+    cycle: VatCycle = Depends(vat_cycle),
     books: Books = Depends(get_books),
 ) -> VatReturnView:
-    if start is None or end is None:
-        s, e, k = quarter_bounds(current_date())
-        start, end, period_key = start or s, end or e, period_key or k
+    """The 9 boxes for one period. Default: the period we are in now, by the saved VAT settings."""
+    today = today or current_date()
+    start, end = _resolve(cycle, today, period, period_start or start, period_end or end)
     period_key = period_key or period_key_for(start)
     events = await books.list_events(start, end)
     ret = compute_vat_return(events, period_key, start, end)
@@ -89,12 +145,59 @@ async def vat_return(
     purchases = [e for e in events if e.kind == "purchase"]
     counts = {1: len(sales), 2: 0, 3: len(sales), 4: len(purchases), 5: len(events), 6: len(sales), 7: len(purchases), 8: 0, 9: 0}
     amounts = box_amounts(ret)
+    submitted = (start, end) in await submitted_periods(books)
     return VatReturnView(
-        period_key=period_key, start=start, end=end,
+        period_key=period_key, start=start, end=end, period=period_id(start, cycle.months), label=period_label(start, end),
+        current=(start, end) == cycle.current(today), submitted=submitted, can_submit=can_submit(start, cycle, today, submitted),
         boxes=[VatBox(box=i, label=LABELS[i], amount=amounts[i], entries=counts[i]) for i in range(1, 10)],
         event_ids=ret.event_ids, warnings=ret.warnings, hmrc_body=ret.to_hmrc(finalised=False),
         events_in_period=len(events),
     )
+
+
+class VatPeriod(BaseModel):
+    period: str  # "2026-Q4" or "2026-11"; pass back as ?period=
+    start: date
+    end: date
+    label: str  # "Oct–Dec 2026"
+    current: bool
+    deadline: date
+    status: Literal["open", "submitted", "none"]  # submitted via the relay / still to file / nothing recorded
+    hmrc_period_key: str | None  # from the saved submission receipt
+    entries: int  # approved entries dated in the period
+    can_submit: bool
+
+
+class VatPeriods(BaseModel):
+    today: date
+    months: int
+    start_month: int
+    periods: list[VatPeriod]  # current first, then the 8 before it
+    status_source: str = "Submitted = a receipt saved in 05 VAT returns after a relay submission; HMRC's own list is in Connect to HMRC."
+
+
+@router.get("/vat/periods", response_model=VatPeriods)
+async def vat_periods(
+    today: date | None = Query(None, description="for previews and tests; defaults to today"),
+    cycle: VatCycle = Depends(vat_cycle),
+    books: Books = Depends(get_books),
+) -> VatPeriods:
+    """The current VAT period and the 8 before it, with status, so the picker is built by code."""
+    today = today or current_date()
+    spans = recent_periods(today, cycle.start_month, cycle.months)
+    events = await books.list_events(spans[-1][0], spans[0][1])
+    submitted = await submitted_periods(books)
+    periods = []
+    for i, (s, e) in enumerate(spans):
+        entries = sum(s <= ev.date <= e for ev in events)
+        key = submitted.get((s, e))
+        status: Literal["open", "submitted", "none"] = "submitted" if key else "open" if (i == 0 or entries) else "none"
+        periods.append(VatPeriod(
+            period=period_id(s, cycle.months), start=s, end=e, label=period_label(s, e), current=i == 0,
+            deadline=filing_deadline(e), status=status, hmrc_period_key=key, entries=entries,
+            can_submit=can_submit(s, cycle, today, key is not None),
+        ))
+    return VatPeriods(today=today, months=cycle.months, start_month=cycle.start_month, periods=periods)
 
 
 class PeriodDeadline(BaseModel):
@@ -135,25 +238,14 @@ def _period_deadline(events: list[LedgerEvent], start: date, end: date, months: 
 
 @router.get("/deadlines", response_model=Deadlines)
 async def deadlines(
-    stagger: int | None = Query(None, ge=1, le=3, description="HMRC stagger 1, 2 or 3 (quarterly)"),
-    start_month: int | None = Query(None, ge=1, le=12, description="custom: a month in which a VAT period starts"),
-    months: int = Query(3, description="3 for quarterly returns, 1 for monthly"),
     today: date | None = Query(None, description="for previews and tests; defaults to today"),
+    cycle: VatCycle = Depends(vat_cycle),
     books: Books = Depends(get_books),
 ) -> Deadlines:
     """Current VAT period, the return that is due next, days remaining and the Box 5 estimate (code, not a model)."""
-    first, today = vat_period_start(stagger, start_month, months), today or current_date()
+    first, months, today = cycle.start_month, cycle.months, today or current_date()
     window = deadline_window(today, first, months)
     return compute_deadlines(await books.list_events(*window), today, first, months)
-
-
-def vat_period_start(stagger: int | None, start_month: int | None, months: int) -> int:
-    """A month in which a VAT period starts, from the query; 4xx for a bad combination."""
-    if months not in (1, 3):
-        raise HTTPException(status_code=422, detail="months must be 3 (quarterly) or 1 (monthly)")
-    if stagger is not None and start_month is not None and stagger_of(start_month) != stagger:
-        raise HTTPException(status_code=400, detail="stagger and start_month disagree; send one of them")
-    return start_month or STAGGER_START_MONTH[stagger or 1]
 
 
 def deadline_window(today: date, first: int, months: int) -> tuple[date, date]:

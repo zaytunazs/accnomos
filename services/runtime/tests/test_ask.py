@@ -16,6 +16,7 @@ from app.ai.config import AiConfig
 from app.books import EVENTS, PROPOSALS, Books
 from app.facts import FACTS_MAX_BYTES, build_facts, default_period, previous_period
 from app.schemas import AskModelOutput, AskPeriod
+from app.vat_cycle import VatCycle
 
 CFG = AiConfig(mode="local", base_url="http://ollama.invalid", model="stub-model")
 Q3 = AskPeriod(start=date(2026, 7, 1), end=date(2026, 9, 30))
@@ -88,7 +89,8 @@ def _out(**kw: object) -> AskModelOutput:
 # --------------------------------------------------------------------------- #
 
 def test_periods():
-    assert default_period(date(2026, 10, 27)) == Q3
+    assert default_period(date(2026, 10, 27)) == AskPeriod(start=date(2026, 10, 1), end=date(2026, 12, 31))  # the current period
+    assert default_period(date(2026, 10, 27), VatCycle(start_month=2)) == AskPeriod(start=date(2026, 8, 1), end=date(2026, 10, 31))
     assert previous_period(Q3) == AskPeriod(start=date(2026, 4, 1), end=date(2026, 6, 30))
     jan = AskPeriod(start=date(2026, 1, 1), end=date(2026, 3, 31))
     assert previous_period(jan) == AskPeriod(start=date(2025, 10, 1), end=date(2025, 12, 31))

@@ -3,12 +3,6 @@ from datetime import date, datetime
 from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger import LedgerEvent, Line, VatCode
 from app.books import Books
-from app.routes_vat import quarter_bounds
-
-
-def test_quarter_bounds():
-    assert quarter_bounds(date(2026, 10, 27)) == (date(2026, 7, 1), date(2026, 9, 30), "26A3")
-    assert quarter_bounds(date(2026, 1, 5)) == (date(2025, 10, 1), date(2025, 12, 31), "25A4")
 
 
 async def test_list_events_and_vat_route():

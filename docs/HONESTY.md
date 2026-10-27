@@ -17,7 +17,7 @@ Most live-run notes come from the README and the review files, not from this che
 
 | Verified by a real run | Written and tested against fakes, **not yet run for real** |
 |---|---|
-| Microsoft sign-in on the web (personal account); folder creation; upload → scan → Glimmer on our Spark → approve → ledger event → VAT boxes (26–27 Oct) | HMRC connect and submit in a browser; Outlook intake; Files page against a real OneDrive; Books.xlsx opened in Excel; deadlines; contacts; jobs; bank; vehicles and mileage; Autopilot end to end |
+| Microsoft sign-in on the web (personal account); folder creation; upload → scan → Glimmer on our Spark → approve → ledger event → VAT boxes (26–27 Oct) | HMRC connect and submit in a browser; Outlook intake; Files page against a real OneDrive; Books.xlsx opened in Excel; deadlines; VAT period picker and date-in-period warning; contacts; jobs; bank; vehicles and mileage; Autopilot end to end |
 
 ## Not built, or not as the marketing might read
 
@@ -29,7 +29,7 @@ Most live-run notes come from the README and the review files, not from this che
 - **"On my own machine" means "the machine running the runtime".** Our demo runtime and Ollama are on our DGX Spark. A user's laptop is not reachable from `api.accnomos.com`.
 - **Ledger files are not tamper-evident** (no signatures or hash chain). Undo of an approval is a reversing event; if the VAT period was already submitted, the correction belongs in the current period.
 - **OneDrive only.** Google Drive is planned. HEIC photos are copied but not read yet. No flat-rate scheme, no annual accounting scheme in deadlines, no fuel scale-charge calculation, no sales-invoice creation (jobs only record an invoice number).
-- **VAT page shows the current calendar quarter only** (no period picker; `GET /books/vat` takes `start`/`end` but the web and Android apps never send them), and the scan does not pass a VAT period, so the "date outside the period" warning never fires.
+- **VAT periods:** the web `/vat` picker and the Android VAT tab list the current period and the 8 before it; the date-in-period warning now fires on scans (a warning only). Limits: "submitted" means *a receipt saved in `05 VAT returns/` by our relay submission*. The runtime has no HMRC token, so a return filed elsewhere (or a deleted receipt) shows as open; HMRC's own obligations are in *Connect to HMRC*. Android sends no stagger (the phone has no such setting yet), so it always shows calendar quarters. The runtime's own period key (`26A4` style, saved as `calculated_for` with a receipt) is a placeholder for calendar quarters; submission uses the key from HMRC's obligations. Tested against fakes only.
 - **Unmerged work is not claimed:** `claude/invoicing` and `claude/chat-actions` exist as branches but are not in this one.
 
 ## Sign-in build state

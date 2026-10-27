@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from datetime import date
 
+from app.deadlines import MONTHS, period_containing, period_label, previous_period
 from app.schemas import Check, ExtractedDoc, Status
 
 VALID_RATES = (0, 5, 20)
@@ -164,11 +165,29 @@ def check_date(doc: ExtractedDoc, period_start: date | None, period_end: date | 
     if d is None:
         return [_chk("DATE_VALID", False, "fail", f"Date {doc.date!r} is not YYYY-MM-DD")]
     out = [_chk("DATE_VALID", True, "fail", f"Dated {d.isoformat()}")]
-    if period_start or period_end:
+    if period_start and period_end:
+        out.append(check_date_in_period(d, period_start, period_end))
+    elif period_start or period_end:
         inside = (period_start is None or d >= period_start) and (period_end is None or d <= period_end)
         msg = "Inside the VAT period" if inside else f"{d.isoformat()} is outside the current VAT period"
         out.append(_chk("DATE_IN_PERIOD", inside, "warn", msg))
     return out
+
+
+def check_date_in_period(d: date, start: date, end: date) -> Check:
+    """Only ever a warning: the ledger keeps the document's own date, so it goes on the return for that date."""
+    if start <= d <= end:
+        return _chk("DATE_IN_PERIOD", True, "warn", f"Inside the VAT period {period_label(start, end)}")
+    months = (end.year - start.year) * 12 + end.month - start.month + 1
+    its_start, its_end = period_containing(d, start.month, months)
+    if d > end:
+        where = "is after this VAT period ends"
+    elif its_end == previous_period(start, months)[1]:
+        where = "falls in the previous period"
+    else:
+        where = "falls in an earlier period"
+    msg = f"Dated {d.day} {MONTHS[d.month - 1]} {d.year} — {where} ({period_label(its_start, its_end)}); it will go on that return"
+    return _chk("DATE_IN_PERIOD", False, "warn", msg)
 
 
 def check_confidence(doc: ExtractedDoc) -> Check:

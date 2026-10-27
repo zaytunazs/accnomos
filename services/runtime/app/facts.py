@@ -17,8 +17,9 @@ from typing import Any
 from accnomos_ledger import LedgerEvent, compute_vat_return, reverses_sale
 
 from app.books import EVENTS, PROPOSALS, VAT_RETURNS, WORKBOOK, Books
-from app.routes_vat import box_amounts, period_key_for, quarter_bounds
+from app.routes_vat import box_amounts, period_key_for
 from app.schemas import AskPeriod
+from app.vat_cycle import VatCycle
 
 FACTS_MAX_BYTES = 6 * 1024
 TOP_N = 8
@@ -34,9 +35,9 @@ def _month_end(d: date) -> date:
     return nxt - timedelta(days=1)
 
 
-def default_period(today: date) -> AskPeriod:
-    """The VAT quarter the user is working on (see `quarter_bounds`)."""
-    start, end, _key = quarter_bounds(today)
+def default_period(today: date, cycle: VatCycle = VatCycle()) -> AskPeriod:
+    """The VAT period we are in now, by the saved VAT settings (the same default as GET /books/vat)."""
+    start, end = cycle.current(today)
     return AskPeriod(start=start, end=end)
 
 

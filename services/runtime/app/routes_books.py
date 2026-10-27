@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import AsyncIterator
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from accnomos_connectors.msgraph import GraphStorageProvider
@@ -25,6 +25,7 @@ from app.books import Books, now
 from app.inbox import scan_inbox_detailed
 from app.schemas import Proposal, ProposalStatus
 from app.validation import StrictBody
+from app.vat_cycle import VatCycle, vat_cycle
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -111,9 +112,12 @@ async def scan(
     cfg: AiConfig = Depends(ai_config_from_request),
     business: str | None = Depends(business_name),
     x_autopilot: str | None = Header(default=None),
+    cycle: VatCycle = Depends(vat_cycle),
 ) -> ScanResult:
+    """VAT settings (`stagger`/`start_month`/`months`, as for /books/deadlines) set the period dates are checked against."""
     autopilot_on = (x_autopilot or "on").strip().lower() != "off"
-    proposals, errors = await scan_inbox_detailed(books, cfg, limit, business, autopilot_on)
+    period = cycle.current(date.today())
+    proposals, errors = await scan_inbox_detailed(books, cfg, limit, business, autopilot_on, period)
     return ScanResult(proposals=proposals, errors=errors)
 
 

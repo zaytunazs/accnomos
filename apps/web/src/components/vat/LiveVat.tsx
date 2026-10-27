@@ -1,17 +1,22 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { fetchLiveVat, type RtVatBox as Box, type RtVatView as VatView } from "@/lib/runtime";
+import { usePickedPeriod } from "@/lib/vat-period";
+import VatPeriodPicker from "./VatPeriodPicker";
 
 const fmt = (b: Box) => (b.box <= 5 ? `£${Number(b.amount).toLocaleString("en-GB", { minimumFractionDigits: 2 })}` : `£${Number(b.amount).toLocaleString("en-GB")}`);
 const uk = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 /** Live 9-box return computed by code from the user's posted ledger events. Hidden unless signed in and the runtime answers. */
 export default function LiveVat() {
+  const [account, setAccount] = useState<AccountInfo | null>(null);
   const [view, setView] = useState<VatView | null>(null);
   const [state, setState] = useState<"idle" | "live" | "off">("idle");
+  const picked = usePickedPeriod();
 
   useEffect(() => {
     (async () => {
@@ -21,21 +26,43 @@ export default function LiveVat() {
         await msal.handleRedirectPromise().catch(() => null);
         const acct: AccountInfo | undefined = msal.getActiveAccount() ?? msal.getAllAccounts()[0];
         if (!acct) return setState("off");
-        setView(await fetchLiveVat(acct));
-        setState("live");
+        setAccount(acct);
       } catch {
         setState("off");
       }
     })();
   }, []);
 
-  if (state !== "live" || !view) return null;
+  useEffect(() => {
+    if (!account) return;
+    let stale = false;
+    fetchLiveVat(account, picked?.period ?? null).then(
+      (v) => {
+        if (stale) return;
+        setView(v);
+        setState("live");
+      },
+      () => !stale && setState("off"),
+    );
+    return () => {
+      stale = true;
+    };
+  }, [account, picked?.period]);
+
+  if (state !== "live" || !view || !account) return null;
   const net = view.boxes.find((b) => b.box === 5)!;
   return (
     <section aria-labelledby="live-vat" className="rounded-2xl border border-teal bg-white p-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <VatPeriodPicker account={account} />
+        <Link href="/ask" className="text-[15px] font-bold text-teal underline underline-offset-2 hover:text-teal-dark">
+          Ask about {view.label}
+        </Link>
+      </div>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="live-vat" className="text-lg font-extrabold">
-          Your return · {uk(view.start)} – {uk(view.end)} · key {view.period_key}
+          Your return · {view.label}
+          {view.current ? " (current period)" : ""} · {uk(view.start)} – {uk(view.end)}
         </h2>
         <span className="text-sm text-muted">{view.events_in_period} approved entries · calculated by code</span>
       </div>
@@ -80,7 +107,12 @@ export default function LiveVat() {
         <p className="mt-3 rounded-xl border border-warn-border bg-warn-bg p-3 text-sm text-warn-ink">{view.warnings.join(" · ")}</p>
       )}
       <p className="mt-3 text-sm text-muted">
-        Net VAT to pay: <strong className="text-ink">{fmt(net)}</strong>. Connect to HMRC below to submit it to the sandbox.
+        Net VAT to pay: <strong className="text-ink">{fmt(net)}</strong>.{" "}
+        {view.can_submit
+          ? "Connect to HMRC below to submit it to the sandbox."
+          : view.submitted
+            ? "This return has already been submitted; its receipt is in 05 VAT returns."
+            : "Only the current or previous period can be submitted from here."}
       </p>
     </section>
   );

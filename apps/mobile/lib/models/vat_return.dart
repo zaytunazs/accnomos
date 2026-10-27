@@ -5,6 +5,10 @@ class VatReturn {
     required this.periodKey,
     required this.start,
     required this.end,
+    this.period = '',
+    this.label = '',
+    this.current = false,
+    this.submitted = false,
     required this.boxes,
     required this.warnings,
     required this.eventsInPeriod,
@@ -13,6 +17,10 @@ class VatReturn {
   final String periodKey;
   final String start;
   final String end;
+  final String period; // "2026-Q4", as [VatPeriod.period]
+  final String label; // "Oct–Dec 2026"
+  final bool current;
+  final bool submitted;
   final List<VatBox> boxes;
   final List<String> warnings;
   final int eventsInPeriod;
@@ -35,6 +43,10 @@ class VatReturn {
       periodKey: (json['period_key'] ?? '').toString(),
       start: (json['start'] ?? '').toString(),
       end: (json['end'] ?? '').toString(),
+      period: (json['period'] ?? '').toString(),
+      label: (json['label'] ?? '').toString(),
+      current: json['current'] == true,
+      submitted: json['submitted'] == true,
       boxes: boxes,
       warnings: warnings,
       eventsInPeriod: (json['events_in_period'] as num?)?.toInt() ?? 0,
@@ -63,5 +75,48 @@ class VatBox {
       amount: (json['amount'] ?? '0').toString(),
       entries: (json['entries'] as num?)?.toInt() ?? 0,
     );
+  }
+}
+
+/// One entry of `GET /books/vat/periods`: status and deadline worked out by
+/// the runtime, so the phone only shows them.
+class VatPeriod {
+  VatPeriod({
+    required this.period,
+    required this.label,
+    required this.status,
+    required this.current,
+  });
+
+  final String period;
+  final String label;
+  final String status; // open | submitted | none
+  final bool current;
+
+  static List<VatPeriod> listFromJson(Map<String, dynamic> json) {
+    final out = <VatPeriod>[];
+    if (json['periods'] is List) {
+      for (final p in json['periods'] as List) {
+        if (p is! Map) continue;
+        out.add(VatPeriod(
+          period: (p['period'] ?? '').toString(),
+          label: (p['label'] ?? '').toString(),
+          status: (p['status'] ?? 'none').toString(),
+          current: p['current'] == true,
+        ));
+      }
+    }
+    return out;
+  }
+
+  String get caption {
+    final what = status == 'submitted'
+        ? 'submitted'
+        : current
+            ? 'current'
+            : status == 'open'
+                ? 'open'
+                : 'nothing recorded';
+    return '$label · $what';
   }
 }
