@@ -38,7 +38,8 @@ function vatTile(vat: RtDashboard["vat"], annual: boolean): Tile {
   if (!vat) return { label: "VAT estimate", value: UNKNOWN, sub: "Could not work out the VAT period" };
   const next = vat.due ?? vat.current; // the return to file next
   const amount = `£${Math.round(Number(next.box5)).toLocaleString("en-GB")}`;
-  const sub = `${next.box5_direction === "reclaim" ? "To reclaim" : "To pay"} by ${shortDate(next.deadline)}${
+  const what = { pay: "To pay by", reclaim: "To reclaim, return due", nil: "Nothing to pay, return due" }[next.box5_direction];
+  const sub = `${what} ${shortDate(next.deadline)}${
     next === vat.current ? " · so far" : ""}`;
   return { label: `VAT estimate · ${next.label}`, value: next.box5_direction === "nil" ? "£0" : amount, sub, href: "/vat" };
 }
