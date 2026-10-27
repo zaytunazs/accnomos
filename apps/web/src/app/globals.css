@@ -19,3 +19,21 @@ body {
   color: var(--color-ink);
   font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
 }
+
+/* Visible keyboard focus on every interactive element. Teal-dark keeps a
+   ≥ 4.5:1 contrast against white, ground and teal-tint surfaces. */
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-teal-dark);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
