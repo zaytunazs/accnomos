@@ -86,8 +86,8 @@ const features: Feature[] = [
     title: "Outlook intake: emailed bills",
     does: "Switch on Outlook intake in Settings, then tap Check my inbox now. Likely receipts and invoices from the last 14 days are copied into 00 Inbox, deduplicated, with a log in _System/Intake. Mail is never sent, moved, marked read or deleted.",
     ai: "No AI. Plain code filters decide what looks like a receipt.",
-    code: "Code reads message dates, senders, subjects and attachments (PDF, JPEG, PNG, HEIC between 10 KB and 15 MB), keeps senders outside your domain with receipt-like words, and skips what was already copied.",
-    gap: "Not verified yet: never run against a real mailbox; HEIC files are copied but wait unread; photos forwarded by a colleague on your own domain are dropped.",
+    code: "Code reads message dates, senders, subjects and attachments (PDF, JPEG, PNG, HEIC between 10 KB and 25 MB; HEIC saved as JPEG), keeps senders outside your domain with receipt-like words, and skips what was already copied. An email with no attachment is kept as text when a total or VAT line shows an amount.",
+    gap: "Not verified yet: never run against a real mailbox or a real phone HEIC; receipts in email text tested on fictional emails only; photos forwarded by a colleague on your own domain are dropped.",
   },
   {
     id: "inbox",
