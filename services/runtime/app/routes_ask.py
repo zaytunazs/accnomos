@@ -66,7 +66,7 @@ async def _answer(
     period = req.period or default_period(today(), cycle)
     if (day := plan_intent(req.question, today(TZ))) is not None:
         return plan_answer(day, period)
-    found = await actions.propose(req.question, books, cfg, token)
+    found = await actions.propose(req.question, books, cfg, token, today(TZ))  # the same day as the plan and VAT period
     if found is not None:
         return _action_answer(found, cfg, period)
     facts = await build_facts(books, period, business)

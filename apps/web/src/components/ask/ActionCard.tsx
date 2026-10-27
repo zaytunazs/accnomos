@@ -51,7 +51,6 @@ const TITLES: Record<RtProposedAction["kind"], string> = {
   log_timesheet: "Timesheet",
   log_mileage: "Mileage",
 };
-
 function Details({ action }: { action: RtProposedAction }) {
   if (action.kind === "create_invoice") {
     const p = action.preview as unknown as RtInvoicePreview;
@@ -155,10 +154,12 @@ export default function ActionCard({
   const warnings = ((action.preview.warnings as string[] | undefined) ?? []).filter(Boolean);
   const expired = lapsed && state.step === "ready";
 
+  // Timed from when the card arrived, not by comparing the server's expiry with this device's clock, which may be off
+  // (one running 15 minutes ahead would show every card as expired). The runtime still refuses an expired card on Approve.
   useEffect(() => {
-    const t = setTimeout(() => setLapsed(true), Math.max(0, Date.parse(action.expires_at) - Date.now()));
+    const t = setTimeout(() => setLapsed(true), Math.max(0, Date.parse(action.expires_at) - Date.parse(action.created_at)));
     return () => clearTimeout(t);
-  }, [action.expires_at]);
+  }, [action.created_at, action.expires_at]);
 
   async function approve() {
     setState({ step: "working" });
