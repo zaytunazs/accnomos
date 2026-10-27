@@ -32,11 +32,21 @@ KEY = AiConfig(mode="key", base_url="https://api.meta.ai/v1", model="muse-spark-
 
 def _doc(**kw: object) -> ExtractedDoc:
     base: dict[str, object] = dict(
-        doc_type="receipt", supplier_name="Screwfix Direct Ltd", supplier_vat_number="GB 232 4567 89",
-        customer_name=None, invoice_number=None, date="2026-10-21", currency="GBP",
+        doc_type="receipt",
+        supplier_name="Screwfix Direct Ltd",
+        supplier_vat_number="GB 232 4567 89",
+        customer_name=None,
+        invoice_number=None,
+        date="2026-10-21",
+        currency="GBP",
         lines=[ExtractedLine(description="Drill bits", qty=1, unit_price=38.47, net=32.06, vat_rate=20, vat=6.41)],
-        net_total=32.06, vat_total=6.41, gross_total=38.47, payment_method="card", card_last4="1234",
-        category_guess="Tools & small equipment", confidence=0.95,
+        net_total=32.06,
+        vat_total=6.41,
+        gross_total=38.47,
+        payment_method="card",
+        card_last4="1234",
+        category_guess="Tools & small equipment",
+        confidence=0.95,
     )
     base.update(kw)
     return ExtractedDoc.model_validate(base)
@@ -44,8 +54,12 @@ def _doc(**kw: object) -> ExtractedDoc:
 
 def _reading(**kw: object) -> VerifierReading:
     base: dict[str, object] = dict(
-        seller="SCREWFIX DIRECT LIMITED", vat_registration="232456789", issue_date="21/10/2026",
-        amount_before_vat=32.06, vat_amount=6.41, amount_payable=38.47,
+        seller="SCREWFIX DIRECT LIMITED",
+        vat_registration="232456789",
+        issue_date="21/10/2026",
+        amount_before_vat=32.06,
+        vat_amount=6.41,
+        amount_payable=38.47,
     )
     base.update(kw)
     return VerifierReading.model_validate(base)

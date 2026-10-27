@@ -84,7 +84,10 @@ async def add_vehicle(body: Vehicle, books: Books = Depends(get_books), user: st
 
 @router.patch("/vehicles/{vehicle_id}", response_model=Vehicle)
 async def update_vehicle(
-    vehicle_id: str, body: VehiclePatch, books: Books = Depends(get_books), user: str = Depends(require_user),
+    vehicle_id: str,
+    body: VehiclePatch,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> Vehicle:
     try:
         return await mileage.update_vehicle(books, vehicle_id, body.model_dump(exclude_unset=True), user)
@@ -93,7 +96,9 @@ async def update_vehicle(
 
 
 @router.delete("/vehicles/{vehicle_id}", response_model=Vehicle)
-async def delete_vehicle(vehicle_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)) -> Vehicle:
+async def delete_vehicle(
+    vehicle_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> Vehicle:
     """Only a vehicle with no journeys and no tagged receipts; otherwise mark it inactive."""
     try:
         return await mileage.delete_vehicle(books, vehicle_id, user)
@@ -116,7 +121,9 @@ async def entries(tax_year: str | None = None, books: Books = Depends(get_books)
 
 
 @router.post("/mileage", response_model=MileageEntry)
-async def add_entry(body: MileageEntry, books: Books = Depends(get_books), user: str = Depends(require_user)) -> MileageEntry:
+async def add_entry(
+    body: MileageEntry, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> MileageEntry:
     manual = body.model_copy(update={"source": "manual"})  # only code makes journeys from proposals
     try:
         return await mileage.add_entry(books, manual, user)
@@ -137,7 +144,8 @@ async def summary(tax_year: str | None = None, books: Books = Depends(get_books)
 async def propose_allowance(
     tax_year: str | None = None,
     period: str | None = Query(None, description="Q1..Q4 of the tax year; default: the current quarter"),
-    books: Books = Depends(get_books), user: str = Depends(require_user),
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> ClaimResult:
     """The period's allowance as an expense proposal in Review (idempotent per period)."""
     today = now().date()
@@ -153,7 +161,10 @@ async def propose_allowance(
 
 @router.patch("/mileage/{entry_id}", response_model=MileageEntry)
 async def update_entry(
-    entry_id: str, body: EntryPatch, books: Books = Depends(get_books), user: str = Depends(require_user),
+    entry_id: str,
+    body: EntryPatch,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> MileageEntry:
     try:
         return await mileage.update_entry(books, entry_id, body.model_dump(exclude_unset=True, by_alias=True), user)
@@ -162,7 +173,9 @@ async def update_entry(
 
 
 @router.delete("/mileage/{entry_id}", response_model=MileageEntry)
-async def delete_entry(entry_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)) -> MileageEntry:
+async def delete_entry(
+    entry_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> MileageEntry:
     try:
         return await mileage.delete_entry(books, entry_id, user)
     except (MileageError, FileNotFoundError) as exc:

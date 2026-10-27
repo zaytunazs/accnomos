@@ -37,12 +37,15 @@ def sha256_hex(data: bytes) -> str:
 
 def suggested_filename(doc: ExtractedDoc, mime: str) -> str:
     """e.g. '2026-10-21 Screwfix £38.47.jpg' (filesystem-safe, supplier max 40 chars)."""
+
     def clean(text: str, limit: int) -> str:  # every part comes from the model, i.e. from the document
         return re.sub(r"\s+", " ", _UNSAFE.sub(" ", text)).strip(" .")[:limit].strip()
 
     supplier = clean(doc.supplier_name, 40) or "Unknown"
     symbol = _SYMBOL.get(doc.currency) or f"{clean(doc.currency, 3) or 'XXX'} "
-    return f"{clean(doc.date, 10) or 'undated'} {supplier} {symbol}{doc.gross_total:.2f}{_EXT.get(mime.lower(), '.jpg')}"
+    return (
+        f"{clean(doc.date, 10) or 'undated'} {supplier} {symbol}{doc.gross_total:.2f}{_EXT.get(mime.lower(), '.jpg')}"
+    )
 
 
 def _shown(v: object) -> str:
@@ -54,15 +57,24 @@ def _shown(v: object) -> str:
 def verification_check(v: Verification) -> Check:
     """Disagreement is a hard fail showing both readings; a verifier that could not run is only a warning."""
     if v.error:
-        return Check(code="VERIFIER_AGREES", ok=False, severity="warn", message=f"Second reading unavailable ({v.model})")
+        return Check(
+            code="VERIFIER_AGREES", ok=False, severity="warn", message=f"Second reading unavailable ({v.model})"
+        )
     if v.agree_all:
-        return Check(code="VERIFIER_AGREES", ok=True, severity="fail", message=f"Verifier agrees · all {len(v.fields)} fields match")
+        return Check(
+            code="VERIFIER_AGREES",
+            ok=True,
+            severity="fail",
+            message=f"Verifier agrees · all {len(v.fields)} fields match",
+        )
     diffs = [
         f"{_FIELD_LABEL.get(name, name)} {_shown(f.extractor)} vs {_shown(f.verifier)}"
         for name, f in v.fields.items()
         if not f.agree
     ]
-    return Check(code="VERIFIER_AGREES", ok=False, severity="fail", message="Second reading differs: " + "; ".join(diffs))
+    return Check(
+        code="VERIFIER_AGREES", ok=False, severity="fail", message="Second reading differs: " + "; ".join(diffs)
+    )
 
 
 async def process_image(

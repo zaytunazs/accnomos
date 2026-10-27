@@ -15,7 +15,9 @@ pytestmark = pytest.mark.asyncio
 
 PDF = b"%PDF-1.4 invoice"
 MAIL = OutgoingMail(
-    to="accounts@customer.co.uk", subject="Invoice INV-0001", body_text="Please find attached.",
+    to="accounts@customer.co.uk",
+    subject="Invoice INV-0001",
+    body_text="Please find attached.",
     attachments=[OutgoingAttachment(name="INV-0001.pdf", content_type="application/pdf", data=PDF)],
 )
 
@@ -60,7 +62,13 @@ async def test_send_without_consent_raises_graph_error():
 
 async def test_send_refuses_attachments_over_3mb():
     calls: list[httpx.Request] = []
-    big = MAIL.model_copy(update={"attachments": [OutgoingAttachment(name="x.pdf", content_type="application/pdf", data=b"x" * (3 * 1024 * 1024 + 1))]})
+    big = MAIL.model_copy(
+        update={
+            "attachments": [
+                OutgoingAttachment(name="x.pdf", content_type="application/pdf", data=b"x" * (3 * 1024 * 1024 + 1))
+            ]
+        }
+    )
     with pytest.raises(ValueError):
         await _sender(lambda r: calls.append(r) or httpx.Response(202)).send(big)
     assert calls == []

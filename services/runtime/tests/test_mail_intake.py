@@ -23,12 +23,29 @@ PDF = b"%PDF-1.7 screwfix invoice " + b"x" * 20_000
 JPG = b"\xff\xd8 toolstation receipt " + b"y" * 30_000
 
 
-def _msg(id_: str, subject: str = "Your invoice", sender: str = "orders@screwfix.com", days_ago: float = 1, name: str = "Screwfix") -> MailMessage:
-    return MailMessage(id=id_, received_at=NOW - timedelta(days=days_ago), from_address=sender, from_name=name, subject=subject)
+def _msg(
+    id_: str,
+    subject: str = "Your invoice",
+    sender: str = "orders@screwfix.com",
+    days_ago: float = 1,
+    name: str = "Screwfix",
+) -> MailMessage:
+    return MailMessage(
+        id=id_, received_at=NOW - timedelta(days=days_ago), from_address=sender, from_name=name, subject=subject
+    )
 
 
-def _att(id_: str, name: str, data: bytes = PDF, ctype: str = "application/pdf", inline: bool = False, size: int | None = None) -> tuple[MailAttachment, bytes]:
-    return MailAttachment(id=id_, name=name, content_type=ctype, size=len(data) if size is None else size, is_inline=inline), data
+def _att(
+    id_: str,
+    name: str,
+    data: bytes = PDF,
+    ctype: str = "application/pdf",
+    inline: bool = False,
+    size: int | None = None,
+) -> tuple[MailAttachment, bytes]:
+    return MailAttachment(
+        id=id_, name=name, content_type=ctype, size=len(data) if size is None else size, is_inline=inline
+    ), data
 
 
 @pytest.fixture
@@ -66,7 +83,13 @@ def _inbox(fake: FakeStorageProvider) -> list[str]:
         ("image001.png", "image/png", 12_000, False, "signature"),
         ("image001.png", "image/png", 400_000, False, None),  # big enough to be a photo
         ("invite.ics", "text/calendar", 20_000, False, "calendar"),
-        ("terms.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", 50_000, False, "type"),
+        (
+            "terms.docx",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            50_000,
+            False,
+            "type",
+        ),
         ("tiny.pdf", "application/pdf", 9_000, False, "too_small"),
         ("huge.pdf", "application/pdf", 16 * 1024 * 1024, False, "too_large"),
     ],
@@ -114,10 +137,21 @@ def test_target_name_is_safe() -> None:
 # ---------------------------------------------------------------------- #
 
 
-async def test_scan_saves_candidates_and_writes_audit_trail(books: Books, fake: FakeStorageProvider, mail: FakeMailProvider) -> None:
-    mail.add(_msg("m1", "Your Screwfix invoice"), _att("a1", "Invoice 123.pdf"), _att("sig", "image001.png", b"s" * 5000, "image/png"))
-    mail.add(_msg("m2", "Receipt for your purchase", "noreply@toolstation.com", 2, "Toolstation"), _att("a2", "receipt.jpg", JPG, "image/jpeg"))
-    mail.add(_msg("m3", "Lunch on Friday?", "friend@gmail.com"), _att("a3", "menu.jpg", JPG + b"z", "image/jpeg"))  # score 0.15
+async def test_scan_saves_candidates_and_writes_audit_trail(
+    books: Books, fake: FakeStorageProvider, mail: FakeMailProvider
+) -> None:
+    mail.add(
+        _msg("m1", "Your Screwfix invoice"),
+        _att("a1", "Invoice 123.pdf"),
+        _att("sig", "image001.png", b"s" * 5000, "image/png"),
+    )
+    mail.add(
+        _msg("m2", "Receipt for your purchase", "noreply@toolstation.com", 2, "Toolstation"),
+        _att("a2", "receipt.jpg", JPG, "image/jpeg"),
+    )
+    mail.add(
+        _msg("m3", "Lunch on Friday?", "friend@gmail.com"), _att("a3", "menu.jpg", JPG + b"z", "image/jpeg")
+    )  # score 0.15
     mail.add(_msg("old", "Invoice", days_ago=30), _att("a4", "old-invoice.pdf", PDF + b"old"))  # outside 14 days
 
     r = await scan_mail(books, mail, since_days=14, user=USER)
@@ -141,7 +175,9 @@ async def test_scan_saves_candidates_and_writes_audit_trail(books: Books, fake: 
     assert audit[-1]["action"] == "mail_scanned" and audit[-1]["refs"]["saved"] == 2
 
 
-async def test_rescan_is_deduplicated_without_downloading(books: Books, fake: FakeStorageProvider, mail: FakeMailProvider) -> None:
+async def test_rescan_is_deduplicated_without_downloading(
+    books: Books, fake: FakeStorageProvider, mail: FakeMailProvider
+) -> None:
     mail.add(_msg("m1"), _att("a1", "invoice.pdf"))
     assert len((await scan_mail(books, mail, user=USER)).saved) == 1
     mail.calls.clear()
@@ -153,7 +189,9 @@ async def test_rescan_is_deduplicated_without_downloading(books: Books, fake: Fa
     assert len(_inbox(fake)) == 1 and len(json.loads(fake.files[SEEN])) == 1
 
 
-async def test_same_bytes_from_another_message_or_already_in_books_are_duplicates(books: Books, fake: FakeStorageProvider, mail: FakeMailProvider) -> None:
+async def test_same_bytes_from_another_message_or_already_in_books_are_duplicates(
+    books: Books, fake: FakeStorageProvider, mail: FakeMailProvider
+) -> None:
     fake.files["00 Inbox/IMG_2041.jpg"] = JPG  # uploaded by hand earlier
     filed = PDF + b"filed"
     fake.files[f"{DOCS}/{hashlib.sha256(filed).hexdigest()}.json"] = b"{}"  # processed and filed already
@@ -189,7 +227,9 @@ async def test_name_clash_gets_a_suffix(books: Books, fake: FakeStorageProvider,
     assert sorted(r.saved) == sorted([f"{stem}.pdf", f"{stem} (2).pdf"])
 
 
-async def test_large_attachment_is_saved_and_oversize_is_ignored(books: Books, fake: FakeStorageProvider, mail: FakeMailProvider) -> None:
+async def test_large_attachment_is_saved_and_oversize_is_ignored(
+    books: Books, fake: FakeStorageProvider, mail: FakeMailProvider
+) -> None:
     big = b"%PDF" + b"b" * (5 * 1024 * 1024)
     mail.add(_msg("m1"), _att("a1", "invoice.pdf", big))
     mail.add(_msg("m2"), _att("a2", "statement.pdf", b"%PDF" + b"h" * (15 * 1024 * 1024 + 1)))
@@ -202,7 +242,12 @@ async def test_large_attachment_is_saved_and_oversize_is_ignored(books: Books, f
 
 
 async def test_seen_list_is_capped(books: Books, fake: FakeStorageProvider, mail: FakeMailProvider) -> None:
-    fake.files[SEEN] = json.dumps([{"sha256": f"{i:064x}", "message_id": f"x{i}", "attachment_id": "a", "saved_as": "", "at": ""} for i in range(SEEN_MAX)]).encode()
+    fake.files[SEEN] = json.dumps(
+        [
+            {"sha256": f"{i:064x}", "message_id": f"x{i}", "attachment_id": "a", "saved_as": "", "at": ""}
+            for i in range(SEEN_MAX)
+        ]
+    ).encode()
     mail.add(_msg("m1"), _att("a1", "invoice.pdf"))
 
     await scan_mail(books, mail, user=USER)
@@ -211,7 +256,9 @@ async def test_seen_list_is_capped(books: Books, fake: FakeStorageProvider, mail
     assert len(seen) == SEEN_MAX and seen[-1]["message_id"] == "m1" and seen[0]["message_id"] == "x1"
 
 
-async def test_one_failing_attachment_does_not_stop_the_scan(books: Books, fake: FakeStorageProvider, mail: FakeMailProvider) -> None:
+async def test_one_failing_attachment_does_not_stop_the_scan(
+    books: Books, fake: FakeStorageProvider, mail: FakeMailProvider
+) -> None:
     mail.add(_msg("m1"), _att("a1", "invoice.pdf"))
     mail.add(_msg("m2"), _att("a2", "invoice2.pdf", PDF + b"2"))
     original = mail.download_attachment
@@ -249,7 +296,9 @@ def test_route(fake: FakeStorageProvider, mail: FakeMailProvider) -> None:
     app.dependency_overrides[get_mail] = mail_override
     try:
         client = TestClient(app)
-        dry = client.post("/mail/scan", json={"since_days": 7, "dry_run": True}, headers={"X-Graph-Token": "t", "X-User": USER})
+        dry = client.post(
+            "/mail/scan", json={"since_days": 7, "dry_run": True}, headers={"X-Graph-Token": "t", "X-User": USER}
+        )
         real = client.post("/mail/scan", headers={"X-Graph-Token": "t", "X-User": USER})
         bad = client.post("/mail/scan", json={"since_days": 0}, headers={"X-Graph-Token": "t"})
     finally:

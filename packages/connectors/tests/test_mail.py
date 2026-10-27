@@ -25,8 +25,11 @@ def _provider(handler) -> GraphMailProvider:
 
 def _msg(i: int) -> dict:
     return {
-        "id": f"AAMk{i}=", "receivedDateTime": f"2026-10-2{i % 10}T10:00:00Z", "subject": f"Invoice {i}",
-        "hasAttachments": True, "webLink": f"https://outlook.live.com/owa/?ItemID={i}",
+        "id": f"AAMk{i}=",
+        "receivedDateTime": f"2026-10-2{i % 10}T10:00:00Z",
+        "subject": f"Invoice {i}",
+        "hasAttachments": True,
+        "webLink": f"https://outlook.live.com/owa/?ItemID={i}",
         "from": {"emailAddress": {"name": "Screwfix", "address": "Orders@Screwfix.com"}},
     }
 
@@ -39,7 +42,13 @@ async def test_list_messages_query_and_paging():
         assert req.method == "GET" and req.headers["Authorization"] == "Bearer tok"
         if "page=2" in str(req.url):
             return httpx.Response(200, json={"value": [_msg(3)]})
-        return httpx.Response(200, json={"value": [_msg(1), _msg(2)], "@odata.nextLink": "https://graph.microsoft.com/v1.0/me/messages?page=2"})
+        return httpx.Response(
+            200,
+            json={
+                "value": [_msg(1), _msg(2)],
+                "@odata.nextLink": "https://graph.microsoft.com/v1.0/me/messages?page=2",
+            },
+        )
 
     out = await _provider(handler).list_messages(SINCE, max_results=10)
     q = seen[0].url.params
@@ -55,7 +64,13 @@ async def test_list_messages_query_and_paging():
 
 async def test_list_messages_stops_at_max_results():
     def handler(req: httpx.Request) -> httpx.Response:
-        return httpx.Response(200, json={"value": [_msg(1), _msg(2)], "@odata.nextLink": "https://graph.microsoft.com/v1.0/me/messages?page=2"})
+        return httpx.Response(
+            200,
+            json={
+                "value": [_msg(1), _msg(2)],
+                "@odata.nextLink": "https://graph.microsoft.com/v1.0/me/messages?page=2",
+            },
+        )
 
     assert len(await _provider(handler).list_messages(SINCE, max_results=2)) == 2
 
@@ -65,20 +80,40 @@ async def test_attachments_file_only_and_download():
         path = req.url.raw_path.decode().split("?")[0]
         if path == "/v1.0/me/messages/AAMk1%3D/attachments":
             assert req.url.params["$select"] == "id,name,contentType,size,isInline"
-            return httpx.Response(200, json={"value": [
-                {"@odata.type": "#microsoft.graph.fileAttachment", "id": "A1", "name": "inv.pdf",
-                 "contentType": "application/PDF", "size": 51200, "isInline": False},
-                {"@odata.type": "#microsoft.graph.itemAttachment", "id": "A2", "name": "Fwd", "size": 9},
-                {"@odata.type": "#microsoft.graph.fileAttachment", "id": "A3", "name": "image001.png",
-                 "contentType": "image/png", "size": 3000, "isInline": True},
-            ]})
+            return httpx.Response(
+                200,
+                json={
+                    "value": [
+                        {
+                            "@odata.type": "#microsoft.graph.fileAttachment",
+                            "id": "A1",
+                            "name": "inv.pdf",
+                            "contentType": "application/PDF",
+                            "size": 51200,
+                            "isInline": False,
+                        },
+                        {"@odata.type": "#microsoft.graph.itemAttachment", "id": "A2", "name": "Fwd", "size": 9},
+                        {
+                            "@odata.type": "#microsoft.graph.fileAttachment",
+                            "id": "A3",
+                            "name": "image001.png",
+                            "contentType": "image/png",
+                            "size": 3000,
+                            "isInline": True,
+                        },
+                    ]
+                },
+            )
         if path == "/v1.0/me/messages/AAMk1%3D/attachments/A1/$value":
             return httpx.Response(200, content=b"%PDF-1.7")
         return httpx.Response(404)
 
     g = _provider(handler)
     atts = await g.list_attachments("AAMk1=")
-    assert [(a.id, a.content_type, a.is_inline) for a in atts] == [("A1", "application/pdf", False), ("A3", "image/png", True)]
+    assert [(a.id, a.content_type, a.is_inline) for a in atts] == [
+        ("A1", "application/pdf", False),
+        ("A3", "image/png", True),
+    ]
     assert await g.download_attachment("AAMk1=", "A1") == b"%PDF-1.7"
 
 
@@ -113,11 +148,23 @@ async def test_list_recent_reads_the_inbox_folder_with_the_triage_fields_only():
     def handler(req: httpx.Request) -> httpx.Response:
         seen.append(req)
         assert req.method == "GET"
-        return httpx.Response(200, json={"value": [{
-            "id": "m1", "conversationId": "c1", "receivedDateTime": "2026-10-26T08:00:00Z", "subject": "Quote",
-            "isRead": False, "bodyPreview": "x" * 400, "webLink": "https://outlook.live.com/owa/?ItemID=m1",
-            "from": {"emailAddress": {"name": "Jo", "address": "Jo@Client.co.uk"}},
-        }]})
+        return httpx.Response(
+            200,
+            json={
+                "value": [
+                    {
+                        "id": "m1",
+                        "conversationId": "c1",
+                        "receivedDateTime": "2026-10-26T08:00:00Z",
+                        "subject": "Quote",
+                        "isRead": False,
+                        "bodyPreview": "x" * 400,
+                        "webLink": "https://outlook.live.com/owa/?ItemID=m1",
+                        "from": {"emailAddress": {"name": "Jo", "address": "Jo@Client.co.uk"}},
+                    }
+                ]
+            },
+        )
 
     async with _provider(handler) as p:
         out = await p.list_recent(SINCE, 30)
@@ -137,10 +184,14 @@ async def test_create_reply_draft_is_create_reply_then_patch_and_never_send():
     def handler(req: httpx.Request) -> httpx.Response:
         seen.append((req.method, req.url.raw_path.decode(), req.content))
         if req.url.path.endswith("/createReply"):
-            return httpx.Response(201, json={
-                "id": "draft/1", "webLink": "https://outlook.live.com/owa/?ItemID=draft1&exvsurl=1",
-                "body": {"contentType": "html", "content": quoted},
-            })
+            return httpx.Response(
+                201,
+                json={
+                    "id": "draft/1",
+                    "webLink": "https://outlook.live.com/owa/?ItemID=draft1&exvsurl=1",
+                    "body": {"contentType": "html", "content": quoted},
+                },
+            )
         return httpx.Response(200, json={"id": "draft/1", "webLink": "https://outlook.live.com/owa/?ItemID=draft1"})
 
     async with _provider(handler) as p:

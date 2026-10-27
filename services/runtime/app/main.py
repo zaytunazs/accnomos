@@ -43,8 +43,18 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins(os.getenv("CORS_ORIGINS", "http://localhost:3000")),
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],  # PATCH: /vehicles/{id}, /mileage/{id}
-    allow_headers=["Content-Type", "X-Graph-Token", "X-Account-Kind", "X-User", "X-AI-Mode", "X-AI-Base-Url",
-                   "X-AI-Model", "X-Meta-Api-Key", "X-Business-Name", "X-Autopilot"]
+    allow_headers=[
+        "Content-Type",
+        "X-Graph-Token",
+        "X-Account-Kind",
+        "X-User",
+        "X-AI-Mode",
+        "X-AI-Base-Url",
+        "X-AI-Model",
+        "X-Meta-Api-Key",
+        "X-Business-Name",
+        "X-Autopilot",
+    ]
     + (["X-Test-Tenant"] if is_test_mode() else []),  # app/testmode.py: one fake OneDrive per Playwright worker
     expose_headers=["X-Correlation-Id", "Retry-After"],
     max_age=600,
@@ -54,7 +64,9 @@ app.add_middleware(
 class AiConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    mode: str = Field(max_length=10)  # "key" (user's Meta Model API key) | "local" (Ollama/Glimmer on the user's machine)
+    mode: str = Field(
+        max_length=10
+    )  # "key" (user's Meta Model API key) | "local" (Ollama/Glimmer on the user's machine)
     base_url: str | None = Field(default=None, max_length=300)
     model: str | None = Field(default=None, max_length=200)
 
@@ -69,8 +81,13 @@ class AiTestResult(BaseModel):
 @app.get("/health")
 async def health() -> dict:
     return {
-        "ok": True, "service": "runtime", "version": app.version, "uptime_s": int(time.time() - STARTED),
-        "voice": bool(FFMPEG), "folder_layout": layout.health(), **({"test_mode": True} if is_test_mode() else {}),
+        "ok": True,
+        "service": "runtime",
+        "version": app.version,
+        "uptime_s": int(time.time() - STARTED),
+        "voice": bool(FFMPEG),
+        "folder_layout": layout.health(),
+        **({"test_mode": True} if is_test_mode() else {}),
     }
 
 
@@ -102,7 +119,9 @@ async def ai_test(cfg: AiConfig, x_meta_api_key: str | None = Header(default=Non
             return AiTestResult(ok=want in names, mode="local", model=want, detail=f"models: {', '.join(names)}")
     raise HTTPException(400, "mode must be 'key' or 'local'")
 
+
 from app.routes_extract import router as extract_router  # noqa: E402  POST /extract
+
 app.include_router(extract_router)
 
 from accnomos_connectors.msgraph import GraphError  # noqa: E402
@@ -110,6 +129,7 @@ from fastapi import Request  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 
 from app.routes_books import router as books_router  # noqa: E402  /books/*
+
 app.include_router(books_router)
 
 
@@ -127,17 +147,25 @@ from app.validation import UnsafeName  # noqa: E402
 async def unsafe_name(_request: Request, exc: UnsafeName) -> JSONResponse:
     """A file name that could climb out of its folder (e.g. a hand-edited proposal in the user's books) -> 400."""
     return JSONResponse(status_code=400, content={"detail": f"Bad file name: {exc}"})
+
+
 from app.routes_vat import router as vat_router  # noqa: E402  GET /books/vat
+
 app.include_router(vat_router)
 from app.routes_dashboard import router as dashboard_router  # noqa: E402  GET /books/dashboard
+
 app.include_router(dashboard_router)
 from app.routes_bank import router as bank_router  # noqa: E402  /books/bank/*
+
 app.include_router(bank_router)
 from app.routes_ask import router as ask_router  # noqa: E402  POST /books/ask, /books/ask/voice
+
 app.include_router(ask_router)
 from app.routes_mail import router as mail_router  # noqa: E402  POST /mail/scan
+
 app.include_router(mail_router)
 from app.routes_jobs import router as jobs_router  # noqa: E402  /jobs, /staff, /timesheets
+
 app.include_router(jobs_router)
 
 from app.ai.voice import ffmpeg_path  # noqa: E402
@@ -146,17 +174,23 @@ FFMPEG = ffmpeg_path()  # checked once at startup; /books/ask/voice answers 503 
 if not FFMPEG:
     logging.getLogger("accnomos.runtime").warning("ffmpeg not found: voice questions (/books/ask/voice) are disabled")
 from app.routes_contacts import router as contacts_router  # noqa: E402  /contacts/*
+
 app.include_router(contacts_router)
 from app.routes_vehicles import router as vehicles_router  # noqa: E402  /vehicles, /mileage
+
 app.include_router(vehicles_router)
 from app.routes_invoices import router as invoices_router  # noqa: E402  /invoices/*
+
 app.include_router(invoices_router)
 from app.routes_actions import router as actions_router  # noqa: E402  /actions/approve, /actions/reject
+
 app.include_router(actions_router)
 from app.routes_payroll import router as payroll_router  # noqa: E402  /payroll/runs
+
 app.include_router(payroll_router)
 
 from app.routes_plan import router as plan_router  # noqa: E402  /plan/day, /plan/day/apply
+
 app.include_router(plan_router)
 if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI under /__test (app/testmode.py)
     from app import testmode
@@ -167,4 +201,5 @@ if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI und
     app.include_router(testmode.router)
 
 from app.routes_todos import router as todos_router  # noqa: E402  /todos
+
 app.include_router(todos_router)

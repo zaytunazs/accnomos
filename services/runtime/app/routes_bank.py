@@ -77,7 +77,9 @@ async def _line_action[T](action: Callable[[], Awaitable[T]]) -> T:
 
 @router.post("/import", response_model=BankImport)
 async def import_csv(
-    file: UploadFile = File(...), books: Books = Depends(get_books), user: str = Depends(require_user),
+    file: UploadFile = File(...),
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> BankImport:
     try:
         name = check_name(file.filename) if file.filename else "statement.csv"
@@ -111,10 +113,14 @@ async def suggestions(books: Books = Depends(get_books)) -> list[Suggestion]:
     by_line = {ln.id: ln for ln in lines}
     events = {e.id: e for e in await books.live_events()}
     return [
-        Suggestion(**m.model_dump(), line=by_line[m.line_id], events=[
-            EventBrief(id=e.id, date=e.date, counterparty=e.counterparty, amount_pence=settlement_pence(e))
-            for e in (events[i] for i in m.event_ids)
-        ])
+        Suggestion(
+            **m.model_dump(),
+            line=by_line[m.line_id],
+            events=[
+                EventBrief(id=e.id, date=e.date, counterparty=e.counterparty, amount_pence=settlement_pence(e))
+                for e in (events[i] for i in m.event_ids)
+            ],
+        )
         for m in await books.bank_suggestions(lines)
     ]
 
@@ -126,7 +132,10 @@ async def unmatched(books: Books = Depends(get_books)) -> list[UnmatchedLine]:
 
 @router.post("/lines/{line_id}/match", response_model=BankLine)
 async def match(
-    line_id: str, body: MatchBody, books: Books = Depends(get_books), user: str = Depends(require_user),
+    line_id: str,
+    body: MatchBody,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> BankLine:
     ids = body.event_ids or ([body.event_id] if body.event_id else [])
     return await _line_action(lambda: books.confirm_match(line_id, ids, user))
@@ -149,7 +158,9 @@ async def ignore(line_id: str, books: Books = Depends(get_books), user: str = De
 
 @router.post("/lines/{line_id}/expense-proposal", response_model=Proposal)
 async def expense_proposal(
-    line_id: str, books: Books = Depends(get_books), user: str = Depends(require_user),
+    line_id: str,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> Proposal:
     return await _line_action(lambda: create_expense_proposal(books, line_id, user))
 
@@ -157,5 +168,7 @@ async def expense_proposal(
 @router.get("/summary", response_model=BankSummary)
 async def summary(books: Books = Depends(get_books)) -> BankSummary:
     every = await books.list_bank_lines()
-    count = {s: sum(ln.status == s for ln in every) for s in ("matched", "suggested", "unmatched", "transfer", "ignored")}
+    count = {
+        s: sum(ln.status == s for ln in every) for s in ("matched", "suggested", "unmatched", "transfer", "ignored")
+    }
     return BankSummary(total=len(every), reconciled_to=reconciled_to(every), **count)

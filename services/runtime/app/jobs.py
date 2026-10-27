@@ -30,6 +30,7 @@ JOBS = f"{SYSTEM}/Jobs/jobs.json"
 STAFF = f"{SYSTEM}/Staff/staff.json"
 TIMESHEETS = f"{SYSTEM}/Timesheets"
 from app.contacts import CONTACTS  # noqa: E402  written by the contacts feature, read here for names only
+
 MAX_HOURS_PER_ENTRY = 24
 ID_RE = re.compile(r"[0-9a-f]{12}")
 MONTH_RE = re.compile(r"\d{4}-\d{2}")
@@ -208,7 +209,8 @@ async def delete_staff(books: Books, staff_id: str) -> None:
 
 async def _months(books: Books) -> list[str]:
     return sorted(
-        f.name.removesuffix(".jsonl") for f in await books.list_files(TIMESHEETS)
+        f.name.removesuffix(".jsonl")
+        for f in await books.list_files(TIMESHEETS)
         if f.name.endswith(".jsonl") and MONTH_RE.fullmatch(f.name.removesuffix(".jsonl"))
     )
 
@@ -252,7 +254,8 @@ async def get_entry(books: Books, entry_id: str) -> TimesheetEntry:
 
 async def _remove_line(books: Books, month: str, entry_id: str) -> None:
     await books._update(
-        _sheet_path(month), lambda old: _dump_jsonl(r for r in _parse_jsonl(old) if r.get("id") != entry_id),
+        _sheet_path(month),
+        lambda old: _dump_jsonl(r for r in _parse_jsonl(old) if r.get("id") != entry_id),
     )
 
 
@@ -306,8 +309,11 @@ async def mark_invoiced(books: Books, entry_ids: Sequence[str], invoice_id: str)
         if e.invoiced_in and e.invoiced_in != invoice_id:
             raise JobsConflict(f"Entry {e.id} is already on invoice {e.invoiced_in}")
     for month in sorted({_month(e.date) for e in entries}):
+
         def change(raw: bytes | None) -> bytes:
-            return _dump_jsonl({**r, "invoiced_in": invoice_id} if r.get("id") in wanted else r for r in _parse_jsonl(raw))
+            return _dump_jsonl(
+                {**r, "invoiced_in": invoice_id} if r.get("id") in wanted else r for r in _parse_jsonl(raw)
+            )
 
         await books._update(_sheet_path(month), change)
     return [e.model_copy(update={"invoiced_in": invoice_id}) for e in entries]
@@ -368,14 +374,24 @@ def job_purchases(job_id: str, proposals: Sequence[Proposal], events: Sequence[L
         if p.job_id == job_id and p.status == "posted" and ev is not None:
             vat = ev.vat or 0
             net = ev.net if ev.net is not None else sum(ln.debit for ln in ev.lines) - vat
-            out.append({"proposal_id": p.id, "event_id": ev.id, "date": ev.date.isoformat(),
-                        "supplier": ev.counterparty, "net_pence": net})
+            out.append(
+                {
+                    "proposal_id": p.id,
+                    "event_id": ev.id,
+                    "date": ev.date.isoformat(),
+                    "supplier": ev.counterparty,
+                    "net_pence": net,
+                }
+            )
     return sorted(out, key=lambda x: (x["date"], x["event_id"]))
 
 
 def summarise(
-    job: Job, entries: Sequence[TimesheetEntry], staff: Sequence[StaffMember],
-    purchases: Sequence[dict[str, Any]] = (), customer_name: str | None = None,
+    job: Job,
+    entries: Sequence[TimesheetEntry],
+    staff: Sequence[StaffMember],
+    purchases: Sequence[dict[str, Any]] = (),
+    customer_name: str | None = None,
 ) -> JobSummary:
     """Hours, labour cost, billable value and margin for one job. Costs are worked out per staff
     member (their total quarters × their rate), so per-entry rounding never adds up to a stray penny."""
@@ -400,11 +416,16 @@ def summarise(
             continue
         if member.charge_rate_pence is None and q_bill[sid]:
             warnings.append(f"{member.name} has no charge rate; their hours are valued at cost")
-        by_staff.append(StaffHours(
-            staff_id=sid, name=member.name, role=member.role, hours=hours_value(q_all[sid]),
-            labour_cost_pence=pence_for(q_all[sid], member.hourly_rate_pence),
-            billable_value_pence=pence_for(q_bill[sid], charge_rate(member)),
-        ))
+        by_staff.append(
+            StaffHours(
+                staff_id=sid,
+                name=member.name,
+                role=member.role,
+                hours=hours_value(q_all[sid]),
+                labour_cost_pence=pence_for(q_all[sid], member.hourly_rate_pence),
+                billable_value_pence=pence_for(q_bill[sid], charge_rate(member)),
+            )
+        )
     known = [sid for sid in q_all if sid in people]
     billable_value = sum(s.billable_value_pence for s in by_staff)
     invoiced_value = sum(pence_for(q_invoiced[sid], charge_rate(people[sid])) for sid in known)
@@ -413,13 +434,20 @@ def summarise(
     total_bill_q = sum(q_bill.values())
     unbilled_q = total_bill_q - sum(q_invoiced.values())
     return JobSummary(
-        job=job, customer_name=customer_name,
-        hours=hours_value(sum(q_all.values())), billable_hours=hours_value(total_bill_q),
+        job=job,
+        customer_name=customer_name,
+        hours=hours_value(sum(q_all.values())),
+        billable_hours=hours_value(total_bill_q),
         unbilled_hours=hours_value(unbilled_q),
-        labour_cost_pence=labour, billable_value_pence=billable_value, invoiced_value_pence=invoiced_value,
-        unbilled_value_pence=billable_value - invoiced_value, materials_pence=materials,
-        purchases=list(purchases), margin_pence=billable_value - labour - materials,
-        by_staff=by_staff, warnings=warnings,
+        labour_cost_pence=labour,
+        billable_value_pence=billable_value,
+        invoiced_value_pence=invoiced_value,
+        unbilled_value_pence=billable_value - invoiced_value,
+        materials_pence=materials,
+        purchases=list(purchases),
+        margin_pence=billable_value - labour - materials,
+        by_staff=by_staff,
+        warnings=warnings,
     )
 
 
@@ -470,21 +498,33 @@ def invoice_lines(job: Job, entries: Sequence[TimesheetEntry], staff: Sequence[S
         span = f"{first:%d/%m/%Y}" if first == last else f"{first:%d/%m/%Y}–{last:%d/%m/%Y}"
         who = f"{member.role} ({member.name})" if member.role else member.name
         rate = charge_rate(member)
-        lines.append(InvoiceLine(
-            description=f"{job.name}: {who}, labour {span}", qty=hours_value(q), unit_price_pence=rate,
-            net_pence=pence_for(q, rate), staff_id=sid, role=member.role, entry_ids=[e.id for e in group],
-        ))
+        lines.append(
+            InvoiceLine(
+                description=f"{job.name}: {who}, labour {span}",
+                qty=hours_value(q),
+                unit_price_pence=rate,
+                net_pence=pence_for(q, rate),
+                staff_id=sid,
+                role=member.role,
+                entry_ids=[e.id for e in group],
+            )
+        )
     if not lines:
         warnings.append("No unbilled billable hours on this job")
     return InvoiceProposal(
-        job_id=job.id, customer_id=job.customer_id, lines=lines,
-        entry_ids=[i for ln in lines for i in ln.entry_ids], net_pence=sum(ln.net_pence for ln in lines),
+        job_id=job.id,
+        customer_id=job.customer_id,
+        lines=lines,
+        entry_ids=[i for ln in lines for i in ln.entry_ids],
+        net_pence=sum(ln.net_pence for ln in lines),
         warnings=warnings,
     )
 
 
 async def summaries(
-    books: Books, events: Sequence[LedgerEvent] | None = None, proposals: Sequence[Proposal] | None = None,
+    books: Books,
+    events: Sequence[LedgerEvent] | None = None,
+    proposals: Sequence[Proposal] | None = None,
 ) -> list[JobSummary]:
     """Every job's summary, open jobs first then newest."""
     jobs = await load_jobs(books)

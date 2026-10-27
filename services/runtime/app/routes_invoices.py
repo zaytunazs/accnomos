@@ -23,7 +23,15 @@ from app import invoicing as inv_
 from app.ai import remind
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.books import Books, now
-from app.invoicing import Invoice, InvoiceCustomer, InvoiceDraft, InvoiceError, InvoiceProfile, InvoiceStateError, InvoiceStatus
+from app.invoicing import (
+    Invoice,
+    InvoiceCustomer,
+    InvoiceDraft,
+    InvoiceError,
+    InvoiceProfile,
+    InvoiceStateError,
+    InvoiceStatus,
+)
 from app.pdf import render_invoice
 from app.routes_books import get_books, require_user
 from app.validation import Day, StrictBody
@@ -83,7 +91,9 @@ async def get_profile(books: Books = Depends(get_books)) -> InvoiceProfile:
 
 
 @router.put("/profile", response_model=InvoiceProfile)
-async def put_profile(body: InvoiceProfile, books: Books = Depends(get_books), user: str = Depends(require_user)) -> InvoiceProfile:
+async def put_profile(
+    body: InvoiceProfile, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> InvoiceProfile:
     try:
         return await inv_.save_profile(books, body, user)
     except InvoiceError as exc:
@@ -92,7 +102,9 @@ async def put_profile(body: InvoiceProfile, books: Books = Depends(get_books), u
 
 @router.post("/profile/logo", response_model=InvoiceProfile)
 async def upload_logo(
-    file: UploadFile = File(...), books: Books = Depends(get_books), user: str = Depends(require_user),
+    file: UploadFile = File(...),
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> InvoiceProfile:
     """PNG or JPEG up to 1 MB and 4000 pixels a side, saved as _System/Invoicing/logo.png|jpg in the user's folder.
 
@@ -150,7 +162,9 @@ async def list_invoices(status: InvoiceStatus | None = None, books: Books = Depe
 
 
 @router.post("", response_model=InvoiceRow)
-async def create(body: InvoiceDraft, books: Books = Depends(get_books), user: str = Depends(require_user)) -> InvoiceRow:
+async def create(
+    body: InvoiceDraft, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> InvoiceRow:
     try:
         return _row(await inv_.create_invoice(books, body, user))
     except InvoiceError as exc:
@@ -163,7 +177,9 @@ async def get(number: str, books: Books = Depends(get_books)) -> InvoiceRow:
 
 
 @router.put("/{number}", response_model=InvoiceRow)
-async def update(number: str, body: InvoiceDraft, books: Books = Depends(get_books), user: str = Depends(require_user)) -> InvoiceRow:
+async def update(
+    number: str, body: InvoiceDraft, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> InvoiceRow:
     await _get(books, number)
     try:
         return _row(await inv_.update_draft(books, number, body, user))
@@ -201,7 +217,9 @@ async def pdf(number: str, books: Books = Depends(get_books)) -> PdfResult:
     profile = await inv_.load_profile(books)
     subject, body = inv_.default_email(inv, profile)
     return PdfResult(
-        path=path, size=len(data), sha256=hashlib.sha256(data).hexdigest(),
+        path=path,
+        size=len(data),
+        sha256=hashlib.sha256(data).hexdigest(),
         data_url=f"data:application/pdf;base64,{base64.b64encode(data).decode()}",
         email=EmailDraft(to=inv.customer.email, subject=subject, body=body),
         problems=inv_.send_problems(inv, profile, inv.customer.email) if inv.status == "draft" else [],
@@ -217,7 +235,10 @@ class SendBody(StrictBody):
 
 @router.post("/{number}/send", response_model=InvoiceRow)
 async def send(
-    number: str, body: SendBody, books: Books = Depends(get_books), user: str = Depends(require_user),
+    number: str,
+    body: SendBody,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
     sender: MailSender = Depends(get_sender),
 ) -> InvoiceRow:
     """Email the invoice from the user's Outlook with the PDF attached, then post the sale to the ledger."""
@@ -225,7 +246,9 @@ async def send(
     inv = await _get(books, number)
     data = await _render(books, inv) if inv.status == "draft" else b""  # a sent one without its event only posts
     try:
-        return _row(await inv_.send_invoice(books, sender, number, user, data, to=body.to, subject=body.subject, body=body.body))
+        return _row(
+            await inv_.send_invoice(books, sender, number, user, data, to=body.to, subject=body.subject, body=body.body)
+        )
     except InvoiceError as exc:
         raise _http(exc) from exc
     except ValueError as exc:  # e.g. the attachment is too big for one message
@@ -235,16 +258,27 @@ async def send(
 class PaidBody(StrictBody):
     payment_ref: str | None = Field(None, max_length=120)
     paid_on: Day | None = None
-    bank_line_id: str | None = Field(None, max_length=64, pattern=r"^[0-9a-f]+$")  # link the bank line this payment came in on (GET /{number}/bank-candidates)
+    bank_line_id: str | None = Field(
+        None, max_length=64, pattern=r"^[0-9a-f]+$"
+    )  # link the bank line this payment came in on (GET /{number}/bank-candidates)
 
 
 @router.post("/{number}/mark-paid", response_model=InvoiceRow)
-async def mark_paid(number: str, body: PaidBody, books: Books = Depends(get_books), user: str = Depends(require_user)) -> InvoiceRow:
+async def mark_paid(
+    number: str, body: PaidBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> InvoiceRow:
     await _get(books, number)
     try:
-        return _row(await inv_.mark_paid(
-            books, number, user, payment_ref=body.payment_ref, paid_on=body.paid_on, bank_line_id=body.bank_line_id,
-        ))
+        return _row(
+            await inv_.mark_paid(
+                books,
+                number,
+                user,
+                payment_ref=body.payment_ref,
+                paid_on=body.paid_on,
+                bank_line_id=body.bank_line_id,
+            )
+        )
     except InvoiceError as exc:
         raise _http(exc) from exc
 
@@ -260,7 +294,9 @@ class VoidBody(StrictBody):
 
 
 @router.post("/{number}/void", response_model=InvoiceRow)
-async def void(number: str, body: VoidBody, books: Books = Depends(get_books), user: str = Depends(require_user)) -> InvoiceRow:
+async def void(
+    number: str, body: VoidBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> InvoiceRow:
     await _get(books, number)
     try:
         return _row(await inv_.void_invoice(books, number, user, body.reason))
@@ -270,12 +306,16 @@ async def void(number: str, body: VoidBody, books: Books = Depends(get_books), u
 
 @router.post("/{number}/reminder-draft", response_model=remind.ReminderDraft)
 async def reminder_draft(
-    number: str, books: Books = Depends(get_books), cfg: AiConfig = Depends(ai_config_from_request),
+    number: str,
+    books: Books = Depends(get_books),
+    cfg: AiConfig = Depends(ai_config_from_request),
 ) -> remind.ReminderDraft:
     """A chase email for the user to read, edit and approve. Drafting sends nothing."""
     inv = await _get(books, number)
     if inv.status != "sent":
-        raise HTTPException(status_code=409, detail=f"Invoice {number} is {inv.status}; only unpaid sent invoices can be chased")
+        raise HTTPException(
+            status_code=409, detail=f"Invoice {number} is {inv.status}; only unpaid sent invoices can be chased"
+        )
     return await remind.draft_reminder(inv, await inv_.load_profile(books), cfg, now().date())
 
 
@@ -288,16 +328,27 @@ class ReminderSendBody(StrictBody):
 
 @router.post("/{number}/reminder-send", response_model=InvoiceRow)
 async def reminder_send(
-    number: str, body: ReminderSendBody, books: Books = Depends(get_books), user: str = Depends(require_user),
+    number: str,
+    body: ReminderSendBody,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
     sender: MailSender = Depends(get_sender),
 ) -> InvoiceRow:
     """Send the reminder exactly as the user approved it, with the invoice that was sent attached."""
     _confirmed(body.confirm)
     await _get(books, number)
     try:
-        return _row(await inv_.send_reminder(
-            books, sender, number, user, to=body.to, subject=body.subject, body=body.body,
-            pdf=await inv_.sent_pdf(books, number),
-        ))
+        return _row(
+            await inv_.send_reminder(
+                books,
+                sender,
+                number,
+                user,
+                to=body.to,
+                subject=body.subject,
+                body=body.body,
+                pdf=await inv_.sent_pdf(books, number),
+            )
+        )
     except InvoiceError as exc:
         raise _http(exc) from exc

@@ -125,10 +125,16 @@ def ground(out: TriageModelOutput, base: TriageThread, facts: dict[str, Any], to
         if text and text.casefold() not in seen:
             seen.add(text.casefold())
             todos.append(TriageTodo(text=text, due=_due(t.due, today)))
-    return base.model_copy(update={
-        "category": out.category, "summary": summary, "needs_reply": needs_reply, "suggested_reply": reply,
-        "todos": todos[:TODOS_MAX], "fallback_reason": reason,
-    })
+    return base.model_copy(
+        update={
+            "category": out.category,
+            "summary": summary,
+            "needs_reply": needs_reply,
+            "suggested_reply": reply,
+            "todos": todos[:TODOS_MAX],
+            "fallback_reason": reason,
+        }
+    )
 
 
 async def _call_model(messages: list[dict[str, str]], cfg: AiConfig) -> str:
@@ -136,10 +142,18 @@ async def _call_model(messages: list[dict[str, str]], cfg: AiConfig) -> str:
 
 
 async def triage_thread(
-    thread: Thread, base: TriageThread, cfg: AiConfig, *, user: str | None, business_name: str | None, today: date,
+    thread: Thread,
+    base: TriageThread,
+    cfg: AiConfig,
+    *,
+    user: str | None,
+    business_name: str | None,
+    today: date,
 ) -> TriageThread:
     """Never raises for model trouble: `base` comes back with the reason."""
-    facts = thread_facts(thread, can_reply=can_reply(thread.reply_target(user)), business_name=business_name, today=today)
+    facts = thread_facts(
+        thread, can_reply=can_reply(thread.reply_target(user)), business_name=business_name, today=today
+    )
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"THREAD:\n{json.dumps(facts, ensure_ascii=False)}"},
@@ -147,9 +161,13 @@ async def triage_thread(
     try:
         out = TriageModelOutput.model_validate(parse_model_json(await _call_model(messages, cfg)))
     except httpx.HTTPStatusError as exc:
-        return base.model_copy(update={"fallback_reason": f"Your AI ({cfg.mode}) returned HTTP {exc.response.status_code}."})
+        return base.model_copy(
+            update={"fallback_reason": f"Your AI ({cfg.mode}) returned HTTP {exc.response.status_code}."}
+        )
     except httpx.HTTPError:
-        return base.model_copy(update={"fallback_reason": f"Your AI ({cfg.mode}) could not be reached at {cfg.base_url}."})
+        return base.model_copy(
+            update={"fallback_reason": f"Your AI ({cfg.mode}) could not be reached at {cfg.base_url}."}
+        )
     except (ExtractionError, ValidationError):
         return base.model_copy(update={"fallback_reason": "The model's reply was not in the expected format."})
     return ground(out, base, facts, today)

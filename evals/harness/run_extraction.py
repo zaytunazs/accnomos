@@ -38,7 +38,17 @@ from app.pipeline import process_image  # noqa: E402
 from harness.render import render_receipt  # noqa: E402
 
 GOLD_DIR = REPO / "evals" / "gold" / "receipts"
-FIELDS = ("supplier_name", "vat_number", "date", "net_total", "vat_total", "gross_total", "line_count", "side", "status")
+FIELDS = (
+    "supplier_name",
+    "vat_number",
+    "date",
+    "net_total",
+    "vat_total",
+    "gross_total",
+    "line_count",
+    "side",
+    "status",
+)
 NEEDS_LOOK_CASES = {"arith_error", "no_vat_number"}
 
 
@@ -91,7 +101,9 @@ def score(gold: dict[str, Any], proposal: dict[str, Any]) -> dict[str, bool]:
 # Verifier field -> how to grade one reading of it against gold.
 _GOLD_GRADERS = {
     "supplier_name": lambda g, v: _name_eq(g["supplier"]["name"], v),
-    "supplier_vat_number": lambda g, v: normalise_vat_number(g["supplier"].get("vat_number")) == normalise_vat_number(v),
+    "supplier_vat_number": lambda g, v: (
+        normalise_vat_number(g["supplier"].get("vat_number")) == normalise_vat_number(v)
+    ),
     "date": lambda g, v: (parse_date(v) or "") == parse_date(g["date"]),
     "net_total": lambda g, v: _pence_eq(g["net_total"], v),
     "vat_total": lambda g, v: _pence_eq(g["vat_total"], v),
@@ -117,7 +129,9 @@ def score_verification(gold: dict[str, Any], proposal: dict[str, Any]) -> dict[s
     return {"error": None, "agree_all": v["agree_all"], "fields": fields}
 
 
-async def run_one(path: Path, idx: int, cfg: AiConfig, messy: bool, out: Path, business_name: str | None = None) -> dict[str, Any]:
+async def run_one(
+    path: Path, idx: int, cfg: AiConfig, messy: bool, out: Path, business_name: str | None = None
+) -> dict[str, Any]:
     gold = json.loads(path.read_text(encoding="utf-8"))
     png = render_receipt(gold["printed_text"], messy=messy, seed=idx, damage=gold.get("damage"))
     (out / f"{path.stem}.png").write_bytes(png)
@@ -180,7 +194,9 @@ def summarise(records: list[dict[str, Any]], cfg: AiConfig, messy: bool) -> dict
 
 
 def _status_without_verifier(proposal: dict[str, Any]) -> str:
-    fails = [c for c in proposal["checks"] if not c["ok"] and c["severity"] == "fail" and c["code"] != "VERIFIER_AGREES"]
+    fails = [
+        c for c in proposal["checks"] if not c["ok"] and c["severity"] == "fail" and c["code"] != "VERIFIER_AGREES"
+    ]
     return "needs_a_look" if fails else "proposed"
 
 
@@ -224,7 +240,13 @@ def summarise_verification(records: list[dict[str, Any]], verifier: str) -> dict
         "status_accuracy_without_verifier": pct(status_before, len(ok)),
         "status_accuracy_with_verifier": pct(status_after, len(ok)),
         "mean_verifier_s": round(statistics.mean(ts), 2)
-        if (ts := [r["proposal"]["verification"]["elapsed_s"] for r in ran if r["proposal"]["verification"].get("elapsed_s")])
+        if (
+            ts := [
+                r["proposal"]["verification"]["elapsed_s"]
+                for r in ran
+                if r["proposal"]["verification"].get("elapsed_s")
+            ]
+        )
         else None,
     }
 
@@ -331,7 +353,11 @@ def main() -> None:
     ap.add_argument("--messy", action="store_true", help="phone-photo style renders")
     ap.add_argument("--case", action="append", help="only these gold_case values (repeatable)")
     ap.add_argument("--verify", action="store_true", help="run the Verifier after passing checks and report agreement")
-    ap.add_argument("--business-name", default=None, help="books owner, enables sale/purchase orientation (e.g. 'Bramblewood Joinery Ltd')")
+    ap.add_argument(
+        "--business-name",
+        default=None,
+        help="books owner, enables sale/purchase orientation (e.g. 'Bramblewood Joinery Ltd')",
+    )
     ap.add_argument("--concurrency", type=int, default=1, help="keep 1 for local (single GPU)")
     ap.add_argument("--out", default=None, help="default evals/runs/<timestamp>/")
     summary = asyncio.run(main_async(ap.parse_args()))

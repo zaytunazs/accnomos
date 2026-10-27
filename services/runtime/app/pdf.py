@@ -25,7 +25,9 @@ MUTED = (107, 114, 128)
 TEAL = (13, 110, 110)
 RULE = (214, 211, 201)
 LEFT, RIGHT, WIDTH = 15.0, 195.0, 180.0
-_PLAIN = str.maketrans({"‘": "'", "’": "'", "“": '"', "”": '"', "–": "-", "—": "-", "…": "...", "•": "-", " ": " ", "€": "EUR "})
+_PLAIN = str.maketrans(
+    {"‘": "'", "’": "'", "“": '"', "”": '"', "–": "-", "—": "-", "…": "...", "•": "-", " ": " ", "€": "EUR "}
+)
 
 
 _CONTROL = {c: None for c in (*range(0x00, 0x20), 0x7F) if c != 0x0A}  # newlines stay (multi-line notes)
@@ -106,7 +108,11 @@ def render_invoice(inv: Invoice, profile: InvoiceProfile, logo: bytes | None = N
     pdf.set_text_color(*TEAL)
     pdf.cell(RIGHT - 120, 10, "INVOICE", align="R", new_x=XPos.LEFT, new_y=YPos.NEXT)
     pdf.set_font("Helvetica", "", 9.5)
-    meta = [("Invoice number", inv.number), ("Invoice date", uk_date(inv.issue_date)), ("Due date", uk_date(inv.due_date))]
+    meta = [
+        ("Invoice number", inv.number),
+        ("Invoice date", uk_date(inv.issue_date)),
+        ("Due date", uk_date(inv.due_date)),
+    ]
     if inv.reference:
         meta.append(("Your reference", inv.reference))
     for label, value in meta:
@@ -138,9 +144,14 @@ def render_invoice(inv: Invoice, profile: InvoiceProfile, logo: bytes | None = N
     pdf.set_font("Helvetica", "", 9)
     pdf.set_draw_color(*RULE)
     with pdf.table(
-        col_widths=(86, 18, 28, 16, 32), text_align=("LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT"),
-        borders_layout="HORIZONTAL_LINES", line_height=6, first_row_as_headings=True, width=WIDTH,
-        headings_style=FontFace(emphasis="BOLD", color=MUTED), padding=1,
+        col_widths=(86, 18, 28, 16, 32),
+        text_align=("LEFT", "RIGHT", "RIGHT", "RIGHT", "RIGHT"),
+        borders_layout="HORIZONTAL_LINES",
+        line_height=6,
+        first_row_as_headings=True,
+        width=WIDTH,
+        headings_style=FontFace(emphasis="BOLD", color=MUTED),
+        padding=1,
     ) as table:
         head = table.row()
         for h in ("Description", "Qty", "Unit price", "VAT", "Net"):
@@ -171,8 +182,11 @@ def render_invoice(inv: Invoice, profile: InvoiceProfile, logo: bytes | None = N
     vat_bottom = pdf.get_y()
 
     pdf.set_xy(125, y)
-    for label, value, bold in (("Subtotal (net)", inv.net_pence, False), ("VAT", inv.vat_pence, False),
-                               ("Total due", inv.total_pence, True)):
+    for label, value, bold in (
+        ("Subtotal (net)", inv.net_pence, False),
+        ("VAT", inv.vat_pence, False),
+        ("Total due", inv.total_pence, True),
+    ):
         pdf.set_x(125)
         pdf.set_font("Helvetica", "B" if bold else "", 11 if bold else 9.5)
         pdf.set_text_color(*(INK if bold else MUTED))
@@ -190,11 +204,19 @@ def render_invoice(inv: Invoice, profile: InvoiceProfile, logo: bytes | None = N
     pdf.set_font("Helvetica", "", 9)
     pdf.set_text_color(*INK)
     days = (inv.due_date - inv.issue_date).days
-    terms = "Payment due on receipt." if days <= 0 else f"Payment terms: {days} days. Please pay by {uk_date(inv.due_date)}."
+    terms = (
+        "Payment due on receipt."
+        if days <= 0
+        else f"Payment terms: {days} days. Please pay by {uk_date(inv.due_date)}."
+    )
     pdf.cell(WIDTH, 5, text(terms), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     b = profile.bank
     if b.is_set():
-        rows = [("Account name", b.account_name or profile.name), ("Sort code", b.sort_code), ("Account number", b.account_number)]
+        rows = [
+            ("Account name", b.account_name or profile.name),
+            ("Sort code", b.sort_code),
+            ("Account number", b.account_number),
+        ]
         if b.iban:
             rows.append(("IBAN", b.iban))
         rows.append(("Reference", inv.number))

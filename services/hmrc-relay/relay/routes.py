@@ -21,8 +21,9 @@ from .settings import Settings
 router = APIRouter()
 
 Vrn = Annotated[str, Path(pattern=r"^\d{9}$")]
-Money = Annotated[Decimal, Field(max_digits=15, decimal_places=2, ge=Decimal("-9999999999999.99"),
-                                 le=Decimal("9999999999999.99"))]
+Money = Annotated[
+    Decimal, Field(max_digits=15, decimal_places=2, ge=Decimal("-9999999999999.99"), le=Decimal("9999999999999.99"))
+]
 Pounds = Annotated[int, Field(ge=-9999999999999, le=9999999999999)]
 
 
@@ -61,6 +62,7 @@ UserToken = Annotated[str, Depends(user_token)]
 
 
 # --- bodies ----------------------------------------------------------------------------------------------
+
 
 class Envelope(BaseModel):
     model_config = ConfigDict(extra="forbid")  # subclasses inherit it
@@ -130,17 +132,25 @@ class ExchangeBody(BaseModel):
 
 # --- helpers ---------------------------------------------------------------------------------------------
 
+
 def _fraud_headers(r: Relay, request: Request, body: Envelope) -> dict[str, str]:
     peer = request.client
-    meta = request_meta(request.headers, peer.host if peer else None, peer.port if peer else None,
-                        getattr(request.state, "received_at", None))
+    meta = request_meta(
+        request.headers,
+        peer.host if peer else None,
+        peer.port if peer else None,
+        getattr(request.state, "received_at", None),
+    )
     return build_headers(body.method, body.client_facts, meta, r.settings)
 
 
 def _sent(resp: httpx.Response) -> dict[str, str]:
     """Headers actually sent to HMRC, minus credentials and transport noise, for the client's audit log."""
-    return {k: v for k, v in resp.request.headers.items()
-            if k.lower().startswith("gov-") or k.lower() in {"accept", "content-type"}}
+    return {
+        k: v
+        for k, v in resp.request.headers.items()
+        if k.lower().startswith("gov-") or k.lower() in {"accept", "content-type"}
+    }
 
 
 def _envelope(resp: httpx.Response, fraud: dict[str, str], body: Envelope) -> dict:
@@ -156,12 +166,14 @@ def _envelope(resp: httpx.Response, fraud: dict[str, str], body: Envelope) -> di
 
 async def _vat(r: Relay, request: Request, token: str, body: Envelope, method: str, path: str, **kw) -> dict:
     fraud = _fraud_headers(r, request, body)
-    resp = await r.hmrc.request(method, path, bearer=token, headers=fraud,
-                                gov_test_scenario=body.gov_test_scenario, **kw)
+    resp = await r.hmrc.request(
+        method, path, bearer=token, headers=fraud, gov_test_scenario=body.gov_test_scenario, **kw
+    )
     return _envelope(resp, fraud, body)
 
 
 # --- OAuth -----------------------------------------------------------------------------------------------
+
 
 @router.get("/hmrc/authorize")
 async def authorize(r: Configured, redirect_to: str, code_challenge: str | None = None) -> dict:
@@ -174,8 +186,9 @@ async def authorize(r: Configured, redirect_to: str, code_challenge: str | None 
 
 
 @router.get("/hmrc/callback")
-async def callback(r: Configured, state: str, code: str | None = None, error: str | None = None,
-                   error_description: str | None = None) -> RedirectResponse:
+async def callback(
+    r: Configured, state: str, code: str | None = None, error: str | None = None, error_description: str | None = None
+) -> RedirectResponse:
     """HMRC redirects here. Tokens go back in the URL fragment so they never reach any server's logs."""
     st = r.oauth.read_state(state, use="callback")
     if not r.settings.redirect_allowed(st.redirect_to):
@@ -186,10 +199,19 @@ async def callback(r: Configured, state: str, code: str | None = None, error: st
         frag = {"code": code, "state": state}
     else:
         tokens = await r.oauth.exchange_code(code)
-        frag = {**{k: tokens[k] for k in ("access_token", "refresh_token", "expires_in", "scope", "token_type")
-                   if k in tokens}, "state": state}
-    return RedirectResponse(f"{st.redirect_to}#{urlencode(frag)}", status_code=303,
-                            headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"})
+        frag = {
+            **{
+                k: tokens[k]
+                for k in ("access_token", "refresh_token", "expires_in", "scope", "token_type")
+                if k in tokens
+            },
+            "state": state,
+        }
+    return RedirectResponse(
+        f"{st.redirect_to}#{urlencode(frag)}",
+        status_code=303,
+        headers={"Cache-Control": "no-store", "Referrer-Policy": "no-referrer"},
+    )
 
 
 @router.post("/hmrc/exchange")
@@ -207,6 +229,7 @@ async def refresh(r: Configured, body: RefreshBody) -> dict:
 
 # --- VAT (MTD) 1.0, user-restricted -------------------------------------------------------------------------
 
+
 @router.post("/vat/{vrn}/obligations")
 async def obligations(r: Configured, request: Request, token: UserToken, vrn: Vrn, body: ObligationsBody) -> dict:
     params = {"from": body.from_.isoformat(), "to": body.to.isoformat(), "status": body.status}
@@ -215,15 +238,23 @@ async def obligations(r: Configured, request: Request, token: UserToken, vrn: Vr
 
 @router.post("/vat/{vrn}/returns", status_code=201)
 async def submit_return(r: Configured, request: Request, token: UserToken, vrn: Vrn, body: ReturnBody) -> dict:
-    return await _vat(r, request, token, body, "POST", f"/organisations/vat/{vrn}/returns",
-                      json=body.return_.hmrc_json())
+    return await _vat(
+        r, request, token, body, "POST", f"/organisations/vat/{vrn}/returns", json=body.return_.hmrc_json()
+    )
 
 
 @router.post("/vat/{vrn}/returns/{period_key}/view")
-async def view_return(r: Configured, request: Request, token: UserToken, vrn: Vrn,
-                      period_key: Annotated[str, Path(pattern=r"^[A-Za-z0-9#]{4}$")], body: Envelope) -> dict:
-    return await _vat(r, request, token, body, "GET",
-                      f"/organisations/vat/{vrn}/returns/{period_key.replace('#', '%23')}")
+async def view_return(
+    r: Configured,
+    request: Request,
+    token: UserToken,
+    vrn: Vrn,
+    period_key: Annotated[str, Path(pattern=r"^[A-Za-z0-9#]{4}$")],
+    body: Envelope,
+) -> dict:
+    return await _vat(
+        r, request, token, body, "GET", f"/organisations/vat/{vrn}/returns/{period_key.replace('#', '%23')}"
+    )
 
 
 @router.post("/vat/{vrn}/liabilities")
@@ -240,37 +271,49 @@ async def payments(r: Configured, request: Request, token: UserToken, vrn: Vrn, 
 
 # --- application-restricted ----------------------------------------------------------------------------------
 
+
 @router.get("/vat/check/{vrn}")
 async def check_vrn(r: Configured, vrn: Vrn) -> dict:
-    resp = await r.hmrc.request("GET", f"/organisations/vat/check-vat-number/lookup/{vrn}",
-                                bearer=await r.oauth.app_token(), version="2.0")
+    resp = await r.hmrc.request(
+        "GET", f"/organisations/vat/check-vat-number/lookup/{vrn}", bearer=await r.oauth.app_token(), version="2.0"
+    )
     return resp.json()
 
 
 @router.get("/vat/check/{vrn}/{requester_vrn}")
 async def check_vrn_with_reference(r: Configured, vrn: Vrn, requester_vrn: Vrn) -> dict:
-    resp = await r.hmrc.request("GET", f"/organisations/vat/check-vat-number/lookup/{vrn}/{requester_vrn}",
-                                bearer=await r.oauth.app_token(), version="2.0")
+    resp = await r.hmrc.request(
+        "GET",
+        f"/organisations/vat/check-vat-number/lookup/{vrn}/{requester_vrn}",
+        bearer=await r.oauth.app_token(),
+        version="2.0",
+    )
     return resp.json()
 
 
 @router.post("/hmrc/test-user", status_code=201)
 async def create_test_user(r: Sandbox) -> dict:
-    resp = await r.hmrc.request("POST", "/create-test-user/organisations", bearer=await r.oauth.app_token(),
-                                json={"serviceNames": ["mtd-vat"]})
+    resp = await r.hmrc.request(
+        "POST", "/create-test-user/organisations", bearer=await r.oauth.app_token(), json={"serviceNames": ["mtd-vat"]}
+    )
     return resp.json()
 
 
 @router.post("/hmrc/validate-headers")
 async def validate_headers(r: Sandbox, request: Request, body: Envelope) -> dict:
     fraud = _fraud_headers(r, request, body)
-    resp = await r.hmrc.request("GET", "/test/fraud-prevention-headers/validate", bearer=await r.oauth.app_token(),
-                                headers=fraud)
+    resp = await r.hmrc.request(
+        "GET", "/test/fraud-prevention-headers/validate", bearer=await r.oauth.app_token(), headers=fraud
+    )
     return _envelope(resp, fraud, body)
 
 
 @router.get("/hmrc/validation-feedback")
 async def validation_feedback(r: Sandbox, method: Annotated[Method, Query()]) -> dict:
-    resp = await r.hmrc.request("GET", "/test/fraud-prevention-headers/vat-mtd/validation-feedback",
-                                bearer=await r.oauth.app_token(), params={"connectionMethod": method})
+    resp = await r.hmrc.request(
+        "GET",
+        "/test/fraud-prevention-headers/vat-mtd/validation-feedback",
+        bearer=await r.oauth.app_token(),
+        params={"connectionMethod": method},
+    )
     return resp.json()

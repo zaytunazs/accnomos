@@ -63,13 +63,17 @@ class OAuth:
     # One-time use needs the small in-memory spent set above; it is per process, so run one relay worker.
 
     def _state_key(self) -> bytes:
-        return hashlib.sha256(b"hmrc-relay-state:" + self.settings.hmrc_client_secret.get_secret_value().encode()).digest()
+        return hashlib.sha256(
+            b"hmrc-relay-state:" + self.settings.hmrc_client_secret.get_secret_value().encode()
+        ).digest()
 
     def make_state(self, redirect_to: str, pkce: bool) -> str:
-        payload = _b64(json.dumps(
-            {"r": redirect_to, "p": pkce, "e": int(time.time()) + STATE_TTL_S, "n": secrets.token_urlsafe(12)},
-            separators=(",", ":"),
-        ).encode())
+        payload = _b64(
+            json.dumps(
+                {"r": redirect_to, "p": pkce, "e": int(time.time()) + STATE_TTL_S, "n": secrets.token_urlsafe(12)},
+                separators=(",", ":"),
+            ).encode()
+        )
         sig = _b64(hmac.new(self._state_key(), payload.encode(), hashlib.sha256).digest())
         return f"{payload}.{sig}"
 
@@ -113,8 +117,11 @@ class OAuth:
     # --- token endpoint ------------------------------------------------------------------------------------
 
     async def _token(self, form: dict[str, str]) -> dict:
-        form = {"client_id": self.settings.hmrc_client_id,
-                "client_secret": self.settings.hmrc_client_secret.get_secret_value(), **form}
+        form = {
+            "client_id": self.settings.hmrc_client_id,
+            "client_secret": self.settings.hmrc_client_secret.get_secret_value(),
+            **form,
+        }
         try:
             resp = await self.http.post(self.settings.token_url, data=form, headers={"Accept": "application/json"})
         except httpx.HTTPError as e:

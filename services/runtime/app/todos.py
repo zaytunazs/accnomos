@@ -71,7 +71,9 @@ def _parse(raw: Any) -> list[Todo]:
 
 
 def _same(a: TodoIn, b: TodoIn) -> bool:
-    return a.text.casefold() == b.text.casefold() and (a.source and a.source.message_id) == (b.source and b.source.message_id)
+    return a.text.casefold() == b.text.casefold() and (a.source and a.source.message_id) == (
+        b.source and b.source.message_id
+    )
 
 
 async def list_todos(books: Books) -> list[Todo]:
@@ -95,7 +97,9 @@ async def add_todo(books: Books, body: TodoIn, user: str) -> tuple[Todo, bool]:
     await books._update_json(TODOS, [], change)
     if found:
         return found[0], False
-    await books.audit(f"user:{user}", "todo_added", {"todo": new.id, "source": body.source.kind if body.source else None})
+    await books.audit(
+        f"user:{user}", "todo_added", {"todo": new.id, "source": body.source.kind if body.source else None}
+    )
     return new, True
 
 

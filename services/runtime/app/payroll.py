@@ -184,9 +184,15 @@ def make_line(staff_id: str, q: int, rate_pence: int, notes: str = "") -> PayLin
     gross = pence_for(q, rate_pence)
     est = estimate(gross)
     return PayLine(
-        staff_id=staff_id, hours=hours_value(q), rate_pence=rate_pence, gross_pence=gross,
-        est_paye_pence=est.paye_pence, est_ee_ni_pence=est.ee_ni_pence, est_er_ni_pence=est.er_ni_pence,
-        est_net_pence=est.net_pence, notes=notes,
+        staff_id=staff_id,
+        hours=hours_value(q),
+        rate_pence=rate_pence,
+        gross_pence=gross,
+        est_paye_pence=est.paye_pence,
+        est_ee_ni_pence=est.ee_ni_pence,
+        est_er_ni_pence=est.er_ni_pence,
+        est_net_pence=est.net_pence,
+        notes=notes,
     )
 
 
@@ -256,11 +262,19 @@ async def prepare(books: Books, period: str, pay_date: date | None, user: str) -
         lines.append(make_line(sid, q[sid], member.hourly_rate_pence, "; ".join(notes)))
     if not lines:
         warnings.append(f"No timesheet hours in {start:%B %Y}")
-    run = PayRun(period_start=start, period_end=end, pay_date=pay_date or (old.pay_date if old else end),
-                 lines=lines, warnings=warnings)
+    run = PayRun(
+        period_start=start,
+        period_end=end,
+        pay_date=pay_date or (old.pay_date if old else end),
+        lines=lines,
+        warnings=warnings,
+    )
     await _save(books, run)
-    await books.audit(f"user:{user}", "payroll_prepared", {"period": period, "lines": len(lines),
-                                                            "est_gross_pence": run.est_gross_pence})
+    await books.audit(
+        f"user:{user}",
+        "payroll_prepared",
+        {"period": period, "lines": len(lines), "est_gross_pence": run.est_gross_pence},
+    )
     return run
 
 
@@ -280,13 +294,24 @@ async def update(books: Books, period: str, lines: Sequence[LineEdit], pay_date:
         new.append(make_line(edit.staff_id, month_quarters(edit.hours), edit.rate_pence, edit.notes.strip()))
     run = run.model_copy(update={"lines": new, "pay_date": pay_date or run.pay_date})
     await _save(books, run)
-    await books.audit(f"user:{user}", "payroll_edited", {"period": period, "lines": len(new),
-                                                          "est_gross_pence": run.est_gross_pence})
+    await books.audit(
+        f"user:{user}", "payroll_edited", {"period": period, "lines": len(new), "est_gross_pence": run.est_gross_pence}
+    )
     return run
 
 
-CSV_HEADER = ("Employee", "Role", "Hours", "Hourly rate £", "Gross pay £", "Est. PAYE £", "Est. employee NI £",
-              "Est. net pay £", "Est. employer NI £", "Notes")
+CSV_HEADER = (
+    "Employee",
+    "Role",
+    "Hours",
+    "Hourly rate £",
+    "Gross pay £",
+    "Est. PAYE £",
+    "Est. employee NI £",
+    "Est. net pay £",
+    "Est. employer NI £",
+    "Notes",
+)
 
 
 def _gbp(pence: int) -> str:
@@ -315,12 +340,33 @@ def export_csv(run: PayRun, names: dict[str, tuple[str, str]]) -> str:
     w.writerow(CSV_HEADER)
     for ln in run.lines:
         name, role = names.get(ln.staff_id, (ln.staff_id, ""))
-        w.writerow([_text(name), _text(role), _hours(ln.hours), _gbp(ln.rate_pence), _gbp(ln.gross_pence),
-                    _gbp(ln.est_paye_pence), _gbp(ln.est_ee_ni_pence), _gbp(ln.est_net_pence), _gbp(ln.est_er_ni_pence),
-                    _text(ln.notes)])
-    w.writerow(["Total", "", _hours(sum(ln.hours for ln in run.lines)), "",
-                *(_gbp(sum(getattr(ln, f) for ln in run.lines)) for f in (
-                    "gross_pence", "est_paye_pence", "est_ee_ni_pence", "est_net_pence", "est_er_ni_pence")), ""])
+        w.writerow(
+            [
+                _text(name),
+                _text(role),
+                _hours(ln.hours),
+                _gbp(ln.rate_pence),
+                _gbp(ln.gross_pence),
+                _gbp(ln.est_paye_pence),
+                _gbp(ln.est_ee_ni_pence),
+                _gbp(ln.est_net_pence),
+                _gbp(ln.est_er_ni_pence),
+                _text(ln.notes),
+            ]
+        )
+    w.writerow(
+        [
+            "Total",
+            "",
+            _hours(sum(ln.hours for ln in run.lines)),
+            "",
+            *(
+                _gbp(sum(getattr(ln, f) for ln in run.lines))
+                for f in ("gross_pence", "est_paye_pence", "est_ee_ni_pence", "est_net_pence", "est_er_ni_pence")
+            ),
+            "",
+        ]
+    )
     return buf.getvalue()
 
 
@@ -342,17 +388,39 @@ async def export(books: Books, period: str, user: str) -> tuple[str, str]:
 def staff_cost_events(run: PayRun, gross_pence: int, er_ni_pence: int, user: str, at: datetime) -> list[LedgerEvent]:
     """Balanced adjustments for what was actually paid: gross wages and (when there is any) employer NI."""
     who = f"Payroll {run.period}"
-    events = [LedgerEvent(
-        kind="adjustment", date=run.pay_date, approved_by=user, approved_at=at, counterparty=who,
-        lines=[Line(account=WAGES, debit=gross_pence, memo=f"{who}: gross pay (as calculated by your payroll provider)"),
-               Line(account=LIABILITIES, credit=gross_pence, memo=f"{who}: net pay to staff, PAYE and employee NI to HMRC")],
-    )]
+    events = [
+        LedgerEvent(
+            kind="adjustment",
+            date=run.pay_date,
+            approved_by=user,
+            approved_at=at,
+            counterparty=who,
+            lines=[
+                Line(
+                    account=WAGES, debit=gross_pence, memo=f"{who}: gross pay (as calculated by your payroll provider)"
+                ),
+                Line(
+                    account=LIABILITIES,
+                    credit=gross_pence,
+                    memo=f"{who}: net pay to staff, PAYE and employee NI to HMRC",
+                ),
+            ],
+        )
+    ]
     if er_ni_pence:
-        events.append(LedgerEvent(
-            kind="adjustment", date=run.pay_date, approved_by=user, approved_at=at, counterparty=who,
-            lines=[Line(account=EMPLOYER_NI, debit=er_ni_pence, memo=f"{who}: employer's Class 1 NI"),
-                   Line(account=LIABILITIES, credit=er_ni_pence, memo=f"{who}: employer NI to HMRC")],
-        ))
+        events.append(
+            LedgerEvent(
+                kind="adjustment",
+                date=run.pay_date,
+                approved_by=user,
+                approved_at=at,
+                counterparty=who,
+                lines=[
+                    Line(account=EMPLOYER_NI, debit=er_ni_pence, memo=f"{who}: employer's Class 1 NI"),
+                    Line(account=LIABILITIES, credit=er_ni_pence, memo=f"{who}: employer NI to HMRC"),
+                ],
+            )
+        )
     return events
 
 
@@ -371,25 +439,40 @@ async def confirm(books: Books, period: str, gross_pence: int, er_ni_pence: int,
         for ev in events:
             await books.post_event(ev)
             posted.append(ev)
-        run = run.model_copy(update={
-            "status": "confirmed", "confirmed_gross_pence": gross_pence, "confirmed_er_ni_pence": er_ni_pence,
-            "confirmed_by": user, "confirmed_at": at, "event_ids": [e.id for e in events],
-        })
+        run = run.model_copy(
+            update={
+                "status": "confirmed",
+                "confirmed_gross_pence": gross_pence,
+                "confirmed_er_ni_pence": er_ni_pence,
+                "confirmed_by": user,
+                "confirmed_at": at,
+                "event_ids": [e.id for e in events],
+            }
+        )
         await _save(books, run)
     except Exception:
         # Never leave half a pay run in the books, or entries the run file doesn't know about (a second
         # confirm would then post them twice).
         from app.approve import undo
+
         for ev in posted:
             try:
                 await undo(books, ev.id, user)
             except Exception:
                 log.exception("Could not undo pay run entry %s after a failed confirm", ev.id)
         raise
-    await books.audit(f"user:{user}", "payroll_confirmed", {
-        "period": period, "gross_pence": gross_pence, "er_ni_pence": er_ni_pence, "events": run.event_ids,
-        "est_gross_pence": run.est_gross_pence, "est_er_ni_pence": run.est_er_ni_pence,
-    })
+    await books.audit(
+        f"user:{user}",
+        "payroll_confirmed",
+        {
+            "period": period,
+            "gross_pence": gross_pence,
+            "er_ni_pence": er_ni_pence,
+            "events": run.event_ids,
+            "est_gross_pence": run.est_gross_pence,
+            "est_er_ni_pence": run.est_er_ni_pence,
+        },
+    )
     await books.rebuild_safely(f"user:{user}")
     return run
 
@@ -406,10 +489,17 @@ async def reopen(books: Books, period: str, user: str) -> PayRun:
             await undo(books, event_id, user)  # ApprovalError (e.g. a matched bank line) stops here
         except (ProposalStateError, FileNotFoundError):
             pass  # already undone by hand, or never written
-    run = run.model_copy(update={
-        "status": "draft", "confirmed_gross_pence": None, "confirmed_er_ni_pence": None, "confirmed_by": None,
-        "confirmed_at": None, "event_ids": [], "undone_event_ids": [*run.undone_event_ids, *run.event_ids],
-    })
+    run = run.model_copy(
+        update={
+            "status": "draft",
+            "confirmed_gross_pence": None,
+            "confirmed_er_ni_pence": None,
+            "confirmed_by": None,
+            "confirmed_at": None,
+            "event_ids": [],
+            "undone_event_ids": [*run.undone_event_ids, *run.event_ids],
+        }
+    )
     await _save(books, run)
     await books.audit(f"user:{user}", "payroll_reopened", {"period": period, "undone": run.undone_event_ids})
     await books.rebuild_safely(f"user:{user}")

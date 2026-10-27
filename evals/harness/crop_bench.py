@@ -86,7 +86,9 @@ def make_scene(text: str, scene: str, seed: int) -> tuple[bytes, Box]:
     y = rng.randint(10, max(11, fh - rec.height - 10))
 
     if scene == "second_paper":  # a smaller sheet, partly off-frame, not touching the receipt
-        other = _rotated(Image.new("RGB", (int(rec.width * 0.7), int(rec.height * 0.5)), (240, 240, 236)), rng.uniform(-20, 20))
+        other = _rotated(
+            Image.new("RGB", (int(rec.width * 0.7), int(rec.height * 0.5)), (240, 240, 236)), rng.uniform(-20, 20)
+        )
         ox = x + rec.width + 20 if x + rec.width + 20 < fw - 40 else max(0, x - other.width - 20)
         img.paste(other, (ox, rng.randint(-other.height // 4, fh // 3)), other)
     if scene == "dark_desk_mug":
@@ -139,8 +141,13 @@ async def run(limit: int, out_dir: Path | None) -> dict[str, Any]:
         t0 = time.perf_counter()
         r = await crop.crop_document(data)
         box = r.box or full
-        row["code"] = {"box": r.box, "iou": crop.iou(box, truth), "kept": kept(box, truth),
-                       "s": time.perf_counter() - t0, "note": r.note}
+        row["code"] = {
+            "box": r.box,
+            "iou": crop.iou(box, truth),
+            "kept": kept(box, truth),
+            "s": time.perf_counter() - t0,
+            "note": r.note,
+        }
         if cfg:
             t0 = time.perf_counter()
             try:
@@ -153,8 +160,13 @@ async def run(limit: int, out_dir: Path | None) -> dict[str, Any]:
             except Exception as exc:  # noqa: BLE001
                 sbox, note = None, f"error: {exc!r}"[:120]
             b = sbox or full
-            row["sam"] = {"box": sbox, "iou": crop.iou(b, truth), "kept": kept(b, truth),
-                          "s": time.perf_counter() - t0, "note": note}
+            row["sam"] = {
+                "box": sbox,
+                "iou": crop.iou(b, truth),
+                "kept": kept(b, truth),
+                "s": time.perf_counter() - t0,
+                "note": note,
+            }
         rows.append(row)
     os.environ.pop("CROP_MODE", None)
     return {"rows": rows, "methods": ["code"] + (["sam"] if cfg else [])}
@@ -184,18 +196,33 @@ def summarise(res: dict[str, Any]) -> str:
         )
     if "sam" not in res["methods"]:
         lines += ["", "Method A (SAM 3.1) not run: no MODEL_API_KEY in this environment."]
-    lines += ["", "## By scene", "", "| Scene | n | " + " | ".join(f"{m} mean IoU" for m in res["methods"]) + " |",
-              "|---|---|" + "---|" * len(res["methods"])]
+    lines += [
+        "",
+        "## By scene",
+        "",
+        "| Scene | n | " + " | ".join(f"{m} mean IoU" for m in res["methods"]) + " |",
+        "|---|---|" + "---|" * len(res["methods"]),
+    ]
     for s in SCENES:
         sr = [r for r in rows if r["scene"] == s]
         if sr:
-            lines.append(f"| {s} | {len(sr)} | " + " | ".join(
-                f"{statistics.mean(r[m]['iou'] for r in sr):.3f}" for m in res["methods"]) + " |")
-    lines += ["", "## Cases", "", "| Case | Scene | Truth | " + " | ".join(f"{m} box / IoU / kept / note" for m in res["methods"]) + " |",
-              "|---|---|---|" + "---|" * len(res["methods"])]
+            lines.append(
+                f"| {s} | {len(sr)} | "
+                + " | ".join(f"{statistics.mean(r[m]['iou'] for r in sr):.3f}" for m in res["methods"])
+                + " |"
+            )
+    lines += [
+        "",
+        "## Cases",
+        "",
+        "| Case | Scene | Truth | " + " | ".join(f"{m} box / IoU / kept / note" for m in res["methods"]) + " |",
+        "|---|---|---|" + "---|" * len(res["methods"]),
+    ]
     for r in rows:
-        cells = [f"{list(r[m]['box']) if r[m]['box'] else '—'} / {r[m]['iou']:.2f} / {r[m]['kept']:.0%} / {r[m]['note']}"
-                 for m in res["methods"]]
+        cells = [
+            f"{list(r[m]['box']) if r[m]['box'] else '—'} / {r[m]['iou']:.2f} / {r[m]['kept']:.0%} / {r[m]['note']}"
+            for m in res["methods"]
+        ]
         lines.append(f"| {r['case']} | {r['scene']} | {list(r['truth'])} | " + " | ".join(cells) + " |")
     return "\n".join(lines) + "\n"
 

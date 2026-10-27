@@ -40,7 +40,11 @@ def _font(size: int) -> Font:
     return ImageFont.load_default(size=size)  # Pillow >= 10.1
 
 
-_HAND_CANDIDATES = ("DejaVuSerif-Italic.ttf", "DejaVuSans-Oblique.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Italic.ttf")
+_HAND_CANDIDATES = (
+    "DejaVuSerif-Italic.ttf",
+    "DejaVuSans-Oblique.ttf",
+    "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Italic.ttf",
+)
 PEN = (30, 50, 150)
 
 
@@ -78,7 +82,12 @@ def _paper(text: str, rng: random.Random) -> Image.Image:
     for i, line in enumerate(lines):
         if hand[i]:
             size = getattr(font, "size", 14)
-            d.text((MARGIN + rng.randint(-2, 4), MARGIN + i * lh + rng.randint(-2, 2)), line, font=_hand_font(size), fill=PEN)
+            d.text(
+                (MARGIN + rng.randint(-2, 4), MARGIN + i * lh + rng.randint(-2, 2)),
+                line,
+                font=_hand_font(size),
+                fill=PEN,
+            )
         else:
             d.text((MARGIN, MARGIN + i * lh), line, font=font, fill=INK)
     # 1-2 px grey specks (dust / thermal noise)
@@ -115,8 +124,11 @@ def _photo(paper: Image.Image, rng: random.Random, angle: float) -> Image.Image:
     off_x = -shx * h if shx > 0 else 0
     off_y = -shy * w if shy > 0 else 0
     rgba = rgba.transform(
-        (out_w, out_h), Image.Transform.AFFINE, (1, shx, off_x, shy, 1, off_y),
-        resample=Image.Resampling.BICUBIC, fillcolor=(0, 0, 0, 0),
+        (out_w, out_h),
+        Image.Transform.AFFINE,
+        (1, shx, off_x, shy, 1, off_y),
+        resample=Image.Resampling.BICUBIC,
+        fillcolor=(0, 0, 0, 0),
     )
     rgba = rgba.rotate(angle, resample=Image.Resampling.BICUBIC, expand=True, fillcolor=(0, 0, 0, 0))
     canvas = Image.new("RGB", (rgba.width + 2 * pad, rgba.height + 2 * pad), TABLE)

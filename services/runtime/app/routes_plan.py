@@ -58,7 +58,8 @@ class PlanRequest(StrictBody):
     constraints: Constraints | None = None
     vat: VatSettings | None = None
     job_ids: list[Annotated[str, Field(max_length=32)]] | None = Field(
-        None, max_length=200, description="only these jobs (default: every open job)")
+        None, max_length=200, description="only these jobs (default: every open job)"
+    )
 
 
 class PlanResponse(BaseModel):
@@ -87,12 +88,16 @@ async def plan_day(
     wanted = set(body.job_ids) if body.job_ids is not None else None
     open_jobs = [j for j in await jobs.load_jobs(books) if j.status == "open" and (wanted is None or j.id in wanted)]
     existing = await calendar.list_events(body.date)
-    plan = build_plan(body.date, open_jobs, existing, vat_due(body.date, body.vat), body.constraints,
-                      today=today(TZ))
+    plan = build_plan(body.date, open_jobs, existing, vat_due(body.date, body.vat), body.constraints, today=today(TZ))
     text, model, reason = await plan_ai.rationale(plan, cfg)
     return PlanResponse(
-        date=body.date, plan=plan.items, rationale_md=text, warnings=plan.warnings,
-        plan_hash=plan_hash(body.date, plan.items), model=model, fallback_reason=reason,
+        date=body.date,
+        plan=plan.items,
+        rationale_md=text,
+        warnings=plan.warnings,
+        plan_hash=plan_hash(body.date, plan.items),
+        model=model,
+        fallback_reason=reason,
     )
 
 

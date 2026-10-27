@@ -266,14 +266,18 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
         headers = {"If-Match": if_match} if if_match else {}
         if len(data) <= SIMPLE_UPLOAD_MAX:
             resp = await self._request(  # conflictBehavior=fail: an existing file -> 409 -> FileExistsError
-                "PUT", self._item_url(path, "content"), content=data,
+                "PUT",
+                self._item_url(path, "content"),
+                content=data,
                 params={"@microsoft.graph.conflictBehavior": "fail"} if create_only else None,
                 headers={**headers, "Content-Type": "application/octet-stream"},
             )
             return _to_ref(resp.json(), path)
         return await self._upload_large(path, data, headers, create_only)
 
-    async def _upload_large(self, path: str, data: bytes, headers: dict[str, str], create_only: bool = False) -> FileRef:
+    async def _upload_large(
+        self, path: str, data: bytes, headers: dict[str, str], create_only: bool = False
+    ) -> FileRef:
         """Upload session + one PUT of the whole body (Graph accepts fragments up to 60 MiB)."""
         body = {"item": {"@microsoft.graph.conflictBehavior": "fail" if create_only else "replace"}}
         session = (
@@ -281,7 +285,10 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
         ).json()
         n = len(data)
         resp = await self._request(
-            "PUT", session["uploadUrl"], auth=False, content=data,  # upload URL is pre-authenticated
+            "PUT",
+            session["uploadUrl"],
+            auth=False,
+            content=data,  # upload URL is pre-authenticated
             headers={"Content-Length": str(n), "Content-Range": f"bytes 0-{n - 1}/{n}"},
         )
         return _to_ref(resp.json(), path)
@@ -307,7 +314,7 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
         anchor, _, rel = parent.partition(":")
         root = self._root_drive_path or ("/Accnomos" if self.account_kind == "work" else None)
         if not anchor.endswith("special/approot") and root and rel.startswith(root):
-            rel = rel[len(root):]  # drive-relative -> books-relative
+            rel = rel[len(root) :]  # drive-relative -> books-relative
         return _join(rel.strip("/"), item.get("name", ""))
 
     async def changes(self, cursor: str | None) -> tuple[list[FileRef], str]:
@@ -339,7 +346,7 @@ def _with_reply_text(body: dict[str, Any], text: str) -> dict[str, Any]:
         return {"contentType": "text", "content": f"{text}\n\n{content}" if content else text}
     block = "<div>" + html.escape(text).replace("\n", "<br>") + "</div><br>"
     m = _BODY_TAG.search(content)
-    merged = content[: m.end()] + block + content[m.end():] if m else block + content
+    merged = content[: m.end()] + block + content[m.end() :] if m else block + content
     return {"contentType": "html", "content": merged}
 
 
@@ -372,13 +379,19 @@ class GraphMailProvider(_GraphHttp, MailProvider):
             params = None  # nextLink already carries the query
             for m in page.get("value", []):
                 sender = (m.get("from") or {}).get("emailAddress") or {}
-                out.append(MailMessage(
-                    id=m["id"], received_at=_iso(m.get("receivedDateTime")),
-                    from_address=(sender.get("address") or "").lower(), from_name=sender.get("name") or "",
-                    subject=m.get("subject") or "", web_link=m.get("webLink"),
-                    conversation_id=m.get("conversationId") or m["id"],
-                    body_preview=(m.get("bodyPreview") or "")[:255], is_read=bool(m.get("isRead", True)),
-                ))
+                out.append(
+                    MailMessage(
+                        id=m["id"],
+                        received_at=_iso(m.get("receivedDateTime")),
+                        from_address=(sender.get("address") or "").lower(),
+                        from_name=sender.get("name") or "",
+                        subject=m.get("subject") or "",
+                        web_link=m.get("webLink"),
+                        conversation_id=m.get("conversationId") or m["id"],
+                        body_preview=(m.get("bodyPreview") or "")[:255],
+                        is_read=bool(m.get("isRead", True)),
+                    )
+                )
             url = page.get("@odata.nextLink")
         return out[:max_results]
 
@@ -405,12 +418,17 @@ class GraphMailProvider(_GraphHttp, MailProvider):
             params = None  # nextLink already carries the query
             for m in page.get("value", []):
                 sender = (m.get("from") or {}).get("emailAddress") or {}
-                out.append(MailMessage(
-                    id=m["id"], received_at=_iso(m.get("receivedDateTime")),
-                    from_address=(sender.get("address") or "").lower(), from_name=sender.get("name") or "",
-                    subject=m.get("subject") or "", has_attachments=bool(m.get("hasAttachments")),
-                    web_link=m.get("webLink"),
-                ))
+                out.append(
+                    MailMessage(
+                        id=m["id"],
+                        received_at=_iso(m.get("receivedDateTime")),
+                        from_address=(sender.get("address") or "").lower(),
+                        from_name=sender.get("name") or "",
+                        subject=m.get("subject") or "",
+                        has_attachments=bool(m.get("hasAttachments")),
+                        web_link=m.get("webLink"),
+                    )
+                )
             url = page.get("@odata.nextLink")
         return out[:max_results]
 
@@ -424,10 +442,15 @@ class GraphMailProvider(_GraphHttp, MailProvider):
             for a in page.get("value", []):
                 if a.get("@odata.type", "#microsoft.graph.fileAttachment") != "#microsoft.graph.fileAttachment":
                     continue  # forwarded messages (itemAttachment) and cloud links (referenceAttachment)
-                out.append(MailAttachment(
-                    id=a["id"], name=a.get("name") or "attachment", content_type=(a.get("contentType") or "").lower(),
-                    size=int(a.get("size") or 0), is_inline=bool(a.get("isInline")),
-                ))
+                out.append(
+                    MailAttachment(
+                        id=a["id"],
+                        name=a.get("name") or "attachment",
+                        content_type=(a.get("contentType") or "").lower(),
+                        size=int(a.get("size") or 0),
+                        is_inline=bool(a.get("isInline")),
+                    )
+                )
             url = page.get("@odata.nextLink")
         return out
 
@@ -451,13 +474,19 @@ class GraphContactsProvider(_GraphHttp, ContactsProvider):
             params = None  # nextLink already carries the query
             for c in page.get("value", []):
                 emails = [(e.get("address") or "").strip() for e in c.get("emailAddresses") or []]
-                out.append(AddressBookContact(
-                    id=c["id"], display_name=(c.get("displayName") or "").strip(),
-                    company_name=(c.get("companyName") or "").strip(), emails=[e for e in emails if e],
-                    business_phones=[p.strip() for p in c.get("businessPhones") or [] if p and p.strip()],
-                ))
+                out.append(
+                    AddressBookContact(
+                        id=c["id"],
+                        display_name=(c.get("displayName") or "").strip(),
+                        company_name=(c.get("companyName") or "").strip(),
+                        emails=[e for e in emails if e],
+                        business_phones=[p.strip() for p in c.get("businessPhones") or [] if p and p.strip()],
+                    )
+                )
             url = page.get("@odata.nextLink")
         return out[:max_results]
+
+
 class GraphMailSender(_GraphHttp, MailSender):
     """`POST /me/sendMail` (`Mail.Send`), saved to the user's Sent Items. Attachments go inline as base64,
     which Graph accepts up to 3 MB per message; an invoice PDF is far smaller."""
@@ -473,7 +502,9 @@ class GraphMailSender(_GraphHttp, MailSender):
             "toRecipients": [{"emailAddress": {"address": mail.to}}],
             "attachments": [
                 {
-                    "@odata.type": "#microsoft.graph.fileAttachment", "name": a.name, "contentType": a.content_type,
+                    "@odata.type": "#microsoft.graph.fileAttachment",
+                    "name": a.name,
+                    "contentType": a.content_type,
                     "contentBytes": base64.b64encode(a.data).decode(),
                 }
                 for a in mail.attachments
@@ -502,7 +533,9 @@ class GraphCalendarProvider(_GraphHttp, CalendarProvider):
         params: dict[str, str] | None = {
             "startDateTime": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
             "endDateTime": end.strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "$select": self.SELECT, "$orderby": "start/dateTime", "$top": str(self.PAGE),
+            "$select": self.SELECT,
+            "$orderby": "start/dateTime",
+            "$top": str(self.PAGE),
         }
         headers = {"Prefer": 'outlook.timezone="UTC"'}
         url: str | None = f"{GRAPH}/me/calendarView"
@@ -513,12 +546,18 @@ class GraphCalendarProvider(_GraphHttp, CalendarProvider):
             for e in page.get("value", []):
                 if e.get("isCancelled"):
                     continue
-                out.append(CalendarEvent(
-                    id=e["id"], subject=e.get("subject") or "", start=_graph_utc(e.get("start")),
-                    end=_graph_utc(e.get("end")), location=((e.get("location") or {}).get("displayName") or ""),
-                    body_preview=e.get("bodyPreview") or "", is_all_day=bool(e.get("isAllDay")),
-                    show_as=e.get("showAs") or "busy",
-                ))
+                out.append(
+                    CalendarEvent(
+                        id=e["id"],
+                        subject=e.get("subject") or "",
+                        start=_graph_utc(e.get("start")),
+                        end=_graph_utc(e.get("end")),
+                        location=((e.get("location") or {}).get("displayName") or ""),
+                        body_preview=e.get("bodyPreview") or "",
+                        is_all_day=bool(e.get("isAllDay")),
+                        show_as=e.get("showAs") or "busy",
+                    )
+                )
             url = page.get("@odata.nextLink")
         return sorted(out, key=lambda e: e.start)
 
@@ -530,9 +569,12 @@ class GraphCalendarProvider(_GraphHttp, CalendarProvider):
             return {"dateTime": dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S"), "timeZone": "UTC"}
 
         payload: dict[str, Any] = {
-            "subject": subject, "start": stamp(start), "end": stamp(end),
+            "subject": subject,
+            "start": stamp(start),
+            "end": stamp(end),
             "body": {"contentType": "text", "content": body},
-            "showAs": "busy", "isReminderOn": False,
+            "showAs": "busy",
+            "isReminderOn": False,
         }
         if location:
             payload["location"] = {"displayName": location}

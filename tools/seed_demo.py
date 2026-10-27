@@ -201,28 +201,48 @@ def build_plan(business: str = GOLD_BUSINESS, today: date | None = None, stagger
     golds = {f: g for f, g in gold_receipts().items() if f[:3].isdigit() and int(f[:3]) <= 60}
     usable = {f: g for f, g in golds.items() if rewritable(g) and f not in INBOX_NEEDS_A_LOOK}
     usable = {f: g for f, g in usable.items() if _passes(g)}
-    sales = sorted(f for f, g in usable.items() if g["doc_type"] == "sales_invoice" and f != INBOX_SALE
-                   and (g.get("supplier") or {}).get("name") == GOLD_BUSINESS)
+    sales = sorted(
+        f
+        for f, g in usable.items()
+        if g["doc_type"] == "sales_invoice"
+        and f != INBOX_SALE
+        and (g.get("supplier") or {}).get("name") == GOLD_BUSINESS
+    )
     utilities = sorted(f for f, g in usable.items() if g.get("payment_method") == "direct debit" and f not in sales)
     rest = sorted(f for f in usable if f not in sales and f not in utilities and f != INBOX_SALE)
     n_posted_rest = EVENTS - 1 - 3 - len(sales) - 2 * len(utilities)  # 1 mileage claim, 3 invoices
     if n_posted_rest < 0 or len(rest) - n_posted_rest != INBOX_DOCS - 1 - len(INBOX_NEEDS_A_LOOK):
-        raise ValueError(f"the gold set gives {len(sales)} sales, {len(utilities)} utility bills and {len(rest)} others")
+        raise ValueError(
+            f"the gold set gives {len(sales)} sales, {len(utilities)} utility bills and {len(rest)} others"
+        )
 
     posted: list[PlannedDoc] = []
     # Quarterly energy bills: each supplier once in each period, three months apart.
     for i, f in enumerate(utilities):
         first = add_months(start, i % 3) + timedelta(days=7 + i)
         posted.append(_planned(f, golds[f], first, business, len(posted) + 1))
-        posted.append(_planned(f, golds[f], add_months(start, i % 3 + 3) + timedelta(days=7 + i), business,
-                               len(posted) + 1, suffix="-2"))
+        posted.append(
+            _planned(
+                f,
+                golds[f],
+                add_months(start, i % 3 + 3) + timedelta(days=7 + i),
+                business,
+                len(posted) + 1,
+                suffix="-2",
+            )
+        )
     spread = sorted(sales + rest[:n_posted_rest])
     for f, when in zip(spread, _spread(start, end, len(spread)), strict=True):
         posted.append(_planned(f, golds[f], when, business, len(posted) + 1))
     posted.sort(key=lambda d: (d.date, d.gold))
     for job, (lo, hi) in (("job1", older), ("job2", newer)):  # two materials purchases per job, in its period
-        materials = [d for d in posted if lo <= d.date <= hi and d.extracted["doc_type"] != "sales_invoice"
-                     and d.extracted["category_guess"] in ("Materials", "Tools & small equipment")]
+        materials = [
+            d
+            for d in posted
+            if lo <= d.date <= hi
+            and d.extracted["doc_type"] != "sales_invoice"
+            and d.extracted["category_guess"] in ("Materials", "Tools & small equipment")
+        ]
         for d in materials[:2]:
             d.job = job
 
@@ -235,66 +255,168 @@ def build_plan(business: str = GOLD_BUSINESS, today: date | None = None, stagger
         d.expect = "needs_a_look" if d.gold in INBOX_NEEDS_A_LOOK else "proposed"
 
     staff = [
-        jobs.StaffMember(id=_hex(business, "staff", 1, n=12), name="Sam Ashdown", role="Joiner",
-                         hourly_rate_pence=1850, charge_rate_pence=4200),
-        jobs.StaffMember(id=_hex(business, "staff", 2, n=12), name="Priya Hale", role="Apprentice",
-                         hourly_rate_pence=1100, charge_rate_pence=2800),
+        jobs.StaffMember(
+            id=_hex(business, "staff", 1, n=12),
+            name="Sam Ashdown",
+            role="Joiner",
+            hourly_rate_pence=1850,
+            charge_rate_pence=4200,
+        ),
+        jobs.StaffMember(
+            id=_hex(business, "staff", 2, n=12),
+            name="Priya Hale",
+            role="Apprentice",
+            hourly_rate_pence=1100,
+            charge_rate_pence=2800,
+        ),
     ]
     customers = {
-        "Halloway & Sons Interiors": {"email": "accounts@halloway-interiors.example", "address": "2 Station Road, Harrogate HG1 1AA"},
-        "Hartwell Property Maintenance": {"email": "office@hartwell-pm.example", "address": "9 Canal Wharf, Leeds LS11 5AA"},
-        "Sterling & Co. Architects": {"email": "studio@sterling-architects.example", "address": "41 Park Square, Leeds LS1 2NE"},
+        "Halloway & Sons Interiors": {
+            "email": "accounts@halloway-interiors.example",
+            "address": "2 Station Road, Harrogate HG1 1AA",
+        },
+        "Hartwell Property Maintenance": {
+            "email": "office@hartwell-pm.example",
+            "address": "9 Canal Wharf, Leeds LS11 5AA",
+        },
+        "Sterling & Co. Architects": {
+            "email": "studio@sterling-architects.example",
+            "address": "41 Park Square, Leeds LS1 2NE",
+        },
     }
     job_defs = {
         "job1": ("Kitchen fit-out, Harrogate", "Halloway & Sons Interiors", older, "closed"),
         "job2": ("Office partitions and doors", "Hartwell Property Maintenance", newer, "open"),
     }
     plan_jobs = {
-        k: jobs.Job(id=_hex(business, "job", k, n=12), name=name, site_address=customers[cust]["address"], estimate_hours=8)
+        k: jobs.Job(
+            id=_hex(business, "job", k, n=12), name=name, site_address=customers[cust]["address"], estimate_hours=8
+        )
         for k, (name, cust, _, _) in job_defs.items()
     }
     timesheets: list[jobs.TimesheetEntry] = []
     journeys: list[mileage.MileageEntry] = []
-    vehicle = mileage.Vehicle(id=_hex(business, "vehicle"), name="Director's car (own)", registration="SAMPLE",
-                              kind="car", owned_by="personal")
+    vehicle = mileage.Vehicle(
+        id=_hex(business, "vehicle"),
+        name="Director's car (own)",
+        registration="SAMPLE",
+        kind="car",
+        owned_by="personal",
+    )
     for k, (name, cust, (lo, hi), _) in job_defs.items():
         days = _spread(lo + timedelta(days=7), lo + timedelta(days=48) if k == "job1" else hi, 6)
         for n, day in enumerate(days):
             for s, hours in zip(staff, (7.5, 6.0 if n % 2 else 7.5), strict=True):
-                timesheets.append(jobs.TimesheetEntry(id=_hex(business, "ts", k, n, s.id, n=12), staff_id=s.id,
-                                                      job_id=plan_jobs[k].id, date=day, hours=hours, note=f"{name}: day {n + 1}"))
-            journeys.append(mileage.MileageEntry(
-                id=_hex(business, "trip", k, n), vehicle_id=vehicle.id, date=day, from_="Workshop, Leeds",
-                to=customers[cust]["address"], miles=21.4 if k == "job1" else 6.8, purpose=f"{name} ({cust})",
-                job_id=plan_jobs[k].id,
-            ))
-    journeys.append(mileage.MileageEntry(  # one late in the period, so every stagger's claim has a journey
-        id=_hex(business, "trip", "supplier"), vehicle_id=vehicle.id, date=newer[1] - timedelta(days=2),
-        from_="Workshop, Leeds", to="Timber merchant, Wakefield", miles=12.5, purpose="Collect oak boards for stock",
-    ))
+                timesheets.append(
+                    jobs.TimesheetEntry(
+                        id=_hex(business, "ts", k, n, s.id, n=12),
+                        staff_id=s.id,
+                        job_id=plan_jobs[k].id,
+                        date=day,
+                        hours=hours,
+                        note=f"{name}: day {n + 1}",
+                    )
+                )
+            journeys.append(
+                mileage.MileageEntry(
+                    id=_hex(business, "trip", k, n),
+                    vehicle_id=vehicle.id,
+                    date=day,
+                    from_="Workshop, Leeds",
+                    to=customers[cust]["address"],
+                    miles=21.4 if k == "job1" else 6.8,
+                    purpose=f"{name} ({cust})",
+                    job_id=plan_jobs[k].id,
+                )
+            )
+    journeys.append(
+        mileage.MileageEntry(  # one late in the period, so every stagger's claim has a journey
+            id=_hex(business, "trip", "supplier"),
+            vehicle_id=vehicle.id,
+            date=newer[1] - timedelta(days=2),
+            from_="Workshop, Leeds",
+            to="Timber merchant, Wakefield",
+            miles=12.5,
+            purpose="Collect oak boards for stock",
+        )
+    )
 
     job1_lines = jobs.invoice_lines(plan_jobs["job1"], timesheets, staff).lines
     inv1_issue = max(t.date for t in timesheets if t.job_id == plan_jobs["job1"].id) + timedelta(days=3)
     invoices = [
-        PlannedInvoice("INV-0001", "Halloway & Sons Interiors", inv1_issue, inv1_issue + timedelta(days=30), [
-            invoicing.LineIn(description=ln.description, quantity=Decimal(str(ln.qty)), unit="hours",
-                             unit_price_pence=ln.unit_price_pence, vat_code="S") for ln in job1_lines
-        ], paid_on=inv1_issue + timedelta(days=12), job="job1"),
-        PlannedInvoice("INV-0002", "Sterling & Co. Architects", newer[0] + timedelta(days=20), newer[0] + timedelta(days=50), [
-            invoicing.LineIn(description="Bespoke oak bookcase, 2.4 m, fitted", quantity=Decimal(1), unit="each",
-                             unit_price_pence=185_000, vat_code="S"),
-        ]),
-        PlannedInvoice("INV-0003", "Hartwell Property Maintenance", newer[1] - timedelta(days=3), today + timedelta(days=21), [
-            invoicing.LineIn(description="Sash window repairs, three windows", quantity=Decimal(3), unit="each",
-                             unit_price_pence=26_500, vat_code="S"),
-            invoicing.LineIn(description="Materials: draught strip and beads", quantity=Decimal(1), unit="each",
-                             unit_price_pence=8_640, vat_code="S"),
-        ]),
+        PlannedInvoice(
+            "INV-0001",
+            "Halloway & Sons Interiors",
+            inv1_issue,
+            inv1_issue + timedelta(days=30),
+            [
+                invoicing.LineIn(
+                    description=ln.description,
+                    quantity=Decimal(str(ln.qty)),
+                    unit="hours",
+                    unit_price_pence=ln.unit_price_pence,
+                    vat_code="S",
+                )
+                for ln in job1_lines
+            ],
+            paid_on=inv1_issue + timedelta(days=12),
+            job="job1",
+        ),
+        PlannedInvoice(
+            "INV-0002",
+            "Sterling & Co. Architects",
+            newer[0] + timedelta(days=20),
+            newer[0] + timedelta(days=50),
+            [
+                invoicing.LineIn(
+                    description="Bespoke oak bookcase, 2.4 m, fitted",
+                    quantity=Decimal(1),
+                    unit="each",
+                    unit_price_pence=185_000,
+                    vat_code="S",
+                ),
+            ],
+        ),
+        PlannedInvoice(
+            "INV-0003",
+            "Hartwell Property Maintenance",
+            newer[1] - timedelta(days=3),
+            today + timedelta(days=21),
+            [
+                invoicing.LineIn(
+                    description="Sash window repairs, three windows",
+                    quantity=Decimal(3),
+                    unit="each",
+                    unit_price_pence=26_500,
+                    vat_code="S",
+                ),
+                invoicing.LineIn(
+                    description="Materials: draught strip and beads",
+                    quantity=Decimal(1),
+                    unit="each",
+                    unit_price_pence=8_640,
+                    vat_code="S",
+                ),
+            ],
+        ),
     ]
-    plan = Plan(business=business, today=today, periods=[older, newer], current=current, posted=posted, inbox=inbox,
-                staff=staff, jobs=plan_jobs, timesheets=timesheets, vehicle=vehicle, journeys=journeys,
-                claim_day=newer[1], invoices=invoices, customers=customers,
-                job_customers={k: cust for k, (_, cust, _, _) in job_defs.items()})
+    plan = Plan(
+        business=business,
+        today=today,
+        periods=[older, newer],
+        current=current,
+        posted=posted,
+        inbox=inbox,
+        staff=staff,
+        jobs=plan_jobs,
+        timesheets=timesheets,
+        vehicle=vehicle,
+        journeys=journeys,
+        claim_day=newer[1],
+        invoices=invoices,
+        customers=customers,
+        job_customers={k: cust for k, (_, cust, _, _) in job_defs.items()},
+    )
     plan.statements = [_statement(plan, lo, hi, n) for n, (lo, hi) in enumerate(plan.periods)]
     return plan
 
@@ -302,7 +424,10 @@ def build_plan(business: str = GOLD_BUSINESS, today: date | None = None, stagger
 def _passes(gold: dict[str, Any]) -> bool:
     """Every check passes on a perfect reading (EUR and the malformed VAT number do not)."""
     doc = ExtractedDoc.model_validate(extracted_from_gold(gold))
-    return gold.get("currency", "GBP") == "GBP" and decide(run_checks(doc, known_hashes=set(), this_hash=""))[0] == "proposed"
+    return (
+        gold.get("currency", "GBP") == "GBP"
+        and decide(run_checks(doc, known_hashes=set(), this_hash=""))[0] == "proposed"
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -319,13 +444,27 @@ def _bank_rows(plan: Plan) -> list[tuple[date, str, str, str, int]]:
         doc = d.doc()
         leg = next((j for j in d.journal() if j.account == BANK), None)
         if doc.doc_type == "sales_invoice":  # Dr Debtors: the customer pays ten days later
-            rows.append((d.date + timedelta(days=10), doc.customer_name or "", doc.invoice_number or "", "FASTER PAYMENT",
-                         round(doc.gross_total * 100)))
+            rows.append(
+                (
+                    d.date + timedelta(days=10),
+                    doc.customer_name or "",
+                    doc.invoice_number or "",
+                    "FASTER PAYMENT",
+                    round(doc.gross_total * 100),
+                )
+            )
         elif leg is not None:
             ref = f"CARD {doc.card_last4}" if doc.card_last4 else (doc.invoice_number or "")
             lag = 1 if doc.payment_method == "card" else 0
-            rows.append((d.date + timedelta(days=lag), doc.supplier_name, ref, _TYPE.get(doc.payment_method or "", "PAYMENT"),
-                         leg.debit_pence - leg.credit_pence))
+            rows.append(
+                (
+                    d.date + timedelta(days=lag),
+                    doc.supplier_name,
+                    ref,
+                    _TYPE.get(doc.payment_method or "", "PAYMENT"),
+                    leg.debit_pence - leg.credit_pence,
+                )
+            )
     for inv in plan.invoices:
         if inv.paid_on:
             rows.append((inv.paid_on, inv.customer, inv.number, "FASTER PAYMENT", inv.total_pence))
@@ -345,11 +484,24 @@ def _statement(plan: Plan, lo: date, hi: date, n: int) -> tuple[str, bytes]:
     out = io.StringIO()
     w = csv.writer(out, lineterminator="\n")
     w.writerow([f"{LABEL}: {plan.business}, statement {n + 1}"])  # a preamble row; the reader skips it
-    w.writerow(["Date", "Counter Party", "Reference", "Type", "Amount (GBP)", "Balance (GBP)", "Spending Category", "Notes"])
+    w.writerow(
+        ["Date", "Counter Party", "Reference", "Type", "Amount (GBP)", "Balance (GBP)", "Spending Category", "Notes"]
+    )
     for day, party, ref, kind, pence in rows:
         if lo <= day <= hi:
             balance += pence
-            w.writerow([_uk(day), party, ref, kind, _pounds(pence), _pounds(balance), "INCOME" if pence > 0 else "GENERAL", LABEL])
+            w.writerow(
+                [
+                    _uk(day),
+                    party,
+                    ref,
+                    kind,
+                    _pounds(pence),
+                    _pounds(balance),
+                    "INCOME" if pence > 0 else "GENERAL",
+                    LABEL,
+                ]
+            )
     return f"SAMPLE statement {lo:%Y-%m} to {hi:%Y-%m}.csv", out.getvalue().encode()
 
 
@@ -373,28 +525,48 @@ def describe(plan: Plan) -> str:
         doc = d.doc()
         who = doc.customer_name if doc.doc_type == "sales_invoice" else doc.supplier_name
         tag = f"  [{plan.jobs[d.job].name}]" if d.job else ""
-        lines.append(f"  {d.date:%d/%m/%Y}  {'sale    ' if doc.doc_type == 'sales_invoice' else 'purchase'}  "
-                     f"{who[:34]:34} {money(round(doc.gross_total * 100)):>11}  VAT {money(round(doc.vat_total * 100)):>9}{tag}")
+        lines.append(
+            f"  {d.date:%d/%m/%Y}  {'sale    ' if doc.doc_type == 'sales_invoice' else 'purchase'}  "
+            f"{who[:34]:34} {money(round(doc.gross_total * 100)):>11}  VAT {money(round(doc.vat_total * 100)):>9}{tag}"
+        )
     claim = plan.claim_journeys()
     miles = sum(j.miles for j in claim)
-    lines.append(f"  {plan.claim_day:%d/%m/%Y}  mileage   {len(claim)} journeys, {miles:.1f} miles (allowance worked out by code)")
+    lines.append(
+        f"  {plan.claim_day:%d/%m/%Y}  mileage   {len(claim)} journeys, {miles:.1f} miles (allowance worked out by code)"
+    )
     for inv in plan.invoices:
-        state = f"paid {inv.paid_on:%d/%m/%Y}" if inv.paid_on else ("OVERDUE" if inv.due < plan.today else "not due yet")
-        lines.append(f"  {inv.issue:%d/%m/%Y}  invoice   {inv.customer[:34]:34} {money(inv.total_pence):>11}  "
-                     f"due {inv.due:%d/%m/%Y}, {state}")
+        state = (
+            f"paid {inv.paid_on:%d/%m/%Y}" if inv.paid_on else ("OVERDUE" if inv.due < plan.today else "not due yet")
+        )
+        lines.append(
+            f"  {inv.issue:%d/%m/%Y}  invoice   {inv.customer[:34]:34} {money(inv.total_pence):>11}  "
+            f"due {inv.due:%d/%m/%Y}, {state}"
+        )
     for lo, hi in plan.periods:
-        sale_vat = sum(round(d.doc().vat_total * 100) for d in plan.posted
-                       if lo <= d.date <= hi and d.doc().doc_type == "sales_invoice")
-        sale_vat += sum(inv.total_pence - invoicing.price_lines(inv.lines)[2] for inv in plan.invoices if lo <= inv.issue <= hi)
-        buy_vat = sum(j.debit_pence for d in plan.posted if lo <= d.date <= hi for j in d.journal()
-                      if j.account == VAT_CONTROL and d.doc().doc_type != "sales_invoice")
+        sale_vat = sum(
+            round(d.doc().vat_total * 100)
+            for d in plan.posted
+            if lo <= d.date <= hi and d.doc().doc_type == "sales_invoice"
+        )
+        sale_vat += sum(
+            inv.total_pence - invoicing.price_lines(inv.lines)[2] for inv in plan.invoices if lo <= inv.issue <= hi
+        )
+        buy_vat = sum(
+            j.debit_pence
+            for d in plan.posted
+            if lo <= d.date <= hi
+            for j in d.journal()
+            if j.account == VAT_CONTROL and d.doc().doc_type != "sales_invoice"
+        )
         lines.append(f"  {period_label(lo, hi)}: VAT on sales {money(sale_vat)}, VAT reclaimed {money(buy_vat)}")
     lines += ["", f"{len(plan.inbox)} documents left in {INBOX} (dated {period_label(*plan.current)}):"]
     for d in plan.inbox:
         doc = d.doc()
         who = f"sale to {doc.customer_name}" if doc.doc_type == "sales_invoice" else doc.supplier_name
-        lines.append(f"  {d.file_name}  {who[:34]:34} {doc.currency} {doc.gross_total:>9.2f}"
-                     + ("  -> Needs a look" if d.expect == "needs_a_look" else ""))
+        lines.append(
+            f"  {d.file_name}  {who[:34]:34} {doc.currency} {doc.gross_total:>9.2f}"
+            + ("  -> Needs a look" if d.expect == "needs_a_look" else "")
+        )
     lines += [
         "",
         f"Staff: {', '.join(f'{s.name} ({s.role})' for s in plan.staff)}",
@@ -446,17 +618,38 @@ async def _propose(books: Books, d: PlannedDoc, plan: Plan) -> Proposal:
     doc = d.doc()
     start, end = period_containing(d.date, plan.current[0].month)  # checked when it arrived, in its own period
     checks = repair(doc, plan.business) + run_checks(
-        doc, known_hashes=await books.known_hashes(), this_hash=digest, period_start=start, period_end=end,
+        doc,
+        known_hashes=await books.known_hashes(),
+        this_hash=digest,
+        period_start=start,
+        period_end=end,
     )
     status, reasons = decide(checks)
     p = Proposal(
-        id=_hex(plan.business, d.gold, d.date), doc_sha256=digest, extracted=doc, checks=checks, status=status,
-        reasons=reasons, suggested_filename=suggested_filename(doc, "image/png"), journal_draft=draft_journal(doc),
-        model=MODEL, elapsed_s=0, source_name=d.file_name, created_at=now(),
+        id=_hex(plan.business, d.gold, d.date),
+        doc_sha256=digest,
+        extracted=doc,
+        checks=checks,
+        status=status,
+        reasons=reasons,
+        suggested_filename=suggested_filename(doc, "image/png"),
+        journal_draft=draft_journal(doc),
+        model=MODEL,
+        elapsed_s=0,
+        source_name=d.file_name,
+        created_at=now(),
     )
     await books.file_document(p, path)
-    await books.save_doc(DocMeta(sha256=digest, source_name=d.file_name, mime="image/png", size=len(data),
-                                 proposal_id=p.id, filed_path=p.file_path))
+    await books.save_doc(
+        DocMeta(
+            sha256=digest,
+            source_name=d.file_name,
+            mime="image/png",
+            size=len(data),
+            proposal_id=p.id,
+            filed_path=p.file_path,
+        )
+    )
     await books.save_proposal(p)
     await books.audit(ACTOR, "proposed", {"proposal": p.id, "doc": digest, "status": p.status, "path": p.file_path})
     return p
@@ -468,10 +661,18 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
     await books.ensure_tree()
     await storage.write("README.txt", readme_text().encode())  # the same text the web app writes (app/paths.py)
     slug = _slug(plan.business)
-    await invoicing.save_profile(books, invoicing.InvoiceProfile(
-        name=plan.business, address="14 Mill Lane\nLeeds\nLS1 2AB", email=f"accounts@{slug}.example",
-        vrn="GB 123 4567 89", terms_days=30, footer_note=LABEL,
-    ), USER)
+    await invoicing.save_profile(
+        books,
+        invoicing.InvoiceProfile(
+            name=plan.business,
+            address="14 Mill Lane\nLeeds\nLS1 2AB",
+            email=f"accounts@{slug}.example",
+            vrn="GB 123 4567 89",
+            terms_days=30,
+            footer_note=LABEL,
+        ),
+        USER,
+    )
 
     say("Staff, jobs, timesheets, vehicle and journeys")
     for s in plan.staff:
@@ -511,8 +712,13 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
     sender = NotEmailed()
     profile = await invoicing.load_profile(books)
     for inv in plan.invoices:
-        draft = invoicing.InvoiceDraft(customer=invoicing.InvoiceCustomer(contact_id=ids[inv.customer], name=inv.customer),
-                                       issue_date=inv.issue, due_date=inv.due, lines=inv.lines, notes=LABEL)
+        draft = invoicing.InvoiceDraft(
+            customer=invoicing.InvoiceCustomer(contact_id=ids[inv.customer], name=inv.customer),
+            issue_date=inv.issue,
+            due_date=inv.due,
+            lines=inv.lines,
+            notes=LABEL,
+        )
         created = await invoicing.create_invoice(books, draft, USER)
         if created.number != inv.number:  # the bank statement quotes the number the plan expected
             raise RuntimeError(f"Invoice numbered {created.number}, expected {inv.number}: is the folder fresh?")
@@ -520,13 +726,18 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
         if inv.job:
             entries = [t.id for t in plan.timesheets if t.job_id == plan.jobs[inv.job].id]
             await jobs.mark_invoiced(books, entries, created.number)
-            await books.audit(f"user:{USER}", "timesheets_invoiced", {"job": plan.jobs[inv.job].id, "invoice": created.number})
-            await jobs.save_job(books, (await jobs.get_job(books, plan.jobs[inv.job].id)).model_copy(update={"status": "closed"}))
+            await books.audit(
+                f"user:{USER}", "timesheets_invoiced", {"job": plan.jobs[inv.job].id, "invoice": created.number}
+            )
+            await jobs.save_job(
+                books, (await jobs.get_job(books, plan.jobs[inv.job].id)).model_copy(update={"status": "closed"})
+            )
 
     say("Mileage claim")
     if claim_ids:
-        claim, _ = await mileage.propose_allowance(books, mileage.tax_year_of(plan.claim_day),
-                                                   mileage.quarter_of(plan.claim_day), today=plan.claim_day)
+        claim, _ = await mileage.propose_allowance(
+            books, mileage.tax_year_of(plan.claim_day), mileage.quarter_of(plan.claim_day), today=plan.claim_day
+        )
         await approve(books, claim.id, USER, rebuild=False)
 
     say("Bank statements")
@@ -553,8 +764,13 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
     say("Books.xlsx")
     await Books.rebuild(books)
     events = await books.list_events()
-    return {"events": len(events), "inbox": len(await books.list_files(INBOX)), "invoices": [i.number for i in plan.invoices],
-            "bank_lines": len(await books.stored_bank_lines()), "emails_not_sent": len(sender.sent)}
+    return {
+        "events": len(events),
+        "inbox": len(await books.list_files(INBOX)),
+        "invoices": [i.number for i in plan.invoices],
+        "bank_lines": len(await books.stored_bank_lines()),
+        "emails_not_sent": len(sender.sent),
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -600,9 +816,16 @@ async def _main(args: argparse.Namespace) -> int:
     try:
         return await _seed_graph(args, plan, token)
     except GraphError as exc:
-        hint = " The token is wrong or has expired (they last about an hour): copy a fresh one." if exc.status in (401, 403) else ""
-        print(f"Microsoft Graph refused a request (HTTP {exc.status}).{hint} If the seed had started, the folder is part-filled: "
-              "run again with --wipe.", file=sys.stderr)
+        hint = (
+            " The token is wrong or has expired (they last about an hour): copy a fresh one."
+            if exc.status in (401, 403)
+            else ""
+        )
+        print(
+            f"Microsoft Graph refused a request (HTTP {exc.status}).{hint} If the seed had started, the folder is part-filled: "
+            "run again with --wipe.",
+            file=sys.stderr,
+        )
         return 1
 
 
@@ -613,9 +836,11 @@ async def _seed_graph(args: argparse.Namespace, plan: Plan, token: str) -> int:
         root = await storage.ensure_root()
         print(f"Books folder: {storage._root_drive_path or root.name}")
         if not root_is_accnomos(args.account, root.name):
-            print(f"That is not the Accnomos folder: for a personal account the app folder belongs to the app that issued "
-                  f"the token ({root.name!r} here). Copy the token from the Accnomos web app instead (tools/seed_demo.md).",
-                  file=sys.stderr)
+            print(
+                f"That is not the Accnomos folder: for a personal account the app folder belongs to the app that issued "
+                f"the token ({root.name!r} here). Copy the token from the Accnomos web app instead (tools/seed_demo.md).",
+                file=sys.stderr,
+            )
             return 1
         if args.wipe and not await _wipe(storage):
             print("Nothing changed.")
@@ -625,8 +850,10 @@ async def _seed_graph(args: argparse.Namespace, plan: Plan, token: str) -> int:
             return 1
         print(describe(plan) + "\n")
         report = await seed(storage, plan)
-    print(f"Done: {report['events']} ledger events, {report['inbox']} documents waiting in {INBOX}, "
-          f"invoices {', '.join(report['invoices'])}, {report['bank_lines']} bank lines. No email was sent.")
+    print(
+        f"Done: {report['events']} ledger events, {report['inbox']} documents waiting in {INBOX}, "
+        f"invoices {', '.join(report['invoices'])}, {report['bank_lines']} bank lines. No email was sent."
+    )
     return 0
 
 

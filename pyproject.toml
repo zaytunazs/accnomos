@@ -14,8 +14,12 @@ accnomos-connectors = { workspace = true }
 accnomos-runtime = { workspace = true }
 
 [tool.ruff]
-line-length = 110
+line-length = 120
 target-version = "py312"
+extend-exclude = ["evals/runs", "**/node_modules"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
 
 [tool.pytest.ini_options]
 testpaths = ["packages", "services", "evals"]

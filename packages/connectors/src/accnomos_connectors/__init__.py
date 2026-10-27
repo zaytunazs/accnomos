@@ -25,7 +25,13 @@ from accnomos_connectors.msgraph import GraphContactsProvider, GraphError, Graph
 from accnomos_connectors.fake import FakeMailProvider, FakeMailSender, FakeStorageProvider
 from accnomos_connectors.msgraph import GraphError, GraphMailProvider, GraphMailSender, GraphStorageProvider
 from accnomos_connectors.fake import FakeCalendarProvider, FakeContactsProvider, FakeMailProvider, FakeStorageProvider
-from accnomos_connectors.msgraph import GraphCalendarProvider, GraphContactsProvider, GraphError, GraphMailProvider, GraphStorageProvider
+from accnomos_connectors.msgraph import (
+    GraphCalendarProvider,
+    GraphContactsProvider,
+    GraphError,
+    GraphMailProvider,
+    GraphStorageProvider,
+)
 
 __all__ = [
     "AddressBookContact",

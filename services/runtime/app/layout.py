@@ -45,8 +45,10 @@ class LayoutStatus(BaseModel):
         if not self.conflicts:
             return None
         pairs = "; ".join(f"{c.old} and {c.new}" for c in self.conflicts)
-        return (f"Your books folder has both an old and a new folder: {pairs}. Accnomos uses the new one. "
-                "Move anything you still need out of the old one; you can delete it once it is empty.")
+        return (
+            f"Your books folder has both an old and a new folder: {pairs}. Accnomos uses the new one. "
+            "Move anything you still need out of the old one; you can delete it once it is empty."
+        )
 
 
 async def migrate(books: Books) -> LayoutStatus:

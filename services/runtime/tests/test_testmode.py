@@ -153,14 +153,25 @@ def test_stub_reads_the_demo_receipt_as_gold_001_on_2_nov() -> None:
     assert testmode._by_hash()[hashlib.sha256(png).hexdigest()] == testmode.DEMO_RECEIPT
     doc = ExtractedDoc.model_validate(testmode.extracted_from_gold(testmode._documents()[testmode.DEMO_RECEIPT]))
     assert (doc.supplier_name, doc.date, doc.net_total, doc.vat_total, doc.gross_total) == (
-        "Novex Office Supplies Ltd", "2026-11-02", 43.25, 8.65, 51.9)
+        "Novex Office Supplies Ltd",
+        "2026-11-02",
+        43.25,
+        8.65,
+        51.9,
+    )
 
 
-@pytest.mark.parametrize(("said", "want"), [
-    ("send a £100 invoice to JM Trading", ("create_invoice", "JM Trading", "£100", None, True)),
-    ("£1,250.50 invoice to Moss & Co for the bathroom.", ("create_invoice", "Moss & Co", "£1,250.50", "the bathroom", False)),
-    ("How much VAT do I owe?", ("none", None, None, None, None)),
-])
+@pytest.mark.parametrize(
+    ("said", "want"),
+    [
+        ("send a £100 invoice to JM Trading", ("create_invoice", "JM Trading", "£100", None, True)),
+        (
+            "£1,250.50 invoice to Moss & Co for the bathroom.",
+            ("create_invoice", "Moss & Co", "£1,250.50", "the bathroom", False),
+        ),
+        ("How much VAT do I owe?", ("none", None, None, None, None)),
+    ],
+)
 def test_stub_intent_copies_the_users_words(said: str, want: tuple) -> None:
     from app.actions import IntentModelOutput
 
@@ -186,6 +197,8 @@ def test_test_routes_skip_the_rate_limit(test_env: None, monkeypatch: pytest.Mon
     c = TestClient(app)
     assert all(c.get("/__test/gold").status_code == 200 for _ in range(5))
     assert [c.get("/books/x").status_code for _ in range(3)] == [404, 404, 429]
+
+
 def test_headers_skip_the_allow_list_only_because_the_stub_is_forced(monkeypatch: pytest.MonkeyPatch) -> None:
     """The web e2e sends the stub URL as X-AI-Base-Url; test mode accepts it but still never calls it."""
     headers = {"X-AI-Mode": "local", "X-AI-Base-Url": "http://evil.example:11434"}
@@ -215,14 +228,22 @@ def test_stub_ai_reads_gold_png_by_hash(client: TestClient) -> None:
     b64 = base64.b64encode(png).decode()
 
     def chat(system: str, image: str) -> dict:
-        r = client.post("/__test/ai/api/chat", json={"messages": [{"role": "system", "content": system},
-                                                                   {"role": "user", "content": "x", "images": [image]}]})
+        r = client.post(
+            "/__test/ai/api/chat",
+            json={
+                "messages": [{"role": "system", "content": system}, {"role": "user", "content": "x", "images": [image]}]
+            },
+        )
         return r
 
     r = chat(extract_ai.SYSTEM_PROMPT, b64)
     assert r.status_code == 200
     doc = ExtractedDoc.model_validate(extract_ai.parse_model_json(r.json()["message"]["content"]))
-    assert (doc.supplier_name, doc.gross_total, doc.category_guess) == ("Novex Office Supplies Ltd", 51.9, "Office supplies")
+    assert (doc.supplier_name, doc.gross_total, doc.category_guess) == (
+        "Novex Office Supplies Ltd",
+        51.9,
+        "Office supplies",
+    )
     assert chat(verify_ai.VERIFIER_SYSTEM_PROMPT, b64).status_code == 200
     assert chat(extract_ai.SYSTEM_PROMPT, base64.b64encode(b"not a gold receipt").decode()).status_code == 422
     assert client.get("/__test/ai/api/tags").json()["models"][0]["name"] == TEST_AI_MODEL
@@ -231,9 +252,15 @@ def test_stub_ai_reads_gold_png_by_hash(client: TestClient) -> None:
 async def test_stub_ask_reply_is_grounded(test_env: None) -> None:
     await testmode.reset()
     facts = await build_facts(Books(testmode.STATE.storage), default_period(today()))
-    for question in ("How much VAT do I owe this quarter?", "What was my VAT last quarter?", "What is my bank balance?"):
+    for question in (
+        "How much VAT do I owe this quarter?",
+        "What was my VAT last quarter?",
+        "What is my bank balance?",
+    ):
         r = route(question, facts)
-        out = AskModelOutput.model_validate({"key_numbers": [], "citations": [], "suggested_actions": [], **testmode.ask_reply(pack(facts, r))})
+        out = AskModelOutput.model_validate(
+            {"key_numbers": [], "citations": [], "suggested_actions": [], **testmode.ask_reply(pack(facts, r))}
+        )
         answer = ask_ai.ground(out, facts, TEST_AI_MODEL, question)
         assert answer.fallback_reason is None and len(answer.key_numbers) >= (2 if "VAT" in question else 0)
 
@@ -247,10 +274,15 @@ def test_graph_lookalike_shares_storage_with_runtime(client: TestClient) -> None
     sys_id = r.json()["id"]
     assert client.post(f"{g}/me/drive/items/{sys_id}/children", json={"name": "audit", "folder": {}}).status_code == 201
     assert client.get(f"{g}/me/drive/special/approot:/07 Reports/audit").json()["folder"] == {"childCount": 0}
-    assert client.post(f"{g}/me/drive/items/{testmode.GRAPH_ROOT_ID}/children", json={"name": "07 Reports"}).status_code == 409
+    assert (
+        client.post(f"{g}/me/drive/items/{testmode.GRAPH_ROOT_ID}/children", json={"name": "07 Reports"}).status_code
+        == 409
+    )
 
     png = client.get("/__test/gold/011_standard.png").content
-    put = client.put(f"{g}/me/drive/special/approot:/00 Inbox/r.png:/content", content=png, headers={"Content-Type": "image/png"})
+    put = client.put(
+        f"{g}/me/drive/special/approot:/00 Inbox/r.png:/content", content=png, headers={"Content-Type": "image/png"}
+    )
     assert put.status_code == 201 and put.json()["size"] == len(png)
     names = {i["name"]: i for i in client.get(f"{g}/me/drive/special/approot/children").json()["value"]}
     assert set(names) == {"00 Inbox", "07 Reports", "_System"} and names["00 Inbox"]["size"] == len(png)
@@ -265,7 +297,9 @@ def test_graph_lookalike_shares_storage_with_runtime(client: TestClient) -> None
 def test_graph_lookalike_errors_are_graph_shaped(client: TestClient) -> None:
     g = "/__test/graph/v1.0"
     assert client.get(f"{g}/me/drive/root/children").json()["error"]["code"] == "itemNotFound"  # not a books root
-    assert client.post(f"{g}/me/drive/items/t-%%%/children", json={"name": "x"}).status_code == 404  # not one of our ids
+    assert (
+        client.post(f"{g}/me/drive/items/t-%%%/children", json={"name": "x"}).status_code == 404
+    )  # not one of our ids
     missing = testmode._id("no/such/folder")
     assert client.post(f"{g}/me/drive/items/{missing}/children", json={"name": "x"}).status_code == 404
     assert client.post(f"{g}/me/drive/items/{testmode.GRAPH_ROOT_ID}/children", json={"folder": {}}).status_code == 400
@@ -284,7 +318,9 @@ async def test_runtime_dependencies_use_the_fakes(client: TestClient) -> None:
     await books.storage.write(f"{INBOX}/a.png", b"x")
     assert "00 Inbox/a.png" in client.get("/__test/state").json()["files"]
 
-    r = client.post("/mail/scan", json={"dry_run": True}, headers={"X-Graph-Token": "test-token", "X-User": "sam@example.co.uk"})
+    r = client.post(
+        "/mail/scan", json={"dry_run": True}, headers={"X-Graph-Token": "test-token", "X-User": "sam@example.co.uk"}
+    )
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["dry_run"] and len(body["items"]) == len(testmode.MAIL_GOLD)  # the newsletter's .ics is skipped

@@ -34,11 +34,21 @@ def _doc(supplier: str = "Screwfix", gross: float = 38.47, **kw: object) -> Extr
     net = round(gross / 1.2, 2)
     vat = round(gross - net, 2)
     base: dict[str, object] = dict(
-        doc_type="receipt", supplier_name=supplier, supplier_vat_number="GB 232 4567 89", customer_name=None,
-        invoice_number=None, date="2026-10-21", currency="GBP",
+        doc_type="receipt",
+        supplier_name=supplier,
+        supplier_vat_number="GB 232 4567 89",
+        customer_name=None,
+        invoice_number=None,
+        date="2026-10-21",
+        currency="GBP",
         lines=[ExtractedLine(description="Drill bits", qty=1, unit_price=gross, net=net, vat_rate=20, vat=vat)],
-        net_total=net, vat_total=vat, gross_total=gross, payment_method="card", card_last4="1234",
-        category_guess="Tools & small equipment", confidence=0.95,
+        net_total=net,
+        vat_total=vat,
+        gross_total=gross,
+        payment_method="card",
+        card_last4="1234",
+        category_guess="Tools & small equipment",
+        confidence=0.95,
     )
     base.update(kw)
     return ExtractedDoc.model_validate(base)
@@ -51,10 +61,17 @@ DOCS: dict[bytes, ExtractedDoc] = {
     b"too-big": _doc(gross=80.00, date="2026-10-25"),
     b"low-confidence": _doc(confidence=0.5, date="2026-10-26"),
     b"other-vrn": _doc(supplier_vat_number="GB 999 9999 99", date="2026-10-26"),
-    b"no-vrn": _doc(supplier_vat_number=None, vat_total=0, net_total=38.47,
-                    lines=[ExtractedLine(description="Bits", qty=1, unit_price=38.47, net=38.47, vat_rate=0, vat=0)]),
-    b"zero-rated": _doc(net_total=38.47, vat_total=0,
-                        lines=[ExtractedLine(description="Bits", qty=1, unit_price=38.47, net=38.47, vat_rate=0, vat=0)]),
+    b"no-vrn": _doc(
+        supplier_vat_number=None,
+        vat_total=0,
+        net_total=38.47,
+        lines=[ExtractedLine(description="Bits", qty=1, unit_price=38.47, net=38.47, vat_rate=0, vat=0)],
+    ),
+    b"zero-rated": _doc(
+        net_total=38.47,
+        vat_total=0,
+        lines=[ExtractedLine(description="Bits", qty=1, unit_price=38.47, net=38.47, vat_rate=0, vat=0)],
+    ),
     b"toolstation": _doc("Toolstation"),
 }
 
@@ -85,7 +102,9 @@ def _events(fake: FakeStorageProvider) -> list[LedgerEvent]:
 
 
 def _jsonl(fake: FakeStorageProvider, prefix: str) -> list[dict]:
-    return [json.loads(x) for p, d in sorted(fake.files.items()) if p.startswith(prefix) for x in d.decode().splitlines()]
+    return [
+        json.loads(x) for p, d in sorted(fake.files.items()) if p.startswith(prefix) for x in d.decode().splitlines()
+    ]
 
 
 async def _scan(fake: FakeStorageProvider, books: Books, *names: bytes, on: bool = True):
@@ -117,9 +136,16 @@ async def test_remember_writes_rule_in_users_folder(fake: FakeStorageProvider, b
     await _learn(fake, books)
     (rule,) = json.loads(fake.files[AUTOPILOT_RULES])
     assert AUTOPILOT_RULES == "_System/Rules/rules.json"
-    assert {k: rule[k] for k in ("supplier_key", "category", "vat_code", "side", "typical_gross_pence", "vrn", "hits")} == {
-        "supplier_key": "screwfix", "category": "Tools & small equipment", "vat_code": "S", "side": "purchase",
-        "typical_gross_pence": 3847, "vrn": "GB232456789", "hits": 0,
+    assert {
+        k: rule[k] for k in ("supplier_key", "category", "vat_code", "side", "typical_gross_pence", "vrn", "hits")
+    } == {
+        "supplier_key": "screwfix",
+        "category": "Tools & small equipment",
+        "vat_code": "S",
+        "side": "purchase",
+        "typical_gross_pence": 3847,
+        "vrn": "GB232456789",
+        "hits": 0,
     }
     assert rule["created_from_proposal_id"] and rule["created_at"] and rule["created_by"] == USER
 
@@ -153,7 +179,9 @@ async def test_matching_clean_proposal_is_auto_approved_with_audit(fake: FakeSto
 
     assert p.status == "posted" and p.decided_by == "autopilot"
     assert p.autopilot is not None and p.autopilot.auto_approve and p.autopilot.supplier_key == "screwfix"
-    (event,) = [e for e in _events(fake) if e.proposal_id == p.id]  # event paths are hash-named: never rely on sort order
+    (event,) = [
+        e for e in _events(fake) if e.proposal_id == p.id
+    ]  # event paths are hash-named: never rely on sort order
     assert event.approved_by == "autopilot" and event.id == p.event_id
     # not _events(fake)[-1]: paths sort by second then a random id, so two events in one second can swap
     (event,) = [e for e in _events(fake) if e.id == p.event_id]
@@ -177,14 +205,19 @@ async def test_exactly_twice_typical_is_still_allowed(fake: FakeStorageProvider,
     assert p.status == "posted" and p.decided_by == "autopilot"
 
 
-@pytest.mark.parametrize(("name", "reason"), [
-    (b"too-big", "more than 2x the usual £38.47"),
-    (b"low-confidence", "Check CONFIDENCE warned"),
-    (b"other-vrn", "VAT number GB999999999 differs from GB232456789"),
-    (b"no-vrn", "VAT number none differs from GB232456789"),
-    (b"zero-rated", "VAT treatment Z differs from S"),
-])
-async def test_refusals_leave_proposal_for_review(fake: FakeStorageProvider, books: Books, name: bytes, reason: str) -> None:
+@pytest.mark.parametrize(
+    ("name", "reason"),
+    [
+        (b"too-big", "more than 2x the usual £38.47"),
+        (b"low-confidence", "Check CONFIDENCE warned"),
+        (b"other-vrn", "VAT number GB999999999 differs from GB232456789"),
+        (b"no-vrn", "VAT number none differs from GB232456789"),
+        (b"zero-rated", "VAT treatment Z differs from S"),
+    ],
+)
+async def test_refusals_leave_proposal_for_review(
+    fake: FakeStorageProvider, books: Books, name: bytes, reason: str
+) -> None:
     await _learn(fake, books)
     (p,) = await _scan(fake, books, name)
 
@@ -215,10 +248,26 @@ def test_wrong_side_is_refused() -> None:
     from app.schemas import Proposal
 
     doc = _doc(doc_type="sales_invoice", customer_name="A Client")
-    p = Proposal(id="ab" * 16, doc_sha256="0" * 64, extracted=doc, checks=[], status="proposed", reasons=[],
-                 suggested_filename="x.jpg", journal_draft=draft_journal(doc), model="stub", elapsed_s=0)
-    rule = autopilot.AutopilotRule(supplier_key="screwfix", category="Materials", vat_code="S",
-                                   typical_gross_pence=3847, vrn="GB232456789", created_from_proposal_id="cd" * 16)
+    p = Proposal(
+        id="ab" * 16,
+        doc_sha256="0" * 64,
+        extracted=doc,
+        checks=[],
+        status="proposed",
+        reasons=[],
+        suggested_filename="x.jpg",
+        journal_draft=draft_journal(doc),
+        model="stub",
+        elapsed_s=0,
+    )
+    rule = autopilot.AutopilotRule(
+        supplier_key="screwfix",
+        category="Materials",
+        vat_code="S",
+        typical_gross_pence=3847,
+        vrn="GB232456789",
+        created_from_proposal_id="cd" * 16,
+    )
     d = autopilot.evaluate(p, rule)
     assert not d.auto_approve and any("This is a sale" in r for r in d.reasons)
 
@@ -235,8 +284,11 @@ async def test_undo_appends_balancing_reversal_and_reopens(fake: FakeStorageProv
 
     reversal, reopened = await undo(books, p.event_id, USER)  # type: ignore[arg-type]
 
-    assert all(path in fake.files and fake.files[path] == data for path, data in before.items()
-               if path.startswith(f"{EVENTS}/"))  # nothing deleted or edited
+    assert all(
+        path in fake.files and fake.files[path] == data
+        for path, data in before.items()
+        if path.startswith(f"{EVENTS}/")
+    )  # nothing deleted or edited
     assert reversal.kind == "reversal" and reversal.reverses == p.event_id and reversal.approved_by == USER
     assert sum(ln.debit for ln in reversal.lines) == sum(ln.credit for ln in reversal.lines) == 4110
     net: dict[str, int] = defaultdict(int)
@@ -246,7 +298,9 @@ async def test_undo_appends_balancing_reversal_and_reopens(fake: FakeStorageProv
                 net[ln.account] += ln.debit - ln.credit
     assert set(net.values()) == {0}
 
-    oct_ = compute_vat_return([e for e in _events(fake) if e.id in (p.event_id, reversal.id)], "26A4", date(2026, 10, 1), date(2026, 12, 31))
+    oct_ = compute_vat_return(
+        [e for e in _events(fake) if e.id in (p.event_id, reversal.id)], "26A4", date(2026, 10, 1), date(2026, 12, 31)
+    )
     assert oct_.vat_reclaimed == 0 and oct_.total_purchases_ex_vat == 0
 
     assert reopened is not None and reopened.status == "proposed" and reopened.event_id is None
@@ -299,7 +353,9 @@ async def test_invalid_rule_in_users_file_is_skipped(fake: FakeStorageProvider, 
 
 
 async def test_autopilot_post_that_fails_stays_in_review(
-    fake: FakeStorageProvider, books: Books, monkeypatch: pytest.MonkeyPatch,
+    fake: FakeStorageProvider,
+    books: Books,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     await _learn(fake, books)
 

@@ -97,7 +97,11 @@ def _same(ev: CalendarEvent, item: PlanItem) -> bool:
 
 async def vehicles(books: Books) -> list[dict[str, Any]]:
     rows = await books.read_json(VEHICLES, [])
-    return [v for v in rows if isinstance(v, dict) and v.get("id") and v.get("active", True)] if isinstance(rows, list) else []
+    return (
+        [v for v in rows if isinstance(v, dict) and v.get("id") and v.get("active", True)]
+        if isinstance(rows, list)
+        else []
+    )
 
 
 def mileage(day: date, new: Sequence[PlanItem], fleet: Sequence[dict[str, Any]]) -> list[MileageProposal]:
@@ -109,12 +113,18 @@ def mileage(day: date, new: Sequence[PlanItem], fleet: Sequence[dict[str, Any]])
         if i.kind != "visit" or not i.job_id:
             continue
         here = postcode_district(i.location)
-        out.append(MileageProposal(date=day, vehicle_id=str(fleet[0]["id"]), job_id=i.job_id, from_district=last, to_district=here))
+        out.append(
+            MileageProposal(
+                date=day, vehicle_id=str(fleet[0]["id"]), job_id=i.job_id, from_district=last, to_district=here
+            )
+        )
         last = here
     return out
 
 
-async def apply_plan(books: Books, calendar: CalendarProvider, day: date, items: Sequence[PlanItem], user: str) -> ApplyResult:
+async def apply_plan(
+    books: Books, calendar: CalendarProvider, day: date, items: Sequence[PlanItem], user: str
+) -> ApplyResult:
     new = validate(day, items)
     h = plan_hash(day, items)
     applied = await books.read_json(APPLIED, {})
@@ -122,7 +132,11 @@ async def apply_plan(books: Books, calendar: CalendarProvider, day: date, items:
         applied = {}  # hand-edited or damaged: treat as nothing applied (a retry still reuses matching events)
     if isinstance(prior := applied.get(h), dict):
         return ApplyResult(
-            date=day, plan_hash=h, event_ids=list(prior.get("event_ids", [])), created=[], already_applied=True,
+            date=day,
+            plan_hash=h,
+            event_ids=list(prior.get("event_ids", [])),
+            created=[],
+            already_applied=True,
             mileage_proposals=mileage(day, new, await vehicles(books)),
         )
 
@@ -131,8 +145,13 @@ async def apply_plan(books: Books, calendar: CalendarProvider, day: date, items:
         if any(_same(ev, item) for ev in current):
             continue
         clash = next(
-            (ev for ev in current
-             if not ev.is_all_day and ev.show_as not in NOT_BUSY and overlaps((ev.start, ev.end), (item.start, item.end))),
+            (
+                ev
+                for ev in current
+                if not ev.is_all_day
+                and ev.show_as not in NOT_BUSY
+                and overlaps((ev.start, ev.end), (item.start, item.end))
+            ),
             None,
         )
         if clash is not None:
@@ -146,7 +165,9 @@ async def apply_plan(books: Books, calendar: CalendarProvider, day: date, items:
         if found is not None:
             created.append(CreatedEvent(title=item.title, start=item.start, event_id=found.id, reused=True))
             continue
-        event_id = await calendar.create_event(subject(item), item.start, item.end, item.location or "", body(item, day, h))
+        event_id = await calendar.create_event(
+            subject(item), item.start, item.end, item.location or "", body(item, day, h)
+        )
         created.append(CreatedEvent(title=item.title, start=item.start, event_id=event_id))
 
     ids = [c.event_id for c in created]
@@ -157,8 +178,20 @@ async def apply_plan(books: Books, calendar: CalendarProvider, day: date, items:
         return dict(sorted(rows.items(), key=lambda kv: kv[1].get("created_at", ""))[-KEEP_APPLIED:])
 
     await books._update_json(APPLIED, {}, record)
-    await books.audit(f"user:{user}", "plan_applied", {
-        "date": day.isoformat(), "plan": h[:12], "events": len(ids), "created": sum(not c.reused for c in created),
-    })
-    return ApplyResult(date=day, plan_hash=h, event_ids=ids, created=created,
-                       mileage_proposals=mileage(day, new, await vehicles(books)))
+    await books.audit(
+        f"user:{user}",
+        "plan_applied",
+        {
+            "date": day.isoformat(),
+            "plan": h[:12],
+            "events": len(ids),
+            "created": sum(not c.reused for c in created),
+        },
+    )
+    return ApplyResult(
+        date=day,
+        plan_hash=h,
+        event_ids=ids,
+        created=created,
+        mileage_proposals=mileage(day, new, await vehicles(books)),
+    )

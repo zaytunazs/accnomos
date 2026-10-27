@@ -40,10 +40,19 @@ def orient_doc_type(doc: ExtractedDoc, business_name: str | None) -> Check | Non
             doc.doc_type = "sales_invoice"
         elif doc.doc_type == "sales_invoice":
             doc.doc_type = purchase_kind
-    elif doc.doc_type == "sales_invoice" and not doc.customer_name and doc.payment_method in {"card", "cash", "direct_debit"}:
+    elif (
+        doc.doc_type == "sales_invoice"
+        and not doc.customer_name
+        and doc.payment_method in {"card", "cash", "direct_debit"}
+    ):
         doc.doc_type = purchase_kind  # paid at a till or by DD with no customer named: something we bought
     if doc.doc_type != before:
-        return Check(code="DOC_TYPE_ORIENTED", ok=True, severity="warn", message=f"Treated as {doc.doc_type} (model said {before})")
+        return Check(
+            code="DOC_TYPE_ORIENTED",
+            ok=True,
+            severity="warn",
+            message=f"Treated as {doc.doc_type} (model said {before})",
+        )
     return None
 
 
@@ -62,8 +71,16 @@ def repair_line_totals(doc: ExtractedDoc) -> Check | None:
         return None  # lines already reconcile
     repaired = round(sum((ln.unit_price if ln in multi else ln.net) for ln in doc.lines) * 100)
     gross_total = round(doc.gross_total * 100)
-    repaired_gross = round(sum(((ln.unit_price if ln in multi else ln.net) + (ln.vat if ln not in multi else ln.vat / ln.qty)) for ln in doc.lines) * 100)
-    if abs(repaired - net_total) > max(1, len(doc.lines) // 2) and abs(repaired_gross - gross_total) > max(1, len(doc.lines) // 2):
+    repaired_gross = round(
+        sum(
+            ((ln.unit_price if ln in multi else ln.net) + (ln.vat if ln not in multi else ln.vat / ln.qty))
+            for ln in doc.lines
+        )
+        * 100
+    )
+    if abs(repaired - net_total) > max(1, len(doc.lines) // 2) and abs(repaired_gross - gross_total) > max(
+        1, len(doc.lines) // 2
+    ):
         return None
     fixed = 0
     for ln in multi:
@@ -75,7 +92,12 @@ def repair_line_totals(doc: ExtractedDoc) -> Check | None:
             fixed += 1
     if not fixed:
         return None
-    return Check(code="LINES_REPAIRED", ok=True, severity="warn", message=f"{fixed} line(s): printed line total had been read as unit price; corrected")
+    return Check(
+        code="LINES_REPAIRED",
+        ok=True,
+        severity="warn",
+        message=f"{fixed} line(s): printed line total had been read as unit price; corrected",
+    )
 
 
 def repair(doc: ExtractedDoc, business_name: str | None) -> list[Check]:

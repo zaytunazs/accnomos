@@ -47,8 +47,12 @@ def mobile_facts() -> dict:
         "timezone": "UTC+01:00",
         "user_ids": {"accnomos": "user-42"},
         "window_size": {"width": 1080, "height": 2200},
-        "user_agent": {"os_family": "Android", "os_version": "15", "device_manufacturer": "Google",
-                       "device_model": "Pixel 9"},
+        "user_agent": {
+            "os_family": "Android",
+            "os_version": "15",
+            "device_manufacturer": "Google",
+            "device_model": "Pixel 9",
+        },
         "local_ips": ["10.0.0.12", "fe80::1"],
         "local_ips_timestamp": "2026-10-27T09:01:02.345Z",
         "vendor_versions": {"accnomos-android": "1.4.0"},
@@ -61,7 +65,8 @@ def client_for():
 
     def _make(handler: Handler, **settings_kw) -> httpx.AsyncClient:
         app = create_app(make_settings(**settings_kw), transport=httpx.MockTransport(handler))
-        return httpx.AsyncClient(transport=httpx.ASGITransport(app=app, client=("198.51.100.7", 50123)),
-                                 base_url="http://relay")
+        return httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app, client=("198.51.100.7", 50123)), base_url="http://relay"
+        )
 
     return _make

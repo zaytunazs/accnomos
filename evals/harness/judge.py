@@ -80,8 +80,10 @@ def judge_one(client: httpx.Client, model: str, gold: dict[str, Any], extracted:
         "messages": [
             {
                 "role": "user",
-                "content": "GOLD:\n" + json.dumps(gold_view, ensure_ascii=False)
-                + "\n\nEXTRACTED:\n" + json.dumps(extracted, ensure_ascii=False),
+                "content": "GOLD:\n"
+                + json.dumps(gold_view, ensure_ascii=False)
+                + "\n\nEXTRACTED:\n"
+                + json.dumps(extracted, ensure_ascii=False),
             }
         ],
     }
@@ -134,10 +136,21 @@ def main() -> None:
             if args.escalate and _disagrees(code_ok, first):
                 esc = judge_one(client, args.escalate, gold, extracted)
             final = esc or first
-            docs.append({"file": rec["file"], "gold_case": rec.get("gold_case"), "code_ok": code_ok,
-                         "first": first, "escalated": esc, "final_severity": final.get("severity")})
-            print(f"{rec['file']}: code_ok={code_ok} {first.get('severity')}"
-                  + (f" -> {esc.get('severity')}" if esc else ""), flush=True)
+            docs.append(
+                {
+                    "file": rec["file"],
+                    "gold_case": rec.get("gold_case"),
+                    "code_ok": code_ok,
+                    "first": first,
+                    "escalated": esc,
+                    "final_severity": final.get("severity"),
+                }
+            )
+            print(
+                f"{rec['file']}: code_ok={code_ok} {first.get('severity')}"
+                + (f" -> {esc.get('severity')}" if esc else ""),
+                flush=True,
+            )
 
     judged = [d for d in docs if "final_severity" in d]
     summary = {

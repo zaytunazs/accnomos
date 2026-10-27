@@ -22,7 +22,10 @@ async def todos_list(books: Books = Depends(get_books)) -> list[Todo]:
 
 @router.post("", response_model=Todo)
 async def todos_add(
-    body: TodoIn, response: Response, books: Books = Depends(get_books), user: str = Depends(require_user),
+    body: TodoIn,
+    response: Response,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> Todo:
     """201 for a new to-do; 200 with the existing one when the same to-do is already on the list."""
     try:

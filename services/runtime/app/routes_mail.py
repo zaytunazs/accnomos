@@ -60,8 +60,12 @@ async def mail_scan(
 ) -> IntakeResult:
     body = body or MailScanBody()
     return await scan_mail(
-        books, mail, since_days=body.since_days, dry_run=body.dry_run,
-        user=user, max_messages=body.max_messages,
+        books,
+        mail,
+        since_days=body.since_days,
+        dry_run=body.dry_run,
+        user=user,
+        max_messages=body.max_messages,
     )
 
 
@@ -90,7 +94,13 @@ async def mail_triage(
     """Reads the Inbox (previews only) and writes nothing but one audit line of counts."""
     body = body or TriageBody()
     return await triage_mail(
-        books, mail, cfg, since_days=body.since_days, max_threads=body.max_threads, user=user, business_name=business,
+        books,
+        mail,
+        cfg,
+        since_days=body.since_days,
+        max_threads=body.max_threads,
+        user=user,
+        business_name=business,
     )
 
 
@@ -119,7 +129,13 @@ async def mail_draft_reply(
         draft = await mail.create_reply_draft(body.message_id, text)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="That email is no longer in your mailbox") from exc
-    await books.audit(f"user:{user}", "mail_draft_created", {
-        "reply_to": body.message_id, "draft": draft.id, "chars": len(text),
-    })
+    await books.audit(
+        f"user:{user}",
+        "mail_draft_created",
+        {
+            "reply_to": body.message_id,
+            "draft": draft.id,
+            "chars": len(text),
+        },
+    )
     return DraftReplyResult(draft_id=draft.id, web_link=draft.web_link)

@@ -70,9 +70,7 @@ def reverses_sale(ev: LedgerEvent) -> bool:
     return ev.kind == "reversal" and any(ln.debit and "Sales" in ln.account for ln in ev.lines)
 
 
-def compute_vat_return(
-    events: list[LedgerEvent], period_key: str, start: date, end: date
-) -> VatReturn:
+def compute_vat_return(events: list[LedgerEvent], period_key: str, start: date, end: date) -> VatReturn:
     """Sum approved events dated within [start, end] into the 9 boxes."""
     ret = VatReturn(period_key=period_key, start=start, end=end)
     sales_net = purchases_net = sales_vat = purchases_vat = 0

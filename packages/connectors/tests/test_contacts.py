@@ -27,12 +27,28 @@ async def test_list_contacts_select_paging_and_mapping():
         assert req.method == "GET" and req.headers["Authorization"] == "Bearer tok"
         if "page=2" in str(req.url):
             return httpx.Response(200, json={"value": [{"id": "c3", "displayName": "Jo Bloggs"}]})
-        return httpx.Response(200, json={"@odata.nextLink": NEXT, "value": [
-            {"id": "c1", "displayName": " Sam Patel ", "companyName": "Acme Kitchens Ltd",
-             "emailAddresses": [{"name": "Sam", "address": "sam@acme.example"}, {"address": ""}],
-             "businessPhones": ["020 7946 0000", " "]},
-            {"id": "c2", "displayName": "Howdens", "companyName": None, "emailAddresses": [], "businessPhones": []},
-        ]})
+        return httpx.Response(
+            200,
+            json={
+                "@odata.nextLink": NEXT,
+                "value": [
+                    {
+                        "id": "c1",
+                        "displayName": " Sam Patel ",
+                        "companyName": "Acme Kitchens Ltd",
+                        "emailAddresses": [{"name": "Sam", "address": "sam@acme.example"}, {"address": ""}],
+                        "businessPhones": ["020 7946 0000", " "],
+                    },
+                    {
+                        "id": "c2",
+                        "displayName": "Howdens",
+                        "companyName": None,
+                        "emailAddresses": [],
+                        "businessPhones": [],
+                    },
+                ],
+            },
+        )
 
     out = await _provider(handler).list_contacts()
     assert seen[0].url.path == "/v1.0/me/contacts"

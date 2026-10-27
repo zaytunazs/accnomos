@@ -43,7 +43,13 @@ async def extract(
     try:
         start, end = cycle.current(today())
         proposal = await process_image(
-            data, mime, cfg, known_hashes=frozenset(_SEEN_HASHES), business_name=business, period_start=start, period_end=end,
+            data,
+            mime,
+            cfg,
+            known_hashes=frozenset(_SEEN_HASHES),
+            business_name=business,
+            period_start=start,
+            period_end=end,
         )
     except ExtractionError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc

@@ -56,12 +56,16 @@ def _year(year_start: date | None) -> tuple[date, date]:
 
 @router.get("", response_model=ContactList)
 async def list_contacts(
-    year_start: date | None = Query(None, description="Start of the year for YTD totals; default 6 April (UK tax year)"),
+    year_start: date | None = Query(
+        None, description="Start of the year for YTD totals; default 6 April (UK tax year)"
+    ),
     books: Books = Depends(get_books),
 ) -> ContactList:
     contacts, ledger, saved = await cb.contact_book(books)
     start, today = _year(year_start)
-    return ContactList(year_start=start, today=today, saved=saved, contacts=cb.with_totals(contacts, ledger, start, today))
+    return ContactList(
+        year_start=start, today=today, saved=saved, contacts=cb.with_totals(contacts, ledger, start, today)
+    )
 
 
 @router.post("/refresh", response_model=ContactList)
@@ -69,7 +73,9 @@ async def refresh(books: Books = Depends(get_books), user: str = Depends(require
     """Add every counterparty in the ledger to contacts.json; fields the user edited are kept."""
     contacts, ledger = await cb.refresh(books, user)
     start, today = _year(None)
-    return ContactList(year_start=start, today=today, saved=True, contacts=cb.with_totals(contacts, ledger, start, today))
+    return ContactList(
+        year_start=start, today=today, saved=True, contacts=cb.with_totals(contacts, ledger, start, today)
+    )
 
 
 class ContactEdit(StrictBody):
@@ -92,7 +98,10 @@ async def aged(as_of: date | None = None, books: Books = Depends(get_books)) -> 
 
 @router.put("/{contact_id}", response_model=cb.Contact)
 async def edit(
-    contact_id: str, body: ContactEdit, books: Books = Depends(get_books), user: str = Depends(require_user),
+    contact_id: str,
+    body: ContactEdit,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> cb.Contact:
     """Change the fields sent (null clears one); refreshing from the books never overwrites them."""
     edits: dict[str, Any] = body.model_dump(include=body.model_fields_set)

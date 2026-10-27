@@ -193,7 +193,9 @@ def code_box(img: Image.Image) -> tuple[Box | None, dict[str, Any]]:
 # before enabling.
 
 _BOX_KEYS = ("box", "bbox", "bounding_box", "xyxy")
-_QUAD = re.compile(r"\[\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\]")
+_QUAD = re.compile(
+    r"\[\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\]"
+)
 
 
 def sam_request_body(noun: str, data_url: str) -> dict[str, Any]:

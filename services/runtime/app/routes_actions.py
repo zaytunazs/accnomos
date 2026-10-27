@@ -62,7 +62,10 @@ class Rejected(BaseModel):
 
 @router.post("/approve", response_model=actions.ActionResult)
 async def approve(
-    body: ApproveBody, books: Books = Depends(get_books), user: str = Depends(require_user), token: str = Depends(graph_token),
+    body: ApproveBody,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
+    token: str = Depends(graph_token),
 ) -> actions.ActionResult:
     """Execute the action once. Approving the same action again returns the first result (status already_done)."""
     ctx = actions.Context(books=books, user=user, graph_token=token, mail_sender=_mail_sender(token))
@@ -76,7 +79,10 @@ async def approve(
 
 @router.post("/reject", response_model=Rejected)
 async def reject(
-    body: RejectBody, books: Books = Depends(get_books), user: str = Depends(require_user), token: str = Depends(graph_token),
+    body: RejectBody,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
+    token: str = Depends(graph_token),
 ) -> Rejected:
     """Record the no in the actions audit log. Nothing else changes."""
     try:

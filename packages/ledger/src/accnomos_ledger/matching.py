@@ -37,8 +37,36 @@ PENNY = 1  # amount tolerance in pence: card terminals and some invoices round d
 #: Accounts whose movement is the money that actually left or arrived (the settlement leg).
 SETTLEMENT_PREFIXES = ("1200", "1210", "2100", "1100")
 NOISE_PHRASES = ("card payment", "contactless", "direct debit", "faster payment", "standing order")
-NOISE_WORDS = {"visa", "pos", "card", "payment", "to", "from", "the", "ltd", "limited", "plc", "uk", "gb", "gbr",
-               "dd", "so", "fpi", "fpo", "bgc", "deb", "cr", "dr", "on", "ref", "co", "and", "www", "com", "london"}
+NOISE_WORDS = {
+    "visa",
+    "pos",
+    "card",
+    "payment",
+    "to",
+    "from",
+    "the",
+    "ltd",
+    "limited",
+    "plc",
+    "uk",
+    "gb",
+    "gbr",
+    "dd",
+    "so",
+    "fpi",
+    "fpo",
+    "bgc",
+    "deb",
+    "cr",
+    "dr",
+    "on",
+    "ref",
+    "co",
+    "and",
+    "www",
+    "com",
+    "london",
+}
 
 MatchKind = Literal["exact", "suggested"]
 
@@ -101,8 +129,11 @@ def _similar(word: str, words: set[str]) -> bool:
         return True
     if len(word) < 4:
         return False
-    return any(len(w) >= 4 and (_abbreviates(word, w) or _abbreviates(w, word)
-                                or SequenceMatcher(None, word, w).ratio() >= 0.85) for w in words)
+    return any(
+        len(w) >= 4
+        and (_abbreviates(word, w) or _abbreviates(w, word) or SequenceMatcher(None, word, w).ratio() >= 0.85)
+        for w in words
+    )
 
 
 def _name_score(line: BankLine, counterparty: str | None) -> tuple[float, str | None]:
@@ -114,7 +145,9 @@ def _name_score(line: BankLine, counterparty: str | None) -> tuple[float, str | 
     return 0.2 * len(common) / len(want), f"name: {' '.join(sorted(common))}"
 
 
-def _score(line: BankLine, events: Sequence[LedgerEvent], card_last4: dict[str, str]) -> tuple[float, list[str], int] | None:
+def _score(
+    line: BankLine, events: Sequence[LedgerEvent], card_last4: dict[str, str]
+) -> tuple[float, list[str], int] | None:
     """Score a line against one event or a same-day group; None when amount or date rule out a match."""
     off = abs(sum(settlement_pence(e) for e in events) - line.amount_pence)
     if line.amount_pence == 0 or off > PENNY:

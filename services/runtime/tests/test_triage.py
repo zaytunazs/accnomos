@@ -26,11 +26,27 @@ TODAY = NOW.date()
 CFG = AiConfig(mode="local", base_url="http://localhost:11434", model="muse-glimmer:30b")
 
 
-def _msg(id_: str, sender: str, *, conv: str | None = None, subject: str = "Kitchen quote", preview: str = "Hi Sam,",
-         hours_ago: float = 2, name: str = "", read: bool = True) -> MailMessage:
+def _msg(
+    id_: str,
+    sender: str,
+    *,
+    conv: str | None = None,
+    subject: str = "Kitchen quote",
+    preview: str = "Hi Sam,",
+    hours_ago: float = 2,
+    name: str = "",
+    read: bool = True,
+) -> MailMessage:
     return MailMessage(
-        id=id_, received_at=NOW - timedelta(hours=hours_ago), from_address=sender, from_name=name, subject=subject,
-        conversation_id=conv or id_, body_preview=preview, is_read=read, web_link=f"https://outlook.live.com/owa/?ItemID={id_}",
+        id=id_,
+        received_at=NOW - timedelta(hours=hours_ago),
+        from_address=sender,
+        from_name=name,
+        subject=subject,
+        conversation_id=conv or id_,
+        body_preview=preview,
+        is_read=read,
+        web_link=f"https://outlook.live.com/owa/?ItemID={id_}",
     )
 
 
@@ -50,7 +66,12 @@ def mail() -> FakeMailProvider:
 
 
 def _audit(fake: FakeStorageProvider) -> list[dict]:
-    lines = [ln for p, d in fake.files.items() if p.startswith(f"{AUDIT}/") and p.endswith(".jsonl") for ln in d.decode().splitlines()]
+    lines = [
+        ln
+        for p, d in fake.files.items()
+        if p.startswith(f"{AUDIT}/") and p.endswith(".jsonl")
+        for ln in d.decode().splitlines()
+    ]
     return [json.loads(ln) for ln in lines]
 
 
@@ -107,8 +128,10 @@ def test_public_mail_domain_users_do_not_drop_strangers_on_the_same_domain() -> 
 
 def _answer(**over) -> str:
     out = {
-        "category": "customer", "summary": "Jo wants the kitchen quote by Friday\nplease.",
-        "needs_reply": True, "suggested_reply": "Hi Jo,\n\nThanks, I'll send the quote by [day].\n\nSam Builds",
+        "category": "customer",
+        "summary": "Jo wants the kitchen quote by Friday\nplease.",
+        "needs_reply": True,
+        "suggested_reply": "Hi Jo,\n\nThanks, I'll send the quote by [day].\n\nSam Builds",
         "todos": [
             {"text": "Send Jo the kitchen quote", "due": (TODAY + timedelta(days=3)).isoformat()},
             {"text": "send jo the kitchen quote", "due": None},  # duplicate (case-insensitive)
@@ -119,7 +142,9 @@ def _answer(**over) -> str:
     return json.dumps({**out, **over})
 
 
-async def test_triage_one_model_call_per_thread_with_previews_only(books: Books, fake: FakeStorageProvider, mail: FakeMailProvider, monkeypatch) -> None:
+async def test_triage_one_model_call_per_thread_with_previews_only(
+    books: Books, fake: FakeStorageProvider, mail: FakeMailProvider, monkeypatch
+) -> None:
     mail.add(_msg("a1", "jo@client.co.uk", conv="A", name="Jo Bloggs", preview="Hi Sam, " + "x" * 300, read=False))
     mail.add(_msg("c1", "accounts@timber.co.uk", conv="C", subject="Invoice 4471", preview="Please find £1,240.00 due"))
     mail.add(_msg("n1", "newsletter@toolstation.com", subject="Deals"))
@@ -127,16 +152,27 @@ async def test_triage_one_model_call_per_thread_with_previews_only(books: Books,
 
     async def fake_model(messages, cfg):
         prompts.append(messages)
-        return _answer() if "jo@client" in messages[1]["content"] else _answer(
-            category="supplier", summary="Timber invoice 4471", needs_reply=False, suggested_reply="ignored", todos=[],
+        return (
+            _answer()
+            if "jo@client" in messages[1]["content"]
+            else _answer(
+                category="supplier",
+                summary="Timber invoice 4471",
+                needs_reply=False,
+                suggested_reply="ignored",
+                todos=[],
+            )
         )
 
     monkeypatch.setattr(triage_ai, "_call_model", fake_model)
     res = await triage_mail(books, mail, CFG, user=USER, business_name="Sam Builds", today=TODAY)
 
     assert len(prompts) == 2 and res.scanned == 3 and res.skipped["newsletter"] == 1
-    facts = json.loads(prompts[0][1]["content"].removeprefix("THREAD:\n")) if "jo@" in prompts[0][1]["content"] else \
-        json.loads(prompts[1][1]["content"].removeprefix("THREAD:\n"))
+    facts = (
+        json.loads(prompts[0][1]["content"].removeprefix("THREAD:\n"))
+        if "jo@" in prompts[0][1]["content"]
+        else json.loads(prompts[1][1]["content"].removeprefix("THREAD:\n"))
+    )
     assert set(facts) == {"today", "business_name", "subject", "can_reply", "messages"}
     assert all(len(m["preview"]) <= 255 for m in facts["messages"])
     jo = next(t for t in res.threads if t.conversation_id == "A")
@@ -145,7 +181,9 @@ async def test_triage_one_model_call_per_thread_with_previews_only(books: Books,
     assert jo.summary == "Jo wants the kitchen quote by Friday please."  # one line
     assert jo.suggested_reply and jo.suggested_reply.startswith("Hi Jo")
     assert [(t.text, t.due) for t in jo.todos] == [
-        ("Send Jo the kitchen quote", TODAY + timedelta(days=3)), ("Order worktop", None), ("Renew van insurance", None),
+        ("Send Jo the kitchen quote", TODAY + timedelta(days=3)),
+        ("Order worktop", None),
+        ("Renew van insurance", None),
     ]
     timber = next(t for t in res.threads if t.conversation_id == "C")
     assert timber.suggested_reply is None and not timber.needs_reply  # no reply when none is needed
@@ -197,7 +235,9 @@ async def test_no_reply_sender_never_gets_a_reply(books: Books, mail: FakeMailPr
         (None, "not in the expected format"),
     ],
 )
-async def test_model_trouble_keeps_the_thread_with_a_code_summary(books: Books, mail: FakeMailProvider, monkeypatch, failure, reason) -> None:
+async def test_model_trouble_keeps_the_thread_with_a_code_summary(
+    books: Books, mail: FakeMailProvider, monkeypatch, failure, reason
+) -> None:
     mail.add(_msg("a1", "jo@client.co.uk", name="Jo Bloggs", subject="Kitchen quote"))
 
     async def fake_model(messages, cfg):
@@ -230,7 +270,9 @@ async def test_without_ai_no_model_is_called(books: Books, mail: FakeMailProvide
 async def test_todos_crud(books: Books, fake: FakeStorageProvider) -> None:
     assert await list_todos(books) == []
     src = {"message_id": "a1", "subject": "Kitchen quote", "web_link": "https://outlook.live.com/owa/?ItemID=a1"}
-    later, created = await add_todo(books, TodoIn(text="  Send   quote ", due=TODAY + timedelta(days=5), source=src), USER)
+    later, created = await add_todo(
+        books, TodoIn(text="  Send   quote ", due=TODAY + timedelta(days=5), source=src), USER
+    )
     assert created and later.text == "Send quote"
     again, created = await add_todo(books, TodoIn(text="send quote", source=src), USER)
     assert not created and again.id == later.id  # same text from the same email: one entry
@@ -279,9 +321,13 @@ def client(fake: FakeStorageProvider, mail: FakeMailProvider):
 H = {"X-Graph-Token": "t", "X-User": USER}
 
 
-def test_draft_reply_creates_a_draft_and_audits(client: TestClient, fake: FakeStorageProvider, mail: FakeMailProvider) -> None:
+def test_draft_reply_creates_a_draft_and_audits(
+    client: TestClient, fake: FakeStorageProvider, mail: FakeMailProvider
+) -> None:
     mail.add(_msg("AAMk-a1=", "jo@client.co.uk"))
-    r = client.post("/mail/draft-reply", json={"message_id": "AAMk-a1=", "body": "  Hi Jo, Thursday works.  "}, headers=H)
+    r = client.post(
+        "/mail/draft-reply", json={"message_id": "AAMk-a1=", "body": "  Hi Jo, Thursday works.  "}, headers=H
+    )
     assert r.status_code == 200, r.text
     assert r.json() == {"draft_id": "draft-1", "web_link": "https://outlook.office.com/mail/drafts/id/draft-1"}
     assert mail.drafts == [{"id": "draft-1", "reply_to": "AAMk-a1=", "body": "Hi Jo, Thursday works."}]
@@ -295,7 +341,10 @@ def test_draft_reply_validation(client: TestClient, mail: FakeMailProvider) -> N
     assert client.post("/mail/draft-reply", json={"message_id": "gone", "body": "Hi"}, headers=H).status_code == 404
     assert client.post("/mail/draft-reply", json={"message_id": "a1", "body": "   "}, headers=H).status_code == 422
     assert client.post("/mail/draft-reply", json={"message_id": "../x", "body": "Hi"}, headers=H).status_code == 422
-    assert client.post("/mail/draft-reply", json={"message_id": "a1", "body": "Hi", "send": True}, headers=H).status_code == 422
+    assert (
+        client.post("/mail/draft-reply", json={"message_id": "a1", "body": "Hi", "send": True}, headers=H).status_code
+        == 422
+    )
     no_user = client.post("/mail/draft-reply", json={"message_id": "a1", "body": "Hi"}, headers={"X-Graph-Token": "t"})
     assert no_user.status_code == 400
     assert mail.drafts == []
@@ -322,7 +371,9 @@ def test_todos_routes(client: TestClient) -> None:
     assert client.get("/todos", headers=H).json() == []
 
 
-def test_triage_route_calls_a_model_only_when_the_app_sends_one(client: TestClient, mail: FakeMailProvider, monkeypatch) -> None:
+def test_triage_route_calls_a_model_only_when_the_app_sends_one(
+    client: TestClient, mail: FakeMailProvider, monkeypatch
+) -> None:
     mail.add(_msg("a1", "jo@client.co.uk"))
     calls: list[str] = []
 
@@ -338,7 +389,9 @@ def test_triage_route_calls_a_model_only_when_the_app_sends_one(client: TestClie
     assert calls == [CFG.model] and r["model"] == CFG.model and r["threads"][0]["category"] == "customer"
 
 
-def test_draft_reply_without_mail_readwrite_is_401_and_not_audited(client: TestClient, fake: FakeStorageProvider, mail: FakeMailProvider, monkeypatch) -> None:
+def test_draft_reply_without_mail_readwrite_is_401_and_not_audited(
+    client: TestClient, fake: FakeStorageProvider, mail: FakeMailProvider, monkeypatch
+) -> None:
     from accnomos_connectors import GraphError
 
     async def forbidden(message_id, body_text):

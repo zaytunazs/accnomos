@@ -31,29 +31,46 @@ USER = "sam@example.co.uk"
 H = {"X-Graph-Token": TOKEN, "X-User": USER, "X-AI-Mode": "local", "X-AI-Model": "stub-model"}
 
 
-def contact(name: str, email: str | None = None, kind: str = "customer", aliases: list[str] | None = None) -> dict[str, Any]:
+def contact(
+    name: str, email: str | None = None, kind: str = "customer", aliases: list[str] | None = None
+) -> dict[str, Any]:
     from app.autopilot import supplier_key
 
     key = supplier_key(name)
-    return Contact(id=key.replace("-", "")[:16].ljust(16, "0"), kind=kind, name=name, normalised_key=key,  # type: ignore[arg-type]
-                   email=email, aliases=aliases or []).model_dump(mode="json")
+    return Contact(
+        id=key.replace("-", "")[:16].ljust(16, "0"),
+        kind=kind,
+        name=name,
+        normalised_key=key,  # type: ignore[arg-type]
+        email=email,
+        aliases=aliases or [],
+    ).model_dump(mode="json")
 
 
 @pytest.fixture
 async def books() -> Books:
     b = Books(FakeStorageProvider())
-    await b.write_json(CONTACTS, [
-        contact("JM Trading Ltd", "accounts@jmtrading.example"),
-        contact("Hartley Builders", "pay@hartley.example"),
-        contact("Moss & Co", None),
-        contact("Hartley Bros", "bros@hartley.example"),
-        contact("Screwfix", kind="supplier"),
-    ])
-    await b.write_json("_System/Invoicing/profile.json", {"name": "Sam Electrical", "vrn": "GB123456789", "terms_days": 14})
+    await b.write_json(
+        CONTACTS,
+        [
+            contact("JM Trading Ltd", "accounts@jmtrading.example"),
+            contact("Hartley Builders", "pay@hartley.example"),
+            contact("Moss & Co", None),
+            contact("Hartley Bros", "bros@hartley.example"),
+            contact("Screwfix", kind="supplier"),
+        ],
+    )
+    await b.write_json(
+        "_System/Invoicing/profile.json", {"name": "Sam Electrical", "vrn": "GB123456789", "terms_days": 14}
+    )
     await jobs.save_job(b, Job(id="00000000a001", name="Kitchen refit, 12 Elm Road"))
     await jobs.save_job(b, Job(id="00000000a002", name="Bathroom, 4 Oak Lane"))
-    await jobs.save_staff(b, StaffMember(id="00000000b001", name="Sam Taylor", role="Electrician", hourly_rate_pence=2000))
-    await jobs.save_staff(b, StaffMember(id="00000000b002", name="Alex Green", role="Apprentice", hourly_rate_pence=1200))
+    await jobs.save_staff(
+        b, StaffMember(id="00000000b001", name="Sam Taylor", role="Electrician", hourly_rate_pence=2000)
+    )
+    await jobs.save_staff(
+        b, StaffMember(id="00000000b002", name="Alex Green", role="Apprentice", hourly_rate_pence=1200)
+    )
     return b
 
 
@@ -83,8 +100,13 @@ def with_invoicing(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_invoice_intent_from_the_users_words():
     q = "send a £100 invoice to JM Trading for this month's work"
-    got = actions.parse_intent(out("create_invoice", customer_ref="JM Trading", description="this month's work",
-                                   amount_text="£100", send=True), q, TODAY)
+    got = actions.parse_intent(
+        out(
+            "create_invoice", customer_ref="JM Trading", description="this month's work", amount_text="£100", send=True
+        ),
+        q,
+        TODAY,
+    )
     assert isinstance(got, actions.CreateInvoiceIntent)
     assert got.amount_pence == 10_000 and got.send and not got.amount_includes_vat
     assert got.description == "Work for October 2026"  # words only: no dates or hours looked up
@@ -97,11 +119,13 @@ def test_a_figure_the_user_did_not_say_is_refused():
 
 
 def test_payment_terms_only_when_the_user_said_them():
-    said = actions.parse_intent(out("create_invoice", customer_ref="JM", amount_text="£100", due_days=7),
-                                "invoice JM £100 due in 7 days", TODAY)
+    said = actions.parse_intent(
+        out("create_invoice", customer_ref="JM", amount_text="£100", due_days=7), "invoice JM £100 due in 7 days", TODAY
+    )
     assert isinstance(said, actions.CreateInvoiceIntent) and said.due_days == 7
-    made_up = actions.parse_intent(out("create_invoice", customer_ref="JM", amount_text="£100", due_days=60),
-                                   "invoice JM £100", TODAY)
+    made_up = actions.parse_intent(
+        out("create_invoice", customer_ref="JM", amount_text="£100", due_days=60), "invoice JM £100", TODAY
+    )
     assert isinstance(made_up, actions.CreateInvoiceIntent) and made_up.due_days is None  # the profile's terms apply
 
 
@@ -112,21 +136,37 @@ def test_amounts_are_parsed_by_code(said: str, pence: int):
 
 
 def test_timesheet_and_mileage_intents():
-    t = actions.parse_intent(out("log_timesheet", staff_ref="Sam", job_ref="Elm Road", hours_text="7.5", date_text="yesterday"),
-                             "log 7.5 hours for Sam on Elm Road yesterday", TODAY)
+    t = actions.parse_intent(
+        out("log_timesheet", staff_ref="Sam", job_ref="Elm Road", hours_text="7.5", date_text="yesterday"),
+        "log 7.5 hours for Sam on Elm Road yesterday",
+        TODAY,
+    )
     assert isinstance(t, actions.LogTimesheetIntent) and t.hours == Decimal("7.5") and t.date == date(2026, 10, 26)
-    m = actions.parse_intent(out("log_mileage", miles_text="42", from_place="Leeds", to_place="York", date_text="Monday"),
-                             "log 42 miles Leeds to York on Monday", TODAY)
+    m = actions.parse_intent(
+        out("log_mileage", miles_text="42", from_place="Leeds", to_place="York", date_text="Monday"),
+        "log 42 miles Leeds to York on Monday",
+        TODAY,
+    )
     assert isinstance(m, actions.LogMileageIntent) and m.miles == 42 and m.date == date(2026, 10, 26)
     missing = actions.parse_intent(out("log_timesheet", staff_ref="Sam", hours_text="3"), "log 3 hours for Sam", TODAY)
     assert isinstance(missing, Clarification) and missing.field == "job"
 
 
-@pytest.mark.parametrize(("text", "want"), [
-    ("today", date(2026, 10, 27)), ("Tuesday", date(2026, 10, 27)), ("last Friday", date(2026, 10, 23)),
-    ("3 Oct", date(2026, 10, 3)), ("October 3rd", date(2026, 10, 3)), ("3/10", date(2026, 10, 3)),
-    ("25 December", date(2025, 12, 25)), ("2026-09-01", date(2026, 9, 1)), ("someday", None), ("31/02", None),
-])
+@pytest.mark.parametrize(
+    ("text", "want"),
+    [
+        ("today", date(2026, 10, 27)),
+        ("Tuesday", date(2026, 10, 27)),
+        ("last Friday", date(2026, 10, 23)),
+        ("3 Oct", date(2026, 10, 3)),
+        ("October 3rd", date(2026, 10, 3)),
+        ("3/10", date(2026, 10, 3)),
+        ("25 December", date(2025, 12, 25)),
+        ("2026-09-01", date(2026, 9, 1)),
+        ("someday", None),
+        ("31/02", None),
+    ],
+)
 def test_days_are_read_by_code(text: str, want: date | None):
     assert actions.parse_day(text, TODAY) == want
 
@@ -134,12 +174,21 @@ def test_days_are_read_by_code(text: str, want: date | None):
 async def test_propose_with_stubbed_model(books: Books, monkeypatch: pytest.MonkeyPatch):
     seen: list = []
     with_invoicing(monkeypatch)
-    stub_model(monkeypatch, out("create_invoice", customer_ref="JM Trading", description="this month's work",
-                                amount_text="£100", send=True), seen)
+    stub_model(
+        monkeypatch,
+        out(
+            "create_invoice", customer_ref="JM Trading", description="this month's work", amount_text="£100", send=True
+        ),
+        seen,
+    )
     got = await actions.propose("send a £100 invoice to JM Trading for this month's work", books, CFG, TOKEN, TODAY)
     assert isinstance(got, ProposedAction) and got.kind == "create_invoice"
     messages, schema, name = seen[0]
-    assert name == "action_intent" and schema["properties"]["kind"]["enum"][-1] == "none" and not schema["additionalProperties"]
+    assert (
+        name == "action_intent"
+        and schema["properties"]["kind"]["enum"][-1] == "none"
+        and not schema["additionalProperties"]
+    )
     assert "JM Trading Ltd" not in json.dumps(messages)  # the contact list never goes to the model
     p = got.preview
     assert p["customer"]["name"] == "JM Trading Ltd" and p["send_to"] == "accounts@jmtrading.example"
@@ -211,7 +260,9 @@ async def test_vehicle_resolution(books: Books):
     intent = actions.LogMileageIntent(miles=Decimal("12.34"), from_place="Leeds", to_place="York")
     none = await actions.resolve_mileage(books, intent, TODAY)
     assert isinstance(none, Clarification) and none.field == "vehicle"
-    await books.write_json(actions.VEHICLES, [{"id": "v1", "name": "Transit van", "registration": "AB12 CDE", "active": True}])
+    await books.write_json(
+        actions.VEHICLES, [{"id": "v1", "name": "Transit van", "registration": "AB12 CDE", "active": True}]
+    )
     one = await actions.resolve_mileage(books, intent, TODAY)
     assert isinstance(one, actions.Draft) and one.preview["vehicle_id"] == "v1" and one.preview["miles"] == "12.3"
 
@@ -220,15 +271,29 @@ async def test_approved_mileage_is_logged_and_audited_as_the_user(books: Books):
     from app import mileage
 
     van = await mileage.add_vehicle(books, mileage.Vehicle(name="Transit van", kind="van", owned_by="business"), USER)
-    intent = actions.LogMileageIntent(miles=Decimal("12.3"), from_place="Leeds", to_place="York", date=date(2026, 10, 26))
+    intent = actions.LogMileageIntent(
+        miles=Decimal("12.3"), from_place="Leeds", to_place="York", date=date(2026, 10, 26)
+    )
     draft = await actions.resolve_mileage(books, intent, TODAY)
     assert isinstance(draft, actions.Draft)
-    done = await actions.approve(actions.new_action(draft, TOKEN), actions.Context(books=books, user=USER, graph_token=TOKEN))
+    done = await actions.approve(
+        actions.new_action(draft, TOKEN), actions.Context(books=books, user=USER, graph_token=TOKEN)
+    )
     assert done.status == "done"
     [entry] = await mileage.load_entries(books, mileage.tax_year_of(date(2026, 10, 26)))
-    assert (entry.vehicle_id, entry.miles, entry.purpose, entry.id) == (van.id, 12.3, "Leeds to York", done.result["entry_id"])
-    audit = [json.loads(ln) for ln in (await books.storage.read(f"_System/audit/{datetime.now(UTC):%Y-%m}.jsonl")).decode().splitlines()]
-    assert {"actor": f"user:{USER}", "action": "mileage_added"}.items() <= next(a for a in audit if a["action"] == "mileage_added").items()
+    assert (entry.vehicle_id, entry.miles, entry.purpose, entry.id) == (
+        van.id,
+        12.3,
+        "Leeds to York",
+        done.result["entry_id"],
+    )
+    audit = [
+        json.loads(ln)
+        for ln in (await books.storage.read(f"_System/audit/{datetime.now(UTC):%Y-%m}.jsonl")).decode().splitlines()
+    ]
+    assert {"actor": f"user:{USER}", "action": "mileage_added"}.items() <= next(
+        a for a in audit if a["action"] == "mileage_added"
+    ).items()
 
 
 # --------------------------------------------------------------------------- #
@@ -237,36 +302,52 @@ async def test_approved_mileage_is_logged_and_audited_as_the_user(books: Books):
 
 
 def test_vat_per_line_half_up_and_summary_by_code():
-    got = actions.price_lines([
-        ("Labour", Decimal("2.5"), 4_500, "S"), ("Cable", Decimal(3), 333, "S"), ("Book", Decimal(1), 1_000, "Z"),
-        ("Fuel", Decimal(1), 1_001, "R"),
-    ])
+    got = actions.price_lines(
+        [
+            ("Labour", Decimal("2.5"), 4_500, "S"),
+            ("Cable", Decimal(3), 333, "S"),
+            ("Book", Decimal(1), 1_000, "Z"),
+            ("Fuel", Decimal(1), 1_001, "R"),
+        ]
+    )
     assert [ln["net_pence"] for ln in got["lines"]] == [11_250, 999, 1_000, 1_001]
     assert [ln["vat_pence"] for ln in got["lines"]] == [2_250, 200, 0, 50]  # 199.8 -> 200; 50.05 -> 50
     assert [(r["vat_code"], r["net_pence"], r["vat_pence"]) for r in got["vat_summary"]] == [
-        ("S", 12_249, 2_450), ("R", 1_001, 50), ("Z", 1_000, 0),
+        ("S", 12_249, 2_450),
+        ("R", 1_001, 50),
+        ("Z", 1_000, 0),
     ]
     assert (got["net_pence"], got["vat_pence"], got["total_pence"]) == (14_250, 2_500, 16_750)
 
 
 def test_quantities_are_plain_numbers():
-    got = actions.price_lines([("Hours", Decimal(10), 4_500, "S"), ("Metres", Decimal("2.50"), 100, "S"), ("Each", Decimal(1), 1, "Z")])
+    got = actions.price_lines(
+        [("Hours", Decimal(10), 4_500, "S"), ("Metres", Decimal("2.50"), 100, "S"), ("Each", Decimal(1), 1, "Z")]
+    )
     assert [ln["quantity"] for ln in got["lines"]] == ["10", "2.5", "1"]  # never "1E+1"
 
 
-@pytest.mark.parametrize(("gross", "code", "net"), [(12_000, "S", 10_000), (10_000, "S", 8_333), (10_500, "R", 10_000), (999, "Z", 999)])
+@pytest.mark.parametrize(
+    ("gross", "code", "net"), [(12_000, "S", 10_000), (10_000, "S", 8_333), (10_500, "R", 10_000), (999, "Z", 999)]
+)
 def test_net_from_gross_adds_back_exactly(gross: int, code: str, net: int):
     assert actions.net_from_gross(gross, code) == net
     assert net + actions.line_vat(net, code) == gross
 
 
 async def test_vat_inclusive_amount_and_unregistered_business(books: Books):
-    intent = actions.CreateInvoiceIntent(customer_ref="JM Trading", description="Work", amount_pence=10_000, amount_includes_vat=True)
+    intent = actions.CreateInvoiceIntent(
+        customer_ref="JM Trading", description="Work", amount_pence=10_000, amount_includes_vat=True
+    )
     got = await actions.resolve_invoice(books, intent, TODAY)
     assert isinstance(got, actions.Draft) and got.preview["total_pence"] == 10_000 and got.preview["vat_pence"] == 1_667
     await books.write_json("_System/Invoicing/profile.json", {"name": "Sam Electrical"})
     plain = await actions.resolve_invoice(books, intent.model_copy(update={"amount_includes_vat": False}), TODAY)
-    assert isinstance(plain, actions.Draft) and plain.preview["vat_pence"] == 0 and plain.preview["lines"][0]["vat_code"] == "O"
+    assert (
+        isinstance(plain, actions.Draft)
+        and plain.preview["vat_pence"] == 0
+        and plain.preview["lines"][0]["vat_code"] == "O"
+    )
     assert "no VAT registration" in plain.preview["warnings"][0]
 
 
@@ -276,7 +357,9 @@ async def test_vat_inclusive_amount_and_unregistered_business(books: Books):
 
 
 async def timesheet_action(books: Books, token: str = TOKEN) -> ProposedAction:
-    intent = actions.LogTimesheetIntent(staff_ref="Alex", job_ref="Bathroom Oak Lane", hours=Decimal(3), date=date(2026, 10, 26))
+    intent = actions.LogTimesheetIntent(
+        staff_ref="Alex", job_ref="Bathroom Oak Lane", hours=Decimal(3), date=date(2026, 10, 26)
+    )
     draft = await actions.resolve_timesheet(books, intent, TODAY)
     assert isinstance(draft, actions.Draft)
     return actions.new_action(draft, token)
@@ -343,7 +426,9 @@ async def test_reject_audits_and_blocks_approval(books: Books):
         await actions.approve(action, ctx)
     assert exc.value.status == 409
     assert await jobs.load_entries(books) == []
-    row = json.loads((await books.storage.read(f"_System/audit/actions/{action.created_at:%Y-%m}.jsonl")).decode().splitlines()[0])
+    row = json.loads(
+        (await books.storage.read(f"_System/audit/actions/{action.created_at:%Y-%m}.jsonl")).decode().splitlines()[0]
+    )
     assert row["event"] == "rejected" and row["reason"] == "wrong job" and row["user"] == USER
 
 
@@ -361,8 +446,13 @@ async def test_replaying_a_card_with_any_signed_field_changed_is_refused(books: 
     action = await timesheet_action(books)
     ctx = actions.Context(books=books, user=USER, graph_token=TOKEN)
     await actions.approve(action, ctx)
-    changed = {"id": "f" * 32, "created_at": action.created_at - timedelta(days=40), "kind": "log_mileage",
-               "summary_md": action.summary_md + " ", "confirm_text": "OK"}[field]
+    changed = {
+        "id": "f" * 32,
+        "created_at": action.created_at - timedelta(days=40),
+        "kind": "log_mileage",
+        "summary_md": action.summary_md + " ",
+        "confirm_text": "OK",
+    }[field]
     with pytest.raises(actions.ActionError) as exc:
         await actions.approve(action.model_copy(update={field: changed}), ctx)
     assert exc.value.status == 403
@@ -382,7 +472,9 @@ class _Interleaving(FakeStorageProvider):
 
 
 @pytest.mark.parametrize("first_of_the_month", [True, False])
-async def test_two_approvals_at_once_execute_once(books: Books, monkeypatch: pytest.MonkeyPatch, first_of_the_month: bool):
+async def test_two_approvals_at_once_execute_once(
+    books: Books, monkeypatch: pytest.MonkeyPatch, first_of_the_month: bool
+):
     """Two taps (or two devices) at the same moment: one runs, the other gets a 409. Also when the month's actions
     log does not exist yet, where only a create-only write stops both from 'creating' it."""
     action = await timesheet_action(books)
@@ -405,12 +497,19 @@ async def test_two_approvals_at_once_execute_once(books: Books, monkeypatch: pyt
     assert next(g for g in got if isinstance(g, actions.ActionError)).status == 409
 
 
-async def test_a_stale_approving_lock_is_never_rerun_and_rejecting_clears_it(books: Books, monkeypatch: pytest.MonkeyPatch):
+async def test_a_stale_approving_lock_is_never_rerun_and_rejecting_clears_it(
+    books: Books, monkeypatch: pytest.MonkeyPatch
+):
     action = await timesheet_action(books)
     ctx = actions.Context(books=books, user=USER, graph_token=TOKEN)
     path = f"_System/audit/actions/{action.created_at:%Y-%m}.jsonl"
-    died = {"ts": (datetime.now(UTC) - timedelta(minutes=5)).isoformat(), "action_id": action.id, "kind": action.kind,
-            "event": "approving", "user": USER}
+    died = {
+        "ts": (datetime.now(UTC) - timedelta(minutes=5)).isoformat(),
+        "action_id": action.id,
+        "kind": action.kind,
+        "event": "approving",
+        "user": USER,
+    }
     await books.storage.write(path, (json.dumps(died) + "\n").encode())
     with pytest.raises(actions.ActionError) as exc:  # fresh: maybe still running
         await actions.approve(action, ctx)
@@ -460,11 +559,15 @@ async def test_invoice_approval_uses_the_invoicing_module(books: Books):
     pytest.importorskip("app.invoicing")
     from accnomos_connectors import FakeMailSender  # type: ignore[attr-defined]
 
-    intent = actions.CreateInvoiceIntent(customer_ref="JM Trading", description="Work for October 2026", amount_pence=10_000, send=True)
+    intent = actions.CreateInvoiceIntent(
+        customer_ref="JM Trading", description="Work for October 2026", amount_pence=10_000, send=True
+    )
     draft = await actions.resolve_invoice(books, intent, TODAY)
     assert isinstance(draft, actions.Draft)
     action = actions.new_action(draft, TOKEN)
-    await books.write_json("_System/Invoicing/profile.json", {"name": "Sam Electrical", "address": "1 High St", "vrn": "GB123456789"})
+    await books.write_json(
+        "_System/Invoicing/profile.json", {"name": "Sam Electrical", "address": "1 High St", "vrn": "GB123456789"}
+    )
     sender = FakeMailSender()
     ctx = actions.Context(books=books, user=USER, graph_token=TOKEN, mail_sender=lambda: sender)
     done = await actions.approve(action, ctx)
@@ -480,10 +583,13 @@ async def test_chase_proposes_the_reminder_text_and_sends_it_once(books: Books, 
 
     from app.ai import remind
 
-    await books.write_json("_System/Invoicing/profile.json", {"name": "Sam Electrical", "address": "1 High St", "vrn": "GB123456789"})
+    await books.write_json(
+        "_System/Invoicing/profile.json", {"name": "Sam Electrical", "address": "1 High St", "vrn": "GB123456789"}
+    )
     draft = inv_mod.InvoiceDraft(
         customer=inv_mod.InvoiceCustomer(name="JM Trading Ltd", email="accounts@jmtrading.example"),
-        issue_date=date(2026, 9, 1), due_date=date(2026, 10, 1),
+        issue_date=date(2026, 9, 1),
+        due_date=date(2026, 10, 1),
         lines=[inv_mod.LineIn(description="Work", quantity=Decimal(1), unit_price_pence=10_000)],
     )
     inv = await inv_mod.create_invoice(books, draft, USER)
@@ -496,7 +602,11 @@ async def test_chase_proposes_the_reminder_text_and_sends_it_once(books: Books, 
     monkeypatch.setattr(remind, "_call_model", no_model)  # code writes the reminder instead
     got = await actions.resolve_chase(books, actions.ChaseInvoiceIntent(customer_ref="JM Trading"), CFG, TODAY)
     assert isinstance(got, actions.Draft), got
-    assert got.preview["invoice"] == inv.number and got.preview["days_overdue"] == 26 and got.preview["to"] == "accounts@jmtrading.example"
+    assert (
+        got.preview["invoice"] == inv.number
+        and got.preview["days_overdue"] == 26
+        and got.preview["to"] == "accounts@jmtrading.example"
+    )
     assert got.preview["body"] in got.summary_md.replace("\\", "").replace("> ", "")
     action = actions.new_action(got, TOKEN)
     ctx = actions.Context(books=books, user=USER, graph_token=TOKEN, mail_sender=lambda: sender)
@@ -527,7 +637,9 @@ def test_ask_returns_a_card_and_approve_executes(books: Books, monkeypatch: pyte
         assert card["kind"] == "log_timesheet" and card["preview"]["hours"] == "4"
         assert r.json()["answer_md"] == card["summary_md"]
         other = client.post("/actions/approve", json={"action": card}, headers={**H, "X-Graph-Token": "another"})
-        changed = client.post("/actions/approve", json={"action": {**card, "preview": {**card["preview"], "hours": "40"}}}, headers=H)
+        changed = client.post(
+            "/actions/approve", json={"action": {**card, "preview": {**card["preview"], "hours": "40"}}}, headers=H
+        )
         ok = client.post("/actions/approve", json={"action": card}, headers=H)
         twice = client.post("/actions/approve", json={"action": card}, headers=H)
         late = client.post("/actions/reject", json={"action": card}, headers=H)

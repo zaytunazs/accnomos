@@ -160,7 +160,10 @@ def _minutes(hours: float | None) -> int:
 
 
 def find_slot(
-    busy: Sequence[tuple[datetime, datetime]], earliest: datetime, length: timedelta, latest_end: datetime,
+    busy: Sequence[tuple[datetime, datetime]],
+    earliest: datetime,
+    length: timedelta,
+    latest_end: datetime,
 ) -> datetime | None:
     """Earliest quarter-hour start >= `earliest` such that [start, start + length) misses every busy interval."""
     t = _ceil_step(earliest)
@@ -235,19 +238,35 @@ def build_plan(
             already.append(m.group(1))
         if ev.is_all_day:
             if ev.show_as == "oof":
-                warnings.append(f"You are out of office all day ({ev.subject or 'all-day event'}), so nothing is planned.")
-                return Plan(date=day, window=(win_start, win_end), items=[], warnings=warnings, districts=[],
-                            skipped_already_planned=already)
+                warnings.append(
+                    f"You are out of office all day ({ev.subject or 'all-day event'}), so nothing is planned."
+                )
+                return Plan(
+                    date=day,
+                    window=(win_start, win_end),
+                    items=[],
+                    warnings=warnings,
+                    districts=[],
+                    skipped_already_planned=already,
+                )
             warnings.append(f"All-day event: {ev.subject or '(no subject)'}.")
             continue
-        items.append(PlanItem(
-            kind="existing", start=ev.start.astimezone(TZ), end=ev.end.astimezone(TZ), job_id=None,
-            title=(ev.subject or "(no subject)")[:255], location=ev.location[:500] or None,
-        ))
+        items.append(
+            PlanItem(
+                kind="existing",
+                start=ev.start.astimezone(TZ),
+                end=ev.end.astimezone(TZ),
+                job_id=None,
+                title=(ev.subject or "(no subject)")[:255],
+                location=ev.location[:500] or None,
+            )
+        )
         if ev.show_as not in NOT_BUSY:
             busy.append((ev.start, ev.end))
 
-    lunch_open = win_start <= _at(day, LUNCH_LAST_START) and win_end >= _at(day, LUNCH_FROM) + timedelta(minutes=LUNCH_MIN)
+    lunch_open = win_start <= _at(day, LUNCH_LAST_START) and win_end >= _at(day, LUNCH_FROM) + timedelta(
+        minutes=LUNCH_MIN
+    )
     lunch_latest_end = min(win_end, _at(day, LUNCH_LAST_START) + timedelta(minutes=LUNCH_MIN))
 
     def place_lunch(earliest: datetime) -> None:
@@ -280,7 +299,9 @@ def build_plan(
         left -= len(chosen[district])
     not_chosen = sum(len(g) for g in groups.values()) - sum(len(g) for g in chosen.values())
     if not_chosen:
-        warnings.append(f"{not_chosen} more open job{'s' if not_chosen != 1 else ''} not planned (limit {max_visits} visits).")
+        warnings.append(
+            f"{not_chosen} more open job{'s' if not_chosen != 1 else ''} not planned (limit {max_visits} visits)."
+        )
 
     cursor, last_district = win_start, None
     districts: list[str] = []
@@ -295,7 +316,7 @@ def build_plan(
                 place_lunch(cursor)  # lunch before this visit, or it would slip past 14:00
                 after_lunch = find_slot(busy, cursor, block, win_end)
                 if after_lunch is None and at is not None:  # a long visit only fits without lunch: keep the visit
-                    del items[mark[0]:], busy[mark[1]:], warnings[mark[2]:]
+                    del items[mark[0] :], busy[mark[1] :], warnings[mark[2] :]
                     warnings.append("No room for a lunch break between 12:00 and 14:00.")
                 else:
                     at = after_lunch
@@ -305,10 +326,16 @@ def build_plan(
             arrive = at + timedelta(minutes=travel)
             leave = arrive + timedelta(minutes=visit)
             items.append(PlanItem(kind="travel", start=at, end=arrive, title=f"Travel to {district}"))
-            items.append(PlanItem(
-                kind="visit", start=arrive, end=leave, job_id=job.id, title=job.name[:255],
-                location=(job.site_address or "")[:500] or None,
-            ))
+            items.append(
+                PlanItem(
+                    kind="visit",
+                    start=arrive,
+                    end=leave,
+                    job_id=job.id,
+                    title=job.name[:255],
+                    location=(job.site_address or "")[:500] or None,
+                )
+            )
             busy += [(at, leave)]
             cursor, last_district = leave, district
             if district not in districts:
@@ -323,19 +350,33 @@ def build_plan(
         if at is None:
             warnings.append(f"No hour free for {due.title} (due {due.due.day} {due.due:%b}).")
             continue
-        items.append(PlanItem(kind="admin", start=at, end=at + length, title=f"{due.title} (due {due.due.day} {due.due:%b})"))
+        items.append(
+            PlanItem(kind="admin", start=at, end=at + length, title=f"{due.title} (due {due.due.day} {due.due:%b})")
+        )
         busy.append((at, at + length))
 
     items.sort(key=lambda i: (i.start, i.kind != "existing"))
-    return Plan(date=day, window=(win_start, win_end), items=items, warnings=warnings, districts=districts,
-                skipped_already_planned=already)
+    return Plan(
+        date=day,
+        window=(win_start, win_end),
+        items=items,
+        warnings=warnings,
+        districts=districts,
+        skipped_already_planned=already,
+    )
 
 
 def plan_hash(day: date, items: Sequence[PlanItem]) -> str:
     """Stable id of a plan: the same day and items (in any order, any UTC offset spelling) hash the same."""
     rows = sorted(
-        [i.kind, i.start.astimezone(UTC).isoformat(), i.end.astimezone(UTC).isoformat(), i.job_id or "", i.title,
-         i.location or ""]
+        [
+            i.kind,
+            i.start.astimezone(UTC).isoformat(),
+            i.end.astimezone(UTC).isoformat(),
+            i.job_id or "",
+            i.title,
+            i.location or "",
+        ]
         for i in items
     )
     return hashlib.sha256(json.dumps([day.isoformat(), rows], ensure_ascii=False).encode()).hexdigest()
@@ -349,7 +390,9 @@ WEEKDAYS = ("monday", "tuesday", "wednesday", "thursday", "friday", "saturday", 
 # The verb must lead straight to the day ("plan my Thursday", "schedule tomorrow"), so a books question that
 # merely mentions planning and a day ("should I schedule the payment on Friday?") stays a question.
 _DAY_WORD = rf"(?:day|today|tomorrow|{'|'.join(WEEKDAYS)}|\d{{4}}-\d{{2}}-\d{{2}})"
-_INTENT_RE = re.compile(rf"\b(?:plan|schedule|organi[sz]e)\s+(?:(?:out|my|the|for|next|on)\s+){{0,2}}{_DAY_WORD}\b", re.I)
+_INTENT_RE = re.compile(
+    rf"\b(?:plan|schedule|organi[sz]e)\s+(?:(?:out|my|the|for|next|on)\s+){{0,2}}{_DAY_WORD}\b", re.I
+)
 
 
 def plan_intent(text: str, today: date) -> date | None:

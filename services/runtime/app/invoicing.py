@@ -176,7 +176,9 @@ async def save_profile(books: Books, profile: InvoiceProfile, user: str) -> Invo
 
 
 class InvoiceCustomer(StrictBody):
-    contact_id: str | None = Field(None, max_length=64)  # an id in _System/Contacts/contacts.json, when picked from the contact book
+    contact_id: str | None = Field(
+        None, max_length=64
+    )  # an id in _System/Contacts/contacts.json, when picked from the contact book
     name: str = Field(min_length=1, max_length=200)
     email: str | None = Field(None, max_length=254)
     address: str | None = Field(None, max_length=1000)
@@ -197,7 +199,9 @@ class LineIn(StrictBody):
     unit: str | None = Field(None, max_length=20)  # "hours", "days", "each"
     unit_price_pence: Pence = Field(ge=-100_000_000, le=100_000_000)  # negative for a discount line
     vat_code: SalesVatCode = "S"
-    timesheet_entry_ids: list[Annotated[str, Field(max_length=32)]] = Field(default_factory=list, max_length=1000)  # hours this line bills (jobs)
+    timesheet_entry_ids: list[Annotated[str, Field(max_length=32)]] = Field(
+        default_factory=list, max_length=1000
+    )  # hours this line bills (jobs)
 
 
 class InvoiceLine(LineIn):
@@ -290,16 +294,28 @@ def price_lines(lines: list[LineIn]) -> tuple[list[InvoiceLine], list[VatSummary
     return out, summary, sum(ln.net_pence for ln in out), sum(ln.vat_pence for ln in out)
 
 
-def build_invoice(number: str, draft: InvoiceDraft, profile: InvoiceProfile, user: str, today: date | None = None) -> Invoice:
+def build_invoice(
+    number: str, draft: InvoiceDraft, profile: InvoiceProfile, user: str, today: date | None = None
+) -> Invoice:
     issue = draft.issue_date or today or now().date()
     due = draft.due_date or issue + timedelta(days=profile.terms_days)
     if due < issue:
         raise InvoiceError("The due date is before the invoice date")
     lines, summary, net, vat = price_lines(draft.lines)
     return Invoice(
-        number=number, customer=draft.customer, issue_date=issue, due_date=due, lines=lines, vat_summary=summary,
-        net_pence=net, vat_pence=vat, total_pence=net + vat, reference=(draft.reference or "").strip() or None,
-        notes=(draft.notes or "").strip() or None, created_by=user, job_id=draft.job_id,
+        number=number,
+        customer=draft.customer,
+        issue_date=issue,
+        due_date=due,
+        lines=lines,
+        vat_summary=summary,
+        net_pence=net,
+        vat_pence=vat,
+        total_pence=net + vat,
+        reference=(draft.reference or "").strip() or None,
+        notes=(draft.notes or "").strip() or None,
+        created_by=user,
+        job_id=draft.job_id,
     )
 
 
@@ -356,8 +372,11 @@ async def customer_from_contact(books: Books, contact_id: str) -> InvoiceCustome
     for c in await books.read_json(CONTACTS, []):
         if isinstance(c, dict) and c.get("id") == contact_id:
             return InvoiceCustomer(
-                contact_id=contact_id, name=c.get("name") or "?", email=c.get("email") or None,
-                address=c.get("address") or None, vrn=c.get("vrn") or None,
+                contact_id=contact_id,
+                name=c.get("name") or "?",
+                email=c.get("email") or None,
+                address=c.get("address") or None,
+                vrn=c.get("vrn") or None,
             )
     return None
 
@@ -368,10 +387,15 @@ async def customers(books: Books) -> list[InvoiceCustomer]:
     for c in await books.read_json(CONTACTS, []):
         if isinstance(c, dict) and c.get("id") and c.get("name") and c.get("kind") in ("customer", "both"):
             try:
-                out.append(InvoiceCustomer(
-                    contact_id=c["id"], name=c["name"], email=c.get("email") or None,
-                    address=c.get("address") or None, vrn=c.get("vrn") or None,
-                ))
+                out.append(
+                    InvoiceCustomer(
+                        contact_id=c["id"],
+                        name=c["name"],
+                        email=c.get("email") or None,
+                        address=c.get("address") or None,
+                        vrn=c.get("vrn") or None,
+                    )
+                )
             except ValueError:  # a hand-edited contact with a bad email still shows, without the email
                 out.append(InvoiceCustomer(contact_id=c["id"], name=c["name"], address=c.get("address") or None))
     return sorted(out, key=lambda c: c.name.lower())
@@ -454,9 +478,16 @@ def sale_event(inv: Invoice, user: str, evidence: list[str]) -> LedgerEvent:
         biggest = max(inv.vat_summary, key=lambda r: r.vat_pence)
         lines.append(Line(account=VAT_CONTROL, credit=inv.vat_pence, vat_code=VatCode(biggest.vat_code), memo=memo))
     return LedgerEvent(
-        id=sale_event_id(inv.number), kind="sale", date=inv.issue_date, lines=lines, evidence=evidence,
-        approved_by=user, approved_at=now(), net=sum(r.net_pence for r in inv.vat_summary if r.vat_code in ON_RETURN),
-        vat=inv.vat_pence, counterparty=inv.customer.name,
+        id=sale_event_id(inv.number),
+        kind="sale",
+        date=inv.issue_date,
+        lines=lines,
+        evidence=evidence,
+        approved_by=user,
+        approved_at=now(),
+        net=sum(r.net_pence for r in inv.vat_summary if r.vat_code in ON_RETURN),
+        vat=inv.vat_pence,
+        counterparty=inv.customer.name,
     )
 
 
@@ -482,7 +513,8 @@ def default_email(inv: Invoice, profile: InvoiceProfile) -> tuple[str, str]:
     """(subject, body) the confirmation dialog starts from; the user can change both."""
     who = profile.name.strip() or "us"
     lines = [
-        "Hello,", "",
+        "Hello,",
+        "",
         f"Please find attached invoice {inv.number} for {money(inv.total_pence)}, due on {uk_date(inv.due_date)}.",
     ]
     if profile.bank.is_set():
@@ -517,8 +549,11 @@ async def mark_hours(books: Books, inv: Invoice, user: str) -> None:
     if inv.status != "sent" or inv.timesheets_marked or not ids:
         return
     known = {e.id: e for e in await jobs.load_entries(books)}
-    ok = [i for i in ids if (e := known.get(i)) and e.job_id == inv.job_id and e.billable
-          and e.invoiced_in in (None, inv.number)]
+    ok = [
+        i
+        for i in ids
+        if (e := known.get(i)) and e.job_id == inv.job_id and e.billable and e.invoiced_in in (None, inv.number)
+    ]
     if ok:
         try:
             await jobs.mark_invoiced(books, ok, inv.number)
@@ -527,14 +562,28 @@ async def mark_hours(books: Books, inv: Invoice, user: str) -> None:
             return
     inv.timesheets_marked = True
     await save_invoice(books, inv)
-    await books.audit(f"user:{user}", "timesheets_invoiced", {
-        "job": inv.job_id, "invoice": inv.number, "entries": ok, "skipped": [i for i in ids if i not in ok],
-    })
+    await books.audit(
+        f"user:{user}",
+        "timesheets_invoiced",
+        {
+            "job": inv.job_id,
+            "invoice": inv.number,
+            "entries": ok,
+            "skipped": [i for i in ids if i not in ok],
+        },
+    )
 
 
 async def send_invoice(
-    books: Books, sender: MailSender, number: str, user: str, pdf: bytes,
-    *, to: str | None = None, subject: str | None = None, body: str | None = None,
+    books: Books,
+    sender: MailSender,
+    number: str,
+    user: str,
+    pdf: bytes,
+    *,
+    to: str | None = None,
+    subject: str | None = None,
+    body: str | None = None,
 ) -> Invoice:
     """Email the PDF from the user's mailbox, mark the invoice sent, then post the sale.
 
@@ -563,10 +612,14 @@ async def send_invoice(
                 f"Timesheet entry {taken[0]} is already on invoice {billed[taken[0]]}; remove that line first"
             )
     d_subject, d_body = default_email(inv, profile)
-    await sender.send(OutgoingMail(
-        to=to, subject=(subject or "").strip() or d_subject, body_text=(body or "").strip() or d_body,
-        attachments=[OutgoingAttachment(name=f"{inv.number}.pdf", content_type="application/pdf", data=pdf)],
-    ))
+    await sender.send(
+        OutgoingMail(
+            to=to,
+            subject=(subject or "").strip() or d_subject,
+            body_text=(body or "").strip() or d_body,
+            attachments=[OutgoingAttachment(name=f"{inv.number}.pdf", content_type="application/pdf", data=pdf)],
+        )
+    )
     sha = hashlib.sha256(pdf).hexdigest()
     inv.status, inv.sent_at, inv.sent_to, inv.sent_by, inv.pdf_sha256 = "sent", now(), to, user, sha
     await save_invoice(books, inv)
@@ -578,7 +631,15 @@ async def send_invoice(
 
 
 async def send_reminder(
-    books: Books, sender: MailSender, number: str, user: str, *, to: str, subject: str, body: str, pdf: bytes | None,
+    books: Books,
+    sender: MailSender,
+    number: str,
+    user: str,
+    *,
+    to: str,
+    subject: str,
+    body: str,
+    pdf: bytes | None,
 ) -> Invoice:
     """Send the reminder text the user approved (and may have edited), with the invoice attached."""
     inv = await get_invoice(books, number)
@@ -589,11 +650,15 @@ async def send_reminder(
         raise InvoiceError("Add the customer's email address")
     if not subject.strip() or not body.strip():
         raise InvoiceError("The reminder needs a subject and a message")
-    attachments = [OutgoingAttachment(name=f"{inv.number}.pdf", content_type="application/pdf", data=pdf)] if pdf else []
+    attachments = (
+        [OutgoingAttachment(name=f"{inv.number}.pdf", content_type="application/pdf", data=pdf)] if pdf else []
+    )
     await sender.send(OutgoingMail(to=to, subject=subject.strip(), body_text=body.strip(), attachments=attachments))
     inv.reminders.append(Reminder(sent_at=now(), sent_by=user, to=to, subject=subject.strip()))
     await save_invoice(books, inv)
-    await books.audit(f"user:{user}", "invoice_reminder_sent", {"invoice": number, "to": to, "count": len(inv.reminders)})
+    await books.audit(
+        f"user:{user}", "invoice_reminder_sent", {"invoice": number, "to": to, "count": len(inv.reminders)}
+    )
     return inv
 
 
@@ -614,13 +679,19 @@ async def bank_candidates(books: Books, inv: Invoice) -> list[BankLine]:
     if inv.status != "sent":
         return []
     return [
-        ln for ln in await books.list_bank_lines()
+        ln
+        for ln in await books.list_bank_lines()
         if ln.status != "matched" and ln.amount_pence == inv.total_pence and ln.date >= inv.issue_date
     ]
 
 
 async def mark_paid(
-    books: Books, number: str, user: str, *, payment_ref: str | None = None, paid_on: date | None = None,
+    books: Books,
+    number: str,
+    user: str,
+    *,
+    payment_ref: str | None = None,
+    paid_on: date | None = None,
     bank_line_id: str | None = None,
 ) -> Invoice:
     inv = await get_invoice(books, number)
@@ -640,9 +711,16 @@ async def mark_paid(
     inv.status, inv.paid_at = "paid", paid_on or now().date()
     inv.payment_ref, inv.bank_line_id = (payment_ref or "").strip() or None, bank_line_id
     await save_invoice(books, inv)
-    await books.audit(f"user:{user}", "invoice_paid", {
-        "invoice": number, "event": inv.event_id, "bank_line": bank_line_id, "payment_ref": inv.payment_ref,
-    })
+    await books.audit(
+        f"user:{user}",
+        "invoice_paid",
+        {
+            "invoice": number,
+            "event": inv.event_id,
+            "bank_line": bank_line_id,
+            "payment_ref": inv.payment_ref,
+        },
+    )
     return inv
 
 
@@ -665,9 +743,15 @@ async def void_invoice(books: Books, number: str, user: str, reason: str) -> Inv
         inv.reversal_event_id = reversal.id
     inv.status, inv.voided_at, inv.void_reason = "void", now(), reason.strip()
     await save_invoice(books, inv)
-    await books.audit(f"user:{user}", "invoice_voided", {
-        "invoice": number, "reason": inv.void_reason, "reversal": inv.reversal_event_id,
-    })
+    await books.audit(
+        f"user:{user}",
+        "invoice_voided",
+        {
+            "invoice": number,
+            "reason": inv.void_reason,
+            "reversal": inv.reversal_event_id,
+        },
+    )
     if inv.reversal_event_id:
         await books.rebuild_safely(f"user:{user}")
     return inv

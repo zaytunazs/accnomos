@@ -55,21 +55,31 @@ def assert_no_overlaps(plan: planner.Plan, existing: list[CalendarEvent] = ()) -
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.parametrize(("address", "want"), [
-    ("12 Elm Road, Leeds LS6 2AB", "LS6"),
-    ("flat 3, 1 high st, london sw1a 1aa", "SW1A"),
-    ("Unit 4, M1 1AE", "M1"),
-    ("B338TH", "B33"),
-    ("Old address LS1 4AP, now at LS12 3DE", "LS12"),
-    ("12 Elm Road, Leeds", None),
-    (None, None),
-])
+@pytest.mark.parametrize(
+    ("address", "want"),
+    [
+        ("12 Elm Road, Leeds LS6 2AB", "LS6"),
+        ("flat 3, 1 high st, london sw1a 1aa", "SW1A"),
+        ("Unit 4, M1 1AE", "M1"),
+        ("B338TH", "B33"),
+        ("Old address LS1 4AP, now at LS12 3DE", "LS12"),
+        ("12 Elm Road, Leeds", None),
+        (None, None),
+    ],
+)
 def test_postcode_district(address: str | None, want: str | None) -> None:
     assert postcode_district(address) == want
 
 
 def test_districts_sort_by_area_then_number() -> None:
-    assert sorted(["LS12", "M1", "LS6", "LS1", "SW1A", "SW1"], key=planner.district_key) == ["LS1", "LS6", "LS12", "M1", "SW1", "SW1A"]
+    assert sorted(["LS12", "M1", "LS6", "LS1", "SW1A", "SW1"], key=planner.district_key) == [
+        "LS1",
+        "LS6",
+        "LS12",
+        "M1",
+        "SW1",
+        "SW1A",
+    ]
 
 
 # --------------------------------------------------------------------------- #
@@ -130,8 +140,12 @@ def test_constraints_start_end_and_max_visits_are_respected() -> None:
 
 
 def test_jobs_that_do_not_fit_are_warned_about() -> None:
-    plan = build_plan(DAY, [job(1, "LS6 1AA", hours=4), job(2, "M1 1AE", hours=4)], [],
-                      constraints=Constraints(start="08:00", end="14:00"))
+    plan = build_plan(
+        DAY,
+        [job(1, "LS6 1AA", hours=4), job(2, "M1 1AE", hours=4)],
+        [],
+        constraints=Constraints(start="08:00", end="14:00"),
+    )
     assert len(visits(plan)) == 1
     assert any("does not fit" in w for w in plan.warnings)
 
@@ -196,7 +210,10 @@ def test_bad_constraints_are_refused() -> None:
 
 def test_plan_hash_ignores_order_and_offset_spelling() -> None:
     plan = build_plan(DAY, [job(1, "LS6 1AA"), job(2, "LS7 1AA")], [])
-    utc = [i.model_copy(update={"start": i.start.astimezone(planner.UTC), "end": i.end.astimezone(planner.UTC)}) for i in plan.items]
+    utc = [
+        i.model_copy(update={"start": i.start.astimezone(planner.UTC), "end": i.end.astimezone(planner.UTC)})
+        for i in plan.items
+    ]
     assert planner.plan_hash(DAY, plan.items) == planner.plan_hash(DAY, list(reversed(utc)))
     assert planner.plan_hash(DAY, plan.items) != planner.plan_hash(DAY, plan.items[1:])
 
@@ -206,23 +223,26 @@ def test_plan_hash_ignores_order_and_offset_spelling() -> None:
 # --------------------------------------------------------------------------- #
 
 
-@pytest.mark.parametrize(("text", "want"), [
-    ("Plan my Thursday", date(2026, 10, 29)),
-    ("plan my day", TODAY),
-    ("Can you plan today?", TODAY),
-    ("plan tomorrow please", date(2026, 10, 28)),
-    ("plan Tuesday", TODAY),  # 27 Oct 2026 is a Tuesday
-    ("plan next Tuesday", date(2026, 11, 3)),
-    ("plan 2026-11-05", date(2026, 11, 5)),
-    ("How much VAT do I owe on Thursday?", None),
-    ("plan for retirement", None),
-    ("Plan my day on Thursday", date(2026, 10, 29)),
-    ("schedule the day", TODAY),
-    # Questions about the books that happen to say plan/schedule and a day stay questions.
-    ("Should I schedule the supplier payment on Friday?", None),
-    ("I plan to pay HMRC tomorrow, can I afford it?", None),
-    ("What did I plan to spend today?", None),
-])
+@pytest.mark.parametrize(
+    ("text", "want"),
+    [
+        ("Plan my Thursday", date(2026, 10, 29)),
+        ("plan my day", TODAY),
+        ("Can you plan today?", TODAY),
+        ("plan tomorrow please", date(2026, 10, 28)),
+        ("plan Tuesday", TODAY),  # 27 Oct 2026 is a Tuesday
+        ("plan next Tuesday", date(2026, 11, 3)),
+        ("plan 2026-11-05", date(2026, 11, 5)),
+        ("How much VAT do I owe on Thursday?", None),
+        ("plan for retirement", None),
+        ("Plan my day on Thursday", date(2026, 10, 29)),
+        ("schedule the day", TODAY),
+        # Questions about the books that happen to say plan/schedule and a day stay questions.
+        ("Should I schedule the supplier payment on Friday?", None),
+        ("I plan to pay HMRC tomorrow, can I afford it?", None),
+        ("What did I plan to spend today?", None),
+    ],
+)
 def test_plan_intent(text: str, want: date | None) -> None:
     assert plan_intent(text, TODAY) == want
 
@@ -315,8 +335,9 @@ async def _seed_jobs(fake: FakeStorageProvider, *js: Job) -> None:
         await jobs.save_job(books, j)
 
 
-async def test_plan_day_route_proposes_and_writes_nothing(client: TestClient, fake: FakeStorageProvider,
-                                                          calendar: FakeCalendarProvider) -> None:
+async def test_plan_day_route_proposes_and_writes_nothing(
+    client: TestClient, fake: FakeStorageProvider, calendar: FakeCalendarProvider
+) -> None:
     await _seed_jobs(fake, job(1, "LS6 1AA"), job(2, "LS7 1AA"))
     before = dict(fake.files)
     r = client.post("/plan/day", json={"date": DAY.isoformat(), "constraints": {"max_visits": 2}}, headers=H)
@@ -330,12 +351,15 @@ async def test_plan_day_route_proposes_and_writes_nothing(client: TestClient, fa
 
 
 def test_plan_day_route_rejects_bad_constraints(client: TestClient) -> None:
-    r = client.post("/plan/day", json={"date": DAY.isoformat(), "constraints": {"start": "18:00", "end": "08:00"}}, headers=H)
+    r = client.post(
+        "/plan/day", json={"date": DAY.isoformat(), "constraints": {"start": "18:00", "end": "08:00"}}, headers=H
+    )
     assert r.status_code == 422
 
 
-async def test_apply_creates_only_new_items_once(client: TestClient, fake: FakeStorageProvider,
-                                                 calendar: FakeCalendarProvider) -> None:
+async def test_apply_creates_only_new_items_once(
+    client: TestClient, fake: FakeStorageProvider, calendar: FakeCalendarProvider
+) -> None:
     await _seed_jobs(fake, job(1, "12 Elm Road, LS6 1AA"), job(2, "LS7 1AA"))
     plan = client.post("/plan/day", json={"date": DAY.isoformat()}, headers=H).json()["plan"]
     new = [i for i in plan if i["kind"] != "existing"]
@@ -362,8 +386,9 @@ async def test_apply_creates_only_new_items_once(client: TestClient, fake: FakeS
     assert not [i for i in replan["plan"] if i["kind"] == "visit"]
 
 
-async def test_apply_after_a_half_finished_attempt_reuses_events(client: TestClient, fake: FakeStorageProvider,
-                                                                  calendar: FakeCalendarProvider) -> None:
+async def test_apply_after_a_half_finished_attempt_reuses_events(
+    client: TestClient, fake: FakeStorageProvider, calendar: FakeCalendarProvider
+) -> None:
     await _seed_jobs(fake, job(1, "LS6 1AA"))
     plan = client.post("/plan/day", json={"date": DAY.isoformat()}, headers=H).json()["plan"]
     first = PlanItem.model_validate(next(i for i in plan if i["kind"] == "travel"))
@@ -373,8 +398,9 @@ async def test_apply_after_a_half_finished_attempt_reuses_events(client: TestCli
     assert len(calendar.created) == len([i for i in plan if i["kind"] != "existing"])
 
 
-async def test_apply_refuses_when_the_calendar_changed(client: TestClient, fake: FakeStorageProvider,
-                                                       calendar: FakeCalendarProvider) -> None:
+async def test_apply_refuses_when_the_calendar_changed(
+    client: TestClient, fake: FakeStorageProvider, calendar: FakeCalendarProvider
+) -> None:
     await _seed_jobs(fake, job(1, "LS6 1AA"))
     plan = client.post("/plan/day", json={"date": DAY.isoformat()}, headers=H).json()["plan"]
     visit = PlanItem.model_validate(next(i for i in plan if i["kind"] == "visit"))
@@ -385,16 +411,26 @@ async def test_apply_refuses_when_the_calendar_changed(client: TestClient, fake:
 
 
 def test_apply_refuses_items_off_the_day_or_overlapping(client: TestClient, calendar: FakeCalendarProvider) -> None:
-    other_day = {"kind": "visit", "start": at(10, day=DAY + timedelta(days=1)).isoformat(),
-                 "end": at(11, day=DAY + timedelta(days=1)).isoformat(), "title": "x", "job_id": None, "location": None}
+    other_day = {
+        "kind": "visit",
+        "start": at(10, day=DAY + timedelta(days=1)).isoformat(),
+        "end": at(11, day=DAY + timedelta(days=1)).isoformat(),
+        "title": "x",
+        "job_id": None,
+        "location": None,
+    }
     r = client.post("/plan/day/apply", json={"date": DAY.isoformat(), "plan": [other_day]}, headers=H)
     assert r.status_code == 400
     a = {"kind": "visit", "start": at(10).isoformat(), "end": at(12).isoformat(), "title": "a"}
     b = {"kind": "admin", "start": at(11).isoformat(), "end": at(13).isoformat(), "title": "b"}
     r = client.post("/plan/day/apply", json={"date": DAY.isoformat(), "plan": [a, b]}, headers=H)
     assert r.status_code == 400 and "overlap" in r.json()["detail"]
-    assert client.post("/plan/day/apply", json={"date": DAY.isoformat(), "plan": [a]},
-                       headers={"X-Graph-Token": "tok"}).status_code == 400  # X-User required
+    assert (
+        client.post(
+            "/plan/day/apply", json={"date": DAY.isoformat(), "plan": [a]}, headers={"X-Graph-Token": "tok"}
+        ).status_code
+        == 400
+    )  # X-User required
     assert calendar.created == []
 
 
@@ -405,14 +441,18 @@ async def test_apply_proposes_mileage_when_vehicles_exist(client: TestClient, fa
     res = client.post("/plan/day/apply", json={"date": DAY.isoformat(), "plan": plan}, headers=H).json()
     mp = res["mileage_proposals"]
     assert [(m["from_district"], m["to_district"], m["vehicle_id"], m["miles"], m["status"]) for m in mp] == [
-        (None, "LS6", "van1", None, "proposed"), ("LS6", "LS7", "van1", None, "proposed"),
+        (None, "LS6", "van1", None, "proposed"),
+        ("LS6", "LS7", "van1", None, "proposed"),
     ]
 
 
 async def test_job_estimate_survives_a_status_change(client: TestClient, fake: FakeStorageProvider) -> None:
     await _seed_jobs(fake, job(1, "LS6 1AA", hours=3))
-    r = client.put(f"/jobs/{1:012x}", json={"name": "Job 1", "customer_id": None, "site_address": "LS6 1AA", "status": "closed"},
-                   headers=H)
+    r = client.put(
+        f"/jobs/{1:012x}",
+        json={"name": "Job 1", "customer_id": None, "site_address": "LS6 1AA", "status": "closed"},
+        headers=H,
+    )
     assert r.status_code == 200 and r.json()["estimate_hours"] == 3
 
 
@@ -435,8 +475,9 @@ def _lunch() -> list[dict[str, str]]:
     return [{"kind": "lunch", "start": at(12).isoformat(), "end": at(12, 30).isoformat(), "title": "Lunch"}]
 
 
-def test_missing_calendar_scope_is_a_401_so_the_app_asks_again(client: TestClient, calendar: FakeCalendarProvider,
-                                                               monkeypatch: pytest.MonkeyPatch) -> None:
+def test_missing_calendar_scope_is_a_401_so_the_app_asks_again(
+    client: TestClient, calendar: FakeCalendarProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from accnomos_connectors import GraphError
 
     async def forbidden(*_a: object, **_k: object) -> list[CalendarEvent]:
@@ -444,17 +485,22 @@ def test_missing_calendar_scope_is_a_401_so_the_app_asks_again(client: TestClien
 
     monkeypatch.setattr(calendar, "list_events", forbidden)
     assert client.post("/plan/day", json={"date": DAY.isoformat()}, headers=H).status_code == 401
-    assert client.post("/plan/day/apply", json={"date": DAY.isoformat(), "plan": _lunch()}, headers=H).status_code == 401
+    assert (
+        client.post("/plan/day/apply", json={"date": DAY.isoformat(), "plan": _lunch()}, headers=H).status_code == 401
+    )
     assert calendar.created == []
 
 
 def test_apply_needs_the_user(client: TestClient, calendar: FakeCalendarProvider) -> None:
-    r = client.post("/plan/day/apply", json={"date": DAY.isoformat(), "plan": _lunch()}, headers={"X-Graph-Token": "tok"})
+    r = client.post(
+        "/plan/day/apply", json={"date": DAY.isoformat(), "plan": _lunch()}, headers={"X-Graph-Token": "tok"}
+    )
     assert r.status_code == 400 and calendar.created == []
 
 
-def test_apply_survives_a_damaged_applied_file(client: TestClient, fake: FakeStorageProvider,
-                                               calendar: FakeCalendarProvider) -> None:
+def test_apply_survives_a_damaged_applied_file(
+    client: TestClient, fake: FakeStorageProvider, calendar: FakeCalendarProvider
+) -> None:
     fake.files[APPLIED] = b'["not", "a", "map"]'
     r = client.post("/plan/day/apply", json={"date": DAY.isoformat(), "plan": _lunch()}, headers=H)
     assert r.status_code == 200, r.text

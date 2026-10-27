@@ -34,6 +34,7 @@ def books() -> Books:
 @pytest.fixture
 def client(books: Books) -> Iterator[TestClient]:
     """The real app over in-memory storage: nothing here reaches Graph."""
+
     async def fake_books() -> Any:
         yield books
 
@@ -79,13 +80,27 @@ def all_body_models() -> dict[type[BaseModel], set[str]]:
 
 def test_the_walk_sees_the_new_routers():
     paths = {r.path for r in routes()}
-    assert {"/invoices", "/actions/approve", "/plan/day/apply", "/mail/draft-reply", "/todos", "/payroll/runs/prepare",
-            "/vehicles", "/mileage", "/jobs", "/contacts/{contact_id}", "/books/dashboard"} <= paths
+    assert {
+        "/invoices",
+        "/actions/approve",
+        "/plan/day/apply",
+        "/mail/draft-reply",
+        "/todos",
+        "/payroll/runs/prepare",
+        "/vehicles",
+        "/mileage",
+        "/jobs",
+        "/contacts/{contact_id}",
+        "/books/dashboard",
+    } <= paths
 
 
 def test_every_request_body_forbids_unknown_fields():
-    loose = {f"{m.__module__}.{m.__qualname__}": sorted(where) for m, where in all_body_models().items()
-             if m.model_config.get("extra") != "forbid"}
+    loose = {
+        f"{m.__module__}.{m.__qualname__}": sorted(where)
+        for m, where in all_body_models().items()
+        if m.model_config.get("extra") != "forbid"
+    }
     assert loose == {}
 
 
@@ -98,7 +113,9 @@ def _unbounded_str(tp: Any) -> bool:
         return False
     if origin is typing.Annotated:
         inner, *meta = typing.get_args(tp)
-        capped = any(isinstance(x, MaxLen) or any(isinstance(y, MaxLen) for y in getattr(x, "metadata", [])) for x in meta)
+        capped = any(
+            isinstance(x, MaxLen) or any(isinstance(y, MaxLen) for y in getattr(x, "metadata", [])) for x in meta
+        )
         return False if capped else _unbounded_str(inner)
     if origin is dict:
         return _unbounded_str(typing.get_args(tp)[1])
@@ -108,7 +125,8 @@ def _unbounded_str(tp: Any) -> bool:
 def test_every_free_text_field_in_a_body_has_a_length_cap():
     missing = sorted(
         f"{m.__module__}.{m.__qualname__}.{name}"
-        for m in all_body_models() for name, f in m.model_fields.items()
+        for m in all_body_models()
+        for name, f in m.model_fields.items()
         if _unbounded_str(f.annotation) and not any(isinstance(x, MaxLen) for x in f.metadata)
     )
     assert missing == []
@@ -119,15 +137,18 @@ class _Money(BaseModel):
     pence: Pence
 
 
-@pytest.mark.parametrize("raw", [
-    '{"day": 1793059200, "pence": 1}',             # a Unix timestamp
-    '{"day": "2026-10-27T00:00:00", "pence": 1}',  # a datetime
-    '{"day": "27/10/2026", "pence": 1}',
-    '{"day": "2026-02-30", "pence": 1}',           # not a real day
-    '{"day": "2026-10-27", "pence": 12.0}',        # float pence
-    '{"day": "2026-10-27", "pence": "12"}',
-    '{"day": "2026-10-27", "pence": true}',
-])
+@pytest.mark.parametrize(
+    "raw",
+    [
+        '{"day": 1793059200, "pence": 1}',  # a Unix timestamp
+        '{"day": "2026-10-27T00:00:00", "pence": 1}',  # a datetime
+        '{"day": "27/10/2026", "pence": 1}',
+        '{"day": "2026-02-30", "pence": 1}',  # not a real day
+        '{"day": "2026-10-27", "pence": 12.0}',  # float pence
+        '{"day": "2026-10-27", "pence": "12"}',
+        '{"day": "2026-10-27", "pence": true}',
+    ],
+)
 def test_dates_and_money_are_parsed_strictly(raw: str):
     with pytest.raises(ValidationError):
         _Money.model_validate_json(raw)
@@ -140,28 +161,37 @@ def test_strict_dates_and_pence_still_take_the_normal_forms():
     assert _Money.model_validate({"day": date(2026, 10, 27), "pence": 0}).pence == 0
 
 
-@pytest.mark.parametrize("change", [
-    {"issue_date": 1793059200},
-    {"lines": [{"description": "x", "quantity": 1, "unit_price_pence": 1000.5}]},
-    {"lines": [{"description": "x", "quantity": 1, "unit_price_pence": "1000"}]},
-    {"lines": [{"description": "x" * 301, "quantity": 1, "unit_price_pence": 1000}]},
-    {"notes": "x" * 1001},
-    {"customer": {"name": "JM Trading", "address": "x" * 1001}},
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"issue_date": 1793059200},
+        {"lines": [{"description": "x", "quantity": 1, "unit_price_pence": 1000.5}]},
+        {"lines": [{"description": "x", "quantity": 1, "unit_price_pence": "1000"}]},
+        {"lines": [{"description": "x" * 301, "quantity": 1, "unit_price_pence": 1000}]},
+        {"notes": "x" * 1001},
+        {"customer": {"name": "JM Trading", "address": "x" * 1001}},
+    ],
+)
 def test_invoice_drafts_refuse_loose_dates_money_and_long_text(change: dict[str, Any]):
-    ok = {"customer": {"name": "JM Trading"}, "lines": [{"description": "Work", "quantity": 1, "unit_price_pence": 1000}]}
+    ok = {
+        "customer": {"name": "JM Trading"},
+        "lines": [{"description": "Work", "quantity": 1, "unit_price_pence": 1000}],
+    }
     InvoiceDraft.model_validate(ok)
     with pytest.raises(ValidationError):
         InvoiceDraft.model_validate({**ok, **change})
 
 
-@pytest.mark.parametrize(("method", "path", "body"), [
-    ("post", "/actions/approve", {"action": {}, "extra": 1}),
-    ("post", "/invoices/INV-0001/send", {"confirm": True, "bcc": "x@example.com"}),
-    ("post", "/invoices/INV-0001/mark-paid", {"paid_on": "2026-10-27", "amount": 1}),
-    ("post", "/plan/day/apply", {"date": "2026-10-27", "plan": [], "force": True}),
-    ("put", "/payroll/runs/2026-10", {"lines": [{"staff_id": "a", "hours": 1, "rate_pence": 1, "bonus": 1}]}),
-])
+@pytest.mark.parametrize(
+    ("method", "path", "body"),
+    [
+        ("post", "/actions/approve", {"action": {}, "extra": 1}),
+        ("post", "/invoices/INV-0001/send", {"confirm": True, "bcc": "x@example.com"}),
+        ("post", "/invoices/INV-0001/mark-paid", {"paid_on": "2026-10-27", "amount": 1}),
+        ("post", "/plan/day/apply", {"date": "2026-10-27", "plan": [], "force": True}),
+        ("put", "/payroll/runs/2026-10", {"lines": [{"staff_id": "a", "hours": 1, "rate_pence": 1, "bonus": 1}]}),
+    ],
+)
 def test_unknown_fields_on_the_new_routes_are_a_422(client: TestClient, method: str, path: str, body: dict[str, Any]):
     r = getattr(client, method)(path, json=body, headers=H)
     assert r.status_code == 422
@@ -177,9 +207,14 @@ NET_MODULES = {"httpx", "requests", "urllib.request", "aiohttp", "socket", "http
 #: The only runtime modules that may import an HTTP library, and what they call.
 TALKS_HTTP = {
     "main.py": "/ai/test: the allow-listed AI base URL",
-    "ai/ask.py": "cfg.base_url", "ai/extract.py": "cfg.base_url", "ai/crop.py": "cfg.base_url (SAM, key mode)",
-    "ai/voice.py": "cfg.base_url", "ai/verify.py": "cfg.base_url or BASETEN_BASE",
-    "ai/remind.py": "httpx errors only", "ai/plan.py": "httpx errors only", "ai/triage.py": "httpx errors only",
+    "ai/ask.py": "cfg.base_url",
+    "ai/extract.py": "cfg.base_url",
+    "ai/crop.py": "cfg.base_url (SAM, key mode)",
+    "ai/voice.py": "cfg.base_url",
+    "ai/verify.py": "cfg.base_url or BASETEN_BASE",
+    "ai/remind.py": "httpx errors only",
+    "ai/plan.py": "httpx errors only",
+    "ai/triage.py": "httpx errors only",
 }
 
 
@@ -189,8 +224,13 @@ def _modules_importing_http() -> set[str]:
     found = set()
     for path in APP.rglob("*.py"):
         for node in ast.walk(ast.parse(path.read_text())):
-            names = ([a.name for a in node.names] if isinstance(node, ast.Import)
-                     else [node.module or ""] if isinstance(node, ast.ImportFrom) else [])
+            names = (
+                [a.name for a in node.names]
+                if isinstance(node, ast.Import)
+                else [node.module or ""]
+                if isinstance(node, ast.ImportFrom)
+                else []
+            )
             if any(n in NET_MODULES or n.split(".")[0] in {"httpx", "requests", "aiohttp", "urllib3"} for n in names):
                 found.add(path.relative_to(APP).as_posix())
     return found
@@ -210,14 +250,26 @@ def test_every_runtime_http_call_goes_to_an_allow_listed_base_and_follows_no_red
     for rel in TALKS_HTTP:
         for node in ast.walk(ast.parse((APP / rel).read_text())):
             if isinstance(node, ast.Call) and ast.unparse(node.func) in ("httpx.AsyncClient", "httpx.Client"):
-                assert not any(k.arg == "follow_redirects" and ast.unparse(k.value) != "False" for k in node.keywords), rel
-            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in ("get", "post")
-                    and ast.unparse(node.func.value) in ("client", "http")):
+                assert not any(
+                    k.arg == "follow_redirects" and ast.unparse(k.value) != "False" for k in node.keywords
+                ), rel
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.func.attr in ("get", "post")
+                and ast.unparse(node.func.value) in ("client", "http")
+            ):
                 calls += 1
                 url = node.args[0]
-                assert isinstance(url, ast.JoinedStr) and isinstance(url.values[0], ast.FormattedValue), f"{rel}:{node.lineno}"
-                assert ast.unparse(url.values[0].value) in ("cfg.base_url", "be.base_url", "base", "cfg.base_url.rstrip('/')"), \
-                    f"{rel}:{node.lineno} {ast.unparse(url)}"
+                assert isinstance(url, ast.JoinedStr) and isinstance(url.values[0], ast.FormattedValue), (
+                    f"{rel}:{node.lineno}"
+                )
+                assert ast.unparse(url.values[0].value) in (
+                    "cfg.base_url",
+                    "be.base_url",
+                    "base",
+                    "cfg.base_url.rstrip('/')",
+                ), f"{rel}:{node.lineno} {ast.unparse(url)}"
     assert calls >= 9
 
 
@@ -276,11 +328,21 @@ def test_without_the_flag_no_test_route_header_or_middleware_exists(flag: str | 
 
     env = {k: v for k, v in os.environ.items() if not k.startswith("ACCNOMOS_")}
     env.update({"CORS_ORIGINS": "http://localhost:3000", **({"ACCNOMOS_TEST_MODE": flag} if flag is not None else {})})
-    out = subprocess.run([sys.executable, "-c", _PROBE], cwd=APP.parent, env=env, capture_output=True, text=True, timeout=120)
+    out = subprocess.run(
+        [sys.executable, "-c", _PROBE], cwd=APP.parent, env=env, capture_output=True, text=True, timeout=120
+    )
     assert out.returncode == 0, out.stderr[-2000:]
     got = json.loads(out.stdout.strip().splitlines()[-1])
-    assert got == {"test_paths": [], "middleware": got["middleware"], "state": 404, "reset": 404, "graph": 404,
-                   "tenant_header_allowed": False, "health_test_mode": False, "unlimited": []}
+    assert got == {
+        "test_paths": [],
+        "middleware": got["middleware"],
+        "state": 404,
+        "reset": 404,
+        "graph": 404,
+        "tenant_header_allowed": False,
+        "health_test_mode": False,
+        "unlimited": [],
+    }
     assert "TenantMiddleware" not in got["middleware"]
 
 
@@ -289,7 +351,9 @@ def test_cors_allows_every_method_a_route_uses_and_no_other():
     used = {m for r in routes() for m in r.methods} - {"HEAD", "OPTIONS"}
     c = TestClient(app)
     for method in sorted(used | {"TRACE", "CONNECT"}):
-        r = c.options("/vehicles/abc", headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": method})
+        r = c.options(
+            "/vehicles/abc", headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": method}
+        )
         assert (r.status_code == 200) == (method in used), method
 
 
@@ -388,16 +452,23 @@ def test_every_write_route_needs_x_user_or_is_listed_with_a_reason():
     assert stale == set(), "NO_USER_NEEDED lists routes that no longer exist"
 
 
-@pytest.mark.parametrize(("method", "path", "body"), [
-    ("post", "/actions/approve", {"action": {}}),
-    ("post", "/invoices", {"customer": {"name": "x"}, "lines": [{"description": "x", "quantity": 1, "unit_price_pence": 1}]}),
-    ("post", "/invoices/INV-0001/send", {"confirm": True}),
-    ("post", "/plan/day/apply", {"date": "2026-10-27", "plan": []}),
-    ("post", "/mail/draft-reply", {"message_id": "AAMk", "body": "Thanks"}),
-    ("post", "/todos", {"text": "Ring Hartley"}),
-    ("post", "/payroll/runs/prepare", {"period": "2026-10"}),
-    ("post", "/vehicles", {"name": "Van", "kind": "van", "owned_by": "business"}),
-])
+@pytest.mark.parametrize(
+    ("method", "path", "body"),
+    [
+        ("post", "/actions/approve", {"action": {}}),
+        (
+            "post",
+            "/invoices",
+            {"customer": {"name": "x"}, "lines": [{"description": "x", "quantity": 1, "unit_price_pence": 1}]},
+        ),
+        ("post", "/invoices/INV-0001/send", {"confirm": True}),
+        ("post", "/plan/day/apply", {"date": "2026-10-27", "plan": []}),
+        ("post", "/mail/draft-reply", {"message_id": "AAMk", "body": "Thanks"}),
+        ("post", "/todos", {"text": "Ring Hartley"}),
+        ("post", "/payroll/runs/prepare", {"period": "2026-10"}),
+        ("post", "/vehicles", {"name": "Van", "kind": "van", "owned_by": "business"}),
+    ],
+)
 def test_writes_without_x_user_are_refused(client: TestClient, method: str, path: str, body: dict[str, Any]):
     r = getattr(client, method)(path, json=body, headers={"X-Graph-Token": H["X-Graph-Token"]})
     assert r.status_code in (400, 422)
@@ -425,7 +496,12 @@ def test_every_audit_actor_is_user_or_agent():
     bad = []
     for path in sorted((Path(__file__).resolve().parents[1] / "app").rglob("*.py")):
         for node in ast.walk(ast.parse(path.read_text())):
-            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.args
-                    and node.func.attr in ("audit", "audit_autopilot", "rebuild_safely") and not _actor_ok(node.args[0])):
+            if (
+                isinstance(node, ast.Call)
+                and isinstance(node.func, ast.Attribute)
+                and node.args
+                and node.func.attr in ("audit", "audit_autopilot", "rebuild_safely")
+                and not _actor_ok(node.args[0])
+            ):
                 bad.append(f"{path.name}:{node.lineno} {node.func.attr}({ast.unparse(node.args[0])})")
     assert bad == []

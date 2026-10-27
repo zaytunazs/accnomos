@@ -49,21 +49,43 @@ def proposal_from_line(line: BankLine) -> Proposal:
     text = f"{line.description} {line.reference or ''}"
     gross = -line.amount_pence / 100
     doc = ExtractedDoc(
-        doc_type="receipt", supplier_name=line.description or "Bank payment", supplier_vat_number=None,
-        customer_name=None, invoice_number=line.reference, date=line.date.isoformat(), currency="GBP", lines=[],
-        net_total=gross, vat_total=0, gross_total=gross, payment_method=_payment_method(text), card_last4=None,
-        category_guess="Bank charges" if FEE_WORDS.search(text) else "Sundry", confidence=0.0,
+        doc_type="receipt",
+        supplier_name=line.description or "Bank payment",
+        supplier_vat_number=None,
+        customer_name=None,
+        invoice_number=line.reference,
+        date=line.date.isoformat(),
+        currency="GBP",
+        lines=[],
+        net_total=gross,
+        vat_total=0,
+        gross_total=gross,
+        payment_method=_payment_method(text),
+        card_last4=None,
+        category_guess="Bank charges" if FEE_WORDS.search(text) else "Sundry",
+        confidence=0.0,
     )
-    note = Check(code="bank_line", ok=False, severity="fail",
-                 message=f"Made from a bank statement line, not a receipt ({line.source_file}). Check the category; "
-                         "no VAT is reclaimed unless you add a VAT receipt.")
+    note = Check(
+        code="bank_line",
+        ok=False,
+        severity="fail",
+        message=f"Made from a bank statement line, not a receipt ({line.source_file}). Check the category; "
+        "no VAT is reclaimed unless you add a VAT receipt.",
+    )
     return Proposal(
         id=uuid.uuid4().hex,
         # The evidence is the bank line itself; this hash keeps it apart from real document hashes.
         doc_sha256=hashlib.sha256(f"bank-line:{line.id}".encode()).hexdigest(),
-        extracted=doc, checks=[note], status="needs_a_look", reasons=[f"{note.code}: {note.message}"],
+        extracted=doc,
+        checks=[note],
+        status="needs_a_look",
+        reasons=[f"{note.code}: {note.message}"],
         suggested_filename=f"{line.date.isoformat()} {line.description[:40]} £{gross:.2f}.csv",
-        journal_draft=draft_journal(doc), model=MODEL, elapsed_s=0.0, source_name=line.source_file, created_at=now(),
+        journal_draft=draft_journal(doc),
+        model=MODEL,
+        elapsed_s=0.0,
+        source_name=line.source_file,
+        created_at=now(),
     )
 
 

@@ -39,7 +39,9 @@ SkipReason = Literal["no_reply", "newsletter", "own_domain"]
 NO_REPLY = re.compile(
     r"^(no[-_.]?reply|do[-_.]?not[-_.]?reply|mailer[-_.]?daemon|postmaster|bounces?|notifications?|alerts?)([-_.+].*)?$"
 )
-BULK_SENDER = re.compile(r"^(newsletters?|news|marketing|promotions?|promo|offers|deals|digest|updates|mailer)([-_.+].*)?$")
+BULK_SENDER = re.compile(
+    r"^(newsletters?|news|marketing|promotions?|promo|offers|deals|digest|updates|mailer)([-_.+].*)?$"
+)
 BULK_TEXT = re.compile(
     r"unsubscribe|view (this email )?in (your )?browser|manage (your )?(email )?preferences|% off\b|webinar",
     re.IGNORECASE,
@@ -120,7 +122,9 @@ def skip_reason(m: MailMessage) -> SkipReason | None:
 
 
 def group_threads(
-    messages: Iterable[MailMessage], user: str | None, max_threads: int,
+    messages: Iterable[MailMessage],
+    user: str | None,
+    max_threads: int,
 ) -> tuple[list[Thread], dict[str, int]]:
     """Kept threads (newest activity first, at most `max_threads`) and how many messages each filter dropped."""
     skipped: dict[str, int] = {"no_reply": 0, "newsletter": 0, "own_domain": 0}
@@ -148,7 +152,11 @@ def can_reply(target: MailMessage) -> bool:
 
 
 def code_category(target: MailMessage) -> Category:
-    return "hmrc" if domain_of(target.from_address).endswith("hmrc.gov.uk") or "hmrc" in target.from_name.lower() else "other"
+    return (
+        "hmrc"
+        if domain_of(target.from_address).endswith("hmrc.gov.uk") or "hmrc" in target.from_name.lower()
+        else "other"
+    )
 
 
 def one_line(text: str, limit: int) -> str:
@@ -169,11 +177,20 @@ def _thread(thread: Thread, user: str | None) -> TriageThread:
     """The thread with a code-written summary and no suggestions; the model's answer (if any) replaces them."""
     target = thread.reply_target(user)
     return TriageThread(
-        conversation_id=thread.conversation_id, message_id=target.id, subject=one_line(target.subject, SUBJECT_MAX),
-        from_name=target.from_name, from_address=target.from_address, received_at=thread.latest.received_at,
-        unread=any(not m.is_read for m in thread.messages), message_count=len(thread.messages),
-        web_link=thread.latest.web_link, category=code_category(target), summary=code_summary(thread, user),
-        needs_reply=False, suggested_reply=None, todos=[],
+        conversation_id=thread.conversation_id,
+        message_id=target.id,
+        subject=one_line(target.subject, SUBJECT_MAX),
+        from_name=target.from_name,
+        from_address=target.from_address,
+        received_at=thread.latest.received_at,
+        unread=any(not m.is_read for m in thread.messages),
+        message_count=len(thread.messages),
+        web_link=thread.latest.web_link,
+        category=code_category(target),
+        summary=code_summary(thread, user),
+        needs_reply=False,
+        suggested_reply=None,
+        todos=[],
     )
 
 
@@ -205,18 +222,32 @@ async def triage_mail(
     async def one(t: Thread) -> TriageThread:
         base = _thread(t, user)
         if cfg is None:
-            return base.model_copy(update={"fallback_reason": "No AI is set up, so the summary is just the sender and subject."})
+            return base.model_copy(
+                update={"fallback_reason": "No AI is set up, so the summary is just the sender and subject."}
+            )
         async with gate:
             return await triage_ai.triage_thread(t, base, cfg, user=user, business_name=business_name, today=today)
 
     out = list(await asyncio.gather(*(one(t) for t in threads)))
     result = TriageResult(
-        since_days=since_days, scanned=len(messages), skipped=skipped, threads=out,
-        model=cfg.model if cfg else None, generated_at=started,
+        since_days=since_days,
+        scanned=len(messages),
+        skipped=skipped,
+        threads=out,
+        model=cfg.model if cfg else None,
+        generated_at=started,
     )
     if books is not None:
-        await books.audit(f"user:{user}" if user else ACTOR, "mail_triaged", {
-            "since_days": since_days, "scanned": result.scanned, "threads": len(out), "skipped": skipped,
-            "model_failures": sum(1 for t in out if t.fallback_reason), "model": result.model,
-        })
+        await books.audit(
+            f"user:{user}" if user else ACTOR,
+            "mail_triaged",
+            {
+                "since_days": since_days,
+                "scanned": result.scanned,
+                "threads": len(out),
+                "skipped": skipped,
+                "model_failures": sum(1 for t in out if t.fallback_reason),
+                "model": result.model,
+            },
+        )
     return result

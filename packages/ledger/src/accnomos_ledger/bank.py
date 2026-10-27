@@ -42,8 +42,20 @@ DATE_FORMATS = ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d %b %Y", "%d %B %Y", "%d/
 #: Column role -> header names that mean it (lowercase, compared after stripping punctuation).
 HEADERS: dict[str, tuple[str, ...]] = {
     "date": ("date", "transaction date", "posting date", "posted date", "value date"),
-    "description": ("description", "details", "narrative", "transaction description", "transaction information", "memo", "name",
-                    "counter party", "counterparty", "payee", "merchant", "name/description"),
+    "description": (
+        "description",
+        "details",
+        "narrative",
+        "transaction description",
+        "transaction information",
+        "memo",
+        "name",
+        "counter party",
+        "counterparty",
+        "payee",
+        "merchant",
+        "name/description",
+    ),
     "amount": ("amount", "amount (gbp)", "amount gbp", "value", "local amount"),
     "out": ("money out", "paid out", "debit", "debit amount", "out", "withdrawals"),
     "in": ("money in", "paid in", "credit", "credit amount", "in", "deposits"),
@@ -106,10 +118,14 @@ def suggest_action(line: BankLine) -> ActionHint:
         return ActionHint(action="ignore", reason="A zero, pending or reversed line has nothing to book")
     if line.amount_pence < 0:
         fee = FEE_WORDS.search(text)
-        return ActionHint(action="create_expense_proposal",
-                          reason="A bank fee: book it as bank charges" if fee else "Money out with no receipt in the books yet")
-    return ActionHint(action="ignore",
-                      reason="Money in with no sale in the books: post the sales invoice, or ignore it if it isn't income")
+        return ActionHint(
+            action="create_expense_proposal",
+            reason="A bank fee: book it as bank charges" if fee else "Money out with no receipt in the books yet",
+        )
+    return ActionHint(
+        action="ignore",
+        reason="Money in with no sale in the books: post the sales invoice, or ignore it if it isn't income",
+    )
 
 
 def line_id(when: date, amount_pence: int, description: str, balance_pence: int | None) -> str:
@@ -209,8 +225,13 @@ def _row_to_line(row: list[str], cols: dict[str, int], source_file: str) -> Bank
     description = re.sub(r"\s+", " ", _cell(row, cols, "description") or "").strip()
     balance = parse_amount(_cell(row, cols, "balance"))
     return BankLine(
-        id=line_id(when, amount, description, balance), date=when, amount_pence=amount, description=description,
-        reference=_cell(row, cols, "reference") or None, balance_pence=balance, source_file=source_file,
+        id=line_id(when, amount, description, balance),
+        date=when,
+        amount_pence=amount,
+        description=description,
+        reference=_cell(row, cols, "reference") or None,
+        balance_pence=balance,
+        source_file=source_file,
     )
 
 
@@ -240,7 +261,7 @@ def parse_bank_csv(data: bytes, source_file: str) -> list[BankLine]:
     header_at, rows, cols = _header_row(data)
     lines: list[BankLine] = []
     seen: dict[str, int] = {}
-    for row in rows[header_at + 1:]:
+    for row in rows[header_at + 1 :]:
         line = _row_to_line(row, cols, source_file)
         if line is None:
             continue

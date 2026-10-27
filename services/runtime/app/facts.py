@@ -55,10 +55,12 @@ def previous_period(p: AskPeriod) -> AskPeriod:
 
 
 def period_label(p: AskPeriod) -> str:
-    """"Jul–Sep 2026" for whole months (the way the app names VAT periods), else "10 Sep–19 Sep 2026"."""
+    """ "Jul–Sep 2026" for whole months (the way the app names VAT periods), else "10 Sep–19 Sep 2026"."""
     if p.start.day == 1 and p.end == _month_end(p.end):
         first = f"{p.start:%b}" if p.start.year == p.end.year else f"{p.start:%b %Y}"
-        return f"{p.end:%b %Y}" if (p.start.year, p.start.month) == (p.end.year, p.end.month) else f"{first}–{p.end:%b %Y}"
+        return (
+            f"{p.end:%b %Y}" if (p.start.year, p.start.month) == (p.end.year, p.end.month) else f"{first}–{p.end:%b %Y}"
+        )
     first = f"{p.start.day} {p.start:%b}" if p.start.year == p.end.year else f"{p.start.day} {p.start:%b %Y}"
     return f"{first}–{p.end.day} {p.end:%b %Y}"
 
@@ -122,9 +124,14 @@ def _largest(entries: list[tuple[str, LedgerEvent]]) -> list[dict[str, Any]]:
     priced.sort(key=lambda pe: -abs((pe[1].net or 0) + (pe[1].vat or 0)))
     return [
         {
-            "date": ev.date.isoformat(), "kind": ev.kind, "counterparty": ev.counterparty or "(no name)",
-            "net": pounds(ev.net or 0), "vat": pounds(ev.vat or 0), "gross": pounds((ev.net or 0) + (ev.vat or 0)),
-            "vat_code": vat_code(ev), "source": path,
+            "date": ev.date.isoformat(),
+            "kind": ev.kind,
+            "counterparty": ev.counterparty or "(no name)",
+            "net": pounds(ev.net or 0),
+            "vat": pounds(ev.vat or 0),
+            "gross": pounds((ev.net or 0) + (ev.vat or 0)),
+            "vat_code": vat_code(ev),
+            "source": path,
         }
         for path, ev in priced[:TOP_N]
     ]
@@ -183,7 +190,9 @@ def _trim(facts: dict[str, Any]) -> None:
         for name in ("this_period", "previous_period"):
             codes = facts[name]["totals"]["by_vat_code"]
             if n < 4 and len(codes) > 4:
-                facts[name]["totals"]["by_vat_code"] = dict(sorted(codes.items(), key=lambda kv: -abs(Decimal(kv[1]["net"])))[:4])
+                facts[name]["totals"]["by_vat_code"] = dict(
+                    sorted(codes.items(), key=lambda kv: -abs(Decimal(kv[1]["net"])))[:4]
+                )
 
 
 async def build_facts(books: Books, period: AskPeriod, business_name: str | None = None) -> dict[str, Any]:
@@ -196,8 +205,13 @@ async def build_facts(books: Books, period: AskPeriod, business_name: str | None
     def summarise(p: AskPeriod, ents: list[tuple[str, LedgerEvent]]) -> dict[str, Any]:
         evs = [e for _p, e in ents]
         return {
-            "start": p.start.isoformat(), "end": p.end.isoformat(), "period_key": period_key_for(p.start),
-            "label": period_label(p), "entries": len(evs), "vat": _boxes(evs, p), "totals": _totals(evs),
+            "start": p.start.isoformat(),
+            "end": p.end.isoformat(),
+            "period_key": period_key_for(p.start),
+            "label": period_label(p),
+            "entries": len(evs),
+            "vat": _boxes(evs, p),
+            "totals": _totals(evs),
         }
 
     this, before = summarise(period, this_entries), summarise(prev, prev_entries)

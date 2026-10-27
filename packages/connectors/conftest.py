@@ -1,4 +1,5 @@
 """Make `pytest` import this checkout's connectors, not another editable install of them."""
+
 """Make `pytest` import this checkout's `accnomos_connectors`, not another checkout's editable install."""
 
 import sys

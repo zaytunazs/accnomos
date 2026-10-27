@@ -25,12 +25,27 @@ H = {"X-Graph-Token": "tok", "X-User": USER}
 def _event(spec: dict) -> LedgerEvent:
     gross = spec["gross_pence"]
     if spec["kind"] == "sale":
-        lines = [Line(account="1100 Debtors", debit=gross), Line(account="4000 Sales", credit=gross, vat_code=VatCode.STANDARD)]
+        lines = [
+            Line(account="1100 Debtors", debit=gross),
+            Line(account="4000 Sales", credit=gross, vat_code=VatCode.STANDARD),
+        ]
     else:
-        lines = [Line(account="7999 Sundry expenses", debit=gross, vat_code=VatCode.STANDARD), Line(account="1200 Bank", credit=gross)]
-    return LedgerEvent(id=spec["id"], kind=spec["kind"], date=date.fromisoformat(spec["date"]), lines=lines, net=gross, vat=0,
-                       counterparty=spec["counterparty"], evidence=["ab" * 32], approved_by=USER,
-                       approved_at=datetime(2026, 10, 26, tzinfo=UTC))
+        lines = [
+            Line(account="7999 Sundry expenses", debit=gross, vat_code=VatCode.STANDARD),
+            Line(account="1200 Bank", credit=gross),
+        ]
+    return LedgerEvent(
+        id=spec["id"],
+        kind=spec["kind"],
+        date=date.fromisoformat(spec["date"]),
+        lines=lines,
+        net=gross,
+        vat=0,
+        counterparty=spec["counterparty"],
+        evidence=["ab" * 32],
+        approved_by=USER,
+        approved_at=datetime(2026, 10, 26, tzinfo=UTC),
+    )
 
 
 @pytest.fixture
@@ -60,13 +75,17 @@ def client(books: Books):
 
 
 def _upload(client: TestClient, name: str, as_name: str | None = None) -> dict:
-    r = client.post("/books/bank/import", headers=H, files={"file": (as_name or name, (GOLD / name).read_bytes(), "text/csv")})
+    r = client.post(
+        "/books/bank/import", headers=H, files={"file": (as_name or name, (GOLD / name).read_bytes(), "text/csv")}
+    )
     assert r.status_code == 200, r.text
     return r.json()
 
 
 @pytest.mark.parametrize("name", sorted(EXPECTED["statements"]))
-def test_upload_files_as_date_and_bank_and_is_idempotent(client: TestClient, fake: FakeStorageProvider, name: str) -> None:
+def test_upload_files_as_date_and_bank_and_is_idempotent(
+    client: TestClient, fake: FakeStorageProvider, name: str
+) -> None:
     want = EXPECTED["statements"][name]
     first = _upload(client, name, "Statement export (1).csv")
     path = f"{BANK}/{want['last_date']}_{want['bank']}.csv"
@@ -77,7 +96,12 @@ def test_upload_files_as_date_and_bank_and_is_idempotent(client: TestClient, fak
     assert again["duplicate_file"] and again["filed_path"] is None and again["new_lines"] == 0
     assert [p for p in fake.files if p.startswith(f"{BANK}/")] == [path]
     (stmt,) = client.get("/books/bank/statements", headers=H).json()
-    assert (stmt["path"], stmt["bank"], stmt["lines"], stmt["last_date"]) == (path, want["bank"], len(want["lines"]), want["last_date"])
+    assert (stmt["path"], stmt["bank"], stmt["lines"], stmt["last_date"]) == (
+        path,
+        want["bank"],
+        len(want["lines"]),
+        want["last_date"],
+    )
 
 
 def test_gold_suggestions_unmatched_actions_and_reconciled_to(client: TestClient, fake: FakeStorageProvider) -> None:
@@ -88,8 +112,10 @@ def test_gold_suggestions_unmatched_actions_and_reconciled_to(client: TestClient
     assert sorted(by_event) == sorted(w["match"] for w in want if "match" in w)
     assert {e: m["kind"] for e, m in by_event.items()} == {w["match"]: w["kind"] for w in want if "match" in w}
     travis = by_event["gold-bc-travis"]  # a penny out and five days apart, carried by the name
-    assert (travis["line"]["amount_pence"], travis["events"]) == (-4501, [
-        {"id": "gold-bc-travis", "date": "2026-10-15", "counterparty": "Travis Perkins", "amount_pence": -4500}])
+    assert (travis["line"]["amount_pence"], travis["events"]) == (
+        -4501,
+        [{"id": "gold-bc-travis", "date": "2026-10-15", "counterparty": "Travis Perkins", "amount_pence": -4500}],
+    )
 
     unmatched = client.get("/books/bank/unmatched", headers=H).json()
     got = sorted((u["line"]["description"], u["line"]["amount_pence"], u["suggested"]["action"]) for u in unmatched)
@@ -108,8 +134,12 @@ def test_gold_suggestions_unmatched_actions_and_reconciled_to(client: TestClient
             assert r.status_code == 200, r.text
             proposals.append((lid, r.json()))
         else:
-            r = client.post(f"/books/bank/lines/{lid}/{'transfer' if action == 'mark_transfer' else 'ignore'}", headers=H)
-            assert r.status_code == 200 and r.json()["status"] == ("transfer" if action == "mark_transfer" else "ignored")
+            r = client.post(
+                f"/books/bank/lines/{lid}/{'transfer' if action == 'mark_transfer' else 'ignore'}", headers=H
+            )
+            assert r.status_code == 200 and r.json()["status"] == (
+                "transfer" if action == "mark_transfer" else "ignored"
+            )
 
     # Expense proposals wait on /review; the lines stay open until the proposal is posted.
     summary = client.get("/books/bank/summary", headers=H).json()
@@ -126,7 +156,12 @@ def test_gold_suggestions_unmatched_actions_and_reconciled_to(client: TestClient
     assert sorted(s["line_id"] for s in sugg) == sorted(lid for lid, _ in proposals)
     assert all(s["kind"] == "exact" for s in sugg)
     for s in sugg:
-        assert client.post(f"/books/bank/lines/{s['line_id']}/match", headers=H, json={"event_ids": s["event_ids"]}).status_code == 200
+        assert (
+            client.post(
+                f"/books/bank/lines/{s['line_id']}/match", headers=H, json={"event_ids": s["event_ids"]}
+            ).status_code
+            == 200
+        )
     summary = client.get("/books/bank/summary", headers=H).json()
     assert summary["unmatched"] == summary["suggested"] == 0 and summary["reconciled_to"] == "2026-10-25"
 
@@ -135,13 +170,17 @@ def test_gold_suggestions_unmatched_actions_and_reconciled_to(client: TestClient
     assert len(rows) == len(want) and {r[5] for r in rows} == {"matched", "transfer", "ignored"}
     assert all(r[6] for r in rows if r[5] == "matched")
     assert sorted(r[8] for r in rows if r[8]) == sorted(p["id"] for _, p in proposals)
-    summary_sheet = {r[0]: r[1] for r in load_workbook(io.BytesIO(fake.files[WORKBOOK]))["Summary"].iter_rows(values_only=True)}
+    summary_sheet = {
+        r[0]: r[1] for r in load_workbook(io.BytesIO(fake.files[WORKBOOK]))["Summary"].iter_rows(values_only=True)
+    }
     assert summary_sheet["Bank reconciled to"] == datetime(2026, 10, 25)
 
 
 def test_line_actions_refuse_and_reopen(client: TestClient) -> None:
     _upload(client, "starling.csv")
-    unmatched = {u["line"]["description"]: u["line"]["id"] for u in client.get("/books/bank/unmatched", headers=H).json()}
+    unmatched = {
+        u["line"]["description"]: u["line"]["id"] for u in client.get("/books/bank/unmatched", headers=H).json()
+    }
     savings, payee = unmatched["Starling Savings Space"], unmatched["Unknown Payee"]
     assert client.post(f"/books/bank/lines/{savings}/transfer", headers=H).json()["status"] == "transfer"
     r = client.post(f"/books/bank/lines/{savings}/ignore", headers=H)
@@ -154,7 +193,11 @@ def test_line_actions_refuse_and_reopen(client: TestClient) -> None:
 
 def test_rejected_expense_proposal_can_be_made_again(client: TestClient) -> None:
     _upload(client, "starling.csv")
-    ee = next(u["line"]["id"] for u in client.get("/books/bank/unmatched", headers=H).json() if u["line"]["description"] == "EE LIMITED")
+    ee = next(
+        u["line"]["id"]
+        for u in client.get("/books/bank/unmatched", headers=H).json()
+        if u["line"]["description"] == "EE LIMITED"
+    )
     first = client.post(f"/books/bank/lines/{ee}/expense-proposal", headers=H).json()
     status = {u["line"]["id"]: u["proposal_status"] for u in client.get("/books/bank/unmatched", headers=H).json()}
     assert status[ee] == "needs_a_look"

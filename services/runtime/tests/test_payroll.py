@@ -40,8 +40,13 @@ async def _setup(books: Books) -> tuple[StaffMember, StaffMember]:
     job = await save_job(books, Job(name="Kitchen refit"))
     ann = await save_staff(books, StaffMember(name="Ann Lee", role="Joiner", hourly_rate_pence=1600))
     bob = await save_staff(books, StaffMember(name="Bob Kaur", role="Labourer", hourly_rate_pence=1250, active=False))
-    for d, who, h in (("2026-10-01", ann, 8), ("2026-10-02", ann, 7.5), ("2026-10-02", bob, 4.25),
-                      ("2026-09-30", ann, 8), ("2026-11-01", bob, 3)):
+    for d, who, h in (
+        ("2026-10-01", ann, 8),
+        ("2026-10-02", ann, 7.5),
+        ("2026-10-02", bob, 4.25),
+        ("2026-09-30", ann, 8),
+        ("2026-11-01", bob, 3),
+    ):
         await add_entry(books, TimesheetEntry(staff_id=who.id, job_id=job.id, date=d, hours=h))
     return ann, bob
 
@@ -79,11 +84,14 @@ def test_annual_thresholds_are_pro_rated_monthly() -> None:
     assert pr.estimate(0) == pr.Estimate(paye_pence=0, ee_ni_pence=0, er_ni_pence=0, net_pence=0)
 
 
-@pytest.mark.parametrize(("gross", "tax_rate", "ee_rate"), [
-    (200_000, 20, 8),  # basic rate, main NI rate
-    (600_000, 40, 2),  # higher rate (above £50,270 ÷ 12), above the UEL
-    (1_100_000, 45, 2),  # additional rate (above £125,140 ÷ 12)
-])
+@pytest.mark.parametrize(
+    ("gross", "tax_rate", "ee_rate"),
+    [
+        (200_000, 20, 8),  # basic rate, main NI rate
+        (600_000, 40, 2),  # higher rate (above £50,270 ÷ 12), above the UEL
+        (1_100_000, 45, 2),  # additional rate (above £125,140 ÷ 12)
+    ],
+)
 def test_marginal_rates_by_band(gross: int, tax_rate: int, ee_rate: int) -> None:
     lo, hi = pr.estimate(gross), pr.estimate(gross + 10_000)  # £100 more
     assert hi.paye_pence - lo.paye_pence == tax_rate * 100
@@ -117,24 +125,42 @@ async def test_prepare_from_the_months_timesheets(books: Books, fake: FakeStorag
     ann, bob = await _setup(books)
     run = await pr.prepare(books, "2026-10", None, USER)
     assert (run.period_start, run.period_end, run.pay_date, run.status) == (
-        date(2026, 10, 1), date(2026, 10, 31), date(2026, 10, 31), "draft")
+        date(2026, 10, 1),
+        date(2026, 10, 31),
+        date(2026, 10, 31),
+        "draft",
+    )
     a, b = run.lines
     assert (a.staff_id, a.hours, a.rate_pence, a.gross_pence) == (ann.id, 15.5, 1600, 24_800)
-    assert (b.staff_id, b.hours, b.gross_pence, b.notes) == (bob.id, 4.25, 5_313, "Marked inactive")  # 4.25 × £12.50 = £53.125
+    assert (b.staff_id, b.hours, b.gross_pence, b.notes) == (
+        bob.id,
+        4.25,
+        5_313,
+        "Marked inactive",
+    )  # 4.25 × £12.50 = £53.125
     assert a.est_paye_pence == 0 and a.est_net_pence == a.gross_pence  # under the allowance
     saved = pr.PayRun.model_validate_json(fake.files[f"{pr.RUNS}/2026-10.json"])
     assert saved.estimate == R.ESTIMATE_LABEL and saved.limits == list(R.LIMITS)  # flagged in the file itself
     assert saved.confirmed_gross_pence is None
 
     empty = await pr.prepare(books, "2026-08", date(2026, 8, 28), USER)
-    assert empty.lines == [] and empty.warnings == ["No timesheet hours in August 2026"] and empty.pay_date == date(2026, 8, 28)
+    assert (
+        empty.lines == []
+        and empty.warnings == ["No timesheet hours in August 2026"]
+        and empty.pay_date == date(2026, 8, 28)
+    )
 
 
 async def test_edit_recomputes_and_refuses_strangers(books: Books) -> None:
     ann, bob = await _setup(books)
     await pr.prepare(books, "2026-10", None, USER)
-    run = await pr.update(books, "2026-10", [pr.LineEdit(staff_id=ann.id, hours="160", rate_pence=1250, notes=" ok ")],
-                          date(2026, 10, 28), USER)
+    run = await pr.update(
+        books,
+        "2026-10",
+        [pr.LineEdit(staff_id=ann.id, hours="160", rate_pence=1250, notes=" ok ")],
+        date(2026, 10, 28),
+        USER,
+    )
     (line,) = run.lines
     assert (line.gross_pence, line.notes, run.pay_date) == (200_000, "ok", date(2026, 10, 28))
     assert (line.est_paye_pence, line.est_ee_ni_pence, line.est_er_ni_pence) == (19_040, 7_620, 23_750)
@@ -160,7 +186,7 @@ async def test_export_shape(books: Books, fake: FakeStorageProvider) -> None:
     rows = list(csv.reader(io.StringIO(text)))
     assert rows[0] == [R.ESTIMATE_LABEL]
     head = rows.index(list(pr.CSV_HEADER))
-    body = rows[head + 1:]
+    body = rows[head + 1 :]
     assert [r[0] for r in body] == ["Ann Lee", "Bob Kaur", "Total"]  # one row per employee, then totals
     assert body[0][:5] == ["Ann Lee", "Joiner", "15.5", "16.00", "248.00"]
     assert body[1][4] == "53.13" and body[2][4] == "301.13"
@@ -169,12 +195,14 @@ async def test_export_shape(books: Books, fake: FakeStorageProvider) -> None:
 
 
 def test_export_keeps_typed_text_inert_and_big_totals_exact() -> None:
-    lines = [pr.make_line(f"s{i}", 744 * 4, 1000, "=HYPERLINK(\"http://x\")" if i == 0 else "") for i in range(17)]
+    lines = [pr.make_line(f"s{i}", 744 * 4, 1000, '=HYPERLINK("http://x")' if i == 0 else "") for i in range(17)]
     lines.append(pr.make_line("s99", 1, 1000))  # 0.25 h: total 12,648.25 h
-    run = pr.PayRun(period_start=date(2026, 10, 1), period_end=date(2026, 10, 31), pay_date=date(2026, 10, 31), lines=lines)
+    run = pr.PayRun(
+        period_start=date(2026, 10, 1), period_end=date(2026, 10, 31), pay_date=date(2026, 10, 31), lines=lines
+    )
     rows = list(csv.reader(io.StringIO(pr.export_csv(run, {"s0": ("+Ann", "@Joiner")}))))
     first = rows[rows.index(list(pr.CSV_HEADER)) + 1]
-    assert (first[0], first[1], first[-1]) == ("'+Ann", "'@Joiner", "'=HYPERLINK(\"http://x\")")
+    assert (first[0], first[1], first[-1]) == ("'+Ann", "'@Joiner", '\'=HYPERLINK("http://x")')
     assert rows[-1][2] == "12648.25" and rows[-2][2] == "0.25"
 
 
@@ -188,16 +216,25 @@ async def test_confirm_posts_balanced_staff_costs(books: Books, fake: FakeStorag
     await pr.prepare(books, "2026-10", date(2026, 10, 30), USER)
     run = await pr.confirm(books, "2026-10", 30_500, 1_234, USER)  # the provider's figures, not the estimate
     assert (run.status, run.confirmed_gross_pence, run.confirmed_er_ni_pence, run.confirmed_by) == (
-        "confirmed", 30_500, 1_234, USER)
+        "confirmed",
+        30_500,
+        1_234,
+        USER,
+    )
     events = {e.id: e for e in _events(fake)}
     assert set(events) == set(run.event_ids) and len(events) == 2
     for ev in events.values():
         assert ev.kind == "adjustment" and ev.date == date(2026, 10, 30) and ev.approved_by == USER
         assert sum(ln.debit for ln in ev.lines) == sum(ln.credit for ln in ev.lines)
     lines = [(ln.account, ln.debit, ln.credit) for ev in events.values() for ln in ev.lines]
-    assert sorted(lines) == sorted([
-        (pr.WAGES, 30_500, 0), (pr.LIABILITIES, 0, 30_500), (pr.EMPLOYER_NI, 1_234, 0), (pr.LIABILITIES, 0, 1_234),
-    ])
+    assert sorted(lines) == sorted(
+        [
+            (pr.WAGES, 30_500, 0),
+            (pr.LIABILITIES, 0, 30_500),
+            (pr.EMPLOYER_NI, 1_234, 0),
+            (pr.LIABILITIES, 0, 1_234),
+        ]
+    )
     assert "Books.xlsx" in fake.files
 
     with pytest.raises(pr.PayrollConflict):
@@ -237,7 +274,9 @@ async def test_failed_second_entry_undoes_the_first(books: Books, fake: FakeStor
     assert (await pr.get_run(books, "2026-10")).status == "draft"
 
 
-async def test_failed_save_after_posting_undoes_both_entries(books: Books, fake: FakeStorageProvider, monkeypatch) -> None:
+async def test_failed_save_after_posting_undoes_both_entries(
+    books: Books, fake: FakeStorageProvider, monkeypatch
+) -> None:
     await _setup(books)
     await pr.prepare(books, "2026-10", None, USER)
 
@@ -310,16 +349,25 @@ def test_payroll_routes(client, books: Books, fake: FakeStorageProvider) -> None
     r = client.get("/payroll/runs", headers=H)
     assert r.status_code == 200 and r.json()["runs"] == [] and r.json()["estimate"] == R.ESTIMATE_LABEL
     assert client.post("/payroll/runs/prepare", headers=H, json={"period": "2026-13"}).status_code == 400
-    assert client.post("/payroll/runs/prepare", headers={"X-Graph-Token": "tok"}, json={"period": "2026-10"}).status_code == 400
+    assert (
+        client.post("/payroll/runs/prepare", headers={"X-Graph-Token": "tok"}, json={"period": "2026-10"}).status_code
+        == 400
+    )
     r = client.post("/payroll/runs/prepare", headers=H, json={"period": "2026-10"})
     assert r.status_code == 200 and len(r.json()["lines"]) == 2 and r.json()["estimate"] == R.ESTIMATE_LABEL
     assert client.get("/payroll/runs/2026-10", headers=H).json()["status"] == "draft"
     assert client.get("/payroll/runs/2026-07", headers=H).status_code == 404
 
-    r = client.put("/payroll/runs/2026-10", headers=H, json={"lines": [{"staff_id": ann.id, "hours": 160, "rate_pence": 1250}]})
+    r = client.put(
+        "/payroll/runs/2026-10", headers=H, json={"lines": [{"staff_id": ann.id, "hours": 160, "rate_pence": 1250}]}
+    )
     assert r.status_code == 200 and r.json()["lines"][0]["est_paye_pence"] == 19_040
-    assert client.put("/payroll/runs/2026-10", headers=H,
-                      json={"lines": [{"staff_id": ann.id, "hours": 999, "rate_pence": 1}]}).status_code == 400
+    assert (
+        client.put(
+            "/payroll/runs/2026-10", headers=H, json={"lines": [{"staff_id": ann.id, "hours": 999, "rate_pence": 1}]}
+        ).status_code
+        == 400
+    )
 
     r = client.post("/payroll/runs/2026-10/export", headers=H)
     assert r.status_code == 200 and r.json()["path"] == "05 Payroll/2026-10.csv" and R.ESTIMATE_LABEL in r.json()["csv"]

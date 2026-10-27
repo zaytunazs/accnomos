@@ -11,9 +11,15 @@ async def test_list_events_and_vat_route():
     await books.ensure_tree()
     approved = dict(approved_by="sam@example.co.uk", approved_at=datetime(2026, 9, 21, 12, 0))
     ev = LedgerEvent(
-        kind="purchase", date=date(2026, 9, 21), net=3206, vat=641,
-        lines=[Line(account="5100 Tools", debit=3206, vat_code=VatCode.STANDARD), Line(account="2200 VAT control", debit=641),
-               Line(account="1200 Bank", credit=3847)],
+        kind="purchase",
+        date=date(2026, 9, 21),
+        net=3206,
+        vat=641,
+        lines=[
+            Line(account="5100 Tools", debit=3206, vat_code=VatCode.STANDARD),
+            Line(account="2200 VAT control", debit=641),
+            Line(account="1200 Bank", credit=3847),
+        ],
         **approved,
     )
     outside = ev.model_copy(update={"id": "x" * 32, "date": date(2026, 10, 2)})
@@ -31,7 +37,9 @@ async def test_list_events_and_vat_route():
 
     app.dependency_overrides[get_books] = override
     try:
-        r = TestClient(app).get("/books/vat?start=2026-07-01&end=2026-09-30&period_key=26A3", headers={"X-Graph-Token": "t"})
+        r = TestClient(app).get(
+            "/books/vat?start=2026-07-01&end=2026-09-30&period_key=26A3", headers={"X-Graph-Token": "t"}
+        )
     finally:
         app.dependency_overrides.clear()
     assert r.status_code == 200, r.text

@@ -104,7 +104,12 @@ def check_vat_math(doc: ExtractedDoc) -> Check:
     expected = round(doc.net_total * rate)  # pence
     tol = 2 + len(doc.lines)
     if abs(expected - p(doc.vat_total)) > tol:
-        return _chk("VAT_MATH", False, "fail", f"VAT {doc.vat_total:.2f} ≠ {rate:g}% of net {doc.net_total:.2f} ({expected / 100:.2f})")
+        return _chk(
+            "VAT_MATH",
+            False,
+            "fail",
+            f"VAT {doc.vat_total:.2f} ≠ {rate:g}% of net {doc.net_total:.2f} ({expected / 100:.2f})",
+        )
     return _chk("VAT_MATH", True, "fail", f"VAT is {rate:g}% of net")
 
 

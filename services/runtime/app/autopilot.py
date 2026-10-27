@@ -85,10 +85,16 @@ def rule_from_proposal(p: Proposal, user: str) -> AutopilotRule | None:
     if side_of(p) != "purchase" or not key or gross <= 0:
         return None
     return AutopilotRule(
-        supplier_key=key, supplier_name=p.extracted.supplier_name.strip(), category=p.extracted.category_guess,
-        account=expense_account(p.journal_draft), vat_code=expense_vat_codes(p.journal_draft), side="purchase",
-        typical_gross_pence=gross, vrn=normalise_vat_number(p.extracted.supplier_vat_number),
-        created_from_proposal_id=p.id, created_by=user,
+        supplier_key=key,
+        supplier_name=p.extracted.supplier_name.strip(),
+        category=p.extracted.category_guess,
+        account=expense_account(p.journal_draft),
+        vat_code=expense_vat_codes(p.journal_draft),
+        side="purchase",
+        typical_gross_pence=gross,
+        vrn=normalise_vat_number(p.extracted.supplier_vat_number),
+        created_from_proposal_id=p.id,
+        created_by=user,
     )
 
 

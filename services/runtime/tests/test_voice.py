@@ -43,8 +43,23 @@ def _tone_wav(seconds: float = 1.0, rate: int = 44_100, channels: int = 2) -> by
 def _webm_tone() -> bytes:
     """The same tone as webm/opus, which is what Chrome's MediaRecorder sends."""
     run = subprocess.run(
-        [voice.ffmpeg_path() or "ffmpeg", "-loglevel", "error", "-f", "wav", "-i", "pipe:0", "-c:a", "libopus", "-f", "webm", "pipe:1"],
-        input=_tone_wav(), capture_output=True, check=False,
+        [
+            voice.ffmpeg_path() or "ffmpeg",
+            "-loglevel",
+            "error",
+            "-f",
+            "wav",
+            "-i",
+            "pipe:0",
+            "-c:a",
+            "libopus",
+            "-f",
+            "webm",
+            "pipe:1",
+        ],
+        input=_tone_wav(),
+        capture_output=True,
+        check=False,
     )
     if run.returncode != 0:
         pytest.skip("this ffmpeg has no libopus encoder")
@@ -54,6 +69,7 @@ def _webm_tone() -> bytes:
 # --------------------------------------------------------------------------- #
 # ffmpeg
 # --------------------------------------------------------------------------- #
+
 
 def _info(wav_bytes: bytes) -> tuple[int, int, int, float]:
     with wave.open(io.BytesIO(wav_bytes)) as w:
@@ -111,6 +127,7 @@ async def test_missing_ffmpeg_is_a_503(monkeypatch: pytest.MonkeyPatch):
 # --------------------------------------------------------------------------- #
 # Muse Voice client (stubbed HTTP)
 # --------------------------------------------------------------------------- #
+
 
 def _client(handler) -> httpx.AsyncClient:
     return httpx.AsyncClient(transport=httpx.MockTransport(handler))
@@ -182,10 +199,14 @@ async def test_transcribe_refuses_local_mode():
 # The route
 # --------------------------------------------------------------------------- #
 
+
 def _model_reply() -> str:
     return AskModelOutput(
-        answer_md="Nothing posted yet, so there is no VAT to pay.", key_numbers=[], citations=[],
-        suggested_actions=[], confidence="low",
+        answer_md="Nothing posted yet, so there is no VAT to pay.",
+        key_numbers=[],
+        citations=[],
+        suggested_actions=[],
+        confidence="low",
     ).model_dump_json()
 
 
@@ -215,7 +236,8 @@ KEY_HEADERS = {"X-Graph-Token": "t", "X-AI-Mode": "key", "X-Meta-Api-Key": "test
 
 def test_voice_route_local_mode_is_400(client: TestClient):
     r = client.post(
-        "/books/ask/voice", headers={"X-Graph-Token": "t", "X-AI-Mode": "local"},
+        "/books/ask/voice",
+        headers={"X-Graph-Token": "t", "X-AI-Mode": "local"},
         files={"audio": ("q.wav", _tone_wav(), "audio/wav")},
     )
     assert r.status_code == 400 and r.json()["detail"] == "voice needs a Meta API key"
@@ -237,7 +259,8 @@ def test_voice_route_answers_with_transcript(client: TestClient, monkeypatch: py
 
     monkeypatch.setattr(voice, "transcribe", fake_transcribe)
     r = client.post(
-        "/books/ask/voice", headers=KEY_HEADERS,
+        "/books/ask/voice",
+        headers=KEY_HEADERS,
         files={"audio": ("q.webm", _webm_tone(), "audio/webm")},
         data={"period": json.dumps({"start": "2026-07-01", "end": "2026-09-30"}), "history": "[]"},
     )
@@ -278,7 +301,9 @@ def test_health_reports_voice(client: TestClient, monkeypatch: pytest.MonkeyPatc
 
 def test_voice_route_bad_period_is_422(client: TestClient):
     r = client.post(
-        "/books/ask/voice", headers=KEY_HEADERS, files={"audio": ("q.wav", _tone_wav(), "audio/wav")},
+        "/books/ask/voice",
+        headers=KEY_HEADERS,
+        files={"audio": ("q.wav", _tone_wav(), "audio/wav")},
         data={"period": '{"start": "2026-09-30", "end": "2026-07-01"}'},
     )
     assert r.status_code == 422

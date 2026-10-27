@@ -30,11 +30,21 @@ FILED = "01 Receipts/2026-10/2026-10-21 Screwfix £38.47.jpg"
 
 def _doc(supplier: str = "Screwfix", **kw: object) -> ExtractedDoc:
     base: dict[str, object] = dict(
-        doc_type="receipt", supplier_name=supplier, supplier_vat_number="GB 232 4567 89", customer_name=None,
-        invoice_number=None, date="2026-10-21", currency="GBP",
+        doc_type="receipt",
+        supplier_name=supplier,
+        supplier_vat_number="GB 232 4567 89",
+        customer_name=None,
+        invoice_number=None,
+        date="2026-10-21",
+        currency="GBP",
         lines=[ExtractedLine(description="Drill bits", qty=1, unit_price=38.47, net=32.06, vat_rate=20, vat=6.41)],
-        net_total=32.06, vat_total=6.41, gross_total=38.47, payment_method="card", card_last4="1234",
-        category_guess="Tools & small equipment", confidence=0.95,
+        net_total=32.06,
+        vat_total=6.41,
+        gross_total=38.47,
+        payment_method="card",
+        card_last4="1234",
+        category_guess="Tools & small equipment",
+        confidence=0.95,
     )
     base.update(kw)
     return ExtractedDoc.model_validate(base)
@@ -82,12 +92,14 @@ def _events(fake: FakeStorageProvider) -> list[LedgerEvent]:
 
 
 async def test_scan_files_good_receipt_and_parks_duplicate(fake: FakeStorageProvider, books: Books) -> None:
-    fake.files.update({
-        "00 Inbox/a-receipt.jpg": SCREWFIX,
-        "00 Inbox/b-copy.jpg": SCREWFIX,  # same bytes again
-        "00 Inbox/c-invoice.pdf": b"%PDF-1.7",
-        "00 Inbox/notes.txt": b"hello",
-    })
+    fake.files.update(
+        {
+            "00 Inbox/a-receipt.jpg": SCREWFIX,
+            "00 Inbox/b-copy.jpg": SCREWFIX,  # same bytes again
+            "00 Inbox/c-invoice.pdf": b"%PDF-1.7",
+            "00 Inbox/notes.txt": b"hello",
+        }
+    )
     proposals = await scan_inbox(books, CFG)
 
     good, dup, pdf = proposals

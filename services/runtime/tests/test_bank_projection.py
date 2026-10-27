@@ -28,14 +28,30 @@ STATEMENT = b"""Date,Description,Amount,Balance
 def _event(eid: str, gross: int, when: date, who: str, sale: bool = False) -> LedgerEvent:
     net = round(gross / 1.2)
     lines = (
-        [Line(account="1100 Debtors", debit=gross), Line(account="4000 Sales", credit=net, vat_code=VatCode.STANDARD),
-         Line(account="2200 VAT control", credit=gross - net)]
-        if sale else
-        [Line(account="5100 Tools & small equipment", debit=net, vat_code=VatCode.STANDARD),
-         Line(account="2200 VAT control", debit=gross - net), Line(account="1200 Bank", credit=gross)]
+        [
+            Line(account="1100 Debtors", debit=gross),
+            Line(account="4000 Sales", credit=net, vat_code=VatCode.STANDARD),
+            Line(account="2200 VAT control", credit=gross - net),
+        ]
+        if sale
+        else [
+            Line(account="5100 Tools & small equipment", debit=net, vat_code=VatCode.STANDARD),
+            Line(account="2200 VAT control", debit=gross - net),
+            Line(account="1200 Bank", credit=gross),
+        ]
     )
-    return LedgerEvent(id=eid, kind="sale" if sale else "purchase", date=when, lines=lines, net=net, vat=gross - net,
-                       counterparty=who, evidence=["ab" * 32], approved_by=USER, approved_at=datetime(2026, 10, 25, tzinfo=UTC))
+    return LedgerEvent(
+        id=eid,
+        kind="sale" if sale else "purchase",
+        date=when,
+        lines=lines,
+        net=net,
+        vat=gross - net,
+        counterparty=who,
+        evidence=["ab" * 32],
+        approved_by=USER,
+        approved_at=datetime(2026, 10, 25, tzinfo=UTC),
+    )
 
 
 EVENTS = [
@@ -75,7 +91,12 @@ H = {"X-Graph-Token": "tok", "X-User": USER}
 
 
 def _audit(fake: FakeStorageProvider) -> list[dict]:
-    return [json.loads(x) for p, d in sorted(fake.files.items()) if p.startswith(f"{AUDIT}/") for x in d.decode().splitlines()]
+    return [
+        json.loads(x)
+        for p, d in sorted(fake.files.items())
+        if p.startswith(f"{AUDIT}/")
+        for x in d.decode().splitlines()
+    ]
 
 
 def test_import_suggest_match_unmatch_routes(client: TestClient, fake: FakeStorageProvider) -> None:
@@ -89,21 +110,42 @@ def test_import_suggest_match_unmatch_routes(client: TestClient, fake: FakeStora
 
     sugg = client.get("/books/bank/suggestions", headers=H).json()
     assert sorted(s["event_id"] for s in sugg) == ["e" * 32, "f" * 32] and all(s["kind"] == "exact" for s in sugg)
-    assert client.get("/books/bank/summary", headers=H).json() == {"total": 3, "matched": 0, "suggested": 2, "unmatched": 1,
-                                                                   "transfer": 0, "ignored": 0, "reconciled_to": None}
+    assert client.get("/books/bank/summary", headers=H).json() == {
+        "total": 3,
+        "matched": 0,
+        "suggested": 2,
+        "unmatched": 1,
+        "transfer": 0,
+        "ignored": 0,
+        "reconciled_to": None,
+    }
 
     screwfix = next(s for s in sugg if s["event_id"] == "e" * 32)
     r = client.post(f"/books/bank/lines/{screwfix['line_id']}/match", headers=H, json={"event_id": "e" * 32})
     assert r.status_code == 200 and r.json()["status"] == "matched"
-    assert client.post(f"/books/bank/lines/{screwfix['line_id']}/match", headers=H, json={"event_id": "e" * 32}).status_code == 409
+    assert (
+        client.post(
+            f"/books/bank/lines/{screwfix['line_id']}/match", headers=H, json={"event_id": "e" * 32}
+        ).status_code
+        == 409
+    )
     coffee = client.get("/books/bank/lines?status=unmatched", headers=H).json()[0]
     assert coffee["description"] == "COFFEE"
     r = client.post(f"/books/bank/lines/{coffee['id']}/match", headers=H, json={"event_id": "e" * 32})
     assert r.status_code == 409 and "already matched" in r.json()["detail"]
     assert client.post("/books/bank/lines/0000000000000000/match", headers=H, json={"event_id": "x"}).status_code == 404
-    assert client.get("/books/bank/summary", headers=H).json() == {"total": 3, "matched": 1, "suggested": 1, "unmatched": 1, "transfer": 0, "ignored": 0,
-            "reconciled_to": "2026-10-21"}
-    assert [ln["matched_event_id"] for ln in client.get("/books/bank/lines?status=matched", headers=H).json()] == ["e" * 32]
+    assert client.get("/books/bank/summary", headers=H).json() == {
+        "total": 3,
+        "matched": 1,
+        "suggested": 1,
+        "unmatched": 1,
+        "transfer": 0,
+        "ignored": 0,
+        "reconciled_to": "2026-10-21",
+    }
+    assert [ln["matched_event_id"] for ln in client.get("/books/bank/lines?status=matched", headers=H).json()] == [
+        "e" * 32
+    ]
 
     r = client.post(f"/books/bank/lines/{screwfix['line_id']}/unmatch", headers=H)
     assert r.status_code == 200 and r.json()["status"] == "unmatched" and r.json()["matched_event_id"] is None
@@ -143,13 +185,35 @@ async def test_overlapping_statements_do_not_duplicate_lines(books: Books) -> No
 
 def _proposal() -> Proposal:
     doc = ExtractedDoc(
-        doc_type="receipt", supplier_name="Wickes", supplier_vat_number=None, customer_name=None, invoice_number=None,
-        date="2026-10-26", currency="GBP", lines=[], net_total=10, vat_total=2, gross_total=12, payment_method="card",
-        card_last4=None, category_guess="Materials", confidence=0.6,
+        doc_type="receipt",
+        supplier_name="Wickes",
+        supplier_vat_number=None,
+        customer_name=None,
+        invoice_number=None,
+        date="2026-10-26",
+        currency="GBP",
+        lines=[],
+        net_total=10,
+        vat_total=2,
+        gross_total=12,
+        payment_method="card",
+        card_last4=None,
+        category_guess="Materials",
+        confidence=0.6,
     )
-    return Proposal(id="c" * 16, doc_sha256="cd" * 32, extracted=doc, checks=[], status="needs_a_look",
-                    reasons=["No VAT number"], suggested_filename="x.jpg", journal_draft=[], model="stub", elapsed_s=1.0,
-                    created_at=datetime(2026, 10, 26, 9, tzinfo=UTC))
+    return Proposal(
+        id="c" * 16,
+        doc_sha256="cd" * 32,
+        extracted=doc,
+        checks=[],
+        status="needs_a_look",
+        reasons=["No VAT number"],
+        suggested_filename="x.jpg",
+        journal_draft=[],
+        model="stub",
+        elapsed_s=1.0,
+        created_at=datetime(2026, 10, 26, 9, tzinfo=UTC),
+    )
 
 
 def test_last_quarters() -> None:
@@ -170,7 +234,16 @@ async def test_build_books_xlsx_has_expected_sheets_and_cells(books: Books) -> N
     assert "generated by Accnomos" in wb["README"]["A2"].value and "Do not edit" in wb["README"]["A2"].value
 
     j = wb["Ledger"]
-    assert [c.value for c in j[1]] == ["Date", "Event id", "Account", "Debit £", "Credit £", "VAT code", "Counterparty", "Evidence doc"]
+    assert [c.value for c in j[1]] == [
+        "Date",
+        "Event id",
+        "Account",
+        "Debit £",
+        "Credit £",
+        "VAT code",
+        "Counterparty",
+        "Evidence doc",
+    ]
     assert j["A1"].font.bold and j.freeze_panes == "A2" and j.column_dimensions["C"].width == 32
     assert j.max_row == 1 + 9 + 1  # nine lines and a totals row
     first = [c.value for c in j[2]]
@@ -207,8 +280,15 @@ def _synthetic_ledger() -> list[LedgerEvent]:
     ]
     p5 = evs[4]
     reversal = LedgerEvent(
-        id="r1" * 16, kind="reversal", date=date(2026, 9, 12), reverses=p5.id, net=p5.net, vat=p5.vat,
-        counterparty="Toolstation", approved_by=USER, approved_at=datetime(2026, 10, 25, tzinfo=UTC),
+        id="r1" * 16,
+        kind="reversal",
+        date=date(2026, 9, 12),
+        reverses=p5.id,
+        net=p5.net,
+        vat=p5.vat,
+        counterparty="Toolstation",
+        approved_by=USER,
+        approved_at=datetime(2026, 10, 25, tzinfo=UTC),
         lines=[Line(account=ln.account, debit=ln.credit, credit=ln.debit, vat_code=ln.vat_code) for ln in p5.lines],
     )
     return [*evs, reversal]
@@ -239,7 +319,13 @@ def test_books_xlsx_totals_match_the_events() -> None:
     # Suppliers: name, VRN, net and VAT this tax year, unpaid, entries, gross, last entry; the reversal nets off,
     # customers are excluded, biggest net first. Card purchases are paid at the till, so nothing is unpaid.
     s = wb["Suppliers"]
-    assert [c.value for c in s[1]][:5] == ["Supplier", "VAT number", "Net this tax year £", "VAT this tax year £", "Unpaid by you £"]
+    assert [c.value for c in s[1]][:5] == [
+        "Supplier",
+        "VAT number",
+        "Net this tax year £",
+        "VAT this tax year £",
+        "Unpaid by you £",
+    ]
     sup = {r[0]: r[1:] for r in s.iter_rows(min_row=2, values_only=True)}
     assert sup["Screwfix"][4] == 2 and _pence(sup["Screwfix"][5]) == 3847 + 18420
     assert _pence(sup["Howdens Joinery"][5]) == 30000 and s["A2"].value == "Howdens Joinery"
@@ -338,7 +424,7 @@ def test_books_xlsx_never_writes_text_as_a_formula():
     """A supplier called '=HYPERLINK(...)' on a receipt must land as text, not as a formula (CSV/XLSX injection)."""
     from app.projection import _safe_text
 
-    assert _safe_text('=HYPERLINK("http://x")') == "'=HYPERLINK(\"http://x\")"
+    assert _safe_text('=HYPERLINK("http://x")') == '\'=HYPERLINK("http://x")'
     assert _safe_text("@Screwfix") == "'@Screwfix"
     assert _safe_text("-12.50") == "-12.50"  # a negative amount as text is left alone
     assert _safe_text(-1250) == -1250 and _safe_text(None) is None

@@ -26,14 +26,26 @@ def books(fake: FakeStorageProvider) -> Books:
 
 
 def _audit(fake: FakeStorageProvider) -> list[dict]:
-    return [json.loads(x) for p, d in sorted(fake.files.items()) if p.startswith(f"{AUDIT}/")
-            for x in d.decode().splitlines()]
+    return [
+        json.loads(x)
+        for p, d in sorted(fake.files.items())
+        if p.startswith(f"{AUDIT}/")
+        for x in d.decode().splitlines()
+    ]
 
 
 async def _old_books(fake: FakeStorageProvider) -> None:
     """A folder as the previous version left it: web onboarding names plus what the runtime wrote."""
-    for folder in ("00 Inbox", "01 Receipts", "02 Sales invoices", "03 Bank statements", "04 Needs a look",
-                   "05 VAT returns", "06 Reports", "_System/audit"):
+    for folder in (
+        "00 Inbox",
+        "01 Receipts",
+        "02 Sales invoices",
+        "03 Bank statements",
+        "04 Needs a look",
+        "05 VAT returns",
+        "06 Reports",
+        "_System/audit",
+    ):
         await fake.ensure_folder(folder)
     await fake.write("03 Bank statements/2026-09-30_starling.csv", b"csv")
     await fake.write("04 Needs a look/2026-09-18 Howdens.pdf", b"pdf")
@@ -48,8 +60,11 @@ async def test_old_names_move_to_new_names_with_their_contents(fake: FakeStorage
     status = await layout.migrate(books)
 
     assert {(m.old, m.new) for m in status.moved} == {
-        ("03 Bank statements", paths.BANK), ("04 Needs a look", paths.NEEDS_A_LOOK), ("04 Payroll", paths.PAYROLL),
-        ("05 VAT returns", paths.VAT_RETURNS), ("06 Reports", paths.REPORTS),
+        ("03 Bank statements", paths.BANK),
+        ("04 Needs a look", paths.NEEDS_A_LOOK),
+        ("04 Payroll", paths.PAYROLL),
+        ("05 VAT returns", paths.VAT_RETURNS),
+        ("06 Reports", paths.REPORTS),
     }
     assert fake.files["04 Bank statements/2026-09-30_starling.csv"] == b"csv"
     assert fake.files["02 Needs a look/2026-09-18 Howdens.pdf"] == b"pdf"
@@ -71,7 +86,8 @@ async def test_old_and_new_side_by_side_are_left_alone_and_reported(fake: FakeSt
     status = await layout.migrate(books)
 
     assert {(c.old, c.new, c.old_is_empty) for c in status.conflicts} == {
-        ("02 Sales invoices", paths.SALES, True), ("05 VAT returns", paths.VAT_RETURNS, False),
+        ("02 Sales invoices", paths.SALES, True),
+        ("05 VAT returns", paths.VAT_RETURNS, False),
     }
     assert fake.files["05 VAT returns/2026-Q3/return.json"] == b"{}"  # untouched
     assert fake.files["06 VAT returns/2026-Q4/return.json"] == b"new"
@@ -154,8 +170,15 @@ def test_home_names_the_statement_where_it_is_now() -> None:
 
     from app import dashboard
 
-    line = BankLine(id="a" * 16, date=date(2026, 9, 30), amount_pence=-50, description="x", balance_pence=1050,
-                    source_file="03 Bank statements/2026-09-30_starling.csv", status="matched")  # imported earlier
+    line = BankLine(
+        id="a" * 16,
+        date=date(2026, 9, 30),
+        amount_pence=-50,
+        description="x",
+        balance_pence=1050,
+        source_file="03 Bank statements/2026-09-30_starling.csv",
+        status="matched",
+    )  # imported earlier
     cash = dashboard.cash_position([line])
     assert cash.statement == "04 Bank statements/2026-09-30_starling.csv"
     assert cash.bank == "starling" and cash.balance_pence == 1050
@@ -164,6 +187,7 @@ def test_home_names_the_statement_where_it_is_now() -> None:
 # --------------------------------------------------------------------------- #
 # Wiring: get_books renames on first contact; GET /books/layout and /health
 # --------------------------------------------------------------------------- #
+
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:

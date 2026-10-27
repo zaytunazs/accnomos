@@ -80,6 +80,8 @@ class FakeContactsProvider(ContactsProvider):
     async def list_contacts(self, max_results: int = 1000) -> list[AddressBookContact]:
         self.calls += 1
         return self.contacts[:max_results]
+
+
 class FakeMailSender(MailSender):
     """Records every message instead of sending it; set `fail` to make the next send raise."""
 
@@ -116,7 +118,11 @@ class FakeCalendarProvider(CalendarProvider):
             raise ValueError("start and end must be timezone-aware")
         self.calls.append(f"create_event:{subject}")
         event = CalendarEvent(
-            id=f"fake-event-{len(self.created) + 1}", subject=subject, start=start, end=end, location=location,
+            id=f"fake-event-{len(self.created) + 1}",
+            subject=subject,
+            start=start,
+            end=end,
+            location=location,
             body_preview=body[:255],
         )
         self.created.append(event)
@@ -146,8 +152,13 @@ class FakeStorageProvider(StorageProvider):
         data = self.files.get(path, b"")
         etag = hashlib.sha1(data).hexdigest()[:12] if not is_folder else None
         return FileRef(
-            id=f"fake:{path}", path=path, name=path.rsplit("/", 1)[-1], size=len(data), etag=etag,
-            modified=datetime.now(UTC), is_folder=is_folder,
+            id=f"fake:{path}",
+            path=path,
+            name=path.rsplit("/", 1)[-1],
+            size=len(data),
+            etag=etag,
+            modified=datetime.now(UTC),
+            is_folder=is_folder,
         )
 
     async def ensure_root(self) -> FileRef:
@@ -164,10 +175,10 @@ class FakeStorageProvider(StorageProvider):
         prefix = prefix + "/" if prefix else ""
         out: list[FileRef] = []
         for f in sorted(self.folders):
-            if f and f.startswith(prefix) and "/" not in f[len(prefix):]:
+            if f and f.startswith(prefix) and "/" not in f[len(prefix) :]:
                 out.append(self._ref(f, True))
         for p in sorted(self.files):
-            if p.startswith(prefix) and "/" not in p[len(prefix):]:
+            if p.startswith(prefix) and "/" not in p[len(prefix) :]:
                 out.append(self._ref(p))
         return out
 
@@ -211,7 +222,7 @@ class FakeStorageProvider(StorageProvider):
             raise ValueError(f"cannot move {path} into itself")
 
         def rebase(p: str) -> str:
-            return new_path + p[len(path):] if p == path or p.startswith(f"{path}/") else p
+            return new_path + p[len(path) :] if p == path or p.startswith(f"{path}/") else p
 
         self.folders = {rebase(f) for f in self.folders}
         self.files = {rebase(p): data for p, data in self.files.items()}
