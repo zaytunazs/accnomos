@@ -42,6 +42,10 @@ class _CaptureScreenState extends State<CaptureScreen> {
   String? _error;
   String? _doneMessage;
 
+  /// Inbox file name once the photo is uploaded (signed-in flow). While set,
+  /// the action button becomes 'Scan now' instead of 'Upload'.
+  String? _uploadedName;
+
   @override
   void initState() {
     super.initState();
@@ -80,6 +84,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
         _photo = file;
         _error = null;
         _doneMessage = null;
+        _uploadedName = null;
       });
     } catch (e) {
       if (!mounted) return;
@@ -109,8 +114,9 @@ class _CaptureScreenState extends State<CaptureScreen> {
     }
   }
 
-  /// Signed-in flow: upload to `00 Inbox`, then scan. Pops `true`.
-  Future<void> _uploadAndScan() async {
+  /// Signed-in flow, step 1: upload to `00 Inbox`. Shows the file name and
+  /// turns the action button into 'Scan now'.
+  Future<void> _upload() async {
     final settings = _settings;
     final photo = _photo;
     if (settings == null || photo == null || _reading) return;
@@ -129,15 +135,44 @@ class _CaptureScreenState extends State<CaptureScreen> {
       final token = await _auth.token();
       final kind = _auth.kind;
       await graphs.ensureFolder(token, kind, '00 Inbox');
+      final inboxName = _inboxName(photo.path);
       await graphs.putFileBytes(
         token: token,
         kind: kind,
-        relPath: '00 Inbox/${_inboxName(photo.path)}',
+        relPath: '00 Inbox/$inboxName',
         bytes: bytes,
         contentType: _contentType(photo.path),
       );
+      if (!mounted) return;
+      setState(() {
+        _reading = false;
+        _uploadedName = inboxName;
+        _doneMessage = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = _friendly(e);
+        _reading = false;
+      });
+    } finally {
+      graphs.close();
+    }
+  }
+
+  /// Signed-in flow, step 2: scan the inbox. Pops `true` when clean.
+  Future<void> _scanNow() async {
+    final settings = _settings;
+    if (settings == null || _reading) return;
+    setState(() {
+      _reading = true;
+      _error = null;
+      _doneMessage = null;
+    });
+    try {
       final account = await _auth.account();
       final user = account?.username ?? settings.userEmail;
+      final kind = _auth.kind;
       final outcome = await RuntimeClient(
         settings,
         books: BooksAuth(
@@ -167,8 +202,6 @@ class _CaptureScreenState extends State<CaptureScreen> {
         _error = _friendly(e);
         _reading = false;
       });
-    } finally {
-      graphs.close();
     }
   }
 
@@ -196,7 +229,9 @@ class _CaptureScreenState extends State<CaptureScreen> {
   @override
   Widget build(BuildContext context) {
     final progressText = _signedIn
-        ? 'Uploading to your 00 Inbox and scanning…'
+        ? (_uploadedName == null
+            ? 'Uploading to your 00 Inbox…'
+            : 'Scanning your inbox…')
         : _localMode
             ? 'Reading on your machine… (about 20–60 s)'
             : 'Reading with Muse Spark…';
@@ -225,7 +260,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: const Text(
-                      'Signed in — the photo goes to the 00 Inbox folder in your own OneDrive, then the reader scans it.',
+                      'Signed in — the photo goes to the 00 Inbox folder in your own OneDrive. Press “Scan now” to read it.',
                       style: TextStyle(
                           color: AccnomosColors.tealDark, height: 1.4),
                     ),
@@ -283,10 +318,36 @@ class _CaptureScreenState extends State<CaptureScreen> {
                               _photo = null;
                               _error = null;
                               _doneMessage = null;
+                              _uploadedName = null;
                             }),
                     child: const Text('Choose a different photo'),
                   ),
                   const SizedBox(height: 4),
+                  if (_signedIn && _uploadedName != null)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 8),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AccnomosColors.tealTint,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.description_outlined,
+                              color: AccnomosColors.tealDark),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Text(
+                              'Uploaded $_uploadedName to your 00 Inbox.',
+                              style: const TextStyle(
+                                  color: AccnomosColors.tealDark,
+                                  height: 1.4),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton(
@@ -298,10 +359,16 @@ class _CaptureScreenState extends State<CaptureScreen> {
                       ),
                       onPressed: (_reading || _settings == null)
                           ? null
-                          : (_signedIn ? _uploadAndScan : _read),
+                          : (_signedIn
+                              ? (_uploadedName == null
+                                  ? _upload
+                                  : _scanNow)
+                              : _read),
                       child: Text(
                           _signedIn
-                              ? 'Upload and scan'
+                              ? (_uploadedName == null
+                                  ? 'Upload'
+                                  : 'Scan now')
                               : 'Read with Meta AI',
                           style: const TextStyle(
                               fontWeight: FontWeight.w800, fontSize: 16)),
@@ -401,7 +468,9 @@ class _CaptureScreenState extends State<CaptureScreen> {
               ),
               onPressed: (_photo == null || _reading)
                   ? null
-                  : (_signedIn ? _uploadAndScan : _read),
+                  : (_signedIn
+                      ? (_uploadedName == null ? _upload : _scanNow)
+                      : _read),
               child: const Text('Retry'),
             ),
           ),

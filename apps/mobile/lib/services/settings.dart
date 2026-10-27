@@ -19,6 +19,7 @@ class AppSettings {
     this.apiKey,
     this.userEmail,
     this.businessName,
+    this.vatNumber,
   });
 
   /// Address of the reader service. The default is the Android emulator's
@@ -45,6 +46,10 @@ class AppSettings {
   /// sales correctly (mirrors the web's `accnomos.business` value).
   final String? businessName;
 
+  /// UK VAT registration number (9 digits). Format-checked only; it is
+  /// stored on-device and not sent anywhere yet.
+  final String? vatNumber;
+
   static const _kRuntimeUrl = 'accnomos.runtimeUrl';
   static const _kAiMode = 'accnomos.aiMode';
   static const _kAiBaseUrl = 'accnomos.aiBaseUrl';
@@ -52,6 +57,7 @@ class AppSettings {
   static const _kApiKey = 'accnomos.apiKey';
   static const _kUserEmail = 'accnomos.userEmail';
   static const _kBusinessName = 'accnomos.businessName';
+  static const _kVatNumber = 'accnomos.vatNumber';
 
   /// Load saved settings, falling back to defaults for anything missing.
   static Future<AppSettings> load() async {
@@ -64,6 +70,7 @@ class AppSettings {
       apiKey: prefs.getString(_kApiKey),
       userEmail: prefs.getString(_kUserEmail),
       businessName: prefs.getString(_kBusinessName),
+      vatNumber: prefs.getString(_kVatNumber),
     );
   }
 
@@ -88,6 +95,11 @@ class AppSettings {
       await prefs.remove(_kBusinessName);
     } else {
       await prefs.setString(_kBusinessName, businessName!);
+    }
+    if (vatNumber == null || vatNumber!.isEmpty) {
+      await prefs.remove(_kVatNumber);
+    } else {
+      await prefs.setString(_kVatNumber, vatNumber!);
     }
   }
 }

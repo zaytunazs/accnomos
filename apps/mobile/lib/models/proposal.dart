@@ -186,6 +186,36 @@ class Proposal {
     }
   }
 
+  /// Copy with corrected fields (used by the Review edit sheet for the
+  /// signed-out local preview; the runtime path sends `edits` instead).
+  Proposal copyWith({
+    String? supplier,
+    double? total,
+    String? date,
+    String? category,
+    double? net,
+    double? vat,
+  }) {
+    return Proposal(
+      id: id,
+      supplier: supplier ?? this.supplier,
+      total: total ?? this.total,
+      date: date ?? this.date,
+      paidBy: paidBy,
+      confidence: confidence,
+      source: source,
+      category: category ?? this.category,
+      status: status,
+      net: net ?? this.net,
+      vat: vat ?? this.vat,
+      vatNumber: vatNumber,
+      reviewerNote: reviewerNote,
+      verifierNote: verifierNote,
+      reason: reason,
+      quote: quote,
+    );
+  }
+
   /// Three fictional sample items for demos.
   static const List<Proposal> samples = [
     Proposal(
