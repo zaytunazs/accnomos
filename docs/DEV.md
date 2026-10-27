@@ -45,6 +45,8 @@ original whenever it is unsure. The result is on the proposal as `crop` plus an 
   it was written). Capture a real response, replace `services/runtime/tests/fixtures/sam_response.json`,
   and check `parse_sam_boxes` against it before turning it on.
 - Without SAM, Pillow + numpy find the largest bright region (Otsu); accepted at 25–95 % of the frame.
+- Crops keep the upload's format (JPEG, including phone MPO files, PNG, WebP); anything else is passed
+  through uncropped so the MIME type stays true.
 
 ## Deploy
 
