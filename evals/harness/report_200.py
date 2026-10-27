@@ -143,6 +143,9 @@ def judge_section(judge: dict[str, Any], recs: list[dict[str, Any]]) -> list[str
     out += ["", f"Final judge verdict agrees with the code comparison (fields only) on **{agree}/{len(by_file)}** documents "
             f"(judge `none` = code all right). Counting a `minor` verdict (cosmetic or category only) as right too: "
             f"{lenient}/{len(by_file)}.", "",
+            f"`major` verdicts: {len(major := [f for f, d in by_file.items() if d['final_severity'] == 'major'])}, covering "
+            f"{sum(not code_ok[f] for f in major)}/{sum(not v for f, v in code_ok.items() if f in by_file)} documents the code "
+            f"scores wrong; the other {sum(code_ok[f] for f in major)} are documents the code scores right.", "",
             f"Unparsed verdicts: {unparsed}/{len(by_file)} ({100 * unparsed / max(1, len(by_file)):.1f} %); final replies cut off at the "
             f"reply cap: {capped}.", "",
             "Most frequent judge-flagged fields (final verdicts): " + (", ".join(f"{k} {v}" for k, v in fields.most_common(8)) or "none")]

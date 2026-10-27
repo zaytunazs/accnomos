@@ -89,21 +89,23 @@ Checks that did not pass (documents):
 
 ## Claude judge
 
-Judge: claude-haiku-5-5, escalating disagreements to claude-sonnet-5-5. Judged 200, skipped 0, first-pass disagreements with the code comparison 196, escalated 196.
+Judge: claude-haiku-5-5, escalating disagreements to claude-sonnet-5-5. Judged 200, skipped 0, first-pass disagreements with the code comparison 174, escalated 174.
 
 | Final severity | Docs |
 |---|---:|
-| minor | 84 |
+| minor | 88 |
 | none | 60 |
-| major | 28 |
-| unparsed | 27 |
-| null | 1 |
+| major | 52 |
 
-Final judge verdict agrees with the code comparison (fields only) on 79/200 documents.
+Final judge verdict agrees with the code comparison (fields only) on **79/200** documents (judge `none` = code all right). Counting a `minor` verdict (cosmetic or category only) as right too: 167/200.
 
-Most frequent judge-flagged fields (final verdicts): lines 167, category 30, category_guess 24, doc_type 11, category_hint 11, net_total 6, invoice_number 4, vat_total 2
+`major` verdicts: 52, covering 19/19 documents the code scores wrong; the other 33 are documents the code scores right.
 
-Caveat: the judge is noisy and not a ground truth. It flagged line-item wording and category on most documents (`lines` 167, `category*` 65) and disagreed with the code comparison on nearly every first pass, and 27 verdicts did not parse as JSON (likely the 800-token reply cap). Treat the code-scored field accuracy above as the headline; use the judge only to spot-check `major` verdicts.
+Unparsed verdicts: 0/200 (0.0 %); final replies cut off at the reply cap: 0.
+
+Most frequent judge-flagged fields (final verdicts): lines 387, category 50, category_guess 26, doc_type 15, net_total 14, category_hint 8, vat_total 6, invoice_number 4
+
+Caveat: the judge is noisy and not a ground truth. It flags line-item wording and category on most documents, which the code comparison does not score, so it disagrees with the code on nearly every first pass. Treat the code-scored field accuracy above as the headline; use the judge only to spot-check `major` verdicts.
 
 ## Ten worst cases
 

@@ -46,7 +46,6 @@ evals/runs/*
 !evals/runs/glimmer_messy_200/
 evals/runs/glimmer_messy_200/*
 !evals/runs/glimmer_messy_200/report.md
-!evals/runs/glimmer_messy_200/judge.json
 !evals/runs/glimmer_messy_200/summary.json
 data/private/
 
