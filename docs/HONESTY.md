@@ -4,9 +4,9 @@ A flat list, grouped by area, from the code on `main` and the "What remains" sec
 (duplicates merged). Severity-ordered tables are in `docs/REMAINING.md`; what each feature does and how it is tested is the
 README table. We could not reach accnomos.com or api.accnomos.com from this session, so the live sites are unchecked.
 
-Checked 27 Oct 2026 on this checkout: `pytest -q` passes in `services/runtime` (600), `packages/ledger` (32),
-`packages/connectors` (34) and `services/hmrc-relay` (100). The Flutter app was **not** built, analysed or tested. The web
-build and the Playwright suite were not re-run for this pass. `ruff` has not been run on `main`.
+Checked 27 Oct 2026 on this checkout: `pytest -q` passes in `services/runtime` (607), `packages/ledger` (32),
+`packages/connectors` (34) and `services/hmrc-relay` (100). The Flutter app was **not** built, analysed or tested. `pnpm run build`
+in `apps/web` passes; the Playwright suite was not re-run. `ruff` has not been run on `main`.
 
 ## What is real, and what is not
 
@@ -25,14 +25,14 @@ build and the Playwright suite were not re-run for this pass. `ruff` has not bee
 - The runtime's own period key (`26A4` style, saved as `calculated_for`) is a placeholder; submission uses HMRC's key. For monthly returns all three months of a quarter get the same placeholder.
 - `GET /books/vat` accepts `?today=`, so a client can move "current" and with it `can_submit`; the web gate is advisory and HMRC decides what can be filed.
 - No flat-rate scheme, no annual accounting scheme, no fuel scale-charge calculation.
-- The runtime's "today" is the **UTC date** (`books.now()`): between midnight and 1 am in BST an invoice date, a "yesterday" or a due date can be a day behind the UK date. Both clients send `today` to the dashboard, so this mostly affects direct API callers and chat actions.
+- The runtime's "today" is the **UTC date** (`books.now().date()`; the VAT routes use `books.today()`, the server's local date, which is UTC in the container because no `TZ` is set): between midnight and 1 am in BST an invoice date, a "yesterday" or a due date can be a day behind the UK date. Both clients send `today` to the dashboard, so this mostly affects direct API callers and chat actions.
 
 ## Receipts, review and the ledger
 
-- **No separate LLM Reviewer.** The card's "why" line is composed by code ("Checker, code"); Muse Spark writes answers only in *Ask*.
+- **No separate LLM Reviewer.** The card's "why" line is composed by code ("Checker, code"). Models write words only in *Ask*, inbox triage, reminder drafts and the planner rationale, each checked by code. The static mock-up on `/vat` still has a "Reviewer's note (Muse Spark)"; it is labelled sample but no such reviewer runs.
 - Key-mode extraction (muse-spark-1.3) is unit-tested only.
 - **Ledger files are not tamper-evident** (no signatures, no hash chain). An undo is a reversing entry dated like the original; if that VAT period was already submitted, the correction belongs in the current period.
-- `/books/vat` entry counts include sales and purchases only; a reversal changes the amounts but not the count next to boxes 1–4 and 6–7.
+- `/books/vat` entry counts include sales and purchases only; a reversal changes the amounts but not the count next to boxes 1–4 and 6–7, while box 5's count includes it (`routes_vat.py`).
 - HEIC photos are copied by Outlook intake but not read yet.
 - `POST /books/approve/{id}` is kept as an alias for web builds deployed before the integration review; remove it after the next deploy.
 - The 6 April tax-year rule is written twice (`contacts.uk_tax_year_start`, `mileage.tax_year_of`); both are tested.
@@ -41,41 +41,41 @@ build and the Playwright suite were not re-run for this pass. `ruff` has not bee
 
 ## Models
 
-- **Verifier needs a Baseten key.** Muse Spark Open runs only in key mode and only if the server owner sets `BASETEN_API_KEY`; the demo deployment sets none. Without one, key mode verifies with muse-spark-1.3 and local mode with Glimmer. No real Baseten or Meta verifier call has ever been made, and the Baseten model slug `meta-models/muse-spark-open` is unconfirmed.
+- **Verifier needs a Baseten key.** Muse Spark Open runs only in key mode and only if the server owner sets `BASETEN_API_KEY`; the demo deployment sets none. Without one, key mode verifies with the request's model (muse-spark-1.3 by default) and local mode with Glimmer. No real Baseten or Meta verifier call has ever been made, and the Baseten model slug `meta-models/muse-spark-open` is unconfirmed.
 - The verifier's catch rate is unmeasured (Glimmer checking Glimmer, 20 documents, 0 extra catches). Mixed-rate receipts give false alarms (it reads the standard-rated subtotal as net); the prompt needs a mixed-rate hint. All six fields are decisive, which is stricter than the original brief.
 - The card cannot adopt the second reading: on a disagreement the user can approve the first reading or reject.
-- **SAM 3.1 crop is off by default** (`SAM_CROP=1`); its wire format is unverified and has never run live; the default crop is plain code, measured on synthetic scenes only (mean IoU 0.88). No crop chip in the UI.
+- **SAM 3.1 crop is off by default** (`SAM_CROP=1`); its wire format is unverified and has never run live; the default crop is plain code, measured on synthetic scenes only (mean IoU 0.88). No separate crop chip: the crop note is appended to the card's verifier line.
 - **Muse Voice Transcribe:** the request (`/asr/transcribe`, multipart parts, response field) comes from research notes and has not been checked against dev.meta.ai. No live mic run in Chrome/Edge, Firefox, Safari/iOS or on Android. Key mode only. Meta has no text-to-speech model and Accnomos does not read answers aloud.
 - In key mode with no `X-Meta-Api-Key` header, `AiConfig` falls back to the server's `META_API_KEY`, so typed and voice Ask would run on the operator's key.
 - **"On my own machine" means the machine running the runtime.** Our demo runtime and Ollama are on our DGX Spark; a user's laptop is not reachable from `api.accnomos.com`.
 - Harness gold issues: `015_zero` (VAT number not printed) and `016_no_vat_number` (£0 VAT expected to need a look).
 - A bad `X-AI-*` configuration makes inbox triage silently run without a model ("No AI is set up") instead of naming the setting.
-- The planner's rationale model sees calendar event subjects as well as job names (only the user's own AI).
+- The planner's rationale model sees calendar event subjects as well as job names, and with no `X-AI-*` headers `/plan/day` falls back to the server's default model (`AI_MODE`, or `META_API_KEY` in key mode), not only the user's own (`routes_plan.optional_ai`).
 
 ## Chat and voice actions, Autopilot
 
 - Without `ACTIONS_SIGNING_KEY` (the deploy file passes it through, empty by default), each runtime process makes a random key: after a restart, or with several workers, a card can fail with 403.
 - If the runtime dies between the `approving` and `executed` audit lines, that action stays blocked (409) on purpose; there is no UI to clear it.
 - Invoice drafts for chat actions can end as drafts when `Mail.Send` has not been granted; the card cannot request consent.
-- The Autopilot switch (level L1/L2) lives in the browser's `localStorage`. **The Android app never sends `X-Autopilot`**, so scans from the phone always run Autopilot when a rule exists, even if it is off on the web.
+- The Autopilot level lives in the browser's `localStorage` (`accnomos.autopilot`; only L2 turns posting on). **The Android app never sends `X-Autopilot`**, so scans from the phone always run Autopilot when a rule exists, even if it is off on the web.
 - Autopilot only handles purchases that match a rule; it never makes rules itself.
 
 ## Invoicing, jobs, contacts
 
 - No credit notes; *Mark paid* posts nothing (the receipt is not posted to 1200 Bank); a paid invoice cannot be voided.
-- **Hours are not linked to invoices:** nothing records which timesheet entries an invoice billed, so the user marks hours invoiced by typing the invoice number (`routes_jobs.py`, `JobDetail.tsx` TODOs). That route checks entry ids but not that hours or rates still match what the user saw.
+- **Hours are not linked to invoices:** nothing records which timesheet entries an invoice billed, so the user marks hours invoiced by typing the invoice number (`routes_jobs.py`, `JobDetail.tsx` TODOs; `/invoices/new` does not read the job's draft lines). That route checks entry ids but not that hours or rates still match what the user saw.
 - "Invoiced" value and margin use each person's *current* charge rate; changing a rate restates past jobs.
-- If saving the sent copy fails after the email has gone, the invoice is saved as sent but the sale is not posted until the user retries (the retry exists). `GraphMailSender.MAX_INLINE` checks raw bytes, not base64, against Graph's 4 MB cap. In the send dialogs the tick stays ticked if the user edits the message afterwards.
-- A matched bank line counts as full payment: part payments, overpayments and credit notes are not modelled, so a part-paid invoice drops out of *Aged balances*. Ageing uses the document date (no payment terms). Customer VAT numbers are only set with *Edit*. Outlook contacts added with "also add" are always customers. `contacts.json` is rewritten whole, so two tabs editing at once means last write wins.
+- If saving the sent copy fails after the email has gone, the invoice is saved as sent but the sale is not posted until the user retries (the retry exists). `GraphMailSender.MAX_INLINE` (3 MB) checks raw bytes; base64 adds a third, so an attachment near 3 MB can just exceed Graph's 4 MB request limit. In the send dialogs the tick stays ticked if the user edits the message afterwards.
+- A matched bank line counts as full payment: part payments, overpayments and credit notes are not modelled, so a part-paid invoice drops out of *Aged balances*. Ageing counts from the document date and ignores the invoice's due date and payment terms. Customer VAT numbers are only set with *Edit*. Outlook contacts added with "also add" are always customers. `contacts.json` is rewritten whole, so two tabs editing at once means last write wins.
 - Plain timesheet edits do not rebuild Books.xlsx. A timesheet whose date moves month is written to the new file before the old one is cleared; a failure between leaves a duplicate, never a loss. A purchase can be tagged to a closed job through the API (on purpose).
-- The web mileage log can add and delete journeys but has no edit control (`PATCH /mileage/{id}` exists). The Review vehicle picker shows only when there is an active business vehicle. Vehicle pre-fill at scan uses a category plus keyword list.
+- The web mileage log can add and delete journeys but has no edit control (`PATCH /mileage/{id}` exists). The Review vehicle picker shows only when there is an active business vehicle or the proposal already has one. Vehicle pre-fill at scan uses a category plus keyword list.
 - `MarkInvoicedBody.entry_ids` has no item limit beyond the 256 KB body cap.
 
 ## Payroll
 
 - **Estimates only. Not payroll, not RTI.** No FPS/EPS, no payment to HMRC; your payroll provider does that.
 - The estimate divides annual thresholds by 12 (tax about 20p a month high, NI a few pence off HMRC's tables), monthly pay only, tax code 1257L on a month-1 basis, England/NI rates, NI category A. No student loans, pensions, statutory pay, benefits, salary sacrifice or Employment Allowance; no salaried staff (gross is hours × rate).
-- The 2026–27 rates in `payroll_rates.py` have not been re-checked against GOV.UK from this environment.
+- The 2026–27 rates in `payroll_rates.py` were checked against GOV.UK on 27 Oct 2026 by the payrun branch's author (a code comment and commit message, no other record); no test pins them to the source. Re-check each April.
 - Undoing a payroll ledger entry from outside the Payroll page leaves the run "confirmed" until it is reopened.
 
 ## Bank statements
@@ -95,9 +95,9 @@ build and the Playwright suite were not re-run for this pass. `ruff` has not bee
 ## Files, Books.xlsx, dashboard
 
 - Books.xlsx has never been opened in Excel from a real OneDrive.
-- Home *Deadlines* assumes stagger 1 when no business settings are saved, without saying so; annual accounting shows the sample tiles. `GET /books/deadlines` returns `start_month` normalised to 1–3.
+- Home *Deadlines* assumes stagger 1 when no business settings are saved, without saying so; with annual accounting the tiles show "—" and "Annual VAT returns are not worked out yet". `GET /books/deadlines` returns `start_month` normalised to 1–3.
 - On Files a top-level folder's "N files" adds its sub-folders' `childCount`.
-- The dashboard returns 500 if an audit or storage read fails at the provider level (only parse errors are isolated per tile). A failed pull-to-refresh on the phone keeps the old figures without a "stale" marker.
+- The whole dashboard request fails (401/502 for a Graph error, 500 otherwise) if an audit or storage read fails at the provider level; only parse errors are isolated per tile. A failed pull-to-refresh on the phone keeps the old figures under a "Could not load your figures" line; the tiles are not marked stale.
 - The web sidebar always says "AI: local Meta agent (Glimmer 30B)", whatever AI is set in Settings. Ask uses the period picked on `/vat` but has no picker of its own.
 
 ## Android
@@ -112,14 +112,14 @@ build and the Playwright suite were not re-run for this pass. `ruff` has not bee
 ## Security and deployment
 
 - Single-worker limits: the **rate limit is per process** (in-memory buckets, cleared on restart; several replicas would each allow the full rate) and the relay's spent-state set is per process, hence one relay worker (`deploy/Dockerfile.relay`).
-- `CF-Connecting-IP` is trusted whenever present in `deploy/nginx.conf`; on a Plesk path a client could pick its own address for the rate limit and the HMRC `Gov-Client-Public-IP`. The fix is a manual front-proxy step.
+- The relay still prefers `CF-Connecting-IP` for `Gov-Client-Public-IP` (`fraud_headers.py`); only `deploy/nginx.conf`, which strips that header and takes the last `X-Forwarded-For` entry, makes that safe, so the relay must never be reachable except through it.
 - The Graph provider's `_safe_path` raises a plain `ValueError`, so a hand-edited unsafe path in the user's books returns a 500 with a correlation id, not a 400 (nothing can escape the folder either way).
 - Deploy files are checked by config tests only: images not built, `docker compose up` and `nginx -t` not run, `.htaccess` not tried on Apache/Plesk, base images pinned by tag not digest, nothing tried against live `api.accnomos.com`. `Permissions-Policy` lists the deprecated `interest-cohort`.
 - No authentication of callers beyond holding a valid token; `X-User` is not checked against the token. No script CSP on the web app. The AI key and HMRC tokens live in browser storage, readable by an XSS on the web origin. Prompt injection beyond file names is only mitigated by checks and approval.
-- `uv.lock` is stale: `accnomos-runtime` lists `pillow` but has no entry for `numpy` or `fpdf2`, so `uv sync --frozen` would leave them out. Docker installs with `pip`.
+- `uv.lock` is stale: its `accnomos-runtime` entry lists none of `pillow`, `numpy` or `fpdf2` (all required in `services/runtime/pyproject.toml`) and the lock has no `numpy` or `fpdf2` package, so `uv sync --frozen` would leave them out. Docker installs with `pip`.
 - The shared `.venv` on the Spark can hold editable installs from another checkout; run `uv sync --all-packages` in the checkout you serve from.
 
 ## Testing and process
 
 - The web has no unit tests; pages are checked by `pnpm run build` and the Playwright suite. The e2e CI job `.github/workflows/e2e.yml` has never run on GitHub; its fake calendar is seeded but no e2e flow uses it. The suite does not prove real MSAL, Graph, HMRC relay or model accuracy.
-- `docs/DEV.md`: the SAM request/response fixture is marked ILLUSTRATIVE and must be replaced with a captured real response before turning SAM on.
+- The SAM response fixture `services/runtime/tests/fixtures/sam_response.json` is marked ILLUSTRATIVE and must be replaced with a captured real response before turning on `SAM_CROP`.

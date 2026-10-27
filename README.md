@@ -36,7 +36,7 @@ Muse Image made the brand artwork at build time (`tools/brand_muse.py`; not in t
 
 ## What works today
 
-Checked 27 Oct 2026 on this checkout: `pytest -q` passes in `services/runtime` (600 tests), `packages/ledger` (32),
+Checked 27 Oct 2026 on this checkout: `pytest -q` passes in `services/runtime` (607 tests), `packages/ledger` (32),
 `packages/connectors` (34) and `services/hmrc-relay` (100). `cd apps/web && pnpm run e2e` is set up to run 23
 Playwright tests; this check did not re-run it. Nothing in the Flutter app was built, analysed or tested (no Flutter SDK here).
 **"Tested" means automated tests on fakes:** an in-memory OneDrive, mailbox, calendar and address book
@@ -63,7 +63,7 @@ Gaps and limits: `docs/HONESTY.md` (flat list) and `docs/REMAINING.md` (by sever
 | Sales invoicing | Draft → A4 PDF → send via Outlook (`Mail.Send`, after a tick) → sale posted once → reminder draft → mark paid / void (a reversal). Money by code, per line | `test_invoicing.py` (fake storage and mailbox), `packages/connectors/tests/test_send_mail.py` | Sending from a real mailbox; the PDF in a real viewer. No credit notes; *Mark paid* does not post to 1200 Bank |
 | Jobs and timesheets | `/jobs`, staff rates in Settings, timesheets in 0.25 h steps, purchases tagged to a job on Approve, margin; invoice lines from unbilled hours | `test_jobs.py` | Real OneDrive. Invoices carry no link to hours: you mark them invoiced by typing the invoice number. "Invoiced" and margin use each person's *current* charge rate |
 | Vehicles and mileage | Vehicles, mileage log, HMRC approved rates (45p/25p, 24p, 20p) from one table in `mileage.py`, a quarter's claim as an expense proposal owed to the owner, locking after a claim | `test_mileage.py` | Real OneDrive. The fuel scale charge is text only, not calculated |
-| Pay runs (estimates) | `/payroll`: monthly estimate of PAYE, employee and employer NI from timesheet hours, CSV to `04 Payroll/`; *Confirm* posts the provider's **actual** gross and employer NI. Not payroll, not RTI | `test_payroll.py` | 2026–27 rates not re-checked against GOV.UK; no RTI (FPS/EPS); tax code 1257L, NI category A, month 1 only |
+| Pay runs (estimates) | `/payroll`: monthly estimate of PAYE, employee and employer NI from timesheet hours, CSV to `04 Payroll/`; *Confirm* posts the provider's **actual** gross and employer NI. Not payroll, not RTI | `test_payroll.py` | 2026–27 rates checked against GOV.UK by hand on 27 Oct 2026 (code comment only); no RTI (FPS/EPS); tax code 1257L, NI category A, month 1 only |
 | Day planner | *Plan today*, or "Plan my Thursday" in Ask: code orders visits by postcode district around Outlook events, the model only writes the rationale; *Apply* creates `[Accnomos]` events once per plan. `docs/PLANNER.md` | `test_planner.py` (fake calendar; Graph request shapes on a mock transport) | Real Outlook calendar. Europe/London only; travel times are rules of thumb |
 | Home dashboard | Cash, owed to you / by you, VAT Box 5 and deadline, needs attention and recent activity from one `GET /books/dashboard`, no model call; labelled sample when signed out | `test_dashboard.py`; e2e phone-width smoke loads the page | Real account |
 | Files page | Lists the real books folder from Graph (`_System` collapsed) with *Open* links; *Rebuild Books.xlsx* | e2e `files.spec.ts` (look-alike Graph) | Real OneDrive. A folder's "N files" can count nested folders |

@@ -42,7 +42,7 @@ Read in one place each (`services/runtime/app/routes_books.py`, `app/ai/config.p
 | `X-Correlation-Id` | every response | also in the body of a 500 |
 
 VAT settings are query parameters, not headers (`app/vat_cycle.py`): `stagger` (1–3) or `start_month`, `months` (3 or 1),
-and `today`. With none sent, the runtime uses calendar quarters. **"Today" on the runtime is the UTC date** (`books.now()`).
+and `today`. With none sent, the runtime uses calendar quarters. **"Today" on the runtime is the UTC date** (`books.now()`; the VAT routes use `books.today()`, the server's local date, UTC in the container).
 
 ## The books folder
 
@@ -112,7 +112,7 @@ person did, or `agent:<name>` (`extractor`, `intake`, `autopilot`, `mileage`, `c
 | 2 | Crop | **Code** by default (Pillow + Otsu); SAM 3.1 only with `SAM_CROP=1` in key mode; `CROP_MODE=off` disables | Code crop tested; SAM never run |
 | 3 | Extractor | **Muse Glimmer 30B** (local) or **Muse Spark** (key mode), strict-JSON schema | Glimmer run by hand; Spark unit-tested only |
 | 4 | Checker | **Code**: line and total arithmetic, VAT maths and rates, VAT-number format, duplicate hash, currency, valid date, confidence, and the document's date against the current VAT period (a **warning**, never a fail) | Tested; any failure → *Needs a look* |
-| 5 | Reviewer | **Code** composes the "why" line on each card ("Checker, code"). Muse Spark explains only in *Ask* | **No separate LLM reviewer exists** |
+| 5 | Reviewer | **Code** composes the "why" line on each card ("Checker, code"). Models write words only in *Ask*, triage, reminders and the planner rationale | **No separate LLM reviewer exists** |
 | 6 | Verifier | A second reading with a different prompt that never sees the first answer, run only if the checks pass; **code** compares six fields (supplier, VAT number, date, net, VAT, total) | Glimmer/Glimmer run on 20 documents; Baseten and Meta paths unit-tested only; `VERIFIER=off` disables it |
 | 7 | Human | The user taps Approve (or Reject) | Always, unless an Autopilot rule applies |
 | 8 | Poster | Code writes the ledger event | Tested |
