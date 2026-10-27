@@ -54,4 +54,5 @@ jobs:
       - name: eslint
         run: pnpm run lint
       - name: tsc --noEmit
-        run: pnpm exec tsc --noEmit
+        # next typegen writes the route/layout types (LayoutProps etc.) that a clean checkout lacks
+        run: pnpm exec next typegen && pnpm exec tsc --noEmit
