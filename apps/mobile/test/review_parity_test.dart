@@ -37,10 +37,7 @@ void main() {
   testWidgets('sample cards show the rule match and bulk approval',
       (tester) async {
     await pumpReview(tester);
-    expect(
-        find.text(
-            'SAMPLE — FICTIONAL COMPANY · sign in to see your books'),
-        findsOneWidget);
+    // The sample label is the shell's banner (main.dart), shown above every tab.
     expect(find.text('Screwfix'), findsOneWidget);
     expect(find.textContaining('Matches your Autopilot rule for Screwfix'),
         findsOneWidget);

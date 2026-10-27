@@ -33,10 +33,7 @@ void main() {
       (tester) async {
     await tester.pumpWidget(shell(const ReviewScreen()));
     await tester.pumpAndSettle();
-    expect(
-        find.text(
-            'SAMPLE — FICTIONAL COMPANY · sign in to see your books'),
-        findsOneWidget);
+    // The sample label is the shell's banner (main.dart), shown above every tab.
     expect(find.text('Screwfix'), findsOneWidget);
   });
 
