@@ -1,15 +1,16 @@
 # Owner checklist: what only you can do before submitting
 
 Deadline: **Wed 4 Nov 2026, 21:00 ET** (02:00 GMT on Thu 5 Nov; UK clocks went back on 25 Oct and US clocks on 1 Nov, so ET is EST, five hours behind). Do the items in order: the video depends on 1–4, and the repo check should be last before you flip anything public.
-`docs/HONESTY.md` says what the maintainers' status is for several items below and that **nothing in the repo records it**, so each item says where to look.
-Tick boxes are yours; nothing here was checked against a live console.
+Refreshed 27 Oct 2026. `[x]` means done on 27 Oct according to the owner's status that day; the repo holds no log of these console and server steps (`docs/HONESTY.md`), so each ticked item says what to glance at if you want to be sure. `[ ]` is still yours.
 
 ## 1. Android: Play listing and sign-in
 
-- [ ] **Play listing status.** Google Play Console → your app → *Release* → *Testing* or *Production*. Note which track the 0.2.0+2 build is on (`apps/mobile/pubspec.yaml` version), and whether it is live, in review or only in a test track. The repo has no record of the listing's state. Write the real status into the submission form; do not write "published" unless the console says so.
-- [ ] **Entra redirect URI for the Play release.** Microsoft Entra admin centre → *App registrations* → the Accnomos app → *Authentication* → add an *Android* platform entry with package name and the **Play App Signing** SHA-1 (Play Console → *Setup* → *App signing*), converted to the base64 signature hash MSAL uses. Without it a release or Play build may not sign in (`docs/HONESTY.md`, Android).
-- [ ] After registering it, set `broker_redirect_uri_registered` in `apps/mobile/assets/msal_config.json` (currently `false`), rebuild with `tools/build_release.ps1 -Tag <version>` (bump `pubspec.yaml` first), and **sign in on a release build on a real device or emulator**. Until then film the debug build only and say so.
-- [ ] Run `flutter analyze` and `flutter test` in `apps/mobile` once. They have never been run; the README and HONESTY.md say so. If they fail, either fix or keep the Android claims in the submission as they are (built for the emulator, not tested).
+- [x] **Entra Android entry for the Play release** (done 27 Oct): the Play app-signing key's MSAL signature hash is registered under the Accnomos app's *Authentication* → *Android* platform. Build **0.3.1+4** onwards is built with that hash (`tools/build_release.ps1`; commit `d67527e`). Glance: Entra → *App registrations* → Accnomos → *Authentication* shows the Android entry.
+- [x] **`flutter analyze` and `flutter test`** now run on every Android merge: **158 tests pass** (27 Oct). `docs/HONESTY.md` still quotes 148 until its own branch lands.
+- [x] **Current build:** `apps/mobile/pubspec.yaml` is **0.3.2+5** (adds *Add from phone*, the system contact picker).
+- [ ] **Play listing status.** Play Console → your app → *Release* → *Production*. On 27 Oct the owner's note is "production track has build 1 in review". Write the real status into the form on the day (in review, live, or test-track only); do not write "published" unless the console says so.
+- [ ] **Sign in on a release/Play build on a real phone** and note whether it worked. The repo has no record of a phone sign-in; until you have one, film the debug build or the 390 px PWA and say so. After a successful sign-in, set `broker_redirect_uri_registered` to `true` in `apps/mobile/assets/msal_config.json` only if you rebuild; otherwise leave the file alone.
+- [ ] If you want to show *Add from phone*, run it once on a real phone first (the picker has not been run on one; `README.md` Contacts row).
 
 ## 2. Demo account and data
 
@@ -17,33 +18,36 @@ Tick boxes are yours; nothing here was checked against a live console.
 - [ ] **For the video:** use an *empty* account signed in at `https://accnomos.com`, finish *Connect*, empty `00 Inbox`, Settings → Autopilot **L1**, VAT **Quarterly, stagger 1** (`docs/DEMO.md`, "Set up before you go on").
 - [ ] **For judges who want to click through six months:** a *separate* throwaway account seeded with `python tools/seed_demo.py --business "Bramblewood Joinery Ltd" --dry-run`, then without `--dry-run`. Steps and the token handling are in `tools/seed_demo.md`. The seed has **never been run against a real OneDrive**, so run it before relying on it. Do not seed the video account (it leaves 25 documents in `00 Inbox`). Put the judge account's sign-in details in the submission form's private field, not in the repo.
 - [ ] **Model host:** on the DGX Spark `ollama list` shows `muse-glimmer:30b`; run one dummy scan to warm it. `curl https://api.accnomos.com/health` returns `"ok": true`. The live sites could not be reached from the sessions that wrote the docs, so this is unchecked.
-- [ ] Set `ACTIONS_SIGNING_KEY` on the runtime server (`deploy/docker-compose.yml` passes it through, empty by default), otherwise a restart makes chat-action cards fail with 403 (`docs/HONESTY.md`).
+- [ ] **Keep the DGX Spark on, and its network path up, through judging** (until the results are announced, not just until you submit). It is the only place Muse Glimmer 30B runs for the demo, and the Muse Spark Open extraction eval (`evals/runs/spark_open_200`) runs there. Disable sleep and automatic updates; check `curl https://api.accnomos.com/health` once a day.
+- [x] **Server keys set** (done 27 Oct, per the owner): `ACTIONS_SIGNING_KEY` (chat-action cards no longer fail with 403 after a restart), the HMRC sandbox `HMRC_CLIENT_ID` / `HMRC_CLIENT_SECRET` on the relay, and `BASETEN_API_KEY` on the runtime. Glance: `docker compose config` on the server shows them non-empty (do not paste the values anywhere).
 - [ ] Decide whether `META_API_KEY` is set on the server. In key mode with no key header the runtime falls back to it, so anyone could spend your key on Ask (`docs/HONESTY.md`, Models). Leave it unset on the public demo unless you accept that.
 
 ## 3. HMRC sandbox
 
-- [ ] **Credentials.** HMRC Developer Hub (`developer.service.hmrc.gov.uk`) → *Applications* → your sandbox application: copy the client ID and secret into `HMRC_CLIENT_ID` and `HMRC_CLIENT_SECRET` in the **relay server's** `.env` (never the repo; `deploy/docker-compose.yml` reads them). `.env.example` shows the other `HMRC_*` names.
-- [ ] **Redirect URI** on the HMRC application must equal the relay's `HMRC_REDIRECT_URI` (compose default `https://api.accnomos.com/hmrc/callback`); `RELAY_ALLOWED_REDIRECTS` must list `https://accnomos.com`.
+- [x] **Relay configured for the sandbox** (27 Oct): credentials are on the relay server, and the owner has **connected once** (OAuth completed). **No end-to-end sandbox submission is recorded yet.**
+- [ ] Confirm the HMRC application's redirect URI equals the relay's `HMRC_REDIRECT_URI` (compose default `https://api.accnomos.com/hmrc/callback`) and that `RELAY_ALLOWED_REDIRECTS` lists `https://accnomos.com`.
 - [ ] **Test user:** `curl -X POST https://api.accnomos.com/hmrc/test-user` returns `userId`, `password`, `vrn` (`docs/HMRC.md`). Keep them on a card, off camera and out of the repo.
-- [ ] **Run the whole flow once, off camera:** `/vat` → *Connect to HMRC (sandbox)* → *Show obligations* → declaration → *Submit to HMRC (sandbox)* → check `05 VAT returns/<periodKey>/receipt.json` in OneDrive. **It has never been run end to end.** If it works, update `README.md` and `docs/HONESTY.md` and use the full flow in the video; if not, stop at the confirmation card as `VIDEO_SCRIPT.md` says.
+- [ ] **Run the whole flow once, off camera:** `/vat` → *Connect to HMRC (sandbox)* → *Show obligations* → declaration → *Submit to HMRC (sandbox)* → check `06 VAT returns/<periodKey>/` for the receipt in OneDrive (the folder is `06`, per `README.md`). If it works, tell the maintainers so `README.md` and `docs/HONESTY.md` can say so, and use the full flow in the video; if not, stop at the confirmation card as `VIDEO_SCRIPT.md` says.
 - [ ] Confirm the relay is on **sandbox** (`HMRC_BASE=https://test-api.service.hmrc.gov.uk`). No production credentials exist or should be added.
 
-## 4. Meta keys (optional, but they change what you can say)
+## 4. Meta models
 
-- [ ] `MODEL_API_KEY` in the root `.env` (git-ignored). If you have a Meta key, run `cd evals && python -m harness.run_extraction --mode key --out runs/<name>` to get the first real Muse Spark 1.3 numbers; nothing in the repo has them. Until then say "unit-tested only".
-- [ ] `BASETEN_API_KEY` (and a confirmed slug in `VERIFIER_MODEL`) to make the Spark Open verifier real. The default slug is unconfirmed. Without a key the demo's verifier is Glimmer.
-- [ ] Do **not** film the mic or turn on `SAM_CROP` unless you have tested each live and updated `docs/HONESTY.md`.
+- [x] **Muse Spark Open on Baseten is wired as the Verifier for key-mode users** (27 Oct): Baseten's `/v1/models` lists `meta-models/muse-spark-open`, and one real call through the verifier code read a gold receipt correctly in 7 s. That is one call, not an eval.
+- [ ] **Wait for the Spark Open extraction eval** (all 200 gold receipts, reader and verifier, running on the Spark; `evals/runs/spark_open_200`). When it lands, copy its numbers into the placeholder rows in `META_MODELS.md` and `DESCRIPTION.md` and delete the "[pending: ...]" markers. If it does not finish, leave the markers out of the form text and say "one live call, no eval".
+- [ ] `MODEL_API_KEY` in the root `.env` (git-ignored). If you have a Meta key, `cd evals && python -m harness.run_extraction --mode key --out runs/<name>` gives the first Muse Spark 1.3 numbers; nothing in the repo has them. Until then say "unit-tested only".
+- [ ] Do **not** film the mic or turn on `SAM_CROP` unless you have tested each live and `docs/HONESTY.md` says so.
 
 ## 5. Docs hygiene (judges will read these)
 
-- [x] ~~Remove the stale tables in `README.md`~~: done in the review pass (`REVIEW.md`). If you edit the README again, run `services/runtime/tests/test_docs.py`, which checks the files it cites.
-- [ ] **Test counts:** README, HONESTY.md and DEMO.md now agree with a run on 27 Oct (runtime 642 + 1 skipped, relay 102, ledger 33, connectors 34, evals 153; e2e 44 counted, not run). Re-run `uv run pytest -q` and `pnpm run e2e` if anything merges after this branch, and update all three.
+- [x] ~~Remove the stale tables in `README.md`~~: done in the earlier review pass.
+- [ ] **Test counts** on `main`, 27 Oct: runtime and packages **1,176 passed** (1 skipped), evals **258**, relay **102**, Playwright **195**, Flutter **158**. `README.md`, `docs/HONESTY.md` and `docs/DEMO.md` are being changed on other branches and some still quote older figures (HONESTY.md: 970 and 191); after they merge, re-run `uv run pytest -q`, `pnpm run e2e` and `flutter test`, and make the three docs and `docs/submission/*` agree.
 - [ ] **Fill in the repo URL** on the video's end card (`VIDEO_SCRIPT.md`).
 - [ ] Read `docs/submission/DESCRIPTION.md`; paste the 150- or 400-word text, whichever the form takes. Re-count words in the form's own counter.
+- [ ] Re-read `docs/submission/JUDGING.md` against the official judging criteria once you have them and rename its headings.
 
 ## 6. Video
 
-- [ ] Record per `docs/submission/VIDEO_SCRIPT.md` (web 1280 × 720; phone 390 px). Check for visible tokens, the test user's password, keys and your real mailbox before export.
+- [ ] Record per `docs/submission/VIDEO_SCRIPT.md` (web 1280 × 720; phone 390 px). Anything marked "film only if checked" stays out unless you have run it live first. Check for visible tokens, the test user's password, keys and your real mailbox before export.
 - [ ] Add the "sped up" caption wherever the scan wait is cut.
 - [ ] Upload (YouTube unlisted or the form's own uploader; **check what the hackathon form requires**) and open the link in a private window to make sure it plays signed out. Where: the hackathon submission form (not in the repo).
 - [ ] Keep the 30-second cut ready in case the form asks for one.
@@ -79,12 +83,14 @@ git grep -n '192\.168\.1\.176'                      # your LAN address is the de
 ```
 
 - [ ] If any history hit is real: **rotate that credential first**, then clean history (a fresh public repo is simpler than rewriting). Rotation: HMRC Developer Hub (client secret), Meta developer console (model key), Baseten settings (API key), Entra (no secret: public client).
-- [ ] Check `git remote -v` and `git status`: `TASK_BRIEF.md` files are committed under `docs/reviews/*/` on purpose. This branch commits `TASK_BRIEF.md` and `REVIEW.md` at the repo root; move them to `docs/reviews/submission-pack/` when merging, as with the other branches.
+- [ ] Check `git remote -v` and `git status`: `TASK_BRIEF.md` files are committed under `docs/reviews/*/` on purpose. The `claude/submission-refresh` branch commits a `REVIEW.md` at the repo root; move it to `docs/reviews/submission-refresh/` when merging, as with the other branches.
 - [ ] Check the `LICENSE` (MIT) and that `README.md`'s first screen says what is and is not working.
-- [ ] Merge `claude/submission-pack` to `main` only after you have read it; **nothing has been pushed**.
+- [ ] Merge `claude/submission-refresh` to `main` only after you have read it; **nothing has been pushed**.
 - [ ] After going public, open the repo in a private window and click `README.md` → `docs/HONESTY.md`.
 
 ## 8. Last hour
 
 - [ ] Re-run the demo path once on the real site. Check Home, Review scan, Approve and VAT return show the figures in `VIDEO_SCRIPT.md`.
+- [ ] Make the form entries (project name, description text, video link, repo link, track: Indie, demo-account details in the private field). Where: the hackathon submission form.
+- [ ] Spark still on, `api.accnomos.com/health` still `"ok": true`.
 - [ ] Submit at least two hours early; time zone is ET.
