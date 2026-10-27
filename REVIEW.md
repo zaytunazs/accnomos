@@ -9,7 +9,7 @@ Task: `TASK_BRIEF.md`. This branch clears the leftover ruff findings, and the on
 - `pyright` 1.1.414 (basic, scope from `pyproject.toml`): 2 errors, both in `services/runtime/app/invoicing.py`
   (`:135` `default_factory=BankDetails`, `:408` `InvoiceCustomer(...)` "missing email, vrn"). A clean `origin/main` worktree
   reports the **same 2 errors**, so this branch did not introduce them (see "What remains").
-- Tests, all green: `services/runtime` 815 passed, 1 skipped; `services/hmrc-relay` 102; `packages/ledger` 35;
+- Tests, all green: `services/runtime` 814 passed, 1 skipped; `services/hmrc-relay` 102; `packages/ledger` 35;
   `packages/connectors` 43; `evals` 158.
 - Strings unchanged: an AST comparison against `origin/main` (adjacent string parts folded together) shows each wrapped
   file is AST-identical: `replay.py`, `report_200.py`, `approve.py`, `test_supplier_vat.py`, `seed_demo.py`. The only
