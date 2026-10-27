@@ -46,6 +46,7 @@ Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI De
 | 27 Oct | HMRC relay: OAuth, fraud-prevention headers v3.3, VAT MTD endpoints — unit-tested against mocks; sandbox call pending credentials |
 | 27 Oct | **HMRC (sandbox) in the web app:** on `/vat`, under the live 9-box return, *Connect to HMRC (sandbox)* (OAuth with PKCE through the relay, tokens only in the tab's `sessionStorage`) → open obligations → confirm the boxes and tick the legal declaration → submit → receipt saved to `05 VAT returns/<periodKey>/` in your OneDrive. Built and type-checked; end-to-end browser run pending. See `docs/HMRC.md` |
 | 27 Oct | **Outlook intake (F10):** Settings → *Outlook intake* asks for `Mail.Read` only when switched on → *Check my inbox now* (`POST /mail/scan`) copies likely receipts/invoices from the last 14 days into `00 Inbox`, deduplicated, with a log in `_System/Intake/`. Web build passes; runtime tests written against fake mailbox/storage; live mailbox run pending |
+| 27 Oct | **Verifier:** independent second reading compared per field in code; disagreement → *Needs a look* with both values. Glimmer/Glimmer on 20 messy receipts: 17/18 verified agreed on all fields, 1 false alarm (mixed-rate net), 0 extra catches — `evals/REPORT_verifier_glimmer_messy_20_2026-10-27.md`. Baseten path unit-tested only |
 
 ## Outlook intake
 
@@ -57,6 +58,18 @@ and those attachments. **Written, all in your own folder:** the file as `00 Inbo
 `_System/Intake/seen.json` (so nothing is copied twice) and `_System/Intake/log/<yyyy-mm>.jsonl`. **Never:** sending,
 moving, flagging, marking as read or deleting mail, reading message bodies, or keeping anything on our server. The
 last check time is kept only in this browser. HEIC photos are copied but wait in `00 Inbox` until the reader supports them.
+
+## Verifier (second opinion)
+
+When the first reading passes every code check, a Verifier model reads the same image again with a different prompt
+(one question per field) and never sees the first answer. Code then compares supplier, VAT number, date, net, VAT
+and total: names ignoring case, punctuation and Ltd/Limited, dates by value, money to the penny (±1p), VAT numbers
+by digits. If all six agree, the Review card says *Verifier agrees · all 6 fields match*. Any disagreement sends the
+proposal to *Needs a look* with both readings side by side, and you choose. The model never merges values. **Which
+model:** in local mode it is Glimmer on your machine, so the document stays there. With your own key it is Muse Spark
+Open on Baseten if the server owner has set `BASETEN_API_KEY`, otherwise muse-spark-1.3 with your key.
+`VERIFIER=off` disables it. First numbers (20 messy receipts, Glimmer/Glimmer): 94% full agreement, 0 errors caught
+beyond what the code checks already caught, 1 false alarm. See `evals/REPORT_verifier_glimmer_messy_20_2026-10-27.md`.
 
 ## Honesty notes
 
