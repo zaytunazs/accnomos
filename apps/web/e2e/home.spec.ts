@@ -30,6 +30,49 @@ test("Home dashboard: tiles, deadlines and activity from the books, no signed-ou
   await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Review", exact: true })).toBeVisible();
 });
 
+test("setup checklist: signed in and incomplete, each row links to its Settings section; Dismiss is remembered", async ({ page }) => {
+  await signIn(page);
+  await createBooksFolder(page);
+
+  await page.goto("/");
+  const setup = page.getByRole("region", { name: "Get set up" });
+  await expect(setup).toBeVisible();
+  await expect(setup).toContainText(/\d of 7 done/);
+  const row = (name: string) => setup.getByRole("link", { name: new RegExp(`^${name.replace(/[+()]/g, "\\$&")} — `) });
+  await expect(row("Connect OneDrive")).toHaveAccessibleName("Connect OneDrive — review in Settings"); // signed in, so done
+  await expect(row("Business name + VAT number")).toHaveAccessibleName("Business name + VAT number — set up in Settings");
+  const links = {
+    "Connect OneDrive": "/settings#settings-connections",
+    "Choose your AI": "/settings#settings-ai",
+    "Business name + VAT number": "/settings#settings-business",
+    "VAT period": "/settings#settings-vat-periods",
+    "Invoice profile": "/settings#settings-invoice-profile",
+    "Import Outlook contacts": "/settings#settings-intake",
+    "Try a receipt": "/review",
+  };
+  for (const [name, href] of Object.entries(links)) await expect(row(name)).toHaveAttribute("href", href);
+  await expect(row("Try a receipt")).toHaveAccessibleName("Try a receipt — set up in Review");
+
+  // A row opens Settings on the right tab, scrolled to its section.
+  await row("VAT period").click();
+  await expect(page).toHaveURL(/\/settings#settings-vat-periods$/);
+  await expect(page.getByRole("tab", { name: "Business" })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator("#settings-vat-periods")).toBeInViewport();
+
+  await page.goto("/");
+  await setup.getByRole("button", { name: "Dismiss" }).click();
+  await expect(setup).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1, name: "Good morning, Sam" })).toBeVisible();
+  await expect(setup).toHaveCount(0);
+});
+
+test("setup checklist: never shown signed out", async ({ page }) => {
+  await page.goto("/");
+  await expect(page.getByRole("link", { name: "See the demo books" })).toBeVisible();
+  await expect(page.getByRole("region", { name: "Get set up" })).toHaveCount(0);
+});
+
 test("Review badge counts the proposals waiting", async ({ page, runtime }) => {
   await signIn(page);
   await createBooksFolder(page);
