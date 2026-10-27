@@ -121,6 +121,27 @@ def test_another_business_name(seed_demo: ModuleType) -> None:
     assert all("HAZELMERE" in d.text or "Hazelmere" in d.text for d in sales)
 
 
+def test_refuses_another_apps_folder(seed_demo: ModuleType) -> None:
+    assert seed_demo.root_is_accnomos("personal", "Accnomos")
+    assert not seed_demo.root_is_accnomos("personal", "Graph Explorer")
+    assert seed_demo.root_is_accnomos("work", "Accnomos")
+
+
+async def test_wipe_asks_first(seed_demo: ModuleType) -> None:
+    class Storage(FakeStorageProvider):
+        _root_drive_path = "/Apps/Accnomos"
+        _folders: dict = {}
+
+        async def _request(self, method: str, url: str) -> None:
+            raise AssertionError("deleted without a yes")
+
+    storage = Storage()
+    await storage.write("00 Inbox/a.png", b"x")
+    assert await seed_demo._wipe(storage, ask=lambda _q: "") is False
+    assert await seed_demo._wipe(storage, ask=lambda _q: "n") is False
+    assert "00 Inbox/a.png" in storage.files
+
+
 def test_dry_run_prints_the_plan(seed_demo: ModuleType, capsys: pytest.CaptureFixture[str]) -> None:
     assert seed_demo.main(["--dry-run"]) == 0
     out = capsys.readouterr().out

@@ -563,6 +563,12 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
 # --------------------------------------------------------------------------- #
 
 
+def root_is_accnomos(account: str, root_name: str) -> bool:
+    """A personal account's books are in the token's app folder (Apps/<app name>), so a token from another app
+    (Graph Explorer, say) would seed that app's folder. A work account's books are always /Accnomos."""
+    return account == "work" or "accnomos" in root_name.lower()
+
+
 async def _wipe(storage: Any, ask: Callable[[str], str] = input) -> bool:
     """Delete everything inside the Accnomos folder (OneDrive keeps it in the recycle bin). Asks first."""
     await storage.ensure_root()
@@ -590,6 +596,13 @@ async def _main(args: argparse.Namespace) -> int:
     from accnomos_connectors.msgraph import GraphStorageProvider
 
     async with GraphStorageProvider(token.strip(), args.account) as storage:
+        root = await storage.ensure_root()
+        print(f"Books folder: {storage._root_drive_path or root.name}")
+        if not root_is_accnomos(args.account, root.name):
+            print(f"That is not the Accnomos folder: for a personal account the app folder belongs to the app that issued "
+                  f"the token ({root.name!r} here). Copy the token from the Accnomos web app instead (tools/seed_demo.md).",
+                  file=sys.stderr)
+            return 1
         if args.wipe and not await _wipe(storage):
             print("Nothing changed.")
             return 1
@@ -599,7 +612,7 @@ async def _main(args: argparse.Namespace) -> int:
         print(describe(plan) + "\n")
         report = await seed(storage, plan)
     print(f"Done: {report['events']} ledger events, {report['inbox']} documents waiting in {INBOX}, "
-          f"invoices {', '.join(report['invoices'])},{report['bank_lines']} bank lines. No email was sent.")
+          f"invoices {', '.join(report['invoices'])}, {report['bank_lines']} bank lines. No email was sent.")
     return 0
 
 
