@@ -1,10 +1,5 @@
 import { createBooksFolder, expect, signIn, test } from "./fixtures";
-
-/** Every page of the static export, at phone width (project "phone"), signed in with a posted receipt. */
-const PAGES = [
-  "/", "/ask", "/bank", "/contacts", "/files", "/invoices", "/invoices/new", "/jobs", "/jobs/job", "/payroll", "/review", "/settings",
-  "/vat", "/vehicles", "/privacy", "/connect", "/connect/ai", "/connect/business", "/connect/ready",
-];
+import { PAGES } from "./pages"; // every page of the static export, at phone width (project "phone"), signed in with a posted receipt
 
 /** The pages used most on a phone, with the control each must show without scrolling sideways. */
 const NARROW: [string, string][] = [

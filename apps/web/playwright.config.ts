@@ -26,8 +26,8 @@ export default defineConfig({
     timezoneId: "Europe/London",
   },
   projects: [
-    { name: "desktop", use: { ...devices["Desktop Chrome"] }, testIgnore: /phone\.spec\.ts/ },
-    { name: "phone", use: { ...devices["Pixel 7"] }, testMatch: /phone\.spec\.ts/ },
+    { name: "desktop", use: { ...devices["Desktop Chrome"] }, testIgnore: /(phone|a11y)\.spec\.ts/ },
+    { name: "phone", use: { ...devices["Pixel 7"] }, testMatch: /(phone|a11y)\.spec\.ts/ },
   ],
   webServer: [
     {
