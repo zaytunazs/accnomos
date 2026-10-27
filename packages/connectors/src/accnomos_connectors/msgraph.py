@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import html
+import re
 from collections.abc import Awaitable, Callable
 from datetime import UTC, date, datetime, time, timedelta
 from typing import Any, Literal
@@ -30,6 +32,7 @@ from accnomos_connectors.base import (
     ContactsProvider,
     FileRef,
     MailAttachment,
+    MailDraft,
     MailMessage,
     MailProvider,
     MailSender,
@@ -316,17 +319,65 @@ def _iso(dt: str | None) -> datetime:
     return datetime.fromisoformat((dt or "1970-01-01T00:00:00Z").replace("Z", "+00:00"))
 
 
-class GraphMailProvider(_GraphHttp, MailProvider):
-    """Outlook mail via Microsoft Graph (`Mail.Read`). Personal and work accounts use the same endpoints.
+_BODY_TAG = re.compile(r"<body[^>]*>", re.IGNORECASE)
 
-    Read-only by construction: only GET requests are ever sent.
+
+def _with_reply_text(body: dict[str, Any], text: str) -> dict[str, Any]:
+    """The draft's body with `text` put above the quoted thread that createReply wrote."""
+    content = body.get("content") or ""
+    if (body.get("contentType") or "").lower() != "html":
+        return {"contentType": "text", "content": f"{text}\n\n{content}" if content else text}
+    block = "<div>" + html.escape(text).replace("\n", "<br>") + "</div><br>"
+    m = _BODY_TAG.search(content)
+    merged = content[: m.end()] + block + content[m.end():] if m else block + content
+    return {"contentType": "html", "content": merged}
+
+
+class GraphMailProvider(_GraphHttp, MailProvider):
+    """Outlook mail via Microsoft Graph. Personal and work accounts use the same endpoints.
+
+    Reading needs `Mail.Read` and only sends GET requests. `create_reply_draft` needs `Mail.ReadWrite`,
+    which the app asks for only when the user taps *Draft reply*; it saves a draft and never sends.
     """
 
     PAGE = 50
+    TRIAGE_SELECT = "id,conversationId,subject,from,receivedDateTime,bodyPreview,isRead,webLink"
 
     @staticmethod
     def _message_url(message_id: str, rest: str = "") -> str:
         return f"{GRAPH}/me/messages/{quote(message_id, safe='')}" + rest
+
+    async def list_recent(self, since: datetime, max_results: int = 100) -> list[MailMessage]:
+        since_utc = since.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        params: dict[str, str] | None = {
+            "$filter": f"receivedDateTime ge {since_utc}",
+            "$select": self.TRIAGE_SELECT,
+            "$orderby": "receivedDateTime desc",
+            "$top": str(min(self.PAGE, max(1, max_results))),
+        }
+        url: str | None = f"{GRAPH}/me/mailFolders/inbox/messages"  # not Junk, Deleted, Drafts or Sent
+        out: list[MailMessage] = []
+        while url and len(out) < max_results:
+            page = (await self._request("GET", url, params=params)).json()
+            params = None  # nextLink already carries the query
+            for m in page.get("value", []):
+                sender = (m.get("from") or {}).get("emailAddress") or {}
+                out.append(MailMessage(
+                    id=m["id"], received_at=_iso(m.get("receivedDateTime")),
+                    from_address=(sender.get("address") or "").lower(), from_name=sender.get("name") or "",
+                    subject=m.get("subject") or "", web_link=m.get("webLink"),
+                    conversation_id=m.get("conversationId") or m["id"],
+                    body_preview=(m.get("bodyPreview") or "")[:255], is_read=bool(m.get("isRead", True)),
+                ))
+            url = page.get("@odata.nextLink")
+        return out[:max_results]
+
+    async def create_reply_draft(self, message_id: str, body_text: str) -> MailDraft:
+        """`createReply` (a draft addressed to the sender, thread quoted), then PATCH our text into its body."""
+        draft = (await self._request("POST", self._message_url(message_id, "/createReply"), json={})).json()
+        body = _with_reply_text(draft.get("body") or {}, body_text)
+        patched = (await self._request("PATCH", self._message_url(draft["id"]), json={"body": body})).json()
+        return MailDraft(id=draft["id"], web_link=patched.get("webLink") or draft.get("webLink"))
 
     async def list_messages(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
         since_utc = since.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
