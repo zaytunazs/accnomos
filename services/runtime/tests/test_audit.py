@@ -263,5 +263,8 @@ def test_every_writer_kind_has_a_summary() -> None:
 def test_unknown_kind_and_odd_refs_fall_back_to_the_name() -> None:
     assert audit_view.summarise("vehicle_serviced", {}) == "Vehicle serviced"
     assert audit_view.summarise("bank_imported", {"new": "lots"}) == "Imported a bank statement: 0 new lines"
+    assert audit_view.summarise("mileage_added", {"miles": 100.0}) == "Logged a journey: 100 miles"
+    assert audit_view.summarise("timesheet_added", {"hours": 7.5}) == "Logged time: 7.5 hours"
+    assert audit_view.summarise("timesheet_added", {"hours": "lots"}) == "Timesheet added"
     assert audit_view.actor_of("agent:some_new-agent") == ("agent", "Some new agent")
     assert audit_view.actor_of("user:x@y") == ("user", "You")

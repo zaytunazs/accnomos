@@ -96,6 +96,12 @@ def _pounds(refs: dict[str, Any], key: str) -> str:
     return f" for {money(int(v))}" if isinstance(v, int) else ""
 
 
+def _qty(v: Any) -> str:
+    """7.5 stays 7.5; 100.0 is 100."""
+    f = float(v)
+    return str(int(f)) if f.is_integer() else f"{f:g}"
+
+
 def _inv(refs: dict[str, Any]) -> str:
     return str(refs.get("invoice") or "")
 
@@ -176,7 +182,7 @@ SUMMARIES: dict[str, Summary] = {
     "staff_created": lambda r, w: "Added a member of staff",
     "staff_updated": lambda r, w: "Updated a member of staff",
     "staff_deleted": lambda r, w: "Removed a member of staff",
-    "timesheet_added": lambda r, w: "Logged time" + (f": {r['hours']} hours" if r.get("hours") else ""),
+    "timesheet_added": lambda r, w: "Logged time" + (f": {_qty(r['hours'])} hours" if r.get("hours") else ""),
     "timesheet_updated": lambda r, w: "Changed a timesheet entry" + _fields(r),
     "timesheet_deleted": lambda r, w: "Deleted a timesheet entry",
     "timesheets_invoiced": lambda r, w: (
@@ -205,7 +211,7 @@ SUMMARIES: dict[str, Summary] = {
     "vehicle_added": lambda r, w: "Added a vehicle",
     "vehicle_changed": lambda r, w: "Changed a vehicle" + _fields(r),
     "vehicle_deleted": lambda r, w: "Removed a vehicle",
-    "mileage_added": lambda r, w: "Logged a journey" + (f": {r['miles']} miles" if r.get("miles") else ""),
+    "mileage_added": lambda r, w: "Logged a journey" + (f": {_qty(r['miles'])} miles" if r.get("miles") else ""),
     "mileage_changed": lambda r, w: "Changed a journey" + _fields(r),
     "mileage_deleted": lambda r, w: "Deleted a journey",
     "mileage_proposed": lambda r, w: (
