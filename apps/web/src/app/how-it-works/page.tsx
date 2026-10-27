@@ -119,7 +119,7 @@ const features: Feature[] = [
     does: "New invoice → draft saved with the next number → preview renders an A4 PDF (your details, logo, VAT summary by rate, bank details) → Send via Outlook only after you tick the confirmation → the sale is posted once, with the sent PDF kept. Reminder drafts, Mark paid and Void (a reversal, never a delete) are on each invoice.",
     ai: "The model only drafts the reminder wording from facts code gives it (never your bank details); code checks every figure. Everything else is code.",
     code: "Code prices each line (net = qty × price, VAT per line, half up to the penny), numbers drafts in order, emails first then marks sent then posts, so a retry never emails twice or posts twice.",
-    gap: "Not verified yet: never sent from a real mailbox; no credit notes; Mark paid posts nothing to the bank account; a paid invoice cannot be voided.",
+    gap: "Not verified yet: never sent from a real mailbox; a customer credit balance is shown but cannot yet be applied to another invoice or refunded in the app.",
   },
   {
     id: "jobs",

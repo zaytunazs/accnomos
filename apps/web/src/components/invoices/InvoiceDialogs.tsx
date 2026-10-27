@@ -4,8 +4,8 @@ import { useEffect, useState, type ReactNode } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import Modal, { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
 import { RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
-import { money, todayIso } from "@/lib/invoices";
-import { runtime, ukDate, type RtBankLine, type RtInvoice, type RtInvoicePdf, type RtReminderDraft } from "@/lib/runtime";
+import { money } from "@/lib/invoices";
+import { runtime, ukDate, type RtInvoice, type RtInvoicePdf, type RtReminderDraft } from "@/lib/runtime";
 
 type Done = (inv: RtInvoice) => void;
 
@@ -194,68 +194,6 @@ export function PreviewSendDialog({ account, invoice, onClose, onDone }: { accou
   );
 }
 
-export function MarkPaidDialog({ account, invoice, onClose, onDone }: { account: AccountInfo; invoice: RtInvoice; onClose: () => void; onDone: Done }) {
-  const [paidOn, setPaidOn] = useState(todayIso());
-  const [ref, setRef] = useState("");
-  const [lines, setLines] = useState<RtBankLine[] | null>(null);
-  const [lineId, setLineId] = useState<string>("");
-  const [busy, setBusy] = useState(false);
-  const [note, setNote] = useState<string | null>(null);
-
-  useEffect(() => {
-    runtime.invoiceBankCandidates(account, invoice.number).then(setLines).catch(() => setLines([]));
-  }, [account, invoice.number]);
-
-  async function save() {
-    setBusy(true);
-    setNote(null);
-    try {
-      onDone(await runtime.markInvoicePaid(account, invoice.number, lineId
-        ? { bank_line_id: lineId, payment_ref: ref || undefined }
-        : { paid_on: paidOn, payment_ref: ref || undefined }));
-    } catch (e) {
-      setNote(errorText(e));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Modal id="invoice-paid-title" title={`Mark ${invoice.number} paid`} onClose={onClose}>
-      <p className="mt-1 text-sm text-muted">{invoice.customer.name} · {money(invoice.total_pence)}</p>
-      {lines && lines.length > 0 && (
-        <fieldset className="mt-4">
-          <legend className={fieldLabel}>Money in on your bank statement for exactly {money(invoice.total_pence)}</legend>
-          <div className="mt-2 space-y-2">
-            {[{ id: "", label: "None of these" }, ...lines.map((l) => ({ id: l.id, label: `${ukDate(l.date)} · ${l.description}` }))].map((o) => (
-              <label key={o.id || "none"} className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-border px-3 text-[15px]">
-                <input type="radio" name="bank-line" checked={lineId === o.id} onChange={() => setLineId(o.id)} className="h-4 w-4 accent-teal" />
-                {o.label}
-              </label>
-            ))}
-          </div>
-          <p className="mt-1 text-xs text-muted">Choosing a line also matches it on the bank page.</p>
-        </fieldset>
-      )}
-      {!lineId && (
-        <div className="mt-4">
-          <label className={fieldLabel} htmlFor="paid-on">Paid on</label>
-          <input id="paid-on" type="date" className={fieldInput} value={paidOn} onChange={(e) => setPaidOn(e.target.value)} />
-        </div>
-      )}
-      <div className="mt-3">
-        <label className={fieldLabel} htmlFor="paid-ref">Payment reference (optional)</label>
-        <input id="paid-ref" className={fieldInput} value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. FPS ACME 0006" />
-      </div>
-      <div className="mt-4 flex flex-wrap gap-3">
-        <button type="button" onClick={save} disabled={busy} className={primaryButton}>{busy ? "Saving…" : "Mark paid"}</button>
-        <button type="button" onClick={onClose} className={secondaryButton}>Cancel</button>
-      </div>
-      {note && <div className="mt-3"><Note note={note} /></div>}
-    </Modal>
-  );
-}
-
 /** Muse drafts a chase email from facts the runtime supplies; the user edits, confirms and sends. */
 export function ReminderDialog({ account, invoice, onClose, onDone }: { account: AccountInfo; invoice: RtInvoice; onClose: () => void; onDone: Done }) {
   const [draft, setDraft] = useState<RtReminderDraft | null>(null);
@@ -337,8 +275,8 @@ export function VoidDialog({ account, invoice, onClose, onDone }: { account: Acc
   return (
     <Modal id="invoice-void-title" title={`Void ${invoice.number}`} onClose={onClose}>
       <p className="mt-2 text-[15px] leading-7">
-        {invoice.status === "sent"
-          ? "The invoice stays in your folder, marked void, and a reversing entry cancels the sale in your books. Tell the customer separately."
+        {invoice.status !== "draft"
+          ? "The invoice stays in your folder, marked void, and a reversing entry cancels the sale in your books. Tell the customer separately. A paid invoice can be voided only after its payments are removed (Payments and history)."
           : "The draft stays in your folder, marked void, so the number is not used again."}
       </p>
       <div className="mt-3">

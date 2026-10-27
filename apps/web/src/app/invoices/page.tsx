@@ -15,7 +15,7 @@ export default function InvoicesPage() {
           </p>
         </div>
         <ExplainMore title="How invoicing works" anchor="invoices">
-          Totals and VAT are worked out by code per line, never by the AI. Sending needs your ticked confirmation, and the sale is posted once. There are no credit notes yet, and Mark paid posts nothing to the bank.
+          Totals and VAT are worked out by code per line, never by the AI. Sending needs your ticked confirmation, and the sale is posted once. Record payment posts the money to your bank account by code (part payments and overpayments too); credit notes reverse part or all of a sale with the same VAT rates.
         </ExplainMore>
       </div>
       <LiveInvoices />

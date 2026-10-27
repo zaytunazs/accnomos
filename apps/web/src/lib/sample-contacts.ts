@@ -45,7 +45,7 @@ export const sampleContacts: RtContactRow[] = [
   },
 ];
 
-const zero = { "0-30": 0, "31-60": 0, "61-90": 0, "90+": 0 };
+const zero = { current: 0, "0-30": 0, "31-60": 0, "61-90": 0, "90+": 0 };
 
 export const sampleAged: RtAged = {
   as_of: "2026-10-26",

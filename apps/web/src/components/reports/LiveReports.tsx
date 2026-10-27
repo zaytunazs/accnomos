@@ -12,6 +12,8 @@ import {
   ukDate,
   type RtAged,
   type RtAgedReport,
+  AGED_BUCKETS,
+  agedBucketLabel,
   type RtAgedBucket,
   type RtAgedTable,
   type RtPlSection,
@@ -23,7 +25,7 @@ import { sampleAged, samplePl, sampleTrend, sampleVat } from "@/lib/sample-repor
 import { usePickedPeriod } from "@/lib/vat-period";
 import TrendBars from "./TrendBars";
 
-const BUCKETS: RtAgedBucket[] = ["0-30", "31-60", "61-90", "90+"];
+const BUCKETS: RtAgedBucket[] = AGED_BUCKETS;
 const money = (pence: number) => (pence / 100).toLocaleString("en-GB", { style: "currency", currency: "GBP" });
 const card = "rounded-2xl border border-border bg-white p-5 sm:p-6";
 const th = "px-3 py-2 text-left text-[13px] font-bold text-muted";
@@ -122,7 +124,7 @@ function AgedTable({ title, hint, table }: { title: string; hint: string; table:
             <thead className="border-b border-border">
               <tr>
                 <th scope="col" className={th}>Name</th>
-                {BUCKETS.map((b) => <th key={b} scope="col" className={`${th} text-right`}>{b} days</th>)}
+                {BUCKETS.map((b) => <th key={b} scope="col" className={`${th} text-right`}>{agedBucketLabel(b)}</th>)}
                 <th scope="col" className={`${th} text-right`}>Total</th>
               </tr>
             </thead>
@@ -238,8 +240,8 @@ function Reports({ pl, aged, vat, trend }: { pl: RtProfitAndLoss | null; aged: R
         <section aria-labelledby="aged-heading" className="flex flex-col gap-3">
           <h2 id="aged-heading" className="text-lg font-extrabold">Aged balances · at {ukDate(aged.as_of)}</h2>
           <div className="flex flex-col gap-4 min-[1000px]:flex-row">
-            <AgedTable title="Debtors" hint="Customers who owe you: sales invoices with no bank payment matched, by age from the invoice date." table={aged.debtors} />
-            <AgedTable title="Creditors" hint="Suppliers you owe: bills on account with no bank payment matched, by age from the bill date." table={aged.creditors} />
+            <AgedTable title="Debtors" hint="Customers who owe you: what is still owed on each sales invoice after part payments and credit notes, by days past its due date." table={aged.debtors} />
+            <AgedTable title="Creditors" hint="Suppliers you owe: what is left on bills on account, by days past due (the contact's terms, else 30 days)." table={aged.creditors} />
           </div>
         </section>
       )}
