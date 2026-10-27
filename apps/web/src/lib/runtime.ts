@@ -54,6 +54,41 @@ export interface RtProposal {
   model: string;
   elapsed_s: number;
   source_path?: string;
+  decided_by?: string | null;
+  decided_at?: string | null;
+  event_id?: string | null;
+  autopilot?: { auto_approve: boolean; reasons: string[]; supplier_key: string | null } | null;
+}
+/** An Autopilot rule (services/runtime/app/autopilot.py), stored in _System/Rules/rules.json. */
+export interface RtRule {
+  supplier_key: string;
+  supplier_name: string;
+  category: string;
+  account: string | null;
+  vat_code: string | null;
+  side: "purchase" | "sale";
+  typical_gross_pence: number;
+  vrn: string | null;
+  created_at: string;
+  created_from_proposal_id: string;
+  hits: number;
+}
+
+/** Autopilot master switch: lives on this device only; "off" makes scans send `X-Autopilot: off`. */
+const AUTOPILOT_SWITCH_KEY = "accnomos.autopilot.switch";
+export function autopilotOn(): boolean {
+  try {
+    return window.localStorage.getItem(AUTOPILOT_SWITCH_KEY) !== "off";
+  } catch {
+    return true;
+  }
+}
+export function setAutopilotOn(on: boolean): void {
+  try {
+    window.localStorage.setItem(AUTOPILOT_SWITCH_KEY, on ? "on" : "off");
+  } catch {
+    /* storage unavailable — the switch lives for this page only */
+  }
 }
 export interface RtSummary {
   proposed: number;
@@ -89,10 +124,19 @@ async function call<T>(account: AccountInfo, path: string, init: RequestInit = {
 }
 
 export const runtime = {
-  scan: (a: AccountInfo) => call<{ proposals: RtProposal[]; errors: { path: string; error: string }[] }>(a, "/books/scan", { method: "POST" }),
+  scan: (a: AccountInfo) =>
+    call<{ proposals: RtProposal[]; errors: { path: string; error: string }[] }>(a, "/books/scan", {
+      method: "POST",
+      headers: autopilotOn() ? {} : { "X-Autopilot": "off" },
+    }),
   proposals: (a: AccountInfo, status?: string) => call<RtProposal[]>(a, `/books/proposals${status ? `?status=${status}` : ""}`),
-  approve: (a: AccountInfo, id: string, body: { edits?: Record<string, unknown>; always?: boolean }) =>
-    call<RtProposal>(a, `/books/proposals/${id}/approve`, { method: "POST", body: JSON.stringify(body) }),
+  approve: (a: AccountInfo, id: string, body: { edits?: Record<string, unknown>; remember?: boolean }) =>
+    call<RtProposal>(a, `/books/approve/${id}`, { method: "POST", body: JSON.stringify(body) }),
+  undo: (a: AccountInfo, eventId: string) =>
+    call<{ proposal: RtProposal | null }>(a, `/books/undo/${eventId}`, { method: "POST" }),
+  rules: (a: AccountInfo) => call<RtRule[]>(a, "/books/rules"),
+  removeRule: (a: AccountInfo, key: string) =>
+    call<RtRule>(a, `/books/rules/${encodeURIComponent(key)}`, { method: "DELETE" }),
   reject: (a: AccountInfo, id: string, reason: string) =>
     call<RtProposal>(a, `/books/proposals/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
   summary: (a: AccountInfo) => call<RtSummary>(a, "/books/summary"),

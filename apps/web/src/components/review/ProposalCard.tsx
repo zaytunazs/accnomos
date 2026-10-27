@@ -10,7 +10,16 @@ const facts = [
   { label: "Paid by", value: (p: Proposal) => p.paidBy },
 ];
 
-export default function ProposalCard({ proposal }: { proposal: Proposal }) {
+interface Props {
+  proposal: Proposal;
+  /** "Always do this for <supplier>": controlled when the parent sends the approval (live Review). */
+  remember?: boolean;
+  onRememberChange?: (remember: boolean) => void;
+  /** Hide the sample buttons when the parent renders the real ones. */
+  hideActions?: boolean;
+}
+
+export default function ProposalCard({ proposal, remember, onRememberChange, hideActions = false }: Props) {
   return (
     <section
       aria-labelledby={`proposal-${proposal.id}`}
@@ -79,6 +88,7 @@ export default function ProposalCard({ proposal }: { proposal: Proposal }) {
         {proposal.verifierNote}
       </p>
 
+      {!hideActions && (
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
@@ -99,12 +109,16 @@ export default function ProposalCard({ proposal }: { proposal: Proposal }) {
           Reject
         </button>
       </div>
+      )}
       <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-[15px] font-semibold">
         <input
           type="checkbox"
           className="h-5 w-5 accent-teal"
+          {...(onRememberChange
+            ? { checked: remember ?? false, onChange: (e: React.ChangeEvent<HTMLInputElement>) => onRememberChange(e.target.checked) }
+            : {})}
         />
-        Always do this for Screwfix
+        Always do this for {proposal.supplier}
       </label>
     </section>
   );
