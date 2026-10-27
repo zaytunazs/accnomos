@@ -62,6 +62,73 @@ function month([m, sales, purchases]: [string, number, number]): RtTrendMonth {
   return { month: m, label, start: `${m}-01`, end: `${m}-${end}`, sales_pence: sales, purchases_pence: purchases, net_pence: sales - purchases };
 }
 
+/**
+ * Comparison periods for the sample P&L (SAMPLE — FICTIONAL COMPANY). The
+ * previous quarter (Apr–Jun 2026) and the same quarter last year
+ * (Jul–Sep 2025): quieter fictional quarters, so the changes read clearly.
+ */
+export const samplePlPrev: RtProfitAndLoss = {
+  start: "2026-04-01",
+  end: "2026-06-30",
+  label: "Apr–Jun 2026",
+  basis: samplePl.basis,
+  sales: { rows: [{ account: "4000 Sales", amount_pence: 2_770_000 }], total_pence: 2_770_000 },
+  cost_of_sales: {
+    rows: [
+      { account: "5000 Materials", amount_pence: 1_240_000 },
+      { account: "5100 Tools & small equipment", amount_pence: 155_000 },
+    ],
+    total_pence: 1_395_000,
+  },
+  gross_profit_pence: 1_375_000,
+  overheads: {
+    rows: [
+      { account: "6200 Advertising", amount_pence: 21_000 },
+      { account: "7000 Gross wages", amount_pence: 540_000 },
+      { account: "7010 Employer's NI", amount_pence: 41_500 },
+      { account: "7300 Motor expenses", amount_pence: 88_000 },
+      { account: "7510 Software & subscriptions", amount_pence: 18_000 },
+      { account: "7700 Insurance", amount_pence: 42_000 },
+      { account: "7900 Bank charges", amount_pence: 2_400 },
+    ],
+    total_pence: 752_900,
+  },
+  net_profit_pence: 622_100,
+  entries: 51,
+  sample: true,
+};
+
+export const samplePlYear: RtProfitAndLoss = {
+  start: "2025-07-01",
+  end: "2025-09-30",
+  label: "Jul–Sep 2025",
+  basis: samplePl.basis,
+  sales: { rows: [{ account: "4000 Sales", amount_pence: 2_940_000 }], total_pence: 2_940_000 },
+  cost_of_sales: {
+    rows: [
+      { account: "5000 Materials", amount_pence: 1_310_000 },
+      { account: "5100 Tools & small equipment", amount_pence: 172_000 },
+    ],
+    total_pence: 1_482_000,
+  },
+  gross_profit_pence: 1_458_000,
+  overheads: {
+    rows: [
+      { account: "6200 Advertising", amount_pence: 18_000 },
+      { account: "7000 Gross wages", amount_pence: 495_000 },
+      { account: "7010 Employer's NI", amount_pence: 38_000 },
+      { account: "7300 Motor expenses", amount_pence: 91_000 },
+      { account: "7510 Software & subscriptions", amount_pence: 15_000 },
+      { account: "7700 Insurance", amount_pence: 39_000 },
+      { account: "7900 Bank charges", amount_pence: 2_200 },
+    ],
+    total_pence: 698_200,
+  },
+  net_profit_pence: 759_800,
+  entries: 49,
+  sample: true,
+};
+
 export const sampleTrend: RtTrend = { months: MONTHS.map(month), sample: true };
 
 export const sampleVat: RtVatSummary = {
