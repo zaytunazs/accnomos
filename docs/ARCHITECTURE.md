@@ -49,7 +49,7 @@ The 9 VAT boxes come from `compute_vat_return`, plain code.
 |---|---|---|---|
 | 1 | Intake | Code | Upload to `00 Inbox`, scan, optional Outlook copy (`Mail.Read`, plain-code filters, no AI) |
 | 2 | Extractor | **Muse Glimmer 30B** (local) or **Muse Spark** (key mode), strict-JSON schema; optional crop first (code by default, SAM 3.1 behind a flag) | Live |
-| 3 | Checker | **Code**: line and total arithmetic, VAT maths and rates, VAT-number format, duplicate hash, currency, date in period, confidence | Live; any failure → *Needs a look* |
+| 3 | Checker | **Code**: line and total arithmetic, VAT maths and rates, VAT-number format, duplicate hash, currency, valid date, confidence (a date-in-period check exists in `checks.py` but the scan does not pass a period yet, so it never runs) | Live; any failure → *Needs a look* |
 | 4 | Reviewer | **Code** composes the "why" line on each card (labelled "Checker, code"). Muse Spark explains only in *Ask* | **No separate LLM reviewer is wired into the pipeline** |
 | 5 | Verifier | A second model reads the image again with a different prompt and never sees the first answer; **code** compares six fields | Live; disagreement → *Needs a look* with both values |
 | 6 | Human | The user taps Approve (or Reject) | Always, unless an Autopilot rule applies (below) |

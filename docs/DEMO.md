@@ -1,6 +1,6 @@
 # Three-minute demo
 
-**Sample business:** Bramblewood Joinery Ltd, fictional (the grey banner on every web page says so). **Receipt:** `https://accnomos.com/sample-receipt.png`
+**Sample business:** Bramblewood Joinery Ltd, fictional (the banner on every app page says so). **Receipt:** `https://accnomos.com/sample-receipt.png`
 (fictional Novex Office Supplies, £51.90 with £8.65 VAT, photographed on a dark desk).
 **Pitch in one line:** *AI proposes, you approve, code calculates. Your books live in your own OneDrive.*
 
@@ -22,7 +22,7 @@
 | 0:40 | **Review** → **Add a receipt** → choose `sample-receipt.png` → **Scan 00 Inbox now** | "The agent crops, reads, then checks. This takes 20–40 s on local Glimmer, so while it runs: *code* checks the arithmetic, VAT maths, VAT-number format, duplicates and dates." |
 | 1:10 | The proposal card appears | Point at *Read by Glimmer 30B on your machine*, the green checks, **Verifier agrees · all 6 fields match**. "A second reading, with a different prompt, never saw the first answer. Code compares six fields; a mismatch would land in *Needs a look* with both values." |
 | 1:30 | Tick **Always do this for Novex Office Supplies**, press **Approve (post to books)** | "A human approves. The ledger event is immutable and says who approved. Autopilot is off by default; if I switch to L2 later, matching receipts post alone, with Undo, which adds a reversing entry." |
-| 1:50 | **VAT return** (top of the page) | "Nine boxes, computed by plain code from the entries I approved: Box 4 £8.65, Box 7 £43 (HMRC wants whole pounds for boxes 6 to 9). The model never touches a VAT number." |
+| 1:50 | **VAT return** (top of the page) | "Nine boxes, computed by plain code from the entries I approved, for the current quarter. HMRC wants whole pounds for boxes 6 to 9. The model never touches a VAT number." **Careful:** the page always shows the current calendar quarter (Oct–Dec 2026 during judging), and the ledger event takes the receipt's own date. `sample-receipt.png` is dated **14 Aug 2026**, so it does **not** move these boxes. Either approve a receipt dated this quarter in the set-up (then Box 4 and Box 7 show its VAT and net), or say plainly that the August receipt belongs to Jul–Sep |
 | 2:05 | **Connect to HMRC (sandbox)** → sign in with the test user → enter the `vrn` → **Show obligations** → pick one → read the confirmation card → tick the declaration → **Submit to HMRC (sandbox)** (the button in the *upper* card, not the lower mock-up) | "Through our relay, which holds only HMRC's client secret, adds the fraud-prevention headers and keeps nothing. Nothing is sent until I make the legal declaration. This is HMRC's **sandbox**; we do not file for real." |
 | 2:30 | **Files** → **Rebuild Books.xlsx** → *Open* | "And for your accountant, a spreadsheet generated from the same events." |
 | 2:40 | **Ask**: type "How much VAT have I reclaimed this quarter?" | "Words from the model, numbers from code. If the model quotes a figure that is not in your books, we replace the answer with the facts." |

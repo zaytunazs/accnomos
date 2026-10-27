@@ -9,7 +9,7 @@ Most live-run notes come from the README and the review files, not from this che
 | Item | Truth |
 |---|---|
 | HMRC | **Sandbox only.** The relay defaults to `test-api.service.hmrc.gov.uk`. No production credentials, no real filing. Relay tests mock HMRC. The web submit flow is built and type-checked; the end-to-end browser run against the sandbox is **still pending** |
-| Demo data | The company (Bramblewood Joinery Ltd), receipts, bank CSVs and the eval gold set are fictional and generated (Qwen as a test-data generator, not in the product). The grey "SAMPLE — FICTIONAL COMPANY" banner appears on every web page, **including when signed in** |
+| Demo data | The company (Bramblewood Joinery Ltd), receipts, bank CSVs and the eval gold set are fictional and generated (Qwen as a test-data generator, not in the product). The grey "SAMPLE — FICTIONAL COMPANY" banner appears on every app page except `/privacy`, **including when signed in** |
 | Signed-out web pages | Home tiles, Review cards, the voice-note card, Ask thread and the lower half of the **VAT return** page (a table, a "Reviewer's note (Muse Spark)" and a "Submit to HMRC (sandbox)" button that only prints "Sandbox submission would happen here") are **static mock-ups**. The live nine boxes and the working *Connect to HMRC (sandbox)* card sit above them |
 | Evals | Synthetic renderings, so real phone photos will score lower. The Meta-API paths (Muse Spark extraction, Muse Voice, SAM 3.1, Spark Open on Baseten) are unit-tested against stubs only |
 
@@ -29,6 +29,7 @@ Most live-run notes come from the README and the review files, not from this che
 - **"On my own machine" means "the machine running the runtime".** Our demo runtime and Ollama are on our DGX Spark. A user's laptop is not reachable from `api.accnomos.com`.
 - **Ledger files are not tamper-evident** (no signatures or hash chain). Undo of an approval is a reversing event; if the VAT period was already submitted, the correction belongs in the current period.
 - **OneDrive only.** Google Drive is planned. HEIC photos are copied but not read yet. No flat-rate scheme, no annual accounting scheme in deadlines, no fuel scale-charge calculation, no sales-invoice creation (jobs only record an invoice number).
+- **VAT page shows the current calendar quarter only** (no period picker; `GET /books/vat` takes `start`/`end` but the web and Android apps never send them), and the scan does not pass a VAT period, so the "date outside the period" warning never fires.
 - **Unmerged work is not claimed:** `claude/invoicing` and `claude/chat-actions` exist as branches but are not in this one.
 
 ## Sign-in build state
