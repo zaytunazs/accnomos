@@ -265,7 +265,8 @@ export default function LiveFiles() {
       ) : (
         <>
           <p className="text-[13px] font-medium text-muted">
-            {state === "error" ? "Could not read your folder; showing the sample instead." : "Sample folder — SAMPLE · FICTIONAL COMPANY."}
+            {state === "error" ? "Could not read your folder; showing the sample instead. " : "Sample folder. "}
+            SAMPLE — FICTIONAL COMPANY
           </p>
           <FileTree />
         </>
