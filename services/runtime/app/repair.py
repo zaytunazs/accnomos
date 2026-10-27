@@ -227,7 +227,25 @@ def repair_lines(doc: ExtractedDoc) -> Check | None:
 REPAIR_CODES = ("TOTALS_REPAIRED", "LINES_REPAIRED")
 
 
+def own_credit_note(doc: ExtractedDoc, business_name: str | None) -> Check | None:
+    """A credit note the business itself issued is a sale-side document: it belongs on Invoices, where it is
+    linked to the invoice it credits. Reading it here as a supplier's would post it against purchases."""
+    if doc.doc_type != "credit_note" or not business_name or _similar(doc.supplier_name, business_name) < 0.8:
+        return None
+    return Check(
+        code="OWN_CREDIT_NOTE",
+        ok=False,
+        severity="fail",
+        message="This is your own credit note to a customer: make it on Invoices with Create credit note",
+    )
+
+
 def repair(doc: ExtractedDoc, business_name: str | None) -> list[Check]:
     """Orientation, then totals, then lines (the line repair anchors on the repaired totals)."""
-    notes = [orient_doc_type(doc, business_name), repair_vat_inclusive_totals(doc), repair_lines(doc)]
+    notes = [
+        orient_doc_type(doc, business_name),
+        own_credit_note(doc, business_name),
+        repair_vat_inclusive_totals(doc),
+        repair_lines(doc),
+    ]
     return [n for n in notes if n is not None]

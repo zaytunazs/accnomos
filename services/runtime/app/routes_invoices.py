@@ -20,6 +20,7 @@ from accnomos_connectors.base import MailSender
 from accnomos_connectors.msgraph import GraphMailSender
 from accnomos_ledger.bank import BankLine
 from app import invoicing as inv_
+from app import payments as pay_
 from app.ai import remind
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.books import Books, now
@@ -34,7 +35,7 @@ from app.invoicing import (
 )
 from app.pdf import render_invoice
 from app.routes_books import get_books, require_user
-from app.validation import Day, StrictBody
+from app.validation import Day, Pence, StrictBody
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
 LOGO_MAX = 1024 * 1024
@@ -150,15 +151,28 @@ async def customers(books: Books = Depends(get_books)) -> list[InvoiceCustomer]:
 
 class InvoiceRow(Invoice):
     days_overdue: int | None = None  # worked out for today; not stored
+    # Worked out from the ledger on every read (app/payments.invoice_money); null for drafts and void invoices.
+    money: pay_.InvoiceMoney | None = None
 
 
-def _row(inv: Invoice) -> InvoiceRow:
-    return InvoiceRow(**inv.model_dump(), days_overdue=inv.overdue_days(now().date()))
+def _row(inv: Invoice, ledger: pay_.Ledger | None = None) -> InvoiceRow:
+    m = pay_.invoice_money(inv, ledger) if ledger is not None else None
+    row = InvoiceRow(**inv.model_dump(), days_overdue=inv.overdue_days(now().date()), money=m)
+    if m is not None:  # the copy on the file can lag a bank match made elsewhere: show the figures as they are now
+        row.paid_pence, row.credited_pence, row.balance_pence = m.paid_pence, m.credited_pence, m.balance_pence
+        row.payment_status = m.payment_status
+    return row
+
+
+async def _fresh(books: Books, number: str) -> InvoiceRow:
+    return _row(await _get(books, number), await pay_.load_ledger(books))
 
 
 @router.get("", response_model=list[InvoiceRow])
 async def list_invoices(status: InvoiceStatus | None = None, books: Books = Depends(get_books)) -> list[InvoiceRow]:
-    return [_row(i) for i in await inv_.list_invoices(books, status)]
+    invoices = await inv_.list_invoices(books, status)
+    ledger = await pay_.load_ledger(books) if any(i.status in ("sent", "paid") for i in invoices) else None
+    return [_row(i, ledger) for i in invoices]
 
 
 @router.post("", response_model=InvoiceRow)
@@ -173,7 +187,7 @@ async def create(
 
 @router.get("/{number}", response_model=InvoiceRow)
 async def get(number: str, books: Books = Depends(get_books)) -> InvoiceRow:
-    return _row(await _get(books, number))
+    return await _fresh(books, number)
 
 
 @router.put("/{number}", response_model=InvoiceRow)
@@ -246,9 +260,8 @@ async def send(
     inv = await _get(books, number)
     data = await _render(books, inv) if inv.status == "draft" else b""  # a sent one without its event only posts
     try:
-        return _row(
-            await inv_.send_invoice(books, sender, number, user, data, to=body.to, subject=body.subject, body=body.body)
-        )
+        await inv_.send_invoice(books, sender, number, user, data, to=body.to, subject=body.subject, body=body.body)
+        return await _fresh(books, number)
     except InvoiceError as exc:
         raise _http(exc) from exc
     except ValueError as exc:  # e.g. the attachment is too big for one message
@@ -261,32 +274,71 @@ class PaidBody(StrictBody):
     bank_line_id: str | None = Field(
         default=None, max_length=64, pattern=r"^[0-9a-f]+$"
     )  # link the bank line this payment came in on (GET /{number}/bank-candidates)
+    amount_pence: Pence | None = Field(default=None, gt=0, le=pay_.MAX_PENCE)  # default: the balance (or the line)
+    account: pay_.PaymentAccount = "1200 Bank"
 
 
 @router.post("/{number}/mark-paid", response_model=InvoiceRow)
 async def mark_paid(
     number: str, body: PaidBody, books: Books = Depends(get_books), user: str = Depends(require_user)
 ) -> InvoiceRow:
+    """Record a payment: the balance (or `amount_pence`, or the bank line's amount), posted Dr 1200 Bank /
+    Cr 1100 Debtors. Same as POST /{number}/payments."""
     await _get(books, number)
     try:
-        return _row(
-            await inv_.mark_paid(
-                books,
-                number,
-                user,
-                payment_ref=body.payment_ref,
-                paid_on=body.paid_on,
-                bank_line_id=body.bank_line_id,
-            )
+        await inv_.mark_paid(
+            books,
+            number,
+            user,
+            payment_ref=body.payment_ref,
+            paid_on=body.paid_on,
+            bank_line_id=body.bank_line_id,
+            amount_pence=body.amount_pence,
+            account=body.account,
         )
     except InvoiceError as exc:
         raise _http(exc) from exc
+    return await _fresh(books, number)
+
+
+@router.post("/{number}/payments", response_model=InvoiceRow)
+async def record_payment(
+    number: str, body: PaidBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> InvoiceRow:
+    """*Record payment*: part of the balance, all of it, or more (the rest is a credit on the customer)."""
+    return await mark_paid(number, body, books, user)
+
+
+@router.delete("/{number}/payments/{payment_id}", response_model=InvoiceRow)
+async def remove_payment(
+    number: str, payment_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> InvoiceRow:
+    """Take a payment back: its entry is reversed (or its bank line unmatched); the invoice is owed again."""
+    inv = await _get(books, number)
+    if payment_id == "marked":
+        try:
+            await inv_.unmark_paid(books, number, user)
+        except InvoiceError as exc:
+            raise _http(exc) from exc
+        return await _fresh(books, number)
+    ledger = await pay_.load_ledger(books)
+    m = pay_.invoice_money(inv, ledger)
+    if m is None or not any(p.id == payment_id for p in m.payments):
+        raise HTTPException(status_code=404, detail="No such payment on this invoice")
+    try:
+        await pay_.remove_payment(books, payment_id, user)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="No such payment") from exc
+    except InvoiceError as exc:
+        raise _http(exc) from exc
+    return await _fresh(books, number)
 
 
 @router.get("/{number}/bank-candidates", response_model=list[BankLine])
 async def bank_candidates(number: str, books: Books = Depends(get_books)) -> list[BankLine]:
-    """Unmatched money in for exactly this invoice's total, on or after its date."""
-    return await inv_.bank_candidates(books, await _get(books, number))
+    """Unmatched money in on or after the invoice date, lines for exactly the balance first."""
+    row = await _fresh(books, number)
+    return await inv_.bank_candidates(books, row, row.money.balance_pence if row.money else None)
 
 
 class VoidBody(StrictBody):
@@ -299,9 +351,10 @@ async def void(
 ) -> InvoiceRow:
     await _get(books, number)
     try:
-        return _row(await inv_.void_invoice(books, number, user, body.reason))
+        await inv_.void_invoice(books, number, user, body.reason)
     except InvoiceError as exc:
         raise _http(exc) from exc
+    return await _fresh(books, number)
 
 
 @router.post("/{number}/reminder-draft", response_model=remind.ReminderDraft)
@@ -338,17 +391,16 @@ async def reminder_send(
     _confirmed(body.confirm)
     await _get(books, number)
     try:
-        return _row(
-            await inv_.send_reminder(
-                books,
-                sender,
-                number,
-                user,
-                to=body.to,
-                subject=body.subject,
-                body=body.body,
-                pdf=await inv_.sent_pdf(books, number),
-            )
+        await inv_.send_reminder(
+            books,
+            sender,
+            number,
+            user,
+            to=body.to,
+            subject=body.subject,
+            body=body.body,
+            pdf=await inv_.sent_pdf(books, number),
         )
     except InvoiceError as exc:
         raise _http(exc) from exc
+    return await _fresh(books, number)

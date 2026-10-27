@@ -346,8 +346,15 @@ def test_report_routes_read_only(client: TestClient, fake: FakeStorageProvider) 
 
     aged = client.get(f"/reports/aged?as_of={TODAY}", headers=H).json()
     assert aged["debtors"]["total_pence"] == 180_000
-    assert aged["debtors"]["rows"][0]["buckets"] == {"0-30": 60_000, "31-60": 0, "61-90": 0, "90+": 120_000}
-    assert aged["creditors"]["total_pence"] == 30_000 and aged["creditors"]["buckets"]["90+"] == 30_000
+    # By due date (no terms recorded: document date + 30 days): 1 Jul's invoice fell due 31 Jul, 88 days ago.
+    assert aged["debtors"]["rows"][0]["buckets"] == {
+        "current": 60_000,
+        "0-30": 0,
+        "31-60": 0,
+        "61-90": 120_000,
+        "90+": 0,
+    }
+    assert aged["creditors"]["total_pence"] == 30_000 and aged["creditors"]["buckets"]["61-90"] == 30_000
     assert aged["sample"] is False
 
     assert fake.files == before  # nothing written, not even an audit line

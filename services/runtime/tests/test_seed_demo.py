@@ -218,11 +218,11 @@ async def test_seed_on_fake_storage(seed_demo: ModuleType) -> None:
     books = Books(fake)
 
     events = await books.list_events()
-    assert report["events"] == len(events) == 40
+    assert report["events"] == len(events) == 41  # 40 documents + INV-0001's payment (Dr 1200 Bank / Cr 1100 Debtors)
     assert all(sum(ln.debit for ln in e.lines) == sum(ln.credit for ln in e.lines) for e in events)
     window = plan.window
     assert all(window[0] <= e.date <= window[1] for e in events)
-    assert {e.kind for e in events} == {"sale", "purchase"}
+    assert {e.kind for e in events} == {"sale", "purchase", "bank"}
     assert all(e.approved_by == seed_demo.USER for e in events)
 
     inbox = await books.list_files(INBOX)
@@ -297,7 +297,7 @@ async def test_seed_on_fake_storage(seed_demo: ModuleType) -> None:
     assert "README.txt" in fake.files and "Books.xlsx" in fake.files
     wb = load_workbook(io.BytesIO(fake.files["Books.xlsx"]))
     summary = {r[0].value: r[1].value for r in wb["Summary"].iter_rows(min_row=2)}
-    assert summary["Entries posted"] == 40 and summary["Proposals waiting"] == 0
+    assert summary["Entries posted"] == 41 and summary["Proposals waiting"] == 0
 
 
 # --------------------------------------------------------------------------- #

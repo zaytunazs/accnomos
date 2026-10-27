@@ -23,6 +23,7 @@ from app.books import AUDIT, AUTOPILOT_AUDIT, Books, bank_of
 from app.paths import upgrade
 from app.routes_vat import Deadlines, compute_deadlines
 from app.schemas import Proposal
+from app.settlement import load_records
 
 log = logging.getLogger(__name__)
 ACTIVITY_LIMIT = 10
@@ -124,18 +125,19 @@ def cash_position(lines: Sequence[BankLine]) -> Cash:
     )
 
 
-def owed(docs: Sequence[cb.Doc], today: date) -> Owed:
+def owed(docs: Sequence[cb.Doc], today: date, ledger: cb.Ledger | None = None) -> Owed:
     return Owed(
-        total_pence=sum(d.gross for d in docs),
+        total_pence=sum(cb.outstanding(d, ledger) if ledger else d.gross for d in docs),
         documents=len(docs),
         oldest_days=max(((today - d.event.date).days for d in docs), default=None),
     )
 
 
 def owed_to_you(ledger: cb.Ledger, invoices: list[invoicing.Invoice] | None, today: date) -> tuple[OwedToYou, Owed]:
-    """Unpaid sales and purchases on account, from the ledger. A sales invoice marked paid without a bank line
-    is paid too; overdue counts come from the invoices' due dates (other sales carry none)."""
-    paid = {i.event_id for i in invoices or [] if i.status == "paid" and i.event_id}
+    """What is still owed on sales and purchases on account, from the ledger (after part payments and credit
+    notes, app/settlement.py). A sales invoice marked paid before payments were recorded is paid too; overdue counts
+    come from the invoices' due dates (other sales carry none)."""
+    paid = {i.event_id for i in invoices or [] if i.status == "paid" and i.paid_pence is None and i.event_id}
     open_docs = [
         d for d in cb.open_docs(cb.documents(ledger), ledger) if d.event.id not in paid and d.event.date <= today
     ]
@@ -145,16 +147,16 @@ def owed_to_you(ledger: cb.Ledger, invoices: list[invoicing.Invoice] | None, tod
     if invoices is not None:
         still_open = {d.event.id for d in sales}
         late = [
-            (days, i.total_pence)
+            (days, ledger.settlement().outstanding(i.event_id))
             for i in invoices
             if i.event_id in still_open and (days := i.overdue_days(today)) is not None and days > 0
         ]
     return OwedToYou(
-        **owed(sales, today).model_dump(),
+        **owed(sales, today, ledger).model_dump(),
         overdue=None if late is None else len(late),
         overdue_pence=None if late is None else sum(p for _, p in late),
         most_overdue_days=max((d for d, _ in late), default=None) if late is not None else None,
-    ), owed(purchases, today)
+    ), owed(purchases, today, ledger)
 
 
 def attention(ledger: cb.Ledger, overdue: int | None) -> Attention:
@@ -289,7 +291,10 @@ async def build(books: Books, today: date, first_vat_month: int, vat_months: int
     events = await _try("ledger", missing, books.list_events)
     proposals = await _try("proposals", missing, load_proposals)
     bank_lines = await _try("bank", missing, books.stored_bank_lines)
-    ledger = cb.Ledger(events=events or [], proposals=proposals or {}, bank_lines=bank_lines or [])
+    records = await _try("payments", missing, lambda: load_records(books))
+    ledger = cb.Ledger(
+        events=events or [], proposals=proposals or {}, bank_lines=bank_lines or [], records=records or []
+    )
 
     async def load_invoices() -> list[invoicing.Invoice]:
         return await invoicing.list_invoices(books)

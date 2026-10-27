@@ -2,6 +2,9 @@
 
 Purchases:  Dr expense (per VAT code) net, Dr 2200 VAT control VAT, Cr bank/cash/creditors.
 Sales:      Dr 1100 Debtors gross, Cr 4000 Sales net (per VAT code), Cr 2200 VAT control VAT.
+Supplier credit notes: the purchase journal of the same amounts (sign ignored: credit notes are often printed
+            negative) with every line on the other side: Dr creditors/bank, Cr expense, Cr 2200 VAT control.
+            app/approve.py posts it as a reversal, so the VAT return counts it against purchases.
 
 VAT codes: 20%->S, 5%->R, 0%->Z, rate null or no supplier VAT number->N, non-GBP->O.
 For N and O the VAT is not reclaimable, so on purchases it is folded into the expense.
@@ -115,8 +118,26 @@ def _groups(doc: ExtractedDoc) -> dict[str, tuple[int, int]]:
     return {k: (v[0], v[1]) for k, v in groups.items()}
 
 
+def _positive(doc: ExtractedDoc) -> ExtractedDoc:
+    """The same document with every amount as a positive number (a credit note printed with minus signs)."""
+    return doc.model_copy(
+        update={
+            "net_total": abs(doc.net_total),
+            "vat_total": abs(doc.vat_total),
+            "gross_total": abs(doc.gross_total),
+            "lines": [
+                ln.model_copy(update={"net": abs(ln.net), "vat": abs(ln.vat), "unit_price": abs(ln.unit_price)})
+                for ln in doc.lines
+            ],
+        }
+    )
+
+
 def draft_journal(doc: ExtractedDoc) -> list[JournalLine]:
     """Return a balanced journal draft for `doc` (sum debits == sum credits)."""
+    if doc.doc_type == "credit_note":
+        bill = draft_journal(_positive(doc).model_copy(update={"doc_type": "purchase_invoice"}))
+        return [j.model_copy(update={"debit_pence": j.credit_pence, "credit_pence": j.debit_pence}) for j in bill]
     groups = _groups(doc)
     out: list[JournalLine] = []
 
@@ -155,10 +176,16 @@ def is_balanced(journal: list[JournalLine]) -> bool:
     return sum(j.debit_pence for j in journal) == sum(j.credit_pence for j in journal)
 
 
-def with_expense_account(journal: list[JournalLine], account: str) -> list[JournalLine]:
-    """Purchase journal with every expense debit moved to `account` (VAT and settlement untouched)."""
+def with_expense_account(journal: list[JournalLine], account: str, credit_note: bool = False) -> list[JournalLine]:
+    """Purchase journal with every expense debit moved to `account` (VAT and settlement untouched); on a supplier's
+    credit note (`credit_note`), every expense credit."""
     if any(j.account == DEBTORS for j in journal):  # sales: no expense leg to override
         return journal
+    if credit_note:
+        return [
+            j.model_copy(update={"account": account}) if j.credit_pence and j.account != VAT_CONTROL else j
+            for j in journal
+        ]
     return [
         j.model_copy(update={"account": account}) if j.debit_pence and j.account != VAT_CONTROL else j for j in journal
     ]

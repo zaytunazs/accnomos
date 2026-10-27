@@ -17,7 +17,9 @@ from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.validation import StrictBody
 
-DocType = Literal["receipt", "purchase_invoice", "sales_invoice"]
+#: credit_note: a supplier's credit note to the business (amounts may be printed negative); proposed like a bill and
+#: posted as a reversal (app/journal.py). The business's own credit notes are made on Invoices (app/credit_notes.py).
+DocType = Literal["receipt", "purchase_invoice", "sales_invoice", "credit_note"]
 PaymentMethod = Literal["card", "cash", "bank_transfer", "direct_debit", "cheque", "unknown"]
 Severity = Literal["fail", "warn"]
 Status = Literal["proposed", "needs_a_look"]
