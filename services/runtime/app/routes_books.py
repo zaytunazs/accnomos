@@ -19,7 +19,7 @@ from pydantic import BaseModel
 from accnomos_ledger.events import LedgerEvent
 
 from app import autopilot
-from app.ai.config import AiConfig, ai_config_from_request
+from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.approve import ApprovalError, ProposalStateError, approve, reject, undo
 from app.books import Books, now
 from app.inbox import scan_inbox_detailed
@@ -37,6 +37,11 @@ async def get_books(request: Request) -> AsyncIterator[Books]:
     kind = (request.headers.get("X-Account-Kind") or "personal").strip().lower()
     if kind not in ("personal", "work"):
         raise HTTPException(status_code=400, detail="X-Account-Kind must be 'personal' or 'work'")
+    if is_test_mode():
+        from app import testmode
+
+        yield Books((await testmode.state()).storage)
+        return
     storage = GraphStorageProvider(token, kind)  # type: ignore[arg-type]
     try:
         yield Books(storage)

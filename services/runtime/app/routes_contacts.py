@@ -18,6 +18,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from app import contacts as cb
+from app.ai.config import is_test_mode
 from app.books import Books, now
 from app.routes_books import get_books, require_user
 
@@ -28,6 +29,11 @@ async def get_address_book(request: Request) -> AsyncIterator[ContactsProvider]:
     token = request.headers.get("X-Graph-Token", "").strip().removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")
+    if is_test_mode():
+        from app import testmode
+
+        yield (await testmode.state()).contacts
+        return
     provider = GraphContactsProvider(token)
     try:
         yield provider

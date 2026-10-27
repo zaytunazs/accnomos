@@ -7,15 +7,13 @@ A spoken question is transcribed by Muse Voice (app/ai/voice.py) and then takes 
 
 from __future__ import annotations
 
-from datetime import date
-
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
 from pydantic import TypeAdapter, ValidationError
 
 from app.ai import ask as ask_ai
 from app.ai import voice
 from app.ai.config import AiConfig, ai_config_from_request
-from app.books import Books
+from app.books import Books, today
 from app.facts import build_facts, default_period
 from app.routes_books import get_books
 from app.schemas import AskAnswer, AskPeriod, AskRequest, AskTurn, AskVoiceAnswer
@@ -25,7 +23,7 @@ _TURNS = TypeAdapter(list[AskTurn])
 
 
 async def _answer(req: AskRequest, books: Books, cfg: AiConfig, business: str | None) -> AskAnswer:
-    period = req.period or default_period(date.today())
+    period = req.period or default_period(today())
     facts = await build_facts(books, period, business)
     return await ask_ai.answer(req.question, facts, req.history, cfg)
 

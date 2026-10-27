@@ -15,6 +15,8 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from app.ai.config import TEST_AI_MODEL, is_test_mode, stub_ai_base
+
 app = FastAPI(title="Accnomos Agent Runtime", version="0.1.0")
 STARTED = time.time()
 
@@ -44,13 +46,15 @@ class AiTestResult(BaseModel):
 async def health() -> dict:
     return {
         "ok": True, "service": "runtime", "version": app.version, "uptime_s": int(time.time() - STARTED),
-        "voice": bool(FFMPEG),
+        "voice": bool(FFMPEG), **({"test_mode": True} if is_test_mode() else {}),
     }
 
 
 @app.post("/ai/test", response_model=AiTestResult)
 async def ai_test(cfg: AiConfig, x_meta_api_key: str | None = Header(default=None)) -> AiTestResult:
     """F2: 'Test connection' button. Lists models with the user's key, or pings the user's local agent."""
+    if is_test_mode():  # the stub AI stands in for whatever the user typed
+        cfg = AiConfig(mode="local", base_url=stub_ai_base(), model=TEST_AI_MODEL)
     async with httpx.AsyncClient(timeout=20) as client:
         if cfg.mode == "key":
             if not x_meta_api_key:
@@ -108,4 +112,10 @@ from app.routes_contacts import router as contacts_router  # noqa: E402  /contac
 app.include_router(contacts_router)
 from app.routes_vehicles import router as vehicles_router  # noqa: E402  /vehicles, /mileage
 app.include_router(vehicles_router)
+
+if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI under /__test (app/testmode.py)
+    from app import testmode
+
+    testmode.enable()
+    app.include_router(testmode.router)
 

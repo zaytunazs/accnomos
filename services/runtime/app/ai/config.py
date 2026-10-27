@@ -26,6 +26,17 @@ DEFAULT_OLLAMA_BASE = "http://localhost:11434"
 DEFAULT_OLLAMA_MODEL = "muse-glimmer:30b"
 DEFAULT_MODEL_API_BASE = "https://api.meta.ai/v1"
 DEFAULT_MODEL_API_MODEL = "muse-spark-1.3"
+TEST_AI_MODEL = "accnomos-test-stub"
+
+
+def is_test_mode() -> bool:
+    """ACCNOMOS_TEST_MODE=1: fake providers and the stub AI (app/testmode.py). Never set in the Docker image."""
+    return os.getenv("ACCNOMOS_TEST_MODE") == "1"
+
+
+def stub_ai_base() -> str:
+    """The stub AI served by this runtime in test mode (Ollama-shaped, under /__test/ai)."""
+    return os.getenv("ACCNOMOS_TEST_AI_BASE") or f"http://127.0.0.1:{os.getenv('PORT', '8780')}/__test/ai"
 
 
 class AiConfig(BaseModel):
@@ -42,7 +53,9 @@ class AiConfig(BaseModel):
         model: str | None = None,
         api_key: str | None = None,
     ) -> AiConfig:
-        """Build a config from explicit values, falling back to the environment."""
+        """Build a config from explicit values, falling back to the environment. Test mode ignores both."""
+        if is_test_mode():  # whatever the browser sent, no request may reach a real model
+            return cls(mode="local", base_url=stub_ai_base().rstrip("/"), model=TEST_AI_MODEL)
         m = (mode or os.getenv("AI_MODE") or "local").strip().lower()
         if m not in ("local", "key"):
             raise ValueError(f"Unknown AI mode {m!r}; expected 'local' or 'key'")

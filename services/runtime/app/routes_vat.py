@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from app.books import Books
+from app.books import today as current_date  # `today` is a query parameter below
 from app.deadlines import (
     STAGGER_START_MONTH, filing_deadline, period_containing, period_label, previous_period, stagger_of,
 )
@@ -79,7 +80,7 @@ async def vat_return(
     books: Books = Depends(get_books),
 ) -> VatReturnView:
     if start is None or end is None:
-        s, e, k = quarter_bounds(date.today())
+        s, e, k = quarter_bounds(current_date())
         start, end, period_key = start or s, end or e, period_key or k
     period_key = period_key or period_key_for(start)
     events = await books.list_events(start, end)
@@ -146,7 +147,7 @@ async def deadlines(
     if stagger is not None and start_month is not None and stagger_of(start_month) != stagger:
         raise HTTPException(status_code=400, detail="stagger and start_month disagree; send one of them")
     first = start_month or STAGGER_START_MONTH[stagger or 1]
-    today = today or date.today()
+    today = today or current_date()
     cur_start, cur_end = period_containing(today, first, months)
     prev_start, prev_end = previous_period(cur_start, months)
     events = await books.list_events(prev_start, cur_end)

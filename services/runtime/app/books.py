@@ -27,6 +27,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+import os
 import re
 from collections.abc import Callable
 from datetime import UTC, date, datetime
@@ -38,6 +39,7 @@ from accnomos_ledger.events import LedgerEvent
 from accnomos_ledger.matching import Match, suggest_matches
 from pydantic import BaseModel, Field
 
+from app.ai.config import is_test_mode
 from app.checks import parse_iso_date
 from app.schemas import ExtractedDoc, Proposal, ProposalStatus
 
@@ -69,6 +71,13 @@ log = logging.getLogger(__name__)
 
 def now() -> datetime:
     return datetime.now(UTC)
+
+
+def today() -> date:
+    """Today, for "the current period" defaults. Test mode (app/testmode.py) pins it with ACCNOMOS_TEST_TODAY."""
+    if is_test_mode() and (pinned := os.getenv("ACCNOMOS_TEST_TODAY")):
+        return date.fromisoformat(pinned)
+    return date.today()
 
 
 class RuleMatch(BaseModel):
