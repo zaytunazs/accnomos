@@ -84,3 +84,6 @@ async def graph_error(_request: Request, exc: GraphError) -> JSONResponse:
     """Expired/insufficient Graph token -> 401 so the app re-authenticates; anything else -> 502."""
     status = 401 if exc.status in (401, 403) else 502
     return JSONResponse(status_code=status, content={"detail": str(exc)})
+from app.routes_vat import router as vat_router  # noqa: E402  GET /books/vat
+app.include_router(vat_router)
+

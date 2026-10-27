@@ -1,5 +1,6 @@
 import Link from "next/link";
 import SubmitSheet from "@/components/vat/SubmitSheet";
+import LiveVat from "@/components/vat/LiveVat";
 import { box4SampleRows, vatBoxes, vatMeta } from "@/lib/sample-vat";
 
 function EntriesCell({ box, count }: { box: number; count: number }) {
@@ -17,6 +18,7 @@ function EntriesCell({ box, count }: { box: number; count: number }) {
 export default function VatPage() {
   return (
     <div className="flex flex-col gap-6">
+      <LiveVat />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[13px] font-semibold text-muted">

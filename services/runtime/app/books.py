@@ -237,6 +237,30 @@ class Books:
         await self.storage.write(path, event.model_dump_json(indent=2).encode())
         return path
 
+    async def list_events(self, start: date | None = None, end: date | None = None) -> list[LedgerEvent]:
+        """All posted ledger events (optionally within [start, end] by event date), oldest first.
+
+        Months are folders, so only the months overlapping the range are read.
+        """
+        try:
+            months = [f.name for f in await self.storage.list(EVENTS) if f.is_folder]
+        except FileNotFoundError:
+            return []
+        if start:
+            months = [m for m in months if m >= start.strftime("%Y-%m")]
+        if end:
+            months = [m for m in months if m <= end.strftime("%Y-%m")]
+        events: list[LedgerEvent] = []
+        for m in sorted(months):
+            for f in await self.list_files(f"{EVENTS}/{m}"):
+                if not f.name.endswith(".json"):
+                    continue
+                ev = LedgerEvent.model_validate_json(await self.storage.read(f.path))
+                if (start is None or ev.date >= start) and (end is None or ev.date <= end):
+                    events.append(ev)
+        events.sort(key=lambda e: (e.date, e.approved_at))
+        return events
+
     async def record_scan(self, when: datetime) -> None:
         await self._update_json(CURSORS, {}, lambda c: {**c, "last_scan": when.isoformat()})
 
