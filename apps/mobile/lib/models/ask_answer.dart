@@ -12,6 +12,7 @@ class AskAnswer {
     required this.periodStart,
     required this.periodEnd,
     this.fallbackReason,
+    this.proposedAction,
   });
 
   /// Plain markdown (paragraphs, `-` and `1.` lists, `**bold**`).
@@ -30,6 +31,11 @@ class AskAnswer {
 
   /// Set when the model's words were replaced by the facts, quoted by code.
   final String? fallbackReason;
+
+  /// An instruction ("log 7.5 hours for Sam on Elm Road") becomes a proposal
+  /// that does nothing until approved. Kept exactly as received: it is signed,
+  /// and `POST /actions/approve` refuses it if anything in it changes.
+  final ProposedAction? proposedAction;
 
   factory AskAnswer.fromJson(Map<String, dynamic> json) {
     List<Map<String, dynamic>> maps(Object? list) => [
@@ -54,7 +60,30 @@ class AskAnswer {
       periodStart: (period['start'] ?? '').toString(),
       periodEnd: (period['end'] ?? '').toString(),
       fallbackReason: json['fallback_reason']?.toString(),
+      proposedAction: json['proposed_action'] is Map
+          ? ProposedAction(
+              Map<String, dynamic>.from(json['proposed_action'] as Map))
+          : null,
     );
+  }
+}
+
+/// A proposed action from Ask (`services/runtime/app/actions.py`).
+class ProposedAction {
+  ProposedAction(this.raw);
+
+  /// The JSON as the runtime sent it; posted back unchanged to approve.
+  final Map<String, dynamic> raw;
+
+  String get id => (raw['id'] ?? '').toString();
+  String get kind => (raw['kind'] ?? '').toString();
+  String get summaryMd => (raw['summary_md'] ?? '').toString();
+  String get confirmText => (raw['confirm_text'] ?? '').toString();
+  DateTime? get expiresAt => DateTime.tryParse('${raw['expires_at']}');
+  List<String> get warnings {
+    final preview = raw['preview'];
+    final list = preview is Map ? preview['warnings'] : null;
+    return [if (list is List) for (final w in list) w.toString()];
   }
 }
 
