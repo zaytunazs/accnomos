@@ -4,6 +4,11 @@ Score (0-1): amount within ±1p required (0.5 exact, 0.45 a penny out), date 0.3
 0.05 a day to ±5 days, counterparty similarity up to 0.2 (share of the counterparty's words found in the
 description; near-spellings such as "toolstn"/"toolstation" count), card last 4 digits +0.1.
 ≥0.9 is an "exact" suggestion, 0.6-0.9 "suggested", anything lower is dropped.
+
+Money paid on terms comes later than the document: an invoice posted to debtors or creditors, or a bank
+line that is a direct debit / faster payment / BACS, may be up to 60 days after the document date (the
+usual ceiling for UK business payment terms). Past 5 days the date adds nothing, so the counterparty's
+name has to carry the match and it is never "exact"; the nearer date still wins a tie.
 One bank line may also pay 2-3 same-counterparty events dated the same day. No event is used twice.
 """
 
@@ -16,13 +21,18 @@ from difflib import SequenceMatcher
 from itertools import combinations
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, PrivateAttr
 
 from accnomos_ledger.bank import BankLine
 from accnomos_ledger.events import LedgerEvent
 
 EXACT, SUGGEST = 0.9, 0.6
 MAX_DAYS = 5
+TERMS_DAYS = 60  # how long after the document a payment on terms may come
+#: Settlement accounts that mean "not paid yet": the payment comes later, on terms.
+ON_TERMS_PREFIXES = ("1100", "2100")
+#: Bank lines that are not card payments at the till: collected or sent after the bill.
+ON_TERMS_LINE = re.compile(r"\b(dd|direct debit|fp|fpi|fpo|faster payment|bacs|bgc|standing order)\b", re.IGNORECASE)
 PENNY = 1  # amount tolerance in pence: card terminals and some invoices round differently
 #: Accounts whose movement is the money that actually left or arrived (the settlement leg).
 SETTLEMENT_PREFIXES = ("1200", "1210", "2100", "1100")
@@ -40,6 +50,7 @@ class Match(BaseModel):
     score: float
     kind: MatchKind
     reasons: list[str]
+    _days: int = PrivateAttr(0)  # days between line and event: the nearer one wins a tie
 
 
 def settlement_pence(event: LedgerEvent) -> int:
@@ -60,11 +71,22 @@ def _kind(score: float) -> MatchKind | None:
     return "exact" if score >= EXACT else "suggested" if score >= SUGGEST else None
 
 
-def _date_score(line: BankLine, event: LedgerEvent) -> tuple[float, str] | None:
-    days = abs((line.date - event.date).days)
-    if days > MAX_DAYS:
+def on_terms(line: BankLine, event: LedgerEvent) -> bool:
+    """The payment may come well after the document: an invoice on terms, or a DD / transfer line."""
+    if any(ln.account.startswith(ON_TERMS_PREFIXES) for ln in event.lines):
+        return True
+    return bool(ON_TERMS_LINE.search(f"{line.description} {line.reference or ''}"))
+
+
+def _date_score(line: BankLine, event: LedgerEvent) -> tuple[float, str, int] | None:
+    signed = (line.date - event.date).days
+    days = abs(signed)
+    if days > MAX_DAYS and not (0 < signed <= TERMS_DAYS and on_terms(line, event)):
         return None
-    return 0.3 - 0.05 * days, "same day" if days == 0 else f"{days} day{'s' if days > 1 else ''} apart"
+    why = "same day" if days == 0 else f"{days} day{'s' if days > 1 else ''} apart"
+    if days > MAX_DAYS:
+        why = f"paid {days} days after the document"
+    return max(0.0, 0.3 - 0.05 * days), why, days
 
 
 def _abbreviates(short: str, long: str) -> bool:
@@ -92,7 +114,7 @@ def _name_score(line: BankLine, counterparty: str | None) -> tuple[float, str | 
     return 0.2 * len(common) / len(want), f"name: {' '.join(sorted(common))}"
 
 
-def _score(line: BankLine, events: Sequence[LedgerEvent], card_last4: dict[str, str]) -> tuple[float, list[str]] | None:
+def _score(line: BankLine, events: Sequence[LedgerEvent], card_last4: dict[str, str]) -> tuple[float, list[str], int] | None:
     """Score a line against one event or a same-day group; None when amount or date rule out a match."""
     off = abs(sum(settlement_pence(e) for e in events) - line.amount_pence)
     if line.amount_pence == 0 or off > PENNY:
@@ -103,6 +125,8 @@ def _score(line: BankLine, events: Sequence[LedgerEvent], card_last4: dict[str, 
     amount = "exact amount" if len(events) == 1 else f"sum of {len(events)} events"
     reasons = [f"{amount}, 1p out" if off else amount, dated[1]]
     name, why = _name_score(line, events[0].counterparty)
+    if dated[2] > MAX_DAYS and not why:  # on terms: only the name ties a late payment to the document
+        return None
     if why:
         reasons.append(why)
     last4 = {card_last4.get(e.id) for e in events} - {None}
@@ -110,15 +134,17 @@ def _score(line: BankLine, events: Sequence[LedgerEvent], card_last4: dict[str, 
     card = 0.1 if any(d and re.search(rf"(?<!\d){re.escape(d)}(?!\d)", text) for d in last4) else 0.0
     if card:
         reasons.append("card last 4 digits")
-    return round(min(1.0, 0.5 - 0.05 * off + dated[0] + name + card), 3), reasons
+    return round(min(1.0, 0.5 - 0.05 * off + dated[0] + name + card), 3), reasons, dated[2]
 
 
-def _match(line: BankLine, group: Sequence[LedgerEvent], scored: tuple[float, list[str]]) -> Match | None:
+def _match(line: BankLine, group: Sequence[LedgerEvent], scored: tuple[float, list[str], int]) -> Match | None:
     kind = _kind(scored[0])
     if kind is None:
         return None
     ids = [e.id for e in group]
-    return Match(line_id=line.id, event_id=ids[0], event_ids=ids, score=scored[0], kind=kind, reasons=scored[1])
+    m = Match(line_id=line.id, event_id=ids[0], event_ids=ids, score=scored[0], kind=kind, reasons=scored[1])
+    m._days = scored[2]
+    return m
 
 
 def _singles(lines: Iterable[BankLine], events: Sequence[LedgerEvent], card_last4: dict[str, str]) -> list[Match]:
@@ -147,7 +173,7 @@ def _groups(events: Sequence[LedgerEvent]) -> list[list[LedgerEvent]]:
 def _assign(candidates: list[Match], used_events: set[str], taken_lines: set[str]) -> list[Match]:
     """Greedy, best score first: each line once, each event once."""
     chosen: list[Match] = []
-    for m in sorted(candidates, key=lambda m: (-m.score, len(m.event_ids), m.line_id, m.event_ids)):
+    for m in sorted(candidates, key=lambda m: (-m.score, m._days, len(m.event_ids), m.line_id, m.event_ids)):
         if m.line_id in taken_lines or used_events.intersection(m.event_ids):
             continue
         chosen.append(m)

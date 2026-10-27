@@ -14,10 +14,18 @@ def resolve(text: str, path: str) -> str:
         h1 = head.strip().splitlines()[:1]; t1 = theirs.strip().splitlines()[:1]
         if h1 and t1 and h1 == t1:
             raise SystemExit(f"{path}: both sides change the same line; resolve by hand")
-        # README-style: keep table rows together before prose blocks
-        if path.endswith("README.md") and head.lstrip().startswith("|") and theirs.lstrip().startswith("|"):
+        # README: keep HEAD's block, and add only THEIRS' table rows whose first cell is new (never duplicate rows,
+        # never let a prose block split a table).
+        if path.endswith("README.md"):
+            def key(row: str) -> str:
+                cells = [c.strip() for c in row.split("|")]
+                return (cells[2] if row.startswith("| 2") and len(cells) > 2 else cells[1])[:60] if len(cells) > 1 else row
+            have = {key(r) for r in head.splitlines() if r.startswith("|")}
+            new_rows = [r for r in theirs.splitlines() if r.startswith("|") and not r.startswith("|---") and key(r) not in have]
             h_rows, _, h_rest = head.partition("\n\n")
-            return h_rows + "\n" + theirs.rstrip("\n") + "\n" + ("\n" + h_rest if h_rest else "")
+            if h_rows.lstrip().startswith("|"):
+                return h_rows.rstrip("\n") + "\n" + "".join(r + "\n" for r in new_rows) + ("\n" + h_rest if h_rest else "")
+            return head + "".join(r + "\n" for r in new_rows)
         if path.endswith((".ts", ".tsx")):
             # Both sides appended members to the same `runtime = {...}` object: merge inside one closing `};`.
             closer = re.compile(r"\n};?\n")

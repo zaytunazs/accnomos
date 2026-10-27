@@ -1,0 +1,183 @@
+{
+  "config": {
+    "mode": "local",
+    "base_url": "http://localhost:11434",
+    "model": "muse-glimmer:30b"
+  },
+  "messy": true,
+  "n": 200,
+  "errors": 0,
+  "field_accuracy": {
+    "supplier_name": 1.0,
+    "vat_number": 0.98,
+    "date": 1.0,
+    "net_total": 0.93,
+    "vat_total": 0.97,
+    "gross_total": 0.98,
+    "line_count": 0.995,
+    "side": 0.98,
+    "status": 0.93
+  },
+  "all_fields_correct": 0.86,
+  "by_case": {
+    "cash_no_vat": {
+      "n": 5,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "credit_note": {
+      "n": 10,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "edge_foreign_gbp": {
+      "n": 3,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "edge_handwritten": {
+      "n": 2,
+      "all_fields": 0.0,
+      "status": 0.5,
+      "errors": 0
+    },
+    "edge_multi_rate": {
+      "n": 3,
+      "all_fields": 0.333,
+      "status": 0.333,
+      "errors": 0
+    },
+    "edge_reverse_charge": {
+      "n": 2,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "edge_torn_faded": {
+      "n": 2,
+      "all_fields": 0.5,
+      "status": 0.5,
+      "errors": 0
+    },
+    "edge_zero": {
+      "n": 3,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "exempt": {
+      "n": 5,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "foreign": {
+      "n": 5,
+      "all_fields": 0.4,
+      "status": 0.8,
+      "errors": 0
+    },
+    "full_invoice": {
+      "n": 5,
+      "all_fields": 0.2,
+      "status": 1.0,
+      "errors": 0
+    },
+    "mixed": {
+      "n": 6,
+      "all_fields": 0.833,
+      "status": 0.833,
+      "errors": 0
+    },
+    "no_vat_number": {
+      "n": 6,
+      "all_fields": 0.0,
+      "status": 0.333,
+      "errors": 0
+    },
+    "pi_merchant": {
+      "n": 12,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "pi_software": {
+      "n": 8,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "pi_subcontractor": {
+      "n": 10,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "r_cafe": {
+      "n": 10,
+      "all_fields": 0.8,
+      "status": 0.9,
+      "errors": 0
+    },
+    "r_fuel": {
+      "n": 10,
+      "all_fields": 0.9,
+      "status": 1.0,
+      "errors": 0
+    },
+    "r_parking": {
+      "n": 8,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "r_trade": {
+      "n": 12,
+      "all_fields": 0.583,
+      "status": 0.75,
+      "errors": 0
+    },
+    "reduced": {
+      "n": 6,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "sales": {
+      "n": 30,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "sales_invoice": {
+      "n": 5,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "standard": {
+      "n": 11,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "utility": {
+      "n": 15,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "zero": {
+      "n": 6,
+      "all_fields": 0.833,
+      "status": 1.0,
+      "errors": 0
+    }
+  },
+  "mean_elapsed_s": 22.16,
+  "max_elapsed_s": 39.81,
+  "out_dir": "runs/glimmer_messy_200"
+}

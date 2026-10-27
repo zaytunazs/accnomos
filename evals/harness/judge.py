@@ -25,6 +25,9 @@ from typing import Any
 import httpx
 
 API_URL = "https://api.anthropic.com/v1/messages"
+#: Reply cap. The models think before answering and the thinking counts towards it: at 800, 27 of 200
+#: replies ran out before the JSON started (stop_reason "max_tokens").
+MAX_TOKENS = 4000
 REPO = Path(__file__).resolve().parents[2]
 GOLD_DIR = REPO / "evals" / "gold" / "receipts"
 
@@ -72,7 +75,7 @@ def judge_one(client: httpx.Client, model: str, gold: dict[str, Any], extracted:
     gold_view = {k: v for k, v in gold.items() if k not in ("label", "notes")}
     body = {
         "model": model,
-        "max_tokens": 800,
+        "max_tokens": MAX_TOKENS,
         "system": SYSTEM,
         "messages": [
             {
@@ -95,6 +98,7 @@ def judge_one(client: httpx.Client, model: str, gold: dict[str, Any], extracted:
         except json.JSONDecodeError:
             verdict = {"field_errors": [], "severity": "unparsed", "note": text[:500]}
         verdict["model"] = model
+        verdict["stop_reason"] = data.get("stop_reason")
         verdict["usage"] = data.get("usage", {})
         return verdict
     raise RuntimeError("unreachable")

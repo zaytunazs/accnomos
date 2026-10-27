@@ -89,12 +89,13 @@ def _walk(node: Any) -> Iterable[Any]:
 class KnownNumbers:
     """Every number in the facts pack's values, compared by value (so 2140, 2140.00 and £2,140.00 match).
 
+    `said` is the user's own question: a figure they typed ("fuel in March 2025") is not one the model made up.
     Also accepted: the absolute value (a delta of -620.00 quoted as "down £620") and whole-pound or
     whole-percent roundings ("£2,141" for 2140.56, "18%" for 18.3).
     """
 
-    def __init__(self, facts: dict[str, Any]) -> None:
-        exact: set[Decimal] = set()
+    def __init__(self, facts: dict[str, Any], said: str = "") -> None:
+        exact: set[Decimal] = {d for t in _NUMBER.findall(said) if (d := _parse(t)) is not None}
         for v in _walk(facts):
             if isinstance(v, bool) or v is None:
                 continue
@@ -181,9 +182,10 @@ def _clip(text: str, limit: int) -> str:
     return cut.rstrip(" ,;:") + "…"
 
 
-def ground(out: AskModelOutput, facts: dict[str, Any], model: str) -> AskAnswer:
-    """Check the model's answer against the facts; return it cleaned, or the fallback if it invented a figure."""
-    known = KnownNumbers(facts)
+def ground(out: AskModelOutput, facts: dict[str, Any], model: str, question: str = "") -> AskAnswer:
+    """Check the model's answer against the facts (and the question's own figures); return it cleaned, or the
+    fallback if it invented a figure."""
+    known = KnownNumbers(facts, question)
     answer_md = _clip(out.answer_md, ASK_ANSWER_MAX)
     if not answer_md:
         return fallback_answer(facts, model, "The model returned an empty answer.")
@@ -281,4 +283,4 @@ async def answer(question: str, facts: dict[str, Any], history: list[AskTurn], c
         out = AskModelOutput.model_validate(parse_model_json(text))
     except (ExtractionError, ValidationError):
         return fallback_answer(facts, cfg.model, "The model's reply was not in the expected format.")
-    return ground(out, facts, cfg.model)
+    return ground(out, facts, cfg.model, question)

@@ -157,6 +157,31 @@ def test_date_window_five_days_and_closer_scores_higher() -> None:
     assert suggest_matches(named, [_purchase(3847, date(2026, 10, 18), "Screwfix", "e1")]) == []
 
 
+def test_payments_on_terms_may_come_later_but_need_the_name() -> None:
+    dd = _lines(b"Date,Description,Amount\n05/11/2026,CUMBRIA VOLTIC GRID DD REF 7688713,-594.60\n")
+    (m,) = suggest_matches(dd, [_purchase(59460, date(2026, 10, 25), "Cumbria Voltic Grid Ltd", "e1")])
+    assert m.kind == "suggested" and "paid 11 days after the document" in m.reasons
+    unnamed = _lines(b"Date,Description,Amount\n05/11/2026,ENERGY DD REF 7688713,-594.60\n")
+    assert suggest_matches(unnamed, [_purchase(59460, date(2026, 10, 25), "Cumbria Voltic Grid Ltd", "e1")]) == []
+    # Card digits alone (0.5 + 0.1) would reach "suggested": a late payment still needs the name.
+    card = _lines(b"Date,Description,Amount\n05/11/2026,FP 4417 REF 7688713,-594.60\n")
+    assert suggest_matches(card, [_purchase(59460, date(2026, 10, 25), "Cumbria Voltic Grid Ltd", "e1")], {"e1": "4417"}) == []
+    # An invoice on terms (debtors): the customer pays weeks later, never before the invoice by more than 5 days.
+    paid = _lines(b"Date,Description,Amount\n20/11/2026,ACME KITCHENS INV-0042,1200.00\n")
+    (s,) = suggest_matches(paid, [_sale(120000, date(2026, 10, 22), "Acme Kitchens", "e2")])
+    assert s.kind == "suggested" and s.score < 0.9
+    assert suggest_matches(paid, [_sale(120000, date(2026, 11, 30), "Acme Kitchens", "e2")]) == []
+    assert suggest_matches(paid, [_sale(120000, date(2026, 9, 20), "Acme Kitchens", "e2")]) == []  # 61 days
+
+
+def test_monthly_same_amount_bill_takes_the_nearer_document() -> None:
+    dd = _lines(b"Date,Description,Amount\n12/10/2026,THORNFIELD COMMS DD REF 1,-64.20\n12/11/2026,THORNFIELD COMMS DD REF 2,-64.20\n")
+    events = [_purchase(6420, date(2026, 10, 2), "Thornfield Communications", "oct"),
+              _purchase(6420, date(2026, 11, 2), "Thornfield Communications", "nov")]
+    got = {m.line_id: m.event_id for m in suggest_matches(dd, events)}
+    assert got == {dd[0].id: "oct", dd[1].id: "nov"}
+
+
 def test_amount_within_a_penny() -> None:
     lines = _lines(b"Date,Description,Amount\n24/10/2026,SCREWFIX,-38.47\n")
     (penny,) = suggest_matches(lines, [_purchase(3848, date(2026, 10, 24), "Screwfix", "e1")])
