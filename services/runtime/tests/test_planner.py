@@ -406,3 +406,10 @@ def test_summer_days_plan_in_british_summer_time() -> None:
     v = visits(plan)[0]
     assert v.start.utcoffset() == timedelta(hours=1)
     assert planner.hhmm(v.start) == "10:30"  # 10:00 after the call, then 30 min travel
+
+
+async def test_plan_day_route_can_be_limited_to_some_jobs(client: TestClient, fake: FakeStorageProvider) -> None:
+    await _seed_jobs(fake, job(1, "LS6 1AA"), job(2, "LS7 1AA"), job(3, "M1 1AE"))
+    body = {"date": DAY.isoformat(), "job_ids": [f"{1:012x}", f"{3:012x}"]}
+    plan = client.post("/plan/day", json=body, headers=H).json()["plan"]
+    assert [i["job_id"] for i in plan if i["kind"] == "visit"] == [f"{1:012x}", f"{3:012x}"]

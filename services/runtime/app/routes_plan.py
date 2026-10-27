@@ -50,6 +50,7 @@ class PlanRequest(BaseModel):
     date: date
     constraints: Constraints | None = None
     vat: VatSettings | None = None
+    job_ids: list[str] | None = Field(None, max_length=200, description="only these jobs (default: every open job)")
 
 
 class PlanResponse(BaseModel):
@@ -75,7 +76,8 @@ async def plan_day(
     cfg: AiConfig | None = Depends(optional_ai),
 ) -> PlanResponse:
     """Propose the day. Reads the calendar and jobs.json; writes nothing."""
-    open_jobs = [j for j in await jobs.load_jobs(books) if j.status == "open"]
+    wanted = set(body.job_ids) if body.job_ids is not None else None
+    open_jobs = [j for j in await jobs.load_jobs(books) if j.status == "open" and (wanted is None or j.id in wanted)]
     existing = await calendar.list_events(body.date)
     plan = build_plan(body.date, open_jobs, existing, vat_due(body.date, body.vat), body.constraints,
                       today=datetime.now(TZ).date())
