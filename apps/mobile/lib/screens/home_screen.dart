@@ -209,6 +209,8 @@ class _HomeScreenState extends State<HomeScreen> {
             children: _tiles(),
           ),
           const SizedBox(height: 12),
+          if (_data?.vatAssumed == true) const AssumedStaggerNote(),
+          if (_data?.vatAssumed == true) const SizedBox(height: 12),
           TodosCard(
             settings: _settings ?? AppSettings(),
             auth: _auth,
@@ -249,6 +251,50 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// "Assuming Mar/Jun/Sep/Dec quarters — set yours in Settings", shown when
+/// the runtime assumed calendar quarters (no stagger saved), worded like
+/// the web's Deadlines note. The link opens Settings.
+class AssumedStaggerNote extends StatelessWidget {
+  const AssumedStaggerNote({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text(
+          'Assuming Mar/Jun/Sep/Dec quarters —',
+          style: TextStyle(
+              color: Color(0xFF8A3F06),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              height: 1.4),
+        ),
+        TextButton(
+          style: TextButton.styleFrom(
+            padding: EdgeInsets.zero,
+            minimumSize: Size.zero,
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          onPressed: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const SettingsScreen()),
+          ),
+          child: const Text(
+            'set yours in Settings',
+            style: TextStyle(
+                color: Color(0xFF8A3F06),
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+                decoration: TextDecoration.underline,
+                height: 1.4),
+          ),
+        ),
+      ],
     );
   }
 }

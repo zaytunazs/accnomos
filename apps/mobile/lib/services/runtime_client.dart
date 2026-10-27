@@ -42,11 +42,34 @@ class BooksAuth {
 /// Talks to the Accnomos reader runtime. Covers every route in
 /// services/runtime (the screens use a few of them so far).
 class RuntimeClient {
-  RuntimeClient(this.settings, {this.books});
+  RuntimeClient(this.settings, {this.books, http.Client? httpClient})
+      : _httpOverride = httpClient;
   final AppSettings settings;
 
   /// Present for every books call; null when nobody is signed in.
   final BooksAuth? books;
+
+  /// Test transport, used instead of a fresh client for every call.
+  final http.Client? _httpOverride;
+
+  /// Transport for every call: the injected fake in tests, otherwise a new
+  /// client each time (created at call time, so `http.runWithClient`
+  /// zone mocks keep working as they did for the top-level functions).
+  http.Client get _http => _httpOverride ?? http.Client();
+
+  /// The saved VAT stagger as the runtime's query, like the web's
+  /// `vatQuery()` in `apps/web/src/lib/vat-period.ts`: `start_month=` when
+  /// the user kept a custom quarter start, else `stagger=`. Empty when
+  /// nothing is saved — the runtime then assumes calendar quarters and
+  /// says `assumed: true` instead of the app sending a default.
+  @visibleForTesting
+  Map<String, String> vatQuery() {
+    final start = settings.vatStartMonth;
+    if (start != null) return {'start_month': '$start'};
+    final stagger = settings.vatStagger;
+    if (stagger != null) return {'stagger': '$stagger'};
+    return const {};
+  }
 
   // Glimmer on a home machine takes 20–60 s per receipt; the runtime itself is fast.
   static const _timeout = Duration(seconds: 120);
@@ -98,7 +121,7 @@ class RuntimeClient {
       final request = http.MultipartRequest('POST', uri)
         ..headers.addAll(_headers)
         ..files.add(await http.MultipartFile.fromPath('file', image.path));
-      final streamed = await request.send().timeout(_timeout);
+      final streamed = await _http.send(request).timeout(_timeout);
       final body = await streamed.stream.bytesToString();
       if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
         _fail(streamed.statusCode, body.trim());
@@ -122,8 +145,7 @@ class RuntimeClient {
   Future<Map<String, dynamic>> aiTest() async {
     final uri = Uri.parse('${settings.runtimeUrl}/ai/test');
     try {
-      final response = await http
-          .post(
+      final response = await _http.post(
             uri,
             headers: {..._headers, 'Content-Type': 'application/json'},
             body: json.encode({
@@ -154,13 +176,13 @@ class RuntimeClient {
   }
 
   /// Read the user's `00 Inbox` and propose entries.
-  /// `POST /books/scan` → `{proposals, errors}`.
+  /// `POST /books/scan` → `{proposals, errors}`. The saved VAT settings
+  /// set the period that scanned dates are checked against, like the web.
   Future<ScanOutcome> scan() async {
     _requireBooks();
-    final uri = Uri.parse('${settings.runtimeUrl}/books/scan');
+    final uri = _uri('/books/scan');
     try {
-      final response = await http
-          .post(
+      final response = await _http.post(
             uri,
             headers: {..._headers, 'Content-Type': 'application/json'},
           )
@@ -205,7 +227,7 @@ class RuntimeClient {
     final uri = Uri.parse('${settings.runtimeUrl}/books/proposals$query');
     try {
       final response =
-          await http.get(uri, headers: _headers).timeout(_timeout);
+          await _http.get(uri, headers: _headers).timeout(_timeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         _fail(response.statusCode, response.body.trim());
       }
@@ -241,8 +263,7 @@ class RuntimeClient {
     final uri =
         Uri.parse('${settings.runtimeUrl}/books/proposals/$id/approve');
     try {
-      final response = await http
-          .post(
+      final response = await _http.post(
             uri,
             headers: {..._headers, 'Content-Type': 'application/json'},
             body: json.encode({'edits': edits, 'always': always}),
@@ -269,8 +290,7 @@ class RuntimeClient {
     final uri =
         Uri.parse('${settings.runtimeUrl}/books/proposals/$id/reject');
     try {
-      final response = await http
-          .post(
+      final response = await _http.post(
             uri,
             headers: {..._headers, 'Content-Type': 'application/json'},
             body: json.encode({'reason': reason}),
@@ -297,7 +317,7 @@ class RuntimeClient {
     final uri = Uri.parse('${settings.runtimeUrl}/books/summary');
     try {
       final response =
-          await http.get(uri, headers: _headers).timeout(_timeout);
+          await _http.get(uri, headers: _headers).timeout(_timeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         _fail(response.statusCode, response.body.trim());
       }
@@ -314,17 +334,15 @@ class RuntimeClient {
   }
 
   /// The Home tiles in one call. `GET /books/dashboard`, with the saved VAT
-  /// period (`stagger=` or `start_month=`, like the web's `vatQuery()`).
+  /// period, like the web's `vatQuery()`.
   /// [today] is `YYYY-MM-DD` on the phone, so the deadline counts from the
   /// user's day.
   Future<Map<String, dynamic>> dashboard({String? today}) async {
     _requireBooks();
-    final query = _vatQuery(today: today);
-    final uri = Uri.parse(
-        '${settings.runtimeUrl}/books/dashboard${query.isEmpty ? '' : '?$query'}');
+    final uri = _uri('/books/dashboard', {'today': ?today});
     try {
       final response =
-          await http.get(uri, headers: _headers).timeout(_timeout);
+          await _http.get(uri, headers: _headers).timeout(_timeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         _fail(response.statusCode, response.body.trim());
       }
@@ -341,23 +359,27 @@ class RuntimeClient {
   }
 
   /// The 9 VAT boxes for [period] ("2026-Q3", from [vatPeriods]), or for the
-  /// current period when null. `GET /books/vat`.
+  /// current period when null. `GET /books/vat`, with the saved VAT period.
   Future<Map<String, dynamic>> vat({String? period}) {
     _requireBooks();
     return _map('GET', '/books/vat',
-        query: {'period': ?period}, what: 'load the VAT return');
+        query: {...vatQuery(), 'period': ?period},
+        what: 'load the VAT return');
   }
 
   /// The current VAT period and the 8 before it, with status, newest first.
-  /// `GET /books/vat/periods`.
+  /// `GET /books/vat/periods`, with the saved VAT period.
   Future<Map<String, dynamic>> vatPeriods() {
     _requireBooks();
-    return _map('GET', '/books/vat/periods', what: 'load VAT periods');
+    return _map('GET', '/books/vat/periods',
+        query: vatQuery(), what: 'load VAT periods');
   }
 
   /// Ask the books a question. `POST /books/ask` → a checked [AskAnswer].
   /// [periodStart]/[periodEnd] are `YYYY-MM-DD`; omit both for the current
-  /// VAT quarter. Only the last six [history] turns are sent.
+  /// VAT quarter (the saved VAT period rides along as the query, so the
+  /// runtime knows which quarter that is). Only the last six [history]
+  /// turns are sent.
   Future<AskAnswer> ask(
     String question, {
     String? periodStart,
@@ -365,12 +387,11 @@ class RuntimeClient {
     List<AskTurn> history = const [],
   }) async {
     _requireBooks();
-    final uri = Uri.parse('${settings.runtimeUrl}/books/ask');
+    final uri = _uri('/books/ask');
     final recent =
         history.length > 6 ? history.sublist(history.length - 6) : history;
     try {
-      final response = await http
-          .post(
+      final response = await _http.post(
             uri,
             headers: {..._headers, 'Content-Type': 'application/json'},
             body: json.encode({
@@ -418,8 +439,7 @@ class RuntimeClient {
     _requireBooks();
     final uri = Uri.parse('${settings.runtimeUrl}/actions/$verb');
     try {
-      final response = await http
-          .post(
+      final response = await _http.post(
             uri,
             headers: {..._headers, 'Content-Type': 'application/json'},
             body: json.encode({'action': action.raw}),
@@ -463,7 +483,7 @@ class RuntimeClient {
     String filename = 'question.wav',
   }) async {
     _requireBooks();
-    final uri = Uri.parse('${settings.runtimeUrl}/books/ask/voice');
+    final uri = _uri('/books/ask/voice');
     try {
       final request = http.MultipartRequest('POST', uri)
         ..headers.addAll(_headers)
@@ -472,7 +492,7 @@ class RuntimeClient {
           wavBytes,
           filename: filename,
         ));
-      final streamed = await request.send().timeout(_timeout);
+      final streamed = await _http.send(request).timeout(_timeout);
       final body = await streamed.stream.bytesToString();
       if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
         _fail(streamed.statusCode, body.trim());
@@ -506,8 +526,7 @@ class RuntimeClient {
   Future<bool> supportsUndo() async {
     final uri = Uri.parse('${settings.runtimeUrl}/openapi.json');
     try {
-      final response = await http
-          .get(uri, headers: _headers)
+      final response = await _http.get(uri, headers: _headers)
           .timeout(const Duration(seconds: 10));
       if (response.statusCode != 200) return false;
       final decoded = json.decode(response.body);
@@ -530,8 +549,7 @@ class RuntimeClient {
     final uri =
         Uri.parse('${settings.runtimeUrl}/books/undo/$eventId');
     try {
-      final response = await http
-          .post(
+      final response = await _http.post(
             uri,
             headers: {..._headers, 'Content-Type': 'application/json'},
           )
@@ -562,8 +580,7 @@ class RuntimeClient {
   /// `GET /health` (no sign-in needed); null when the reader does not answer.
   Future<Map<String, dynamic>?> health() async {
     try {
-      final response = await http
-          .get(Uri.parse('${settings.runtimeUrl}/health'))
+      final response = await _http.get(Uri.parse('${settings.runtimeUrl}/health'))
           .timeout(const Duration(seconds: 10));
       if (response.statusCode != 200) return null;
       final decoded = json.decode(response.body);
@@ -595,32 +612,26 @@ class RuntimeClient {
   Future<Map<String, dynamic>> rebuild() =>
       _map('POST', '/books/rebuild', what: 'rebuild Books.xlsx');
 
-  /// `GET /books/deadlines`. [stagger] (1–3) or [startMonth] default to the
-  /// saved VAT period; [months] is 3 (quarterly) or 1 (monthly).
-  Future<Map<String, dynamic>> deadlines(
-          {int? stagger, int? startMonth, int months = 3, String? today}) {
-    final start = startMonth ?? settings.vatStartMonth;
-    final stag = start == null ? (stagger ?? settings.vatStagger) : null;
+  /// `GET /books/deadlines`, with the saved VAT period, like the web.
+  /// [months] is 3 (quarterly) or 1 (monthly); [today] is `YYYY-MM-DD`.
+  Future<Map<String, dynamic>> deadlines({int months = 3, String? today}) {
     return _map('GET', '/books/deadlines',
         query: {
-          if (stag != null) 'stagger': '$stag',
-          if (start != null) 'start_month': '$start',
+          ...vatQuery(),
           'months': '$months',
           'today': ?today,
         },
         what: 'load VAT deadlines');
   }
 
-  /// The saved VAT period as the runtime's query, like the web's `vatQuery()`
-  /// in `apps/web/src/lib/vat-period.ts`: `start_month=` when the user kept
-  /// a custom quarter start, else `stagger=`.
-  String _vatQuery({String? today}) {
-    final start = settings.vatStartMonth;
-    final parts = <String>[
-      if (start != null) 'start_month=$start' else 'stagger=${settings.vatStagger}',
-      if (today != null) 'today=$today',
-    ];
-    return parts.join('&');
+  /// [path] with the saved VAT query appended (`?stagger=2`, or nothing
+  /// when nothing is saved), plus [extra] parameters. Like the web's
+  /// `withQuery` in `apps/web/src/lib/runtime.ts`.
+  Uri _uri(String path, [Map<String, String>? extra]) {
+    final query = {...vatQuery(), ...?extra};
+    var uri = Uri.parse('${settings.runtimeUrl}$path');
+    if (query.isNotEmpty) uri = uri.replace(queryParameters: query);
+    return uri;
   }
 
   /// The audit trail, newest first. `GET /audit` → `{start, end, entries,
@@ -912,10 +923,12 @@ class RuntimeClient {
   // writes (one spreadsheet in 07 Reports). Money is integer pence.
 
   /// Profit and loss. [from]/[to] are `YYYY-MM-DD`; omit both for the VAT
-  /// period we are in now. `GET /reports/pl`.
+  /// period we are in now (the saved VAT period rides along as the query,
+  /// like the web). `GET /reports/pl`.
   Future<Map<String, dynamic>> reportsPl({String? from, String? to}) =>
       _map('GET', '/reports/pl',
           query: {
+            ...vatQuery(),
             'from': ?from,
             'to': ?to,
           },
@@ -926,10 +939,11 @@ class RuntimeClient {
   Future<Map<String, dynamic>> reportsAged() =>
       _map('GET', '/reports/aged', what: 'load aged balances');
 
-  /// VAT boxes per period, oldest first. `GET /reports/vat`.
+  /// VAT boxes per period, oldest first. `GET /reports/vat`, with the
+  /// saved VAT period, like the web.
   Future<Map<String, dynamic>> reportsVat({int periods = 4}) =>
       _map('GET', '/reports/vat',
-          query: {'periods': '$periods'},
+          query: {...vatQuery(), 'periods': '$periods'},
           what: 'load the VAT summary');
 
   /// Sales, purchases and net per calendar month, oldest first.
@@ -941,10 +955,12 @@ class RuntimeClient {
 
   /// Save the report as a spreadsheet in 07 Reports; posts nothing.
   /// `POST /reports/export` → `{path, name, size, sample, sheets}`.
-  /// [report] is `pl`, `aged`, `vat`, `trend` or `all`.
+  /// [report] is `pl`, `aged`, `vat`, `trend` or `all`. The saved VAT
+  /// period rides along as the query, like the web.
   Future<Map<String, dynamic>> reportExport(
           {String report = 'all', String? from, String? to}) =>
       _map('POST', '/reports/export',
+          query: vatQuery(),
           body: {
             'report': report,
             'from': ?from,
@@ -1344,7 +1360,7 @@ class RuntimeClient {
 
   Future<dynamic> _send(http.BaseRequest request, String what) async {
     try {
-      final streamed = await request.send().timeout(_timeout);
+      final streamed = await _http.send(request).timeout(_timeout);
       final text = await streamed.stream.bytesToString();
       if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
         _fail(streamed.statusCode, text.trim());

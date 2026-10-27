@@ -1,5 +1,17 @@
 # Release notes — Accnomos mobile
 
+## 0.3.3 (version code 8)
+
+Play "What's new" (248 characters):
+
+Your VAT stagger now works on the phone: Home, the VAT return, the
+period picker, Reports and Ask all use the stagger or custom start
+month saved in Settings. With none saved, Home says it is assuming
+Mar/Jun/Sep/Dec quarters and links to Settings.
+
+Not yet run on a phone: a non-1 stagger against a real runtime, and
+the assumed-quarters note at small widths, need a human check.
+
 ## 0.3.3 (version code 7)
 
 Play "What's new":
