@@ -147,8 +147,8 @@ async def test_a_vat_number_teaches_registered(fake: FakeStorageProvider, books:
     msg = next(c.message for c in missed.checks if c.code == "VAT_NUMBER_REQUIRED")
     assert missed.status == "needs_a_look"
     assert (
-        msg
-        == "VAT charged but no VAT number shown; their VAT number is usually GB232456789; the VAT can't be reclaimed without it"
+        msg == "VAT charged but no VAT number shown; their VAT number is usually GB232456789; "
+        "the VAT can't be reclaimed without it"
     )
 
     (zero,) = await _scan(fake, books, b"screwfix-3")  # a known registered supplier with nothing to reclaim: not asked

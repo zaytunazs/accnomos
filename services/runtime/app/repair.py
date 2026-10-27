@@ -90,10 +90,16 @@ def repair_vat_inclusive_totals(doc: ExtractedDoc) -> Check | None:
     if abs(net + vat - gross) > 1:
         if abs(net - gross) <= 1 and vat_fits(gross - vat):
             doc.net_total = (gross - vat) / 100
-            msg = f"Net {gbp(net)} was the VAT-inclusive total; net set to total {gbp(gross)} − VAT {gbp(vat)} = {gbp(gross - vat)}"
+            msg = (
+                f"Net {gbp(net)} was the VAT-inclusive total; "
+                f"net set to total {gbp(gross)} − VAT {gbp(vat)} = {gbp(gross - vat)}"
+            )
         elif rate is not None and abs(round(net * (100 + rate) / 100) - gross) <= 1:
             doc.vat_total = (gross - net) / 100
-            msg = f"VAT {gbp(vat)} did not fit net {gbp(net)} and total {gbp(gross)} at {rate:g}%; VAT set to {gbp(gross - net)}"
+            msg = (
+                f"VAT {gbp(vat)} did not fit net {gbp(net)} and total {gbp(gross)} at {rate:g}%; "
+                f"VAT set to {gbp(gross - net)}"
+            )
         else:
             return None
     elif (
@@ -102,7 +108,10 @@ def repair_vat_inclusive_totals(doc: ExtractedDoc) -> Check | None:
         and abs(round(net * rate / (100 + rate)) - vat) <= tol
     ):
         doc.gross_total, doc.net_total = net / 100, (net - vat) / 100
-        msg = f"VAT had been added on top of the VAT-inclusive total {gbp(net)}; total set to {gbp(net)}, net to {gbp(net - vat)}"
+        msg = (
+            f"VAT had been added on top of the VAT-inclusive total {gbp(net)}; "
+            f"total set to {gbp(net)}, net to {gbp(net - vat)}"
+        )
     else:
         return None
     return Check(code="TOTALS_REPAIRED", ok=True, severity="warn", message=msg)

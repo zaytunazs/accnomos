@@ -71,7 +71,8 @@ def field_table(recs: list[dict[str, Any]]) -> list[str]:
 def side_section(recs: list[dict[str, Any]]) -> list[str]:
     ok = [r for r in recs if r["proposal"]]
     out = [
-        f"Side accuracy: **{pct([r['scores']['side'] for r in recs])}** ({sum(r['scores']['side'] for r in recs)}/{len(recs)}).",
+        f"Side accuracy: **{pct([r['scores']['side'] for r in recs])}** "
+        f"({sum(r['scores']['side'] for r in recs)}/{len(recs)}).",
         "",
     ]
     conf: Counter = Counter()
@@ -114,7 +115,8 @@ def case_table(recs: list[dict[str, Any]]) -> list[str]:
     out = ["| Case | n | All fields | Side | Status | Errors |", "|---|---:|---:|---:|---:|---:|"]
     for c, rs in sorted(by.items()):
         out.append(
-            f"| {c} | {len(rs)} | {pct([all(r['scores'].values()) for r in rs])} | {pct([r['scores']['side'] for r in rs])} | "
+            f"| {c} | {len(rs)} | {pct([all(r['scores'].values()) for r in rs])} "
+            f"| {pct([r['scores']['side'] for r in rs])} | "
             f"{pct([r['scores']['status'] for r in rs])} | {sum(r['error'] is not None for r in rs)} |"
         )
     return out
@@ -143,10 +145,14 @@ def describe(r: dict[str, Any]) -> str:
     ex = r["proposal"]["extracted"]
     bad = [k for k, v in r["scores"].items() if not v]
     return (
-        f"failed {bad}\n    gold: {g['supplier']['name']!r} vrn={g['supplier'].get('vat_number')} {g['date']} net={g['net_total']} "
-        f"vat={g['vat_total']} gross={g['gross_total']} lines={len(g['lines'])} side={gold_side(g)} status={r['expected_status']}\n"
-        f"    got : {ex['supplier_name']!r} vrn={ex['supplier_vat_number']} {ex['date']} net={ex['net_total']} vat={ex['vat_total']} "
-        f"gross={ex['gross_total']} lines={len(ex['lines'])} type={ex['doc_type']} cur={ex['currency']} status={r['proposal']['status']}\n"
+        f"failed {bad}\n    gold: {g['supplier']['name']!r} vrn={g['supplier'].get('vat_number')} {g['date']} "
+        f"net={g['net_total']} "
+        f"vat={g['vat_total']} gross={g['gross_total']} lines={len(g['lines'])} side={gold_side(g)} "
+        f"status={r['expected_status']}\n"
+        f"    got : {ex['supplier_name']!r} vrn={ex['supplier_vat_number']} {ex['date']} net={ex['net_total']} "
+        f"vat={ex['vat_total']} "
+        f"gross={ex['gross_total']} lines={len(ex['lines'])} type={ex['doc_type']} cur={ex['currency']} "
+        f"status={r['proposal']['status']}\n"
         f"    reasons: {r['proposal']['reasons']}"
     )
 
@@ -178,11 +184,14 @@ def judge_section(judge: dict[str, Any], recs: list[dict[str, Any]]) -> list[str
         f"(judge `none` = code all right). Counting a `minor` verdict (cosmetic or category only) as right too: "
         f"{lenient}/{len(by_file)}.",
         "",
-        f"`major` verdicts: {len(major := [f for f, d in by_file.items() if d['final_severity'] == 'major'])}, covering "
-        f"{sum(not code_ok[f] for f in major)}/{sum(not v for f, v in code_ok.items() if f in by_file)} documents the code "
+        f"`major` verdicts: {len(major := [f for f, d in by_file.items() if d['final_severity'] == 'major'])}, "
+        f"covering "
+        f"{sum(not code_ok[f] for f in major)}/{sum(not v for f, v in code_ok.items() if f in by_file)} "
+        f"documents the code "
         f"scores wrong; the other {sum(code_ok[f] for f in major)} are documents the code scores right.",
         "",
-        f"Unparsed verdicts: {unparsed}/{len(by_file)} ({100 * unparsed / max(1, len(by_file)):.1f} %); final replies cut off at the "
+        f"Unparsed verdicts: {unparsed}/{len(by_file)} ({100 * unparsed / max(1, len(by_file)):.1f} %); "
+        f"final replies cut off at the "
         f"reply cap: {capped}.",
         "",
         "Most frequent judge-flagged fields (final verdicts): "
@@ -192,7 +201,8 @@ def judge_section(judge: dict[str, Any], recs: list[dict[str, Any]]) -> list[str
         "",
         "Caveat: the judge is noisy and not a ground truth. It flags line-item wording and category on most documents, "
         "which the code comparison does not score, so it disagrees with the code on nearly every first pass. "
-        "Treat the code-scored field accuracy above as the headline; use the judge only to spot-check `major` verdicts.",
+        "Treat the code-scored field accuracy above as the headline; "
+        "use the judge only to spot-check `major` verdicts.",
     ]
     return out
 
@@ -207,7 +217,8 @@ def main() -> None:
     ap.add_argument(
         "--note",
         default=RUN_NOTE,
-        help="sentence after the run command: what changed in this run (the default is the 27 Oct run's; pass your own for any later run)",
+        help="sentence after the run command: what changed in this run "
+        "(the default is the 27 Oct run's; pass your own for any later run)",
     )
     ap.add_argument(
         "--rescore",
@@ -228,16 +239,20 @@ def main() -> None:
     out = [
         f"# Extraction eval: Glimmer on 200 messy documents ({cfg['model']}, {cfg['mode']})",
         "",
-        f"Docs: **{len(recs)}** (60 original + 140 new from Qwen) | messy phone-photo renders | errors: {summary['errors']} | "
+        f"Docs: **{len(recs)}** (60 original + 140 new from Qwen) | messy phone-photo renders "
+        f"| errors: {summary['errors']} | "
         f"mean {summary['mean_elapsed_s']} s per document (max {summary['max_elapsed_s']} s)",
         "",
-        f"Run: `python -m harness.run_extraction --mode local --messy --business-name 'Bramblewood Joinery Ltd'`; {args.note}",
+        f"Run: `python -m harness.run_extraction --mode local --messy --business-name 'Bramblewood Joinery Ltd'`; "
+        f"{args.note}",
         "",
         "## Headline",
         "",
         f"- All fields correct (incl. side and status): **{pct([all(r['scores'].values()) for r in recs])}** "
-        f"(original 60: {pct([all(r['scores'].values()) for r in recs if r['no'] < NEW_FROM])}, new 140: {pct([all(r['scores'].values()) for r in new])})",
-        f"- Side accuracy: **{pct([r['scores']['side'] for r in recs])}**; status accuracy: **{pct([r['scores']['status'] for r in recs])}**",
+        f"(original 60: {pct([all(r['scores'].values()) for r in recs if r['no'] < NEW_FROM])}, "
+        f"new 140: {pct([all(r['scores'].values()) for r in new])})",
+        f"- Side accuracy: **{pct([r['scores']['side'] for r in recs])}**; "
+        f"status accuracy: **{pct([r['scores']['status'] for r in recs])}**",
         "",
         "## Accuracy per field",
         "",

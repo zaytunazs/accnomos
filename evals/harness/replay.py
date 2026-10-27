@@ -111,7 +111,8 @@ def main() -> None:
             lost = [f for f in FIELDS if s0[f] and not s1[f]]
             won = [f for f in FIELDS if s1[f] and not s0[f]]
             print(
-                f"{rec['file']}: +{won} -{lost} {rec['proposal']['status']}->{new['status']} | {new['repaired_by_code']}"
+                f"{rec['file']}: +{won} -{lost} {rec['proposal']['status']}->{new['status']} "
+                f"| {new['repaired_by_code']}"
             )
     n = tally["n"]
     print("\n| Field | before | after |\n|---|---:|---:|")

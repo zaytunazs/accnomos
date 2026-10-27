@@ -206,7 +206,8 @@ def build_plan(business: str = GOLD_BUSINESS, today: date | None = None, stagger
     newer = previous_period(current[0])
     older = previous_period(newer[0])
     start, end = older[0], newer[1]
-    # The plan is tuned to the original hand-checked set (001-060); later generated documents (061+) are for the eval only.
+    # The plan is tuned to the original hand-checked set (001-060); later generated documents (061+) are for the
+    # eval only.
     golds = {f: g for f, g in gold_receipts().items() if f[:3].isdigit() and int(f[:3]) <= 60}
     not_registered = sorted({_supplier(g) for g in golds.values() if _charges_no_vat_over_250(g)})
     usable = {f: g for f, g in golds.items() if rewritable(g) and f not in INBOX_NEEDS_A_LOOK}
@@ -563,7 +564,8 @@ def describe(plan: Plan) -> str:
     claim = plan.claim_journeys()
     miles = sum(j.miles for j in claim)
     lines.append(
-        f"  {plan.claim_day:%d/%m/%Y}  mileage   {len(claim)} journeys, {miles:.1f} miles (allowance worked out by code)"
+        f"  {plan.claim_day:%d/%m/%Y}  mileage   {len(claim)} journeys, {miles:.1f} miles "
+        "(allowance worked out by code)"
     )
     for inv in plan.invoices:
         state = (
@@ -862,7 +864,8 @@ async def _main(args: argparse.Namespace) -> int:
             else ""
         )
         print(
-            f"Microsoft Graph refused a request (HTTP {exc.status}).{hint} If the seed had started, the folder is part-filled: "
+            f"Microsoft Graph refused a request (HTTP {exc.status}).{hint} "
+            "If the seed had started, the folder is part-filled: "
             "run again with --wipe.",
             file=sys.stderr,
         )
@@ -877,8 +880,10 @@ async def _seed_graph(args: argparse.Namespace, plan: Plan, token: str) -> int:
         print(f"Books folder: {storage._root_drive_path or root.name}")
         if not root_is_accnomos(args.account, root.name):
             print(
-                f"That is not the Accnomos folder: for a personal account the app folder belongs to the app that issued "
-                f"the token ({root.name!r} here). Copy the token from the Accnomos web app instead (tools/seed_demo.md).",
+                f"That is not the Accnomos folder: for a personal account the app folder belongs to the app that "
+                f"issued "
+                f"the token ({root.name!r} here). Copy the token from the Accnomos web app "
+                f"instead (tools/seed_demo.md).",
                 file=sys.stderr,
             )
             return 1
