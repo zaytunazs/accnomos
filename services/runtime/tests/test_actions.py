@@ -215,6 +215,21 @@ async def test_vehicle_resolution(books: Books):
     assert isinstance(one, actions.Draft) and one.preview["vehicle_id"] == "v1" and one.preview["miles"] == "12.3"
 
 
+async def test_approved_mileage_is_logged_and_audited_as_the_user(books: Books):
+    from app import mileage
+
+    van = await mileage.add_vehicle(books, mileage.Vehicle(name="Transit van", kind="van", owned_by="business"), USER)
+    intent = actions.LogMileageIntent(miles=Decimal("12.3"), from_place="Leeds", to_place="York", date=date(2026, 10, 26))
+    draft = await actions.resolve_mileage(books, intent, TODAY)
+    assert isinstance(draft, actions.Draft)
+    done = await actions.approve(actions.new_action(draft, TOKEN), actions.Context(books=books, user=USER, graph_token=TOKEN))
+    assert done.status == "done"
+    [entry] = await mileage.load_entries(books, mileage.tax_year_of(date(2026, 10, 26)))
+    assert (entry.vehicle_id, entry.miles, entry.purpose, entry.id) == (van.id, 12.3, "Leeds to York", done.result["entry_id"])
+    audit = [json.loads(ln) for ln in (await books.storage.read(f"_System/audit/{datetime.now(UTC):%Y-%m}.jsonl")).decode().splitlines()]
+    assert {"actor": f"user:{USER}", "action": "mileage_added"}.items() <= next(a for a in audit if a["action"] == "mileage_added").items()
+
+
 # --------------------------------------------------------------------------- #
 # Money
 # --------------------------------------------------------------------------- #

@@ -390,7 +390,7 @@ async def confirm(books: Books, period: str, gross_pence: int, er_ni_pence: int,
         "period": period, "gross_pence": gross_pence, "er_ni_pence": er_ni_pence, "events": run.event_ids,
         "est_gross_pence": run.est_gross_pence, "est_er_ni_pence": run.est_er_ni_pence,
     })
-    await books.rebuild_safely(user)
+    await books.rebuild_safely(f"user:{user}")
     return run
 
 
@@ -412,5 +412,5 @@ async def reopen(books: Books, period: str, user: str) -> PayRun:
     })
     await _save(books, run)
     await books.audit(f"user:{user}", "payroll_reopened", {"period": period, "undone": run.undone_event_ids})
-    await books.rebuild_safely(user)
+    await books.rebuild_safely(f"user:{user}")
     return run

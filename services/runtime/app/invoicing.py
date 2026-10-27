@@ -501,7 +501,7 @@ async def post_sale(books: Books, inv: Invoice, user: str) -> str:
     inv.event_id = event.id
     await save_invoice(books, inv)
     await books.audit(f"user:{user}", "invoice_posted", {"invoice": inv.number, "event": event.id, "event_path": path})
-    await books.rebuild_safely(user)
+    await books.rebuild_safely(f"user:{user}")
     return event.id
 
 
@@ -547,7 +547,7 @@ async def send_invoice(
     if inv.status == "sent" and (not inv.event_id or (inv.timesheet_entry_ids() and not inv.timesheets_marked)):
         await mark_hours(books, inv, user)
         if inv.event_id:
-            await books.rebuild_safely(user)
+            await books.rebuild_safely(f"user:{user}")
         else:
             await post_sale(books, inv, user)
         return inv
@@ -669,5 +669,5 @@ async def void_invoice(books: Books, number: str, user: str, reason: str) -> Inv
         "invoice": number, "reason": inv.void_reason, "reversal": inv.reversal_event_id,
     })
     if inv.reversal_event_id:
-        await books.rebuild_safely(user)
+        await books.rebuild_safely(f"user:{user}")
     return inv

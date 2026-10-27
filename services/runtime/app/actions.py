@@ -856,11 +856,12 @@ async def run_mileage(action: ProposedAction, ctx: Context) -> tuple[str, dict[s
     try:  # fields as in the vehicles & mileage contract: {id, vehicle_id, date, from, to, miles, purpose, job_id, source}
         entry = mod.MileageEntry.model_validate({
             "id": action.id[:12], "vehicle_id": p["vehicle_id"], "date": p["date"], "from": p["from"], "to": p["to"],
-            "miles": p["miles"], "purpose": "", "job_id": p.get("job_id"), "source": "manual",
+            "miles": p["miles"], "purpose": p.get("job_name") or f"{p['from']} to {p['to']}"[:200],
+            "job_id": p.get("job_id"), "source": "manual",
         })
     except (ValidationError, AttributeError) as exc:
         raise ActionError("The mileage log in this version doesn't accept journeys from Ask yet.", 501) from exc
-    await mod.add_entry(ctx.books, entry)
+    entry = await mod.add_entry(ctx.books, entry, ctx.user)  # audited as user:<X-User>
     return (f"Logged {p['miles']} miles in {_md(p['vehicle_name'])}.", {"entry_id": entry.id, "miles": p["miles"]})
 
 

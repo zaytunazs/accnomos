@@ -166,3 +166,93 @@ def test_unknown_fields_on_the_new_routes_are_a_422(client: TestClient, method: 
     r = getattr(client, method)(path, json=body, headers=H)
     assert r.status_code == 422
     assert any(e["type"] == "extra_forbidden" for e in r.json()["detail"])
+
+
+# --------------------------------------------------------------------------- #
+# Identity: writes need X-User; audit lines say who (user:) or what (agent:)
+# --------------------------------------------------------------------------- #
+
+#: Write-method routes that do not take X-User, and why. Anything else that writes must depend on require_user.
+NO_USER_NEEDED = {
+    "POST /ai/test": "pings the AI the caller names (allow-listed); writes nothing",
+    "POST /extract": "reads one document; writes nothing",
+    "POST /books/scan": "the extractor agent files the inbox; audited as agent:extractor / agent:autopilot",
+    "POST /books/rebuild": "rebuilds Books.xlsx from the files already there; no new facts",
+    "POST /books/ask": "answers, or proposes a signed action that only /actions/approve (X-User) runs",
+    "POST /books/ask/voice": "as /books/ask",
+    "POST /mail/scan": "the intake agent copies receipts to 00 Inbox; audited as agent:intake (user: when X-User is sent)",
+    "POST /mail/triage": "reads previews; one counts-only audit line as agent:triage (user: when X-User is sent)",
+    "POST /jobs/{job_id}/invoice-lines": "proposes lines; marks nothing",
+    "POST /invoices/{number}/pdf": "renders the PDF of an invoice the user already wrote; no new facts",
+    "POST /invoices/{number}/reminder-draft": "drafts text for the user to read; sends and writes nothing",
+    "POST /plan/day": "proposes a day; writes nothing (apply needs X-User)",
+}
+
+
+def _depends_on(route: APIRoute, call: Any) -> bool:
+    def calls(d: Any) -> Iterator[Any]:
+        for sub in d.dependencies:
+            yield sub.call
+            yield from calls(sub)
+
+    return call in set(calls(route.dependant))
+
+
+def test_every_write_route_needs_x_user_or_is_listed_with_a_reason():
+    from app.routes_books import require_user
+
+    unlisted, stale = [], set(NO_USER_NEEDED)
+    for r in routes():
+        for method in sorted(r.methods & {"POST", "PUT", "PATCH", "DELETE"}):
+            key = f"{method} {r.path}"
+            if _depends_on(r, require_user):
+                assert key not in NO_USER_NEEDED, f"{key} takes X-User now; drop it from NO_USER_NEEDED"
+            elif key in NO_USER_NEEDED:
+                stale.discard(key)
+            else:
+                unlisted.append(key)
+    assert unlisted == []
+    assert stale == set(), "NO_USER_NEEDED lists routes that no longer exist"
+
+
+@pytest.mark.parametrize(("method", "path", "body"), [
+    ("post", "/actions/approve", {"action": {}}),
+    ("post", "/invoices", {"customer": {"name": "x"}, "lines": [{"description": "x", "quantity": 1, "unit_price_pence": 1}]}),
+    ("post", "/invoices/INV-0001/send", {"confirm": True}),
+    ("post", "/plan/day/apply", {"date": "2026-10-27", "plan": []}),
+    ("post", "/mail/draft-reply", {"message_id": "AAMk", "body": "Thanks"}),
+    ("post", "/todos", {"text": "Ring Hartley"}),
+    ("post", "/payroll/runs/prepare", {"period": "2026-10"}),
+    ("post", "/vehicles", {"name": "Van", "kind": "van", "owned_by": "business"}),
+])
+def test_writes_without_x_user_are_refused(client: TestClient, method: str, path: str, body: dict[str, Any]):
+    r = getattr(client, method)(path, json=body, headers={"X-Graph-Token": H["X-Graph-Token"]})
+    assert r.status_code in (400, 422)
+    assert "x-user" in r.text.lower()
+
+
+_ACTOR_PREFIXES = ('f"user:', "f'user:", 'f"agent:', "f'agent:", '"agent:', "'agent:")
+
+
+def _actor_ok(node: Any) -> bool:
+    import ast
+
+    if isinstance(node, ast.IfExp):
+        return _actor_ok(node.body) and _actor_ok(node.orelse)
+    src = ast.unparse(node)
+    return src.startswith(_ACTOR_PREFIXES) or src.endswith("ACTOR") or src.startswith("_actor(") or src == "actor"
+
+
+def test_every_audit_actor_is_user_or_agent():
+    """`books.audit(actor, ...)` and `rebuild_safely(actor)`: an f"user:..." / "agent:..." string, an ...ACTOR
+    constant (all "agent:..."), `_actor(user)` or a parameter named `actor`; never a bare e-mail address."""
+    import ast
+    from pathlib import Path
+
+    bad = []
+    for path in sorted((Path(__file__).resolve().parents[1] / "app").rglob("*.py")):
+        for node in ast.walk(ast.parse(path.read_text())):
+            if (isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.args
+                    and node.func.attr in ("audit", "audit_autopilot", "rebuild_safely") and not _actor_ok(node.args[0])):
+                bad.append(f"{path.name}:{node.lineno} {node.func.attr}({ast.unparse(node.args[0])})")
+    assert bad == []
