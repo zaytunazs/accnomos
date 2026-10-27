@@ -6,9 +6,9 @@ import ProposalCard from "@/components/review/ProposalCard";
 import UploadToInbox from "@/components/review/UploadToInbox";
 import {
   EmptyState,
-  ErrorNote,
   LoadingSkeleton,
   ReaderErrorNote,
+  RuntimeErrorNote,
   isReaderError,
 } from "@/components/States";
 import { getMsal, msalConfigured } from "@/lib/msal";
@@ -215,7 +215,7 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
         (isReaderError(error) ? (
           <ReaderErrorNote detail={error} />
         ) : (
-          <ErrorNote title="Couldn't finish that" body={error} />
+          <RuntimeErrorNote message={error} />
         ))}
       {autoPosted.length > 0 && (
         <section aria-labelledby="autopilot-posted" className="rounded-2xl border border-border bg-white p-5">
@@ -251,8 +251,9 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
       )}
       {items.length === 0 && (
         <EmptyState
-          title="Nothing waiting"
-          body="Your books are up to date. New receipts will appear here after the next inbox scan."
+          title="No receipts waiting"
+          body="Receipts you scan or upload appear here for you to approve before anything reaches your books."
+          action={<UploadToInbox account={account!} onDone={() => account && load(account)} />}
         />
       )}
       {items.map((p) => (

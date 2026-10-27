@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MarkPaidDialog, PreviewSendDialog, ReminderDialog, VoidDialog } from "@/components/invoices/InvoiceDialogs";
+import { EmptyState, RuntimeErrorNote } from "@/components/States";
 import { money, SAMPLE_INVOICES, STATUS_LABEL, useMsAccount } from "@/lib/invoices";
 import { runtime, ukDate, type RtInvoice } from "@/lib/runtime";
 
@@ -122,11 +123,25 @@ export default function LiveInvoices() {
         </p>
       )}
       {note && <p role="status" className="rounded-xl bg-teal-tint px-4 py-3 text-sm font-bold text-teal-dark">{note}</p>}
-      {error && <p role="alert" className="text-sm font-bold text-warn-ink">Could not load invoices: {error}</p>}
+      {error && <RuntimeErrorNote message={error} title="Could not load invoices" />}
       {!invoices && !error && <p className="text-sm text-muted">Loading invoices…</p>}
-      {invoices && shown.length === 0 && (
+      {invoices && invoices.length === 0 && (
+        <EmptyState
+          title="No invoices yet"
+          body="Sales invoices you write appear here, with who still owes you and what is overdue."
+          action={
+            <Link
+              href="/invoices/new"
+              className="inline-flex h-11 items-center whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
+            >
+              New invoice
+            </Link>
+          }
+        />
+      )}
+      {invoices && invoices.length > 0 && shown.length === 0 && (
         <p className="rounded-2xl border border-border bg-white p-4 text-sm text-muted">
-          {invoices.length === 0 ? "No invoices yet. Write your first one with New invoice." : "Nothing here."}
+          Nothing here.
         </p>
       )}
 
