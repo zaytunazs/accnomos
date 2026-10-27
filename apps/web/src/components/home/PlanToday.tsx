@@ -24,25 +24,35 @@ export default function PlanToday() {
     if (window.location.search.includes("plan=")) window.history.replaceState(null, "", window.location.pathname);
   }
 
-  if (day && account) return <PlanCard account={account} date={day} onClose={close} />;
+  if (day && account)
+    return (
+      <div className="col-span-full">
+        <PlanCard account={account} date={day} onClose={close} />
+      </div>
+    );
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-white px-4 py-3">
-      <p className="text-sm font-semibold text-muted">
+    <section aria-labelledby="plan-today-heading" className="flex flex-col rounded-2xl border border-border bg-white p-4 sm:p-5">
+      <h2 id="plan-today-heading" className="text-lg font-extrabold tracking-tight">
+        Plan today
+      </h2>
+      <p className="mt-1 min-h-[3.5rem] text-sm leading-6 text-muted">
         {account === null
           ? "Sign in to plan your day from your calendar and open jobs."
           : day
             ? `Opening the plan for ${dayLabel(day)}…`
             : "Visits grouped by postcode, travel, lunch and admin, around what is already in your calendar."}
       </p>
-      <button
-        type="button"
-        disabled={!account}
-        onClick={() => setDay(todayIso())}
-        className="shrink-0 rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-60"
-      >
-        Plan today
-      </button>
-    </div>
+      <div className="mt-auto pt-4">
+        <button
+          type="button"
+          disabled={!account}
+          onClick={() => setDay(todayIso())}
+          className="shrink-0 whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-60"
+        >
+          Plan today
+        </button>
+      </div>
+    </section>
   );
 }
