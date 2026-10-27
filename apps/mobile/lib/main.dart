@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'screens/ask_screen.dart';
+import 'screens/files_screen.dart';
 import 'screens/review_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/vat_screen.dart';
@@ -52,8 +53,8 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int _tab = 0;
 
-  /// Review, Ask and VAT bring their own app bars, so the shell only
-  /// titles the tabs that do not.
+  /// Review, Ask, VAT and Files bring their own app bars, so the shell
+  /// only titles Home.
   bool get _hasOwnAppBar => _tab != 0;
 
   @override
@@ -94,6 +95,7 @@ class _ShellState extends State<Shell> {
                 ReviewScreen(),
                 AskScreen(),
                 VatScreen(),
+                FilesScreen(),
               ],
             ),
           ),
@@ -111,6 +113,8 @@ class _ShellState extends State<Shell> {
               icon: Icon(Icons.chat_bubble_outline), label: 'Ask'),
           NavigationDestination(
               icon: Icon(Icons.receipt_long_outlined), label: 'VAT return'),
+          NavigationDestination(
+              icon: Icon(Icons.folder_outlined), label: 'Files'),
         ],
       ),
     );

@@ -419,6 +419,109 @@ class RuntimeClient {
     }
   }
 
+  /// Send a WAV recording and get back the transcript plus the checked
+  /// answer. `POST /books/ask/voice` (multipart field `audio`) →
+  /// `{transcript, answer?}` — `answer`, when present, has the same shape
+  /// as `POST /books/ask`.
+  ///
+  /// Throws [RuntimeException] carrying the server's message when the
+  /// runtime cannot transcribe (400/503 in local mode or without ffmpeg).
+  /// Callers fall back to typing in that case.
+  Future<VoiceAnswer> askVoice(
+    List<int> wavBytes, {
+    String filename = 'question.wav',
+  }) async {
+    _requireBooks();
+    final uri = Uri.parse('${settings.runtimeUrl}/books/ask/voice');
+    try {
+      final request = http.MultipartRequest('POST', uri)
+        ..headers.addAll(_headers)
+        ..files.add(http.MultipartFile.fromBytes(
+          'audio',
+          wavBytes,
+          filename: filename,
+        ));
+      final streamed = await request.send().timeout(_timeout);
+      final body = await streamed.stream.bytesToString();
+      if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+        _fail(streamed.statusCode, body.trim());
+      }
+      return VoiceAnswer.fromJson(
+          json.decode(body) as Map<String, dynamic>);
+    } on TimeoutException {
+      throw RuntimeException(
+          'Listening took too long. Check the reader and try again.');
+    } on SocketException {
+      throw RuntimeException(
+          'Could not reach the reader at ${settings.runtimeUrl}. '
+          'Is it running?');
+    } on RuntimeException {
+      rethrow;
+    } catch (e) {
+      throw RuntimeException('Could not handle that recording. $e');
+    }
+  }
+
+  /// Posted proposals decided by Autopilot (`decided_by == 'autopilot'`).
+  /// `GET /books/proposals?status=posted`, filtered client-side.
+  Future<List<AutopilotApproval>> autopilotApprovals() async {
+    final raw = await proposals(status: 'posted');
+    return AutopilotApproval.fromProposals(raw);
+  }
+
+  /// Whether this reader exposes `POST /books/undo/{event_id}`, checked
+  /// against its OpenAPI schema. False when offline or on runtimes that
+  /// predate the undo route (no such route in `routes_books.py` on main).
+  Future<bool> supportsUndo() async {
+    final uri = Uri.parse('${settings.runtimeUrl}/openapi.json');
+    try {
+      final response = await http
+          .get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return false;
+      final decoded = json.decode(response.body);
+      if (decoded is Map && decoded['paths'] is Map) {
+        for (final key in (decoded['paths'] as Map).keys) {
+          if (key.toString().contains('/books/undo/')) return true;
+        }
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Reverse an Autopilot approval. `POST /books/undo/{event_id}`.
+  /// Throws [RuntimeException]; callers treat status 404 as "this reader
+  /// does not expose undo" and hide the Autopilot section.
+  Future<Map<String, dynamic>> undoEvent(String eventId) async {
+    _requireBooks();
+    final uri =
+        Uri.parse('${settings.runtimeUrl}/books/undo/$eventId');
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {..._headers, 'Content-Type': 'application/json'},
+          )
+          .timeout(_timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        _fail(response.statusCode, response.body.trim());
+      }
+      final decoded = json.decode(response.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      return {'result': decoded.toString()};
+    } on SocketException {
+      throw RuntimeException(
+          'Could not reach the reader at ${settings.runtimeUrl}. '
+          'Is it running?');
+    } on RuntimeException {
+      rethrow;
+    } catch (e) {
+      throw RuntimeException('Undo failed. $e');
+    }
+  }
+
   // ------------------------------------------------------------------ //
   // The rest of the runtime's routes, one thin call each. Same paths and
   // bodies as `runtime` in apps/web/src/lib/runtime.ts. Money is integer
@@ -473,19 +576,6 @@ class RuntimeClient {
             'today': ?today,
           },
           what: 'load VAT deadlines');
-
-  /// `POST /books/ask/voice` (key mode only): a recorded question, then the
-  /// same checked answer as [ask], plus `transcript`.
-  Future<Map<String, dynamic>> askVoice(File audio,
-      {List<AskTurn> history = const []}) {
-    final recent =
-        history.length > 6 ? history.sublist(history.length - 6) : history;
-    return _upload('/books/ask/voice', 'audio', audio,
-        fields: {
-          'history': json.encode([for (final t in recent) t.toJson()]),
-        },
-        what: 'answer that question');
-  }
 
   /// `POST /mail/scan`. The Graph token must carry `Mail.Read`.
   Future<Map<String, dynamic>> mailScan(
@@ -799,6 +889,78 @@ class ScanOutcome {
   ScanOutcome({required this.proposals, required this.errors});
   final List<Map<String, dynamic>> proposals;
   final List<ScanFileError> errors;
+}
+
+/// Transcript plus checked answer from `POST /books/ask/voice`.
+///
+/// `answer` is null when the runtime transcribed but could not answer;
+/// the transcript still goes in the user's bubble and typing takes over.
+class VoiceAnswer {
+  VoiceAnswer({required this.transcript, this.answer});
+  final String transcript;
+  final AskAnswer? answer;
+
+  factory VoiceAnswer.fromJson(Map<String, dynamic> json) {
+    final transcript = (json['transcript'] ??
+            json['text'] ??
+            json['question'] ??
+            '')
+        .toString();
+    AskAnswer? answer;
+    final rawAnswer =
+        json['answer'] is Map ? json['answer'] : json;
+    if (rawAnswer is Map &&
+        (rawAnswer['answer_md'] ?? '').toString().isNotEmpty) {
+      answer = AskAnswer.fromJson(
+          Map<String, dynamic>.from(rawAnswer));
+    }
+    return VoiceAnswer(transcript: transcript, answer: answer);
+  }
+}
+
+/// One entry the Autopilot approved on the user's behalf: a posted
+/// proposal with `decided_by == 'autopilot'` and a ledger `event_id` that
+/// `POST /books/undo/{event_id}` can reverse.
+class AutopilotApproval {
+  AutopilotApproval({
+    required this.proposalId,
+    required this.supplier,
+    required this.total,
+    required this.eventId,
+    this.decidedAt,
+  });
+
+  final String proposalId;
+  final String supplier;
+  final double total;
+  final String eventId;
+  final String? decidedAt;
+
+  /// Keep only Autopilot-decided postings that carry an event id.
+  static List<AutopilotApproval> fromProposals(
+      List<Map<String, dynamic>> raw) {
+    final items = <AutopilotApproval>[];
+    for (final json in raw) {
+      if ((json['decided_by'] ?? '').toString() != 'autopilot') continue;
+      final eventId = (json['event_id'] ?? '').toString();
+      if (eventId.isEmpty) continue;
+      final extracted = json['extracted'] is Map
+          ? Map<String, dynamic>.from(json['extracted'] as Map)
+          : <String, dynamic>{};
+      final gross = extracted['gross_total'];
+      items.add(AutopilotApproval(
+        proposalId: (json['id'] ?? '').toString(),
+        supplier: (extracted['supplier_name'] ?? 'Unknown supplier')
+            .toString(),
+        total: gross is num
+            ? gross.toDouble()
+            : double.tryParse(gross.toString()) ?? 0,
+        eventId: eventId,
+        decidedAt: json['decided_at']?.toString(),
+      ));
+    }
+    return items;
+  }
 }
 
 /// One unreadable inbox file from `POST /books/scan`.
