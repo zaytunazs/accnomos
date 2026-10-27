@@ -17,8 +17,10 @@ from types import ModuleType
 import pytest
 from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger.bank import detect_bank, parse_bank_csv
+from accnomos_ledger.vat import compute_vat_return
 from openpyxl import load_workbook
 
+from app import contacts as contacts_mod
 from app import invoicing, jobs, mileage
 from app.books import INBOX, NEEDS_A_LOOK, Books
 from app.deadlines import period_containing
@@ -142,6 +144,50 @@ async def test_wipe_asks_first(seed_demo: ModuleType) -> None:
     assert "00 Inbox/a.png" in storage.files
 
 
+async def test_wipe_on_yes_deletes_only_inside_the_folder(seed_demo: ModuleType) -> None:
+    deleted: list[str] = []
+
+    class Storage(FakeStorageProvider):
+        _root_drive_path = "/Apps/Accnomos"
+
+        def __init__(self) -> None:
+            super().__init__()
+            self._folders = {"00 Inbox": {}}
+
+        async def _request(self, method: str, url: str) -> None:
+            assert method == "DELETE" and "/me/drive/items/" in url
+            deleted.append(url.rsplit("/", 1)[-1])
+
+    storage = Storage()
+    await storage.write("00 Inbox/a.png", b"x")
+    await storage.write("README.txt", b"x")
+    top = {i.id for i in await storage.list("")}
+    assert await seed_demo._wipe(storage, ask=lambda _q: "Y ") is True
+    assert set(deleted) == top and storage._folders == {}
+
+
+def test_no_token_changes_nothing(seed_demo: ModuleType, monkeypatch: pytest.MonkeyPatch,
+                                  capsys: pytest.CaptureFixture[str]) -> None:
+    monkeypatch.setenv("ACCNOMOS_GRAPH_TOKEN", "   ")
+    monkeypatch.setattr(seed_demo.getpass, "getpass", lambda _p: "")
+    assert seed_demo.main([]) == 1
+    assert "nothing changed" in capsys.readouterr().err
+
+
+def test_expired_token_is_explained(seed_demo: ModuleType, monkeypatch: pytest.MonkeyPatch,
+                                    capsys: pytest.CaptureFixture[str]) -> None:
+    from accnomos_connectors.msgraph import GraphError
+
+    async def refused(*_a: object) -> int:
+        raise GraphError(401, "InvalidAuthenticationToken")
+
+    monkeypatch.setenv("ACCNOMOS_GRAPH_TOKEN", "eyJexpired")
+    monkeypatch.setattr(seed_demo, "_seed_graph", refused)
+    assert seed_demo.main([]) == 1
+    err = capsys.readouterr().err
+    assert "HTTP 401" in err and "expired" in err and "eyJexpired" not in err
+
+
 def test_dry_run_prints_the_plan(seed_demo: ModuleType, capsys: pytest.CaptureFixture[str]) -> None:
     assert seed_demo.main(["--dry-run"]) == 0
     out = capsys.readouterr().out
@@ -154,7 +200,7 @@ def test_dry_run_prints_the_plan(seed_demo: ModuleType, capsys: pytest.CaptureFi
 
 
 async def test_seed_on_fake_storage(seed_demo: ModuleType) -> None:
-    plan = seed_demo.build_plan("Bramblewood Joinery Ltd", date.today())  # journeys can't be logged in the future
+    plan = seed_demo.build_plan("Bramblewood Joinery Ltd", TODAY)  # in the past from now on: journeys can't be in the future
     fake = FakeStorageProvider()
     report = await seed_demo.seed(fake, plan, say=lambda _msg: None)
     books = Books(fake)
@@ -175,7 +221,8 @@ async def test_seed_on_fake_storage(seed_demo: ModuleType) -> None:
 
     invs = {i.number: i for i in await invoicing.list_invoices(books)}
     assert [invs[n].status for n in ("INV-0001", "INV-0002", "INV-0003")] == ["paid", "sent", "sent"]
-    assert [invs[n].overdue_days(date.today()) > 0 for n in ("INV-0002", "INV-0003")] == [True, False]
+    assert [invs[n].overdue_days(TODAY) > 0 for n in ("INV-0002", "INV-0003")] == [True, False]
+    assert [invs[n].total_pence for n in ("INV-0001", "INV-0002", "INV-0003")] == [362_880, 222_000, 105_768]
     assert report["emails_not_sent"] == 3
 
     assert len(await books.bank_statements()) == 2
@@ -186,7 +233,18 @@ async def test_seed_on_fake_storage(seed_demo: ModuleType) -> None:
         ("Savings Space", "Tax pot"), ("Starling Bank", "Account fee"),  # left for "transfer" / a bank-charge entry
     ]
     assert all(ln.status == "unmatched" for ln in lines if ln.date > older_end)
-    assert await books.bank_suggestions()  # left for the judge to confirm
+    assert len(await books.bank_suggestions()) == 14  # left for the judge to confirm
+    assert sum(ln.status == "matched" for ln in older) == 18 and len(lines) - len(older) == 18
+
+    # The figures tools/seed_demo.md tells the judge to expect (run in Oct-Dec 2026, stagger 1).
+    boxes = [compute_vat_return(events, "X", lo, hi).to_hmrc(finalised=False) for lo, hi in plan.periods]
+    assert [(b["vatDueSales"], b["vatReclaimedCurrPeriod"], b["netVatDue"], b["totalValueSalesExVAT"],
+             b["totalValuePurchasesExVAT"]) for b in boxes] == [
+        (1053.0, 270.5, 782.5, 5265, 2414), (2944.63, 141.3, 2803.33, 14723, 2465),
+    ]
+    book, _, _ = await contacts_mod.contact_book(books)
+    assert (sum(c.kind == "customer" for c in book), sum(c.kind == "supplier" for c in book)) == (4, 13)
+    assert (len(plan.journeys), round(sum(j.miles for j in plan.journeys), 1)) == (13, 181.7)
 
     assert len(await jobs.load_jobs(books)) == 2 and all(j.customer_id for j in await jobs.load_jobs(books))
     assert sum(e.invoiced_in == "INV-0001" for e in await jobs.load_entries(books)) == 12
