@@ -905,6 +905,37 @@ NOT_SAME = f"{SYSTEM}/Contacts/not_same.json"
 #: Merge records, one file per merge, so a merge can be undone exactly.
 MERGES = f"{SYSTEM}/Contacts/merges"
 
+async def judge_groups(
+    groups: Sequence[DuplicateGroup], contacts: Sequence[Contact], cfg: Any
+) -> list[DuplicateGroup]:
+    """Fill in each group's `ai` view with the user's model. Blocked groups (different VAT numbers)
+    never reach the model: code rules those out itself. A model that cannot answer leaves `ai`
+    unset, so the card shows the code evidence alone."""
+    from app.ai import duplicates as dup_ai  # late: app.ai.extract must not import this module
+
+    by_id = {c.id: c for c in contacts}
+    out: list[DuplicateGroup] = []
+    for g in groups:
+        if g.blocked:
+            g.ai = DuplicateAI(
+                same=False,
+                confidence=1.0,
+                keep_name="",
+                reason="Code rules this out: the VAT numbers differ, so these are two businesses.",
+            )
+            out.append(g)
+            continue
+        members = [by_id[i].model_dump() for i in g.contact_ids if i in by_id]
+        try:
+            g.ai = DuplicateAI.model_validate(
+                await dup_ai.judge_duplicate(members, g.evidence, cfg)
+            )
+        except dup_ai.JudgementError:
+            g.ai = None
+        out.append(g)
+    return out
+
+
 #: Name words too common to link two contacts on their own.
 _STOP_WORDS = frozenset(
     {"ltd", "limited", "plc", "llp", "uk", "co", "company", "services", "group", "holdings", "the", "and"}
