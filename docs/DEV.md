@@ -22,6 +22,11 @@ cd apps/mobile; flutter run
 
 Secrets live in `.env` (root, git-ignored) and `apps/web/.env.local`. See `.env.example`.
 
+**Runtime guards that bite in development** (`docs/SECURITY.md`): CORS allows only `CORS_ORIGINS` (default
+`http://localhost:3000`); an `X-AI-Base-Url` that is not `OLLAMA_BASE`, `MODEL_API_BASE` or in `AI_ALLOWED_BASE_URLS`
+gets a 400 (the web app's default local URL, `http://192.168.1.176:11434`, needs
+`AI_ALLOWED_BASE_URLS=http://192.168.1.176:11434`); 60 requests per minute per IP (`RATE_LIMIT_PER_MIN=0` turns it off).
+
 **ffmpeg** must be on the runtime's `PATH` for voice questions (`POST /books/ask/voice` converts browser/phone audio to
 WAV mono 16 kHz before Muse Voice Transcribe). Windows: `winget install Gyan.FFmpeg`; macOS: `brew install ffmpeg`;
 Debian/Ubuntu: `apt install ffmpeg` (the runtime Docker image includes it). The runtime checks at startup: without
@@ -59,6 +64,7 @@ original whenever it is unsure. The result is on the proposal as `crop` plus an 
 - **Web:** push to `main` → GitHub Actions builds the static export and force-pushes it to branch `site`;
   Plesk's Git extension pulls `site` into `httpdocs` for accnomos.com. `.htaccess` maps `/connect` → `connect.html`.
 - **Runtime + relay:** Docker on the DGX Spark, published as `api.accnomos.com` through a tunnel (never port-forward).
+  Hardening checklist: `deploy/README.md`.
 - **MSAL redirect URIs** registered: `http://localhost:3000/auth/callback.html`, `https://accnomos.com/auth/callback.html`.
 
 ## Conventions
