@@ -4,9 +4,12 @@ A flat list, grouped by area, from the code on `main` and the "What remains" sec
 (duplicates merged). Severity-ordered tables are in `docs/REMAINING.md`; what each feature does and how it is tested is the
 README table. We could not reach accnomos.com or api.accnomos.com from this session, so the live sites are unchecked.
 
-Checked 27 Oct 2026 on this checkout: `pytest -q` passes in `services/runtime` (811 passed, 1 skipped), `packages/ledger` (35),
-`packages/connectors` (43), `services/hmrc-relay` (102) and `evals` (158). The Flutter app was **not** built, analysed or tested. `pnpm run build`
-in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.spec.ts` and `settings.spec.ts` were re-run (all pass). `ruff` has not been run on `main`.
+Checked 27 Oct 2026 on this branch: `uv run pytest services/runtime -q` gives 970 passed, 1 skipped, 8 failed — the 8 fail
+identically on the untouched tree, all with `UnicodeDecodeError: 'charmap' codec can't decode` (source-scanning tests in
+`test_audit.py`, `test_docs.py`, `test_security.py`, `test_security_routes.py` read UTF-8 files with Windows' cp1252 default;
+`set PYTHONUTF8=1` should turn them green). `flutter analyze` is clean and `flutter test` passes (18 files, 148 tests).
+`pnpm run build` and `npx eslint src` pass in `apps/web`; `pnpm run e2e` passes whole (191 tests) with `E2E_PYTHON` pointed at the
+project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 
 ## What is real, and what is not
 
@@ -34,7 +37,7 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 
 - **No separate LLM Reviewer.** The card's "why" line is composed by code ("Checker, code"). Models write words only in *Ask*, inbox triage, reminder drafts and the planner rationale, each checked by code. The signed-out mock-up on `/vat` has a "Reviewer's note (Muse Spark)"; it is labelled sample but no such reviewer runs.
 - Key-mode extraction (muse-spark-1.3) is unit-tested only.
-- **Ledger files are not tamper-evident** (no signatures, no hash chain). An undo is a reversing entry dated like the original; if that VAT period was already submitted, the correction belongs in the current period.
+- **Ledger files are not tamper-evident** (no signatures, no hash chain). An undo is a reversing entry dated like the original — unless that VAT period was already submitted, when the correction is dated today and lands in the current, open period instead (the undo response carries `dated_today`, `reason` and both period labels; `test_undo_submitted.py`).
 - `/books/vat` entry counts put a reversal against the box it reverses, and the page header says how many of the period's entries are undone (e.g. "3 entries, 1 undone").
 - **No real HEIC from a phone has been read, and no real supplier PDF.** HEIC → JPEG (`pillow-heif` 1.8.1) and PDF
   reading (`pypdfium2` 5.14.0, locked in `uv.lock`) are tested with the real libraries, but only on files the tests make
@@ -44,7 +47,7 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 - Receipts in an email body are found by a code rule tested on six fictional emails, not on real Uber, Amazon or SaaS
   mail, nor on Graph's HTML-to-text conversion of them.
 - `POST /books/approve/{id}` is kept as an alias for web builds deployed before the integration review; remove it after the next deploy.
-- `07 Reports/` is created at onboarding and nothing writes to it. The folder names now have one source (`services/runtime/app/paths.py`); existing users' old-named folders are renamed once on first contact (`app/layout.py`), which has only been tested on fake storage, not on a real OneDrive.
+- `POST /reports/export` saves one spreadsheet in `07 Reports/` from the web and from Android More → Reports (a same-day file of the same name gets ` (2)`; it never posts), but only fake storage has been written in tests. The folder names now have one source (`services/runtime/app/paths.py`); existing users' old-named folders are renamed once on first contact (`app/layout.py`), which has only been tested on fake storage, not on a real OneDrive.
 - `services/runtime/tests/test_integration.py` holds the runtime to the documented folder layout only for the features its scenario exercises (not invoicing, payroll, planner, to-dos, action audit).
 
 ## Models
@@ -112,11 +115,11 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 
 ## Android
 
-- `flutter analyze` and `flutter test` have **never been run** on the current `apps/mobile`, including the large `runtime_client.dart` additions. Nothing on the phone has been run for this pass.
+- `flutter analyze` is clean and `flutter test` passes on this checkout (18 files, 148 tests, run 27 Oct 2026). Nothing on the phone has been run on a device.
 - **Play signing hash → Entra is pending** (maintainers' status; nothing in the repo records it). The MSAL redirect URI contains the APK signing hash. The app defaults to the **debug** key's hash; `assets/msal_config.json` has `broker_redirect_uri_registered: false`. The Google Play (App Signing) release hash has not been registered as a redirect URI in Entra, so a release or Play build may not be able to sign in (the app then says so and stays on sample data). Not confirmed either way.
-- **The phone has no working VAT stagger.** Settings saves a stagger and custom start month, but no request sends them, so Home deadlines, the VAT picker and the dashboard use calendar quarters.
+- **The phone has no working VAT stagger.** Settings saves a stagger and custom start month, but no request sends them, so Home deadlines, the VAT picker, the dashboard and the Reports default period use calendar quarters.
 - The Meta API key is not in secure storage (`flutter_secure_storage` is the TODO in `apps/mobile/lib/services/settings.dart`).
-- On the phone, Payroll is read-only and Bank only confirms matches the runtime is sure about. No HMRC filing on the phone.
+- On the phone, Payroll is read-only and Bank only confirms matches the runtime is sure about. Reports (More → Reports: P&L, aged, VAT, trend, *Save to 07 Reports*) is a thin client over `GET /reports/*` with no offline copy. No HMRC filing on the phone.
 - Mic on Ask records WAV and calls `/books/ask/voice`; no run on a device is recorded.
 
 ## Security and deployment

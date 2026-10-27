@@ -7,6 +7,7 @@ be undone, which appends a reversal event; nothing in the ledger is ever edited 
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import logging
 import re
@@ -21,7 +22,7 @@ from app.checks import decide, normalise_vat_number
 from app.contacts import forget_from_undo, learn_from_approval
 from app.journal import VAT_CONTROL, draft_journal, with_expense_account
 from app.mileage import load_vehicles
-from app.paths import NEEDS_A_LOOK, upgrade
+from app.paths import NEEDS_A_LOOK, VAT_RETURNS, upgrade
 from app.schemas import CATEGORIES, ExtractedDoc, JournalLine, Proposal
 
 log = logging.getLogger(__name__)
@@ -297,16 +298,49 @@ async def reject(books: Books, proposal_id: str, user: str, reason: str) -> Prop
     return p
 
 
-def reversal_of(event: LedgerEvent, user: str) -> LedgerEvent:
-    """The event that cancels `event`: every line on the other side, same date, amounts and evidence.
+async def submitted_spans(books: Books) -> dict[tuple[date, date], str]:
+    """{(start, end): HMRC period key} for each return the web app saved after a relay submission
+    (`06 VAT returns/{periodKey}/return.json`). The runtime holds no HMRC token, so this is what it can know."""
+    try:
+        folders = [f for f in await books.storage.list(VAT_RETURNS) if f.is_folder]
+    except FileNotFoundError:
+        return {}
 
-    Dated like the original so the VAT return for that period nets to nothing (vat.py counts
-    reversals negatively). Its id is derived from the original's, so a retried undo cannot post twice.
+    async def receipt(folder: str) -> object:
+        try:
+            return await books.read_json(f"{folder}/return.json", None)
+        except ValueError:  # a hand-edited or half-written file: that period just doesn't count as submitted
+            return None
+
+    receipts = await asyncio.gather(*(receipt(f.path) for f in folders))
+    out: dict[tuple[date, date], str] = {}
+    for folder, saved in zip(folders, receipts, strict=True):
+        if not isinstance(saved, dict):
+            continue
+        for span in (saved.get("obligation"), saved.get("calculated_for")):
+            if not isinstance(span, dict):
+                continue
+            try:
+                out[(date.fromisoformat(span["start"]), date.fromisoformat(span["end"]))] = str(
+                    saved.get("periodKey") or folder.name
+                )
+            except (KeyError, TypeError, ValueError):
+                continue
+    return out
+
+
+def reversal_of(event: LedgerEvent, user: str, on: date | None = None) -> LedgerEvent:
+    """The event that cancels `event`: every line on the other side, same amounts and evidence.
+
+    Dated like the original (`on=None`), so the VAT return for that period nets to nothing (vat.py counts
+    reversals negatively). Pass `on` to date it differently: undoing an entry whose VAT period was already
+    submitted dates the correction today, so it lands in the current, open period instead. Its id is derived
+    from the original's, so a retried undo cannot post twice.
     """
     return LedgerEvent(
         id=hashlib.sha256(f"{event.id}:undo".encode()).hexdigest()[:32],
         kind="reversal",
-        date=event.date,
+        date=on or event.date,
         lines=[
             Line(account=ln.account, debit=ln.credit, credit=ln.debit, vat_code=ln.vat_code, memo=f"Undo of {event.id}")
             for ln in event.lines
@@ -322,9 +356,15 @@ def reversal_of(event: LedgerEvent, user: str) -> LedgerEvent:
     )
 
 
-async def undo(books: Books, event_id: str, user: str) -> tuple[LedgerEvent, Proposal | None]:
+async def undo(
+    books: Books, event_id: str, user: str, *, reversal_date: date | None = None
+) -> tuple[LedgerEvent, Proposal | None]:
     """Append a reversal of `event_id` and put its proposal back in Review. Raises FileNotFoundError
-    for an unknown event, ProposalStateError when it is already undone, ApprovalError otherwise."""
+    for an unknown event, ProposalStateError when it is already undone, ApprovalError otherwise.
+
+    `reversal_date` dates the correction differently from the original: the undo route passes today when
+    the original's VAT period was already submitted, so the correction lands in the current, open period.
+    Internal callers (payroll confirm/reopen) leave it unset and keep the original date."""
     original = await books.get_event(event_id)
     if original.kind == "reversal" and not original.is_credit_note:
         raise ApprovalError("This entry is itself an undo")
@@ -337,7 +377,7 @@ async def undo(books: Books, event_id: str, user: str) -> tuple[LedgerEvent, Pro
 
         if await uses_of(books, "credit_note", event_id):
             raise ApprovalError("The credit this credit note left has been applied or refunded; remove that first")
-    reversal = reversal_of(original, user)
+    reversal = reversal_of(original, user, on=reversal_date)
     try:
         path = await books.post_event(reversal)
     except FileExistsError as exc:
@@ -354,6 +394,7 @@ async def undo(books: Books, event_id: str, user: str) -> tuple[LedgerEvent, Pro
             "reversal_path": path,
             "proposal": original.proposal_id,
             "originally_approved_by": original.approved_by,
+            "dated_today": reversal.date != original.date,
         },
     )
     if original.approved_by == AUTOPILOT:

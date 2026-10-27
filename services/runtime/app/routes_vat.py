@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import date
 from typing import Literal
 
@@ -10,6 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
 from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return, reverses_sale
+from app.approve import submitted_spans
 from app.books import Books
 from app.books import today as current_date  # `today` is a query parameter below
 from app.deadlines import (
@@ -88,32 +88,7 @@ def box_amounts(ret: VatReturn) -> dict[int, str]:
 async def submitted_periods(books: Books) -> dict[tuple[date, date], str]:
     """{(start, end): HMRC period key} for each return the web app saved after a relay submission
     (`06 VAT returns/{periodKey}/return.json`). The runtime holds no HMRC token, so this is what it can know."""
-    try:
-        folders = [f for f in await books.storage.list(VAT_RETURNS) if f.is_folder]
-    except FileNotFoundError:
-        return {}
-
-    async def receipt(folder: str) -> object:
-        try:
-            return await books.read_json(f"{folder}/return.json", None)
-        except ValueError:  # a hand-edited or half-written file: that period just doesn't count as submitted
-            return None
-
-    receipts = await asyncio.gather(*(receipt(f.path) for f in folders))
-    out: dict[tuple[date, date], str] = {}
-    for folder, saved in zip(folders, receipts, strict=True):
-        if not isinstance(saved, dict):
-            continue
-        for span in (saved.get("obligation"), saved.get("calculated_for")):
-            if not isinstance(span, dict):
-                continue
-            try:
-                out[(date.fromisoformat(span["start"]), date.fromisoformat(span["end"]))] = str(
-                    saved.get("periodKey") or folder.name
-                )
-            except (KeyError, TypeError, ValueError):
-                continue
-    return out
+    return await submitted_spans(books)
 
 
 def _resolve(

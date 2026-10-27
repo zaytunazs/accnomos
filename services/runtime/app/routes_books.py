@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import AsyncIterator
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
@@ -19,8 +19,10 @@ from accnomos_connectors.msgraph import GraphStorageProvider
 from accnomos_ledger.events import LedgerEvent
 from app import autopilot, layout
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
-from app.approve import ApprovalError, ProposalStateError, approve, reject, undo
-from app.books import Books, now, today
+from app.approve import ApprovalError, ProposalStateError, approve, reject, submitted_spans, undo
+from app.books import Books, now
+from app.books import today as current_date
+from app.deadlines import period_label
 from app.inbox import scan_inbox_detailed
 from app.schemas import Proposal, ProposalStatus
 from app.validation import StrictBody
@@ -121,7 +123,7 @@ async def scan(
     set the period dates are checked against.
     """
     autopilot_on = (x_autopilot or "on").strip().lower() != "off"
-    period = cycle.current(today())
+    period = cycle.current(current_date())
     proposals, errors = await scan_inbox_detailed(books, cfg, limit, business, autopilot_on, period)
     return ScanResult(proposals=proposals, errors=errors)
 
@@ -169,18 +171,57 @@ async def reject_route(
 class UndoResult(BaseModel):
     reversal: LedgerEvent
     proposal: Proposal | None
+    dated_today: bool = False  # the original's VAT period was already submitted, so the reversal is dated today
+    reason: str | None = None  # "Your return for Jul–Sep 2026 was already submitted, …" when dated_today
+    submitted_period: str | None = None  # "Jul–Sep 2026": the submitted period the entry belongs to
+    current_period: str | None = None  # "Oct–Dec 2026": the open period the correction lands in
 
 
 @router.post("/undo/{event_id}", response_model=UndoResult)
-async def undo_route(event_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)) -> UndoResult:
-    """Reverse a posted entry (a new reversal event; nothing is deleted) and put its proposal back in Review."""
+async def undo_route(
+    event_id: str,
+    today: date | None = Query(None, description="for previews and tests; defaults to today"),
+    cycle: VatCycle = Depends(vat_cycle),
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
+) -> UndoResult:
+    """Reverse a posted entry (a new reversal event; nothing is deleted) and put its proposal back in Review.
+
+    Dated like the original, so the VAT return for that period nets to nothing — unless that period was
+    already submitted, in which case the correction is dated today and lands in the current, open period
+    (`dated_today`, with `reason` saying so).
+    """
+    day = today or current_date()
     try:
-        reversal, p = await undo(books, event_id, user)
+        original = await books.get_event(event_id)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="No such ledger entry") from exc
+    submitted = next(
+        (span for span in await submitted_spans(books) if span[0] <= original.date <= span[1]),
+        None,
+    )
+    reversal_date, reason, submitted_label, current_label = None, None, None, None
+    if submitted is not None:
+        current = cycle.current(day)
+        reversal_date, submitted_label, current_label = day, period_label(*submitted), period_label(*current)
+        reason = (
+            f"Your return for {submitted_label} was already submitted, "
+            f"so this correction goes in {current_label}."
+        )
+    try:
+        reversal, p = await undo(books, event_id, user, reversal_date=reversal_date)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="No such ledger entry") from exc
     except ApprovalError as exc:
         raise _approval_http(exc) from exc
-    return UndoResult(reversal=reversal, proposal=p)
+    return UndoResult(
+        reversal=reversal,
+        proposal=p,
+        dated_today=reversal_date is not None,
+        reason=reason,
+        submitted_period=submitted_label,
+        current_period=current_label,
+    )
 
 
 @router.get("/rules", response_model=list[autopilot.AutopilotRule])

@@ -8,6 +8,7 @@ import 'files_screen.dart';
 import 'invoices_screen.dart';
 import 'jobs_screen.dart';
 import 'payroll_screen.dart';
+import 'reports_screen.dart';
 import 'vehicles_screen.dart';
 
 /// "More" tab: keeps the bottom bar at five items while the new thin
@@ -71,6 +72,12 @@ class MoreScreen extends StatelessWidget {
             title: 'Payroll',
             note: 'Pay runs — estimates, read only',
             screen: PayrollScreen(),
+          ),
+          _Entry(
+            icon: Icons.bar_chart_outlined,
+            title: 'Reports',
+            note: 'Profit and loss, aged balances, VAT and trend',
+            screen: ReportsScreen(),
           ),
           _Entry(
             icon: Icons.history_outlined,

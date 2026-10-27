@@ -813,6 +813,50 @@ class RuntimeClient {
           query: {'as_of': ?asOf},
           what: 'load aged balances');
 
+  // Reports (/reports/*). Worked out by code from the ledger; only export
+  // writes (one spreadsheet in 07 Reports). Money is integer pence.
+
+  /// Profit and loss. [from]/[to] are `YYYY-MM-DD`; omit both for the VAT
+  /// period we are in now. `GET /reports/pl`.
+  Future<Map<String, dynamic>> reportsPl({String? from, String? to}) =>
+      _map('GET', '/reports/pl',
+          query: {
+            'from': ?from,
+            'to': ?to,
+          },
+          what: 'load the profit and loss');
+
+  /// Aged debtors and creditors, the same figures as [agedBalances].
+  /// `GET /reports/aged` → `{debtors, creditors, as_of, sample}`.
+  Future<Map<String, dynamic>> reportsAged() =>
+      _map('GET', '/reports/aged', what: 'load aged balances');
+
+  /// VAT boxes per period, oldest first. `GET /reports/vat`.
+  Future<Map<String, dynamic>> reportsVat({int periods = 4}) =>
+      _map('GET', '/reports/vat',
+          query: {'periods': '$periods'},
+          what: 'load the VAT summary');
+
+  /// Sales, purchases and net per calendar month, oldest first.
+  /// `GET /reports/trend`.
+  Future<Map<String, dynamic>> reportsTrend({int months = 12}) =>
+      _map('GET', '/reports/trend',
+          query: {'months': '$months'},
+          what: 'load the monthly trend');
+
+  /// Save the report as a spreadsheet in 07 Reports; posts nothing.
+  /// `POST /reports/export` → `{path, name, size, sample, sheets}`.
+  /// [report] is `pl`, `aged`, `vat`, `trend` or `all`.
+  Future<Map<String, dynamic>> reportExport(
+          {String report = 'all', String? from, String? to}) =>
+      _map('POST', '/reports/export',
+          body: {
+            'report': report,
+            'from': ?from,
+            'to': ?to,
+          },
+          what: 'save that report');
+
   // Invoices (/invoices/*). Totals and VAT are worked out by the runtime;
   // the phone never computes them.
 

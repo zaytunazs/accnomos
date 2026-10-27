@@ -235,6 +235,17 @@ export interface RtAiTest {
   detail: string;
 }
 
+/** POST /books/undo/{event_id} (services/runtime/app/routes_books.py): a reversing entry; the proposal goes back to Review. */
+export interface RtUndoResult {
+  proposal: RtProposal | null;
+  /** True when the entry's VAT period was already submitted, so the correction is dated today. */
+  dated_today: boolean;
+  /** "Your return for Jul–Sep 2026 was already submitted, so this correction goes in Oct–Dec 2026." */
+  reason: string | null;
+  submitted_period: string | null;
+  current_period: string | null;
+}
+
 /** POST /ai/test: does this AI config answer? No sign-in needed; nothing is saved. */
 export async function runtimeAiTest(cfg: AiConfig): Promise<RtAiTest> {
   const res = await fetch(`${RUNTIME_URL}/ai/test`, {
@@ -269,7 +280,7 @@ export const runtime = {
   approve: (a: AccountInfo, id: string, body: { edits?: Record<string, unknown>; remember?: boolean }) =>
     call<RtProposal>(a, `/books/proposals/${id}/approve`, { method: "POST", body: JSON.stringify(body) }),
   undo: (a: AccountInfo, eventId: string) =>
-    call<{ proposal: RtProposal | null }>(a, `/books/undo/${eventId}`, { method: "POST" }),
+    call<RtUndoResult>(a, `/books/undo/${eventId}`, { method: "POST" }),
   rules: (a: AccountInfo) => call<RtRule[]>(a, "/books/rules"),
   removeRule: (a: AccountInfo, key: string) =>
     call<RtRule>(a, `/books/rules/${encodeURIComponent(key)}`, { method: "DELETE" }),

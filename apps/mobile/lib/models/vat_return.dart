@@ -86,12 +86,16 @@ class VatPeriod {
     required this.label,
     required this.status,
     required this.current,
+    this.start = '',
+    this.end = '',
   });
 
   final String period;
   final String label;
   final String status; // open | submitted | none
   final bool current;
+  final String start; // "2026-10-01": the P&L span for this period
+  final String end; // "2026-12-31"
 
   static List<VatPeriod> listFromJson(Map<String, dynamic> json) {
     final out = <VatPeriod>[];
@@ -103,6 +107,8 @@ class VatPeriod {
           label: (p['label'] ?? '').toString(),
           status: (p['status'] ?? 'none').toString(),
           current: p['current'] == true,
+          start: (p['start'] ?? '').toString(),
+          end: (p['end'] ?? '').toString(),
         ));
       }
     }

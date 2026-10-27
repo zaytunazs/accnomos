@@ -15,13 +15,13 @@ Severity:
 | High | **Almost nothing has run against a real OneDrive, a real Meta key, HMRC's sandbox or a phone.** Only sign-in, folder setup, read → approve → ledger and the VAT boxes were run by hand (maintainers' word; no log committed). Everything else is tested on fakes. |
 | Medium | In key mode with no `X-Meta-Api-Key` header, `AiConfig` falls back to the server's `META_API_KEY`: typed and voice Ask would run on the operator's key. A product decision, not changed. |
 
-| Medium | `flutter analyze` and `flutter test` have never been run on the current `apps/mobile`. |
+| Medium | `flutter analyze` and `flutter test` pass here but nothing on the phone has been run on a device. |
 | Medium | The rate limit and the relay's spent-state set are per process; the relay must run one worker. |
 | Low | The shared `.venv` on the Spark can import another checkout's `accnomos_ledger`/`accnomos_connectors`; run `uv sync --all-packages` where you serve from. |
 
 | Low | `ruff` has not been run on `main`. |
 | Low | `POST /books/approve/{id}` is an alias kept for older web builds; remove it after the next deploy. |
-| Low | `07 Reports/` is created at onboarding but nothing writes to it. The one-time rename of old-named folders (`app/layout.py`) needs a run against a real OneDrive (personal and work), including a folder that is open in the OneDrive client. |
+| Low | The one-time rename of old-named folders (`app/layout.py`) needs a run against a real OneDrive (personal and work), including a folder that is open in the OneDrive client. `POST /reports/export` writes `07 Reports/` from the web and Android, but only fake storage has been written in tests. |
 | Low | No web unit tests; pages are covered by `pnpm run build` and the Playwright suite, whose CI job has never run on GitHub. |
 ## Read → approve → ledger, Undo, VAT return
 
@@ -29,7 +29,6 @@ Severity:
 |---|---|
 
 | Low | Key-mode extraction (muse-spark-1.3) is unit-tested only. |
-| Low | An undo is dated like the original; if that VAT period was submitted, the correction belongs in the current period. |
 
 ## HMRC (sandbox) and VAT periods
 
@@ -113,8 +112,9 @@ Severity:
 
 | Severity | Item |
 |---|---|
+| Low | Reports on the phone is a thin client over `GET /reports/*` with no offline copy; a failed load shows a retry, not stale figures. |
 | Medium | Play signing hash → Entra is pending (maintainers' status): a release or Play build may not be able to sign in. The app defaults to the debug key's hash (`broker_redirect_uri_registered: false`). |
-| Medium | The phone saves a VAT stagger in Settings but sends it nowhere, so Home, the dashboard and the VAT picker use calendar quarters. |
+| Medium | The phone saves a VAT stagger in Settings but sends it nowhere, so Home, the dashboard, the VAT picker and the Reports default period use calendar quarters. |
 | Low | The Meta API key is not in secure storage (`apps/mobile/lib/services/settings.dart`). Payroll is read-only; Bank only confirms certain matches and lists bank rules; no HMRC filing. |
 
 ## Security and deployment
