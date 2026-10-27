@@ -10,10 +10,12 @@ With it on, the runtime talks to nothing outside this process:
   `/__test/graph/v1.0`, backed by the same fake storage (the test-mode web build points `lib/graph.ts` there).
 * Every AI call goes to a stub at `/__test/ai` (Ollama-shaped, see app/ai/config.py). It reads a receipt only
   if it is a gold receipt rendered by evals/harness/render.py, found by the sha256 of the PNG bytes, and
-  answers with that receipt's gold fields; questions get an answer built from the facts pack it is sent.
+  answers with that receipt's gold fields; questions get an answer built from the facts pack it is sent. It also
+  reads the demo receipt (apps/web/public/sample-receipt.png: gold 001 dated 2 Nov 2026) and copies the words of
+  an instruction such as "send a £100 invoice to JM Trading" into an action intent by pattern.
 * "Today" is pinned to ACCNOMOS_TEST_TODAY (default 2026-10-27): the gold receipts (Jul-Sep 2026) fall in the
   previous VAT quarter, the one still to file (the VAT page and Ask default to the current one, Oct-Dec);
-  timestamps stay real.
+  timestamps stay real. The `demo` seed moves its tenant to docs/DEMO.md's stage date (4 Nov 2026).
 
 `POST /__test/reset` empties the caller's tenant's storage and reseeds the mailbox (three gold receipts by email plus one message
 that is not a receipt) and the calendar. `GET /__test/gold` lists the gold receipts; `GET /__test/gold/{file}.png`
@@ -53,7 +55,7 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
-from app import security
+from app import actions, security
 from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai
 from app.ai import verify as verify_ai
@@ -66,6 +68,10 @@ DEFAULT_TODAY = "2026-10-27"  # the gold set's quarter (Jul-Sep 2026) is the one
 MAIL_GOLD = ("001_standard.json", "011_standard.json", "022_standard.json")  # emailed in by the seeded suppliers
 CALENDAR = "Accnomos"
 SAMPLE = "SAMPLE — FICTIONAL COMPANY"
+DEMO_TODAY = date(2026, 11, 4)  # docs/DEMO.md's stage date: the sample receipt (2 Nov) is in the current quarter
+DEMO_RECEIPT = "sample-receipt.png"  # apps/web/public/, drawn by tools/make_sample_receipt.py
+DEMO_CUSTOMER = AddressBookContact(id="contact-jm", display_name="JM Trading Ltd", company_name="JM Trading Ltd",
+                                   emails=["accounts@jmtrading.example"])
 # Thursday after the pinned today (Tue 27 Oct 2026): one busy hour in the morning.
 PLAN_EVENT = CalendarEvent(
     id="evt-sample-thu", subject="Site meeting, Harbour Lane kitchen", location="12 Harbour Lane, Bristol BS1 4RW",
@@ -109,10 +115,26 @@ def gold_png(file: str) -> bytes:
     return _renderer().render_receipt(gold_receipts()[file]["printed_text"], messy=False, seed=0)
 
 
+def _demo_receipt_png() -> bytes | None:
+    for parent in Path(__file__).resolve().parents:
+        if (path := parent / "apps" / "web" / "public" / DEMO_RECEIPT).exists():
+            return path.read_bytes()
+    return None  # a runtime checkout without the web app: only the gold receipts are known
+
+
+@lru_cache(maxsize=1)
+def _documents() -> dict[str, dict[str, Any]]:
+    """Every document the stub reads: the gold receipts, and the demo receipt (gold 001 as printed, dated 2 Nov 2026)."""
+    return {**gold_receipts(), DEMO_RECEIPT: {**gold_receipts()["001_standard.json"], "date": "2026-11-02"}}
+
+
 @lru_cache(maxsize=1)
 def _by_hash() -> dict[str, str]:
-    """sha256 of the rendered PNG -> gold file name (the "known document hashes")."""
-    return {hashlib.sha256(gold_png(f)).hexdigest(): f for f in gold_receipts()}
+    """sha256 of the PNG -> document name (the "known document hashes")."""
+    known = {hashlib.sha256(gold_png(f)).hexdigest(): f for f in gold_receipts()}
+    if (demo := _demo_receipt_png()) is not None:
+        known[hashlib.sha256(demo).hexdigest()] = DEMO_RECEIPT
+    return known
 
 
 # --------------------------------------------------------------------------- #
@@ -191,6 +213,22 @@ def ask_reply(facts: dict[str, Any]) -> dict[str, Any]:
     return AskModelOutput.model_validate(out).model_dump()
 
 
+_INVOICE_WORDS = re.compile(
+    r"^\s*(?P<send>send|email)?\s*(?:an?\s+)?(?P<amount>£[\d,]+(?:\.\d+)?)\s+invoice\s+to\s+(?P<customer>.+?)"
+    r"(?:\s+for\s+(?P<description>.+?))?[.!]?\s*$", re.I,
+)
+
+
+def intent_reply(question: str) -> dict[str, Any]:
+    """The words of "send a £100 invoice to JM Trading [for …]" copied into the intent; anything else is `none`."""
+    fields: dict[str, Any] = dict.fromkeys(actions.IntentModelOutput.model_fields)
+    m = _INVOICE_WORDS.match(question)
+    if m is None:
+        return {**fields, "kind": "none"}
+    return {**fields, "kind": "create_invoice", "customer_ref": m["customer"], "amount_text": m["amount"],
+            "description": m["description"], "send": bool(m["send"])}
+
+
 # --------------------------------------------------------------------------- #
 # State
 # --------------------------------------------------------------------------- #
@@ -203,12 +241,22 @@ class State:
     contacts: FakeContactsProvider
     calendar: FakeCalendarProvider
     seeded = False
+    today: date | None = None  # the `demo` seed's stage date; None: ACCNOMOS_TEST_TODAY
 
 
 TENANT_HEADER = "X-Test-Tenant"
 _TENANT: ContextVar[str] = ContextVar("accnomos_test_tenant", default="")
 STATE = State()  # no X-Test-Tenant header: the unit tests and a runtime started by hand
 STATES: dict[str, State] = {"": STATE}
+
+
+def pinned_today() -> date | None:
+    """This tenant's "today" for app.books.today: the `demo` seed's date, else ACCNOMOS_TEST_TODAY."""
+    s = STATES.get(_TENANT.get())
+    if s is not None and s.today is not None:
+        return s.today
+    pinned = os.getenv("ACCNOMOS_TEST_TODAY")
+    return date.fromisoformat(pinned) if pinned else None
 
 
 def tenant() -> str:
@@ -285,7 +333,14 @@ async def _seed_bank(s: State) -> None:
             await books.post_event(_bank_event(spec))
 
 
-SEEDS = {"bank": _seed_bank}  # opt-in: they change the VAT figures other flows check
+async def _seed_demo(s: State) -> None:
+    """docs/DEMO.md on stage (apps/web/e2e/demo.spec.ts): today is 4 Nov 2026, and JM Trading Ltd, the customer the
+    presenter invoices, is in the Outlook address book (Contacts → Import from Outlook adds it)."""
+    s.today = DEMO_TODAY
+    s.contacts.contacts.append(DEMO_CUSTOMER)
+
+
+SEEDS = {"bank": _seed_bank, "demo": _seed_demo}  # opt-in: they change the VAT figures or the date other flows check
 
 
 async def reset(seed: str | None = None) -> dict[str, Any]:
@@ -295,6 +350,7 @@ async def reset(seed: str | None = None) -> dict[str, Any]:
     if seed is not None and seed not in SEEDS:
         raise HTTPException(400, f"unknown seed {seed!r}; one of {sorted(SEEDS)}")
     s = current()
+    s.today = None
     s.storage = FakeStorageProvider()
     await s.storage.write(PROFILE, InvoiceProfile.model_validate(SAMPLE_PROFILE).model_dump_json(indent=2).encode())
     s.mail = FakeMailProvider()
@@ -403,6 +459,8 @@ async def ai_chat(request: Request) -> JSONResponse:
     messages = body.get("messages") or []
     system = next((m.get("content") for m in messages if m.get("role") == "system"), "")
     images = [img for m in messages for img in (m.get("images") or [])]
+    if system == actions.INTENT_PROMPT:
+        return JSONResponse(_ollama(intent_reply(messages[-1]["content"])))
     if system == ask_ai.SYSTEM_PROMPT:
         user = messages[-1]["content"]
         facts = json.loads(user.split("FACTS:\n", 1)[1].rsplit("\n\nQuestion:", 1)[0])
@@ -413,7 +471,7 @@ async def ai_chat(request: Request) -> JSONResponse:
     file = _by_hash().get(digest)
     if file is None:
         raise HTTPException(422, f"stub AI: not a gold receipt (sha256 {digest[:12]}…)")
-    gold = gold_receipts()[file]
+    gold = _documents()[file]
     if system == extract_ai.SYSTEM_PROMPT:
         return JSONResponse(_ollama(extracted_from_gold(gold)))
     if system == verify_ai.VERIFIER_SYSTEM_PROMPT:

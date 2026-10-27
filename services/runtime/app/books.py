@@ -70,9 +70,12 @@ def now() -> datetime:
 
 def today(tz: tzinfo | None = None) -> date:
     """Today (in `tz`, else the server's zone), for "the current period" and "Thursday". Test mode
-    (app/testmode.py) pins it with ACCNOMOS_TEST_TODAY."""
-    if is_test_mode() and (pinned := os.getenv("ACCNOMOS_TEST_TODAY")):
-        return date.fromisoformat(pinned)
+    (app/testmode.py) pins it: ACCNOMOS_TEST_TODAY, or the stage date for a tenant reset with the `demo` seed."""
+    if is_test_mode():
+        from app import testmode  # test mode only; testmode imports modules that import this one
+
+        if (pinned := testmode.pinned_today()) is not None:
+            return pinned
     return datetime.now(tz).date() if tz else date.today()
 
 

@@ -125,6 +125,48 @@ def test_pinned_today_drives_plan_my_thursday(test_env: None, monkeypatch: pytes
     assert plan_intent("Plan my Thursday", today(TZ)) == date(2026, 10, 29)
 
 
+def test_demo_seed_moves_only_its_tenant_to_the_stage_date(test_env: None) -> None:
+    """docs/DEMO.md is on 4 Nov 2026 (the sample receipt, 2 Nov, is in the current quarter); other workers stay on 27 Oct."""
+    app = FastAPI()
+    app.include_router(testmode.router)
+    app.add_middleware(testmode.TenantMiddleware)
+    c = TestClient(app)
+    demo, other = {"X-Test-Tenant": "demo"}, {"X-Test-Tenant": "other"}
+    assert c.post("/__test/reset?seed=demo", headers=demo).json()["seed"] == "demo"
+    assert c.post("/__test/reset", headers=other).json()["ok"]
+    token = testmode._TENANT.set("demo")
+    try:
+        assert today() == date(2026, 11, 4)
+        assert [x.display_name for x in testmode.current().contacts.contacts][-1] == "JM Trading Ltd"
+        testmode._TENANT.set("other")
+        assert today() == date(2026, 10, 27)
+        assert "JM Trading Ltd" not in [x.display_name for x in testmode.current().contacts.contacts]
+    finally:
+        testmode._TENANT.reset(token)
+    assert c.post("/__test/reset", headers=demo).json()["ok"]  # a plain reset drops the stage date again
+    assert testmode.STATES["demo"].today is None
+
+
+def test_stub_reads_the_demo_receipt_as_gold_001_on_2_nov() -> None:
+    png = (Path(__file__).resolve().parents[3] / "apps" / "web" / "public" / testmode.DEMO_RECEIPT).read_bytes()
+    assert testmode._by_hash()[hashlib.sha256(png).hexdigest()] == testmode.DEMO_RECEIPT
+    doc = ExtractedDoc.model_validate(testmode.extracted_from_gold(testmode._documents()[testmode.DEMO_RECEIPT]))
+    assert (doc.supplier_name, doc.date, doc.net_total, doc.vat_total, doc.gross_total) == (
+        "Novex Office Supplies Ltd", "2026-11-02", 43.25, 8.65, 51.9)
+
+
+@pytest.mark.parametrize(("said", "want"), [
+    ("send a £100 invoice to JM Trading", ("create_invoice", "JM Trading", "£100", None, True)),
+    ("£1,250.50 invoice to Moss & Co for the bathroom.", ("create_invoice", "Moss & Co", "£1,250.50", "the bathroom", False)),
+    ("How much VAT do I owe?", ("none", None, None, None, None)),
+])
+def test_stub_intent_copies_the_users_words(said: str, want: tuple) -> None:
+    from app.actions import IntentModelOutput
+
+    out = IntentModelOutput.model_validate(testmode.intent_reply(said))
+    assert (out.kind, out.customer_ref, out.amount_text, out.description, out.send) == want
+
+
 def test_browser_ai_base_url_is_accepted_then_swapped(test_env: None) -> None:
     """The web build points the browser at the stub; the allow-list must not refuse it (the e2e Ask/AI test 400'd)."""
     cfg = AiConfig.from_headers({"X-AI-Mode": "local", "X-AI-Base-Url": "http://127.0.0.1:8781/__test/ai"})
