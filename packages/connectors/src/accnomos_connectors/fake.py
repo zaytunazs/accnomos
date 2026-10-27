@@ -189,6 +189,8 @@ class FakeStorageProvider(StorageProvider):
 
     async def move(self, path: str, new_path: str) -> FileRef:
         path, new_path = path.strip("/"), new_path.strip("/")
+        if path and path in self.folders:
+            return await self._move_folder(path, new_path)
         if path not in self.files:
             raise FileNotFoundError(path)
         if new_path in self.files:
@@ -198,6 +200,22 @@ class FakeStorageProvider(StorageProvider):
         self.files[new_path] = self.files.pop(path)
         self._log.append(("move", f"{path} -> {new_path}"))
         return self._ref(new_path)
+
+    async def _move_folder(self, path: str, new_path: str) -> FileRef:
+        """Rename a folder with everything inside it, as one Graph PATCH would. The target must not exist."""
+        if new_path in self.folders or new_path in self.files:
+            raise FileExistsError(new_path)
+        if new_path == path or new_path.startswith(f"{path}/"):
+            raise ValueError(f"cannot move {path} into itself")
+
+        def rebase(p: str) -> str:
+            return new_path + p[len(path):] if p == path or p.startswith(f"{path}/") else p
+
+        self.folders = {rebase(f) for f in self.folders}
+        self.files = {rebase(p): data for p, data in self.files.items()}
+        await self.ensure_folder(new_path)  # its parents
+        self._log.append(("move", f"{path} -> {new_path}"))
+        return self._ref(new_path, True)
 
     async def changes(self, cursor: str | None) -> tuple[list[FileRef], str]:
         start = int(cursor or 0)

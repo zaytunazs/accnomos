@@ -285,6 +285,9 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
         parent = await self._folder(_parent(new_path))
         body = {"parentReference": {"id": parent["id"]}, "name": new_path.rsplit("/", 1)[-1]}
         moved = (await self._request("PATCH", f"{GRAPH}/me/drive/items/{item['id']}", json=body)).json()
+        if "folder" in item:  # a renamed folder: cached lookups under the old path are gone
+            self._folders = {p: v for p, v in self._folders.items() if p != path and not p.startswith(f"{path}/")}
+            self._folders[new_path] = moved
         return _to_ref(moved, new_path)
 
     # ------------------------------------------------------------------ #

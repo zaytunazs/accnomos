@@ -156,6 +156,29 @@ async def test_move_patches_item_with_parent_id_and_name():
     assert ref.path == "04 Needs a look/x.jpg"
 
 
+async def test_renaming_a_folder_patches_its_name_and_forgets_cached_paths_under_it():
+    patched: list[dict] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        path = req.url.raw_path.decode()
+        if req.method == "GET" and path == APPROOT:
+            return httpx.Response(200, json=_item("ROOT", "Accnomos", True))
+        if req.method == "GET" and path == f"{APPROOT}:/03%20Bank%20statements":
+            return httpx.Response(200, json=_item("OLD", "03 Bank statements", True))
+        if req.method == "PATCH" and path == "/v1.0/me/drive/items/OLD":
+            patched.append(json.loads(req.content))
+            return httpx.Response(200, json=_item("OLD", "04 Bank statements", True))
+        return httpx.Response(400)
+
+    g = _provider(handler)
+    g._folders["03 Bank statements/2026"] = _item("SUB", "2026", True)  # looked up earlier
+    ref = await g.move("03 Bank statements", "04 Bank statements")
+    assert patched == [{"parentReference": {"id": "ROOT"}, "name": "04 Bank statements"}]
+    assert ref.is_folder and ref.path == "04 Bank statements"
+    assert not [p for p in g._folders if p.startswith("03 Bank statements")]
+    assert g._folders["04 Bank statements"]["id"] == "OLD"
+
+
 async def test_delta_follows_next_link_and_skips_folders_and_deletions():
     page2 = f"{GRAPH}/me/drive/special/approot/delta?token=p2"
     final = f"{GRAPH}/me/drive/special/approot/delta?token=done"

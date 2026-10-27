@@ -36,3 +36,27 @@ async def test_if_match_conflict(storage):
     await storage.write("_System/rules.json", b'{"a":1}')  # someone else edits
     with pytest.raises(ConflictError):
         await storage.write("_System/rules.json", b'{"b":2}', if_match=ref.etag)
+
+
+async def test_move_a_folder_with_everything_in_it(storage):
+    await storage.write("03 Bank statements/2026/a.csv", b"a")
+    await storage.write("03 Bank statements/b.csv", b"b")
+    await storage.ensure_folder("03 Bank statements/empty")
+    await storage.write("03 Bank statements x/c.csv", b"c")  # same prefix, a different folder
+    ref = await storage.move("03 Bank statements", "04 Bank statements")
+    assert ref.is_folder and ref.path == "04 Bank statements"
+    assert await storage.read("04 Bank statements/2026/a.csv") == b"a"
+    assert await storage.read("04 Bank statements/b.csv") == b"b"
+    assert {f.name for f in await storage.list("04 Bank statements")} == {"2026", "empty", "b.csv"}
+    assert "03 Bank statements" not in {f.name for f in await storage.list("")}
+    assert await storage.read("03 Bank statements x/c.csv") == b"c"
+    with pytest.raises(FileNotFoundError):
+        await storage.read("03 Bank statements/b.csv")
+
+
+async def test_move_a_folder_onto_an_existing_one_refuses(storage):
+    await storage.write("05 VAT returns/a.json", b"old")
+    await storage.write("06 VAT returns/b.json", b"new")
+    with pytest.raises(FileExistsError):
+        await storage.move("05 VAT returns", "06 VAT returns")
+    assert await storage.read("05 VAT returns/a.json") == b"old"

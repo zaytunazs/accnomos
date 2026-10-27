@@ -71,7 +71,8 @@ class StorageProvider(ABC):
 
     @abstractmethod
     async def move(self, path: str, new_path: str) -> FileRef:
-        """We move, never delete (PRD §4.3)."""
+        """A file, or a folder with everything in it (FileExistsError if new_path exists). We move, never delete
+        (PRD §4.3)."""
 
     @abstractmethod
     async def changes(self, cursor: str | None) -> tuple[list[FileRef], str]:
