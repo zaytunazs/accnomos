@@ -55,8 +55,6 @@ export default function ConnectMicrosoft() {
       setAccount(acct);
       setPhase(acct ? "signed-in" : "signed-out");
     })();
-    // Once: a returned redirect error only ever belongs to this first check.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function signIn() {

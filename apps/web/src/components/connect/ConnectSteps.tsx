@@ -22,12 +22,7 @@ export function withNext(href: string, next: string | null): string {
 
 /** The validated ?next= value, or null when absent or not a same-site path. */
 export function useNextParam(): string | null {
-  let raw: string | null = null;
-  try {
-    raw = useSearchParams().get("next");
-  } catch {
-    return null;
-  }
+  const raw = useSearchParams().get("next");
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return null;
   return raw;
 }
