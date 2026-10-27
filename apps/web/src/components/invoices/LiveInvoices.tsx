@@ -11,18 +11,30 @@ import {
   RecordPaymentDialog,
   balanceOf,
 } from "@/components/invoices/PaymentDialogs";
+import { ApplyCreditDialog, RefundDialog } from "@/components/invoices/CreditDialogs";
 import SignInCta from "@/components/SignInCta";
 import { EmptyState, RuntimeErrorNote } from "@/components/States";
 import PrintButton from "@/components/PrintButton";
 import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import { money, SAMPLE_INVOICES, STATUS_LABEL, useMsAccount } from "@/lib/invoices";
-import { runtime, ukDate, type RtCreditNote, type RtInvoice } from "@/lib/runtime";
+import { runtime, ukDate, type RtCreditNote, type RtCreditRow, type RtInvoice, type RtOpenItem } from "@/lib/runtime";
 
 type Filter = "all" | "draft" | "sent" | "overdue" | "paid" | "void";
 type Dialog =
   | { kind: "preview" | "paid" | "remind" | "void" | "credit"; invoice: RtInvoice }
   | { kind: "creditView"; note: RtCreditNote }
+  | { kind: "applyCredit"; name: string; credits: RtCreditRow[]; documents: RtOpenItem[] }
+  | { kind: "refund"; name: string; credits: RtCreditRow[] }
   | null;
+
+const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/** A sent invoice as something a credit can go towards. */
+function openItem(i: RtInvoice): RtOpenItem | null {
+  const left = balanceOf(i);
+  if (i.status !== "sent" || !i.event_id || left <= 0) return null;
+  return { event_id: i.event_id, side: "sale", date: i.issue_date, due_date: i.due_date, reference: i.number, gross_pence: i.total_pence, outstanding_pence: left };
+}
 
 const FILTERS: { value: Filter; label: string }[] = [
   { value: "all", label: "All" },
@@ -61,6 +73,7 @@ export default function LiveInvoices() {
   const { account, ready } = useMsAccount();
   const [invoices, setInvoices] = useState<RtInvoice[] | null>(null);
   const [credits, setCredits] = useState<RtCreditNote[]>([]);
+  const [onAccount, setOnAccount] = useState<RtCreditRow[]>([]); // customers' credits (GET /credits?side=sale)
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   // /invoices?q=INV-0007 (from the audit trail) starts with that search.
@@ -77,6 +90,7 @@ export default function LiveInvoices() {
     try {
       setInvoices(await runtime.invoices(account));
       setCredits(await runtime.creditNotes(account).catch(() => []));
+      setOnAccount(await runtime.credits(account, "sale").catch(() => []));
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -105,6 +119,8 @@ export default function LiveInvoices() {
       void: `${updated.number} is void.`,
       credit: "",
       creditView: "",
+      applyCredit: "",
+      refund: "",
     }[was ?? "paid"]);
   }
 
@@ -276,6 +292,20 @@ export default function LiveInvoices() {
                     <button type="button" className={action} onClick={() => setDialog({ kind: "paid", invoice: i })}>Record payment</button>
                   </>
                 )}
+                {(() => {
+                  const item = openItem(i);
+                  const theirs = onAccount.filter((c) => sameName(c.counterparty, i.customer.name));
+                  return item && theirs.length > 0 ? (
+                    <button type="button" className={action} onClick={() => setDialog({ kind: "applyCredit", name: i.customer.name, credits: theirs, documents: [item] })}>
+                      Apply credit
+                    </button>
+                  ) : null;
+                })()}
+                {onAccount.some((c) => c.doc_event_id === i.event_id) && (
+                  <button type="button" className={action} onClick={() => setDialog({ kind: "refund", name: i.customer.name, credits: onAccount.filter((c) => c.doc_event_id === i.event_id) })}>
+                    Refund
+                  </button>
+                )}
                 {(i.status === "sent" || i.status === "paid") && i.event_id && (
                   <button type="button" className={action} onClick={() => setDialog({ kind: "credit", invoice: i })}>Create credit note</button>
                 )}
@@ -286,7 +316,7 @@ export default function LiveInvoices() {
               {i.status !== "draft" && (
                 <details className="mt-2">
                   <summary className={`${action} cursor-pointer`}>{i.money ? "Payments and history" : "History"}</summary>
-                  <PaymentsPanel account={account} invoice={i} onChanged={(inv) => { replace(inv); setNote(`Payment removed from ${inv.number}.`); }} />
+                  <PaymentsPanel account={account} invoice={i} onChanged={(inv, message) => { replace(inv); setNote(message); void load(); }} />
                   <StatusTimeline invoice={i} />
                 </details>
               )}
@@ -312,6 +342,20 @@ export default function LiveInvoices() {
                 </div>
                 <div className="flex items-center gap-3">
                   <span className="text-[15px] font-extrabold tabular-nums">-{money(c.total_pence)}</span>
+                  {(() => {
+                    const left = onAccount.filter((x) => x.doc_event_id === c.event_id);
+                    if (!left.length || c.status !== "issued") return null;
+                    const docs = (invoices ?? []).filter((i) => sameName(i.customer.name, c.customer.name)).map(openItem).filter((x): x is RtOpenItem => x !== null);
+                    return (
+                      <>
+                        <span className="text-[13px] font-semibold text-teal-dark">{money(left.reduce((n, x) => n + x.amount_pence, 0))} on account</span>
+                        {docs.length > 0 && (
+                          <button type="button" className={action} onClick={() => setDialog({ kind: "applyCredit", name: c.customer.name, credits: left, documents: docs })}>Apply credit</button>
+                        )}
+                        <button type="button" className={action} onClick={() => setDialog({ kind: "refund", name: c.customer.name, credits: left })}>Refund</button>
+                      </>
+                    );
+                  })()}
                   <button type="button" className={action} onClick={() => setDialog({ kind: "creditView", note: c })}>View PDF</button>
                 </div>
               </li>
@@ -321,6 +365,29 @@ export default function LiveInvoices() {
       )}
 
       {dialog && account && (() => {
+        if (dialog.kind === "applyCredit") {
+          return (
+            <ApplyCreditDialog
+              account={account}
+              name={dialog.name}
+              credits={dialog.credits}
+              documents={dialog.documents}
+              onClose={() => setDialog(null)}
+              onDone={(message) => { setDialog(null); setNote(message); void load(); }}
+            />
+          );
+        }
+        if (dialog.kind === "refund") {
+          return (
+            <RefundDialog
+              account={account}
+              name={dialog.name}
+              credits={dialog.credits}
+              onClose={() => setDialog(null)}
+              onDone={(message) => { setDialog(null); setNote(message); void load(); }}
+            />
+          );
+        }
         if (dialog.kind === "creditView") {
           return (
             <CreditNoteViewDialog

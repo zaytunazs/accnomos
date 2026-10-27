@@ -8,6 +8,7 @@ import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import { markContactsImported } from "@/components/home/SetupChecklist";
 import SignInCta from "@/components/SignInCta";
 import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import { ApplyCreditDialog, BillPaymentDialog, RefundDialog, errorText } from "@/components/invoices/CreditDialogs";
 import {
   AGED_BUCKETS,
   agedBucketLabel,
@@ -17,8 +18,10 @@ import {
   type RtAgedBucket,
   type RtAgedRow,
   type RtAgedTable,
+  type RtContactEdits,
   type RtContactField,
   type RtContactRow,
+  type RtOpenItem,
   type RtStatement,
   type RtVatStatus,
 } from "@/lib/runtime";
@@ -258,26 +261,38 @@ function AliasChips({ aliases }: { aliases: string[] }) {
   );
 }
 
-type Form = Record<RtContactField, string>;
+type Form = Record<RtContactField | "terms_days", string>;
 
 function toForm(c: RtContactRow): Form {
   return {
     name: c.name, kind: c.kind, vrn: c.vrn ?? "", email: c.email ?? "", phone: c.phone ?? "", address: c.address ?? "",
     default_category: c.default_category ?? "", default_vat_code: c.default_vat_code ?? "", vat_status: c.vat_status ?? "unknown",
+    terms_days: c.terms_days === null || c.terms_days === undefined ? "" : String(c.terms_days),
   };
+}
+
+/** Payment terms as typed: blank is the 30-day default (null); otherwise whole days, 0 to 365. */
+export function parseTerms(raw: string): number | null | "bad" {
+  const t = raw.trim();
+  if (!t) return null;
+  if (!/^\d{1,3}$/.test(t)) return "bad";
+  const n = Number(t);
+  return n <= 365 ? n : "bad";
 }
 
 function EditForm({ contact, onSave, onCancel }: {
   contact: RtContactRow;
-  onSave: (edits: Partial<Record<RtContactField, string | null>>) => Promise<void>;
+  onSave: (edits: RtContactEdits) => Promise<void>;
   onCancel: () => void;
 }) {
   const [form, setForm] = useState<Form>(() => toForm(contact));
   const [saving, setSaving] = useState(false);
   const [vrnError, setVrnError] = useState<string | null>(null);
-  const set = (k: RtContactField) => (e: { target: { value: string } }) => {
+  const [termsError, setTermsError] = useState<string | null>(null);
+  const set = (k: RtContactField | "terms_days") => (e: { target: { value: string } }) => {
     setForm((f) => ({ ...f, [k]: e.target.value }));
     if (k === "vrn") setVrnError(null);
+    if (k === "terms_days") setTermsError(null);
   };
 
   async function submit(e: FormEvent) {
@@ -287,10 +302,16 @@ function EditForm({ contact, onSave, onCancel }: {
       setVrnError("Check the VAT number: GB followed by 9 or 12 digits (spaces are fine).");
       return;
     }
+    const terms = parseTerms(form.terms_days);
+    if (terms === "bad") {
+      setTermsError("Payment terms are a whole number of days, 0 to 365 (blank for the usual 30).");
+      return;
+    }
     const before = toForm(contact);
-    const edits = Object.fromEntries(
-      (Object.keys(form) as RtContactField[]).filter((k) => form[k].trim() !== before[k]).map((k) => [k, form[k].trim() || null]),
+    const edits: RtContactEdits = Object.fromEntries(
+      (Object.keys(form) as RtContactField[]).filter((k) => k !== ("terms_days" as string) && form[k].trim() !== before[k]).map((k) => [k, form[k].trim() || null]),
     );
+    if (form.terms_days.trim() !== before.terms_days) edits.terms_days = terms;
     if (!Object.keys(edits).length) return onCancel();
     setSaving(true);
     try {
@@ -359,6 +380,22 @@ function EditForm({ contact, onSave, onCancel }: {
           {VAT_CODES.map(([code, label]) => <option key={code} value={code}>{label}</option>)}
         </select>
       </label>
+      <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
+        Payment terms (days)
+        <input
+          className={input}
+          inputMode="numeric"
+          value={form.terms_days}
+          onChange={set("terms_days")}
+          placeholder="30"
+          aria-describedby="terms-hint"
+          aria-invalid={termsError ? true : undefined}
+        />
+      </label>
+      <span id="terms-hint" className="text-[13px] font-medium text-muted">
+        Days after the document date that payment is due. Aged balances count lateness from it; a sales invoice&apos;s own due date wins. Blank: 30 days.
+      </span>
+      {termsError && <p role="alert" className="text-sm font-semibold text-warn-ink">{termsError}</p>}
       <p className="text-[13px] text-muted">What you change here is kept when you refresh from your books.</p>
       <div className="flex gap-2">
         <button type="submit" disabled={saving} className="h-11 rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60">
@@ -372,7 +409,11 @@ function EditForm({ contact, onSave, onCancel }: {
   );
 }
 
-function StatementTable({ st }: { st: RtStatement }) {
+function StatementTable({ st, onRemove, busy }: {
+  st: RtStatement;
+  onRemove?: (line: RtStatement["lines"][number]) => void;
+  busy?: string | null;
+}) {
   if (!st.lines.length) return <p className="text-sm text-muted">Nothing in the books for this contact yet.</p>;
   return (
     <div>
@@ -399,12 +440,25 @@ function StatementTable({ st }: { st: RtStatement }) {
           {st.lines.map((ln, i) => (
             <tr key={`${ln.event_id}-${i}`} data-kind={ln.kind ?? "invoice"} className="border-b border-border last:border-b-0">
               <td className="whitespace-nowrap py-1.5 pr-2">{ukDate(ln.date)}</td>
-              <td className={`py-1.5 pr-2 ${ln.kind === "payment" || ln.kind === "credit_note" ? "text-teal-dark" : ""}`}>
+              <td className={`py-1.5 pr-2 ${ln.kind === "payment" || ln.kind === "credit_note" || ln.kind === "refund" ? "text-teal-dark" : ""}`}>
                 {ln.details}
                 {ln.reference && <span className="text-muted"> · {ln.reference}</span>}
               </td>
               <td className="py-1.5 pr-2 text-right">{ln.amount_pence ? money(ln.amount_pence) : ""}</td>
-              <td className="py-1.5 pr-2 text-right">{ln.paid_pence ? money(ln.paid_pence) : ""}</td>
+              <td className="py-1.5 pr-2 text-right">
+                {ln.paid_pence ? money(ln.paid_pence) : ""}
+                {onRemove && ln.payment_id && (ln.kind === "payment" || ln.kind === "refund") && (
+                  <button
+                    type="button"
+                    onClick={() => onRemove(ln)}
+                    disabled={!!busy}
+                    className="ml-2 text-[12px] font-bold text-muted hover:underline print:hidden"
+                    aria-label={`Remove ${ln.details.toLowerCase()} of ${money(Math.abs(ln.paid_pence))} on ${ukDate(ln.date)}`}
+                  >
+                    {busy === ln.payment_id ? "…" : "Remove"}
+                  </button>
+                )}
+              </td>
               <td className="py-1.5 text-right font-semibold">{money(ln.balance_pence)}</td>
             </tr>
           ))}
@@ -423,11 +477,139 @@ function StatementTable({ st }: { st: RtStatement }) {
         </p>
       )}
       <p className="mt-2 text-[13px] text-muted">
-        Plus means they owe you, minus means you owe them. Payments, part payments and credit notes have their own lines.
+        Plus means they owe you, minus means you owe them. Payments, part payments, credit notes and refunds have their own lines.
         Receipts paid by card or cash at the time are settled on the
         same line.
       </p>
     </div>
+  );
+}
+
+type MoneyDialog =
+  | { kind: "apply" }
+  | { kind: "refund" }
+  | { kind: "bill"; bill: RtOpenItem }
+  | null;
+
+/**
+ * What can be done with the contact's money from here: record a payment on a bill, apply a credit on account to
+ * another document, refund it, and take any of those back. Sales invoices are paid from Invoices.
+ */
+function MoneyActions({ account, contact, st, onChanged }: {
+  account: AccountInfo;
+  contact: RtContactRow;
+  st: RtStatement;
+  onChanged: (message: string) => Promise<void>;
+}) {
+  const [dialog, setDialog] = useState<MoneyDialog>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const credits = st.credits ?? [];
+  const open = st.open_documents ?? [];
+  const bills = open.filter((d) => d.side === "purchase");
+  const uses = (st.credit_uses ?? []).filter((u) => (u.applied_pence ?? u.amount_pence) > 0 || u.kind === "refund");
+  const canApply = credits.some((c) => open.some((d) => d.side === c.side));
+  if (!credits.length && !bills.length && !uses.length) return null;
+
+  async function removeUse(id: string, what: string) {
+    setBusy(id);
+    setNote(null);
+    try {
+      await runtime.removeCreditUse(account, id);
+      await onChanged(`${what} taken back.`);
+    } catch (e) {
+      setNote(errorText(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const done = async (message: string) => {
+    setDialog(null);
+    await onChanged(message);
+  };
+
+  return (
+    <section data-contact-money aria-label={`Money with ${contact.name}`} className="flex flex-col gap-3 print:hidden">
+      {credits.length > 0 && (
+        <div className="rounded-xl bg-teal-tint p-3 text-[13px]">
+          <h3 className="text-[15px] font-extrabold text-teal-dark">Credit on account</h3>
+          <ul className="mt-1">
+            {credits.map((c) => (
+              <li key={c.id} className="tabular-nums">
+                <strong>{money(c.amount_pence)}</strong> · {c.source === "payment" ? "overpaid" : "credit note"} on {ukDate(c.date)} ·{" "}
+                {c.side === "sale" ? `you owe ${contact.name}` : `${contact.name} owes you`}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2 flex flex-wrap gap-3">
+            {canApply && (
+              <button type="button" className={secondary} onClick={() => setDialog({ kind: "apply" })}>Apply credit</button>
+            )}
+            <button type="button" className={secondary} onClick={() => setDialog({ kind: "refund" })}>Refund</button>
+          </div>
+        </div>
+      )}
+      {bills.length > 0 && (
+        <div className="text-[13px]">
+          <h3 className="text-[15px] font-extrabold">Bills to pay</h3>
+          <ul className="mt-1 divide-y divide-border">
+            {bills.map((b) => (
+              <li key={b.event_id} data-bill={b.reference ?? b.event_id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                <span className="tabular-nums">
+                  <span className="font-semibold">{b.reference ?? "Bill"}</span> · {ukDate(b.date)} · due {ukDate(b.due_date)} ·{" "}
+                  {b.outstanding_pence < b.gross_pence && <>paid {money(b.gross_pence - b.outstanding_pence)} · </>}
+                  balance <strong>{money(b.outstanding_pence)}</strong>
+                  {b.outstanding_pence < b.gross_pence && <> of {money(b.gross_pence)}</>}
+                </span>
+                <button
+                  type="button"
+                  className="text-[13px] font-bold text-teal-dark hover:underline"
+                  onClick={() => setDialog({ kind: "bill", bill: b })}
+                  aria-label={`Record payment on ${b.reference ?? "the bill"}`}
+                >
+                  Record payment
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {uses.length > 0 && (
+        <div className="text-[13px]">
+          <h3 className="text-[15px] font-extrabold">Credit used</h3>
+          <ul className="mt-1 divide-y divide-border">
+            {uses.map((u) => {
+              const what = u.kind === "refund" ? "Refund" : `Credit applied to ${u.reference ?? "a document"}`;
+              return (
+                <li key={u.id} className="flex flex-wrap items-center justify-between gap-2 py-1.5">
+                  <span className="tabular-nums">{ukDate(u.date)} · {what} · {money(u.applied_pence ?? u.amount_pence)}</span>
+                  <button
+                    type="button"
+                    disabled={busy !== null}
+                    onClick={() => void removeUse(u.id, what)}
+                    className="text-[13px] font-bold text-muted hover:underline"
+                    aria-label={`Remove: ${what}`}
+                  >
+                    {busy === u.id ? "Removing…" : "Remove"}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+      {note && <p role="alert" className="text-sm font-semibold text-warn-ink">{note}</p>}
+      {dialog?.kind === "apply" && (
+        <ApplyCreditDialog account={account} name={contact.name} credits={credits} documents={open} onClose={() => setDialog(null)} onDone={done} />
+      )}
+      {dialog?.kind === "refund" && (
+        <RefundDialog account={account} name={contact.name} credits={credits} onClose={() => setDialog(null)} onDone={done} />
+      )}
+      {dialog?.kind === "bill" && (
+        <BillPaymentDialog account={account} name={contact.name} bill={dialog.bill} onClose={() => setDialog(null)} onDone={done} />
+      )}
+    </section>
   );
 }
 
@@ -442,6 +624,25 @@ function SidePanel({ contact, account, editing, onEditingChange, onSaved, onClos
   const [st, setSt] = useState<RtStatement | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [loadingSt, setLoadingSt] = useState(false);
+  const [done, setDone] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<string | null>(null);
+
+  async function removeLine(ln: RtStatement["lines"][number]) {
+    if (!account || !ln.payment_id) return;
+    setRemoving(ln.payment_id);
+    setErr(null);
+    try {
+      if (ln.kind === "refund") await runtime.removeCreditUse(account, ln.payment_id);
+      else await runtime.removePayment(account, ln.payment_id);
+      setDone(`${ln.details} of ${money(Math.abs(ln.paid_pence))} taken back.`);
+      await loadStatement();
+      await onSaved();
+    } catch (e) {
+      setErr(errorText(e));
+    } finally {
+      setRemoving(null);
+    }
+  }
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const rangeError = from && to && from > to ? "The from date is after the to date." : null;
@@ -463,7 +664,7 @@ function SidePanel({ contact, account, editing, onEditingChange, onSaved, onClos
     queueMicrotask(() => void loadStatement());
   }, [loadStatement]);
 
-  async function save(edits: Partial<Record<RtContactField, string | null>>) {
+  async function save(edits: RtContactEdits) {
     if (!account) return;
     try {
       await runtime.editContact(account, contact.id, edits);
@@ -480,6 +681,7 @@ function SidePanel({ contact, account, editing, onEditingChange, onSaved, onClos
     ["VAT status", buysFrom(contact) ? VAT_STATUS_LABEL[contact.vat_status ?? "unknown"] : null],
     ["Email", contact.email], ["Phone", contact.phone], ["Address", contact.address],
     ["Usual category", contact.default_category],
+    ["Payment terms", contact.terms_days === null || contact.terms_days === undefined ? "30 days (the usual)" : `${contact.terms_days} days`],
   ];
   return (
     <aside aria-label={`${contact.name}: statement`} className={`${card} flex flex-col gap-4 p-4 lg:sticky lg:top-4 lg:self-start`}>
@@ -536,6 +738,20 @@ function SidePanel({ contact, account, editing, onEditingChange, onSaved, onClos
         </div>
       )}
 
+      {account && st && !editing && (
+        <MoneyActions
+          account={account}
+          contact={contact}
+          st={st}
+          onChanged={async (message) => {
+            setDone(message);
+            await loadStatement();
+            await onSaved();
+          }}
+        />
+      )}
+      {done && <p role="status" className="text-sm font-semibold text-teal-dark print:hidden">{done}</p>}
+
       {rangeError
         ? <p role="alert" className="text-sm font-semibold text-warn-ink">{rangeError}</p>
         : err && (isAuthError(err) || isServerError(err)
@@ -567,7 +783,7 @@ function SidePanel({ contact, account, editing, onEditingChange, onSaved, onClos
             </div>
             {st ? (
               <div className="max-h-[50vh] overflow-y-auto pr-1 print:max-h-none print:overflow-visible print:pr-0">
-                <StatementTable st={st} />
+                <StatementTable st={st} onRemove={account ? (ln) => void removeLine(ln) : undefined} busy={removing} />
               </div>
             ) : !err ? (
               <p className="text-sm text-muted">Working it out from your ledger…</p>

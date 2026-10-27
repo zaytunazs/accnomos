@@ -332,10 +332,16 @@ function LedgerEntries({ r }: { r: RtBankSuggestion }) {
     <>
       {r.events.map((e) => (
         <span key={e.id} className="block">
-          <span className="font-semibold">{e.counterparty ?? "Entry"}</span>{" "}
-          <span className="text-[13px] text-muted">
-            {ukDate(e.date)} · {money(e.amount_pence)}
-          </span>
+          {e.label ? (
+            <span className="font-semibold">{e.label}</span>
+          ) : (
+            <>
+              <span className="font-semibold">{e.counterparty ?? "Entry"}</span>{" "}
+              <span className="text-[13px] text-muted">
+                {ukDate(e.date)} · {money(e.amount_pence)}
+              </span>
+            </>
+          )}
         </span>
       ))}
     </>

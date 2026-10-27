@@ -50,24 +50,37 @@ export const PAYMENT_LABEL: Record<RtPaymentStatus, string> = {
 export function PaymentsPanel({ account, invoice, onChanged }: {
   account: AccountInfo;
   invoice: RtInvoice;
-  onChanged: (inv: RtInvoice) => void;
+  onChanged: (inv: RtInvoice, message: string) => void;
 }) {
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const m = invoice.money;
   if (!m) return null;
 
-  async function remove(id: string) {
+  async function act(id: string, run: () => Promise<RtInvoice>, message: string) {
     setBusy(id);
     setNote(null);
     try {
-      onChanged(await runtime.removeInvoicePayment(account, invoice.number, id));
+      onChanged(await run(), message);
     } catch (e) {
       setNote(errorText(e));
     } finally {
       setBusy(null);
     }
   }
+  const remove = (id: string) =>
+    act(id, () => runtime.removeInvoicePayment(account, invoice.number, id), `Payment removed from ${invoice.number}.`);
+  /** A Bank-page match posts nothing: turn it into a recorded payment so the money reaches 1200 Bank once. */
+  const postAsPayment = (lineId: string) =>
+    act(`post:${lineId}`, async () => {
+      await runtime.paymentFromBankLine(account, lineId);
+      return runtime.invoice(account, invoice.number);
+    }, `The bank line is now a recorded payment on ${invoice.number}, in your books once.`);
+  const removeUse = (useId: string) =>
+    act(useId, async () => {
+      await runtime.removeCreditUse(account, useId);
+      return runtime.invoice(account, invoice.number);
+    }, `Credit removed from ${invoice.number}.`);
 
   return (
     <section aria-label={`Payments on ${invoice.number}`} className="mt-3 rounded-xl border border-border bg-ground/50 p-3 text-sm">
@@ -89,15 +102,29 @@ export function PaymentsPanel({ account, invoice, onChanged }: {
                 <span className="ml-1 font-bold tabular-nums">{money(p.applied_pence)}</span>
                 {p.amount_pence !== p.applied_pence && <span className="text-muted"> of {money(p.amount_pence)}</span>}
               </span>
-              <button
-                type="button"
-                onClick={() => remove(p.id)}
-                disabled={busy !== null}
-                className="text-[13px] font-bold text-muted hover:underline"
-                aria-label={`Remove payment of ${money(p.applied_pence)} on ${invoice.number}`}
-              >
-                {busy === p.id ? "Removing…" : p.source === "bank_line" ? "Unmatch" : "Remove"}
-              </button>
+              <span className="flex gap-3">
+                {p.source === "bank_line" && (
+                  <button
+                    type="button"
+                    onClick={() => postAsPayment(p.id)}
+                    disabled={busy !== null}
+                    className="text-[13px] font-bold text-teal-dark hover:underline"
+                    title="Matched on the Bank page, so nothing is in your books yet: record it as a payment from this line"
+                    aria-label={`Post the bank line of ${money(p.amount_pence)} as a payment on ${invoice.number}`}
+                  >
+                    {busy === `post:${p.id}` ? "Posting…" : "Post as payment"}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => remove(p.id)}
+                  disabled={busy !== null}
+                  className="text-[13px] font-bold text-muted hover:underline"
+                  aria-label={`Remove payment of ${money(p.applied_pence)} on ${invoice.number}`}
+                >
+                  {busy === p.id ? "Removing…" : p.source === "bank_line" ? "Unmatch" : "Remove"}
+                </button>
+              </span>
             </li>
           ))}
         </ul>
@@ -105,7 +132,23 @@ export function PaymentsPanel({ account, invoice, onChanged }: {
       {m.credit_notes.length > 0 && (
         <ul className="mt-2 text-muted">
           {m.credit_notes.map((c) => (
-            <li key={c.event_id}>Credit note {c.number ?? ""} · {money(c.applied_pence)}</li>
+            <li key={c.use_id ?? c.event_id} className="flex flex-wrap items-center justify-between gap-2">
+              <span>
+                Credit note {c.number ?? ""} · {money(c.applied_pence)}
+                {c.use_id && " (credit applied from another invoice)"}
+              </span>
+              {c.use_id && (
+                <button
+                  type="button"
+                  onClick={() => removeUse(c.use_id!)}
+                  disabled={busy !== null}
+                  className="text-[13px] font-bold text-muted hover:underline"
+                  aria-label={`Remove credit of ${money(c.applied_pence)} applied to ${invoice.number}`}
+                >
+                  {busy === c.use_id ? "Removing…" : "Remove"}
+                </button>
+              )}
+            </li>
           ))}
         </ul>
       )}
