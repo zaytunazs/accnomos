@@ -195,7 +195,10 @@ def pack(facts: dict[str, Any], r: Route) -> dict[str, Any]:
 
     Each figure sits under the period it belongs to; the period not asked about keeps only its dates.
     """
-    out: dict[str, Any] = {"business": facts["business"], "money": facts["money"]}
+    out: dict[str, Any] = {
+        "business": facts["business"], "money": facts["money"],
+        "question_is_about": " and ".join(f"{period_key(p)} ({facts[period_key(p)]['label']})" for p in (THIS, PREV) if p in r.periods),
+    }
     for p in (THIS, PREV):
         full = facts[period_key(p)]
         part: dict[str, Any] = {k: full[k] for k in ("label", "start", "end", "period_key")}

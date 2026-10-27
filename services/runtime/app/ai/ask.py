@@ -48,6 +48,7 @@ TIMEOUT_S = 120.0  # whole-reply timeout for the short structured calls that are
 FIRST_CHUNK_S = 90.0  # loading the model and reading the prompt (and, on Glimmer, writing the whole buffered reply)
 TOKEN_GAP_S = 20.0  # once it is replying, the longest silence between two chunks
 ANSWER_TOKENS_MAX = 320  # Glimmer writes about 8 tokens/s here: at most ~40 s, and a good answer needs ~100
+KEY_TOKENS_MAX = 1500  # key mode: OpenAI-style servers count the model's reasoning (Qwen still reasons at "low") too
 KEY_NUMBERS = (2, 5)
 MAX_ACTIONS = 3
 LABEL_MAX = 80
@@ -59,14 +60,17 @@ SYSTEM_PROMPT = (
     "The app already shows the key figures, the files used and any buttons, so do not list them again. "
     f"Keep answer_md under {ASK_ANSWER_MAX} characters. "
     "You are given FACTS as JSON, calculated by code from the owner's ledger. Every figure sits under the period it "
-    "belongs to (this_period or previous_period, each with its label). Rules: "
+    "belongs to: this_period is the period the owner picked (what they mean by 'this quarter'), previous_period the "
+    "one before it ('last quarter'); each has its label. FACTS.question_is_about says which one the question means. Rules: "
     "1) Quote numbers only exactly as they appear in FACTS (you may add £ and thousands commas), and only for "
     "their own period: say which period a figure is for. "
     "Never add, subtract, average or estimate anything yourself: for changes use the `derived` values. "
     "2) If FACTS do not answer the question (see not_in_these_facts), say plainly that the books you were given "
     "don't show it, and suggest what would. "
     "3) confidence: high when FACTS answer it directly, medium when partly, low otherwise. "
-    "Box 5 is always positive; vat_position says whether the owner pays or is repaid."
+    "VAT boxes: box1 VAT charged on sales, box2 VAT on goods from the EU, box3 total VAT due, box4 VAT reclaimed on "
+    "purchases, box5 net VAT (box3 minus box4), box6 sales before VAT, box7 purchases before VAT, box8 and box9 goods "
+    "to and from the EU. Box 5 is always positive; vat_position says whether the owner pays or is repaid."
 )
 
 _NUMBER = re.compile(r"[-−]?£?\d[\d,]*(?:\.\d+)?%?")
@@ -574,12 +578,16 @@ async def _call_model(
 ) -> str:
     """Raw JSON text from the configured backend, constrained to `output`'s schema (app/ai/plan.py uses it too).
     Streamed underneath, so it is timed per chunk; Ask's own answer is capped at ANSWER_TOKENS_MAX."""
-    cap = ANSWER_TOKENS_MAX if output is AskExplanation else None
+    cap = _answer_cap(cfg) if output is AskExplanation else None
     return "".join([t async for t in stream_json_model(messages, cfg, strict_json_schema(output), name, cap)])
 
 
+def _answer_cap(cfg: AiConfig) -> int:
+    return ANSWER_TOKENS_MAX if cfg.mode == "local" else KEY_TOKENS_MAX
+
+
 async def _stream_model(messages: list[dict[str, str]], cfg: AiConfig) -> AsyncIterator[str]:
-    async for text in stream_json_model(messages, cfg, strict_json_schema(AskExplanation), "ask_answer", ANSWER_TOKENS_MAX):
+    async for text in stream_json_model(messages, cfg, strict_json_schema(AskExplanation), "ask_answer", _answer_cap(cfg)):
         yield text
 
 
