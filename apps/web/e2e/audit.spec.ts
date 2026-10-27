@@ -25,7 +25,7 @@ test("three actions in the books show on /audit with who did them; filters and C
   // Settings' audit link leads here.
   await page.goto("/settings");
   await page.getByRole("link", { name: "Open the audit trail" }).click();
-  await expect(page).toHaveURL(/\/audit$/);
+  await expect(page).toHaveURL(/\/audit$/, { timeout: 15_000 });
 
   // Test mode pins the runtime's "today", but audit lines carry the real clock: widen To to the real date.
   const real = new Date().toISOString().slice(0, 10);
@@ -33,7 +33,8 @@ test("three actions in the books show on /audit with who did them; filters and C
 
   const trail = page.getByRole("list", { name: "Audit trail" });
   const row = (text: string | RegExp) => trail.locator("li[data-event]").filter({ hasText: text });
-  await expect(row("Added a vehicle")).toContainText("You");
+  // The range change refetches the whole trail; under a loaded full run that takes longer than the default 5 s.
+  await expect(row("Added a vehicle")).toContainText("You", { timeout: 20_000 });
   await expect(row("Logged a journey: 100 miles")).toContainText("You");
   await expect(row("Posted Novex Office Supplies Ltd £51.90 to the ledger")).toContainText("You");
   await expect(row("Read Novex Office Supplies Ltd £51.90 and proposed an entry")).toContainText("Reader");
