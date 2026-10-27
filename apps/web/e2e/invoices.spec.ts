@@ -5,8 +5,8 @@ test("create an invoice → preview → send behind the confirmation tick; the f
   await createBooksFolder(page);
 
   await page.goto("/invoices");
-  await expect(page.getByText("No invoices yet.")).toBeVisible();
-  await page.getByRole("link", { name: "New invoice" }).click();
+  await expect(page.getByText("No invoices yet")).toBeVisible();
+  await page.getByRole("link", { name: "New invoice" }).first().click();
   await expect(page).toHaveURL(/\/invoices\/new$/);
 
   await page.getByLabel("Name", { exact: true }).fill("Harbour Cafe Ltd");
