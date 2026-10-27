@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 from datetime import date
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
@@ -132,6 +132,43 @@ async def import_outlook(
     """Fill in emails and phone numbers from Outlook contacts (read-only; nothing is written to Outlook)."""
     entries = await address_book.list_contacts()
     return await cb.import_outlook(books, entries, (body or ImportBody()).add_new, user)
+
+
+class PhonePickedContact(StrictBody):
+    """One contact the user picked with the phone's system picker."""
+
+    name: str = Field(max_length=200)
+    kind: Literal["customer", "supplier"] = "customer"
+    email: str | None = Field(None, max_length=254)
+    phone: str | None = Field(None, max_length=40)
+    address: str | None = Field(None, max_length=500)
+
+
+class PhoneImportBody(StrictBody):
+    contacts: list[PhonePickedContact] = Field(max_length=200)
+
+
+@router.post("/import-phone", response_model=cb.ImportResult)
+async def import_phone(
+    body: PhoneImportBody,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
+) -> cb.ImportResult:
+    """Save contacts the user picked with the phone's system contact picker
+    (read-only on the phone: nothing is written back to it)."""
+    try:
+        return await cb.import_phone(
+            books,
+            [
+                cb.PhonePickedContact(
+                    name=c.name, kind=c.kind, email=c.email, phone=c.phone, address=c.address
+                )
+                for c in body.contacts
+            ],
+            user,
+        )
+    except cb.ContactEditError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.get("/{contact_id}/statement", response_model=cb.Statement)

@@ -245,7 +245,12 @@ SUMMARIES: dict[str, Summary] = {
     "contact_vat_status": lambda r, w: (
         "Set a supplier as " + VAT_STATUS.get(str(r.get("vat_status")), str(r.get("vat_status")))
     ),
-    "contacts_imported": lambda r, w: "Imported contacts from Outlook",
+    "contacts_imported": lambda r, w: (
+        f"Imported {_plural(_n(r, 'added'), 'contact')} from your phone"
+        + (f" ({_plural(_n(r, 'updated'), 'contact')} updated)" if _n(r, "updated") else "")
+        if str(r.get("source")) == "phone"
+        else "Imported contacts from Outlook"
+    ),
     # Vehicles and mileage
     "vehicle_added": lambda r, w: "Added a vehicle",
     "vehicle_changed": lambda r, w: "Changed a vehicle" + _fields(r),

@@ -529,6 +529,77 @@ def test_import_without_consent_is_401_and_writes_nothing(client: TestClient, fa
     assert cb.CONTACTS not in fake.files and "contacts_imported" not in _audit(fake)
 
 
+def test_phone_import_adds_updates_and_skips(client: TestClient, fake: FakeStorageProvider) -> None:
+    """POST /contacts/import-phone: new picks are added with the picked kind
+    (source "phone"), known contacts only gain blank fields, blank names are
+    skipped, and the audit line carries source "phone"."""
+    client.post("/contacts/refresh", headers=H)
+    r = client.post(
+        "/contacts/import-phone",
+        headers=H,
+        json={
+            "contacts": [
+                {
+                    "name": "Mum",
+                    "kind": "supplier",
+                    "email": "mum@example.com",
+                    "phone": "07700 900000",
+                    "address": "1 High St",
+                },
+                {"name": "Howdens Joinery Ltd", "kind": "supplier", "email": "new@howdens.example"},
+                {"name": "  ", "kind": "customer"},
+            ]
+        },
+    )
+    assert r.status_code == 200, r.text
+    assert r.json() == {"read": 3, "matched": 1, "updated": 1, "added": 1, "skipped": 1}
+    stored = {c["name"]: c for c in json.loads(fake.files[cb.CONTACTS])}
+    mum = stored["Mum"]
+    assert mum["kind"] == "supplier" and mum["source"] == "phone"
+    assert mum["email"] == "mum@example.com" and mum["address"] == "1 High St"
+    assert stored["Howdens Joinery Ltd"]["email"] == "new@howdens.example"
+    audits = [
+        json.loads(x)
+        for p, d in sorted(fake.files.items())
+        if p.startswith(f"{AUDIT}/")
+        for x in d.decode().splitlines()
+    ]
+    imported = [a for a in audits if a["action"] == "contacts_imported"][-1]
+    assert imported["refs"]["source"] == "phone" and imported["refs"]["added"] == 1
+
+
+def test_phone_import_rejects_bad_rows(client: TestClient, fake: FakeStorageProvider) -> None:
+    """A bad email is a 400 that writes nothing; an unknown field is a 422."""
+    client.post("/contacts/refresh", headers=H)
+    before = fake.files[cb.CONTACTS]
+    r = client.post(
+        "/contacts/import-phone", headers=H, json={"contacts": [{"name": "Mum", "email": "nope"}]}
+    )
+    assert r.status_code == 400
+    assert fake.files[cb.CONTACTS] == before
+    assert "contacts_imported" not in _audit(fake)
+    r = client.post(
+        "/contacts/import-phone",
+        headers=H,
+        json={"contacts": [{"name": "Mum", "kind": "customer", "nickname": "Mum"}]},
+    )
+    assert r.status_code == 422
+    assert client.post("/contacts/import-phone", headers={"X-Graph-Token": "tok"}, json={"contacts": []}).status_code == 400
+
+
+def test_phone_import_never_overwrites() -> None:
+    """A pick matching a contact with details set changes nothing."""
+    ledger = _ledger([_event(120000, date(2026, 9, 1), "Acme Kitchens", sale=True)])
+    book = cb.merge_ledger([], ledger)
+    acme = next(c for c in book if c.normalised_key == "acme-kitchens")
+    acme.email = "accounts@acme.example"
+    merged, r = cb.merge_phone_picks(
+        book, [cb.PhonePickedContact(name="Acme Kitchens", kind="supplier", email="new@acme.example")]
+    )
+    assert (r.matched, r.updated, r.added, r.skipped) == (1, 0, 0, 0)
+    assert next(c for c in merged if c.normalised_key == "acme-kitchens").email == "accounts@acme.example"
+
+
 async def test_books_xlsx_uses_saved_contacts(books: Books, fake: FakeStorageProvider) -> None:
     from io import BytesIO
 
