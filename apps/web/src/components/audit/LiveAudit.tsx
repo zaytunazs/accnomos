@@ -12,6 +12,7 @@ import { SAMPLE_AUDIT_DAY, sampleAudit } from "@/lib/sample-audit";
 
 const TZ = "Europe/London";
 const RANGE_DAYS = 31;
+const MAX_DAYS = 366; // GET /audit refuses a wider range (audit_view.MAX_DAYS)
 
 /** Who chips: each is one GET /audit filter. Planner plans are applied by you, so its chip is the plan_* lines. */
 const WHO = [
@@ -131,8 +132,10 @@ export default function LiveAudit() {
     return w;
   }, [who, kind]);
 
+  const tooWide = from <= to && daysBefore(to, MAX_DAYS) > from;
+
   useEffect(() => {
-    if (!account || from > to) return;
+    if (!account || from > to || tooWide) return;
     let stale = false;
     const q = new URLSearchParams({ from, to, limit: "500", ...filter });
     runtime.audit(account, q.toString()).then(
@@ -152,7 +155,7 @@ export default function LiveAudit() {
     return () => {
       stale = true;
     };
-  }, [account, from, to, filter]);
+  }, [account, from, to, tooWide, filter]);
 
   const live = state === "live";
   const sample = state === "demo";
@@ -238,6 +241,9 @@ export default function LiveAudit() {
         <p role="alert" className="text-sm font-semibold text-warn-ink">Could not read your audit trail: {note}</p>
       ) : null}
       {from > to && !sample && <p role="alert" className="text-sm font-semibold text-warn-ink">The From day is after the To day.</p>}
+      {tooWide && !sample && (
+        <p role="alert" className="text-sm font-semibold text-warn-ink">Choose at most a year ({MAX_DAYS} days) at a time.</p>
+      )}
       {truncated && live && (
         <p role="status" className="text-sm font-semibold text-muted">
           Showing the newest 500 lines. Choose a shorter range or a filter to see older ones.
