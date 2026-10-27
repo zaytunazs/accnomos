@@ -337,7 +337,7 @@ async def _seed_demo(s: State) -> None:
     """docs/DEMO.md on stage (apps/web/e2e/demo.spec.ts): today is 4 Nov 2026, and JM Trading Ltd, the customer the
     presenter invoices, is in the Outlook address book (Contacts → Import from Outlook adds it)."""
     s.today = DEMO_TODAY
-    s.contacts.contacts.append(DEMO_CUSTOMER)
+    s.contacts.contacts.append(DEMO_CUSTOMER.model_copy(deep=True))  # one per tenant: workers never share an object
 
 
 SEEDS = {"bank": _seed_bank, "demo": _seed_demo}  # opt-in: they change the VAT figures or the date other flows check
