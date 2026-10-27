@@ -16,6 +16,7 @@ Layout (relative to the books root):
     _System/rules.json  _System/cursors.json
     _System/Rules/rules.json       Autopilot rules, one per supplier (app/autopilot.py)
     _System/audit/autopilot/{yyyy-mm}.jsonl   one line per Autopilot decision that posted something
+    _System/Contacts/contacts.json customers and suppliers (app/contacts.py); no money is stored there
     Books.xlsx                     read-only spreadsheet projection, rebuilt after every decision
 """
 
@@ -474,11 +475,15 @@ class Books:
     # ------------------------------------------------------------------ #
 
     async def rebuild(self) -> FileRef:
-        """Regenerate Books.xlsx at the root from the events, bank lines and open proposals."""
+        """Regenerate Books.xlsx at the root from the events, bank lines, open proposals and contacts."""
+        from app.contacts import contact_book, load_ledger
         from app.projection import build_books_xlsx
 
-        proposals = [p for p in await self.list_proposals() if p.status in ("proposed", "needs_a_look")]
-        data = build_books_xlsx(await self.list_events(), await self.list_bank_lines(), proposals)
+        ledger = await load_ledger(self)
+        contacts, _, _ = await contact_book(self, ledger)
+        proposals = [p for p in ledger.proposals.values() if p.status in ("proposed", "needs_a_look")]
+        proposals.sort(key=lambda p: p.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
+        data = build_books_xlsx(ledger.events, await self.list_bank_lines(), proposals, contacts=contacts, ledger=ledger)
         if len(data) > WORKBOOK_LIMIT:
             log.warning("Books.xlsx is %d bytes, over the %d byte simple-upload size", len(data), WORKBOOK_LIMIT)
         return await self.storage.write(WORKBOOK, data)

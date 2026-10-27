@@ -234,17 +234,27 @@ def test_books_xlsx_totals_match_the_events() -> None:
     assert wb["Ledger"]["A2"].number_format == "dd/mm/yyyy" and wb["Ledger"]["A2"].value.date() == date(2026, 7, 2)
     assert wb["Ledger"]["D2"].number_format.startswith('"£"')
 
-    # Suppliers: purchases per supplier (the reversal nets off), customers excluded, biggest spend first.
-    sup = {r[0]: r[1:] for r in wb["Suppliers"].iter_rows(min_row=2, values_only=True)}
-    assert sup["Screwfix"][0] == 2 and _pence(sup["Screwfix"][3]) == 3847 + 18420
-    assert _pence(sup["Howdens Joinery"][3]) == 30000
-    assert sup["Toolstation"][0] == 1 and _pence(sup["Toolstation"][3]) == 1200
+    # Suppliers: name, VRN, net and VAT this tax year, unpaid, entries, gross, last entry; the reversal nets off,
+    # customers are excluded, biggest net first. Card purchases are paid at the till, so nothing is unpaid.
+    s = wb["Suppliers"]
+    assert [c.value for c in s[1]][:5] == ["Supplier", "VAT number", "Net this tax year £", "VAT this tax year £", "Unpaid by you £"]
+    sup = {r[0]: r[1:] for r in s.iter_rows(min_row=2, values_only=True)}
+    assert sup["Screwfix"][4] == 2 and _pence(sup["Screwfix"][5]) == 3847 + 18420
+    assert _pence(sup["Howdens Joinery"][5]) == 30000 and s["A2"].value == "Howdens Joinery"
+    assert sup["Toolstation"][4] == 1 and _pence(sup["Toolstation"][5]) == 1200
     assert _pence(sup["Total"][1]) == sum(e.net for e in purchases)
     assert _pence(sup["Total"][2]) == sum(e.vat for e in purchases)
-    assert _pence(sup["Total"][3]) == sum(sum(ln.debit for ln in e.lines) for e in purchases)
+    assert sup["Total"][3] == 0
+    assert _pence(sup["Total"][5]) == sum(sum(ln.debit for ln in e.lines) for e in purchases)
     assert "Acme Kitchens Ltd" not in sup
     assert supplier_totals(events)[0][0] == "Howdens Joinery"
-    assert wb["Suppliers"]["F2"].number_format == "dd/mm/yyyy" and wb["Suppliers"]["E2"].number_format.startswith('"£"')
+    assert s["H2"].number_format == "dd/mm/yyyy" and s["E2"].number_format.startswith('"£"')
+
+    # Customers: two sales invoices, both unpaid (no bank line matched).
+    cus = {r[0]: r[1:] for r in wb["Customers"].iter_rows(min_row=2, values_only=True)}
+    assert set(cus) == {"Acme Kitchens Ltd", "Bloggs & Co", "Total"}
+    assert _pence(cus["Acme Kitchens Ltd"][3]) == 120000 and _pence(cus["Total"][3]) == 174000
+    assert _pence(cus["Total"][1]) == sum(e.net for e in events if e.kind == "sale")
 
     # Summary: counts and totals straight from the events.
     summ = {r[0]: r[1] for r in wb["Summary"].iter_rows(min_row=2, values_only=True)}
