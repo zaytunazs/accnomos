@@ -1,23 +1,33 @@
-"""POST /books/ask: grounded answers about the user's own books.
+"""POST /books/ask and /books/ask/voice: grounded answers about the user's own books.
 
 Code loads the ledger and builds the facts pack; the model only writes words around those facts;
 code then checks every figure and citation (app/ai/ask.py). Nothing is kept after the response.
+A spoken question is transcribed by Muse Voice (app/ai/voice.py) and then takes exactly the same path.
 """
 
 from __future__ import annotations
 
 from datetime import date
 
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
+from pydantic import TypeAdapter, ValidationError
 
 from app.ai import ask as ask_ai
+from app.ai import voice
 from app.ai.config import AiConfig, ai_config_from_request
 from app.books import Books
 from app.facts import build_facts, default_period
 from app.routes_books import get_books
-from app.schemas import AskAnswer, AskRequest
+from app.schemas import AskAnswer, AskPeriod, AskRequest, AskTurn, AskVoiceAnswer
 
 router = APIRouter(prefix="/books", tags=["ask"])
+_TURNS = TypeAdapter(list[AskTurn])
+
+
+async def _answer(req: AskRequest, books: Books, cfg: AiConfig, business: str | None) -> AskAnswer:
+    period = req.period or default_period(date.today())
+    facts = await build_facts(books, period, business)
+    return await ask_ai.answer(req.question, facts, req.history, cfg)
 
 
 @router.post("/ask", response_model=AskAnswer)
@@ -27,6 +37,39 @@ async def ask(
     cfg: AiConfig = Depends(ai_config_from_request),
     x_business_name: str | None = Header(default=None),
 ) -> AskAnswer:
-    period = body.period or default_period(date.today())
-    facts = await build_facts(books, period, x_business_name)
-    return await ask_ai.answer(body.question, facts, body.history, cfg)
+    return await _answer(body, books, cfg, x_business_name)
+
+
+@router.post("/ask/voice", response_model=AskVoiceAnswer)
+async def ask_voice(
+    audio: UploadFile = File(...),
+    period: str | None = Form(default=None),
+    history: str | None = Form(default=None),
+    books: Books = Depends(get_books),
+    cfg: AiConfig = Depends(ai_config_from_request),
+    x_business_name: str | None = Header(default=None),
+) -> AskVoiceAnswer:
+    """Spoken question (webm/ogg/m4a/wav) -> WAV via ffmpeg -> Muse Voice Transcribe -> the /books/ask answer.
+
+    Optional form fields `period` and `history` are JSON shaped as in AskRequest. Key mode only.
+    """
+    if cfg.mode != "key":
+        raise HTTPException(400, "voice needs a Meta API key")
+    try:
+        when = AskPeriod.model_validate_json(period) if period else None
+        turns = _TURNS.validate_json(history) if history else []
+    except ValidationError as exc:
+        raise HTTPException(422, f"Bad period or history: {exc.errors()[0]['msg']}") from exc
+    try:
+        voice.require_ffmpeg()
+        data = await audio.read(voice.MAX_UPLOAD_BYTES + 1)
+        wav = await voice.to_wav(data, audio.content_type, audio.filename)
+        transcript = await voice.transcribe(wav, cfg)
+    except voice.VoiceError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
+    try:
+        req = AskRequest(question=transcript, period=when, history=turns)
+    except ValidationError as exc:
+        raise HTTPException(422, f"That question is too long ({len(transcript)} characters; keep it under 500)") from exc
+    answer = await _answer(req, books, cfg, x_business_name)
+    return AskVoiceAnswer(**answer.model_dump(), transcript=transcript)
