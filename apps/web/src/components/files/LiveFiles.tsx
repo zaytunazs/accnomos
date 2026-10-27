@@ -204,6 +204,17 @@ export default function LiveFiles() {
     }
   }, []);
 
+  // /files?path=… (from the audit trail): open the folder that holds it, once the tree is in.
+  const [linked, setLinked] = useState(false);
+  useEffect(() => {
+    if (linked || state !== "live" || !tree) return;
+    const path = new URLSearchParams(window.location.search).get("path");
+    queueMicrotask(() => {
+      setLinked(true);
+      if (path) setSelection({ kind: "folder", path: /\.[A-Za-z0-9]{2,5}$/.test(path) ? path.split("/").slice(0, -1).join("/") || path : path });
+    });
+  }, [linked, state, tree]);
+
   useEffect(() => {
     (async () => {
       try {
