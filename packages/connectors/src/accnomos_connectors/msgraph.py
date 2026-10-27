@@ -21,7 +21,9 @@ from urllib.parse import quote, unquote
 import httpx
 
 from accnomos_connectors.base import (
+    AddressBookContact,
     ConflictError,
+    ContactsProvider,
     FileRef,
     MailAttachment,
     MailMessage,
@@ -356,3 +358,27 @@ class GraphMailProvider(_GraphHttp, MailProvider):
     async def download_attachment(self, message_id: str, attachment_id: str) -> bytes:
         url = self._message_url(message_id, f"/attachments/{quote(attachment_id, safe='')}/$value")
         return (await self._request("GET", url, follow_redirects=True)).content
+
+
+class GraphContactsProvider(_GraphHttp, ContactsProvider):
+    """Outlook contacts via Microsoft Graph (`Contacts.Read`). Read-only: only GET requests are ever sent."""
+
+    PAGE = 100
+    SELECT = "displayName,emailAddresses,businessPhones,companyName"
+
+    async def list_contacts(self, max_results: int = 1000) -> list[AddressBookContact]:
+        url: str | None = f"{GRAPH}/me/contacts"
+        params: dict[str, str] | None = {"$select": self.SELECT, "$top": str(min(self.PAGE, max(1, max_results)))}
+        out: list[AddressBookContact] = []
+        while url and len(out) < max_results:
+            page = (await self._request("GET", url, params=params)).json()
+            params = None  # nextLink already carries the query
+            for c in page.get("value", []):
+                emails = [(e.get("address") or "").strip() for e in c.get("emailAddresses") or []]
+                out.append(AddressBookContact(
+                    id=c["id"], display_name=(c.get("displayName") or "").strip(),
+                    company_name=(c.get("companyName") or "").strip(), emails=[e for e in emails if e],
+                    business_phones=[p.strip() for p in c.get("businessPhones") or [] if p and p.strip()],
+                ))
+            url = page.get("@odata.nextLink")
+        return out[:max_results]

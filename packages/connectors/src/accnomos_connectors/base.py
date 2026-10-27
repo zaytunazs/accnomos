@@ -87,6 +87,23 @@ class MailProvider(ABC):
         raise NotImplementedError
 
 
+class AddressBookContact(BaseModel):
+    """One entry from the user's address book, as read (nothing is ever written back)."""
+
+    id: str
+    display_name: str = ""
+    company_name: str = ""
+    emails: list[str] = []
+    business_phones: list[str] = []
+
+
+class ContactsProvider(ABC):
+    """Read-only access to the user's address book."""
+
+    @abstractmethod
+    async def list_contacts(self, max_results: int = 1000) -> list[AddressBookContact]: ...
+
+
 class CalendarProvider(ABC):
     @abstractmethod
     async def ensure_calendar(self, name: str) -> str: ...
