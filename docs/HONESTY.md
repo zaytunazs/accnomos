@@ -107,6 +107,7 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 ## Files, Books.xlsx, dashboard
 
 - Books.xlsx has never been opened in Excel from a real OneDrive.
+- **`POST /books/export` has run on fake storage only** (unit tests plus one e2e export of a single posted receipt). The zip carries an *index* of the invoice PDFs, not the PDFs themselves, which stay filed under `03 Sales`; the 2,000-file / 25 MB caps are covered by a monkeypatched unit test, not a full-size export. The CSVs have never been opened in Excel from a real OneDrive. The `account.live.com/myapps` revoke link and the OneDrive-folder *Open* link have not been clicked through on a real account.
 - With no business settings saved, Home *Deadlines* assumes stagger 1 and now says so (`assumed: true`; the phone sends no stagger and does not show the note); with annual accounting the tiles show "—" and "Annual VAT returns are not worked out yet". `GET /books/deadlines` returns `start_month` normalised to 1–3.
 - A provider-level read failure now marks only its tiles `{"error": ...}` (Graph 401/403 still fails the whole request, so the app signs in again); the Android app does not read that marker (not run). A failed pull-to-refresh on the phone keeps the old figures under a "Could not load your figures" line; the tiles are not marked stale.
 - The web sidebar names the saved AI choice (Glimmer on your machine, Muse Spark on your key, or the stub in test mode). Ask uses the period picked on `/vat` but has no picker of its own.
