@@ -354,6 +354,26 @@ def test_contact_routes(client: TestClient, fake: FakeStorageProvider, address_b
     assert _audit(fake) == ["contacts_refreshed", "contact_edited", "contacts_imported"]
 
 
+def test_import_without_consent_is_401_and_writes_nothing(client: TestClient, fake: FakeStorageProvider) -> None:
+    """Graph says 403 when Contacts.Read was not granted; the app gets 401 so it asks for consent again."""
+    from accnomos_connectors.msgraph import GraphError
+
+    from app.main import app
+    from app.routes_contacts import get_address_book
+
+    class Refused(FakeContactsProvider):
+        async def list_contacts(self, max_results: int = 1000) -> list[AddressBookContact]:
+            raise GraphError(403, "ErrorAccessDenied")
+
+    async def refused() -> FakeContactsProvider:
+        return Refused()
+
+    app.dependency_overrides[get_address_book] = refused
+    r = client.post("/contacts/import-outlook", headers=H)
+    assert r.status_code == 401
+    assert cb.CONTACTS not in fake.files and "contacts_imported" not in _audit(fake)
+
+
 async def test_books_xlsx_uses_saved_contacts(books: Books, fake: FakeStorageProvider) -> None:
     from io import BytesIO
 
