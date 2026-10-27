@@ -1,45 +1,50 @@
-# Three-minute demo
+# Four-minute demo
 
-**Sample business:** Bramblewood Joinery Ltd, fictional (the banner on every app page says so). **Receipt:** `https://accnomos.com/sample-receipt.png`
-(fictional Novex Office Supplies, dated **2 Nov 2026**, net £43.25 + VAT £8.65 = £51.90, labelled *SAMPLE — FICTIONAL COMPANY*,
-drawn by `tools/make_sample_receipt.py`). 2 Nov falls in the VAT quarter containing 4 Nov 2026 for every stagger, so it lands in the period on screen.
 **Pitch in one line:** *AI proposes, you approve, code calculates. Your books live in your own OneDrive.*
 
-## Set up before you go on (not part of the three minutes)
+**Who is signed in:** a throwaway **personal Microsoft account** (not anyone's real books) with OneDrive opened once, on the
+laptop's browser at `https://accnomos.com`. HMRC is a separate sandbox **test user** (`POST /hmrc/test-user` on the relay gives
+`userId`, `password`, `vrn`; keep them on a card). On the phone, the **debug build**, signed in with the same Microsoft account
+(a release build's signing hash is not registered with Microsoft, see `docs/HONESTY.md`).
+**Sample business:** Bramblewood Joinery Ltd, fictional; the banner on every app page says so.
 
-1. A throwaway personal Microsoft account with OneDrive opened once. Sign in on a laptop, complete *Connect* (below) so the folder exists.
-2. `curl https://api.accnomos.com/health` returns `"ok": true`. On the Spark, `ollama list` shows `muse-glimmer:30b`, and one dummy scan has already run so the model is warm.
-3. Settings → *Autopilot level* stays on **L1** (propose only). Settings → *VAT periods* stays **Quarterly, stagger 1** (Oct–Dec 2026 on 4 Nov).
-   The throwaway account has **no other approved entries dated Oct–Dec 2026**, otherwise the Box 4/Box 7 figures below rise by theirs.
-4. A sandbox HMRC test user: `POST /hmrc/test-user` on the relay gives `userId`, `password`, `vrn`. Keep them on a card.
-5. Download the sample receipt to the laptop. Android: debug build installed and signed in. Empty `00 Inbox`.
+**The numbers.** The demo date is 4 Nov 2026, so on stagger 1 the current VAT period is **Oct–Dec 2026**. The receipt is
+`https://accnomos.com/sample-receipt.png` (`apps/web/public/sample-receipt.png`, drawn by `tools/make_sample_receipt.py`):
+fictional **Novex Office Supplies Ltd**, VAT GB 882431902, dated **2 Nov 2026**, 2 × A4 paper £25.00 + gel pens £18.25 =
+net **£43.25** + VAT **£8.65** = **£51.90**, stamped *SAMPLE — FICTIONAL COMPANY*. On an account with no other entries in Oct–Dec 2026,
+approving it gives Box 4 = **£8.65**, Box 5 = **£8.65** (to reclaim), Box 7 = **£43** (whole pounds, rounded down), every other box 0.
+Proved by `services/runtime/tests/test_vat_periods.py::test_vat_defaults_to_the_current_period_by_settings` (today 4 Nov 2026,
+Box 4 `8.65`, Box 7 `43`, label "Oct–Dec 2026") and by running `compute_vat_return` on that one event. If the account holds
+other approved entries dated Oct–Dec 2026, the figures rise by theirs: check before going on.
+
+## Set up before you go on (not part of the four minutes)
+
+1. Sign in on a laptop and complete *Connect* once, so the folder exists and the tree is visible. Empty `00 Inbox`.
+2. `curl https://api.accnomos.com/health` returns `"ok": true`. On the Spark, `ollama list` shows `muse-glimmer:30b`; run one dummy scan so the model is warm. (Not checked from this review: the live sites were unreachable.)
+3. Settings → *Autopilot level* stays **L1** (propose only). Settings → *VAT periods* stays **Quarterly, stagger 1**.
+4. Download the sample receipt to the laptop. Have `docs/META_MODELS.md`, `pytest -q` in `services/hmrc-relay` (100 pass, HMRC mocked) and a screen recording ready as the last resorts below.
 
 ## Script
 
-| Time | Click | Say |
-|---|---|---|
-| 0:00 | Open **accnomos.com** → *Home* | "A bookkeeper for a UK small business that owns its data. There is no Accnomos database: the books are files in your OneDrive." |
-| 0:15 | **Connect your OneDrive** → *Sign in with Microsoft* → *Create my Accnomos folder* → *Open in OneDrive* (already done, so just show the tree) | "00 Inbox to 06 Reports, and `_System/Ledger/events`. If you disconnect us, every file is still there." |
-| 0:30 | Step 2 (*Choose your AI*): leave **On my own machine**, press **Test connection** | "Muse Glimmer 30B, open weights, so the receipt never goes to Meta or Baseten. Or paste your own Meta key for Muse Spark." Be honest: "here that machine is our DGX Spark." |
-| 0:40 | **Review** → **Add a receipt** → choose `sample-receipt.png` → **Scan 00 Inbox now** | "The agent crops, reads, then checks. This takes 20–40 s on local Glimmer, so while it runs: *code* checks the arithmetic, VAT maths, VAT-number format, duplicates and whether the date is in this VAT period." |
-| 1:10 | The proposal card appears | Point at *Read by Glimmer 30B on your machine*, the green checks, **Verifier agrees · all 6 fields match**. "A second reading, with a different prompt, never saw the first answer. Code compares six fields; a mismatch would land in *Needs a look* with both values." |
-| 1:30 | Tick **Always do this for Novex Office Supplies**, press **Approve (post to books)** | "A human approves. The ledger event is immutable and says who approved. Autopilot is off by default; if I switch to L2 later, matching receipts post alone, with Undo, which adds a reversing entry." |
-| 1:50 | **VAT return** (top of the page): the picker says **Oct–Dec 2026 · current** | "Nine boxes, computed by plain code from the entries I approved, for the current VAT period by my stagger. **Box 4 is £8.65**, the VAT on that receipt, and **Box 7 is £43**: HMRC wants whole pounds for boxes 6 to 9. The model never touches a VAT number." Then open the picker and choose **Jul–Sep 2026**: the boxes recompute for that quarter (zero on a fresh account) and *Prepare submission* stays available only for the current or previous period. Switch back to Oct–Dec. |
-| 2:05 | **Connect to HMRC (sandbox)** → sign in with the test user → enter the `vrn` → **Show obligations** → pick one → read the confirmation card → tick the declaration → **Submit to HMRC (sandbox)** (the button in the *upper* card, not the lower mock-up) | "Through our relay, which holds only HMRC's client secret, adds the fraud-prevention headers and keeps nothing. Nothing is sent until I make the legal declaration. This is HMRC's **sandbox**; we do not file for real." |
-| 2:30 | **Files** → **Rebuild Books.xlsx** → *Open* | "And for your accountant, a spreadsheet generated from the same events." |
-| 2:40 | **Ask**: type "How much VAT have I reclaimed this quarter?" (expected: £8.65, for Oct–Dec 2026, the period picked on *VAT return*) | "Words from the model, numbers from code. If the model quotes a figure that is not in your books, we replace the answer with the facts." |
-| 2:50 | **Android** (on the device or a mirrored screen): **Review** tab shows the same proposal; **VAT** tab shows the nine boxes; camera icon *Photograph a receipt* | "Same runtime, same folder. The phone captures receipts and approves. Filing and voice are web only today." |
+| Time | Do | Say | If it fails, do this |
+|---|---|---|---|
+| 0:00 | Open **accnomos.com** → *Home* | "A bookkeeper for a UK small business that owns its data. There is no Accnomos database: the books are files in your OneDrive." | Site down: run locally (`docs/DEV.md`, runtime :8780, web :3000), else play the recording |
+| 0:20 | **Files** (or *Open in OneDrive*): show `00 Inbox` … `06 Reports` and `_System/Ledger/events` | "If you disconnect us, every file is still there." | Sign-in or Graph error: the signed-out Files page shows the labelled sample tree; narrate from it and show a folder screenshot |
+| 0:35 | **Connect → Choose your AI**: leave **On my own machine**, press **Test connection** | "Muse Glimmer 30B, open weights, so the receipt never goes to Meta or Baseten. Or paste your own Meta key for Muse Spark." Be honest: "here that machine is our DGX Spark." | Unreachable: switch to **My own Meta API key** and test again; if that fails too, narrate the next step from the eval table in `docs/META_MODELS.md` |
+| 0:50 | **Review → Add a receipt** → `sample-receipt.png` → **Scan 00 Inbox now** | "The agent crops, reads, then checks. 20–40 s on local Glimmer. While it runs: *code* checks the arithmetic, VAT maths, VAT-number format, duplicates and whether the date is in this VAT period." | Slow: say "this is the local read" and keep talking over it. Never finishes: `/connect/ai` → **Test connection**, then rescan |
+| 1:25 | The proposal card appears | Point at *Read by Glimmer 30B on your machine*, the green checks, **Verifier agrees · all 6 fields match**. "A second reading, with a different prompt, never saw the first answer. Code compares six fields; a mismatch would land in *Needs a look* with both values." | "Second reading unavailable": it is a warning, not a pass, and the proposal waits for you: say that is the safety design. A mismatch: show both values, then approve anyway |
+| 1:50 | Tick **Always do this for Novex Office Supplies**, press **Approve (post to books)** | "A human approves. The ledger event is immutable and says who approved. Autopilot is off at L1; at L2 only receipts matching a rule I saved post alone, with **Undo**, which adds a reversing entry." | Approve errors: reload Review (the proposal is saved); if still stuck, show the card and say the post is one ledger file |
+| 2:10 | **VAT return**: the picker reads **Oct–Dec 2026 · current**; point at the boxes | "Nine boxes by plain code from the entries I approved, for the current period by my stagger. **Box 4 is £8.65**, the VAT on that receipt; **Box 7 is £43**, whole pounds. The model never touches a VAT number." Then pick **Jul–Sep 2026**: zero on a fresh account. Switch back | Figures differ from the above: other entries exist in the quarter; say "plus the earlier ones" and read the live numbers. Picker missing: the runtime is down; use the Ask fallback below |
+| 2:40 | **Connect to HMRC (sandbox)** → sign in as the test user → enter the `vrn` → **Show obligations** → pick one → read the confirmation card → tick the declaration → **Submit to HMRC (sandbox)** (the *upper* card, not the lower mock-up) | "Through our relay, which holds only HMRC's client secret and adds the fraud-prevention headers. Nothing is sent until I make the legal declaration. This is HMRC's **sandbox**; we do not file for real." | **This step has never been run end to end in a browser.** On any error stop at the confirmation card (it shows the body and the declaration), then show `pytest -q` in `services/hmrc-relay` (100 passing, HMRC mocked) and `docs/HMRC.md`. Say plainly that the live submit is unverified |
+| 3:15 | **Files → Rebuild Books.xlsx → Open** | "For your accountant, a spreadsheet generated from the same events. It is a read-only copy." | Excel will not open it from OneDrive (never checked there): show the sheet list from `docs/ARCHITECTURE.md` and move on |
+| 3:25 | **Ask**: type "How much VAT have I reclaimed this quarter?" | "Words from the model, numbers from code." The *Key numbers* list shows **VAT reclaimed (Box 4) £8.65** for the period picked on *VAT return*. "If the model quotes a figure that is not in your books, we replace the answer with the facts." | Plain facts answer: good, say that is the grounding guard working. Error: check the AI setting; do **not** demo the mic (key mode only; request format unverified; never run live) |
+| 3:40 | **Android** (device or mirrored screen): **Review** lists proposals from the same folder, **VAT** shows the nine boxes (calendar quarters: the phone sends no stagger), camera icon *Photograph a receipt* | "Same runtime, same folder: the phone captures, reviews and asks. Filing with HMRC is web only." | Sign-in fails ("signature not registered"): show the signed-out sample Review and 9-box VAT, and say a release build's signature still has to be registered with Microsoft. The Flutter app has never been analysed or tested by us: keep claims to what is on screen |
+| 3:55 | Back to **Home** | "AI proposes, you approve, code calculates." | n/a |
 
-## If X fails, show this instead
+## Other things that can go wrong
 
 | Failure | Fallback |
 |---|---|
-| Scan slow or Glimmer unreachable | Say "this is the 20–40 s local read"; open `/connect/ai` and press **Test connection**. Switch to **My own Meta API key** (Muse Spark) and rescan. Last resort: the eval table in `docs/META_MODELS.md` |
-| Verifier shows "Second reading unavailable" | It is a warning, not a pass: the proposal waits for you. That *is* the safety design; say so |
-| Microsoft sign-in or OneDrive "pending provisioning" | Signed-out pages show the labelled sample tree and cards; narrate from those, and show a folder screenshot |
-| HMRC step errors (**end-to-end browser run is still unverified**) | Stop at the confirmation card showing the 11-field body and the declaration. Then show `pytest -q` in `services/hmrc-relay` (100 passing, HMRC mocked) and `docs/HMRC.md` |
-| accnomos.com or api.accnomos.com is down | Run locally: `docs/DEV.md` (runtime :8780, web :3000). Failing that, a screen recording made beforehand |
-| Ask returns the plain "facts" fallback | Good: say that is the grounding guard working |
-| A receipt from another quarter is scanned | The card shows a warning, e.g. *Dated 14 Aug 2026 — falls in the previous period (Jul–Sep 2026); it will go on that return*. It is only a warning: approving keeps the receipt's own date, so it counts in Jul–Sep, not on screen. Pick Jul–Sep in the period picker to show it |
-| Android sign-in fails ("signature not registered") | Show the signed-out sample Review and the 9-box VAT screen, and say sign-in needs the build's signature registered with Microsoft |
-| Mic on Ask | Do not demo it live: key mode only, request format unverified, never run with a real key |
+| A receipt from another quarter is scanned | The card warns, e.g. *Dated 14 Aug 2026 — falls in the previous period (Jul–Sep 2026); it will go on that return*. Approving keeps the receipt's own date, so it counts in Jul–Sep, not on screen: pick Jul–Sep in the picker to show it |
+| Stagger changed to 2 or 3 | The current period on 4 Nov becomes Nov–Jan (2) or Sep–Nov (3); both include 2 Nov, so Box 4 and Box 7 are unchanged, but the picker label differs |
+| Verifier or scan disagrees with the numbers above | Do not edit the figures; show *Needs a look* with both readings |
