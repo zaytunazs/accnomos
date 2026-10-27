@@ -36,5 +36,7 @@ test("HMRC card renders, connects through a stubbed relay and lists obligations"
   await card.getByRole("button", { name: "Show obligations" }).click();
   await expect(card.getByRole("cell", { name: "26A3", exact: true })).toBeVisible();
   await expect(card.getByRole("radio", { name: "Choose period 26A3" })).toBeChecked(); // matches the live return's quarter
+  await expect(card.getByRole("list", { name: "Submission steps" })).toBeVisible(); // declaration → submit → receipt
+  await expect(card.getByText("No receipts saved yet")).toBeVisible(); // 06 VAT returns/ is empty
   expect(calls).toEqual(["/hmrc/authorize", "/hmrc/exchange", "/vat/123456789/obligations"]);
 });

@@ -2,10 +2,15 @@ import Link from "next/link";
 import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
 import SignedOutOnly from "@/components/SignedOutOnly";
+import BoxExplain from "@/components/vat/BoxExplain";
 import SubmitSheet from "@/components/vat/SubmitSheet";
 import LiveVat from "@/components/vat/LiveVat";
 import ConnectHmrc from "@/components/vat/ConnectHmrc";
+import VatDeadlineStrip from "@/components/vat/VatDeadlineStrip";
+import { HomeData } from "@/components/home/HomeData";
 import { box4SampleRows, vatBoxes, vatMeta } from "@/lib/sample-vat";
+
+const SAMPLE_BOX5 = "£2,140 to pay · due 7 Nov · 12 days left";
 
 export const metadata = { title: "VAT return · Accnomos" };
 
@@ -24,6 +29,9 @@ function EntriesCell({ box, count }: { box: number; count: number }) {
 export default function VatPage() {
   return (
     <div className="flex flex-col gap-6">
+      <HomeData>
+        <VatDeadlineStrip />
+      </HomeData>
       <PageHeader
         title="VAT return"
         description="Your 9-box return, worked out by code from the entries you approved."
@@ -88,8 +96,16 @@ export default function VatPage() {
                     }`}
                   >
                     <div className="flex items-baseline justify-between gap-2">
-                      <p className="text-[15px] font-extrabold">
-                        Box {row.box} · {row.what}
+                      <p className="flex min-w-0 items-center gap-1 text-[15px] font-extrabold">
+                        <span>
+                          Box {row.box} · {row.what}
+                        </span>
+                        <BoxExplain
+                          box={row.box}
+                          label={row.what}
+                          entries={row.entries}
+                          extra={row.box === 5 ? SAMPLE_BOX5 : undefined}
+                        />
                       </p>
                     </div>
                     <div className="mt-1 flex items-baseline justify-between gap-2">
@@ -127,6 +143,9 @@ export default function VatPage() {
                       </th>
                       <th scope="col" className="px-3 py-2 text-right">
                         Entries
+                      </th>
+                      <th scope="col" className="px-3 py-2">
+                        <span className="sr-only">Explain</span>
                       </th>
                     </tr>
                   </thead>
@@ -171,6 +190,14 @@ export default function VatPage() {
                               —
                             </span>
                           )}
+                        </td>
+                        <td className="px-3 py-3 text-right">
+                          <BoxExplain
+                            box={row.box}
+                            label={row.what}
+                            entries={row.entries}
+                            extra={row.box === 5 ? SAMPLE_BOX5 : undefined}
+                          />
                         </td>
                       </tr>
                     ))}
