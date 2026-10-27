@@ -1,5 +1,16 @@
 # Release notes — Accnomos mobile
 
+## 0.3.2 (version code 5)
+
+Play "What's new" (440 characters):
+
+Invoices take payments on the phone: record a payment (part, all or more),
+remove one, raise a credit note for the whole invoice or chosen lines, and
+void with the reason kept. Contacts show credit on account with Apply credit
+and Refund, Bills to pay with Record payment, and Payment terms (days).
+Every action confirms first with the runtime's figures, shows its refusal
+sentence, and refreshes afterwards. Figures stay the runtime's job.
+
 ## 0.3.1 (version code 4)
 
 Play "What's new" (361 characters):
