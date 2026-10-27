@@ -260,13 +260,9 @@ const AGED_FILLS: Record<RtAgedBucket, string> = {
 /** What each contact owes as one stacked bar (not yet due / 1–30 / 31–60 / 61–90 / 90+ days late). */
 function AgedBar({ row }: { row: RtAgedRow }) {
   const total = Math.max(row.total_pence, 1);
-  let x = 0;
-  const parts = BUCKETS.map((b) => {
-    const w = (row.buckets[b] / total) * 120;
-    const seg = { b, x, w, amount: row.buckets[b] };
-    x += w;
-    return seg;
-  });
+  const widths = BUCKETS.map((b) => (row.buckets[b] / total) * 120);
+  const starts = widths.map((_, i) => widths.slice(0, i).reduce((a, w) => a + w, 0));
+  const parts = BUCKETS.map((b, i) => ({ b, x: starts[i], w: widths[i], amount: row.buckets[b] }));
   return (
     <svg
       viewBox="0 0 120 10"
@@ -506,12 +502,8 @@ export default function LiveReports() {
   // The two extra P&L calls: the previous period and the same period last
   // year, worked out from the loaded period's own dates. Reads only.
   useEffect(() => {
-    if (!account || !pl) {
-      setCompare(null);
-      return;
-    }
+    if (!account || !pl) return; // the table gates on compare.period, so a stale compare never shows
     let stale = false;
-    setCompare((c) => (c && c.period === period ? c : { period, prev: null, year: null }));
     const [ps, ys] = [prevSpan(pl.start, pl.end), yearSpan(pl.start, pl.end)];
     Promise.all([runtime.reports.pl(account, ps), runtime.reports.pl(account, ys)]).then(
       ([p, y]) => {

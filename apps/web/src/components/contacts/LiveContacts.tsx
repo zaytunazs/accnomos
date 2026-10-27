@@ -921,7 +921,10 @@ export default function LiveContacts() {
   const [kind, setKind] = useState<KindFilter>("all");
   const [sort, setSort] = useState<SortKey>("name");
   const [query, setQuery] = useState("");
-  const [selected, setSelected] = useState<string | null>(null);
+  // A deep link from Reports (?id=): open that contact's statement on arrival.
+  const [selected, setSelected] = useState<string | null>(() =>
+    typeof window === "undefined" ? null : new URLSearchParams(window.location.search).get("id"),
+  );
   const [editing, setEditing] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState<"refresh" | "import" | null>(null);
@@ -1039,18 +1042,7 @@ export default function LiveContacts() {
       /* the address bar is unavailable — the selection still shows */
     }
   };
-  // A deep link from Reports (?id=): open that contact's statement on arrival.
-  useEffect(() => {
-    try {
-      const id = new URLSearchParams(window.location.search).get("id");
-      if (id) {
-        setSelected(id);
-        setTab("contacts");
-      }
-    } catch {
-      /* no address bar — nothing to open */
-    }
-  }, []);
+
   const edit = (id: string) => {
     setSelected(id);
     setEditing(true);
