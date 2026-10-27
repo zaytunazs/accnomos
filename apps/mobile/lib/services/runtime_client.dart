@@ -470,7 +470,7 @@ class RuntimeClient {
             if (stagger != null) 'stagger': '$stagger',
             if (startMonth != null) 'start_month': '$startMonth',
             'months': '$months',
-            if (today != null) 'today': today,
+            'today': ?today,
           },
           what: 'load VAT deadlines');
 
@@ -507,7 +507,7 @@ class RuntimeClient {
   /// [status]: unmatched, matched, suggested, transfer or ignored.
   Future<List<Map<String, dynamic>>> bankLines({String? status}) =>
       _list('GET', '/books/bank/lines',
-          query: {if (status != null) 'status': status},
+          query: {'status': ?status},
           what: 'load bank lines');
 
   Future<List<Map<String, dynamic>>> bankSuggestions() =>
@@ -564,14 +564,14 @@ class RuntimeClient {
           {String? from, String? to}) =>
       _map('GET', '/contacts/${_seg(id)}/statement',
           query: {
-            if (from != null) 'from': from,
-            if (to != null) 'to': to,
+            'from': ?from,
+            'to': ?to,
           },
           what: 'load that statement');
 
   Future<Map<String, dynamic>> agedBalances({String? asOf}) =>
       _map('GET', '/contacts/aged',
-          query: {if (asOf != null) 'as_of': asOf},
+          query: {'as_of': ?asOf},
           what: 'load aged balances');
 
   // Jobs, staff and timesheets.
@@ -583,7 +583,7 @@ class RuntimeClient {
   /// Plain jobs for pickers (no ledger read). `GET /jobs/list`.
   Future<List<Map<String, dynamic>>> jobList({String? status}) =>
       _list('GET', '/jobs/list',
-          query: {if (status != null) 'status': status}, what: 'load jobs');
+          query: {'status': ?status}, what: 'load jobs');
 
   Future<Map<String, dynamic>> createJob(Map<String, dynamic> job) =>
       _map('POST', '/jobs', body: job, what: 'add that job');
@@ -627,9 +627,9 @@ class RuntimeClient {
           {String? jobId, String? staffId, String? month}) =>
       _list('GET', '/timesheets',
           query: {
-            if (jobId != null) 'job_id': jobId,
-            if (staffId != null) 'staff_id': staffId,
-            if (month != null) 'month': month,
+            'job_id': ?jobId,
+            'staff_id': ?staffId,
+            'month': ?month,
           },
           what: 'load timesheets');
 
@@ -665,7 +665,7 @@ class RuntimeClient {
   /// [taxYear] is like `2026-27`; default the current one.
   Future<List<Map<String, dynamic>>> mileage({String? taxYear}) =>
       _list('GET', '/mileage',
-          query: {if (taxYear != null) 'tax_year': taxYear},
+          query: {'tax_year': ?taxYear},
           what: 'load the mileage log');
 
   Future<Map<String, dynamic>> addMileage(Map<String, dynamic> journey) =>
@@ -682,7 +682,7 @@ class RuntimeClient {
 
   Future<Map<String, dynamic>> mileageSummary({String? taxYear}) =>
       _map('GET', '/mileage/summary',
-          query: {if (taxYear != null) 'tax_year': taxYear},
+          query: {'tax_year': ?taxYear},
           what: 'load the mileage summary');
 
   /// The quarter's allowance as a proposal in Review (one per quarter).
@@ -691,8 +691,8 @@ class RuntimeClient {
           {String? taxYear, String? period}) =>
       _map('POST', '/mileage/propose-allowance',
           query: {
-            if (taxYear != null) 'tax_year': taxYear,
-            if (period != null) 'period': period,
+            'tax_year': ?taxYear,
+            'period': ?period,
           },
           what: 'claim the mileage allowance');
 
