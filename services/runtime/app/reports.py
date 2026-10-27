@@ -340,10 +340,9 @@ def _trend_sheet(ws: Worksheet, trend: Trend) -> None:
     rows.append(
         (
             "Total",
-            *(
-                pounds(sum(getattr(m, f) for m in trend.months))
-                for f in ("sales_pence", "purchases_pence", "net_pence")
-            ),
+            pounds(sum(m.sales_pence for m in trend.months)),
+            pounds(sum(m.purchases_pence for m in trend.months)),
+            pounds(sum(m.net_pence for m in trend.months)),
         )
     )
     header = ("Month", "Sales £", "Purchases (cost of sales + overheads) £", "Net £")

@@ -42,6 +42,7 @@ from accnomos_ledger.events import LedgerEvent, Line, VatCode
 from app import jobs, paths
 from app.approve import reversal_of
 from app.books import SYSTEM, BankMatchError, Books, now
+from app.books import today as london_today
 from app.checks import normalise_vat_number
 from app.journal import DEBTORS, SALES, VAT_CONTROL
 from app.validation import LENIENT, Day, Pence, StrictBody
@@ -308,7 +309,7 @@ def price_lines(lines: list[LineIn]) -> tuple[list[InvoiceLine], list[VatSummary
 def build_invoice(
     number: str, draft: InvoiceDraft, profile: InvoiceProfile, user: str, today: date | None = None
 ) -> Invoice:
-    issue = draft.issue_date or today or now().date()
+    issue = draft.issue_date or today or london_today()
     due = draft.due_date or issue + timedelta(days=profile.terms_days)
     if due < issue:
         raise InvoiceError("The due date is before the invoice date")
@@ -741,7 +742,7 @@ async def mark_paid(
             raise InvoiceStateError(str(exc)) from exc
         paid_on = paid_on or line.date
         payment_ref = payment_ref or line.reference or line.description
-    inv.status, inv.paid_at = "paid", paid_on or now().date()
+    inv.status, inv.paid_at = "paid", paid_on or london_today()
     inv.payment_ref, inv.bank_line_id = (payment_ref or "").strip() or None, bank_line_id
     await save_invoice(books, inv)
     await books.audit(

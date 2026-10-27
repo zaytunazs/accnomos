@@ -24,6 +24,7 @@ from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError
 from app.approve import ApprovalError, approve
 from app.books import SYSTEM, Books, DocMeta, Rule, now
+from app.books import today as london_today
 from app.checks import SupplierKnowledge, decide
 from app.formats import MAX_BYTES, FormatError, guess_mime, prepare
 from app.invoicing import load_profile
@@ -48,7 +49,7 @@ def unreadable_placeholder(name: str, digest: str, reason: str) -> Proposal:
         supplier_vat_number=None,
         customer_name=None,
         invoice_number=None,
-        date=now().date().isoformat(),
+        date=london_today().isoformat(),
         currency="GBP",
         lines=[],
         net_total=0,

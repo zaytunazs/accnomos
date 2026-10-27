@@ -119,7 +119,7 @@ async def export(
     user: str = Depends(require_user),
 ) -> ExportResult:
     """Save the report as a spreadsheet in 07 Reports (a same-day file of the same name gets ' (2)'). Posts nothing."""
-    body = body or ExportBody()
+    body = body or ExportBody.model_validate({})
     day = today or current_date()
     kind = body.report
     ledger = await cb.load_ledger(books)

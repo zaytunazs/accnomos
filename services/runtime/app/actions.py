@@ -47,6 +47,7 @@ from app.ai.config import AiConfig, is_test_mode
 from app.ai.extract import ExtractionError, parse_model_json
 from app.autopilot import supplier_key
 from app.books import AUDIT, SYSTEM, Books, now
+from app.books import today as london_today
 from app.schemas import ActionKind, Clarification, ProposedAction, strict_json_schema
 
 ACTIONS_AUDIT = f"{AUDIT}/actions"
@@ -910,7 +911,7 @@ async def propose(
         return None
     if not available(out.kind):
         return NotAvailable(out.kind, UNAVAILABLE[out.kind])
-    today = today or now().date()
+    today = today or london_today()
     intent = parse_intent(out, question, today)
     if intent is None or isinstance(intent, Clarification):
         return intent

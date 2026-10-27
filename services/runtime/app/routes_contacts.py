@@ -19,7 +19,8 @@ from accnomos_connectors.base import ContactsProvider
 from accnomos_connectors.msgraph import GraphContactsProvider
 from app import contacts as cb
 from app.ai.config import is_test_mode
-from app.books import Books, now
+from app.books import Books
+from app.books import today as london_today
 from app.routes_books import get_books, require_user
 from app.schemas import VatStatus
 from app.taxyear import uk_tax_year_start
@@ -52,7 +53,7 @@ class ContactList(BaseModel):
 
 
 def _year(year_start: date | None) -> tuple[date, date]:
-    today = now().date()
+    today = london_today()
     return year_start or uk_tax_year_start(today), today
 
 
@@ -96,7 +97,7 @@ class ContactEdit(StrictBody):
 async def aged(as_of: date | None = None, books: Books = Depends(get_books)) -> cb.AgedBalances:
     """Debtors and creditors: unpaid documents by age (0-30, 31-60, 61-90, 90+ days from the document date)."""
     contacts, ledger, _ = await cb.contact_book(books)
-    return cb.aged(contacts, ledger, as_of or now().date())
+    return cb.aged(contacts, ledger, as_of or london_today())
 
 
 @router.put("/{contact_id}", response_model=cb.Contact)

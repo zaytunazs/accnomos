@@ -10,7 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field
 
 from app import mileage
-from app.books import Books, now
+from app.books import Books
+from app.books import today as london_today
 from app.mileage import LockedError, MileageEntry, MileageError, MileageSummary, Ownership, Vehicle, VehicleKind
 from app.routes_books import get_books, require_user
 from app.schemas import Proposal
@@ -53,7 +54,7 @@ def _http(exc: Exception) -> HTTPException:
 
 
 def _tax_year(tax_year: str | None) -> str:
-    ty = tax_year or mileage.tax_year_of(now().date())
+    ty = tax_year or mileage.tax_year_of(london_today())
     try:
         mileage.tax_year_bounds(ty)
     except MileageError as exc:
@@ -148,7 +149,7 @@ async def propose_allowance(
     user: str = Depends(require_user),
 ) -> ClaimResult:
     """The period's allowance as an expense proposal in Review (idempotent per period)."""
-    today = now().date()
+    today = london_today()
     ty = _tax_year(tax_year)
     try:
         proposal, created = await mileage.propose_allowance(books, ty, period or mileage.quarter_of(today), today)

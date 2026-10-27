@@ -303,7 +303,8 @@ def from_books_line(line: dict[str, Any], names: dict[str, str]) -> AuditEntry |
     ts, actor, event = _parse_ts(line.get("ts")), line.get("actor"), line.get("action")
     if ts is None or not isinstance(actor, str) or not isinstance(event, str):
         return None
-    refs = line.get("refs") if isinstance(line.get("refs"), dict) else {}
+    raw = line.get("refs")
+    refs: dict[str, Any] = raw if isinstance(raw, dict) else {}
     kind, label = actor_of(actor)
     who = names.get(str(refs.get("proposal") or ""), "a document")
     return AuditEntry(

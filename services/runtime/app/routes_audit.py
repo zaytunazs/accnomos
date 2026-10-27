@@ -7,7 +7,8 @@ from datetime import date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app import audit_view
-from app.books import Books, now
+from app.books import Books
+from app.books import today as london_today
 from app.routes_books import get_books
 
 router = APIRouter(tags=["audit"])
@@ -24,7 +25,7 @@ async def get_audit(
 ) -> audit_view.AuditPage:
     """Every line in _System/audit and _System/audit/actions for the range, with who did it (you or an agent) and a
     plain-English summary. Autopilot's own log is not repeated: its postings are already in the main one."""
-    end = end or now().date()
+    end = end or london_today()
     start = start or end - timedelta(days=audit_view.DEFAULT_DAYS)
     if start > end:
         raise HTTPException(status_code=422, detail="`from` must be on or before `to`")

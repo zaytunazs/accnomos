@@ -84,7 +84,8 @@ LONDON = ZoneInfo("Europe/London")
 
 
 def now() -> datetime:
-    return datetime.now(LONDON)
+    """Timestamps stay UTC (stored ISO strings sort and compare as one zone); only *dates* are London days (today())."""
+    return datetime.now(UTC)
 
 
 def today(tz: tzinfo | None = None) -> date:
@@ -376,7 +377,7 @@ class Books:
         """Where a document belongs once it is in order."""
         if doc.doc_type == "sales_invoice":
             return SALES
-        d = parse_iso_date(doc.date) or now().date()
+        d = parse_iso_date(doc.date) or today()
         return f"{RECEIPTS}/{_month(d)}"
 
     @classmethod
@@ -444,7 +445,7 @@ class Books:
             )
         known = {ln.id for ln in await self.stored_bank_lines()}
         fresh = [ln for ln in lines if ln.id not in known]
-        last = max((ln.date for ln in lines), default=now().date())
+        last = max((ln.date for ln in lines), default=today())
         filed = await self.free_path(BANK, f"{last.isoformat()}_{bank}.csv")
         await self.storage.write(filed, data)
         for ln in fresh:
@@ -609,7 +610,7 @@ class Books:
             log.exception("Jobs sheet left empty: a jobs file could not be read")
             jobs = []
         try:
-            vehicles = await mileage.summary(self, mileage.tax_year_of(now().date()))
+            vehicles = await mileage.summary(self, mileage.tax_year_of(today()))
         except mileage.MileageError:  # a hand-edited vehicles or mileage file must not stop the rest of the workbook
             log.exception("Vehicles sheet left empty: a vehicles or mileage file could not be read")
             vehicles = None

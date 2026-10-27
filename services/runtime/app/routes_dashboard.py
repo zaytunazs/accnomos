@@ -7,7 +7,8 @@ from datetime import date
 from fastapi import APIRouter, Depends, Query
 
 from app import dashboard
-from app.books import Books, now
+from app.books import Books
+from app.books import today as london_today
 from app.routes_books import get_books
 from app.vat_cycle import VatCycle, vat_cycle
 
@@ -23,5 +24,5 @@ async def get_dashboard(
     """Cash, owed to and by you, the VAT estimate and deadline, what needs attention, recent activity and the
     last Autopilot, intake and triage runs. Reads only; no model calls."""
     return await dashboard.build(
-        books, today or now().date(), cycle.start_month, cycle.months, vat_assumed=cycle.assumed
+        books, today or london_today(), cycle.start_month, cycle.months, vat_assumed=cycle.assumed
     )

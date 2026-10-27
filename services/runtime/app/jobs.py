@@ -335,8 +335,7 @@ async def unmark_invoiced(books: Books, invoice_id: str) -> list[TimesheetEntry]
 
         def change(raw: bytes | None) -> bytes:
             return _dump_jsonl(
-                {**r, "invoiced_in": None} if r.get("invoiced_in") == invoice_id else r
-                for r in _parse_jsonl(raw)
+                {**r, "invoiced_in": None} if r.get("invoiced_in") == invoice_id else r for r in _parse_jsonl(raw)
             )
 
         await books._update(_sheet_path(month), change)

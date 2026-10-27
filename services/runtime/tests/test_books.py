@@ -287,10 +287,11 @@ def test_books_routes_need_a_graph_token() -> None:
 
 def test_today_is_the_london_date(monkeypatch: pytest.MonkeyPatch) -> None:
     """00:30 BST on the 1st is the 1st in London, still the 30th in UTC."""
-    import app.books as books_mod
     from datetime import UTC
     from datetime import date as real_date
     from datetime import datetime as real_datetime
+
+    import app.books as books_mod
 
     fixed = real_datetime(2026, 9, 30, 23, 30, tzinfo=UTC)  # 1 Oct, 00:30 BST
 
@@ -307,4 +308,6 @@ def test_today_is_the_london_date(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(books_mod, "datetime", _FixedDateTime)
     monkeypatch.setattr(books_mod, "date", _FixedDate)
     assert books_mod.today() == real_date(2026, 10, 1)
-    assert books_mod.now().utcoffset() == books_mod.LONDON.utcoffset(fixed)
+    assert (
+        books_mod.now().utcoffset() is not None and books_mod.now().utcoffset().total_seconds() == 0
+    )  # timestamps stay UTC

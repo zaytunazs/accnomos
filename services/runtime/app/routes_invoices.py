@@ -22,7 +22,8 @@ from accnomos_ledger.bank import BankLine
 from app import invoicing as inv_
 from app.ai import remind
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
-from app.books import Books, now
+from app.books import Books
+from app.books import today as london_today
 from app.invoicing import (
     Invoice,
     InvoiceCustomer,
@@ -153,7 +154,7 @@ class InvoiceRow(Invoice):
 
 
 def _row(inv: Invoice) -> InvoiceRow:
-    return InvoiceRow(**inv.model_dump(), days_overdue=inv.overdue_days(now().date()))
+    return InvoiceRow(**inv.model_dump(), days_overdue=inv.overdue_days(london_today()))
 
 
 @router.get("", response_model=list[InvoiceRow])
@@ -316,7 +317,7 @@ async def reminder_draft(
         raise HTTPException(
             status_code=409, detail=f"Invoice {number} is {inv.status}; only unpaid sent invoices can be chased"
         )
-    return await remind.draft_reminder(inv, await inv_.load_profile(books), cfg, now().date())
+    return await remind.draft_reminder(inv, await inv_.load_profile(books), cfg, london_today())
 
 
 class ReminderSendBody(StrictBody):

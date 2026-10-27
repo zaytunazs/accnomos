@@ -33,6 +33,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from app.books import SYSTEM, Books, now
+from app.books import today as london_today
 from app.checks import decide
 from app.journal import VAT_CONTROL, draft_journal
 from app.schemas import MILEAGE_CATEGORY, Check, ExtractedDoc, ExtractedLine, MileageClaim, Proposal
@@ -452,7 +453,7 @@ async def propose_allowance(
     with any journeys logged since. Once posted, a later call claims only journeys not yet paid.
     """
     start, end = quarter_bounds(tax_year, period)
-    today = today or now().date()
+    today = today or london_today()
     if today < start:
         raise MileageError(f"{period} {tax_year} starts on {start:%d/%m/%Y}")
     covers_to = min(end, today)
@@ -562,7 +563,7 @@ async def _known_vehicle(books: Books, vehicle_id: str) -> Vehicle:
 
 
 def _not_future(d: date) -> None:
-    if d > now().date():
+    if d > london_today():
         raise MileageError("Log journeys once they have happened")
 
 
