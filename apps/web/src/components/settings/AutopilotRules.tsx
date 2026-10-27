@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
+import ByWhom from "@/components/ByWhom";
 import Explain from "@/components/Explain";
 import { EmptyState, LoadingSkeleton } from "@/components/States";
 import { autopilotOn, gbp, runtime, setAutopilotOn, type RtRule } from "@/lib/runtime";
@@ -93,6 +94,7 @@ export default function AutopilotRules({ card, heading }: { card: string; headin
         Saved when you tick &ldquo;Always do this&rdquo;. Autopilot only posts when every check passes, the VAT number is the
         same and the total is no more than twice the usual. {on ? "" : "Switched off on this device: every scan waits for you."}
       </p>
+      <ByWhom className="mt-1" code="Posting by code at L2 only" ai="rules by you" />
       {rules === null ? (
         account ? (
           <div className="mt-3">
