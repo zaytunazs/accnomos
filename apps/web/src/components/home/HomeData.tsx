@@ -69,6 +69,15 @@ export function Skeleton({ className = "" }: { className?: string }) {
   return <span aria-hidden="true" className={`inline-block animate-pulse rounded-md bg-ground ${className}`} />;
 }
 
+/** Small "Sample" pill flagging a card that shows the fictional Bramblewood books (signed out). */
+export function SampleTag() {
+  return (
+    <span className="ml-2 rounded-full bg-ground px-2 py-0.5 align-middle text-[11px] font-extrabold uppercase tracking-wide text-muted">
+      Sample
+    </span>
+  );
+}
+
 export const UNKNOWN = "—";
 
 /** "£12,480" from pence (whole pounds, as the tiles show them); "—" when unknown. */

@@ -45,42 +45,54 @@ export default function TodosTile() {
   const late = todos?.filter((t) => t.due && overdue(t.due)).length ?? 0;
 
   return (
-    <section aria-labelledby="home-todos" className="rounded-2xl border border-border bg-white p-4">
-      <h2 id="home-todos" className="text-sm font-semibold text-muted">To-dos</h2>
-      <p className="mt-1 text-2xl font-extrabold tracking-tight text-ink">{todos ? todos.length : "–"}</p>
-      <p className={`text-[13px] font-semibold ${late ? "text-warn-ink" : "text-muted"}`}>
+    <section aria-labelledby="home-todos" className="flex flex-col rounded-2xl border border-border bg-white p-4 sm:p-5">
+      <h2 id="home-todos" className="text-lg font-extrabold tracking-tight">To-dos</h2>
+      <p className="mt-1 min-h-9 text-3xl font-extrabold tracking-tight tabular-nums text-ink">{todos ? todos.length : "–"}</p>
+      <p className={`min-h-5 text-[13px] font-semibold ${late ? "text-warn-ink" : "text-muted"}`}>
         {account === null ? "Sign in to keep a to-do list" : late ? `${late} overdue` : "Add them from your inbox"}
       </p>
       {error && <RuntimeErrorNote message={error} />}
-      {todos && todos.length > 0 && (
-        <ul className="mt-3 space-y-1.5">
-          {todos.slice(0, SHOWN).map((t) => (
-            <li key={t.id} className="flex items-start justify-between gap-2 text-sm">
-              <span className="min-w-0 text-ink">
-                {t.source?.web_link ? (
-                  <a href={t.source.web_link} target="_blank" rel="noopener noreferrer" title={t.source.subject} className="hover:underline">
-                    {t.text}
-                  </a>
-                ) : (
-                  t.text
-                )}
-                {t.due && (
-                  <span className={`ml-2 text-[12px] font-bold ${overdue(t.due) ? "text-warn-ink" : "text-muted"}`}>{dueLabel(t.due)}</span>
-                )}
-              </span>
-              <button
-                type="button"
-                onClick={() => done(t.id)}
-                aria-label={`Done: ${t.text}`}
-                className="shrink-0 rounded-lg border border-border px-2 py-0.5 text-[12px] font-bold text-teal-dark hover:bg-ground"
-              >
-                Done
-              </button>
-            </li>
-          ))}
-          {todos.length > SHOWN && <li className="text-[12px] text-muted">and {todos.length - SHOWN} more</li>}
-        </ul>
-      )}
+      <div className="min-h-[7rem]">
+        {todos && todos.length > 0 && (
+          <ul className="mt-3 space-y-1.5">
+            {todos.slice(0, SHOWN).map((t) => (
+              <li key={t.id} className="flex items-start justify-between gap-2 text-sm">
+                <span className="min-w-0 text-ink">
+                  {t.source?.web_link ? (
+                    <a href={t.source.web_link} target="_blank" rel="noopener noreferrer" title={t.source.subject} className="hover:underline">
+                      {t.text}
+                    </a>
+                  ) : (
+                    t.text
+                  )}
+                  {t.due && (
+                    <span className={`ml-2 text-[12px] font-bold ${overdue(t.due) ? "text-warn-ink" : "text-muted"}`}>{dueLabel(t.due)}</span>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => done(t.id)}
+                  aria-label={`Done: ${t.text}`}
+                  className="shrink-0 rounded-lg border border-border px-2 py-0.5 text-[12px] font-bold text-teal-dark hover:bg-ground"
+                >
+                  Done
+                </button>
+              </li>
+            ))}
+            {todos.length > SHOWN && <li className="text-[12px] text-muted">and {todos.length - SHOWN} more</li>}
+          </ul>
+        )}
+      </div>
+      {account ? (
+        <div className="mt-auto pt-4">
+          <a
+            href="#home-inbox"
+            className="inline-block whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark"
+          >
+            Go to inbox
+          </a>
+        </div>
+      ) : null}
     </section>
   );
 }

@@ -2,14 +2,13 @@ import Link from "next/link";
 import Activity from "@/components/home/Activity";
 import AskBar from "@/components/home/AskBar";
 import Deadlines from "@/components/home/Deadlines";
-import Greeting from "@/components/home/Greeting";
+import HomeError from "@/components/home/HomeError";
+import { AttentionCard, TodayCard } from "@/components/home/Tiles";
 import { HomeData, SignedOut } from "@/components/home/HomeData";
 import InboxTriage from "@/components/home/InboxTriage";
 import Pitch from "@/components/home/Pitch";
-import HomeError from "@/components/home/HomeError";
 import PlanToday from "@/components/home/PlanToday";
 import SetupChecklist from "@/components/home/SetupChecklist";
-import Tiles from "@/components/home/Tiles";
 import TodosTile from "@/components/home/TodosTile";
 
 export const metadata = { title: "Home · Accnomos" };
@@ -17,7 +16,7 @@ export const metadata = { title: "Home · Accnomos" };
 export default function HomePage() {
   return (
     <div className="flex flex-col gap-5">
-      {/* Greeting, Tiles, Deadlines and Activity share one GET /books/dashboard (the sample when signed out). */}
+      {/* Greeting, figures, Deadlines and Activity share one GET /books/dashboard (the sample when signed out). */}
       <HomeData>
         <SignedOut>
           <Pitch />
@@ -31,18 +30,20 @@ export default function HomePage() {
             </Link>
           </div>
         </SignedOut>
-        <Greeting />
-        <HomeError />
         <AskBar />
+        <HomeError />
         <SetupChecklist />
-        <PlanToday />
-        <div className="grid grid-cols-1 items-start gap-3 min-[900px]:grid-cols-[2fr_1fr]">
-          <InboxTriage />
+        {/* One calm grid, signed in or out: 1 column at 390 px, 2 at 768, 3 at 1280.
+            Today spans the row; the Inbox and Recent activity take two. */}
+        <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <TodayCard />
+          <AttentionCard />
           <TodosTile />
+          <InboxTriage />
+          <Deadlines />
+          <PlanToday />
+          <Activity />
         </div>
-        <Tiles />
-        <Deadlines />
-        <Activity />
       </HomeData>
     </div>
   );

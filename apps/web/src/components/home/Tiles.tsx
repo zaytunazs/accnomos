@@ -3,7 +3,8 @@
 import Link from "next/link";
 import type { RtDashboard } from "@/lib/runtime";
 import { tiles as sampleTiles, type Tile } from "@/lib/sample-home";
-import { pounds, shortDate, Skeleton, UNKNOWN, useHome } from "./HomeData";
+import Greeting from "./Greeting";
+import { pounds, SampleTag, shortDate, Skeleton, UNKNOWN, useHome } from "./HomeData";
 
 const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
 
@@ -63,48 +64,129 @@ function liveTiles(d: RtDashboard, annualVat: boolean): Tile[] {
     attentionTile(d.attention)];
 }
 
-const LABELS = ["Cash in bank", "Owed to you", "Owed by you", "VAT estimate", "Needs attention"];
+const NUMBER_LABELS = ["Cash in bank", "Owed to you", "Owed by you", "VAT estimate"];
 
-/** Home tiles: GET /books/dashboard when signed in, the sample when signed out. */
-export default function Tiles() {
-  const home = useHome();
-  const tiles: Tile[] | null =
-    home.mode === "sample" ? sampleTiles
-    : home.mode === "live" ? liveTiles(home.data, home.annualVat)
-    : home.mode === "error" ? LABELS.map((label) => ({ label, value: UNKNOWN, sub: "Could not reach your books" }))
-    : null;
-
-  return (
-    <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 min-[900px]:grid-cols-3 min-[1180px]:grid-cols-5">
-      {tiles === null
-        ? LABELS.map((label) => (
-            <div key={label} className="rounded-2xl border border-border bg-white p-4" aria-busy="true">
-              <p className="text-sm font-semibold text-muted">{label}</p>
-              <Skeleton className="mt-2 h-7 w-24" />
-              <Skeleton className="mt-2 h-4 w-36" />
-            </div>
-          ))
-        : tiles.map((tile) => <TileCard key={tile.label} tile={tile} />)}
-    </div>
-  );
+function errorTiles(): Tile[] {
+  return NUMBER_LABELS.map((label) => ({ label, value: UNKNOWN, sub: "Could not reach your books" }));
 }
 
-function TileCard({ tile }: { tile: Tile }) {
-  const warn = tile.tone === "warn";
-  const subClass = warn
-    ? "text-sm font-bold text-warn-ink underline"
-    : `text-[13px] font-semibold ${tile.tone === "amber" ? "text-amber" : "text-muted"}`;
+/** One figure without card chrome (the Today card is the card): label, value, then its link. */
+function NumberBlock({ tile }: { tile: Tile }) {
+  const valueClass = tile.tone === "amber" ? "text-amber" : "text-ink";
+  const subClass = `text-[13px] font-semibold ${tile.tone === "amber" ? "text-amber" : "text-muted"}`;
   return (
-    <div role="group" aria-label={tile.label} className={`rounded-2xl border p-4 ${warn ? "border-warn-border bg-warn-bg" : "border-border bg-white"}`}>
-      <p className={`text-sm font-semibold ${warn ? "text-warn-ink" : "text-muted"}`}>{tile.label}</p>
-      <p className={`mt-1 text-2xl font-extrabold tracking-tight ${warn ? "text-warn-ink" : "text-ink"}`}>{tile.value}</p>
+    <div role="group" aria-label={tile.label}>
+      <p className="min-h-5 text-sm font-semibold text-muted">{tile.label}</p>
+      <p className={`mt-1 min-h-8 text-2xl font-extrabold tracking-tight tabular-nums ${valueClass}`}>{tile.value}</p>
       {tile.href ? (
         <Link href={tile.href} className={`mt-1 inline-block hover:underline ${subClass}`}>
           {tile.sub}
         </Link>
       ) : (
-        <p className={`mt-1 ${subClass}`}>{tile.sub}</p>
+        <p className={`mt-1 min-h-5 ${subClass}`}>{tile.sub}</p>
       )}
     </div>
+  );
+}
+
+/**
+ * Home › Today: the greeting plus the four key figures from GET /books/dashboard
+ * (the Bramblewood sample when signed out). The figures sit in the one `aria-live`
+ * region on Home, so screen readers hear them land; the skeleton blocks reserve
+ * their heights so nothing below moves.
+ */
+export function TodayCard() {
+  const home = useHome();
+  const sample = home.mode === "sample";
+  const tiles: Tile[] | null =
+    sample ? sampleTiles.slice(0, 4)
+    : home.mode === "live" ? liveTiles(home.data, home.annualVat).slice(0, 4)
+    : home.mode === "error" ? errorTiles()
+    : null;
+
+  return (
+    <section aria-label="Today" className="col-span-full rounded-2xl border border-border bg-white p-4 sm:p-5">
+      <Greeting />
+      {tiles === null ? (
+        <div aria-busy="true" className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+          {NUMBER_LABELS.map((label) => (
+            <div key={label}>
+              <p className="text-sm font-semibold text-muted">{label}</p>
+              <Skeleton className="mt-2 h-8 w-24" />
+              <Skeleton className="mt-2 h-5 w-36 max-w-full" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div aria-live="polite" className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
+          {tiles.map((tile) => <NumberBlock key={tile.label} tile={tile} />)}
+        </div>
+      )}
+      <div className="mt-4">
+        <Link
+          href="/review"
+          className="inline-block whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark"
+        >
+          Review your books
+        </Link>
+        {sample && <SampleTag />}
+      </div>
+    </section>
+  );
+}
+
+/**
+ * Home › Needs attention: the one count from GET /books/dashboard, with the one
+ * place to clear it. Signed out it shows the sample's three proposals.
+ */
+export function AttentionCard() {
+  const home = useHome();
+  const sample = home.mode === "sample";
+  const tile: Tile | null =
+    sample ? sampleTiles[4]
+    : home.mode === "live" ? attentionTile(home.data.attention)
+    : home.mode === "error" ? { label: "Needs attention", value: UNKNOWN, sub: "Could not reach your books" }
+    : null;
+
+  return (
+    <section aria-labelledby="attention-heading" className="flex flex-col rounded-2xl border border-border bg-white p-4 sm:p-5">
+      <h2 id="attention-heading" className="text-lg font-extrabold tracking-tight">
+        Needs attention{sample && <SampleTag />}
+      </h2>
+      {tile === null ? (
+        <div aria-busy="true">
+          <Skeleton className="mt-2 h-9 w-16" />
+          <Skeleton className="mt-2 h-5 w-40 max-w-full" />
+        </div>
+      ) : (
+        <div role="group" aria-label={tile.label} className="mt-1">
+          <p className={`min-h-9 text-3xl font-extrabold tracking-tight tabular-nums ${tile.tone === "warn" ? "text-warn-ink" : "text-ink"}`}>
+            {tile.value}
+          </p>
+          <p className={`mt-1 min-h-5 text-[13px] font-semibold ${tile.tone === "warn" ? "text-warn-ink" : "text-muted"}`}>
+            {tile.sub}
+          </p>
+        </div>
+      )}
+      <div className="mt-auto pt-4">
+        {tile !== null && tile.href ? (
+          <Link
+            href={tile.href}
+            className="inline-block whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark"
+          >
+            {tile.href === "/review" ? `Review ${tile.value} item${tile.value === "1" ? "" : "s"}`
+              : tile.href === "/bank" ? "Match bank lines"
+              : "Chase overdue invoices"}
+          </Link>
+        ) : (
+          <Link
+            href="/review"
+            className="inline-block whitespace-nowrap rounded-xl border border-border px-4 py-2 text-sm font-bold text-teal-dark hover:bg-ground"
+          >
+            Open Review
+          </Link>
+        )}
+      </div>
+    </section>
   );
 }

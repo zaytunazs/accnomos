@@ -79,13 +79,23 @@ export default function InboxTriage() {
     if (!fresh) queueMicrotask(() => void run(account));
   }, [on, account, result, run]);
 
-  if (on === null) return null;
+  if (on === null) {
+    return (
+      <section aria-labelledby="home-inbox" aria-busy="true" className="rounded-2xl border border-border bg-white p-4 sm:p-5 md:col-span-2 xl:col-span-2">
+        <h2 id="home-inbox" className="text-lg font-extrabold tracking-tight text-ink">Inbox</h2>
+        <div className="mt-3 flex min-h-[7rem] flex-col gap-2">
+          <span aria-hidden="true" className="h-4 w-2/3 animate-pulse rounded-md bg-ground" />
+          <span aria-hidden="true" className="h-4 w-1/2 animate-pulse rounded-md bg-ground" />
+        </div>
+      </section>
+    );
+  }
 
   if (!on) {
     return (
-      <section aria-labelledby="home-inbox" className="rounded-2xl border border-border bg-white px-4 py-3">
-        <h2 id="home-inbox" className="text-[17px] font-extrabold text-ink">Inbox</h2>
-        <p className="mt-1 text-sm text-muted">
+      <section aria-labelledby="home-inbox" className="rounded-2xl border border-border bg-white p-4 sm:p-5 md:col-span-2 xl:col-span-2">
+        <h2 id="home-inbox" className="text-lg font-extrabold tracking-tight text-ink">Inbox</h2>
+        <p className="mt-1 min-h-[7rem] text-sm leading-6 text-muted">
           A one-line summary of the week&apos;s emails from customers, suppliers, HMRC and your accountant, with suggested
           replies and to-dos.{" "}
           <Link href="/settings#automation" className="font-bold text-teal-dark">Turn on Inbox triage in Settings</Link>
@@ -101,11 +111,11 @@ export default function InboxTriage() {
   const last = lastTriage();
 
   return (
-    <section aria-labelledby="home-inbox" className="rounded-2xl border border-border bg-white px-4 py-3">
+    <section aria-labelledby="home-inbox" className="rounded-2xl border border-border bg-white p-4 sm:p-5 md:col-span-2 xl:col-span-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 id="home-inbox" className="text-[17px] font-extrabold text-ink">Inbox</h2>
-          <p className="text-[13px] font-medium text-muted">
+          <h2 id="home-inbox" className="text-lg font-extrabold tracking-tight text-ink">Inbox</h2>
+          <p className="min-h-5 text-[13px] font-medium text-muted">
             {busy
               ? "Reading the last 7 days…"
               : last
@@ -117,16 +127,23 @@ export default function InboxTriage() {
           type="button"
           disabled={!account || busy}
           onClick={() => account && run(account)}
-          className="shrink-0 rounded-xl border border-border px-3 py-1.5 text-sm font-bold text-teal-dark hover:bg-ground disabled:opacity-60"
+          className="shrink-0 whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-60"
         >
           {busy ? "Checking…" : "Refresh"}
         </button>
       </div>
 
-      {account === null && <p className="mt-2 text-sm text-muted">Sign in with Microsoft to see your inbox here.</p>}
+      {account === null && <p className="mt-2 min-h-[7rem] text-sm leading-6 text-muted">Sign in with Microsoft to see your inbox here.</p>}
       {error && <RuntimeErrorNote message={error} title="Could not read your inbox" />}
       {result && !busy && threads.length === 0 && (
-        <p className="mt-2 text-sm text-muted">Nothing from customers, suppliers, HMRC or your accountant this week.</p>
+        <p className="mt-2 min-h-[7rem] text-sm leading-6 text-muted">Nothing from customers, suppliers, HMRC or your accountant this week.</p>
+      )}
+      {busy && !result && (
+        <div aria-busy="true" className="mt-3 flex min-h-[7rem] flex-col gap-2">
+          <span aria-hidden="true" className="h-4 w-full animate-pulse rounded-md bg-ground" />
+          <span aria-hidden="true" className="h-4 w-5/6 animate-pulse rounded-md bg-ground" />
+          <span aria-hidden="true" className="h-4 w-2/3 animate-pulse rounded-md bg-ground" />
+        </div>
       )}
 
       {shown.length > 0 && account && (
