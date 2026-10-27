@@ -2,43 +2,12 @@
 
 import type { AccountInfo } from "@azure/msal-browser";
 import { RUNTIME_URL } from "./ai-config";
+import { FOLDERS, README_TEXT, RENAMED } from "./folders";
 import { getToken, isPersonalAccount, storageScopesFor } from "./msal";
 
 /** Test-mode builds talk to the runtime's Graph look-alike over its fake storage (services/runtime/app/testmode.py). */
 const GRAPH =
   process.env.NEXT_PUBLIC_TEST_MODE === "1" ? `${RUNTIME_URL}/__test/graph/v1.0` : "https://graph.microsoft.com/v1.0";
-
-/** PRD §4.1 folder tree. Personal accounts: OneDrive app folder (Apps/Accnomos). Work accounts: /Accnomos in the root. */
-export const FOLDERS = [
-  "00 Inbox",
-  "01 Receipts",
-  "02 Sales invoices",
-  "03 Bank statements",
-  "04 Needs a look",
-  "05 VAT returns",
-  "06 Reports",
-  "_System",
-  "_System/audit",
-  "_System/docs",
-  "_System/proposals",
-  "_System/Ledger/events",
-];
-
-export const README_TEXT = `These are your books.
-
-This folder was created by Accnomos. Everything the app knows about your business is in here, in plain files:
-- 00 Inbox: drop receipts, invoices or statements here (photo, PDF, email attachment) and Accnomos will read them.
-- 01-02: documents Accnomos has filed, renamed like "2026-10-21 Screwfix £38.47.pdf".
-- 03 Bank statements: the statement files you imported.
-- 04 Needs a look: anything odd (duplicates, missing VAT number, unreadable), with a reason.
-- 05 VAT returns: the 9-box calculation and HMRC receipt for each period.
-- Books.xlsx: a spreadsheet of your books, rebuilt from the files in _System. Do not edit it; it is overwritten.
-- _System: the ledger events and the audit log (never edited: a correction is a new entry that reverses
-  the old one), plus rules you approved, contacts, jobs, staff, timesheets, vehicles and your mileage log.
-
-You can open all of this without the app. If you disconnect Accnomos, the files stay yours.
-Sample data is labelled "SAMPLE — FICTIONAL COMPANY".
-`;
 
 export interface DriveItem {
   id: string;
@@ -156,9 +125,17 @@ export async function setupBooksFolder(account: AccountInfo, onProgress?: (p: Se
   onProgress?.({ step: "Finding your Accnomos folder", done, total });
   const root = await ensureRoot(account);
   done++;
+  // A folder still under its old name is renamed by the runtime (services/runtime/app/layout.py); creating the new
+  // one here first would leave the two side by side.
+  const top = new Set((await listChildren(account)).filter((i) => i.folder).map((i) => i.name.toLowerCase()));
+  const waiting = new Set(
+    Object.entries(RENAMED)
+      .filter(([old, now]) => top.has(old.toLowerCase()) && !top.has(now.toLowerCase()))
+      .map(([, now]) => now),
+  );
   for (const f of FOLDERS) {
     onProgress?.({ step: `Creating ${f}`, done, total });
-    await ensureFolder(account, f);
+    if (!waiting.has(f.split("/")[0])) await ensureFolder(account, f);
     done++;
   }
   onProgress?.({ step: "Writing README.txt", done, total });

@@ -13,11 +13,11 @@ export const sampleAnswer: RtAskAnswer = {
     "If Howdens sends the VAT invoice before 7 Nov, your bill drops to £1,728.00.",
   ].join("\n"),
   key_numbers: [
-    { label: "Net VAT (Box 5), Q3", value: "£2,140.00", source: "05 VAT returns/2026-Q3/return.json" },
-    { label: "Net VAT (Box 5), Q2", value: "£1,520.00", source: "05 VAT returns/2026-Q2/return.json" },
-    { label: "Howdens VAT waiting", value: "£412.00", source: "04 Needs a look/2026-09-18 Howdens £2,472.00.pdf" },
+    { label: "Net VAT (Box 5), Q3", value: "£2,140.00", source: "06 VAT returns/2026-Q3/return.json" },
+    { label: "Net VAT (Box 5), Q2", value: "£1,520.00", source: "06 VAT returns/2026-Q2/return.json" },
+    { label: "Howdens VAT waiting", value: "£412.00", source: "02 Needs a look/2026-09-18 Howdens £2,472.00.pdf" },
   ],
-  citations: ["05 VAT returns/2026-Q3/return.json", "_System/Ledger/events/2026-09/", "Books.xlsx"],
+  citations: ["06 VAT returns/2026-Q3/return.json", "_System/Ledger/events/2026-09/", "Books.xlsx"],
   suggested_actions: [
     { label: "Chase Howdens for the VAT invoice", kind: "chase_supplier", arg: "Howdens" },
     { label: "Show Box 4 entries", kind: "open_vat", arg: null },

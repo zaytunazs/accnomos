@@ -6,7 +6,7 @@ import { runtime } from "@/lib/runtime";
 
 const MAX = 5 * 1024 * 1024; // the runtime's limit (routes_bank.py MAX_CSV)
 
-/** Drop (or pick) bank statement CSVs. The runtime files each one as "03 Bank statements/{date}_{bank}.csv". */
+/** Drop (or pick) bank statement CSVs. The runtime files each one as "04 Bank statements/{date}_{bank}.csv". */
 export default function BankUpload({ account, onDone }: { account: AccountInfo | null; onDone: () => void }) {
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);

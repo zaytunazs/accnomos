@@ -83,7 +83,7 @@ export const activity: ActivityItem[] = [
   },
   {
     time: "17:41",
-    text: "Moved Travis Perkins receipt to 04 Needs a look — possible duplicate of 14 Oct",
+    text: "Moved Travis Perkins receipt to 02 Needs a look — possible duplicate of 14 Oct",
     actor: "Checker · code",
     dot: "amber",
   },

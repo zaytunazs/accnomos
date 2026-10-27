@@ -50,6 +50,15 @@ export class Runtime {
     return (await (await this.request.get(`${RUNTIME_URL}/__test/state`)).json()).sent;
   }
 
+  /** Write a file straight into the fake OneDrive (parent folders are created), as the user could by hand. */
+  async putFile(path: string, text: string): Promise<void> {
+    const put = await this.request.put(`${RUNTIME_URL}/__test/graph/v1.0/me/drive/special/approot:/${path}:/content`, {
+      data: text,
+      headers: { "Content-Type": "text/plain" },
+    });
+    expect(put.ok(), `PUT ${path} -> ${put.status()}`).toBeTruthy();
+  }
+
   /** Put a gold receipt in 00 Inbox, as if the user had dropped it there in OneDrive. */
   async dropInInbox(file = GOLD): Promise<void> {
     const put = await this.request.put(`${RUNTIME_URL}/__test/graph/v1.0/me/drive/special/approot:/00 Inbox/${file}.png:/content`, {

@@ -251,6 +251,8 @@ export const runtime = {
   deleteTodo: (a: AccountInfo, id: string) => call<RtTodo>(a, `/todos/${encodeURIComponent(id)}`, { method: "DELETE" }),
   /** POST /books/rebuild: regenerate Books.xlsx from the event files now. */
   rebuild: (a: AccountInfo) => call<RtRebuild>(a, "/books/rebuild", { method: "POST" }),
+  /** GET /books/layout: renames old-named folders (once) and lists old/new pairs left side by side. */
+  layout: (a: AccountInfo) => call<RtLayout>(a, "/books/layout"),
   /** GET /books/deadlines?stagger=1 | start_month=5 | months=1 (see lib/business.ts deadlinesQuery). */
   deadlines: (a: AccountInfo, query: string) => call<RtDeadlines>(a, `/books/deadlines?${query}`),
   /** GET /books/dashboard: the Home tiles in one call (same VAT query as deadlines, plus `today`). */
@@ -386,7 +388,7 @@ export const runtime = {
     call<RtPayRun>(a, "/payroll/runs/prepare", { method: "POST", body: JSON.stringify({ period, pay_date: payDate ?? null }) }),
   editPayRun: (a: AccountInfo, period: string, lines: RtPayLineEdit[], payDate?: string | null) =>
     call<RtPayRun>(a, `/payroll/runs/${period}`, { method: "PUT", body: JSON.stringify({ lines, pay_date: payDate ?? null }) }),
-  /** Saves 04 Payroll/<period>.csv in OneDrive and returns the CSV text. */
+  /** Saves 05 Payroll/<period>.csv in OneDrive and returns the CSV text. */
   exportPayRun: (a: AccountInfo, period: string) =>
     call<{ path: string; csv: string; estimate: string }>(a, `/payroll/runs/${period}/export`, { method: "POST" }),
   /** The figures your payroll provider calculated, not the estimate. */
@@ -883,6 +885,13 @@ export interface RtMileageSummary {
   status: "unmatched" | "matched" | "suggested";
 }
 
+/** GET /books/layout (services/runtime/app/layout.py). */
+export interface RtLayout {
+  moved: { old: string; new: string }[];
+  conflicts: { old: string; new: string; old_is_empty: boolean }[];
+  warning: string | null;
+}
+
 /** POST /books/rebuild (services/runtime/app/routes_books.py). */
 export interface RtRebuild {
   path: string;
@@ -1124,7 +1133,7 @@ export interface RtVatView {
   period: string; // "2026-Q4" (quarterly) or "2026-11" (monthly)
   label: string; // "Oct–Dec 2026"
   current: boolean;
-  submitted: boolean; // a relay submission receipt is saved in 05 VAT returns
+  submitted: boolean; // a relay submission receipt is saved in 06 VAT returns
   can_submit: boolean; // current or previous period and not yet submitted
   boxes: RtVatBox[];
   event_ids: string[];
