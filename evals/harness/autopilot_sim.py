@@ -42,7 +42,9 @@ import os
 import statistics
 import sys
 import time
-from collections import Counter, defaultdict
+from collections import Counter
+from collections.abc import Callable
+from functools import partial
 from dataclasses import dataclass, field, replace
 from datetime import date, timedelta
 from pathlib import Path
@@ -89,7 +91,7 @@ class Doc:
     id: str
     pass_: str
     render: str  # clean | messy
-    png: bytes
+    image: Callable[[], bytes]  # rendered when fed
     gold: dict[str, Any]  # gold receipt JSON, re-dated where the seed re-dated it
     gold_file: str
     dup: str = ""  # "" | "new_photo" (posted receipt, photographed again) | "exact_file" | "seeded_copy" (see documents())
@@ -168,22 +170,22 @@ def documents(plan: sd.Plan, golds: dict[str, dict[str, Any]], passes: list[str]
     docs: list[Doc] = []
     if "inbox" in passes:
         for d in plan.inbox:
-            docs.append(Doc(f"inbox/{d.gold}", "inbox", "clean", sd.render_png(d.text), redated(golds[d.gold], d), d.gold,
-                            expect=d.expect))
+            docs.append(Doc(f"inbox/{d.gold}", "inbox", "clean", partial(sd.render_png, d.text), redated(golds[d.gold], d),
+                            d.gold, expect=d.expect))
     for render in ("clean", "messy"):
         if render not in passes:
             continue
         for i, (f, g) in enumerate(sorted(golds.items())):
-            png = render_receipt(g["printed_text"], messy=render == "messy", seed=i, damage=g.get("damage"))
+            png = partial(render_receipt, g["printed_text"], messy=render == "messy", seed=i, damage=g.get("damage"))
             docs.append(Doc(f"{render}/{f}", render, render, png, g, f, dup="seeded_copy" if f in posted_golds else "",
                             expect=expected_status(g)))
     if "dupes" in passes:
         purchases = [d for d in plan.posted if d.extracted["doc_type"] != "sales_invoice"]
         for i, d in enumerate(purchases):
-            docs.append(Doc(f"dupes/photo/{d.gold}@{d.date}", "dupes", "messy",
-                            render_receipt(d.text, messy=True, seed=1000 + i), redated(golds[d.gold], d), d.gold, dup="new_photo"))
+            docs.append(Doc(f"dupes/photo/{d.gold}@{d.date}", "dupes", "messy", partial(render_receipt, d.text, messy=True,
+                            seed=1000 + i), redated(golds[d.gold], d), d.gold, dup="new_photo"))
         for d in purchases[:EXACT_DUPES]:
-            docs.append(Doc(f"dupes/exact/{d.gold}@{d.date}", "dupes", "clean", sd.render_png(d.text),
+            docs.append(Doc(f"dupes/exact/{d.gold}@{d.date}", "dupes", "clean", partial(sd.render_png, d.text),
                             redated(golds[d.gold], d), d.gold, dup="exact_file"))
     if limit:
         per: dict[str, int] = Counter()
@@ -244,7 +246,7 @@ async def feed(books: Books, d: Doc, cfg: AiConfig, plan: sd.Plan, origin: dict[
     gold_decision["rule_origin"] = origin.get(gold_decision["rule"] or "")
     name = f"{d.id.replace('/', '_').replace('@', '_')}.png"
     path = f"{INBOX}/{name}"
-    await books.storage.write(path, d.png)
+    await books.storage.write(path, d.image())
     period = plan.current if d.pass_ == "inbox" else period_of(d, plan)
     t0 = time.perf_counter()
     try:
