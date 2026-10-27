@@ -39,6 +39,20 @@
       "false_share_of_posts": 0.1141,
       "missed_rate": 0.375
     },
+    "without_seeded_copies": {
+      "docs": 407,
+      "errors": 0,
+      "would_post": 132,
+      "proposed": 157,
+      "needs_a_look": 118,
+      "false_posts": 0,
+      "correct_posts": 132,
+      "should_post": 200,
+      "missed_posts": 75,
+      "false_post_rate": 0.0,
+      "false_share_of_posts": 0.0,
+      "missed_rate": 0.375
+    },
     "history_rules_only": {
       "docs": 467,
       "errors": 0,
@@ -577,34 +591,49 @@
         "clean_1of2",
         "clean_2of2",
         "messy_1of2",
+        "messy_2of2",
         "dupes"
       ]
     },
     "all": {
-      "docs": 367,
+      "docs": 467,
       "errors": 0,
-      "would_post": 126,
-      "proposed": 196,
-      "needs_a_look": 45,
+      "would_post": 165,
+      "proposed": 243,
+      "needs_a_look": 59,
       "false_posts": 17,
-      "correct_posts": 109,
-      "should_post": 148,
-      "missed_posts": 42,
-      "false_post_rate": 0.0463,
-      "false_share_of_posts": 0.1349,
-      "missed_rate": 0.2838
+      "correct_posts": 148,
+      "should_post": 200,
+      "missed_posts": 58,
+      "false_post_rate": 0.0364,
+      "false_share_of_posts": 0.103,
+      "missed_rate": 0.29
+    },
+    "without_seeded_copies": {
+      "docs": 407,
+      "errors": 0,
+      "would_post": 149,
+      "proposed": 202,
+      "needs_a_look": 56,
+      "false_posts": 1,
+      "correct_posts": 148,
+      "should_post": 200,
+      "missed_posts": 58,
+      "false_post_rate": 0.0025,
+      "false_share_of_posts": 0.0067,
+      "missed_rate": 0.29
     },
     "history_rules_only": {
-      "docs": 367,
+      "docs": 467,
       "errors": 0,
       "would_post": 16,
-      "proposed": 196,
-      "needs_a_look": 45,
+      "proposed": 243,
+      "needs_a_look": 59,
       "false_posts": 16,
       "correct_posts": 0,
       "should_post": 0,
       "missed_posts": 0,
-      "false_post_rate": 0.0436,
+      "false_post_rate": 0.0343,
       "false_share_of_posts": 1.0,
       "missed_rate": null
     },
@@ -624,29 +653,29 @@
         "missed_rate": 0.2469
       },
       "messy": {
-        "docs": 55,
+        "docs": 139,
         "errors": 0,
-        "would_post": 18,
-        "proposed": 30,
-        "needs_a_look": 7,
+        "would_post": 56,
+        "proposed": 72,
+        "needs_a_look": 11,
         "false_posts": 0,
-        "correct_posts": 18,
-        "should_post": 24,
-        "missed_posts": 8,
+        "correct_posts": 56,
+        "should_post": 69,
+        "missed_posts": 18,
         "false_post_rate": 0.0,
         "false_share_of_posts": 0.0,
-        "missed_rate": 0.3333
+        "missed_rate": 0.2609
       },
       "handwritten": {
-        "docs": 5,
+        "docs": 8,
         "errors": 0,
         "would_post": 0,
-        "proposed": 4,
-        "needs_a_look": 1,
+        "proposed": 5,
+        "needs_a_look": 3,
         "false_posts": 0,
         "correct_posts": 0,
-        "should_post": 4,
-        "missed_posts": 4,
+        "should_post": 6,
+        "missed_posts": 6,
         "false_post_rate": 0.0,
         "false_share_of_posts": null,
         "missed_rate": 1.0
@@ -666,18 +695,18 @@
         "missed_rate": null
       },
       "no_vrn": {
-        "docs": 51,
+        "docs": 64,
         "errors": 0,
-        "would_post": 29,
-        "proposed": 10,
-        "needs_a_look": 12,
+        "would_post": 30,
+        "proposed": 14,
+        "needs_a_look": 20,
         "false_posts": 0,
-        "correct_posts": 29,
-        "should_post": 39,
-        "missed_posts": 10,
+        "correct_posts": 30,
+        "should_post": 44,
+        "missed_posts": 14,
         "false_post_rate": 0.0,
         "false_share_of_posts": 0.0,
-        "missed_rate": 0.2564
+        "missed_rate": 0.3182
       }
     },
     "by_pass": {
@@ -710,18 +739,18 @@
         "missed_rate": 0.2921
       },
       "messy": {
-        "docs": 100,
+        "docs": 200,
         "errors": 0,
-        "would_post": 35,
-        "proposed": 54,
-        "needs_a_look": 11,
+        "would_post": 74,
+        "proposed": 101,
+        "needs_a_look": 25,
         "false_posts": 8,
-        "correct_posts": 27,
-        "should_post": 37,
-        "missed_posts": 12,
-        "false_post_rate": 0.08,
-        "false_share_of_posts": 0.2286,
-        "missed_rate": 0.3243
+        "correct_posts": 66,
+        "should_post": 89,
+        "missed_posts": 28,
+        "false_post_rate": 0.04,
+        "false_share_of_posts": 0.1081,
+        "missed_rate": 0.3146
       },
       "dupes": {
         "docs": 42,
@@ -783,16 +812,16 @@
       }
     },
     "two_x": {
-      "refused_with_2x_among_reasons": 5,
+      "refused_with_2x_among_reasons": 7,
       "refused_by_2x_alone": 0,
       "of_which_would_be_false_posts": 0,
       "of_which_would_be_correct_posts": 0
     },
     "seconds": {
-      "mean": 38.9,
-      "median": 36.7,
-      "p95": 59.2,
-      "max": 87.5
+      "mean": 40.8,
+      "median": 38.3,
+      "p95": 69.6,
+      "max": 96.9
     },
     "verifier_seconds": {
       "mean": null,
@@ -801,21 +830,21 @@
       "max": null
     },
     "refusal_reasons": {
+      "ARITH_LINES warned": 62,
+      "ARITH_TOTALS warned": 62,
       "Looks like a document already in the boo": 62,
-      "ARITH_LINES warned": 51,
-      "ARITH_TOTALS warned": 48,
-      "CONFIDENCE warned": 40,
-      "ARITH_TOTALS failed": 12,
-      "VAT_NUMBER_REQUIRED failed": 12,
-      "VAT treatment differs": 11,
-      "VAT number differs": 10,
+      "CONFIDENCE warned": 61,
+      "VAT_NUMBER_REQUIRED failed": 20,
+      "ARITH_TOTALS failed": 17,
+      "VAT treatment differs": 15,
+      "VAT number differs": 12,
       "DUPLICATE failed": 9,
-      "over 2x": 5,
-      "ARITH_LINES failed": 4,
+      "over 2x": 7,
+      "ARITH_LINES failed": 7,
+      "VAT_MATH failed": 6,
+      "zero total": 4,
       "VAT_NUMBER_FORMAT failed": 3,
-      "zero total": 3,
-      "DATE_IN_PERIOD warned": 3,
-      "VAT_MATH failed": 3
+      "DATE_IN_PERIOD warned": 3
     },
     "false_posts": [
       {
