@@ -70,12 +70,18 @@ const ACTION_HREF: Record<RtSuggestedAction["kind"], string | null> = {
   open_review: "/review",
   chase_supplier: "/review",
   open_vat: "/vat",
+  plan_day: "/", // Home opens the plan for ?plan=YYYY-MM-DD
   none: null,
 };
 
+function actionHref(a: RtSuggestedAction): string | null {
+  if (a.kind === "plan_day") return a.arg && /^\d{4}-\d{2}-\d{2}$/.test(a.arg) ? `/?plan=${a.arg}` : null;
+  return ACTION_HREF[a.kind];
+}
+
 /** One checked answer: words, key numbers, cited files and next steps. */
 export default function AnswerCard({ answer }: { answer: RtAskAnswer }) {
-  const actions = answer.suggested_actions.filter((a) => ACTION_HREF[a.kind]);
+  const actions = answer.suggested_actions.filter((a) => actionHref(a));
   return (
     <article className="rounded-2xl border border-border bg-white p-5">
       {answer.fallback_reason && (
@@ -111,7 +117,7 @@ export default function AnswerCard({ answer }: { answer: RtAskAnswer }) {
       )}
 
       <p className="mt-3 text-[13px] text-muted">
-        Numbers by code · words by {answer.model}
+        {answer.model === "code" ? "Worked out by code" : <>Numbers by code · words by {answer.model}</>}
         {answer.confidence !== "high" && ` · confidence ${answer.confidence}`}
       </p>
 
@@ -120,7 +126,7 @@ export default function AnswerCard({ answer }: { answer: RtAskAnswer }) {
           {actions.map((a) => (
             <Link
               key={`${a.kind}-${a.label}`}
-              href={ACTION_HREF[a.kind]!}
+              href={actionHref(a)!}
               className="flex h-10 items-center rounded-full border border-teal px-4 text-[14px] font-bold text-teal hover:bg-teal-tint"
             >
               {a.label}
