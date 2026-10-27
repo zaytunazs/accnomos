@@ -1,6 +1,7 @@
 import ProposalCard from "@/components/review/ProposalCard";
 import NeedsALookCard from "@/components/review/NeedsALookCard";
 import VoiceNoteCard from "@/components/review/VoiceNoteCard";
+import LiveReview from "@/components/review/LiveReview";
 import { proposal } from "@/lib/sample-review";
 
 const filters = [
@@ -44,9 +45,15 @@ export default function ReviewPage() {
           )}
         </div>
       </div>
-      <ProposalCard proposal={proposal} />
-      <NeedsALookCard />
-      <VoiceNoteCard />
+      <LiveReview
+        fallback={
+          <>
+            <ProposalCard proposal={proposal} />
+            <NeedsALookCard />
+            <VoiceNoteCard />
+          </>
+        }
+      />
     </div>
   );
 }
