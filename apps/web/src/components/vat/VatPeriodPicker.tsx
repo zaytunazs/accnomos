@@ -17,8 +17,10 @@ function detail(p: RtVatPeriod): string {
   const bits: string[] = [];
   if (p.current) bits.push("current period");
   else if (p.status === "open") bits.push(`due ${short(p.deadline)}`);
-  else if (p.status === "submitted") bits.push(p.hmrc_period_key ? `filed as ${p.hmrc_period_key}` : "filed");
-  else bits.push("nothing recorded");
+  else if (p.status === "submitted") {
+    bits.push(p.submitted_source === "hmrc" ? "filed with HMRC" : "filed");
+    if (p.hmrc_period_key) bits.push(`as ${p.hmrc_period_key}`);
+  } else bits.push("nothing recorded");
   if (p.entries) bits.push(`${p.entries} ${p.entries === 1 ? "entry" : "entries"}`);
   return bits.join(" · ");
 }
@@ -34,6 +36,7 @@ const toPick = (p: RtVatPeriod): PickedPeriod | null =>
 export default function VatPeriodPicker({ account, onPeriods }: { account: AccountInfo; onPeriods?: (periods: RtVatPeriod[]) => void }) {
   const picked = usePickedPeriod();
   const [periods, setPeriods] = useState<RtVatPeriod[] | null>(null);
+  const [warnings, setWarnings] = useState<string[]>([]);
   const [failed, setFailed] = useState(false);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -41,6 +44,7 @@ export default function VatPeriodPicker({ account, onPeriods }: { account: Accou
     runtime.vatPeriods(account).then(
       (r) => {
         setPeriods(r.periods);
+        setWarnings(r.warnings ?? []);
         onPeriods?.(r.periods);
         const byName = (name: string | null) => r.periods.find((p) => p.period === name);
         // A linked ?period= wins over the remembered pick; a stale pick is cleared.
@@ -90,6 +94,11 @@ export default function VatPeriodPicker({ account, onPeriods }: { account: Accou
       <p id="vat-period-label" className="text-[15px] font-bold">
         VAT period
       </p>
+      {warnings.map((w) => (
+        <p key={w} className="mt-2 rounded-xl border border-warn-border bg-warn-bg p-3 text-sm text-warn-ink">
+          {w}
+        </p>
+      ))}
       <div
         role="radiogroup"
         aria-labelledby="vat-period-label"

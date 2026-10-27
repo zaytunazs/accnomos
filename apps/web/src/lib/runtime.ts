@@ -325,6 +325,9 @@ export const runtime = {
 
   /** GET /books/vat/periods: the current VAT period and the 8 before it, by the saved VAT settings. */
   vatPeriods: (a: AccountInfo) => call<RtVatPeriods>(a, withQuery("/books/vat/periods", vatQuery())),
+  /** POST /books/vat/obligations: store HMRC's obligations (fetched through the relay) so filed-elsewhere shows as submitted. */
+  postVatObligations: (a: AccountInfo, obligations: RtHmrcObligation[]) =>
+    call<{ stored: number }>(a, "/books/vat/obligations", { method: "POST", body: JSON.stringify({ obligations }) }),
 
   /** POST /plan/day: proposes a day and writes nothing. Asks for Calendars.Read the first time. */
   planDay: (a: AccountInfo, body: RtPlanRequest) =>
@@ -1479,7 +1482,9 @@ export interface RtVatView {
   period: string; // "2026-Q4" (quarterly) or "2026-11" (monthly)
   label: string; // "Oct–Dec 2026"
   current: boolean;
-  submitted: boolean; // a relay submission receipt is saved in 06 VAT returns
+  submitted: boolean; // HMRC says fulfilled, or a relay submission receipt is saved in 06 VAT returns
+  submitted_source?: "hmrc" | "accnomos" | null; // who says it is submitted
+  received?: string | null; // when HMRC received the return (ISO date), when it says fulfilled
   can_submit: boolean; // current or previous period and not yet submitted
   boxes: RtVatBox[];
   event_ids: string[];
@@ -1487,6 +1492,16 @@ export interface RtVatView {
   events_in_period: number;
   undone_in_period: number; // reversing events among them
   hmrc_body: Record<string, unknown>;
+}
+
+/** POST /books/vat/obligations (services/runtime/app/routes_vat.py): one HMRC obligation, as the relay returns it. */
+export interface RtHmrcObligation {
+  periodKey: string;
+  start: string;
+  end: string;
+  due: string;
+  status: "O" | "F";
+  received?: string;
 }
 
 /** GET /books/vat/periods (services/runtime/app/routes_vat.py). */
@@ -1499,6 +1514,8 @@ export interface RtVatPeriod {
   deadline: string;
   status: "open" | "submitted" | "none";
   hmrc_period_key: string | null;
+  submitted_source?: "hmrc" | "accnomos" | null; // who says it is submitted
+  received?: string | null; // when HMRC received the return (ISO date), when it says fulfilled
   entries: number;
   can_submit: boolean;
 }
@@ -1507,6 +1524,7 @@ export interface RtVatPeriods {
   months: number;
   start_month: number;
   periods: RtVatPeriod[]; // current first, then the 8 before it
+  warnings: string[]; // e.g. our periods do not match the ones HMRC holds
   status_source: string;
 }
 

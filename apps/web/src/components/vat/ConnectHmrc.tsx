@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import Explain from "@/components/Explain";
 import { getMsal, msalConfigured } from "@/lib/msal";
-import { fetchLiveVat, type RtVatView } from "@/lib/runtime";
+import { fetchLiveVat, runtime, type RtVatView } from "@/lib/runtime";
 import { usePickedPeriod } from "@/lib/vat-period";
 import { FOLDER } from "@/lib/folders";
 import { ensureFolder, listChildren, putSmallFile } from "@/lib/graph";
@@ -247,6 +247,14 @@ export default function ConnectHmrc() {
       const res = await hmrc.obligations(v, await clientFacts(account.homeAccountId), { from: isoDay(from), to: isoDay(to) }, scenario);
       const list = res.hmrc?.obligations ?? [];
       setObligations(list);
+      // The runtime holds no HMRC token: hand it the list so /books/vat/periods marks
+      // fulfilled periods submitted even when filed elsewhere. A failed store never
+      // replaces the card error — HMRC's own list above still stands.
+      try {
+        await runtime.postVatObligations(account, list);
+      } catch {
+        /* the picker just won't know about HMRC's list yet */
+      }
       setMissing(res.fraud_headers_missing);
       const match = live && list.find((o) => o.status === "O" && o.start === live.start && o.end === live.end);
       setSelected(match ? match.periodKey : (list.find((o) => o.status === "O")?.periodKey ?? null));
@@ -268,7 +276,15 @@ export default function ConnectHmrc() {
       setCopied(false);
       setMissing(res.fraud_headers_missing);
       setStep("done");
-      setObligations((list) => list?.map((o) => (o.periodKey === obligation.periodKey ? { ...o, status: "F" } : o)) ?? null);
+      { // the filed period is fulfilled now: tell the runtime too, so the picker shows it submitted
+        const next = obligations?.map((o) => (o.periodKey === obligation.periodKey ? { ...o, status: "F" as const } : o)) ?? null;
+        setObligations(next);
+        try {
+          if (next) await runtime.postVatObligations(account, next);
+        } catch {
+          /* the receipt below is the record that matters */
+        }
+      }
       setSaved("saving");
       const folder = `${FOLDER.vat_returns}/${obligation.periodKey}`;
       const submittedAt = new Date().toISOString();
