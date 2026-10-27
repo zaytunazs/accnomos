@@ -15,7 +15,8 @@ export interface ReviewAdapter<H> {
   /** Post it; returns what Undo needs (the ledger event id), or null when it cannot be undone. */
   approve: (p: RtProposal, body: { edits?: Record<string, unknown>; remember?: boolean }) => Promise<H | null>;
   reject: (p: RtProposal) => Promise<void>;
-  undo: (handle: H) => Promise<void>;
+  /** Reverse it; returns the runtime's correction note when the entry's VAT period was already submitted. */
+  undo: (handle: H) => Promise<string | void>;
   /** Undo for a rejection; absent when the backend has none (the runtime has no un-reject). */
   unreject?: (p: RtProposal) => Promise<void>;
   image: (p: RtProposal) => ImageSource | null;
@@ -249,12 +250,15 @@ export default function ReviewQueue<H>({
       return onNote(`A rejection can't be undone here: ${last.what} is in 02 Needs a look. Move it back to 00 Inbox and scan to see it again.`);
     }
     return run("undo", async () => {
+      // The runtime's correction note, when an undone entry's VAT period was already submitted.
+      let correction: string | null = null;
       if (last.kind === "reject") await adapter.unreject!(last.rejected!);
       else {
         const left = [...last.handles];
         try {
           while (left.length) {
-            await adapter.undo(left[0]);
+            const note = await adapter.undo(left[0]);
+            if (typeof note === "string" && note) correction ??= note;
             left.shift();
           }
         } catch (e) {
@@ -273,7 +277,9 @@ export default function ReviewQueue<H>({
       onNote(
         last.kind === "reject"
           ? `Undone · ${last.what} is back in Review`
-          : `Undone · ${last.what}: a reversing entry was added; it is back in Review`,
+          : correction
+            ? `${correction} ${last.what} is back in Review.`
+            : `Undone · ${last.what}: a reversing entry was added; it is back in Review`,
       );
       setFocusNext(last.ids[0]);
     });

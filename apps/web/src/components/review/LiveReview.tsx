@@ -133,19 +133,25 @@ export default function LiveReview() {
       account && {
         approve: async (p, body) => (await runtime.approve(account, p.id, body)).event_id ?? null,
         reject: async (p) => void (await runtime.reject(account, p.id, "rejected by user")),
-        undo: async (eventId) => void (await runtime.undo(account, eventId)),
+        undo: async (eventId) => (await runtime.undo(account, eventId)).reason ?? undefined,
         image: (p) => (p.file_path ? { load: () => getFileBlob(account, p.file_path!) } : null),
       },
     [account],
   );
 
-  async function act(id: string, fn: () => Promise<unknown>, done: string) {
-    setBusy(id);
+  /** Undo one Autopilot approval: the toast names the open period when the entry's VAT period was already submitted. */
+  async function undoAutopilot(p: RtProposal) {
+    if (!account || !p.event_id) return;
+    setBusy(p.id);
     setError(null);
     try {
-      await fn();
-      setNote(done);
-      if (account) await load(account);
+      const r = await runtime.undo(account, p.event_id);
+      setNote(
+        r.reason
+          ? `${r.reason} It is back in Review.`
+          : "Undone · a reversing entry was added; it is back in Review",
+      );
+      await load(account);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -261,7 +267,7 @@ export default function LiveReview() {
                 <button
                   type="button"
                   disabled={busy !== null}
-                  onClick={() => act(p.id, () => runtime.undo(account!, p.event_id!), "Undone · a reversing entry was added; it is back in Review")}
+                  onClick={() => undoAutopilot(p)}
                   className="h-11 whitespace-nowrap rounded-xl border border-border bg-white px-5 text-[15px] font-bold disabled:opacity-60"
                 >
                   {busy === p.id ? "Working…" : "Undo"}
