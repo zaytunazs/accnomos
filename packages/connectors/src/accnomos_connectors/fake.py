@@ -29,14 +29,27 @@ class FakeMailProvider(MailProvider):
     def __init__(self) -> None:
         self.messages: list[MailMessage] = []
         self.attachments: dict[str, list[tuple[MailAttachment, bytes]]] = {}
+        self.bodies: dict[str, str] = {}  # message id -> plain-text body
         self.calls: list[str] = []
         self.drafts: list[dict[str, str]] = []  # {"id", "reply_to", "body"} per create_reply_draft
 
-    def add(self, message: MailMessage, *files: tuple[MailAttachment, bytes]) -> MailMessage:
+    def add(self, message: MailMessage, *files: tuple[MailAttachment, bytes], body: str = "") -> MailMessage:
         message.has_attachments = bool(files)
         self.messages.append(message)
         self.attachments[message.id] = list(files)
+        self.bodies[message.id] = body
         return message
+
+    async def list_without_attachments(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
+        self.calls.append("list_without_attachments")
+        hits = [m for m in self.messages if not m.has_attachments and m.received_at >= since]
+        return sorted(hits, key=lambda m: m.received_at, reverse=True)[:max_results]
+
+    async def message_text(self, message_id: str) -> str:
+        self.calls.append(f"message_text:{message_id}")
+        if message_id not in self.bodies:
+            raise FileNotFoundError(message_id)
+        return self.bodies[message_id]
 
     async def list_recent(self, since: datetime, max_results: int = 100) -> list[MailMessage]:
         self.calls.append("list_recent")

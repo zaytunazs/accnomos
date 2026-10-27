@@ -13,12 +13,22 @@ from collections.abc import Iterator
 import pytest
 from fastapi.testclient import TestClient
 
-from accnomos_connectors import FakeStorageProvider
+from accnomos_connectors import FakeMailProvider, FakeStorageProvider, MailMessage
 from app import pipeline
 from app.ai.config import AiConfig, ai_config_from_request
-from app.books import Books
-from app.formats import MAX_BYTES, MAX_PDF_PAGES, MAX_PIXELS, RENDER_MAX_SIDE, FormatError, prepare, render_scale
+from app.books import Books, now
+from app.formats import (
+    MAX_BYTES,
+    MAX_PDF_PAGES,
+    MAX_PIXELS,
+    MAX_TEXT_CHARS,
+    RENDER_MAX_SIDE,
+    FormatError,
+    prepare,
+    render_scale,
+)
 from app.inbox import scan_inbox_detailed
+from app.intake import BODY_MAX_CHARS, scan_mail
 from app.main import app
 
 LOCAL = AiConfig(mode="local", base_url="http://ollama.invalid", model="stub")
@@ -219,3 +229,30 @@ def test_extract_route_refusals(client: TestClient, no_model: None, monkeypatch:
     monkeypatch.setitem(sys.modules, "pypdfium2", FakePdfium(pages=40))
     status, detail = post("batch.pdf", b"%PDF-1.7", "application/pdf")
     assert status == 422 and "40 pages" in detail
+
+
+# --------------------------------------------------------------------------- Outlook intake: email bodies
+
+
+async def test_a_hostile_subject_cannot_leave_the_inbox_folder() -> None:
+    fake, mail = FakeStorageProvider(), FakeMailProvider()
+    subject = '../../_System/Rules/rules.json\\..\x00:*?"<>|#% receipt'
+    mail.add(
+        MailMessage(id="m", received_at=now(), from_address="billing@saas.example", subject=subject),
+        body="Total £12.00",
+    )
+    (name,) = (await scan_mail(Books(fake), mail, user="sam@bramblewood.example")).saved
+    assert "/" not in name and "\\" not in name and "\x00" not in name and name.endswith(".eml.txt")
+    assert [p for p in fake.files if not p.startswith("_System/")] == [f"00 Inbox/{name}"]
+    assert not any(p.startswith("_System/Rules") for p in fake.files)
+
+
+async def test_a_huge_body_is_cut_before_it_is_saved() -> None:
+    fake, mail = FakeStorageProvider(), FakeMailProvider()
+    mail.add(
+        MailMessage(id="m", received_at=now(), from_address="billing@saas.example", subject="Your receipt"),
+        body="Total £12.00\n" + "x" * (BODY_MAX_CHARS * 5),
+    )
+    (name,) = (await scan_mail(Books(fake), mail, user="sam@bramblewood.example")).saved
+    assert len(fake.files[f"00 Inbox/{name}"]) < BODY_MAX_CHARS + 1_000
+    assert len(prepare(b"Total \xc2\xa31\n" + b"y" * (MAX_TEXT_CHARS * 3), name).text or "") == MAX_TEXT_CHARS

@@ -432,6 +432,45 @@ class GraphMailProvider(_GraphHttp, MailProvider):
             url = page.get("@odata.nextLink")
         return out[:max_results]
 
+    async def list_without_attachments(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
+        since_utc = since.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        params: dict[str, str] | None = {
+            "$filter": f"receivedDateTime ge {since_utc} and hasAttachments eq false",
+            "$select": "id,receivedDateTime,from,subject,hasAttachments,bodyPreview,webLink",
+            "$orderby": "receivedDateTime desc",
+            "$top": str(min(self.PAGE, max(1, max_results))),
+        }
+        url: str | None = f"{GRAPH}/me/mailFolders/inbox/messages"  # not Sent: the user's own invoices are not costs
+        out: list[MailMessage] = []
+        while url and len(out) < max_results:
+            page = (await self._request("GET", url, params=params)).json()
+            params = None  # nextLink already carries the query
+            for m in page.get("value", []):
+                sender = (m.get("from") or {}).get("emailAddress") or {}
+                out.append(
+                    MailMessage(
+                        id=m["id"],
+                        received_at=_iso(m.get("receivedDateTime")),
+                        from_address=(sender.get("address") or "").lower(),
+                        from_name=sender.get("name") or "",
+                        subject=m.get("subject") or "",
+                        web_link=m.get("webLink"),
+                        body_preview=(m.get("bodyPreview") or "")[:255],
+                    )
+                )
+            url = page.get("@odata.nextLink")
+        return out[:max_results]
+
+    async def message_text(self, message_id: str) -> str:
+        """`Prefer: outlook.body-content-type="text"` makes Graph turn an HTML body into plain text."""
+        r = await self._request(
+            "GET",
+            self._message_url(message_id),
+            params={"$select": "body"},
+            headers={"Prefer": 'outlook.body-content-type="text"'},
+        )
+        return ((r.json().get("body") or {}).get("content")) or ""
+
     async def list_attachments(self, message_id: str) -> list[MailAttachment]:
         url: str | None = self._message_url(message_id, "/attachments")
         params: dict[str, str] | None = {"$select": "id,name,contentType,size,isInline"}

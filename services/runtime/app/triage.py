@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from accnomos_connectors.base import MailMessage, MailProvider
 from app.ai.config import AiConfig
 from app.books import Books, now
-from app.intake import domain_of, is_from_self
+from app.intake import BULK_SENDER, domain_of, is_from_self
 
 ACTOR = "agent:triage"
 PREVIEW_MAX = 255
@@ -38,9 +38,6 @@ SkipReason = Literal["no_reply", "newsletter", "own_domain"]
 # Automated senders, by the part before the @. 'info@' and 'hello@' are real people at small firms, so they stay.
 NO_REPLY = re.compile(
     r"^(no[-_.]?reply|do[-_.]?not[-_.]?reply|mailer[-_.]?daemon|postmaster|bounces?|notifications?|alerts?)([-_.+].*)?$"
-)
-BULK_SENDER = re.compile(
-    r"^(newsletters?|news|marketing|promotions?|promo|offers|deals|digest|updates|mailer)([-_.+].*)?$"
 )
 BULK_TEXT = re.compile(
     r"unsubscribe|view (this email )?in (your )?browser|manage (your )?(email )?preferences|% off\b|webinar",

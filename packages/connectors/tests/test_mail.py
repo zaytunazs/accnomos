@@ -137,6 +137,48 @@ async def test_fake_mailbox_filters_by_date_and_attachments():
     assert await fake.download_attachment("new", "a") == b"y"
 
 
+async def test_list_without_attachments_reads_the_inbox_folder_only():
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        assert req.method == "GET"
+        m = _msg(1) | {"hasAttachments": False, "bodyPreview": "Total £18.40 " + "x" * 400}
+        return httpx.Response(200, json={"value": [m]})
+
+    out = await _provider(handler).list_without_attachments(SINCE, max_results=20)
+    url = seen[0].url
+    assert url.path == "/v1.0/me/mailFolders/inbox/messages"
+    assert url.params["$filter"] == "receivedDateTime ge 2026-10-13T09:30:00Z and hasAttachments eq false"
+    assert url.params["$select"] == "id,receivedDateTime,from,subject,hasAttachments,bodyPreview,webLink"
+    assert out[0].body_preview.startswith("Total £18.40") and len(out[0].body_preview) == 255
+
+
+async def test_message_text_asks_graph_for_plain_text():
+    seen: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req)
+        return httpx.Response(200, json={"body": {"contentType": "text", "content": "Total £18.40"}})
+
+    assert await _provider(handler).message_text("AAMk1=") == "Total £18.40"
+    req = seen[0]
+    assert req.method == "GET" and req.url.raw_path.decode().split("?")[0] == "/v1.0/me/messages/AAMk1%3D"
+    assert req.url.params["$select"] == "body"
+    assert req.headers["Prefer"] == 'outlook.body-content-type="text"'
+
+
+async def test_fake_mailbox_lists_bare_messages_and_their_bodies():
+    fake = FakeMailProvider()
+    att = MailAttachment(id="a", name="r.pdf", content_type="application/pdf", size=20_000)
+    fake.add(MailMessage(id="with", received_at=SINCE + timedelta(days=1)), (att, b"y"))
+    fake.add(MailMessage(id="bare", received_at=SINCE + timedelta(days=2)), body="Total £5.00")
+    assert [m.id for m in await fake.list_without_attachments(SINCE)] == ["bare"]
+    assert await fake.message_text("bare") == "Total £5.00"
+    with pytest.raises(FileNotFoundError):
+        await fake.message_text("gone")
+
+
 # ---------------------------------------------------------------------- #
 # Inbox triage: list_recent and create_reply_draft
 # ---------------------------------------------------------------------- #

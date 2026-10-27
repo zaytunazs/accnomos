@@ -1,0 +1,37 @@
+{
+ "id": "AAMk-sample-b01",
+ "receivedDateTime": "2026-10-21T19:42:10Z",
+ "subject": "Your Tuesday evening trip with Northway Rides",
+ "from": {
+  "emailAddress": {
+   "name": "Northway Rides",
+   "address": "receipts@northwayrides.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": false,
+ "bodyPreview": "Thanks for riding, Sam We hope you enjoyed your ride this evening. Total £18.40 Trip fare £15.33 VAT (20%) £3.07 Payments Visa ••••4417 21/10/2026 19:41 £18.40 Pickup 19:12 Station Road, Harrogate HG1 1TE Drop-off 19:40 Bramblewood Joinery, Knaresborough ",
+ "body": {
+  "contentType": "text",
+  "content": "Thanks for riding, Sam\n\nWe hope you enjoyed your ride this evening.\n\nTotal £18.40\n\nTrip fare £15.33\nVAT (20%) £3.07\n\nPayments\nVisa ••••4417 21/10/2026 19:41 £18.40\n\nPickup 19:12 Station Road, Harrogate HG1 1TE\nDrop-off 19:40 Bramblewood Joinery, Knaresborough HG5 8AA\n\nNorthway Rides UK Ltd, 1 Example Street, London E1 6AN. VAT number GB 123 4567 89.\n"
+ },
+ "attachments": [],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "body_receipt",
+ "expected": {
+  "intake": [
+   {
+    "body": true,
+    "treat_as": "document"
+   }
+  ],
+  "note": "ride receipt in the body, total and VAT on one line each"
+ }
+}
