@@ -56,7 +56,8 @@ continuity; it is *not* checksum-valid.
 `harness/render.py` turns `printed_text` into images (clean scan, or a messy phone photo: rotation, shear, uneven lighting, the
 odd fold). `python -m harness.render_gold OUT_DIR` writes all of them; `run_extraction --messy` renders the same images in
 memory (seed = position in the sorted gold directory). PNGs are not committed, except the ones used as mail attachments.
-The long invoices (merchant and sales, many lines) come out just over 300 KB as messy photos; none of those are used as attachments.
+Five long builders' merchant invoices (102, 105, 150, 170, 175) come out just over 300 KB as messy photos (so
+`render_gold` exits non-zero on a full run); none of those are committed or used as attachments.
 
 ## Bank statements (`bank/`)
 
