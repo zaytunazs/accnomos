@@ -307,6 +307,9 @@ async def test_rule_approve_posts_review_events(client: TestClient, books: Books
     assert r.status_code == 200, r.text
     posted_event_id = r.json()["event_id"]
     assert posted_event_id
+    # Approving a rule suggestion settles the line: it is matched to the entry it made.
+    settled = await books.find_bank_line(first)
+    assert settled.resolved and posted_event_id in settled.event_ids()
 
     # The same coding approved on Review posts the same ledger lines.
     line2 = await books.find_bank_line(second)

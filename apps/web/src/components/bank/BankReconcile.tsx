@@ -90,7 +90,13 @@ export default function BankReconcile({ account, lines, onChanged, onCreateRule 
     return <p className="py-6 text-center text-sm font-semibold text-muted">Checking each open line…</p>;
   }
   if (rows.length === 0) {
-    return <p className="py-6 text-center text-sm font-semibold text-muted">Nothing to reconcile: no open line matches an invoice, a rule or the AI.</p>;
+    // Keep the last result on screen: approving the last open line empties the list.
+    return (
+      <div className="flex flex-col gap-3">
+        {note && <p role="status" className="text-sm font-semibold text-teal-dark">{note}</p>}
+        <p className="py-6 text-center text-sm font-semibold text-muted">Nothing to reconcile: no open line matches an invoice, a rule or the AI.</p>
+      </div>
+    );
   }
   const exacts = rows.filter((r) => r.exact);
 

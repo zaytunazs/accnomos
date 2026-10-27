@@ -106,12 +106,7 @@ test("reconcile: rule coding posts, the AI suggests, create-rule pre-fills", asy
   await feeAgain.getByRole("button", { name: /^Approve AI suggestion/ }).click();
   await expect(page.getByRole("status").filter({ hasText: "Posted" })).toContainText("through Review approval");
 
-  // The posted event is now a suggested match for the line: confirm it.
-  await tab("Matches").click();
-  const posted = lines.getByRole("table").getByRole("row", { name: /BUSINESS ACCOUNT FEE/ });
-  await expect(posted).toBeVisible();
-  await posted.getByRole("button", { name: /^Confirm match/ }).click();
-  await expect(page.getByRole("status").filter({ hasText: "Matched" }).first()).toContainText("BUSINESS ACCOUNT FEE");
+  // Approving settles the line: it is matched to the entry it made, with no separate confirm step.
   await tab("Done").click();
   await expect(lines.getByRole("tabpanel").getByRole("row").filter({ hasText: "BUSINESS ACCOUNT FEE" })).toContainText("Matched");
 });

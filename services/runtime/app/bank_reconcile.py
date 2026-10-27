@@ -348,6 +348,10 @@ async def approve_line(
     if job_id:
         edits["job_id"] = job_id
     posted = await approve_mod.approve(books, proposal.id, user, edits or None)
+    # The entry was made from this line, so the line is settled by it: match them now, as the Reconcile
+    # card promises, instead of leaving the line open with a suggestion pointing at its own entry.
+    if posted.event_id and not (await books.find_bank_line(line_id)).resolved:
+        await books.confirm_match(line_id, [posted.event_id], user)
     await books.audit(
         f"user:{user}",
         "bank_reconciled",
