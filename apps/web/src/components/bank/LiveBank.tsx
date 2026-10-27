@@ -398,7 +398,7 @@ export default function LiveBank() {
         <Link href="/connect" className="text-teal-dark underline underline-offset-2">
           Connect your OneDrive
         </Link>{" "}
-        to import bank statements. They are saved in your own 03 Bank statements folder.
+        to import bank statements. They are saved in your own 04 Bank statements folder.
       </p>
     );
   }

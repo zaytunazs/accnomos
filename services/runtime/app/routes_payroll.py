@@ -97,7 +97,7 @@ async def edit(period: str, body: EditBody, books: Books = Depends(get_books), u
 
 @router.post("/payroll/runs/{period}/export", response_model=ExportResult)
 async def export(period: str, books: Books = Depends(get_books), user: str = Depends(require_user)) -> ExportResult:
-    """Saves 04 Payroll/{period}.csv and returns it, for the payroll provider."""
+    """Saves 05 Payroll/{period}.csv and returns it, for the payroll provider."""
     try:
         path, text = await payroll.export(books, period, user)
     except (PayrollError, FileNotFoundError) as exc:

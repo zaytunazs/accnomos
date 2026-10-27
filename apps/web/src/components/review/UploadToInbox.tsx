@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
+import { FOLDER } from "@/lib/folders";
 import { putSmallFile } from "@/lib/graph";
 
 /** F3 intake (web): put a photo/PDF into the user's own "00 Inbox" folder. Nothing goes to our servers. */
@@ -17,7 +18,7 @@ export default function UploadToInbox({ account, onDone }: { account: AccountInf
     try {
       for (const f of Array.from(files)) {
         if (f.size > 4 * 1024 * 1024) throw new Error(`${f.name} is over 4 MB — please use a smaller photo for now.`);
-        await putSmallFile(account, `00 Inbox/${f.name}`, f, f.type || "application/octet-stream");
+        await putSmallFile(account, `${FOLDER.inbox}/${f.name}`, f, f.type || "application/octet-stream");
       }
       setMsg(`${files.length} file${files.length === 1 ? "" : "s"} added to 00 Inbox. Press “Scan 00 Inbox now”.`);
       onDone();

@@ -92,9 +92,9 @@ async def test_scan_files_good_receipt_and_parks_duplicate(fake: FakeStorageProv
 
     good, dup, pdf = proposals
     assert good.status == "proposed" and good.file_path == FILED and fake.files[FILED] == SCREWFIX
-    assert dup.status == "needs_a_look" and dup.file_path == "04 Needs a look/2026-10-21 Screwfix £38.47.jpg"
+    assert dup.status == "needs_a_look" and dup.file_path == "02 Needs a look/2026-10-21 Screwfix £38.47.jpg"
     assert any(c.code == "DUPLICATE" and not c.ok for c in dup.checks)
-    assert pdf.status == "needs_a_look" and pdf.file_path == "04 Needs a look/c-invoice.pdf"
+    assert pdf.status == "needs_a_look" and pdf.file_path == "02 Needs a look/c-invoice.pdf"
     assert [c.code for c in pdf.checks] == ["PDF_UNSUPPORTED"]
     assert [p for p in fake.files if p.startswith("00 Inbox/")] == ["00 Inbox/notes.txt"]
     assert await books.known_hashes() == {good.doc_sha256, pdf.doc_sha256}
@@ -186,7 +186,7 @@ async def test_reject_moves_file_to_needs_a_look(fake: FakeStorageProvider, book
     rejected = await reject(books, p.id, "sam@example.co.uk", "personal purchase")
 
     assert rejected.status == "rejected" and rejected.reject_reason == "personal purchase"
-    assert rejected.file_path == "04 Needs a look/2026-10-21 Screwfix £38.47.jpg"
+    assert rejected.file_path == "02 Needs a look/2026-10-21 Screwfix £38.47.jpg"
     assert FILED not in fake.files and rejected.file_path in fake.files
     assert (await books.get_proposal(p.id)).status == "rejected"
     assert _audit(fake)[-1]["action"] == "rejected"
@@ -257,7 +257,7 @@ def test_routes_scan_approve_reject_summary(client: TestClient, fake: FakeStorag
     assert r.status_code == 200 and r.json()["status"] == "posted"
     assert client.post(f"/books/proposals/{a}/approve", headers=H, json={}).status_code == 409
     r = client.post(f"/books/proposals/{b}/reject", headers=H, json={"reason": "not ours"})
-    assert r.status_code == 200 and r.json()["file_path"].startswith("04 Needs a look/")
+    assert r.status_code == 200 and r.json()["file_path"].startswith("02 Needs a look/")
 
     s = client.get("/books/summary", headers=H).json()
     assert (s["proposed"], s["needs_a_look"], s["posted_this_month"]) == (0, 1, 1)

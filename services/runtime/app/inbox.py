@@ -1,4 +1,4 @@
-"""Scan "00 Inbox": extract each new document, apply rules, save a proposal and file the document.
+"""Scan 00 Inbox: extract each new document, apply rules, save a proposal and file the document.
 
 Proposals that match an Autopilot rule and pass every check are then posted by Autopilot
 (app/autopilot.py); everything else waits in Review.
@@ -16,7 +16,8 @@ from app import autopilot
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError
 from app.approve import ApprovalError, approve
-from app.books import INBOX, Books, DocMeta, Rule, now
+from app.books import Books, DocMeta, Rule, now
+from app.paths import INBOX
 from app.checks import decide
 from app.journal import with_expense_account
 from app.mileage import MileageError, Vehicle, load_vehicles, prefill_vehicle
@@ -121,7 +122,7 @@ async def scan_inbox_detailed(
     """Process up to `limit` documents from the Inbox and return the new proposals.
 
     A file whose hash we have already seen is not skipped silently: the DUPLICATE check sends it
-    to "04 Needs a look", so the Inbox never keeps files the user thinks were handled. Files the
+    to Needs a look, so the Inbox never keeps files the user thinks were handled. Files the
     model cannot read stay in the Inbox for the next scan. `period` is the current VAT period: a document
     dated outside it gets a DATE_IN_PERIOD warning (never a fail; the ledger keeps the document's date).
     """

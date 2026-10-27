@@ -47,7 +47,11 @@ and `today`. With none sent, the runtime uses calendar quarters. **"Today" on th
 ## The books folder
 
 Personal accounts: `Apps/Accnomos` (the OneDrive app folder, `Files.ReadWrite.AppFolder`). Work accounts: `/Accnomos`
-(`Files.ReadWrite`, a broader scope). Paths are relative to that root and come from the constants in `app/books.py`,
+(`Files.ReadWrite`, a broader scope). Paths are relative to that root. **The numbered folder names live only in
+`services/runtime/app/paths.py`**; `tools/gen_folders.py` copies them (and the README.txt text) into
+`packages/connectors/folders.json`, `apps/web/src/lib/folders.ts` and a marked block in
+`apps/mobile/lib/services/graph.dart`, and `tests/test_paths.py` fails if any copy differs or if a numbered name is
+spelt as a literal anywhere else in Python. The `_System/` paths come from the constants in `app/books.py`,
 `invoicing.py`, `payroll.py`, `jobs.py`, `mileage.py`, `contacts.py`, `intake.py`, `todos.py`, `plan_apply.py`.
 `services/runtime/tests/test_integration.py` holds what the runtime writes during its scenario to a `LAYOUT` list kept by
 hand in step with the first table; it does **not** exercise invoicing, payroll, the planner, to-dos or action audit, so those
@@ -57,17 +61,28 @@ Documents, filed by code and never deleted:
 
 | Path | Written by | Notes |
 |---|---|---|
-| `README.txt` | web onboarding | once |
+| `README.txt` | web onboarding (text from `paths.readme_text()`) | once |
 | `00 Inbox/<name>` | web and Android upload; Outlook intake as `<yyyy-mm-dd>_<sender-domain>_<name>` | moved out when read |
 | `01 Receipts/<yyyy-mm>/<date> <supplier> £<total>.<ext>` | runtime, when a proposal is filed | |
-| `02 Sales invoices/<name>` | runtime, a scanned document the reader classes as a sales invoice | |
-| `03 Bank statements/<last date>_<bank>.csv` | runtime, bank import | |
-| `03 Sales/invoices/INV-0001.json`, `…/sent/INV-0001.pdf` | runtime, invoicing | created on first use. **Shares the number 03 with Bank statements**, and is outside the 00–06 tree |
-| `04 Needs a look/<name>` | runtime: documents that need a look, and rejected ones | |
-| `04 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | created on first use. **Shares the number 04 with Needs a look** |
-| `05 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
-| `06 Reports/` | created at onboarding | nothing writes here yet |
+| `02 Needs a look/<name>` | runtime: documents that need a look, and rejected ones | |
+| `03 Sales/<name>` | runtime, a scanned document the reader classes as a sales invoice | |
+| `03 Sales/invoices/INV-0001.json`, `.pdf`; `03 Sales/invoices/sent/INV-0001.pdf` | runtime, invoicing | `invoices/` and `invoices/sent/` are created at onboarding |
+| `04 Bank statements/<last date>_<bank>.csv` | runtime, bank import | |
+| `05 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | |
+| `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
+| `07 Reports/` | created at onboarding | nothing writes here yet |
 | `Books.xlsx` | runtime, `rebuild_safely` after each ledger-changing action and on *Rebuild* | rewritten whole; sheets `README`, `Summary`, `Ledger`, `Accounts`, `VAT`, `Customers`, `Suppliers`, `Bank`, `Proposals`, `Jobs`, `Vehicles`, `Payroll` (`projection.SHEETS`). A feature whose file cannot be read leaves its sheet empty; a failed rebuild is audited and never fails the user's action |
+
+**Old folder names.** Until 27 Oct 2026 the tree used other names (`paths.RENAMED`: old name → current name, e.g.
+the old name `03 Bank statements` is now `04 Bank statements`). On the first request a sign-in makes, `app/layout.py`
+renames each old-named top-level folder to its current name with one move (a Graph PATCH of the folder's name;
+everything inside goes with it), writes one `folders_renamed` audit line, and never copies or deletes. If the old and
+the new folder both exist it leaves both: `GET /books/layout` lists the pair, the Files page shows a warning, and
+`/health` counts it under `folder_layout` (counts only, no names). Expect this for anyone who raised an invoice before:
+invoicing already wrote `03 Sales/invoices`, so the folder with the old name `02 Sales invoices` (usually empty) stays beside it until the user
+deletes it. Paths saved before the rename (a proposal's `file_path`, a bank line's `source_file`) are not rewritten; they
+go through `paths.upgrade()` when a document is filed and when statements are listed (Bank page, Home). The `Bank` and `Proposals` sheets of
+Books.xlsx still show the path as it was saved.
 
 `_System/` (settings and working data; money is always recomputed from the events):
 

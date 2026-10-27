@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import { FOLDER } from "@/lib/folders";
 
 export const metadata = { title: "How it works · Accnomos" };
 
@@ -31,13 +32,14 @@ const loop = [
 ];
 
 const tree: { name: string; note: string; children?: { name: string; note: string }[] }[] = [
-  { name: "00 Inbox", note: "new uploads and Outlook copies wait here" },
-  { name: "01 Receipts", note: "filed purchase documents" },
-  { name: "02 Sales invoices", note: "sales invoices you raise" },
-  { name: "03 Bank statements", note: "imported CSV statements" },
-  { name: "04 Needs a look", note: "flagged files, nothing posted" },
-  { name: "05 VAT returns/<periodKey>/", note: "return.json and receipt.json per submitted period" },
-  { name: "06 Reports", note: "generated reports" },
+  { name: FOLDER.inbox, note: "new uploads and Outlook copies wait here" },
+  { name: FOLDER.receipts, note: "filed purchase documents, by month" },
+  { name: FOLDER.needs_a_look, note: "flagged files, nothing posted" },
+  { name: `${FOLDER.sales}/`, note: "scanned sales documents; invoices/ holds the invoices you raise, invoices/sent/ what was emailed" },
+  { name: FOLDER.bank, note: "imported CSV statements" },
+  { name: FOLDER.payroll, note: "pay run exports for your payroll provider" },
+  { name: `${FOLDER.vat_returns}/<periodKey>/`, note: "return.json and receipt.json per submitted period" },
+  { name: FOLDER.reports, note: "generated reports" },
   { name: "Books.xlsx", note: "read-only projection, rebuilt after every approval — do not edit" },
   { name: "README.txt", note: "says what the folder is" },
   {

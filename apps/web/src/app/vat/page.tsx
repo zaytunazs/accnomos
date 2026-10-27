@@ -266,7 +266,7 @@ export default function VatPage() {
               {vatMeta.totalEntries} approved entries and tie to your bank. You
               will confirm the legal declaration on the next screen, then the
               return is sent with HMRC&apos;s fraud-prevention headers and the
-              receipt is saved to 05 VAT returns/2026-Q3.
+              receipt is saved to 06 VAT returns/2026-Q3.
             </p>
             <div className="mt-4">
               <SubmitSheet />

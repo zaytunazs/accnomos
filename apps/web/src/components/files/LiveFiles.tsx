@@ -5,12 +5,13 @@ import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import FileTree, { FileIcon, FolderIcon } from "@/components/files/FileTree";
 import { EmptyState, ErrorNote, LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
-import { FOLDERS, getRoot, listChildren, type DriveItem } from "@/lib/graph";
+import { FOLDER, FOLDERS } from "@/lib/folders";
+import { getRoot, listChildren, type DriveItem } from "@/lib/graph";
 import { getMsal, msalConfigured } from "@/lib/msal";
-import { runtime } from "@/lib/runtime";
+import { runtime, type RtLayout } from "@/lib/runtime";
 
 const SYSTEM = "_System";
-const NEEDS_A_LOOK = "04 Needs a look";
+const NEEDS_A_LOOK = FOLDER.needs_a_look;
 const ORDER = FOLDERS.filter((f) => !f.includes("/"));
 
 interface FolderRow {
@@ -165,9 +166,12 @@ export default function LiveFiles() {
   const [tree, setTree] = useState<Tree | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [rebuilding, setRebuilding] = useState(false);
+  const [layout, setLayout] = useState<RtLayout | null>(null);
 
   const refresh = useCallback(async (acct: AccountInfo) => {
     try {
+      // First, so a folder under an old name is renamed before we list the tree. The tree still loads without it.
+      setLayout(await runtime.layout(acct).catch(() => null));
       setTree(await loadTree(acct));
       setState("live");
     } catch (e) {
@@ -249,6 +253,22 @@ export default function LiveFiles() {
 
       {live ? (
         <>
+          {layout?.warning && (
+            <ErrorNote
+              title="Old and new folders side by side"
+              body={layout.warning}
+              action={
+                <ul className="list-disc pl-5 text-[14px] leading-6 text-warn-ink">
+                  {layout.conflicts.map((c) => (
+                    <li key={c.old}>
+                      {c.old} → {c.new}
+                      {c.old_is_empty ? ": the old folder is empty, so you can delete it." : ": move its files into the new folder."}
+                    </li>
+                  ))}
+                </ul>
+              }
+            />
+          )}
           {tree.folders.reduce((n, f) => n + f.files, tree.files.length) === 0 && (
             <EmptyState
               title="Your folder is empty"

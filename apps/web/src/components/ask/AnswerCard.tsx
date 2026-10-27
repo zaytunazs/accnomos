@@ -88,9 +88,9 @@ function actionHref(a: RtSuggestedAction): string | null {
  */
 export function workbookSheet(answer: RtAskAnswer): string {
   const hay = [...answer.key_numbers.map((k) => k.source), ...answer.citations].join("\n");
-  if (hay.includes("05 VAT returns")) return "VAT";
-  if (hay.includes("03 Bank statements")) return "Bank";
-  if (hay.includes("_System/proposals") || hay.includes("04 Needs a look")) return "Proposals";
+  if (hay.includes("VAT returns")) return "VAT";
+  if (hay.includes("Bank statements")) return "Bank";
+  if (hay.includes("_System/proposals") || hay.includes("02 Needs a look")) return "Proposals";
   if (hay.includes("/Jobs") || hay.includes("/Staff") || hay.includes("/Timesheets")) return "Jobs";
   if (hay.includes("/Vehicles") || hay.includes("/Mileage")) return "Vehicles";
   if (hay.includes("/Payroll")) return "Payroll";

@@ -111,7 +111,7 @@ export default function LiveVat() {
         {view.can_submit
           ? "Connect to HMRC below to submit it to the sandbox."
           : view.submitted
-            ? "This return has already been submitted; its receipt is in 05 VAT returns."
+            ? "This return has already been submitted; its receipt is in 06 VAT returns."
             : "Only the current or previous period can be submitted from here."}
       </p>
     </section>

@@ -171,18 +171,18 @@ def test_graph_lookalike_shares_storage_with_runtime(client: TestClient) -> None
     g = "/__test/graph/v1.0"
     assert client.get(f"{g}/me/drive/special/approot").json()["id"] == testmode.GRAPH_ROOT_ID
     assert client.get(f"{g}/me/drive/special/approot:/00 Inbox").status_code == 404
-    r = client.post(f"{g}/me/drive/items/{testmode.GRAPH_ROOT_ID}/children", json={"name": "06 Reports", "folder": {}})
+    r = client.post(f"{g}/me/drive/items/{testmode.GRAPH_ROOT_ID}/children", json={"name": "07 Reports", "folder": {}})
     assert r.status_code == 201
     sys_id = r.json()["id"]
     assert client.post(f"{g}/me/drive/items/{sys_id}/children", json={"name": "audit", "folder": {}}).status_code == 201
-    assert client.get(f"{g}/me/drive/special/approot:/06 Reports/audit").json()["folder"] == {"childCount": 0}
-    assert client.post(f"{g}/me/drive/items/{testmode.GRAPH_ROOT_ID}/children", json={"name": "06 Reports"}).status_code == 409
+    assert client.get(f"{g}/me/drive/special/approot:/07 Reports/audit").json()["folder"] == {"childCount": 0}
+    assert client.post(f"{g}/me/drive/items/{testmode.GRAPH_ROOT_ID}/children", json={"name": "07 Reports"}).status_code == 409
 
     png = client.get("/__test/gold/011_standard.png").content
     put = client.put(f"{g}/me/drive/special/approot:/00 Inbox/r.png:/content", content=png, headers={"Content-Type": "image/png"})
     assert put.status_code == 201 and put.json()["size"] == len(png)
     names = {i["name"]: i for i in client.get(f"{g}/me/drive/special/approot/children").json()["value"]}
-    assert set(names) == {"00 Inbox", "06 Reports", "_System"} and names["00 Inbox"]["size"] == len(png)
+    assert set(names) == {"00 Inbox", "07 Reports", "_System"} and names["00 Inbox"]["size"] == len(png)
     inbox = client.get(f"{g}/me/drive/special/approot:/00 Inbox:/children").json()["value"]
     assert [(i["name"], i["file"]["mimeType"]) for i in inbox] == [("r.png", "image/png")]
     assert client.get(f"{g}/me/drive/root:/Accnomos/00 Inbox/r.png").json()["name"] == "r.png"  # work-account paths

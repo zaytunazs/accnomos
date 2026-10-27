@@ -56,7 +56,7 @@ def test_bank_import_refuses_unsafe_file_names(tc, name):
 async def test_free_path_is_the_backstop():
     books = Books(FakeStorageProvider())
     with pytest.raises(UnsafeName):
-        await books.free_path("03 Bank statements/2026-10", "..")
+        await books.free_path("04 Bank statements/2026-10", "..")
 
 
 def test_hand_edited_proposal_with_a_path_name_is_a_400_not_a_500():

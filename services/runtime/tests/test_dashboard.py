@@ -24,8 +24,8 @@ PROFILE = inv_.InvoiceProfile.model_validate({
     "name": "Sam Builds Ltd", "address": "1 High Street\nLeeds LS1 1AA",
     "bank": {"account_name": "Sam Builds Ltd", "sort_code": "12 34 56", "account_number": "12345678"},
 })
-STATEMENT_A = "03 Bank statements/2026-10-26_starling.csv"  # later, but nothing matched on it
-STATEMENT_B = "03 Bank statements/2026-10-24_monzo.csv"
+STATEMENT_A = "04 Bank statements/2026-10-26_starling.csv"  # later, but nothing matched on it
+STATEMENT_B = "04 Bank statements/2026-10-24_monzo.csv"
 
 
 def _proposal(pid: str, supplier: str, status: str, gross: float = 12.0) -> Proposal:

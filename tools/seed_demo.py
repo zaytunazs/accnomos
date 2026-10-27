@@ -32,7 +32,6 @@ import getpass
 import hashlib
 import io
 import os
-import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -53,10 +52,11 @@ from app import contacts as contacts_mod  # noqa: E402
 from app import invoicing, jobs, mileage  # noqa: E402
 from app.approve import approve  # noqa: E402
 from app.autopilot import supplier_key  # noqa: E402
-from app.books import INBOX, Books, DocMeta, now  # noqa: E402
+from app.books import Books, DocMeta, now  # noqa: E402
 from app.checks import decide, run_checks  # noqa: E402
 from app.deadlines import STAGGER_START_MONTH, add_months, period_containing, period_label, previous_period  # noqa: E402
 from app.journal import BANK, VAT_CONTROL, draft_journal  # noqa: E402
+from app.paths import INBOX, readme_text  # noqa: E402
 from app.pdf import render_invoice  # noqa: E402
 from app.pipeline import sha256_hex, suggested_filename  # noqa: E402
 from app.repair import repair  # noqa: E402
@@ -73,7 +73,6 @@ INBOX_DOCS = 25
 INBOX_NEEDS_A_LOOK = ("057_mixed.json", "010_foreign.json")  # malformed VAT number; EUR, needs converting
 INBOX_SALE = "052_sales_invoice.json"
 OPENING_BALANCE_PENCE = 600_000
-WEB_GRAPH_TS = ROOT / "apps/web/src/lib/graph.ts"
 
 
 # --------------------------------------------------------------------------- #
@@ -433,12 +432,6 @@ def render_png(text: str) -> bytes:
     return _renderer().render_receipt(text, messy=False, seed=0)
 
 
-def readme_text() -> str | None:
-    """The README the web app writes when it creates the folder (apps/web/src/lib/graph.ts), so there is one copy."""
-    m = re.search(r"README_TEXT = `(.*?)`;", WEB_GRAPH_TS.read_text(encoding="utf-8"), re.S) if WEB_GRAPH_TS.exists() else None
-    return m.group(1) if m else None
-
-
 async def _upload(books: Books, d: PlannedDoc) -> tuple[str, bytes]:
     data = render_png(d.text)
     path = f"{INBOX}/{d.file_name}"
@@ -473,8 +466,7 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
     books = SeedBooks(storage)
     say("Folder tree")
     await books.ensure_tree()
-    if readme := readme_text():
-        await storage.write("README.txt", readme.encode())
+    await storage.write("README.txt", readme_text().encode())  # the same text the web app writes (app/paths.py)
     slug = _slug(plan.business)
     await invoicing.save_profile(books, invoicing.InvoiceProfile(
         name=plan.business, address="14 Mill Lane\nLeeds\nLS1 2AB", email=f"accounts@{slug}.example",

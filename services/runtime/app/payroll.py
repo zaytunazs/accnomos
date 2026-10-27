@@ -1,7 +1,7 @@
 """Pay runs prepared from timesheets for the owner's payroll provider. Estimates only: not payroll, not RTI.
 
     _System/Payroll/runs/{yyyy-mm}.json   one pay run per calendar month
-    04 Payroll/{yyyy-mm}.csv              the export handed to the payroll provider (or HMRC Basic PAYE Tools)
+    05 Payroll/{yyyy-mm}.csv              the export handed to the payroll provider (or HMRC Basic PAYE Tools)
 
 Accnomos does not run payroll or file anything with HMRC. It adds up each person's hours for the month at
 their hourly rate (staff.json `hourly_rate_pence`), estimates PAYE and NI with the one rates table in
@@ -34,12 +34,13 @@ from pydantic import BaseModel, Field
 
 from app import payroll_rates as R
 from app.books import SYSTEM, Books, now
+from app.paths import PAYROLL
 from app.jobs import hours_value, load_entries, load_staff, pence_for, quarters
 
 log = logging.getLogger(__name__)
 
 RUNS = f"{SYSTEM}/Payroll/runs"
-EXPORTS = "04 Payroll"
+EXPORTS = PAYROLL
 WAGES = "7000 Gross wages"
 EMPLOYER_NI = "7010 Employer's NI"
 LIABILITIES = "2210 Payroll liabilities"
@@ -327,7 +328,7 @@ async def staff_names(books: Books) -> dict[str, tuple[str, str]]:
 
 
 async def export(books: Books, period: str, user: str) -> tuple[str, str]:
-    """(path, csv text). Writes 04 Payroll/{period}.csv, replacing an earlier export of the same month."""
+    """(path, csv text). Writes 05 Payroll/{period}.csv, replacing an earlier export of the same month."""
     run = await get_run(books, period)
     text = export_csv(run, await staff_names(books))
     path = f"{EXPORTS}/{period}.csv"

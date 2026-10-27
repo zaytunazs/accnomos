@@ -16,7 +16,8 @@ from accnomos_ledger.events import LedgerEvent, Line, VatCode
 
 from app.autopilot import ACTOR as AUTOPILOT_ACTOR
 from app.autopilot import AUTOPILOT, rule_from_proposal, save_rule
-from app.books import NEEDS_A_LOOK, Books, Rule, RuleMatch, now
+from app.books import Books, Rule, RuleMatch, now
+from app.paths import NEEDS_A_LOOK, upgrade
 from app.checks import decide
 from app.journal import VAT_CONTROL, draft_journal, with_expense_account
 from app.mileage import load_vehicles
@@ -120,7 +121,7 @@ async def approve(
         event_path = await books.post_event(event)
     except FileExistsError as exc:
         raise ProposalStateError("Already posted to the ledger") from exc
-    if p.file_path and p.file_path.startswith(f"{NEEDS_A_LOOK}/"):
+    if p.file_path and upgrade(p.file_path).startswith(f"{NEEDS_A_LOOK}/"):
         await books.file_document(p, p.file_path, books.filing_folder(p.extracted))
     p.status, p.event_id, p.decided_by, p.decided_at = "posted", event.id, user, now()
     await books.save_proposal(p)
@@ -188,7 +189,7 @@ async def _remember(books: Books, p: Proposal, user: str) -> Rule | None:
 
 
 async def reject(books: Books, proposal_id: str, user: str, reason: str) -> Proposal:
-    """Mark rejected and park the document in "04 Needs a look". Nothing is ever deleted."""
+    """Mark rejected and park the document in Needs a look. Nothing is ever deleted."""
     p = await _open_proposal(books, proposal_id)
     if p.file_path:
         await books.file_document(p, p.file_path, NEEDS_A_LOOK)

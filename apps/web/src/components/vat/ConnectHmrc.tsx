@@ -6,6 +6,7 @@ import Explain from "@/components/Explain";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { fetchLiveVat, type RtVatView } from "@/lib/runtime";
 import { usePickedPeriod } from "@/lib/vat-period";
+import { FOLDER } from "@/lib/folders";
 import { ensureFolder, putSmallFile } from "@/lib/graph";
 import {
   clientFacts,
@@ -190,7 +191,7 @@ export default function ConnectHmrc() {
       setStep("done");
       setObligations((list) => list?.map((o) => (o.periodKey === obligation.periodKey ? { ...o, status: "F" } : o)) ?? null);
       setSaved("saving");
-      const folder = `05 VAT returns/${obligation.periodKey}`;
+      const folder = `${FOLDER.vat_returns}/${obligation.periodKey}`;
       const submittedAt = new Date().toISOString();
       try {
         await ensureFolder(account, folder);
@@ -273,7 +274,7 @@ export default function ConnectHmrc() {
             </p>
             <p>
               Nothing is sent until you tick the legal declaration and press Submit. The return
-              and HMRC&apos;s receipt are then saved to 05 VAT returns in your OneDrive.
+              and HMRC&apos;s receipt are then saved to {FOLDER.vat_returns} in your OneDrive.
             </p>
           </Explain>
         </span>
@@ -515,7 +516,7 @@ export default function ConnectHmrc() {
                 {saved === "saving"
                   ? "Saving to your OneDrive…"
                   : saved === "saved"
-                    ? `Saved to your OneDrive: 05 VAT returns/${obligation.periodKey}/receipt.json and return.json.`
+                    ? `Saved to your OneDrive: ${FOLDER.vat_returns}/${obligation.periodKey}/receipt.json and return.json.`
                     : saved}
               </p>
             </div>

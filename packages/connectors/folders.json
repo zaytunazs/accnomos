@@ -1,0 +1,72 @@
+{
+  "source": "services/runtime/app/paths.py",
+  "top": [
+    {
+      "key": "inbox",
+      "name": "00 Inbox",
+      "note": "drop receipts, invoices or statements here (photo, PDF, email attachment) and Accnomos will read them."
+    },
+    {
+      "key": "receipts",
+      "name": "01 Receipts",
+      "note": "purchase documents Accnomos has filed, by month, renamed like \"2026-10-21 Screwfix £38.47.pdf\"."
+    },
+    {
+      "key": "needs_a_look",
+      "name": "02 Needs a look",
+      "note": "anything odd (duplicates, missing VAT number, unreadable), with a reason. Nothing in here is posted."
+    },
+    {
+      "key": "sales",
+      "name": "03 Sales",
+      "note": "sales documents. Invoices you write in Accnomos are in invoices/, and the exact PDF each customer was sent is in invoices/sent/."
+    },
+    {
+      "key": "bank",
+      "name": "04 Bank statements",
+      "note": "the bank statement files you imported."
+    },
+    {
+      "key": "payroll",
+      "name": "05 Payroll",
+      "note": "pay run exports for your payroll provider, one per month."
+    },
+    {
+      "key": "vat_returns",
+      "name": "06 VAT returns",
+      "note": "the 9-box calculation and HMRC receipt for each period."
+    },
+    {
+      "key": "reports",
+      "name": "07 Reports",
+      "note": "reports you asked Accnomos to save."
+    }
+  ],
+  "tree": [
+    "00 Inbox",
+    "01 Receipts",
+    "02 Needs a look",
+    "03 Sales",
+    "04 Bank statements",
+    "05 Payroll",
+    "06 VAT returns",
+    "07 Reports",
+    "03 Sales/invoices",
+    "03 Sales/invoices/sent",
+    "_System",
+    "_System/audit",
+    "_System/docs",
+    "_System/proposals",
+    "_System/Ledger/events",
+    "_System/bank"
+  ],
+  "renamed": {
+    "02 Sales invoices": "03 Sales",
+    "03 Bank statements": "04 Bank statements",
+    "04 Needs a look": "02 Needs a look",
+    "04 Payroll": "05 Payroll",
+    "05 VAT returns": "06 VAT returns",
+    "06 Reports": "07 Reports"
+  },
+  "readme": "These are your books.\n\nThis folder was created by Accnomos. Everything the app knows about your business is in here, in plain files:\n- 00 Inbox: drop receipts, invoices or statements here (photo, PDF, email attachment) and Accnomos will read them.\n- 01 Receipts: purchase documents Accnomos has filed, by month, renamed like \"2026-10-21 Screwfix £38.47.pdf\".\n- 02 Needs a look: anything odd (duplicates, missing VAT number, unreadable), with a reason. Nothing in here is posted.\n- 03 Sales: sales documents. Invoices you write in Accnomos are in invoices/, and the exact PDF each customer was sent is in invoices/sent/.\n- 04 Bank statements: the bank statement files you imported.\n- 05 Payroll: pay run exports for your payroll provider, one per month.\n- 06 VAT returns: the 9-box calculation and HMRC receipt for each period.\n- 07 Reports: reports you asked Accnomos to save.\n- Books.xlsx: a spreadsheet of your books, rebuilt from the files in _System. Do not edit it; it is overwritten.\n- _System: the ledger events and the audit log (never edited: a correction is a new entry that reverses\n  the old one), plus rules you approved, contacts, jobs, staff, timesheets, vehicles and your mileage log.\n\nYou can open all of this without the app. If you disconnect Accnomos, the files stay yours.\nSample data is labelled \"SAMPLE — FICTIONAL COMPANY\".\n"
+}

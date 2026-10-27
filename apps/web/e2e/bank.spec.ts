@@ -12,7 +12,7 @@ test("upload the gold Barclays CSV → confirm a match → settle the unmatched 
   await page.goto("/bank");
   await page.locator('input[type="file"]').setInputFiles(BARCLAYS);
   await expect(page.getByRole("status").filter({ hasText: "barclays.csv" })).toContainText("6 new lines");
-  expect((await runtime.files()).some((f) => f.startsWith("03 Bank statements/") && f.endsWith(".csv"))).toBeTruthy();
+  expect((await runtime.files()).some((f) => f.startsWith("04 Bank statements/") && f.endsWith(".csv"))).toBeTruthy();
 
   const lines = page.getByRole("region", { name: "Bank lines" });
   const tab = (name: string) => lines.getByRole("tab", { name: new RegExp(`^${name}`) });

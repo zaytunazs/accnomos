@@ -20,6 +20,7 @@ from pydantic import BaseModel
 from app import contacts as cb
 from app import invoicing
 from app.books import AUDIT, AUTOPILOT_AUDIT, Books, bank_of
+from app.paths import upgrade
 from app.routes_vat import Deadlines, compute_deadlines
 from app.schemas import Proposal
 
@@ -34,7 +35,7 @@ class Cash(BaseModel):
     balance_pence: int | None  # closing balance on the latest statement with a matched line; None without one
     as_of: date | None  # the date of that balance
     bank: str | None
-    statement: str | None  # the statement file in "03 Bank statements"
+    statement: str | None  # the statement file in the bank statements folder
     reconciled_to: date | None  # every bank line on or before this date is matched, a transfer or ignored
 
 
@@ -109,13 +110,14 @@ def closing_line(lines: Sequence[BankLine]) -> BankLine | None:
 def cash_position(lines: Sequence[BankLine]) -> Cash:
     by_file: dict[str, list[BankLine]] = {}
     for ln in lines:
-        by_file.setdefault(ln.source_file, []).append(ln)
-    matched = [ls for ls in by_file.values() if any(ln.status == "matched" for ln in ls)]
-    latest = max(matched, key=lambda ls: (max(ln.date for ln in ls), ls[0].source_file), default=None)
-    closing = closing_line(latest) if latest else None
+        by_file.setdefault(upgrade(ln.source_file), []).append(ln)  # where it is now, after a folder rename
+    matched = [(path, ls) for path, ls in by_file.items() if any(ln.status == "matched" for ln in ls)]
+    latest = max(matched, key=lambda pl: (max(ln.date for ln in pl[1]), pl[0]), default=None)
+    closing = closing_line(latest[1]) if latest else None
+    statement = latest[0] if latest and closing else None
     return Cash(
         balance_pence=closing.balance_pence if closing else None, as_of=closing.date if closing else None,
-        bank=bank_of(closing.source_file) if closing else None, statement=closing.source_file if closing else None,
+        bank=bank_of(statement) if statement else None, statement=statement,
         reconciled_to=reconciled_to(lines),
     )
 

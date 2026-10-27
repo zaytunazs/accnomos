@@ -153,7 +153,7 @@ export default function ReviewQueue<H>({
     return run(p.id, async () => {
       await adapter.reject(p);
       setHistory((h) => [...h, { kind: "reject", ids: [p.id], what: label(p), handles: [], rejected: p }]);
-      onNote(adapter.unreject ? "Rejected · U to undo" : "Rejected · the document is parked in 04 Needs a look");
+      onNote(adapter.unreject ? "Rejected · U to undo" : "Rejected · the document is parked in 02 Needs a look");
       setFocusNext(next);
     });
   }
@@ -189,7 +189,7 @@ export default function ReviewQueue<H>({
     if (!last) return onNote("Nothing to undo yet.");
     if (last.kind === "reject" && !adapter.unreject) {
       setHistory((h) => h.slice(0, -1));
-      return onNote(`A rejection can't be undone here: ${last.what} is in 04 Needs a look. Move it back to 00 Inbox and scan to see it again.`);
+      return onNote(`A rejection can't be undone here: ${last.what} is in 02 Needs a look. Move it back to 00 Inbox and scan to see it again.`);
     }
     return run("undo", async () => {
       if (last.kind === "reject") await adapter.unreject!(last.rejected!);
@@ -386,7 +386,7 @@ export default function ReviewQueue<H>({
           <p className="mt-2 text-[15px] leading-7 text-muted">
             {adapter.unreject
               ? "Nothing is posted. U brings it back."
-              : "Nothing is posted. The document moves to 04 Needs a look. This can't be undone from Review."}
+              : "Nothing is posted. The document moves to 02 Needs a look. This can't be undone from Review."}
           </p>
           <div className="mt-5 flex flex-nowrap gap-2">
             <button type="button" autoFocus onClick={() => reject(rejectItem)} className={`${btn} flex-1 bg-warn-ink text-white`}>

@@ -25,7 +25,7 @@ test("prepare a pay run from timesheets → export CSV → confirm and post", as
   expect(csv).toContain("Alex Carter");
   expect(csv).toContain("150.00");
   await expect(page.getByRole("status")).toContainText("in your OneDrive and downloaded");
-  expect(await runtime.files()).toContain("04 Payroll/2026-10.csv");
+  expect(await runtime.files()).toContain("05 Payroll/2026-10.csv");
 
   const confirm = page.getByRole("region", { name: "Confirm what was actually paid" });
   await confirm.getByLabel("Actual gross pay £ (provider)").fill("150.00");

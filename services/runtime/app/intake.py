@@ -1,4 +1,4 @@
-"""Outlook intake (F10): copy likely receipts/invoices from the user's mailbox into "00 Inbox".
+"""Outlook intake (F10): copy likely receipts/invoices from the user's mailbox into 00 Inbox.
 
 Code only, no model call. The mailbox is only read (nothing is moved, flagged, marked read or
 deleted); everything written goes to the user's own books folder:
@@ -22,7 +22,8 @@ from typing import Any
 from accnomos_connectors.base import MailAttachment, MailMessage, MailProvider
 from pydantic import BaseModel
 
-from app.books import INBOX, SYSTEM, Books, Rule, _month, _with_suffix, now
+from app.books import SYSTEM, Books, Rule, _month, _with_suffix, now
+from app.paths import INBOX
 
 log = logging.getLogger(__name__)
 

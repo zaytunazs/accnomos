@@ -207,10 +207,10 @@ async def client() -> TestClient:
     await books.post_event(_purchase("a" * 32, date(2026, 11, 2), 4325, 865))  # Oct–Dec 2026
     await books.post_event(_purchase("b" * 32, date(2026, 8, 14), 4325, 865))  # Jul–Sep 2026
     await books.post_event(_purchase("c" * 32, date(2026, 5, 1), 1000, 200))  # Apr–Jun 2026, filed below
-    await fake.write("05 VAT returns/18A2/return.json", json.dumps({  # as ConnectHmrc saves it after a relay submission
+    await fake.write("06 VAT returns/18A2/return.json", json.dumps({  # as ConnectHmrc saves it after a relay submission
         "periodKey": "18A2", "obligation": {"start": "2026-04-01", "end": "2026-06-30", "due": "2026-08-07"},
     }).encode())
-    await fake.write("05 VAT returns/junk/return.json", b"not json")  # an unreadable receipt is skipped, not a 500
+    await fake.write("06 VAT returns/junk/return.json", b"not json")  # an unreadable receipt is skipped, not a 500
 
     async def override():
         yield books
