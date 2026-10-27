@@ -10,16 +10,18 @@ from pathlib import Path
 
 import pytest
 from accnomos_connectors import FakeStorageProvider
+from accnomos_ledger.bank import BankLine
 from accnomos_ledger.events import LedgerEvent
 from accnomos_ledger.vat import compute_vat_return
 from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from app import approve as approve_mod  # noqa: E402
 from app import autopilot, pipeline  # noqa: E402
 from app.ai.config import AiConfig  # noqa: E402
 from app.approve import ApprovalError, ProposalStateError, approve, undo  # noqa: E402
-from app.books import AUDIT, AUTOPILOT_AUDIT, AUTOPILOT_RULES, EVENTS, Books  # noqa: E402
+from app.books import AUDIT, AUTOPILOT_AUDIT, AUTOPILOT_RULES, BANK_LINES, EVENTS, BankMatchError, Books  # noqa: E402
 from app.inbox import scan_inbox  # noqa: E402
 from app.schemas import ExtractedDoc, ExtractedLine  # noqa: E402
 
@@ -256,6 +258,54 @@ async def test_undo_appends_balancing_reversal_and_reopens(fake: FakeStorageProv
 async def test_undo_unknown_event(books: Books) -> None:
     with pytest.raises(FileNotFoundError):
         await undo(books, "deadbeefdeadbeef", USER)
+
+
+def _bank_line(fake: FakeStorageProvider, line_id: str = "0123456789abcdef") -> str:
+    row = BankLine(id=line_id, date=date(2026, 10, 25), amount_pence=-4110, description="SCREWFIX", source_file="x.csv")
+    fake.files[f"{BANK_LINES}/{'b' * 64}.json"] = json.dumps([row.model_dump(mode="json")]).encode()
+    return line_id
+
+
+async def test_undo_refused_while_bank_matched(fake: FakeStorageProvider, books: Books) -> None:
+    await _learn(fake, books)
+    (p,) = await _scan(fake, books, b"again")
+    line = _bank_line(fake)
+    await books.confirm_match(line, p.event_id, USER)  # type: ignore[arg-type]
+    with pytest.raises(ApprovalError, match="unmatch it first"):
+        await undo(books, p.event_id, USER)  # type: ignore[arg-type]
+    assert len(_events(fake)) == 2  # no reversal written
+
+    await books.unmatch(line, USER)
+    reversal, _ = await undo(books, p.event_id, USER)  # type: ignore[arg-type]
+    for event_id in (p.event_id, reversal.id):  # neither the undone entry nor its reversal can be matched now
+        with pytest.raises(BankMatchError, match="No posted ledger entry"):
+            await books.confirm_match(line, event_id, USER)  # type: ignore[arg-type]
+
+
+async def test_invalid_rule_in_users_file_is_skipped(fake: FakeStorageProvider, books: Books) -> None:
+    await _learn(fake, books)
+    rules = json.loads(fake.files[AUTOPILOT_RULES])
+    fake.files[AUTOPILOT_RULES] = json.dumps([{"supplier_key": "broken"}, *rules]).encode()  # hand-edited
+    (p,) = await _scan(fake, books, b"again")
+    assert p.decided_by == "autopilot"
+
+
+async def test_autopilot_post_that_fails_stays_in_review(
+    fake: FakeStorageProvider, books: Books, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    await _learn(fake, books)
+
+    def refuse(*_: object) -> LedgerEvent:
+        raise ApprovalError("Nothing to post: enter the amounts first")
+
+    monkeypatch.setattr(approve_mod, "build_event", refuse)
+    (p,) = await _scan(fake, books, b"again")
+    assert p.status == "proposed" and p.decided_by is None
+    assert p.autopilot is not None and not p.autopilot.auto_approve
+    assert p.autopilot.reasons == ["Could not post: Nothing to post: enter the amounts first"]
+    assert (await books.get_proposal(p.id)).autopilot == p.autopilot
+    assert len(_events(fake)) == 1 and _jsonl(fake, f"{AUTOPILOT_AUDIT}/") == []
+    assert (await autopilot.load_rules(books))[0].hits == 0
 
 
 # --------------------------------------------------------------------------- #

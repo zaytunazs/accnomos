@@ -400,10 +400,13 @@ class Books:
         lines = await self.stored_bank_lines() if lines is None else lines
         if all(ln.status == "matched" for ln in lines):
             return []
+        return suggest_matches(lines, await self.live_events(), await self.card_hints())
+
+    async def live_events(self) -> list[LedgerEvent]:
+        """Posted events that still stand: not a reversal, and not undone by one."""
         events = await self.list_events()
         reversed_ids = {e.reverses for e in events if e.reverses}
-        live = [e for e in events if e.kind != "reversal" and e.id not in reversed_ids]
-        return suggest_matches(lines, live, await self.card_hints())
+        return [e for e in events if e.kind != "reversal" and e.id not in reversed_ids]
 
     async def list_bank_lines(self, status: BankLineStatus | None = None) -> list[BankLine]:
         """Bank lines; open lines with a current suggestion show as "suggested" with the suggested event(s)."""
@@ -438,9 +441,9 @@ class Books:
             raise BankMatchError("This bank line is already matched; unmatch it first")
         if not ids:
             raise BankMatchError("Choose the ledger entry this payment is for")
-        posted = {e.id for e in await self.list_events()}
+        posted = {e.id for e in await self.live_events()}
         if missing := [i for i in ids if i not in posted]:
-            raise BankMatchError(f"No posted ledger entry {missing[0]}")
+            raise BankMatchError(f"No posted ledger entry {missing[0]} (or it has been undone)")
         taken = {i for ln in await self.stored_bank_lines() if ln.status == "matched" for i in ln.event_ids()}
         if clash := [i for i in ids if i in taken]:
             raise BankMatchError(f"Ledger entry {clash[0]} is already matched to another bank line")
