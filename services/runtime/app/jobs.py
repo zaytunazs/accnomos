@@ -441,7 +441,7 @@ class InvoiceProposal(BaseModel):
     job_id: str
     customer_id: str | None
     lines: list[InvoiceLine]
-    entry_ids: list[str]  # pass back to mark-invoiced when the invoice is sent
+    entry_ids: list[str]  # the invoice's lines carry these; sending it marks them (invoicing.mark_hours)
     net_pence: int
     warnings: list[str]
 

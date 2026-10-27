@@ -107,7 +107,7 @@ async def job_summary(job_id: str, books: Books = Depends(get_books)) -> JobSumm
 @router.post("/jobs/{job_id}/invoice-lines", response_model=jobs.InvoiceProposal)
 async def job_invoice_lines(job_id: str, books: Books = Depends(get_books)) -> jobs.InvoiceProposal:
     """Proposed invoice lines from the job's unbilled billable hours. Marks nothing: the web passes the
-    lines into the invoice form, and the entries are marked once that invoice is sent (below)."""
+    lines into the invoice form, and the entries are marked when that invoice is sent (invoicing.mark_hours)."""
     try:
         job = await jobs.get_job(books, _id(job_id))
     except NotFound as exc:
@@ -126,10 +126,9 @@ async def mark_invoiced(
 ) -> list[TimesheetEntry]:
     """Record the invoice the entries were billed on. Call only once the invoice has been sent.
 
-    TODO(invoicing): sales invoicing (routes_invoices.py) is on main, but invoices carry no link to timesheet
-    entries and the send step does not call jobs.mark_invoiced, so the user marks hours invoiced here by
-    typing the invoice number. Once an invoice records its entry ids, its send step should call
-    jobs.mark_invoiced right after the invoice becomes `sent`, and the web should stop calling this route.
+    An invoice written from a job's hours (lines carrying `timesheet_entry_ids`) marks them itself when it is
+    sent (invoicing.mark_hours), and the web no longer calls this route. It stays for hours billed on an
+    invoice made outside Accnomos.
     """
     try:
         await jobs.get_job(books, _id(job_id))
