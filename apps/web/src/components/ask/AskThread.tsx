@@ -1,12 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
 import { EmptyState, LoadingSkeleton, ReaderErrorNote, RuntimeErrorNote } from "@/components/States";
+import { todayIso } from "@/components/jobs/useAccount";
 import { loadAiConfig, RUNTIME_URL } from "@/lib/ai-config";
+import { deadlinesQuery, loadBusiness } from "@/lib/business";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { runtime, runtimeHealth, type RtAskAnswer, type RtAskTurn } from "@/lib/runtime";
 import { sampleAnswer, sampleQuestion } from "@/lib/sample-ask";
@@ -14,20 +16,39 @@ import { pickedPeriod } from "@/lib/vat-period";
 import ActionCard, { ClarifyCard, withPicked } from "./ActionCard";
 import AnswerCard from "./AnswerCard";
 import MicButton from "./MicButton";
+import { FALLBACK_QUESTIONS, suggestedQuestions } from "./suggested";
 
 interface Turn {
   question: string; // empty while a spoken question is being transcribed
   answer?: RtAskAnswer;
   error?: string;
+  /** Seconds the answer took, timed around the ask call (the runtime sends no timing). */
+  elapsedS?: number;
+  /** From hold-to-talk: tapping the transcript puts it back in the box to edit. */
+  voice?: boolean;
 }
 
 type Mode = "loading" | "sample" | "live";
 
-function Question({ text }: { text: string }) {
+function Question({ text, voice, onEdit }: { text: string; voice?: boolean; onEdit?: () => void }) {
+  const bubble =
+    "max-w-[min(32rem,85%)] rounded-2xl bg-teal px-4 py-3 text-left text-[15px] leading-6 text-white";
   return (
     <div className="flex justify-end">
       {text ? (
-        <p className="max-w-[min(32rem,85%)] rounded-2xl bg-teal px-4 py-3 text-[15px] leading-6 text-white">{text}</p>
+        voice && onEdit ? (
+          <button
+            type="button"
+            onClick={onEdit}
+            title="Tap to edit and ask again"
+            aria-label={`Your spoken question: ${text}. Tap to edit and ask again.`}
+            className={`${bubble} hover:bg-teal-dark`}
+          >
+            {text}
+          </button>
+        ) : (
+          <p className={bubble}>{text}</p>
+        )
       ) : (
         <p className="rounded-2xl bg-teal/70 px-4 py-3 text-[15px] italic leading-6 text-white">Transcribing…</p>
       )}
@@ -41,6 +62,32 @@ function askPeriod() {
   return p ? { start: p.start, end: p.end } : null;
 }
 
+/** The last turns of this tab's conversation, kept in sessionStorage so a reload keeps the thread. */
+const HISTORY_KEY = "accnomos.ask-history";
+const MAX_TURNS = 6;
+
+function loadTurns(): Turn[] {
+  try {
+    if (typeof window === "undefined") return [];
+    const raw = window.sessionStorage.getItem(HISTORY_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return (parsed as Turn[]).filter((t) => t && typeof t.question === "string" && (t.answer ?? t.error)).slice(-MAX_TURNS);
+  } catch {
+    return [];
+  }
+}
+
+function keepTurns(turns: Turn[]): void {
+  try {
+    const keep = turns.filter((t) => t.question && (t.answer ?? t.error)).slice(-MAX_TURNS);
+    window.sessionStorage.setItem(HISTORY_KEY, JSON.stringify(keep));
+  } catch {
+    /* storage unavailable — the thread lives for this page only */
+  }
+}
+
 /** Live answers from POST /books/ask when signed in and the runtime answers; otherwise the sample thread. */
 export default function AskThread() {
   const [mode, setMode] = useState<Mode>("loading");
@@ -52,6 +99,18 @@ export default function AskThread() {
   const [model, setModel] = useState<string | null>(null);
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
   const [voiceOff, setVoiceOff] = useState<string | null>("Sign in to ask by voice");
+  const [suggestions, setSuggestions] = useState<string[] | null>(null);
+
+  /** Questions for an empty thread from the dashboard payload — code, not a model. */
+  const refreshSuggestions = useCallback(async (acct: AccountInfo) => {
+    try {
+      const vat = deadlinesQuery(loadBusiness());
+      const dash = await runtime.dashboard(acct, `${vat ? `${vat}&` : ""}today=${todayIso()}`);
+      setSuggestions(suggestedQuestions(dash));
+    } catch {
+      setSuggestions(FALLBACK_QUESTIONS);
+    }
+  }, []);
   const end = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const asked = useRef(false);
@@ -65,36 +124,38 @@ export default function AskThread() {
       ]);
   }
 
-  async function ask(question: string, acct: AccountInfo, before: Turn[]) {
+  const ask = useCallback(async (question: string, acct: AccountInfo, before: Turn[]) => {
     const q = question.trim();
     if (!q) return;
     const history = historyOf(before);
+    const started = performance.now();
     setTurns([...before, { question: q }]);
     setInput("");
     setBusy(true);
     try {
       const answer = await runtime.ask(acct, q, askPeriod(), history);
-      setTurns([...before, { question: q, answer }]);
+      setTurns([...before, { question: q, answer, elapsedS: (performance.now() - started) / 1000 }]);
     } catch (e) {
       setTurns([...before, { question: q, error: e instanceof Error ? e.message : String(e) }]);
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
   /** A spoken question: "Transcribing…" bubble, then the transcript replaces it and the answer renders as usual. */
-  async function askVoice(audio: Blob, acct: AccountInfo, before: Turn[]) {
+  const askVoice = useCallback(async (audio: Blob, acct: AccountInfo, before: Turn[]) => {
+    const started = performance.now();
     setTurns([...before, { question: "" }]);
     setBusy(true);
     try {
       const { transcript, ...answer } = await runtime.askVoice(acct, audio, askPeriod(), historyOf(before));
-      setTurns([...before, { question: transcript, answer }]);
+      setTurns([...before, { question: transcript, answer, elapsedS: (performance.now() - started) / 1000, voice: true }]);
     } catch (e) {
       setTurns([...before, { question: "(voice question)", error: e instanceof Error ? e.message : String(e) }]);
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -129,12 +190,16 @@ export default function AskThread() {
       );
       setAccount(acct);
       setMode("live");
+      const stored = loadTurns();
+      if (stored.length > 0) setTurns(stored);
       if (q && !asked.current) {
         asked.current = true; // the home page's Ask bar sent a question: answer it straight away
-        await ask(q, acct, []);
+        await ask(q, acct, stored);
+      } else if (stored.length === 0) {
+        await refreshSuggestions(acct);
       }
     })();
-  }, []);
+  }, [ask, refreshSuggestions]);
 
   useEffect(() => {
     const reduceMotion =
@@ -143,9 +208,23 @@ export default function AskThread() {
     end.current?.scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "end" });
   }, [turns]);
 
+  useEffect(() => {
+    keepTurns(turns);
+  }, [turns]);
+
   function submit(e: FormEvent) {
     e.preventDefault();
     if (mode === "live" && account && !busy) void ask(input, account, turns);
+  }
+
+  function clearConversation() {
+    setTurns([]);
+    try {
+      window.sessionStorage.removeItem(HISTORY_KEY);
+    } catch {
+      /* nothing stored */
+    }
+    if (account) void refreshSuggestions(account);
   }
 
   const live = mode === "live";
@@ -202,26 +281,62 @@ export default function AskThread() {
         </div>
       )}
 
+      {live && turns.length > 0 && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={clearConversation}
+            className="shrink-0 whitespace-nowrap rounded-xl px-3 py-2 text-[14px] font-bold text-teal hover:bg-teal-tint"
+          >
+            New conversation
+          </button>
+        </div>
+      )}
+
       {live && (
-        <div className="flex flex-col gap-4" aria-live="polite">
+        <div className="flex min-w-0 flex-col gap-4 overflow-x-clip" role="log" aria-live="polite" aria-label="Conversation">
           {turns.length === 0 && (
-            <EmptyState
-              title="No questions yet"
-              body="Your conversation history appears here — every answer is worked out by code from your ledger. Try “Why is my VAT different from last quarter?” below."
-              action={
-                <button
-                  type="button"
-                  onClick={() => inputRef.current?.focus()}
-                  className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
-                >
-                  Ask your first question
-                </button>
-              }
-            />
+            <>
+              <EmptyState
+                title="No questions yet"
+                body="Your conversation history appears here — every answer is worked out by code from your ledger."
+              />
+              {suggestions && (
+                <div className="flex flex-col gap-2">
+                  <p className="text-[13px] font-bold text-muted">Try one of these</p>
+                  <div className="flex flex-wrap gap-2">
+                    {suggestions.map((s) => (
+                      <button
+                        key={s}
+                        type="button"
+                        disabled={busy}
+                        onClick={() => {
+                          if (account && !busy) void ask(s, account, turns);
+                        }}
+                        className="min-w-0 rounded-full border border-teal bg-white px-4 py-2.5 text-left text-[14px] font-bold text-teal hover:bg-teal-tint disabled:opacity-50"
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
           {turns.map((t, i) => (
-            <div key={i} className="flex flex-col gap-3">
-              <Question text={t.question} />
+            <div key={i} className="flex min-w-0 flex-col gap-3">
+              <Question
+                text={t.question}
+                voice={t.voice}
+                onEdit={
+                  busy
+                    ? undefined
+                    : () => {
+                        setInput(t.question);
+                        inputRef.current?.focus();
+                      }
+                }
+              />
               {t.answer?.proposed_action && account ? (
                 <ActionCard
                   action={t.answer.proposed_action}
@@ -239,7 +354,7 @@ export default function AskThread() {
                   }}
                 />
               ) : t.answer ? (
-                <AnswerCard answer={t.answer} />
+                <AnswerCard answer={t.answer} account={account} elapsedS={t.elapsedS} />
               ) : t.error ? (
                 <RuntimeErrorNote message={t.error} title="Couldn't get an answer" />
               ) : (
@@ -251,7 +366,10 @@ export default function AskThread() {
       )}
       <div ref={end} />
 
-      <form onSubmit={submit} className="flex items-center gap-2 rounded-2xl border border-border bg-white p-2 pl-4">
+      <form
+        onSubmit={submit}
+        className="sticky bottom-16 z-30 flex items-center gap-2 rounded-2xl border border-border bg-white p-2 pl-4"
+      >
         <label htmlFor="ask-input" className="sr-only">
           Ask your books
         </label>
