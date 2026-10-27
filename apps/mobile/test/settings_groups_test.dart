@@ -98,7 +98,7 @@ class FakeSettingsClient extends RuntimeClient {
   }
 }
 
-const _account =
+final testAccount =
     Account(id: '1', username: 'user@example.com', name: 'Test User');
 
 Map<String, dynamic> _rule() => {
@@ -132,10 +132,20 @@ void main() {
         .setMockMethodCallHandler(channel, null);
   });
 
+  /// Tall surface so every group builds: ListView only builds visible
+  /// tiles, and the expanded groups are taller than 600 dp.
+  void useTallSurface(WidgetTester tester) {
+    tester.view.physicalSize = const Size(800, 4000);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+  }
+
   Future<void> pumpSignedIn(WidgetTester tester, FakeSettingsClient fake) async {
+    useTallSurface(tester);
     await tester.pumpWidget(MaterialApp(
       home: SettingsScreen(
-        testAccount: _account,
+        testAccount: testAccount,
         testAccountReady: true,
         clientFactory: (settings, books) => fake,
       ),
@@ -144,11 +154,15 @@ void main() {
   }
 
   Future<void> scrollTo(WidgetTester tester, Finder finder) async {
-    await tester.scrollUntilVisible(finder, 300);
+    // Drag the page itself: the generic scrollable lookup is ambiguous
+    // because every TextField carries an inner Scrollable.
+    await tester.dragUntilVisible(finder,
+        find.byType(SingleChildScrollView), const Offset(0, -300));
     await tester.pumpAndSettle();
   }
 
   testWidgets('signed out: sign-in card plus disabled reasons', (tester) async {
+    useTallSurface(tester);
     await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
     await tester.pumpAndSettle();
 
@@ -173,12 +187,13 @@ void main() {
     // Disabled fields still render their labels.
     expect(find.text('Business name'), findsOneWidget);
     // The AI test cannot run signed out.
-    final testButton =
-        tester.widget<OutlinedButton>(find.text('Test connection'));
+    final testButton = tester.widget<OutlinedButton>(
+        find.widgetWithText(OutlinedButton, 'Test connection'));
     expect(testButton.onPressed, isNull);
   });
 
   testWidgets('connection save shows a snackbar', (tester) async {
+    useTallSurface(tester);
     await tester.pumpWidget(const MaterialApp(home: SettingsScreen()));
     await tester.pumpAndSettle();
 
@@ -325,9 +340,9 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
 
     await pumpSignedIn(tester, FakeSettingsClient(rulesData: [_rule()]));
-    final list = find.byType(ListView);
+    final page = find.byType(SingleChildScrollView);
     for (var i = 0; i < 8; i++) {
-      await tester.drag(list, const Offset(0, -400));
+      await tester.drag(page, const Offset(0, -400));
       await tester.pumpAndSettle();
     }
     expect(tester.takeException(), isNull);
