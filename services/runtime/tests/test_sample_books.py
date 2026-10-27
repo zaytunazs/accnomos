@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import importlib.util
 import json
+import re
 import sys
 from collections import Counter
 from collections.abc import AsyncIterator
@@ -131,12 +132,19 @@ def _client(storage: StorageProvider) -> httpx.AsyncClient:
     return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test")
 
 
-@pytest.fixture
-async def done_books(seed_demo: ModuleType) -> AsyncIterator[FakeStorageProvider]:
-    """The books the CLI writes, for comparison."""
+@pytest.fixture(scope="module")
+def _cli_books(seed_demo: ModuleType) -> FakeStorageProvider:
     fake = FakeStorageProvider()
-    await seed_demo.seed(fake, seed_demo.build_plan("Bramblewood Joinery Ltd", TODAY), say=lambda _m: None)
-    yield fake
+    asyncio.run(seed_demo.seed(fake, seed_demo.build_plan("Bramblewood Joinery Ltd", TODAY), say=lambda _m: None))
+    return fake
+
+
+@pytest.fixture
+def done_books(_cli_books: FakeStorageProvider) -> FakeStorageProvider:
+    """The books the CLI writes, for comparison (a copy: one CLI run per module)."""
+    fake = FakeStorageProvider()
+    fake.files, fake.folders = dict(_cli_books.files), set(_cli_books.folders)
+    return fake
 
 
 async def _settle(client: httpx.AsyncClient, *, until: tuple[str, ...] = ("done", "failed")) -> dict[str, Any]:
@@ -274,7 +282,7 @@ async def test_a_folder_seeded_by_the_cli_is_refused(done_books: FakeStorageProv
         assert (await client.post("/books/sample", headers=HEADERS)).status_code == 409
 
 
-@pytest.mark.parametrize("budget", [40, 400, 1200, 2600])
+@pytest.mark.parametrize("budget", [40, 2600])
 async def test_token_expiry_mid_way_waits_for_a_fresh_one(
     done_books: FakeStorageProvider, budget: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -296,7 +304,7 @@ async def test_token_expiry_mid_way_waits_for_a_fresh_one(
     assert await _facts(fake) == await _facts(done_books)
 
 
-@pytest.mark.parametrize("budget", [25, 300, 900, 1700, 2500])
+@pytest.mark.parametrize("budget", [300, 1700])
 async def test_resumes_from_the_recorded_step_after_a_restart(
     done_books: FakeStorageProvider, budget: int, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -328,6 +336,72 @@ async def test_resumes_from_the_recorded_step_after_a_restart(
     assert status["state"] == "done", status
     assert await _facts(fake) == await _facts(done_books)
     assert [a["action"] for a in _audit(fake)].count("sample_books_started") == 1
+
+
+class RefusedAt(Expiring):
+    """The token "expires" at a chosen moment: on the first write or move whose path matches `pattern` (and whose
+    data contains `content`), refused (`after` False) or done and then everything after it refused (`after` True)."""
+
+    def __init__(self, inner: FakeStorageProvider, pattern: str, *, content: bytes = b"", after: bool = False) -> None:
+        super().__init__(inner, None)
+        self.pattern, self.content, self.after, self.fired = re.compile(pattern), content, after, False
+
+    def _hit(self, path: str, data: bytes = b"") -> bool:
+        if self.fired or not self.pattern.search(path) or self.content not in data:
+            return False
+        self.fired = True
+        return True
+
+    async def write(self, path: str, data: bytes, *, if_match: str | None = None, create_only: bool = False) -> FileRef:
+        if self._hit(path, data):
+            self.left = 0
+            if self.after:
+                self.left = None
+                ref = await super().write(path, data, if_match=if_match, create_only=create_only)
+                self.left = 0
+                return ref
+        return await super().write(path, data, if_match=if_match, create_only=create_only)
+
+    async def move(self, path: str, new_path: str) -> FileRef:
+        if self._hit(new_path):
+            self.left = 0
+            if self.after:
+                self.left = None
+                ref = await super().move(path, new_path)
+                self.left = 0
+                return ref
+        return await super().move(path, new_path)
+
+
+# The narrow windows a resumed step has to repair: each refuses the token between two writes of one action.
+WINDOWS = {
+    "document filed, not yet recorded": dict(pattern=r"^01 Receipts/", after=True),
+    "approval posted, proposal not saved": dict(pattern=r"^_System/Ledger/events/", after=True),
+    "autopilot posted, proposal not saved": dict(
+        pattern=r"^_System/Ledger/events/", content=b'"autopilot"', after=True
+    ),
+    "invoice saved as sent, PDF not written": dict(pattern=r"^03 Sales/invoices/sent/INV-0001\.pdf$"),
+    "statement filed, lines not stored": dict(pattern=r"^04 Bank statements/"),
+    "payment posted, no record": dict(pattern=r"^_System/Ledger/events/", content=b"Payment for", after=True),
+    "payment recorded, line not matched": dict(pattern=r"^_System/Payments/payments\.json$", after=True),
+    "rule coding proposed, not linked": dict(pattern=r"^_System/proposals/", content=b'"bank-line"', after=True),
+}
+
+
+@pytest.mark.parametrize("window", sorted(WINDOWS))
+async def test_a_token_refused_inside_one_action_is_repaired_on_resume(
+    done_books: FakeStorageProvider, window: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    fake = FakeStorageProvider()
+    storage = RefusedAt(fake, **WINDOWS[window])  # type: ignore[arg-type]
+    _run_on(monkeypatch, storage)
+    async with _client(fake) as client:
+        await client.post("/books/sample", headers=HEADERS)
+        assert (await _settle(client, until=("needs_token", "done", "failed")))["state"] == "needs_token"
+        await client.post("/books/sample/continue", headers={**HEADERS, "X-Graph-Token": "token-two"})
+        status = await _settle(client)
+    assert storage.fired and status["state"] == "done", status
+    assert await _facts(fake) == await _facts(done_books)
 
 
 async def test_a_quiet_run_elsewhere_is_left_alone_until_stale() -> None:

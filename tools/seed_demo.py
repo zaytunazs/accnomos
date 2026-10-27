@@ -1169,7 +1169,7 @@ def seed_steps(plan: Plan, sender: NotEmailed | None = None) -> list[Step]:
         steps.append(Step("Credit note", lambda b, r: _step_credit_notes(b, plan, r)))
     steps += [
         Step("Mileage claim", lambda b, r: _step_mileage_claim(b, plan, r)),
-        Step("Bank rules and statements", lambda b, r: _step_statements(b, plan)),
+        Step("Bank rules and statements", lambda b, r: _step_statements(b, plan, r)),
         Step("Payments", lambda b, r: _step_payments(b, plan, r)),
         Step("Bank reconciliation", lambda b, r: _step_reconcile(b, plan, r)),
         Step("Pay run estimate and to-dos", lambda b, r: _step_payroll_todos(b, plan)),
@@ -1420,6 +1420,9 @@ async def _step_invoices(books: Books, plan: Plan, sender: NotEmailed, resuming:
         unfinished = not created.event_id or (created.timesheet_entry_ids() and not created.timesheets_marked)
         if created.status == "draft" or (created.status == "sent" and unfinished):  # a sent one: finishes posting
             await invoicing.send_invoice(books, sender, created.number, USER, render_invoice(created, profile))
+        if resuming and await invoicing.sent_pdf(books, created.number) is None:  # saved as sent, its PDF not yet
+            sent = await invoicing.get_invoice(books, created.number)
+            await books.storage.write(f"{invoicing.SENT}/{sent.number}.pdf", render_invoice(sent, profile))
         if inv.job:
             job = plan.jobs[inv.job]
             if resuming and (await jobs.get_job(books, job.id)).status == "closed":
@@ -1472,12 +1475,38 @@ async def _step_mileage_claim(books: Books, plan: Plan, resuming: bool) -> None:
         await _finish_approval(books, claim.id, USER, None, False)
 
 
-async def _step_statements(books: Books, plan: Plan) -> None:
+async def _step_statements(books: Books, plan: Plan, resuming: bool) -> None:
     if plan.bank_rules:  # saving the rules again replaces them; a statement imported again changes nothing
         await bank_rules.save_bank_rules(books, plan.bank_rules)
         await books.audit(f"user:{USER}", "bank_rules_saved", {"rules": [r.id for r in plan.bank_rules]})
     for name, data in plan.statements:
+        if resuming and await _finish_import(books, data):
+            continue
         await books.import_bank_csv(data, name, USER)
+
+
+async def _finish_import(books: Books, data: bytes) -> bool:
+    """A statement filed in 04 Bank statements whose lines were not yet stored (the seed stopped between the two
+    writes): store them against that copy, as import_bank_csv would have, instead of filing a second copy."""
+    from accnomos_ledger.bank import parse_bank_csv
+    from app.books import BANK, BANK_LINES
+
+    store = f"{BANK_LINES}/{sha256_hex(data)}.json"
+    if await books.exists(store):
+        return False  # imported: import_bank_csv sees that and changes nothing
+    filed = None
+    for f in await books.list_files(BANK):
+        if f.size in (0, len(data)) and await books.storage.read(f.path) == data:
+            filed = f.path
+            break
+    if filed is None:
+        return False
+    lines = parse_bank_csv(data, filed.rsplit("/", 1)[1])
+    for ln in lines:
+        ln.source_file = filed
+    await books.write_json(store, [ln.model_dump(mode="json") for ln in lines])
+    await books.audit(f"user:{USER}", "bank_imported", {"sha256": sha256_hex(data), "path": filed, "new": len(lines)})
+    return True
 
 
 def bank_reconcile_model() -> str:
@@ -1515,7 +1544,8 @@ async def _step_payments(books: Books, plan: Plan, resuming: bool) -> None:
     ]
     if (b := plan.bill_payment) is not None:
         todo.append((_line_for(lines, b.day, b.pence, b.reference), None, b))
-    if resuming:
+    if resuming:  # an invoice's paid/sent copy may be one match behind its bank line (cut short in between)
+        await payments.sync_invoices(books, {i.event_id for i in await invoicing.list_invoices(books) if i.event_id})
         todo = [t for t in todo if not await _payment_resumed(books, plan, *t)]
     for line, inv, pay in todo:
         if inv is None:  # Contacts → Bills to pay → Record payment
