@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:msal_auth/msal_auth.dart';
 
+import '../services/auth.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
@@ -17,18 +19,23 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  final _auth = AuthService();
   final _runtimeUrl = TextEditingController();
   final _aiBaseUrl = TextEditingController();
   final _aiModel = TextEditingController();
   final _apiKey = TextEditingController();
+  final _businessName = TextEditingController();
 
   AppSettings? _initial;
+  Account? _account;
   String _mode = 'local';
   bool _obscureKey = true;
   bool _testing = false;
   bool _saving = false;
+  bool _authBusy = false;
   String? _testMessage;
   bool _testOk = false;
+  String? _authError;
 
   @override
   void initState() {
@@ -41,9 +48,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _aiBaseUrl.text = settings.aiBaseUrl;
         _aiModel.text = settings.aiModel;
         _apiKey.text = settings.apiKey ?? '';
+        _businessName.text = settings.businessName ?? '';
         _mode = settings.aiMode;
       });
     });
+    _auth.account().then((account) {
+      if (!mounted) return;
+      setState(() => _account = account);
+    }).catchError((Object _) => null);
   }
 
   @override
@@ -52,6 +64,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _aiBaseUrl.dispose();
     _aiModel.dispose();
     _apiKey.dispose();
+    _businessName.dispose();
     super.dispose();
   }
 
@@ -63,7 +76,53 @@ class _SettingsScreenState extends State<SettingsScreen> {
         apiKey:
             _apiKey.text.trim().isEmpty ? null : _apiKey.text.trim(),
         userEmail: _initial?.userEmail,
+        businessName: _businessName.text.trim().isEmpty
+            ? null
+            : _businessName.text.trim(),
       );
+
+  Future<void> _signIn() async {
+    if (_authBusy) return;
+    setState(() {
+      _authBusy = true;
+      _authError = null;
+    });
+    try {
+      final account = await _auth.signIn();
+      if (!mounted) return;
+      setState(() => _account = account);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+            content: Text(
+                'Signed in as ${AuthService.displayName(account)}')),
+      );
+    } on MsalUserCancelException {
+      // The user backed out of sign-in; nothing to report.
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _authError = e.toString());
+    } finally {
+      if (mounted) setState(() => _authBusy = false);
+    }
+  }
+
+  Future<void> _signOut() async {
+    if (_authBusy) return;
+    setState(() {
+      _authBusy = true;
+      _authError = null;
+    });
+    try {
+      await _auth.signOut();
+      if (!mounted) return;
+      setState(() => _account = null);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _authError = e.toString());
+    } finally {
+      if (mounted) setState(() => _authBusy = false);
+    }
+  }
 
   Future<void> _test() async {
     if (_testing) return;
@@ -118,6 +177,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           : ListView(
               padding: const EdgeInsets.all(16),
               children: [
+                _accountCard(),
+                const SizedBox(height: 16),
+                _field(
+                  label: 'Business name',
+                  helper: 'Sent as X-Business-Name so the reader '
+                      'attributes sales to your business.',
+                  controller: _businessName,
+                ),
+                const SizedBox(height: 16),
                 _field(
                   label: 'Reader address',
                   helper: 'The computer that reads your receipts. On the '
@@ -233,6 +301,75 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
+    );
+  }
+
+  Widget _accountCard() {
+    final account = _account;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE3E1D8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Microsoft account',
+              style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: AccnomosColors.ink)),
+          const SizedBox(height: 4),
+          Text(
+            account == null
+                ? 'Your books live in your own OneDrive. Sign in to see them.'
+                : 'Signed in as ${AuthService.displayName(account)}',
+            style: const TextStyle(
+                color: AccnomosColors.muted, fontSize: 12, height: 1.4),
+          ),
+          if (_authError != null) ...[
+            const SizedBox(height: 8),
+            Text(_authError!,
+                style: const TextStyle(color: _warnInk, height: 1.4)),
+          ],
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: account == null
+                ? FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AccnomosColors.teal,
+                      minimumSize: const Size.fromHeight(52),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: _authBusy ? null : _signIn,
+                    child: _authBusy
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text('Sign in with Microsoft',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 16)),
+                  )
+                : OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size.fromHeight(52),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: _authBusy ? null : _signOut,
+                    child: const Text('Sign out'),
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
