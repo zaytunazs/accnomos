@@ -71,8 +71,6 @@ class _CaptureScreenState extends State<CaptureScreen>
 
   bool get _signedIn => _account != null;
 
-  bool get _localMode => _settings == null || _settings!.aiMode != 'key';
-
   String _friendly(Object e) => e.toString().replaceFirst('Exception: ', '');
 
   @override
@@ -397,6 +395,7 @@ class _CaptureScreenState extends State<CaptureScreen>
       final fresh = outcome.proposals.length;
       final needALook = outcome.errors.length;
       await CaptureQueueStore.clear();
+      if (!mounted) return;
       if (needALook == 0) {
         Navigator.of(context)
             .pop(CaptureScanSummary(fresh: fresh, needALook: 0));
@@ -491,6 +490,7 @@ class _CaptureScreenState extends State<CaptureScreen>
       }
       if (found.isNotEmpty && !_offline) {
         await CaptureQueueStore.clear();
+        if (!mounted) return;
         Navigator.of(context).pop(found);
       } else if (found.isEmpty && !_offline && _error == null) {
         setState(() => _error = 'Nothing was read. Try again.');
@@ -793,7 +793,7 @@ class _CaptureScreenState extends State<CaptureScreen>
       CaptureStatus.queued => 'Queued',
       CaptureStatus.uploading =>
         _signedIn ? 'Uploading…' : 'Reading…',
-      CaptureStatus.uploaded => item.inboxName ?? 'Done',
+      CaptureStatus.uploaded => 'Uploaded',
       CaptureStatus.failed => 'Failed',
     };
     final statusColor = switch (item.status) {
@@ -807,7 +807,7 @@ class _CaptureScreenState extends State<CaptureScreen>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(const Color(0xFFE3E1D8)),
+        border: Border.all(color: const Color(0xFFE3E1D8)),
       ),
       child: Row(
         children: [
@@ -825,7 +825,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                   : Image.file(
                       File(item.path),
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const ColoredBox(
+                      errorBuilder: (_, _, _) => const ColoredBox(
                         color: AccnomosColors.tealTint,
                         child: Icon(Icons.broken_image_outlined,
                             color: AccnomosColors.tealDark),

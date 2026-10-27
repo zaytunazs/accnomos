@@ -123,7 +123,8 @@ class _CropEditorState extends State<CropEditor> {
           ),
         ),
         const SizedBox(height: 4),
-        Row(
+        Wrap(
+          spacing: 4,
           children: [
             TextButton.icon(
               style: TextButton.styleFrom(
@@ -198,6 +199,7 @@ class _CropBox extends StatelessWidget {
               left: _cornerOffset(corner).dx - 24,
               top: _cornerOffset(corner).dy - 24,
               child: GestureDetector(
+                key: ValueKey('crop-handle-${corner.name}'),
                 behavior: HitTestBehavior.opaque,
                 onPanUpdate: (details) {
                   final box =
