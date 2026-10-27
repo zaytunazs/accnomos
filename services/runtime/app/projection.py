@@ -40,6 +40,7 @@ SHEETS = (
     "Ledger",
     "Accounts",
     "VAT",
+    "P&L",
     "Customers",
     "Suppliers",
     "Bank",
@@ -118,6 +119,13 @@ def _read_me(ws: Worksheet, generated: datetime) -> None:
         ("Ledger", "Every line of every approved ledger entry (double entry, £), with a totals row."),
         ("Accounts", "Trial balance: total debits, credits and balance per account."),
         ("VAT", "The 9 VAT return boxes for the last 4 complete quarters, computed by code."),
+        (
+            "P&L",
+            (
+                "Profit and loss for the current VAT period (calendar quarters), as approved:"
+                " sales, cost of sales and overheads by account. The Reports page picks any period."
+            ),
+        ),
         (
             "Customers",
             (
@@ -225,6 +233,14 @@ def _vat(ws: Worksheet, events: Sequence[LedgerEvent], today: date) -> None:
     for row in ws.iter_rows(min_row=2, min_col=3):
         for cell in row:
             cell.number_format = GBP if (row[0].row or 0) <= 6 else WHOLE_GBP
+
+
+def _pl(ws: Worksheet, events: Sequence[LedgerEvent], today: date) -> None:
+    """The current VAT period. Rebuilds are not told the user's VAT stagger, so this is the calendar quarter."""
+    from app.reports import pl_sheet, profit_and_loss  # app.reports builds on this module's helpers
+    from app.vat_cycle import VatCycle
+
+    pl_sheet(ws, profit_and_loss(events, *VatCycle().current(today)))
 
 
 def contact_sheet_rows(
@@ -588,6 +604,7 @@ def build_books_xlsx(
     _ledger(sheets["Ledger"], events)
     _accounts(sheets["Accounts"], events)
     _vat(sheets["VAT"], events, generated.date())
+    _pl(sheets["P&L"], events, today)
     _contacts_sheet(sheets["Customers"], "Customer", "Unpaid by them £", customer_rows)
     _contacts_sheet(sheets["Suppliers"], "Supplier", "Unpaid by you £", supplier_rows)
     _bank(sheets["Bank"], bank_lines)

@@ -66,4 +66,4 @@ def test_files_cited_in_docs_exist(doc: str):
 def test_architecture_lists_the_books_xlsx_sheets_the_code_writes():
     arch = (ROOT / "docs/ARCHITECTURE.md").read_text()
     row = next(ln for ln in arch.splitlines() if ln.startswith("| `Books.xlsx`"))
-    assert re.findall(r"`(\w+)`", row.split("sheets", 1)[1])[: len(SHEETS)] == list(SHEETS)
+    assert re.findall(r"`([\w&]+)`", row.split("sheets", 1)[1])[: len(SHEETS)] == list(SHEETS)

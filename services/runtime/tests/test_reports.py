@@ -283,6 +283,18 @@ def test_report_text_is_never_a_formula() -> None:
     assert not any(isinstance(v, str) and v.startswith("=") for v in cells)
 
 
+def test_books_xlsx_has_the_current_quarter_p_and_l() -> None:
+    from app.projection import SHEETS, build_books_xlsx
+
+    assert SHEETS.index("P&L") == SHEETS.index("VAT") + 1
+    data = build_books_xlsx(ledger(), [], [], generated=datetime(2026, 9, 30, 12, tzinfo=UTC))  # in Q3
+    ws = load_workbook(io.BytesIO(data))["P&L"]
+    assert ws["A1"].value == "Profit and loss · Jul–Sep 2026 (01/07/2026–30/09/2026)"
+    rows = {r[0].strip(): r[1] for r in ws.iter_rows(min_row=2, max_col=2, values_only=True) if r[0]}
+    assert rows["Total sales"] == 1300 and rows["Total overheads"] == 633.25 and rows["Net profit"] == 416.75
+    assert any(str(v).startswith("As approved") for v in rows)
+
+
 # --------------------------------------------------------------------------- #
 # Routes
 # --------------------------------------------------------------------------- #
