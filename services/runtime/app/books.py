@@ -14,6 +14,8 @@ Layout (relative to the books root):
     _System/Ledger/events/{yyyy-mm}/{ts}-{device}-{id}.json   immutable ledger events
     _System/bank/{sha256}.json     bank lines parsed from one statement (matches recorded on them)
     _System/rules.json  _System/cursors.json
+    _System/Rules/rules.json       Autopilot rules, one per supplier (app/autopilot.py)
+    _System/audit/autopilot/{yyyy-mm}.jsonl   one line per Autopilot decision that posted something
     Books.xlsx                     read-only spreadsheet projection, rebuilt after every decision
 """
 
@@ -49,6 +51,9 @@ PROPOSALS = f"{SYSTEM}/proposals"
 AUDIT = f"{SYSTEM}/audit"
 EVENTS = f"{SYSTEM}/Ledger/events"
 RULES = f"{SYSTEM}/rules.json"
+AUTOPILOT_RULES = f"{SYSTEM}/Rules/rules.json"
+# OneDrive paths are case-insensitive, so this is the same folder as "_System/Audit/autopilot".
+AUTOPILOT_AUDIT = f"{AUDIT}/autopilot"
 CURSORS = f"{SYSTEM}/cursors.json"
 BANK_LINES = f"{SYSTEM}/bank"
 WORKBOOK = "Books.xlsx"
@@ -250,6 +255,12 @@ class Books:
         line = json.dumps({"ts": ts.isoformat(), "actor": actor, "action": action, "refs": refs}, ensure_ascii=False)
         await self._update(f"{AUDIT}/{_month(ts)}.jsonl", lambda old: (old or b"") + line.encode() + b"\n")
 
+    async def audit_autopilot(self, entry: dict[str, Any]) -> None:
+        """Append one JSON line to _System/audit/autopilot/{yyyy-mm}.jsonl."""
+        ts = now()
+        line = json.dumps({"ts": ts.isoformat(), **entry}, ensure_ascii=False)
+        await self._update(f"{AUTOPILOT_AUDIT}/{_month(ts)}.jsonl", lambda old: (old or b"") + line.encode() + b"\n")
+
     async def post_event(self, event: LedgerEvent) -> str:
         """Write an immutable ledger event and return its path. Refuses to overwrite."""
         ts = event.approved_at.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -282,6 +293,15 @@ class Books:
                     events.append(ev)
         events.sort(key=lambda e: (e.date, e.approved_at))
         return events
+
+    async def get_event(self, event_id: str) -> LedgerEvent:
+        """One posted event by id. Raises FileNotFoundError (also for ids that are not plain hex)."""
+        if not re.fullmatch(r"[0-9a-f]{8,64}", event_id):
+            raise FileNotFoundError(event_id)
+        ev = next((e for e in await self.list_events() if e.id == event_id), None)
+        if ev is None:
+            raise FileNotFoundError(event_id)
+        return ev
 
     async def record_scan(self, when: datetime) -> None:
         await self._update_json(CURSORS, {}, lambda c: {**c, "last_scan": when.isoformat()})
@@ -380,7 +400,10 @@ class Books:
         lines = await self.stored_bank_lines() if lines is None else lines
         if all(ln.status == "matched" for ln in lines):
             return []
-        return suggest_matches(lines, await self.list_events(), await self.card_hints())
+        events = await self.list_events()
+        reversed_ids = {e.reverses for e in events if e.reverses}
+        live = [e for e in events if e.kind != "reversal" and e.id not in reversed_ids]
+        return suggest_matches(lines, live, await self.card_hints())
 
     async def list_bank_lines(self, status: BankLineStatus | None = None) -> list[BankLine]:
         """Bank lines; open lines with a current suggestion show as "suggested" with the suggested event(s)."""
