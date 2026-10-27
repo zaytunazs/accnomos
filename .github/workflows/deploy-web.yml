@@ -13,10 +13,11 @@ jobs:
   build-and-publish:
     runs-on: ubuntu-latest
     env:
-      # Public client id (not a secret) and the public runtime URL used by the hosted PWA.
+      # Public client id (not a secret) and the public runtime + HMRC relay URLs used by the hosted PWA.
       NEXT_PUBLIC_MS_CLIENT_ID: ${{ vars.MS_CLIENT_ID || 'f88eccde-6ec2-4302-b47b-e1844deba2e1' }}
       NEXT_PUBLIC_MS_AUTHORITY: https://login.microsoftonline.com/common
       NEXT_PUBLIC_RUNTIME_URL: https://api.accnomos.com
+      NEXT_PUBLIC_RELAY_URL: https://api.accnomos.com
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
