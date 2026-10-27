@@ -403,3 +403,15 @@ async def test_needs_a_token_and_a_user() -> None:
 def _no_overrides() -> Any:
     yield
     app.dependency_overrides.clear()
+
+
+def test_the_runtime_image_carries_the_seed() -> None:
+    """app/sample_books.py finds tools/seed_demo.py, evals/gold and the renderer next to services/runtime."""
+    docker = (TOOL.parents[1] / "deploy" / "Dockerfile.runtime").read_text()
+    for src, dest in (
+        ("tools/seed_demo.py", "/srv/tools/seed_demo.py"),
+        ("evals/gold", "/srv/evals/gold"),
+        ("evals/harness/render.py", "/srv/evals/harness/render.py"),
+    ):
+        assert f"COPY {src} {dest}" in docker
+    assert "COPY services/runtime /srv/services/runtime" in docker
