@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'screens/ask_screen.dart';
-import 'screens/files_screen.dart';
+import 'screens/more_screen.dart';
 import 'screens/review_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/vat_screen.dart';
@@ -10,8 +10,9 @@ import 'theme.dart';
 /// Accnomos — bookkeeping and VAT for UK small businesses.
 /// Your books stay in your own cloud. Meta AI does the work.
 ///
-/// v0.1.0: app shell (Home · Review · Ask · VAT return). Bank, Jobs, Contacts,
-/// Vehicles and Files are on the web app only for now.
+/// v0.1.0: app shell (Home · Review · Ask · VAT return). Bank and Files stay
+/// web-only; Jobs, Contacts, Vehicles (under More) and Invoices are thin
+/// clients over the runtime.
 void main() => runApp(const AccnomosApp());
 
 class AccnomosApp extends StatelessWidget {
@@ -53,7 +54,7 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int _tab = 0;
 
-  /// Review, Ask, VAT and Files bring their own app bars, so the shell
+  /// Review, Ask, VAT and More bring their own app bars, so the shell
   /// only titles Home.
   bool get _hasOwnAppBar => _tab != 0;
 
@@ -95,7 +96,7 @@ class _ShellState extends State<Shell> {
                 ReviewScreen(),
                 AskScreen(),
                 VatScreen(),
-                FilesScreen(),
+                MoreScreen(),
               ],
             ),
           ),
@@ -112,9 +113,9 @@ class _ShellState extends State<Shell> {
           NavigationDestination(
               icon: Icon(Icons.chat_bubble_outline), label: 'Ask'),
           NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined), label: 'VAT return'),
+              icon: Icon(Icons.receipt_long_outlined), label: 'VAT'),
           NavigationDestination(
-              icon: Icon(Icons.folder_outlined), label: 'Files'),
+              icon: Icon(Icons.more_horiz_outlined), label: 'More'),
         ],
       ),
     );

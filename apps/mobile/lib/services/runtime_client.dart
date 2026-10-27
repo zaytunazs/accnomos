@@ -664,6 +664,52 @@ class RuntimeClient {
           query: {'as_of': ?asOf},
           what: 'load aged balances');
 
+  // Invoices (/invoices/*). Totals and VAT are worked out by the runtime;
+  // the phone never computes them.
+
+  /// `GET /invoices`, optionally filtered by [status].
+  Future<List<Map<String, dynamic>>> invoices({String? status}) => _list(
+      'GET', '/invoices',
+      query: {'status': ?status},
+      what: 'load invoices');
+
+  /// `GET /invoices/{number}`.
+  Future<Map<String, dynamic>> invoice(String number) => _map(
+      'GET', '/invoices/${_seg(number)}',
+      what: 'load that invoice');
+
+  /// `POST /invoices`: the response carries the priced lines and totals.
+  Future<Map<String, dynamic>> createInvoice(Map<String, dynamic> draft) =>
+      _map('POST', '/invoices', body: draft, what: 'create that invoice');
+
+  /// `POST /invoices/{number}/pdf`: the preview plus the email draft the
+  /// confirmation dialog starts from.
+  Future<Map<String, dynamic>> invoicePdf(String number) => _map(
+      'POST', '/invoices/${_seg(number)}/pdf',
+      what: 'preview that invoice');
+
+  /// `POST /invoices/{number}/send` from the user's Outlook. Call only from
+  /// the confirmation dialog: [confirm] is the user's tap, and the Graph
+  /// token must carry `Mail.Send`.
+  Future<Map<String, dynamic>> sendInvoice(
+    String number, {
+    required bool confirm,
+    String? to,
+    String? subject,
+    String? body,
+  }) {
+    final payload = <String, Object?>{'confirm': confirm};
+    if (to != null) payload['to'] = to;
+    if (subject != null) payload['subject'] = subject;
+    if (body != null) payload['body'] = body;
+    return _map('POST', '/invoices/${_seg(number)}/send',
+        body: payload, what: 'send that invoice');
+  }
+
+  /// `GET /invoices/customers`: customers from the contact book, for the picker.
+  Future<List<Map<String, dynamic>>> invoiceCustomers() =>
+      _list('GET', '/invoices/customers', what: 'load customers');
+
   // Jobs, staff and timesheets.
 
   /// Jobs with their summaries (reads the ledger). `GET /jobs`.
