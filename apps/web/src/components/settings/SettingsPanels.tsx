@@ -196,8 +196,8 @@ export default function SettingsPanels() {
           <h3 id="settings-ai" className={heading}>
             AI setup
           </h3>
-          <div className="mt-3 flex items-center justify-between gap-3 py-1">
-            <p className="text-[15px] font-bold text-ink">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 py-1">
+            <p className="min-w-0 text-[15px] font-bold break-words text-ink">
               Current: <span className="font-medium text-muted">{aiSummary}</span>
             </p>
             <Link
