@@ -110,6 +110,11 @@ def test_each_x_test_tenant_has_its_own_fakes_and_reset(test_env: None) -> None:
     assert files(w0) == ["00 Inbox/a.png", PROFILE]  # reset is per tenant
     assert testmode.STATES["w0"] is not testmode.STATES["w1"] is not testmode.STATE
 
+    # The header is a dict key, nothing more: odd characters are dropped and it is cut at 64; all-odd is the default set.
+    assert c.post("/__test/reset", headers={"X-Test-Tenant": "w2/../" + "x" * 100}).json()["ok"]
+    assert "w2.." + "x" * 60 in testmode.STATES
+    assert files({"X-Test-Tenant": "/ /"}) == files({}) == [PROFILE]
+
 
 def test_pinned_today_drives_plan_my_thursday(test_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
     """Ask resolved "Thursday" from the real clock, so the e2e plan flow only passed in the week of 27 Oct 2026."""
