@@ -59,6 +59,9 @@ Each item is checked by `services/runtime/tests/test_deploy_hardening.py` unless
 - [x] `RATE_LIMIT_PER_MIN` (both services, default 60 per IP).
 - *Manual:* the front proxy must append the client address to `X-Forwarded-For` (Plesk: `$proxy_add_x_forwarded_for`)
   and set `X-Forwarded-Proto`; it must also redirect HTTP to HTTPS.
+- *Manual:* a front proxy that is **not** Cloudflare must drop any client-sent `CF-Connecting-IP`
+  (Plesk: `proxy_set_header CF-Connecting-IP "";`). The edge trusts that header whenever it is present, so
+  otherwise a client can choose its own address for the rate limit and the HMRC fraud headers.
 
 ## Checking a running deployment (*manual*)
 

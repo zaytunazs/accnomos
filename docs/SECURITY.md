@@ -17,7 +17,7 @@ and how to report a problem. Deployment hardening is in [`deploy/README.md`](../
 
 | Area | Protection | Code | Test |
 |---|---|---|---|
-| Secrets in logs | Every log record is scrubbed as it is created (any logger, exception text included): credential header values, `Bearer …`, JWTs, `access_token`/`refresh_token`/`client_secret`/`code_verifier` fields, and the exact credential values of the request being served | `app/security.py`, `relay/security.py` | `test_security.py`, `test_hardening.py` |
+| Secrets in logs | Every log record is scrubbed as it is created (any logger, exception text included): credential header values, `Bearer …`, JWTs, `access_token`/`refresh_token`/`client_secret`/`code_verifier` fields, the OAuth `?code=` in the relay's access log, and the exact credential values of the request being served. Records keep their shape where possible, so uvicorn's access log still formats | `app/security.py`, `relay/security.py` | `test_security.py`, `test_hardening.py` |
 | Secrets in responses | Unhandled errors → `500 {"detail", "correlation_id"}`, no stack trace or exception text; Graph and HMRC error messages are scrubbed | same, `main.py` handlers | same |
 | Token size | Credential headers over 8 KB → 431 | security middleware | same |
 | Transport | When a proxy sends `X-Forwarded-Proto`, credentials over anything but `https` → 400; HSTS at the edge and on the static site | middleware, `deploy/nginx.conf`, `.htaccess` | same, `test_deploy_hardening.py` |
