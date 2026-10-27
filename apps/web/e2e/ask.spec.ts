@@ -70,7 +70,7 @@ test("an instruction → action card; an approval that died halfway says what to
   await card.getByRole("button", { name: "Approve" }).click();
   const alert = card.getByRole("alert");
   await expect(alert).toContainText("The earlier approval of this action did not finish");
-  await expect(alert).toContainText("give it 10 minutes, check Invoices, then press Reject and ask again if it is still needed.");
+  await expect(alert).toContainText("It is never retried on its own: check Invoices, press Reject to clear this card, and ask again only if it is not there.");
   await card.getByRole("button", { name: "Reject" }).click();
   await expect(card.getByRole("status")).toHaveText("Rejected. Nothing was done.");
   expect(await runtime.sent()).toEqual([]);

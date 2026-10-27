@@ -60,8 +60,17 @@ const WHERE: Record<RtProposedAction["kind"], string> = {
   log_mileage: "the mileage log on Vehicles",
 };
 
-/** The runtime's two 409s for an `approving` line with no result (docs/ACTIONS.md, "Once only"). */
-const STALLED = /already being approved|earlier approval of this action did not finish/;
+/**
+ * What to do after the runtime's two 409s for an `approving` line with no result (docs/ACTIONS.md, "Once only"):
+ * under 10 minutes it may still be running; after that it died and is never run again.
+ */
+function stalledAdvice(message: string, kind: RtProposedAction["kind"]): string {
+  if (/earlier approval of this action did not finish/.test(message))
+    return ` It is never retried on its own: check ${WHERE[kind]}, press Reject to clear this card, and ask again only if it is not there.`;
+  if (/already being approved/.test(message))
+    return ` It is never retried on its own: give it 10 minutes and check ${WHERE[kind]} before you Approve again.`;
+  return "";
+}
 function Details({ action }: { action: RtProposedAction }) {
   if (action.kind === "create_invoice") {
     const p = action.preview as unknown as RtInvoicePreview;
@@ -227,8 +236,7 @@ export default function ActionCard({
           {state.step === "error" && (
             <p className="mt-2 rounded-xl border border-warn-border bg-warn-bg p-3 text-[14px] leading-6 text-warn-ink" role="alert">
               {state.message}
-              {STALLED.test(state.message) &&
-                ` It is never retried on its own: give it 10 minutes, check ${WHERE[action.kind]}, then press Reject and ask again if it is still needed.`}
+              {stalledAdvice(state.message, action.kind)}
             </p>
           )}
           <div className="mt-3 flex flex-wrap gap-2">
