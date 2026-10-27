@@ -61,6 +61,10 @@ export default function LiveVehicles() {
   }
   const [newVehicle, setNewVehicle] = useState({ name: "", registration: "", kind: "car" as RtVehicleKind, owned_by: "personal" as "personal" | "business" });
   const [trip, setTrip] = useState({ vehicle_id: "", date: londonToday(), from: "", to: "", miles: "", purpose: "" });
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editTrip, setEditTrip] = useState({ vehicle_id: "", date: "", from: "", to: "", miles: "", purpose: "" });
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [rename, setRename] = useState({ name: "", registration: "" });
 
   const load = useCallback(async (acct: AccountInfo, ty: string) => {
     const [vs, es, s] = await Promise.all([runtime.vehicles(acct), runtime.mileage(acct, ty), runtime.mileageSummary(acct, ty)]);
@@ -88,9 +92,9 @@ export default function LiveVehicles() {
     })();
   }, [load, currentYear]);
 
-  /** Run `fn`, then reload tax year `ty` (default: the one shown). */
-  async function act(key: string, fn: () => Promise<unknown>, done?: string, ty: string = taxYear) {
-    if (!account) return;
+  /** Run `fn`, then reload tax year `ty` (default: the one shown). True when it worked. */
+  async function act(key: string, fn: () => Promise<unknown>, done?: string, ty: string = taxYear): Promise<boolean> {
+    if (!account) return false;
     setBusy(key);
     setError(null);
     try {
@@ -98,8 +102,10 @@ export default function LiveVehicles() {
       if (done) setNote({ text: done });
       setTaxYear(ty);
       await load(account, ty);
+      return true;
     } catch (e) {
       fail(e);
+      return false;
     } finally {
       setBusy(null);
     }
@@ -322,6 +328,56 @@ export default function LiveVehicles() {
         ) : (
           <p className="mt-3 text-sm text-muted">Add a vehicle below to start logging journeys.</p>
         )}
+        {editingId && (
+          <form
+            aria-label="Edit journey"
+            className="mt-3 flex flex-wrap items-end gap-2 rounded-xl bg-ground p-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const id = editingId;
+              const body = { ...editTrip, miles: Number(editTrip.miles) };
+              const after = body.date;
+              act(`edit-${id}`, () => runtime.updateMileage(account!, id, body), "Journey updated", taxYearOf(after)).then((ok) => {
+                if (ok) setEditingId(null);
+              });
+            }}
+          >
+            <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
+              Vehicle
+              <select value={editTrip.vehicle_id} onChange={(e) => setEditTrip({ ...editTrip, vehicle_id: e.target.value })} className={input}>
+                {vehicles.filter((v) => v.active).map((v) => (
+                  <option key={v.id} value={v.id}>{v.name}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
+              Date
+              <input required type="date" max={today} value={editTrip.date} onChange={(e) => setEditTrip({ ...editTrip, date: e.target.value })} className={input} />
+            </label>
+            <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
+              From
+              <input value={editTrip.from} onChange={(e) => setEditTrip({ ...editTrip, from: e.target.value })} className={`${input} w-32`} />
+            </label>
+            <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
+              To
+              <input value={editTrip.to} onChange={(e) => setEditTrip({ ...editTrip, to: e.target.value })} className={`${input} w-32`} />
+            </label>
+            <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
+              Miles
+              <input required type="number" min="0.1" max="2000" step="0.1" inputMode="decimal" value={editTrip.miles} onChange={(e) => setEditTrip({ ...editTrip, miles: e.target.value })} className={`${input} w-24`} />
+            </label>
+            <label className="flex min-w-48 flex-1 flex-col gap-1 text-[13px] font-bold text-muted">
+              Purpose
+              <input required value={editTrip.purpose} onChange={(e) => setEditTrip({ ...editTrip, purpose: e.target.value })} className={input} />
+            </label>
+            <button type="submit" disabled={busy !== null} className={button}>
+              {busy === `edit-${editingId}` ? "Saving…" : "Save journey"}
+            </button>
+            <button type="button" onClick={() => setEditingId(null)} className={quiet}>
+              Cancel
+            </button>
+          </form>
+        )}
         {entries.length > 0 && (
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-left text-[15px]">
@@ -332,7 +388,7 @@ export default function LiveVehicles() {
                   <th scope="col" className="py-2 pr-3">Journey</th>
                   <th scope="col" className="py-2 pr-3 text-right">Miles</th>
                   <th scope="col" className="py-2 pr-3">Purpose</th>
-                  <th scope="col" className="py-2"><span className="sr-only">Delete</span></th>
+                  <th scope="col" className="py-2"><span className="sr-only">Change</span></th>
                 </tr>
               </thead>
               <tbody>
@@ -343,19 +399,34 @@ export default function LiveVehicles() {
                     <td className="py-2 pr-3">{e.from || e.to ? `${e.from || "?"} → ${e.to || "?"}` : "—"}</td>
                     <td className="py-2 pr-3 text-right tabular-nums">{miles(e.miles)}</td>
                     <td className="py-2 pr-3">{e.purpose}</td>
-                    <td className="py-2 text-right">
+                    <td className="py-2 text-right whitespace-nowrap">
                       {locked(e) ? (
                         <span className="text-sm text-muted">Locked</span>
                       ) : (
-                        <button
-                          type="button"
-                          disabled={busy !== null}
-                          onClick={() => act(e.id, () => runtime.deleteMileage(account!, e.id), "Journey deleted")}
-                          aria-label={`Delete the journey on ${ukDate(e.date)}`}
-                          className="text-sm font-bold text-muted underline underline-offset-2 disabled:opacity-60"
-                        >
-                          Delete
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            disabled={busy !== null}
+                            onClick={() => {
+                              setEditingId(e.id);
+                              setEditTrip({ vehicle_id: e.vehicle_id, date: e.date, from: e.from ?? "", to: e.to ?? "", miles: String(e.miles), purpose: e.purpose });
+                            }}
+                            aria-label={`Edit the journey on ${ukDate(e.date)}`}
+                            className="text-sm font-bold text-teal underline underline-offset-2 disabled:opacity-60"
+                          >
+                            Edit
+                          </button>
+                          {" · "}
+                          <button
+                            type="button"
+                            disabled={busy !== null}
+                            onClick={() => act(e.id, () => runtime.deleteMileage(account!, e.id), "Journey deleted")}
+                            aria-label={`Delete the journey on ${ukDate(e.date)}`}
+                            className="text-sm font-bold text-muted underline underline-offset-2 disabled:opacity-60"
+                          >
+                            Delete
+                          </button>
+                        </>
                       )}
                     </td>
                   </tr>
@@ -402,7 +473,20 @@ export default function LiveVehicles() {
                       {v.owned_by === "business" ? `${pounds(v.cost_pence)} · ${v.cost_entries} receipts` : pounds(v.allowance_pence)}
                     </td>
                     <td className="py-2 pr-3 text-right tabular-nums">{v.pence_per_mile !== null ? `${v.pence_per_mile}p` : "—"}</td>
-                    <td className="py-2 text-right">
+                    <td className="py-2 text-right whitespace-nowrap">
+                      <button
+                        type="button"
+                        disabled={busy !== null}
+                        onClick={() => {
+                          setRenamingId(v.vehicle_id);
+                          setRename({ name: v.name, registration: v.registration ?? "" });
+                        }}
+                        aria-label={`Rename ${v.name}`}
+                        className="text-sm font-bold text-teal underline underline-offset-2 disabled:opacity-60"
+                      >
+                        Rename
+                      </button>
+                      {" · "}
                       <button
                         type="button"
                         disabled={busy !== null}
@@ -411,12 +495,53 @@ export default function LiveVehicles() {
                       >
                         {v.active ? "Mark inactive" : "Make active"}
                       </button>
+                      {" · "}
+                      <button
+                        type="button"
+                        disabled={busy !== null}
+                        onClick={() =>
+                          act(v.vehicle_id, () => runtime.deleteVehicle(account!, v.vehicle_id), `Deleted ${v.name}`, taxYear)
+                        }
+                        aria-label={`Delete ${v.name}`}
+                        className="text-sm font-bold text-muted underline underline-offset-2 disabled:opacity-60"
+                      >
+                        Delete
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+        )}
+        {renamingId && (
+          <form
+            aria-label="Rename vehicle"
+            className="mt-3 flex flex-wrap items-end gap-2 rounded-xl bg-ground p-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const id = renamingId;
+              const body = { name: rename.name.trim(), registration: rename.registration.trim() || null };
+              act(`rename-${id}`, () => runtime.updateVehicle(account!, id, body), `Renamed to ${body.name}`).then((ok) => {
+                if (ok) setRenamingId(null);
+              });
+            }}
+          >
+            <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
+              Name
+              <input required maxLength={60} value={rename.name} onChange={(e) => setRename({ ...rename, name: e.target.value })} className={input} />
+            </label>
+            <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
+              Registration (optional)
+              <input maxLength={12} value={rename.registration} onChange={(e) => setRename({ ...rename, registration: e.target.value })} className={`${input} w-36`} />
+            </label>
+            <button type="submit" disabled={busy !== null} className={button}>
+              {busy === `rename-${renamingId}` ? "Saving…" : "Save name"}
+            </button>
+            <button type="button" onClick={() => setRenamingId(null)} className={quiet}>
+              Cancel
+            </button>
+          </form>
         )}
         <form
           className="mt-4 flex flex-wrap items-end gap-2"

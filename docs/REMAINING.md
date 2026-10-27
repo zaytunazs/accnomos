@@ -85,7 +85,7 @@ Severity:
 | Low | If the sent copy cannot be saved after the email goes, the sale is not posted until the user retries. |
 | Low | `GraphMailSender` refuses a message whose encoded request is over 4 MB (about 3 MB of attachments) with an error; sending larger files (draft plus attachment upload session) is not built. The send tick stays ticked after the message is edited. |
 | Low | Plain timesheet edits do not rebuild Books.xlsx. A month-changing edit can leave a duplicate line (never a lost one). A closed job can be tagged through the API (on purpose). |
-| Low | The web mileage log has no edit control (`PATCH /mileage/{id}` exists); vehicles cannot be renamed or deleted from the page; the Review vehicle picker needs an active business vehicle; scan pre-fill uses a keyword list. |
+| Low | Mileage scan pre-fill uses a keyword list. |
 | Low | Undoing a payroll ledger entry outside the Payroll page leaves the run "confirmed" until reopened. No salaried staff. |
 
 ## Chat actions, inbox, planner

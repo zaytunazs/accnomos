@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import ReviewQueue, { type ReviewAdapter } from "@/components/review/ReviewQueue";
 import SignInCta from "@/components/SignInCta";
@@ -191,12 +192,14 @@ export default function LiveReview() {
   function pickers(p: RtProposal) {
     const job = openJobs.length > 0 && p.extracted.doc_type !== "sales_invoice";
     const vehicle = p.extracted.doc_type !== "sales_invoice" && !p.mileage_claim && (businessVehicles.length > 0 || p.vehicle_id);
+    // No business vehicle yet: offer to add one rather than hiding vehicle tagging altogether.
+    const vehicleAdd = p.extracted.doc_type !== "sales_invoice" && !p.mileage_claim && businessVehicles.length === 0 && !p.vehicle_id;
     // Only on a tap, never on every scan; the answer is kept on the supplier's contact. Never blocks Approve.
     const vrn = p.extracted.doc_type !== "sales_invoice" ? p.extracted.supplier_vat_number?.trim() : "";
     const vat = account && vrn && lookups?.vat_check ? (
       <VatCheckButton key={`${p.id}-${vrn}`} account={account} vrn={vrn} name={p.extracted.supplier_name} />
     ) : null;
-    if (!job && !vehicle) return vat;
+    if (!job && !vehicle && !vehicleAdd) return vat;
     return (
       <div className="flex flex-wrap gap-2">
         {vat && <div className="basis-full">{vat}</div>}
@@ -234,6 +237,15 @@ export default function LiveReview() {
               )}
             </select>
           </label>
+        )}
+        {vehicleAdd && (
+          <p className="text-sm text-muted">
+            Vehicle:{" "}
+            <Link href="/vehicles" className="font-bold text-teal underline underline-offset-2">
+              Add a vehicle
+            </Link>{" "}
+            to tag fuel and repair receipts to it.
+          </p>
         )}
       </div>
     );
