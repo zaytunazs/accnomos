@@ -14,7 +14,7 @@ Severity:
 |---|---|
 | High | **Almost nothing has run against a real OneDrive, a real Meta key, HMRC's sandbox or a phone.** Only sign-in, folder setup, read → approve → ledger and the VAT boxes were run by hand (maintainers' word; no log committed). Everything else is tested on fakes. |
 | Medium | In key mode with no `X-Meta-Api-Key` header, `AiConfig` falls back to the server's `META_API_KEY`: typed and voice Ask would run on the operator's key. A product decision, not changed. |
-| Medium | The Autopilot level lives in the browser's `localStorage`. The Android app never sends `X-Autopilot`, so phone scans run Autopilot whenever a rule exists. |
+
 | Medium | `flutter analyze` and `flutter test` have never been run on the current `apps/mobile`. |
 | Medium | The rate limit and the relay's spent-state set are per process; the relay must run one worker. |
 | Low | The shared `.venv` on the Spark can import another checkout's `accnomos_ledger`/`accnomos_connectors`; run `uv sync --all-packages` where you serve from. |

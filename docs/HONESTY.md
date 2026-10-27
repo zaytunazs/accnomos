@@ -66,7 +66,7 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 - Without `ACTIONS_SIGNING_KEY` (the deploy file passes it through, empty by default), each runtime process makes a random key: after a restart, or with several workers, a card can fail with 403.
 - If the runtime dies between the `approving` and `executed` audit lines, that action is never re-run on its own (409). After 10 minutes, rejecting the card clears it; the user checks whether it happened and asks again.
 - Invoice drafts for chat actions can end as drafts when `Mail.Send` has not been granted; the card cannot request consent.
-- The Autopilot level lives in the browser's `localStorage` (`accnomos.autopilot`; only L2 turns posting on). **The Android app never sends `X-Autopilot`**, so scans from the phone always run Autopilot when a rule exists, even if it is off on the web.
+- The Autopilot level lives in the browser's `localStorage` (`accnomos.autopilot`; only L2 turns posting on). The Android app stores its own level the same way and sends `X-Autopilot: off` on every runtime call below L2, so phone scans post nothing without the user.
 - Autopilot only handles purchases that match a rule; it never makes rules itself.
 
 ## Invoicing, jobs, contacts
