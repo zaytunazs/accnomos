@@ -108,6 +108,14 @@ class AuthService {
   /// the user first taps "Save draft in Outlook" — never at sign-in.
   static const mailReadWriteScopes = ['Mail.ReadWrite'];
 
+  /// Extra scope for proposing a day plan. Asked for the first time the
+  /// user plans a day — never at sign-in. Mirrors `CALENDAR_READ_SCOPES`.
+  static const calendarReadScopes = ['Calendars.Read'];
+
+  /// Extra scopes for applying a day plan to Outlook. Asked for only when
+  /// the user confirms Apply — never at sign-in. Mirrors `CALENDAR_SCOPES`.
+  static const calendarScopes = ['Calendars.ReadWrite'];
+
   /// Graph access token: silent first, interactive on `MsalUiRequiredException`.
   Future<String> token() async {
     final pca = await _pcaAsync();

@@ -13,6 +13,7 @@ class AskAnswer {
     required this.periodEnd,
     this.fallbackReason,
     this.proposedAction,
+    this.clarification,
   });
 
   /// Plain markdown (paragraphs, `-` and `1.` lists, `**bold**`).
@@ -36,6 +37,10 @@ class AskAnswer {
   /// that does nothing until approved. Kept exactly as received: it is signed,
   /// and `POST /actions/approve` refuses it if anything in it changes.
   final ProposedAction? proposedAction;
+
+  /// An instruction Ask needs one more detail for (e.g. which customer).
+  /// Renders as a question with the candidates as quick-reply chips.
+  final Clarification? clarification;
 
   factory AskAnswer.fromJson(Map<String, dynamic> json) {
     List<Map<String, dynamic>> maps(Object? list) => [
@@ -64,8 +69,88 @@ class AskAnswer {
           ? ProposedAction(
               Map<String, dynamic>.from(json['proposed_action'] as Map))
           : null,
+      clarification: json['clarification'] is Map
+          ? Clarification.fromJson(
+              Map<String, dynamic>.from(json['clarification'] as Map))
+          : null,
     );
   }
+}
+
+/// Ask understood an action but needs one more thing before it can propose
+/// it (e.g. which customer). See `Clarification` in
+/// `services/runtime/app/schemas.py`.
+class Clarification {
+  Clarification({
+    required this.kind,
+    required this.field,
+    required this.questionMd,
+    this.candidates = const [],
+    this.ref,
+  });
+
+  final String kind;
+  final String field;
+  final String questionMd;
+  final List<String> candidates;
+  final String? ref;
+
+  factory Clarification.fromJson(Map<String, dynamic> json) {
+    return Clarification(
+      kind: (json['kind'] ?? '').toString(),
+      field: (json['field'] ?? '').toString(),
+      questionMd: (json['question_md'] ?? '').toString(),
+      candidates: [
+        if (json['candidates'] is List)
+          for (final c in json['candidates'] as List) c.toString(),
+      ],
+      ref: json['ref']?.toString(),
+    );
+  }
+}
+
+/// The question again with the user's words for the thing replaced by the
+/// picked candidate. Mirrors `withPicked` in
+/// `apps/web/src/components/ask/ActionCard.tsx`.
+String withPicked(String question, Clarification clarification, String name) {
+  final ref = (clarification.ref ?? '').trim();
+  if (ref.isNotEmpty) {
+    final at = question.toLowerCase().indexOf(ref.toLowerCase());
+    if (at >= 0) {
+      return question.substring(0, at) +
+          name +
+          question.substring(at + ref.length);
+    }
+  }
+  return '$question ($name)';
+}
+
+/// Which Books.xlsx sheet an answer's figures live on, from the cited paths.
+/// The workbook is a projection; VAT answers cite both the returns and the
+/// ledger folders, so VAT wins. Mirrors `workbookSheet` in
+/// `apps/web/src/components/ask/AnswerCard.tsx`.
+String workbookSheet(AskAnswer answer) {
+  final hay = [
+    for (final k in answer.keyNumbers) k.source,
+    ...answer.citations,
+  ].join('\n');
+  if (hay.contains('VAT returns')) return 'VAT';
+  if (hay.contains('Bank statements')) return 'Bank';
+  if (hay.contains('_System/proposals') || hay.contains('02 Needs a look')) {
+    return 'Proposals';
+  }
+  if (hay.contains('/Jobs') ||
+      hay.contains('/Staff') ||
+      hay.contains('/Timesheets')) {
+    return 'Jobs';
+  }
+  if (hay.contains('/Vehicles') || hay.contains('/Mileage')) {
+    return 'Vehicles';
+  }
+  if (hay.contains('/Payroll')) return 'Payroll';
+  if (hay.contains('/contacts')) return 'Customers';
+  if (hay.contains('_System/Ledger')) return 'Ledger';
+  return 'Summary';
 }
 
 /// A proposed action from Ask (`services/runtime/app/actions.py`).
