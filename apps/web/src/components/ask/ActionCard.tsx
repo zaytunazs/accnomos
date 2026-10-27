@@ -153,10 +153,13 @@ type State = { step: "ready" | "working" | "rejected" } | { step: "done"; result
 export default function ActionCard({
   action,
   account,
+  receivedAt,
   onChange,
 }: {
   action: RtProposedAction;
   account: AccountInfo;
+  /** When the card arrived by this device's clock; absent (an older saved thread): when it was first shown. */
+  receivedAt?: number;
   /** "Change": put the question back in the box so the user can reword it. */
   onChange: () => void;
 }) {
@@ -166,11 +169,14 @@ export default function ActionCard({
   const expired = lapsed && state.step === "ready";
 
   // Timed from when the card arrived, not by comparing the server's expiry with this device's clock, which may be off
-  // (one running 15 minutes ahead would show every card as expired). The runtime still refuses an expired card on Approve.
+  // (one running 15 minutes ahead would show every card as expired); a card restored from the saved thread keeps its
+  // arrival time, so a reload does not restart the clock. The runtime still refuses an expired card on Approve.
   useEffect(() => {
-    const t = setTimeout(() => setLapsed(true), Math.max(0, Date.parse(action.expires_at) - Date.parse(action.created_at)));
+    const ttl = Date.parse(action.expires_at) - Date.parse(action.created_at);
+    const left = receivedAt === undefined ? ttl : receivedAt + ttl - Date.now();
+    const t = setTimeout(() => setLapsed(true), Math.max(0, left));
     return () => clearTimeout(t);
-  }, [action.created_at, action.expires_at]);
+  }, [action.created_at, action.expires_at, receivedAt]);
 
   async function approve() {
     setState({ step: "working" });

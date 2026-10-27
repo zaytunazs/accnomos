@@ -26,6 +26,8 @@ interface Turn {
   elapsedS?: number;
   /** From hold-to-talk: tapping the transcript puts it back in the box to edit. */
   voice?: boolean;
+  /** When the answer arrived, by this device's clock (Date.now()): an action card restored after a reload lapses on time. */
+  at?: number;
 }
 
 type Mode = "loading" | "sample" | "live";
@@ -114,6 +116,8 @@ export default function AskThread() {
   const end = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const asked = useRef(false);
+  /** Set once the saved thread has been read: until then an empty first render must not overwrite it. */
+  const restored = useRef(false);
 
   function historyOf(before: Turn[]): RtAskTurn[] {
     return before
@@ -134,7 +138,7 @@ export default function AskThread() {
     setBusy(true);
     try {
       const answer = await runtime.ask(acct, q, askPeriod(), history);
-      setTurns([...before, { question: q, answer, elapsedS: (performance.now() - started) / 1000 }]);
+      setTurns([...before, { question: q, answer, elapsedS: (performance.now() - started) / 1000, at: Date.now() }]);
     } catch (e) {
       setTurns([...before, { question: q, error: e instanceof Error ? e.message : String(e) }]);
     } finally {
@@ -149,7 +153,7 @@ export default function AskThread() {
     setBusy(true);
     try {
       const { transcript, ...answer } = await runtime.askVoice(acct, audio, askPeriod(), historyOf(before));
-      setTurns([...before, { question: transcript, answer, elapsedS: (performance.now() - started) / 1000, voice: true }]);
+      setTurns([...before, { question: transcript, answer, elapsedS: (performance.now() - started) / 1000, voice: true, at: Date.now() }]);
     } catch (e) {
       setTurns([...before, { question: "(voice question)", error: e instanceof Error ? e.message : String(e) }]);
     } finally {
@@ -191,6 +195,7 @@ export default function AskThread() {
       setAccount(acct);
       setMode("live");
       const stored = loadTurns();
+      restored.current = true;
       if (stored.length > 0) setTurns(stored);
       if (q && !asked.current) {
         asked.current = true; // the home page's Ask bar sent a question: answer it straight away
@@ -209,7 +214,7 @@ export default function AskThread() {
   }, [turns]);
 
   useEffect(() => {
-    keepTurns(turns);
+    if (restored.current) keepTurns(turns);
   }, [turns]);
 
   function submit(e: FormEvent) {
@@ -341,6 +346,7 @@ export default function AskThread() {
                 <ActionCard
                   action={t.answer.proposed_action}
                   account={account}
+                  receivedAt={t.at}
                   onChange={() => {
                     setInput(t.question);
                     inputRef.current?.focus();

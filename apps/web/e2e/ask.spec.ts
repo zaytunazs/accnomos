@@ -75,3 +75,25 @@ test("an instruction → action card; an approval that died halfway says what to
   await expect(card.getByRole("status")).toHaveText("Rejected. Nothing was done.");
   expect(await runtime.sent()).toEqual([]);
 });
+
+test("an action card restored after a reload keeps its own 15 minutes", async ({ page, runtime }) => {
+  await runtime.reset("demo");
+  await signIn(page, DEMO_DAY);
+  await createBooksFolder(page);
+  await runtime.api("POST", "/contacts/import-outlook", { add_new: true });
+
+  await page.goto("/ask");
+  await page.getByLabel("Ask your books").fill("send a £100 invoice to JM Trading");
+  await page.getByRole("button", { name: "Ask", exact: true }).click();
+  const card = page.getByRole("article", { name: "Proposed: Invoice" });
+  const ready = "Create the invoice and email it to accounts@jmtrading.example?";
+  await expect(card).toContainText(ready);
+
+  // 14 minutes on, the thread comes back from sessionStorage: a minute and a half later the card is past its TTL.
+  await page.clock.fastForward("14:00");
+  await page.reload();
+  await expect(card).toContainText(ready);
+  await page.clock.fastForward("01:30");
+  await expect(card).toContainText("This proposal has expired; ask again.");
+  await expect(card.getByRole("button", { name: "Approve" })).toBeDisabled();
+});
