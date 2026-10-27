@@ -1,85 +1,31 @@
-# Meta models: what is used, where, and what is actually verified
+# Meta models: what is used, where it runs, and what is actually verified
 
-Source: `docs/META_MODELS.md`, `docs/ARCHITECTURE.md` (models table), `docs/HONESTY.md`, the code paths named below (all exist on `main`), and the
-eval reports in `evals/`. Prices are quotes from our own docs or scripts unless marked measured. **"Run" means the maintainers ran it for real;
-"unit-tested" means stubbed HTTP only; "modelled" means the request or response shape is our reading of Meta's docs, not checked against a live call.**
+Written 27 Oct 2026 from `docs/META_MODELS.md`, `docs/HONESTY.md`, the code named in the table and the reports under `evals/`.
+**Status words:** *measured* = the maintainers ran it for real and a report is committed; *one live call* = run once by hand, no committed log; *unit-tested* = stubbed HTTP in the test suite only; *wired* = in the code path and configured, not yet measured. Nothing is marked measured that has no report.
 
-## Summary: verified versus modelled
+| Model | Where it runs | What it does in the app | Status | Evidence |
+|---|---|---|---|---|
+| **Muse Glimmer 30B** (`muse-glimmer:30b`, open weights) | Ollama on our DGX Spark (local mode). "Local" means our hardware: a user's own laptop is not reachable from `api.accnomos.com` | Reads receipts, invoices and credit notes into strict JSON; second-reading Verifier in local mode; Ask answers, chat/voice-action intents, inbox triage, reminder drafts and the planner's rationale (words only, code does the figures) | **Measured.** Extraction: 200 synthetic messy documents, all fields right 88 %, side 100 %, status 93 %, mean 22 s per document. Autopilot L2 safety: 467 documents per mode. Ask: 40 prompts, figures exact 32/32, no invented figure reached the user. Triage category 5/5. Verifier: Glimmer checking Glimmer on 20 documents, 17/18 agreed, 0 extra catches | `evals/REPORT_glimmer_messy_200_2026-10-27.md`; `evals/runs/autopilot_l2/report.md`, `docs/reviews/autopilot-eval/REVIEW.md`; `evals/runs/ask_40/report.md`; `evals/runs/mail_intake/report.md`; `evals/REPORT_verifier_glimmer_messy_20_2026-10-27.md` |
+| **Muse Spark 1.3** (`muse-spark-1.3`) | Meta Model API, with the user's own key (key mode) | Same jobs as Glimmer without a GPU: extraction, Ask, actions, triage; Verifier in key mode when no Baseten key is set | **Unit-tested only.** Never called live by us; no accuracy, latency or cost figure exists | `services/runtime/tests/` (stubbed HTTP); `docs/HONESTY.md` (Models) |
+| **Muse Spark Open** (`meta-models/muse-spark-open`) | Baseten (`inference.baseten.co/v1`), key mode; the server owner's `BASETEN_API_KEY` | Independent Verifier: a second reading with a different prompt that never sees the first answer; code compares six fields | **Wired as the key-mode Verifier, one live call (27 Oct 2026):** Baseten's `/v1/models` lists the id, and a real call through the verifier code read a gold receipt correctly in 7 s. Unit-tested. **Extraction eval of all 200 gold receipts (reader and verifier) is running on the Spark: [pending: evals/runs/spark_open_200]** | `services/runtime/app/ai/verify.py` (`DEFAULT_BASETEN_MODEL`); `services/runtime/tests/test_verify.py`; [pending: evals/runs/spark_open_200] |
+| **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) | Meta Model API, key mode only (local mode returns 400) | Spoken question or instruction on Ask and in chat actions: audio to text, then the normal grounded path. ffmpeg converts to WAV mono 16 kHz first; audio is not kept | **Unit-tested only** on a generated tone and stubbed HTTP. The request shape is from research notes, not checked against dev.meta.ai; no live mic run on any browser or phone | `services/runtime/app/ai/voice.py`; `services/runtime/tests/test_voice.py` |
+| **SAM 3.1** (`sam-3.1`) | Meta Model API, key mode, only with `SAM_CROP=1` (**off by default**) | Finds and crops the receipt in a messy photo before reading. The default is a plain-code crop (Pillow, numpy, Otsu) | **Unit-tested only; never run live.** The code crop is measured: mean IoU 0.88 against 0.48 for the full frame on 20 synthetic scenes. The SAM fixture is marked ILLUSTRATIVE | `services/runtime/app/ai/crop.py`; `evals/REPORT_crop_code_20_2026-10-27.md` |
+| **Muse Image** (`muse-image-1.0`) | Meta Model API, from the owner's PC at build time | Made the brand art (launcher icon, Play feature graphic, website hero). Not in the running product | **Run, build time only.** 12 images, USD 0.12 (commit message of `f39cb2d`) | `tools/brand_muse.py`; `apps/web/public/brand/` |
 
-| Model | Status in one word | Evidence |
-|---|---|---|
-| Muse Glimmer 30B | **Run** (extraction, verifier) | 60, 200 and 20-document evals, local on a DGX Spark; the other text tasks are stub-tested only |
-| Muse Spark 1.3 | **Unit-tested only** | No Meta key in our eval environment; never called live by us |
-| Muse Spark Open (Baseten) | **Unit-tested only, slug unconfirmed** | `meta-models/muse-spark-open` is a guess; the demo sets no Baseten key |
-| Muse Voice Transcribe | **Modelled** | Request format from research notes, not dev.meta.ai; no live mic run anywhere |
-| SAM 3.1 | **Modelled, off by default** | Wire format is a guess; fixture is marked ILLUSTRATIVE; never run live |
-| Muse Image | **Run, build time only** | 12 images, USD 0.12 (commit message); not in the runtime |
+Not used: `muse-wonder-1.0` is not called anywhere. There is no separate LLM "Reviewer" stage; the card's "why" line is composed by code (`docs/ARCHITECTURE.md`).
 
-Not used: `muse-wonder-1.0` is not called anywhere.
+## What the table does not say
 
-## Per model
+- **Only Glimmer has numbers.** Every accuracy, latency and safety figure in this repo is Glimmer 30B on the DGX Spark over synthetic documents; real phone photos will score lower. The Ask eval also ran Qwen3.8-27B (vLLM) as a second reader; that is not a Meta model.
+- **Autopilot L2 (Glimmer, 467 documents per mode, synthetic):** with the verifier on, 0 false posts on 154 clean documents and 0 on 139 messy renders; 0 on 42 re-photographed or identical receipts (after a same-document rule was added: before it, 21 of 32 re-photographed receipts were posted twice). The overall rate is **17 false posts in 467 (3.6 %)**, all 17 being gold documents already in the books, fed again with a different date, which for a receipt without an invoice number cannot be told from buying the same thing twice. Without those: 0 in 407. Verifier off: the same 17, plus 1 false post on clean documents. It also missed 75 of 200 expected posts (they wait in Review). Times were inflated by other jobs sharing the GPU. `evals/runs/autopilot_l2/report.md`.
+- **Why a second model:** the verifier removed one false post on clean documents and cost 16 correct posts (132 against 148). Whether L2 should require it is a product decision recorded in `docs/reviews/autopilot-eval/REVIEW.md`. With `VERIFIER=off` Autopilot can post on a single reading.
+- **Costs:** no per-call fee for Glimmer (our hardware; electricity not measured). Quotes only: SAM 3.1 about USD 2.50 per 1,000 images (`docs/DEV.md`); Muse Image USD 0.01 per image. Spark 1.3, Spark Open and Voice have no price recorded. No token counts are logged.
+- **Latency (Glimmer, DGX Spark):** extraction mean 22 s, max 40 s over 200 documents; second reading about 7.6 s; Ask median 16 s per question after the routed facts pack.
+- **A known gap:** in key mode with no `X-Meta-Api-Key` header the runtime falls back to the server's `META_API_KEY`, so typed and voice Ask would run on the operator's key. Leave it unset on the public demo.
 
-### Muse Glimmer 30B (`muse-glimmer:30b`, open weights, Ollama, local mode)
+## How the models are kept honest
 
-- **Where:** `services/runtime/app/ai/extract.py` (reads a receipt or invoice into a strict-JSON schema); `app/ai/verify.py` (the local-mode second reading);
-  `app/ai/ask.py` `call_json_model` (Ask, and through it `app/actions.py` chat intents, `app/ai/triage.py`, `app/ai/remind.py`, `app/ai/plan.py` rationale).
-- **Why:** open weights mean a document need not leave the machine running Ollama. Caveat to state aloud: in our demo that machine is our DGX Spark, so "local"
-  means our hardware; a user's own laptop is not reachable from `api.accnomos.com` (`docs/HONESTY.md`).
-- **Verified:** measured on a DGX Spark, mean 22 s and max 37–40 s per document for extraction, about 7.6 s for the second reading (`docs/META_MODELS.md`).
-  Evals: `evals/REPORT_glimmer_messy_200_2026-10-27.md` (200 synthetic messy documents: all fields right 88 %, supplier 100 %, date 100 %, net 93 %, side
-  100 %, status 93 %); `evals/REPORT_glimmer_messy_60_2026-10-27.md` (first 60, older scoring: 73 %); `evals/REPORT_verifier_glimmer_messy_20_2026-10-27.md`.
-  A live run on 27 Oct (upload, scan, 40 s, 9/9 code checks, approve, ledger event) is the maintainers' record with no log committed.
-- **Modelled/unverified:** the non-extraction tasks (Ask, intents, triage, reminders, planner) have only run against a stubbed model.
-- **Cost:** no per-call fee (our hardware); electricity is not measured.
-
-### Muse Spark 1.3 (`muse-spark-1.3`, Meta Model API, the user's own key)
-
-- **Where:** the same call sites as Glimmer in key mode (`/chat/completions`): `extract.py`, `ask.py` `call_json_model`; `verify.py` in key mode when no Baseten key is set.
-- **Why:** no GPU needed; the user brings their own key.
-- **Verified:** `services/runtime/tests` against stubbed HTTP. **Not run in our evals.** No accuracy or latency figure exists for it.
-- **Cost:** not measured; the repo points to dev.meta.ai. In key mode with no `X-Meta-Api-Key` header the runtime falls back to the server's `META_API_KEY`
-  (`app/ai/config.py`; a known, documented gap: typed and voice Ask would run on the operator's key). Only *Test connection* (`/ai/test`) insists on the header.
-
-### Muse Spark Open (Baseten, optional verifier)
-
-- **Where:** `services/runtime/app/ai/verify.py`, key mode only, and only if the server owner sets `BASETEN_API_KEY` (`.env.example`).
-  Default slug `meta-models/muse-spark-open`, overridable with `VERIFIER_MODEL` or `BASETEN_MODEL`.
-- **Why:** an independent model for the second reading, so the checker is not the model that did the first reading. A different prompt is used and the verifier never sees the first answer.
-- **Verified:** unit-tested only (`services/runtime/tests/test_verify.py`). The slug is unconfirmed and no Baseten key is set on the demo, so the demo verifier is Glimmer (local)
-  or Spark 1.3 (key mode). The one verifier eval is **Glimmer checking Glimmer** on 20 documents: 17 of 18 verified documents agreed on all six fields,
-  0 extra errors caught, 1 false alarm. That does not measure catch rate.
-- **Cost:** not measured. `VERIFIER=off` disables it.
-
-### Muse Voice Transcribe (`muse-voice-transcribe-1.0`)
-
-- **Where:** `services/runtime/app/ai/voice.py` `transcribe()`, reached from `POST /books/ask/voice`; the web mic button and the Android mic on Ask. ffmpeg converts to WAV mono 16 kHz first. Key mode only; local mode returns 400.
-- **Verified:** `services/runtime/tests/test_voice.py` on a generated tone and stubbed HTTP. The endpoint (`/asr/transcribe`), multipart parts and response field are from research notes. **No live mic run on any browser or phone.**
-- **Do not demo the mic** unless you have tested it live first. Meta has no text-to-speech model; Accnomos does not read answers aloud.
-- **Cost:** not measured.
-
-### SAM 3.1 (`sam-3.1`)
-
-- **Where:** `services/runtime/app/ai/crop.py` `_call_sam`, key mode, only with `SAM_CROP=1`, to crop a receipt in a messy photo before reading.
-- **Default:** a plain-code crop (Pillow, numpy, Otsu) measured on 20 synthetic scenes: mean IoU 0.88 against 0.48 for the full frame (`evals/REPORT_crop_code_20_2026-10-27.md`).
-- **Verified:** nothing live. `services/runtime/tests/fixtures/sam_response.json` is marked ILLUSTRATIVE and must be replaced with a captured response before switching it on.
-- **Cost (quote, `docs/DEV.md`):** about $2.50 per 1,000 images, two calls when "receipt" finds nothing and "invoice" is tried.
-
-### Muse Image (`muse-image-1.0`)
-
-- **Where:** `tools/brand_muse.py`, at build time only; the script writes concepts to a local folder on the owner's PC, outside the repo. The chosen concepts, composed with the
-  headline, are the launcher icon, Play feature graphic and website hero (commit `f39cb2d`); the web copies are `apps/web/public/brand/` (`icon-512.png`, `feature-1024x500.png`, `hero.jpg`). Not in the runtime.
-- **Cost:** $0.01 per image (script docstring); 12 images, USD 0.12 in total (commit `f39cb2d`).
-- **Honesty line for the video:** "Muse Image made the brand art; it plays no part in the running product."
-
-## Token and cost notes found in the repo
-
-- No token counts are logged or committed. There is no usage dashboard in the repo.
-- Per-image quotes only: SAM 3.1 about $2.50 per 1,000 images; Muse Image $0.01 per image. Spark 1.3, Spark Open and Voice have no price recorded.
-- Latency (measured, Glimmer on DGX Spark): extraction mean 22.2 s, max 39.8 s over 200 documents; second reading about 7.6 s.
-
-## How the models are kept honest (useful for the "use of Meta models" criterion)
-
-- Models return strict JSON or words only; code does the money. `packages/ledger` never imports model code (`docs/DEV.md`, Conventions).
-- Every figure in an Ask answer is checked against a code-built facts pack; an invented figure is replaced by the facts.
-- There is **no separate LLM "Reviewer"** stage; the card's "why" line is composed by code (`docs/ARCHITECTURE.md`). Do not describe a reviewer model.
-- The signed-out `/vat` mock-up shows a "Reviewer's note (Muse Spark)" that is labelled sample and not backed by any running reviewer (`docs/HONESTY.md`). Avoid it in the video.
+- Models return strict JSON or words only; code does the money. `packages/ledger` never imports model code (`docs/DEV.md`).
+- Every figure in an Ask answer is checked against a code-built facts pack; an invented figure, or one from the wrong period, is replaced by the facts.
+- Chat and voice actions return an intent only; code finds the customer, prices the lines in pence and a signed card waits for Approve (`docs/ACTIONS.md`).
+- Do not film the mic, and avoid the signed-out `/vat` mock-up, whose "Reviewer's note (Muse Spark)" is labelled sample and not backed by any running reviewer (`docs/HONESTY.md`).
