@@ -505,7 +505,7 @@ class Books:
         """Reopen a line: undo a match, a "transfer" or an "ignore"."""
         path, line = await self._find_line(line_id)
         if not line.resolved:
-            raise BankMatchError("This bank line is not matched")
+            raise BankMatchError("This bank line is still open; there is nothing to undo")
         update: dict[str, Any] = {"status": "unmatched", "matched_event_id": None, "matched_event_ids": []}
         await self._set_line(path, line_id, update)
         await self.audit(f"user:{user}", "bank_unmatched", {

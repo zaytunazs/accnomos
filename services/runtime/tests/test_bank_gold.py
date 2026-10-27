@@ -150,3 +150,19 @@ def test_line_actions_refuse_and_reopen(client: TestClient) -> None:
     assert client.post(f"/books/bank/lines/{payee}/expense-proposal", headers=H).status_code == 409  # money in
     assert client.post("/books/bank/lines/0000000000000000/ignore", headers=H).status_code == 404
     assert client.get("/books/bank/lines?status=transfer", headers=H).json() == []
+
+
+def test_rejected_expense_proposal_can_be_made_again(client: TestClient) -> None:
+    _upload(client, "starling.csv")
+    ee = next(u["line"]["id"] for u in client.get("/books/bank/unmatched", headers=H).json() if u["line"]["description"] == "EE LIMITED")
+    first = client.post(f"/books/bank/lines/{ee}/expense-proposal", headers=H).json()
+    status = {u["line"]["id"]: u["proposal_status"] for u in client.get("/books/bank/unmatched", headers=H).json()}
+    assert status[ee] == "needs_a_look"
+
+    assert client.post(f"/books/proposals/{first['id']}/reject", headers=H, json={"reason": "wrong"}).status_code == 200
+    status = {u["line"]["id"]: u["proposal_status"] for u in client.get("/books/bank/unmatched", headers=H).json()}
+    assert status[ee] == "rejected"  # the page offers "Create expense proposal" again
+    second = client.post(f"/books/bank/lines/{ee}/expense-proposal", headers=H).json()
+    assert second["id"] != first["id"] and second["status"] == "needs_a_look"
+    line = next(ln for ln in client.get("/books/bank/lines", headers=H).json() if ln["id"] == ee)
+    assert line["proposal_id"] == second["id"]

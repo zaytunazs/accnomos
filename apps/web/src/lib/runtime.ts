@@ -244,6 +244,8 @@ export type RtUnmatchedAction = "create_expense_proposal" | "mark_transfer" | "i
 export interface RtUnmatchedLine {
   line: RtBankLine;
   suggested: { action: RtUnmatchedAction; reason: string };
+  /** Status of the expense proposal made from this line, if any; after "rejected" a new one may be made. */
+  proposal_status: "proposed" | "needs_a_look" | "posted" | "rejected" | null;
 }
 export interface RtBankSummary {
   total: number;

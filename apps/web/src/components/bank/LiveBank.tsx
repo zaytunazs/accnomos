@@ -66,7 +66,6 @@ function Tile({ label, value, sub, tone }: { label: string; value: string; sub: 
 }
 
 function Tiles({ s }: { s: RtBankSummary }) {
-  const open = s.unmatched + s.suggested;
   return (
     <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 min-[1100px]:grid-cols-4">
       <Tile
@@ -77,7 +76,7 @@ function Tiles({ s }: { s: RtBankSummary }) {
       />
       <Tile label="Matched" value={String(s.matched)} sub={`${plural(s.transfer, "transfer")} · ${s.ignored} ignored`} />
       <Tile label="To confirm" value={String(s.suggested)} sub="Suggested matches" tone={s.suggested ? "warn" : undefined} />
-      <Tile label="Unmatched" value={String(s.unmatched)} sub={open ? "Need an action" : "Nothing open"} tone={s.unmatched ? "warn" : undefined} />
+      <Tile label="Unmatched" value={String(s.unmatched)} sub={s.unmatched ? "Need an action" : "Nothing open"} tone={s.unmatched ? "warn" : undefined} />
     </div>
   );
 }
@@ -213,7 +212,7 @@ function Matches({ rows, busy, act }: { rows: RtBankSuggestion[]; busy: string |
 function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string | null; act: Act }) {
   if (rows.length === 0) return <Empty text="No unmatched bank lines." />;
   function run(line: RtBankLine, action: RtUnmatchedAction) {
-    act(line.id, async (a) => {
+    act(`${line.id}:${action}`, async (a) => {
       if (action === "create_expense_proposal") {
         await runtime.bank.expenseProposal(a, line.id);
         return `Expense proposal for ${line.description} is waiting on Review.`;
@@ -228,7 +227,11 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
   }
   return (
     <ul className="flex flex-col">
-      {rows.map(({ line, suggested }) => (
+      {rows.map(({ line, suggested, proposal_status }) => {
+        // A rejected proposal no longer counts: the user may make a fresh one.
+        const pending = proposal_status === "proposed" || proposal_status === "needs_a_look";
+        const posted = proposal_status === "posted";
+        return (
         <li key={line.id} className="flex flex-col gap-2 border-t border-border py-3 first:border-t-0">
           <div className="flex flex-wrap items-baseline gap-x-3">
             <span className="text-[13px] font-medium text-muted">{ukDate(line.date)}</span>
@@ -236,7 +239,7 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
             <span className="font-bold tabular-nums">{money(line.amount_pence)}</span>
           </div>
           <p className="text-[13px] text-muted">
-            {line.proposal_id ? (
+            {pending ? (
               <>
                 An expense proposal is waiting.{" "}
                 <Link href="/review" className="font-bold text-teal-dark underline underline-offset-2">
@@ -244,14 +247,16 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
                 </Link>{" "}
                 and this line will match it.
               </>
+            ) : posted ? (
+              <>The expense from this line is posted but its amount or date no longer matches the line. Check it on Review.</>
             ) : (
               <>Suggested: {suggested.reason}</>
             )}
           </p>
           <div className="flex flex-wrap gap-2">
             {ACTIONS.filter((x) => !(x.action === "create_expense_proposal" && line.amount_pence >= 0)).map((x) => {
-              const primary = x.action === suggested.action && !line.proposal_id;
-              const waiting = x.action === "create_expense_proposal" && line.proposal_id;
+              const primary = x.action === suggested.action && !pending && !posted;
+              const waiting = x.action === "create_expense_proposal" && (pending || posted);
               return (
                 <button
                   key={x.action}
@@ -262,13 +267,14 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
                     primary ? "bg-teal text-white hover:bg-teal-dark" : "border border-border bg-white text-ink hover:bg-ground"
                   }`}
                 >
-                  {busy === line.id && primary ? "…" : waiting ? "Proposal created" : x.label}
+                  {busy === `${line.id}:${x.action}` ? "…" : waiting ? "Proposal created" : x.label}
                 </button>
               );
             })}
           </div>
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }

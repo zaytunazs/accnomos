@@ -20,7 +20,7 @@ from pydantic import BaseModel
 
 from app.books import BankMatchError, Books, now
 from app.journal import draft_journal
-from app.schemas import Check, ExtractedDoc, Proposal
+from app.schemas import Check, ExtractedDoc, Proposal, ProposalStatus
 
 MODEL = "bank-line"  # in place of the extraction model's name: no model read anything
 
@@ -28,6 +28,9 @@ MODEL = "bank-line"  # in place of the extraction model's name: no model read an
 class UnmatchedLine(BaseModel):
     line: BankLine
     suggested: ActionHint
+    # Status of the expense proposal made from this line (line.proposal_id); None when there is none.
+    # After "rejected" the user may create a fresh one.
+    proposal_status: ProposalStatus | None = None
 
 
 def _payment_method(text: str) -> str:
@@ -65,13 +68,16 @@ def proposal_from_line(line: BankLine) -> Proposal:
 
 
 async def create_expense_proposal(books: Books, line_id: str, user: str) -> Proposal:
-    """Raises FileNotFoundError / BankMatchError. Asking twice returns the first proposal."""
+    """Raises FileNotFoundError / BankMatchError. Asking twice returns the first proposal, unless the
+    user rejected it on /review: then a fresh one is made."""
     line = await books.find_bank_line(line_id)
     if line.resolved:
         raise BankMatchError("This bank line is already settled; undo that first")
     if line.proposal_id:
         try:
-            return await books.get_proposal(line.proposal_id)
+            earlier = await books.get_proposal(line.proposal_id)
+            if earlier.status != "rejected":
+                return earlier
         except FileNotFoundError:
             pass  # the proposal file was removed by hand: make a new one
     p = proposal_from_line(line)
@@ -83,5 +89,14 @@ async def create_expense_proposal(books: Books, line_id: str, user: str) -> Prop
 
 
 async def unmatched_lines(books: Books) -> list[UnmatchedLine]:
-    """Open lines with no suggested match, each with the likeliest action."""
-    return [UnmatchedLine(line=ln, suggested=suggest_action(ln)) for ln in await books.list_bank_lines("unmatched")]
+    """Open lines with no suggested match, each with the likeliest action and its proposal's status."""
+    out = []
+    for ln in await books.list_bank_lines("unmatched"):
+        status = None
+        if ln.proposal_id:
+            try:
+                status = (await books.get_proposal(ln.proposal_id)).status
+            except FileNotFoundError:
+                pass
+        out.append(UnmatchedLine(line=ln, suggested=suggest_action(ln), proposal_status=status))
+    return out
