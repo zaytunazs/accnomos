@@ -2,6 +2,21 @@
 
 Amounts are signed integer pence: money out is negative. Headers are sniffed case-insensitively,
 so Starling, Monzo, Barclays, HSBC, Lloyds and similar exports all read without configuration.
+
+The three column layouts we read (gold examples in evals/gold/bank/):
+
+1. One signed amount column
+   Barclays-style: Number, Date, Account, Amount, Subcategory, Memo  (Memo = description)
+   Monzo-style:    Transaction ID, Date, Time, Type, Name, Emoji, Category, Amount, Currency, ...,
+                   Notes and #tags, ..., Description, Money Out, Money In  (Name = description; Amount wins
+                   over Money Out / Money In)
+2. Signed amount plus counterparty and running balance
+   Starling-style: Date, Counter Party, Reference, Type, Amount (GBP), Balance (GBP), Spending Category, Notes
+3. Separate paid-in / paid-out columns
+   Tide-style:     Date, Transaction ID, Transaction Type, Name/Description, Reference, Paid in, Paid out, Balance
+   (HSBC and Lloyds exports use the same idea: Paid in/Paid out or Debit Amount/Credit Amount)
+
+`detect_bank` names the bank from the header so filed statements read "2026-10-31_starling.csv".
 """
 
 from __future__ import annotations
@@ -16,7 +31,10 @@ from typing import Literal
 
 from pydantic import BaseModel
 
-BankLineStatus = Literal["unmatched", "matched", "suggested"]
+#: matched/transfer/ignored are the user's decisions (stored); suggested is computed on read.
+BankLineStatus = Literal["unmatched", "matched", "suggested", "transfer", "ignored"]
+RESOLVED: tuple[str, ...] = ("matched", "transfer", "ignored")
+BankName = Literal["barclays", "starling", "tide", "monzo", "bank"]
 
 DATE_FORMATS = ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d %b %Y", "%d %B %Y", "%d/%m/%y", "%d-%b-%Y", "%d %b %y")
 
@@ -24,7 +42,7 @@ DATE_FORMATS = ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d %b %Y", "%d %B %Y", "%d/
 HEADERS: dict[str, tuple[str, ...]] = {
     "date": ("date", "transaction date", "posting date", "posted date", "value date"),
     "description": ("description", "details", "narrative", "transaction description", "memo", "name",
-                    "counter party", "counterparty", "payee", "merchant"),
+                    "counter party", "counterparty", "payee", "merchant", "name/description"),
     "amount": ("amount", "amount (gbp)", "amount gbp", "value", "local amount"),
     "out": ("money out", "paid out", "debit", "debit amount", "out", "withdrawals"),
     "in": ("money in", "paid in", "credit", "credit amount", "in", "deposits"),
@@ -44,6 +62,11 @@ class BankLine(BaseModel):
     matched_event_id: str | None = None  # the first (or only) event this line pays for
     matched_event_ids: list[str] = []  # all of them, when one payment covers several events
     status: BankLineStatus = "unmatched"
+    proposal_id: str | None = None  # an expense proposal made from this line ("create expense proposal")
+
+    @property
+    def resolved(self) -> bool:
+        return self.status in RESOLVED
 
     def event_ids(self) -> list[str]:
         return self.matched_event_ids or ([self.matched_event_id] if self.matched_event_id else [])
@@ -51,6 +74,32 @@ class BankLine(BaseModel):
 
 class BankCsvError(ValueError):
     """The file does not look like a bank statement we can read."""
+
+
+#: What to do with a bank line nothing in the ledger matches.
+UnmatchedAction = Literal["create_expense_proposal", "mark_transfer", "ignore"]
+TRANSFER_WORDS = re.compile(r"\b(transfer|tfr|savings?|own account|between accounts|pot|isa|sweep)\b", re.IGNORECASE)
+IGNORE_WORDS = re.compile(r"\b(pending|reversal|reversed|declined|authorisation)\b", re.IGNORECASE)
+FEE_WORDS = re.compile(r"\b(fee|fees|charge|charges|interest|commission)\b", re.IGNORECASE)
+
+
+class ActionHint(BaseModel):
+    action: UnmatchedAction
+    reason: str
+
+
+def suggest_action(line: BankLine) -> ActionHint:
+    """The likeliest of the three actions for an unmatched line. A hint only: the user picks."""
+    text = f"{line.description} {line.reference or ''}"
+    if TRANSFER_WORDS.search(text):
+        return ActionHint(action="mark_transfer", reason="Looks like money moved between your own accounts")
+    if line.amount_pence == 0 or IGNORE_WORDS.search(text):
+        return ActionHint(action="ignore", reason="A zero, pending or reversed line has nothing to book")
+    if line.amount_pence < 0:
+        why = "A bank fee: book it as bank charges" if FEE_WORDS.search(text) else "Money out with no receipt in the books yet"
+        return ActionHint(action="create_expense_proposal", reason=why)
+    return ActionHint(action="ignore",
+                      reason="Money in with no sale in the books: post the sales invoice, or ignore it if it isn't income")
 
 
 def line_id(when: date, amount_pence: int, description: str, balance_pence: int | None) -> str:
@@ -106,6 +155,15 @@ def _columns(header: list[str]) -> dict[str, int]:
     return found
 
 
+#: Header columns that only one bank's export has (normalised), checked in order.
+SIGNATURES: tuple[tuple[BankName, frozenset[str]], ...] = (
+    ("monzo", frozenset({"transaction id", "emoji"})),
+    ("starling", frozenset({"counter party", "spending category"})),
+    ("barclays", frozenset({"number", "account", "subcategory", "memo"})),
+    ("tide", frozenset({"transaction id", "transaction type", "paid in", "paid out"})),
+)
+
+
 def _is_header(cols: dict[str, int]) -> bool:
     return "date" in cols and "description" in cols and ("amount" in cols or "out" in cols or "in" in cols)
 
@@ -146,16 +204,30 @@ def _row_to_line(row: list[str], cols: dict[str, int], source_file: str) -> Bank
     )
 
 
+def _header_row(data: bytes) -> tuple[int, list[list[str]], dict[str, int]]:
+    rows = list(csv.reader(io.StringIO(_decode(data))))
+    start = next(((i, c) for i, r in enumerate(rows) if _is_header(c := _columns(r))), None)
+    if start is None:
+        raise BankCsvError("No Date / Description / Amount header found")
+    return start[0], rows, start[1]
+
+
+def detect_bank(data: bytes) -> BankName:
+    """Which bank's export this looks like, from its header row; "bank" when we can't tell.
+
+    Raises BankCsvError when there is no header row at all.
+    """
+    at, rows, _ = _header_row(data)
+    names = {_norm_header(h) for h in rows[at]}
+    return next((bank for bank, needed in SIGNATURES if needed <= names), "bank")
+
+
 def parse_bank_csv(data: bytes, source_file: str) -> list[BankLine]:
     """Every transaction row in a UK bank CSV export. Preamble rows before the header are skipped.
 
     Raises BankCsvError when no recognisable header row is found.
     """
-    rows = list(csv.reader(io.StringIO(_decode(data))))
-    start = next(((i, c) for i, r in enumerate(rows) if _is_header(c := _columns(r))), None)
-    if start is None:
-        raise BankCsvError("No Date / Description / Amount header found")
-    header_at, cols = start
+    header_at, rows, cols = _header_row(data)
     lines: list[BankLine] = []
     seen: dict[str, int] = {}
     for row in rows[header_at + 1:]:

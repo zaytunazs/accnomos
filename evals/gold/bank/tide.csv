@@ -1,0 +1,7 @@
+Date,Transaction ID,Transaction Type,Name/Description,Reference,Paid in,Paid out,Balance
+2026-10-01,TD-0001,Card Transaction,Shell Fuel 4411,,,62.30,937.70
+2026-10-05,TD-0002,Faster Payment,Northgate Builders Ltd,INV-0051,960.00,,"1,897.70"
+2026-10-08,TD-0003,Domestic Transfer,Transfer to own account,Savings,,250.00,"1,647.70"
+2026-10-12,TD-0004,Card Transaction,ADOBE CREATIVE CLD,,,19.97,"1,627.73"
+2026-10-16,TD-0005,Fee,Tide monthly fee,,,9.99,"1,617.74"
+2026-10-22,TD-0006,Card Transaction,Shell Fuel 4411,,,58.10,"1,559.64"

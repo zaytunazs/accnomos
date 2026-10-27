@@ -4,7 +4,7 @@ from datetime import date, datetime
 
 import pytest
 from accnomos_ledger import LedgerEvent, Line, VatCode
-from accnomos_ledger.bank import BankCsvError, line_id, parse_amount, parse_bank_csv, parse_date
+from accnomos_ledger.bank import BankCsvError, detect_bank, line_id, parse_amount, parse_bank_csv, parse_date, suggest_action
 from accnomos_ledger.matching import settlement_pence, suggest_matches, tokens
 
 STARLING = b"""Date,Counter Party,Reference,Type,Amount (GBP),Balance (GBP),Spending Category,Notes
@@ -61,6 +61,19 @@ def test_identical_rows_without_balance_get_distinct_ids() -> None:
     assert a.id != b.id
 
 
+def test_detect_bank_falls_back_to_bank() -> None:
+    assert detect_bank(STARLING) == "starling"
+    assert detect_bank(LLOYDS) == detect_bank(HSBC) == "bank"
+
+
+def test_suggested_actions_for_unmatched_lines() -> None:
+    csv = (b"Date,Description,Amount\n21/10/2026,TFR TO SAVINGS,-100.00\n21/10/2026,MONTHLY ACCOUNT FEE,-5.00\n"
+           b"21/10/2026,CARD REVERSAL,0.00\n21/10/2026,COFFEE,-2.50\n21/10/2026,MYSTERY CREDIT,10.00\n")
+    hints = [suggest_action(ln) for ln in parse_bank_csv(csv, "s.csv")]
+    assert [h.action for h in hints] == ["mark_transfer", "create_expense_proposal", "ignore", "create_expense_proposal", "ignore"]
+    assert "bank charges" in hints[1].reason
+
+
 def test_not_a_statement() -> None:
     with pytest.raises(BankCsvError):
         parse_bank_csv(b"name,email\nSam,sam@example.co.uk\n", "x.csv")
@@ -108,15 +121,38 @@ def test_exact_match_same_day_with_name_and_card() -> None:
     assert (m2.line_id, m2.kind) == (lines[1].id, "exact")
 
 
-def test_date_window_three_days_and_closer_scores_higher() -> None:
+def test_date_window_five_days_and_closer_scores_higher() -> None:
     lines = _lines(b"Date,Description,Amount\n24/10/2026,Payment,-38.47\n")
     three = suggest_matches(lines, [_purchase(3847, date(2026, 10, 21), "Screwfix", "e1")])
     one = suggest_matches(lines, [_purchase(3847, date(2026, 10, 23), "Screwfix", "e1")])
-    four = suggest_matches(lines, [_purchase(3847, date(2026, 10, 20), "Screwfix", "e1")])
     assert three[0].kind == one[0].kind == "suggested" and one[0].score > three[0].score
-    assert four == []
-    wrong_amount = suggest_matches(lines, [_purchase(3848, date(2026, 10, 24), "Screwfix", "e1")])
-    assert wrong_amount == []
+    # Five days out the date alone is too weak; the counterparty's name carries it.
+    assert suggest_matches(lines, [_purchase(3847, date(2026, 10, 19), "Screwfix", "e1")]) == []
+    named = _lines(b"Date,Description,Amount\n24/10/2026,SCREWFIX DIRECT,-38.47\n")
+    (five,) = suggest_matches(named, [_purchase(3847, date(2026, 10, 19), "Screwfix", "e1")])
+    assert five.kind == "suggested" and "5 days apart" in five.reasons
+    assert suggest_matches(named, [_purchase(3847, date(2026, 10, 18), "Screwfix", "e1")]) == []
+
+
+def test_amount_within_a_penny() -> None:
+    lines = _lines(b"Date,Description,Amount\n24/10/2026,SCREWFIX,-38.47\n")
+    (penny,) = suggest_matches(lines, [_purchase(3848, date(2026, 10, 24), "Screwfix", "e1")])
+    assert penny.kind == "exact" and "exact amount, 1p out" in penny.reasons and penny.score < 1.0
+    assert suggest_matches(lines, [_purchase(3849, date(2026, 10, 24), "Screwfix", "e1")]) == []
+
+
+def test_counterparty_near_spelling_counts() -> None:
+    lines = _lines(b"Date,Description,Amount\n24/10/2026,TOOLSTN 0412 CD 1234,-12.00\n")
+    (m,) = suggest_matches(lines, [_purchase(1200, date(2026, 10, 22), "Toolstation", "e1")])
+    assert "name: toolstation" in m.reasons
+
+
+def test_transfers_and_ignored_lines_are_not_matched() -> None:
+    lines = _lines(b"Date,Description,Amount\n21/10/2026,Screwfix,-38.47\n")
+    lines[0].status = "transfer"
+    assert suggest_matches(lines, [_purchase(3847, date(2026, 10, 21), "Screwfix", "e1")]) == []
+    lines[0].status = "ignored"
+    assert suggest_matches(lines, [_purchase(3847, date(2026, 10, 21), "Screwfix", "e1")]) == []
 
 
 def test_one_bank_line_pays_several_same_day_events() -> None:

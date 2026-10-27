@@ -1,0 +1,7 @@
+Transaction ID,Date,Time,Type,Name,Emoji,Category,Amount,Currency,Local amount,Local currency,Notes and #tags,Address,Receipt,Description,Money Out,Money In,Category split
+tx_0000GOLD01,02/10/2026,08:41:10,Card payment,Pret A Manger,🥪,Eating out,-7.85,GBP,-7.85,GBP,,1 High Street,,PRET A MANGER LONDON GBR,-7.85,,
+tx_0000GOLD02,05/10/2026,11:02:44,Faster payment,Harbour Cafe Ltd,💷,Income,640.00,GBP,640.00,GBP,INV-0007,,,HARBOUR CAFE LTD INV-0007,,640.00,
+tx_0000GOLD03,06/10/2026,07:00:00,Pot transfer,Tax Pot,🫙,Savings,-300.00,GBP,-300.00,GBP,,,,POT TRANSFER,-300.00,,
+tx_0000GOLD04,11/10/2026,14:30:01,Card payment,Screwfix,🔨,Shopping,-24.99,GBP,-24.99,GBP,,,,SCREWFIX DIRECT YEOVIL GBR,-24.99,,
+tx_0000GOLD05,18/10/2026,09:15:55,Direct Debit,Zurich Insurance,🛡️,Bills,-41.20,GBP,-41.20,GBP,,,,ZURICH INSURANCE PLC,-41.20,,
+tx_0000GOLD06,25/10/2026,16:45:12,Card payment,Amazon,📦,Shopping,-15.49,GBP,-15.49,GBP,,,,AMAZON.CO.UK*AB12CD34,-15.49,,
