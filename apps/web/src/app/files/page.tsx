@@ -1,3 +1,4 @@
+import ExplainMore from "@/components/ExplainMore";
 import LiveFiles from "@/components/files/LiveFiles";
 import PageHeader from "@/components/PageHeader";
 
@@ -9,6 +10,11 @@ export default function FilesPage() {
       <PageHeader
         title="Files"
         description="A live view of your Accnomos folder in OneDrive. You can open everything without the app."
+        action={
+          <ExplainMore title="What the Files page shows" anchor="files">
+            This is your OneDrive folder shown as is, no AI. Books.xlsx is a read-only copy rebuilt from the events; a folder’s file count can include nested folders.
+          </ExplainMore>
+        }
       />
       <LiveFiles />
     </div>

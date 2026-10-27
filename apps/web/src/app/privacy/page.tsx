@@ -30,6 +30,43 @@ export default function PrivacyPage() {
       </section>
 
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
+        <h2 className="text-xl font-bold">Permissions: what is asked and when</h2>
+        <p>
+          The app asks for each permission only when you first use the feature that needs it, never all at once.
+        </p>
+        <div role="region" aria-label="Permission table" tabIndex={0} className="overflow-x-auto">
+          <table className="w-full min-w-[480px] text-left text-[14px]">
+            <thead>
+              <tr className="border-b border-border text-[13px] font-bold text-muted">
+                <th scope="col" className="py-2 pr-3">Permission</th>
+                <th scope="col" className="py-2 pr-3">Asked</th>
+                <th scope="col" className="py-2">Used for</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[
+                { scope: "User.Read, offline_access", when: "At sign-in", use: "Show who is signed in; keep you signed in" },
+                { scope: "Files.ReadWrite.AppFolder", when: "At sign-in (personal accounts)", use: "Read and write only the Apps/Accnomos folder: 00 Inbox to 07 Reports, Books.xlsx, _System" },
+                { scope: "Files.ReadWrite", when: "At sign-in (work accounts only)", use: "Read and write only the /Accnomos folder; the app folder is personal-accounts only" },
+                { scope: "Mail.Read", when: "When you switch on Outlook intake or inbox triage", use: "Intake copies likely bills to 00 Inbox; triage reads sender, subject, date and a short preview" },
+                { scope: "Mail.ReadWrite", when: "The first time you tap Draft in Outlook", use: "Save that one reply as a draft; nothing is ever sent" },
+                { scope: "Mail.Send", when: "The first time you send an invoice or reminder, in the confirmation dialog", use: "Send only the email you saw and confirmed, with the invoice PDF" },
+                { scope: "Contacts.Read", when: "The first time you tap Import from Outlook", use: "Fill blank emails and phones; add new contacts only if you choose it" },
+                { scope: "Calendars.Read", when: "The first time you plan a day", use: "Read that day from your default calendar to plan around it" },
+                { scope: "Calendars.ReadWrite", when: "The first time you tap Apply on a plan", use: "Create the plan’s new items as calendar events" },
+              ].map((row) => (
+                <tr key={row.scope} className="border-t border-border align-top first:border-t-0">
+                  <td className="py-2 pr-3 font-semibold"><code>{row.scope}</code></td>
+                  <td className="py-2 pr-3">{row.when}</td>
+                  <td className="py-2">{row.use}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
         <h2 className="text-xl font-bold">What we keep</h2>
         <p>
           Nothing personal. The runtime and relay are stateless: requests are processed in memory and discarded. Standard web-server access logs (IP address, path, time) are kept for up to 30 days for security.
@@ -50,13 +87,16 @@ export default function PrivacyPage() {
             </thead>
             <tbody>
               {[
-                { data: "Receipts, invoices, ledger events, VAT returns, Books.xlsx", where: "Your OneDrive Accnomos folder", who: "You — plus anyone you share that OneDrive with" },
+                { data: "00 Inbox, 01 Receipts, 02 Needs a look, 03 Sales (with invoices/ and invoices/sent/), 04 Bank statements, 05 Payroll, 06 VAT returns, 07 Reports, Books.xlsx, README.txt", where: "Your OneDrive Accnomos folder (Apps/Accnomos; /Accnomos on work accounts)", who: "You — plus anyone you share that OneDrive with" },
+                { data: "The books: _System/Ledger/events, proposals, docs, audit trail, Autopilot rules", where: "Your OneDrive Accnomos folder, _System/", who: "You — append-only; corrections are new reversing entries" },
+                { data: "Working data: Contacts, Jobs, Staff, Timesheets, Vehicles, Mileage, bank, Intake, Todos, Planner, Payroll runs, Invoicing profile", where: "Your OneDrive Accnomos folder, _System/", who: "You — names and details only; money is recomputed from the events" },
                 { data: "Microsoft sign-in (name, e-mail)", where: "This browser's sign-in cache", who: "You, shown as who is signed in" },
                 { data: "Your Meta API key and AI address", where: "This device only", who: "Sent per request over HTTPS so the runtime can call the model for you; never logged or stored" },
                 { data: "HMRC tokens", where: "This browser tab only", who: "Gone when the tab closes or you disconnect" },
                 { data: "Device ID and VAT number", where: "This device only", who: "Sent to HMRC as fraud-prevention data when you submit" },
                 { data: "Spoken questions", where: "Nowhere — converted then discarded", who: "Nobody keeps the audio" },
-                { data: "Mail read during intake", where: "Memory only; copies land in your OneDrive", who: "You" },
+                { data: "Mail read during intake and triage", where: "Memory only; copies land in 00 Inbox and to-dos in _System/Todos", who: "You — full bodies and attachments are never fetched by triage" },
+                { data: "Calendar days read for planning", where: "Memory only; applied plans in _System/Planner/applied.json", who: "You — nothing written before you tap Apply" },
                 { data: "Server access logs (IP, path, time, up to 30 days)", where: "Our hosts", who: "The service operator, for security" },
               ].map((row) => (
                 <tr key={row.data} className="border-t border-border align-top first:border-t-0">
