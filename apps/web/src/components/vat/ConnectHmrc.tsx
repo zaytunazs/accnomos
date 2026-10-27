@@ -7,7 +7,7 @@ import { getMsal, msalConfigured } from "@/lib/msal";
 import { fetchLiveVat, type RtVatView } from "@/lib/runtime";
 import { usePickedPeriod } from "@/lib/vat-period";
 import { FOLDER } from "@/lib/folders";
-import { ensureFolder, putSmallFile } from "@/lib/graph";
+import { ensureFolder, listChildren, putSmallFile } from "@/lib/graph";
 import {
   clientFacts,
   disconnect,
@@ -31,6 +31,43 @@ type Step = "list" | "confirm" | "submitting" | "done";
 
 const DECLARATION =
   "When you submit this VAT information you are making a legal declaration that the information is true and complete. A false declaration can result in prosecution.";
+
+const FRAUD_NOTICE =
+  "Submitting sends HMRC's fraud-prevention data with the return: a random ID for this device, your screen and window size, time zone, browser, a hashed ID for your Microsoft account, and your IP address. Nothing is sent until you press Submit.";
+
+const STEPS = ["Declaration", "Submit", "Receipt"] as const;
+
+/** Where the submission is: 0 = choose the period and declare, 1 = sending, 2 = receipt. */
+function stepIndex(step: Step): number {
+  return step === "list" ? 0 : step === "done" ? 2 : 1;
+}
+
+/** The 3-step strip (declaration → submit → receipt) shown once obligations are listed. */
+function StepStrip({ step }: { step: Step }) {
+  const current = stepIndex(step);
+  return (
+    <ol aria-label="Submission steps" className="flex flex-wrap items-center gap-2 text-[14px]">
+      {STEPS.map((label, i) => (
+        <li key={label} className="flex items-center gap-2" aria-current={i === current ? "step" : undefined}>
+          <span
+            aria-hidden="true"
+            className={`flex h-6 w-6 items-center justify-center rounded-full text-[13px] font-extrabold ${
+              i < current ? "bg-teal text-white" : i === current ? "bg-teal-tint text-teal-dark" : "bg-ground text-muted"
+            }`}
+          >
+            {i + 1}
+          </span>
+          <span className={i === current ? "font-extrabold text-ink" : "font-semibold text-muted"}>{label}</span>
+          {i < STEPS.length - 1 ? (
+            <span aria-hidden="true" className="mx-1 text-muted">
+              →
+            </span>
+          ) : null}
+        </li>
+      ))}
+    </ol>
+  );
+}
 
 const BOXES: { box: number; key: keyof VatReturnBody; label: string }[] = [
   { box: 1, key: "vatDueSales", label: "VAT due on sales" },
@@ -75,7 +112,38 @@ export default function ConnectHmrc() {
   const [declared, setDeclared] = useState(false);
   const [result, setResult] = useState<RelayResult<SubmitReceipt> | null>(null);
   const [saved, setSaved] = useState<"saving" | "saved" | string>("saving");
+  const [copied, setCopied] = useState(false);
+  const [receipts, setReceipts] = useState<{ period: string; saved: boolean }[] | null>(null);
+  const [receiptsKey, setReceiptsKey] = useState(0);
   const picked = usePickedPeriod();
+
+  // Previous submissions, from the receipt files saved in OneDrive (`06 VAT returns/`).
+  useEffect(() => {
+    if (!account || phase !== "connected") return;
+    let stale = false;
+    (async () => {
+      try {
+        const kids = await listChildren(account, FOLDER.vat_returns);
+        const folders = kids.filter((k) => k.folder).map((k) => k.name).sort().reverse().slice(0, 9);
+        const rows = await Promise.all(
+          folders.map(async (name) => {
+            try {
+              const inner = await listChildren(account, `${FOLDER.vat_returns}/${name}`);
+              return { period: name, saved: inner.some((f) => f.name === "receipt.json") };
+            } catch {
+              return { period: name, saved: false };
+            }
+          }),
+        );
+        if (!stale) setReceipts(rows);
+      } catch {
+        if (!stale) setReceipts([]);
+      }
+    })();
+    return () => {
+      stale = true;
+    };
+  }, [account, phase, receiptsKey]);
 
   useEffect(() => {
     // Take the OAuth fragment before any await so nothing else (MSAL, a reload) sees or re-uses it.
@@ -145,6 +213,16 @@ export default function ConnectHmrc() {
     }
   }
 
+  async function copyBundle() {
+    if (!result) return;
+    try {
+      await navigator.clipboard.writeText(result.hmrc.formBundleNumber);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+
   function signOut() {
     disconnect();
     setObligations(null);
@@ -187,6 +265,7 @@ export default function ConnectHmrc() {
     try {
       const res = await hmrc.submit(v, await clientFacts(account.homeAccountId), body, scenario);
       setResult(res);
+      setCopied(false);
       setMissing(res.fraud_headers_missing);
       setStep("done");
       setObligations((list) => list?.map((o) => (o.periodKey === obligation.periodKey ? { ...o, status: "F" } : o)) ?? null);
@@ -239,6 +318,7 @@ export default function ConnectHmrc() {
           "application/json",
         );
         setSaved("saved");
+        setReceiptsKey((k) => k + 1); // the new receipt joins the list below
       } catch (e) {
         setSaved(`Couldn't save to OneDrive: ${(e as Error).message}. The submission itself went through — keep this page open and note the receipt below.`);
       }
@@ -346,6 +426,14 @@ export default function ConnectHmrc() {
 
           {obligations && obligations.length > 0 && step === "list" && (
             <div>
+              <div className="mb-3">
+                <StepStrip step={step} />
+                {live ? (
+                  <p className="mt-2 text-[13px] font-medium text-muted">
+                    Periods follow the picker above — the highlighted row matches your picked return ({live.label}).
+                  </p>
+                ) : null}
+              </div>
               {/* Phone: one card per obligation. Wider screens: the obligations table. */}
               <ul className="flex flex-col gap-2 min-[640px]:hidden">
                 {obligations.map((o) => {
@@ -448,6 +536,9 @@ export default function ConnectHmrc() {
 
           {(step === "confirm" || step === "submitting") && body && obligation && live && (
             <div className="rounded-2xl border border-teal p-5">
+              <div className="mb-3">
+                <StepStrip step={step} />
+              </div>
               <h3 className="text-[17px] font-extrabold">
                 Confirm VAT return · {uk(obligation.start)} – {uk(obligation.end)} · key {obligation.periodKey}
               </h3>
@@ -469,6 +560,7 @@ export default function ConnectHmrc() {
                 </tbody>
               </table>
               <p className="mt-2 text-sm text-muted">Calculated by code, not AI, from the {live.events_in_period} entries you approved.</p>
+              <p className="mt-3 rounded-xl bg-ground p-3 text-[13px] leading-6 text-muted">{FRAUD_NOTICE}</p>
               <p className="mt-4 text-[15px] leading-7">{DECLARATION}</p>
               <label className="mt-3 flex min-h-11 cursor-pointer items-center gap-3 text-[15px] font-semibold">
                 <input type="checkbox" checked={declared} onChange={(e) => setDeclared(e.target.checked)} className="h-5 w-5 accent-teal" />
@@ -487,12 +579,28 @@ export default function ConnectHmrc() {
 
           {step === "done" && result && obligation && (
             <div className="rounded-2xl border border-teal bg-teal-tint p-5" aria-live="polite">
+              <div className="mb-3">
+                <StepStrip step={step} />
+              </div>
               <h3 className="text-[17px] font-extrabold text-teal-dark">Submitted to HMRC (sandbox) · key {obligation.periodKey}</h3>
               <dl className="mt-3 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-[15px]">
                 <dt className="text-muted">Processing date</dt>
                 <dd className="font-bold">{result.hmrc.processingDate}</dd>
                 <dt className="text-muted">Form bundle number</dt>
-                <dd className="font-bold tabular-nums">{result.hmrc.formBundleNumber}</dd>
+                <dd className="font-bold tabular-nums">
+                  {result.hmrc.formBundleNumber}{" "}
+                  <button
+                    type="button"
+                    onClick={copyBundle}
+                    aria-label="Copy form bundle number"
+                    className="ml-1 rounded-lg border border-border bg-white px-2 py-0.5 text-[13px] font-bold text-teal-dark hover:bg-ground"
+                  >
+                    Copy
+                  </button>
+                  <span aria-live="polite" className="ml-2 text-[13px] font-semibold text-teal-dark">
+                    {copied ? "Copied" : ""}
+                  </span>
+                </dd>
                 {result.hmrc.paymentIndicator && (
                   <>
                     <dt className="text-muted">Payment indicator</dt>
@@ -520,6 +628,31 @@ export default function ConnectHmrc() {
                     : saved}
               </p>
             </div>
+          )}
+
+          {receipts !== null && (
+            <section aria-labelledby="past-receipts" className="rounded-2xl border border-border p-5">
+              <h3 id="past-receipts" className="text-[15px] font-extrabold tracking-tight">
+                Previous receipts
+              </h3>
+              {receipts.length === 0 ? (
+                <p className="mt-2 text-sm text-muted">
+                  No receipts saved yet. After you submit, the return and HMRC&apos;s receipt are kept in{" "}
+                  {FOLDER.vat_returns} in your OneDrive.
+                </p>
+              ) : (
+                <ul className="mt-2 flex flex-col gap-1 text-[15px]">
+                  {receipts.map((r) => (
+                    <li key={r.period} className="flex flex-wrap items-baseline gap-x-2">
+                      <span className="font-bold tabular-nums">{r.period}</span>
+                      <span className="text-sm text-muted">
+                        {r.saved ? "receipt saved" : "return only"} · {FOLDER.vat_returns}/{r.period}/
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
           )}
 
           {missing.length > 0 && (
