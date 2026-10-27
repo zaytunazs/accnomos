@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import Link from "next/link";
 import AppNav from "./AppNav";
 import DemoBanner from "./DemoBanner";
 
@@ -31,15 +32,30 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <DemoBanner />
+      {/* Phone header: logo plus Settings, shown only while the sidebar is hidden. */}
+      <div className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-border bg-white px-4 py-2.5 min-[900px]:hidden">
+        <span className="flex min-w-0 items-center gap-2.5">
+          <LogoMark />
+          <span className="truncate text-lg font-extrabold tracking-tight">
+            Accnomos
+          </span>
+        </span>
+        <Link
+          href="/settings"
+          className="shrink-0 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-bold text-teal-dark hover:bg-ground"
+        >
+          Settings
+        </Link>
+      </div>
       <div className="flex flex-1 flex-col min-[900px]:flex-row">
-        <aside className="flex w-full shrink-0 flex-col gap-6 border-b border-border bg-white p-5 min-[900px]:w-[232px] min-[900px]:border-b-0 min-[900px]:border-r">
+        <aside className="hidden w-full shrink-0 flex-col gap-6 border-b border-border bg-white p-5 min-[900px]:flex min-[900px]:w-[232px] min-[900px]:border-b-0 min-[900px]:border-r">
           <div className="flex items-center gap-2.5">
             <LogoMark />
             <span className="text-lg font-extrabold tracking-tight">
               Accnomos
             </span>
           </div>
-          <AppNav />
+          <AppNav variant="sidebar" />
           <div className="mt-auto flex flex-col gap-3">
             <p className="rounded-2xl bg-ground p-4 text-sm leading-6 text-muted">
               Your books live in OneDrive — Apps / Accnomos
@@ -53,10 +69,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
             </p>
           </div>
         </aside>
-        <main className="min-w-0 flex-1 px-4 py-8 sm:px-8">
+        <main className="min-w-0 flex-1 px-4 pb-28 pt-6 sm:px-8 min-[900px]:py-8 min-[900px]:pb-8">
           <div className="mx-auto w-full max-w-3xl">{children}</div>
         </main>
       </div>
+      {/* Phone tab bar (Home, Review, Ask, VAT, Files) lives in AppNav. */}
+      <AppNav variant="tabs" />
     </div>
   );
 }

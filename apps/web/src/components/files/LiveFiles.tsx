@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import FileTree, { FileIcon, FolderIcon } from "@/components/files/FileTree";
+import { EmptyState, ErrorNote, LoadingSkeleton } from "@/components/States";
 import { FOLDERS, getRoot, listChildren, type DriveItem } from "@/lib/graph";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { runtime } from "@/lib/runtime";
@@ -217,7 +218,7 @@ export default function LiveFiles() {
           onClick={rebuild}
           disabled={!account || rebuilding || state === "missing"}
           title={account ? "Regenerate Books.xlsx from the ledger event files" : "Connect your OneDrive to rebuild"}
-          className="shrink-0 rounded-xl border-2 border-teal bg-white px-4 py-2 text-sm font-bold text-teal-dark disabled:border-border disabled:text-muted"
+          className="shrink-0 whitespace-nowrap rounded-xl border-2 border-teal bg-white px-4 py-2 text-sm font-bold text-teal-dark disabled:border-border disabled:text-muted"
         >
           {rebuilding ? "Rebuilding…" : "Rebuild Books.xlsx"}
         </button>
@@ -226,14 +227,14 @@ export default function LiveFiles() {
             href={tree.root.webUrl}
             target="_blank"
             rel="noreferrer"
-            className="shrink-0 rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark"
+            className="shrink-0 whitespace-nowrap rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark"
           >
             Open in OneDrive
           </a>
         ) : (
           <Link
             href={state === "demo" ? "/connect" : "#"}
-            className="shrink-0 rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark"
+            className="shrink-0 whitespace-nowrap rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark"
           >
             {state === "demo" ? "Connect your OneDrive" : "Open in OneDrive"}
           </Link>
@@ -255,15 +256,31 @@ export default function LiveFiles() {
           </p>
         </>
       ) : state === "missing" ? (
-        <p className="rounded-2xl border border-warn-border bg-warn-bg p-4 text-sm font-semibold text-warn-ink">
-          Your Accnomos folder is not set up yet. <Link href="/connect" className="underline">Finish connecting</Link> to create it.
-        </p>
+        <EmptyState
+          title="Folder not set up yet"
+          body="Your Accnomos folder in OneDrive hasn't been created."
+          action={
+            <Link
+              href="/connect"
+              className="inline-block whitespace-nowrap rounded-xl bg-teal px-5 py-2.5 text-sm font-bold text-white hover:bg-teal-dark"
+            >
+              Finish connecting
+            </Link>
+          }
+        />
       ) : state === "checking" || state === "loading" ? (
-        <p className="rounded-2xl border border-border bg-white p-4 text-sm font-semibold text-muted">
-          {state === "loading" ? "Reading your books folder…" : "Checking sign-in…"}
-        </p>
+        <LoadingSkeleton
+          lines={4}
+          label={state === "loading" ? "Reading your books folder…" : "Checking sign-in…"}
+        />
       ) : (
         <>
+          {state === "error" && (
+            <ErrorNote
+              title="Couldn't read your folder"
+              body={note ? `${note} Showing the sample instead.` : "Showing the sample instead."}
+            />
+          )}
           <p className="text-[13px] font-medium text-muted">
             {state === "error" ? "Could not read your folder; showing the sample instead. " : "Sample folder. "}
             SAMPLE — FICTIONAL COMPANY

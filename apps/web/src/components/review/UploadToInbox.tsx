@@ -31,16 +31,16 @@ export default function UploadToInbox({ account, onDone }: { account: AccountInf
 
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <input ref={input} type="file" accept="image/*,.pdf" multiple className="hidden" onChange={(e) => onFiles(e.target.files)} />
+      <input ref={input} type="file" accept="image/*,.pdf" multiple aria-label="Choose receipt photos or PDFs" className="hidden" onChange={(e) => onFiles(e.target.files)} />
       <button
         type="button"
         disabled={busy}
         onClick={() => input.current?.click()}
-        className="h-11 rounded-xl border border-border bg-white px-5 text-[15px] font-bold disabled:opacity-60"
+        className="h-11 whitespace-nowrap rounded-xl border border-border bg-white px-5 text-[15px] font-bold disabled:opacity-60"
       >
         {busy ? "Uploading…" : "Add a receipt"}
       </button>
-      {msg && <span className="text-sm text-muted">{msg}</span>}
+      {msg && <span role="status" className="text-sm text-muted">{msg}</span>}
     </div>
   );
 }

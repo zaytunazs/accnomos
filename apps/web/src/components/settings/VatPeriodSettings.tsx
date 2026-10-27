@@ -28,9 +28,9 @@ export default function VatPeriodSettings({ card, heading }: { card: string; hea
 
   return (
     <section aria-labelledby="settings-vat-periods" className={card}>
-      <h2 id="settings-vat-periods" className={heading}>
+      <h3 id="settings-vat-periods" className={heading}>
         VAT periods
-      </h2>
+      </h3>
       <div className="mt-3 grid grid-cols-3 gap-2" role="radiogroup" aria-label="VAT return period">
         {PERIODS.map((p) => {
           const active = business.vatPeriod === p.value;

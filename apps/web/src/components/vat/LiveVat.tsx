@@ -39,7 +39,30 @@ export default function LiveVat() {
         </h2>
         <span className="text-sm text-muted">{view.events_in_period} approved entries · calculated by code</span>
       </div>
-      <div className="mt-3 overflow-x-auto">
+      {/* Phone: one card per box. Wider screens: the 9-box table. */}
+      <ul className="mt-3 flex flex-col gap-2 sm:hidden">
+        {view.boxes.map((b) => (
+          <li
+            key={b.box}
+            className={`rounded-xl border p-3 ${
+              b.box === 3 || b.box === 5 ? "border-border bg-ground" : "border-border bg-white"
+            }`}
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <p className="text-[14px] font-extrabold">
+                Box {b.box} · {b.label}
+              </p>
+              <p className={`shrink-0 font-bold tabular-nums ${b.box === 5 ? "text-[17px]" : "text-[14px]"}`}>
+                {fmt(b)}
+              </p>
+            </div>
+            {b.entries ? (
+              <p className="mt-0.5 text-[13px] text-muted">{b.entries} entries</p>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      <div className="mt-3 hidden overflow-x-auto sm:block">
         <table className="w-full text-[15px]">
           <tbody>
             {view.boxes.map((b) => (

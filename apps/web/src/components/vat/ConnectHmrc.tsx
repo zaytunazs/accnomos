@@ -50,7 +50,7 @@ const uk = (iso: string) => {
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const cleanVrn = (s: string) => s.replace(/\s+/g, "").toUpperCase().replace(/^GB/, "");
 
-const btn = "h-11 rounded-xl px-5 text-[15px] font-bold disabled:cursor-not-allowed disabled:opacity-50";
+const btn = "h-11 whitespace-nowrap rounded-xl px-5 text-[15px] font-bold disabled:cursor-not-allowed disabled:opacity-50";
 const primary = `${btn} bg-teal text-white hover:bg-teal-dark`;
 const secondary = `${btn} border border-border bg-white hover:bg-ground`;
 
@@ -307,7 +307,49 @@ export default function ConnectHmrc() {
 
           {obligations && obligations.length > 0 && step === "list" && (
             <div>
-              <div className="overflow-x-auto">
+              {/* Phone: one card per obligation. Wider screens: the obligations table. */}
+              <ul className="flex flex-col gap-2 min-[640px]:hidden">
+                {obligations.map((o) => {
+                  const matches = live && o.start === live.start && o.end === live.end;
+                  const chosen = o.periodKey === selected;
+                  return (
+                    <li key={o.periodKey}>
+                      <label
+                        className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 ${
+                          chosen ? "border-teal bg-teal-tint" : "border-border bg-white"
+                        }`}
+                      >
+                        {o.status === "O" ? (
+                          <input
+                            type="radio"
+                            name="obligation"
+                            aria-label={`Choose period ${o.periodKey}`}
+                            checked={chosen}
+                            onChange={() => setSelected(o.periodKey)}
+                            className="mt-1 h-5 w-5 shrink-0 accent-teal"
+                          />
+                        ) : (
+                          <span aria-hidden="true" className="mt-2 h-2 w-2 shrink-0 rounded-full bg-muted" />
+                        )}
+                        <span className="min-w-0">
+                          <span className="text-[15px] font-bold tabular-nums">
+                            {o.periodKey} · {o.status === "O" ? "Open" : `Filed${o.received ? ` ${uk(o.received)}` : ""}`}
+                          </span>
+                          <span className="mt-0.5 block text-sm text-muted">
+                            {uk(o.start)} – {uk(o.end)} · due {uk(o.due)}
+                          </span>
+                          {matches && (
+                            <span className="mt-0.5 block text-[13px] font-bold text-teal-dark">
+                              matches your return
+                            </span>
+                          )}
+                        </span>
+                      </label>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="hidden overflow-x-auto min-[640px]:block">
                 <table className="w-full text-left text-[15px]">
                   <thead>
                     <tr className="border-b border-border text-[13px] font-bold text-muted">

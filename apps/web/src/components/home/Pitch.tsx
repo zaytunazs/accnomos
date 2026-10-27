@@ -42,13 +42,13 @@ export default function Pitch() {
           <div className="flex flex-wrap gap-2">
             <Link
               href="/connect"
-              className="rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark"
+              className="whitespace-nowrap rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark"
             >
               Connect your OneDrive
             </Link>
             <Link
               href="/review"
-              className="rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold text-ink hover:bg-ground"
+              className="whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold text-ink hover:bg-ground"
             >
               See the demo books
             </Link>

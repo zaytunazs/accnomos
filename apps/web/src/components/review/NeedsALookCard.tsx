@@ -24,13 +24,13 @@ export default function NeedsALookCard() {
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">
         <button
           type="button"
-          className="h-11 rounded-xl bg-warn-ink px-6 text-[15px] font-bold text-white hover:bg-amber"
+          className="h-11 whitespace-nowrap rounded-xl bg-warn-ink px-6 text-[15px] font-bold text-white hover:bg-amber"
         >
           Archive as duplicate
         </button>
         <button
           type="button"
-          className="h-11 rounded-xl border border-warn-border bg-white px-6 text-[15px] font-bold text-warn-ink hover:bg-warn-bg"
+          className="h-11 whitespace-nowrap rounded-xl border border-warn-border bg-white px-6 text-[15px] font-bold text-warn-ink hover:bg-warn-bg"
         >
           It’s different — compare
         </button>

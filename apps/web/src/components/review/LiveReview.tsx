@@ -4,6 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import ProposalCard from "@/components/review/ProposalCard";
 import UploadToInbox from "@/components/review/UploadToInbox";
+import {
+  EmptyState,
+  ErrorNote,
+  LoadingSkeleton,
+  ReaderErrorNote,
+  isReaderError,
+} from "@/components/States";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { gbp, runtime, ukDate, type RtJob, type RtProposal, type RtVehicle } from "@/lib/runtime";
 import type { Proposal as UiProposal } from "@/lib/sample-review";
@@ -107,6 +114,7 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
   const [items, setItems] = useState<RtProposal[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [remember, setRemember] = useState<Record<string, boolean>>({});
   const [autoPosted, setAutoPosted] = useState<RtProposal[]>([]);
   const [openJobs, setOpenJobs] = useState<RtJob[]>([]);
@@ -148,12 +156,13 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
 
   async function act(id: string, fn: () => Promise<unknown>, done: string) {
     setBusy(id);
+    setError(null);
     try {
       await fn();
       setNote(done);
       if (account) await load(account);
     } catch (e) {
-      setNote((e as Error).message);
+      setError((e as Error).message);
     } finally {
       setBusy(null);
     }
@@ -162,6 +171,7 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
   async function scan() {
     if (!account) return;
     setBusy("scan");
+    setError(null);
     try {
       const r = await runtime.scan(account);
       const auto = r.proposals.filter((p) => p.decided_by === "autopilot").length;
@@ -170,13 +180,14 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
       setNote(`${n} new proposal${n === 1 ? "" : "s"}${auto ? ` · ${auto} approved by Autopilot` : ""}${errs ? ` · could not read: ${errs}` : ""}`);
       await load(account);
     } catch (e) {
-      setNote((e as Error).message);
+      setError((e as Error).message);
     } finally {
       setBusy(null);
     }
   }
 
-  if (mode === "checking") return <p className="text-sm text-muted">Loading your proposals…</p>;
+  if (mode === "checking")
+    return <LoadingSkeleton lines={3} label="Loading your proposals…" />;
   if (mode === "demo")
     return (
       <>
@@ -188,13 +199,19 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={scan} disabled={busy !== null} className="h-11 rounded-xl bg-teal px-5 text-[15px] font-bold text-white disabled:opacity-60">
+        <button type="button" onClick={scan} disabled={busy !== null} className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white disabled:opacity-60">
           {busy === "scan" ? "Reading your Inbox…" : "Scan 00 Inbox now"}
         </button>
         <UploadToInbox account={account!} onDone={() => setNote("Added to your Inbox.")} />
         <span className="text-sm text-muted">{items.length} waiting · or drop files into OneDrive › Apps › Accnomos › 00 Inbox</span>
       </div>
       {note && <p role="status" className="rounded-xl bg-teal-tint px-4 py-2 text-sm text-teal-dark">{note}</p>}
+      {error &&
+        (isReaderError(error) ? (
+          <ReaderErrorNote detail={error} />
+        ) : (
+          <ErrorNote title="Couldn't finish that" body={error} />
+        ))}
       {autoPosted.length > 0 && (
         <section aria-labelledby="autopilot-posted" className="rounded-2xl border border-border bg-white p-5">
           <h2 id="autopilot-posted" className="text-[17px] font-extrabold">
@@ -218,7 +235,7 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
                   type="button"
                   disabled={busy !== null}
                   onClick={() => act(p.id, () => runtime.undo(account!, p.event_id!), "Undone · a reversing entry was added; it is back in Review")}
-                  className="h-11 rounded-xl border border-border bg-white px-5 text-[15px] font-bold disabled:opacity-60"
+                  className="h-11 whitespace-nowrap rounded-xl border border-border bg-white px-5 text-[15px] font-bold disabled:opacity-60"
                 >
                   {busy === p.id ? "Working…" : "Undo"}
                 </button>
@@ -227,7 +244,12 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
           </ul>
         </section>
       )}
-      {items.length === 0 && <p className="rounded-2xl border border-border bg-white p-6 text-muted">Nothing to review. Your books are up to date.</p>}
+      {items.length === 0 && (
+        <EmptyState
+          title="Nothing waiting"
+          body="Your books are up to date. New receipts will appear here after the next inbox scan."
+        />
+      )}
       {items.map((p) => (
         <div key={p.id} className="flex flex-col gap-2">
           {p.status === "needs_a_look" && (
@@ -266,7 +288,7 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
                 const edits = Object.keys(merged).length ? merged : undefined;
                 return act(p.id, () => runtime.approve(account!, p.id, { remember: always, edits }), done);
               }}
-              className="h-11 rounded-xl bg-teal px-5 text-[15px] font-bold text-white disabled:opacity-60"
+              className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white disabled:opacity-60"
             >
               {busy === p.id ? "Working…" : "Approve (post to books)"}
             </button>
@@ -274,7 +296,7 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
               type="button"
               disabled={busy !== null}
               onClick={() => act(p.id, () => runtime.reject(account!, p.id, "rejected by user"), "Rejected")}
-              className="h-11 rounded-xl border border-border bg-white px-5 text-[15px] font-bold disabled:opacity-60"
+              className="h-11 whitespace-nowrap rounded-xl border border-border bg-white px-5 text-[15px] font-bold disabled:opacity-60"
             >
               Reject
             </button>
