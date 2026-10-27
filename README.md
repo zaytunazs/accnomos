@@ -53,6 +53,20 @@ Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI De
 | 27 Oct | **Files page (live):** signed in, lists the real books folder from Graph (00–06 with file counts, sizes, last modified, *Open* links; `_System` collapsed); signed out, the sample tree. Web build passes; not yet checked against a real OneDrive |
 | 27 Oct | **VAT deadlines (F12-lite):** `GET /books/deadlines` works out the current VAT period from the stagger (1/2/3, custom start month, or monthly), the return/payment date (1 month + 7 days after period end), days left and Box 5 so far; Home *Deadlines* uses it when signed in, sample otherwise. Stagger is set in onboarding and Settings (this device only). Date maths unit-tested; annual accounting not covered; not yet run against a real account |
 
+| 27 Oct | **Sales invoices:** *Invoices* → *New invoice* (customer from your contacts or typed in; lines with qty, unit, price and VAT code; live totals by code) → draft saved as `03 Sales/invoices/INV-0001.json`, numbered from `_System/Invoicing/sequence.json` → *Save and preview* renders an A4 PDF (fpdf2: your details and logo from `_System/Invoicing/profile.json`, VAT summary by rate, bank details, VAT reg no) → *Send via Outlook* only after you tick the confirmation (`Mail.Send` asked for then) → PDF copy in `03 Sales/invoices/sent/` and the sale posted once (Dr Debtors, Cr Sales per VAT code, Cr VAT) → *Draft a reminder*: your Muse writes the chase from facts the code gives it, every figure checked, you edit and confirm → *Mark paid* (optionally matching the bank line) or *Void* (a reversal, never a delete). Business profile in Settings and onboarding. Runtime tests against fake storage and a fake mailbox in `services/runtime/tests/test_invoicing.py`; web build passes; not yet sent from a real mailbox |
+
+## Invoicing
+
+Money is code's job: each line's net is quantity × unit price and its VAT is worked out per line at the VAT code's
+rate (S 20%, R 5%, Z 0%, E exempt, O outside the scope), each rounded half up to the penny; the VAT summary and
+totals are sums of lines, and whatever totals a client sends are ignored. Only drafts can be changed; numbers are
+never reused (an unwanted draft is voided, not deleted). Sending emails first, then marks the invoice sent, then
+posts the sale with an id derived from the invoice number, so a retry never emails twice or posts twice. An
+invoice can only charge VAT once your VAT registration number is in the profile. Reminders are drafts: nothing is
+sent without your confirmation, and the AI never sees your bank details (it says they are on the attached
+invoice). Marking paid posts nothing (as with bank matching, the receipt is not yet posted to 1200 Bank); a paid
+invoice cannot be voided, and credit notes are not built yet.
+
 ## Outlook intake
 
 Turn it on in Settings and Accnomos asks Microsoft for one extra permission, `Mail.Read` (read-only). *Check my inbox
