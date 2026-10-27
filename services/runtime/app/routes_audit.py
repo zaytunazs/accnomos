@@ -28,4 +28,7 @@ async def get_audit(
     start = start or end - timedelta(days=audit_view.DEFAULT_DAYS)
     if start > end:
         raise HTTPException(status_code=422, detail="`from` must be on or before `to`")
+    if (end - start).days > audit_view.MAX_DAYS:
+        # each month in the range is two storage reads; a century-long range would be thousands
+        raise HTTPException(status_code=422, detail=f"at most {audit_view.MAX_DAYS} days at a time")
     return await audit_view.read(books, start, end, actor, kind, limit)

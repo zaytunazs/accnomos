@@ -223,6 +223,8 @@ def test_default_range_and_bad_requests(client: TestClient) -> None:
     )
     assert client.get("/audit", params={"from": "2026-10-28", "to": DAY}, headers=H).status_code == 422
     assert client.get("/audit", params={"limit": 0}, headers=H).status_code == 422
+    assert client.get("/audit", params={"from": "0001-01-01", "to": DAY}, headers=H).status_code == 422
+    assert client.get("/audit", params={"from": "2025-10-27", "to": DAY}, headers=H).status_code == 200
 
 
 def test_reading_writes_nothing(client: TestClient, fake: FakeStorageProvider) -> None:

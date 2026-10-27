@@ -33,6 +33,7 @@ from app.invoicing import money
 log = logging.getLogger(__name__)
 MAX_LIMIT = 500
 DEFAULT_DAYS = 31  # the range when `from` is not given
+MAX_DAYS = 366  # the widest range one request may read
 
 # agent:<name> -> the chip the apps show. Anything else is its name, capitalised.
 AGENT_LABELS = {
