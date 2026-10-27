@@ -598,10 +598,25 @@ async def _main(args: argparse.Namespace) -> int:
     if args.dry_run:
         print(describe(plan))
         return 0
-    token = os.getenv("ACCNOMOS_GRAPH_TOKEN") or getpass.getpass("Graph access token (hidden): ")
+    token = (os.getenv("ACCNOMOS_GRAPH_TOKEN") or getpass.getpass("Graph access token (hidden): ")).strip()
+    if not token:
+        print("No token given; nothing changed.", file=sys.stderr)
+        return 1
+    from accnomos_connectors.msgraph import GraphError
+
+    try:
+        return await _seed_graph(args, plan, token)
+    except GraphError as exc:
+        hint = " The token is wrong or has expired (they last about an hour): copy a fresh one." if exc.status in (401, 403) else ""
+        print(f"Microsoft Graph refused a request (HTTP {exc.status}).{hint} If the seed had started, the folder is part-filled: "
+              "run again with --wipe.", file=sys.stderr)
+        return 1
+
+
+async def _seed_graph(args: argparse.Namespace, plan: Plan, token: str) -> int:
     from accnomos_connectors.msgraph import GraphStorageProvider
 
-    async with GraphStorageProvider(token.strip(), args.account) as storage:
+    async with GraphStorageProvider(token, args.account) as storage:
         root = await storage.ensure_root()
         print(f"Books folder: {storage._root_drive_path or root.name}")
         if not root_is_accnomos(args.account, root.name):
