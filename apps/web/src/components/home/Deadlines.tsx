@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ExplainMore from "@/components/ExplainMore";
 import VatDeadlineStrip from "@/components/vat/VatDeadlineStrip";
 import type { RtPeriodDeadline } from "@/lib/runtime";
 import { deadlines as sampleDeadlines, type Deadline } from "@/lib/sample-home";
@@ -79,9 +80,15 @@ export default function Deadlines() {
 
   return (
     <section aria-labelledby="deadlines-heading" aria-busy={tiles === null} className="flex flex-col gap-3">
-      <h2 id="deadlines-heading" className="text-lg font-extrabold tracking-tight">
-        Deadlines{sample && <SampleTag />}
-      </h2>
+      <div className="flex items-center gap-2">
+        <h2 id="deadlines-heading" className="text-lg font-extrabold tracking-tight">
+          Deadlines{sample && <SampleTag />}
+        </h2>
+        <ExplainMore title="Where the dates come from" anchor="vat-periods">
+          The return date, the payment and the period end are worked out by code from your approved entries and
+          the VAT quarters in Settings.
+        </ExplainMore>
+      </div>
       <VatDeadlineStrip />
       {tiles === null ? (
         <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-3 md:grid-cols-1">
