@@ -1,18 +1,15 @@
 import 'package:flutter/material.dart';
 
+import 'screens/ask_screen.dart';
+import 'screens/review_screen.dart';
+import 'theme.dart';
+
 /// Accnomos — bookkeeping and VAT for UK small businesses.
 /// Your books stay in your own cloud. Meta AI does the work.
 ///
 /// v0.1.0: app shell (Home · Review · Ask · Files). Features arrive day by day;
 /// see CHANGELOG.md in the repo.
 void main() => runApp(const AccnomosApp());
-
-const _ink = Color(0xFF1B1F24);
-const _teal = Color(0xFF0F6E63);
-const _tealDark = Color(0xFF0A4F47);
-const _tealTint = Color(0xFFE6F1EF);
-const _ground = Color(0xFFF4F3EE);
-const _muted = Color(0xFF4B5159);
 
 class AccnomosApp extends StatelessWidget {
   const AccnomosApp({super.key});
@@ -24,16 +21,18 @@ class AccnomosApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
-        scaffoldBackgroundColor: _ground,
+        scaffoldBackgroundColor: AccnomosColors.ground,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: _teal,
-          primary: _teal,
+          seedColor: AccnomosColors.teal,
+          primary: AccnomosColors.teal,
           surface: Colors.white,
         ),
         textTheme: const TextTheme(
-          headlineSmall: TextStyle(fontWeight: FontWeight.w800, color: _ink),
-          titleMedium: TextStyle(fontWeight: FontWeight.w700, color: _ink),
-          bodyMedium: TextStyle(color: _ink),
+          headlineSmall: TextStyle(
+              fontWeight: FontWeight.w800, color: AccnomosColors.ink),
+          titleMedium: TextStyle(
+              fontWeight: FontWeight.w700, color: AccnomosColors.ink),
+          bodyMedium: TextStyle(color: AccnomosColors.ink),
         ),
       ),
       home: const Shell(),
@@ -51,17 +50,21 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int _tab = 0;
 
-  static const _titles = ['Home', 'Review', 'Ask', 'Files'];
+  /// Review and Ask bring their own app bars, so the shell only titles
+  /// the tabs that do not.
+  bool get _hasOwnAppBar => _tab == 1 || _tab == 2;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: _ground,
-        elevation: 0,
-        title: Text(_titles[_tab],
-            style: Theme.of(context).textTheme.headlineSmall),
-      ),
+      appBar: _hasOwnAppBar
+          ? null
+          : AppBar(
+              backgroundColor: AccnomosColors.ground,
+              elevation: 0,
+              title: Text(_tab == 3 ? 'Files' : 'Home',
+                  style: Theme.of(context).textTheme.headlineSmall),
+            ),
       body: Column(
         children: [
           const _SampleBanner(),
@@ -70,14 +73,8 @@ class _ShellState extends State<Shell> {
               index: _tab,
               children: const [
                 _HomeTab(),
-                _Placeholder(
-                    'Review',
-                    'Proposed entries from your receipts and invoices will appear here. '
-                        'Nothing reaches your books until you tap Approve.'),
-                _Placeholder(
-                    'Ask',
-                    'Ask your books a question, by text or voice. '
-                        'Every answer cites the files it came from.'),
+                ReviewScreen(),
+                AskScreen(),
                 _Placeholder('Files',
                     'A live view of the Accnomos folder in your own cloud storage.'),
               ],
@@ -88,7 +85,7 @@ class _ShellState extends State<Shell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
-        indicatorColor: _tealTint,
+        indicatorColor: AccnomosColors.tealTint,
         destinations: const [
           NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
           NavigationDestination(
@@ -110,13 +107,13 @@ class _SampleBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      color: _ink,
+      color: AccnomosColors.ink,
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       child: const Text(
         'SAMPLE — FICTIONAL COMPANY · demo data only',
         textAlign: TextAlign.center,
         style: TextStyle(
-            color: _ground,
+            color: AccnomosColors.ground,
             fontSize: 11,
             fontWeight: FontWeight.w700,
             letterSpacing: 0.6),
@@ -140,7 +137,7 @@ class _HomeTab extends StatelessWidget {
           'Accnomos keeps your bookkeeping in a folder you own (OneDrive first), '
           'reads receipts and invoices with Meta AI, and files VAT returns to HMRC '
           'only when you say so.',
-          style: TextStyle(color: _muted, height: 1.4),
+          style: TextStyle(color: AccnomosColors.muted, height: 1.4),
         ),
         const SizedBox(height: 20),
         GridView.count(
@@ -160,7 +157,7 @@ class _HomeTab extends StatelessWidget {
         const SizedBox(height: 20),
         FilledButton(
           style: FilledButton.styleFrom(
-              backgroundColor: _teal,
+              backgroundColor: AccnomosColors.teal,
               minimumSize: const Size.fromHeight(52),
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14))),
@@ -175,7 +172,7 @@ class _HomeTab extends StatelessWidget {
         const Text(
           'Accnomos never stores your data on its own servers.',
           textAlign: TextAlign.center,
-          style: TextStyle(color: _muted, fontSize: 12),
+          style: TextStyle(color: AccnomosColors.muted, fontSize: 12),
         ),
       ],
     );
@@ -204,13 +201,17 @@ class _Tile extends StatelessWidget {
               style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: _muted,
+                  color: AccnomosColors.muted,
                   letterSpacing: 0.6)),
           const Spacer(),
           Text(value,
               style: const TextStyle(
-                  fontSize: 26, fontWeight: FontWeight.w800, color: _ink)),
-          Text(note, style: const TextStyle(fontSize: 12, color: _muted)),
+                  fontSize: 26,
+                  fontWeight: FontWeight.w800,
+                  color: AccnomosColors.ink)),
+          Text(note,
+              style: const TextStyle(
+                  fontSize: 12, color: AccnomosColors.muted)),
         ],
       ),
     );
@@ -233,15 +234,18 @@ class _Placeholder extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-                color: _tealTint, borderRadius: BorderRadius.circular(16)),
-            child: const Icon(Icons.hourglass_top, color: _tealDark),
+                color: AccnomosColors.tealTint,
+                borderRadius: BorderRadius.circular(16)),
+            child: const Icon(Icons.hourglass_top,
+                color: AccnomosColors.tealDark),
           ),
           const SizedBox(height: 14),
           Text(title, style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),
           Text(body,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: _muted, height: 1.4)),
+              style: const TextStyle(
+                  color: AccnomosColors.muted, height: 1.4)),
         ],
       ),
     );
