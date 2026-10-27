@@ -165,6 +165,13 @@ async def test_ground_accepts_roundings_and_absolute_deltas(facts: dict):
     assert got.fallback_reason is None
 
 
+async def test_ground_accepts_a_figure_from_the_question(facts: dict):
+    text = "Your books start later than March 2025, so I can't tell what you spent on fuel then."
+    assert ask_ai.ground(_out(answer_md=text), facts, "m").fallback_reason  # 2025 is not in the facts
+    got = ask_ai.ground(_out(answer_md=text), facts, "m", "What did I spend on fuel in March 2025?")
+    assert got.fallback_reason is None and got.answer_md == text
+
+
 async def test_ground_replaces_an_invented_number(facts: dict):
     got = ask_ai.ground(_out(answer_md="Your bill is £3,140.00, up £620 on Q2."), facts, "m")
     assert got.confidence == "low" and got.fallback_reason and "3,140.00" in got.fallback_reason
