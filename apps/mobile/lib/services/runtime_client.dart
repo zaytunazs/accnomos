@@ -38,8 +38,8 @@ class BooksAuth {
   final String? businessName;
 }
 
-/// Talks to the Accnomos reader runtime (`{runtimeUrl}/extract`,
-/// `{runtimeUrl}/ai/test`, `{runtimeUrl}/books/*`).
+/// Talks to the Accnomos reader runtime. Covers every route in
+/// services/runtime (the screens use a few of them so far).
 class RuntimeClient {
   RuntimeClient(this.settings, {this.books});
   final AppSettings settings;
@@ -367,6 +367,373 @@ class RuntimeClient {
       rethrow;
     } catch (e) {
       throw RuntimeException('Could not get an answer. $e');
+    }
+  }
+
+  // ------------------------------------------------------------------ //
+  // The rest of the runtime's routes, one thin call each. Same paths and
+  // bodies as `runtime` in apps/web/src/lib/runtime.ts. Money is integer
+  // pence; dates are `YYYY-MM-DD`.
+  // ------------------------------------------------------------------ //
+
+  /// `GET /health` (no sign-in needed); null when the reader does not answer.
+  Future<Map<String, dynamic>?> health() async {
+    try {
+      final response = await http
+          .get(Uri.parse('${settings.runtimeUrl}/health'))
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return null;
+      final decoded = json.decode(response.body);
+      return decoded is Map ? Map<String, dynamic>.from(decoded) : null;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// `GET /books/proposals/{id}`.
+  Future<Map<String, dynamic>> proposal(String id) =>
+      _map('GET', '/books/proposals/${_seg(id)}', what: 'load that proposal');
+
+  /// `POST /books/undo/{eventId}`: a reversing entry; the proposal goes back
+  /// to Review. Returns `{reversal, proposal}`.
+  Future<Map<String, dynamic>> undo(String eventId) =>
+      _map('POST', '/books/undo/${_seg(eventId)}', what: 'undo that entry');
+
+  /// Autopilot rules. `GET /books/rules`.
+  Future<List<Map<String, dynamic>>> rules() =>
+      _list('GET', '/books/rules', what: 'load Autopilot rules');
+
+  /// `DELETE /books/rules/{supplierKey}`.
+  Future<Map<String, dynamic>> removeRule(String supplierKey) => _map(
+      'DELETE', '/books/rules/${_seg(supplierKey)}',
+      what: 'remove that rule');
+
+  /// `POST /books/rebuild`: regenerate Books.xlsx now.
+  Future<Map<String, dynamic>> rebuild() =>
+      _map('POST', '/books/rebuild', what: 'rebuild Books.xlsx');
+
+  /// `GET /books/deadlines`. Send [stagger] (1–3) or [startMonth]; [months]
+  /// is 3 (quarterly) or 1 (monthly).
+  Future<Map<String, dynamic>> deadlines(
+          {int? stagger, int? startMonth, int months = 3, String? today}) =>
+      _map('GET', '/books/deadlines',
+          query: {
+            if (stagger != null) 'stagger': '$stagger',
+            if (startMonth != null) 'start_month': '$startMonth',
+            'months': '$months',
+            if (today != null) 'today': today,
+          },
+          what: 'load VAT deadlines');
+
+  /// `POST /books/ask/voice` (key mode only): a recorded question, then the
+  /// same checked answer as [ask], plus `transcript`.
+  Future<Map<String, dynamic>> askVoice(File audio,
+      {List<AskTurn> history = const []}) {
+    final recent =
+        history.length > 6 ? history.sublist(history.length - 6) : history;
+    return _upload('/books/ask/voice', 'audio', audio,
+        fields: {
+          'history': json.encode([for (final t in recent) t.toJson()]),
+        },
+        what: 'answer that question');
+  }
+
+  /// `POST /mail/scan`. The Graph token must carry `Mail.Read`.
+  Future<Map<String, dynamic>> mailScan(
+          {int sinceDays = 14, bool dryRun = false}) =>
+      _map('POST', '/mail/scan',
+          body: {'since_days': sinceDays, 'dry_run': dryRun},
+          what: 'check the inbox');
+
+  // Bank statements (/books/bank/*).
+
+  /// `POST /books/bank/import`: the same file twice changes nothing.
+  Future<Map<String, dynamic>> bankImport(File csv) =>
+      _upload('/books/bank/import', 'file', csv,
+          what: 'import that statement');
+
+  Future<List<Map<String, dynamic>>> bankStatements() =>
+      _list('GET', '/books/bank/statements', what: 'load bank statements');
+
+  /// [status]: unmatched, matched, suggested, transfer or ignored.
+  Future<List<Map<String, dynamic>>> bankLines({String? status}) =>
+      _list('GET', '/books/bank/lines',
+          query: {if (status != null) 'status': status},
+          what: 'load bank lines');
+
+  Future<List<Map<String, dynamic>>> bankSuggestions() =>
+      _list('GET', '/books/bank/suggestions', what: 'load suggested matches');
+
+  Future<List<Map<String, dynamic>>> bankUnmatched() =>
+      _list('GET', '/books/bank/unmatched', what: 'load unmatched lines');
+
+  Future<Map<String, dynamic>> bankSummary() =>
+      _map('GET', '/books/bank/summary', what: 'load the bank summary');
+
+  Future<Map<String, dynamic>> bankMatch(String lineId, List<String> eventIds) =>
+      _map('POST', '/books/bank/lines/${_seg(lineId)}/match',
+          body: {'event_ids': eventIds}, what: 'confirm that match');
+
+  /// Reopen a matched, transfer or ignored line.
+  Future<Map<String, dynamic>> bankUnmatch(String lineId) => _map(
+      'POST', '/books/bank/lines/${_seg(lineId)}/unmatch',
+      what: 'reopen that line');
+
+  Future<Map<String, dynamic>> bankTransfer(String lineId) => _map(
+      'POST', '/books/bank/lines/${_seg(lineId)}/transfer',
+      what: 'mark that line as a transfer');
+
+  Future<Map<String, dynamic>> bankIgnore(String lineId) => _map(
+      'POST', '/books/bank/lines/${_seg(lineId)}/ignore',
+      what: 'ignore that line');
+
+  /// An expense proposal (no VAT claimed) that waits in Review.
+  Future<Map<String, dynamic>> bankExpenseProposal(String lineId) => _map(
+      'POST', '/books/bank/lines/${_seg(lineId)}/expense-proposal',
+      what: 'propose that expense');
+
+  // Contacts (/contacts/*).
+
+  Future<Map<String, dynamic>> contacts() =>
+      _map('GET', '/contacts', what: 'load contacts');
+
+  Future<Map<String, dynamic>> refreshContacts() =>
+      _map('POST', '/contacts/refresh', what: 'refresh contacts');
+
+  Future<Map<String, dynamic>> editContact(
+          String id, Map<String, String?> edits) =>
+      _map('PUT', '/contacts/${_seg(id)}',
+          body: edits, what: 'save that contact');
+
+  /// `POST /contacts/import-outlook`. The Graph token must carry
+  /// `Contacts.Read`.
+  Future<Map<String, dynamic>> importOutlookContacts({bool addNew = false}) =>
+      _map('POST', '/contacts/import-outlook',
+          body: {'add_new': addNew}, what: 'import Outlook contacts');
+
+  Future<Map<String, dynamic>> contactStatement(String id,
+          {String? from, String? to}) =>
+      _map('GET', '/contacts/${_seg(id)}/statement',
+          query: {
+            if (from != null) 'from': from,
+            if (to != null) 'to': to,
+          },
+          what: 'load that statement');
+
+  Future<Map<String, dynamic>> agedBalances({String? asOf}) =>
+      _map('GET', '/contacts/aged',
+          query: {if (asOf != null) 'as_of': asOf},
+          what: 'load aged balances');
+
+  // Jobs, staff and timesheets.
+
+  /// Jobs with their summaries (reads the ledger). `GET /jobs`.
+  Future<List<Map<String, dynamic>>> jobs() =>
+      _list('GET', '/jobs', what: 'load jobs');
+
+  /// Plain jobs for pickers (no ledger read). `GET /jobs/list`.
+  Future<List<Map<String, dynamic>>> jobList({String? status}) =>
+      _list('GET', '/jobs/list',
+          query: {if (status != null) 'status': status}, what: 'load jobs');
+
+  Future<Map<String, dynamic>> createJob(Map<String, dynamic> job) =>
+      _map('POST', '/jobs', body: job, what: 'add that job');
+
+  Future<Map<String, dynamic>> updateJob(String id, Map<String, dynamic> job) =>
+      _map('PUT', '/jobs/${_seg(id)}', body: job, what: 'save that job');
+
+  Future<void> deleteJob(String id) =>
+      _json('DELETE', '/jobs/${_seg(id)}', what: 'delete that job');
+
+  Future<Map<String, dynamic>> jobSummary(String id) =>
+      _map('GET', '/jobs/${_seg(id)}/summary', what: 'load that job');
+
+  /// Proposed invoice lines from unbilled hours; marks nothing.
+  Future<Map<String, dynamic>> jobInvoiceLines(String id) => _map(
+      'POST', '/jobs/${_seg(id)}/invoice-lines',
+      what: 'propose invoice lines');
+
+  /// Only after the invoice has been sent.
+  Future<List<Map<String, dynamic>>> markInvoiced(
+          String id, String invoiceId, List<String> entryIds) =>
+      _list('POST', '/jobs/${_seg(id)}/mark-invoiced',
+          body: {'invoice_id': invoiceId, 'entry_ids': entryIds},
+          what: 'mark those hours invoiced');
+
+  Future<List<Map<String, dynamic>>> staff() =>
+      _list('GET', '/staff', what: 'load staff');
+
+  Future<Map<String, dynamic>> createStaff(Map<String, dynamic> member) =>
+      _map('POST', '/staff', body: member, what: 'add that person');
+
+  Future<Map<String, dynamic>> updateStaff(
+          String id, Map<String, dynamic> member) =>
+      _map('PUT', '/staff/${_seg(id)}', body: member, what: 'save that person');
+
+  Future<void> deleteStaff(String id) =>
+      _json('DELETE', '/staff/${_seg(id)}', what: 'remove that person');
+
+  /// [month] is `YYYY-MM`.
+  Future<List<Map<String, dynamic>>> timesheets(
+          {String? jobId, String? staffId, String? month}) =>
+      _list('GET', '/timesheets',
+          query: {
+            if (jobId != null) 'job_id': jobId,
+            if (staffId != null) 'staff_id': staffId,
+            if (month != null) 'month': month,
+          },
+          what: 'load timesheets');
+
+  Future<Map<String, dynamic>> addTimesheet(Map<String, dynamic> entry) =>
+      _map('POST', '/timesheets', body: entry, what: 'add those hours');
+
+  Future<Map<String, dynamic>> updateTimesheet(
+          String id, Map<String, dynamic> changes) =>
+      _map('PUT', '/timesheets/${_seg(id)}',
+          body: changes, what: 'save those hours');
+
+  Future<Map<String, dynamic>> deleteTimesheet(String id) => _map(
+      'DELETE', '/timesheets/${_seg(id)}',
+      what: 'delete those hours');
+
+  // Vehicles and mileage.
+
+  Future<List<Map<String, dynamic>>> vehicles() =>
+      _list('GET', '/vehicles', what: 'load vehicles');
+
+  Future<Map<String, dynamic>> addVehicle(Map<String, dynamic> vehicle) =>
+      _map('POST', '/vehicles', body: vehicle, what: 'add that vehicle');
+
+  Future<Map<String, dynamic>> updateVehicle(
+          String id, Map<String, dynamic> changes) =>
+      _map('PATCH', '/vehicles/${_seg(id)}',
+          body: changes, what: 'save that vehicle');
+
+  Future<Map<String, dynamic>> deleteVehicle(String id) => _map(
+      'DELETE', '/vehicles/${_seg(id)}',
+      what: 'delete that vehicle');
+
+  /// [taxYear] is like `2026-27`; default the current one.
+  Future<List<Map<String, dynamic>>> mileage({String? taxYear}) =>
+      _list('GET', '/mileage',
+          query: {if (taxYear != null) 'tax_year': taxYear},
+          what: 'load the mileage log');
+
+  Future<Map<String, dynamic>> addMileage(Map<String, dynamic> journey) =>
+      _map('POST', '/mileage', body: journey, what: 'add that journey');
+
+  Future<Map<String, dynamic>> updateMileage(
+          String id, Map<String, dynamic> changes) =>
+      _map('PATCH', '/mileage/${_seg(id)}',
+          body: changes, what: 'save that journey');
+
+  Future<Map<String, dynamic>> deleteMileage(String id) => _map(
+      'DELETE', '/mileage/${_seg(id)}',
+      what: 'delete that journey');
+
+  Future<Map<String, dynamic>> mileageSummary({String? taxYear}) =>
+      _map('GET', '/mileage/summary',
+          query: {if (taxYear != null) 'tax_year': taxYear},
+          what: 'load the mileage summary');
+
+  /// The quarter's allowance as a proposal in Review (one per quarter).
+  /// [period] is `Q1`–`Q4`. Returns `{proposal, created}`.
+  Future<Map<String, dynamic>> proposeAllowance(
+          {String? taxYear, String? period}) =>
+      _map('POST', '/mileage/propose-allowance',
+          query: {
+            if (taxYear != null) 'tax_year': taxYear,
+            if (period != null) 'period': period,
+          },
+          what: 'claim the mileage allowance');
+
+  static String _seg(String s) => Uri.encodeComponent(s);
+
+  /// One books call with an optional JSON [body]. [what] completes
+  /// "Could not …" in errors. Returns the decoded JSON, or null for 204.
+  Future<dynamic> _json(
+    String method,
+    String path, {
+    Object? body,
+    Map<String, String> query = const {},
+    required String what,
+  }) async {
+    _requireBooks();
+    var uri = Uri.parse('${settings.runtimeUrl}$path');
+    if (query.isNotEmpty) uri = uri.replace(queryParameters: query);
+    final request = http.Request(method, uri)..headers.addAll(_headers);
+    if (body != null) {
+      request.headers['Content-Type'] = 'application/json';
+      request.body = json.encode(body);
+    }
+    return _send(request, what);
+  }
+
+  Future<Map<String, dynamic>> _map(
+    String method,
+    String path, {
+    Object? body,
+    Map<String, String> query = const {},
+    required String what,
+  }) async {
+    final decoded =
+        await _json(method, path, body: body, query: query, what: what);
+    return decoded is Map ? Map<String, dynamic>.from(decoded) : {};
+  }
+
+  Future<List<Map<String, dynamic>>> _list(
+    String method,
+    String path, {
+    Object? body,
+    Map<String, String> query = const {},
+    required String what,
+  }) async {
+    final decoded =
+        await _json(method, path, body: body, query: query, what: what);
+    if (decoded is! List) return [];
+    return [
+      for (final x in decoded)
+        if (x is Map) Map<String, dynamic>.from(x),
+    ];
+  }
+
+  /// Multipart upload of [file] as [field], plus plain form [fields].
+  Future<Map<String, dynamic>> _upload(
+    String path,
+    String field,
+    File file, {
+    Map<String, String> fields = const {},
+    required String what,
+  }) async {
+    _requireBooks();
+    final request =
+        http.MultipartRequest('POST', Uri.parse('${settings.runtimeUrl}$path'))
+          ..headers.addAll(_headers)
+          ..fields.addAll(fields)
+          ..files.add(await http.MultipartFile.fromPath(field, file.path));
+    final decoded = await _send(request, what);
+    return decoded is Map ? Map<String, dynamic>.from(decoded) : {};
+  }
+
+  Future<dynamic> _send(http.BaseRequest request, String what) async {
+    try {
+      final streamed = await request.send().timeout(_timeout);
+      final text = await streamed.stream.bytesToString();
+      if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+        _fail(streamed.statusCode, text.trim());
+      }
+      return text.isEmpty ? null : json.decode(text);
+    } on TimeoutException {
+      throw RuntimeException(
+          'Could not $what: the reader took too long. Try again.');
+    } on SocketException {
+      throw RuntimeException(
+          'Could not reach the reader at ${settings.runtimeUrl}. '
+          'Is it running?');
+    } on RuntimeException {
+      rethrow;
+    } catch (e) {
+      throw RuntimeException('Could not $what. $e');
     }
   }
 
