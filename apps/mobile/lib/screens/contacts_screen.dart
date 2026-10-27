@@ -6,6 +6,7 @@ import '../services/books.dart';
 import '../services/settings.dart';
 import '../theme.dart';
 import '../widgets/vat_status.dart';
+import 'payments_sheets.dart';
 import 'settings_screen.dart';
 
 /// Contacts from `GET /contacts`: search the list, see each open balance,
@@ -426,6 +427,9 @@ class _ContactDetailState extends State<ContactDetailScreen> {
   final _vrn = TextEditingController();
   String? _vrnError;
   bool _savingVrn = false;
+  final _terms = TextEditingController();
+  String? _termsError;
+  bool _savingTerms = false;
   _Range _range = _Range.thisQuarter;
   DateTimeRange? _custom;
 
@@ -438,6 +442,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
   @override
   void dispose() {
     _vrn.dispose();
+    _terms.dispose();
     super.dispose();
   }
 
@@ -492,6 +497,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
         _vatStatus =
             (record['vat_status'] ?? vatStatusUnknown).toString();
         _vrn.text = (record['vrn'] ?? '').toString();
+        _terms.text = (record['terms_days'] ?? '').toString();
         _statement = _sampleStatement(record, _from, _to);
         _agedRow = _sampleAged(record);
         _loading = false;
@@ -537,6 +543,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
           _vatStatus =
               (record['vat_status'] ?? vatStatusUnknown).toString();
           _vrn.text = (record['vrn'] ?? '').toString();
+          _terms.text = (record['terms_days'] ?? '').toString();
         }
       });
     } catch (e) {
@@ -654,6 +661,227 @@ class _ContactDetailState extends State<ContactDetailScreen> {
           .showSnackBar(SnackBar(content: Text(friendly(e))));
     } finally {
       if (mounted) setState(() => _savingVrn = false);
+    }
+  }
+
+  /// Payment terms in days (blank = the 30-day default, 0–365 like the web).
+  Future<void> _saveTerms() async {
+    final text = _terms.text.trim();
+    int? days;
+    if (text.isNotEmpty) {
+      days = int.tryParse(text);
+      if (days == null || days < 0 || days > 365) {
+        setState(() => _termsError =
+            'Payment terms are a whole number of days, 0 to 365 (blank for the usual 30).');
+        return;
+      }
+    }
+    setState(() => _termsError = null);
+    if (widget.sampleMode) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Sample contact — sign in to save.')));
+      }
+      return;
+    }
+    setState(() => _savingTerms = true);
+    try {
+      final client = await booksClient(
+          widget.settings, widget.auth, widget.account);
+      final updated = await client.editContact(
+          widget.contactId, {'terms_days': days});
+      if (!mounted) return;
+      setState(() {
+        _contact = {...?_contact, ...updated};
+        _terms.text = (updated['terms_days'] ?? '').toString();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Payment terms saved.')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text(friendly(e))));
+    } finally {
+      if (mounted) setState(() => _savingTerms = false);
+    }
+  }
+
+  void _snack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  List<Map<String, dynamic>> _credits() {
+    final statement = _statement ?? const {};
+    final raw = statement['credits'];
+    if (raw is! List) return const [];
+    return [
+      for (final c in raw)
+        if (c is Map) Map<String, dynamic>.from(c),
+    ];
+  }
+
+  List<Map<String, dynamic>> _openDocs() {
+    final statement = _statement ?? const {};
+    final raw = statement['open_documents'];
+    if (raw is! List) return const [];
+    return [
+      for (final d in raw)
+        if (d is Map) Map<String, dynamic>.from(d),
+    ];
+  }
+
+  List<Map<String, dynamic>> _creditUses() {
+    final statement = _statement ?? const {};
+    final raw = statement['credit_uses'];
+    if (raw is! List) return const [];
+    return [
+      for (final u in raw)
+        if (u is Map) Map<String, dynamic>.from(u),
+    ];
+  }
+
+  /// Apply-credit sheet → confirm sheet → runtime → refresh.
+  Future<void> _applyCredit() async {
+    final credits = _credits();
+    final docs = _openDocs();
+    if (credits.isEmpty) return;
+    final used = await showApplyCreditSheet(
+      context: context,
+      contactName: widget.name,
+      credits: credits,
+      documents: docs,
+      apply: (
+          {required credit,
+          required eventId,
+          amountPence,
+          date}) async {
+        final client = await booksClient(
+            widget.settings, widget.auth, widget.account);
+        return client.applyCredit(
+          credit: credit,
+          eventId: eventId,
+          amountPence: amountPence,
+          date: date,
+        );
+      },
+    );
+    if (used != null && mounted) {
+      _snack("Credit applied for ${widget.name}.");
+      await _reload();
+    }
+  }
+
+  /// Refund sheet → confirm sheet → runtime → refresh.
+  Future<void> _refundCredit() async {
+    final credits = _credits();
+    if (credits.isEmpty) return;
+    final used = await showRefundSheet(
+      context: context,
+      contactName: widget.name,
+      credits: credits,
+      refund: (
+          {required credit,
+          required amountPence,
+          required date,
+          required account,
+          reference}) async {
+        final client = await booksClient(
+            widget.settings, widget.auth, widget.account);
+        return client.refundCredit(
+          credit: credit,
+          amountPence: amountPence,
+          date: date,
+          account: account,
+          reference: reference,
+        );
+      },
+    );
+    if (used != null && mounted) {
+      _snack('Refund recorded for ${widget.name}.');
+      await _reload();
+    }
+  }
+
+  /// Confirm first, then take a credit apply or refund back.
+  Future<void> _removeCreditUse(Map<String, dynamic> use) async {
+    final id = (use['id'] ?? '').toString();
+    final kind = (use['kind'] ?? '').toString();
+    final what = kind == 'refund'
+        ? 'Refund'
+        : 'Credit applied to ${(use['reference'] ?? 'a document').toString()}';
+    final confirmed = await showConfirmSheet(
+      context: context,
+      title: kind == 'refund'
+          ? 'Take back this refund?'
+          : 'Take back this applied credit?',
+      figures: [
+        ConfirmFigure('What', what),
+        ConfirmFigure('Date', ukDate((use['date'] ?? '').toString())),
+        ConfirmFigure(
+            'Amount', gbp((use['amount_pence'] ?? 0) as num)),
+      ],
+      confirmLabel: 'Remove',
+      action: () async {
+        final client = await booksClient(
+            widget.settings, widget.auth, widget.account);
+        await client.removeCreditUse(id);
+      },
+    );
+    if (confirmed && mounted) {
+      _snack('Credit use removed for ${widget.name}.');
+      await _reload();
+    }
+  }
+
+  /// Bill-payment sheet → confirm sheet → runtime → refresh.
+  Future<void> _payBill(Map<String, dynamic> bill) async {
+    final recorded = await showRecordBillPaymentSheet(
+      context: context,
+      openDoc: bill,
+      record: (body) async {
+        final client = await booksClient(
+            widget.settings, widget.auth, widget.account);
+        return client.recordPayment(body);
+      },
+    );
+    if (recorded != null && mounted) {
+      _snack('Payment recorded for ${widget.name}.');
+      await _reload();
+    }
+  }
+
+  /// Confirm first, then remove a statement payment or refund line.
+  Future<void> _removeStatementLine(Map<String, dynamic> line) async {
+    final paymentId = (line['payment_id'] ?? '').toString();
+    if (paymentId.isEmpty) return;
+    final isRefund = (line['kind'] ?? '').toString() == 'refund';
+    final confirmed = await showConfirmSheet(
+      context: context,
+      title: isRefund ? 'Take back this refund?' : 'Remove this payment?',
+      figures: [
+        ConfirmFigure('What', (line['details'] ?? '—').toString()),
+        ConfirmFigure('Date', ukDate((line['date'] ?? '').toString())),
+        ConfirmFigure(
+            'Amount', gbp((line['amount_pence'] ?? 0) as num)),
+      ],
+      confirmLabel: 'Remove',
+      action: () async {
+        final client = await booksClient(
+            widget.settings, widget.auth, widget.account);
+        if (isRefund) {
+          await client.removeCreditUse(paymentId);
+        } else {
+          await client.removePayment(paymentId);
+        }
+      },
+    );
+    if (confirmed && mounted) {
+      _snack(isRefund
+          ? 'Refund removed for ${widget.name}.'
+          : 'Payment removed for ${widget.name}.');
+      await _reload();
     }
   }
 
@@ -813,6 +1041,8 @@ class _ContactDetailState extends State<ContactDetailScreen> {
       children: [
         _vatCard(),
         const SizedBox(height: 12),
+        _termsCard(),
+        const SizedBox(height: 12),
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -831,6 +1061,8 @@ class _ContactDetailState extends State<ContactDetailScreen> {
           ),
         ),
         const SizedBox(height: 12),
+        _creditCard(),
+        _billsCard(),
         _rangePicker(),
         if (_statementLoading)
           const Padding(
@@ -945,6 +1177,270 @@ class _ContactDetailState extends State<ContactDetailScreen> {
                   fontSize: 12,
                 ),
               ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Payment terms in days, like the web Edit. Blank is the 30-day default.
+  Widget _termsCard() {
+    final record = _contact;
+    if (record == null) return const SizedBox.shrink();
+    final current = (record['terms_days'] ?? '').toString();
+    final showing = current.isEmpty ? '30 days (the usual)' : '$current days';
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE3E1D8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Payment terms',
+            style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Now: $showing. Due dates fall back to this when an invoice has none.',
+            style: const TextStyle(
+              color: AccnomosColors.muted,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _terms,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: 'Payment terms (days)',
+                    hintText: 'Blank for 30',
+                    errorText: _termsError,
+                    border: const OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  onChanged: (_) {
+                    if (_termsError != null) {
+                      setState(() => _termsError = null);
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AccnomosColors.teal,
+                  minimumSize: const Size(48, 56),
+                ),
+                onPressed: _savingTerms ? null : _saveTerms,
+                child: Text(_savingTerms ? '…' : 'Save'),
+              ),
+            ],
+          ),
+          if (widget.sampleMode)
+            const Padding(
+              padding: EdgeInsets.only(top: 4),
+              child: Text(
+                'Sample — sign in to save changes.',
+                style: TextStyle(
+                  color: AccnomosColors.muted,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Credit on account from the runtime statement, with Apply credit and
+  /// Refund plus the uses so far (each with Remove). Hidden when there is
+  /// no credit and no uses.
+  Widget _creditCard() {
+    final statement = _statement ?? const {};
+    final creditPence = (statement['credit_pence'] ?? 0) as num;
+    final credits = _credits();
+    final uses = _creditUses();
+    if (creditPence == 0 && credits.isEmpty && uses.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE3E1D8)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Credit on account',
+                style:
+                    TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                gbp(creditPence),
+                style: const TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: 20,
+                ),
+              ),
+              if (!widget.sampleMode && credits.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(48, 48),
+                      ),
+                      onPressed: _applyCredit,
+                      child: const Text('Apply credit'),
+                    ),
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: const Size(48, 48),
+                      ),
+                      onPressed: _refundCredit,
+                      child: const Text('Refund'),
+                    ),
+                  ],
+                ),
+              ],
+              if (uses.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                for (final use in uses) _creditUseRow(use),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  Widget _creditUseRow(Map<String, dynamic> use) {
+    final kind = (use['kind'] ?? '').toString();
+    final what = kind == 'refund'
+        ? 'Refund'
+        : 'Credit applied to ${(use['reference'] ?? 'a document').toString()}';
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(what),
+                Text(
+                  '${ukDate((use['date'] ?? '').toString())} · '
+                  '${gbp((use['amount_pence'] ?? 0) as num)}',
+                  style: const TextStyle(
+                      color: AccnomosColors.muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (!widget.sampleMode)
+            TextButton(
+              onPressed: () => _removeCreditUse(use),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(48, 48),
+              ),
+              child: const Text('Remove'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Bills to pay: open purchase documents from the runtime statement, each
+  /// with Record payment. Hidden when none are open.
+  Widget _billsCard() {
+    final bills = [
+      for (final doc in _openDocs())
+        if ((doc['side'] ?? '').toString() == 'purchase' &&
+            ((doc['outstanding_pence'] ?? 0) as num) > 0)
+          doc,
+    ];
+    if (bills.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE3E1D8)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Bills to pay',
+                style:
+                    TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              for (final bill in bills) _billRow(bill),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+      ],
+    );
+  }
+
+  Widget _billRow(Map<String, dynamic> bill) {
+    final reference =
+        (bill['reference'] ?? 'Bill').toString();
+    final owed = gbp((bill['outstanding_pence'] ?? 0) as num);
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  reference,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  'Due ${ukDate((bill['due_date'] ?? '').toString())} · '
+                  '$owed left',
+                  style: const TextStyle(
+                      color: AccnomosColors.muted, fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (!widget.sampleMode)
+            TextButton(
+              onPressed: () => _payBill(bill),
+              style: TextButton.styleFrom(
+                minimumSize: const Size(48, 48),
+              ),
+              child: const Text('Record payment'),
             ),
         ],
       ),
@@ -1114,6 +1610,10 @@ class _ContactDetailState extends State<ContactDetailScreen> {
   Widget _lineCard(Map<String, dynamic> line) {
     final amount = (line['amount_pence'] ?? 0) as num;
     final balance = (line['balance_pence'] ?? 0) as num;
+    final kind = (line['kind'] ?? '').toString();
+    final removable = !widget.sampleMode &&
+        (kind == 'payment' || kind == 'refund') &&
+        (line['payment_id'] ?? '').toString().isNotEmpty;
     return Card(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
@@ -1122,10 +1622,26 @@ class _ContactDetailState extends State<ContactDetailScreen> {
           (line['details'] ?? '—').toString(),
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
-        subtitle: Text(
-          '${ukDate((line['date'] ?? '').toString())}'
-          '${(line['reference'] ?? '').toString().isNotEmpty ? ' · ${(line['reference'] ?? '').toString()}' : ''}',
-          style: const TextStyle(color: AccnomosColors.muted),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              '${ukDate((line['date'] ?? '').toString())}'
+              '${(line['reference'] ?? '').toString().isNotEmpty ? ' · ${(line['reference'] ?? '').toString()}' : ''}',
+              style: const TextStyle(color: AccnomosColors.muted),
+            ),
+            if (removable)
+              TextButton(
+                onPressed: () => _removeStatementLine(line),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size(48, 36),
+                  padding: EdgeInsets.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text('Remove'),
+              ),
+          ],
         ),
         trailing: Column(
           mainAxisSize: MainAxisSize.min,
