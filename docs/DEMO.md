@@ -37,7 +37,7 @@ drawn by `tools/make_sample_receipt.py`). 2 Nov falls in the VAT quarter contain
 | Scan slow or Glimmer unreachable | Say "this is the 20–40 s local read"; open `/connect/ai` and press **Test connection**. Switch to **My own Meta API key** (Muse Spark) and rescan. Last resort: the eval table in `docs/META_MODELS.md` |
 | Verifier shows "Second reading unavailable" | It is a warning, not a pass: the proposal waits for you. That *is* the safety design; say so |
 | Microsoft sign-in or OneDrive "pending provisioning" | Signed-out pages show the labelled sample tree and cards; narrate from those, and show a folder screenshot |
-| HMRC step errors (**end-to-end browser run is still unverified**) | Stop at the confirmation card showing the 11-field body and the declaration. Then show `pytest -q` in `services/hmrc-relay` (39 passing, HMRC mocked) and `docs/HMRC.md` |
+| HMRC step errors (**end-to-end browser run is still unverified**) | Stop at the confirmation card showing the 11-field body and the declaration. Then show `pytest -q` in `services/hmrc-relay` (100 passing, HMRC mocked) and `docs/HMRC.md` |
 | accnomos.com or api.accnomos.com is down | Run locally: `docs/DEV.md` (runtime :8780, web :3000). Failing that, a screen recording made beforehand |
 | Ask returns the plain "facts" fallback | Good: say that is the grounding guard working |
 | A receipt from another quarter is scanned | The card shows a warning, e.g. *Dated 14 Aug 2026 — falls in the previous period (Jul–Sep 2026); it will go on that return*. It is only a warning: approving keeps the receipt's own date, so it counts in Jul–Sep, not on screen. Pick Jul–Sep in the period picker to show it |
