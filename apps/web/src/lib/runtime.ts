@@ -177,6 +177,15 @@ export const runtime = {
     form.append("history", JSON.stringify(history.slice(-6)));
     return call<RtAskVoiceAnswer>(a, "/books/ask/voice", { method: "POST", body: form });
   },
+  /** POST /actions/approve: run a proposed action exactly as Ask returned it (signed; refused if changed or expired). */
+  approveAction: (a: AccountInfo, action: RtProposedAction) =>
+    call<RtActionResult>(a, "/actions/approve", { method: "POST", body: JSON.stringify({ action }) }),
+  /** POST /actions/reject: nothing happens except a line in the actions audit log. */
+  rejectAction: (a: AccountInfo, action: RtProposedAction, reason?: string) =>
+    call<{ action_id: string; status: "rejected" }>(a, "/actions/reject", {
+      method: "POST",
+      body: JSON.stringify({ action, reason: reason ?? null }),
+    }),
   mailScan: (a: AccountInfo, body: { since_days?: number; dry_run?: boolean }) =>
     call<RtMailScan>(a, "/mail/scan", { method: "POST", body: JSON.stringify(body) }, mailScopesFor(accountKind(a))),
   /** POST /books/rebuild: regenerate Books.xlsx from the event files now. */
@@ -439,6 +448,77 @@ export interface RtAskAnswer {
   model: string;
   period: RtAskPeriod;
   fallback_reason: string | null; // the model's words were replaced by the facts, quoted by code
+  proposed_action?: RtProposedAction | null; // an instruction: show the card; nothing happens until Approve
+  clarification?: RtClarification | null; // an instruction Ask needs one more detail for
+}
+/** Proposed actions (services/runtime/app/actions.py). Kept by the app only; post back unchanged to approve. */
+export type RtActionKind = "create_invoice" | "chase_invoice" | "log_mileage" | "log_timesheet";
+export interface RtProposedAction {
+  id: string;
+  kind: RtActionKind;
+  summary_md: string;
+  /** What code resolved and priced. Shape per kind: see RtInvoicePreview etc. Money in pence. */
+  preview: Record<string, unknown>;
+  confirm_text: string;
+  created_at: string;
+  expires_at: string;
+  signature: string;
+}
+export interface RtInvoicePreview {
+  customer: { contact_id: string; name: string; email: string | null; address: string | null; vrn: string | null };
+  issue_date: string;
+  due_date: string;
+  terms_days: number;
+  lines: { description: string; quantity: string; unit_price_pence: number; vat_code: string; vat_rate: number; net_pence: number; vat_pence: number }[];
+  vat_summary: { vat_code: string; vat_rate: number; net_pence: number; vat_pence: number }[];
+  net_pence: number;
+  vat_pence: number;
+  total_pence: number;
+  send: boolean;
+  send_to: string | null;
+  warnings: string[];
+}
+export interface RtChasePreview {
+  invoice: string;
+  customer: string;
+  total_pence: number;
+  due_date: string;
+  days_overdue: number;
+  to: string;
+  subject: string;
+  body: string;
+  warnings: string[];
+}
+export interface RtTimesheetPreview {
+  staff_name: string;
+  job_name: string;
+  date: string;
+  hours: string;
+  note: string;
+  warnings: string[];
+}
+export interface RtMileagePreview {
+  vehicle_name: string;
+  date: string;
+  from: string;
+  to: string;
+  miles: string;
+  job_name: string | null;
+  warnings: string[];
+}
+export interface RtClarification {
+  kind: RtActionKind;
+  field: string;
+  question_md: string;
+  candidates: string[];
+  ref: string | null; // the user's words for the thing, replaced by the picked candidate when re-asking
+}
+export interface RtActionResult {
+  action_id: string;
+  kind: RtActionKind;
+  status: "done" | "already_done";
+  summary_md: string;
+  result: Record<string, unknown>;
 }
 export interface RtAskVoiceAnswer extends RtAskAnswer {
   transcript: string; // what Muse Voice heard; shown as the user's message
