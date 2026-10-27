@@ -298,3 +298,9 @@ class AskAnswer(AskModelOutput):
     model: str
     period: AskPeriod
     fallback_reason: str | None = None  # set when the model's words were replaced by the facts themselves
+
+
+class AskVoiceAnswer(AskAnswer):
+    """POST /books/ask/voice: the answer plus what Muse Voice heard."""
+
+    transcript: str

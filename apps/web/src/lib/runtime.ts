@@ -137,7 +137,8 @@ export async function runtimeHeaders(account: AccountInfo, extraScopes: string[]
 }
 
 async function call<T>(account: AccountInfo, path: string, init: RequestInit = {}, extraScopes: string[] = []): Promise<T> {
-  const headers = { ...(await runtimeHeaders(account, extraScopes)), ...(init.body ? { "Content-Type": "application/json" } : {}) };
+  const json = typeof init.body === "string"; // FormData sets its own multipart Content-Type
+  const headers = { ...(await runtimeHeaders(account, extraScopes)), ...(json ? { "Content-Type": "application/json" } : {}) };
   const res = await fetch(`${RUNTIME_URL}${path}`, { ...init, headers: { ...headers, ...(init.headers ?? {}) } });
   if (!res.ok) throw new Error(`runtime ${init.method ?? "GET"} ${path} -> ${res.status}: ${(await res.text()).slice(0, 300)}`);
   return (await res.json()) as T;
@@ -166,6 +167,15 @@ export const runtime = {
       method: "POST",
       body: JSON.stringify({ question, period: period ?? null, history: history.slice(-6) }),
     }),
+  /** POST /books/ask/voice: a spoken question, transcribed by Muse Voice (key mode only), then the same answer. */
+  askVoice: (a: AccountInfo, audio: Blob, period?: RtAskPeriod | null, history: RtAskTurn[] = []) => {
+    const form = new FormData();
+    const ext = audio.type.includes("mp4") ? "m4a" : audio.type.includes("ogg") ? "ogg" : "webm";
+    form.append("audio", audio, `question.${ext}`);
+    if (period) form.append("period", JSON.stringify(period));
+    form.append("history", JSON.stringify(history.slice(-6)));
+    return call<RtAskVoiceAnswer>(a, "/books/ask/voice", { method: "POST", body: form });
+  },
   mailScan: (a: AccountInfo, body: { since_days?: number; dry_run?: boolean }) =>
     call<RtMailScan>(a, "/mail/scan", { method: "POST", body: JSON.stringify(body) }, mailScopesFor(accountKind(a))),
   /** POST /books/rebuild: regenerate Books.xlsx from the event files now. */
@@ -232,6 +242,9 @@ export interface RtAskAnswer {
   model: string;
   period: RtAskPeriod;
   fallback_reason: string | null; // the model's words were replaced by the facts, quoted by code
+}
+export interface RtAskVoiceAnswer extends RtAskAnswer {
+  transcript: string; // what Muse Voice heard; shown as the user's message
 }
 
 
