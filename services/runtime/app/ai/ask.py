@@ -173,7 +173,8 @@ class KnownNumbers:
 def _names_period(text: str, p: str, facts: dict[str, Any]) -> bool:
     """Does this sentence say which period it means ("last quarter", "Apr–Jun 2026", "26A2")?"""
     full = facts[period_key(p)]
-    return bool((PREV_WORDS if p == PREV else THIS_WORDS).search(text)) or full["label"] in text or full["period_key"] in text
+    dashed = re.sub(r"\s*[-—]\s*", "–", text)  # "Jul-Sep 2026" or "Jul — Sep 2026" names the label "Jul–Sep 2026" too
+    return bool((PREV_WORDS if p == PREV else THIS_WORDS).search(text)) or full["label"] in dashed or full["period_key"] in text
 
 
 def wrong_period(text: str, known: KnownNumbers, facts: dict[str, Any], r: Route) -> list[tuple[str, str]]:

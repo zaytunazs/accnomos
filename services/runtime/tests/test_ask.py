@@ -378,8 +378,9 @@ async def test_ground_checks_the_period_of_key_numbers_too(facts: dict):
 async def test_ground_accepts_the_other_period_when_the_sentence_says_so(facts: dict):
     text = "Last quarter you reclaimed £200.00. This quarter it is £418.41."
     assert ask_ai.ground(_out(answer_md=text, key_numbers=[]), facts, "m", LAST_Q).fallback_reason is None
-    text = "You owe £2,081.59, up from £800.00 in Apr–Jun 2026."
-    assert ask_ai.ground(_out(answer_md=text), facts, "m", "How much VAT do I owe?").fallback_reason is None
+    for dash in ("–", "-", " - "):
+        text = f"You owe £2,081.59, up from £800.00 in Apr{dash}Jun 2026."
+        assert ask_ai.ground(_out(answer_md=text), facts, "m", "How much VAT do I owe?").fallback_reason is None
     both = "Your VAT is £2,081.59 now against £800.00 before."  # a comparison asks about both periods
     assert ask_ai.ground(_out(answer_md=both), facts, "m", "Why is my VAT higher than last quarter?").fallback_reason is None
 
