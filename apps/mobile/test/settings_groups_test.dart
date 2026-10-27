@@ -286,6 +286,29 @@ void main() {
     expect(find.text('Rule removed.'), findsOneWidget);
   });
 
+  testWidgets('autopilot level is stored and sent as X-Autopilot',
+      (tester) async {
+    await pumpSignedIn(tester, FakeSettingsClient());
+
+    // Default (L1): every scan/approve call carries X-Autopilot: off, like
+    // the web, so a phone scan never posts without the user.
+    expect(
+        RuntimeClient(AppSettings()).debugHeaders['X-Autopilot'], 'off');
+
+    await scrollTo(tester, find.text('L2 Autopilot'));
+    await tester.tap(find.text('L2 Autopilot'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text('Autopilot level saved'), findsOneWidget);
+
+    // Stored with the other settings; at L2 the header goes away and the
+    // runtime may post matching rules.
+    final saved = await AppSettings.load();
+    expect(saved.autopilotLevel, 'L2');
+    expect(RuntimeClient(saved).debugHeaders.containsKey('X-Autopilot'),
+        isFalse);
+  });
+
   testWidgets('business save writes the profile shape the web sends',
       (tester) async {
     final fake = FakeSettingsClient();

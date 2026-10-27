@@ -107,7 +107,12 @@ export default function LiveVat() {
           Your return · {view.label}
           {view.current ? " (current period)" : ""} · {uk(view.start)} – {uk(view.end)}
         </h2>
-        <span className="text-sm text-muted">{view.events_in_period} approved entries · calculated by code</span>
+        <span className="text-sm text-muted">
+          {view.undone_in_period > 0
+            ? `${view.events_in_period} entries, ${view.undone_in_period} undone`
+            : `${view.events_in_period} approved entries`}{" "}
+          · calculated by code
+        </span>
       </div>
       {/* Paper only: who the return is for and whether it is still an estimate. */}
       <div className="hidden print:block">

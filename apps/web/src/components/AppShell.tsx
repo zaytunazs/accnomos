@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
+import AiSidebarLabel from "./AiSidebarLabel";
 import AppNav from "./AppNav";
 import DemoBanner from "./DemoBanner";
 import { ServiceStrip, VersionStrip } from "./StatusStrips";
@@ -64,13 +65,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             <p className="rounded-2xl bg-ground p-4 text-sm leading-6 text-muted">
               Your books live in OneDrive — Apps / Accnomos
             </p>
-            <p className="flex items-center gap-2 text-sm font-semibold text-muted">
-              <span
-                aria-hidden="true"
-                className="h-2 w-2 rounded-full bg-teal"
-              />
-              AI: local Meta agent (Glimmer 30B)
-            </p>
+            <AiSidebarLabel />
           </div>
         </aside>
         <main className="min-w-0 flex-1 px-4 pb-28 pt-6 sm:px-8 min-[900px]:py-8 min-[900px]:pb-8">

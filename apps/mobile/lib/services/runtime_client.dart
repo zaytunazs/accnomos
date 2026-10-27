@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 
 import '../models/ask_answer.dart';
@@ -56,6 +57,12 @@ class RuntimeClient {
       'X-AI-Base-Url': settings.aiBaseUrl,
       'X-AI-Model': settings.aiModel,
     };
+    // Autopilot posts only at level L2 (Settings > Automation, like the
+    // web's runtime.ts): every other level sends `X-Autopilot: off`, so a
+    // phone scan never posts without the user.
+    if (settings.autopilotLevel != 'L2') {
+      headers['X-Autopilot'] = 'off';
+    }
     final key = settings.apiKey;
     if (settings.aiMode == 'key' && key != null && key.isNotEmpty) {
       headers['X-Meta-Api-Key'] = key;
@@ -73,6 +80,10 @@ class RuntimeClient {
     }
     return headers;
   }
+
+  /// The headers every runtime call carries (tests only).
+  @visibleForTesting
+  Map<String, String> get debugHeaders => _headers;
 
   void _requireBooks() {
     if (books == null) {

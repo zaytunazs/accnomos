@@ -283,3 +283,28 @@ def test_books_routes_need_a_graph_token() -> None:
     client = TestClient(app)
     assert client.get("/books/summary").status_code == 401
     assert client.get("/books/summary", headers={"X-Graph-Token": "t", "X-Account-Kind": "team"}).status_code == 400
+
+
+def test_today_is_the_london_date(monkeypatch: pytest.MonkeyPatch) -> None:
+    """00:30 BST on the 1st is the 1st in London, still the 30th in UTC."""
+    import app.books as books_mod
+    from datetime import UTC
+    from datetime import date as real_date
+    from datetime import datetime as real_datetime
+
+    fixed = real_datetime(2026, 9, 30, 23, 30, tzinfo=UTC)  # 1 Oct, 00:30 BST
+
+    class _FixedDateTime(real_datetime):
+        @classmethod
+        def now(cls, tz=None):  # type: ignore[override]
+            return fixed if tz is None else fixed.astimezone(tz)
+
+    class _FixedDate(real_date):
+        @classmethod
+        def today(cls) -> real_date:
+            return real_date(2026, 9, 30)
+
+    monkeypatch.setattr(books_mod, "datetime", _FixedDateTime)
+    monkeypatch.setattr(books_mod, "date", _FixedDate)
+    assert books_mod.today() == real_date(2026, 10, 1)
+    assert books_mod.now().utcoffset() == books_mod.LONDON.utcoffset(fixed)

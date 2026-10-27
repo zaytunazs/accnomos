@@ -16,7 +16,7 @@ router = APIRouter(tags=["audit"])
 @router.get("/audit", response_model=audit_view.AuditPage)
 async def get_audit(
     start: date | None = Query(None, alias="from", description="first day, inclusive; defaults to 31 days before `to`"),
-    end: date | None = Query(None, alias="to", description="last day, inclusive; defaults to today (UTC)"),
+    end: date | None = Query(None, alias="to", description="last day, inclusive; defaults to today (London)"),
     actor: str | None = Query(None, description='"user", "agent", an agent name such as "autopilot", or a full actor'),
     kind: str | None = Query(None, description='an event such as "approved", or a family such as "invoice"'),
     limit: int = Query(200, ge=1, description="at most this many lines; capped at 500"),

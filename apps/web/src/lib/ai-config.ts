@@ -33,6 +33,35 @@ export function saveAiConfig(cfg: AiConfig): void {
   } catch {
     /* storage unavailable (private mode) — config lives for this page only */
   }
+  // Same-tab listeners (the sidebar label) don't get a `storage` event.
+  try {
+    window.dispatchEvent(new CustomEvent<AiConfig>(AI_CONFIG_EVENT, { detail: cfg }));
+  } catch {
+    /* old browser — the label re-reads on its next render */
+  }
+}
+
+/** Fired on `window` by [saveAiConfig] so same-tab readers follow the choice. */
+export const AI_CONFIG_EVENT = "accnomos:ai-config";
+
+/** Short human name for a model id the UI shows. */
+export function shortModelName(model: string): string {
+  const m = model.trim();
+  if (/^muse-glimmer:30b$/i.test(m)) return "Glimmer 30B";
+  if (/^muse-spark/i.test(m)) return "Muse Spark";
+  return m || "a model";
+}
+
+/**
+ * The sidebar line for the saved AI choice — the same store `ChooseAi`
+ * writes, so the label always names the real setup: Glimmer on your machine,
+ * Muse Spark on your key, or the stub the tests point at.
+ */
+export function aiLabel(cfg: AiConfig | null): string {
+  if (cfg === null) return "AI: local Meta agent (Glimmer 30B)";
+  if (/stub/i.test(cfg.model)) return "AI: stub answers (test mode)";
+  if (cfg.mode === "key") return `AI: Muse Spark key (${cfg.model.trim() || "muse-spark-1.3"})`;
+  return `AI: ${shortModelName(cfg.model)} on your machine`;
 }
 
 /** The last passing connection test, so Home's setup checklist can tell "chosen" from "tested". */

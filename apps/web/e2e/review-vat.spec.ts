@@ -52,3 +52,4 @@ test("upload a gold receipt → scan → proposal → approve → VAT boxes chan
   await expect(region).toContainText("Oct–Dec 2026 (current period)");
   await expect(page).toHaveURL(/\/vat$/);
 });
+

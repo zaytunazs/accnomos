@@ -69,7 +69,7 @@ for (const vp of VIEWPORTS) {
         await expect(page.getByRole("heading", { level: 1, name: "Good morning, Sam" })).toBeVisible();
         await expect(page.getByText("Wednesday 4 November")).toBeVisible();
         await expect(page.getByText("SAMPLE — FICTIONAL COMPANY")).toHaveCount(0); // signed in: the account's own, empty books
-        if (!phone) await expect(page.getByText("AI: local Meta agent (Glimmer 30B)")).toBeVisible();
+        if (!phone) await expect(page.getByText("AI: stub answers (test mode)")).toBeVisible();
       });
 
       await step(2, "files", "Files: 00 Inbox … 07 Reports and _System", async () => {

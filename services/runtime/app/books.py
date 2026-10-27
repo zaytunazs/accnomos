@@ -36,6 +36,7 @@ import re
 from collections.abc import Callable
 from datetime import UTC, date, datetime, tzinfo
 from typing import Any, Literal
+from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 
@@ -77,19 +78,24 @@ DEVICE = "runtime"
 log = logging.getLogger(__name__)
 
 
+#: The business's day. Dates the user sees (invoice dates, "yesterday", VAT periods, audit days)
+#: are London days, whatever zone the server runs in.
+LONDON = ZoneInfo("Europe/London")
+
+
 def now() -> datetime:
-    return datetime.now(UTC)
+    return datetime.now(LONDON)
 
 
 def today(tz: tzinfo | None = None) -> date:
-    """Today (in `tz`, else the server's zone), for "the current period" and "Thursday". Test mode
+    """Today (in `tz`, else Europe/London), for "the current period" and "Thursday". Test mode
     (app/testmode.py) pins it: ACCNOMOS_TEST_TODAY, or the stage date for a tenant reset with the `demo` seed."""
     if is_test_mode():
         from app import testmode  # test mode only; testmode imports modules that import this one
 
         if (pinned := testmode.pinned_today()) is not None:
             return pinned
-    return datetime.now(tz).date() if tz else date.today()
+    return datetime.now(tz or LONDON).date()
 
 
 class RuleMatch(BaseModel):

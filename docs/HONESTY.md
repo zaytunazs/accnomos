@@ -28,14 +28,14 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 - The runtime's own period key (`26A4` style, saved as `calculated_for`) is a placeholder; submission uses HMRC's key. For monthly returns all three months of a quarter get the same placeholder.
 - `GET /books/vat` accepts `?today=`, so a client can move "current" and with it `can_submit`; the web gate is advisory and HMRC decides what can be filed.
 - No flat-rate scheme, no annual accounting scheme, no fuel scale-charge calculation.
-- The runtime's "today" is the **UTC date** (`books.now().date()`; the VAT routes use `books.today()`, the server's local date, which is UTC in the container because no `TZ` is set): between midnight and 1 am in BST an invoice date, a "yesterday" or a due date can be a day behind the UK date. Both clients send `today` to the dashboard, so this mostly affects direct API callers and chat actions.
+- The runtime's "today" is the **London date** (`books.today()`, Europe/London via `zoneinfo` + `tzdata`): `GET /audit` `from`/`to` filter by London day too. Both clients send `today` to the dashboard, so this mostly affects direct API callers and chat actions.
 
 ## Receipts, review and the ledger
 
 - **No separate LLM Reviewer.** The card's "why" line is composed by code ("Checker, code"). Models write words only in *Ask*, inbox triage, reminder drafts and the planner rationale, each checked by code. The signed-out mock-up on `/vat` has a "Reviewer's note (Muse Spark)"; it is labelled sample but no such reviewer runs.
 - Key-mode extraction (muse-spark-1.3) is unit-tested only.
 - **Ledger files are not tamper-evident** (no signatures, no hash chain). An undo is a reversing entry dated like the original; if that VAT period was already submitted, the correction belongs in the current period.
-- `/books/vat` entry counts include sales and purchases only; a reversal changes the amounts but not the count next to boxes 1–4 and 6–7, while box 5's count includes it (`routes_vat.py`).
+- `/books/vat` entry counts put a reversal against the box it reverses, and the page header says how many of the period's entries are undone (e.g. "3 entries, 1 undone").
 - **No real HEIC from a phone has been read, and no real supplier PDF.** HEIC → JPEG (`pillow-heif` 1.8.1) and PDF
   reading (`pypdfium2` 5.14.0, locked in `uv.lock`) are tested with the real libraries, but only on files the tests make
   (a HEIC written by `pillow-heif`, PDFs written by `fpdf2`). The Docker image has not been built with them.
@@ -65,13 +65,13 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 - Without `ACTIONS_SIGNING_KEY` (the deploy file passes it through, empty by default), each runtime process makes a random key: after a restart, or with several workers, a card can fail with 403.
 - If the runtime dies between the `approving` and `executed` audit lines, that action is never re-run on its own (409). After 10 minutes, rejecting the card clears it; the user checks whether it happened and asks again.
 - Invoice drafts for chat actions can end as drafts when `Mail.Send` has not been granted; the card cannot request consent.
-- The Autopilot level lives in the browser's `localStorage` (`accnomos.autopilot`; only L2 turns posting on). **The Android app never sends `X-Autopilot`**, so scans from the phone always run Autopilot when a rule exists, even if it is off on the web.
+- The Autopilot level lives in the browser's `localStorage` (`accnomos.autopilot`; only L2 turns posting on). The Android app stores its own level the same way and sends `X-Autopilot: off` on every runtime call below L2, so phone scans post nothing without the user.
 - Autopilot only handles purchases that match a rule; it never makes rules itself.
 
 ## Invoicing, jobs, contacts
 
 - No credit notes; *Mark paid* posts nothing (the receipt is not posted to 1200 Bank); a paid invoice cannot be voided.
-- An invoice made from a job's hours marks every entry on a line when it is sent, even if the user changed that line's hours or rate; voiding the invoice does not unmark them (`invoicing.mark_hours`).
+- An invoice made from a job's hours marks only the entries whose hours and rate still match their sent line; voiding the invoice frees its entries again.
 - "Invoiced" value and margin use each person's *current* charge rate; changing a rate restates past jobs.
 - If saving the sent copy fails after the email has gone, the invoice is saved as sent but the sale is not posted until the user retries (the retry exists). `GraphMailSender` checks the encoded request against 4 MB and refuses larger ones with an error (about 3 MB of attachments); big attachments (draft plus upload session) are not supported. In the send dialogs the tick stays ticked if the user edits the message afterwards.
 - A matched bank line counts as full payment: part payments, overpayments and credit notes are not modelled, so a part-paid invoice drops out of *Aged balances*. Ageing counts from the document date and ignores the invoice's due date and payment terms. Customer VAT numbers are only set with *Edit*. Outlook contacts added with "also add" are always customers. `contacts.json` is rewritten whole, so two tabs editing at once means last write wins.
@@ -107,7 +107,7 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 - Books.xlsx has never been opened in Excel from a real OneDrive.
 - With no business settings saved, Home *Deadlines* assumes stagger 1 and now says so (`assumed: true`; the phone sends no stagger and does not show the note); with annual accounting the tiles show "—" and "Annual VAT returns are not worked out yet". `GET /books/deadlines` returns `start_month` normalised to 1–3.
 - A provider-level read failure now marks only its tiles `{"error": ...}` (Graph 401/403 still fails the whole request, so the app signs in again); the Android app does not read that marker (not run). A failed pull-to-refresh on the phone keeps the old figures under a "Could not load your figures" line; the tiles are not marked stale.
-- The web sidebar always says "AI: local Meta agent (Glimmer 30B)", whatever AI is set in Settings. Ask uses the period picked on `/vat` but has no picker of its own.
+- The web sidebar names the saved AI choice (Glimmer on your machine, Muse Spark on your key, or the stub in test mode). Ask uses the period picked on `/vat` but has no picker of its own.
 
 ## Android
 

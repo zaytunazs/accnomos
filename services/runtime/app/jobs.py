@@ -321,6 +321,28 @@ async def mark_invoiced(books: Books, entry_ids: Sequence[str], invoice_id: str)
     return [e.model_copy(update={"invoiced_in": invoice_id}) for e in entries]
 
 
+async def unmark_invoiced(books: Books, invoice_id: str) -> list[TimesheetEntry]:
+    """Free the hours billed on `invoice_id` (voiding it): clear `invoiced_in` wherever it still names it.
+
+    Only entries still on that invoice are touched, so calling it twice changes nothing.
+    """
+    if not invoice_id.strip():
+        raise JobsError("invoice_id required")
+    wanted = {e.id for e in await load_entries(books) if e.invoiced_in == invoice_id}
+    if not wanted:
+        return []
+    for month in await _months(books):
+
+        def change(raw: bytes | None) -> bytes:
+            return _dump_jsonl(
+                {**r, "invoiced_in": None} if r.get("invoiced_in") == invoice_id else r
+                for r in _parse_jsonl(raw)
+            )
+
+        await books._update(_sheet_path(month), change)
+    return [e for e in await load_entries(books) if e.id in wanted]
+
+
 async def customer_names(books: Books) -> dict[str, str]:
     """Contact id -> name from _System/Contacts/contacts.json, when the contacts feature has written it."""
     try:

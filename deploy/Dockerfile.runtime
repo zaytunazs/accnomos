@@ -15,7 +15,8 @@ COPY services/runtime /srv/services/runtime
 RUN pip install /srv/packages/ledger /srv/packages/connectors /srv/services/runtime
 # PDFs (pypdfium2) and HEIC photos (pillow-heif) come as wheels with PDFium/libheif inside: no apt packages. Fail the
 # build here, not at the first upload, if this platform has no wheel (app/formats.py would refuse PDFs and HEIC).
-RUN python -c "import pypdfium2, pillow_heif; pillow_heif.register_heif_opener()"
+RUN python -c "import pypdfium2, pillow_heif; pillow_heif.register_heif_opener()" \
+ && python -c "from zoneinfo import ZoneInfo; ZoneInfo('Europe/London')"  # tzdata rides with the runtime install
 USER 10001:10001
 EXPOSE 8780
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

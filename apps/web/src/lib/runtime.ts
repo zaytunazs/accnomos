@@ -1314,6 +1314,7 @@ export interface RtVatView {
   event_ids: string[];
   warnings: string[];
   events_in_period: number;
+  undone_in_period: number; // reversing events among them
   hmrc_body: Record<string, unknown>;
 }
 

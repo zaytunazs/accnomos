@@ -14,12 +14,11 @@ Severity:
 |---|---|
 | High | **Almost nothing has run against a real OneDrive, a real Meta key, HMRC's sandbox or a phone.** Only sign-in, folder setup, read → approve → ledger and the VAT boxes were run by hand (maintainers' word; no log committed). Everything else is tested on fakes. |
 | Medium | In key mode with no `X-Meta-Api-Key` header, `AiConfig` falls back to the server's `META_API_KEY`: typed and voice Ask would run on the operator's key. A product decision, not changed. |
-| Medium | The Autopilot level lives in the browser's `localStorage`. The Android app never sends `X-Autopilot`, so phone scans run Autopilot whenever a rule exists. |
+
 | Medium | `flutter analyze` and `flutter test` have never been run on the current `apps/mobile`. |
-| Medium | "Today" on the runtime is the UTC date (`books.now()`): in BST between midnight and 1 am, a date can be one day behind. Needs `zoneinfo` + `tzdata` in the image. |
 | Medium | The rate limit and the relay's spent-state set are per process; the relay must run one worker. |
 | Low | The shared `.venv` on the Spark can import another checkout's `accnomos_ledger`/`accnomos_connectors`; run `uv sync --all-packages` where you serve from. |
-| Low | The web sidebar always says "AI: local Meta agent (Glimmer 30B)", whatever AI is set in Settings. |
+
 | Low | `ruff` has not been run on `main`. |
 | Low | `POST /books/approve/{id}` is an alias kept for older web builds; remove it after the next deploy. |
 | Low | `07 Reports/` is created at onboarding but nothing writes to it. The one-time rename of old-named folders (`app/layout.py`) needs a run against a real OneDrive (personal and work), including a folder that is open in the OneDrive client. |
@@ -28,7 +27,7 @@ Severity:
 
 | Severity | Item |
 |---|---|
-| Low | `/books/vat` entry counts include sales and purchases only: a reversal changes the amounts but not the count shown next to boxes 1–4 and 6–7. |
+
 | Low | Key-mode extraction (muse-spark-1.3) is unit-tested only. |
 | Low | An undo is dated like the original; if that VAT period was submitted, the correction belongs in the current period. |
 
@@ -72,7 +71,7 @@ Severity:
 
 | Severity | Item |
 |---|---|
-| Medium | An invoice made from a job's hours marks every entry on a line when it is sent, even if the user changed that line's hours or rate; voiding the invoice does not unmark them (`invoicing.mark_hours`). |
+
 | Medium | "Invoiced" value and margin use each person's *current* charge rate; changing a rate restates past jobs. |
 | Medium | Not verified: sending from a real mailbox, the `Mail.Send` consent redirect, the PDF in a real viewer, logo upload to a real OneDrive. |
 | Medium | Payroll is an estimate (annual thresholds ÷ 12, month 1, 1257L, category A, England/NI); the 2026–27 rates were checked against GOV.UK on 27 Oct 2026 and `tests/test_payroll_rates.py` pins them; re-check each April. No RTI. |

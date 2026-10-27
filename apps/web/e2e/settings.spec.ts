@@ -87,3 +87,14 @@ test("Business: 'VAT-registered' is saved to the invoice profile; a VAT number a
   await expect(registered).toBeChecked();
   await expect(registered).toBeDisabled();
 });
+
+test("the sidebar names the AI chosen in Settings", async ({ page }) => {
+  const sidebar = page.locator("aside");
+  await expect(sidebar).toContainText("stub answers (test mode)");
+
+  await page.goto("/settings");
+  const ai = await settingsTab(page, "AI");
+  await ai.getByRole("button", { name: "My own Meta API key" }).click();
+  await ai.getByRole("button", { name: /Save.*Continue/ }).click();
+  await expect(sidebar).toContainText("Muse Spark key (muse-spark-1.3)");
+});
