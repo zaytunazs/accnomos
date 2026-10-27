@@ -21,8 +21,9 @@ on its own. The eval has no books, so every supplier is unknown here.
 - 057 (`GB 99887766`, malformed VAT number) is unchanged: the gold says proposed, the format check fails it (the demo seed
   relies on that).
 - 176 and 184 (`edge_foreign_gbp`, German SaaS suppliers charged in GBP, £843.45 and £310.31, no VAT, no VAT number) are
-  flagged by the new rule. Their gold `expected_status` was changed from `proposed` to `needs_a_look` with this change
-  (the "before" column is scored against the new gold; against the old gold, before had 194 matches and 0 alarms on them).
+  flagged by the new rule. Their gold `expected_status` was changed from `proposed` to `needs_a_look` with this change.
+  "Before" is the old code against the old gold, "after" the new code against the new gold. Against the old gold the new
+  code scores 195/200 with 3 false alarms (057, 176, 184) and the same 2 false passes.
   The reading has no supplier address, so code can't tell an overseas supplier from a UK one.
 
 ## The stored Glimmer readings (`runs/glimmer_messy_200`): not re-run
