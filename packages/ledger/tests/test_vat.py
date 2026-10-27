@@ -1,6 +1,7 @@
 from datetime import date, datetime
 
 import pytest
+
 from accnomos_ledger import LedgerEvent, Line, VatCode, compute_vat_return
 
 APPROVED = dict(approved_by="owner@example.test", approved_at=datetime(2026, 10, 21, 18, 0))

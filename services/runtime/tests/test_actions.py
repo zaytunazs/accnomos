@@ -12,9 +12,9 @@ from typing import Any
 
 import httpx
 import pytest
-from accnomos_connectors import FakeStorageProvider
 from fastapi.testclient import TestClient
 
+from accnomos_connectors import FakeStorageProvider
 from app import actions, jobs
 from app.actions import IntentModelOutput
 from app.ai import ask as ask_ai
@@ -580,7 +580,6 @@ async def test_chase_proposes_the_reminder_text_and_sends_it_once(books: Books, 
     """Runs only on a build with app/invoicing.py (claude/invoicing)."""
     inv_mod = pytest.importorskip("app.invoicing")
     from accnomos_connectors import FakeMailSender  # type: ignore[attr-defined]
-
     from app.ai import remind
 
     await books.write_json(

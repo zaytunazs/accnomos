@@ -38,7 +38,6 @@ for extra in (
 
 from accnomos_connectors import FakeMailProvider, FakeStorageProvider  # noqa: E402
 from accnomos_connectors.base import MailAttachment, MailMessage  # noqa: E402
-
 from app import intake  # noqa: E402
 from app.ai.config import AiConfig  # noqa: E402
 from app.books import INBOX, Books  # noqa: E402

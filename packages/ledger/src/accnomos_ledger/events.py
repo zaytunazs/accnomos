@@ -29,7 +29,7 @@ class Line(BaseModel):
     memo: str | None = None
 
     @model_validator(mode="after")
-    def _one_side(self) -> "Line":
+    def _one_side(self) -> Line:
         if (self.debit > 0) == (self.credit > 0):
             raise ValueError("a line must have either a debit or a credit, not both or neither")
         return self
@@ -52,7 +52,7 @@ class LedgerEvent(BaseModel):
     counterparty: str | None = None
 
     @model_validator(mode="after")
-    def _balanced(self) -> "LedgerEvent":
+    def _balanced(self) -> LedgerEvent:
         debits = sum(line.debit for line in self.lines)
         credits = sum(line.credit for line in self.lines)
         if debits != credits:

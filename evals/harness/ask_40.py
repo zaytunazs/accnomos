@@ -43,8 +43,8 @@ for extra in (
         sys.path.insert(0, str(extra))
 
 import seed_demo  # noqa: E402
-from accnomos_connectors import FakeStorageProvider  # noqa: E402
 
+from accnomos_connectors import FakeStorageProvider  # noqa: E402
 from app import routes_ask  # noqa: E402
 from app.ai import ask as ask_ai  # noqa: E402
 from app.ai.config import AiConfig  # noqa: E402

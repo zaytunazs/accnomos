@@ -12,12 +12,11 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any
 
-from accnomos_connectors.msgraph import GraphStorageProvider
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from accnomos_connectors.msgraph import GraphStorageProvider
 from accnomos_ledger.events import LedgerEvent
-
 from app import autopilot, layout
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.approve import ApprovalError, ProposalStateError, approve, reject, undo

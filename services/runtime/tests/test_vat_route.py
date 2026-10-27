@@ -29,6 +29,7 @@ async def test_list_events_and_vat_route():
     assert len(await books.list_events()) == 2
 
     from fastapi.testclient import TestClient
+
     from app.main import app
     from app.routes_books import get_books
 

@@ -8,9 +8,9 @@ import json
 from datetime import date, datetime, time, timedelta
 
 import pytest
-from accnomos_connectors import CalendarEvent, FakeCalendarProvider, FakeStorageProvider
 from fastapi.testclient import TestClient
 
+from accnomos_connectors import CalendarEvent, FakeCalendarProvider, FakeStorageProvider
 from app import jobs, planner
 from app.ai import plan as plan_ai
 from app.books import Books

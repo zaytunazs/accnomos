@@ -5,7 +5,8 @@ Safe only for additive conflicts (new rows, imports, routers, cards). Prints the
 modify the same line (same first line) so a human can look.
 """
 
-import re, subprocess, sys
+import re
+import subprocess
 
 HUNK = re.compile(r"<<<<<<< [^\n]*\n(.*?)=======\n(.*?)>>>>>>> [^\n]*\n", re.S)
 

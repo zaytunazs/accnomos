@@ -3,6 +3,7 @@
 from datetime import date, datetime
 
 import pytest
+
 from accnomos_ledger import LedgerEvent, Line, VatCode
 from accnomos_ledger.bank import (
     BankCsvError,

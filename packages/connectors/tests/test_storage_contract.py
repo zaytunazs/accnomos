@@ -2,6 +2,7 @@
 recorded fixture later. Add a provider by appending a fixture that yields it."""
 
 import pytest
+
 from accnomos_connectors import FakeStorageProvider
 from accnomos_connectors.base import ConflictError
 

@@ -20,9 +20,9 @@ from datetime import UTC, date, datetime
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any, Literal
 
-from accnomos_ledger.events import LedgerEvent
 from pydantic import BaseModel, Field, field_validator
 
+from accnomos_ledger.events import LedgerEvent
 from app.books import SYSTEM, Books, _month, now
 from app.schemas import Proposal
 

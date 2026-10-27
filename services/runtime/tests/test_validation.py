@@ -5,10 +5,10 @@ Contact VRN format: tests/test_contacts.py (edit errors). Relay VRN/period key: 
 from __future__ import annotations
 
 import pytest
-from accnomos_connectors import FakeStorageProvider
-from accnomos_connectors.msgraph import GraphStorageProvider
 from fastapi.testclient import TestClient
 
+from accnomos_connectors import FakeStorageProvider
+from accnomos_connectors.msgraph import GraphStorageProvider
 from app.books import Books
 from app.main import app
 from app.pipeline import suggested_filename

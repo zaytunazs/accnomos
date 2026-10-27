@@ -13,14 +13,13 @@ from datetime import date
 from typing import Any
 
 from accnomos_ledger.events import LedgerEvent, Line, VatCode
-
 from app.autopilot import ACTOR as AUTOPILOT_ACTOR
 from app.autopilot import AUTOPILOT, rule_from_proposal, save_rule
 from app.books import Books, Rule, RuleMatch, now
-from app.paths import NEEDS_A_LOOK, upgrade
 from app.checks import decide
 from app.journal import VAT_CONTROL, draft_journal, with_expense_account
 from app.mileage import load_vehicles
+from app.paths import NEEDS_A_LOOK, upgrade
 from app.schemas import CATEGORIES, ExtractedDoc, JournalLine, Proposal
 
 #: Edits the review screen may send; `category` maps to the document's category_guess.

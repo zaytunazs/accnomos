@@ -6,11 +6,11 @@ import json
 from datetime import UTC, date, datetime
 
 import pytest
+from fastapi.testclient import TestClient
+
 from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger import LedgerEvent, Line, VatCode
 from accnomos_ledger.bank import BankLine
-from fastapi.testclient import TestClient
-
 from app import dashboard
 from app import invoicing as inv_
 from app.approve import reversal_of

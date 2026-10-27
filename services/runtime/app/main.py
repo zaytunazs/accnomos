@@ -124,10 +124,10 @@ from app.routes_extract import router as extract_router  # noqa: E402  POST /ext
 
 app.include_router(extract_router)
 
-from accnomos_connectors.msgraph import GraphError  # noqa: E402
 from fastapi import Request  # noqa: E402
 from fastapi.responses import JSONResponse  # noqa: E402
 
+from accnomos_connectors.msgraph import GraphError  # noqa: E402
 from app.routes_books import router as books_router  # noqa: E402  /books/*
 
 app.include_router(books_router)

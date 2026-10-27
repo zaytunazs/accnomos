@@ -5,6 +5,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pytest
+
 from accnomos_ledger import LedgerEvent, Line, VatCode
 from accnomos_ledger.bank import detect_bank, parse_bank_csv, suggest_action
 from accnomos_ledger.matching import suggest_matches

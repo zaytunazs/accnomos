@@ -11,16 +11,15 @@ import uuid
 from datetime import date
 
 from accnomos_connectors.base import FileRef
-
 from app import autopilot
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError
 from app.approve import ApprovalError, approve
 from app.books import Books, DocMeta, Rule, now
-from app.paths import INBOX
 from app.checks import decide
 from app.journal import with_expense_account
 from app.mileage import MileageError, Vehicle, load_vehicles, prefill_vehicle
+from app.paths import INBOX
 from app.pipeline import process_image, sha256_hex
 from app.schemas import AutopilotDecision, Check, ExtractedDoc, Proposal
 

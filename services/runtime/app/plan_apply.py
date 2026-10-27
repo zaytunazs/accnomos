@@ -18,9 +18,9 @@ from collections.abc import Sequence
 from datetime import date, datetime, timedelta
 from typing import Any
 
-from accnomos_connectors import CalendarEvent, CalendarProvider
 from pydantic import BaseModel
 
+from accnomos_connectors import CalendarEvent, CalendarProvider
 from app.books import SYSTEM, Books, now
 from app.planner import NOT_BUSY, SUBJECT_PREFIX, TZ, PlanItem, overlaps, plan_hash, postcode_district
 

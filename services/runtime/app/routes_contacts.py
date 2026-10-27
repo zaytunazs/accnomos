@@ -12,11 +12,11 @@ from collections.abc import AsyncIterator
 from datetime import date
 from typing import Any
 
-from accnomos_connectors.base import ContactsProvider
-from accnomos_connectors.msgraph import GraphContactsProvider
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from accnomos_connectors.base import ContactsProvider
+from accnomos_connectors.msgraph import GraphContactsProvider
 from app import contacts as cb
 from app.ai.config import is_test_mode
 from app.books import Books, now

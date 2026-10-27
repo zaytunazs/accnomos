@@ -32,11 +32,11 @@ from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Any, Literal
 
+from pydantic import BaseModel, Field, field_validator
+
 from accnomos_connectors.base import MailSender, OutgoingAttachment, OutgoingMail
 from accnomos_ledger.bank import BankLine
 from accnomos_ledger.events import LedgerEvent, Line, VatCode
-from pydantic import BaseModel, Field, field_validator
-
 from app import jobs, paths
 from app.approve import reversal_of
 from app.books import SYSTEM, BankMatchError, Books, now

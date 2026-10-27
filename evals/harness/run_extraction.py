@@ -34,7 +34,6 @@ from app.ai.config import AiConfig  # noqa: E402
 from app.ai.verify import parse_date, select_backend  # noqa: E402
 from app.checks import normalise_vat_number  # noqa: E402
 from app.pipeline import process_image  # noqa: E402
-
 from harness.render import render_receipt  # noqa: E402
 
 GOLD_DIR = REPO / "evals" / "gold" / "receipts"

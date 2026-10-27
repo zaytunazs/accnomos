@@ -4,7 +4,13 @@ Every document is fictional and labelled. Arithmetic is validated in code; inval
 Output: ~/spark/accnomos/gold/receipts/NNN.json + manifest.json
 """
 
-import json, random, sys, time, urllib.request, pathlib, hashlib
+import hashlib
+import json
+import pathlib
+import random
+import sys
+import time
+import urllib.request
 
 OUT = pathlib.Path.home() / "spark/accnomos/gold/receipts"
 OUT.mkdir(parents=True, exist_ok=True)

@@ -15,7 +15,6 @@ from decimal import Decimal
 from typing import Any
 
 from accnomos_ledger import LedgerEvent, compute_vat_return, reverses_sale
-
 from app.books import EVENTS, PROPOSALS, WORKBOOK, Books
 from app.paths import VAT_RETURNS
 from app.routes_vat import box_amounts, period_key_for

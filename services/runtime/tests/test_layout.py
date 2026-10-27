@@ -6,10 +6,10 @@ import json
 from types import SimpleNamespace
 
 import pytest
-from accnomos_connectors import FakeStorageProvider
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
+from accnomos_connectors import FakeStorageProvider
 from app import layout, paths, testmode
 from app.books import AUDIT, Books
 from app.routes_books import router as books_router
@@ -167,7 +167,6 @@ def test_home_names_the_statement_where_it_is_now() -> None:
     from datetime import date
 
     from accnomos_ledger.bank import BankLine
-
     from app import dashboard
 
     line = BankLine(

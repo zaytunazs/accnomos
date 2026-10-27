@@ -16,9 +16,9 @@ from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai
 from app.ai import verify as verify_ai
 from app.ai.config import TEST_AI_MODEL, AiConfig, is_test_mode
+from app.ask_router import pack, route
 from app.books import INBOX, Books, today
 from app.checks import decide, run_checks
-from app.ask_router import pack, route
 from app.facts import build_facts, default_period
 from app.routes_actions import _mail_sender
 from app.routes_books import get_books

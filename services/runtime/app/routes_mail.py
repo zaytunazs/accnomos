@@ -12,13 +12,12 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
-from accnomos_connectors.base import MailProvider
-from accnomos_connectors.msgraph import GraphMailProvider
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.ai.config import is_test_mode
-from app.ai.config import AiConfig
+from accnomos_connectors.base import MailProvider
+from accnomos_connectors.msgraph import GraphMailProvider
+from app.ai.config import AiConfig, is_test_mode
 from app.books import Books
 from app.intake import IntakeResult, scan_mail
 from app.routes_books import business_name, get_books, optional_user, require_user

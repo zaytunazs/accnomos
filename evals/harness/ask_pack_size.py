@@ -15,10 +15,10 @@ from typing import Any
 
 import httpx
 
-from harness.ask_40 import BUSINESS, MODELS, PERIOD, QUESTIONS, REPO, seeded_books
 from app.ai import ask as ask_ai  # noqa: E402  (harness.ask_40 puts the runtime on sys.path)
 from app.ask_router import approx_tokens, pack, route  # noqa: E402
 from app.facts import build_facts  # noqa: E402
+from harness.ask_40 import BUSINESS, MODELS, PERIOD, QUESTIONS, REPO, seeded_books
 
 OUT = REPO / "evals" / "runs" / "ask_40" / "pack_size.json"
 

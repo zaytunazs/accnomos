@@ -7,10 +7,11 @@ import sys
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
+
 from accnomos_connectors import FakeStorageProvider
 from accnomos_connectors.base import ConflictError
 from accnomos_ledger.events import LedgerEvent
-from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 

@@ -31,8 +31,8 @@ from app.ai import voice
 from app.ai.config import AiConfig, ai_config_from_request
 from app.books import Books, today
 from app.facts import build_facts, default_period
-from app.routes_actions import graph_token
 from app.planner import TZ, plan_intent, uk_day
+from app.routes_actions import graph_token
 from app.routes_books import business_name, get_books
 from app.schemas import (
     AskAnswer,

@@ -13,12 +13,12 @@ import hashlib
 import io
 from collections.abc import AsyncIterator
 
-from accnomos_connectors.base import MailSender
-from accnomos_connectors.msgraph import GraphMailSender
-from accnomos_ledger.bank import BankLine
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field, StrictBool
 
+from accnomos_connectors.base import MailSender
+from accnomos_connectors.msgraph import GraphMailSender
+from accnomos_ledger.bank import BankLine
 from app import invoicing as inv_
 from app.ai import remind
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode

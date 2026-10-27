@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+
 from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger.events import LedgerEvent, VatCode
 

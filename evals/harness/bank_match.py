@@ -38,7 +38,6 @@ for extra in (
 
 from accnomos_connectors import FakeStorageProvider  # noqa: E402
 from accnomos_ledger.bank import parse_bank_csv  # noqa: E402
-
 from app.approve import build_event  # noqa: E402
 from app.books import Books  # noqa: E402
 from app.journal import draft_journal  # noqa: E402

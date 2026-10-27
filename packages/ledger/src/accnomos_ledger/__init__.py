@@ -7,7 +7,7 @@ Invariants (PRD §8):
 """
 
 from accnomos_ledger.bank import BankLine, parse_bank_csv
-from accnomos_ledger.events import Line, LedgerEvent, VatCode
+from accnomos_ledger.events import LedgerEvent, Line, VatCode
 from accnomos_ledger.matching import Match, suggest_matches
 from accnomos_ledger.vat import VatReturn, compute_vat_return, reverses_sale
 

@@ -14,9 +14,9 @@ from collections.abc import Awaitable, Callable, Sequence
 from datetime import date, datetime
 from typing import Any, Literal
 
-from accnomos_ledger.bank import BankLine, reconciled_to
 from pydantic import BaseModel
 
+from accnomos_ledger.bank import BankLine, reconciled_to
 from app import contacts as cb
 from app import invoicing
 from app.books import AUDIT, AUTOPILOT_AUDIT, Books, bank_of

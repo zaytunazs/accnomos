@@ -32,11 +32,11 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Literal
 
+from pydantic import BaseModel, Field
+
 from accnomos_connectors.base import AddressBookContact
 from accnomos_ledger.bank import BankLine
 from accnomos_ledger.events import LedgerEvent, VatCode
-from pydantic import BaseModel, Field
-
 from app.autopilot import supplier_key
 from app.books import SYSTEM, Books, now
 from app.checks import normalise_vat_number

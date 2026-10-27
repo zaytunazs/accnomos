@@ -15,9 +15,9 @@ import hashlib
 import re
 import uuid
 
-from accnomos_ledger.bank import FEE_WORDS, ActionHint, BankLine, suggest_action
 from pydantic import BaseModel
 
+from accnomos_ledger.bank import FEE_WORDS, ActionHint, BankLine, suggest_action
 from app.books import BankMatchError, Books, now
 from app.journal import draft_journal
 from app.schemas import Check, ExtractedDoc, Proposal, ProposalStatus

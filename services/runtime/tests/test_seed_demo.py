@@ -15,11 +15,11 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
+from openpyxl import load_workbook
+
 from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger.bank import detect_bank, parse_bank_csv
 from accnomos_ledger.vat import compute_vat_return
-from openpyxl import load_workbook
-
 from app import contacts as contacts_mod
 from app import invoicing, jobs, mileage
 from app.books import INBOX, NEEDS_A_LOOK, Books

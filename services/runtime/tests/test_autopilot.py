@@ -9,11 +9,12 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
+
 from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger.bank import BankLine
 from accnomos_ledger.events import LedgerEvent
 from accnomos_ledger.vat import compute_vat_return
-from fastapi.testclient import TestClient
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 

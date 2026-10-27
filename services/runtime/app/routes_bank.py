@@ -21,13 +21,13 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from datetime import date
 
-from accnomos_ledger.bank import BankCsvError, BankLine, BankLineStatus, reconciled_to
-from accnomos_ledger.matching import Match, settlement_pence
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
+from accnomos_ledger.bank import BankCsvError, BankLine, BankLineStatus, reconciled_to
+from accnomos_ledger.matching import Match, settlement_pence
 from app.bank_actions import UnmatchedLine, create_expense_proposal, unmatched_lines
-from app.books import BankImport, BankMatchError, Books, BankStatement
+from app.books import BankImport, BankMatchError, BankStatement, Books
 from app.routes_books import get_books, require_user
 from app.schemas import Proposal
 from app.validation import StrictBody, UnsafeName, check_name

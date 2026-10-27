@@ -10,10 +10,10 @@ from typing import Any
 
 import httpx
 import pytest
-from accnomos_connectors import FakeStorageProvider
-from accnomos_ledger import LedgerEvent, Line, VatCode
 from fastapi.testclient import TestClient
 
+from accnomos_connectors import FakeStorageProvider
+from accnomos_ledger import LedgerEvent, Line, VatCode
 from app.ai import ask as ask_ai
 from app.ai.config import AiConfig
 from app.ask_router import PACK_TOKENS, PREV, THIS, approx_tokens, pack, route

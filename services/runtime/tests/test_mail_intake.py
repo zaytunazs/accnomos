@@ -9,8 +9,9 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from accnomos_connectors import FakeMailProvider, FakeStorageProvider, MailAttachment, MailMessage
 from fastapi.testclient import TestClient
+
+from accnomos_connectors import FakeMailProvider, FakeStorageProvider, MailAttachment, MailMessage
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 

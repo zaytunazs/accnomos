@@ -31,7 +31,7 @@ import httpx
 from pydantic import BaseModel, Field, ValidationError
 
 from app.ai.config import AiConfig
-from app.ai.extract import ExtractionError, SUPPORTED_MIME, parse_model_json
+from app.ai.extract import SUPPORTED_MIME, ExtractionError, parse_model_json
 from app.checks import p
 from app.schemas import ExtractedDoc, FieldAgreement, Verification, strict_json_schema
 

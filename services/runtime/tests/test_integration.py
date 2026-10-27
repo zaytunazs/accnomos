@@ -14,9 +14,10 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from accnomos_connectors import FakeMailProvider, FakeStorageProvider, MailAttachment, MailMessage
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
+
+from accnomos_connectors import FakeMailProvider, FakeStorageProvider, MailAttachment, MailMessage
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -65,7 +66,6 @@ def fake() -> FakeStorageProvider:
 @pytest.fixture
 def client(fake: FakeStorageProvider):
     from accnomos_connectors import FakeContactsProvider
-
     from app.main import app
     from app.routes_books import get_books
     from app.routes_contacts import get_address_book

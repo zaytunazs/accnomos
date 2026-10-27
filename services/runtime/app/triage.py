@@ -18,9 +18,9 @@ from collections.abc import Iterable
 from datetime import date, datetime, timedelta
 from typing import Literal
 
-from accnomos_connectors.base import MailMessage, MailProvider
 from pydantic import BaseModel
 
+from accnomos_connectors.base import MailMessage, MailProvider
 from app.ai.config import AiConfig
 from app.books import Books, now
 from app.intake import domain_of, is_from_self

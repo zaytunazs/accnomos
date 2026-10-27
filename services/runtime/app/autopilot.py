@@ -26,7 +26,8 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, ValidationError
 
 from app.books import AUTOPILOT_RULES, Books, now
-from app.checks import gbp, normalise_vat_number, p as pence
+from app.checks import gbp, normalise_vat_number
+from app.checks import p as pence
 from app.journal import VAT_CONTROL
 from app.schemas import AutopilotDecision, JournalLine, Proposal
 

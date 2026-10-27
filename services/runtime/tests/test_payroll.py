@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+
 from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger.events import LedgerEvent
 
@@ -315,7 +316,7 @@ async def test_books_xlsx_payroll_sheet(books: Books, fake: FakeStorageProvider)
     await pr.confirm(books, "2026-10", 30_500, 1_234, USER)
     ws = load_workbook(io.BytesIO(fake.files["Books.xlsx"]))["Payroll"]
     cells = [list(row) for row in ws.iter_rows(values_only=True)]
-    assert cells[0][7] == "Est. PAYE £" and [R.ESTIMATE_LABEL] == [c for c in cells[-len(R.LIMITS) - 1] if c]
+    assert cells[0][7] == "Est. PAYE £" and [c for c in cells[-len(R.LIMITS) - 1] if c] == [R.ESTIMATE_LABEL]
     flat = [c for row in cells for c in row if c is not None]
     assert "Ann Lee" in flat and "confirmed" in flat and 305.0 in flat
 

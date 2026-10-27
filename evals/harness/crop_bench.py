@@ -34,7 +34,6 @@ for extra in (REPO / "services" / "runtime", REPO / "packages" / "ledger" / "src
 
 from app.ai import crop  # noqa: E402
 from app.ai.config import AiConfig  # noqa: E402
-
 from harness.render import _paper  # noqa: E402
 
 GOLD_DIR = REPO / "evals" / "gold" / "receipts"

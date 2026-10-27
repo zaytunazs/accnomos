@@ -31,18 +31,17 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import re
 from collections.abc import Callable
 from datetime import UTC, date, datetime, tzinfo
 from typing import Any, Literal
 
+from pydantic import BaseModel, Field
+
 from accnomos_connectors.base import ConflictError, FileRef, StorageProvider
 from accnomos_ledger.bank import BankLine, BankLineStatus, BankName, detect_bank, parse_bank_csv
 from accnomos_ledger.events import LedgerEvent
 from accnomos_ledger.matching import Match, suggest_matches
-from pydantic import BaseModel, Field
-
 from app.ai.config import is_test_mode
 from app.checks import parse_iso_date
 from app.paths import (  # noqa: F401  (re-exported: other modules import the folder names from here too)

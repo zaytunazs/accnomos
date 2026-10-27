@@ -9,8 +9,9 @@ from pathlib import Path
 
 import httpx
 import pytest
-from accnomos_connectors import FakeMailProvider, FakeStorageProvider, MailMessage
 from fastapi.testclient import TestClient
+
+from accnomos_connectors import FakeMailProvider, FakeStorageProvider, MailMessage
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 

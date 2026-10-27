@@ -6,24 +6,15 @@ import asyncio
 from datetime import date
 from typing import Literal
 
-from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return
 from app.books import Books
 from app.books import today as current_date  # `today` is a query parameter below
 from app.deadlines import (
-    STAGGER_START_MONTH,
     filing_deadline,
     period_containing,
-    period_label,
-    previous_period,
-    stagger_of,
-)
-from app.books import Books
-from app.paths import VAT_RETURNS
-from app.deadlines import (
-    filing_deadline,
     period_from_id,
     period_id,
     period_label,
@@ -31,6 +22,7 @@ from app.deadlines import (
     recent_periods,
     stagger_of,
 )
+from app.paths import VAT_RETURNS
 from app.routes_books import get_books
 from app.vat_cycle import VatCycle, vat_cycle
 

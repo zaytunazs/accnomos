@@ -19,9 +19,9 @@ import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from accnomos_connectors.base import MailAttachment, MailMessage, MailProvider
 from pydantic import BaseModel
 
+from accnomos_connectors.base import MailAttachment, MailMessage, MailProvider
 from app.books import SYSTEM, Books, Rule, _month, _with_suffix, now
 from app.paths import INBOX
 

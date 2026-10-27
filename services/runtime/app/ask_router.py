@@ -245,9 +245,7 @@ def sources_for(facts: dict[str, Any], periods: frozenset[str] | set[str]) -> li
             month = s.removeprefix(f"{EVENTS}/").rstrip("/")
             if any(a <= month <= b for a, b, _k in spans):
                 out.append(s)
-        elif s.startswith(VAT_RETURNS) and any(k in s for _a, _b, k in spans):
-            out.append(s)
-        elif s == WORKBOOK:
+        elif s.startswith(VAT_RETURNS) and any(k in s for _a, _b, k in spans) or s == WORKBOOK:
             out.append(s)
     return out
 

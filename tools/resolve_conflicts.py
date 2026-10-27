@@ -1,6 +1,7 @@
 """One-off: resolve the two 'both added' conflicts between claude/ask-books and claude/mail-intake."""
 
-import re, sys
+import re
+import sys
 
 
 def keep_both(s):

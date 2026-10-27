@@ -47,7 +47,6 @@ for _p in ("packages/connectors/src", "packages/ledger/src", "services/runtime")
         sys.path.insert(0, str(ROOT / _p))
 
 from accnomos_connectors.base import MailSender, OutgoingMail, StorageProvider  # noqa: E402
-
 from app import contacts as contacts_mod  # noqa: E402
 from app import invoicing, jobs, mileage  # noqa: E402
 from app.approve import approve  # noqa: E402

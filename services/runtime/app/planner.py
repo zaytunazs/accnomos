@@ -26,9 +26,9 @@ from datetime import UTC, date, datetime, time, timedelta
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from accnomos_connectors import CalendarEvent
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from accnomos_connectors import CalendarEvent
 from app.deadlines import STAGGER_START_MONTH, filing_deadline, period_containing, period_label, previous_period
 from app.jobs import Job
 from app.validation import StrictBody

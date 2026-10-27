@@ -33,11 +33,15 @@ import os
 import re
 from contextvars import ContextVar
 from datetime import UTC, date, datetime, timedelta
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 from zoneinfo import ZoneInfo
+
+from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from accnomos_connectors import (
     AddressBookContact,
@@ -51,10 +55,6 @@ from accnomos_connectors import (
     MailMessage,
 )
 from accnomos_connectors.base import FileRef
-from fastapi import APIRouter, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
-
 from app import actions, security
 from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai
@@ -116,7 +116,7 @@ def gold_receipts() -> dict[str, dict[str, Any]]:
     return {i["file"]: json.loads((folder / i["file"]).read_text(encoding="utf-8")) for i in manifest["items"]}
 
 
-@lru_cache(maxsize=None)
+@cache
 def gold_png(file: str) -> bytes:
     return _renderer().render_receipt(gold_receipts()[file]["printed_text"], messy=False, seed=0)
 

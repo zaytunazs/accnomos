@@ -29,13 +29,13 @@ from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from fractions import Fraction
 from typing import Annotated, Literal
 
-from accnomos_ledger.events import LedgerEvent, Line
 from pydantic import BaseModel, Field
 
+from accnomos_ledger.events import LedgerEvent, Line
 from app import payroll_rates as R
 from app.books import SYSTEM, Books, now
-from app.paths import PAYROLL
 from app.jobs import hours_value, load_entries, load_staff, pence_for, quarters
+from app.paths import PAYROLL
 from app.validation import Pence, StrictBody
 
 log = logging.getLogger(__name__)

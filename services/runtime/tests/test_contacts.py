@@ -6,10 +6,10 @@ import json
 from datetime import UTC, date, datetime
 
 import pytest
-from accnomos_connectors import AddressBookContact, FakeContactsProvider, FakeStorageProvider
-from accnomos_ledger import LedgerEvent, Line, VatCode
 from fastapi.testclient import TestClient
 
+from accnomos_connectors import AddressBookContact, FakeContactsProvider, FakeStorageProvider
+from accnomos_ledger import LedgerEvent, Line, VatCode
 from app import contacts as cb
 from app.books import AUDIT, Books
 from app.schemas import ExtractedDoc, Proposal
@@ -476,7 +476,6 @@ def test_contact_routes(client: TestClient, fake: FakeStorageProvider, address_b
 def test_import_without_consent_is_401_and_writes_nothing(client: TestClient, fake: FakeStorageProvider) -> None:
     """Graph says 403 when Contacts.Read was not granted; the app gets 401 so it asks for consent again."""
     from accnomos_connectors.msgraph import GraphError
-
     from app.main import app
     from app.routes_contacts import get_address_book
 
