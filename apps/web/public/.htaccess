@@ -16,7 +16,13 @@ ErrorDocument 404 /404.html
   Header always set Permissions-Policy "camera=(self), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=()"
   Header always set X-Frame-Options "DENY"
   Header always set Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
-  <FilesMatch "\.(html|json|txt)$">
-    Header set Cache-Control "no-cache"
-  </FilesMatch>
+  # Caching (docs/PERF.md). Pages, RSC payloads (.txt) and unhashed public files are revalidated on every use
+  # (a cheap 304 via ETag), so a deploy shows at once. Not "always", so error responses (a 404 for a chunk
+  # an old page asks for after a deploy) never get the year-long header below.
+  Header set Cache-Control "no-cache"
+  # Next's build output under /_next/static/ is content-hashed and never changes under the same name: a year.
+  # (<If> is merged after the line above, so it wins for these paths.)
+  <If "%{REQUEST_URI} =~ m#^/_next/static/#">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </If>
 </IfModule>
