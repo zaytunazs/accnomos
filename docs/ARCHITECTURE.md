@@ -68,6 +68,7 @@ Documents, filed by code and never deleted:
 | `02 Needs a look/<name>` | runtime: documents that need a look, and rejected ones | |
 | `03 Sales/<name>` | runtime, a scanned document the reader classes as a sales invoice | |
 | `03 Sales/invoices/INV-0001.json`, `.pdf`; `03 Sales/invoices/sent/INV-0001.pdf` | runtime, invoicing | `invoices/` and `invoices/sent/` are created at onboarding |
+| `03 Sales/credit-notes/CN-0001.json`, `.pdf`; `03 Sales/credit-notes/sent/CN-0001.pdf` | runtime, credit notes (`credit_notes.py`) | created with the first credit note |
 | `04 Bank statements/<last date>_<bank>.csv` | runtime, bank import | |
 | `05 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | |
 | `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
@@ -103,7 +104,8 @@ Books.xlsx still show the path as it was saved.
 | `Contacts/contacts.json` | names and details only, never money | rewritten whole (last write wins) |
 | `Jobs/jobs.json`, `Staff/staff.json`, `Timesheets/<yyyy-mm>.jsonl` | jobs, staff and rates, timesheet entries | entries edited and deleted |
 | `Vehicles/vehicles.json`, `Mileage/<tax-year>.jsonl` | tax year like `2026-27` | entries edited and deleted |
-| `Invoicing/profile.json`, `sequence.json`, and the logo file | business profile, invoice numbering, logo (any file under `_System/Invoicing/`) | rewritten |
+| `Invoicing/profile.json`, `sequence.json`, `credit_sequence.json`, and the logo file | business profile, invoice and credit note numbering, logo (any file under `_System/Invoicing/`) | rewritten |
+| `Payments/payments.json` | recorded payments: amount, date, account, the split across invoices or bills, the posted event (`payments.py`) | rewritten whole; a removed payment is kept, marked removed |
 | `Payroll/runs/<yyyy-mm>.json` | one pay run per month | updated |
 | `Planner/applied.json` | which day plans were applied (idempotency) | updated |
 | `Todos/todos.json` | to-dos added from triage | updated |

@@ -56,8 +56,12 @@ Severity:
 
 | Severity | Item |
 |---|---|
-| Medium | A matched bank line counts as full payment. Part payments, overpayments and credit notes are not modelled, so a part-paid invoice drops out of *Aged balances*. |
-| Low | Ageing counts from the document date and ignores invoice due dates. Customer VAT numbers only via *Edit*. Outlook contacts added with "also add" are always customers. |
+| Medium | A credit on a contact (an overpayment, or a credit note bigger than what was owed) is shown on the statement and in the totals, but cannot be applied to another invoice or refunded in the app; record a payment out by hand. |
+| Medium | A supplier's credit note read from the inbox is not linked to the bill it credits: it is a credit on the supplier, so that bill still ages in full. Supplier refunds cannot be matched to a credit note on the Bank page (credit notes are not offered as matches). |
+| Low | A bank line matched straight to invoices on the Bank page still posts nothing (only *Record payment* posts Dr 1200 Bank / Cr 1100 Debtors), so 1100 Debtors in Books.xlsx clears only for recorded payments. Its amount is allocated in match order, within 1p per document counting as paid in full; money over is credited to the first document's contact. |
+| Low | Paying a bill (Dr 2100 Creditors / Cr 1200 Bank, split across bills) exists in the runtime (`POST /payments`, `GET /payments/open`) but has no web or Android screen yet. |
+| Low | Payment terms per contact (`terms_days`, used by ageing) can be set through `PUT /contacts/{id}` only: no field on the web or Android *Edit* yet. Customer VAT numbers only via *Edit*. Outlook contacts added with "also add" are always customers. |
+| Low | An invoice marked paid before payments were recorded (no amount kept) counts as paid on Invoices and Home but stays open in Contacts and *Aged balances*, as before; *Remove* on it puts it back to sent. `payments.json` is rewritten whole (last write wins). |
 | Low | `contacts.json` is rewritten whole: two tabs editing at once means last write wins. After *Edit* the side panel does not reload the statement (figures stay right). |
 | Low | `Contacts.Read` may need admin consent on work accounts (untested). |
 
@@ -78,7 +82,8 @@ Severity:
 | Medium | "Invoiced" value and margin use each person's *current* charge rate; changing a rate restates past jobs. |
 | Medium | Not verified: sending from a real mailbox, the `Mail.Send` consent redirect, the PDF in a real viewer, logo upload to a real OneDrive. |
 | Medium | Payroll is an estimate (annual thresholds ÷ 12, month 1, 1257L, category A, England/NI); the 2026–27 rates were checked against GOV.UK on 27 Oct 2026 by the payrun author only (no test pins them). No RTI. |
-| Low | No credit notes; *Mark paid* does not post to 1200 Bank; a paid invoice cannot be voided. If the sent copy cannot be saved after the email goes, the sale is not posted until the user retries. |
+| Medium | Credit notes: not verified in a real PDF viewer or sent from a real mailbox; made only from a sent invoice (no stand-alone credit note); a credit note's lines are the invoice's lines and prices (no new descriptions). The Android app shows paid and balance but cannot record payments or make credit notes. |
+| Low | If the sent copy cannot be saved after the email goes, the sale is not posted until the user retries. |
 | Low | `GraphMailSender.MAX_INLINE` (3 MB) checks raw bytes, so an attachment near 3 MB can just exceed Graph's 4 MB request limit once base64-encoded. The send tick stays ticked after the message is edited. |
 | Low | Plain timesheet edits do not rebuild Books.xlsx. A month-changing edit can leave a duplicate line (never a lost one). A closed job can be tagged through the API (on purpose). |
 | Low | The web mileage log has no edit control (`PATCH /mileage/{id}` exists); vehicles cannot be renamed or deleted from the page; the Review vehicle picker needs an active business vehicle; scan pre-fill uses a keyword list. |
