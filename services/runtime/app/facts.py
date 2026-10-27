@@ -54,6 +54,15 @@ def previous_period(p: AskPeriod) -> AskPeriod:
     return AskPeriod(start=end - span, end=end)
 
 
+def period_label(p: AskPeriod) -> str:
+    """"Jul–Sep 2026" for whole months (the way the app names VAT periods), else "10 Sep–19 Sep 2026"."""
+    if p.start.day == 1 and p.end == _month_end(p.end):
+        first = f"{p.start:%b}" if p.start.year == p.end.year else f"{p.start:%b %Y}"
+        return f"{p.end:%b %Y}" if (p.start.year, p.start.month) == (p.end.year, p.end.month) else f"{first}–{p.end:%b %Y}"
+    first = f"{p.start.day} {p.start:%b}" if p.start.year == p.end.year else f"{p.start.day} {p.start:%b %Y}"
+    return f"{first}–{p.end.day} {p.end:%b %Y}"
+
+
 def side(ev: LedgerEvent) -> tuple[str, int] | None:
     """("sales"|"purchases", sign) for events that reach the VAT return, mirroring accnomos_ledger.vat."""
     if ev.kind == "sale":
@@ -188,7 +197,7 @@ async def build_facts(books: Books, period: AskPeriod, business_name: str | None
         evs = [e for _p, e in ents]
         return {
             "start": p.start.isoformat(), "end": p.end.isoformat(), "period_key": period_key_for(p.start),
-            "entries": len(evs), "vat": _boxes(evs, p), "totals": _totals(evs),
+            "label": period_label(p), "entries": len(evs), "vat": _boxes(evs, p), "totals": _totals(evs),
         }
 
     this, before = summarise(period, this_entries), summarise(prev, prev_entries)
