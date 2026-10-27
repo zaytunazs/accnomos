@@ -17,6 +17,7 @@ from app import jobs
 from app.books import Books
 from app.jobs import Job, JobsError, JobSummary, NotFound, StaffMember, TimesheetEntry
 from app.routes_books import get_books, require_user
+from app.validation import StrictBody
 
 router = APIRouter(tags=["jobs"])
 
@@ -38,7 +39,7 @@ def _id(value: str) -> str:
 # --------------------------------------------------------------------------- #
 
 
-class JobIn(BaseModel):
+class JobIn(StrictBody):
     name: str = Field(min_length=1, max_length=200)
     customer_id: str | None = Field(None, max_length=64)
     site_address: str | None = Field(None, max_length=500)
@@ -113,7 +114,7 @@ async def job_invoice_lines(job_id: str, books: Books = Depends(get_books)) -> j
     return jobs.invoice_lines(job, await jobs.load_entries(books), await jobs.load_staff(books))
 
 
-class MarkInvoicedBody(BaseModel):
+class MarkInvoicedBody(StrictBody):
     invoice_id: str = Field(min_length=1, max_length=64)
     entry_ids: list[str] = Field(min_length=1)
 
@@ -147,7 +148,7 @@ async def mark_invoiced(
 # --------------------------------------------------------------------------- #
 
 
-class StaffIn(BaseModel):
+class StaffIn(StrictBody):
     name: str = Field(min_length=1, max_length=120)
     role: str = Field("", max_length=120)
     hourly_rate_pence: int = Field(ge=0)
@@ -198,7 +199,7 @@ async def delete_staff(staff_id: str, books: Books = Depends(get_books), user: s
 # --------------------------------------------------------------------------- #
 
 
-class EntryIn(BaseModel):
+class EntryIn(StrictBody):
     staff_id: str
     job_id: str
     date: date

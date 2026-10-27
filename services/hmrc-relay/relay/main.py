@@ -19,7 +19,10 @@ from fastapi.responses import JSONResponse
 from .hmrc_client import HmrcClient, HmrcError, HmrcUnavailable
 from .oauth import OAuth, StateError
 from .routes import Relay, router
+from .security import SecurityMiddleware, TokenBucket, install_log_scrubbing, scrub
 from .settings import Settings, get_settings
+
+install_log_scrubbing()
 
 
 def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
@@ -36,14 +39,19 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
     app.state.relay = Relay(settings, HmrcClient(settings, http), OAuth(settings, http))
     app.state.started = time.time()
     app.include_router(router)
+    # Limits, credential checks and safe 500s; inside CORS so its answers still reach the page.
+    rate = settings.rate_limit_per_min
+    app.add_middleware(SecurityMiddleware, limiter=TokenBucket(rate) if rate > 0 else None)
     # The PWA calls the relay straight from the browser (JSON + X-HMRC-Access-Token → preflight). Same origins
     # the OAuth callback may redirect to, plus http://localhost / 127.0.0.1 for development. No cookies.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[o for o in settings.allowed_origins if o.startswith(("https://", "http://"))],
+        allow_origins=[o for o in settings.allowed_origins if o.startswith(("https://", "http://")) and "*" not in o],
         allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
         allow_methods=["GET", "POST"],
         allow_headers=["Content-Type", "X-HMRC-Access-Token"],
+        expose_headers=["X-Correlation-Id", "Retry-After"],
+        max_age=600,
     )
 
     @app.middleware("http")
@@ -53,7 +61,9 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
 
     @app.exception_handler(HmrcError)
     async def hmrc_error(_: Request, e: HmrcError) -> JSONResponse:
-        return JSONResponse(e.to_json(), status_code=e.status)
+        body = e.to_json()
+        body["message"] = scrub(str(body["message"]))
+        return JSONResponse(body, status_code=e.status)
 
     @app.exception_handler(HmrcUnavailable)
     async def hmrc_unavailable(_: Request, e: HmrcUnavailable) -> JSONResponse:

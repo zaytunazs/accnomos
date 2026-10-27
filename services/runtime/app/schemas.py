@@ -15,6 +15,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 
+from app.validation import StrictBody
+
 DocType = Literal["receipt", "purchase_invoice", "sales_invoice"]
 PaymentMethod = Literal["card", "cash", "bank_transfer", "direct_debit", "cheque", "unknown"]
 Severity = Literal["fail", "warn"]
@@ -259,7 +261,7 @@ AskActionKind = Literal["open_review", "open_vat", "chase_supplier", "none"]
 Confidence = Literal["high", "medium", "low"]
 
 
-class AskPeriod(BaseModel):
+class AskPeriod(StrictBody):
     start: date
     end: date
 
@@ -270,12 +272,12 @@ class AskPeriod(BaseModel):
         return self
 
 
-class AskTurn(BaseModel):
+class AskTurn(StrictBody):
     role: Literal["user", "assistant"]
     text: str = Field(max_length=2000)
 
 
-class AskRequest(BaseModel):
+class AskRequest(StrictBody):
     question: str = Field(min_length=1, max_length=500)
     period: AskPeriod | None = None
     history: list[AskTurn] = Field(default_factory=list)

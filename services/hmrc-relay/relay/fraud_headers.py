@@ -15,7 +15,7 @@ from datetime import UTC, datetime
 from typing import Literal
 from urllib.parse import quote
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .settings import Settings
 
@@ -58,32 +58,36 @@ def _pairs(d: Mapping[str, object]) -> str:
     return "&".join(f"{enc(k)}={enc(v)}" for k, v in d.items())
 
 
-class MultiFactor(BaseModel):
+class _Strict(BaseModel):
+    model_config = ConfigDict(extra="forbid")  # an unknown fact is a client bug, not something to drop quietly
+
+
+class MultiFactor(_Strict):
     type: Literal["TOTP", "AUTH_CODE", "OTHER"]
     timestamp: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z$")
     unique_reference: str = Field(min_length=1, description="Hash identifying the factor, never the factor itself")
 
 
-class Screen(BaseModel):
+class Screen(_Strict):
     width: int = Field(gt=0)
     height: int = Field(gt=0)
     scaling_factor: float = Field(gt=0)
     colour_depth: int = Field(gt=0)
 
 
-class WindowSize(BaseModel):
+class WindowSize(_Strict):
     width: int = Field(gt=0)
     height: int = Field(gt=0)
 
 
-class DeviceUserAgent(BaseModel):
+class DeviceUserAgent(_Strict):
     os_family: str
     os_version: str
     device_manufacturer: str
     device_model: str
 
 
-class ClientFacts(BaseModel):
+class ClientFacts(_Strict):
     """What the browser / app collected on the device. Field absent = genuinely unavailable."""
 
     device_id: str | None = None

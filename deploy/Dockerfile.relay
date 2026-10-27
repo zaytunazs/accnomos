@@ -1,9 +1,16 @@
 # Accnomos HMRC relay — the one component that holds a secret (HMRC client secret, via env). Built from the repo root.
-FROM python:3.12-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+# Hardening (deploy/README.md): pinned base, non-root, read-only root filesystem (compose), one worker.
+FROM python:3.12.7-slim-bookworm
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
+RUN groupadd --system --gid 10001 accnomos \
+ && useradd --system --uid 10001 --gid accnomos --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin accnomos
 WORKDIR /srv
 COPY services/hmrc-relay /srv/services/hmrc-relay
 RUN pip install /srv/services/hmrc-relay
+USER 10001:10001
 EXPOSE 8787
-HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8787/health')"
-CMD ["uvicorn", "relay.main:app", "--host", "0.0.0.0", "--port", "8787", "--proxy-headers", "--forwarded-allow-ips", "*"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8787/health', timeout=4)"]
+# One worker: OAuth states are one-time via an in-memory spent set, which a second process would not see.
+CMD ["uvicorn", "relay.main:app", "--host", "0.0.0.0", "--port", "8787", "--proxy-headers", "--forwarded-allow-ips", "*", \
+     "--no-server-header", "--timeout-keep-alive", "5", "--workers", "1"]

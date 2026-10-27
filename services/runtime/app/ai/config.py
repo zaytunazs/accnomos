@@ -4,7 +4,8 @@ The UI chooses the backend per request via headers; the server falls back to
 environment variables so the harness and CLI can run without a browser.
 
 Headers: X-AI-Mode (local|key), X-AI-Base-Url, X-AI-Model, X-Meta-Api-Key.
-Env:     AI_MODE, OLLAMA_BASE, OLLAMA_MODEL, MODEL_API_BASE, MODEL_API_MODEL, META_API_KEY.
+Env:     AI_MODE, OLLAMA_BASE, OLLAMA_MODEL, MODEL_API_BASE, MODEL_API_MODEL, META_API_KEY,
+         AI_ALLOWED_BASE_URLS (extra base URLs a client may pick with X-AI-Base-Url).
 """
 
 from __future__ import annotations
@@ -26,6 +27,18 @@ DEFAULT_OLLAMA_BASE = "http://localhost:11434"
 DEFAULT_OLLAMA_MODEL = "muse-glimmer:30b"
 DEFAULT_MODEL_API_BASE = "https://api.meta.ai/v1"
 DEFAULT_MODEL_API_MODEL = "muse-spark-1.3"
+
+
+def _norm(url: str) -> str:
+    return url.strip().rstrip("/").lower()
+
+
+def base_url_allowed(url: str) -> bool:
+    """A client-chosen AI base URL is used only if it is one the server already knows: the defaults, the
+    OLLAMA_BASE / MODEL_API_BASE in use, or one listed in AI_ALLOWED_BASE_URLS (comma-separated)."""
+    allowed = {DEFAULT_OLLAMA_BASE, DEFAULT_MODEL_API_BASE, os.getenv("OLLAMA_BASE", ""), os.getenv("MODEL_API_BASE", ""),
+               *os.getenv("AI_ALLOWED_BASE_URLS", "").split(",")}
+    return _norm(url) in {_norm(a) for a in allowed if a.strip()}
 
 
 class AiConfig(BaseModel):
@@ -60,11 +73,18 @@ class AiConfig(BaseModel):
 
     @classmethod
     def from_headers(cls, headers: Mapping[str, str]) -> AiConfig:
-        """Read X-AI-* headers (case-insensitive mapping, e.g. Starlette Headers)."""
+        """Read X-AI-* headers (case-insensitive mapping, e.g. Starlette Headers).
+
+        X-AI-Base-Url must be on the server's allow-list: the runtime fetches that URL, so a free choice
+        would let any caller point it at hosts only the server can reach.
+        """
         get = lambda k: (headers.get(k) or headers.get(k.lower()) or None)  # noqa: E731
+        base_url = get("X-AI-Base-Url")
+        if base_url and not base_url_allowed(base_url):
+            raise ValueError("X-AI-Base-Url is not on this server's allow-list (AI_ALLOWED_BASE_URLS)")
         return cls.resolve(
             mode=get("X-AI-Mode"),
-            base_url=get("X-AI-Base-Url"),
+            base_url=base_url,
             model=get("X-AI-Model"),
             api_key=get("X-Meta-Api-Key"),
         )

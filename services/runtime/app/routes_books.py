@@ -14,7 +14,7 @@ from typing import Any
 
 from accnomos_connectors.msgraph import GraphStorageProvider
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from accnomos_ledger.events import LedgerEvent
 
@@ -24,6 +24,7 @@ from app.approve import ApprovalError, ProposalStateError, approve, reject, undo
 from app.books import Books, now
 from app.inbox import scan_inbox_detailed
 from app.schemas import Proposal, ProposalStatus
+from app.validation import StrictBody
 
 router = APIRouter(prefix="/books", tags=["books"])
 
@@ -50,14 +51,14 @@ def require_user(x_user: str | None = Header(default=None)) -> str:
     return x_user.strip()
 
 
-class ApproveBody(BaseModel):
-    edits: dict[str, Any] | None = None
+class ApproveBody(StrictBody):
+    edits: dict[str, Any] | None = Field(None, max_length=50)
     always: bool = False
     remember: bool = False  # "Always do this for <supplier>"; same as `always`
 
 
-class RejectBody(BaseModel):
-    reason: str = ""
+class RejectBody(StrictBody):
+    reason: str = Field("", max_length=1000)
 
 
 class Summary(BaseModel):

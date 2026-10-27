@@ -47,6 +47,14 @@ class GraphError(RuntimeError):
         self.status = status
 
 
+def _safe_path(path: str) -> str:
+    """Refuse '.'/'..' segments and control characters: every path stays inside the books root."""
+    for segment in path.split("/"):
+        if (segment and not segment.strip(" .")) or any(ord(c) < 0x20 or ord(c) == 0x7F for c in segment):
+            raise ValueError(f"unsafe storage path {path!r}")
+    return path
+
+
 def _join(parent: str, name: str) -> str:
     return f"{parent}/{name}" if parent else name
 
@@ -146,7 +154,7 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
 
     def _item_url(self, path: str, action: str = "") -> str:
         """Path-addressed item URL, optionally with an action such as 'content' or 'children'."""
-        path = path.strip("/")
+        path = _safe_path(path.strip("/"))
         if self.account_kind == "personal":
             base = "/me/drive/special/approot"
             if not path:
@@ -183,6 +191,7 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
 
     async def _create_folder(self, parent_id: str, name: str) -> dict[str, Any]:
         """Create `name` under `parent_id`; if it already exists (409) fetch it instead."""
+        _safe_path(name)
         body = {"name": name, "folder": {}, "@microsoft.graph.conflictBehavior": "fail"}
         try:
             return (await self._request("POST", f"{GRAPH}/me/drive/items/{parent_id}/children", json=body)).json()

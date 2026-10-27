@@ -40,6 +40,7 @@ from pydantic import BaseModel, Field
 
 from app.checks import parse_iso_date
 from app.schemas import ExtractedDoc, Proposal, ProposalStatus
+from app.validation import check_name
 
 INBOX = "00 Inbox"
 RECEIPTS = "01 Receipts"
@@ -359,7 +360,9 @@ class Books:
         return NEEDS_A_LOOK if p.status == "needs_a_look" else cls.filing_folder(p.extracted)
 
     async def free_path(self, folder: str, name: str) -> str:
-        """`folder/name`, or 'name (2)', 'name (3)'... when that is taken."""
+        """`folder/name`, or 'name (2)', 'name (3)'... when that is taken. Raises UnsafeName for a name that
+        is not a plain file name (every filed document and statement passes through here)."""
+        check_name(name)
         taken = {f.name for f in await self.list_files(folder)}
         candidate, n = name, 1
         while candidate in taken:

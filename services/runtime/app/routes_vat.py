@@ -75,7 +75,7 @@ def box_amounts(ret: VatReturn) -> dict[int, str]:
 async def vat_return(
     start: date | None = Query(None),
     end: date | None = Query(None),
-    period_key: str | None = Query(None),
+    period_key: str | None = Query(None, pattern=r"^[A-Za-z0-9#]{4}$"),  # HMRC period key, e.g. 26A3
     books: Books = Depends(get_books),
 ) -> VatReturnView:
     if start is None or end is None:

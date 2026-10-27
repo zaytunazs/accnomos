@@ -15,11 +15,12 @@ from typing import Any
 from accnomos_connectors.base import ContactsProvider
 from accnomos_connectors.msgraph import GraphContactsProvider
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app import contacts as cb
 from app.books import Books, now
 from app.routes_books import get_books, require_user
+from app.validation import StrictBody
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
 
@@ -65,15 +66,15 @@ async def refresh(books: Books = Depends(get_books), user: str = Depends(require
     return ContactList(year_start=start, today=today, saved=True, contacts=cb.with_totals(contacts, ledger, start, today))
 
 
-class ContactEdit(BaseModel):
-    name: str | None = None
-    kind: str | None = None
-    vrn: str | None = None
-    email: str | None = None
-    phone: str | None = None
-    address: str | None = None
-    default_category: str | None = None
-    default_vat_code: str | None = None
+class ContactEdit(StrictBody):
+    name: str | None = Field(None, max_length=200)
+    kind: str | None = Field(None, max_length=20)
+    vrn: str | None = Field(None, max_length=20)  # format checked in contacts.edit (GB/XI + 9 or 12 digits, GD/HA)
+    email: str | None = Field(None, max_length=254)
+    phone: str | None = Field(None, max_length=40)
+    address: str | None = Field(None, max_length=500)
+    default_category: str | None = Field(None, max_length=100)
+    default_vat_code: str | None = Field(None, max_length=10)
 
 
 @router.get("/aged", response_model=cb.AgedBalances)
@@ -97,7 +98,7 @@ async def edit(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-class ImportBody(BaseModel):
+class ImportBody(StrictBody):
     add_new: bool = False  # also add address-book entries that are not in the books yet (as customers)
 
 

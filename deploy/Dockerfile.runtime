@@ -1,13 +1,20 @@
 # Accnomos Agent Runtime — stateless; built from the repo root:  docker build -f deploy/Dockerfile.runtime -t accnomos-runtime .
-FROM python:3.12-slim
-ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+# Hardening (deploy/README.md): pinned base, non-root, no writes outside /tmp (compose mounts the root read-only).
+FROM python:3.12.7-slim-bookworm
+ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 # ffmpeg: converts voice questions (webm/ogg/m4a) to WAV mono 16 kHz for Muse Voice; /books/ask/voice answers 503 without it
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/* \
+ && groupadd --system --gid 10001 accnomos \
+ && useradd --system --uid 10001 --gid accnomos --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin accnomos
 WORKDIR /srv
 COPY packages/ledger /srv/packages/ledger
 COPY packages/connectors /srv/packages/connectors
 COPY services/runtime /srv/services/runtime
 RUN pip install /srv/packages/ledger /srv/packages/connectors /srv/services/runtime
+USER 10001:10001
 EXPOSE 8780
-HEALTHCHECK --interval=30s --timeout=5s CMD python -c "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8780/health')"
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8780", "--proxy-headers", "--forwarded-allow-ips", "*"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
+  CMD ["python", "-c", "import urllib.request;urllib.request.urlopen('http://127.0.0.1:8780/health', timeout=4)"]
+# Only the edge nginx can reach this port (compose binds it to the host loopback), so forwarded headers are trusted.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8780", "--proxy-headers", "--forwarded-allow-ips", "*", \
+     "--no-server-header", "--timeout-keep-alive", "5"]
