@@ -1,11 +1,51 @@
-"""In-memory StorageProvider used by contract tests and by the runtime's own tests."""
+"""In-memory providers used by contract tests and by the runtime's own tests."""
 
 from __future__ import annotations
 
 import hashlib
 from datetime import UTC, datetime
 
-from accnomos_connectors.base import ConflictError, FileRef, StorageProvider
+from accnomos_connectors.base import (
+    ConflictError,
+    FileRef,
+    MailAttachment,
+    MailMessage,
+    MailProvider,
+    StorageProvider,
+)
+
+
+class FakeMailProvider(MailProvider):
+    """A mailbox in memory: `add()` messages with (attachment, bytes) pairs; `calls` records every read."""
+
+    def __init__(self) -> None:
+        self.messages: list[MailMessage] = []
+        self.attachments: dict[str, list[tuple[MailAttachment, bytes]]] = {}
+        self.calls: list[str] = []
+
+    def add(self, message: MailMessage, *files: tuple[MailAttachment, bytes]) -> MailMessage:
+        message.has_attachments = bool(files)
+        self.messages.append(message)
+        self.attachments[message.id] = list(files)
+        return message
+
+    async def list_messages(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
+        self.calls.append("list_messages")
+        hits = [m for m in self.messages if m.has_attachments and m.received_at >= since]
+        return sorted(hits, key=lambda m: m.received_at, reverse=True)[:max_results]
+
+    async def list_attachments(self, message_id: str) -> list[MailAttachment]:
+        self.calls.append(f"list_attachments:{message_id}")
+        if message_id not in self.attachments:
+            raise FileNotFoundError(message_id)
+        return [a for a, _ in self.attachments[message_id]]
+
+    async def download_attachment(self, message_id: str, attachment_id: str) -> bytes:
+        self.calls.append(f"download:{message_id}/{attachment_id}")
+        for a, data in self.attachments.get(message_id, []):
+            if a.id == attachment_id:
+                return data
+        raise FileNotFoundError(f"{message_id}/{attachment_id}")
 
 
 class FakeStorageProvider(StorageProvider):

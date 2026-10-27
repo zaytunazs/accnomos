@@ -52,6 +52,21 @@ export function storageScopesFor(account: AccountInfo): string[] {
   return isPersonalAccount(account) ? STORAGE_SCOPES : STORAGE_SCOPES_WORK;
 }
 
+export type AccountKind = "personal" | "work";
+
+export function accountKind(account: AccountInfo): AccountKind {
+  return isPersonalAccount(account) ? "personal" : "work";
+}
+
+/**
+ * Outlook intake (F10) reads mail, nothing more. Same scope for personal and work accounts; requested only
+ * when the user turns intake on (H26), always together with the storage scopes so one token covers both.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function mailScopesFor(kind: AccountKind): string[] {
+  return ["Mail.Read"];
+}
+
 /** Access token for the given scopes; falls back to an interactive redirect when consent is needed. */
 export async function getToken(scopes: string[]): Promise<string> {
   const msal = await getMsal();

@@ -2,7 +2,7 @@
 
 import type { AccountInfo } from "@azure/msal-browser";
 import { aiHeaders, loadAiConfig, RUNTIME_URL } from "./ai-config";
-import { getToken, isPersonalAccount, storageScopesFor } from "./msal";
+import { accountKind, getToken, isPersonalAccount, mailScopesFor, storageScopesFor } from "./msal";
 
 /** Runtime wire types (services/runtime/app/schemas.py). */
 export interface RtCheck {
@@ -62,9 +62,12 @@ export interface RtSummary {
   last_scan?: string | null;
 }
 
-/** Headers for every runtime call: the user's Graph token + AI config. Nothing is stored server-side. */
-export async function runtimeHeaders(account: AccountInfo): Promise<Record<string, string>> {
-  const token = await getToken(storageScopesFor(account));
+/**
+ * Headers for every runtime call: the user's Graph token + AI config. Nothing is stored server-side.
+ * `extraScopes` widens the one Graph token (e.g. Mail.Read for /mail/scan, which also writes to OneDrive).
+ */
+export async function runtimeHeaders(account: AccountInfo, extraScopes: string[] = []): Promise<Record<string, string>> {
+  const token = await getToken([...storageScopesFor(account), ...extraScopes]);
   const ai = loadAiConfig();
   let business = "";
   try {
@@ -81,8 +84,8 @@ export async function runtimeHeaders(account: AccountInfo): Promise<Record<strin
   };
 }
 
-async function call<T>(account: AccountInfo, path: string, init: RequestInit = {}): Promise<T> {
-  const headers = { ...(await runtimeHeaders(account)), ...(init.body ? { "Content-Type": "application/json" } : {}) };
+async function call<T>(account: AccountInfo, path: string, init: RequestInit = {}, extraScopes: string[] = []): Promise<T> {
+  const headers = { ...(await runtimeHeaders(account, extraScopes)), ...(init.body ? { "Content-Type": "application/json" } : {}) };
   const res = await fetch(`${RUNTIME_URL}${path}`, { ...init, headers: { ...headers, ...(init.headers ?? {}) } });
   if (!res.ok) throw new Error(`runtime ${init.method ?? "GET"} ${path} -> ${res.status}: ${(await res.text()).slice(0, 300)}`);
   return (await res.json()) as T;
@@ -102,6 +105,8 @@ export const runtime = {
       method: "POST",
       body: JSON.stringify({ question, period: period ?? null, history: history.slice(-6) }),
     }),
+  mailScan: (a: AccountInfo, body: { since_days?: number; dry_run?: boolean }) =>
+    call<RtMailScan>(a, "/mail/scan", { method: "POST", body: JSON.stringify(body) }, mailScopesFor(accountKind(a))),
 };
 
 /** POST /books/ask (services/runtime/app/routes_ask.py). */
@@ -132,6 +137,18 @@ export interface RtAskAnswer {
   model: string;
   period: RtAskPeriod;
   fallback_reason: string | null; // the model's words were replaced by the facts, quoted by code
+}
+
+
+/** POST /mail/scan (services/runtime/app/intake.py): Outlook attachments copied into 00 Inbox. */
+export interface RtMailScan {
+  scanned: number;
+  candidates: number;
+  saved: string[];
+  skipped_duplicates: number;
+  dry_run: boolean;
+  errors: { message?: string; attachment?: string; error: string }[];
+  items: { name: string; subject: string; from_address: string; score: number }[];
 }
 
 /** GET /books/vat (services/runtime/app/routes_vat.py): the 9 boxes computed by code from posted events. */
