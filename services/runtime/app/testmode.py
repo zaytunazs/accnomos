@@ -329,8 +329,10 @@ def _id(path: str) -> str:
 def _path_of(item_id: str) -> str:
     if item_id == GRAPH_ROOT_ID:
         return ""
+    if not item_id.startswith("t-"):
+        raise ValueError(item_id)
     raw = item_id.removeprefix("t-")
-    return base64.urlsafe_b64decode(raw + "=" * (-len(raw) % 4)).decode()
+    return base64.b64decode(raw + "=" * (-len(raw) % 4), altchars=b"-_", validate=True).decode()
 
 
 def _drive_item(ref: FileRef) -> dict[str, Any]:
@@ -380,9 +382,16 @@ async def graph(rest: str, request: Request) -> JSONResponse:
     if m := re.fullmatch(r"me/drive/items/([^/]+)/children", rest):
         if method != "POST":
             return JSONResponse({"error": {"code": "notSupported"}}, status_code=400)
-        parent = _path_of(m.group(1))
-        body = await request.json()
-        path = f"{parent}/{body['name']}".strip("/")
+        try:
+            parent = _path_of(m.group(1))
+        except ValueError:  # not an id this look-alike handed out (binascii.Error and UnicodeDecodeError included)
+            return _not_found(m.group(1))
+        name = (await request.json()).get("name")
+        if not isinstance(name, str) or not name.strip("/"):
+            return JSONResponse({"error": {"code": "invalidRequest", "message": "name required"}}, status_code=400)
+        if parent and parent not in st.folders:
+            return _not_found(parent)
+        path = f"{parent}/{name}".strip("/")
         if path in st.folders or path in st.files:
             return JSONResponse({"error": {"code": "nameAlreadyExists"}}, status_code=409)
         ref = await st.ensure_folder(path)

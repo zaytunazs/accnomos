@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import hashlib
 from datetime import date
+from pathlib import Path
 
 import pytest
 from fastapi import FastAPI
@@ -14,11 +15,13 @@ from app import testmode
 from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai
 from app.ai import verify as verify_ai
-from app.ai.config import TEST_AI_MODEL, AiConfig
+from app.ai.config import TEST_AI_MODEL, AiConfig, is_test_mode
 from app.books import INBOX, Books, today
 from app.checks import decide, run_checks
 from app.facts import build_facts, default_period
 from app.routes_books import get_books
+from app.routes_contacts import get_address_book
+from app.routes_mail import get_mail
 from app.routes_mail import router as mail_router
 from app.schemas import AskModelOutput, ExtractedDoc
 
@@ -48,6 +51,19 @@ def test_off_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ACCNOMOS_TEST_TODAY", "2001-01-01")
     assert today() == date.today()
     assert AiConfig.resolve(mode="local", base_url="http://agent:11434").base_url == "http://agent:11434"
+
+
+@pytest.mark.parametrize("value", ["0", "", "true", "yes", " 1"])
+def test_only_exactly_1_turns_it_on(monkeypatch: pytest.MonkeyPatch, value: str) -> None:
+    monkeypatch.setenv("ACCNOMOS_TEST_MODE", value)
+    assert not is_test_mode()
+
+
+def test_docker_image_pins_it_off() -> None:
+    dockerfile = Path(__file__).resolve().parents[3] / "deploy" / "Dockerfile.runtime"
+    lines = dockerfile.read_text(encoding="utf-8").splitlines()
+    assert "ENV ACCNOMOS_TEST_MODE=0" in lines
+    assert not any("ACCNOMOS_TEST_MODE=1" in ln or "evals" in ln for ln in lines if not ln.lstrip().startswith("#"))
 
 
 def test_forces_stub_ai_and_pins_today(test_env: None) -> None:
@@ -115,6 +131,18 @@ def test_graph_lookalike_shares_storage_with_runtime(client: TestClient) -> None
     assert client.get(f"{g}/me/drive/root:/Accnomos/00 Inbox/r.png").json()["name"] == "r.png"  # work-account paths
 
 
+def test_graph_lookalike_errors_are_graph_shaped(client: TestClient) -> None:
+    g = "/__test/graph/v1.0"
+    assert client.get(f"{g}/me/drive/root/children").json()["error"]["code"] == "itemNotFound"  # not a books root
+    assert client.post(f"{g}/me/drive/items/t-%%%/children", json={"name": "x"}).status_code == 404  # not one of our ids
+    missing = testmode._id("no/such/folder")
+    assert client.post(f"{g}/me/drive/items/{missing}/children", json={"name": "x"}).status_code == 404
+    assert client.post(f"{g}/me/drive/items/{testmode.GRAPH_ROOT_ID}/children", json={"folder": {}}).status_code == 400
+    assert client.get(f"{g}/me/drive/items/{testmode.GRAPH_ROOT_ID}/children").status_code == 400
+    assert client.get(f"{g}/me/drive/special/approot:/nope:/children").status_code == 404
+    assert client.get("/__test/gold/999_nope.png").status_code == 404
+
+
 async def test_runtime_dependencies_use_the_fakes(client: TestClient) -> None:
     class Req:
         headers = {"X-Graph-Token": "test-token"}
@@ -130,3 +158,26 @@ async def test_runtime_dependencies_use_the_fakes(client: TestClient) -> None:
     body = r.json()
     assert body["dry_run"] and len(body["items"]) == len(testmode.MAIL_GOLD)  # the newsletter's .ics is skipped
     assert [p for p in testmode.STATE.storage.files if p.startswith(INBOX)] == ["00 Inbox/a.png"]  # nothing copied
+
+    contacts = get_address_book(Req())  # type: ignore[arg-type]
+    assert await contacts.__anext__() is testmode.STATE.contacts
+    assert len(testmode.STATE.contacts.contacts) == len(testmode.MAIL_GOLD)
+
+
+async def test_dependencies_still_need_a_token_in_test_mode(test_env: None) -> None:
+    from fastapi import HTTPException
+
+    class Req:
+        headers: dict[str, str] = {}
+
+    for dep in (get_books, get_mail, get_address_book):
+        with pytest.raises(HTTPException) as exc:
+            await dep(Req()).__anext__()  # type: ignore[arg-type]
+        assert exc.value.status_code == 401
+
+
+async def test_reset_seeds_sample_calendar(test_env: None) -> None:
+    await testmode.reset()
+    (cid,) = testmode.STATE.calendar.events
+    ((date_, title, body),) = testmode.STATE.calendar.events[cid].values()
+    assert (date_, body) == ("2026-11-07", "SAMPLE — FICTIONAL COMPANY") and "VAT return due" in title
