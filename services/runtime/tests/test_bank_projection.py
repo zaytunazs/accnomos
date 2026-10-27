@@ -251,7 +251,10 @@ def test_books_xlsx_totals_match_the_events() -> None:
     assert summ["Entries posted"] == len(events) and summ["Suppliers"] == 3
     assert _pence(summ["Total debits £"]) == debits == _pence(summ["Total credits £"])
     assert _pence(summ["Sales net £"]) == sum(e.net for e in events if e.kind == "sale")
-    assert _pence(summ["VAT on purchases £"]) == sum(e.vat for e in events if e.kind == "purchase")
+    # The reversed purchase nets off here too, so Summary, Suppliers and VAT agree.
+    assert summ["Purchase entries"] == len(purchases) and summ["Sales entries"] == 2
+    assert _pence(summ["Purchases net £"]) == sum(e.net for e in purchases) == _pence(sup["Total"][1])
+    assert _pence(summ["VAT on purchases £"]) == sum(e.vat for e in purchases) == _pence(sup["Total"][2])
     assert summ["First entry"].date() == date(2026, 7, 2) and summ["Last entry"].date() == date(2026, 9, 30)
 
     # VAT: the 26A3 column (Jul–Sep) equals the quarter's sales and purchase VAT from the events.

@@ -182,8 +182,18 @@ def _suppliers(ws: Worksheet, events: Sequence[LedgerEvent]) -> None:
 
 def _summary(ws: Worksheet, events: Sequence[LedgerEvent], bank_lines: Sequence[BankLine],
              proposals: Sequence[Proposal], generated: datetime) -> None:
+    # A reversal counts against the kind of the entry it reverses, with the opposite sign (as on Suppliers and VAT).
+    by_id = {e.id: e for e in events}
+    signed: list[tuple[str, int, LedgerEvent]] = []
+    for e in events:
+        original = by_id.get(e.reverses) if e.kind == "reversal" and e.reverses else None
+        signed.append((original.kind, -1, e) if original else (e.kind, 1, e))
+
+    def kind_count(kind: str) -> int:
+        return sum(sign for k, sign, _ in signed if k == kind)
+
     def kind_sum(kind: str, attr: str) -> int:
-        return sum(getattr(e, attr) or 0 for e in events if e.kind == kind)
+        return sum(sign * (getattr(e, attr) or 0) for k, sign, e in signed if k == kind)
 
     dates = [e.date for e in events]
     rows: list[tuple[str, object]] = [
@@ -193,10 +203,10 @@ def _summary(ws: Worksheet, events: Sequence[LedgerEvent], bank_lines: Sequence[
         ("Last entry", max(dates) if dates else None),
         ("Total debits £", pounds(sum(ln.debit for e in events for ln in e.lines))),
         ("Total credits £", pounds(sum(ln.credit for e in events for ln in e.lines))),
-        ("Sales entries", sum(e.kind == "sale" for e in events)),
+        ("Sales entries", kind_count("sale")),
         ("Sales net £", pounds(kind_sum("sale", "net"))),
         ("VAT on sales £", pounds(kind_sum("sale", "vat"))),
-        ("Purchase entries", sum(e.kind == "purchase" for e in events)),
+        ("Purchase entries", kind_count("purchase")),
         ("Purchases net £", pounds(kind_sum("purchase", "net"))),
         ("VAT on purchases £", pounds(kind_sum("purchase", "vat"))),
         ("Suppliers", len(supplier_totals(events))),
