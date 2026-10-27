@@ -77,6 +77,30 @@ def test_log_records_are_scrubbed(caplog):
     assert "[redacted]" in text
 
 
+def test_uvicorn_access_log_still_formats_after_scrubbing():
+    """uvicorn's AccessFormatter unpacks record.args (client, method, path, version, status): keep them a tuple."""
+    from uvicorn.logging import AccessFormatter
+
+    record = logging.getLogger("uvicorn.access").makeRecord(
+        "uvicorn.access", logging.INFO, __file__, 1, '%s - "%s %s HTTP/%s" %d',
+        ("1.2.3.4:5", "GET", f"/x?access_token={JWT}", "1.1", 200), None)
+    line = AccessFormatter('%(client_addr)s - "%(request_line)s" %(status_code)s', use_colors=False).format(record)
+    assert line.startswith('1.2.3.4:5 - "GET /x?access_token=') and line.endswith('HTTP/1.1" 200 OK')
+    assert JWT not in line and "[redacted]" in line
+
+
+def test_secret_split_between_format_and_args_is_scrubbed(caplog):
+    with caplog.at_level(logging.INFO):
+        logging.getLogger("accnomos.test").warning("Authorization: Bearer %s", "opaque-token-0123456789")
+    assert "opaque-token-0123456789" not in caplog.text and "[redacted]" in caplog.text
+
+
+def test_clean_records_are_left_untouched():
+    record = logging.getLogger("accnomos.test").makeRecord("accnomos.test", logging.INFO, __file__, 1,
+                                                          "%s filed %d documents", ("Screwfix", 3), None)
+    assert record.args == ("Screwfix", 3) and record.getMessage() == "Screwfix filed 3 documents"
+
+
 def test_unhandled_error_is_safe_json_with_correlation_id(caplog):
     c = TestClient(tiny_app(), raise_server_exceptions=False)
     with caplog.at_level(logging.ERROR):

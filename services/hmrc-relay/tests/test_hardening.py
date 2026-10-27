@@ -58,6 +58,20 @@ async def test_unexpected_error_is_safe_and_scrubbed(client_for, caplog):
     assert r.json()["correlation_id"] in logged and TOKEN not in logged
 
 
+def test_access_log_hides_the_oauth_code_and_still_formats():
+    """uvicorn's AccessFormatter unpacks record.args, so scrubbing must keep it a tuple; the callback's code goes."""
+    from uvicorn.logging import AccessFormatter
+
+    from relay.security import install_log_scrubbing
+
+    install_log_scrubbing()
+    record = logging.getLogger("uvicorn.access").makeRecord(
+        "uvicorn.access", logging.INFO, __file__, 1, '%s - "%s %s HTTP/%s" %d',
+        ("1.2.3.4:5", "GET", "/hmrc/callback?code=auth-code-secret&state=abc.def", "1.1", 307), None)
+    line = AccessFormatter('%(client_addr)s - "%(request_line)s" %(status_code)s', use_colors=False).format(record)
+    assert "auth-code-secret" not in line and "code=[redacted]&state=abc.def" in line and line.endswith('HTTP/1.1" 307 Temporary Redirect')
+
+
 async def test_hmrc_error_message_is_scrubbed(client_for):
     def hmrc(_: httpx.Request) -> httpx.Response:
         return httpx.Response(401, json={"code": "INVALID_CREDENTIALS", "message": f"Bearer {TOKEN} is not valid"})

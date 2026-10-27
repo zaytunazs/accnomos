@@ -20,7 +20,7 @@ import os
 import re
 import time
 import uuid
-from collections.abc import Awaitable, Callable, MutableMapping
+from collections.abc import Awaitable, Callable, Mapping, MutableMapping
 from contextvars import ContextVar
 from typing import Any
 
@@ -67,6 +67,39 @@ def scrub(text: str) -> str:
     return _JWT.sub(REDACTED, text)
 
 
+def _scrub_arg(arg: Any) -> Any:
+    if arg is None or isinstance(arg, (int, float)):
+        return arg
+    if isinstance(arg, str):
+        return scrub(arg)
+    text = str(arg)
+    return arg if scrub(text) == text and scrub(repr(arg)) == repr(arg) else scrub(text)
+
+
+def scrub_record(record: logging.LogRecord) -> None:
+    """Scrub `record` in place. A clean record is left alone, and a dirty one keeps its msg/args shape when
+    scrubbing each part is enough: some formatters read record.args (uvicorn's access log unpacks it)."""
+    try:
+        message = record.getMessage()
+    except Exception:  # noqa: BLE001  a bad format string must not lose the record
+        record.msg, record.args = scrub(str(record.msg)), None
+        return
+    if scrub(message) == message:
+        return
+    msg, args = record.msg, record.args
+    if isinstance(args, tuple):
+        args = tuple(_scrub_arg(a) for a in args)
+    elif isinstance(args, Mapping):
+        args = {k: _scrub_arg(v) for k, v in args.items()}
+    record.msg, record.args = (scrub(msg) if isinstance(msg, str) else msg), args
+    try:
+        if scrub(record.getMessage()) == record.getMessage():
+            return
+    except Exception:  # noqa: BLE001
+        pass
+    record.msg, record.args = scrub(message), None  # a secret split across msg and args: flatten
+
+
 _installed = False
 
 
@@ -79,10 +112,7 @@ def install_log_scrubbing() -> None:
 
     def factory(*args: Any, **kwargs: Any) -> logging.LogRecord:
         record = make(*args, **kwargs)
-        try:
-            record.msg, record.args = scrub(record.getMessage()), None
-        except Exception:  # noqa: BLE001  a bad format string must not lose the record
-            record.msg = scrub(str(record.msg))
+        scrub_record(record)
         if record.exc_info and not record.exc_text:
             record.exc_text = scrub(logging.Formatter().formatException(record.exc_info))
         return record
