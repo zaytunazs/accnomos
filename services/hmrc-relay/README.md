@@ -87,7 +87,7 @@ In both cases the client must check that the returned `state` matches the one `/
 | Gov-Client-Window-Size | client `window_size` | ✓ | ✓ |
 | Gov-Client-User-Agent | client `user_agent` | | ✓ |
 | Gov-Client-Local-IPs / -Timestamp | client `local_ips[]`, `local_ips_timestamp` | | ✓ |
-| Gov-Client-Public-IP | relay: `CF-Connecting-IP`, then the first `X-Forwarded-For` hop, then the socket peer | ✓ | ✓ |
+| Gov-Client-Public-IP | relay: the last `X-Forwarded-For` hop (never `CF-Connecting-IP`), else the socket peer | ✓ | ✓ |
 | Gov-Client-Public-IP-Timestamp | relay: time the request arrived | ✓ | ✓ |
 | Gov-Client-Public-Port | relay: socket port, or the `X-Client-Port` / `X-Real-Port` header when behind a proxy | ✓ | ✓ |
 | Gov-Vendor-Forwarded | relay: `by=RELAY_PUBLIC_IP&for=<client IP>` | ✓ | ✓ |
@@ -100,8 +100,8 @@ The relay percent-encodes values where the spec requires it, so clients send raw
 unavailable, omit the field. The relay then omits the header, logs a warning and lists it in
 `fraud_headers_missing`. It never sends `null` or other placeholders.
 
-**Proxies.** The relay trusts `CF-Connecting-IP` / `X-Forwarded-For`, so it must only be reachable through your
-proxy. Behind a proxy the socket port belongs to the proxy, so set the client port explicitly, for example nginx
+**Proxies.** The relay takes the last `X-Forwarded-For` hop (the one your proxy appended) and ignores
+`CF-Connecting-IP`, so it must only be reachable through your proxy. Behind a proxy the socket port belongs to the proxy, so set the client port explicitly, for example nginx
 `proxy_set_header X-Client-Port $remote_port;`. Otherwise `Gov-Client-Public-Port` is omitted and logged.
 
 ### PWA (`WEB_APP_VIA_SERVER`)

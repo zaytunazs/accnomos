@@ -17,6 +17,9 @@ invoice number, so it can never post twice. Voiding a sent invoice appends a rev
 Paid posts nothing, like matching a bank line (app/books.py): it records that the debt is settled, and links
 the bank line when one is chosen.
 
+An invoice written from a job's hours keeps the job id and, per line, the timesheet entries it bills. Becoming
+`sent` marks those entries invoiced on its number (app/jobs.py), so they are never proposed again.
+
 Sending and chasing need the user's explicit confirmation in the app (`confirm: true`); nothing is sent on its own.
 """
 
@@ -34,6 +37,7 @@ from accnomos_ledger.bank import BankLine
 from accnomos_ledger.events import LedgerEvent, Line, VatCode
 from pydantic import BaseModel, Field, field_validator
 
+from app import jobs
 from app.approve import reversal_of
 from app.books import SYSTEM, BankMatchError, Books, now
 from app.checks import normalise_vat_number
@@ -181,6 +185,7 @@ class LineIn(BaseModel):
     unit: str | None = Field(None, max_length=20)  # "hours", "days", "each"
     unit_price_pence: int = Field(ge=-100_000_000, le=100_000_000)  # negative for a discount line
     vat_code: SalesVatCode = "S"
+    timesheet_entry_ids: list[str] = Field(default_factory=list, max_length=1000)  # hours this line bills (jobs)
 
 
 class InvoiceLine(LineIn):
@@ -205,6 +210,7 @@ class InvoiceDraft(BaseModel):
     lines: list[LineIn] = Field(min_length=1, max_length=100)
     reference: str | None = Field(None, max_length=60)  # the customer's PO or job number
     notes: str | None = Field(None, max_length=1000)
+    job_id: str | None = Field(None, max_length=12)  # set when the lines came from a job's hours
 
 
 class Reminder(BaseModel):
@@ -242,6 +248,11 @@ class Invoice(BaseModel):
     void_reason: str | None = None
     reversal_event_id: str | None = None
     reminders: list[Reminder] = []
+    job_id: str | None = None
+    timesheets_marked: bool = False  # the lines' timesheet entries were marked invoiced on this number when sent
+
+    def timesheet_entry_ids(self) -> list[str]:
+        return [i for ln in self.lines for i in ln.timesheet_entry_ids]
 
     def overdue_days(self, today: date) -> int | None:
         """Days past the due date while unpaid (0 or less: not due yet); None when not awaiting payment."""
@@ -276,7 +287,7 @@ def build_invoice(number: str, draft: InvoiceDraft, profile: InvoiceProfile, use
     return Invoice(
         number=number, customer=draft.customer, issue_date=issue, due_date=due, lines=lines, vat_summary=summary,
         net_pence=net, vat_pence=vat, total_pence=net + vat, reference=(draft.reference or "").strip() or None,
-        notes=(draft.notes or "").strip() or None, created_by=user,
+        notes=(draft.notes or "").strip() or None, created_by=user, job_id=draft.job_id,
     )
 
 
@@ -363,10 +374,35 @@ async def _fill_customer(books: Books, draft: InvoiceDraft) -> InvoiceDraft:
     return draft.model_copy(update={"customer": filled})
 
 
+async def _check_hours(books: Books, draft: InvoiceDraft, number: str | None = None) -> None:
+    """Timesheet entries on the lines must be this job's billable hours, each once, not billed on another invoice."""
+    ids = [i for ln in draft.lines for i in ln.timesheet_entry_ids]
+    if not ids:
+        return
+    if not draft.job_id:
+        raise InvoiceError("Lines with timesheet hours need the job they came from")
+    if len(set(ids)) != len(ids):
+        raise InvoiceError("A timesheet entry is on more than one line")
+    try:
+        await jobs.get_job(books, draft.job_id)
+    except jobs.NotFound as exc:
+        raise InvoiceError("No such job") from exc
+    known = {e.id: e for e in await jobs.load_entries(books)}
+    for i in ids:
+        e = known.get(i)
+        if e is None or e.job_id != draft.job_id:
+            raise InvoiceError(f"Timesheet entry {i} is not on this job")
+        if not e.billable:
+            raise InvoiceError(f"Timesheet entry {i} is not billable")
+        if e.invoiced_in and e.invoiced_in != number:
+            raise InvoiceError(f"Timesheet entry {i} is already on invoice {e.invoiced_in}")
+
+
 async def create_invoice(books: Books, draft: InvoiceDraft, user: str) -> Invoice:
     profile = await load_profile(books)
     draft = await _fill_customer(books, draft)
     build_invoice("PENDING", draft, profile, user)  # refuse a bad draft before taking a number
+    await _check_hours(books, draft)
     inv = build_invoice(await allocate_number(books), draft, profile, user)
     await save_invoice(books, inv)
     await books.audit(f"user:{user}", "invoice_created", {"invoice": inv.number, "total_pence": inv.total_pence})
@@ -378,6 +414,7 @@ async def update_draft(books: Books, number: str, draft: InvoiceDraft, user: str
     if old.status != "draft":
         raise InvoiceStateError(f"Invoice {number} is {old.status}; only drafts can be changed")
     draft = await _fill_customer(books, draft)
+    await _check_hours(books, draft, number)
     inv = build_invoice(number, draft, await load_profile(books), old.created_by)
     inv.created_at = old.created_at
     await save_invoice(books, inv)
@@ -456,6 +493,33 @@ async def post_sale(books: Books, inv: Invoice, user: str) -> str:
     return event.id
 
 
+async def mark_hours(books: Books, inv: Invoice, user: str) -> None:
+    """Mark the timesheet entries on a sent invoice's lines as invoiced on its number (jobs.mark_invoiced).
+
+    The email has already gone, so this never fails the send. send_invoice refuses, before emailing, a draft
+    whose hours are already on another invoice; entries removed or made unbillable since the draft was saved
+    (or billed elsewhere in the moment between that check and this) are skipped and listed in the audit log.
+    Marking again with the same number changes nothing, so a retried send is safe.
+    """
+    ids = inv.timesheet_entry_ids()
+    if inv.status != "sent" or inv.timesheets_marked or not ids:
+        return
+    known = {e.id: e for e in await jobs.load_entries(books)}
+    ok = [i for i in ids if (e := known.get(i)) and e.job_id == inv.job_id and e.billable
+          and e.invoiced_in in (None, inv.number)]
+    if ok:
+        try:
+            await jobs.mark_invoiced(books, ok, inv.number)
+        except jobs.JobsError as exc:  # changed between the read and the write: sending again retries
+            await books.audit(f"user:{user}", "timesheets_not_invoiced", {"invoice": inv.number, "reason": str(exc)})
+            return
+    inv.timesheets_marked = True
+    await save_invoice(books, inv)
+    await books.audit(f"user:{user}", "timesheets_invoiced", {
+        "job": inv.job_id, "invoice": inv.number, "entries": ok, "skipped": [i for i in ids if i not in ok],
+    })
+
+
 async def send_invoice(
     books: Books, sender: MailSender, number: str, user: str, pdf: bytes,
     *, to: str | None = None, subject: str | None = None, body: str | None = None,
@@ -463,17 +527,29 @@ async def send_invoice(
     """Email the PDF from the user's mailbox, mark the invoice sent, then post the sale.
 
     Order matters. The email goes first, because it is the one step that cannot be taken back; if it fails
-    nothing has changed. The invoice is saved as sent straight after, so a retry never emails twice. If posting
-    then fails, sending again posts the sale without emailing (the invoice is sent with no event yet).
+    nothing has changed. The invoice is saved as sent straight after, so a retry never emails twice. Then the
+    job hours on its lines are marked invoiced on its number, then the sale is posted. If either of those
+    fails, sending again finishes them without emailing (the invoice is sent with no event, or hours unmarked).
     """
     inv = await get_invoice(books, number)
-    if inv.status == "sent" and not inv.event_id:
-        await post_sale(books, inv, user)
+    if inv.status == "sent" and (not inv.event_id or (inv.timesheet_entry_ids() and not inv.timesheets_marked)):
+        await mark_hours(books, inv, user)
+        if inv.event_id:
+            await books.rebuild_safely(user)
+        else:
+            await post_sale(books, inv, user)
         return inv
     profile = await load_profile(books)
     to = (to or inv.customer.email or "").strip()
     if problems := send_problems(inv, profile, to):
         raise (InvoiceStateError if inv.status != "draft" else InvoiceError)("; ".join(problems))
+    if ids := inv.timesheet_entry_ids():  # two drafts from the same hours: refuse the second before emailing
+        entries = await jobs.load_entries(books)
+        billed = {e.id: e.invoiced_in for e in entries if e.invoiced_in not in (None, inv.number)}
+        if taken := [i for i in ids if i in billed]:
+            raise InvoiceError(
+                f"Timesheet entry {taken[0]} is already on invoice {billed[taken[0]]}; remove that line first"
+            )
     d_subject, d_body = default_email(inv, profile)
     await sender.send(OutgoingMail(
         to=to, subject=(subject or "").strip() or d_subject, body_text=(body or "").strip() or d_body,
@@ -484,6 +560,7 @@ async def send_invoice(
     await save_invoice(books, inv)
     await books.storage.write(f"{SENT}/{inv.number}.pdf", pdf)
     await books.audit(f"user:{user}", "invoice_sent", {"invoice": inv.number, "to": to, "pdf_sha256": sha})
+    await mark_hours(books, inv, user)  # before posting, so a failed post cannot leave the hours billable twice
     await post_sale(books, inv, user)
     return inv
 

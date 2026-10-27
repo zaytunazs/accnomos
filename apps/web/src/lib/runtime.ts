@@ -278,12 +278,6 @@ export const runtime = {
   /** Proposed lines from unbilled billable hours; marks nothing. */
   jobInvoiceLines: (a: AccountInfo, id: string) =>
     call<RtInvoiceProposal>(a, `/jobs/${encodeURIComponent(id)}/invoice-lines`, { method: "POST" }),
-  /** Only after the invoice has been sent. */
-  markInvoiced: (a: AccountInfo, id: string, invoiceId: string, entryIds: string[]) =>
-    call<RtTimesheetEntry[]>(a, `/jobs/${encodeURIComponent(id)}/mark-invoiced`, {
-      method: "POST",
-      body: JSON.stringify({ invoice_id: invoiceId, entry_ids: entryIds }),
-    }),
   staff: (a: AccountInfo) => call<RtStaff[]>(a, "/staff"),
   createStaff: (a: AccountInfo, body: RtStaffIn) => call<RtStaff>(a, "/staff", { method: "POST", body: JSON.stringify(body) }),
   updateStaff: (a: AccountInfo, id: string, body: RtStaffIn) =>
@@ -566,8 +560,13 @@ export interface RtInvoiceProposal {
   warnings: string[];
 }
 
-/** Where "Create invoice from unbilled hours" leaves the proposed lines for the invoice form (sessionStorage). */
+/** Where "Invoice these hours" leaves the proposed lines for /invoices/new?from=job (sessionStorage). */
 export const INVOICE_DRAFT_KEY = "accnomos.invoice-draft";
+export interface JobInvoiceDraft {
+  proposal: RtInvoiceProposal;
+  job_name: string;
+  customer_name: string | null;
+}
 export const pence = (p: number) => gbp(p / 100);
 
 
@@ -694,6 +693,7 @@ export interface RtInvoiceLineIn {
   unit: string | null;
   unit_price_pence: number;
   vat_code: RtSalesVatCode;
+  timesheet_entry_ids?: string[]; // the job hours this line bills; marked invoiced when the invoice is sent
 }
 export interface RtInvoiceLine extends RtInvoiceLineIn {
   vat_rate: number;
@@ -707,6 +707,7 @@ export interface RtInvoiceDraft {
   lines: RtInvoiceLineIn[];
   reference: string | null;
   notes: string | null;
+  job_id?: string | null;
 }
 export interface RtInvoice {
   number: string;
@@ -731,6 +732,8 @@ export interface RtInvoice {
   void_reason: string | null;
   reminders: { sent_at: string; to: string; subject: string }[];
   days_overdue: number | null; // only while sent and unpaid; 0 or less = not due yet
+  job_id: string | null;
+  timesheets_marked: boolean;
 }
 export interface RtInvoicePdf {
   path: string;

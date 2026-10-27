@@ -75,7 +75,7 @@ Severity:
 
 | Severity | Item |
 |---|---|
-| Medium | Hours are not linked to invoices: invoices record no timesheet entry ids and the send step does not call `jobs.mark_invoiced`, so the user types the invoice number (`routes_jobs.py`, `JobDetail.tsx`). That route checks entry ids but not that hours or rates still match what the user saw. |
+| Medium | An invoice made from a job's hours marks every entry on a line when it is sent, even if the user changed that line's hours or rate; voiding the invoice does not unmark them (`invoicing.mark_hours`). |
 | Medium | "Invoiced" value and margin use each person's *current* charge rate; changing a rate restates past jobs. |
 | Medium | Not verified: sending from a real mailbox, the `Mail.Send` consent redirect, the PDF in a real viewer, logo upload to a real OneDrive. |
 | Medium | Payroll is an estimate (annual thresholds ÷ 12, month 1, 1257L, category A, England/NI); the 2026–27 rates were checked against GOV.UK on 27 Oct 2026 by the payrun author only (no test pins them). No RTI. |
@@ -122,6 +122,5 @@ Severity:
 | Severity | Item |
 |---|---|
 | Medium | Deploy files are checked by config tests only: images not built, `docker compose up` and `nginx -t` not run, nothing tried against the live `api.accnomos.com`. |
-| Low | The relay prefers `CF-Connecting-IP` for `Gov-Client-Public-IP`; it is safe only behind `deploy/nginx.conf`, which strips that header. |
 | Low | The Graph provider's `_safe_path` raises `ValueError`, so a hand-edited unsafe path gives a 500 with a correlation id, not a 400. `Permissions-Policy` lists the deprecated `interest-cohort`. |
 | Low | No caller authentication beyond holding a token; no script CSP; keys and HMRC tokens sit in browser storage. See `docs/SECURITY.md`. |

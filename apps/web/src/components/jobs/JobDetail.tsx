@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import {
   INVOICE_DRAFT_KEY,
   pence,
   runtime,
   ukDate,
-  type RtInvoiceProposal,
+  type JobInvoiceDraft,
   type RtJobSummary,
   type RtStaff,
   type RtTimesheetEntry,
@@ -21,15 +21,14 @@ const card = "rounded-2xl border border-border bg-white p-4";
 const heading = "text-[17px] font-extrabold text-ink";
 const field = "h-10 rounded-xl border border-border px-2 text-sm";
 
-/** /jobs/job?id=…: the job's summary, its timesheet (with a quick-add row) and invoice lines from unbilled hours. */
+/** /jobs/job?id=…: the job's summary, its timesheet (with a quick-add row) and "Invoice these hours". */
 export default function JobDetail() {
+  const router = useRouter();
   const id = useSearchParams().get("id") ?? "";
   const account = useAccount();
   const [summary, setSummary] = useState<RtJobSummary | null>(null);
   const [entries, setEntries] = useState<RtTimesheetEntry[]>([]);
   const [staff, setStaff] = useState<RtStaff[]>([]);
-  const [proposal, setProposal] = useState<RtInvoiceProposal | null>(null);
-  const [invoiceNo, setInvoiceNo] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -81,38 +80,23 @@ export default function JobDetail() {
     act("add", async () => {
       await runtime.addTimesheet(account, { ...row, job_id: id, hours, note: row.note.trim() });
       setRow((r) => ({ ...r, hours: "", note: "" }));
-      setProposal(null); // the proposed lines no longer match the hours
     });
   }
 
-  function createInvoiceLines() {
-    if (!account) return;
+  /** Proposed lines from the unbilled hours, handed to the invoice form; sending that invoice marks the hours. */
+  function invoiceHours() {
+    if (!account || !summary) return;
     act("lines", async () => {
-      const p = await runtime.jobInvoiceLines(account, id);
-      setProposal(p);
+      const proposal = await runtime.jobInvoiceLines(account, id);
+      if (!proposal.lines.length) throw new Error(proposal.warnings.join(" ") || "No unbilled billable hours on this job.");
+      const draft: JobInvoiceDraft = { proposal, job_name: summary.job.name, customer_name: summary.customer_name };
       try {
-        window.sessionStorage.setItem(INVOICE_DRAFT_KEY, JSON.stringify(p));
+        window.sessionStorage.setItem(INVOICE_DRAFT_KEY, JSON.stringify(draft));
       } catch {
-        /* storage unavailable: the lines are still shown below */
+        throw new Error("This browser blocked session storage, so the hours can't be passed to the invoice form.");
       }
+      router.push("/invoices/new?from=job");
     });
-  }
-
-  function markInvoiced() {
-    if (!account || !proposal || !invoiceNo.trim()) return;
-    const ok = window.confirm(
-      `Mark ${proposal.entry_ids.length} timesheet entries as billed on ${invoiceNo.trim()}? Only do this once that invoice has been sent; they can't be edited afterwards.`,
-    );
-    if (!ok) return;
-    act(
-      "mark",
-      async () => {
-        await runtime.markInvoiced(account, id, invoiceNo.trim(), proposal.entry_ids);
-        setProposal(null);
-        setInvoiceNo("");
-      },
-      "Hours marked as invoiced.",
-    );
   }
 
   if (!id) return <p className="text-sm text-muted">No job chosen. <Link href="/jobs" className="font-bold text-teal-dark underline">Back to jobs</Link></p>;
@@ -253,10 +237,7 @@ export default function JobDetail() {
                       <button
                         type="button"
                         disabled={busy !== null}
-                        onClick={() => account && act(`del-${e.id}`, async () => {
-                          await runtime.deleteTimesheet(account, e.id);
-                          setProposal(null); // the proposed lines no longer match the hours
-                        })}
+                        onClick={() => account && act(`del-${e.id}`, () => runtime.deleteTimesheet(account, e.id))}
                         className="h-9 rounded-xl border border-border bg-white px-3 text-[13px] font-bold text-ink disabled:opacity-60"
                       >
                         {busy === `del-${e.id}` ? "Removing…" : "Remove"}
@@ -279,68 +260,16 @@ export default function JobDetail() {
           <button
             type="button"
             disabled={busy !== null || summary.unbilled_hours === 0}
-            onClick={createInvoiceLines}
+            onClick={invoiceHours}
             className="h-11 rounded-xl bg-teal px-5 text-[15px] font-extrabold text-white disabled:opacity-60"
           >
-            {busy === "lines" ? "Working out…" : "Create invoice from unbilled hours"}
+            {busy === "lines" ? "Working out…" : "Invoice these hours"}
           </button>
         </div>
-        {proposal && (
-          <div className="mt-3">
-            {proposal.warnings.map((w) => (
-              <p key={w} className="text-sm font-semibold text-warn-ink">{w}</p>
-            ))}
-            {proposal.lines.length > 0 && (
-              <>
-                <table className="mt-2 w-full text-left text-sm">
-                  <thead>
-                    <tr className="text-xs font-bold text-muted">
-                      <th scope="col" className="py-2 pr-3">Description</th>
-                      <th scope="col" className="py-2 pr-3 text-right">Hours</th>
-                      <th scope="col" className="py-2 pr-3 text-right">Rate</th>
-                      <th scope="col" className="py-2 text-right">Net</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border">
-                    {proposal.lines.map((ln) => (
-                      <tr key={ln.staff_id}>
-                        <td className="py-2 pr-3">{ln.description}</td>
-                        <td className="py-2 pr-3 text-right">{hrs(ln.qty)}</td>
-                        <td className="py-2 pr-3 text-right">{pence(ln.unit_price_pence)}</td>
-                        <td className="py-2 text-right font-bold">{pence(ln.net_pence)}</td>
-                      </tr>
-                    ))}
-                    <tr className="font-extrabold">
-                      <td className="py-2 pr-3">Total ex VAT</td>
-                      <td colSpan={3} className="py-2 text-right">{pence(proposal.net_pence)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-                {/* TODO(invoicing): /invoices/new does not read INVOICE_DRAFT_KEY yet; once it does (and its send step marks
-                    the entries invoiced), the manual step below goes away. */}
-                <p className="mt-3 text-sm text-muted">
-                  VAT is added by the invoice (standard rate unless you change it). Write the invoice with these lines in{" "}
-                  <Link href="/invoices/new" className="font-bold text-teal-dark underline">New invoice</Link>, then record its
-                  number here so these hours aren&apos;t billed twice.
-                </p>
-                <div className="mt-2 flex flex-wrap items-end gap-2">
-                  <label className="flex flex-col gap-1 text-sm font-bold text-ink">
-                    Invoice number
-                    <input value={invoiceNo} maxLength={64} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="INV-0001" className={field} />
-                  </label>
-                  <button
-                    type="button"
-                    disabled={busy !== null || !invoiceNo.trim()}
-                    onClick={markInvoiced}
-                    className="h-10 rounded-xl border-2 border-teal bg-white px-4 text-sm font-extrabold text-teal-dark disabled:opacity-60"
-                  >
-                    {busy === "mark" ? "Marking…" : "Invoice sent: mark these hours invoiced"}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        )}
+        <p className="mt-2 text-sm text-muted">
+          Opens a new invoice with this job&apos;s customer and one line per person (unbilled hours × charge rate), for you
+          to check and change. When that invoice is sent, these hours are marked invoiced with its number.
+        </p>
       </section>
 
       {summary.purchases.length > 0 && (

@@ -14,6 +14,7 @@ from accnomos_ledger.vat import compute_vat_return
 from fastapi.testclient import TestClient
 
 from app import invoicing as inv_
+from app import jobs
 from app.ai import remind
 from app.ai.config import AiConfig
 from app.books import AUDIT, Books
@@ -294,6 +295,130 @@ async def test_mark_paid_links_a_bank_line(books: Books, sender: FakeMailSender)
     assert (paid.paid_at, paid.payment_ref, paid.bank_line_id) == (date(2026, 11, 3), "ACME KITCHENS INV-0001", cands[0].id)
     line = next(ln for ln in await books.stored_bank_lines() if ln.id == cands[0].id)
     assert line.status == "matched" and line.event_ids() == [sent.event_id]
+
+
+# --------------------------------------------------------------------------- #
+# Job hours: lines from a job's timesheets, marked invoiced when the invoice is sent
+# --------------------------------------------------------------------------- #
+
+JOB = jobs.Job(id="00000000a001", name="Kitchen refit, 12 Elm Road", customer_id="c1")
+OTHER_JOB = jobs.Job(id="00000000a002", name="Bathroom, 3 Ash Lane")
+SAM = jobs.StaffMember(id="00000000b001", name="Sam", role="Electrician", hourly_rate_pence=2000, charge_rate_pence=4500)
+
+
+async def _hours(books: Books, *specs: tuple[float, bool]) -> list[jobs.TimesheetEntry]:
+    for job in (JOB, OTHER_JOB):
+        await jobs.save_job(books, job)
+    await jobs.save_staff(books, SAM)
+    return [await jobs.add_entry(books, jobs.TimesheetEntry(staff_id=SAM.id, job_id=JOB.id, date=date(2026, 10, 3 + n),
+                                                            hours=h, billable=b)) for n, (h, b) in enumerate(specs)]
+
+
+def _job_draft(proposal: jobs.InvoiceProposal, **kw) -> InvoiceDraft:
+    """What the web's invoice form sends after reading the job's proposed lines."""
+    lines = [{"description": ln.description, "quantity": str(ln.qty), "unit": ln.unit, "unit_price_pence": ln.unit_price_pence,
+              "vat_code": ln.vat_code, "timesheet_entry_ids": ln.entry_ids} for ln in proposal.lines]
+    return _draft(lines, job_id=proposal.job_id, **kw)
+
+
+async def _proposal(books: Books) -> jobs.InvoiceProposal:
+    return jobs.invoice_lines(JOB, await jobs.load_entries(books), await jobs.load_staff(books))
+
+
+async def test_sending_an_invoice_from_job_hours_marks_them_with_its_number(books: Books, sender: FakeMailSender, fake: FakeStorageProvider):
+    a, b = await _hours(books, (3, True), (1.5, True))
+    inv = await inv_.create_invoice(books, _job_draft(await _proposal(books)), USER)
+    assert inv.job_id == JOB.id and inv.timesheet_entry_ids() == [a.id, b.id] and inv.net_pence == 20250  # 4.5h × £45
+    assert all(e.invoiced_in is None for e in await jobs.load_entries(books))  # a draft marks nothing
+
+    sent = await inv_.send_invoice(books, sender, inv.number, USER, render_invoice(inv, await inv_.load_profile(books)))
+    assert sent.timesheets_marked and sent.event_id
+    assert {e.invoiced_in for e in await jobs.load_entries(books)} == {inv.number}
+    assert (await _proposal(books)).lines == []  # never proposed again
+    assert "timesheets_invoiced" in _audit(fake)
+
+
+async def test_job_hours_on_a_draft_are_checked(books: Books):
+    a, unbillable = await _hours(books, (3, True), (1, False))
+    other = await jobs.add_entry(books, jobs.TimesheetEntry(staff_id=SAM.id, job_id=OTHER_JOB.id, date=date(2026, 10, 9), hours=2))
+    billed = await jobs.add_entry(books, jobs.TimesheetEntry(staff_id=SAM.id, job_id=JOB.id, date=date(2026, 10, 9), hours=2))
+    await jobs.mark_invoiced(books, [billed.id], "INV-0042")
+
+    def line(*ids: str) -> dict:
+        return {"description": "Labour", "quantity": "1", "unit_price_pence": 4500, "timesheet_entry_ids": list(ids)}
+
+    for lines, job_id, why in [
+        ([line(a.id)], None, "need the job"),
+        ([line(a.id)], "00000000ffff", "No such job"),
+        ([line(other.id)], JOB.id, "not on this job"),
+        ([line("00000000eeee")], JOB.id, "not on this job"),
+        ([line(unbillable.id)], JOB.id, "not billable"),
+        ([line(billed.id)], JOB.id, "already on invoice INV-0042"),
+        ([line(a.id), line(a.id)], JOB.id, "more than one line"),
+    ]:
+        with pytest.raises(InvoiceError, match=why):
+            await inv_.create_invoice(books, _draft(lines, job_id=job_id), USER)
+    inv = await inv_.create_invoice(books, _draft([line(a.id)], job_id=JOB.id), USER)
+    with pytest.raises(InvoiceError, match="not billable"):
+        await inv_.update_draft(books, inv.number, _draft([line(unbillable.id)], job_id=JOB.id), USER)
+
+
+async def test_hours_changed_after_the_draft_are_skipped_not_fatal(books: Books, sender: FakeMailSender, fake: FakeStorageProvider):
+    a, b = await _hours(books, (3, True), (2, True))
+    inv = await inv_.create_invoice(books, _job_draft(await _proposal(books)), USER)
+    await jobs.delete_entry(books, b.id)  # still allowed: the draft has not been sent
+    sent = await inv_.send_invoice(books, sender, inv.number, USER, b"%PDF-1.4")
+    assert sent.status == "sent" and sent.timesheets_marked and len(sender.sent) == 1
+    assert (await jobs.get_entry(books, a.id)).invoiced_in == inv.number
+    (row,) = [json.loads(x) for p, d in fake.files.items() if p.startswith(f"{AUDIT}/") for x in d.decode().splitlines()
+              if json.loads(x)["action"] == "timesheets_invoiced"]
+    assert row["refs"]["entries"] == [a.id] and row["refs"]["skipped"] == [b.id]
+
+
+async def test_a_second_draft_of_the_same_hours_is_refused_before_it_is_emailed(books: Books, sender: FakeMailSender):
+    (a,) = await _hours(books, (3, True))
+    first = await inv_.create_invoice(books, _job_draft(await _proposal(books)), USER)
+    second = await inv_.create_invoice(books, _job_draft(await _proposal(books)), USER)  # both drafts: nothing marked yet
+    await inv_.send_invoice(books, sender, first.number, USER, b"%PDF-1.4")
+    with pytest.raises(InvoiceError, match=f"already on invoice {first.number}"):
+        await inv_.send_invoice(books, sender, second.number, USER, b"%PDF-1.4")
+    assert len(sender.sent) == 1 and (await inv_.get_invoice(books, second.number)).status == "draft"
+    assert (await jobs.get_entry(books, a.id)).invoiced_in == first.number
+
+
+async def test_hours_are_marked_before_the_sale_posts_and_a_retry_does_not_email_again(
+    books: Books, sender: FakeMailSender, monkeypatch,
+):
+    (a,) = await _hours(books, (3, True))
+    inv = await inv_.create_invoice(books, _job_draft(await _proposal(books)), USER)
+    real = books.post_event
+
+    async def broken(_event):
+        raise OSError("OneDrive hiccup")
+
+    monkeypatch.setattr(books, "post_event", broken)
+    with pytest.raises(OSError):
+        await inv_.send_invoice(books, sender, inv.number, USER, b"%PDF-1.4")
+    assert (await jobs.get_entry(books, a.id)).invoiced_in == inv.number  # not billable twice while the post is retried
+    monkeypatch.setattr(books, "post_event", real)
+    done = await inv_.send_invoice(books, sender, inv.number, USER, b"")
+    assert done.event_id and done.timesheets_marked and len(sender.sent) == 1
+
+
+def test_job_hours_round_trip_through_the_routes(client: TestClient, books: Books, sender: FakeMailSender):
+    import asyncio
+
+    (a,) = asyncio.run(_hours(books, (2, True)))
+    proposal = client.post(f"/jobs/{JOB.id}/invoice-lines", headers=H).json()
+    draft = _job_draft(jobs.InvoiceProposal.model_validate(proposal)).model_dump(mode="json")
+    r = client.post("/invoices", json=draft, headers=H)
+    assert r.status_code == 200, r.text
+    number = r.json()["number"]
+    assert r.json()["job_id"] == JOB.id and r.json()["lines"][0]["timesheet_entry_ids"] == [a.id]
+    assert client.post(f"/invoices/{number}/send", json={"confirm": True}, headers=H).json()["timesheets_marked"] is True
+    entries = client.get(f"/timesheets?job_id={JOB.id}", headers=H).json()
+    assert [e["invoiced_in"] for e in entries] == [number]
+    assert client.post("/invoices", json=draft, headers=H).status_code == 400  # the same hours cannot be billed again
 
 
 # --------------------------------------------------------------------------- #

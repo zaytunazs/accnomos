@@ -29,7 +29,7 @@ in `apps/web` passes; the Playwright suite was not re-run. `ruff` has not been r
 
 ## Receipts, review and the ledger
 
-- **No separate LLM Reviewer.** The card's "why" line is composed by code ("Checker, code"). Models write words only in *Ask*, inbox triage, reminder drafts and the planner rationale, each checked by code. The static mock-up on `/vat` still has a "Reviewer's note (Muse Spark)"; it is labelled sample but no such reviewer runs.
+- **No separate LLM Reviewer.** The card's "why" line is composed by code ("Checker, code"). Models write words only in *Ask*, inbox triage, reminder drafts and the planner rationale, each checked by code. The signed-out mock-up on `/vat` has a "Reviewer's note (Muse Spark)"; it is labelled sample but no such reviewer runs.
 - Key-mode extraction (muse-spark-1.3) is unit-tested only.
 - **Ledger files are not tamper-evident** (no signatures, no hash chain). An undo is a reversing entry dated like the original; if that VAT period was already submitted, the correction belongs in the current period.
 - `/books/vat` entry counts include sales and purchases only; a reversal changes the amounts but not the count next to boxes 1–4 and 6–7, while box 5's count includes it (`routes_vat.py`).
@@ -63,7 +63,7 @@ in `apps/web` passes; the Playwright suite was not re-run. `ruff` has not been r
 ## Invoicing, jobs, contacts
 
 - No credit notes; *Mark paid* posts nothing (the receipt is not posted to 1200 Bank); a paid invoice cannot be voided.
-- **Hours are not linked to invoices:** nothing records which timesheet entries an invoice billed, so the user marks hours invoiced by typing the invoice number (`routes_jobs.py`, `JobDetail.tsx` TODOs; `/invoices/new` does not read the job's draft lines). That route checks entry ids but not that hours or rates still match what the user saw.
+- An invoice made from a job's hours marks every entry on a line when it is sent, even if the user changed that line's hours or rate; voiding the invoice does not unmark them (`invoicing.mark_hours`).
 - "Invoiced" value and margin use each person's *current* charge rate; changing a rate restates past jobs.
 - If saving the sent copy fails after the email has gone, the invoice is saved as sent but the sale is not posted until the user retries (the retry exists). `GraphMailSender.MAX_INLINE` (3 MB) checks raw bytes; base64 adds a third, so an attachment near 3 MB can just exceed Graph's 4 MB request limit. In the send dialogs the tick stays ticked if the user edits the message afterwards.
 - A matched bank line counts as full payment: part payments, overpayments and credit notes are not modelled, so a part-paid invoice drops out of *Aged balances*. Ageing counts from the document date and ignores the invoice's due date and payment terms. Customer VAT numbers are only set with *Edit*. Outlook contacts added with "also add" are always customers. `contacts.json` is rewritten whole, so two tabs editing at once means last write wins.
@@ -112,7 +112,6 @@ in `apps/web` passes; the Playwright suite was not re-run. `ruff` has not been r
 ## Security and deployment
 
 - Single-worker limits: the **rate limit is per process** (in-memory buckets, cleared on restart; several replicas would each allow the full rate) and the relay's spent-state set is per process, hence one relay worker (`deploy/Dockerfile.relay`).
-- The relay still prefers `CF-Connecting-IP` for `Gov-Client-Public-IP` (`fraud_headers.py`); only `deploy/nginx.conf`, which strips that header and takes the last `X-Forwarded-For` entry, makes that safe, so the relay must never be reachable except through it.
 - The Graph provider's `_safe_path` raises a plain `ValueError`, so a hand-edited unsafe path in the user's books returns a 500 with a correlation id, not a 400 (nothing can escape the folder either way).
 - Deploy files are checked by config tests only: images not built, `docker compose up` and `nginx -t` not run, `.htaccess` not tried on Apache/Plesk, base images pinned by tag not digest, nothing tried against live `api.accnomos.com`. `Permissions-Policy` lists the deprecated `interest-cohort`.
 - No authentication of callers beyond holding a valid token; `X-User` is not checked against the token. No script CSP on the web app. The AI key and HMRC tokens live in browser storage, readable by an XSS on the web origin. Prompt injection beyond file names is only mitigated by checks and approval.

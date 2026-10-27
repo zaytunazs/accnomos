@@ -73,10 +73,14 @@ def test_enc():
 
 @pytest.mark.parametrize("headers,peer,expected", [
     ({}, ("198.51.100.7", 50123), ("198.51.100.7", 50123)),
-    ({"X-Forwarded-For": "203.0.113.9, 10.0.0.1"}, ("10.0.0.1", 4000), ("203.0.113.9", None)),
+    # the last hop is the one the proxy appended; hops to its left came from the client
+    ({"X-Forwarded-For": "6.6.6.6, 203.0.113.9"}, ("10.0.0.1", 4000), ("203.0.113.9", None)),
+    ({"X-Forwarded-For": "203.0.113.9 ,"}, ("10.0.0.1", 4000), (None, None)),
     ({"X-Forwarded-For": "203.0.113.9:6000", "X-Client-Port": "6000"}, ("10.0.0.1", 4000), ("203.0.113.9", 6000)),
     ({"X-Forwarded-For": "[2001:db8::1]:443"}, ("10.0.0.1", 4000), ("2001:db8::1", None)),
-    ({"CF-Connecting-IP": "2001:db8::2", "X-Forwarded-For": "203.0.113.9"}, ("10.0.0.1", 1), ("2001:db8::2", None)),
+    # CF-Connecting-IP is never trusted, with or without X-Forwarded-For
+    ({"CF-Connecting-IP": "2001:db8::2", "X-Forwarded-For": "203.0.113.9"}, ("10.0.0.1", 1), ("203.0.113.9", None)),
+    ({"CF-Connecting-IP": "2001:db8::2"}, ("198.51.100.7", 50123), ("198.51.100.7", 50123)),
     ({"X-Forwarded-For": "garbage"}, ("10.0.0.1", 4000), (None, None)),
 ])
 def test_request_meta(headers, peer, expected):

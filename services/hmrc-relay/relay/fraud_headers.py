@@ -121,16 +121,19 @@ _PORT_HEADERS = ("x-client-port", "x-real-port")
 def request_meta(
     headers: Mapping[str, str], peer_host: str | None, peer_port: int | None, received_at: datetime | None = None
 ) -> RequestMeta:
-    """Work out the client's public IP/port: CF-Connecting-IP, then the first X-Forwarded-For hop, then the socket.
+    """Work out the client's public IP/port: the last X-Forwarded-For hop, else the socket.
 
+    The proxy in front appends the peer it saw, so the last hop is the one a client cannot forge; anything to its
+    left was sent by the client. CF-Connecting-IP is never read, for the same reason (deploy/nginx.conf applies
+    the same rule and strips it, but the relay does not rely on that).
     Behind a proxy the socket port belongs to the proxy, so the port is only trusted from the socket when no
     forwarding header was used, or from an explicit client-port header set by the proxy.
     """
     received_at = received_at or datetime.now(UTC)
     h = {k.lower(): v for k, v in headers.items()}
-    forwarded = (h.get("cf-connecting-ip") or (h.get("x-forwarded-for") or "").split(",")[0]).strip()
+    forwarded = (h.get("x-forwarded-for") or "").strip()
     if forwarded:  # behind a proxy: the socket peer is the proxy, never fall back to it
-        ip = _clean_ip(forwarded)
+        ip = _clean_ip(forwarded.split(",")[-1])
         port = next((int(h[k]) for k in _PORT_HEADERS if h.get(k, "").strip().isdigit()), None)
     else:
         ip, port = _clean_ip(peer_host or ""), peer_port
