@@ -11,13 +11,24 @@ const _warnInk = Color(0xFF8A3F06);
 
 /// Result of the edit sheet: the `edits` map for `POST .../approve`
 /// (only changed runtime fields) plus a locally corrected proposal for
-/// the signed-out preview. The VAT code is validated here but never sent —
-/// the runtime has no such field.
+/// the signed-out preview. The VAT code and the VAT number are validated
+/// here but never sent — the runtime keeps them as read.
 class EditResult {
   EditResult({required this.edits, required this.updated});
   final Map<String, dynamic> edits;
   final Proposal updated;
 }
+
+/// Edit-sheet field → the verifier's field key
+/// (`services/runtime/app/ai/verify.py`, like the web's VERIFIER_FIELD).
+const _verifierField = {
+  'supplier': 'supplier_name',
+  'vrn': 'supplier_vat_number',
+  'date': 'date',
+  'net': 'net_total',
+  'vat': 'vat_total',
+  'gross': 'gross_total',
+};
 
 /// Bottom sheet to correct a proposal before approving it.
 class EditProposalSheet extends StatefulWidget {
@@ -33,11 +44,13 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
   late final TextEditingController _net;
   late final TextEditingController _vat;
   late final TextEditingController _gross;
+  late final TextEditingController _vrn;
 
   late final String? _initialDateIso;
   late String? _dateIso;
   bool _dateTouched = false;
 
+  late final String? _initialVrn;
   late String _vatCode;
   late String _category;
 
@@ -51,6 +64,8 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
     _vat = TextEditingController(
         text: proposal.vat == null ? '' : proposal.vat!.toStringAsFixed(2));
     _gross = TextEditingController(text: proposal.total.toStringAsFixed(2));
+    _vrn = TextEditingController(text: proposal.supplierVrn ?? '');
+    _initialVrn = proposal.supplierVrn;
     final parsed = tryParseProposalDate(proposal.date);
     _initialDateIso = parsed == null ? null : formatIsoDate(parsed);
     _dateIso = _initialDateIso ?? formatIsoDate(DateTime.now());
@@ -67,6 +82,7 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
     _net.dispose();
     _vat.dispose();
     _gross.dispose();
+    _vrn.dispose();
     super.dispose();
   }
 
@@ -74,20 +90,35 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
   int? get _vatPence => parsePoundsToPence(_vat.text);
   int? get _grossPence => parsePoundsToPence(_gross.text);
 
-  /// Parse or totals problems that block saving; null when the sheet is valid.
-  String? get _problem {
-    if (_supplier.text.trim().isEmpty) {
-      return 'Enter the supplier name.';
+  /// Every reason the sheet cannot be saved yet, first problem first.
+  List<EditFieldProblem> get _problems => validateEditForm(
+        supplier: _supplier.text,
+        dateIso: _dateIso ?? '',
+        netText: _net.text,
+        vatText: _vat.text,
+        grossText: _gross.text,
+        category: _category,
+        vrnText: _vrn.text,
+        initialVrn: _initialVrn,
+        vatCode: _vatCode,
+        linesCount: widget.proposal.lineCount,
+      );
+
+  EditFieldProblem? _problemFor(String field) {
+    for (final problem in _problems) {
+      if (problem.field == field) return problem;
     }
-    final net = _netPence;
-    final vat = _vatPence;
-    final gross = _grossPence;
-    if (net == null || vat == null || gross == null) {
-      return 'Net, VAT and gross must all be amounts, e.g. 32.06.';
+    return null;
+  }
+
+  /// The second reading of this field when it disagreed with the first.
+  String? _disagreed(String field) {
+    final key = _verifierField[field];
+    if (key == null) return null;
+    for (final diff in widget.proposal.verifierDiffs) {
+      if (diff.key == key) return diff.verifier;
     }
-    return totalsDiscrepancy(
-            netPence: net, vatPence: vat, grossPence: gross) ??
-        vatRateDiscrepancy(code: _vatCode, netPence: net, vatPence: vat);
+    return null;
   }
 
   void _pickDate() async {
@@ -107,8 +138,7 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
   }
 
   void _save() {
-    final problem = _problem;
-    if (problem != null) return;
+    if (_problems.isNotEmpty) return;
     final proposal = widget.proposal;
     final net = _netPence! / 100.0;
     final vat = _vatPence! / 100.0;
@@ -145,9 +175,15 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final problem = _problem;
+    final problems = _problems;
     final dateLabel = formatDisplayDate(
         tryParseProposalDate(_dateIso ?? '') ?? DateTime.now());
+    final dateProblem = _problemFor('date');
+    final dateSecond = _disagreed('date');
+    final status = problems.isEmpty
+        ? null
+        : "Can't save yet: ${problems.first.message}"
+            '${problems.length > 1 ? ' (and ${problems.length - 1} more)' : ''}';
     return SafeArea(
       child: SingleChildScrollView(
         padding: EdgeInsets.only(
@@ -173,63 +209,77 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
             const SizedBox(height: 12),
             Text('Edit proposal',
                 style: Theme.of(context).textTheme.titleMedium),
+            if (widget.proposal.verifierDiffs.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _warnBg,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: _warnBorder),
+                ),
+                child: const Text(
+                  'The second reading disagreed on the highlighted fields. '
+                  'Check them against the document.',
+                  style: TextStyle(color: _warnInk, height: 1.4),
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
-            _label('Supplier'),
-            TextField(
-              controller: _supplier,
-              autocorrect: false,
-              onChanged: (_) => setState(() {}),
-              decoration: _decoration('e.g. Screwfix'),
-            ),
+            _moneyField(field: 'supplier', label: 'Supplier', controller: _supplier),
             const SizedBox(height: 12),
             _label('Date'),
-            Row(
-              children: [
-                Expanded(child: Text(dateLabel)),
-                TextButton(
-                  style: TextButton.styleFrom(
-                      minimumSize: const Size(48, 48)),
-                  onPressed: _pickDate,
-                  child: const Text('Change'),
-                ),
-              ],
+            Container(
+              decoration: (dateProblem != null || dateSecond != null)
+                  ? BoxDecoration(
+                      color: _warnBg,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: _warnBorder),
+                    )
+                  : null,
+              padding: (dateProblem != null || dateSecond != null)
+                  ? const EdgeInsets.all(8)
+                  : EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(child: Text(dateLabel)),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                            minimumSize: const Size(48, 48)),
+                        onPressed: _pickDate,
+                        child: const Text('Change'),
+                      ),
+                    ],
+                  ),
+                  if (dateSecond != null)
+                    Text(
+                      'Second reading disagrees: $dateSecond',
+                      style: const TextStyle(color: _warnInk, fontSize: 13),
+                    ),
+                  if (dateProblem != null)
+                    Text(
+                      dateProblem.message,
+                      style: const TextStyle(
+                          color: _warnInk,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: 4),
-            _label('Net (£)'),
-            TextField(
-              controller: _net,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,£ ]'))
-              ],
-              onChanged: (_) => setState(() {}),
-              decoration: _decoration('0.00'),
-            ),
+            _moneyField(field: 'net', label: 'Net (£)', controller: _net),
             const SizedBox(height: 12),
-            _label('VAT (£)'),
-            TextField(
-              controller: _vat,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,£ ]'))
-              ],
-              onChanged: (_) => setState(() {}),
-              decoration: _decoration('0.00'),
-            ),
+            _moneyField(field: 'vat', label: 'VAT (£)', controller: _vat),
             const SizedBox(height: 12),
-            _label('Gross (£)'),
-            TextField(
-              controller: _gross,
-              keyboardType:
-                  const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'[0-9.,£ ]'))
-              ],
-              onChanged: (_) => setState(() {}),
-              decoration: _decoration('0.00'),
-            ),
+            _moneyField(
+                field: 'gross', label: 'Gross (£)', controller: _gross),
+            const SizedBox(height: 12),
+            _moneyField(field: 'vrn', label: 'VAT number', controller: _vrn),
             const SizedBox(height: 12),
             _label('VAT code'),
             DropdownButtonFormField<String>(
@@ -258,7 +308,7 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
               },
               decoration: _decoration(null),
             ),
-            if (problem != null) ...[
+            if (status != null) ...[
               const SizedBox(height: 12),
               Container(
                 width: double.infinity,
@@ -268,7 +318,7 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(color: _warnBorder),
                 ),
-                child: Text(problem,
+                child: Text(status,
                     style:
                         const TextStyle(color: _warnInk, height: 1.4)),
               ),
@@ -300,7 +350,7 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(14)),
                     ),
-                    onPressed: problem != null ? null : _save,
+                    onPressed: problems.isNotEmpty ? null : _save,
                     child: const Text('Save & approve',
                         softWrap: false,
                         style: TextStyle(fontWeight: FontWeight.w800)),
@@ -311,6 +361,64 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _moneyField({
+    required String field,
+    required String label,
+    required TextEditingController controller,
+  }) {
+    final problem = _problemFor(field);
+    final second = _disagreed(field);
+    final highlight = problem != null || second != null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _label(label),
+        TextField(
+          controller: controller,
+          autocorrect: false,
+          keyboardType: field == 'supplier' || field == 'vrn'
+              ? null
+              : const TextInputType.numberWithOptions(decimal: true),
+          inputFormatters: field == 'supplier' || field == 'vrn'
+              ? null
+              : [
+                  FilteringTextInputFormatter.allow(RegExp(r'[0-9.,£ ]'))
+                ],
+          onChanged: (_) => setState(() {}),
+          decoration: _decoration(
+            field == 'supplier'
+                ? 'e.g. Screwfix'
+                : field == 'vrn'
+                    ? 'e.g. GB 123 4567 89'
+                    : '0.00',
+          ).copyWith(
+            filled: true,
+            fillColor: highlight ? _warnBg : Colors.white,
+          ),
+        ),
+        if (second != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              'Second reading disagrees: $second',
+              style: const TextStyle(color: _warnInk, fontSize: 13),
+            ),
+          ),
+        if (problem != null)
+          Padding(
+            padding: const EdgeInsets.only(top: 4),
+            child: Text(
+              problem.message,
+              style: const TextStyle(
+                  color: _warnInk,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700),
+            ),
+          ),
+      ],
     );
   }
 

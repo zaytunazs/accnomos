@@ -234,6 +234,22 @@ Map<String, String>? ruleEdits(ProposalRuleView p, ReviewRule rule) {
   return edits.isEmpty ? null : edits;
 }
 
+/// The rule 'Always do this for Screwfix' saved on an earlier approval
+/// (mirrors the web's `sampleRules`, so signed-out cards run the same
+/// rule code as live ones).
+const List<ReviewRule> sampleRules = [
+  ReviewRule(
+    supplierKey: 'screwfix',
+    supplierName: 'Screwfix',
+    category: 'Tools & small equipment',
+    account: '5100 Tools & small equipment',
+    vatCode: 'S',
+    side: 'purchase',
+    typicalGrossPence: 3847,
+    vrn: 'GB232555112',
+  ),
+];
+
 /// Human line for a rule match on the card, mirroring the web notice.
 String ruleMatchLine(ReviewRule rule, int typicalGrossPence) {
   final name =

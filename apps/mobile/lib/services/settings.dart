@@ -22,6 +22,7 @@ class AppSettings {
     this.vatNumber,
     this.vatStagger = 1,
     this.vatStartMonth,
+    this.autopilotLevel = 'L1',
   });
 
   /// Address of the reader service. The default is the Android emulator's
@@ -61,6 +62,10 @@ class AppSettings {
   /// call sends `start_month=` instead of `stagger=`.
   final int? vatStartMonth;
 
+  /// Autopilot level, like the web's `accnomos.autopilot`: L0 off, L1
+  /// (default) rules wait for review, L2 posts matching rules on its own.
+  final String autopilotLevel;
+
   static const _kRuntimeUrl = 'accnomos.runtimeUrl';
   static const _kAiMode = 'accnomos.aiMode';
   static const _kAiBaseUrl = 'accnomos.aiBaseUrl';
@@ -71,6 +76,7 @@ class AppSettings {
   static const _kVatNumber = 'accnomos.vatNumber';
   static const _kVatStagger = 'accnomos.vatStagger';
   static const _kVatStartMonth = 'accnomos.vatStartMonth';
+  static const _kAutopilot = 'accnomos.autopilot';
 
   /// Load saved settings, falling back to defaults for anything missing.
   static Future<AppSettings> load() async {
@@ -86,6 +92,7 @@ class AppSettings {
       vatNumber: prefs.getString(_kVatNumber),
       vatStagger: _clampStagger(prefs.getInt(_kVatStagger)),
       vatStartMonth: _clampMonth(prefs.getInt(_kVatStartMonth)),
+      autopilotLevel: _clampLevel(prefs.getString(_kAutopilot)),
     );
   }
 
@@ -94,6 +101,9 @@ class AppSettings {
 
   static int? _clampMonth(int? value) =>
       value == null || value < 1 || value > 12 ? null : value;
+
+  static String _clampLevel(String? value) =>
+      value == 'L0' || value == 'L2' ? value! : 'L1';
 
   /// Persist the current values.
   Future<void> save() async {
@@ -122,6 +132,7 @@ class AppSettings {
     } else {
       await prefs.setString(_kVatNumber, vatNumber!);
     }
+    await prefs.setString(_kAutopilot, autopilotLevel);
     await prefs.setInt(_kVatStagger, vatStagger);
     if (vatStartMonth == null) {
       await prefs.remove(_kVatStartMonth);
