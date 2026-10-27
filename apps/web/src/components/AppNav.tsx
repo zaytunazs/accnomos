@@ -19,6 +19,8 @@ function isActive(pathname: string, href: string) {
 export default function AppNav() {
   const pathname = usePathname();
 
+  const settingsActive = isActive(pathname, "/settings");
+
   return (
     <nav aria-label="Main" className="flex flex-col gap-1">
       {links.map((link) => {
@@ -46,6 +48,17 @@ export default function AppNav() {
           </Link>
         );
       })}
+      <div className="mt-4 border-t border-border pt-3">
+        <Link
+          href="/settings"
+          aria-current={settingsActive ? "page" : undefined}
+          className={`flex h-11 items-center rounded-xl px-4 text-[15px] font-semibold ${
+            settingsActive ? "bg-teal-tint text-teal-dark" : "text-ink hover:bg-ground"
+          }`}
+        >
+          <span>Settings</span>
+        </Link>
+      </div>
     </nav>
   );
 }
