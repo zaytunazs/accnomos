@@ -23,7 +23,7 @@ from openpyxl import load_workbook
 from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger.bank import detect_bank, parse_bank_csv, reconciled_to
 from accnomos_ledger.vat import compute_vat_return
-from app import autopilot, bank_rules, credit_notes, invoicing, jobs, mileage, payments, payroll, todos
+from app import autopilot, bank_rules, credit_notes, dashboard, invoicing, jobs, mileage, payments, payroll, todos
 from app import contacts as contacts_mod
 from app.books import INBOX, NEEDS_A_LOOK, Books
 from app.checks import decide, run_checks
@@ -359,6 +359,8 @@ async def test_aged_balances(seeded: tuple) -> None:
     owed = {r.name: r.total_pence for r in aged.debtors.rows}
     assert owed["Oak & Ash Interiors Ltd"] == 60_000 and owed["Sterling & Co. Architects"] == 222_000 + 525_960
     assert (sum(c.kind == "customer" for c in contacts), sum(c.kind == "supplier" for c in contacts)) == (7, 16)
+    owed, _ = dashboard.owed_to_you(ledger, await invoicing.list_invoices(Books(fake)), TODAY)  # the Home tile
+    assert (owed.total_pence, owed.documents, owed.overdue, owed.overdue_pence) == (1_794_978, 6, 2, 282_000)
 
 
 async def test_bank(seeded: tuple) -> None:

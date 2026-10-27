@@ -40,6 +40,7 @@ Test mode differs from the stage in three visible ways: the model is called `acc
 
 For judges who want to click through six months of books rather than one receipt, `tools/seed_demo.md` fills a
 **separate** throwaway account; don't seed the account used for this script (it leaves 25 documents in `00 Inbox`).
+What that account shows is in [the table at the end](#what-the-judge-account-shows).
 
 ## Script
 
@@ -69,3 +70,27 @@ Step numbers are the `test.step` names in `apps/web/e2e/demo.spec.ts`; the still
 | A receipt from another quarter is scanned | The card warns, e.g. *Dated 14 Aug 2026 — falls in the previous period (Jul–Sep 2026); it will go on that return*. Approving keeps the receipt's own date, so it counts in Jul–Sep, not on screen: pick Jul–Sep in the picker to show it |
 | Stagger changed to 2 or 3 | The current period on 4 Nov becomes Nov–Jan (2) or Sep–Nov (3); both include 2 Nov, so Box 4 and Box 7 are unchanged, but the picker label differs |
 | Verifier or scan disagrees with the numbers above | Do not edit the figures; show *Needs a look* with both readings |
+
+## What the judge account shows
+
+The **second** throwaway account, filled by `tools/seed_demo.py` (not the one used for the script above, and never the
+account in the video). Fictional *Bramblewood Joinery Ltd*, Apr–Sep 2026, VAT quarterly on stagger 1; every document,
+invoice and statement says *SAMPLE — FICTIONAL COMPANY*. Figures are for a seed run in Oct–Dec 2026, from the fake-OneDrive
+run in `services/runtime/tests/test_seed_demo.py`; the seed has **not yet been run against a real OneDrive**, so open each
+page once before judges arrive. Full detail: `tools/seed_demo.md` §3.
+
+| Page | What to look at |
+|---|---|
+| **Home** | *Owed to you* £17,949.78 (6 documents, 2 overdue: INV-0002 and INV-0005), the two to-dos, recent activity |
+| **Review** | Empty; **Scan 00 Inbox now** (three presses) reads the 25 waiting documents: 23 proposals, 2 *Needs a look* (EUR invoice, malformed VAT number) |
+| **VAT return** | Jul–Sep 2026: Box 1 £3,857.63, Box 4 £50.30, Box 5 £3,807.33 (CN-0001 and a supplier credit note already netted). Apr–Jun 2026: Box 1 £1,053.00, Box 4 £452.50, Box 5 £600.50. Oct–Dec: zero |
+| **Invoices** | One of each state: INV-0001 paid, INV-0002 overdue, INV-0003 overpaid (£41.00 credit), INV-0004 paid by an exact bank match, INV-0005 part paid (£600.00 left), INV-0006 sent with credit note **CN-0001** (£318.00) |
+| **Contacts** | Aged debtors £17,949.78; Thornfield Interiors' *Credit on account* £41.00 (Apply / Refund); Oakfield Hardware Supplies' statement: bill, its linked credit note, the payment made from *Bills to pay* |
+| **Bank** | Apr–Jun reconciled; *Reconciled to 3 Jul 2026*; 16 Jul–Sep suggestions to confirm; **Rules** tab: account fee and insurance rules, which coded 8 lines |
+| **Jobs** | Kitchen fit-out closed and invoiced (INV-0001); Office partitions open with 85.5 h unbilled, ready to invoice |
+| **Vehicles** | Director's car, 13 journeys, 181.7 miles; Jul–Sep allowance £23.99 claimed |
+| **Payroll** | Draft estimate for September 2026 from the timesheets (£426.00 gross), not confirmed |
+| **Reports** | P&L, aged balances, VAT by period, trend; `07 Reports/<day>-reports.xlsx` already saved |
+| **Audit trail** | Lines from *You*, *Autopilot* (posted six energy bills by its rules) and *Intake* (two receipts emailed in) |
+| **Files** | The folder tree, filed receipts `01 Receipts/2026-04` … `2026-09`, `03 Sales` invoices and credit notes, statements, `07 Reports`, **Books.xlsx** |
+| **Ask** | "How much VAT did I reclaim last quarter?" → £50.30 (Jul–Sep) |
