@@ -30,9 +30,13 @@ export default function Explain({ title, children }: ExplainProps) {
       e.preventDefault(); // closed through state, so the dialog is never closed but mounted
       setOpen(false);
     };
+    // Chrome may close without a cancelable "cancel" (a second Escape with no click between): follow it.
+    const closed = () => setOpen(false);
     dialog.addEventListener("cancel", cancel);
+    dialog.addEventListener("close", closed);
     return () => {
       dialog.removeEventListener("cancel", cancel);
+      dialog.removeEventListener("close", closed);
       dialog.close();
       button?.focus({ preventScroll: true });
     };
@@ -57,29 +61,32 @@ export default function Explain({ title, children }: ExplainProps) {
           ref={dialogRef}
           id={panelId}
           aria-labelledby={`${panelId}-heading`}
-          onClick={(e) => e.target === dialogRef.current && setOpen(false)} // backdrop click
-          className="fixed inset-x-0 top-auto bottom-0 m-0 max-h-[85vh] w-full max-w-none overflow-y-auto rounded-t-2xl border-t border-border bg-white p-5 pb-8 text-ink backdrop:bg-ink/40 sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:max-h-none sm:w-[min(26rem,92vw)] sm:rounded-t-none sm:rounded-l-2xl sm:border-t-0 sm:border-l sm:p-6"
+          // Backdrop click. The padding is on the inner wrapper, so a click anywhere in the panel never lands on <dialog>.
+          onClick={(e) => e.target === dialogRef.current && setOpen(false)}
+          className="fixed inset-x-0 top-auto bottom-0 m-0 max-h-[85vh] w-full max-w-none overflow-y-auto rounded-t-2xl border-t border-border bg-white p-0 text-ink backdrop:bg-ink/40 sm:inset-y-0 sm:right-0 sm:left-auto sm:h-full sm:max-h-none sm:w-[min(26rem,92vw)] sm:rounded-t-none sm:rounded-l-2xl sm:border-t-0 sm:border-l"
         >
-          <div className="flex items-start justify-between gap-3">
-            <h2
-              ref={headingRef}
-              id={`${panelId}-heading`}
-              tabIndex={-1}
-              className="text-lg font-extrabold tracking-tight outline-none"
-            >
-              {title}
-            </h2>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Close explanation"
-              className="flex h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-border px-3 text-[15px] font-bold hover:bg-ground"
-            >
-              Close
-            </button>
-          </div>
-          <div className="mt-3 space-y-3 text-[15px] leading-7 text-ink">
-            {children}
+          <div className="min-h-full p-5 pb-8 sm:p-6">
+            <div className="flex items-start justify-between gap-3">
+              <h2
+                ref={headingRef}
+                id={`${panelId}-heading`}
+                tabIndex={-1}
+                className="text-lg font-extrabold tracking-tight outline-none"
+              >
+                {title}
+              </h2>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                aria-label="Close explanation"
+                className="flex h-11 min-w-11 shrink-0 items-center justify-center rounded-xl border border-border px-3 text-[15px] font-bold hover:bg-ground"
+              >
+                Close
+              </button>
+            </div>
+            <div className="mt-3 space-y-3 text-[15px] leading-7 text-ink">
+              {children}
+            </div>
           </div>
         </dialog>
       )}

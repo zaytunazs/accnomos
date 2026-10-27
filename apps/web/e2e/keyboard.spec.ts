@@ -145,3 +145,27 @@ test("Tab runs through each main page and out the other end: never trapped, focu
     expect(await focused(page), `${path}: focus should leave the page after the footer`).toBeNull();
   }
 });
+
+test("Explain drawer: a click inside stays open, the backdrop closes it, focus returns, it opens again", async ({ page, runtime }) => {
+  await signIn(page);
+  await createBooksFolder(page);
+  await runtime.postGold();
+  await page.goto("/ask");
+  const explain = page.getByRole("button", { name: "Explain: Where answers come from" });
+  const dialog = page.getByRole("dialog", { name: "Where answers come from" });
+  await explain.click();
+  await expect(dialog).toBeVisible();
+  // The panel's own padding, above the heading: inside the drawer, so it must not count as the backdrop.
+  const box = (await dialog.boundingBox())!;
+  await page.mouse.click(box.x + box.width / 2, box.y + 6);
+  await expect(dialog).toBeVisible();
+  await page.mouse.click(5, 5); // the backdrop, well left of the side drawer
+  await expect(dialog).toHaveCount(0);
+  await expect(explain).toBeFocused();
+  await expect(explain).toHaveAttribute("aria-expanded", "false");
+  await explain.click();
+  await expect(dialog).toBeVisible();
+  await page.getByRole("button", { name: "Close explanation" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(explain).toBeFocused();
+});
