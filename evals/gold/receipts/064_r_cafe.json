@@ -1,0 +1,78 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Thornfield Corner Bakery",
+  "vat_number": "GB 020 1471 39",
+  "address": "14 Market Row, Lancaster, LA1 1QT"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-01",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Wholemeal Cheese & Chutney Sandwich",
+   "qty": 5,
+   "unit_price": 3.75,
+   "net": 18.75,
+   "vat_rate": 20,
+   "vat": 3.75,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Baked Salmon & Dill Tart",
+   "qty": 2,
+   "unit_price": 5.165,
+   "net": 10.33,
+   "vat_rate": 20,
+   "vat": 2.07,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Organic Seeded Loaf (Half)",
+   "qty": 1,
+   "unit_price": 4.0,
+   "net": 4.0,
+   "vat_rate": 20,
+   "vat": 0.8,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Hot Chocolate (Large)",
+   "qty": 3,
+   "unit_price": 3.2933,
+   "net": 9.88,
+   "vat_rate": 20,
+   "vat": 1.97,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Buttermilk Scone with Clotted Cream",
+   "qty": 4,
+   "unit_price": 3.0,
+   "net": 12.0,
+   "vat_rate": 20,
+   "vat": 2.4,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 54.96,
+ "vat_total": 10.99,
+ "gross_total": 65.95,
+ "net_pence": 5496,
+ "vat_pence": 1099,
+ "gross_pence": 6595,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "4900",
+ "category_hint": "Catering & Bakery",
+ "printed_text": "           THORNFIELD CORNER BAKERY\n                14 Market Row\n              Lancaster LA1 1QT\n               Tel 01524 960123\n            VAT No GB 020 1471 39\n\n01/07/26                                 18:40\n----------------------------------------------\n5 x Wholemeal Cheese & Chutney Sandwich  22.50\n2 x Baked Salmon & Dill Tart             12.40\nOrganic Seeded Loaf (Half)                4.80\n3 x Hot Chocolate (Large)                11.85\n4 x Buttermilk Scone with Clotted Cream  14.40\n----------------------------------------------\nTOTAL                                   £65.95\nVAT 20%  net 54.96                       10.99\nCARD ****4900 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_cafe",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

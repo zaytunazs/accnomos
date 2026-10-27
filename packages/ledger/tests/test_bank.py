@@ -50,6 +50,15 @@ def test_hsbc_preamble_parentheses_cr_dr_and_text_dates() -> None:
     assert (receipt.amount_pence, receipt.balance_pence) == (9999, 105652)
 
 
+def test_tide_transaction_information_and_paid_columns() -> None:
+    csv = (b"Transaction ID,Transaction Date,Transaction Type,Transaction Information,Paid In,Paid Out,Balance\n"
+           b"TD1,2026-07-01,TRANSFER,INSURANCE DIRECT DD,,64.00,5475.00\n"
+           b"TD2,2026-07-06,Faster Payment In,NORTHGATE TIMBER CN8525,128.76,,5603.76\n")
+    out, inn = parse_bank_csv(csv, "tide.csv")
+    assert (out.date, out.amount_pence, out.description, out.balance_pence) == (date(2026, 7, 1), -6400, "INSURANCE DIRECT DD", 547500)
+    assert (inn.amount_pence, inn.description) == (12876, "NORTHGATE TIMBER CN8525")
+
+
 def test_amounts_and_dates() -> None:
     assert parse_amount("£1,234.50") == 123450
     assert parse_amount("(12.00)") == parse_amount("12.00 DR") == parse_amount("-12") == -1200

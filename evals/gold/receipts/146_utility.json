@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Thornfield Energy Solutions Ltd",
+  "vat_number": "GB 035 0325 18",
+  "address": "14 Millbrook Road, Leeds, LS10 1PN"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "TES-66054",
+ "date": "2026-09-27",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Standing Charge (Monthly)",
+   "qty": 1,
+   "unit_price": 6.5,
+   "net": 6.5,
+   "vat_rate": 20,
+   "vat": 1.3,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Electricity Usage (kWh)",
+   "qty": 5,
+   "unit_price": 0.18,
+   "net": 0.9,
+   "vat_rate": 20,
+   "vat": 0.18,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 7.4,
+ "vat_total": 1.48,
+ "gross_total": 8.88,
+ "net_pence": 740,
+ "vat_pence": 148,
+ "gross_pence": 888,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Business Electricity",
+ "printed_text": "THORNFIELD ENERGY SOLUTIONS LTD\n14 Millbrook Road\nLeeds LS10 1PN\nTel 0113 496 2210\nVAT Reg No: GB 035 0325 18\n\n                 TAX INVOICE\nNo:   TES-66054\nDate: 27-09-2026\nDue:  11/10/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nStanding Charge (M   1     6.50      6.50   20\nElectricity Usage    5     0.18      0.90   20\n----------------------------------------------\nNET TOTAL                                 7.40\nVAT 20%  net 7.40                         1.48\nTOTAL DUE                                £8.88\n\n\nDirect debit will be collected on 07 Oct 2026\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

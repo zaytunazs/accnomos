@@ -1,0 +1,78 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Northvale Timber & Structural Supplies",
+  "vat_number": "GB 092 4032 86",
+  "address": "14 Mill Lane, Ripon, HG4 2QT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "NTS-50908",
+ "date": "2026-07-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Planed Red Deal Oak 150mm x 25mm x 4.5m",
+   "qty": 6,
+   "unit_price": 42.5,
+   "net": 255.0,
+   "vat_rate": 20,
+   "vat": 51.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Planed White Oak 125mm x 19mm x 4.5m",
+   "qty": 4,
+   "unit_price": 68.0,
+   "net": 272.0,
+   "vat_rate": 20,
+   "vat": 54.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Structural Glulam Beam 150mm x 200mm x 4.5m",
+   "qty": 2,
+   "unit_price": 185.75,
+   "net": 371.5,
+   "vat_rate": 20,
+   "vat": 74.3,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak Plank 200mm x 35mm x 2.0m",
+   "qty": 8,
+   "unit_price": 31.2,
+   "net": 249.6,
+   "vat_rate": 20,
+   "vat": 49.92,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Bevelled Door Edge 150mm x 25mm x 2.0m",
+   "qty": 10,
+   "unit_price": 12.4,
+   "net": 124.0,
+   "vat_rate": 20,
+   "vat": 24.8,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 1272.1,
+ "vat_total": 254.42,
+ "gross_total": 1526.52,
+ "net_pence": 127210,
+ "vat_pence": 25442,
+ "gross_pence": 152652,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Timber Merchant",
+ "printed_text": "NORTHVALE TIMBER & STRUCTURAL SUPPLIES\n14 Mill Lane\nRipon HG4 2QT\nTel 01765 550 123\nVAT Reg No: GB 092 4032 86\n\n                 TAX INVOICE\nNo:   NTS-50908\nDate: 14-07-2026\nDue:  13/08/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nPlaned Red Deal Oa   6    42.50    255.00   20\nPlaned White Oak 1   4    68.00    272.00   20\nStructural Glulam    2   185.75    371.50   20\nSolid Oak Plank 20   8    31.20    249.60   20\nBevelled Door Edge  10    12.40    124.00   20\n----------------------------------------------\nNET TOTAL                             1,272.10\nVAT 20%  net 1,272.10                   254.42\nTOTAL DUE                            £1,526.52\n\n\nPay by BACS: Sort 40-27-43  Acc 81897885\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_merchant",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

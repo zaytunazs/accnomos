@@ -1,0 +1,96 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Calder Valley Timber Supplies Ltd",
+  "vat_number": "GB 028 7263 65",
+  "address": "Unit 4, Mill Lane Industrial Estate, Huddersfield, HD1 4QT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "CVT-71275",
+ "date": "2026-07-03",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Solid Oak 2x2 inch 6ft Riven",
+   "qty": 4,
+   "unit_price": 45.0,
+   "net": 180.0,
+   "vat_rate": 20,
+   "vat": 36.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak 4x2 inch 6ft Riven",
+   "qty": 2,
+   "unit_price": 78.5,
+   "net": 157.0,
+   "vat_rate": 20,
+   "vat": 31.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak 6x4 inch 8ft Riven",
+   "qty": 1,
+   "unit_price": 165.0,
+   "net": 165.0,
+   "vat_rate": 20,
+   "vat": 33.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak 12x4 inch 8ft Riven",
+   "qty": 1,
+   "unit_price": 320.0,
+   "net": 320.0,
+   "vat_rate": 20,
+   "vat": 64.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak 2x2 inch 12ft Riven",
+   "qty": 3,
+   "unit_price": 82.75,
+   "net": 248.25,
+   "vat_rate": 20,
+   "vat": 49.65,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak 4x2 inch 12ft Riven",
+   "qty": 2,
+   "unit_price": 140.0,
+   "net": 280.0,
+   "vat_rate": 20,
+   "vat": 56.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak 6x4 inch 12ft Riven",
+   "qty": 1,
+   "unit_price": 295.0,
+   "net": 295.0,
+   "vat_rate": 20,
+   "vat": 59.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 1645.25,
+ "vat_total": 329.05,
+ "gross_total": 1974.3,
+ "net_pence": 164525,
+ "vat_pence": 32905,
+ "gross_pence": 197430,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Timber & Joinery",
+ "printed_text": "CALDER VALLEY TIMBER SUPPLIES LTD\nUnit 4, Mill Lane Industrial Estate\nHuddersfield HD1 4QT\nTel 01484 982 345\nVAT Reg No: GB 028 7263 65\n\n                 TAX INVOICE\nNo:   CVT-71275\nDate: 03-07-2026\nDue:  02 Aug 2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nSolid Oak 2x2 inch   4    45.00    180.00   20\nSolid Oak 4x2 inch   2    78.50    157.00   20\nSolid Oak 6x4 inch   1   165.00    165.00   20\nSolid Oak 12x4 inc   1   320.00    320.00   20\nSolid Oak 2x2 inch   3    82.75    248.25   20\nSolid Oak 4x2 inch   2   140.00    280.00   20\nSolid Oak 6x4 inch   1   295.00    295.00   20\n----------------------------------------------\nNET TOTAL                             1,645.25\nVAT 20%  net 1,645.25                   329.05\nTOTAL DUE                            £1,974.30\n\n\nPay by BACS: Sort 40-44-46  Acc 20848773\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_merchant",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

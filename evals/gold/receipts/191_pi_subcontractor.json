@@ -1,0 +1,42 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Humberline Precision Trades Ltd",
+  "vat_number": "GB 031 4037 27",
+  "address": "14 Ironside Way, Hull, HU9 3JD"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "HPT-33230",
+ "date": "2026-08-22",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Professional French Polishing Service per panel",
+   "qty": 3,
+   "unit_price": 45.0,
+   "net": 135.0,
+   "vat_rate": 20,
+   "vat": 27.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 135.0,
+ "vat_total": 27.0,
+ "gross_total": 162.0,
+ "net_pence": 13500,
+ "vat_pence": 2700,
+ "gross_pence": 16200,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Skilled Trades",
+ "printed_text": "HUMBERLINE PRECISION TRADES LTD\n14 Ironside Way\nHull HU9 3JD\nTel 01482 991 204\nVAT Reg No: GB 031 4037 27\n\n                 TAX INVOICE\nNo:   HPT-33230\nDate: 22 Aug 2026\nDue:  05/09/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nProfessional Frenc   3    45.00    135.00   20\n----------------------------------------------\nNET TOTAL                               135.00\nVAT 20%  net 135.00                      27.00\nTOTAL DUE                              £162.00\n\n\nPay by BACS: Sort 40-87-58  Acc 72667523\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_subcontractor",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

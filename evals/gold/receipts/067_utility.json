@@ -1,0 +1,69 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Halifax Hydro-Grid Solutions Ltd",
+  "vat_number": "GB 035 5934 65",
+  "address": "14 Millgate Industrial Park, Halifax, HX3 7TN"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "HHG-43414",
+ "date": "2026-09-27",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Electricity Usage - Standard Business Tariff (per kWh)",
+   "qty": 1,
+   "unit_price": 0.14,
+   "net": 0.14,
+   "vat_rate": 20,
+   "vat": 0.03,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Standing Charge - Daily Supply Fee",
+   "qty": 1,
+   "unit_price": 0.62,
+   "net": 0.62,
+   "vat_rate": 20,
+   "vat": 0.12,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Climate Change Levy (per kWh)",
+   "qty": 1,
+   "unit_price": 0.01,
+   "net": 0.01,
+   "vat_rate": 20,
+   "vat": 0.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Half-Hourly Metering Service Fee",
+   "qty": 1,
+   "unit_price": 2.15,
+   "net": 2.15,
+   "vat_rate": 20,
+   "vat": 0.43,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 2.92,
+ "vat_total": 0.58,
+ "gross_total": 3.5,
+ "net_pence": 292,
+ "vat_pence": 58,
+ "gross_pence": 350,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Business Electricity Supply",
+ "printed_text": "HALIFAX HYDRO-GRID SOLUTIONS LTD\n14 Millgate Industrial Park\nHalifax HX3 7TN\nTel 01422 394 821\nVAT Reg No: GB 035 5934 65\n\n                 TAX INVOICE\nNo:   HHG-43414\nDate: 27/09/26\nDue:  11 Oct 2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nElectricity Usage    1     0.14      0.14   20\nStanding Charge -    1     0.62      0.62   20\nClimate Change Lev   1     0.01      0.01   20\nHalf-Hourly Meteri   1     2.15      2.15   20\n----------------------------------------------\nNET TOTAL                                 2.92\nVAT 20%  net 2.92                         0.58\nTOTAL DUE                                £3.50\n\n\nDirect debit will be collected on 07 Oct 2026\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

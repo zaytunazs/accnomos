@@ -1,0 +1,87 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Harrogate & District Fixings Ltd",
+  "vat_number": "GB 071 6927 53",
+  "address": "12 Granary Road, Harrogate, HG1 2LN"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-10-24",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Brass Cabinet Handle 60mm",
+   "qty": 4,
+   "unit_price": 7.0825,
+   "net": 28.33,
+   "vat_rate": 20,
+   "vat": 5.67,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak Door Handle Set",
+   "qty": 1,
+   "unit_price": 37.5,
+   "net": 37.5,
+   "vat_rate": 20,
+   "vat": 7.5,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Zinc Alloy Hook and Eye",
+   "qty": 10,
+   "unit_price": 2.708,
+   "net": 27.08,
+   "vat_rate": 20,
+   "vat": 5.42,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Stainless Steel Cup Hinge 4 inch",
+   "qty": 12,
+   "unit_price": 3.9583,
+   "net": 47.5,
+   "vat_rate": 20,
+   "vat": 9.5,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Victorian Style Letterbox",
+   "qty": 1,
+   "unit_price": 18.33,
+   "net": 18.33,
+   "vat_rate": 20,
+   "vat": 3.67,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Brass Door Stopper",
+   "qty": 2,
+   "unit_price": 12.915,
+   "net": 25.83,
+   "vat_rate": 20,
+   "vat": 5.17,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 184.57,
+ "vat_total": 36.93,
+ "gross_total": 221.5,
+ "net_pence": 18457,
+ "vat_pence": 3693,
+ "gross_pence": 22150,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "6857",
+ "category_hint": "Ironmongers",
+ "printed_text": "       HARROGATE & DISTRICT FIXINGS LTD\n               12 Granary Road\n              Harrogate HG1 2LN\n               Tel 01423 555019\n            VAT No GB 071 6927 53\n\n24 Oct 2026                              11:52\n----------------------------------------------\n4 x Brass Cabinet Handle 60mm            34.00\nSolid Oak Door Handle Set                45.00\n10 x Zinc Alloy Hook and Eye             32.50\n12 x Stainless Steel Cup Hinge 4 inch    57.00\nVictorian Style Letterbox                22.00\n2 x Brass Door Stopper                   31.00\n----------------------------------------------\nTOTAL                                  £221.50\nVAT 20%  net 184.57                      36.93\nCARD ****6857 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_trade",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

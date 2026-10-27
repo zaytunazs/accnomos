@@ -1,0 +1,42 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Thornbury Digital Solutions Ltd",
+  "vat_number": "GB 080 7633 64",
+  "address": "14 Walmgate, York, York, YO1 9WJ"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "TDS-19778",
+ "date": "2026-07-31",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "ThornCAD Pro - Annual Subscription (1 User)",
+   "qty": 1,
+   "unit_price": 899.0,
+   "net": 899.0,
+   "vat_rate": 20,
+   "vat": 179.8,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 899.0,
+ "vat_total": 179.8,
+ "gross_total": 1078.8,
+ "net_pence": 89900,
+ "vat_pence": 17980,
+ "gross_pence": 107880,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "5042",
+ "category_hint": "SaaS Subscription - CAD Design Software",
+ "printed_text": "THORNBURY DIGITAL SOLUTIONS LTD\n14 Walmgate, York\nYork YO1 9WJ\nTel 01904 555 0192\nVAT Reg No: GB 080 7633 64\n\n                 TAX INVOICE\nNo:   TDS-19778\nDate: 31-07-2026\nDue:  14/08/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nThornCAD Pro - Ann   1   899.00    899.00   20\n----------------------------------------------\nNET TOTAL                               899.00\nVAT 20%  net 899.00                     179.80\nTOTAL DUE                            £1,078.80\n\n\nPaid by card - thank you\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_software",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

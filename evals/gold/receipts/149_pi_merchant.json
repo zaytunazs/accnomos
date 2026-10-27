@@ -1,0 +1,69 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Humberhead Timber & Joinery Supplies",
+  "vat_number": "GB 045 6357 65",
+  "address": "14 Industrial Estate Road, Hull, HU8 7QT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "HTJ-28796",
+ "date": "2026-10-03",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Solid Oak Door Stile 75mm x 35mm x 2400mm",
+   "qty": 4,
+   "unit_price": 18.5,
+   "net": 74.0,
+   "vat_rate": 20,
+   "vat": 14.8,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak Door Rail 75mm x 35mm x 800mm",
+   "qty": 6,
+   "unit_price": 9.25,
+   "net": 55.5,
+   "vat_rate": 20,
+   "vat": 11.1,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak Door Rabbet 75mm x 15mm x 2400mm",
+   "qty": 4,
+   "unit_price": 12.75,
+   "net": 51.0,
+   "vat_rate": 20,
+   "vat": 10.2,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak Door Panel 75mm x 20mm x 400mm",
+   "qty": 8,
+   "unit_price": 4.5,
+   "net": 36.0,
+   "vat_rate": 20,
+   "vat": 7.2,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 216.5,
+ "vat_total": 43.3,
+ "gross_total": 259.8,
+ "net_pence": 21650,
+ "vat_pence": 4330,
+ "gross_pence": 25980,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Timber and joinery materials",
+ "printed_text": "HUMBERHEAD TIMBER & JOINERY SUPPLIES\n14 Industrial Estate Road\nHull HU8 7QT\nTel 01482 445566\nVAT Reg No: GB 045 6357 65\n\n                 TAX INVOICE\nNo:   HTJ-28796\nDate: 03-10-2026\nDue:  17 Oct 2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nSolid Oak Door Sti   4    18.50     74.00   20\nSolid Oak Door Rai   6     9.25     55.50   20\nSolid Oak Door Rab   4    12.75     51.00   20\nSolid Oak Door Pan   8     4.50     36.00   20\n----------------------------------------------\nNET TOTAL                               216.50\nVAT 20%  net 216.50                      43.30\nTOTAL DUE                              £259.80\n\n\nPay by BACS: Sort 40-84-51  Acc 79516755\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_merchant",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,42 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Halifax High-End Subcontractors Ltd",
+  "vat_number": "GB 098 5291 21",
+  "address": "14 Mill Lane, Halifax, HX3 7QT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "HHE-58358",
+ "date": "2026-08-08",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Professional bricklaying labour (per day rate, 8 hours)",
+   "qty": 1,
+   "unit_price": 3600.0,
+   "net": 3600.0,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  }
+ ],
+ "net_total": 3600.0,
+ "vat_total": 0.0,
+ "gross_total": 3600.0,
+ "net_pence": 360000,
+ "vat_pence": 0,
+ "gross_pence": 360000,
+ "vat_code": "RC",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Construction Labour",
+ "printed_text": "HALIFAX HIGH-END SUBCONTRACTORS LTD\n14 Mill Lane\nHalifax HX3 7QT\nTel 01422 489 213\nVAT Reg No: GB 098 5291 21\n\n                 TAX INVOICE\nNo:   HHE-58358\nDate: 08/08/26\nDue:  22/08/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nProfessional brick   1 3,600.00  3,600.00    0\n----------------------------------------------\nNET TOTAL                             3,600.00\nVAT                                       0.00\nTOTAL DUE                            £3,600.00\n\nREVERSE CHARGE: Customer to account to HMRC for\nthe VAT on these services (VAT Act 1994 s55A).\nVAT at 20% would be £720.00 - NOT charged.\n\nPay by BACS: Sort 40-56-16  Acc 63308819\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "REVERSE CHARGE: Customer to account to HMRC for; the VAT on these services (VAT Act 1994 s55A).; VAT at 20% would be £720.00 - NOT charged.",
+ "gold_case": "edge_reverse_charge",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

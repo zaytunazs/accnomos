@@ -40,6 +40,21 @@ def _font(size: int) -> Font:
     return ImageFont.load_default(size=size)  # Pillow >= 10.1
 
 
+_HAND_CANDIDATES = ("DejaVuSerif-Italic.ttf", "DejaVuSans-Oblique.ttf", "/usr/share/fonts/truetype/dejavu/DejaVuSerif-Italic.ttf")
+PEN = (30, 50, 150)
+
+
+@lru_cache(maxsize=8)
+def _hand_font(size: int) -> Font:
+    """Italic serif in blue pen colour stands in for handwriting; falls back to the mono font."""
+    for name in _HAND_CANDIDATES:
+        try:
+            return ImageFont.truetype(name, size)
+        except OSError:
+            continue
+    return _font(size)
+
+
 def _fit_font(lines: list[str]) -> Font:
     """Largest size (12..22 px) at which the longest line fits the paper width."""
     longest = max(lines, key=len, default="") or " "
@@ -52,6 +67,8 @@ def _fit_font(lines: list[str]) -> Font:
 
 def _paper(text: str, rng: random.Random) -> Image.Image:
     lines = text.expandtabs(4).splitlines() or [""]
+    hand = [ln.startswith("~") for ln in lines]  # '~' marks a handwritten line
+    lines = [ln[1:] if h else ln for ln, h in zip(lines, hand)]
     font = _fit_font(lines)
     asc, desc = font.getmetrics() if hasattr(font, "getmetrics") else (12, 4)
     lh = int((asc + desc) * 1.25)
@@ -59,7 +76,11 @@ def _paper(text: str, rng: random.Random) -> Image.Image:
     img = Image.new("RGB", (PAPER_W, h), PAPER)
     d = ImageDraw.Draw(img)
     for i, line in enumerate(lines):
-        d.text((MARGIN, MARGIN + i * lh), line, font=font, fill=INK)
+        if hand[i]:
+            size = getattr(font, "size", 14)
+            d.text((MARGIN + rng.randint(-2, 4), MARGIN + i * lh + rng.randint(-2, 2)), line, font=_hand_font(size), fill=PEN)
+        else:
+            d.text((MARGIN, MARGIN + i * lh), line, font=font, fill=INK)
     # 1-2 px grey specks (dust / thermal noise)
     for _ in range(PAPER_W * h // 900):
         x, y, s = rng.randrange(PAPER_W), rng.randrange(h), rng.choice((1, 1, 2))
@@ -109,11 +130,37 @@ def _png(img: Image.Image) -> bytes:
     return buf.getvalue()
 
 
-def render_receipt(printed_text: str, *, messy: bool = False, seed: int = 0) -> bytes:
-    """Render `printed_text` as a 600 px-wide receipt PNG."""
+def _fade(img: Image.Image) -> Image.Image:
+    """Sun-bleached thermal paper: pull everything 60 % of the way to the paper colour."""
+    return Image.blend(img, Image.new("RGB", img.size, PAPER), 0.6)
+
+
+def _tear(img: Image.Image, rng: random.Random) -> Image.Image:
+    """Ragged tear across the bottom edge and a bitten corner; returns RGBA (torn parts transparent)."""
+    rgba = img.convert("RGBA")
+    d = ImageDraw.Draw(rgba)
+    w, h = rgba.size
+    y = h - MARGIN // 2
+    pts = [(0, h)] + [(x, y + rng.randint(-8, 8)) for x in range(0, w + 24, 24)] + [(w, h)]
+    d.polygon(pts, fill=(0, 0, 0, 0))
+    r = rng.randint(30, 60)
+    d.polygon([(w, 0), (w - r, 0), (w, r)], fill=(0, 0, 0, 0))
+    return rgba
+
+
+def render_receipt(printed_text: str, *, messy: bool = False, seed: int = 0, damage: str | None = None) -> bytes:
+    """Render `printed_text` as a 600 px-wide receipt PNG. `damage`: "faded" | "torn" (else ignored)."""
     rng = random.Random(seed)
     paper = _paper(printed_text, rng)
+    if damage == "faded":
+        paper = _fade(paper)
+    elif damage == "torn":
+        paper = _tear(paper, rng)
     if not messy:
+        if paper.mode == "RGBA":
+            bg = Image.new("RGB", paper.size, TABLE)
+            bg.paste(paper, mask=paper)
+            paper = bg
         return _png(paper)
     if rng.random() < 0.04:
         _fold(paper, rng)

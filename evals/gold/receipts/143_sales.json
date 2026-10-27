@@ -1,0 +1,51 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Harrogate Heritage Trust Ltd"
+ },
+ "invoice_number": "BRW-2026-0574",
+ "date": "2026-08-20",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bespoke Solid Oak Staircase with Wrought Iron Spindles",
+   "qty": 1,
+   "unit_price": 4200.0,
+   "net": 4200.0,
+   "vat_rate": 20,
+   "vat": 840.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Restored Victorian Panelled Door (Repairs & Refinish)",
+   "qty": 1,
+   "unit_price": 850.0,
+   "net": 850.0,
+   "vat_rate": 20,
+   "vat": 170.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 5050.0,
+ "vat_total": 1010.0,
+ "gross_total": 6060.0,
+ "net_pence": 505000,
+ "vat_pence": 101000,
+ "gross_pence": 606000,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery & Restoration",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01423 998 221\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0574\nDate: 20-08-2026\nDue:  19 Sep 2026\n\nTo: Harrogate Heritage Trust Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBespoke Solid Oak    1 4,200.00  4,200.00   20\nRestored Victorian   1   850.00    850.00   20\n----------------------------------------------\nNET TOTAL                             5,050.00\nVAT 20%  net 5,050.00                 1,010.00\nTOTAL DUE                            £6,060.00\n\n\nPay by BACS: Sort 40-10-74  Acc 29744526\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

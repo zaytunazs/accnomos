@@ -1,0 +1,49 @@
+{
+ "id": "AAMk-sample-01",
+ "receivedDateTime": "2026-10-16T15:23:23Z",
+ "subject": "Invoice HFS-65764 from Harrow & Finch Skilled Trades Ltd",
+ "from": {
+  "emailAddress": {
+   "name": "Harrow & Finch Skilled Trades Ltd",
+   "address": "accounts@harrowfinchskilled.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Hi,\n\nPlease find attached our invoice. Payment terms as stated.\n\nKind regards\nAccounts\nHarrow & Finch Skilled Trades Ltd",
+ "body": {
+  "contentType": "text",
+  "content": "Hi,\n\nPlease find attached our invoice. Payment terms as stated.\n\nKind regards\nAccounts\nHarrow & Finch Skilled Trades Ltd"
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "961bc5b672ee8fdc7ff3",
+   "name": "195_pi_subcontractor.png",
+   "contentType": "image/png",
+   "size": 221363,
+   "isInline": false,
+   "path": "attachments/195_pi_subcontractor.png",
+   "gold": "195_pi_subcontractor.json"
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "document",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "195_pi_subcontractor.png",
+    "treat_as": "document",
+    "gold": "195_pi_subcontractor.json"
+   }
+  ],
+  "note": "single document"
+ }
+}

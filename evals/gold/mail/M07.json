@@ -1,0 +1,49 @@
+{
+ "id": "AAMk-sample-07",
+ "receivedDateTime": "2026-09-15T16:28:20Z",
+ "subject": "Invoice BRW-2026-0935 from Bramblewood Joinery Ltd",
+ "from": {
+  "emailAddress": {
+   "name": "Bramblewood Joinery Ltd",
+   "address": "accounts@bramblewoodjoinery.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Hi,\n\nPlease find attached our invoice. Payment terms as stated.\n\nKind regards\nAccounts\nBramblewood Joinery Ltd",
+ "body": {
+  "contentType": "text",
+  "content": "Hi,\n\nPlease find attached our invoice. Payment terms as stated.\n\nKind regards\nAccounts\nBramblewood Joinery Ltd"
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "732d42864e603133fe6d",
+   "name": "096_sales.png",
+   "contentType": "image/png",
+   "size": 288889,
+   "isInline": false,
+   "path": "attachments/096_sales.png",
+   "gold": "096_sales.json"
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "document",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "096_sales.png",
+    "treat_as": "document",
+    "gold": "096_sales.json"
+   }
+  ],
+  "note": "single document"
+ }
+}

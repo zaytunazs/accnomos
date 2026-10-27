@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Thornfield Energy Solutions",
+  "vat_number": "GB 072 0083 06",
+  "address": "42 Mill Lane, Bradford, BD1 1QT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "TES-23494",
+ "date": "2026-08-18",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Fixed-rate domestic gas supply (per day)",
+   "qty": 1,
+   "unit_price": 0.85,
+   "net": 0.85,
+   "vat_rate": 5,
+   "vat": 0.04,
+   "vat_code": "T5"
+  },
+  {
+   "description": "Standing charge for domestic gas (per day)",
+   "qty": 1,
+   "unit_price": 0.42,
+   "net": 0.42,
+   "vat_rate": 5,
+   "vat": 0.02,
+   "vat_code": "T5"
+  }
+ ],
+ "net_total": 1.27,
+ "vat_total": 0.06,
+ "gross_total": 1.33,
+ "net_pence": 127,
+ "vat_pence": 6,
+ "gross_pence": 133,
+ "vat_code": "T5",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Domestic Gas Supply",
+ "printed_text": "THORNFIELD ENERGY SOLUTIONS\n42 Mill Lane\nBradford BD1 1QT\nTel 01274 555 0193\nVAT Reg No: GB 072 0083 06\n\n                 TAX INVOICE\nNo:   TES-23494\nDate: 18 Aug 2026\nDue:  01 Sep 2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nFixed-rate domesti   1     0.85      0.85    5\nStanding charge fo   1     0.42      0.42    5\n----------------------------------------------\nNET TOTAL                                 1.27\nVAT 5%  net 1.27                          0.06\nTOTAL DUE                                £1.33\n\n\nDirect debit will be collected on 28 Aug 2026\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

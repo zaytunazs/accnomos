@@ -1,0 +1,60 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Preston Precision Trades Ltd",
+  "vat_number": "GB 049 8818 21",
+  "address": "42 Foundry Lane, Preston, PR1 2XY"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "PPT-72108",
+ "date": "2026-08-13",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Groundworks excavation and disposal per cubic metre",
+   "qty": 10,
+   "unit_price": 364.0,
+   "net": 3640.0,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  },
+  {
+   "description": "Scaffold erection and dismantling per day (30m2)",
+   "qty": 5,
+   "unit_price": 2560.0,
+   "net": 12800.0,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  },
+  {
+   "description": "Bricklaying labour per square metre",
+   "qty": 8,
+   "unit_price": 230.0,
+   "net": 1840.0,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  }
+ ],
+ "net_total": 18280.0,
+ "vat_total": 0.0,
+ "gross_total": 18280.0,
+ "net_pence": 1828000,
+ "vat_pence": 0,
+ "gross_pence": 1828000,
+ "vat_code": "RC",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Construction Services",
+ "printed_text": "PRESTON PRECISION TRADES LTD\n42 Foundry Lane\nPreston PR1 2XY\nTel 01772 445 890\nVAT Reg No: GB 049 8818 21\n\n                 TAX INVOICE\nNo:   PPT-72108\nDate: 13/08/26\nDue:  12/09/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nGroundworks excava  10   364.00  3,640.00    0\nScaffold erection    5 2,560.00 12,800.00    0\nBricklaying labour   8   230.00  1,840.00    0\n----------------------------------------------\nNET TOTAL                            18,280.00\nVAT                                       0.00\nTOTAL DUE                           £18,280.00\n\nREVERSE CHARGE: Customer to account to HMRC for\nthe VAT on these services (VAT Act 1994 s55A).\nVAT at 20% would be £3,656.00 - NOT charged.\n\nPay by BACS: Sort 40-62-60  Acc 98037313\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "REVERSE CHARGE: Customer to account to HMRC for; the VAT on these services (VAT Act 1994 s55A).; VAT at 20% would be £3,656.00 - NOT charged.",
+ "gold_case": "edge_reverse_charge",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

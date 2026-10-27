@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Thornfield Comms",
+  "vat_number": "GB 077 2175 58",
+  "address": "42 Mill Lane, Bradford, BD1 1AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "TC-59207",
+ "date": "2026-07-24",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Business Broadband 100Mbps Monthly",
+   "qty": 1,
+   "unit_price": 45.0,
+   "net": 45.0,
+   "vat_rate": 20,
+   "vat": 9.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Local Landline Rental",
+   "qty": 1,
+   "unit_price": 8.5,
+   "net": 8.5,
+   "vat_rate": 20,
+   "vat": 1.7,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 53.5,
+ "vat_total": 10.7,
+ "gross_total": 64.2,
+ "net_pence": 5350,
+ "vat_pence": 1070,
+ "gross_pence": 6420,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Broadband and Phone Line",
+ "printed_text": "THORNFIELD COMMS\n42 Mill Lane\nBradford BD1 1AB\nTel 01274 555 0192\nVAT Reg No: GB 077 2175 58\n\n                 TAX INVOICE\nNo:   TC-59207\nDate: 24/07/26\nDue:  07/08/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBusiness Broadband   1    45.00     45.00   20\nLocal Landline Ren   1     8.50      8.50   20\n----------------------------------------------\nNET TOTAL                                53.50\nVAT 20%  net 53.50                       10.70\nTOTAL DUE                               £64.20\n\n\nDirect debit will be collected on 03-08-2026\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

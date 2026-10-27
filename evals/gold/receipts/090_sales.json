@@ -1,0 +1,60 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Wharfedale Property Services Ltd"
+ },
+ "invoice_number": "BRW-2026-0874",
+ "date": "2026-10-20",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Solid Oak Staircase with Spindles",
+   "qty": 1,
+   "unit_price": 4500.0,
+   "net": 4500.0,
+   "vat_rate": 20,
+   "vat": 900.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Bespoke Walnut Kitchen Island",
+   "qty": 1,
+   "unit_price": 2800.0,
+   "net": 2800.0,
+   "vat_rate": 20,
+   "vat": 560.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Restored Georgian Double Door",
+   "qty": 1,
+   "unit_price": 1250.0,
+   "net": 1250.0,
+   "vat_rate": 20,
+   "vat": 250.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 8550.0,
+ "vat_total": 1710.0,
+ "gross_total": 10260.0,
+ "net_pence": 855000,
+ "vat_pence": 171000,
+ "gross_pence": 1026000,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01422 778899\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0874\nDate: 20/10/2026\nDue:  19 Nov 2026\n\nTo: Wharfedale Property Services Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nSolid Oak Staircas   1 4,500.00  4,500.00   20\nBespoke Walnut Kit   1 2,800.00  2,800.00   20\nRestored Georgian    1 1,250.00  1,250.00   20\n----------------------------------------------\nNET TOTAL                             8,550.00\nVAT 20%  net 8,550.00                 1,710.00\nTOTAL DUE                           £10,260.00\n\n\nPay by BACS: Sort 40-79-32  Acc 31125700\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

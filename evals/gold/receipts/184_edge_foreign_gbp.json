@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "AlpenCloud Solutions GmbH",
+  "vat_number": null,
+  "address": "Leopoldstraße 12, Munich, 80336 Munich"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-10-01",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Enterprise Cloud Hosting Subscription (Monthly)",
+   "qty": 1,
+   "unit_price": 310.31,
+   "net": 310.31,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  }
+ ],
+ "net_total": 310.31,
+ "vat_total": 0.0,
+ "gross_total": 310.31,
+ "net_pence": 31031,
+ "vat_pence": 0,
+ "gross_pence": 31031,
+ "vat_code": "T9",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "1799",
+ "category_hint": "Cloud Service",
+ "printed_text": "          ALPENCLOUD SOLUTIONS GMBH\n               Leopoldstraße 12\n             Munich 80336 Munich\n             Tel +49 89 1234 5678\n\n01/10/2026                               14:15\n----------------------------------------------\nEnterprise Cloud Hosting Subscription ( 310.31\n----------------------------------------------\nUSD 388.32 @ 0.7991 = GBP 310.31\nAmount charged to card (GBP)\nTOTAL                                  £310.31\nCARD ****1799 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "USD 388.32 @ 0.7991 = GBP 310.31",
+ "gold_case": "edge_foreign_gbp",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

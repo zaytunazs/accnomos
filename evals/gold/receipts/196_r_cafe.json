@@ -1,0 +1,60 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "The Crumb & Crust Collective",
+  "vat_number": "GB 005 6516 02",
+  "address": "12 Briggate, Lincoln, LN1 1AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-04",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Roast Beef & Horseradish Sandwich",
+   "qty": 5,
+   "unit_price": 5.792,
+   "net": 28.96,
+   "vat_rate": 20,
+   "vat": 5.79,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Chicken Caesar Wraps",
+   "qty": 3,
+   "unit_price": 4.5833,
+   "net": 13.75,
+   "vat_rate": 20,
+   "vat": 2.75,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Tuna Mayonnaise Baguette",
+   "qty": 2,
+   "unit_price": 4.0,
+   "net": 8.0,
+   "vat_rate": 20,
+   "vat": 1.6,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 50.71,
+ "vat_total": 10.14,
+ "gross_total": 60.85,
+ "net_pence": 5071,
+ "vat_pence": 1014,
+ "gross_pence": 6085,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "7019",
+ "category_hint": "Sandwiches",
+ "printed_text": "         THE CRUMB & CRUST COLLECTIVE\n                 12 Briggate\n               Lincoln LN1 1AB\n               Tel 01522 456789\n            VAT No GB 005 6516 02\n\n04/07/26                                 16:13\n----------------------------------------------\n5 x Roast Beef & Horseradish Sandwich    34.75\n3 x Chicken Caesar Wraps                 16.50\n2 x Tuna Mayonnaise Baguette              9.60\n----------------------------------------------\nTOTAL                                   £60.85\nVAT 20%  net 50.71                       10.14\nCARD ****7019 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_cafe",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

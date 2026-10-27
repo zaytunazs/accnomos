@@ -1,0 +1,64 @@
+{
+ "id": "AAMk-sample-18",
+ "receivedDateTime": "2026-10-11T06:30:00Z",
+ "subject": "Re: Quote for staircase",
+ "from": {
+  "emailAddress": {
+   "name": "Harrogate Heritage Interiors",
+   "address": "jo@harrogateheritage.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Thanks, that works for us.\n\n-- \nJo Marsh | Harrogate Heritage Interiors",
+ "body": {
+  "contentType": "text",
+  "content": "Thanks, that works for us.\n\n-- \nJo Marsh | Harrogate Heritage Interiors"
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "ab5cb46d4a8e4162cb1e",
+   "name": "image001.png",
+   "contentType": "image/png",
+   "size": 227,
+   "isInline": true,
+   "path": "attachments/image001.png",
+   "gold": null
+  },
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "c7b92a5e78eda5d0911e",
+   "name": "image002.jpg",
+   "contentType": "image/jpeg",
+   "size": 199,
+   "isInline": true,
+   "path": "attachments/image002.jpg",
+   "gold": null
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "decoy",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "image001.png",
+    "treat_as": "ignore",
+    "gold": null
+   },
+   {
+    "attachment": "image002.jpg",
+    "treat_as": "ignore",
+    "gold": null
+   }
+  ],
+  "note": "reply with signature images only"
+ }
+}

@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Peakway Fuels Ltd",
+  "vat_number": null,
+  "address": "14 Milldale Road, Doncaster, Sheffield, DN1 3QX"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-11",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "UNLEADED",
+   "qty": 42.45,
+   "unit_price": 1.18,
+   "net": 50.09,
+   "vat_rate": 20,
+   "vat": 10.02,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 50.09,
+ "vat_total": 10.02,
+ "gross_total": 60.11,
+ "net_pence": 5009,
+ "vat_pence": 1002,
+ "gross_pence": 6011,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "needs_a_look",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "5268",
+ "category_hint": "Petrol Station Forecourt Operator",
+ "printed_text": "              PEAKWAY FUELS LTD\n         14 Milldale Road, Doncaster\n              Sheffield DN1 3QX\n\n11-07-2026                               15:44\nPUMP 11\n----------------------------------------------\nUNLEADED\n42.45 L @ 141.6p/L\nFUEL                                    £60.11\n----------------------------------------------\nTOTAL                                   £60.11\nVAT 20%  net 50.09                       10.02\nCARD ****5268\n\n                 Drive safely\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_fuel",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

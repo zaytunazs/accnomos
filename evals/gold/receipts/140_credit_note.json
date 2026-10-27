@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Northgate Timber & Fixings Ltd",
+  "vat_number": "GB 025 5172 96",
+  "address": "Unit 4, Ironworks Industrial Estate, Doncaster, DN1 3QP"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "CN2060",
+ "date": "2026-10-11",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "19mm x 95mm x 2.4m Structural Softwood Timber",
+   "qty": 4,
+   "unit_price": 18.5,
+   "net": -74.0,
+   "vat_rate": 20,
+   "vat": -14.8,
+   "vat_code": "T1"
+  },
+  {
+   "description": "4.0in x 3.5in Galvanized Structural Screws (Box of 100)",
+   "qty": 2,
+   "unit_price": 24.95,
+   "net": -49.9,
+   "vat_rate": 20,
+   "vat": -9.98,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": -123.9,
+ "vat_total": -24.78,
+ "gross_total": -148.68,
+ "net_pence": -12390,
+ "vat_pence": -2478,
+ "gross_pence": -14868,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": true,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Timber and Fixings",
+ "printed_text": "NORTHGATE TIMBER & FIXINGS LTD\nUnit 4, Ironworks Industrial Estate\nDoncaster DN1 3QP\nTel 01302 847120\nVAT Reg No: GB 025 5172 96\n\n                 CREDIT NOTE\nNo:   CN2060\nDate: 11 Oct 2026\nRe invoice NTF-31583\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\n19mm x 95mm x 2.4m   4    18.50    -74.00   20\n4.0in x 3.5in Galv   2    24.95    -49.90   20\n----------------------------------------------\nNET TOTAL                              -123.90\nVAT 20%  net -123.90                    -24.78\nTOTAL CREDIT                          £-148.68\n\nReason: Damaged in transit - split ends on timber\n\nCredit to be refunded / offset on account\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "credit_note",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

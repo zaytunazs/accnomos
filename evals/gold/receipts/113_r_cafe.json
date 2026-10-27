@@ -1,0 +1,51 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Halifax Hearth & Crumb",
+  "vat_number": null,
+  "address": "14 Market Square, Halifax, HX1 2QT"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-10-12",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Cotswold Cheese & Pesto Roll",
+   "qty": 6,
+   "unit_price": 3.75,
+   "net": 22.5,
+   "vat_rate": 20,
+   "vat": 4.5,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Hot Chocolate (500ml)",
+   "qty": 4,
+   "unit_price": 2.6675,
+   "net": 10.67,
+   "vat_rate": 20,
+   "vat": 2.13,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 33.17,
+ "vat_total": 6.63,
+ "gross_total": 39.8,
+ "net_pence": 3317,
+ "vat_pence": 663,
+ "gross_pence": 3980,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "needs_a_look",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "5233",
+ "category_hint": "Catering",
+ "printed_text": "            HALIFAX HEARTH & CRUMB\n               14 Market Square\n               Halifax HX1 2QT\n              Tel 01422 445 678\n\n12-10-2026                               15:18\n----------------------------------------------\n6 x Cotswold Cheese & Pesto Roll         27.00\n4 x Hot Chocolate (500ml)                12.80\n----------------------------------------------\nTOTAL                                   £39.80\nVAT 20%  net 33.17                        6.63\nCARD ****5233 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_cafe",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

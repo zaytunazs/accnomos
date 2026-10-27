@@ -1,0 +1,87 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "North Pennine Timber & Tools Ltd",
+  "vat_number": "GB 039 1329 78",
+  "address": "14 Industrial Way, Boroughbridge, Harrogate, HG15 6QT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "NPT-97982",
+ "date": "2026-08-30",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Solid Oak Board 24mm x 150mm x 2400mm",
+   "qty": 5,
+   "unit_price": 45.5,
+   "net": 227.5,
+   "vat_rate": 20,
+   "vat": 45.5,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Beech Hardwood Dowel 8mm x 150mm (Box of 50)",
+   "qty": 2,
+   "unit_price": 12.75,
+   "net": 25.5,
+   "vat_rate": 20,
+   "vat": 5.1,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Water-Based Wood Filler - Natural (250g)",
+   "qty": 3,
+   "unit_price": 6.99,
+   "net": 20.97,
+   "vat_rate": 20,
+   "vat": 4.19,
+   "vat_code": "T1"
+  },
+  {
+   "description": "80x120mm Abrasive Sheet - P120 Grit",
+   "qty": 10,
+   "unit_price": 0.45,
+   "net": 4.5,
+   "vat_rate": 20,
+   "vat": 0.9,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Cabinet Handle - Brushed Nickel 64mm Center",
+   "qty": 8,
+   "unit_price": 3.2,
+   "net": 25.6,
+   "vat_rate": 20,
+   "vat": 5.12,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Construction Adhesive - High Tack (310ml)",
+   "qty": 1,
+   "unit_price": 8.5,
+   "net": 8.5,
+   "vat_rate": 20,
+   "vat": 1.7,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 312.57,
+ "vat_total": 62.51,
+ "gross_total": 375.08,
+ "net_pence": 31257,
+ "vat_pence": 6251,
+ "gross_pence": 37508,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Timber Merchant",
+ "printed_text": "NORTH PENNINE TIMBER & TOOLS LTD\n14 Industrial Way, Boroughbridge\nHarrogate HG15 6QT\nTel 01423 555012\nVAT Reg No: GB 039 1329 78\n\n                 TAX INVOICE\nNo:   NPT-97982\nDate: 30/08/26\nDue:  13/09/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nSolid Oak Board 24   5    45.50    227.50   20\nBeech Hardwood Dow   2    12.75     25.50   20\nWater-Based Wood F   3     6.99     20.97   20\n80x120mm Abrasive   10     0.45      4.50   20\nCabinet Handle - B   8     3.20     25.60   20\nConstruction Adhes   1     8.50      8.50   20\n----------------------------------------------\nNET TOTAL                               312.57\nVAT 20%  net 312.57                      62.51\nTOTAL DUE                              £375.08\n\n\nPay by BACS: Sort 40-55-35  Acc 33196284\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_merchant",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

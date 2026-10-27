@@ -1,0 +1,42 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Halcyon Flow Software Ltd",
+  "vat_number": "GB 070 8814 62",
+  "address": "Unit 4, Leeds Road Industrial Park, Bradford, BD1 3QX"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "HFS-74768",
+ "date": "2026-09-21",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "HalcyonFlow Pro - Annual Cloud Subscription (1 User)",
+   "qty": 1,
+   "unit_price": 499.0,
+   "net": 499.0,
+   "vat_rate": 20,
+   "vat": 99.8,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 499.0,
+ "vat_total": 99.8,
+ "gross_total": 598.8,
+ "net_pence": 49900,
+ "vat_pence": 9980,
+ "gross_pence": 59880,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "3418",
+ "category_hint": "SaaS Subscription",
+ "printed_text": "HALCYON FLOW SOFTWARE LTD\nUnit 4, Leeds Road Industrial Park\nBradford BD1 3QX\nTel 01274 555 0192\nVAT Reg No: GB 070 8814 62\n\n                 TAX INVOICE\nNo:   HFS-74768\nDate: 21 Sep 2026\nDue:  21-10-2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nHalcyonFlow Pro -    1   499.00    499.00   20\n----------------------------------------------\nNET TOTAL                               499.00\nVAT 20%  net 499.00                      99.80\nTOTAL DUE                              £598.80\n\n\nPaid by card - thank you\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_software",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

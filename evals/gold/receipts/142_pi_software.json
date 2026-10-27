@@ -1,0 +1,60 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Halifax Digital Foundry",
+  "vat_number": "GB 054 5917 57",
+  "address": "42 Calder Mill Lane, Halifax, HX2 7QT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "HDF-84901",
+ "date": "2026-10-11",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "CloudCAD Pro Annual License",
+   "qty": 1,
+   "unit_price": 450.0,
+   "net": 450.0,
+   "vat_rate": 20,
+   "vat": 90.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "StockTrack Enterprise Module",
+   "qty": 2,
+   "unit_price": 120.0,
+   "net": 240.0,
+   "vat_rate": 20,
+   "vat": 48.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "SecureVault Cloud Storage (500GB)",
+   "qty": 1,
+   "unit_price": 85.0,
+   "net": 85.0,
+   "vat_rate": 20,
+   "vat": 17.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 775.0,
+ "vat_total": 155.0,
+ "gross_total": 930.0,
+ "net_pence": 77500,
+ "vat_pence": 15500,
+ "gross_pence": 93000,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "6720",
+ "category_hint": "SaaS Subscription",
+ "printed_text": "HALIFAX DIGITAL FOUNDRY\n42 Calder Mill Lane\nHalifax HX2 7QT\nTel 01422 555 0990\nVAT Reg No: GB 054 5917 57\n\n                 TAX INVOICE\nNo:   HDF-84901\nDate: 11/10/26\nDue:  25-10-2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nCloudCAD Pro Annua   1   450.00    450.00   20\nStockTrack Enterpr   2   120.00    240.00   20\nSecureVault Cloud    1    85.00     85.00   20\n----------------------------------------------\nNET TOTAL                               775.00\nVAT 20%  net 775.00                     155.00\nTOTAL DUE                              £930.00\n\n\nPaid by card - thank you\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_software",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

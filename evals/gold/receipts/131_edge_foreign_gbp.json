@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Emerald Cloud Host Ltd",
+  "vat_number": null,
+  "address": "14 Grafton Street, Dublin, Dublin 2, Ireland"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-09-21",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Standard Cloud Hosting Plan - Monthly Subscription",
+   "qty": 1,
+   "unit_price": 31.85,
+   "net": 31.85,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  }
+ ],
+ "net_total": 31.85,
+ "vat_total": 0.0,
+ "gross_total": 31.85,
+ "net_pence": 3185,
+ "vat_pence": 0,
+ "gross_pence": 3185,
+ "vat_code": "T9",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "8665",
+ "category_hint": "Cloud Service",
+ "printed_text": "            EMERALD CLOUD HOST LTD\n              14 Grafton Street\n           Dublin Dublin 2, Ireland\n             Tel +353 1 555 0123\n\n21/09/26                                 08:13\n----------------------------------------------\nStandard Cloud Hosting Plan - Monthly Su 31.85\n----------------------------------------------\nEUR 38.50 @ 0.8272 = GBP 31.85\nAmount charged to card (GBP)\nTOTAL                                   £31.85\nCARD ****8665 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "EUR 38.50 @ 0.8272 = GBP 31.85",
+ "gold_case": "edge_foreign_gbp",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

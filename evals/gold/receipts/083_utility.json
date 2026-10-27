@@ -1,0 +1,60 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Harewood Line Solutions",
+  "vat_number": "GB 069 9073 26",
+  "address": "14 The Crescent, Harrogate, HG1 4LZ"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "HLS-81650",
+ "date": "2026-09-24",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Standard UK Landline (PSTN) Monthly Rental",
+   "qty": 1,
+   "unit_price": 25.5,
+   "net": 25.5,
+   "vat_rate": 20,
+   "vat": 5.1,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Fibre Broadband 100Mbps Monthly Rental",
+   "qty": 1,
+   "unit_price": 45.0,
+   "net": 45.0,
+   "vat_rate": 20,
+   "vat": 9.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "VoIP Telephone System License (per user)",
+   "qty": 2,
+   "unit_price": 12.75,
+   "net": 25.5,
+   "vat_rate": 20,
+   "vat": 5.1,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 96.0,
+ "vat_total": 19.2,
+ "gross_total": 115.2,
+ "net_pence": 9600,
+ "vat_pence": 1920,
+ "gross_pence": 11520,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Telecommunications",
+ "printed_text": "HAREWOOD LINE SOLUTIONS\n14 The Crescent\nHarrogate HG1 4LZ\nTel 01423 998822\nVAT Reg No: GB 069 9073 26\n\n                 TAX INVOICE\nNo:   HLS-81650\nDate: 24-09-2026\nDue:  08 Oct 2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nStandard UK Landli   1    25.50     25.50   20\nFibre Broadband 10   1    45.00     45.00   20\nVoIP Telephone Sys   2    12.75     25.50   20\n----------------------------------------------\nNET TOTAL                                96.00\nVAT 20%  net 96.00                       19.20\nTOTAL DUE                              £115.20\n\n\nDirect debit will be collected on 04 Oct 2026\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

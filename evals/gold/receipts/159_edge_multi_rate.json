@@ -1,0 +1,78 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Thornfield & Moss Garden Supplies",
+  "vat_number": "GB 043 9885 37",
+  "address": "14 Chapel Row, Durham, DH1 5QZ"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-04",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Standard Soil Bag 40L",
+   "qty": 5,
+   "unit_price": 3.75,
+   "net": 18.75,
+   "vat_rate": 20,
+   "vat": 3.75,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Hardcover Garden Care Guide",
+   "qty": 2,
+   "unit_price": 12.99,
+   "net": 25.98,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  },
+  {
+   "description": "Premium Organic Tomato Feed 1L",
+   "qty": 1,
+   "unit_price": 6.43,
+   "net": 6.43,
+   "vat_rate": 5,
+   "vat": 0.32,
+   "vat_code": "T5"
+  },
+  {
+   "description": "Child Car Seat Group 0+",
+   "qty": 1,
+   "unit_price": 166.66,
+   "net": 166.66,
+   "vat_rate": 20,
+   "vat": 33.33,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Stainless Steel Garden Shears",
+   "qty": 1,
+   "unit_price": 23.62,
+   "net": 23.62,
+   "vat_rate": 5,
+   "vat": 1.18,
+   "vat_code": "T5"
+  }
+ ],
+ "net_total": 241.44,
+ "vat_total": 38.58,
+ "gross_total": 280.02,
+ "net_pence": 24144,
+ "vat_pence": 3858,
+ "gross_pence": 28002,
+ "vat_code": "MIXED",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "1740",
+ "category_hint": "Mixed retail goods including garden equipment, literature, and safety accessories",
+ "printed_text": "      THORNFIELD & MOSS GARDEN SUPPLIES\n                14 Chapel Row\n                Durham DH1 5QZ\n              Tel 0191 445 8922\n            VAT No GB 043 9885 37\n\n04/07/2026                               09:20\n----------------------------------------------\n5 x Standard Soil Bag 40L                22.50\n2 x Hardcover Garden Care Guide          25.98\nPremium Organic Tomato Feed 1L            6.75\nChild Car Seat Group 0+                 199.99\nStainless Steel Garden Shears            24.80\n----------------------------------------------\nTOTAL                                  £280.02\nVAT 20%  net 185.41                      37.08\nVAT 5%  net 30.05                         1.50\nVAT 0%  net 25.98                         0.00\nCARD ****1740 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "edge_multi_rate",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

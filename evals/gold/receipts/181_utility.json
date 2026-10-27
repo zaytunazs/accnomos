@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Sheffield VoiceLink Ltd",
+  "vat_number": "GB 027 0986 66",
+  "address": "42 Industrial Way, Sheffield, S9 1AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "SVL-50948",
+ "date": "2026-10-08",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Standard UK Landline Installation",
+   "qty": 1,
+   "unit_price": 85.0,
+   "net": 85.0,
+   "vat_rate": 20,
+   "vat": 17.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Monthly Call Bundle (100 mins)",
+   "qty": 3,
+   "unit_price": 12.5,
+   "net": 37.5,
+   "vat_rate": 20,
+   "vat": 7.5,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 122.5,
+ "vat_total": 24.5,
+ "gross_total": 147.0,
+ "net_pence": 12250,
+ "vat_pence": 2450,
+ "gross_pence": 14700,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Telecommunications",
+ "printed_text": "SHEFFIELD VOICELINK LTD\n42 Industrial Way\nSheffield S9 1AB\nTel 0114 240 5501\nVAT Reg No: GB 027 0986 66\n\n                 TAX INVOICE\nNo:   SVL-50948\nDate: 08-10-2026\nDue:  22/10/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nStandard UK Landli   1    85.00     85.00   20\nMonthly Call Bundl   3    12.50     37.50   20\n----------------------------------------------\nNET TOTAL                               122.50\nVAT 20%  net 122.50                      24.50\nTOTAL DUE                              £147.00\n\n\nDirect debit will be collected on 18-10-2026\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

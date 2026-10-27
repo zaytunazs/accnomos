@@ -1,0 +1,78 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Greenfield Property Services Ltd"
+ },
+ "invoice_number": "BRW-2026-0653",
+ "date": "2026-10-19",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bespoke Solid Oak Staircase with Newel Posts",
+   "qty": 1,
+   "unit_price": 2850.0,
+   "net": 2850.0,
+   "vat_rate": 20,
+   "vat": 570.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Restored Victorian Front Door (Painted White)",
+   "qty": 1,
+   "unit_price": 640.0,
+   "net": 640.0,
+   "vat_rate": 20,
+   "vat": 128.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Fitted Wardrobe Unit with Mirrored Doors (2m width)",
+   "qty": 1,
+   "unit_price": 950.0,
+   "net": 950.0,
+   "vat_rate": 20,
+   "vat": 190.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Custom Kitchen Base Unit (Shaker Style, Painted)",
+   "qty": 3,
+   "unit_price": 210.0,
+   "net": 630.0,
+   "vat_rate": 20,
+   "vat": 126.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Hardwood Skirting Board (Per Meter)",
+   "qty": 12,
+   "unit_price": 18.5,
+   "net": 222.0,
+   "vat_rate": 20,
+   "vat": 44.4,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 5292.0,
+ "vat_total": 1058.4,
+ "gross_total": 6350.4,
+ "net_pence": 529200,
+ "vat_pence": 105840,
+ "gross_pence": 635040,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Bespoke Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01756 555 0192\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0653\nDate: 19/10/26\nDue:  02 Nov 2026\n\nTo: Greenfield Property Services Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBespoke Solid Oak    1 2,850.00  2,850.00   20\nRestored Victorian   1   640.00    640.00   20\nFitted Wardrobe Un   1   950.00    950.00   20\nCustom Kitchen Bas   3   210.00    630.00   20\nHardwood Skirting   12    18.50    222.00   20\n----------------------------------------------\nNET TOTAL                             5,292.00\nVAT 20%  net 5,292.00                 1,058.40\nTOTAL DUE                            £6,350.40\n\n\nPay by BACS: Sort 40-54-20  Acc 97708804\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

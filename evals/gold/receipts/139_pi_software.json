@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Whitrose Data Solutions Ltd",
+  "vat_number": "GB 015 4329 04",
+  "address": "14 The Crescent, Harrogate, Harrogate, HG1 2AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "WDS-35753",
+ "date": "2026-08-01",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Whitrose CAD Pro Annual Subscription",
+   "qty": 1,
+   "unit_price": 499.0,
+   "net": 499.0,
+   "vat_rate": 20,
+   "vat": 99.8,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Whitrose Stock Control Add-on Module",
+   "qty": 1,
+   "unit_price": 150.0,
+   "net": 150.0,
+   "vat_rate": 20,
+   "vat": 30.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 649.0,
+ "vat_total": 129.8,
+ "gross_total": 778.8,
+ "net_pence": 64900,
+ "vat_pence": 12980,
+ "gross_pence": 77880,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "3081",
+ "category_hint": "Software Subscription",
+ "printed_text": "WHITROSE DATA SOLUTIONS LTD\n14 The Crescent, Harrogate\nHarrogate HG1 2AB\nTel 01423 456789\nVAT Reg No: GB 015 4329 04\n\n                 TAX INVOICE\nNo:   WDS-35753\nDate: 01/08/2026\nDue:  15/08/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nWhitrose CAD Pro A   1   499.00    499.00   20\nWhitrose Stock Con   1   150.00    150.00   20\n----------------------------------------------\nNET TOTAL                               649.00\nVAT 20%  net 649.00                     129.80\nTOTAL DUE                              £778.80\n\n\nPaid by card - thank you\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_software",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

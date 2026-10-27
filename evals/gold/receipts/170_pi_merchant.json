@@ -1,0 +1,96 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Oakhurst Timber & Mill Co.",
+  "vat_number": "GB 006 7199 74",
+  "address": "Unit 4, Weaver Valley Business Park, Chester, CH1 4QW"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "OTM-31497",
+ "date": "2026-07-08",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Oiled Oak Battens 25x50mm x 2.4m",
+   "qty": 4,
+   "unit_price": 18.5,
+   "net": 74.0,
+   "vat_rate": 20,
+   "vat": 14.8,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Clear European Red Meranti Boards 50x100mm x 2.4m",
+   "qty": 10,
+   "unit_price": 22.75,
+   "net": 227.5,
+   "vat_rate": 20,
+   "vat": 45.5,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Plywood Sheet 18mm x 2440mm x 1220mm (Marine Grade)",
+   "qty": 2,
+   "unit_price": 85.0,
+   "net": 170.0,
+   "vat_rate": 20,
+   "vat": 34.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak Floor Boards 19x125mm x 1.8m (Rift Cut)",
+   "qty": 12,
+   "unit_price": 45.2,
+   "net": 542.4,
+   "vat_rate": 20,
+   "vat": 108.48,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Cedar Cladding Boards 25x145mm x 2.4m (Sawn)",
+   "qty": 8,
+   "unit_price": 14.6,
+   "net": 116.8,
+   "vat_rate": 20,
+   "vat": 23.36,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Pine Filler Sticks 45x45mm x 2.4m",
+   "qty": 6,
+   "unit_price": 9.8,
+   "net": 58.8,
+   "vat_rate": 20,
+   "vat": 11.76,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Hardwood Dowels 12mm x 100mm (Box of 100)",
+   "qty": 3,
+   "unit_price": 12.4,
+   "net": 37.2,
+   "vat_rate": 20,
+   "vat": 7.44,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 1226.7,
+ "vat_total": 245.34,
+ "gross_total": 1472.04,
+ "net_pence": 122670,
+ "vat_pence": 24534,
+ "gross_pence": 147204,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Timber Merchant",
+ "printed_text": "OAKHURST TIMBER & MILL CO.\nUnit 4, Weaver Valley Business Park\nChester CH1 4QW\nTel 01244 555 019\nVAT Reg No: GB 006 7199 74\n\n                 TAX INVOICE\nNo:   OTM-31497\nDate: 08/07/26\nDue:  22-07-2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nOiled Oak Battens    4    18.50     74.00   20\nClear European Red  10    22.75    227.50   20\nPlywood Sheet 18mm   2    85.00    170.00   20\nSolid Oak Floor Bo  12    45.20    542.40   20\nCedar Cladding Boa   8    14.60    116.80   20\nPine Filler Sticks   6     9.80     58.80   20\nHardwood Dowels 12   3    12.40     37.20   20\n----------------------------------------------\nNET TOTAL                             1,226.70\nVAT 20%  net 1,226.70                   245.34\nTOTAL DUE                            £1,472.04\n\n\nPay by BACS: Sort 40-53-94  Acc 15143838\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_merchant",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

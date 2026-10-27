@@ -1,0 +1,78 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Barnsley Bean & Bagel Co.",
+  "vat_number": "GB 017 4145 02",
+  "address": "14 Market Square, Barnsley, S70 2AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-13",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Chicken & Avocado Pita",
+   "qty": 4,
+   "unit_price": 5.4175,
+   "net": 21.67,
+   "vat_rate": 20,
+   "vat": 4.33,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Large Flat White",
+   "qty": 6,
+   "unit_price": 3.5,
+   "net": 21.0,
+   "vat_rate": 20,
+   "vat": 4.2,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Freshly Baked Sourdough Loaf",
+   "qty": 2,
+   "unit_price": 3.165,
+   "net": 6.33,
+   "vat_rate": 20,
+   "vat": 1.27,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Assorted Tea Selection (10 bags)",
+   "qty": 3,
+   "unit_price": 3.75,
+   "net": 11.25,
+   "vat_rate": 20,
+   "vat": 2.25,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Seasonal Fruit Salad",
+   "qty": 5,
+   "unit_price": 4.958,
+   "net": 24.79,
+   "vat_rate": 20,
+   "vat": 4.96,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 85.04,
+ "vat_total": 17.01,
+ "gross_total": 102.05,
+ "net_pence": 8504,
+ "vat_pence": 1701,
+ "gross_pence": 10205,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "3681",
+ "category_hint": "Food & Beverage",
+ "printed_text": "          BARNSLEY BEAN & BAGEL CO.\n               14 Market Square\n               Barnsley S70 2AB\n              Tel 01226 458 901\n            VAT No GB 017 4145 02\n\n13/07/26                                 14:52\n----------------------------------------------\n4 x Chicken & Avocado Pita               26.00\n6 x Large Flat White                     25.20\n2 x Freshly Baked Sourdough Loaf          7.60\n3 x Assorted Tea Selection (10 bags)     13.50\n5 x Seasonal Fruit Salad                 29.75\n----------------------------------------------\nTOTAL                                  £102.05\nVAT 20%  net 85.04                       17.01\nCARD ****3681 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_cafe",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

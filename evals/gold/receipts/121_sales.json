@@ -1,0 +1,69 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Harrow & Finch Interiors"
+ },
+ "invoice_number": "BRW-2026-0786",
+ "date": "2026-09-28",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Oak Staircase Newel Post (Bespoke Turned)",
+   "qty": 1,
+   "unit_price": 850.0,
+   "net": 850.0,
+   "vat_rate": 20,
+   "vat": 170.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Restoration: Georgian Door Repairs & Refinishing",
+   "qty": 2,
+   "unit_price": 420.0,
+   "net": 840.0,
+   "vat_rate": 20,
+   "vat": 168.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Bespoke Fitted Wardrobe (Walnut, 2.4m wide)",
+   "qty": 1,
+   "unit_price": 1250.0,
+   "net": 1250.0,
+   "vat_rate": 20,
+   "vat": 250.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Custom Kitchen Island Base (Solid Ash)",
+   "qty": 1,
+   "unit_price": 1800.0,
+   "net": 1800.0,
+   "vat_rate": 20,
+   "vat": 360.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 4740.0,
+ "vat_total": 948.0,
+ "gross_total": 5688.0,
+ "net_pence": 474000,
+ "vat_pence": 94800,
+ "gross_pence": 568800,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Bespoke Joinery & Restoration",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01524 738 291\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0786\nDate: 28/09/2026\nDue:  12/10/2026\n\nTo: Harrow & Finch Interiors\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nOak Staircase Newe   1   850.00    850.00   20\nRestoration: Georg   2   420.00    840.00   20\nBespoke Fitted War   1 1,250.00  1,250.00   20\nCustom Kitchen Isl   1 1,800.00  1,800.00   20\n----------------------------------------------\nNET TOTAL                             4,740.00\nVAT 20%  net 4,740.00                   948.00\nTOTAL DUE                            £5,688.00\n\n\nPay by BACS: Sort 40-94-59  Acc 24939691\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "LincRoad Fuel & Convenience",
+  "vat_number": "GB 051 5703 94",
+  "address": "14 Grantham Road, Lincoln, LN5 9XY"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-09-10",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "UNLEADED",
+   "qty": 45.2,
+   "unit_price": 1.1825,
+   "net": 53.45,
+   "vat_rate": 20,
+   "vat": 10.69,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 53.45,
+ "vat_total": 10.69,
+ "gross_total": 64.14,
+ "net_pence": 5345,
+ "vat_pence": 1069,
+ "gross_pence": 6414,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "4978",
+ "category_hint": "Fuel & Motorway Services",
+ "printed_text": "         LINCROAD FUEL & CONVENIENCE\n               14 Grantham Road\n               Lincoln LN5 9XY\n            VAT No GB 051 5703 94\n\n10/09/26                                 11:14\nPUMP 10\n----------------------------------------------\nUNLEADED\n45.20 L @ 141.9p/L\nFUEL                                    £64.14\n----------------------------------------------\nTOTAL                                   £64.14\nVAT 20%  net 53.45                       10.69\nCARD ****4978\n\n                 Drive safely\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_fuel",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

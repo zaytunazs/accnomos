@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Humberhead Fuels Ltd",
+  "vat_number": "GB 095 7310 51",
+  "address": "14 Dockside Road, Hull, HU8 7QX"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-02",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "SUPER UNLEADED",
+   "qty": 20.98,
+   "unit_price": 1.2974,
+   "net": 27.22,
+   "vat_rate": 20,
+   "vat": 5.45,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 27.22,
+ "vat_total": 5.45,
+ "gross_total": 32.67,
+ "net_pence": 2722,
+ "vat_pence": 545,
+ "gross_pence": 3267,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "1747",
+ "category_hint": "Petrol Station Forecourt Operator",
+ "printed_text": "             HUMBERHEAD FUELS LTD\n               14 Dockside Road\n                 Hull HU8 7QX\n            VAT No GB 095 7310 51\n\n02/07/26                                 11:38\nPUMP 11\n----------------------------------------------\nSUPER UNLEADED\n20.98 L @ 155.7p/L\nFUEL                                    £32.67\n----------------------------------------------\nTOTAL                                   £32.67\nVAT 20%  net 27.22                        5.45\nCARD ****1747\n\n                 Drive safely\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_fuel",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

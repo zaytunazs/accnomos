@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Humberhaven Parking Services Ltd",
+  "vat_number": "GB 082 4207 84",
+  "address": "14 Dockside Wharf, Hull, HU1 2XY"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-30",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Parking 6h",
+   "qty": 1,
+   "unit_price": 6.12,
+   "net": 6.12,
+   "vat_rate": 20,
+   "vat": 1.23,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 6.12,
+ "vat_total": 1.23,
+ "gross_total": 7.35,
+ "net_pence": 612,
+ "vat_pence": 123,
+ "gross_pence": 735,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "8278",
+ "category_hint": "Parking Tickets",
+ "printed_text": "       HUMBERHAVEN PARKING SERVICES LTD\n              14 Dockside Wharf\n                 Hull HU1 2XY\n              Tel 01482 955 310\n            VAT No GB 082 4207 84\n\n30-07-2026                               18:11\n----------------------------------------------\nParking 6h                                7.35\n----------------------------------------------\nTOTAL                                    £7.35\nVAT 20%  net 6.12                         1.23\nCARD ****8278 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_parking",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

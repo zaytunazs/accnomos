@@ -1,0 +1,69 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Huddersfield Zero-Rate Goods Ltd",
+  "vat_number": null,
+  "address": "14 Mill Street, Huddersfield, HD1 2AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-08-16",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Hardcover Fiction Novel",
+   "qty": 1,
+   "unit_price": 12.99,
+   "net": 12.99,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  },
+  {
+   "description": "Infant Cotton T-Shirt",
+   "qty": 1,
+   "unit_price": 4.5,
+   "net": 4.5,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  },
+  {
+   "description": "Chilled Salmon Fillet",
+   "qty": 1,
+   "unit_price": 3.75,
+   "net": 3.75,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  },
+  {
+   "description": "Children's School Uniform Blazer",
+   "qty": 1,
+   "unit_price": 24.0,
+   "net": 24.0,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  }
+ ],
+ "net_total": 45.24,
+ "vat_total": 0.0,
+ "gross_total": 45.24,
+ "net_pence": 4524,
+ "vat_pence": 0,
+ "gross_pence": 4524,
+ "vat_code": "T0",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "3541",
+ "category_hint": "Zero-rated",
+ "printed_text": "       HUDDERSFIELD ZERO-RATE GOODS LTD\n                14 Mill Street\n             Huddersfield HD1 2AB\n              Tel 01484 555 019\n\n16/08/26                                 17:26\n----------------------------------------------\nHardcover Fiction Novel                  12.99\nInfant Cotton T-Shirt                     4.50\nChilled Salmon Fillet                     3.75\nChildren's School Uniform Blazer         24.00\n----------------------------------------------\nTOTAL                                   £45.24\nCARD ****3541 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "edge_zero",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Highfield Forecourt Services",
+  "vat_number": "GB 049 1035 88",
+  "address": "12 Grantham Road, Wath-upon-Dearne, Barnsley, S63 4LX"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-29",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "UNLEADED",
+   "qty": 32.8,
+   "unit_price": 1.2168,
+   "net": 39.91,
+   "vat_rate": 20,
+   "vat": 7.98,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 39.91,
+ "vat_total": 7.98,
+ "gross_total": 47.89,
+ "net_pence": 3991,
+ "vat_pence": 798,
+ "gross_pence": 4789,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "9567",
+ "category_hint": "Vehicle Maintenance & Fuel",
+ "printed_text": "         HIGHFIELD FORECOURT SERVICES\n      12 Grantham Road, Wath-upon-Dearne\n               Barnsley S63 4LX\n            VAT No GB 049 1035 88\n\n29-07-2026                               18:58\nPUMP 12\n----------------------------------------------\nUNLEADED\n32.80 L @ 146.0p/L\nFUEL                                    £47.89\n----------------------------------------------\nTOTAL                                   £47.89\nVAT 20%  net 39.91                        7.98\nCARD ****9567\n\n                 Drive safely\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_fuel",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

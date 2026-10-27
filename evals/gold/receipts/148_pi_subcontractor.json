@@ -1,0 +1,42 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Hartlepool Precision Trades Ltd",
+  "vat_number": "GB 066 6100 82",
+  "address": "14 Oakwood Avenue, Harrogate, HG1 2QT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "HPT-33016",
+ "date": "2026-09-06",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Professional French Polishing Service per door panel",
+   "qty": 1,
+   "unit_price": 185.0,
+   "net": 185.0,
+   "vat_rate": 20,
+   "vat": 37.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 185.0,
+ "vat_total": 37.0,
+ "gross_total": 222.0,
+ "net_pence": 18500,
+ "vat_pence": 3700,
+ "gross_pence": 22200,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "French Polishing",
+ "printed_text": "HARTLEPOOL PRECISION TRADES LTD\n14 Oakwood Avenue\nHarrogate HG1 2QT\nTel 01423 555012\nVAT Reg No: GB 066 6100 82\n\n                 TAX INVOICE\nNo:   HPT-33016\nDate: 06/09/26\nDue:  06/10/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nProfessional Frenc   1   185.00    185.00   20\n----------------------------------------------\nNET TOTAL                               185.00\nVAT 20%  net 185.00                      37.00\nTOTAL DUE                              £222.00\n\n\nPay by BACS: Sort 40-40-75  Acc 18080208\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_subcontractor",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Hargreaves & Finch Building Supplies",
+  "vat_number": "GB 023 8611 93",
+  "address": "42 Foundry Lane, Lancaster, Lancaster, LA1 1QT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "CN9228",
+ "date": "2026-07-25",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "C24 Timber Beam 245x75mm x 3.6m",
+   "qty": 4,
+   "unit_price": 45.5,
+   "net": -182.0,
+   "vat_rate": 20,
+   "vat": -36.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Structural Plywood Panel 18mm x 1220mm x 2440mm",
+   "qty": 2,
+   "unit_price": 38.75,
+   "net": -77.5,
+   "vat_rate": 20,
+   "vat": -15.5,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": -259.5,
+ "vat_total": -51.9,
+ "gross_total": -311.4,
+ "net_pence": -25950,
+ "vat_pence": -5190,
+ "gross_pence": -31140,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": true,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Timber & Fixings",
+ "printed_text": "HARGREAVES & FINCH BUILDING SUPPLIES\n42 Foundry Lane, Lancaster\nLancaster LA1 1QT\nTel 01524 468902\nVAT Reg No: GB 023 8611 93\n\n                 CREDIT NOTE\nNo:   CN9228\nDate: 25-07-2026\nRe invoice HFB-81418\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nC24 Timber Beam 24   4    45.50   -182.00   20\nStructural Plywood   2    38.75    -77.50   20\n----------------------------------------------\nNET TOTAL                              -259.50\nVAT 20%  net -259.50                    -51.90\nTOTAL CREDIT                          £-311.40\n\nReason: Damaged during delivery - warped timber\n\nCredit to be refunded / offset on account\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "credit_note",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

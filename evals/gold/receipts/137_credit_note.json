@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Tyne Valley Building Supplies",
+  "vat_number": "GB 090 0471 92",
+  "address": "42 Quayside Road, Newcastle, NE1 4TX"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "CN1050",
+ "date": "2026-08-21",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "600x600mm Porcelain Floor Tile (Rectified)",
+   "qty": 5,
+   "unit_price": 24.5,
+   "net": -122.5,
+   "vat_rate": 20,
+   "vat": -24.5,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Matte Black Shower Mixer Valve (1/2 inch BSP)",
+   "qty": 1,
+   "unit_price": 85.0,
+   "net": -85.0,
+   "vat_rate": 20,
+   "vat": -17.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": -207.5,
+ "vat_total": -41.5,
+ "gross_total": -249.0,
+ "net_pence": -20750,
+ "vat_pence": -4150,
+ "gross_pence": -24900,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": true,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Plumbing & Heating",
+ "printed_text": "TYNE VALLEY BUILDING SUPPLIES\n42 Quayside Road\nNewcastle NE1 4TX\nTel 0191 445 7890\nVAT Reg No: GB 090 0471 92\n\n                 CREDIT NOTE\nNo:   CN1050\nDate: 21 Aug 2026\nRe invoice TVB-78455\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\n600x600mm Porcelai   5    24.50   -122.50   20\nMatte Black Shower   1    85.00    -85.00   20\n----------------------------------------------\nNET TOTAL                              -207.50\nVAT 20%  net -207.50                    -41.50\nTOTAL CREDIT                          £-249.00\n\nReason: Cracked ceramic tiles found upon unloading\n\nCredit to be refunded / offset on account\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "credit_note",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

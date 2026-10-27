@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Thirsk Aqua Flow Ltd",
+  "vat_number": "GB 027 7056 76",
+  "address": "14 Mill Road, Ripon, HG2 1QT"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "TAF-61711",
+ "date": "2026-07-01",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Commercial Water Supply - Monthly Usage",
+   "qty": 1,
+   "unit_price": 45.5,
+   "net": 45.5,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  },
+  {
+   "description": "Sewerage Service Charge - Quarterly",
+   "qty": 1,
+   "unit_price": 120.0,
+   "net": 120.0,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  }
+ ],
+ "net_total": 165.5,
+ "vat_total": 0.0,
+ "gross_total": 165.5,
+ "net_pence": 16550,
+ "vat_pence": 0,
+ "gross_pence": 16550,
+ "vat_code": "T0",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "business water and sewerage (zero-rated)",
+ "printed_text": "THIRSK AQUA FLOW LTD\n14 Mill Road\nRipon HG2 1QT\nTel 01765 440123\nVAT Reg No: GB 027 7056 76\n\n                 TAX INVOICE\nNo:   TAF-61711\nDate: 01/07/26\nDue:  15-07-2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nCommercial Water S   1    45.50     45.50    0\nSewerage Service C   1   120.00    120.00    0\n----------------------------------------------\nNET TOTAL                               165.50\nVAT                                       0.00\nTOTAL DUE                              £165.50\n\n\nDirect debit will be collected on 11/07/26\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

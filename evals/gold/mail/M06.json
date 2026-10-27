@@ -1,0 +1,49 @@
+{
+ "id": "AAMk-sample-06",
+ "receivedDateTime": "2026-07-30T13:06:49Z",
+ "subject": "Your receipt from Humberhaven Parking Services Ltd",
+ "from": {
+  "emailAddress": {
+   "name": "Humberhaven Parking Services Ltd",
+   "address": "noreply@humberhavenparking.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Thanks for your purchase on 2026-07-30. Your receipt is attached.",
+ "body": {
+  "contentType": "text",
+  "content": "Thanks for your purchase on 2026-07-30. Your receipt is attached."
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "7c104be876d454265a6d",
+   "name": "109_r_parking.pdf",
+   "contentType": "application/pdf",
+   "size": 40951,
+   "isInline": false,
+   "path": "attachments/109_r_parking.pdf",
+   "gold": "109_r_parking.json"
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "document",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "109_r_parking.pdf",
+    "treat_as": "document",
+    "gold": "109_r_parking.json"
+   }
+  ],
+  "note": "single document"
+ }
+}

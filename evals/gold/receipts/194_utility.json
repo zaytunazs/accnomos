@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Northlight Fibre & Voice Ltd",
+  "vat_number": "GB 093 4036 72",
+  "address": "14 Granary Lane, Durham, DH1 5QZ"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "NFV-51231",
+ "date": "2026-09-06",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "10Gbps Business Fibre Connection (Monthly)",
+   "qty": 3,
+   "unit_price": 145.0,
+   "net": 435.0,
+   "vat_rate": 20,
+   "vat": 87.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Virtual PBX Number (Monthly)",
+   "qty": 5,
+   "unit_price": 12.5,
+   "net": 62.5,
+   "vat_rate": 20,
+   "vat": 12.5,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 497.5,
+ "vat_total": 99.5,
+ "gross_total": 597.0,
+ "net_pence": 49750,
+ "vat_pence": 9950,
+ "gross_pence": 59700,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Telecommunications",
+ "printed_text": "NORTHLIGHT FIBRE & VOICE LTD\n14 Granary Lane\nDurham DH1 5QZ\nTel 0191 234 5678\nVAT Reg No: GB 093 4036 72\n\n                 TAX INVOICE\nNo:   NFV-51231\nDate: 06/09/26\nDue:  20/09/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\n10Gbps Business Fi   3   145.00    435.00   20\nVirtual PBX Number   5    12.50     62.50   20\n----------------------------------------------\nNET TOTAL                               497.50\nVAT 20%  net 497.50                      99.50\nTOTAL DUE                              £597.00\n\n\nDirect debit will be collected on 16/09/26\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

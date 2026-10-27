@@ -1,0 +1,78 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Salt & Sesame Ltd",
+  "vat_number": null,
+  "address": "14 Coppergate, Hull, HU1 2QZ"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-10-05",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Smoked Salmon & Cream Cheese Sandwich",
+   "qty": 10,
+   "unit_price": 5.417,
+   "net": 54.17,
+   "vat_rate": 20,
+   "vat": 10.83,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Roast Chicken & Pesto Panini",
+   "qty": 8,
+   "unit_price": 4.7912,
+   "net": 38.33,
+   "vat_rate": 20,
+   "vat": 7.67,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Quinoa & Roasted Vegetable Wrap",
+   "qty": 12,
+   "unit_price": 4.3333,
+   "net": 52.0,
+   "vat_rate": 20,
+   "vat": 10.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Tuna & Sweetcorn Melt",
+   "qty": 6,
+   "unit_price": 4.5,
+   "net": 27.0,
+   "vat_rate": 20,
+   "vat": 5.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Freshly Squeezed Orange Juice (330ml)",
+   "qty": 12,
+   "unit_price": 2.3333,
+   "net": 28.0,
+   "vat_rate": 20,
+   "vat": 5.6,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 199.5,
+ "vat_total": 39.9,
+ "gross_total": 239.4,
+ "net_pence": 19950,
+ "vat_pence": 3990,
+ "gross_pence": 23940,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "needs_a_look",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "2568",
+ "category_hint": "Café Catering",
+ "printed_text": "              SALT & SESAME LTD\n                14 Coppergate\n                 Hull HU1 2QZ\n              Tel 01482 991 204\n\n05-10-2026                               18:39\n----------------------------------------------\n10 x Smoked Salmon & Cream Cheese Sandwi 65.00\n8 x Roast Chicken & Pesto Panini         46.00\n12 x Quinoa & Roasted Vegetable Wrap     62.40\n6 x Tuna & Sweetcorn Melt                32.40\n12 x Freshly Squeezed Orange Juice (330m 33.60\n----------------------------------------------\nTOTAL                                  £239.40\nVAT 20%  net 199.50                      39.90\nCARD ****2568 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_cafe",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

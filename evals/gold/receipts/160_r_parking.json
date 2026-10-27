@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Lancaster Lane Parking Services Ltd",
+  "vat_number": null,
+  "address": "12 Abbey Road, Lancaster, LA1 1XY"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-08-15",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Parking 4h",
+   "qty": 1,
+   "unit_price": 15.0,
+   "net": 15.0,
+   "vat_rate": 20,
+   "vat": 3.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 15.0,
+ "vat_total": 3.0,
+ "gross_total": 18.0,
+ "net_pence": 1500,
+ "vat_pence": 300,
+ "gross_pence": 1800,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "needs_a_look",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "5685",
+ "category_hint": "Pay-and-display parking tokens",
+ "printed_text": "     LANCASTER LANE PARKING SERVICES LTD\n                12 Abbey Road\n              Lancaster LA1 1XY\n               Tel 01524 555012\n\n15-08-2026                               12:54\n----------------------------------------------\nParking 4h                               18.00\n----------------------------------------------\nTOTAL                                   £18.00\nVAT 20%  net 15.00                        3.00\nCARD ****5685 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_parking",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

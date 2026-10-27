@@ -1,0 +1,60 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Whitby Wood & Wire Services",
+  "vat_number": "GB 074 5106 80",
+  "address": "14 The Shambles, York, YO1 7JU"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "WWW-84471",
+ "date": "2026-08-28",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "French Polishing - Per Door",
+   "qty": 4,
+   "unit_price": 85.0,
+   "net": 340.0,
+   "vat_rate": 20,
+   "vat": 68.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Electrical Safety Check & Certification",
+   "qty": 1,
+   "unit_price": 150.0,
+   "net": 150.0,
+   "vat_rate": 20,
+   "vat": 30.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Plastering Patching - Per Square Meter",
+   "qty": 6,
+   "unit_price": 22.5,
+   "net": 135.0,
+   "vat_rate": 20,
+   "vat": 27.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 625.0,
+ "vat_total": 125.0,
+ "gross_total": 750.0,
+ "net_pence": 62500,
+ "vat_pence": 12500,
+ "gross_pence": 75000,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Subcontracted trades (fitting, electrics, plastering)",
+ "printed_text": "WHITBY WOOD & WIRE SERVICES\n14 The Shambles\nYork YO1 7JU\nTel 01904 555 019\nVAT Reg No: GB 074 5106 80\n\n                 TAX INVOICE\nNo:   WWW-84471\nDate: 28/08/26\nDue:  27/09/26\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nFrench Polishing -   4    85.00    340.00   20\nElectrical Safety    1   150.00    150.00   20\nPlastering Patchin   6    22.50    135.00   20\n----------------------------------------------\nNET TOTAL                               625.00\nVAT 20%  net 625.00                     125.00\nTOTAL DUE                              £750.00\n\n\nPay by BACS: Sort 40-60-95  Acc 66705843\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_subcontractor",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

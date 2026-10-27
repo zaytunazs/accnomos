@@ -1,0 +1,78 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Preston Piquant Pantry",
+  "vat_number": "GB 063 1277 86",
+  "address": "14 Millgate Lane, Preston, PR1 2XY"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-09-13",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Artisan Chicken & Avocado Wrap",
+   "qty": 4,
+   "unit_price": 3.75,
+   "net": 15.0,
+   "vat_rate": 20,
+   "vat": 3.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Vegetarian Hummus Pita",
+   "qty": 6,
+   "unit_price": 3.5,
+   "net": 21.0,
+   "vat_rate": 20,
+   "vat": 4.2,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Turkey & Cheddar Bap",
+   "qty": 8,
+   "unit_price": 3.1662,
+   "net": 25.33,
+   "vat_rate": 20,
+   "vat": 5.07,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Freshly Squeezed Orange Juice (500ml)",
+   "qty": 10,
+   "unit_price": 2.458,
+   "net": 24.58,
+   "vat_rate": 20,
+   "vat": 4.92,
+   "vat_code": "T1"
+  },
+  {
+   "description": "House-Baked Sourdough Slice",
+   "qty": 5,
+   "unit_price": 1.25,
+   "net": 6.25,
+   "vat_rate": 20,
+   "vat": 1.25,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 92.16,
+ "vat_total": 18.44,
+ "gross_total": 110.6,
+ "net_pence": 9216,
+ "vat_pence": 1844,
+ "gross_pence": 11060,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "2715",
+ "category_hint": "Catering & Food Supplies",
+ "printed_text": "            PRESTON PIQUANT PANTRY\n               14 Millgate Lane\n               Preston PR1 2XY\n              Tel 01772 555 019\n            VAT No GB 063 1277 86\n\n13 Sep 2026                              18:38\n----------------------------------------------\n4 x Artisan Chicken & Avocado Wrap       18.00\n6 x Vegetarian Hummus Pita               25.20\n8 x Turkey & Cheddar Bap                 30.40\n10 x Freshly Squeezed Orange Juice (500m 29.50\n5 x House-Baked Sourdough Slice           7.50\n----------------------------------------------\nTOTAL                                  £110.60\nVAT 20%  net 92.16                       18.44\nCARD ****2715 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_cafe",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

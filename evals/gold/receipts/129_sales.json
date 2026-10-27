@@ -1,0 +1,42 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Hull City Interiors"
+ },
+ "invoice_number": "BRW-2026-0799",
+ "date": "2026-08-17",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bespoke Ash Kitchen Worktop (3.5m linear)",
+   "qty": 1,
+   "unit_price": 1450.0,
+   "net": 1450.0,
+   "vat_rate": 20,
+   "vat": 290.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 1450.0,
+ "vat_total": 290.0,
+ "gross_total": 1740.0,
+ "net_pence": 145000,
+ "vat_pence": 29000,
+ "gross_pence": 174000,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01302 734591\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0799\nDate: 17/08/2026\nDue:  31 Aug 2026\n\nTo: Hull City Interiors\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBespoke Ash Kitche   1 1,450.00  1,450.00   20\n----------------------------------------------\nNET TOTAL                             1,450.00\nVAT 20%  net 1,450.00                   290.00\nTOTAL DUE                            £1,740.00\n\n\nPay by BACS: Sort 40-79-85  Acc 78562110\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

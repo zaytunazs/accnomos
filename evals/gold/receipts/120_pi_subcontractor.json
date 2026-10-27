@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Holloway & Finch Trades",
+  "vat_number": "GB 076 2687 37",
+  "address": "14 Elm Grove, Newcastle, NE1 3XY"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "HFT-67164",
+ "date": "2026-08-05",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Skilled Labour: French Polishing (per day)",
+   "qty": 2,
+   "unit_price": 280.0,
+   "net": 560.0,
+   "vat_rate": 20,
+   "vat": 112.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Skilled Labour: Plastering Patchwork (per hour)",
+   "qty": 8,
+   "unit_price": 45.0,
+   "net": 360.0,
+   "vat_rate": 20,
+   "vat": 72.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 920.0,
+ "vat_total": 184.0,
+ "gross_total": 1104.0,
+ "net_pence": 92000,
+ "vat_pence": 18400,
+ "gross_pence": 110400,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "General Construction & Finishing",
+ "printed_text": "HOLLOWAY & FINCH TRADES\n14 Elm Grove\nNewcastle NE1 3XY\nTel 0191 456 7890\nVAT Reg No: GB 076 2687 37\n\n                 TAX INVOICE\nNo:   HFT-67164\nDate: 05 Aug 2026\nDue:  04 Sep 2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nSkilled Labour: Fr   2   280.00    560.00   20\nSkilled Labour: Pl   8    45.00    360.00   20\n----------------------------------------------\nNET TOTAL                               920.00\nVAT 20%  net 920.00                     184.00\nTOTAL DUE                            £1,104.00\n\n\nPay by BACS: Sort 40-98-86  Acc 16213423\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_subcontractor",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

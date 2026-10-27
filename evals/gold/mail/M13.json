@@ -1,0 +1,49 @@
+{
+ "id": "AAMk-sample-13",
+ "receivedDateTime": "2026-09-19T14:39:57Z",
+ "subject": "Invoice from Bramblewood Joinery Ltd",
+ "from": {
+  "emailAddress": {
+   "name": "Bramblewood Joinery Ltd",
+   "address": "accounts@bramblewoodjoinery.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Please find attached.",
+ "body": {
+  "contentType": "text",
+  "content": "Please find attached."
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "280e0419fe0cc87f95b8",
+   "name": "078_sales.png",
+   "contentType": "image/png",
+   "size": 265793,
+   "isInline": false,
+   "path": "attachments/078_sales.png",
+   "gold": "078_sales.json"
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "duplicate",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "078_sales.png",
+    "treat_as": "document",
+    "gold": "078_sales.json"
+   }
+  ],
+  "note": "second copy is a duplicate by hash"
+ }
+}

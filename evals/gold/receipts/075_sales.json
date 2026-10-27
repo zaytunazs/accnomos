@@ -1,0 +1,51 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Aldercroft Interiors Ltd"
+ },
+ "invoice_number": "BRW-2026-0928",
+ "date": "2026-09-20",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Solid Oak Kitchen Base Unit with Blum Hinges",
+   "qty": 1,
+   "unit_price": 850.0,
+   "net": 850.0,
+   "vat_rate": 20,
+   "vat": 170.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Bespoke Wainscoting Panel (per linear metre)",
+   "qty": 4,
+   "unit_price": 120.0,
+   "net": 480.0,
+   "vat_rate": 20,
+   "vat": 96.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 1330.0,
+ "vat_total": 266.0,
+ "gross_total": 1596.0,
+ "net_pence": 133000,
+ "vat_pence": 26600,
+ "gross_pence": 159600,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Bespoke Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01302 492371\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0928\nDate: 20-09-2026\nDue:  04 Oct 2026\n\nTo: Aldercroft Interiors Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nSolid Oak Kitchen    1   850.00    850.00   20\nBespoke Wainscotin   4   120.00    480.00   20\n----------------------------------------------\nNET TOTAL                             1,330.00\nVAT 20%  net 1,330.00                   266.00\nTOTAL DUE                            £1,596.00\n\n\nPay by BACS: Sort 40-21-66  Acc 93847168\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

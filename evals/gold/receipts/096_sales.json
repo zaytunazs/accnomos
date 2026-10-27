@@ -1,0 +1,78 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Whitby & Sons Interior Design"
+ },
+ "invoice_number": "BRW-2026-0935",
+ "date": "2026-09-15",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Bespoke Oak Kitchen Worktop (3.0m linear)",
+   "qty": 1,
+   "unit_price": 1850.0,
+   "net": 1850.0,
+   "vat_rate": 20,
+   "vat": 370.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Restored Victorian Panelled Door (Pine)",
+   "qty": 2,
+   "unit_price": 650.0,
+   "net": 1300.0,
+   "vat_rate": 20,
+   "vat": 260.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Fitted Wardrobe Unit (W1.2m x H2.4m)",
+   "qty": 1,
+   "unit_price": 1200.0,
+   "net": 1200.0,
+   "vat_rate": 20,
+   "vat": 240.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Wenge Wood Staircase Baluster (Set of 10)",
+   "qty": 1,
+   "unit_price": 420.0,
+   "net": 420.0,
+   "vat_rate": 20,
+   "vat": 84.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Custom Bespoke Bookcase (Walnut Veneer)",
+   "qty": 1,
+   "unit_price": 950.0,
+   "net": 950.0,
+   "vat_rate": 20,
+   "vat": 190.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 5720.0,
+ "vat_total": 1144.0,
+ "gross_total": 6864.0,
+ "net_pence": 572000,
+ "vat_pence": 114400,
+ "gross_pence": 686400,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Joinery",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 01422 884 552\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0935\nDate: 15/09/2026\nDue:  29/09/26\n\nTo: Whitby & Sons Interior Design\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nBespoke Oak Kitche   1 1,850.00  1,850.00   20\nRestored Victorian   2   650.00  1,300.00   20\nFitted Wardrobe Un   1 1,200.00  1,200.00   20\nWenge Wood Stairca   1   420.00    420.00   20\nCustom Bespoke Boo   1   950.00    950.00   20\n----------------------------------------------\nNET TOTAL                             5,720.00\nVAT 20%  net 5,720.00                 1,144.00\nTOTAL DUE                            £6,864.00\n\n\nPay by BACS: Sort 40-11-48  Acc 26726655\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

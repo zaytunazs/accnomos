@@ -1,0 +1,60 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Sheffield Steam & Crust",
+  "vat_number": "GB 084 8425 42",
+  "address": "14 Abbeydale Road, Sheffield, S7 1QZ"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-09-29",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Sourdough Sandwich",
+   "qty": 1,
+   "unit_price": 3.75,
+   "net": 3.75,
+   "vat_rate": 20,
+   "vat": 0.75,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Bagel with Cream Cheese",
+   "qty": 1,
+   "unit_price": 3.17,
+   "net": 3.17,
+   "vat_rate": 20,
+   "vat": 0.63,
+   "vat_code": "T1"
+  },
+  {
+   "description": "House Filter Coffee",
+   "qty": 1,
+   "unit_price": 2.67,
+   "net": 2.67,
+   "vat_rate": 20,
+   "vat": 0.53,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 9.59,
+ "vat_total": 1.91,
+ "gross_total": 11.5,
+ "net_pence": 959,
+ "vat_pence": 191,
+ "gross_pence": 1150,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "3021",
+ "category_hint": "Catering & Bakery",
+ "printed_text": "           SHEFFIELD STEAM & CRUST\n              14 Abbeydale Road\n               Sheffield S7 1QZ\n              Tel 0114 246 8901\n            VAT No GB 084 8425 42\n\n29/09/2026                               15:43\n----------------------------------------------\nSourdough Sandwich                        4.50\nBagel with Cream Cheese                   3.80\nHouse Filter Coffee                       3.20\n----------------------------------------------\nTOTAL                                   £11.50\nVAT 20%  net 9.59                         1.91\nCARD ****3021 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_cafe",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

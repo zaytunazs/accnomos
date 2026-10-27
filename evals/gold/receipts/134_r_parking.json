@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Chesterfield Car Parks Ltd",
+  "vat_number": null,
+  "address": "12 Queen Street, Chester, CH1 2EN"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-08-29",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Parking 2h",
+   "qty": 1,
+   "unit_price": 2.59,
+   "net": 2.59,
+   "vat_rate": 20,
+   "vat": 0.52,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 2.59,
+ "vat_total": 0.52,
+ "gross_total": 3.11,
+ "net_pence": 259,
+ "vat_pence": 52,
+ "gross_pence": 311,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "needs_a_look",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "2577",
+ "category_hint": "Pay and Display Tickets",
+ "printed_text": "          CHESTERFIELD CAR PARKS LTD\n               12 Queen Street\n               Chester CH1 2EN\n              Tel 01244 555 012\n\n29/08/26                                 17:09\n----------------------------------------------\nParking 2h                                3.11\n----------------------------------------------\nTOTAL                                    £3.11\nVAT 20%  net 2.59                         0.52\nCARD ****2577 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_parking",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

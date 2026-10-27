@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Huddersfield Digital Logic Ltd",
+  "vat_number": "GB 082 7862 37",
+  "address": "14-16 Victoria Street, Huddersfield, HD1 2AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "CN5838",
+ "date": "2026-10-19",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Cloud Inventory Management License (Annual)",
+   "qty": 1,
+   "unit_price": 450.0,
+   "net": -450.0,
+   "vat_rate": 20,
+   "vat": -90.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Priority Technical Support Retainer (Monthly)",
+   "qty": 3,
+   "unit_price": 75.0,
+   "net": -225.0,
+   "vat_rate": 20,
+   "vat": -45.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": -675.0,
+ "vat_total": -135.0,
+ "gross_total": -810.0,
+ "net_pence": -67500,
+ "vat_pence": -13500,
+ "gross_pence": -81000,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": true,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Software Credit Note",
+ "printed_text": "HUDDERSFIELD DIGITAL LOGIC LTD\n14-16 Victoria Street\nHuddersfield HD1 2AB\nTel 01484 555 019\nVAT Reg No: GB 082 7862 37\n\n                 CREDIT NOTE\nNo:   CN5838\nDate: 19/10/2026\nRe invoice HDL-27211\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nCloud Inventory Ma   1   450.00   -450.00   20\nPriority Technical   3    75.00   -225.00   20\n----------------------------------------------\nNET TOTAL                              -675.00\nVAT 20%  net -675.00                   -135.00\nTOTAL CREDIT                          £-810.00\n\nReason: Overcharge for cancelled annual license\n\nCredit to be refunded / offset on account\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "credit_note",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

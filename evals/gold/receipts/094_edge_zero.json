@@ -1,0 +1,51 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Barnsley Zero-Rate Goods Ltd",
+  "vat_number": null,
+  "address": "14 High Street, Barnsley, S70 2AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-29",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Children's Cotton T-Shirt (Size 6-7)",
+   "qty": 2,
+   "unit_price": 6.5,
+   "net": 13.0,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  },
+  {
+   "description": "Picture Book: 'The Little Fox'",
+   "qty": 1,
+   "unit_price": 7.99,
+   "net": 7.99,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  }
+ ],
+ "net_total": 20.99,
+ "vat_total": 0.0,
+ "gross_total": 20.99,
+ "net_pence": 2099,
+ "vat_pence": 0,
+ "gross_pence": 2099,
+ "vat_code": "T0",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "1186",
+ "category_hint": "Zero-rated goods (books, children's clothing)",
+ "printed_text": "         BARNSLEY ZERO-RATE GOODS LTD\n                14 High Street\n               Barnsley S70 2AB\n               Tel 01226 456789\n\n29-07-2026                               14:52\n----------------------------------------------\n2 x Children's Cotton T-Shirt (Size 6-7) 13.00\nPicture Book: 'The Little Fox'            7.99\n----------------------------------------------\nTOTAL                                   £20.99\nCARD ****1186 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "edge_zero",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

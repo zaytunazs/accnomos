@@ -1,0 +1,69 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Rydley & Sons Timber",
+  "vat_number": "GB 059 9688 93",
+  "address": "Unit 4, Faringdon Industrial Estate, Preston, PR1 2LX"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-17",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "75x50mm Redwood Board 4.8m",
+   "qty": 10,
+   "unit_price": 10.375,
+   "net": 103.75,
+   "vat_rate": 20,
+   "vat": 20.75,
+   "vat_code": "T1"
+  },
+  {
+   "description": "100x50mm Softwood Stud 3.0m",
+   "qty": 5,
+   "unit_price": 7.416,
+   "net": 37.08,
+   "vat_rate": 20,
+   "vat": 7.42,
+   "vat_code": "T1"
+  },
+  {
+   "description": "50mm Galvanized Wall Plate 2.4m",
+   "qty": 3,
+   "unit_price": 3.54,
+   "net": 10.62,
+   "vat_rate": 20,
+   "vat": 2.13,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Carpenter's Pencil 12-pack",
+   "qty": 1,
+   "unit_price": 5.42,
+   "net": 5.42,
+   "vat_rate": 20,
+   "vat": 1.08,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 156.87,
+ "vat_total": 31.38,
+ "gross_total": 188.25,
+ "net_pence": 15687,
+ "vat_pence": 3138,
+ "gross_pence": 18825,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "8529",
+ "category_hint": "timber_yard",
+ "printed_text": "             RYDLEY & SONS TIMBER\n     Unit 4, Faringdon Industrial Estate\n               Preston PR1 2LX\n               Tel 01772 448812\n            VAT No GB 059 9688 93\n\n17/07/26                                 13:56\n----------------------------------------------\n10 x 75x50mm Redwood Board 4.8m         124.50\n5 x 100x50mm Softwood Stud 3.0m          44.50\n3 x 50mm Galvanized Wall Plate 2.4m      12.75\nCarpenter's Pencil 12-pack                6.50\n----------------------------------------------\nTOTAL                                  £188.25\nVAT 20%  net 156.87                      31.38\nCARD ****8529 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_trade",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

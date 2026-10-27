@@ -1,0 +1,69 @@
+{
+ "doc_type": "sales_invoice",
+ "supplier": {
+  "name": "Bramblewood Joinery Ltd",
+  "vat_number": "GB 123 4567 89",
+  "address": "14 Mill Lane, Leeds, LS1 2AB"
+ },
+ "customer": {
+  "name": "Whitfield Property Services Ltd"
+ },
+ "invoice_number": "BRW-2026-0899",
+ "date": "2026-07-26",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Oak Shaker-style Kitchen Unit (900mm Base)",
+   "qty": 4,
+   "unit_price": 450.0,
+   "net": 1800.0,
+   "vat_rate": 20,
+   "vat": 360.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Solid Oak Kitchen Worktop (2.4m x 600mm)",
+   "qty": 1,
+   "unit_price": 890.0,
+   "net": 890.0,
+   "vat_rate": 20,
+   "vat": 178.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Internal 4-Panel Oak Door (750mm x 2040mm)",
+   "qty": 2,
+   "unit_price": 320.0,
+   "net": 640.0,
+   "vat_rate": 20,
+   "vat": 128.0,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Fitted Under-Stair Wardrobe (1.2m x 2.4m)",
+   "qty": 1,
+   "unit_price": 1250.0,
+   "net": 1250.0,
+   "vat_rate": 20,
+   "vat": 250.0,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 4580.0,
+ "vat_total": 916.0,
+ "gross_total": 5496.0,
+ "net_pence": 458000,
+ "vat_pence": 91600,
+ "gross_pence": 549600,
+ "vat_code": "T1",
+ "side": "sale",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Bespoke Kitchens",
+ "printed_text": "BRAMBLEWOOD JOINERY LTD\n14 Mill Lane\nLeeds LS1 2AB\nTel 0114 220 8943\nVAT Reg No: GB 123 4567 89\n\n                 TAX INVOICE\nNo:   BRW-2026-0899\nDate: 26/07/26\nDue:  25 Aug 2026\n\nTo: Whitfield Property Services Ltd\n\nDESCRIPTION        QTY     UNIT       NET VAT%\n----------------------------------------------\nOak Shaker-style K   4   450.00  1,800.00   20\nSolid Oak Kitchen    1   890.00    890.00   20\nInternal 4-Panel O   2   320.00    640.00   20\nFitted Under-Stair   1 1,250.00  1,250.00   20\n----------------------------------------------\nNET TOTAL                             4,580.00\nVAT 20%  net 4,580.00                   916.00\nTOTAL DUE                            £5,496.00\n\n\nPay by BACS: Sort 40-53-87  Acc 30014335\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "sales",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

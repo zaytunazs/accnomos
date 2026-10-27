@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Durham Display Solutions Ltd",
+  "vat_number": null,
+  "address": "14 Park Row, Durham, DH1 3QT"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-09-05",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Parking 6h",
+   "qty": 1,
+   "unit_price": 15.31,
+   "net": 15.31,
+   "vat_rate": 20,
+   "vat": 3.06,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 15.31,
+ "vat_total": 3.06,
+ "gross_total": 18.37,
+ "net_pence": 1531,
+ "vat_pence": 306,
+ "gross_pence": 1837,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "needs_a_look",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "3104",
+ "category_hint": "Pay-and-display equipment",
+ "printed_text": "         DURHAM DISPLAY SOLUTIONS LTD\n                 14 Park Row\n                Durham DH1 3QT\n              Tel 0191 555 0192\n\n05/09/26                                 12:18\n----------------------------------------------\nParking 6h                               18.37\n----------------------------------------------\nTOTAL                                   £18.37\nVAT 20%  net 15.31                        3.06\nCARD ****3104 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_parking",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

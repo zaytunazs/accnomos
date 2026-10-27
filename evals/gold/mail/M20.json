@@ -1,0 +1,49 @@
+{
+ "id": "AAMk-sample-20",
+ "receivedDateTime": "2026-10-21T06:30:00Z",
+ "subject": "Terms of trade and invoice to follow",
+ "from": {
+  "emailAddress": {
+   "name": "Calder Valley Supplies",
+   "address": "orders@caldervalley.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Our terms are attached; the invoice will follow tomorrow.",
+ "body": {
+  "contentType": "text",
+  "content": "Our terms are attached; the invoice will follow tomorrow."
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "e4ee9622a41549b2605f",
+   "name": "terms.zip",
+   "contentType": "application/zip",
+   "size": 172,
+   "isInline": false,
+   "path": "attachments/terms.zip",
+   "gold": null
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "decoy",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "terms.zip",
+    "treat_as": "ignore",
+    "gold": null
+   }
+  ],
+  "note": "unsupported type; the invoice itself has not arrived"
+ }
+}

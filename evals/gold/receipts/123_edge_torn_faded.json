@@ -1,0 +1,61 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Lancaster Hardware & Fixings Ltd",
+  "vat_number": "GB 020 1497 21",
+  "address": "14 Bridge Street, Lancaster, LA1 1HN"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-10-11",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Zinc-plated 10x50mm Pan Head Screws (Pack of 100)",
+   "qty": 5,
+   "unit_price": 5.408,
+   "net": 27.04,
+   "vat_rate": 20,
+   "vat": 5.41,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Brass Door Handle Set with Rosette",
+   "qty": 2,
+   "unit_price": 20.79,
+   "net": 41.58,
+   "vat_rate": 20,
+   "vat": 8.32,
+   "vat_code": "T1"
+  },
+  {
+   "description": "10m Roll of 4mm Neoprene Weatherstrip",
+   "qty": 1,
+   "unit_price": 10.25,
+   "net": 10.25,
+   "vat_rate": 20,
+   "vat": 2.05,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 78.87,
+ "vat_total": 15.78,
+ "gross_total": 94.65,
+ "net_pence": 7887,
+ "vat_pence": 1578,
+ "gross_pence": 9465,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "9290",
+ "category_hint": "General Hardware",
+ "printed_text": "       LANCASTER HARDWARE & FIXINGS LTD\n               14 Bridge Street\n              Lancaster LA1 1HN\n              Tel 01524 555 0192\n            VAT No GB 020 1497 21\n\n11-10-2026                               13:04\n----------------------------------------------\n5 x Zinc-plated 10x50mm Pan Head Screws  32.45\n2 x Brass Door Handle Set with Rosette   49.90\n10m Roll of 4mm Neoprene Weatherstrip    12.30\n----------------------------------------------\nTOTAL                                   £94.65\nVAT 20%  net 78.87                       15.78\nCARD ****9290 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY\n\n",
+ "notes": "",
+ "gold_case": "edge_torn_faded",
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "damage": "faded"
+}

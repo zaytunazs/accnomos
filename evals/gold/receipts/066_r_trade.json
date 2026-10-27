@@ -1,0 +1,78 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Thornfield & Grange Trade Supplies",
+  "vat_number": "GB 003 6371 14",
+  "address": "14 Wadsworth Road, Bradford, BD5 8QT"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-07-12",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Treated Softwood 70x95mm 4.8m (C24)",
+   "qty": 6,
+   "unit_price": 20.4167,
+   "net": 122.5,
+   "vat_rate": 20,
+   "vat": 24.5,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Hardwood Moulding Oak 25x90mm 2.4m",
+   "qty": 4,
+   "unit_price": 15.625,
+   "net": 62.5,
+   "vat_rate": 20,
+   "vat": 12.5,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Plywood 12mm BS 1088 Blockboard 1220x2440mm",
+   "qty": 2,
+   "unit_price": 27.0,
+   "net": 54.0,
+   "vat_rate": 20,
+   "vat": 10.8,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Galvanized Timber Screws 4x75mm (Box of 250)",
+   "qty": 1,
+   "unit_price": 7.46,
+   "net": 7.46,
+   "vat_rate": 20,
+   "vat": 1.49,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Wood Filler Putty 500g Tub (Natural)",
+   "qty": 3,
+   "unit_price": 5.2067,
+   "net": 15.62,
+   "vat_rate": 20,
+   "vat": 3.13,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 262.08,
+ "vat_total": 52.42,
+ "gross_total": 314.5,
+ "net_pence": 26208,
+ "vat_pence": 5242,
+ "gross_pence": 31450,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "5705",
+ "category_hint": "Timber Yard",
+ "printed_text": "      THORNFIELD & GRANGE TRADE SUPPLIES\n              14 Wadsworth Road\n               Bradford BD5 8QT\n              Tel 01274 955 210\n            VAT No GB 003 6371 14\n\n12-07-2026                               10:08\n----------------------------------------------\n6 x Treated Softwood 70x95mm 4.8m (C24) 147.00\n4 x Hardwood Moulding Oak 25x90mm 2.4m   75.00\n2 x Plywood 12mm BS 1088 Blockboard 1220 64.80\nGalvanized Timber Screws 4x75mm (Box of 2 8.95\n3 x Wood Filler Putty 500g Tub (Natural) 18.75\n----------------------------------------------\nTOTAL                                  £314.50\nVAT 20%  net 262.08                      52.42\nCARD ****5705 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_trade",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,78 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Saltmarsh Pantry",
+  "vat_number": "GB 027 6950 57",
+  "address": "42 Northgate Street, Chester, CH1 2LX"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-08-30",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Classic Ham and Cheese Sandwich",
+   "qty": 10,
+   "unit_price": 3.75,
+   "net": 37.5,
+   "vat_rate": 20,
+   "vat": 7.5,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Roast Beef and Horseradish Wrap",
+   "qty": 8,
+   "unit_price": 4.7912,
+   "net": 38.33,
+   "vat_rate": 20,
+   "vat": 7.67,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Chicken Caesar Salad (Box)",
+   "qty": 5,
+   "unit_price": 5.166,
+   "net": 25.83,
+   "vat_rate": 20,
+   "vat": 5.17,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Freshly Baked Scones (Pack of 2)",
+   "qty": 12,
+   "unit_price": 2.8333,
+   "net": 34.0,
+   "vat_rate": 20,
+   "vat": 6.8,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Loose Leaf Tea (Caddy 250g)",
+   "qty": 3,
+   "unit_price": 7.4933,
+   "net": 22.48,
+   "vat_rate": 20,
+   "vat": 4.49,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 158.14,
+ "vat_total": 31.63,
+ "gross_total": 189.77,
+ "net_pence": 15814,
+ "vat_pence": 3163,
+ "gross_pence": 18977,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "2816",
+ "category_hint": "Catering & Office Supplies",
+ "printed_text": "               SALTMARSH PANTRY\n             42 Northgate Street\n               Chester CH1 2LX\n              Tel 01244 555 019\n            VAT No GB 027 6950 57\n\n30-08-2026                               13:50\n----------------------------------------------\n10 x Classic Ham and Cheese Sandwich     45.00\n8 x Roast Beef and Horseradish Wrap      46.00\n5 x Chicken Caesar Salad (Box)           31.00\n12 x Freshly Baked Scones (Pack of 2)    40.80\n3 x Loose Leaf Tea (Caddy 250g)          26.97\n----------------------------------------------\nTOTAL                                  £189.77\nVAT 20%  net 158.14                      31.63\nCARD ****2816 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_cafe",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

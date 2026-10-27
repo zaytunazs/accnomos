@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Wharfedale Park & Stay Ltd",
+  "vat_number": null,
+  "address": "12 Mill Lane, Wakefield, WF1 3AB"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": null,
+ "date": "2026-09-08",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Parking 6h",
+   "qty": 1,
+   "unit_price": 10.21,
+   "net": 10.21,
+   "vat_rate": 20,
+   "vat": 2.04,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 10.21,
+ "vat_total": 2.04,
+ "gross_total": 12.25,
+ "net_pence": 1021,
+ "vat_pence": 204,
+ "gross_pence": 1225,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "needs_a_look",
+ "is_credit_note": false,
+ "payment_method": "card",
+ "card_last4": "3080",
+ "category_hint": "Vehicle Services",
+ "printed_text": "          WHARFEDALE PARK & STAY LTD\n                 12 Mill Lane\n              Wakefield WF1 3AB\n               Tel 01924 415522\n\n08/09/26                                 16:57\n----------------------------------------------\nParking 6h                               12.25\n----------------------------------------------\nTOTAL                                   £12.25\nVAT 20%  net 10.21                        2.04\nCARD ****3080 CONTACTLESS\n\n          Thank you for your custom\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_parking",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}
