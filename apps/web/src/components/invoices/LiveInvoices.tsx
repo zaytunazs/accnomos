@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { MarkPaidDialog, PreviewSendDialog, ReminderDialog, VoidDialog } from "@/components/invoices/InvoiceDialogs";
+import { MarkPaidDialog, PreviewSendDialog, ReminderDialog, StatusTimeline, VoidDialog } from "@/components/invoices/InvoiceDialogs";
 import { EmptyState, RuntimeErrorNote } from "@/components/States";
 import { money, SAMPLE_INVOICES, STATUS_LABEL, useMsAccount } from "@/lib/invoices";
 import { runtime, ukDate, type RtInvoice } from "@/lib/runtime";
@@ -36,6 +36,7 @@ export default function LiveInvoices() {
   const { account, ready } = useMsAccount();
   const [invoices, setInvoices] = useState<RtInvoice[] | null>(null);
   const [filter, setFilter] = useState<Filter>("all");
+  const [query, setQuery] = useState("");
   const [dialog, setDialog] = useState<Dialog>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -90,9 +91,14 @@ export default function LiveInvoices() {
     );
   }
 
-  const shown = (invoices ?? []).filter((i) => filter === "all" || (filter === "overdue" ? isOverdue(i) : i.status === filter));
+  const needle = query.trim().toLowerCase();
+  const shown = (invoices ?? [])
+    .filter((i) => filter === "all" || (filter === "overdue" ? isOverdue(i) : i.status === filter))
+    .filter((i) => !needle || i.number.toLowerCase().includes(needle) || i.customer.name.toLowerCase().includes(needle))
+    .sort((a, b) => Number(isOverdue(b)) - Number(isOverdue(a)) || a.due_date.localeCompare(b.due_date));
   const owed = (invoices ?? []).filter((i) => i.status === "sent").reduce((s, i) => s + i.total_pence, 0);
   const overdue = (invoices ?? []).filter(isOverdue).reduce((s, i) => s + i.total_pence, 0);
+  const unpaidCount = (invoices ?? []).filter((i) => i.status === "sent").length;
 
   return (
     <div className="space-y-4">
@@ -116,11 +122,25 @@ export default function LiveInvoices() {
         </Link>
       </div>
 
+      <div>
+        <label className="text-xs font-bold text-muted" htmlFor="inv-list-search">Search invoices</label>
+        <input
+          id="inv-list-search"
+          className="mt-1 h-11 w-full rounded-xl border border-border bg-white px-3 text-[15px] text-ink"
+          placeholder="Number or customer…"
+          autoComplete="off"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+        />
+      </div>
       {invoices && invoices.length > 0 && (
-        <p className="text-sm text-muted">
-          Awaiting payment <span className="font-extrabold text-ink">{money(owed)}</span>
-          {overdue > 0 && <> · overdue <span className="font-extrabold text-warn-ink">{money(overdue)}</span></>}
-        </p>
+        <div className="rounded-2xl border border-border bg-white p-4">
+          <p className="text-sm text-muted">
+            Awaiting payment <span className="font-extrabold text-ink">{money(owed)}</span>
+            {unpaidCount > 0 && <> · {unpaidCount} unpaid</>}
+            {overdue > 0 && <> · overdue <span className="font-extrabold text-warn-ink">{money(overdue)}</span></>}
+          </p>
+        </div>
       )}
       {note && <p role="status" className="rounded-xl bg-teal-tint px-4 py-3 text-sm font-bold text-teal-dark">{note}</p>}
       {error && <RuntimeErrorNote message={error} title="Could not load invoices" />}
@@ -183,6 +203,12 @@ export default function LiveInvoices() {
                   <button type="button" className="text-[13px] font-bold text-muted hover:underline" onClick={() => setDialog({ kind: "void", invoice: i })}>Void</button>
                 )}
               </div>
+              {i.status !== "draft" && (
+                <details className="mt-2">
+                  <summary className={`${action} cursor-pointer`}>History</summary>
+                  <StatusTimeline invoice={i} />
+                </details>
+              )}
             </li>
           ))}
         </ul>
