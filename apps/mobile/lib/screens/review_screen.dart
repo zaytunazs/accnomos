@@ -5,6 +5,7 @@ import 'package:msal_auth/msal_auth.dart';
 
 import '../models/proposal.dart';
 import '../services/auth.dart';
+import '../services/capture_queue.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
@@ -277,9 +278,19 @@ class _ReviewScreenState extends State<ReviewScreen> {
       MaterialPageRoute(builder: (_) => const CaptureScreen()),
     );
     if (!mounted) return;
-    if (result == true && _signedIn) {
+    if (result is CaptureScanSummary && _signedIn) {
+      await _reload();
+      _say('Scan complete · ${result.label}');
+    } else if (result == true && _signedIn) {
       await _reload();
       _say('Inbox scanned · review list updated');
+    } else if (result is List<Proposal>) {
+      for (final proposal in result.reversed) {
+        _addProposal(proposal);
+      }
+      _say(result.length == 1
+          ? 'Receipt added to your review list'
+          : '${result.length} receipts added to your review list');
     } else if (result is Proposal) {
       _addProposal(result);
       _say('Receipt added to your review list');
@@ -780,6 +791,19 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 
+  /// The runtime's own crop note (`crop.note`: SAM when available).
+  Widget _cropLine(Proposal proposal, {Color ink = AccnomosColors.muted}) {
+    final note = proposal.cropNote;
+    if (note == null || note.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Text(
+        'Reader crop: $note',
+        style: TextStyle(color: ink, fontSize: 12, height: 1.4),
+      ),
+    );
+  }
+
   Widget _noteBox(String text, {required Color bg, required Color fg}) {
     return Container(
       width: double.infinity,
@@ -916,6 +940,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             bg: AccnomosColors.tealTint,
             fg: AccnomosColors.tealDark,
           ),
+          _cropLine(proposal),
           const SizedBox(height: 4),
           _alwaysRow(proposal),
           const SizedBox(height: 8),
@@ -943,6 +968,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             proposal.reason ?? '',
             style: const TextStyle(color: _warnInk, height: 1.4),
           ),
+          _cropLine(proposal, ink: _warnInk),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,

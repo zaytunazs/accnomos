@@ -31,6 +31,7 @@ class Proposal {
     this.verifierNote,
     this.reason,
     this.quote,
+    this.cropNote,
   });
 
   final String id;
@@ -57,6 +58,10 @@ class Proposal {
 
   /// Set when [status] is [ProposalStatus.voiceNote].
   final String? quote;
+
+  /// How the reader cropped the photo before extraction (`crop.note` on the
+  /// runtime `Proposal`: SAM when available). Shown on the review card.
+  final String? cropNote;
 
   /// Build a proposal from the runtime `/extract` response shape:
   /// `extracted` {supplier_name, gross_total, net_total, vat_total, date
@@ -146,8 +151,16 @@ class Proposal {
     final category =
         (extracted['category_guess'] as String?)?.trim() ?? '';
 
+    String? cropNote;
+    final crop = json['crop'];
+    if (crop is Map) {
+      final note = (crop['note'] as Object?)?.toString().trim();
+      if (note != null && note.isNotEmpty) cropNote = note;
+    }
+
     return Proposal(
       id: id ?? 'runtime-${DateTime.now().millisecondsSinceEpoch}',
+      cropNote: cropNote,
       supplier: supplier.isNotEmpty ? supplier : 'Unknown supplier',
       total: _toDouble(extracted['gross_total']) ?? 0,
       date: _displayDate(extracted['date']),
@@ -195,9 +208,11 @@ class Proposal {
     String? category,
     double? net,
     double? vat,
+    String? cropNote,
   }) {
     return Proposal(
       id: id,
+      cropNote: cropNote ?? this.cropNote,
       supplier: supplier ?? this.supplier,
       total: total ?? this.total,
       date: date ?? this.date,
