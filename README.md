@@ -41,7 +41,7 @@ Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI De
 
 Status words: **works end-to-end** (run live against a real OneDrive / model), **works with fakes / needs a live
 run** (tests pass against fake storage, mailbox or model; not yet run live), **UI only** (screens with sample
-data, no backend), **not started**. Last checked 27 Oct 2026 against `main`: runtime 270 tests, ledger and
+data, no backend), **not started**. Last checked 27 Oct 2026 against `main`: runtime 271 tests, ledger and
 connectors 50, relay 39, web build passes. The Android app was not analysed (no Flutter on the review machine).
 What is still open is in `docs/REMAINING.md`.
 

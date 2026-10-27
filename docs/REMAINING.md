@@ -17,7 +17,7 @@ Severity:
 | Medium | The shared `.venv` on the Spark has editable installs from whichever lane last ran `uv sync`. Each package now has a `conftest.py`, so `pytest` uses its own checkout. `uvicorn` started from that venv still imports another lane's `accnomos_ledger`/`accnomos_connectors`, so run `uv sync --all-packages` in the checkout you serve from. |
 | Medium | In key mode with no `X-Meta-Api-Key` header, `AiConfig` falls back to the server's `META_API_KEY`, so typed and voice Ask would run on the operator's key, not the user's. |
 | Medium | The Autopilot on/off switch lives in the browser's `localStorage`. The Android app never sends `X-Autopilot`, so scans from the phone always run Autopilot, even if the user switched it off on the web. |
-| Medium | `flutter analyze` has not been run on the current `apps/mobile` (Flutter is not installed on the review machine). That includes the 43 new calls in `runtime_client.dart`. |
+| Medium | `flutter analyze` has not been run on the current `apps/mobile` (Flutter is not installed on the review machine). That includes every call added to `runtime_client.dart` in that review. |
 | Low | The web sidebar always says "AI: local Meta agent (Glimmer 30B)", whatever AI is set in Settings. |
 | Low | `ruff` has not been run on `main` (not installed on the review machine). |
 | Low | `POST /books/approve/{id}` is kept as an alias of `POST /books/proposals/{id}/approve` for web builds deployed before this review. Remove it after the next deploy. |
@@ -126,6 +126,7 @@ Severity:
 - Error text on the web shows the runtime's sentence, not `runtime POST … -> 409: {"detail": …}` (voice-ask).
 - The Autopilot audit log now uses the same line format as the main audit log, and every actor is `user:` or `agent:`.
 - `X-Business-Name` and `X-User` are each read in one place.
+- A failed Books.xlsx rebuild after an Autopilot approval was audited as `user:autopilot`; it is now `agent:autopilot` (branch review).
 - Navigation: the Android placeholder Files tab and the web's hard-coded Review badge ("3") were removed.
 - `runtime.ts` and `runtime_client.dart` cover every route.
 - `docs/ARCHITECTURE.md` lists every path written under the user's folder; an integration test holds the runtime to it.
