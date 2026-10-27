@@ -13,7 +13,7 @@ build and the Playwright suite were not re-run for this pass. `ruff` has not bee
 - **Real runs** are the maintainers' own, on 26–27 Oct: Microsoft sign-in on a personal account, folder creation, upload → scan →
   Glimmer on our DGX Spark → approve → ledger event → VAT boxes. No log is committed. The committed evidence is the eval reports in `evals/`.
 - Everything else is **tested on fakes** (in-memory OneDrive, mailbox, calendar and address book; stubbed model; mocked HMRC and Meta).
-- **Demo data is synthetic**: Bramblewood Joinery Ltd, the receipts, bank CSVs and the gold set are generated. The grey "SAMPLE — FICTIONAL COMPANY" banner shows on every app page except `/privacy`, **including when signed in**. Signed-out pages show static mock-ups.
+- **Demo data is synthetic**: Bramblewood Joinery Ltd, the receipts, bank CSVs and the gold set are generated. Signed out, Home, Review, Ask, VAT return and Files show static mock-ups under a "SAMPLE — FICTIONAL COMPANY" banner (`DemoBanner.tsx`); other pages label their own sample fallbacks. Once signed in the banner is hidden.
 - **Evals are synthetic renderings**, so real phone photos will score lower. Extraction: 60 documents, Glimmer local, every field right on 73 %. Verifier: 20 documents, 0 extra catches, 1 false alarm.
 - Everything was written during the build period with coding assistants (Claude, Muse Code, a local Qwen); every merge was reviewed (`docs/reviews/`). The DGX Spark and Ollama setup predates the event.
 
@@ -94,7 +94,7 @@ build and the Playwright suite were not re-run for this pass. `ruff` has not bee
 
 ## Files, Books.xlsx, dashboard
 
-- Books.xlsx has never been opened in Excel from a real OneDrive. openpyxl writes any cell text starting with `=` as a formula, on every sheet (one fix in `projection._table`).
+- Books.xlsx has never been opened in Excel from a real OneDrive.
 - Home *Deadlines* assumes stagger 1 when no business settings are saved, without saying so; annual accounting shows the sample tiles. `GET /books/deadlines` returns `start_month` normalised to 1–3.
 - On Files a top-level folder's "N files" adds its sub-folders' `childCount`.
 - The dashboard returns 500 if an audit or storage read fails at the provider level (only parse errors are isolated per tile). A failed pull-to-refresh on the phone keeps the old figures without a "stale" marker.

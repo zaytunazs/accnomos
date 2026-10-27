@@ -20,14 +20,12 @@ Severity:
 | Medium | "Today" on the runtime is the UTC date (`books.now()`): in BST between midnight and 1 am, a date can be one day behind. Needs `zoneinfo` + `tzdata` in the image. |
 | Medium | The rate limit and the relay's spent-state set are per process; the relay must run one worker. |
 | Low | The shared `.venv` on the Spark can import another checkout's `accnomos_ledger`/`accnomos_connectors`; run `uv sync --all-packages` where you serve from. |
-| Low | The web sidebar always says "AI: local Meta agent (Glimmer 30B)", and the "SAMPLE — FICTIONAL COMPANY" banner shows even when signed in. |
+| Low | The web sidebar always says "AI: local Meta agent (Glimmer 30B)", whatever AI is set in Settings. |
 | Low | `ruff` has not been run on `main`. |
 | Low | `POST /books/approve/{id}` is an alias kept for older web builds; remove it after the next deploy. |
 | Low | The 6 April tax-year rule is written twice (`contacts.uk_tax_year_start`, `mileage.tax_year_of`). Both are tested. |
 | Low | `06 Reports/` is created at onboarding but nothing writes to it. `03 Sales/invoices` and `04 Payroll` reuse the numbers of `03 Bank statements` and `04 Needs a look`. |
 | Low | No web unit tests; pages are covered by `pnpm run build` and the Playwright suite, whose CI job has never run on GitHub. |
-| Low | Books.xlsx: openpyxl writes any text starting `=` as a formula (every sheet); one fix in `projection._table`. |
-
 ## Read → approve → ledger, Undo, VAT return
 
 | Severity | Item |

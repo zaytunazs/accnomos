@@ -6,7 +6,7 @@
 laptop's browser at `https://accnomos.com`. HMRC is a separate sandbox **test user** (`POST /hmrc/test-user` on the relay gives
 `userId`, `password`, `vrn`; keep them on a card). On the phone, the **debug build**, signed in with the same Microsoft account
 (a release build's signing hash is not registered with Microsoft, see `docs/HONESTY.md`).
-**Sample business:** Bramblewood Joinery Ltd, fictional; the banner on every app page says so.
+**Sample business:** Bramblewood Joinery Ltd, fictional, shown only while signed out and labelled "SAMPLE — FICTIONAL COMPANY". Once signed in, every page shows the throwaway account's own (empty) books.
 
 **The numbers.** The demo date is 4 Nov 2026, so on stagger 1 the current VAT period is **Oct–Dec 2026**. The receipt is
 `https://accnomos.com/sample-receipt.png` (`apps/web/public/sample-receipt.png`, drawn by `tools/make_sample_receipt.py`):
