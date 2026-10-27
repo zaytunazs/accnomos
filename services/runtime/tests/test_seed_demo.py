@@ -415,7 +415,10 @@ async def test_files_jobs_payroll_todos_reports(seed_demo: ModuleType, seeded: t
     assert sum(e.invoiced_in == "INV-0001" for e in await jobs.load_entries(books)) == 12
     assert len(await mileage.load_vehicles(books)) == 1
     run = await payroll.get_run(books, "2026-09")
-    assert run.status == "draft" and len(run.lines) == 2 and run.est_gross_pence > 0
+    assert run.status == "draft" and [(ln.hours, ln.gross_pence) for ln in run.lines] == [
+        (13.5, 14_850),
+        (15.0, 27_750),
+    ]
     assert [t.text for t in await todos.list_todos(books)] == [t.text for t in plan.todos]
 
     assert "README.txt" in fake.files and "Books.xlsx" in fake.files
