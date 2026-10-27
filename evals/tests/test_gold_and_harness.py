@@ -91,7 +91,8 @@ def test_handwriting_marker_only_affects_marked_lines() -> None:
 
 def test_bank_csvs_parse_and_match_truth() -> None:
     truth = json.loads((GOLD / "bank" / "expected_matches.json").read_text(encoding="utf-8"))
-    csvs = sorted((GOLD / "bank").glob("*.csv"))
+    # The bank-ui gold set (barclays.csv …, truth in expected.json) shares this folder; only the six two-month exports are ours.
+    csvs = sorted(p for p in (GOLD / "bank").glob("*.csv") if p.name in {r["file"] for r in truth["rows"]})
     assert len(csvs) == 6
     for p in csvs:
         rows = [r for r in truth["rows"] if r["file"] == p.name]

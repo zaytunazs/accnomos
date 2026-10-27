@@ -117,7 +117,6 @@ def score_verification(gold: dict[str, Any], proposal: dict[str, Any]) -> dict[s
     return {"error": None, "agree_all": v["agree_all"], "fields": fields}
 
 
-async def run_one(path: Path, idx: int, cfg: AiConfig, messy: bool, out: Path) -> dict[str, Any]:
 async def run_one(path: Path, idx: int, cfg: AiConfig, messy: bool, out: Path, business_name: str | None = None) -> dict[str, Any]:
     gold = json.loads(path.read_text(encoding="utf-8"))
     png = render_receipt(gold["printed_text"], messy=messy, seed=idx, damage=gold.get("damage"))

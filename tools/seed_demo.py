@@ -198,7 +198,8 @@ def build_plan(business: str = GOLD_BUSINESS, today: date | None = None, stagger
     newer = previous_period(current[0])
     older = previous_period(newer[0])
     start, end = older[0], newer[1]
-    golds = gold_receipts()
+    # The plan is tuned to the original hand-checked set (001-060); later generated documents (061+) are for the eval only.
+    golds = {f: g for f, g in gold_receipts().items() if f[:3].isdigit() and int(f[:3]) <= 60}
     usable = {f: g for f, g in golds.items() if rewritable(g) and f not in INBOX_NEEDS_A_LOOK}
     usable = {f: g for f, g in usable.items() if _passes(g)}
     sales = sorted(f for f, g in usable.items() if g["doc_type"] == "sales_invoice" and f != INBOX_SALE
