@@ -1075,6 +1075,59 @@ async function errorDetail(res: Response, what: string): Promise<string> {
   return `Could not ${what} (${res.status}): ${text.slice(0, 200)}${ref}`;
 }
 
+/** Load sample books (services/runtime/app/sample_books.py): progress kept in the user's _System/sample_seed.json. */
+export interface RtSampleStatus {
+  state: "none" | "running" | "needs_token" | "done" | "failed";
+  /** The step being done, or the one it stopped at. */
+  step: string | null;
+  done: number;
+  total: number;
+  steps: string[];
+  started_at: string | null;
+  updated_at: string | null;
+  finished_at: string | null;
+  /** A plain sentence when it stopped. */
+  error: string | null;
+  business: string | null;
+  /** State "none" only: whether sample books could go into this folder (no entries, proposals or contacts). */
+  empty: boolean | null;
+}
+
+/** A refused POST /books/sample: `detail` is the runtime's sentence (409: the folder already has books). */
+export class SampleRefused extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+  ) {
+    super(message);
+  }
+}
+
+/** GET /books/sample. */
+export function sampleStatus(account: AccountInfo): Promise<RtSampleStatus> {
+  return call<RtSampleStatus>(account, "/books/sample");
+}
+
+/**
+ * POST /books/sample (start, or carry on after a stop) or /books/sample/continue (while it runs: hands the runtime
+ * this request's fresh Graph token, which the long background job needs once the first one expires).
+ */
+export async function postSample(account: AccountInfo, carryOn = false): Promise<RtSampleStatus> {
+  const path = withQuery(carryOn ? "/books/sample/continue" : "/books/sample", vatQuery());
+  const res = await fetch(`${RUNTIME_URL}${path}`, { method: "POST", headers: await runtimeHeaders(account) });
+  if (res.ok) return (await res.json()) as RtSampleStatus;
+  let detail: unknown;
+  try {
+    detail = ((await res.json()) as { detail?: unknown }).detail;
+  } catch {
+    /* not JSON */
+  }
+  throw new SampleRefused(
+    typeof detail === "string" && detail ? detail : `Couldn't load sample books (status ${res.status}).`,
+    res.status,
+  );
+}
+
 /** /books/bank/* wire types. Amounts are signed pence: money out is negative. Dates are YYYY-MM-DD. */
 export type RtBankLineStatus = "unmatched" | "matched" | "suggested" | "transfer" | "ignored";
 
