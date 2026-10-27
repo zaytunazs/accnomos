@@ -287,8 +287,10 @@ export default function InvoiceForm() {
             id="inv-search"
             className={fieldInput}
             role="combobox"
-            aria-expanded={q ? true : undefined}
+            aria-expanded={q ? "true" : "false"}
             aria-controls="inv-search-results"
+            aria-autocomplete="list"
+            aria-haspopup="listbox"
             autoComplete="off"
             placeholder="Type a name or email…"
             value={query}
@@ -447,7 +449,7 @@ export default function InvoiceForm() {
           + Add a line
         </button>
 
-        <dl className={`mt-4 space-y-1 border-t border-border pt-3 text-sm ${showSaved ? "" : "opacity-60"}`} aria-live="polite">
+        <dl className={`mt-4 space-y-1 border-t border-border pt-3 text-sm ${showSaved ? "" : "italic"}`} aria-live="polite">
           {shownTotals.byCode.map((g) => (
             <div key={g.code} className="flex justify-between text-muted">
               <dt>{VAT_CODES.find((c) => c.code === g.code)!.label}: net {money(g.net)}</dt>
