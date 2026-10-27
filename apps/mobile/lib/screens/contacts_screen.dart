@@ -4,9 +4,12 @@ import 'package:msal_auth/msal_auth.dart';
 import '../services/auth.dart';
 import '../services/books.dart';
 import '../services/phone_contacts.dart';
+import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/lookups.dart';
 import '../widgets/vat_status.dart';
+import 'contact_edit_sheet.dart';
 import 'payments_sheets.dart';
 import 'phone_import_sheet.dart';
 import 'settings_screen.dart';
@@ -469,6 +472,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
   Map<String, dynamic>? _statement;
   Map<String, dynamic>? _contact;
   Map<String, dynamic>? _agedRow;
+  Map<String, dynamic>? _lookups;
   String _vatStatus = vatStatusUnknown;
   bool _savingVat = false;
   final _vrn = TextEditingController();
@@ -563,6 +567,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
           ? null
           : Map<String, dynamic>.from(widget.contact!);
       Map<String, dynamic>? agedRow;
+      Map<String, dynamic>? lookups;
       try {
         final contacts = await client.contacts();
         final list = contacts['contacts'];
@@ -577,15 +582,17 @@ class _ContactDetailState extends State<ContactDetailScreen> {
         }
         agedRow = _findAgedRow(
             await client.agedBalances(), widget.contactId);
+        lookups = await client.lookupStatus();
       } catch (_) {
-        // The statement is the core; the VAT record and aged balances
-        // stay hidden when those calls fail.
+        // The statement is the core; the VAT record, aged balances and
+        // look-ups stay hidden when those calls fail.
       }
       if (!mounted) return;
       setState(() {
         _statement = decoded;
         _contact = record;
         _agedRow = agedRow;
+        if (lookups != null) _lookups = lookups;
         if (record != null) {
           _vatStatus =
               (record['vat_status'] ?? vatStatusUnknown).toString();
@@ -757,6 +764,75 @@ class _ContactDetailState extends State<ContactDetailScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context)
         .showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  /// Edit name, company number and registered address. A Companies House
+  /// match fills the three fields; nothing is saved until Save.
+  Future<void> _openEdit() async {
+    final record = _contact;
+    if (record == null) return;
+    if (widget.sampleMode) {
+      _snack('Sample contact — sign in to save.');
+      return;
+    }
+    RuntimeClient client;
+    try {
+      client = await booksClient(
+          widget.settings, widget.auth, widget.account);
+    } catch (e) {
+      _snack(friendly(e));
+      return;
+    }
+    if (!mounted) return;
+    final edits = await showModalBottomSheet<Map<String, dynamic>>(
+      context: context,
+      isScrollControlled: true,
+      builder: (sheetContext) => Padding(
+        padding: EdgeInsets.only(
+            bottom: MediaQuery.of(sheetContext).viewInsets.bottom),
+        child: ContactEditSheet(
+          initialName: (record['name'] ?? '').toString(),
+          initialCompanyNumber:
+              (record['company_number'] ?? '').toString(),
+          initialAddress: (record['address'] ?? '').toString(),
+          companiesHouse: _lookups?['companies_house'] == true,
+          onSearch: (q) async {
+            final found = await client.lookupCompanies(q);
+            final items = found['items'];
+            if (items is! List) return const <Map<String, dynamic>>[];
+            return [
+              for (final m in items)
+                if (m is Map) Map<String, dynamic>.from(m),
+            ];
+          },
+        ),
+      ),
+    );
+    if (edits == null) return;
+    try {
+      final updated =
+          await client.editContact(widget.contactId, edits);
+      if (!mounted) return;
+      setState(() {
+        _contact = {...?record, ...updated};
+      });
+      _snack('Contact saved.');
+    } catch (e) {
+      _snack(friendly(e));
+    }
+  }
+
+  /// HMRC VAT check for the saved VAT number, on a tap only. Hidden while
+  /// the runtime answers 503 `vat_check_not_configured`.
+  Future<Map<String, dynamic>> _checkVat() async {
+    final client = await booksClient(
+        widget.settings, widget.auth, widget.account);
+    final record = _contact ?? const {};
+    return client.vatCheck(
+      vrn: (record['vrn'] ?? '').toString(),
+      name: (record['name'] ?? '').toString(),
+      contactId: widget.contactId,
+    );
   }
 
   List<Map<String, dynamic>> _credits() {
@@ -1086,6 +1162,8 @@ class _ContactDetailState extends State<ContactDetailScreen> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
+        _companyCard(),
+        const SizedBox(height: 12),
         _vatCard(),
         const SizedBox(height: 12),
         Container(
@@ -1132,8 +1210,61 @@ class _ContactDetailState extends State<ContactDetailScreen> {
     );
   }
 
+  /// Legal name, company number and registered address, with Edit. A
+  /// Companies House match fills the three fields; nothing is saved until
+  /// Save. The look-up stays hidden while the runtime is not configured
+  /// for it.
+  Widget _companyCard() {
+    final record = _contact;
+    if (record == null) return const SizedBox.shrink();
+    final number = (record['company_number'] ?? '').toString().trim();
+    final address = (record['address'] ?? '').toString().trim();
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFE3E1D8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Company',
+                  style:
+                      TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+              ),
+              TextButton(
+                style: TextButton.styleFrom(
+                  foregroundColor: AccnomosColors.tealDark,
+                  minimumSize: const Size(48, 48),
+                ),
+                onPressed: _openEdit,
+                child: const Text('Edit'),
+              ),
+            ],
+          ),
+          Text(
+            'Company number: ${number.isEmpty ? '—' : number}',
+            style: const TextStyle(color: AccnomosColors.muted),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            'Registered address: ${address.isEmpty ? '—' : address}',
+            style: const TextStyle(color: AccnomosColors.muted),
+          ),
+        ],
+      ),
+    );
+  }
+
   /// VAT status and number. The segmented control shows only for contacts
   /// the user buys from (like the web); the VAT number is editable for all.
+  /// The HMRC check runs only on a tap and never blocks anything.
   Widget _vatCard() {
     final record = _contact;
     if (record == null) return const SizedBox.shrink();
@@ -1214,6 +1345,25 @@ class _ContactDetailState extends State<ContactDetailScreen> {
                   _savingVrn ? 'Saving…' : 'Save VAT number'),
             ),
           ),
+          if (!widget.sampleMode &&
+              (_contact?['vrn'] ?? '').toString().trim().isNotEmpty &&
+              _lookups?['vat_check'] == true)
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: VatCheckSection(
+                key: ValueKey(
+                    'vat-check-${(_contact?['vrn'] ?? '').toString()}'),
+                vrn: (_contact?['vrn'] ?? '').toString(),
+                name: (_contact?['name'] ?? '').toString(),
+                onCheck: _checkVat,
+                initial: _contact?['vat_check'] is Map
+                    ? Map<String, dynamic>.from(_contact!['vat_check'])
+                    : null,
+                onChecked: _reload,
+                onNotConfigured: () => setState(
+                    () => _lookups = {...?_lookups, 'vat_check': false}),
+              ),
+            ),
           if (widget.sampleMode)
             const Padding(
               padding: EdgeInsets.only(top: 4),
