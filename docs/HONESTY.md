@@ -4,9 +4,9 @@ A flat list, grouped by area, from the code on `main` and the "What remains" sec
 (duplicates merged). Severity-ordered tables are in `docs/REMAINING.md`; what each feature does and how it is tested is the
 README table. We could not reach accnomos.com or api.accnomos.com from this session, so the live sites are unchecked.
 
-Checked 27 Oct 2026 on this checkout: `pytest -q` passes in `services/runtime` (642 passed, 1 skipped), `packages/ledger` (33),
-`packages/connectors` (34), `services/hmrc-relay` (102) and `evals` (153). The Flutter app was **not** built, analysed or tested. `pnpm run build`
-in `apps/web` was not re-run in this check (no web files changed); the Playwright suite was not re-run. `ruff` has not been run on `main`.
+Checked 27 Oct 2026 on this checkout: `pytest -q` passes in `services/runtime` (811 passed, 1 skipped), `packages/ledger` (35),
+`packages/connectors` (43), `services/hmrc-relay` (102) and `evals` (158). The Flutter app was **not** built, analysed or tested. `pnpm run build`
+in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.spec.ts` and `settings.spec.ts` were re-run (all pass). `ruff` has not been run on `main`.
 
 ## What is real, and what is not
 
