@@ -379,7 +379,11 @@ export default function LivePayroll() {
           {(list?.limits ?? []).map((l) => (
             <li key={l}>{l}</li>
           ))}
-          <li>Monthly pay only: annual thresholds divided by 12. Gross is hours × hourly rate; salaries, overtime rates and bonuses are typed in as edits.</li>
+          <li>
+            Monthly pay only: annual thresholds divided by 12, so estimated tax is usually about 20p a month higher than
+            HMRC&apos;s tables. Gross is always hours × hourly rate: for a salary, overtime or a bonus, change the hours or
+            rate so the gross matches.
+          </li>
           <li>Accnomos does not file RTI (FPS/EPS) or pay HMRC. Your payroll provider, or HMRC Basic PAYE Tools, does.</li>
         </ul>
         {list && (
