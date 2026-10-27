@@ -91,4 +91,6 @@ All take the usual `X-Graph-Token` / `X-Account-Kind` headers; AI headers are op
 - The no-reply and newsletter rules are simple patterns: an automated email from an unusual address can get through
   (it usually lands under *Other*), and a real person writing from `notifications@` would be dropped.
 - Your own replies live in Sent Items, which is not read, so a thread you have already answered can still say *Reply*.
+- A draft is two Graph calls (`createReply`, then `PATCH`). If the second fails, an empty reply (just the quoted
+  thread) is left in Drafts and the app shows the error; Accnomos does not delete it, so delete it in Outlook.
 - `webLink` opens Outlook on the web; whether it opens the desktop app depends on your system.

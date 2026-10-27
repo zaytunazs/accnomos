@@ -28,7 +28,7 @@ from app.intake import domain_of, is_from_self
 ACTOR = "agent:triage"
 PREVIEW_MAX = 255
 MESSAGES_PER_THREAD = 5  # the newest few previews are enough to say what a thread wants
-MESSAGES_PER_THREAD_CAP = 8  # how many messages to read per thread we want to show
+MESSAGES_PER_THREAD_CAP = 8  # messages kept per thread (message_count, unread); the model sees MESSAGES_PER_THREAD
 MODEL_CONCURRENCY = 4
 SUBJECT_MAX = 200
 
@@ -205,7 +205,7 @@ async def triage_mail(
     async def one(t: Thread) -> TriageThread:
         base = _thread(t, user)
         if cfg is None:
-            return base.model_copy(update={"fallback_reason": "No AI is set up, so only the subject is shown."})
+            return base.model_copy(update={"fallback_reason": "No AI is set up, so the summary is just the sender and subject."})
         async with gate:
             return await triage_ai.triage_thread(t, base, cfg, user=user, business_name=business_name, today=today)
 

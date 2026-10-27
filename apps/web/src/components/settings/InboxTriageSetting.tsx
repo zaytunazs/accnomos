@@ -50,7 +50,8 @@ export default function InboxTriageSetting() {
         <p className="text-[15px] font-bold text-ink">Inbox triage</p>
         <p className="mt-1 text-sm text-muted">
           Home lists the last 7 days of email from customers, suppliers, HMRC and your accountant: a one-line summary, a
-          suggested reply and the to-dos in it. Only the first 255 characters of each email are read and sent to your AI.
+          suggested reply and the to-dos in it. Only the sender, subject and first 255 characters of each email are read
+          and sent to your AI.
           Replies become Outlook drafts when you ask (Accnomos asks for permission to write drafts then); you send them
           yourself. <Link href="/" className="font-bold text-teal-dark">Open Home</Link>
         </p>
