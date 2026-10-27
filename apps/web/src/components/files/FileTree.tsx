@@ -1,6 +1,6 @@
 import { filesTree } from "@/lib/sample-files";
 
-function FolderIcon() {
+export function FolderIcon() {
   return (
     <svg
       aria-hidden="true"
@@ -20,7 +20,7 @@ function FolderIcon() {
   );
 }
 
-function FileIcon() {
+export function FileIcon() {
   return (
     <svg
       aria-hidden="true"

@@ -9,17 +9,15 @@ import {
   saveBusiness,
   validateVatNumber,
   type Business,
-  type PeriodEnd,
   type VatPeriod,
 } from "@/lib/business";
+import VatStaggerField from "@/components/onboarding/VatStaggerField";
 
 const PERIODS: { value: VatPeriod; label: string }[] = [
   { value: "quarterly", label: "Quarterly" },
   { value: "monthly", label: "Monthly" },
   { value: "annual", label: "Annual" },
 ];
-
-const PERIOD_ENDS: PeriodEnd[] = ["Mar/Jun/Sep/Dec", "Jan/Apr/Jul/Oct", "Feb/May/Aug/Nov"];
 
 export default function BusinessForm() {
   const router = useRouter();
@@ -128,21 +126,11 @@ export default function BusinessForm() {
 
       {form.vatPeriod === "quarterly" && (
         <div className="rounded-2xl border border-border bg-white p-4">
-          <label className={label} htmlFor="period-end">
-            Period ends
-          </label>
-          <select
-            id="period-end"
-            className={input}
-            value={form.periodEnd}
-            onChange={(e) => set("periodEnd", e.target.value as PeriodEnd)}
-          >
-            {PERIOD_ENDS.map((end) => (
-              <option key={end} value={end}>
-                {end}
-              </option>
-            ))}
-          </select>
+          <VatStaggerField
+            stagger={form.stagger}
+            customStartMonth={form.customStartMonth}
+            onChange={(stagger, customStartMonth) => setForm((prev) => ({ ...prev, stagger, customStartMonth }))}
+          />
         </div>
       )}
 

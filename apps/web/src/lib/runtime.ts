@@ -154,7 +154,41 @@ export const runtime = {
     }),
   mailScan: (a: AccountInfo, body: { since_days?: number; dry_run?: boolean }) =>
     call<RtMailScan>(a, "/mail/scan", { method: "POST", body: JSON.stringify(body) }, mailScopesFor(accountKind(a))),
+  /** POST /books/rebuild: regenerate Books.xlsx from the event files now. */
+  rebuild: (a: AccountInfo) => call<RtRebuild>(a, "/books/rebuild", { method: "POST" }),
+  /** GET /books/deadlines?stagger=1 | start_month=5 | months=1 (see lib/business.ts deadlinesQuery). */
+  deadlines: (a: AccountInfo, query: string) => call<RtDeadlines>(a, `/books/deadlines?${query}`),
 };
+
+/** POST /books/rebuild (services/runtime/app/routes_books.py). */
+export interface RtRebuild {
+  path: string;
+  size: number;
+  books_url: string | null;
+}
+
+/** GET /books/deadlines (services/runtime/app/routes_vat.py). Dates are YYYY-MM-DD. */
+export interface RtPeriodDeadline {
+  start: string;
+  end: string;
+  label: string;
+  period_key: string | null;
+  deadline: string;
+  days_to_end: number;
+  days_remaining: number;
+  box5: string; // pounds, 2 dp, absolute
+  box5_direction: "pay" | "reclaim" | "nil";
+  entries: number;
+}
+export interface RtDeadlines {
+  today: string;
+  months: number;
+  start_month: number;
+  stagger: number | null;
+  current: RtPeriodDeadline;
+  due: RtPeriodDeadline | null;
+  rule: string;
+}
 
 /** POST /books/ask (services/runtime/app/routes_ask.py). */
 export interface RtAskPeriod {
