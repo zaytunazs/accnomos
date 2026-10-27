@@ -121,7 +121,7 @@ function StatementLines({ statement, lines }: { statement: RtBankStatement; line
   const shown = filter === "all" ? rows : rows.filter((l) => l.status === filter);
   const id = `statement-filter-${statement.path}`;
   return (
-    <div className="flex flex-col gap-2 border-t border-border py-3">
+    <div role="region" aria-label={`Lines in ${statement.path}`} className="flex flex-col gap-2 border-t border-border py-3">
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor={id} className="text-[13px] font-bold text-muted">
           Show
