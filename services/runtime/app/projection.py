@@ -146,32 +146,6 @@ def _vat(ws: Worksheet, events: Sequence[LedgerEvent], today: date) -> None:
             cell.number_format = GBP if row[0].row <= 6 else WHOLE_GBP
 
 
-def supplier_totals(events: Sequence[LedgerEvent]) -> list[tuple[str, int, int, int, int, date, date]]:
-    """(supplier, entries, net, VAT, gross, first date, last date) in pence for approved purchases.
-
-    A reversal of a purchase counts against the same supplier with the opposite sign. Gross is the
-    entry's total debits (a balanced purchase debits net + VAT); net falls back to gross − VAT.
-    """
-    by_id = {e.id: e for e in events}
-    totals: dict[str, list] = {}
-    for e in events:
-        original = by_id.get(e.reverses) if e.kind == "reversal" and e.reverses else None
-        if e.kind != "purchase" and not (original and original.kind == "purchase"):
-            continue
-        sign = -1 if original else 1
-        gross = sum(ln.debit for ln in e.lines)
-        vat = e.vat or 0
-        net = e.net if e.net is not None else gross - vat
-        name = e.counterparty or (original.counterparty if original else None) or "(no supplier name)"
-        t = totals.setdefault(name, [0, 0, 0, 0, e.date, e.date])
-        t[0] += sign
-        t[1] += sign * net
-        t[2] += sign * vat
-        t[3] += sign * gross
-        t[4], t[5] = min(t[4], e.date), max(t[5], e.date)
-    return [(name, *t) for name, t in sorted(totals.items(), key=lambda kv: (-kv[1][3], kv[0].lower()))]
-
-
 def contact_sheet_rows(contacts: Sequence[Contact], ledger: Ledger, side: str, year_start: date, today: date) -> list[tuple]:
     """(name, VRN, YTD net, YTD VAT, open balance, entries, gross, last entry) in pence for one side.
 
@@ -203,7 +177,7 @@ def _contacts_sheet(ws: Worksheet, title: str, due: str, rows: Sequence[tuple]) 
 
 
 def _summary(ws: Worksheet, events: Sequence[LedgerEvent], bank_lines: Sequence[BankLine],
-             proposals: Sequence[Proposal], generated: datetime) -> None:
+             proposals: Sequence[Proposal], generated: datetime, customers: int, suppliers: int) -> None:
     # A reversal counts against the kind of the entry it reverses, with the opposite sign (as on Suppliers and VAT).
     by_id = {e.id: e for e in events}
     signed: list[tuple[str, int, LedgerEvent]] = []
@@ -231,7 +205,8 @@ def _summary(ws: Worksheet, events: Sequence[LedgerEvent], bank_lines: Sequence[
         ("Purchase entries", kind_count("purchase")),
         ("Purchases net £", pounds(kind_sum("purchase", "net"))),
         ("VAT on purchases £", pounds(kind_sum("purchase", "vat"))),
-        ("Suppliers", len(supplier_totals(events))),
+        ("Customers", customers),
+        ("Suppliers", suppliers),
         ("Bank lines", len(bank_lines)),
         ("Bank lines matched", sum(ln.status == "matched" for ln in bank_lines)),
         ("Bank lines unmatched", sum(ln.status == "unmatched" for ln in bank_lines)),
@@ -282,14 +257,14 @@ def build_books_xlsx(
     for name, ws in sheets.items():
         ws.title = name
     _read_me(sheets["README"], generated)
-    _summary(sheets["Summary"], events, bank_lines, proposals, generated)
+    customer_rows = contact_sheet_rows(contacts, ledger, "sale", year_start, today)
+    supplier_rows = contact_sheet_rows(contacts, ledger, "purchase", year_start, today)
+    _summary(sheets["Summary"], events, bank_lines, proposals, generated, len(customer_rows), len(supplier_rows))
     _ledger(sheets["Ledger"], events)
     _accounts(sheets["Accounts"], events)
     _vat(sheets["VAT"], events, generated.date())
-    _contacts_sheet(sheets["Customers"], "Customer", "Unpaid by them £",
-                    contact_sheet_rows(contacts, ledger, "sale", year_start, today))
-    _contacts_sheet(sheets["Suppliers"], "Supplier", "Unpaid by you £",
-                    contact_sheet_rows(contacts, ledger, "purchase", year_start, today))
+    _contacts_sheet(sheets["Customers"], "Customer", "Unpaid by them £", customer_rows)
+    _contacts_sheet(sheets["Suppliers"], "Supplier", "Unpaid by you £", supplier_rows)
     _bank(sheets["Bank"], bank_lines)
     _proposals(sheets["Proposals"], proposals)
     buf = io.BytesIO()

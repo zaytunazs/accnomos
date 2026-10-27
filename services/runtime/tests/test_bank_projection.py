@@ -14,7 +14,7 @@ from openpyxl import load_workbook
 
 from app.approve import approve
 from app.books import AUDIT, BANK_LINES, WORKBOOK, BankMatchError, Books
-from app.projection import SHEETS, build_books_xlsx, last_quarters, supplier_totals
+from app.projection import SHEETS, build_books_xlsx, last_quarters
 from app.schemas import ExtractedDoc, Proposal
 
 USER = "sam@example.co.uk"
@@ -247,7 +247,6 @@ def test_books_xlsx_totals_match_the_events() -> None:
     assert sup["Total"][3] == 0
     assert _pence(sup["Total"][5]) == sum(sum(ln.debit for ln in e.lines) for e in purchases)
     assert "Acme Kitchens Ltd" not in sup
-    assert supplier_totals(events)[0][0] == "Howdens Joinery"
     assert s["H2"].number_format == "dd/mm/yyyy" and s["E2"].number_format.startswith('"£"')
 
     # Customers: two sales invoices, both unpaid (no bank line matched).
@@ -258,7 +257,8 @@ def test_books_xlsx_totals_match_the_events() -> None:
 
     # Summary: counts and totals straight from the events.
     summ = {r[0]: r[1] for r in wb["Summary"].iter_rows(min_row=2, values_only=True)}
-    assert summ["Entries posted"] == len(events) and summ["Suppliers"] == 3
+    assert summ["Entries posted"] == len(events) and summ["Suppliers"] == 3 == len(sup) - 1
+    assert summ["Customers"] == 2 == len(cus) - 1  # the same deduplicated contacts as the sheets (less the Total row)
     assert _pence(summ["Total debits £"]) == debits == _pence(summ["Total credits £"])
     assert _pence(summ["Sales net £"]) == sum(e.net for e in events if e.kind == "sale")
     # The reversed purchase nets off here too, so Summary, Suppliers and VAT agree.
