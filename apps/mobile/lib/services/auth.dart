@@ -100,6 +100,14 @@ class AuthService {
   /// the web's `mailSendScopesFor` — never at sign-in.
   static const mailSendScopes = ['Mail.Send'];
 
+  /// Extra scope for reading the inbox on the Home tab. Asked for only when
+  /// the user first taps "Check inbox" — never at sign-in.
+  static const mailReadScopes = ['Mail.Read'];
+
+  /// Extra scope for saving a reply as an Outlook draft. Asked for only when
+  /// the user first taps "Save draft in Outlook" — never at sign-in.
+  static const mailReadWriteScopes = ['Mail.ReadWrite'];
+
   /// Graph access token: silent first, interactive on `MsalUiRequiredException`.
   Future<String> token() async {
     final pca = await _pcaAsync();

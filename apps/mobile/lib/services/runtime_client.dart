@@ -302,13 +302,15 @@ class RuntimeClient {
     }
   }
 
-  /// The Home tiles in one call. `GET /books/dashboard` (stagger 1 VAT
-  /// quarters until the app has a VAT period setting). [today] is
-  /// `YYYY-MM-DD` on the phone, so the deadline counts from the user's day.
+  /// The Home tiles in one call. `GET /books/dashboard`, with the saved VAT
+  /// period (`stagger=` or `start_month=`, like the web's `vatQuery()`).
+  /// [today] is `YYYY-MM-DD` on the phone, so the deadline counts from the
+  /// user's day.
   Future<Map<String, dynamic>> dashboard({String? today}) async {
     _requireBooks();
-    final query = today == null ? '' : '?today=$today';
-    final uri = Uri.parse('${settings.runtimeUrl}/books/dashboard$query');
+    final query = _vatQuery(today: today);
+    final uri = Uri.parse(
+        '${settings.runtimeUrl}/books/dashboard${query.isEmpty ? '' : '?$query'}');
     try {
       final response =
           await http.get(uri, headers: _headers).timeout(_timeout);
@@ -582,18 +584,61 @@ class RuntimeClient {
   Future<Map<String, dynamic>> rebuild() =>
       _map('POST', '/books/rebuild', what: 'rebuild Books.xlsx');
 
-  /// `GET /books/deadlines`. Send [stagger] (1–3) or [startMonth]; [months]
-  /// is 3 (quarterly) or 1 (monthly).
+  /// `GET /books/deadlines`. [stagger] (1–3) or [startMonth] default to the
+  /// saved VAT period; [months] is 3 (quarterly) or 1 (monthly).
   Future<Map<String, dynamic>> deadlines(
-          {int? stagger, int? startMonth, int months = 3, String? today}) =>
-      _map('GET', '/books/deadlines',
-          query: {
-            if (stagger != null) 'stagger': '$stagger',
-            if (startMonth != null) 'start_month': '$startMonth',
-            'months': '$months',
-            'today': ?today,
-          },
-          what: 'load VAT deadlines');
+          {int? stagger, int? startMonth, int months = 3, String? today}) {
+    final start = startMonth ?? settings.vatStartMonth;
+    final stag = start == null ? (stagger ?? settings.vatStagger) : null;
+    return _map('GET', '/books/deadlines',
+        query: {
+          if (stag != null) 'stagger': '$stag',
+          if (start != null) 'start_month': '$start',
+          'months': '$months',
+          'today': ?today,
+        },
+        what: 'load VAT deadlines');
+  }
+
+  /// The saved VAT period as the runtime's query, like the web's `vatQuery()`
+  /// in `apps/web/src/lib/vat-period.ts`: `start_month=` when the user kept
+  /// a custom quarter start, else `stagger=`.
+  String _vatQuery({String? today}) {
+    final start = settings.vatStartMonth;
+    final parts = <String>[
+      if (start != null) 'start_month=$start' else 'stagger=${settings.vatStagger}',
+      if (today != null) 'today=$today',
+    ];
+    return parts.join('&');
+  }
+
+  /// To-dos in `_System/Todos/todos.json`. `GET /todos`, soonest first.
+  Future<List<Map<String, dynamic>>> todos() =>
+      _list('GET', '/todos', what: 'load to-dos');
+
+  /// `POST /todos`: add one line of text. Returns the saved to-do.
+  Future<Map<String, dynamic>> addTodo(String text) => _map('POST', '/todos',
+      body: {'text': text}, what: 'add that to-do');
+
+  /// `DELETE /todos/{id}`: tick one off.
+  Future<Map<String, dynamic>> deleteTodo(String id) =>
+      _map('DELETE', '/todos/${_seg(id)}', what: 'tick off that to-do');
+
+  /// `POST /mail/triage`: the last days of business mail with summaries,
+  /// suggested replies and to-dos. Needs `Mail.Read` on the Graph token;
+  /// without AI headers the summaries are written by code. Changes nothing.
+  Future<Map<String, dynamic>> mailTriage(
+          {int sinceDays = 7, int maxThreads = 20}) =>
+      _map('POST', '/mail/triage',
+          body: {'since_days': sinceDays, 'max_threads': maxThreads},
+          what: 'check the inbox');
+
+  /// `POST /mail/draft-reply`: save an edited reply as an Outlook draft.
+  /// Needs `Mail.ReadWrite` and `X-User`. Never sends.
+  Future<Map<String, dynamic>> draftReply(String messageId, String body) =>
+      _map('POST', '/mail/draft-reply',
+          body: {'message_id': messageId, 'body': body},
+          what: 'save that draft');
 
   /// `POST /mail/scan`. The Graph token must carry `Mail.Read`.
   Future<Map<String, dynamic>> mailScan(
