@@ -446,7 +446,7 @@ async def simulate(args: argparse.Namespace) -> list[Path]:
     elif (os.environ.get("VERIFIER") or "").lower() in ("off", "0", "false", "no"):
         raise SystemExit("--verifier on, but VERIFIER=off is set in the environment")
     cfg = AiConfig.resolve(mode="local", model=args.model)
-    plan = sd.build_plan(sd.GOLD_BUSINESS, today=TODAY)
+    plan = sd.build_plan(sd.GOLD_BUSINESS, today=TODAY, extras=False)  # the 40-entry books the stored report used
     golds = gold_receipts()
     t0 = time.perf_counter()
     base, origin = await build_books(plan, golds)

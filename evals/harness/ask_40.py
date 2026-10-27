@@ -281,7 +281,7 @@ def shipped_text(a: AskAnswer) -> str:
 
 
 async def seeded_books() -> Books:
-    plan = seed_demo.build_plan(BUSINESS, SEED_DAY)
+    plan = seed_demo.build_plan(BUSINESS, SEED_DAY, extras=False)  # the 40-entry books the stored report used
     fake = FakeStorageProvider()
     await seed_demo.seed(fake, plan, say=lambda _m: None)
     return Books(fake)
