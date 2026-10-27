@@ -674,6 +674,9 @@ async def test_a_customer_credit_note_bigger_than_the_debt_applied_to_another_in
         await inv_.void_invoice(books, b.number, USER, "wrong")
     _, st, _ = await _acme(books)
     assert st.credit_pence == 40500 - 3000
+    assert [(u.kind, u.source, u.applied_pence, u.doc_event_id) for u in st.credit_uses] == [
+        ("apply", "credit_note", 3000, b.event_id)
+    ]
 
 
 async def test_a_supplier_credit_refunded_by_the_supplier_on_a_bank_line(books: Books):
@@ -734,6 +737,11 @@ async def test_credit_routes(client, books: Books, sender: FakeMailSender):
     st = client.get(f"/contacts/{contact['id']}/statement", headers=H).json()
     assert [c["id"] for c in st["credits"]] == [cid]
     assert [d["reference"] for d in st["open_documents"]] == [b.number]
+    assert st["credit_uses"] == []  # both were removed above
+    # Payment terms are editable through the route (used by ageing)
+    r = client.put(f"/contacts/{contact['id']}", json={"terms_days": 14}, headers=H)
+    assert r.status_code == 200 and r.json()["terms_days"] == 14
+    assert client.put(f"/contacts/{contact['id']}", json={"terms_days": 400}, headers=H).status_code == 422
 
 
 async def test_a_supplier_credit_note_naming_its_bill_is_allocated_to_it(books: Books):

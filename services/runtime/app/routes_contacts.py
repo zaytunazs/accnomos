@@ -91,6 +91,7 @@ class ContactEdit(StrictBody):
     default_category: str | None = Field(None, max_length=100)
     default_vat_code: str | None = Field(None, max_length=10)
     vat_status: VatStatus | None = None  # null means unknown: the VAT check asks again over £250
+    terms_days: int | None = Field(None, ge=0, le=365)  # payment terms in days (ageing); null: the 30-day default
 
 
 @router.get("/aged", response_model=cb.AgedBalances)

@@ -390,6 +390,7 @@ class Statement(BaseModel):
     lines: list[StatementLine]
     credits: list[Credit] = []  # that money, credit by credit (Apply credit / Refund, app/credits.py)
     open_documents: list[OpenItem] = []  # invoices and bills with something left to pay, oldest first
+    credit_uses: list[UseShown] = []  # credits applied to documents or refunded (Remove takes one back)
 
 
 _DETAILS = {("sale", "invoice"): "Sales invoice", ("purchase", "invoice"): "Purchase"}
@@ -473,6 +474,7 @@ def statement(
             )
             for d in open_docs(docs, ledger)
         ],
+        credit_uses=[u for u in ledger.settlement().uses if u.credit_doc_event_id in {d.event.id for d in docs}],
     )
 
 
