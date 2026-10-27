@@ -64,6 +64,9 @@ Severity:
 | Low | An invoice marked paid before payments were recorded (no amount kept) counts as paid on Invoices and Home but stays open in Contacts and *Aged balances*, as before; *Remove* on it puts it back to sent. `payments.json` is rewritten whole (last write wins). |
 | Low | `contacts.json` is rewritten whole: two tabs editing at once means last write wins. After *Edit* the side panel does not reload the statement (figures stay right). |
 | Low | `Contacts.Read` may need admin consent on work accounts (untested). |
+| Medium | Duplicate AI judgement has run against the test stub only (`testmode.duplicate_reply`); no real Glimmer/Meta call has judged a group end to end. |
+| Low | After a merge the *Undo* offer lives in the page state: reloading Contacts loses the button (the record stays in `_System/Contacts/merges/`; undo again through the API). |
+| Low | A merge across different VAT numbers is refused; telling two same-named businesses apart still needs the numbers on file. |
 
 ## Files, Books.xlsx, dashboard and deadlines
 

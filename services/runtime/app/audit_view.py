@@ -256,6 +256,9 @@ SUMMARIES: dict[str, Summary] = {
         if str(r.get("source")) == "phone"
         else "Imported contacts from Outlook"
     ),
+    "contacts_not_same": lambda r, w: "Said some contacts are not the same business",
+    "contacts_merged": lambda r, w: f"Merged into one ({r.get('name', 'a contact')})",
+    "contacts_merge_undone": lambda r, w: "Undid a contact merge",
     # Vehicles and mileage
     "vehicle_added": lambda r, w: "Added a vehicle",
     "vehicle_changed": lambda r, w: "Changed a vehicle" + _fields(r),

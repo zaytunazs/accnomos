@@ -19,7 +19,7 @@ from accnomos_connectors.base import ContactsProvider
 from accnomos_connectors.msgraph import GraphContactsProvider
 from app import company_lookup as lookup
 from app import contacts as cb
-from app.ai.config import is_test_mode
+from app.ai.config import AiConfig, is_test_mode
 from app.books import Books
 from app.books import today as london_today
 from app.routes_books import get_books, require_user
@@ -210,6 +210,98 @@ async def import_phone(
         )
     except cb.ContactEditError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+class DuplicateGroupOut(BaseModel):
+    contact_ids: list[str]
+    contacts: list[cb.Contact]
+    evidence: list[str]
+    blocked: bool = False  # different VAT numbers: code never suggests these as the same business
+    ai: cb.DuplicateAI | None = None  # the model's view; null when it could not answer
+
+
+class DuplicatesList(BaseModel):
+    groups: list[DuplicateGroupOut]
+
+
+@router.get("/duplicates", response_model=DuplicatesList)
+async def duplicates(request: Request, books: Books = Depends(get_books)) -> DuplicatesList:
+    """Possible duplicates by code (shared email, phone, VAT number or close name), each with the
+    user's model's view alongside the code evidence. A model that cannot answer leaves `ai` unset."""
+    contacts, _, _ = await cb.contact_book(books)
+    groups = cb.find_duplicate_groups(contacts, await cb.load_not_same(books))
+    try:
+        cfg: AiConfig | None = AiConfig.from_headers(request.headers)
+    except ValueError:
+        cfg = None  # a bad AI setup hides the model's view, never the code evidence
+    if cfg is not None:
+        groups = await cb.judge_groups(groups, contacts, cfg)
+    by_id = {c.id: c for c in contacts}
+    return DuplicatesList(
+        groups=[
+            DuplicateGroupOut(
+                contact_ids=g.contact_ids,
+                contacts=[by_id[i] for i in g.contact_ids if i in by_id],
+                evidence=g.evidence,
+                blocked=g.blocked,
+                ai=g.ai,
+            )
+            for g in groups
+        ]
+    )
+
+
+class DismissBody(StrictBody):
+    contact_ids: list[str] = Field(min_length=2, max_length=20)
+
+
+@router.post("/duplicates/dismiss")
+async def dismiss_duplicates(
+    body: DismissBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> dict[str, list[str]]:
+    """Remember these contacts are not the same business; they are never suggested again."""
+    try:
+        await cb.remember_not_same(books, body.contact_ids, user)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return {"dismissed": sorted(set(body.contact_ids))}
+
+
+class MergeBody(StrictBody):
+    keep_id: str = Field(pattern=r"^[0-9a-f]{16}$", max_length=16)
+    merge_ids: list[str] = Field(min_length=1, max_length=20)
+    name: str | None = Field(None, max_length=200)  # the kept contact's name; blank keeps its own
+
+
+class MergeOut(BaseModel):
+    contact: cb.Contact
+    merge_id: str  # POST /contacts/merge/{merge_id}/undo takes the merge back
+
+
+@router.post("/merge", response_model=MergeOut)
+async def merge_contacts(
+    body: MergeBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> MergeOut:
+    """Merge on approval, by code: combine details, alias the merged names, re-point references, audit."""
+    try:
+        kept, merge_id = await cb.merge(books, body.keep_id, body.merge_ids, (body.name or "").strip() or None, user)
+    except cb.MergeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return MergeOut(contact=kept, merge_id=merge_id)
+
+
+@router.post("/merge/{merge_id}/undo", response_model=ContactList)
+async def undo_merge(
+    merge_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> ContactList:
+    """Take back a merge: the exact previous contacts.json entries and references are restored."""
+    try:
+        contacts = await cb.undo_merge(books, merge_id, user)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="No such merge (or it was already undone)") from exc
+    _, ledger, saved = await cb.contact_book(books)
+    start, today = _year(None)
+    return ContactList(
+        year_start=start, today=today, saved=saved, contacts=cb.with_totals(contacts, ledger, start, today)
+    )
 
 
 @router.get("/{contact_id}/statement", response_model=cb.Statement)

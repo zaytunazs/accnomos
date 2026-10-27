@@ -391,6 +391,19 @@ export const runtime = {
   /** /lookup/* (services/runtime/app/routes_lookup.py): Companies House suggestions; nothing is saved. */
   lookupCompanies: (a: AccountInfo, q: string) =>
     call<RtCompanySearch>(a, `/lookup/companies?${new URLSearchParams({ q }).toString()}`),
+}
+
+  /** GET /contacts/duplicates: code evidence plus the user's model's view (ai is null when it could not answer). */
+  duplicates: (a: AccountInfo) => call<RtDuplicates>(a, "/contacts/duplicates"),
+  /** POST /contacts/duplicates/dismiss: remembered; never suggested again. */
+  dismissDuplicates: (a: AccountInfo, ids: string[]) =>
+    call<{ dismissed: string[] }>(a, "/contacts/duplicates/dismiss", { method: "POST", body: JSON.stringify({ contact_ids: ids }) }),
+  /** POST /contacts/merge: the user approved, code merges. Returns the kept contact and the undo id. */
+  mergeContacts: (a: AccountInfo, keep_id: string, merge_ids: string[], name?: string | null) =>
+    call<RtContactMerge>(a, "/contacts/merge", { method: "POST", body: JSON.stringify({ keep_id, merge_ids, name: name ?? null }) }),
+  /** POST /contacts/merge/{id}/undo: restores the exact previous entries and references. */
+  undoContactMerge: (a: AccountInfo, mergeId: string) =>
+    call<RtContactList>(a, `/contacts/merge/${encodeURIComponent(mergeId)}/undo`, { method: "POST" }),
   /** /books/bank/* (services/runtime/app/routes_bank.py): statements, matches and unmatched lines. */
   bank: {
     /** POST /books/bank/import: multipart upload; the same file twice is a no-op (sha256). */
@@ -1019,6 +1032,27 @@ export interface RtContactImport {
   updated: number;
   added: number;
   skipped: number;
+}
+/** One possible-duplicate group (services/runtime/app/contacts.py): the model's view is advisory only. */
+export interface RtDuplicateAI {
+  same: boolean;
+  confidence: number;
+  keep_name: string;
+  reason: string;
+}
+export interface RtDuplicateGroup {
+  contact_ids: string[];
+  contacts: RtContact[];
+  evidence: string[];
+  blocked: boolean; // different VAT numbers: code never suggests these as the same business
+  ai: RtDuplicateAI | null; // null when the model could not answer; the code evidence stands alone
+}
+export interface RtDuplicates {
+  groups: RtDuplicateGroup[];
+}
+export interface RtContactMerge {
+  contact: RtContact;
+  merge_id: string; // POST /contacts/merge/{merge_id}/undo takes the merge back
 }
 
 /**

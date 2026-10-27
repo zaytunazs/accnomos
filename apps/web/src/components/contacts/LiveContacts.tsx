@@ -21,6 +21,7 @@ import {
   type RtContactEdits,
   type RtContactField,
   type RtContactRow,
+  type RtDuplicateGroup,
   type RtOpenItem,
   type RtStatement,
   type RtVatStatus,
@@ -943,6 +944,159 @@ function OutlookReview({ rows, addNew, onAddNewChange, busy, onConfirm, onCancel
   );
 }
 
+/**
+ * Possible duplicates: code finds the candidates (shared email, phone, VAT number or close name) and the
+ * user's model gives its view; the user approves and code merges. Blocked groups (different VAT numbers)
+ * are shown with the code's verdict and no Merge button. "Not the same" is remembered, never suggested again.
+ */
+function DuplicatesCard({ account, groups, onChanged }: {
+  account: AccountInfo;
+  groups: RtDuplicateGroup[];
+  onChanged: (message: string) => Promise<void>;
+}) {
+  const [merging, setMerging] = useState<RtDuplicateGroup | null>(null);
+  const [keepId, setKeepId] = useState("");
+  const [name, setName] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [undone, setUndone] = useState<{ mergeId: string; message: string } | null>(null);
+
+  if (!groups.length && !undone) return null;
+
+  async function dismiss(g: RtDuplicateGroup) {
+    setBusy(g.contact_ids.join(","));
+    setErr(null);
+    try {
+      await runtime.dismissDuplicates(account, g.contact_ids);
+      setMerging(null);
+      await onChanged(`Noted: ${g.contacts.map((c) => c.name).join(" and ")} are not the same.`);
+    } catch (e) {
+      setErr(errorText(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function confirmMerge(g: RtDuplicateGroup) {
+    const others = g.contact_ids.filter((id) => id !== keepId);
+    if (!others.length) {
+      setErr("Choose which contact to keep.");
+      return;
+    }
+    setBusy(`merge:${g.contact_ids.join(",")}`);
+    setErr(null);
+    try {
+      const r = await runtime.mergeContacts(account, keepId, others, name.trim() || null);
+      setMerging(null);
+      setUndone({ mergeId: r.merge_id, message: `Merged into ${r.contact.name}.` });
+      await onChanged(`Merged into ${r.contact.name}.`);
+    } catch (e) {
+      setErr(errorText(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function undo() {
+    if (!undone) return;
+    setBusy("undo");
+    setErr(null);
+    try {
+      await runtime.undoContactMerge(account, undone.mergeId);
+      setUndone(null);
+      await onChanged("Merge undone: the previous contacts are back.");
+    } catch (e) {
+      setErr(errorText(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function openMerge(g: RtDuplicateGroup) {
+    const suggested = g.contacts.find((c) => g.ai && c.name === g.ai.keep_name) ?? g.contacts[0];
+    setMerging(g);
+    setKeepId(suggested.id);
+    setName(suggested.name);
+    setErr(null);
+  }
+
+  return (
+    <section aria-label="Possible duplicates" className={`${card} flex flex-col gap-3 p-4`}>
+      {groups.length > 0 && (
+      <div>
+        <h2 className="text-[15px] font-extrabold">Possible duplicates ({groups.length})</h2>
+        <p className="mt-1 text-[13px] leading-6 text-muted">
+          Code found these by shared email, phone, VAT number or close name. The AI view is advice only —
+          nothing merges until you say so.
+        </p>
+      </div>
+      )}
+      {groups.map((g) => {
+        const key = g.contact_ids.join(",");
+        const working = busy === key || busy === `merge:${key}`;
+        return (
+          <article key={key} aria-label={`Possible duplicate: ${g.contacts.map((c) => c.name).join(", ")}`} className="flex flex-col gap-2 rounded-xl bg-ground p-3">
+            <h3 className="text-[15px] font-bold">{g.contacts.map((c) => c.name).join(" + ")}</h3>
+            <ul className="flex flex-col gap-0.5 text-[13px] font-medium text-muted">
+              {g.evidence.map((e) => <li key={e}>· {e}</li>)}
+            </ul>
+            {g.ai ? (
+              <p className="text-[13px] font-semibold text-teal-dark">
+                {g.blocked ? g.ai.reason : `AI view: ${g.ai.same ? "same business" : "not the same"} (${Math.round(g.ai.confidence * 100)}%): ${g.ai.reason}`}
+              </p>
+            ) : (
+              <p className="text-[13px] font-medium text-muted">The model could not answer — decide from the evidence above.</p>
+            )}
+            {merging?.contact_ids.join(",") === key ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-[13px] font-bold">Keep which contact?</p>
+                {merging.contacts.map((c) => (
+                  <label key={c.id} className="flex items-start gap-2 text-[13px] font-semibold">
+                    <input type="radio" name={`keep-${key}`} checked={keepId === c.id} onChange={() => { setKeepId(c.id); setName(c.name); }} className="mt-1" />
+                    <span>{c.name}{c.vrn ? ` · VAT ${c.vrn}` : ""}{c.email ? ` · ${c.email}` : ""}</span>
+                  </label>
+                ))}
+                <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
+                  Name for the merged contact
+                  <input value={name} onChange={(e) => setName(e.target.value)} aria-label="Name for the merged contact" className={input} />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" disabled={!!busy} onClick={() => void confirmMerge(merging)} className="h-11 rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60">
+                    {busy === `merge:${key}` ? "Merging…" : "Confirm merge"}
+                  </button>
+                  <button type="button" disabled={!!busy} onClick={() => setMerging(null)} className="text-sm font-bold text-teal-dark hover:underline disabled:opacity-60">
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {!g.blocked && (
+                  <button type="button" disabled={busy !== null} onClick={() => openMerge(g)} className="shrink-0 rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-60">
+                    Merge
+                  </button>
+                )}
+                <button type="button" disabled={busy !== null} onClick={() => void dismiss(g)} className={secondary}>
+                  {working ? "Noting…" : "Not the same"}
+                </button>
+              </div>
+            )}
+          </article>
+        );
+      })}
+      {undone && (
+        <p role="status" className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm font-semibold text-teal-dark">
+          <span>{undone.message}</span>
+          <button type="button" disabled={busy !== null} onClick={() => void undo()} className="font-bold hover:underline disabled:opacity-60">
+            {busy === "undo" ? "Undoing…" : "Undo"}
+          </button>
+        </p>
+      )}
+      {err && <p role="alert" className="text-sm font-semibold text-warn-ink">{err}</p>}
+    </section>
+  );
+}
+
 /** Contacts: from the runtime when signed in; the sample otherwise. */
 export default function LiveContacts() {
   const [account, setAccount] = useState<AccountInfo | null>(null);
@@ -959,6 +1113,7 @@ export default function LiveContacts() {
   const [busy, setBusy] = useState<"refresh" | "import" | null>(null);
   const [addNew, setAddNew] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [dups, setDups] = useState<RtDuplicateGroup[]>([]);
 
   const load = useCallback(async (acct: AccountInfo) => {
     try {
@@ -969,6 +1124,11 @@ export default function LiveContacts() {
     } catch (e) {
       setState("error");
       setNote((e as Error).message);
+    }
+    try {
+      setDups((await runtime.duplicates(acct)).groups);
+    } catch {
+      setDups([]); // duplicates are advisory; never hide the contact book for them
     }
   }, []);
 
@@ -1128,6 +1288,17 @@ export default function LiveContacts() {
           busy={busy === "import"}
           onConfirm={importOutlook}
           onCancel={() => setImportOpen(false)}
+        />
+      )}
+
+      {live && account && (
+        <DuplicatesCard
+          account={account}
+          groups={dups}
+          onChanged={async (message) => {
+            setNote(message);
+            await load(account);
+          }}
         />
       )}
 

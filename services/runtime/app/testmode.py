@@ -564,15 +564,29 @@ def bank_ai_reply(content: str) -> dict[str, Any]:
     return {"account": account, "vat_code": "N", "contact": None, "reason": "Test stub coding: no real model ran."}
 
 
+def duplicate_reply(content: str) -> dict[str, Any]:
+    """Deterministic duplicate judgement (app/ai/duplicates.py): same, keeping the first name listed."""
+    first = re.search(r'^1\. "([^"]+)"', content, re.MULTILINE)
+    return {
+        "same": True,
+        "confidence": 0.9,
+        "keep_name": first.group(1) if first else "",
+        "reason": "Test stub judgement: no real model ran.",
+    }
+
+
 @router.post("/ai/api/chat")
 async def ai_chat(request: Request) -> JSONResponse:
     body = await request.json()
     messages = body.get("messages") or []
     system = next((m.get("content") for m in messages if m.get("role") == "system"), "")
     from app import bank_reconcile as bank_rec
+    from app.ai import duplicates as dup_ai
 
     if system == bank_rec.BANK_SUGGEST_PROMPT:
         return JSONResponse(_ollama(bank_ai_reply(messages[-1]["content"])))
+    if system == dup_ai.SYSTEM_PROMPT:
+        return JSONResponse(_ollama(duplicate_reply(messages[-1]["content"])))
     images = [img for m in messages for img in (m.get("images") or [])]
     if system == actions.INTENT_PROMPT:
         return JSONResponse(_ollama(intent_reply(messages[-1]["content"])))
