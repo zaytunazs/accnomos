@@ -150,8 +150,8 @@ async def test_matching_clean_proposal_is_auto_approved_with_audit(fake: FakeSto
 
     assert p.status == "posted" and p.decided_by == "autopilot"
     assert p.autopilot is not None and p.autopilot.auto_approve and p.autopilot.supplier_key == "screwfix"
-    event = _events(fake)[-1]
-    assert event.approved_by == "autopilot" and event.proposal_id == p.id and event.id == p.event_id
+    (event,) = [e for e in _events(fake) if e.proposal_id == p.id]  # event paths are hash-named: never rely on sort order
+    assert event.approved_by == "autopilot" and event.id == p.event_id
     assert sum(ln.debit for ln in event.lines) == sum(ln.credit for ln in event.lines) == 4110
     assert (await books.get_proposal(p.id)).status == "posted"
 
