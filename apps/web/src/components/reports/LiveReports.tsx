@@ -138,7 +138,7 @@ function PlCompare({ pl, prev, year }: { pl: RtProfitAndLoss; prev: RtProfitAndL
       <Scroll label={`Profit and loss compared with earlier periods, ${pl.label}`}>
         <table className="w-full min-w-[640px] border-collapse">
           <caption className="sr-only">
-            Sales, costs and profit for {pl.label} against {prev?.label ?? "the previous period"} and {year?.label ?? "the same period last year"}
+            Profit and loss compared with earlier periods: {pl.label} against {prev?.label ?? "the previous period"} and {year?.label ?? "the same period last year"}
           </caption>
           <thead>
             <tr className="border-b border-border">

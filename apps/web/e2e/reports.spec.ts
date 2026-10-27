@@ -43,7 +43,7 @@ test("signed out: P&L comparisons, section bars, aged links and the monthly tabl
   await page.goto("/reports");
   const monthly = page.getByRole("table", { name: /Sales, purchases and net per month/ });
   await expect(monthly.getByRole("row", { name: /Nov 2025/ })).toContainText("£7,200");
-  await expect(monthly.getByRole("row", { name: /Sep 2026/ })).toContainText("£11,600");
+  await expect(monthly.getByRole("row", { name: /Sept 2026/ })).toContainText("£11,600");
 });
 
 test("signed in: P&L for a picked period from the ledger, exported to 07 Reports, nothing posted", async ({ page, runtime }) => {
@@ -55,7 +55,8 @@ test("signed in: P&L for a picked period from the ledger, exported to 07 Reports
   await page.goto("/reports");
   await expect(page.getByText("SAMPLE — FICTIONAL COMPANY")).toHaveCount(0);
   await expect(page.getByRole("heading", { name: /Profit and loss · Oct–Dec 2026/ })).toBeVisible(); // the current period
-  await expect(page.getByRole("row", { name: /Net profit/ })).toContainText("£0.00");
+  const current = page.getByRole("table", { name: "Profit and loss by account, Oct–Dec 2026" });
+  await expect(current.getByRole("row", { name: /Net profit/ })).toContainText("£0.00");
 
   await pickVatPeriod(page, "Jul–Sep 2026");
   await expect(page.getByRole("heading", { name: /Profit and loss · Jul–Sep 2026/ })).toBeVisible();
@@ -86,7 +87,8 @@ test("print: the reports print without chrome or controls", async ({ page }) => 
   await expect(page.getByRole("button", { name: "Print" })).toBeHidden();
   await expect(page.getByRole("complementary", { name: "Sample data" })).toBeHidden();
   await expect(page.getByText("SAMPLE — FICTIONAL COMPANY · fictional figures")).toBeVisible(); // the paper's own label
-  await expect(page.getByRole("row", { name: /Net profit/ })).toBeVisible();
+  const paper = page.getByRole("table", { name: /Profit and loss by account/ });
+  await expect(paper.getByRole("row", { name: /Net profit/ })).toBeVisible();
   // Each report carries its own header on paper: period plus the code-calculated line.
   await expect(page.getByText("Calculated by code from approved entries.").first()).toBeVisible();
   await expect(page.getByText(/Profit and loss · Jul–Sep 2026/).first()).toBeVisible();
