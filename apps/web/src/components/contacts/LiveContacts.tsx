@@ -688,9 +688,11 @@ function SidePanel({ contact, account, editing, onEditingChange, onSaved, onClos
       await runtime.editContact(account, contact.id, edits);
       onEditingChange(false);
       setErr(null);
+      setDone("Saved.");
+      await loadStatement(); // the statement is worked out from the ledger: show it fresh after an edit
       await onSaved();
     } catch (e) {
-      setErr((e as Error).message);
+      setErr(errorText(e) ?? (e as Error).message);
     }
   }
 

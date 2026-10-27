@@ -331,6 +331,30 @@ async def test_rule_approve_posts_review_events(client: TestClient, books: Books
     assert draft["direction"] == "out"
 
 
+def test_bank_line_proposal_filename_is_clean_with_no_extension() -> None:
+    """Both bank-line proposal paths name the date and a filesystem-safe description — never raw text, never .csv."""
+    from accnomos_ledger.bank import BankLine
+    from app.bank_actions import proposal_from_line, suggested_filename_for_line
+
+    line = BankLine(
+        id="a" * 16,
+        date=date(2026, 10, 21),
+        amount_pence=-1847,
+        description="TESCO STORES 12/34: *big* shop?",
+        source_file="oct.csv",
+    )
+    assert suggested_filename_for_line(line) == "2026-10-21 TESCO STORES 12 34 big shop"
+    assert proposal_from_line(line).suggested_filename == "2026-10-21 TESCO STORES 12 34 big shop"
+    coded = proposal_for_coding(line, account="5000 Materials", vat_code="N", contact=None)
+    assert coded.suggested_filename == "2026-10-21 TESCO STORES 12 34 big shop"
+    for name in (
+        suggested_filename_for_line(line),
+        proposal_from_line(line).suggested_filename,
+        coded.suggested_filename,
+    ):
+        assert not name.endswith(".csv") and "/" not in name and "£" not in name
+
+
 async def test_ai_suggestion_uses_model_then_validates(books: Books, monkeypatch) -> None:
     import json
 

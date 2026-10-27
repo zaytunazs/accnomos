@@ -598,6 +598,27 @@ def test_pdf_route_renders_and_saves(client: TestClient, fake: FakeStorageProvid
     assert body["problems"] == [] and body["email"]["to"] == CUSTOMER["email"] and number in body["email"]["subject"]
 
 
+def test_paid_invoice_pdf_says_paid_with_the_date(client: TestClient, sender: FakeMailSender, fake):
+    import base64
+    import re
+    import zlib
+
+    def words(number: str) -> bytes:
+        body = client.post(f"/invoices/{number}/pdf", headers=H).json()
+        data = base64.b64decode(body["data_url"].removeprefix("data:application/pdf;base64,"))
+        assert data.startswith(b"%PDF")
+        return b"".join(zlib.decompress(s) for s in re.findall(rb"stream\r?\n(.*?)\r?\nendstream", data, flags=16))
+
+    number = client.post("/invoices", json=_draft().model_dump(mode="json"), headers=H).json()["number"]
+    assert client.post(f"/invoices/{number}/send", json={"confirm": True}, headers=H).status_code == 200
+    assert b"PAID" not in words(number)  # sent but unpaid: the emailed copy, as the customer got it
+    assert client.post(f"/invoices/{number}/mark-paid", json={"paid_on": "2026-10-28"}, headers=H).status_code == 200
+    assert b"PAID 28 October 2026" in words(number)
+    body = client.post(f"/invoices/{number}/pdf", headers=H).json()
+    assert body["path"] == f"03 Sales/invoices/{number}.pdf"  # the preview, not the emailed copy
+    assert b"PAID" not in fake.files[f"03 Sales/invoices/sent/{number}.pdf"]
+
+
 def test_send_needs_confirm_true(client: TestClient, sender: FakeMailSender, books: Books):
     number = client.post("/invoices", json=_draft().model_dump(mode="json"), headers=H).json()["number"]
     for body in ({}, {"confirm": False}, {"confirm": "yes"}):

@@ -15,7 +15,7 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from accnomos_connectors.base import ContactsProvider
+from accnomos_connectors.base import ConflictError, ContactsProvider
 from accnomos_connectors.msgraph import GraphContactsProvider
 from app import company_lookup as lookup
 from app import contacts as cb
@@ -72,10 +72,18 @@ async def list_contacts(
     )
 
 
+def _conflict(exc: ConflictError) -> HTTPException:
+    """Two tabs wrote at the same instant twice over: ask for a reload, not a silent overwrite."""
+    return HTTPException(status_code=409, detail="Someone else changed the contacts just now — reload and try again")
+
+
 @router.post("/refresh", response_model=ContactList)
 async def refresh(books: Books = Depends(get_books), user: str = Depends(require_user)) -> ContactList:
     """Add every counterparty in the ledger to contacts.json; fields the user edited are kept."""
-    contacts, ledger = await cb.refresh(books, user)
+    try:
+        contacts, ledger = await cb.refresh(books, user)
+    except ConflictError as exc:
+        raise _conflict(exc) from exc
     start, today = _year(None)
     return ContactList(
         year_start=start, today=today, saved=True, contacts=cb.with_totals(contacts, ledger, start, today)
@@ -132,7 +140,10 @@ async def vat_check(
             check=c.vat_check, name_differs=lookup.names_differ(name, c.vat_check.name), contact_id=c.id, cached=True
         )
     check = await lookup.check_vat(vrn, body.requester)  # LookupFailed -> {"error", "detail"} (app/main.py)
-    kept = await cb.record_vat_check(books, check, user, c.id) if c else None
+    try:
+        kept = await cb.record_vat_check(books, check, user, c.id) if c else None
+    except ConflictError as exc:
+        raise _conflict(exc) from exc
     differs = lookup.names_differ(name, check.name)
     return VatCheckResult(check=check, name_differs=differs, contact_id=kept.id if kept else None, cached=False)
 
@@ -159,6 +170,8 @@ async def edit(
         raise HTTPException(status_code=404, detail="No such contact") from exc
     except cb.ContactEditError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ConflictError as exc:
+        raise _conflict(exc) from exc
 
 
 class ImportBody(StrictBody):
@@ -174,7 +187,10 @@ async def import_outlook(
 ) -> cb.ImportResult:
     """Fill in emails and phone numbers from Outlook contacts (read-only; nothing is written to Outlook)."""
     entries = await address_book.list_contacts()
-    return await cb.import_outlook(books, entries, (body or ImportBody()).add_new, user)
+    try:
+        return await cb.import_outlook(books, entries, (body or ImportBody()).add_new, user)
+    except ConflictError as exc:
+        raise _conflict(exc) from exc
 
 
 class PhonePickedContact(StrictBody):
@@ -210,6 +226,8 @@ async def import_phone(
         )
     except cb.ContactEditError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except ConflictError as exc:
+        raise _conflict(exc) from exc
 
 
 class DuplicateGroupOut(BaseModel):

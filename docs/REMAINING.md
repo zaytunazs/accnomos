@@ -49,7 +49,7 @@ Severity:
 |---|---|
 | Medium | Barclays, Starling, Tide, Monzo and HSBC/Lloyds layouts follow public formats and have not been checked against real exports. Unknown headers fall back to `bank`. |
 | Medium | Bank-rule AI codings have run against the test stub only (`testmode.bank_ai_reply`); no real Glimmer/Meta call has coded a line end to end. |
-| Low | `suggested_filename` on bank-line expense proposals ends in `.csv` and uses the raw description; nothing reads it. |
+| Low | `suggested_filename` on bank-line expense proposals is a clean description with no extension; nothing reads it. |
 | Low | The phone lists bank rules read-only; adding or editing rules needs the web app (on purpose). |
 
 ## Contacts
@@ -62,7 +62,7 @@ Severity:
 | Low | One movement counted once: a statement line is suggested to a recorded payment or refund of exactly the same signed amount, dated 5 days before to 14 days after it; a payment of a different amount, or outside that window, is not suggested (match it by hand to the payment's entry). A match to a document already settled is refused (409) with the way out named. A refund line is offered against a contact's credit only for the exact amount. |
 | Low | Customer VAT numbers only via *Edit*. Outlook contacts added with "also add" are always customers. `credit_uses.json`, like `payments.json`, is rewritten whole (last write wins). |
 | Low | An invoice marked paid before payments were recorded (no amount kept) counts as paid on Invoices and Home but stays open in Contacts and *Aged balances*, as before; *Remove* on it puts it back to sent. `payments.json` is rewritten whole (last write wins). |
-| Low | `contacts.json` is rewritten whole: two tabs editing at once means last write wins. After *Edit* the side panel does not reload the statement (figures stay right). |
+| Low | Two tabs editing the same contact's same field at once: the second save wins on that field (edits to different contacts, or different fields, merge). |
 | Low | `Contacts.Read` may need admin consent on work accounts (untested). |
 | Medium | Duplicate AI judgement has run against the test stub only (`testmode.duplicate_reply`); no real Glimmer/Meta call has judged a group end to end. |
 | Low | After a merge the *Undo* offer lives in the page state: reloading Contacts loses the button (the record stays in `_System/Contacts/merges/`; undo again through the API). |
@@ -84,11 +84,11 @@ Severity:
 | Medium | "Invoiced" value and margin use each person's *current* charge rate; changing a rate restates past jobs. |
 | Medium | Not verified: sending from a real mailbox, the `Mail.Send` consent redirect, the PDF in a real viewer, logo upload to a real OneDrive. |
 | Medium | Payroll is an estimate (annual thresholds ÷ 12, month 1, 1257L, category A, England/NI); the 2026–27 rates were checked against GOV.UK on 27 Oct 2026 and `tests/test_payroll_rates.py` pins them; re-check each April. No RTI. |
-| Medium | Credit notes: not verified in a real PDF viewer or sent from a real mailbox; made only from a sent invoice (no stand-alone credit note); a credit note's lines are the invoice's lines and prices (no new descriptions). The Android app shows paid and balance but cannot record payments or make credit notes. |
+| Medium | Credit notes: not verified in a real PDF viewer or sent from a real mailbox. The Android app shows paid and balance but cannot record payments or make credit notes. |
 | Low | If the sent copy cannot be saved after the email goes, the sale is not posted until the user retries. |
 | Low | `GraphMailSender` refuses a message whose encoded request is over 4 MB (about 3 MB of attachments) with an error; sending larger files (draft plus attachment upload session) is not built. The send tick stays ticked after the message is edited. |
 | Low | Plain timesheet edits do not rebuild Books.xlsx. A month-changing edit can leave a duplicate line (never a lost one). A closed job can be tagged through the API (on purpose). |
-| Low | The web mileage log has no edit control (`PATCH /mileage/{id}` exists); vehicles cannot be renamed or deleted from the page; the Review vehicle picker needs an active business vehicle; scan pre-fill uses a keyword list. |
+| Low | Mileage scan pre-fill uses a keyword list. |
 | Low | Undoing a payroll ledger entry outside the Payroll page leaves the run "confirmed" until reopened. No salaried staff. |
 
 ## Chat actions, inbox, planner

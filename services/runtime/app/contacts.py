@@ -642,9 +642,14 @@ def with_totals(contacts: Sequence[Contact], ledger: Ledger, year_start: date, t
 # --------------------------------------------------------------------------- #
 
 
-async def save_contacts(books: Books, contacts: Sequence[Contact]) -> None:
-    payload = [c.model_dump(mode="json") for c in sorted(contacts, key=lambda c: c.name.lower())]
-    await books._update_json(CONTACTS, [], lambda _old: payload)
+def _dump(contacts: Iterable[Contact]) -> list[dict[str, Any]]:
+    """contacts.json payload, by name (what every write stores)."""
+    return [c.model_dump(mode="json") for c in sorted(contacts, key=lambda c: c.name.lower())]
+
+
+def _parse_stored(raw: Any) -> list[Contact]:
+    """contacts.json as saved (ValidationError when hand-edited badly, as before)."""
+    return [Contact.model_validate(c) for c in raw or []]
 
 
 async def stored_contacts(books: Books) -> list[Contact]:
@@ -661,10 +666,19 @@ async def contact_book(books: Books, ledger: Ledger | None = None) -> tuple[list
 
 
 async def refresh(books: Books, user: str | None = None) -> tuple[list[Contact], Ledger]:
-    contacts, ledger, _ = await contact_book(books)
-    await save_contacts(books, contacts)
-    await books.audit(f"user:{user}" if user else "agent:contacts", "contacts_refreshed", {"contacts": len(contacts)})
-    return contacts, ledger
+    """Merge the ledger into what is stored now (re-read on an ETag conflict, so a tab editing alongside wins too)."""
+    ledger = await load_ledger(books)
+    merged: list[Contact] = []
+
+    def change(raw: Any) -> Any:
+        merged[:] = merge_ledger(_parse_stored(raw), ledger)
+        return _dump(merged)
+
+    await books._update_json(CONTACTS, [], change)
+    await books.audit(
+        f"user:{user}" if user else "agent:contacts", "contacts_refreshed", {"contacts": len(merged)}
+    )
+    return merged, ledger
 
 
 class ContactEditError(ValueError):
@@ -728,35 +742,60 @@ def apply_edit(c: Contact, edits: dict[str, Any], others: Sequence[Contact], at:
 
 
 async def edit(books: Books, cid: str, edits: dict[str, Any], user: str) -> Contact:
-    """Raises FileNotFoundError for an unknown id, ContactEditError for a bad edit."""
-    contacts, _, _ = await contact_book(books)
-    c = next((c for c in contacts if c.id == cid), None) if ID_RE.fullmatch(cid) else None
-    if c is None:
+    """Change one contact on top of what is stored now: a tab editing another contact alongside is merged, not
+    lost (the storage ETag retries the read-modify-write once). Raises FileNotFoundError for an unknown id,
+    ContactEditError for a bad edit."""
+    if not ID_RE.fullmatch(cid):
         raise FileNotFoundError(cid)
-    apply_edit(c, edits, contacts)
-    await save_contacts(books, contacts)
+    ledger = await load_ledger(books)
+    done: list[Contact] = []
+
+    def change(raw: Any) -> Any:
+        contacts = merge_ledger(_parse_stored(raw), ledger)
+        c = next((c for c in contacts if c.id == cid), None)
+        if c is None:
+            raise FileNotFoundError(cid)
+        apply_edit(c, edits, contacts)
+        done.append(c)
+        return _dump(contacts)
+
+    await books._update_json(CONTACTS, [], change)
     await books.audit(f"user:{user}", "contact_edited", {"contact": cid, "fields": sorted(edits)})
-    return c
+    return done[-1]
 
 
 async def record_vat_check(books: Books, check: VatCheck, user: str, cid: str | None = None) -> Contact | None:
     """Keep `check` on the contact it is about (by id, else by VAT number). Nothing else changes: the VAT status
-    stays the user's call. Returns the contact, or None when no contact has that number (nothing is created)."""
-    contacts, _, _ = await contact_book(books)
+    stays the user's call. Returns the contact, or None when no contact has that number (nothing is created,
+    and nothing is written)."""
+    contacts, ledger, _ = await contact_book(books)
     c = next((c for c in contacts if c.id == cid), None) if cid and ID_RE.fullmatch(cid) else None
     if c is None or c.vrn != check.vrn:
         c = next((c for c in contacts if c.vrn == check.vrn), None)
     if c is None:
         return None
-    c.vat_check = check
-    c.updated_at = now()
-    await save_contacts(books, contacts)
+    tid = c.id
+    kept: list[Contact] = []
+
+    def change(raw: Any) -> Any:
+        fresh = merge_ledger(_parse_stored(raw), ledger)
+        hit = next((x for x in fresh if x.id == tid), None)
+        if hit is None:
+            return raw  # gone meanwhile: leave the file alone
+        hit.vat_check = check
+        hit.updated_at = now()
+        kept.append(hit)
+        return _dump(fresh)
+
+    await books._update_json(CONTACTS, [], change)
+    if not kept:
+        return None
     await books.audit(
         f"user:{user}",
         "contact_vat_checked",
-        {"contact": c.id, "vrn": check.vrn, "registered": check.registered, "source": check.source},
+        {"contact": kept[-1].id, "vrn": check.vrn, "registered": check.registered, "source": check.source},
     )
-    return c
+    return kept[-1]
 
 
 # --------------------------------------------------------------------------- #
@@ -929,9 +968,16 @@ def import_address_book(
 
 
 async def import_outlook(books: Books, entries: Sequence[AddressBookContact], add_new: bool, user: str) -> ImportResult:
-    contacts, _, _ = await contact_book(books)
-    merged, result = import_address_book(contacts, entries, add_new)
-    await save_contacts(books, merged)
+    ledger = await load_ledger(books)
+    results: list[ImportResult] = []
+
+    def change(raw: Any) -> Any:
+        merged, result = import_address_book(merge_ledger(_parse_stored(raw), ledger), entries, add_new)
+        results.append(result)
+        return _dump(merged)
+
+    await books._update_json(CONTACTS, [], change)
+    result = results[-1]
     await books.audit(f"user:{user}", "contacts_imported", {"source": "outlook", **result.model_dump()})
     return result
 
@@ -1007,9 +1053,16 @@ def merge_phone_picks(
 async def import_phone(books: Books, entries: Sequence[PhonePickedContact], user: str) -> ImportResult:
     """Save the phone-picked contacts into contacts.json (read-only on the
     phone side: nothing is written back to the phone)."""
-    contacts, _, _ = await contact_book(books)
-    merged, result = merge_phone_picks(contacts, entries)
-    await save_contacts(books, merged)
+    ledger = await load_ledger(books)
+    results: list[ImportResult] = []
+
+    def change(raw: Any) -> Any:
+        merged, result = merge_phone_picks(merge_ledger(_parse_stored(raw), ledger), entries)
+        results.append(result)
+        return _dump(merged)
+
+    await books._update_json(CONTACTS, [], change)
+    result = results[-1]
     await books.audit(f"user:{user}", "contacts_imported", {"source": "phone", **result.model_dump()})
     return result
 

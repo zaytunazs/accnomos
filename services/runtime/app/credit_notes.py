@@ -1,5 +1,6 @@
-"""Credit notes to customers: made from a sent invoice (all of it, or chosen lines and quantities), priced and posted
-by code, emailed from the user's own Outlook like an invoice.
+"""Credit notes to customers: made from a sent invoice (all of it, or chosen lines and quantities), or stand-alone
+with their own customer, lines and descriptions, priced and posted by code, emailed from the user's own Outlook
+like an invoice.
 
 Files, all in the user's folder:
 
@@ -79,13 +80,13 @@ class CreditNoteDraft(StrictBody):
 
 class CreditNote(BaseModel):
     number: str
-    invoice: str  # the invoice number it credits
-    invoice_event_id: str  # that invoice's sale in the ledger
+    invoice: str | None = None  # the invoice number it credits (None: a stand-alone credit note)
+    invoice_event_id: str | None = None  # that invoice's sale in the ledger (None: stand-alone)
     status: CreditNoteStatus = "issued"
     customer: InvoiceCustomer
     issue_date: date
     lines: list[InvoiceLine]
-    source_lines: list[int]  # the invoice line each credited line came from
+    source_lines: list[int] = []  # the invoice line each credited line came from (empty when stand-alone)
     vat_summary: list[VatSummaryRow]
     net_pence: int
     vat_pence: int
@@ -220,8 +221,11 @@ def credit_note_event_id(number: str) -> str:
 
 
 def credit_note_event(cn: CreditNote, user: str) -> LedgerEvent:
-    """Dr 4000 Sales net per VAT code; Dr 2200 VAT control; Cr 1100 Debtors gross. Dated on the credit note's date."""
-    memo = f"Credit note {cn.number} for invoice {cn.invoice}"
+    """Dr 4000 Sales net per VAT code; Dr 2200 VAT control; Cr 1100 Debtors gross. Dated on the credit note's date.
+
+    A stand-alone credit note credits no invoice (`credits` empty): what is left becomes a credit on the customer
+    (app/settlement.py), to apply or refund from Contacts like any other credit."""
+    memo = f"Credit note {cn.number} for invoice {cn.invoice}" if cn.invoice else f"Credit note {cn.number}"
     lines: list[Line] = []
     for row in cn.vat_summary:
         if row.net_pence:
@@ -300,19 +304,63 @@ async def post_credit_note(books: Books, cn: CreditNote, user: str) -> str:
     )
     from app.payments import sync_invoices  # app.payments imports app.contacts, which imports this module
 
-    await sync_invoices(books, {cn.invoice_event_id})
+    await sync_invoices(books, {cn.invoice_event_id} if cn.invoice_event_id else set())
     await books.rebuild_safely(f"user:{user}")
     return event.id
 
 
+class StandaloneCreditNoteDraft(StrictBody):
+    """A credit note owed to a customer, not against any invoice: its own customer, lines and descriptions."""
+
+    customer: InvoiceCustomer
+    lines: list[LineIn] = Field(min_length=1, max_length=100)
+    issue_date: Day | None = None  # default: today
+    reason: str = Field(min_length=1, max_length=300)
+
+
+async def create_standalone_credit_note(
+    books: Books, draft: StandaloneCreditNoteDraft, user: str, today: date | None = None
+) -> CreditNote:
+    """Price, number, save and post a stand-alone credit note: same CN- numbers and same posting as one made from
+    an invoice, but crediting nobody's invoice — the amount is left as a credit on the customer. Raises InvoiceError."""
+    lines, summary, net, vat = price_lines(draft.lines)
+    if net + vat <= 0 or vat < 0 or any(r.net_pence < 0 for r in summary):
+        raise InvoiceError("A credit note must credit more than £0.00 at each VAT rate")
+    cn = CreditNote(
+        number=await allocate_number(books),
+        invoice=None,
+        invoice_event_id=None,
+        customer=draft.customer,
+        issue_date=draft.issue_date or today or london_today(),
+        lines=lines,
+        source_lines=[],
+        vat_summary=summary,
+        net_pence=net,
+        vat_pence=vat,
+        total_pence=net + vat,
+        reason=draft.reason.strip(),
+        created_by=user,
+    )
+    cn.event_id = credit_note_event_id(cn.number)
+    await save_credit_note(books, cn)  # saved first: a failed post is finished by `post_credit_note` on retry
+    await books.audit(
+        f"user:{user}",
+        "credit_note_created",
+        {"credit_note": cn.number, "invoice": None, "total_pence": cn.total_pence},
+    )
+    await post_credit_note(books, cn, user)
+    return cn
+
+
 def default_email(cn: CreditNote, profile: InvoiceProfile) -> tuple[str, str]:
     who = profile.name.strip() or "us"
+    against = f", against invoice {cn.invoice}," if cn.invoice else ""
     body = "\n".join(
         [
             "Hello,",
             "",
-            f"Please find attached credit note {cn.number} for {money(cn.total_pence)}, "
-            f"against invoice {cn.invoice}, dated {uk_date(cn.issue_date)}.",
+            f"Please find attached credit note {cn.number} for {money(cn.total_pence)}{against} "
+            f"dated {uk_date(cn.issue_date)}.",
             "",
             "Many thanks,",
             who,
@@ -394,6 +442,6 @@ async def void_credit_note(books: Books, number: str, user: str, reason: str) ->
     )
     from app.payments import sync_invoices
 
-    await sync_invoices(books, {cn.invoice_event_id})
+    await sync_invoices(books, {cn.invoice_event_id} if cn.invoice_event_id else set())
     await books.rebuild_safely(f"user:{user}")
     return cn

@@ -461,6 +461,60 @@ def _audit(fake: FakeStorageProvider) -> list[str]:
     ]
 
 
+async def test_two_tabs_editing_at_once_merge_instead_of_last_write_wins(
+    books: Books, fake: FakeStorageProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Tab B's edit lands between tab A's read and write (a stale ETag): the retry re-reads and merges, so both
+    edits survive instead of last write wins."""
+    from accnomos_connectors.base import ConflictError
+
+    contacts, _ = await cb.refresh(books, USER)
+    howdens = next(c for c in contacts if c.name == "Howdens Joinery Ltd")
+    acme = next(c for c in contacts if c.name == "Acme Kitchens Ltd")
+    real_write = fake.write
+    raced = False
+
+    async def flaky_write(path: str, data: bytes, *, if_match: str | None = None, create_only: bool = False):
+        nonlocal raced
+        if path.strip("/") == cb.CONTACTS and if_match is not None and not raced:
+            raced = True
+            raw = json.loads(await fake.read(path))  # the other tab's edit lands first
+            for c in raw:
+                if c["id"] == acme.id:
+                    c["phone"] = "01234 567890"
+                    c["edited"] = [*c.get("edited", []), "phone"]
+            await real_write(path, json.dumps(raw, indent=2).encode())
+            raise ConflictError(path)  # our ETag is now stale
+        return await real_write(path, data, if_match=if_match, create_only=create_only)
+
+    monkeypatch.setattr(fake, "write", flaky_write)
+    got = await cb.edit(books, howdens.id, {"email": "orders@howdens.example"}, USER)
+    assert raced and got.email == "orders@howdens.example"
+    stored = {c["id"]: c for c in json.loads(fake.files[cb.CONTACTS])}
+    assert stored[howdens.id]["email"] == "orders@howdens.example"  # our edit
+    assert stored[acme.id]["phone"] == "01234 567890"  # the other tab's edit survived the retry
+
+
+def test_edit_conflict_twice_over_asks_for_a_reload(
+    client: TestClient, fake: FakeStorageProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Someone else writes twice over (the one retry still conflicts): a 409 naming the way out, not a 500."""
+    from accnomos_connectors.base import ConflictError
+
+    assert client.post("/contacts/refresh", headers=H).status_code == 200
+    acme = next(c for c in client.get("/contacts?year_start=2026-04-06", headers=H).json()["contacts"])
+    real_write = fake.write
+
+    async def conflict_write(path: str, data: bytes, *, if_match: str | None = None, create_only: bool = False):
+        if path.strip("/") == cb.CONTACTS and if_match is not None:
+            raise ConflictError(path)
+        return await real_write(path, data, if_match=if_match, create_only=create_only)
+
+    monkeypatch.setattr(fake, "write", conflict_write)
+    r = client.put(f"/contacts/{acme['id']}", headers=H, json={"phone": "01234 567890"})
+    assert r.status_code == 409 and "reload" in r.json()["detail"]
+
+
 def test_contact_routes(client: TestClient, fake: FakeStorageProvider, address_book: FakeContactsProvider) -> None:
     r = client.get("/contacts?year_start=2026-04-06", headers=H)
     assert r.status_code == 200, r.text

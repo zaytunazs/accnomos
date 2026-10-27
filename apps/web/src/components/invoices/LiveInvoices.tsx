@@ -9,6 +9,7 @@ import {
   PAYMENT_LABEL,
   PaymentsPanel,
   RecordPaymentDialog,
+  StandaloneCreditNoteDialog,
   balanceOf,
 } from "@/components/invoices/PaymentDialogs";
 import { ApplyCreditDialog, RefundDialog } from "@/components/invoices/CreditDialogs";
@@ -25,6 +26,7 @@ type Dialog =
   | { kind: "creditView"; note: RtCreditNote }
   | { kind: "applyCredit"; name: string; credits: RtCreditRow[]; documents: RtOpenItem[] }
   | { kind: "refund"; name: string; credits: RtCreditRow[] }
+  | { kind: "standaloneCredit" }
   | null;
 
 const sameName = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -127,12 +129,17 @@ export default function LiveInvoices() {
       creditView: "",
       applyCredit: "",
       refund: "",
+      standaloneCredit: "",
     }[was ?? "paid"]);
   }
 
   async function credited(cn: RtCreditNote) {
     setDialog(null);
-    setNote(`Credit note ${cn.number} for ${money(cn.total_pence)} recorded against ${cn.invoice}.`);
+    setNote(
+      cn.invoice
+        ? `Credit note ${cn.number} for ${money(cn.total_pence)} recorded against ${cn.invoice}.`
+        : `Credit note ${cn.number} for ${money(cn.total_pence)} recorded for ${cn.customer.name}; ${money(cn.total_pence)} is on account for them.`,
+    );
     await load();
   }
 
@@ -197,9 +204,18 @@ export default function LiveInvoices() {
             </button>
           ))}
         </div>
-        <Link href="/invoices/new" className="inline-flex h-11 items-center rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark print:hidden">
-          New invoice
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/invoices/new" className="inline-flex h-11 items-center rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark print:hidden">
+            New invoice
+          </Link>
+          <button
+            type="button"
+            onClick={() => setDialog({ kind: "standaloneCredit" })}
+            className="inline-flex h-11 items-center rounded-xl border border-border bg-white px-5 text-[15px] font-bold print:hidden"
+          >
+            New credit note
+          </button>
+        </div>
       </div>
 
       {invoices && invoices.length > 0 && (
@@ -342,7 +358,7 @@ export default function LiveInvoices() {
                     {c.number} · {c.customer.name}
                   </p>
                   <p className="text-sm text-muted">
-                    {ukDate(c.issue_date)} · against {c.invoice} · {c.reason}
+                    {ukDate(c.issue_date)} · {c.invoice ? `against ${c.invoice}` : "stand-alone"} · {c.reason}
                     {c.sent_at && ` · emailed ${ukDate(c.sent_at)}`}
                   </p>
                 </div>
@@ -401,6 +417,15 @@ export default function LiveInvoices() {
               note={dialog.note}
               onClose={() => setDialog(null)}
               onDone={(_cn, message) => { setDialog(null); setNote(message); void load(); }}
+            />
+          );
+        }
+        if (dialog.kind === "standaloneCredit") {
+          return (
+            <StandaloneCreditNoteDialog
+              account={account}
+              onClose={() => setDialog(null)}
+              onDone={credited}
             />
           );
         }
