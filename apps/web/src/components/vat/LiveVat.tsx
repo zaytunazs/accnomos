@@ -40,13 +40,12 @@ export default function LiveVat() {
   const [view, setView] = useState<VatView | null>(null);
   const [periods, setPeriods] = useState<RtVatPeriod[] | null>(null);
   const [state, setState] = useState<"idle" | "live" | "off">("idle");
-  const [business, setBusiness] = useState<{ name: string; vatNumber: string } | null>(null);
-  const picked = usePickedPeriod();
-
-  useEffect(() => {
+  // Print-only: who the return is for. Read once (loadBusiness is localStorage-only and null-safe).
+  const [business] = useState<{ name: string; vatNumber: string } | null>(() => {
     const b = loadBusiness();
-    if (b && (b.name || b.vatNumber)) setBusiness({ name: b.name, vatNumber: b.vatNumber });
-  }, []);
+    return b && (b.name || b.vatNumber) ? { name: b.name, vatNumber: b.vatNumber } : null;
+  });
+  const picked = usePickedPeriod();
 
   useEffect(() => {
     (async () => {
