@@ -132,7 +132,9 @@ class InvoiceProfile(StrictBody):
     # because the business reclaims no VAT. A VRN above always means registered (`is_vat_registered`).
     vat_registered: bool = True
     company_number: str | None = Field(None, max_length=20)
-    bank: BankDetails = Field(default_factory=BankDetails)
+    bank: BankDetails = Field(
+        default_factory=lambda: BankDetails(account_name="", sort_code="", account_number="", iban=None)
+    )
     logo_path: str | None = Field(None, max_length=100)  # LOGO_PATHS only (POST /invoices/profile/logo sets it)
     terms_days: int = Field(30, ge=0, le=120)
     footer_note: str | None = Field(None, max_length=1000)
@@ -405,7 +407,11 @@ async def customers(books: Books) -> list[InvoiceCustomer]:
                     )
                 )
             except ValueError:  # a hand-edited contact with a bad email still shows, without the email
-                out.append(InvoiceCustomer(contact_id=c["id"], name=c["name"], address=c.get("address") or None))
+                out.append(
+                    InvoiceCustomer(
+                        contact_id=c["id"], name=c["name"], address=c.get("address") or None, email=None, vrn=None
+                    )
+                )
     return sorted(out, key=lambda c: c.name.lower())
 
 
