@@ -97,7 +97,6 @@ async def suggest_exact(books: Books, line: Any) -> ExactSuggestion | None:
     reference or description, matched to the penny.
     """
     from accnomos_ledger.matching import settlement_pence
-
     from app import invoicing as inv_
 
     description, reference = _texts(line)
@@ -179,7 +178,7 @@ async def suggest_ai(line: Any, cfg: AiConfig, accounts: list[str]) -> AiSuggest
     import json
 
     from app.ai.ask import call_json_model
-    from app.ai.extract import ExtractionError, parse_model_json
+    from app.ai.extract import parse_model_json
     from app.schemas import strict_json_schema
 
     facts = {
@@ -213,7 +212,9 @@ async def suggest_ai(line: Any, cfg: AiConfig, accounts: list[str]) -> AiSuggest
     return AiSuggestion(account=coding.account, vat_code=vat, contact=contact, reason=coding.reason.strip())
 
 
-async def reconcile_lines(books: Books, lines: Any = None, *, with_ai: bool = False, cfg: AiConfig | None = None) -> list[ReconcileRow]:
+async def reconcile_lines(
+    books: Books, lines: Any = None, *, with_ai: bool = False, cfg: AiConfig | None = None
+) -> list[ReconcileRow]:
     """One row per open line with its exact and rule suggestions (and AI ones when asked)."""
     from app.journal import CATEGORY_ACCOUNTS, SUNDRY
 
@@ -232,14 +233,15 @@ async def reconcile_lines(books: Books, lines: Any = None, *, with_ai: bool = Fa
     return rows
 
 
-async def approve_line(books: Books, line_id: str, kind: str, user: str, ai: AiSuggestion | None = None) -> dict[str, Any]:
+async def approve_line(
+    books: Books, line_id: str, kind: str, user: str, ai: AiSuggestion | None = None
+) -> dict[str, Any]:
     """Approve one suggestion on a line. Exact records the match; rule/AI posts through approve().
 
     Returns {"line", "proposal_id", "event_id"}; event_id is None for exact matches
     (matching never posts). Raises FileNotFoundError / BankMatchError.
     """
     from app import approve as approve_mod
-    from app.bank_actions import proposal_from_line
 
     line = await books.find_bank_line(line_id)
     if line.resolved:
@@ -306,7 +308,6 @@ def proposal_for_coding(line: Any, *, account: str, vat_code: str | None, contac
     import uuid
 
     from accnomos_ledger.bank import FEE_WORDS as _FEES
-
     from app.bank_actions import MODEL, _payment_method
     from app.books import now
     from app.journal import CATEGORY_ACCOUNTS, draft_journal
@@ -379,12 +380,21 @@ def proposal_for_coding(line: Any, *, account: str, vat_code: str | None, contac
     return proposal
 
 
-def rule_draft_from_line(line: Any, *, account: str | None = None, vat_code: str | None = None,
-                         contact: str | None = None, job_id: str | None = None) -> BankRule:
+def rule_draft_from_line(
+    line: Any,
+    *,
+    account: str | None = None,
+    vat_code: str | None = None,
+    contact: str | None = None,
+    job_id: str | None = None,
+) -> BankRule:
     """Pre-fill "Create rule from this": contains on the description, direction from the sign."""
-    return BankRule(
-        match={"op": "contains", "value": (line.description or line.reference or "").strip()[:60]},
-        direction="out" if line.amount_pence < 0 else "in" if line.amount_pence > 0 else "either",
-        action={"account": account or "7999 Sundry expenses", "vat_code": vat_code,
-                "contact": contact, "job_id": job_id},
+    from app.journal import SUNDRY
+
+    return BankRule.model_validate(
+        {
+            "match": {"op": "contains", "value": (line.description or line.reference or "").strip()[:60]},
+            "direction": "out" if line.amount_pence < 0 else "in" if line.amount_pence > 0 else "either",
+            "action": {"account": account or SUNDRY, "vat_code": vat_code, "contact": contact, "job_id": job_id},
+        }
     )

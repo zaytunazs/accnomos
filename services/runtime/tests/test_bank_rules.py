@@ -83,7 +83,9 @@ def test_first_match_wins_in_order() -> None:
 
 def test_rules_crud_and_reorder(client: TestClient) -> None:
     a = client.post("/books/bank/rules", headers=H, json=_rule()).json()
-    b = client.post("/books/bank/rules", headers=H, json=_rule(name="second", match={"op": "equals", "value": "coffee"})).json()
+    b = client.post(
+        "/books/bank/rules", headers=H, json=_rule(name="second", match={"op": "equals", "value": "coffee"})
+    ).json()
     assert [r["id"] for r in _rules(client)] == [a["id"], b["id"]]
 
     bad = client.post("/books/bank/rules/reorder", headers=H, json={"ids": [a["id"]]})
@@ -102,14 +104,27 @@ def test_rules_crud_and_reorder(client: TestClient) -> None:
 
 
 def test_rule_validation(client: TestClient) -> None:
-    assert client.post("/books/bank/rules", headers=H, json=_rule(amount_min_pence=5, amount_max_pence=1)).status_code == 400
-    assert client.post("/books/bank/rules", headers=H,
-                       json=_rule(action={"account": "5100 Tools", "vat_code": "Q"})).status_code == 400
-    assert client.post("/books/bank/rules", headers=H,
-                       json=_rule(action={"account": "5100 Tools", "job_id": "nope"})).status_code == 400
+    assert (
+        client.post("/books/bank/rules", headers=H, json=_rule(amount_min_pence=5, amount_max_pence=1)).status_code
+        == 400
+    )
+    assert (
+        client.post(
+            "/books/bank/rules", headers=H, json=_rule(action={"account": "5100 Tools", "vat_code": "Q"})
+        ).status_code
+        == 400
+    )
+    assert (
+        client.post(
+            "/books/bank/rules", headers=H, json=_rule(action={"account": "5100 Tools", "job_id": "nope"})
+        ).status_code
+        == 400
+    )
     # Invalid regex is a 422 from the model validator.
-    assert client.post("/books/bank/rules", headers=H,
-                       json=_rule(match={"op": "regex", "value": "(a+)+"})).status_code == 422
+    assert (
+        client.post("/books/bank/rules", headers=H, json=_rule(match={"op": "regex", "value": "(a+)+"})).status_code
+        == 422
+    )
 
 
 # The regex guard ---------------------------------------------------------- #
@@ -187,15 +202,39 @@ def _purchase(eid: str, gross: int, when: date, who: str, proposal_id: str | Non
 async def _bill(books: Books, proposal_id: str, number: str, gross: int) -> LedgerEvent:
     from app.schemas import ExtractedDoc, Proposal
 
-    doc = ExtractedDoc.model_validate({
-        "doc_type": "receipt", "supplier_name": "Acme Kitchens", "supplier_vat_number": None,
-        "customer_name": None, "invoice_number": number, "date": "2026-10-22", "currency": "GBP",
-        "lines": [], "net_total": 1000.0, "vat_total": 0.0, "gross_total": 1000.0,
-        "payment_method": None, "card_last4": None, "category_guess": "Sundry", "confidence": 0.9,
-    })
-    await books.save_proposal(Proposal(id=proposal_id, doc_sha256="cd" * 32, extracted=doc, checks=[],
-                                       status="posted", reasons=[], suggested_filename="x.png",
-                                       journal_draft=[], model="t", elapsed_s=0.0))
+    doc = ExtractedDoc.model_validate(
+        {
+            "doc_type": "receipt",
+            "supplier_name": "Acme Kitchens",
+            "supplier_vat_number": None,
+            "customer_name": None,
+            "invoice_number": number,
+            "date": "2026-10-22",
+            "currency": "GBP",
+            "lines": [],
+            "net_total": 1000.0,
+            "vat_total": 0.0,
+            "gross_total": 1000.0,
+            "payment_method": None,
+            "card_last4": None,
+            "category_guess": "Sundry",
+            "confidence": 0.9,
+        }
+    )
+    await books.save_proposal(
+        Proposal(
+            id=proposal_id,
+            doc_sha256="cd" * 32,
+            extracted=doc,
+            checks=[],
+            status="posted",
+            reasons=[],
+            suggested_filename="x.png",
+            journal_draft=[],
+            model="t",
+            elapsed_s=0.0,
+        )
+    )
     event = _purchase("b" * 32, gross, date(2026, 10, 22), "Acme Kitchens", proposal_id)
     await books.post_event(event)
     return event
@@ -203,7 +242,9 @@ async def _bill(books: Books, proposal_id: str, number: str, gross: int) -> Ledg
 
 async def test_reconcile_exact_bill_match_and_approve(client: TestClient, books: Books) -> None:
     await _bill(books, "d" * 32, "INV-0099", 50000)
-    bill_csv = b"""Date,Description,Amount\r\n24/10/2026,ACME SUPPLIES INV-0099 BGC,-500.00\r\n25/10/2026,COFFEE,-2.50\r\n"""
+    bill_csv = (
+        b"""Date,Description,Amount\r\n24/10/2026,ACME SUPPLIES INV-0099 BGC,-500.00\r\n25/10/2026,COFFEE,-2.50\r\n"""
+    )
     client.post("/books/bank/import", headers=H, files={"file": ("bill.csv", bill_csv, "text/csv")})
 
     rows = client.get("/books/bank/reconcile", headers=H).json()
@@ -227,11 +268,18 @@ async def test_reconcile_exact_open_invoice(client: TestClient, books: Books) ->
     event = _purchase("c" * 32, 120000, date(2026, 10, 22), "Acme Kitchens")
     await books.post_event(event)
     inv = inv_.Invoice(
-        number="INV-0042", status="sent",
+        number="INV-0042",
+        status="sent",
         customer=inv_.InvoiceCustomer(name="Acme Kitchens"),
-        issue_date=date(2026, 10, 22), due_date=date(2026, 11, 22), lines=[],
-        vat_summary=[], net_pence=100000, vat_pence=20000, total_pence=120000,
-        created_by=USER, event_id="c" * 32,
+        issue_date=date(2026, 10, 22),
+        due_date=date(2026, 11, 22),
+        lines=[],
+        vat_summary=[],
+        net_pence=100000,
+        vat_pence=20000,
+        total_pence=120000,
+        created_by=USER,
+        event_id="c" * 32,
     )
     await inv_.save_invoice(books, inv)
     client.post("/books/bank/import", headers=H, files={"file": ("oct.csv", OCT, "text/csv")})
@@ -268,13 +316,14 @@ async def test_rule_approve_posts_review_events(client: TestClient, books: Books
 
     got = (await books.get_event(posted_event_id)).lines
     want = (await books.get_event(posted_manual.event_id)).lines
-    assert [(l.account, l.debit, l.credit, l.vat_code) for l in got] == [
-        (l.account, l.debit, l.credit, l.vat_code) for l in want
+    assert [(ln.account, ln.debit, ln.credit, ln.vat_code) for ln in got] == [
+        (ln.account, ln.debit, ln.credit, ln.vat_code) for ln in want
     ]
 
     # "Create rule from this" pre-fills from the approved line.
-    draft = client.get(f"/books/bank/lines/{first}/rule-draft", headers=H,
-                       params={"account": "5100 Tools & small equipment"}).json()
+    draft = client.get(
+        f"/books/bank/lines/{first}/rule-draft", headers=H, params={"account": "5100 Tools & small equipment"}
+    ).json()
     assert draft["match"] == {"op": "contains", "value": "SCREWFIX DIRECT"}
     assert draft["direction"] == "out"
 
@@ -282,14 +331,20 @@ async def test_rule_approve_posts_review_events(client: TestClient, books: Books
 async def test_ai_suggestion_uses_model_then_validates(books: Books, monkeypatch) -> None:
     import json
 
+    from app import bank_reconcile as rec
     from app.ai.config import AiConfig
     from app.bank_reconcile import suggest_ai
-    from app import bank_reconcile as rec
 
     async def fake_call(messages, cfg, schema, name):
         assert messages[0]["content"] == rec.BANK_SUGGEST_PROMPT
-        return json.dumps({"account": "5100 Tools & small equipment", "vat_code": "S",
-                           "contact": "Screwfix", "reason": "says Screwfix"})
+        return json.dumps(
+            {
+                "account": "5100 Tools & small equipment",
+                "vat_code": "S",
+                "contact": "Screwfix",
+                "reason": "says Screwfix",
+            }
+        )
 
     async def fake_fail(messages, cfg, schema, name):
         raise ConnectionError("model down")
@@ -297,8 +352,11 @@ async def test_ai_suggestion_uses_model_then_validates(books: Books, monkeypatch
     import app.ai.ask as ask_ai
 
     monkeypatch.setattr(ask_ai, "call_json_model", fake_call)
-    got = await suggest_ai(_FakeLine(), AiConfig(mode="local", base_url="http://x", model="m"),
-                           ["5100 Tools & small equipment", "7999 Sundry expenses"])
+    got = await suggest_ai(
+        _FakeLine(),
+        AiConfig(mode="local", base_url="http://x", model="m"),
+        ["5100 Tools & small equipment", "7999 Sundry expenses"],
+    )
     assert got is not None and got.account == "5100 Tools & small equipment" and got.by == "suggested by AI"
 
     monkeypatch.setattr(ask_ai, "call_json_model", fake_fail)
@@ -314,9 +372,15 @@ class _FakeLine:
 
 async def test_rule_order_first_match_wins_on_reconcile(client: TestClient, books: Books) -> None:
     client.post("/books/bank/rules", headers=H, json=_rule(name="wide"))
-    client.post("/books/bank/rules", headers=H, json=_rule(
-        name="narrow", match={"op": "contains", "value": "screwfix direct"},
-        action={"account": "7999 Sundry expenses", "vat_code": "N"}))
+    client.post(
+        "/books/bank/rules",
+        headers=H,
+        json=_rule(
+            name="narrow",
+            match={"op": "contains", "value": "screwfix direct"},
+            action={"account": "7999 Sundry expenses", "vat_code": "N"},
+        ),
+    )
     client.post("/books/bank/import", headers=H, files={"file": ("oct.csv", OCT, "text/csv")})
     rows = client.get("/books/bank/reconcile", headers=H).json()
     screwfix = next(r for r in rows if r["rule"] is not None)

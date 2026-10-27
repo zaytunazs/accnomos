@@ -237,9 +237,7 @@ async def update_bank_rule(
     rules = await load_bank_rules(books)
     for i, r in enumerate(rules):
         if r.id == rule_id:
-            rules[i] = BankRule(
-                **body.model_dump(), id=r.id, created_at=r.created_at, created_by=r.created_by or user
-            )
+            rules[i] = BankRule(**body.model_dump(), id=r.id, created_at=r.created_at, created_by=r.created_by or user)
             await save_bank_rules(books, rules)
             await books.audit(f"user:{user}", "bank_rule_updated", {"rule": rule_id})
             return rules[i]
@@ -301,9 +299,7 @@ async def reconcile(
 
 
 @router.get("/lines/{line_id}/ai-suggestion", response_model=AiSuggestion | None)
-async def ai_suggestion(
-    line_id: str, request: Request, books: Books = Depends(get_books)
-) -> AiSuggestion | None:
+async def ai_suggestion(line_id: str, request: Request, books: Books = Depends(get_books)) -> AiSuggestion | None:
     """Ask the user's own model to code one line; null when it cannot. Labelled "suggested by AI"."""
     from app.journal import CATEGORY_ACCOUNTS, SUNDRY
 
@@ -361,7 +357,9 @@ async def coding_options() -> CodingOptions:
     """Valid accounts and VAT codes for bank rules and AI codings (the runtime's chart)."""
     from app.journal import CATEGORY_ACCOUNTS, SUNDRY
 
-    return CodingOptions(accounts=sorted(set(CATEGORY_ACCOUNTS.values()) | {SUNDRY}), vat_codes=["S", "R", "Z", "E", "O", "N"])
+    return CodingOptions(
+        accounts=sorted(set(CATEGORY_ACCOUNTS.values()) | {SUNDRY}), vat_codes=["S", "R", "Z", "E", "O", "N"]
+    )
 
 
 @router.get("/summary", response_model=BankSummary)

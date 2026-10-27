@@ -92,9 +92,7 @@ def _has_nested_quantifier(pattern: str) -> bool:
                 quantified = re.match(r"\{\d+(?:,\d*)?\}", pattern[j:]) is not None
             if quantified and inner_has_quant:
                 return True
-            if quantified and stack:
-                stack[-1] = True
-            elif not quantified and inner_has_quant and stack:
+            if quantified and stack or not quantified and inner_has_quant and stack:
                 stack[-1] = True
             i += 1
             continue
@@ -165,9 +163,7 @@ def rule_matches(rule: BankRule, *, description: str, amount_pence: int) -> bool
         return False
     if rule.amount_min_pence is not None and amount_pence < rule.amount_min_pence:
         return False
-    if rule.amount_max_pence is not None and amount_pence > rule.amount_max_pence:
-        return False
-    return True
+    return not (rule.amount_max_pence is not None and amount_pence > rule.amount_max_pence)
 
 
 def first_match(rules: list[BankRule], *, description: str, amount_pence: int) -> BankRule | None:
