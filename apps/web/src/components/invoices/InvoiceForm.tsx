@@ -87,13 +87,15 @@ export default function InvoiceForm() {
     });
   }, [fromJob]);
 
+  const preselectId = params.get("customer"); // /invoices/new?customer=<contact id>, from Contacts
   useEffect(() => {
     if (!account) return;
     runtime.invoiceCustomers(account).then((cs) => {
       setCustomers(cs);
       // A job's customer arrives as a contact id and name: fill in the rest from the contact book.
       setCustomer((c) => {
-        const known = c.contact_id && !c.email && !c.address ? cs.find((x) => x.contact_id === c.contact_id) : undefined;
+        const wanted = (!c.contact_id && preselectId) || c.contact_id;
+        const known = wanted && !c.email && !c.address ? cs.find((x) => x.contact_id === wanted) : undefined;
         return known ? { ...known } : c;
       });
     }).catch(() => setCustomers([]));
@@ -114,7 +116,7 @@ export default function InvoiceForm() {
       })));
       setDirty(false);
     }).catch((e) => setError((e as Error).message));
-  }, [account, editId]);
+  }, [account, editId, preselectId]);
 
   // Every edit below goes through these so the totals know when they no longer match the last save.
   function touchLines(next: LineForm[] | ((ls: LineForm[]) => LineForm[])) {
