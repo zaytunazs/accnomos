@@ -57,8 +57,10 @@ def test_rates_table_cites_its_source_and_says_estimate() -> None:
     assert any("1257L" in x for x in R.LIMITS) and any("Student loans" in x and "pensions" in x for x in R.LIMITS)
 
 
-def test_typical_month_matches_hmrc_tables() -> None:
-    # £2,000 a month on 1257L: tax £190.40, employee NI £76.20; employer NI 15% above £5,000 ÷ 12.
+def test_typical_month_worked_example() -> None:
+    # £2,000 a month: tax 20% of (2,000 − 12,570 ÷ 12, rounded down to £952) = £190.40, employee NI £76.20;
+    # employer NI 15% above £5,000 ÷ 12. (HMRC's own 1257L tables give £1,048.25 free pay, so £190.20 tax:
+    # the estimate is 20p high, which is why it is only ever an estimate.)
     e = pr.estimate(200_000)
     assert (e.paye_pence, e.ee_ni_pence, e.er_ni_pence, e.net_pence) == (19_040, 7_620, 23_750, 173_340)
 
@@ -166,6 +168,16 @@ async def test_export_shape(books: Books, fake: FakeStorageProvider) -> None:
     assert all(h.startswith("Est.") for h in pr.CSV_HEADER[5:9])  # deductions are labelled as estimates
 
 
+def test_export_keeps_typed_text_inert_and_big_totals_exact() -> None:
+    lines = [pr.make_line(f"s{i}", 744 * 4, 1000, "=HYPERLINK(\"http://x\")" if i == 0 else "") for i in range(17)]
+    lines.append(pr.make_line("s99", 1, 1000))  # 0.25 h: total 12,648.25 h
+    run = pr.PayRun(period_start=date(2026, 10, 1), period_end=date(2026, 10, 31), pay_date=date(2026, 10, 31), lines=lines)
+    rows = list(csv.reader(io.StringIO(pr.export_csv(run, {"s0": ("+Ann", "@Joiner")}))))
+    first = rows[rows.index(list(pr.CSV_HEADER)) + 1]
+    assert (first[0], first[1], first[-1]) == ("'+Ann", "'@Joiner", "'=HYPERLINK(\"http://x\")")
+    assert rows[-1][2] == "12648.25" and rows[-2][2] == "0.25"
+
+
 # --------------------------------------------------------------------------- #
 # Confirm and reopen
 # --------------------------------------------------------------------------- #
@@ -223,6 +235,23 @@ async def test_failed_second_entry_undoes_the_first(books: Books, fake: FakeStor
     evs = _events(fake)
     assert [e.kind for e in sorted(evs, key=lambda e: e.kind)] == ["adjustment", "reversal"]  # wages, then its undo
     assert (await pr.get_run(books, "2026-10")).status == "draft"
+
+
+async def test_failed_save_after_posting_undoes_both_entries(books: Books, fake: FakeStorageProvider, monkeypatch) -> None:
+    await _setup(books)
+    await pr.prepare(books, "2026-10", None, USER)
+
+    async def broken(*_a, **_k):
+        raise OSError("network")
+
+    monkeypatch.setattr(pr, "_save", broken)
+    with pytest.raises(OSError):
+        await pr.confirm(books, "2026-10", 30_000, 1_000, USER)
+    monkeypatch.undo()
+    evs = _events(fake)
+    originals = {e.id for e in evs if e.kind == "adjustment"}
+    assert len(originals) == 2 and {e.reverses for e in evs if e.kind == "reversal"} == originals
+    assert (await pr.get_run(books, "2026-10")).status == "draft"  # so a second confirm posts once, cleanly
 
 
 async def test_reopen_reverses_and_allows_a_new_confirm(books: Books, fake: FakeStorageProvider) -> None:

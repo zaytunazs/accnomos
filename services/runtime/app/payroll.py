@@ -20,6 +20,7 @@ from __future__ import annotations
 import calendar
 import csv
 import io
+import logging
 import re
 from collections import defaultdict
 from collections.abc import Sequence
@@ -34,6 +35,8 @@ from pydantic import BaseModel, Field
 from app import payroll_rates as R
 from app.books import SYSTEM, Books, now
 from app.jobs import hours_value, load_entries, load_staff, pence_for, quarters
+
+log = logging.getLogger(__name__)
 
 RUNS = f"{SYSTEM}/Payroll/runs"
 EXPORTS = "04 Payroll"
@@ -288,6 +291,16 @@ def _gbp(pence: int) -> str:
     return f"{pence / 100:.2f}"
 
 
+def _hours(h: float) -> str:
+    """15.5 -> '15.5', 8.0 -> '8', 12345.25 -> '12345.25' (quarter hours; :g would round big totals)."""
+    return f"{h:.2f}".rstrip("0").rstrip(".")
+
+
+def _text(s: str) -> str:
+    """Typed-in text (names, roles, notes) that a spreadsheet would run as a formula gets a leading apostrophe."""
+    return f"'{s}" if s[:1] in ("=", "+", "-", "@", "\t", "\r") else s
+
+
 def export_csv(run: PayRun, names: dict[str, tuple[str, str]]) -> str:
     """The estimate label and limits first, then one row per employee and a totals row."""
     buf = io.StringIO()
@@ -300,9 +313,10 @@ def export_csv(run: PayRun, names: dict[str, tuple[str, str]]) -> str:
     w.writerow(CSV_HEADER)
     for ln in run.lines:
         name, role = names.get(ln.staff_id, (ln.staff_id, ""))
-        w.writerow([name, role, f"{ln.hours:g}", _gbp(ln.rate_pence), _gbp(ln.gross_pence), _gbp(ln.est_paye_pence),
-                    _gbp(ln.est_ee_ni_pence), _gbp(ln.est_net_pence), _gbp(ln.est_er_ni_pence), ln.notes])
-    w.writerow(["Total", "", f"{sum(ln.hours for ln in run.lines):g}", "",
+        w.writerow([_text(name), _text(role), _hours(ln.hours), _gbp(ln.rate_pence), _gbp(ln.gross_pence),
+                    _gbp(ln.est_paye_pence), _gbp(ln.est_ee_ni_pence), _gbp(ln.est_net_pence), _gbp(ln.est_er_ni_pence),
+                    _text(ln.notes)])
+    w.writerow(["Total", "", _hours(sum(ln.hours for ln in run.lines)), "",
                 *(_gbp(sum(getattr(ln, f) for ln in run.lines)) for f in (
                     "gross_pence", "est_paye_pence", "est_ee_ni_pence", "est_net_pence", "est_er_ni_pence")), ""])
     return buf.getvalue()
@@ -355,16 +369,21 @@ async def confirm(books: Books, period: str, gross_pence: int, er_ni_pence: int,
         for ev in events:
             await books.post_event(ev)
             posted.append(ev)
+        run = run.model_copy(update={
+            "status": "confirmed", "confirmed_gross_pence": gross_pence, "confirmed_er_ni_pence": er_ni_pence,
+            "confirmed_by": user, "confirmed_at": at, "event_ids": [e.id for e in events],
+        })
+        await _save(books, run)
     except Exception:
-        if posted:  # never leave half a pay run in the books
-            from app.approve import undo
-            await undo(books, posted[0].id, user)
+        # Never leave half a pay run in the books, or entries the run file doesn't know about (a second
+        # confirm would then post them twice).
+        from app.approve import undo
+        for ev in posted:
+            try:
+                await undo(books, ev.id, user)
+            except Exception:
+                log.exception("Could not undo pay run entry %s after a failed confirm", ev.id)
         raise
-    run = run.model_copy(update={
-        "status": "confirmed", "confirmed_gross_pence": gross_pence, "confirmed_er_ni_pence": er_ni_pence,
-        "confirmed_by": user, "confirmed_at": at, "event_ids": [e.id for e in events],
-    })
-    await _save(books, run)
     await books.audit(f"user:{user}", "payroll_confirmed", {
         "period": period, "gross_pence": gross_pence, "er_ni_pence": er_ni_pence, "events": run.event_ids,
         "est_gross_pence": run.est_gross_pence, "est_er_ni_pence": run.est_er_ni_pence,
