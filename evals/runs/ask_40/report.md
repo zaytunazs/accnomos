@@ -6,33 +6,76 @@ through `app.routes_ask._answer`; gold answers are computed from the facts pack 
 
 | | glimmer | qwen |
 |---|---:|---:|
-| Numbers exact (32 questions with a gold figure) | 28/32 (88 %) | 31/32 (97 %) |
+| Numbers exact (32 questions with a gold figure) | 32/32 (100 %) | 32/32 (100 %) |
+| ... in the model's own words (not key numbers or fallback) | 29/32 (91 %) | 32/32 (100 %) |
 | Citation present and valid | 32/32 (100 %) | 32/32 (100 %) |
-| No invented figure in the raw reply (replies that parsed) | 31/31 (100 %) | 34/35 (97 %) |
-| Raw reply not parsed | 4 | 0 |
-| Answers replaced by the code fallback | 4 | 1 |
+| No invented figure in the raw reply (replies that parsed) | 34/35 (97 %) | 35/35 (100 %) |
+| Raw reply not parsed | 0 | 0 |
+| Answers replaced by the code fallback | 1 | 0 |
 | Invented figures reaching the user | 0 | 0 |
-| Unanswerable: says the books don't show it | 3/3 (100 %) | 3/3 (100 %) |
-| Instructions → action card of the right kind | 4/5 (80 %) | 4/5 (80 %) |
-| Instructions → follow-up question | 1 | 1 |
+| Wrong-period figures replaced by grounding | 0 | 0 |
+| Timeouts (model stopped replying) | 0 | 0 |
+| Unanswerable: says the books don't show it | 2/3 (67 %) | 2/3 (67 %) |
+| Instructions → action card of the right kind | 3/5 (60 %) | 4/5 (80 %) |
+| Instructions → follow-up question | 2 | 1 |
 | Instructions answered as questions | 0 | 0 |
-| Total seconds | 2229.3 | 1697.8 |
+| Total seconds | 830.9 | 825.7 |
+| Median / slowest seconds per question | 16.4 / 49.8 | 13.9 / 31.0 |
+| Facts pack sent, median tokens (estimate) | 458 | 458 |
 
-Numbers exact counts the shipped answer: when grounding replaces the model's words with the code fallback,
-the fallback only quotes the VAT boxes and totals, so a question about something else scores as wrong.
+Numbers exact counts the shipped answer, key numbers included. Since the routed pack (below) code picks the
+key numbers for the question, so that row now measures code as much as the model; "in the model's own words"
+counts only gold figures the model wrote itself, in answers that kept its words.
 The unanswerable check is a phrase match on the answer and only counts model-written answers.
+
+## Before and after the routed pack, slim reply and period-aware grounding (27 Oct 2026)
+
+Before: the run at `efe0d67` (whole facts pack, the model wrote key numbers, citations and buttons too, 120 s
+timeout per answer). After: this run. Same books, prompts and machine; both models run at once in both runs.
+Prompt tokens are real Glimmer counts from `python -m harness.ask_pack_size` (`runs/ask_40/pack_size.json`).
+
+| Glimmer | before | after |
+|---|---:|---:|
+| Prompt tokens per question, median (max) | 2,434 (2,441) | 813 (1,792) |
+| Reply tokens, typical (two measured prompts) | 251-341 | 93 |
+| Seconds per question, median / slowest | 53.8 / 140.9 | 16.4 / 49.8 |
+| Timeouts | 4 | 0 |
+| Numbers exact (shipped) | 28/32 | 32/32 |
+| Numbers exact in the model's own words | 27/32 | 29/32 |
+| Citation present and valid | 32/32 | 32/32 |
+| No invented figure in the raw reply | 31/31 parsed (4 unparsed) | 34/35 parsed (0 unparsed) |
+| Invented figures reaching the user | 0 | 0 |
+| Total seconds (40 prompts) | 2229.3 | 830.9 |
+
+Qwen (key mode, vLLM): median / slowest 38.0 / 100.5 s before, 13.9 / 31.0 s after; exact 31/32 then 32/32 (own
+words 30/32 then 32/32); no invented figure 34/35 then 35/35.
 
 ## Reading the numbers
 
-- Glimmer: median about 49 s per prompt; 4 of 35 questions ran into the app's 120 s Ask timeout (`TIMEOUT_S` in
-  `app/ai/ask.py`) with nothing else using Ollama, so the user got the code fallback (right figures, no wording).
-  Those count as unparsed and, unless the fallback happens to quote the gold figure, as not exact.
-- Both models once quoted this quarter's figure for a question about last quarter (Glimmer `vat_prev_box4`, Qwen
-  `prev_purchases_net`): grounding cannot catch that, because the figure is in the facts.
-- The first run (before `25c4e2f`) replaced "fuel in March 2025" with the fallback on both models because the year
-  from the question counted as invented; grounding now accepts figures from the question.
-- A follow-up question instead of a card: Glimmer asked for quantities on "£1,200 plus VAT for the office doors",
-  Qwen asked for the start and end of the mileage journey (the prompt gave only "from the workshop to Harrogate").
+- Where the time went: Glimmer generates about 8 tokens/s here and reads the prompt in 0.4-2.7 s, so the answer
+  time is the reply's length. Code now supplies key numbers, citations and buttons; the model writes only
+  `{answer_md, confidence}` (`AskExplanation`), capped at 320 tokens (~40 s), with a timeout per streamed chunk
+  instead of per answer. The routed pack (`app/ask_router.py`, budget 1,500 tokens) saves only a second or two of
+  prompt reading; its bigger effect is that the period not asked about is not in front of the model.
+- Wrong period: before, both models once quoted this quarter's figure for last quarter (Glimmer `vat_prev_box4`,
+  Qwen `prev_purchases_net`) and grounding could not tell. Now neither did (the pack for a one-period question
+  holds only that period's figures, and FACTS.question_is_about names it), and grounding would replace such a
+  figure anyway: 0 replacements were needed in this run; the check is covered by `test_ask.py` with a planted
+  figure.
+- No invented figure is 34/35 for Glimmer against 31/31 before: the before run had 4 timed-out replies that were
+  never scored. The one this time is `corp_tax` ("600", not in the facts): grounding replaced it with the code
+  fallback, which is also why that question no longer counts as a decline.
+- Qwen's `fuel_2025` did decline ("March 2025 isn't in here"); the phrase match misses that wording.
+- The instruction rows do not go through the changed code. Glimmer asked one follow-up question instead of a
+  card twice (journey start and end on the mileage prompt; quantities on "£1,200 plus VAT for the office
+  doors"), which the eval accepts; Qwen asked for quantities once.
+- Streaming: on Glimmer the explanation arrives in one piece, because Ollama 0.40's glimmer parser holds a
+  schema-constrained reply until it is complete (and every unconstrained mode tried either reasoned silently
+  despite `think: false` or ran away). The first event (code's figures) is still instant. Qwen streams token by
+  token.
+- Not covered by the facts pack at all: bank balances, payroll, jobs, deadlines, corporation tax. The router
+  recognises those words and the model is told they are not in the facts. A follow-up like "why?" is routed on
+  its own words, so it is treated as being about the current period.
 
 ## glimmer (muse-glimmer:30b)
 
@@ -42,14 +85,59 @@ The unanswerable check is a phrase match on the answer and only counts model-wri
 | vat_box1 | yes | yes | - | - | gold: 2944.63 |
 | vat_box4 | yes | yes | - | - | gold: 141.30 |
 | vat_box6 | yes | yes | - | - | gold: 14723 |
-| vat_box7 | **no** | yes | - | yes | gold: 2465 |
+| vat_box7 | yes | yes | - | - | gold: 2465 |
 | vat_prev_box5 | yes | yes | - | - | gold: 782.50 |
-| vat_delta | **no** | yes | - | yes | gold: 2020.83 |
+| vat_delta | yes | yes | - | - | gold: 2020.83 |
 | vat_pct | yes | yes | - | - | gold: 258.3 |
-| vat_prev_box4 | **no** | yes | - | - | gold: 270.50 |
+| vat_prev_box4 | yes | yes | - | - | gold: 270.50 |
 | vat_prev_box6 | yes | yes | - | - | gold: 5265 |
-| vat_box4_delta | **no** | yes | - | yes | gold: -129.20 |
-| vat_position | yes | yes | - | yes | gold: 2803.33 |
+| vat_box4_delta | yes | yes | - | - | gold: -129.20 |
+| vat_position | yes | yes | - | - | gold: 2803.33 |
+| sales_net | yes | yes | - | - | gold: 14723.15 |
+| purchases_net | yes | yes | - | - | gold: 2465.28 |
+| sales_count | yes | yes | - | - | gold: 5 |
+| purchases_count | yes | yes | - | - | gold: 16 |
+| sales_growth | yes | yes | - | - | gold: 9458.15 |
+| purchases_pct | yes | yes | - | - | gold: 2.1 |
+| prev_sales_net | yes | yes | - | - | gold: 5265.00 |
+| sales_vat | yes | yes | - | - | gold: 2944.63 |
+| entries | yes | yes | - | - | gold: 21 |
+| prev_purchases_net | yes | yes | - | - | gold: 2414.80 |
+| top_supplier | yes | yes | - | - | gold: Whimsy Wardrobe Ltd, 504.50 |
+| oakhurst_net | yes | yes | - | - | gold: 440.90 |
+| top_customer | yes | yes | - | - | gold: Sterling & Co. Architects, 6233.00 |
+| hartwell_net | yes | yes | - | - | gold: 4579.65 |
+| sterling_count | yes | yes | - | - | gold: 2 |
+| largest | yes | yes | - | - | gold: 5259.60 |
+| harrowgate_gross | yes | yes | - | - | gold: 4692.60 |
+| oakhurst_vat | yes | yes | - | - | gold: 88.18 |
+| reduced_rate | yes | yes | - | - | gold: 774.85 |
+| no_vat_invoice | yes | yes | - | - | gold: 671.74 |
+| bank_balance | - | yes | - | - | declined |
+| corp_tax | - | yes | 600 | yes | did not say it can't tell |
+| fuel_2025 | - | yes | - | - | declined |
+| act_invoice | | | | | expected `create_invoice`, got `create_invoice` |
+| act_chase | | | | | expected `chase_invoice`, got `chase_invoice` |
+| act_mileage | | | | | expected `log_mileage`, got `clarification` |
+| act_timesheet | | | | | expected `log_timesheet`, got `log_timesheet` |
+| act_invoice_vat | | | | | expected `create_invoice`, got `clarification` |
+
+## qwen (qwen3.8-27b)
+
+| Id | Exact | Cited | Invented (raw) | Fallback | Note |
+|---|---|---|---|---|---|
+| vat_box5 | yes | yes | - | - | gold: 2803.33 |
+| vat_box1 | yes | yes | - | - | gold: 2944.63 |
+| vat_box4 | yes | yes | - | - | gold: 141.30 |
+| vat_box6 | yes | yes | - | - | gold: 14723 |
+| vat_box7 | yes | yes | - | - | gold: 2465 |
+| vat_prev_box5 | yes | yes | - | - | gold: 782.50 |
+| vat_delta | yes | yes | - | - | gold: 2020.83 |
+| vat_pct | yes | yes | - | - | gold: 258.3 |
+| vat_prev_box4 | yes | yes | - | - | gold: 270.50 |
+| vat_prev_box6 | yes | yes | - | - | gold: 5265 |
+| vat_box4_delta | yes | yes | - | - | gold: -129.20 |
+| vat_position | yes | yes | - | - | gold: 2803.33 |
 | sales_net | yes | yes | - | - | gold: 14723.15 |
 | purchases_net | yes | yes | - | - | gold: 2465.28 |
 | sales_count | yes | yes | - | - | gold: 5 |
@@ -72,55 +160,10 @@ The unanswerable check is a phrase match on the answer and only counts model-wri
 | no_vat_invoice | yes | yes | - | - | gold: 671.74 |
 | bank_balance | - | yes | - | - | declined |
 | corp_tax | - | yes | - | - | declined |
-| fuel_2025 | - | yes | - | - | declined |
+| fuel_2025 | - | yes | - | - | did not say it can't tell |
 | act_invoice | | | | | expected `create_invoice`, got `create_invoice` |
 | act_chase | | | | | expected `chase_invoice`, got `chase_invoice` |
 | act_mileage | | | | | expected `log_mileage`, got `log_mileage` |
 | act_timesheet | | | | | expected `log_timesheet`, got `log_timesheet` |
 | act_invoice_vat | | | | | expected `create_invoice`, got `clarification` |
-
-## qwen (qwen3.8-27b)
-
-| Id | Exact | Cited | Invented (raw) | Fallback | Note |
-|---|---|---|---|---|---|
-| vat_box5 | yes | yes | - | - | gold: 2803.33 |
-| vat_box1 | yes | yes | - | - | gold: 2944.63 |
-| vat_box4 | yes | yes | - | - | gold: 141.30 |
-| vat_box6 | yes | yes | - | - | gold: 14723 |
-| vat_box7 | yes | yes | - | - | gold: 2465 |
-| vat_prev_box5 | yes | yes | - | - | gold: 782.50 |
-| vat_delta | yes | yes | - | - | gold: 2020.83 |
-| vat_pct | yes | yes | - | - | gold: 258.3 |
-| vat_prev_box4 | yes | yes | - | - | gold: 270.50 |
-| vat_prev_box6 | yes | yes | - | - | gold: 5265 |
-| vat_box4_delta | yes | yes | - | - | gold: -129.20 |
-| vat_position | yes | yes | - | - | gold: 2803.33 |
-| sales_net | yes | yes | - | - | gold: 14723.15 |
-| purchases_net | yes | yes | £2,606.58 | yes | gold: 2465.28 |
-| sales_count | yes | yes | - | - | gold: 5 |
-| purchases_count | yes | yes | - | - | gold: 16 |
-| sales_growth | yes | yes | - | - | gold: 9458.15 |
-| purchases_pct | yes | yes | - | - | gold: 2.1 |
-| prev_sales_net | yes | yes | - | - | gold: 5265.00 |
-| sales_vat | yes | yes | - | - | gold: 2944.63 |
-| entries | yes | yes | - | - | gold: 21 |
-| prev_purchases_net | **no** | yes | - | - | gold: 2414.80 |
-| top_supplier | yes | yes | - | - | gold: Whimsy Wardrobe Ltd, 504.50 |
-| oakhurst_net | yes | yes | - | - | gold: 440.90 |
-| top_customer | yes | yes | - | - | gold: Sterling & Co. Architects, 6233.00 |
-| hartwell_net | yes | yes | - | - | gold: 4579.65 |
-| sterling_count | yes | yes | - | - | gold: 2 |
-| largest | yes | yes | - | - | gold: 5259.60 |
-| harrowgate_gross | yes | yes | - | - | gold: 4692.60 |
-| oakhurst_vat | yes | yes | - | - | gold: 88.18 |
-| reduced_rate | yes | yes | - | - | gold: 774.85 |
-| no_vat_invoice | yes | yes | - | - | gold: 671.74 |
-| bank_balance | - | yes | - | - | declined |
-| corp_tax | - | yes | - | - | declined |
-| fuel_2025 | - | yes | - | - | declined |
-| act_invoice | | | | | expected `create_invoice`, got `create_invoice` |
-| act_chase | | | | | expected `chase_invoice`, got `chase_invoice` |
-| act_mileage | | | | | expected `log_mileage`, got `clarification` |
-| act_timesheet | | | | | expected `log_timesheet`, got `log_timesheet` |
-| act_invoice_vat | | | | | expected `create_invoice`, got `create_invoice` |
 

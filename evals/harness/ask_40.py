@@ -23,6 +23,7 @@ import asyncio
 import contextvars
 import json
 import re
+import statistics
 import sys
 import time
 from collections.abc import Callable
@@ -44,9 +45,10 @@ from app import routes_ask  # noqa: E402
 from app.ai import ask as ask_ai  # noqa: E402
 from app.ai.config import AiConfig  # noqa: E402
 from app.ai.extract import parse_model_json  # noqa: E402
+from app.ask_router import approx_tokens, pack, route  # noqa: E402
 from app.books import Books  # noqa: E402
 from app.facts import build_facts  # noqa: E402
-from app.schemas import AskAnswer, AskModelOutput, AskPeriod, AskRequest  # noqa: E402
+from app.schemas import AskAnswer, AskExplanation, AskPeriod, AskRequest  # noqa: E402
 from app.vat_cycle import VatCycle  # noqa: E402
 
 BUSINESS = "Bramblewood Joinery Ltd"
@@ -203,13 +205,11 @@ def score_question(qid: str, prompt: str, gold: Gold | None, cite: Any, facts: F
     raw_ok = bool(raw)
     for text in raw:
         try:
-            out = AskModelOutput.model_validate(parse_model_json(text))
+            out = AskExplanation.model_validate(parse_model_json(text))
         except Exception:  # noqa: BLE001  unparsed raw reply: grounding falls back, nothing invented reaches the user
             raw_ok = False
             continue
         raw_invented += known.unknown(out.answer_md, all_tokens=False)
-        for kn in out.key_numbers:
-            raw_invented += known.unknown(kn.value, all_tokens=True)
     text = shipped_text(a)
     sources = set(facts["sources"])
     rec: dict[str, Any] = {
@@ -217,6 +217,9 @@ def score_question(qid: str, prompt: str, gold: Gold | None, cite: Any, facts: F
         "fallback": a.fallback_reason, "card": a.proposed_action is not None, "raw_parsed": raw_ok,
         "raw_invented": sorted(set(raw_invented)), "no_invented_figure": raw_ok and not raw_invented,
         "shipped_invented": known.unknown(a.answer_md, all_tokens=False),
+        "pack_tokens": approx_tokens(pack(facts, route(prompt, facts))),
+        "timeout": bool(a.fallback_reason and ("stopped replying" in a.fallback_reason or "could not be reached" in a.fallback_reason)),
+        "wrong_period": bool(a.fallback_reason and "a figure for" in a.fallback_reason),
     }
     rec["citation_present"] = bool(a.citations) and set(a.citations) <= sources
     if isinstance(cite, tuple):
@@ -230,7 +233,15 @@ def score_question(qid: str, prompt: str, gold: Gold | None, cite: Any, facts: F
     else:
         rec["gold"] = [str(g) for g in gold(facts)]
         rec["numbers_exact"] = all(has_gold(g, text) for g in rec["gold"])
+    rec["words_exact"] = words_exact(rec)
     return rec
+
+
+def words_exact(rec: dict[str, Any]) -> bool | None:
+    """Every gold figure in the model's own words (not code's key numbers, not the fallback)."""
+    if not rec.get("gold"):
+        return None
+    return rec["fallback"] is None and all(has_gold(g, rec["answer"]) for g in rec["gold"])
 
 
 #: The current model's list of raw Ask replies (one task per model, so each sees its own list).
@@ -243,8 +254,8 @@ def capture_raw_replies() -> None:
 
     async def capture(messages, cfg, *args, **kwargs):  # type: ignore[no-untyped-def]
         text = await real_call(messages, cfg, *args, **kwargs)
-        output = args[0] if args else kwargs.get("output", AskModelOutput)
-        if output is AskModelOutput and (raw := _RAW.get(None)) is not None:
+        output = args[0] if args else kwargs.get("output", AskExplanation)
+        if output is AskExplanation and (raw := _RAW.get(None)) is not None:
             raw.append(text)
         return text
 
@@ -282,6 +293,7 @@ def rescore(res: dict[str, Any]) -> dict[str, Any]:
                 x["gold"] = [str(g) for g in x["gold"]]
                 text = " ".join([x["answer"], *x["key_numbers"]])
                 x["numbers_exact"] = all(has_gold(g, text) for g in x["gold"])
+                x["words_exact"] = words_exact(x)
             elif "declined" in x:
                 x["declined"] = bool(DECLINE.search(x["answer"])) and x["fallback"] is None
         r["summary"] = summarise(r["records"])
@@ -296,6 +308,7 @@ def summarise(recs: list[dict[str, Any]]) -> dict[str, Any]:
     return {
         "questions": len(qs), "with_gold": len(gold),
         "numbers_exact": sum(r["numbers_exact"] for r in gold),
+        "words_exact": sum(bool(words_exact(r)) for r in gold),
         "citation_present": sum(r["citation_present"] for r in gold),
         "no_invented_figure": sum(r["no_invented_figure"] for r in qs),
         "raw_unparsed": sum(not r["raw_parsed"] for r in qs),
@@ -305,7 +318,12 @@ def summarise(recs: list[dict[str, Any]]) -> dict[str, Any]:
         "instructions": len(acts), "cards": sum(r["card"] for r in acts), "cards_right_kind": sum(r["card_right_kind"] for r in acts),
         "clarifications": sum(r["clarification"] for r in acts),
         "answered_instead": sum(r["got"] == "answer" for r in acts),
+        "timeouts": sum(bool(r.get("timeout")) for r in qs),
+        "wrong_period": sum(bool(r.get("wrong_period")) for r in qs),
         "seconds": round(sum(r["seconds"] for r in recs), 1),
+        "median_seconds": statistics.median(r["seconds"] for r in qs) if qs else 0,
+        "max_seconds": max((r["seconds"] for r in qs), default=0),
+        "pack_tokens_median": statistics.median(r["pack_tokens"] for r in qs) if qs and "pack_tokens" in qs[0] else None,
     }
 
 
@@ -321,32 +339,70 @@ def report_md(res: dict[str, Any]) -> str:
            "| | " + " | ".join(res) + " |", "|---|" + "---:|" * len(res)]
     rows = [
         ("Numbers exact (32 questions with a gold figure)", lambda s: pct(s["numbers_exact"], s["with_gold"])),
+        ("... in the model's own words (not key numbers or fallback)", lambda s: pct(s.get("words_exact", 0), s["with_gold"])),
         ("Citation present and valid", lambda s: pct(s["citation_present"], s["with_gold"])),
         ("No invented figure in the raw reply (replies that parsed)", lambda s: pct(s["no_invented_figure"], s["questions"] - s["raw_unparsed"])),
         ("Raw reply not parsed", lambda s: str(s["raw_unparsed"])),
         ("Answers replaced by the code fallback", lambda s: str(s["fallbacks"])),
         ("Invented figures reaching the user", lambda s: str(s["shipped_invented"])),
+        ("Wrong-period figures replaced by grounding", lambda s: str(s.get("wrong_period", 0))),
+        ("Timeouts (model stopped replying)", lambda s: str(s.get("timeouts", 0))),
         ("Unanswerable: says the books don't show it", lambda s: pct(s["declined"], s["unanswerable"])),
         ("Instructions → action card of the right kind", lambda s: pct(s["cards_right_kind"], s["instructions"])),
         ("Instructions → follow-up question", lambda s: str(s["clarifications"])),
         ("Instructions answered as questions", lambda s: str(s["answered_instead"])),
         ("Total seconds", lambda s: str(s["seconds"])),
+        ("Median / slowest seconds per question", lambda s: f"{s.get('median_seconds', 0):.1f} / {s.get('max_seconds', 0):.1f}"),
+        ("Facts pack sent, median tokens (estimate)", lambda s: str(s.get("pack_tokens_median"))),
     ]
     for label, fn in rows:
         out.append(f"| {label} | " + " | ".join(fn(r["summary"]) for r in res.values()) + " |")
-    out += ["", "Numbers exact counts the shipped answer: when grounding replaces the model's words with the code fallback,",
-            "the fallback only quotes the VAT boxes and totals, so a question about something else scores as wrong.",
+    out += ["", "Numbers exact counts the shipped answer, key numbers included. Since the routed pack (below) code picks the",
+            "key numbers for the question, so that row now measures code as much as the model; \"in the model's own words\"",
+            "counts only gold figures the model wrote itself, in answers that kept its words.",
             "The unanswerable check is a phrase match on the answer and only counts model-written answers.", "",
+            "## Before and after the routed pack, slim reply and period-aware grounding (27 Oct 2026)", "",
+            "Before: the run at `efe0d67` (whole facts pack, the model wrote key numbers, citations and buttons too, 120 s",
+            "timeout per answer). After: this run. Same books, prompts and machine; both models run at once in both runs.",
+            "Prompt tokens are real Glimmer counts from `python -m harness.ask_pack_size` (`runs/ask_40/pack_size.json`).", "",
+            "| Glimmer | before | after |", "|---|---:|---:|",
+            "| Prompt tokens per question, median (max) | 2,434 (2,441) | 813 (1,792) |",
+            "| Reply tokens, typical (two measured prompts) | 251-341 | 93 |",
+            "| Seconds per question, median / slowest | 53.8 / 140.9 | 16.4 / 49.8 |",
+            "| Timeouts | 4 | 0 |",
+            "| Numbers exact (shipped) | 28/32 | 32/32 |",
+            "| Numbers exact in the model's own words | 27/32 | 29/32 |",
+            "| Citation present and valid | 32/32 | 32/32 |",
+            "| No invented figure in the raw reply | 31/31 parsed (4 unparsed) | 34/35 parsed (0 unparsed) |",
+            "| Invented figures reaching the user | 0 | 0 |",
+            "| Total seconds (40 prompts) | 2229.3 | 830.9 |", "",
+            "Qwen (key mode, vLLM): median / slowest 38.0 / 100.5 s before, 13.9 / 31.0 s after; exact 31/32 then 32/32 (own",
+            "words 30/32 then 32/32); no invented figure 34/35 then 35/35.", "",
             "## Reading the numbers", "",
-            "- Glimmer: median about 49 s per prompt; 4 of 35 questions ran into the app's 120 s Ask timeout (`TIMEOUT_S` in",
-            "  `app/ai/ask.py`) with nothing else using Ollama, so the user got the code fallback (right figures, no wording).",
-            "  Those count as unparsed and, unless the fallback happens to quote the gold figure, as not exact.",
-            "- Both models once quoted this quarter's figure for a question about last quarter (Glimmer `vat_prev_box4`, Qwen",
-            "  `prev_purchases_net`): grounding cannot catch that, because the figure is in the facts.",
-            "- The first run (before `25c4e2f`) replaced \"fuel in March 2025\" with the fallback on both models because the year",
-            "  from the question counted as invented; grounding now accepts figures from the question.",
-            "- A follow-up question instead of a card: Glimmer asked for quantities on \"£1,200 plus VAT for the office doors\",",
-            "  Qwen asked for the start and end of the mileage journey (the prompt gave only \"from the workshop to Harrogate\").",
+            "- Where the time went: Glimmer generates about 8 tokens/s here and reads the prompt in 0.4-2.7 s, so the answer",
+            "  time is the reply's length. Code now supplies key numbers, citations and buttons; the model writes only",
+            "  `{answer_md, confidence}` (`AskExplanation`), capped at 320 tokens (~40 s), with a timeout per streamed chunk",
+            "  instead of per answer. The routed pack (`app/ask_router.py`, budget 1,500 tokens) saves only a second or two of",
+            "  prompt reading; its bigger effect is that the period not asked about is not in front of the model.",
+            "- Wrong period: before, both models once quoted this quarter's figure for last quarter (Glimmer `vat_prev_box4`,",
+            "  Qwen `prev_purchases_net`) and grounding could not tell. Now neither did (the pack for a one-period question",
+            "  holds only that period's figures, and FACTS.question_is_about names it), and grounding would replace such a",
+            "  figure anyway: 0 replacements were needed in this run; the check is covered by `test_ask.py` with a planted",
+            "  figure.",
+            "- No invented figure is 34/35 for Glimmer against 31/31 before: the before run had 4 timed-out replies that were",
+            "  never scored. The one this time is `corp_tax` (\"600\", not in the facts): grounding replaced it with the code",
+            "  fallback, which is also why that question no longer counts as a decline.",
+            "- Qwen's `fuel_2025` did decline (\"March 2025 isn't in here\"); the phrase match misses that wording.",
+            "- The instruction rows do not go through the changed code. Glimmer asked one follow-up question instead of a",
+            "  card twice (journey start and end on the mileage prompt; quantities on \"£1,200 plus VAT for the office",
+            "  doors\"), which the eval accepts; Qwen asked for quantities once.",
+            "- Streaming: on Glimmer the explanation arrives in one piece, because Ollama 0.40's glimmer parser holds a",
+            "  schema-constrained reply until it is complete (and every unconstrained mode tried either reasoned silently",
+            "  despite `think: false` or ran away). The first event (code's figures) is still instant. Qwen streams token by",
+            "  token.",
+            "- Not covered by the facts pack at all: bank balances, payroll, jobs, deadlines, corporation tax. The router",
+            "  recognises those words and the model is told they are not in the facts. A follow-up like \"why?\" is routed on",
+            "  its own words, so it is treated as being about the current period.",
             ""]
     for name, r in res.items():
         out += [f"## {name} ({r['model']})", "", "| Id | Exact | Cited | Invented (raw) | Fallback | Note |", "|---|---|---|---|---|---|"]
