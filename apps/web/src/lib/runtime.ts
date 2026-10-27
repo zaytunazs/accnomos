@@ -207,6 +207,8 @@ export const runtime = {
   rebuild: (a: AccountInfo) => call<RtRebuild>(a, "/books/rebuild", { method: "POST" }),
   /** GET /books/deadlines?stagger=1 | start_month=5 | months=1 (see lib/business.ts deadlinesQuery). */
   deadlines: (a: AccountInfo, query: string) => call<RtDeadlines>(a, `/books/deadlines?${query}`),
+  /** GET /books/dashboard: the Home tiles in one call (same VAT query as deadlines, plus `today`). */
+  dashboard: (a: AccountInfo, query: string) => call<RtDashboard>(a, `/books/dashboard?${query}`),
 
   /** POST /plan/day: proposes a day and writes nothing. Asks for Calendars.Read the first time. */
   planDay: (a: AccountInfo, body: RtPlanRequest) =>
@@ -843,6 +845,40 @@ export interface RtDeadlines {
   current: RtPeriodDeadline;
   due: RtPeriodDeadline | null;
   rule: string;
+}
+
+/** GET /books/dashboard (services/runtime/app/dashboard.py). Pence; a null section could not be worked out. */
+export interface RtOwed {
+  total_pence: number;
+  documents: number;
+  oldest_days: number | null;
+}
+export interface RtDashboardRun {
+  at: string;
+  summary: string | null;
+}
+export interface RtDashboard {
+  today: string;
+  cash: {
+    balance_pence: number | null; // closing balance on the latest statement with a matched line
+    as_of: string | null;
+    bank: string | null;
+    statement: string | null;
+    reconciled_to: string | null;
+  } | null;
+  owed_to_you: (RtOwed & { overdue: number | null; overdue_pence: number | null; most_overdue_days: number | null }) | null;
+  owed_by_you: RtOwed | null;
+  vat: RtDeadlines | null;
+  attention: {
+    proposed: number;
+    needs_a_look: number;
+    unmatched_bank_lines: number;
+    overdue_invoices: number | null;
+    total: number;
+  } | null;
+  activity: { at: string; actor: string; action: string; text: string; tone: "ok" | "warn" }[];
+  runs: Record<"scan" | "autopilot" | "intake" | "triage", RtDashboardRun | null>;
+  unavailable: string[];
 }
 
 /** POST /books/ask (services/runtime/app/routes_ask.py). */
