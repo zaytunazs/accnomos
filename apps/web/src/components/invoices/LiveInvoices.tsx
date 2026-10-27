@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { MarkPaidDialog, PreviewSendDialog, ReminderDialog, StatusTimeline, VoidDialog } from "@/components/invoices/InvoiceDialogs";
 import { EmptyState, RuntimeErrorNote } from "@/components/States";
+import PrintButton from "@/components/PrintButton";
+import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import { money, SAMPLE_INVOICES, STATUS_LABEL, useMsAccount } from "@/lib/invoices";
 import { runtime, ukDate, type RtInvoice } from "@/lib/runtime";
 
@@ -31,6 +33,17 @@ function StatusChip({ invoice }: { invoice: Pick<RtInvoice, "status" | "days_ove
 }
 
 const action = "text-[13px] font-bold text-teal-dark hover:underline";
+
+const CSV_HEAD = ["number", "customer", "issue_date", "due_date", "status", "net_pence", "vat_pence", "total_pence"];
+
+/** The list exactly as the runtime gave it: pence stay pence (the signed-out sample has no net/VAT split). */
+function invoiceRows(
+  list: { number: string; customer: { name: string }; issue_date: string; due_date: string; status: string; net_pence?: number | null; vat_pence?: number | null; total_pence: number }[],
+): CsvValue[][] {
+  return [CSV_HEAD, ...list.map((i) => [i.number, i.customer.name, i.issue_date, i.due_date, i.status, i.net_pence ?? null, i.vat_pence ?? null, i.total_pence])];
+}
+
+const exportClass = "h-11 rounded-xl border border-border bg-white px-4 text-[15px] font-bold print:hidden";
 
 export default function LiveInvoices() {
   const { account, ready } = useMsAccount();
@@ -73,6 +86,16 @@ export default function LiveInvoices() {
         <p className="rounded-2xl bg-ground p-4 text-sm text-muted">
           Sign in with Microsoft to write invoices; they are saved in your OneDrive under 03 Sales/invoices. Below: SAMPLE — FICTIONAL COMPANY.
         </p>
+        <div className="flex flex-wrap gap-2 print:hidden">
+          <PrintButton />
+          <button
+            type="button"
+            onClick={() => downloadCsv(csvFilename("invoices"), invoiceRows(SAMPLE_INVOICES), { sample: true })}
+            className={exportClass}
+          >
+            Export CSV
+          </button>
+        </div>
         <ul className="divide-y divide-border rounded-2xl border border-border bg-white">
           {SAMPLE_INVOICES.map((i) => (
             <li key={i.number} className="flex items-center justify-between gap-3 px-4 py-3">
@@ -102,7 +125,7 @@ export default function LiveInvoices() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Show invoices">
           {FILTERS.map((f) => (
             <button
@@ -117,12 +140,25 @@ export default function LiveInvoices() {
             </button>
           ))}
         </div>
-        <Link href="/invoices/new" className="inline-flex h-11 items-center rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark">
+        <Link href="/invoices/new" className="inline-flex h-11 items-center rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark print:hidden">
           New invoice
         </Link>
       </div>
 
-      <div>
+      {invoices && invoices.length > 0 && (
+        <div className="flex flex-wrap gap-2 print:hidden">
+          <PrintButton />
+          <button
+            type="button"
+            onClick={() => downloadCsv(csvFilename("invoices"), invoiceRows(shown))}
+            className={exportClass}
+          >
+            Export CSV
+          </button>
+        </div>
+      )}
+
+      <div className="print:hidden">
         <label className="text-xs font-bold text-muted" htmlFor="inv-list-search">Search invoices</label>
         <input
           id="inv-list-search"
