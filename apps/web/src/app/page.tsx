@@ -23,7 +23,7 @@ export default function HomePage() {
           <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-white px-4 py-3">
             <p className="text-sm font-semibold text-muted">Not connected yet?</p>
             <Link
-              href="/connect"
+              href="/connect?next=%2F"
               className="shrink-0 whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark"
             >
               Connect your OneDrive
