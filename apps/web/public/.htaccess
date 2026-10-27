@@ -1,10 +1,11 @@
 # Static Next.js export on Apache (Plesk). Serve /connect as connect.html etc.
 Options -MultiViews -Indexes
+# Next 16 exports both vat.html and a vat/ folder (RSC segments), so /vat must win over the folder:
+# never redirect to a trailing slash, and map /vat or /vat/ to vat.html whenever that page exists.
+DirectorySlash Off
 RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteCond %{DOCUMENT_ROOT}%{REQUEST_URI}.html -f
-RewriteRule ^(.*)$ $1.html [L]
+RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+RewriteRule ^([^.]+?)/?$ $1.html [L]
 ErrorDocument 404 /404.html
 <IfModule mod_headers.c>
   Header set X-Content-Type-Options "nosniff"
