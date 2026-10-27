@@ -21,6 +21,7 @@ from app import contacts as cb
 from app.ai.config import is_test_mode
 from app.books import Books, now
 from app.routes_books import get_books, require_user
+from app.schemas import VatStatus
 from app.validation import StrictBody
 
 router = APIRouter(prefix="/contacts", tags=["contacts"])
@@ -81,6 +82,7 @@ class ContactEdit(StrictBody):
     address: str | None = Field(None, max_length=500)
     default_category: str | None = Field(None, max_length=100)
     default_vat_code: str | None = Field(None, max_length=10)
+    vat_status: VatStatus | None = None  # null means unknown: the VAT check asks again over £250
 
 
 @router.get("/aged", response_model=cb.AgedBalances)

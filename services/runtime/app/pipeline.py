@@ -6,13 +6,14 @@ import hashlib
 import re
 import time
 import uuid
+from collections.abc import Callable
 from datetime import date
 
 from app.ai.config import AiConfig
 from app.ai.crop import crop_document, reread_image
 from app.ai.extract import ExtractionError, extract_document
 from app.ai.verify import verify
-from app.checks import decide, run_checks
+from app.checks import UNKNOWN_SUPPLIER, SupplierKnowledge, decide, run_checks
 from app.journal import draft_journal
 from app.repair import REPAIR_CODES, repair
 from app.schemas import Check, ExtractedDoc, Proposal, Verification
@@ -92,8 +93,13 @@ async def process_image(
     period_start: date | None = None,
     period_end: date | None = None,
     business_name: str | None = None,
+    suppliers: Callable[[ExtractedDoc], SupplierKnowledge] | None = None,
+    business_vat_registered: bool = True,
 ) -> Proposal:
-    """Turn one document image into a reviewable `Proposal`. Raises `ExtractionError`."""
+    """Turn one document image into a reviewable `Proposal`. Raises `ExtractionError`.
+
+    `suppliers` looks the reading's supplier up in the books (app/contacts.py `supplier_knowledge`); without it
+    every supplier is one the books don't know yet."""
     t0 = time.perf_counter()
     digest = sha256_hex(image_bytes)  # of the original file: duplicate detection must not depend on cropping
     cropped = await crop_document(image_bytes, cfg)
@@ -101,7 +107,9 @@ async def process_image(
     async def read(img: bytes) -> tuple[ExtractedDoc, dict, list[Check], list[Check]]:
         doc, meta = await extract_document(img, mime, cfg)
         repairs = repair(doc, business_name)
-        checks = run_checks(doc, known_hashes=known_hashes, this_hash=digest, period_start=period_start, period_end=period_end)
+        supplier = suppliers(doc) if suppliers else UNKNOWN_SUPPLIER  # after repair: it may swap the parties
+        checks = run_checks(doc, known_hashes=known_hashes, this_hash=digest, period_start=period_start, period_end=period_end,
+                            supplier=supplier, business_vat_registered=business_vat_registered)
         return doc, meta, repairs, repairs + checks
 
     doc, meta, repairs, checks = await read(cropped.image_bytes)

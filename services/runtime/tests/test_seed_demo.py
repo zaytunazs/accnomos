@@ -23,6 +23,7 @@ from openpyxl import load_workbook
 from app import contacts as contacts_mod
 from app import invoicing, jobs, mileage
 from app.books import INBOX, NEEDS_A_LOOK, Books
+from app.checks import SUPPLIER_VAT_UNKNOWN, decide, run_checks
 from app.deadlines import period_containing
 from app.journal import is_balanced
 
@@ -243,7 +244,19 @@ async def test_seed_on_fake_storage(seed_demo: ModuleType) -> None:
         (1053.0, 270.5, 782.5, 5265, 2414), (2944.63, 141.3, 2803.33, 14723, 2465),
     ]
     book, _, _ = await contacts_mod.contact_book(books)
-    assert (sum(c.kind == "customer" for c in book), sum(c.kind == "supplier" for c in book)) == (4, 13)
+    # 13 suppliers from the ledger, plus the inbox's Hargreaves & Son Hardware, recorded up front as not VAT-registered
+    assert (sum(c.kind == "customer" for c in book), sum(c.kind == "supplier" for c in book)) == (4, 14)
+    assert sorted(c.name for c in book if c.vat_status == "not_registered") == plan.not_vat_registered == [
+        "Hargreaves & Son Hardware Ltd", "Hargreaves & Sons Ironmongery", "Harrow & Finch Trading Ltd", "Havoc Hardware & Tools Ltd",
+    ]
+    assert all(c.vat_status == "registered" for c in book if c.vrn)  # learnt from the VAT numbers on approval
+    asked = [p for p in proposals if any(c.code == SUPPLIER_VAT_UNKNOWN for c in p.checks)]
+    assert asked == [] and sum(p.extracted.supplier_name in plan.not_vat_registered for p in proposals) == 3  # 005, 016, 027
+    stored = await contacts_mod.stored_contacts(books)  # what the judge's scan looks suppliers up in
+    for d in plan.inbox:  # 23 proposals and 2 Needs a look, 049 included (Hargreaves & Son Hardware is known now)
+        doc = d.doc()
+        checks = run_checks(doc, known_hashes=set(), this_hash="x", supplier=contacts_mod.supplier_knowledge(stored, doc))
+        assert decide(checks)[0] == d.expect, d.gold
     assert (len(plan.journeys), round(sum(j.miles for j in plan.journeys), 1)) == (13, 181.7)
 
     assert len(await jobs.load_jobs(books)) == 2 and all(j.customer_id for j in await jobs.load_jobs(books))

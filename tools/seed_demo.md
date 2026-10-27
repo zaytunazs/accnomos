@@ -11,7 +11,7 @@ What it writes. The dates below assume a run between 1 Oct and 31 Dec 2026 with 
 |---|---|
 | 40 approved ledger entries | All in the last two complete VAT periods (Apr–Jun and Jul–Sep 2026): 36 documents approved in Review (purchases, quarterly energy bills, four sales invoices), one mileage allowance claim, three invoices raised in the app |
 | 25 documents in `00 Inbox` | Dated in the current period, not yet read. 23 should come out as proposals; two should land in *Needs a look* (an invoice in EUR, and a receipt with a malformed VAT number) |
-| Contacts | 4 customers and 13 suppliers, taken from the ledger; three customers have a (`.example`) email and an address |
+| Contacts | 4 customers and 14 suppliers: 13 from the ledger, plus Hargreaves & Son Hardware (an inbox receipt). Three customers have a (`.example`) email and an address. Suppliers whose receipts showed a VAT number are *VAT-registered*; the four whose receipts over £250 charge no VAT and show no VAT number (Hargreaves & Sons Ironmongery, Hargreaves & Son Hardware, Harrow & Finch Trading, Havoc Hardware & Tools) are recorded as *not VAT-registered* before anything is scanned, so their receipts are proposed instead of asking "Is … VAT-registered?" |
 | Jobs | *Kitchen fit-out, Harrogate* (closed, invoiced on INV-0001) and *Office partitions and doors* (open, hours not yet billed); two staff members, 24 timesheet entries, materials purchases tagged to each job |
 | Vehicle | *Director's car (own)*, a personal car, with 13 business journeys; the Jul–Sep allowance (£23.99) has been claimed and posted |
 | Invoices | INV-0001 paid (matched to the bank), INV-0002 **overdue**, INV-0003 sent and not yet due. None was emailed |

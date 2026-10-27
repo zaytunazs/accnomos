@@ -8,17 +8,20 @@ from __future__ import annotations
 
 import logging
 import uuid
+from dataclasses import dataclass
 from datetime import date
 
 from accnomos_connectors.base import FileRef
 
 from app import autopilot
+from app import contacts as contact_book
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError
 from app.approve import ApprovalError, approve
 from app.books import Books, DocMeta, Rule, now
 from app.paths import INBOX
-from app.checks import decide
+from app.checks import SupplierKnowledge, decide
+from app.invoicing import load_profile
 from app.journal import with_expense_account
 from app.mileage import MileageError, Vehicle, load_vehicles, prefill_vehicle
 from app.pipeline import process_image, sha256_hex
@@ -65,18 +68,48 @@ def apply_rule(p: Proposal, rule: Rule | None) -> None:
 
 async def _propose(
     books: Books, f: FileRef, mime: str, cfg: AiConfig, known: set[str], rules: list[Rule], business_name: str | None = None,
-    vehicles: list[Vehicle] | None = None, period: tuple[date, date] | None = None,
+    vehicles: list[Vehicle] | None = None, period: tuple[date, date] | None = None, vat: VatContext | None = None,
 ) -> Proposal:
     data = await books.storage.read(f.path)
     if mime == PDF_MIME:
         return pdf_placeholder(f.name, sha256_hex(data))
     start, end = period or (None, None)
+    vat = vat or VatContext([], True)
     p = await process_image(
         data, mime, cfg, known_hashes=frozenset(known), business_name=business_name, period_start=start, period_end=end,
+        suppliers=vat.knowledge, business_vat_registered=vat.business_registered,
     )
     apply_rule(p, books.match_rule(p.extracted, rules))
     prefill_vehicle(p, vehicles or [])
     return p
+
+
+@dataclass
+class VatContext:
+    """What the VAT number check needs from the books: the contacts (suppliers' VAT status) and whether the
+    user's business is VAT-registered (Settings › Business)."""
+
+    contacts: list[contact_book.Contact]
+    business_registered: bool
+
+    def knowledge(self, doc: ExtractedDoc) -> SupplierKnowledge:
+        return contact_book.supplier_knowledge(self.contacts, doc)
+
+
+async def vat_context(books: Books) -> VatContext:
+    """Saved contacts only (the ledger is not re-read on every scan: approvals keep contacts.json up to date). A broken
+    contacts or profile file only means every supplier is treated as new and the business as registered."""
+    try:
+        contacts = await contact_book.stored_contacts(books)
+    except ValueError:
+        log.warning("contacts file unreadable; scanning as if every supplier were new")
+        contacts = []
+    try:
+        registered = (await load_profile(books)).is_vat_registered
+    except ValueError:
+        log.warning("invoice profile unreadable; scanning as a VAT-registered business")
+        registered = True
+    return VatContext(contacts, registered)
 
 
 async def _vehicles(books: Books) -> list[Vehicle]:
@@ -131,12 +164,13 @@ async def scan_inbox_detailed(
     rules = await books.load_rules()
     auto_rules = await autopilot.load_rules(books)
     vehicles = await _vehicles(books)
+    vat = await vat_context(books)
     out: list[Proposal] = []
     errors: list[dict] = []
     candidates = [(f, mime) for f in await books.list_files(INBOX) if (mime := mime_for(f.name))]
     for f, mime in candidates[:limit]:  # failures count too: `limit` caps model calls
         try:
-            p = await _propose(books, f, mime, cfg, known, rules, business_name, vehicles, period)
+            p = await _propose(books, f, mime, cfg, known, rules, business_name, vehicles, period, vat)
         except ExtractionError as exc:
             log.warning("extraction failed for %s: %s", f.path, exc)
             await books.audit(ACTOR, "extract_failed", {"path": f.path, "error": str(exc)[:200]})

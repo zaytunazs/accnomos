@@ -11,7 +11,15 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from app.checks import decide, normalise_vat_number, run_checks  # noqa: E402
+from app.checks import (  # noqa: E402
+    SUPPLIER_VAT_UNKNOWN,
+    UNKNOWN_SUPPLIER,
+    SupplierKnowledge,
+    check_vat_number_required,
+    decide,
+    normalise_vat_number,
+    run_checks,
+)
 from app.journal import CREDITORS, VAT_CONTROL, draft_journal, is_balanced  # noqa: E402
 from app.schemas import ExtractedDoc, ExtractedLine, extraction_json_schema  # noqa: E402
 
@@ -105,6 +113,82 @@ def test_over_250_without_vat_number(over_250_no_vat: ExtractedDoc) -> None:
     assert status == "needs_a_look"
     assert _codes(reasons) == {"VAT_NUMBER_REQUIRED"}
     assert any("Over £250 needs a full VAT invoice" in r for r in reasons)
+
+
+# --------------------------------------------------------------------------- #
+# The supplier-aware VAT number check, one test per rule (app/checks.py check_vat_number_required)
+# --------------------------------------------------------------------------- #
+
+REGISTERED = SupplierKnowledge("registered", "GB232456789")
+NOT_REGISTERED = SupplierKnowledge("not_registered")
+
+
+def _no_vat(gross: float = 368.50, **kw: object) -> ExtractedDoc:
+    """A zero-VAT receipt with no VAT number, like gold 005 ("No VAT charged")."""
+    return _doc(**{"supplier_name": "Hargreaves & Sons Ironmongery", "supplier_vat_number": None,
+                   "lines": [ExtractedLine(description="Latches", qty=1, unit_price=gross, net=gross, vat_rate=None, vat=0.0)],
+                   "net_total": gross, "vat_total": 0.0, "gross_total": gross, **kw})
+
+
+def _vat_no_number(**kw: object) -> ExtractedDoc:
+    return _doc(supplier_vat_number=None, **kw)
+
+
+@pytest.mark.parametrize("supplier", [UNKNOWN_SUPPLIER, REGISTERED, NOT_REGISTERED])
+def test_rule1_a_vat_number_on_the_receipt_is_enough(supplier: SupplierKnowledge) -> None:
+    for doc in (_doc(), _no_vat(supplier_vat_number="GB 232 4567 89")):
+        c = check_vat_number_required(doc, supplier)
+        assert (c.code, c.ok, c.message) == ("VAT_NUMBER_REQUIRED", True, "VAT number shown")
+
+
+@pytest.mark.parametrize("supplier", [UNKNOWN_SUPPLIER, REGISTERED, NOT_REGISTERED])
+def test_rule2_a_business_that_isnt_vat_registered_is_never_flagged(supplier: SupplierKnowledge) -> None:
+    for doc in (_vat_no_number(), _no_vat(), _no_vat(1000.0)):
+        c = check_vat_number_required(doc, supplier, business_vat_registered=False)
+        assert c.ok and "isn't VAT-registered" in c.message
+        assert _status(doc, supplier=supplier, business_vat_registered=False)[0] == "proposed"
+
+
+def test_rule3_registered_supplier_charging_vat_without_its_number_fails() -> None:
+    c = check_vat_number_required(_vat_no_number(), REGISTERED)
+    assert (c.code, c.ok, c.severity) == ("VAT_NUMBER_REQUIRED", False, "fail")
+    assert "their VAT number is usually GB232456789" in c.message and "can't be reclaimed" in c.message
+    c = check_vat_number_required(_vat_no_number(), SupplierKnowledge("registered"))  # registered, number not on file
+    assert not c.ok and "they are VAT-registered" in c.message
+
+
+def test_rule3_vat_charged_without_a_number_still_fails_for_other_suppliers(over_250_no_vat: ExtractedDoc) -> None:
+    for supplier in (UNKNOWN_SUPPLIER, NOT_REGISTERED):
+        assert not check_vat_number_required(_vat_no_number(), supplier).ok
+        c = check_vat_number_required(over_250_no_vat, supplier)
+        assert not c.ok and c.message.startswith("Over £250 needs a full VAT invoice")
+
+
+def test_rule_not_registered_supplier_with_no_vat_is_ok() -> None:
+    for gross in (40.0, 368.50, 5000.0):
+        c = check_vat_number_required(_no_vat(gross), NOT_REGISTERED)
+        assert (c.code, c.ok) == ("VAT_NUMBER_REQUIRED", True) and "isn't VAT-registered" in c.message
+        assert _status(_no_vat(gross), supplier=NOT_REGISTERED)[0] == "proposed"
+
+
+def test_rule4_unknown_supplier_no_vat_over_250_asks_the_question() -> None:
+    c = check_vat_number_required(_no_vat())
+    assert (c.code, c.ok, c.severity) == (SUPPLIER_VAT_UNKNOWN, False, "fail")
+    assert c.message == "Is Hargreaves & Sons Ironmongery VAT-registered? Over £250 they should give a VAT invoice"
+    status, reasons = _status(_no_vat())
+    assert status == "needs_a_look" and _codes(reasons) == {SUPPLIER_VAT_UNKNOWN}
+
+
+def test_rule4_does_not_ask_about_the_users_own_sales_invoice() -> None:
+    sale = _no_vat(doc_type="sales_invoice", customer_name="Halloway & Sons Interiors", category_guess="Sales")
+    assert check_vat_number_required(sale).ok
+
+
+def test_rule5_no_vat_under_250_or_a_known_registered_supplier_is_ok() -> None:
+    assert check_vat_number_required(_no_vat(250.0)).ok  # £250 exactly is a simplified invoice
+    assert check_vat_number_required(_no_vat(231.24)).ok  # gold 038
+    c = check_vat_number_required(_no_vat(), REGISTERED)  # zero-rated goods from a registered supplier: nothing to reclaim
+    assert c.ok and c.code == "VAT_NUMBER_REQUIRED"
 
 
 def test_eur_needs_a_look(eur: ExtractedDoc) -> None:

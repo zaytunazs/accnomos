@@ -8,14 +8,17 @@ the total, so per-line rounding legitimately drifts by up to half a penny a line
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from datetime import date
 
 from app.deadlines import MONTHS, period_containing, period_label, previous_period
-from app.schemas import Check, ExtractedDoc, Status
+from app.schemas import Check, ExtractedDoc, Status, VatStatus
 
 VALID_RATES = (0, 5, 20)
 FULL_INVOICE_THRESHOLD_GBP = 250.0
 MIN_CONFIDENCE = 0.7
+#: The check code of "Is <supplier> VAT-registered?"; the Review card offers the "isn't VAT-registered" tick for it.
+SUPPLIER_VAT_UNKNOWN = "SUPPLIER_VAT_UNKNOWN"
 
 _VAT_PATTERNS = (
     re.compile(r"^(GB|XI)\d{9}$"),  # standard
@@ -124,20 +127,56 @@ def check_vat_number_format(doc: ExtractedDoc) -> Check:
     return _chk("VAT_NUMBER_FORMAT", False, "fail", f"VAT number {doc.supplier_vat_number!r} is not a UK format")
 
 
-def check_vat_number_required(doc: ExtractedDoc) -> Check:
+@dataclass(frozen=True)
+class SupplierKnowledge:
+    """What the books know about a supplier's VAT registration (app/contacts.py `supplier_knowledge`).
+
+    The default is a supplier the books have never seen.
+    """
+
+    vat_status: VatStatus = "unknown"
+    vrn: str | None = None  # the VAT number the books hold for them, if any
+
+
+UNKNOWN_SUPPLIER = SupplierKnowledge()
+
+
+def check_vat_number_required(
+    doc: ExtractedDoc, supplier: SupplierKnowledge = UNKNOWN_SUPPLIER, business_vat_registered: bool = True,
+) -> Check:
     """VAT can only be reclaimed with the supplier's VAT number on the invoice.
 
     HMRC VAT Notice 700 s.16: simplified invoices (≤ £250 inc. VAT) must still show the
-    supplier's VAT registration number; above £250 a full VAT invoice is needed.
+    supplier's VAT registration number; above £250 a full VAT invoice is needed. Rules, first match wins:
+
+    1. a VAT number on the document: OK (approving it records the supplier as registered);
+    2. the user's business is not VAT-registered: OK, it reclaims nothing;
+    3. VAT charged, no VAT number: fail (for a supplier known to be registered, the card quotes their number);
+    4. a purchase with no VAT, over £250, from a supplier the books don't know yet: SUPPLIER_VAT_UNKNOWN, a fail
+       whose message is the question the card asks; ticking "isn't VAT-registered" on approval answers it;
+    5. anything else (no VAT under £250, or a known supplier): OK.
     """
-    has_vn = normalise_vat_number(doc.supplier_vat_number) is not None
-    if doc.vat_total <= 0 or has_vn:
-        return _chk("VAT_NUMBER_REQUIRED", True, "fail", "VAT evidence OK")
-    if doc.gross_total > FULL_INVOICE_THRESHOLD_GBP:
-        msg = "Over £250 needs a full VAT invoice with the supplier's VAT number"
-    else:
-        msg = "VAT charged but no VAT number shown, so the VAT can't be reclaimed"
-    return _chk("VAT_NUMBER_REQUIRED", False, "fail", msg)
+    if normalise_vat_number(doc.supplier_vat_number) is not None:
+        return _chk("VAT_NUMBER_REQUIRED", True, "fail", "VAT number shown")
+    if not business_vat_registered:
+        return _chk("VAT_NUMBER_REQUIRED", True, "fail", "Your business isn't VAT-registered, so no VAT number is needed")
+    if doc.vat_total > 0:
+        if supplier.vat_status == "registered":
+            usual = f"their VAT number is usually {supplier.vrn}" if supplier.vrn else "they are VAT-registered"
+            msg = f"VAT charged but no VAT number shown; {usual}; the VAT can't be reclaimed without it"
+        elif doc.gross_total > FULL_INVOICE_THRESHOLD_GBP:
+            msg = "Over £250 needs a full VAT invoice with the supplier's VAT number"
+        else:
+            msg = "VAT charged but no VAT number shown, so the VAT can't be reclaimed"
+        return _chk("VAT_NUMBER_REQUIRED", False, "fail", msg)
+    if supplier.vat_status == "not_registered":
+        return _chk("VAT_NUMBER_REQUIRED", True, "fail", "No VAT charged; your books say this supplier isn't VAT-registered")
+    if (supplier.vat_status == "unknown" and doc.doc_type != "sales_invoice"
+            and doc.gross_total > FULL_INVOICE_THRESHOLD_GBP):
+        name = doc.supplier_name.strip() or "this supplier"
+        return _chk(SUPPLIER_VAT_UNKNOWN, False, "fail",
+                    f"Is {name} VAT-registered? Over £250 they should give a VAT invoice")
+    return _chk("VAT_NUMBER_REQUIRED", True, "fail", "No VAT charged, so no VAT number is needed")
 
 
 def check_duplicate(known_hashes: set[str] | frozenset[str], this_hash: str) -> Check:
@@ -202,6 +241,8 @@ def run_checks(
     this_hash: str,
     period_start: date | None = None,
     period_end: date | None = None,
+    supplier: SupplierKnowledge = UNKNOWN_SUPPLIER,
+    business_vat_registered: bool = True,
 ) -> list[Check]:
     """Run every check in a stable order."""
     return [
@@ -210,7 +251,7 @@ def run_checks(
         check_vat_math(doc),
         check_vat_rates(doc),
         check_vat_number_format(doc),
-        check_vat_number_required(doc),
+        check_vat_number_required(doc, supplier, business_vat_registered),
         check_duplicate(known_hashes, this_hash),
         check_currency(doc),
         *check_date(doc, period_start, period_end),
