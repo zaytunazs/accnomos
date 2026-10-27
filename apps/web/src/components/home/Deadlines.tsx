@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
+import VatDeadlineStrip from "@/components/vat/VatDeadlineStrip";
 import type { RtPeriodDeadline } from "@/lib/runtime";
 import { deadlines as sampleDeadlines, type Deadline } from "@/lib/sample-home";
-import { Skeleton, UNKNOWN, useHome } from "./HomeData";
+import { SampleTag, Skeleton, UNKNOWN, useHome } from "./HomeData";
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
@@ -45,82 +47,92 @@ function unknownTiles(sub: string): Deadline[] {
   return ["VAT return due", "VAT payment due", "VAT period ends"].map((title) => ({ month: "", day: UNKNOWN, title, sub }));
 }
 
-/** Home deadlines: the VAT block of GET /books/dashboard when signed in, otherwise the sample. */
+function TileSkeleton() {
+  return (
+    <div className="flex min-h-[5.5rem] items-center gap-3 rounded-2xl border border-border bg-white p-4">
+      <Skeleton className="h-14 w-14 shrink-0 rounded-xl" />
+      <div className="flex min-w-0 flex-col gap-2">
+        <Skeleton className="h-4 w-32 max-w-full" />
+        <Skeleton className="h-3 w-24" />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Home › Deadlines: the same deadline strip as /vat (one shared component, one
+ * GET /books/dashboard VAT block) plus the next three dated items from that
+ * payload — the return to file, its payment, and the end of the current period.
+ * The Bramblewood sample when signed out.
+ */
 export default function Deadlines() {
   const home = useHome();
+  const sample = home.mode === "sample";
   const vat = home.mode === "live" && !home.annualVat ? home.data.vat : null;
   const live = vat ? { tiles: toTiles(vat.current, vat.due), rule: vat.rule } : null;
   const tiles: Deadline[] | null =
-    home.mode === "sample" ? sampleDeadlines
+    sample ? sampleDeadlines
     : live ? live.tiles
     : home.mode === "live" && home.annualVat ? unknownTiles("Annual VAT returns are not worked out yet")
     : home.mode === "live" || home.mode === "error" ? unknownTiles("Could not work out your VAT period")
     : null;
 
-  if (tiles === null)
-    return (
-      <section aria-labelledby="deadlines-heading" aria-busy="true" className="flex flex-col gap-3">
-        <h2 id="deadlines-heading" className="text-lg font-extrabold tracking-tight">
-          Deadlines
-        </h2>
-        <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-3">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4">
-              <Skeleton className="h-14 w-14 shrink-0 rounded-xl" />
-              <div className="flex min-w-0 flex-col gap-2">
-                <Skeleton className="h-4 w-32" />
-                <Skeleton className="h-3 w-24" />
+  return (
+    <section aria-labelledby="deadlines-heading" aria-busy={tiles === null} className="flex flex-col gap-3">
+      <h2 id="deadlines-heading" className="text-lg font-extrabold tracking-tight">
+        Deadlines{sample && <SampleTag />}
+      </h2>
+      <VatDeadlineStrip />
+      {tiles === null ? (
+        <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-3 md:grid-cols-1">
+          {[0, 1, 2].map((i) => <TileSkeleton key={i} />)}
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-3 md:grid-cols-1">
+          {tiles.map((d) => (
+            <div
+              key={d.title}
+              className="flex min-h-[5.5rem] items-center gap-3 rounded-2xl border border-border bg-white p-4"
+            >
+              <div
+                aria-hidden="true"
+                className={`flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl ${
+                  d.tinted ? "bg-teal-tint text-teal-dark" : "bg-ground text-muted"
+                }`}
+              >
+                <span className="text-[11px] font-extrabold tracking-wide">
+                  {d.month}
+                </span>
+                <span className="text-xl font-extrabold leading-none">
+                  {d.day}
+                </span>
+              </div>
+              <div className="min-w-0">
+                <p className="text-[15px] font-bold leading-snug">
+                  {d.month && <span className="sr-only">{d.day} {d.month}: </span>}
+                  {d.title}
+                </p>
+                <p className="mt-0.5 min-h-5 text-[13px] font-medium leading-snug text-muted">
+                  {d.sub}
+                </p>
               </div>
             </div>
           ))}
         </div>
-      </section>
-    );
-
-  return (
-    <section aria-labelledby="deadlines-heading" className="flex flex-col gap-3">
-      <h2
-        id="deadlines-heading"
-        className="text-lg font-extrabold tracking-tight"
-      >
-        Deadlines
-      </h2>
-      <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-3">
-        {tiles.map((d) => (
-          <div
-            key={d.title}
-            className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4"
-          >
-            <div
-              aria-hidden="true"
-              className={`flex h-14 w-14 shrink-0 flex-col items-center justify-center rounded-xl ${
-                d.tinted ? "bg-teal-tint text-teal-dark" : "bg-ground text-muted"
-              }`}
-            >
-              <span className="text-[11px] font-extrabold tracking-wide">
-                {d.month}
-              </span>
-              <span className="text-xl font-extrabold leading-none">
-                {d.day}
-              </span>
-            </div>
-            <div className="min-w-0">
-              <p className="text-[15px] font-bold leading-snug">
-                {d.month && <span className="sr-only">{d.day} {d.month}: </span>}
-                {d.title}
-              </p>
-              <p className="mt-0.5 text-[13px] font-medium leading-snug text-muted">
-                {d.sub}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
+      )}
       {live && (
         <p className="text-[13px] font-medium text-muted">
           Calculated by code from your approved entries and VAT quarters in Settings. {live.rule}
         </p>
       )}
+      <div className="mt-auto">
+        <Link
+          href="/vat"
+          className="inline-block whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark"
+        >
+          Open the VAT return
+        </Link>
+      </div>
     </section>
   );
 }
