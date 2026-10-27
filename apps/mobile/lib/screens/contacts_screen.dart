@@ -995,15 +995,15 @@ class _ContactDetailState extends State<ContactDetailScreen> {
     );
   }
 
-  /// Unpaid balances by age (0–30 / 31–60 / 61–90 / 90+ days) from
-  /// `GET /contacts/aged`.
+  /// What is still owed, by days past the due date (not due / 0–30 / 31–60 /
+  /// 61–90 / 90+) from `GET /contacts/aged`.
   Widget _agedCard() {
     final row = _agedRow;
     if (row == null) return const SizedBox.shrink();
     final buckets =
         row['buckets'] is Map ? Map.of(row['buckets'] as Map) : {};
     final total = (row['total_pence'] ?? 0) as num;
-    const order = ['0-30', '31-60', '61-90', '90+'];
+    const order = ['current', '0-30', '31-60', '61-90', '90+'];
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -1057,7 +1057,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
           SizedBox(
             width: 52,
             child: Text(
-              bucket,
+              bucket == 'current' ? 'not due' : bucket,
               style: const TextStyle(
                 color: AccnomosColors.muted,
                 fontSize: 12,

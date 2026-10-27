@@ -380,6 +380,14 @@ class _InvoiceDetailState extends State<InvoiceDetailScreen> {
     final customer = inv['customer'];
     final name =
         customer is Map ? (customer['name'] ?? '').toString() : '';
+    // Payments and credit notes, worked out by the runtime (null for drafts
+    // and void invoices, and from runtimes before part payments).
+    final money = inv['money'];
+    final paid = money is Map ? (money['paid_pence'] ?? 0) as num : null;
+    final credited =
+        money is Map ? (money['credited_pence'] ?? 0) as num : null;
+    final balance =
+        money is Map ? (money['balance_pence'] ?? 0) as num : null;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -413,6 +421,16 @@ class _InvoiceDetailState extends State<InvoiceDetailScreen> {
               _totalRow(
                   'Total', (inv['total_pence'] ?? 0) as num,
                   bold: true),
+              if (paid != null && balance != null) ...[
+                const Divider(height: 24),
+                _totalRow('Paid', paid),
+                if (credited != null && credited != 0) ...[
+                  const SizedBox(height: 4),
+                  _totalRow('Credited', credited),
+                ],
+                const SizedBox(height: 4),
+                _totalRow('Balance', balance, bold: true),
+              ],
             ],
           ),
         ),
