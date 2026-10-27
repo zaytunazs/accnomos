@@ -408,6 +408,17 @@ class RuntimeClient {
       return (body['summary_md'] ?? 'Rejected. Nothing was done.').toString();
     } on TimeoutException {
       throw RuntimeException('$what: the reader took too long.');
+    } on SocketException {
+      throw RuntimeException(
+          'Could not reach the reader at ${settings.runtimeUrl}. '
+          'Is it running?');
+    } on RuntimeException {
+      rethrow;
+    } catch (e) {
+      throw RuntimeException('Could not $what. $e');
+    }
+  }
+
   // ------------------------------------------------------------------ //
   // The rest of the runtime's routes, one thin call each. Same paths and
   // bodies as `runtime` in apps/web/src/lib/runtime.ts. Money is integer
@@ -455,12 +466,12 @@ class RuntimeClient {
   Future<Map<String, dynamic>> deadlines(
           {int? stagger, int? startMonth, int months = 3, String? today}) =>
       _map('GET', '/books/deadlines',
-          query: {
-            if (stagger != null) 'stagger': '$stagger',
-            if (startMonth != null) 'start_month': '$startMonth',
+          query: _params({
+            'stagger': stagger?.toString(),
+            'start_month': startMonth?.toString(),
             'months': '$months',
-            if (today != null) 'today': today,
-          },
+            'today': today,
+          }),
           what: 'load VAT deadlines');
 
   /// `POST /books/ask/voice` (key mode only): a recorded question, then the
@@ -496,7 +507,7 @@ class RuntimeClient {
   /// [status]: unmatched, matched, suggested, transfer or ignored.
   Future<List<Map<String, dynamic>>> bankLines({String? status}) =>
       _list('GET', '/books/bank/lines',
-          query: {if (status != null) 'status': status},
+          query: _params({'status': status}),
           what: 'load bank lines');
 
   Future<List<Map<String, dynamic>>> bankSuggestions() =>
@@ -552,16 +563,59 @@ class RuntimeClient {
   Future<Map<String, dynamic>> contactStatement(String id,
           {String? from, String? to}) =>
       _map('GET', '/contacts/${_seg(id)}/statement',
-          query: {
-            if (from != null) 'from': from,
-            if (to != null) 'to': to,
-          },
+          query: _params({'from': from, 'to': to}),
           what: 'load that statement');
 
   Future<Map<String, dynamic>> agedBalances({String? asOf}) =>
       _map('GET', '/contacts/aged',
-          query: {if (asOf != null) 'as_of': asOf},
+          query: _params({'as_of': asOf}),
           what: 'load aged balances');
+
+  // Invoices (/invoices/*). Totals and VAT are worked out by the runtime;
+  // the phone never computes them.
+
+  /// `GET /invoices`, optionally filtered by [status].
+  Future<List<Map<String, dynamic>>> invoices({String? status}) => _list(
+      'GET', '/invoices',
+      query: _params({'status': status}),
+      what: 'load invoices');
+
+  /// `GET /invoices/{number}`.
+  Future<Map<String, dynamic>> invoice(String number) => _map(
+      'GET', '/invoices/${_seg(number)}',
+      what: 'load that invoice');
+
+  /// `POST /invoices`: the response carries the priced lines and totals.
+  Future<Map<String, dynamic>> createInvoice(Map<String, dynamic> draft) =>
+      _map('POST', '/invoices', body: draft, what: 'create that invoice');
+
+  /// `POST /invoices/{number}/pdf`: the preview plus the email draft the
+  /// confirmation dialog starts from.
+  Future<Map<String, dynamic>> invoicePdf(String number) => _map(
+      'POST', '/invoices/${_seg(number)}/pdf',
+      what: 'preview that invoice');
+
+  /// `POST /invoices/{number}/send` from the user's Outlook. Call only from
+  /// the confirmation dialog: [confirm] is the user's tap, and the Graph
+  /// token must carry `Mail.Send`.
+  Future<Map<String, dynamic>> sendInvoice(
+    String number, {
+    required bool confirm,
+    String? to,
+    String? subject,
+    String? body,
+  }) {
+    final payload = <String, Object?>{'confirm': confirm};
+    if (to != null) payload['to'] = to;
+    if (subject != null) payload['subject'] = subject;
+    if (body != null) payload['body'] = body;
+    return _map('POST', '/invoices/${_seg(number)}/send',
+        body: payload, what: 'send that invoice');
+  }
+
+  /// `GET /invoices/customers`: customers from the contact book, for the picker.
+  Future<List<Map<String, dynamic>>> invoiceCustomers() =>
+      _list('GET', '/invoices/customers', what: 'load customers');
 
   // Jobs, staff and timesheets.
 
@@ -572,7 +626,7 @@ class RuntimeClient {
   /// Plain jobs for pickers (no ledger read). `GET /jobs/list`.
   Future<List<Map<String, dynamic>>> jobList({String? status}) =>
       _list('GET', '/jobs/list',
-          query: {if (status != null) 'status': status}, what: 'load jobs');
+          query: _params({'status': status}), what: 'load jobs');
 
   Future<Map<String, dynamic>> createJob(Map<String, dynamic> job) =>
       _map('POST', '/jobs', body: job, what: 'add that job');
@@ -615,11 +669,11 @@ class RuntimeClient {
   Future<List<Map<String, dynamic>>> timesheets(
           {String? jobId, String? staffId, String? month}) =>
       _list('GET', '/timesheets',
-          query: {
-            if (jobId != null) 'job_id': jobId,
-            if (staffId != null) 'staff_id': staffId,
-            if (month != null) 'month': month,
-          },
+          query: _params({
+            'job_id': jobId,
+            'staff_id': staffId,
+            'month': month,
+          }),
           what: 'load timesheets');
 
   Future<Map<String, dynamic>> addTimesheet(Map<String, dynamic> entry) =>
@@ -654,7 +708,7 @@ class RuntimeClient {
   /// [taxYear] is like `2026-27`; default the current one.
   Future<List<Map<String, dynamic>>> mileage({String? taxYear}) =>
       _list('GET', '/mileage',
-          query: {if (taxYear != null) 'tax_year': taxYear},
+          query: _params({'tax_year': taxYear}),
           what: 'load the mileage log');
 
   Future<Map<String, dynamic>> addMileage(Map<String, dynamic> journey) =>
@@ -671,7 +725,7 @@ class RuntimeClient {
 
   Future<Map<String, dynamic>> mileageSummary({String? taxYear}) =>
       _map('GET', '/mileage/summary',
-          query: {if (taxYear != null) 'tax_year': taxYear},
+          query: _params({'tax_year': taxYear}),
           what: 'load the mileage summary');
 
   /// The quarter's allowance as a proposal in Review (one per quarter).
@@ -679,13 +733,19 @@ class RuntimeClient {
   Future<Map<String, dynamic>> proposeAllowance(
           {String? taxYear, String? period}) =>
       _map('POST', '/mileage/propose-allowance',
-          query: {
-            if (taxYear != null) 'tax_year': taxYear,
-            if (period != null) 'period': period,
-          },
+          query: _params({'tax_year': taxYear, 'period': period}),
           what: 'claim the mileage allowance');
 
   static String _seg(String s) => Uri.encodeComponent(s);
+
+  /// Query params without the nulls.
+  static Map<String, String> _params(Map<String, String?> values) {
+    final out = <String, String>{};
+    values.forEach((key, value) {
+      if (value != null) out[key] = value;
+    });
+    return out;
+  }
 
   /// One books call with an optional JSON [body]. [what] completes
   /// "Could not …" in errors. Returns the decoded JSON, or null for 204.
@@ -771,7 +831,6 @@ class RuntimeClient {
     } on RuntimeException {
       rethrow;
     } catch (e) {
-      throw RuntimeException('$what. $e');
       throw RuntimeException('Could not $what. $e');
     }
   }
