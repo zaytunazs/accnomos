@@ -52,6 +52,21 @@ body {
   animation: vat-update 0.25s ease-out;
 }
 
+/* Reports print on A4, one report per page after the first (each section opts
+   in with .report-page-break; rows never split across pages). */
+@page {
+  size: A4;
+  margin: 14mm;
+}
+@media print {
+  .report-page-break {
+    break-before: page;
+  }
+  [data-print-page] section table tr {
+    break-inside: avoid;
+  }
+}
+
 /* Contacts statement: print the statement on its own, without the app chrome
    (the page marks interactive parts print:hidden; this hides the shell). */
 @media print {
