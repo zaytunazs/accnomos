@@ -17,6 +17,7 @@ class Dashboard {
     required this.attentionProposed,
     required this.attentionNeedsALook,
     required this.attentionUnmatchedBankLines,
+    this.vatAssumed = false,
   });
 
   final int? cashPence;
@@ -45,6 +46,10 @@ class Dashboard {
 
   /// Open bank lines: not matched, a transfer or ignored.
   final int? attentionUnmatchedBankLines;
+
+  /// True when no stagger was sent (none saved in Settings), so calendar
+  /// quarters were assumed — the runtime's `vat.assumed`, like the web.
+  final bool vatAssumed;
 
   static Map<String, dynamic>? _map(Object? v) =>
       v is Map<String, dynamic> ? v : null;
@@ -75,6 +80,7 @@ class Dashboard {
       attentionNeedsALook: _int(attention?['needs_a_look']),
       attentionUnmatchedBankLines:
           _int(attention?['unmatched_bank_lines']),
+      vatAssumed: vat?['assumed'] == true,
     );
   }
 }
