@@ -74,6 +74,7 @@ export default function GlobalError({
               Try again
             </button>
             {/* No app router this deep: a full navigation, not a Link. */}
+            {/* eslint-disable-next-line @next/next/no-location-assign-relative-destination -- the root layout itself failed, so a full reload is the point */}
             <button type="button" onClick={() => window.location.assign("/")} style={button}>
               Back to Home
             </button>
