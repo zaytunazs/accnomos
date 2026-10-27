@@ -39,7 +39,8 @@ apps/mobile/.idea/
 *.iml
 
 # Evals / data
-evals/runs/
+evals/runs/*
+!evals/runs/autopilot_l2/
 data/private/
 
 # OS / editors
