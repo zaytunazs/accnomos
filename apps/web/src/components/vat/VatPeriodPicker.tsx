@@ -36,14 +36,12 @@ export default function VatPeriodPicker({ account, onPeriods }: { account: Accou
   const [periods, setPeriods] = useState<RtVatPeriod[] | null>(null);
   const [failed, setFailed] = useState(false);
   const buttons = useRef<(HTMLButtonElement | null)[]>([]);
-  const onPeriodsRef = useRef(onPeriods);
-  onPeriodsRef.current = onPeriods;
 
   useEffect(() => {
     runtime.vatPeriods(account).then(
       (r) => {
         setPeriods(r.periods);
-        onPeriodsRef.current?.(r.periods);
+        onPeriods?.(r.periods);
         const byName = (name: string | null) => r.periods.find((p) => p.period === name);
         // A linked ?period= wins over the remembered pick; a stale pick is cleared.
         const linked = byName(periodFromUrl());
@@ -57,16 +55,18 @@ export default function VatPeriodPicker({ account, onPeriods }: { account: Accou
       },
       () => setFailed(true),
     );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account]);
 
   if (failed || !periods) return null;
-  const value = picked?.period ?? periods[0].period;
-  const focus = Math.max(0, periods.findIndex((p) => p.period === value));
+  const list = periods;
+  const value = picked?.period ?? list[0].period;
+  const focus = Math.max(0, list.findIndex((p) => p.period === value));
 
   function choose(i: number) {
-    const p = periods![(i + periods!.length) % periods!.length];
+    const p = list[(i + list.length) % list.length];
     pickPeriod(toPick(p));
-    buttons.current[periods!.indexOf(p)]?.focus();
+    buttons.current[list.indexOf(p)]?.focus();
   }
 
   function onKeyDown(e: React.KeyboardEvent) {
@@ -81,7 +81,7 @@ export default function VatPeriodPicker({ account, onPeriods }: { account: Accou
       choose(0);
     } else if (e.key === "End") {
       e.preventDefault();
-      choose(periods.length - 1);
+      choose(list.length - 1);
     }
   }
 
@@ -96,7 +96,7 @@ export default function VatPeriodPicker({ account, onPeriods }: { account: Accou
         onKeyDown={onKeyDown}
         className="mt-1 flex max-w-full flex-col gap-1"
       >
-        {periods.map((p, i) => {
+        {list.map((p, i) => {
           const selected = p.period === value;
           const chip = CHIP[p.status];
           return (
