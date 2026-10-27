@@ -254,6 +254,9 @@ async def client() -> TestClient:
         ).encode(),
     )
     await fake.write("06 VAT returns/junk/return.json", b"not json")  # an unreadable receipt is skipped, not a 500
+    await fake.write(  # so is a hand-edited one whose period is not an object
+        "06 VAT returns/odd/return.json", json.dumps({"periodKey": "18A1", "obligation": "2026-01-01"}).encode()
+    )
 
     async def override():
         yield books
