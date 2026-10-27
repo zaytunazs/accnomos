@@ -38,6 +38,20 @@ body {
   }
 }
 
+/* The VAT boxes fading to their new values when the period changes. The global
+   prefers-reduced-motion rule above makes this instant for those who ask. */
+@keyframes vat-update {
+  from {
+    opacity: 0.2;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.vat-update {
+  animation: vat-update 0.25s ease-out;
+}
+
 /* Keyboard shortcut hints (Review). */
 .kbd {
   display: inline-block;
