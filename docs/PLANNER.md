@@ -70,8 +70,8 @@ In that case, or with no AI set up, or if the model fails, code writes the ratio
   ("Your calendar has changed … Plan the day again") and creates nothing. Items must fall on the date and must not
   overlap each other (400).
 - **Audit**: one `plan_applied` line in `_System/audit/<yyyy-mm>.jsonl`.
-- **Mileage**: only when `_System/Vehicles/vehicles.json` lists vehicles. Vehicles are a later feature, so this
-  is a feature check. Each visit then gets a mileage *proposal* in the response (vehicle, job, from/to district,
+- **Mileage**: only when `_System/Vehicles/vehicles.json` lists vehicles (the Vehicles page writes it; with no
+  vehicles there is nothing to propose). Each visit then gets a mileage *proposal* in the response (vehicle, job, from/to district,
   `miles: null` for the user to fill in, because there is no maps API). Nothing is saved for mileage.
 
 ## Limits

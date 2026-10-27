@@ -306,11 +306,12 @@ export default function JobDetail() {
                     </tr>
                   </tbody>
                 </table>
-                {/* TODO(invoicing): when /invoices/new exists, link to it here; it reads INVOICE_DRAFT_KEY from sessionStorage,
-                    and its send step marks the entries invoiced, so the manual step below goes away. */}
+                {/* TODO(invoicing): /invoices/new exists but does not read INVOICE_DRAFT_KEY yet. Once it does, link to it here
+                    and have its send step mark the entries invoiced, so the manual step below goes away. */}
                 <p className="mt-3 text-sm text-muted">
-                  VAT is added by the invoice (standard rate unless you change it). Sales invoicing is not in this build yet: send
-                  the invoice the way you do now, then record its number here so these hours aren&apos;t billed twice.
+                  VAT is added by the invoice (standard rate unless you change it). Invoices don&apos;t pick up these lines yet:
+                  create the invoice on Invoices (or the way you do now), then record its number here so these hours aren&apos;t
+                  billed twice.
                 </p>
                 <div className="mt-2 flex flex-wrap items-end gap-2">
                   <label className="flex flex-col gap-1 text-sm font-bold text-ink">

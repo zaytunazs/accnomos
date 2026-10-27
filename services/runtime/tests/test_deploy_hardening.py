@@ -39,8 +39,9 @@ def test_static_site_sends_security_headers():
 @pytest.mark.parametrize("name", ["Dockerfile.runtime", "Dockerfile.relay"])
 def test_dockerfiles_are_pinned_non_root_with_healthcheck(name):
     text = (DEPLOY / name).read_text()
-    base = re.search(r"^FROM (\S+)", text, re.M).group(1)
-    assert re.fullmatch(r"[\w./-]+:\d+\.\d+\.\d+[\w.-]*(@sha256:[0-9a-f]{64})?", base), f"unpinned base {base}"
+    bases = re.findall(r"^FROM (\S+)", text, re.M)
+    assert len(bases) == 1, f"one stage expected, got {bases}"  # a second FROM silently replaces the pinned base
+    assert re.fullmatch(r"[\w./-]+:\d+\.\d+\.\d+[\w.-]*(@sha256:[0-9a-f]{64})?", bases[0]), f"unpinned base {bases[0]}"
     assert re.search(r"^USER (?!root|0\b)\S+", text, re.M)
     assert re.search(r"^HEALTHCHECK ", text, re.M)
 

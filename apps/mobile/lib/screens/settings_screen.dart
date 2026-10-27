@@ -243,7 +243,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         color: AccnomosColors.ink)),
                 const SizedBox(height: 4),
                 const Text(
-                    'Your HMRC stagger group. The Home tab uses it for the next VAT deadline.',
+                    'Your HMRC stagger group. Saved on this phone only: Home and VAT still use calendar quarters.',
                     style: TextStyle(
                         color: AccnomosColors.muted,
                         fontSize: 12,
