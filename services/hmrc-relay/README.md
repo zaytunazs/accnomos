@@ -45,7 +45,8 @@ The relay reads the process environment only. It never reads a `.env` file.
 | `POST /vat/{vrn}/returns {return, client_facts, method, gov_test_scenario?}` | 201. `return` holds the 11 HMRC fields, validated before sending (see below) |
 | `POST /vat/{vrn}/returns/{periodKey}/view {client_facts, method}` | Encode `#` as `%23` |
 | `POST /vat/{vrn}/liabilities` / `POST /vat/{vrn}/payments {from, to, client_facts, method}` | |
-| `GET /vat/check/{vrn}` / `GET /vat/check/{vrn}/{requesterVrn}` | Check a UK VAT number v2.0 (app-restricted) |
+| `GET /vat/check/{vrn}` / `GET /vat/check/{vrn}/{requesterVrn}` | Check a UK VAT number v2.0 (app-restricted, `read:vat` token); HMRC's raw answer |
+| `GET /hmrc/vat-check/{vrn}?requester=` | What the app uses: `vrn` as `GB` + 9 or 12 digits (spaces allowed) → `{vrn, registered, name, address, consultation_number, checked_at, checksum_ok, source}`; `source` is `hmrc-sandbox` or `hmrc` from `HMRC_BASE`. HMRC's 404 → `registered: false`; a bad format → 400 without calling HMRC. `checksum_ok` (mod-97) is informational only: HMRC's own sandbox numbers fail it |
 | `POST /hmrc/test-user` | Sandbox only: creates an `mtd-vat` organisation test user |
 | `POST /hmrc/validate-headers {client_facts, method}` | Sandbox only: HMRC fraud-header validator |
 | `GET /hmrc/validation-feedback?method=` | Sandbox only: HMRC validation feedback for VAT MTD |

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Annotated, Literal
 from urllib.parse import urldefrag, urlencode
@@ -14,7 +15,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .fraud_headers import ClientFacts, Method, build_headers, missing, request_meta
-from .hmrc_client import HmrcClient
+from .hmrc_client import HmrcClient, HmrcError
 from .oauth import OAuth
 from .settings import Settings
 
@@ -272,23 +273,86 @@ async def payments(r: Configured, request: Request, token: UserToken, vrn: Vrn, 
 # --- application-restricted ----------------------------------------------------------------------------------
 
 
+#: Check a UK VAT number v2.0: application-restricted, bearer token with the `read:vat` scope (HMRC OAS, verified
+#: 27 Oct 2026; version 1.0 was removed on 17 February 2025).
+VAT_CHECK_SCOPE = "read:vat"
+VAT_CHECK_VERSION = "2.0"
+VAT_CHECK_PATH = "/organisations/vat/check-vat-number/lookup"
+VRN_INPUT = re.compile(r"^(?:GB)?(\d{9}|\d{12})$")
+
+
+def parse_vrn(raw: str, what: str = "VAT number") -> str:
+    """'GB 123 4567 89', 'gb123456789' or '123456789' -> '123456789' (9 or 12 digits, as HMRC takes them).
+    400 for anything else. GD/HA (government/health) and XI numbers are not checked by this API."""
+    s = re.sub(r"[\s.\-]", "", raw.upper())
+    m = VRN_INPUT.fullmatch(s)
+    if not m:
+        raise HTTPException(400, f"{what} must be GB followed by 9 or 12 digits")
+    return m.group(1)
+
+
+def mod97_ok(digits: str) -> bool | None:
+    """The 9-digit check digits (old scheme, or the 1999+ scheme that adds 55). None for 12-digit branch numbers.
+    Informational only: HMRC's own sandbox test numbers (e.g. 553557881) fail it, so it never blocks a check."""
+    if len(digits) != 9:
+        return None
+    w = sum(int(c) * k for c, k in zip(digits[:7], range(8, 1, -1), strict=True)) + int(digits[7:])
+    return w % 97 == 0 or (w + 55) % 97 == 0
+
+
+def _address(a: dict | None) -> str | None:
+    if not isinstance(a, dict):
+        return None
+    parts = [a.get(f"line{i}") for i in range(1, 6)] + [a.get("postcode")]
+    if (cc := a.get("countryCode")) and cc != "GB":
+        parts.append(cc)
+    text = ", ".join(str(p).strip() for p in parts if p and str(p).strip())
+    return text or None
+
+
+async def _lookup(r: Relay, path: str) -> httpx.Response:
+    return await r.hmrc.request("GET", path, bearer=await r.oauth.app_token(VAT_CHECK_SCOPE), version=VAT_CHECK_VERSION)
+
+
+@router.get("/hmrc/vat-check/{vrn}")
+async def vat_check(r: Configured, vrn: str, requester: str | None = Query(None, max_length=20)) -> dict:
+    """Is `vrn` VAT-registered, and to whom? With `requester` (the user's own VRN) HMRC also returns a
+    consultation number that proves the check was made. 200 with `registered: false` when HMRC says the
+    number does not match a registered business (its 404). Bodies are never logged."""
+    target = parse_vrn(vrn)
+    own = parse_vrn(requester, "Your VAT number") if requester else None
+    source = "hmrc-sandbox" if r.settings.sandbox else "hmrc"
+    checked_at = datetime.now(UTC).isoformat(timespec="seconds")
+    base = {"vrn": f"GB{target}", "checksum_ok": mod97_ok(target), "checked_at": checked_at, "source": source}
+    try:
+        resp = await _lookup(r, f"{VAT_CHECK_PATH}/{target}" + (f"/{own}" if own else ""))
+    except HmrcError as e:
+        if e.status == 404:
+            return {**base, "registered": False, "name": None, "address": None, "consultation_number": None}
+        if e.status == 403 and own:
+            raise HTTPException(400, "HMRC doesn't recognise your own VAT number (requester)") from e
+        raise
+    data = resp.json() if resp.content else {}
+    t = data.get("target") or {}
+    return {
+        **base,
+        "registered": True,
+        "name": t.get("name"),
+        "address": _address(t.get("address")),
+        "consultation_number": data.get("consultationNumber"),
+        "hmrc_processing_date": data.get("processingDate"),
+    }
+
+
 @router.get("/vat/check/{vrn}")
 async def check_vrn(r: Configured, vrn: Vrn) -> dict:
-    resp = await r.hmrc.request(
-        "GET", f"/organisations/vat/check-vat-number/lookup/{vrn}", bearer=await r.oauth.app_token(), version="2.0"
-    )
-    return resp.json()
+    """HMRC's raw answer; the app uses GET /hmrc/vat-check/{vrn}."""
+    return (await _lookup(r, f"{VAT_CHECK_PATH}/{vrn}")).json()
 
 
 @router.get("/vat/check/{vrn}/{requester_vrn}")
 async def check_vrn_with_reference(r: Configured, vrn: Vrn, requester_vrn: Vrn) -> dict:
-    resp = await r.hmrc.request(
-        "GET",
-        f"/organisations/vat/check-vat-number/lookup/{vrn}/{requester_vrn}",
-        bearer=await r.oauth.app_token(),
-        version="2.0",
-    )
-    return resp.json()
+    return (await _lookup(r, f"{VAT_CHECK_PATH}/{vrn}/{requester_vrn}")).json()
 
 
 @router.post("/hmrc/test-user", status_code=201)
