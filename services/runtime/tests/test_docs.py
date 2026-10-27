@@ -10,7 +10,8 @@ import pytest
 from app.projection import SHEETS
 
 ROOT = Path(__file__).resolve().parents[3]
-DOCS = ("README.md", "docs/ARCHITECTURE.md", "docs/HONESTY.md", "docs/DEMO.md", "docs/REMAINING.md")
+DOCS = ("README.md", "docs/ARCHITECTURE.md", "docs/HONESTY.md", "docs/DEMO.md", "docs/REMAINING.md",
+        *(f"docs/submission/{n}.md" for n in ("DESCRIPTION", "META_MODELS", "VIDEO_SCRIPT", "JUDGING", "CHECKLIST")))
 # A backticked name with a code-ish extension; OneDrive paths (`_System/...`, `Books.xlsx`, `*.json`) are not repo files.
 CITED = re.compile(r"`([A-Za-z0-9_./-]+\.(?:py|ts|tsx|dart|md|yml|yaml|mjs|png))`")
 
