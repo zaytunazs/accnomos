@@ -97,7 +97,7 @@ async def to_wav(data: bytes, content_type: str | None = None, filename: str | N
             await proc.wait()
             raise VoiceError(422, "The recording took too long to convert") from None
         if proc.returncode != 0 or not dst.exists():
-            detail = err.decode("utf-8", "replace").strip().splitlines()[-1:] or ["unknown error"]
+            detail = err.decode("utf-8", "replace").replace(str(src), "input").strip().splitlines()[-1:] or ["unknown error"]
             raise VoiceError(422, f"Couldn't read that recording as audio ({detail[0][:200]})")
         wav = dst.read_bytes()
     seconds = (len(wav) - WAV_HEADER_BYTES) / BYTES_PER_SECOND

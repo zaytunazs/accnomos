@@ -94,12 +94,12 @@ from app.routes_bank import router as bank_router  # noqa: E402  /books/bank/*
 app.include_router(bank_router)
 from app.routes_ask import router as ask_router  # noqa: E402  POST /books/ask, /books/ask/voice
 app.include_router(ask_router)
+from app.routes_mail import router as mail_router  # noqa: E402  POST /mail/scan
+app.include_router(mail_router)
 
 from app.ai.voice import ffmpeg_path  # noqa: E402
 
 FFMPEG = ffmpeg_path()  # checked once at startup; /books/ask/voice answers 503 without it
 if not FFMPEG:
     logging.getLogger("accnomos.runtime").warning("ffmpeg not found: voice questions (/books/ask/voice) are disabled")
-from app.routes_mail import router as mail_router  # noqa: E402  POST /mail/scan
-app.include_router(mail_router)
 
