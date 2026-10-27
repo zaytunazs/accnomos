@@ -2,16 +2,27 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { MarkPaidDialog, PreviewSendDialog, ReminderDialog, StatusTimeline, VoidDialog } from "@/components/invoices/InvoiceDialogs";
+import { PreviewSendDialog, ReminderDialog, StatusTimeline, VoidDialog } from "@/components/invoices/InvoiceDialogs";
+import {
+  CreditNoteDialog,
+  CreditNoteViewDialog,
+  PAYMENT_LABEL,
+  PaymentsPanel,
+  RecordPaymentDialog,
+  balanceOf,
+} from "@/components/invoices/PaymentDialogs";
 import SignInCta from "@/components/SignInCta";
 import { EmptyState, RuntimeErrorNote } from "@/components/States";
 import PrintButton from "@/components/PrintButton";
 import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import { money, SAMPLE_INVOICES, STATUS_LABEL, useMsAccount } from "@/lib/invoices";
-import { runtime, ukDate, type RtInvoice } from "@/lib/runtime";
+import { runtime, ukDate, type RtCreditNote, type RtInvoice } from "@/lib/runtime";
 
 type Filter = "all" | "draft" | "sent" | "overdue" | "paid" | "void";
-type Dialog = { kind: "preview" | "paid" | "remind" | "void"; invoice: RtInvoice } | null;
+type Dialog =
+  | { kind: "preview" | "paid" | "remind" | "void" | "credit"; invoice: RtInvoice }
+  | { kind: "creditView"; note: RtCreditNote }
+  | null;
 
 const FILTERS: { value: Filter; label: string }[] = [
   { value: "all", label: "All" },
@@ -49,6 +60,7 @@ const exportClass = "h-11 rounded-xl border border-border bg-white px-4 text-[15
 export default function LiveInvoices() {
   const { account, ready } = useMsAccount();
   const [invoices, setInvoices] = useState<RtInvoice[] | null>(null);
+  const [credits, setCredits] = useState<RtCreditNote[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [query, setQuery] = useState("");
   // /invoices?q=INV-0007 (from the audit trail) starts with that search.
@@ -64,6 +76,7 @@ export default function LiveInvoices() {
     if (!account) return;
     try {
       setInvoices(await runtime.invoices(account));
+      setCredits(await runtime.creditNotes(account).catch(() => []));
       setError(null);
     } catch (e) {
       setError((e as Error).message);
@@ -74,16 +87,31 @@ export default function LiveInvoices() {
     queueMicrotask(load);
   }, [load]);
 
+  function replace(updated: RtInvoice) {
+    setInvoices((list) => list?.map((i) => (i.number === updated.number ? updated : i)) ?? null);
+  }
+
   function done(updated: RtInvoice) {
     const was = dialog?.kind;
     setDialog(null);
-    setInvoices((list) => list?.map((i) => (i.number === updated.number ? updated : i)) ?? null);
+    replace(updated);
+    const left = balanceOf(updated);
     setNote({
       preview: `${updated.number} sent to ${updated.sent_to ?? "the customer"} and recorded in your books.`,
-      paid: `${updated.number} marked paid.`,
+      paid: left > 0
+        ? `Payment recorded on ${updated.number}: ${money(left)} still owed.`
+        : `${updated.number} is paid${updated.money?.overpaid_pence ? `; ${money(updated.money.overpaid_pence)} kept as a credit for ${updated.customer.name}` : ""}.`,
       remind: `Reminder for ${updated.number} sent.`,
       void: `${updated.number} is void.`,
+      credit: "",
+      creditView: "",
     }[was ?? "paid"]);
+  }
+
+  async function credited(cn: RtCreditNote) {
+    setDialog(null);
+    setNote(`Credit note ${cn.number} for ${money(cn.total_pence)} recorded against ${cn.invoice}.`);
+    await load();
   }
 
   if (ready && !account) {
@@ -126,8 +154,8 @@ export default function LiveInvoices() {
     .filter((i) => filter === "all" || (filter === "overdue" ? isOverdue(i) : i.status === filter))
     .filter((i) => !needle || i.number.toLowerCase().includes(needle) || i.customer.name.toLowerCase().includes(needle))
     .sort((a, b) => Number(isOverdue(b)) - Number(isOverdue(a)) || a.due_date.localeCompare(b.due_date));
-  const owed = (invoices ?? []).filter((i) => i.status === "sent").reduce((s, i) => s + i.total_pence, 0);
-  const overdue = (invoices ?? []).filter(isOverdue).reduce((s, i) => s + i.total_pence, 0);
+  const owed = (invoices ?? []).filter((i) => i.status === "sent").reduce((s, i) => s + balanceOf(i), 0);
+  const overdue = (invoices ?? []).filter(isOverdue).reduce((s, i) => s + balanceOf(i), 0);
   const unpaidCount = (invoices ?? []).filter((i) => i.status === "sent").length;
 
   return (
@@ -218,6 +246,12 @@ export default function LiveInvoices() {
                   <p className="text-sm text-muted">
                     {ukDate(i.issue_date)} · due {ukDate(i.due_date)}
                     {i.status === "paid" && i.paid_at && ` · paid ${ukDate(i.paid_at)}`}
+                    {i.money && i.money.payment_status !== "open" && i.money.payment_status !== "paid" && (
+                      <> · <span className="font-bold text-ink">{PAYMENT_LABEL[i.money.payment_status]}</span></>
+                    )}
+                    {i.money && i.status === "sent" && (i.money.paid_pence > 0 || i.money.credited_pence > 0) && (
+                      <> · balance <span className="font-bold text-ink tabular-nums">{money(i.money.balance_pence)}</span></>
+                    )}
                     {i.reminders.length > 0 && i.status === "sent" && ` · ${i.reminders.length} reminder${i.reminders.length === 1 ? "" : "s"}`}
                   </p>
                 </div>
@@ -239,16 +273,20 @@ export default function LiveInvoices() {
                 {i.status === "sent" && (
                   <>
                     <button type="button" className={action} onClick={() => setDialog({ kind: "remind", invoice: i })}>Draft a reminder</button>
-                    <button type="button" className={action} onClick={() => setDialog({ kind: "paid", invoice: i })}>Mark paid</button>
+                    <button type="button" className={action} onClick={() => setDialog({ kind: "paid", invoice: i })}>Record payment</button>
                   </>
                 )}
-                {(i.status === "draft" || i.status === "sent") && (
+                {(i.status === "sent" || i.status === "paid") && i.event_id && (
+                  <button type="button" className={action} onClick={() => setDialog({ kind: "credit", invoice: i })}>Create credit note</button>
+                )}
+                {(i.status === "draft" || i.status === "sent" || i.status === "paid") && (
                   <button type="button" className="text-[13px] font-bold text-muted hover:underline" onClick={() => setDialog({ kind: "void", invoice: i })}>Void</button>
                 )}
               </div>
               {i.status !== "draft" && (
                 <details className="mt-2">
-                  <summary className={`${action} cursor-pointer`}>History</summary>
+                  <summary className={`${action} cursor-pointer`}>{i.money ? "Payments and history" : "History"}</summary>
+                  <PaymentsPanel account={account} invoice={i} onChanged={(inv) => { replace(inv); setNote(`Payment removed from ${inv.number}.`); }} />
                   <StatusTimeline invoice={i} />
                 </details>
               )}
@@ -257,13 +295,49 @@ export default function LiveInvoices() {
         </ul>
       )}
 
+      {credits.length > 0 && account && (
+        <section aria-label="Credit notes" className="space-y-2">
+          <h2 className="text-lg font-extrabold">Credit notes</h2>
+          <ul className="divide-y divide-border rounded-2xl border border-border bg-white">
+            {credits.map((c) => (
+              <li key={c.number} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <p className={`truncate text-[15px] font-bold ${c.status === "void" ? "line-through text-muted" : ""}`}>
+                    {c.number} · {c.customer.name}
+                  </p>
+                  <p className="text-sm text-muted">
+                    {ukDate(c.issue_date)} · against {c.invoice} · {c.reason}
+                    {c.sent_at && ` · emailed ${ukDate(c.sent_at)}`}
+                  </p>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-[15px] font-extrabold tabular-nums">-{money(c.total_pence)}</span>
+                  <button type="button" className={action} onClick={() => setDialog({ kind: "creditView", note: c })}>View PDF</button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {dialog && account && (() => {
+        if (dialog.kind === "creditView") {
+          return (
+            <CreditNoteViewDialog
+              account={account}
+              note={dialog.note}
+              onClose={() => setDialog(null)}
+              onDone={(_cn, message) => { setDialog(null); setNote(message); void load(); }}
+            />
+          );
+        }
         const props = { account, invoice: dialog.invoice, onClose: () => setDialog(null), onDone: done };
         switch (dialog.kind) {
           case "preview": return <PreviewSendDialog {...props} />;
-          case "paid": return <MarkPaidDialog {...props} />;
+          case "paid": return <RecordPaymentDialog {...props} />;
           case "remind": return <ReminderDialog {...props} />;
           case "void": return <VoidDialog {...props} />;
+          case "credit": return <CreditNoteDialog account={account} invoice={dialog.invoice} onClose={() => setDialog(null)} onDone={credited} />;
         }
       })()}
     </div>

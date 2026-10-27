@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 
@@ -118,3 +118,70 @@ def test_undone_sale_nets_off_sales_and_undone_purchase_nets_off_purchases():
     assert str(ret.vat_reclaimed) == "10.00" and ret.total_purchases_ex_vat == 50
     ret = compute_vat_return([s, p, reversal(p)], "26A3", date(2026, 7, 1), date(2026, 9, 30))
     assert str(ret.vat_due_sales) == "20.00" and str(ret.vat_reclaimed) == "0.00"
+
+
+def _cn_event(kind: str, lines: list[Line], net: int, vat: int, **kw: object) -> LedgerEvent:
+    return LedgerEvent(
+        kind=kind,  # type: ignore[arg-type]
+        date=date(2026, 10, 2),
+        lines=lines,
+        approved_by="sam@example.co.uk",
+        approved_at=datetime(2026, 10, 2, 12, 0, tzinfo=UTC),
+        net=net,
+        vat=vat,
+        **kw,  # type: ignore[arg-type]
+    )
+
+
+def test_credit_notes_and_their_undo_count_on_the_right_side_with_the_right_sign():
+    from accnomos_ledger.vat import vat_side
+
+    sales_cn = _cn_event(
+        "reversal",
+        [
+            Line(account="4000 Sales", debit=9000, vat_code=VatCode.STANDARD),
+            Line(account="2200 VAT control", debit=1800, vat_code=VatCode.STANDARD),
+            Line(account="1100 Debtors", credit=10800),
+        ],
+        9000,
+        1800,
+        credits="a" * 32,
+    )
+    undo_sales_cn = _cn_event(
+        "reversal",
+        [Line(account=ln.account, debit=ln.credit, credit=ln.debit, vat_code=ln.vat_code) for ln in sales_cn.lines],
+        9000,
+        1800,
+        reverses=sales_cn.id,
+    )
+    supplier_cn = _cn_event(
+        "reversal",
+        [
+            Line(account="2100 Creditors", debit=6000),
+            Line(account="5000 Materials", credit=5000, vat_code=VatCode.STANDARD),
+            Line(account="2200 VAT control", credit=1000, vat_code=VatCode.STANDARD),
+        ],
+        5000,
+        1000,
+    )
+    undo_supplier_cn = _cn_event(
+        "reversal",
+        [Line(account=ln.account, debit=ln.credit, credit=ln.debit, vat_code=ln.vat_code) for ln in supplier_cn.lines],
+        5000,
+        1000,
+        reverses=supplier_cn.id,
+    )
+    assert sales_cn.is_credit_note and supplier_cn.is_credit_note and not undo_sales_cn.is_credit_note
+    assert [vat_side(e) for e in (sales_cn, undo_sales_cn, supplier_cn, undo_supplier_cn)] == [
+        ("sales", -1),
+        ("sales", 1),
+        ("purchases", -1),
+        ("purchases", 1),
+    ]
+    payment = _cn_event("bank", [Line(account="1200 Bank", debit=100), Line(account="1100 Debtors", credit=100)], 0, 0)
+    assert vat_side(payment) is None
+    start, end = date(2026, 10, 1), date(2026, 12, 31)
+    ret = compute_vat_return([sales_cn, supplier_cn], "x", start, end)
+    assert (str(ret.vat_due_sales), str(ret.vat_reclaimed), ret.total_sales_ex_vat) == ("-18.00", "-10.00", -90)
+    ret = compute_vat_return([sales_cn, undo_sales_cn, supplier_cn, undo_supplier_cn], "x", start, end)
+    assert (str(ret.vat_due_sales), str(ret.vat_reclaimed)) == ("0.00", "0.00")

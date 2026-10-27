@@ -83,7 +83,7 @@ def rule_from_proposal(p: Proposal, user: str) -> AutopilotRule | None:
     "supplier" is the user's own business, so a rule would match every sale."""
     key = supplier_key(p.extracted.supplier_name)
     gross = pence(p.extracted.gross_total)
-    if side_of(p) != "purchase" or not key or gross <= 0:
+    if side_of(p) != "purchase" or not key or gross <= 0 or p.extracted.doc_type == "credit_note":
         return None
     return AutopilotRule(
         supplier_key=key,
@@ -160,6 +160,8 @@ def evaluate(p: Proposal, rule: AutopilotRule | None, enabled: bool = True) -> A
     refusals: list[str] = []
     if side_of(p) != rule.side:
         refusals.append(f"This is a {side_of(p)}; the rule is for {rule.side}s")
+    if doc.doc_type == "credit_note":
+        refusals.append("A credit note is never approved by Autopilot")
     for c in p.checks:
         if not c.ok:
             refusals.append(f"Check {c.code} {'failed' if c.severity == 'fail' else 'warned'}: {c.message}")

@@ -66,7 +66,9 @@ def apply_edits(p: Proposal, edits: dict[str, Any]) -> None:
 def final_journal(p: Proposal) -> list[JournalLine]:
     """Journal rebuilt from the (possibly edited) document, with any account override applied."""
     journal = draft_journal(p.extracted)
-    return with_expense_account(journal, p.account_override) if p.account_override else journal
+    if not p.account_override:
+        return journal
+    return with_expense_account(journal, p.account_override, p.extracted.doc_type == "credit_note")
 
 
 def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEvent:
@@ -91,7 +93,8 @@ def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEve
     if len(lines) < 2:
         raise ApprovalError("Nothing to post: enter the amounts first")
     sale = doc.doc_type == "sales_invoice"
-    vat = sum((j.credit_pence if sale else j.debit_pence) for j in journal if j.account == VAT_CONTROL)
+    credit_note = doc.doc_type == "credit_note"  # a supplier's: the purchase journal turned round (app/journal.py)
+    vat = sum((j.credit_pence if sale or credit_note else j.debit_pence) for j in journal if j.account == VAT_CONTROL)
     gross = sum(j.debit_pence for j in journal)
     # One event per approval: a retried approval cannot post twice. After an undo the proposal
     # can be approved again, so each later approval gets its own (still deterministic) id.
@@ -99,7 +102,7 @@ def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEve
     try:
         return LedgerEvent(
             id=event_id,
-            kind="sale" if sale else "purchase",
+            kind="sale" if sale else "reversal" if credit_note else "purchase",
             date=when,
             lines=lines,
             evidence=[p.doc_sha256],
@@ -235,7 +238,7 @@ def _actor(user: str) -> str:
 async def _remember(books: Books, p: Proposal, user: str) -> Rule | None:
     """Save 'always use this account for this supplier' (purchases only)."""
     expense = next((j.account for j in p.journal_draft if j.debit_pence and j.account != VAT_CONTROL), None)
-    if p.extracted.doc_type == "sales_invoice" or expense is None:
+    if p.extracted.doc_type in ("sales_invoice", "credit_note") or expense is None:
         return None
     rule = Rule(
         match=RuleMatch(supplier_regex=re.escape(p.extracted.supplier_name.strip())), account=expense, source="user"
@@ -287,7 +290,7 @@ async def undo(books: Books, event_id: str, user: str) -> tuple[LedgerEvent, Pro
     """Append a reversal of `event_id` and put its proposal back in Review. Raises FileNotFoundError
     for an unknown event, ProposalStateError when it is already undone, ApprovalError otherwise."""
     original = await books.get_event(event_id)
-    if original.kind == "reversal":
+    if original.kind == "reversal" and not original.is_credit_note:
         raise ApprovalError("This entry is itself an undo")
     if any(e.reverses == event_id for e in await books.list_events()):
         raise ProposalStateError("Already undone")

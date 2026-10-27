@@ -14,8 +14,11 @@ rounded half up to the penny; the VAT summary and the totals are sums of lines. 
 Statuses: draft -> sent -> paid, and draft or sent -> void. Only a draft can be edited. Becoming `sent` posts the
 sale (Dr 1100 Debtors gross, Cr 4000 Sales net per VAT code, Cr 2200 VAT control) with an id derived from the
 invoice number, so it can never post twice. Voiding a sent invoice appends a reversal; nothing is deleted.
-Paid posts nothing, like matching a bank line (app/books.py): it records that the debt is settled, and links
-the bank line when one is chosen.
+Payments (app/payments.py) and credit notes (app/credit_notes.py) settle it: *Record payment* / *Mark paid* posts
+Dr 1200 Bank / Cr 1100 Debtors by code; the invoice is `paid` once nothing is left to pay, and goes back to `sent`
+if a payment is removed. Its file keeps a copy of `paid_pence`, `balance_pence` and `payment_status`
+(open | part_paid | paid | overpaid); the figures shown are always worked out again from the ledger. An invoice
+with payments or credit notes against it cannot be voided until they are removed.
 
 An invoice written from a job's hours keeps the job id and, per line, the timesheet entries it bills. Becoming
 `sent` marks the entries whose hours and rate still match their line invoiced on its number (app/jobs.py),
@@ -272,6 +275,12 @@ class Invoice(BaseModel):
     paid_at: date | None = None
     payment_ref: str | None = None
     bank_line_id: str | None = None
+    # A copy of what app/settlement.py works out (refreshed by app/payments.sync_invoices). None on files written
+    # before payments were recorded: such an invoice marked paid counts as paid in full (`payments.is_marked_paid`).
+    paid_pence: int | None = None
+    credited_pence: int = 0
+    balance_pence: int | None = None
+    payment_status: Literal["open", "part_paid", "paid", "overpaid"] | None = None
     voided_at: datetime | None = None
     void_reason: str | None = None
     reversal_event_id: str | None = None
@@ -708,15 +717,18 @@ async def sent_pdf(books: Books, number: str) -> bytes | None:
 # --------------------------------------------------------------------------- #
 
 
-async def bank_candidates(books: Books, inv: Invoice) -> list[BankLine]:
-    """Unmatched money in for exactly the invoice total, on or after the invoice date."""
+async def bank_candidates(books: Books, inv: Invoice, owed: int | None = None) -> list[BankLine]:
+    """Unmatched money in on or after the invoice date: lines for exactly what is owed (default the total) first,
+    then the rest by date, at most 20."""
     if inv.status != "sent":
         return []
-    return [
+    owed = inv.total_pence if owed is None else owed
+    lines = [
         ln
         for ln in await books.list_bank_lines()
-        if ln.status != "matched" and ln.amount_pence == inv.total_pence and ln.date >= inv.issue_date
+        if ln.status not in ("matched", "transfer", "ignored") and ln.amount_pence > 0 and ln.date >= inv.issue_date
     ]
+    return sorted(lines, key=lambda ln: (ln.amount_pence != owed, ln.date))[:20]
 
 
 async def mark_paid(
@@ -727,30 +739,56 @@ async def mark_paid(
     payment_ref: str | None = None,
     paid_on: date | None = None,
     bank_line_id: str | None = None,
+    amount_pence: int | None = None,
+    account: str = "1200 Bank",
 ) -> Invoice:
+    """Record a payment against this invoice (app/payments.py): the balance unless `amount_pence` says otherwise,
+    or the bank line's amount. Posts Dr 1200 Bank (or 1210 Cash) / Cr 1100 Debtors; more than the balance is left
+    as a credit on the customer."""
+    from app import payments  # app.payments imports this module
+
     inv = await get_invoice(books, number)
     if inv.status != "sent":
-        raise InvoiceStateError(f"Invoice {number} is {inv.status}; only a sent invoice can be marked paid")
+        raise InvoiceStateError(f"Invoice {number} is {inv.status}; only a sent invoice can take a payment")
     if not inv.event_id:
         raise InvoiceStateError(f"Invoice {number} is not in the ledger yet; send it again to post it")
+    ledger = await payments.load_ledger(books)
+    owed = max(0, ledger.settlement().outstanding(inv.event_id))
+    if owed <= 0:
+        raise InvoiceStateError(f"Invoice {number} has nothing left to pay")
     if bank_line_id:
         try:
-            line = await books.confirm_match(bank_line_id, [inv.event_id], user)
+            line = await books.find_bank_line(bank_line_id)
         except FileNotFoundError as exc:
             raise InvoiceError("No such bank line") from exc
-        except BankMatchError as exc:
-            raise InvoiceStateError(str(exc)) from exc
-        paid_on = paid_on or line.date
+        amount_pence = amount_pence or abs(line.amount_pence)
         payment_ref = payment_ref or line.reference or line.description
-    inv.status, inv.paid_at = "paid", paid_on or london_today()
-    inv.payment_ref, inv.bank_line_id = (payment_ref or "").strip() or None, bank_line_id
+    amount = amount_pence or owed
+    body = payments.PaymentIn(
+        side="sale",
+        date=paid_on,
+        amount_pence=amount,
+        account=account,  # type: ignore[arg-type]
+        reference=(payment_ref or "").strip()[:120] or None,
+        allocations=[payments.AllocationIn(event_id=inv.event_id, amount_pence=min(amount, owed))],
+        bank_line_id=bank_line_id,
+    )
+    try:
+        record = await payments.record_payment(books, body, user)
+    except BankMatchError as exc:
+        raise InvoiceStateError(str(exc)) from exc
+    inv = await get_invoice(books, number)  # record_payment refreshed its status
+    inv.payment_ref = record.reference or inv.payment_ref
+    inv.bank_line_id = bank_line_id or inv.bank_line_id
     await save_invoice(books, inv)
     await books.audit(
         f"user:{user}",
-        "invoice_paid",
+        "invoice_paid" if inv.status == "paid" else "invoice_part_paid",
         {
             "invoice": number,
             "event": inv.event_id,
+            "payment": record.id,
+            "amount_pence": record.amount_pence,
             "bank_line": bank_line_id,
             "payment_ref": inv.payment_ref,
         },
@@ -758,17 +796,50 @@ async def mark_paid(
     return inv
 
 
-async def void_invoice(books: Books, number: str, user: str, reason: str) -> Invoice:
-    """A draft is just marked void. A sent invoice also gets a reversal in the ledger (refused while a bank line is
-    matched to it). Paid invoices cannot be voided: issue a credit note (not built yet)."""
+async def unmark_paid(books: Books, number: str, user: str) -> Invoice:
+    """Undo a *Mark paid* made before payments were recorded (it posted nothing, so nothing is reversed)."""
+    from app import payments
+
     inv = await get_invoice(books, number)
-    if inv.status not in ("draft", "sent"):
+    if not payments.is_marked_paid(inv):
+        raise InvoiceStateError(f"Invoice {number} has no payment marked without an amount")
+    inv.status, inv.paid_at, inv.payment_ref = "sent", None, None
+    await save_invoice(books, inv)
+    await books.audit(f"user:{user}", "invoice_unmarked_paid", {"invoice": number})
+    return inv
+
+
+async def void_invoice(books: Books, number: str, user: str, reason: str) -> Invoice:
+    """A draft is just marked void. A sent invoice also gets a reversal in the ledger. Refused while payments, a
+    matched bank line or credit notes are against it: remove those first (a paid invoice is voided that way)."""
+    from app import payments
+    from app.credit_notes import list_credit_notes
+
+    inv = await get_invoice(books, number)
+    if inv.status == "paid" and payments.is_marked_paid(inv):
+        raise InvoiceStateError(
+            f"Invoice {number} is marked paid. Remove the payment first (Payments → Remove), then void it"
+        )
+    if inv.status not in ("draft", "sent", "paid"):
         raise InvoiceStateError(f"Invoice {number} is {inv.status} and cannot be voided")
     if not reason.strip():
         raise InvoiceError("Say why the invoice is void")
-    if inv.status == "sent" and inv.event_id:
+    if inv.status in ("sent", "paid") and inv.event_id:
+        ledger = await payments.load_ledger(books)
+        money_in = payments.invoice_money(inv, ledger)
+        if money_in and money_in.paid_pence:
+            n = len(money_in.payments)
+            raise InvoiceStateError(
+                f"Invoice {number} has {money(money_in.paid_pence)} of payments against it "
+                f"({n} payment{'s' if n != 1 else ''}). Remove {'them' if n != 1 else 'it'} first, then void it"
+            )
         if any(inv.event_id in ln.event_ids() for ln in await books.stored_bank_lines() if ln.status == "matched"):
             raise InvoiceStateError("A bank line is matched to this invoice; unmatch it first")
+        if issued := [c.number for c in await list_credit_notes(books, number) if c.status == "issued"]:
+            raise InvoiceStateError(
+                f"Credit note {', '.join(issued)} is against invoice {number}; void it first, or keep the invoice "
+                "and let the credit note stand"
+            )
         reversal = reversal_of(await books.get_event(inv.event_id), user)
         with contextlib.suppress(FileExistsError):
             await books.post_event(reversal)

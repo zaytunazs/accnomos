@@ -339,13 +339,17 @@ async def test_mark_paid_and_void_rules(books: Books, sender: FakeMailSender):
     sent = await _sent(books, sender)
     paid = await inv_.mark_paid(books, sent.number, USER, payment_ref="FPS ACME 0002", paid_on=date(2026, 11, 3))
     assert (paid.status, paid.paid_at, paid.payment_ref) == ("paid", date(2026, 11, 3), "FPS ACME 0002")
-    with pytest.raises(InvoiceStateError):
+    assert (paid.paid_pence, paid.balance_pence, paid.payment_status) == (40500, 0, "paid")
+    with pytest.raises(InvoiceStateError, match="Remove it first"):
         await inv_.void_invoice(books, paid.number, USER, "changed my mind")
     with pytest.raises(InvoiceStateError):
         await inv_.mark_paid(books, paid.number, USER)
     voided = await inv_.void_invoice(books, draft.number, USER, "duplicate")
     assert voided.status == "void" and voided.reversal_event_id is None
-    assert len(await books.list_events()) == 1  # paid and voiding a draft post nothing
+    events = await books.list_events()
+    assert [e.kind for e in events] == ["sale", "bank"]  # Mark paid posts the payment; voiding a draft posts nothing
+    lines = {ln.account: (ln.debit, ln.credit) for ln in events[1].lines}
+    assert lines == {"1200 Bank": (40500, 0), "1100 Debtors": (0, 40500)}
 
 
 async def test_voiding_a_sent_invoice_reverses_the_sale(books: Books, sender: FakeMailSender):
@@ -382,13 +386,15 @@ async def test_mark_paid_links_a_bank_line(books: Books, sender: FakeMailSender)
     cands = await inv_.bank_candidates(books, sent)
     assert [c.description for c in cands] == ["ACME KITCHENS INV-0001", "OTHER"]
     paid = await inv_.mark_paid(books, sent.number, USER, bank_line_id=cands[0].id)
-    assert (paid.paid_at, paid.payment_ref, paid.bank_line_id) == (
+    assert (paid.paid_at, paid.payment_ref, paid.bank_line_id, paid.status) == (
         date(2026, 11, 3),
         "ACME KITCHENS INV-0001",
         cands[0].id,
+        "paid",
     )
+    payment = next(e for e in await books.list_events() if e.kind == "bank")  # Dr 1200 Bank / Cr 1100 Debtors
     line = next(ln for ln in await books.stored_bank_lines() if ln.id == cands[0].id)
-    assert line.status == "matched" and line.event_ids() == [sent.event_id]
+    assert line.status == "matched" and line.event_ids() == [payment.id]  # the statement line reconciles to it
 
 
 # --------------------------------------------------------------------------- #

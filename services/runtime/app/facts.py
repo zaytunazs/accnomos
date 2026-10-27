@@ -14,7 +14,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from accnomos_ledger import LedgerEvent, compute_vat_return, reverses_sale
+from accnomos_ledger import LedgerEvent, compute_vat_return, vat_side
 from app.books import EVENTS, PROPOSALS, WORKBOOK, Books
 from app.paths import VAT_RETURNS
 from app.routes_vat import box_amounts, period_key_for
@@ -66,13 +66,7 @@ def period_label(p: AskPeriod) -> str:
 
 def side(ev: LedgerEvent) -> tuple[str, int] | None:
     """("sales"|"purchases", sign) for events that reach the VAT return, mirroring accnomos_ledger.vat."""
-    if ev.kind == "sale":
-        return "sales", 1
-    if ev.kind == "purchase":
-        return "purchases", 1
-    if ev.kind == "reversal":
-        return ("sales" if reverses_sale(ev) else "purchases"), -1
-    return None
+    return vat_side(ev)
 
 
 def vat_code(ev: LedgerEvent) -> str:

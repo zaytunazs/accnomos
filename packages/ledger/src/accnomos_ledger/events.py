@@ -47,9 +47,19 @@ class LedgerEvent(BaseModel):
     approved_at: datetime
     proposal_id: str | None = None
     reverses: str | None = Field(default=None, description="id of the event this one reverses")
+    credits: str | None = Field(
+        default=None,
+        description="credit notes only (kind 'reversal', no `reverses`): id of the sale or purchase it reduces",
+    )
     net: int | None = Field(default=None, description="pence; the VAT-able net for sales/purchases")
     vat: int | None = Field(default=None, description="pence")
     counterparty: str | None = None
+
+    @property
+    def is_credit_note(self) -> bool:
+        """A credit note is posted as a reversal of part (or all) of a document, dated on its own date. Unlike an
+        undo it reverses nothing in particular (`reverses` is empty), so the document it credits still stands."""
+        return self.kind == "reversal" and not self.reverses
 
     @model_validator(mode="after")
     def _balanced(self) -> LedgerEvent:

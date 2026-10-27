@@ -11,6 +11,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import ROUND_DOWN, Decimal
+from typing import Literal
 
 from accnomos_ledger.events import LedgerEvent, VatCode
 
@@ -70,6 +71,35 @@ def reverses_sale(ev: LedgerEvent) -> bool:
     return ev.kind == "reversal" and any(ln.debit and "Sales" in ln.account for ln in ev.lines)
 
 
+def _restores_cost(account: str, debit: int) -> bool:
+    """A debit to an expense account (codes 5000-8999) or to VAT control."""
+    code = account[:4]
+    return bool(debit) and code.isdigit() and (5000 <= int(code) <= 8999 or code == "2200")
+
+
+def vat_side(ev: LedgerEvent) -> tuple[Literal["sales", "purchases"], int] | None:
+    """("sales"|"purchases", sign) for an event that can reach the VAT return; None otherwise.
+
+    Worked out from the lines alone, so it needs no other event:
+    - a sale or purchase counts +1;
+    - a reversal touching Sales is on the sales side: -1 when it debits Sales (an undo of a sale, or a credit note
+      to a customer), +1 when it credits Sales (the undo of such a credit note);
+    - any other reversal with a VAT code is on the purchases side: -1 when it credits the cost (an undo of a
+      purchase, or a supplier's credit note), +1 when it debits an expense or VAT control again (the undo of a
+      supplier's credit note).
+    """
+    if ev.kind == "sale":
+        return "sales", 1
+    if ev.kind == "purchase":
+        return "purchases", 1
+    if ev.kind != "reversal" or not any(ln.vat_code is not None for ln in ev.lines):
+        return None
+    sales = [ln for ln in ev.lines if "Sales" in ln.account]
+    if sales:
+        return "sales", -1 if any(ln.debit for ln in sales) else 1
+    return "purchases", 1 if any(_restores_cost(ln.account, ln.debit) for ln in ev.lines) else -1
+
+
 def compute_vat_return(events: list[LedgerEvent], period_key: str, start: date, end: date) -> VatReturn:
     """Sum approved events dated within [start, end] into the 9 boxes."""
     ret = VatReturn(period_key=period_key, start=start, end=end)
@@ -84,8 +114,8 @@ def compute_vat_return(events: list[LedgerEvent], period_key: str, start: date, 
         if not codes & ON_RETURN:
             continue  # out of scope
         vat = ev.vat or 0
-        sign = -1 if ev.kind == "reversal" else 1
-        if ev.kind == "sale" or reverses_sale(ev):
+        side, sign = vat_side(ev) or ("purchases", -1)
+        if side == "sales":
             sales_net += sign * ev.net
             sales_vat += sign * vat
         else:

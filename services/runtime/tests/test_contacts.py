@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -291,7 +291,8 @@ def test_contacts_year_to_date_starts_on_the_shared_tax_year_rule() -> None:
 
 
 def test_bucket_edges() -> None:
-    assert [cb.bucket(d) for d in (0, 30, 31, 60, 61, 90, 91, 400)] == [
+    assert [cb.bucket(d) for d in (-1, 0, 30, 31, 60, 61, 90, 91, 400)] == [
+        "current",
         "0-30",
         "0-30",
         "31-60",
@@ -303,31 +304,63 @@ def test_bucket_edges() -> None:
     ]
 
 
-def test_aged_debtors_and_creditors() -> None:
+def _overdue(days: int, terms: int = 30) -> date:
+    """The document date that makes it `days` past its due date on TODAY."""
+    return TODAY - timedelta(days=days + terms)
+
+
+def test_aged_debtors_and_creditors_count_from_the_due_date() -> None:
     paid = _event(9000, date(2026, 8, 1), "Acme Kitchens Ltd", sale=True)
     events = [
-        _event(1000, date(2026, 9, 27), "Howdens", eid="1" * 32),  # 30 days
-        _event(2000, date(2026, 9, 26), "Howdens"),  # 31
-        _event(3000, date(2026, 7, 29), "Howdens"),  # 90
-        _event(4000, date(2026, 7, 28), "Howdens"),  # 91
+        _event(1000, _overdue(30), "Howdens", eid="1" * 32),
+        _event(2000, _overdue(31), "Howdens"),
+        _event(3000, _overdue(90), "Howdens"),
+        _event(4000, _overdue(91), "Howdens"),
+        _event(1500, TODAY - timedelta(days=10), "Howdens"),  # due in 20 days
         _event(500, date(2026, 10, 1), "Screwfix", on_account=False),  # paid by card: never owed
-        _event(54000, date(2026, 9, 15), "Acme Kitchens Ltd", sale=True),  # 42
+        _event(54000, _overdue(42), "Acme Kitchens Ltd", sale=True),
         paid,
         _event(7000, date(2026, 11, 2), "Acme Kitchens Ltd", sale=True),  # after the as-of date
-        _event(800, date(2026, 6, 1), "Bloggs & Co", sale=True),  # 148
+        _event(800, _overdue(148), "Bloggs & Co", sale=True),
     ]
     ledger = _ledger(events, bank_lines=[_bank_line(date(2026, 8, 20), 9000, [paid.id])])
     contacts = cb.merge_ledger([], ledger)
     a = cb.aged(contacts, ledger, TODAY)
 
     (howdens,) = a.creditors.rows
-    assert howdens.name == "Howdens" and howdens.buckets == {"0-30": 1000, "31-60": 2000, "61-90": 3000, "90+": 4000}
-    assert howdens.total_pence == 10000 and [d.age_days for d in howdens.documents] == [30, 31, 90, 91]
-    assert a.creditors.total_pence == 10000 and a.creditors.buckets["90+"] == 4000
+    assert howdens.name == "Howdens" and howdens.buckets == {
+        "current": 1500,
+        "0-30": 1000,
+        "31-60": 2000,
+        "61-90": 3000,
+        "90+": 4000,
+    }
+    assert howdens.total_pence == 11500
+    assert sorted(d.age_days for d in howdens.documents) == [-20, 30, 31, 90, 91]
+    assert a.creditors.total_pence == 11500 and a.creditors.buckets["90+"] == 4000
 
     assert [r.name for r in a.debtors.rows] == ["Acme Kitchens Ltd", "Bloggs & Co"]
-    assert a.debtors.rows[0].buckets == {"0-30": 0, "31-60": 54000, "61-90": 0, "90+": 0}
-    assert a.debtors.buckets == {"0-30": 0, "31-60": 54000, "61-90": 0, "90+": 800} and a.debtors.total_pence == 54800
+    assert a.debtors.rows[0].buckets == {"current": 0, "0-30": 0, "31-60": 54000, "61-90": 0, "90+": 0}
+    assert a.debtors.buckets == {"current": 0, "0-30": 0, "31-60": 54000, "61-90": 0, "90+": 800}
+    assert a.debtors.total_pence == 54800
+
+
+def test_ageing_uses_the_invoice_due_date_then_the_contacts_terms() -> None:
+    inv = _event(12000, date(2026, 10, 1), "Acme Kitchens Ltd", sale=True)  # due 8 Oct on the invoice: 19 days late
+    bill = _event(6000, date(2026, 9, 1), "Howdens")  # Howdens gives 60 days: due 31 Oct, not yet due
+    ledger = _ledger([inv, bill])
+    ledger.dues[inv.id] = date(2026, 10, 8)
+    contacts = cb.merge_ledger([], ledger)
+    for c in contacts:
+        if c.name == "Howdens":
+            cb.apply_edit(c, {"terms_days": 60}, contacts)
+    a = cb.aged(contacts, ledger, TODAY)
+    (d,) = a.debtors.rows[0].documents
+    assert (d.due_date, d.age_days, d.bucket) == (date(2026, 10, 8), 19, "0-30")
+    (b,) = a.creditors.rows[0].documents
+    assert (b.due_date, b.age_days, b.bucket) == (date(2026, 10, 31), -4, "current")
+    with pytest.raises(cb.ContactEditError):
+        cb.apply_edit(contacts[0], {"terms_days": 400}, contacts)
 
 
 # --------------------------------------------------------------------------- #
@@ -466,7 +499,8 @@ def test_contact_routes(client: TestClient, fake: FakeStorageProvider, address_b
     assert client.get("/contacts/0123456789abcdef/statement", headers=H).status_code == 404
 
     aged = client.get("/contacts/aged?as_of=2026-10-27", headers=H).json()
-    assert aged["creditors"]["buckets"]["0-30"] == 24000 and aged["debtors"]["buckets"]["31-60"] == 120000
+    # due dates (30 days on): Howdens' bill of 30 Sep is not due yet; Acme's invoice of 31 Aug is 27 days late
+    assert aged["creditors"]["buckets"]["current"] == 24000 and aged["debtors"]["buckets"]["0-30"] == 120000
 
     r = client.post("/contacts/import-outlook", headers=H, json={"add_new": False})
     assert r.status_code == 200 and r.json()["matched"] == 1 and address_book.calls == 1

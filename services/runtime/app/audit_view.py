@@ -181,6 +181,26 @@ SUMMARIES: dict[str, Summary] = {
     "invoice_sent": lambda r, w: f"Emailed invoice {_inv(r)}" + (f" to {r['to']}" if r.get("to") else ""),
     "invoice_reminder_sent": lambda r, w: f"Sent a reminder for invoice {_inv(r)}",
     "invoice_paid": lambda r, w: f"Marked invoice {_inv(r)} as paid",
+    "invoice_part_paid": lambda r, w: f"Recorded a part payment on invoice {_inv(r)}",
+    "invoice_unmarked_paid": lambda r, w: f"Took back the Mark paid on invoice {_inv(r)}",
+    # Payments (app/payments.py) and credit notes (app/credit_notes.py)
+    "payment_recorded": lambda r, w: (
+        ("Recorded money in" if r.get("side") == "sale" else "Recorded a payment out")
+        + _pounds(r, "amount_pence")
+        + (f" against invoice {_inv(r)}" if r.get("invoice") else "")
+    ),
+    "payment_removed": lambda r, w: "Removed a payment; its entry was reversed",
+    "payment_line_not_matched": lambda r, w: "Recorded a payment but could not match its bank line",
+    "credit_note_created": lambda r, w: (
+        f"Created credit note {r.get('credit_note') or ''} for invoice {_inv(r)}" + _pounds(r, "total_pence")
+    ),
+    "credit_note_posted": lambda r, w: f"Posted credit note {r.get('credit_note') or ''} to the ledger",
+    "credit_note_sent": lambda r, w: (
+        f"Emailed credit note {r.get('credit_note') or ''}" + (f" to {r['to']}" if r.get("to") else "")
+    ),
+    "credit_note_voided": lambda r, w: (
+        f"Voided credit note {r.get('credit_note') or ''}" + (f": {r['reason']}" if r.get("reason") else "")
+    ),
     "invoice_voided": lambda r, w: f"Voided invoice {_inv(r)}" + (f": {r['reason']}" if r.get("reason") else ""),
     # Jobs, staff, timesheets
     "job_created": lambda r, w: "Added a job",

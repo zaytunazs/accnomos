@@ -424,6 +424,7 @@ NO_USER_NEEDED = {
     "POST /mail/triage": "reads previews; one counts-only audit line as agent:triage (user: when X-User is sent)",
     "POST /jobs/{job_id}/invoice-lines": "proposes lines; marks nothing",
     "POST /invoices/{number}/pdf": "renders the PDF of an invoice the user already wrote; no new facts",
+    "POST /credit-notes/{number}/pdf": "renders the PDF of a credit note the user already made; no new facts",
     "POST /invoices/{number}/reminder-draft": "drafts text for the user to read; sends and writes nothing",
     "POST /plan/day": "proposes a day; writes nothing (apply needs X-User)",
 }

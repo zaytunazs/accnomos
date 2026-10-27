@@ -9,6 +9,8 @@ import { markContactsImported } from "@/components/home/SetupChecklist";
 import SignInCta from "@/components/SignInCta";
 import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import {
+  AGED_BUCKETS,
+  agedBucketLabel,
   runtime,
   ukDate,
   type RtAged,
@@ -31,7 +33,7 @@ const CATEGORIES = [
 const VAT_CODES: [string, string][] = [
   ["S", "Standard 20%"], ["R", "Reduced 5%"], ["Z", "Zero"], ["E", "Exempt"], ["O", "Outside scope"], ["N", "No VAT invoice"],
 ];
-const BUCKETS: RtAgedBucket[] = ["0-30", "31-60", "61-90", "90+"];
+const BUCKETS: RtAgedBucket[] = AGED_BUCKETS;
 const KIND_LABEL = { customer: "Customer", supplier: "Supplier", both: "Both" } as const;
 type KindFilter = "customer" | "supplier" | "all";
 type SortKey = "name" | "balance";
@@ -84,9 +86,9 @@ const quietAction = "shrink-0 rounded-lg px-2 py-1 text-[13px] font-bold text-te
 function AgedBars({ row }: { row: RtAgedRow | undefined }) {
   if (!row || row.total_pence === 0) return <span className="text-muted">—</span>;
   const segs = BUCKETS.map((b) => ({ b, v: row.buckets[b] })).filter((s) => s.v > 0);
-  const label = `Unpaid ${money(row.total_pence)}: ` + segs.map((s) => `${money(s.v)} at ${s.b} days`).join(", ");
+  const label = `Unpaid ${money(row.total_pence)}: ` + segs.map((s) => `${money(s.v)} ${agedBucketLabel(s.b).toLowerCase()}`).join(", ");
   const shade = (b: RtAgedBucket) =>
-    b === "90+" ? "bg-amber" : b === "61-90" ? "bg-teal" : b === "31-60" ? "bg-teal/60" : "bg-teal/35";
+    b === "90+" ? "bg-amber" : b === "61-90" ? "bg-teal" : b === "31-60" ? "bg-teal/60" : b === "0-30" ? "bg-teal/35" : "bg-teal/15";
   return (
     <span
       role="img"
@@ -395,9 +397,9 @@ function StatementTable({ st }: { st: RtStatement }) {
             </tr>
           )}
           {st.lines.map((ln, i) => (
-            <tr key={`${ln.event_id}-${i}`} className="border-b border-border last:border-b-0">
+            <tr key={`${ln.event_id}-${i}`} data-kind={ln.kind ?? "invoice"} className="border-b border-border last:border-b-0">
               <td className="whitespace-nowrap py-1.5 pr-2">{ukDate(ln.date)}</td>
-              <td className="py-1.5 pr-2">
+              <td className={`py-1.5 pr-2 ${ln.kind === "payment" || ln.kind === "credit_note" ? "text-teal-dark" : ""}`}>
                 {ln.details}
                 {ln.reference && <span className="text-muted"> · {ln.reference}</span>}
               </td>
@@ -415,8 +417,14 @@ function StatementTable({ st }: { st: RtStatement }) {
           </tr>
         </tbody>
       </table>
+      {(st.credit_pence ?? 0) > 0 && (
+        <p className="mt-2 rounded-lg bg-teal-tint px-3 py-2 text-[13px] font-semibold text-teal-dark">
+          {money(st.credit_pence ?? 0)} on account: an overpayment or a credit note bigger than what was owed.
+        </p>
+      )}
       <p className="mt-2 text-[13px] text-muted">
-        Plus means they owe you, minus means you owe them. Receipts paid by card or cash at the time are settled on the
+        Plus means they owe you, minus means you owe them. Payments, part payments and credit notes have their own lines.
+        Receipts paid by card or cash at the time are settled on the
         same line.
       </p>
     </div>
@@ -590,7 +598,7 @@ function AgedTable({ title, hint, table, onSelect }: { title: string; hint: stri
             <thead className="border-b border-border">
               <tr>
                 <th className={th}>Name</th>
-                {BUCKETS.map((b) => <th key={b} className={`${th} text-right`}>{b} days</th>)}
+                {BUCKETS.map((b) => <th key={b} className={`${th} text-right`}>{agedBucketLabel(b)}</th>)}
                 <th className={`${th} text-right`}>Total</th>
               </tr>
             </thead>
@@ -882,11 +890,14 @@ export default function LiveContacts() {
       ) : tab === "aged" ? (
         agedShown && (
           <div className="flex flex-col gap-6">
-            <AgedTable title="Debtors" hint="Customers who owe you: sales invoices with no bank payment matched, by age from the invoice date."
+            <AgedTable title="Debtors" hint="Customers who owe you: what is still owed on each sales invoice after part payments and credit notes, by days past its due date."
               table={agedShown.debtors} onSelect={select} />
-            <AgedTable title="Creditors" hint="Suppliers you owe: bills on account with no bank payment matched. Card and cash receipts are already paid."
+            <AgedTable title="Creditors" hint="Suppliers you owe: what is left on bills on account, by days past due. Card and cash receipts are already paid."
               table={agedShown.creditors} onSelect={select} />
-            <p className="text-[13px] text-muted">As of {ukDate(agedShown.as_of)}. An entry drops off once a bank statement line is matched to it.</p>
+            <p className="text-[13px] text-muted">
+              As of {ukDate(agedShown.as_of)}. Due dates come from the invoice, else the contact&apos;s payment terms, else 30 days
+              from the document date. An entry drops off once payments and credit notes cover it.
+            </p>
           </div>
         )
       ) : (

@@ -15,8 +15,12 @@ Refreshing never overwrites a field the user edited (`edited`); renaming keeps t
 later entries under the old name still find the contact.
 
 Open (unpaid) documents: a sales invoice (Dr 1100 Debtors) or a purchase on account (Cr 2100 Creditors)
-until a bank line is matched to it. A receipt paid by card, cash or transfer at the time credits the bank
-directly, so it is paid when posted and never open.
+until payments and credit notes cover it (app/settlement.py: part payments, one payment for several documents,
+overpayments and credit notes left as a credit on the contact). A receipt paid by card, cash or transfer at the
+time credits the bank directly, so it is paid when posted and never open.
+
+Ageing counts from the due date: the sales invoice's own, else the document date plus the contact's payment
+terms (`terms_days`), else 30 days.
 
 Signs: amounts are pence from the user's side; positive means the contact owes the user, negative means
 the user owes the contact.
@@ -29,7 +33,7 @@ import re
 from collections import Counter
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
@@ -42,14 +46,29 @@ from app.books import SYSTEM, Books, now
 from app.checks import UNKNOWN_SUPPLIER, SupplierKnowledge, normalise_vat_number
 from app.journal import CREDITORS, DEBTORS, VAT_CONTROL
 from app.schemas import CATEGORIES, ExtractedDoc, Proposal, VatStatus
+from app.settlement import Credit, Payment, PaymentRecord, Settlement, load_records, settle
 
 CONTACTS = f"{SYSTEM}/Contacts/contacts.json"
 ContactKind = Literal["customer", "supplier", "both"]
 ContactSource = Literal["ledger", "outlook", "manual"]
 Side = Literal["sale", "purchase"]
-EDITABLE = ("name", "kind", "vrn", "email", "phone", "address", "default_category", "default_vat_code", "vat_status")
+EDITABLE = (
+    "name",
+    "kind",
+    "vrn",
+    "email",
+    "phone",
+    "address",
+    "default_category",
+    "default_vat_code",
+    "vat_status",
+    "terms_days",
+)
 VAT_STATUSES = ("registered", "not_registered", "unknown")
-BUCKETS = ("0-30", "31-60", "61-90", "90+")
+#: "current": not due yet; the others are days past the due date.
+BUCKETS = ("current", "0-30", "31-60", "61-90", "90+")
+DEFAULT_TERMS_DAYS = 30
+DocKind = Literal["invoice", "credit_note"]
 ID_RE = re.compile(r"[0-9a-f]{16}")
 EMAIL_RE = re.compile(r"[^@\s]+@[^@\s]+\.[^@\s]+")
 
@@ -69,6 +88,7 @@ class Contact(BaseModel):
     vat_status: VatStatus = (
         "unknown"  # learnt on approval (`learn_vat_status`) or set on Contacts; see `supplier_knowledge`
     )
+    terms_days: int | None = Field(default=None, ge=0, le=365)  # payment terms; ageing assumes 30 days when unset
     aliases: list[str] = []  # other normalised names that mean this contact (old names, other spellings)
     edited: list[str] = []  # fields the user changed; refreshing leaves them alone
     created_at: datetime = Field(default_factory=now)
@@ -104,19 +124,47 @@ class Ledger:
     events: list[LedgerEvent]
     proposals: dict[str, Proposal] = field(default_factory=dict)  # by id
     bank_lines: list[BankLine] = field(default_factory=list)
+    records: list[PaymentRecord] = field(default_factory=list)  # _System/Payments/payments.json
+    refs: dict[str, str] = field(default_factory=dict)  # event id -> invoice or credit note number (app/invoicing.py)
+    dues: dict[str, date] = field(default_factory=dict)  # event id -> the sales invoice's due date
+    _settled: Settlement | None = field(default=None, repr=False)
+
+    def settlement(self) -> Settlement:
+        """Payments and credit notes allocated to documents (worked out once per Ledger)."""
+        if self._settled is None:
+            self._settled = settle(documents(self), self.bank_lines, self.records, reversed_ids(self.events))
+        return self._settled
 
 
 async def load_ledger(books: Books) -> Ledger:
+    from app.credit_notes import list_credit_notes  # both import this module
+    from app.invoicing import list_invoices
+
+    refs: dict[str, str] = {}
+    dues: dict[str, date] = {}
+    for inv in await list_invoices(books):
+        if inv.event_id:
+            refs[inv.event_id], dues[inv.event_id] = inv.number, inv.due_date
+    for cn in await list_credit_notes(books):
+        if cn.event_id:
+            refs[cn.event_id] = cn.number
     return Ledger(
         events=await books.list_events(),
         proposals={p.id: p for p in await books.list_proposals()},
         bank_lines=await books.stored_bank_lines(),
+        records=await load_records(books),
+        refs=refs,
+        dues=dues,
     )
 
 
 @dataclass
 class Doc:
-    """A sale or purchase as it bears on one counterparty. Reversals carry sign -1 and the original's side."""
+    """A sale, purchase or credit note as it bears on one counterparty.
+
+    `sign` is its effect on what is owed: +1 for an invoice or bill, -1 for a credit note or the undo of an
+    invoice, +1 for the undo of a credit note. `undo` marks a reversal (it carries the original's side and kind).
+    """
 
     event: LedgerEvent
     side: Side
@@ -129,6 +177,10 @@ class Doc:
     reference: str | None
     category: str | None
     vat_code: str | None
+    kind: DocKind = "invoice"
+    undo: bool = False
+    credits: str | None = None  # a credit note: the document it reduces
+    due: date | None = None  # a sales invoice's due date
 
 
 def _expense_vat_code(e: LedgerEvent) -> str | None:
@@ -136,16 +188,25 @@ def _expense_vat_code(e: LedgerEvent) -> str | None:
     return Counter(codes).most_common(1)[0][0] if codes else None
 
 
+def _credit_note_side(e: LedgerEvent) -> Side:
+    return "sale" if any("Sales" in ln.account for ln in e.lines) else "purchase"
+
+
 def documents(ledger: Ledger) -> list[Doc]:
-    """Every sale, purchase and reversal of one, oldest first."""
+    """Every sale, purchase, credit note and reversal of one, oldest first."""
     by_id = {e.id: e for e in ledger.events}
     out: list[Doc] = []
     for e in ledger.events:
         original = by_id.get(e.reverses) if e.kind == "reversal" and e.reverses else None
         source = original or e
-        if source.kind not in ("sale", "purchase"):
+        if source.is_credit_note:
+            side: Side = _credit_note_side(source)
+            kind: DocKind = "credit_note"
+            sign = 1 if original else -1
+        elif source.kind in ("sale", "purchase"):
+            side, kind, sign = source.kind, "invoice", -1 if original else 1  # type: ignore[assignment]
+        else:
             continue
-        side: Side = source.kind  # type: ignore[assignment]
         name = (e.counterparty or source.counterparty or "").strip()
         p = ledger.proposals.get(source.proposal_id or "")
         doc = p.extracted if p else None
@@ -154,15 +215,19 @@ def documents(ledger: Ledger) -> list[Doc]:
             Doc(
                 event=e,
                 side=side,
-                sign=-1 if original else 1,
+                sign=sign,
                 name=name,
                 key=supplier_key(name) if name else "",
                 vrn=normalise_vat_number(doc.supplier_vat_number) if doc and side == "purchase" else None,
                 gross=sum(ln.debit for ln in source.lines),
                 on_account=any(ln.account == account for ln in source.lines),
-                reference=doc.invoice_number if doc else None,
+                reference=(doc.invoice_number if doc else None) or ledger.refs.get(source.id),
                 category=doc.category_guess if doc and side == "purchase" else None,
                 vat_code=_expense_vat_code(source) if side == "purchase" else None,
+                kind=kind,
+                undo=original is not None,
+                credits=source.credits,
+                due=ledger.dues.get(source.id),
             )
         )
     return out
@@ -178,7 +243,7 @@ def merge_ledger(contacts: Sequence[Contact], ledger: Ledger, at: datetime | Non
     book = [c.model_copy(deep=True) for c in contacts]
     seen: dict[str, list[Doc]] = {}
     for d in documents(ledger):
-        if not d.key or d.sign < 0:  # a reversal adds nobody new
+        if not d.key or d.undo:  # a reversal adds nobody new
             continue
         c = find(book, d.key, d.vrn)
         if c is None:
@@ -228,11 +293,6 @@ def assign(contacts: Sequence[Contact], docs: Iterable[Doc]) -> dict[str, list[D
 # --------------------------------------------------------------------------- #
 
 
-def payments(bank_lines: Iterable[BankLine]) -> dict[str, BankLine]:
-    """Event id -> the matched bank line that pays it."""
-    return {eid: ln for ln in bank_lines if ln.status == "matched" for eid in ln.event_ids()}
-
-
 def reversed_ids(events: Iterable[LedgerEvent]) -> set[str]:
     return {e.reverses for e in events if e.kind == "reversal" and e.reverses}
 
@@ -242,10 +302,34 @@ def _signed(d: Doc) -> int:
     return d.sign * (d.gross if d.side == "sale" else -d.gross)
 
 
+def outstanding(d: Doc, ledger: Ledger) -> int:
+    """What is still owed on a document after payments and credit notes (0 for anything not waiting for money)."""
+    return max(0, ledger.settlement().outstanding(d.event.id))
+
+
 def open_docs(docs: Iterable[Doc], ledger: Ledger) -> list[Doc]:
-    """Documents still waiting for payment: on account, not undone, no matched bank line."""
-    gone, paid = reversed_ids(ledger.events), payments(ledger.bank_lines)
-    return [d for d in docs if d.sign > 0 and d.on_account and d.event.id not in gone and d.event.id not in paid]
+    """Documents still waiting for money: on account, not undone, not yet covered by payments and credit notes."""
+    return [d for d in docs if outstanding(d, ledger) > 0]
+
+
+def credits_for(docs: Iterable[Doc], ledger: Ledger) -> list[Credit]:
+    """Money left on the account of the contact these documents belong to (overpayments, unused credit notes)."""
+    ids = {d.event.id for d in docs}
+    return [c for c in ledger.settlement().credits if c.doc_event_id in ids]
+
+
+def payments_for(docs: Iterable[Doc], ledger: Ledger) -> list[tuple[Payment, int]]:
+    """(payment, the part of it that concerns these documents' contact), oldest first."""
+    ids = {d.event.id for d in docs}
+    settled = ledger.settlement()
+    credit_by = {(c.source_id, c.doc_event_id): c.amount_pence for c in settled.credits if c.source == "payment"}
+    out: list[tuple[Payment, int]] = []
+    for p in settled.payments:
+        mine = sum(a.amount_pence for a in p.allocations if a.event_id in ids)
+        mine += sum(v for (pid, doc), v in credit_by.items() if pid == p.id and doc in ids)
+        if mine:
+            out.append((p, mine))
+    return sorted(out, key=lambda pm: pm[0].date)
 
 
 class StatementLine(BaseModel):
@@ -253,9 +337,11 @@ class StatementLine(BaseModel):
     details: str
     reference: str | None = None
     event_id: str | None = None
-    amount_pence: int = 0  # the document
+    amount_pence: int = 0  # the document (a credit note has the opposite sign of an invoice)
     paid_pence: int = 0  # money that settled it, opposite sign
     balance_pence: int = 0
+    kind: Literal["invoice", "credit_note", "payment", "undo"] = "invoice"
+    payment_id: str | None = None  # a payment line: the recorded payment's id, or the bank line's
 
 
 class Statement(BaseModel):
@@ -264,20 +350,21 @@ class Statement(BaseModel):
     end: date | None
     opening_balance_pence: int
     closing_balance_pence: int
+    credit_pence: int = 0  # money on the contact's account (they overpaid, or a credit note was bigger than the debt)
     lines: list[StatementLine]
 
 
-_DETAILS = {"sale": "Sales invoice", "purchase": "Purchase"}
+_DETAILS = {("sale", "invoice"): "Sales invoice", ("purchase", "invoice"): "Purchase"}
+_DETAILS |= {("sale", "credit_note"): "Credit note", ("purchase", "credit_note"): "Supplier credit note"}
 
 
 def _statement_lines(docs: Sequence[Doc], ledger: Ledger) -> list[StatementLine]:
     """Unsorted lines, balances not yet filled in."""
-    paid = payments(ledger.bank_lines)
     out: list[StatementLine] = []
     for d in docs:
         amount = _signed(d)
-        label = _DETAILS[d.side] + ("" if d.on_account else ", paid at the time")
-        if d.sign < 0:
+        label = _DETAILS[(d.side, d.kind)] + ("" if d.on_account else ", paid at the time")
+        if d.undo:
             label = f"Undo: {label[0].lower()}{label[1:]}"
         out.append(
             StatementLine(
@@ -287,27 +374,28 @@ def _statement_lines(docs: Sequence[Doc], ledger: Ledger) -> list[StatementLine]
                 event_id=d.event.id,
                 amount_pence=amount,
                 paid_pence=0 if d.on_account else -amount,
+                kind="undo" if d.undo else d.kind,
             )
         )
-        if d.on_account and d.sign > 0 and (ln := paid.get(d.event.id)):
-            out.append(
-                StatementLine(
-                    date=ln.date,
-                    details=f"Bank: {ln.description}",
-                    reference=ln.reference,
-                    event_id=d.event.id,
-                    paid_pence=-amount,
-                )
+    for p, mine in payments_for(docs, ledger):
+        out.append(
+            StatementLine(
+                date=p.date,
+                details=p.description,
+                reference=p.reference,
+                event_id=p.allocations[0].event_id if p.allocations else p.event_id,
+                paid_pence=-mine if p.side == "sale" else mine,
+                kind="payment",
+                payment_id=p.id,
             )
+        )
     return out
 
 
 def statement(
     contact: Contact, docs: Sequence[Doc], ledger: Ledger, start: date | None = None, end: date | None = None
 ) -> Statement:
-    lines = sorted(
-        _statement_lines(docs, ledger), key=lambda ln: (ln.date, ln.paid_pence != 0 and ln.amount_pence == 0)
-    )
+    lines = sorted(_statement_lines(docs, ledger), key=lambda ln: (ln.date, ln.kind == "payment"))
     opening = sum(ln.amount_pence + ln.paid_pence for ln in lines if start and ln.date < start)
     shown = [ln for ln in lines if (not start or ln.date >= start) and (not end or ln.date <= end)]
     balance = opening
@@ -315,7 +403,13 @@ def statement(
         balance += ln.amount_pence + ln.paid_pence
         ln.balance_pence = balance
     return Statement(
-        contact=contact, start=start, end=end, opening_balance_pence=opening, closing_balance_pence=balance, lines=shown
+        contact=contact,
+        start=start,
+        end=end,
+        opening_balance_pence=opening,
+        closing_balance_pence=balance,
+        credit_pence=sum(c.amount_pence for c in credits_for(docs, ledger)),
+        lines=shown,
     )
 
 
@@ -325,14 +419,16 @@ class ContactTotals(BaseModel):
     ytd_sales_vat_pence: int = 0
     ytd_purchases_net_pence: int = 0
     ytd_purchases_vat_pence: int = 0
-    open_receivable_pence: int = 0  # unpaid sales invoices
-    open_payable_pence: int = 0  # unpaid purchases on account
-    balance_pence: int = 0  # receivable - payable
+    open_receivable_pence: int = 0  # still owed on sales invoices (after part payments and credit notes)
+    open_payable_pence: int = 0  # still owed on purchases on account
+    customer_credit_pence: int = 0  # the customer overpaid, or was credited more than they owed: the user owes it
+    supplier_credit_pence: int = 0  # the same the other way: the supplier owes it
+    balance_pence: int = 0  # receivable - customer credit - payable + supplier credit
     last_activity: date | None = None
 
 
 def totals(docs: Sequence[Doc], ledger: Ledger, year_start: date, today: date) -> ContactTotals:
-    t = ContactTotals(documents=sum(d.sign for d in docs))
+    t = ContactTotals(documents=sum(-1 if d.undo else 1 for d in docs if d.kind == "invoice"))
     for d in docs:
         if year_start <= d.event.date <= today:
             net = d.event.net if d.event.net is not None else d.gross - (d.event.vat or 0)
@@ -346,30 +442,48 @@ def totals(docs: Sequence[Doc], ledger: Ledger, year_start: date, today: date) -
         t.last_activity = max(t.last_activity or d.event.date, d.event.date)
     for d in open_docs(docs, ledger):
         if d.side == "sale":
-            t.open_receivable_pence += d.gross
+            t.open_receivable_pence += outstanding(d, ledger)
         else:
-            t.open_payable_pence += d.gross
-    t.balance_pence = t.open_receivable_pence - t.open_payable_pence
+            t.open_payable_pence += outstanding(d, ledger)
+    for c in credits_for(docs, ledger):
+        if c.side == "sale":
+            t.customer_credit_pence += c.amount_pence
+        else:
+            t.supplier_credit_pence += c.amount_pence
+    t.balance_pence = t.open_receivable_pence - t.customer_credit_pence - t.open_payable_pence + t.supplier_credit_pence
     return t
 
 
 def bucket(age_days: int) -> str:
+    """Days past the due date -> bucket; negative (not due yet) is "current"."""
+    if age_days < 0:
+        return "current"
     return "0-30" if age_days <= 30 else "31-60" if age_days <= 60 else "61-90" if age_days <= 90 else "90+"
+
+
+def due_date(d: Doc, contact: Contact | None) -> date:
+    """The invoice's own due date, else the document date + the contact's terms, else + 30 days."""
+    if d.due:
+        return d.due
+    terms = contact.terms_days if contact and contact.terms_days is not None else DEFAULT_TERMS_DAYS
+    return d.event.date + timedelta(days=terms)
 
 
 class AgedDoc(BaseModel):
     event_id: str
     date: date
+    due_date: date
     reference: str | None
-    amount_pence: int
-    age_days: int
+    amount_pence: int  # still owed
+    gross_pence: int  # the document's total
+    age_days: int  # days past due (negative: not due yet)
     bucket: str
 
 
 class AgedRow(BaseModel):
     contact_id: str
     name: str
-    buckets: dict[str, int]  # "0-30" | "31-60" | "61-90" | "90+" -> pence
+    buckets: dict[str, int]  # "current" | "0-30" | "31-60" | "61-90" | "90+" -> pence
     total_pence: int
     documents: list[AgedDoc]
 
@@ -382,33 +496,41 @@ class AgedTable(BaseModel):
 
 class AgedBalances(BaseModel):
     as_of: date
-    debtors: AgedTable  # customers who owe the user (unpaid sales invoices)
-    creditors: AgedTable  # suppliers the user owes (unpaid purchases on account)
+    debtors: AgedTable  # customers who owe the user (what is left on sales invoices)
+    creditors: AgedTable  # suppliers the user owes (what is left on purchases on account)
 
 
 def aged(contacts: Sequence[Contact], ledger: Ledger, as_of: date) -> AgedBalances:
-    """Unpaid documents by age from their date (no due dates are recorded): 0-30, 31-60, 61-90, 90+ days."""
-    names = {c.id: c.name for c in contacts}
+    """What is still owed on each document, by days past its due date: not due yet, 0-30, 31-60, 61-90, 90+."""
+    by_id = {c.id: c for c in contacts}
     tables: dict[Side, dict[str, AgedRow]] = {"sale": {}, "purchase": {}}
     for cid, docs in assign(contacts, documents(ledger)).items():
         for d in open_docs(docs, ledger):
             if d.event.date > as_of:
                 continue
-            age = (as_of - d.event.date).days
+            due = due_date(d, by_id[cid])
+            age = (as_of - due).days
+            owed = outstanding(d, ledger)
             row = tables[d.side].setdefault(
                 cid,
                 AgedRow(
-                    contact_id=cid, name=names[cid], buckets=dict.fromkeys(BUCKETS, 0), total_pence=0, documents=[]
+                    contact_id=cid,
+                    name=by_id[cid].name,
+                    buckets=dict.fromkeys(BUCKETS, 0),
+                    total_pence=0,
+                    documents=[],
                 ),
             )
-            row.buckets[bucket(age)] += d.gross
-            row.total_pence += d.gross
+            row.buckets[bucket(age)] += owed
+            row.total_pence += owed
             row.documents.append(
                 AgedDoc(
                     event_id=d.event.id,
                     date=d.event.date,
+                    due_date=due,
                     reference=d.reference,
-                    amount_pence=d.gross,
+                    amount_pence=owed,
+                    gross_pence=d.gross,
                     age_days=age,
                     bucket=bucket(age),
                 )
@@ -499,6 +621,9 @@ def apply_edit(c: Contact, edits: dict[str, Any], others: Sequence[Contact], at:
             raise ContactEditError(f"Unknown category {v!r}")
         elif k == "default_vat_code" and v and v not in {code.value for code in VatCode}:
             raise ContactEditError(f"Unknown VAT code {v!r}")
+        elif k == "terms_days" and v is not None:
+            if isinstance(v, bool) or not isinstance(v, int) or not 0 <= v <= 365:
+                raise ContactEditError("Payment terms are a number of days, 0 to 365")
         elif k == "vat_status":
             v = v or "unknown"
             if v not in VAT_STATUSES:

@@ -456,6 +456,28 @@ export const runtime = {
   markInvoicePaid: (a: AccountInfo, id: string, body: { payment_ref?: string; paid_on?: string; bank_line_id?: string | null }) =>
     call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/mark-paid`, { method: "POST", body: JSON.stringify(body) }),
   invoiceBankCandidates: (a: AccountInfo, id: string) => call<RtBankLine[]>(a, `/invoices/${encodeURIComponent(id)}/bank-candidates`),
+  /** Record payment: part of the balance, all of it or more (posted Dr 1200 Bank / Cr 1100 Debtors by the runtime). */
+  recordInvoicePayment: (
+    a: AccountInfo,
+    id: string,
+    body: { amount_pence?: number; paid_on?: string; account?: "1200 Bank" | "1210 Cash"; payment_ref?: string; bank_line_id?: string | null },
+  ) => call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/payments`, { method: "POST", body: JSON.stringify(body) }),
+  removeInvoicePayment: (a: AccountInfo, id: string, paymentId: string) =>
+    call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/payments/${encodeURIComponent(paymentId)}`, { method: "DELETE" }),
+  /** Posts the credit note at once: the app sends confirm only after the user ticked the confirmation. */
+  createCreditNote: (
+    a: AccountInfo,
+    id: string,
+    body: { reason: string; issue_date?: string; lines?: { line: number; quantity: string }[] | null },
+  ) => call<RtCreditNote>(a, `/invoices/${encodeURIComponent(id)}/credit-notes`, { method: "POST", body: JSON.stringify({ ...body, confirm: true }) }),
+  creditNotes: (a: AccountInfo, invoice?: string) =>
+    call<RtCreditNote[]>(a, `/credit-notes${invoice ? `?invoice=${encodeURIComponent(invoice)}` : ""}`),
+  creditNotePdf: (a: AccountInfo, id: string) => call<RtCreditNotePdf>(a, `/credit-notes/${encodeURIComponent(id)}/pdf`, { method: "POST" }),
+  sendCreditNote: (a: AccountInfo, id: string, email: { to: string; subject: string; body: string }) =>
+    call<RtCreditNote>(a, `/credit-notes/${encodeURIComponent(id)}/send`, { method: "POST", body: JSON.stringify({ ...email, confirm: true }) },
+      mailSendScopesFor(accountKind(a))),
+  voidCreditNote: (a: AccountInfo, id: string, reason: string) =>
+    call<RtCreditNote>(a, `/credit-notes/${encodeURIComponent(id)}/void`, { method: "POST", body: JSON.stringify({ reason }) }),
   voidInvoice: (a: AccountInfo, id: string, reason: string) =>
     call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/void`, { method: "POST", body: JSON.stringify({ reason }) }),
   /** Drafting sends nothing; the user reads, edits and confirms before reminderSend. */
@@ -759,6 +781,7 @@ export interface RtContact {
   default_vat_code: string | null;
   source: "ledger" | "outlook" | "manual";
   vat_status?: RtVatStatus; // absent from runtimes before 27 Oct 2026: read as "unknown"
+  terms_days?: number | null; // payment terms in days; ageing assumes 30 when unset
   aliases: string[];
   edited: string[];
   created_at: string;
@@ -770,8 +793,10 @@ export interface RtContactTotals {
   ytd_sales_vat_pence: number;
   ytd_purchases_net_pence: number;
   ytd_purchases_vat_pence: number;
-  open_receivable_pence: number;
+  open_receivable_pence: number; // still owed on sales invoices, after part payments and credit notes
   open_payable_pence: number;
+  customer_credit_pence?: number; // the customer overpaid or was credited more than they owed: you owe it
+  supplier_credit_pence?: number; // the same the other way round
   balance_pence: number;
   last_activity: string | null;
 }
@@ -792,6 +817,8 @@ export interface RtStatementLine {
   amount_pence: number;
   paid_pence: number;
   balance_pence: number;
+  kind?: "invoice" | "credit_note" | "payment" | "undo";
+  payment_id?: string | null;
 }
 export interface RtStatement {
   contact: RtContact;
@@ -799,15 +826,28 @@ export interface RtStatement {
   end: string | null;
   opening_balance_pence: number;
   closing_balance_pence: number;
+  credit_pence?: number; // money on the contact's account (overpaid, or credited more than owed)
   lines: RtStatementLine[];
 }
-export type RtAgedBucket = "0-30" | "31-60" | "61-90" | "90+";
+/** "current": not due yet; the others are days past the due date (the invoice's, else terms, else 30 days). */
+export type RtAgedBucket = "current" | "0-30" | "31-60" | "61-90" | "90+";
+export const AGED_BUCKETS: RtAgedBucket[] = ["current", "0-30", "31-60", "61-90", "90+"];
+export const agedBucketLabel = (b: RtAgedBucket) => (b === "current" ? "Not yet due" : `${b} days late`);
 export interface RtAgedRow {
   contact_id: string;
   name: string;
   buckets: Record<RtAgedBucket, number>;
   total_pence: number;
-  documents: { event_id: string; date: string; reference: string | null; amount_pence: number; age_days: number; bucket: RtAgedBucket }[];
+  documents: {
+    event_id: string;
+    date: string;
+    due_date?: string;
+    reference: string | null;
+    amount_pence: number; // still owed
+    gross_pence?: number;
+    age_days: number; // days past due; negative = not due yet
+    bucket: RtAgedBucket;
+  }[];
 }
 export interface RtAgedTable {
   rows: RtAgedRow[];
@@ -903,12 +943,62 @@ export interface RtInvoice {
   paid_at: string | null;
   payment_ref: string | null;
   bank_line_id: string | null;
+  paid_pence?: number | null;
+  credited_pence?: number;
+  balance_pence?: number | null;
+  payment_status?: RtPaymentStatus | null;
+  money?: RtInvoiceMoney | null; // payments and credit notes, worked out by the runtime; null for drafts and void
   voided_at: string | null;
   void_reason: string | null;
   reminders: { sent_at: string; to: string; subject: string }[];
   days_overdue: number | null; // only while sent and unpaid; 0 or less = not due yet
   job_id: string | null;
   timesheets_marked: boolean;
+}
+export type RtPaymentStatus = "open" | "part_paid" | "paid" | "overpaid";
+export interface RtInvoicePayment {
+  id: string; // remove it with DELETE /invoices/{number}/payments/{id}
+  source: "recorded" | "bank_line" | "marked";
+  date: string | null;
+  amount_pence: number; // the whole payment
+  applied_pence: number; // the part that paid this invoice
+  account: string | null;
+  reference: string | null;
+  description: string;
+}
+export interface RtInvoiceMoney {
+  paid_pence: number;
+  credited_pence: number;
+  balance_pence: number;
+  overpaid_pence: number;
+  payment_status: RtPaymentStatus;
+  payments: RtInvoicePayment[];
+  credit_notes: { number: string | null; event_id: string; applied_pence: number }[];
+}
+export interface RtCreditNote {
+  number: string;
+  invoice: string;
+  status: "issued" | "void";
+  customer: RtInvoiceCustomer;
+  issue_date: string;
+  lines: RtInvoiceLine[];
+  source_lines: number[];
+  net_pence: number;
+  vat_pence: number;
+  total_pence: number;
+  reason: string;
+  event_id: string | null;
+  sent_at: string | null;
+  sent_to: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+}
+export interface RtCreditNotePdf {
+  path: string;
+  size: number;
+  sha256: string;
+  data_url: string;
+  email: { to: string | null; subject: string; body: string };
 }
 export interface RtInvoicePdf {
   path: string;

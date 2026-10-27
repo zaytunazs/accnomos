@@ -563,6 +563,7 @@ class Books:
         update: dict[str, Any] = {"status": "matched", "matched_event_id": ids[0], "matched_event_ids": ids}
         await self._set_line(path, line_id, update)
         await self.audit(f"user:{user}", "bank_matched", {"line": line_id, "events": ids, "file": path})
+        await self._sync_invoices(ids)
         await self.rebuild_safely(f"user:{user}")
         return line.model_copy(update=update)
 
@@ -583,8 +584,15 @@ class Books:
                 "file": path,
             },
         )
+        await self._sync_invoices(line.event_ids())
         await self.rebuild_safely(f"user:{user}")
         return line.model_copy(update=update)
+
+    async def _sync_invoices(self, event_ids: list[str]) -> None:
+        """A match changes what a sales invoice has been paid: refresh its status (app/payments.py)."""
+        from app.payments import sync_invoices
+
+        await sync_invoices(self, event_ids)
 
     async def mark_line(self, line_id: str, status: Literal["transfer", "ignored"], user: str) -> BankLine:
         """Settle an open line without a ledger entry: money between own accounts, or nothing to book."""

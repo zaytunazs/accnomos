@@ -75,9 +75,14 @@ def _footer_text(profile: InvoiceProfile) -> str:
     return " · ".join(p for p in parts if p)
 
 
-def render_invoice(inv: Invoice, profile: InvoiceProfile, logo: bytes | None = None) -> bytes:
+def render_invoice(
+    inv: Invoice, profile: InvoiceProfile, logo: bytes | None = None, *, credit_for: str | None = None
+) -> bytes:
+    """The invoice; with `credit_for` (the invoice number), the same layout as a credit note against it
+    (app/credit_notes.CreditNote.as_invoice): no due date or payment terms, "Total credit"."""
+    credit = credit_for is not None
     pdf = _InvoicePdf(_footer_text(profile))
-    pdf.set_title(text(f"Invoice {inv.number}"))
+    pdf.set_title(text(f"{'Credit note' if credit else 'Invoice'} {inv.number}"))
     pdf.set_author(text(profile.name))
     pdf.set_creator("Accnomos")
     pdf.add_page()
@@ -106,15 +111,22 @@ def render_invoice(inv: Invoice, profile: InvoiceProfile, logo: bytes | None = N
     pdf.set_xy(120, top)
     pdf.set_font("Helvetica", "B", 22)
     pdf.set_text_color(*TEAL)
-    pdf.cell(RIGHT - 120, 10, "INVOICE", align="R", new_x=XPos.LEFT, new_y=YPos.NEXT)
+    pdf.cell(RIGHT - 120, 10, "CREDIT NOTE" if credit else "INVOICE", align="R", new_x=XPos.LEFT, new_y=YPos.NEXT)
     pdf.set_font("Helvetica", "", 9.5)
-    meta = [
-        ("Invoice number", inv.number),
-        ("Invoice date", uk_date(inv.issue_date)),
-        ("Due date", uk_date(inv.due_date)),
-    ]
-    if inv.reference:
-        meta.append(("Your reference", inv.reference))
+    if credit:
+        meta = [
+            ("Credit note number", inv.number),
+            ("Date", uk_date(inv.issue_date)),
+            ("Credits invoice", credit_for or ""),
+        ]
+    else:
+        meta = [
+            ("Invoice number", inv.number),
+            ("Invoice date", uk_date(inv.issue_date)),
+            ("Due date", uk_date(inv.due_date)),
+        ]
+        if inv.reference:
+            meta.append(("Your reference", inv.reference))
     for label, value in meta:
         pdf.set_x(120)
         pdf.set_text_color(*MUTED)
@@ -185,7 +197,7 @@ def render_invoice(inv: Invoice, profile: InvoiceProfile, logo: bytes | None = N
     for label, value, bold in (
         ("Subtotal (net)", inv.net_pence, False),
         ("VAT", inv.vat_pence, False),
-        ("Total due", inv.total_pence, True),
+        ("Total credit" if credit else "Total due", inv.total_pence, True),
     ):
         pdf.set_x(125)
         pdf.set_font("Helvetica", "B" if bold else "", 11 if bold else 9.5)
@@ -195,6 +207,24 @@ def render_invoice(inv: Invoice, profile: InvoiceProfile, logo: bytes | None = N
         pdf.cell(RIGHT - 160, 6.5, text(money(value)), align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_draw_color(*TEAL)
     pdf.line(125, pdf.get_y() + 0.5, RIGHT, pdf.get_y() + 0.5)
+
+    if credit:
+        pdf.set_y(max(vat_bottom, pdf.get_y()) + 8)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(*INK)
+        pdf.multi_cell(
+            WIDTH,
+            5,
+            text(f"This credit note reduces invoice {credit_for} by {money(inv.total_pence)}, VAT included."),
+            new_x=XPos.LMARGIN,
+            new_y=YPos.NEXT,
+        )
+        for extra in (inv.notes, profile.footer_note):
+            if extra:
+                pdf.ln(3)
+                pdf.set_text_color(*MUTED)
+                pdf.multi_cell(WIDTH, 4.5, text(extra), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        return bytes(pdf.output())
 
     # --- Payment -----------------------------------------------------------
     pdf.set_y(max(vat_bottom, pdf.get_y()) + 8)

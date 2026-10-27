@@ -1,0 +1,405 @@
+"""Recording and removing payments against sales invoices and bills (the user's action; app/settlement.py works out
+what each payment paid).
+
+*Record payment* (and *Mark paid*, which records the balance) posts, by code:
+
+    money in from a customer:  Dr 1200 Bank (or 1210 Cash)  /  Cr 1100 Debtors
+    money out to a supplier:   Dr 2100 Creditors            /  Cr 1200 Bank (or 1210 Cash)
+
+as a `bank` event with no VAT (a payment is not a supply, so it never reaches the VAT return), and saves the split
+the user chose in _System/Payments/payments.json. When the money is a line on an imported bank statement, the line is
+matched to that event, so the Bank page shows it reconciled. Removing a payment appends a reversal of its event (and
+unmatches its bank line); nothing is deleted. A bank line matched straight to an invoice on the Bank page is a
+payment too, with nothing posted (as before); removing it unmatches the line.
+
+Each document's status (open, part paid, paid, overpaid) is worked out from the allocations; a sales invoice's file
+keeps a copy (`paid_pence`, `payment_status`, ...) refreshed whenever a payment, credit note or bank match changes.
+"""
+
+from __future__ import annotations
+
+import contextlib
+import hashlib
+import uuid
+from collections.abc import Iterable
+from datetime import date
+from typing import Literal
+
+from pydantic import BaseModel, Field
+
+from accnomos_ledger.events import LedgerEvent, Line
+from app.approve import reversal_of
+from app.books import BankMatchError, Books, now, today as london_today
+from app.contacts import Doc, Ledger, documents, load_ledger
+from app.invoicing import Invoice, InvoiceError, InvoiceStateError, list_invoices, money, save_invoice
+from app.journal import BANK, CASH, CREDITORS, DEBTORS
+from app.settlement import PAYMENTS, Allocation, Payment, PaymentRecord, PaymentStatus, Side
+from app.validation import Day, Pence, StrictBody
+
+PaymentAccount = Literal["1200 Bank", "1210 Cash"]
+MAX_PENCE = 10_000_000_000  # £100m: anything bigger is a typing slip
+assert BANK == "1200 Bank" and CASH == "1210 Cash"  # PaymentAccount spells them out for the API schema
+
+
+class AllocationIn(StrictBody):
+    event_id: str = Field(pattern=r"^[0-9a-f]{8,64}$", max_length=64)  # the invoice's or bill's ledger entry
+    amount_pence: Pence = Field(gt=0, le=MAX_PENCE)
+
+
+class PaymentIn(StrictBody):
+    side: Side  # "sale": received from a customer; "purchase": paid to a supplier
+    date: Day | None = None  # default: the bank line's date, else today
+    amount_pence: Pence | None = Field(None, gt=0, le=MAX_PENCE)  # default: the bank line's amount
+    account: PaymentAccount = "1200 Bank"
+    reference: str | None = Field(None, max_length=120)
+    allocations: list[AllocationIn] = Field(min_length=1, max_length=50)
+    bank_line_id: str | None = Field(None, pattern=r"^[0-9a-f]{16}$", max_length=16)
+
+
+class PaymentError(InvoiceError):
+    """The payment cannot be recorded or removed as asked."""
+
+
+def payment_event_id(record_id: str) -> str:
+    return hashlib.sha256(f"payment:{record_id}".encode()).hexdigest()[:32]
+
+
+def payment_event(r: PaymentRecord, user: str, refs: list[str]) -> LedgerEvent:
+    memo = "Payment for " + ", ".join(refs) if refs else "Payment"
+    if r.side == "sale":
+        lines = [
+            Line(account=r.account, debit=r.amount_pence, memo=memo),
+            Line(account=DEBTORS, credit=r.amount_pence, memo=memo),
+        ]
+    else:
+        lines = [
+            Line(account=CREDITORS, debit=r.amount_pence, memo=memo),
+            Line(account=r.account, credit=r.amount_pence, memo=memo),
+        ]
+    return LedgerEvent(
+        id=payment_event_id(r.id),
+        kind="bank",
+        date=r.date,
+        lines=lines,
+        approved_by=user,
+        approved_at=now(),
+        net=0,
+        vat=0,
+        counterparty=r.counterparty,
+    )
+
+
+def _open(ledger: Ledger, side: Side) -> dict[str, Doc]:
+    gone = {e.reverses for e in ledger.events if e.reverses}
+    return {
+        d.event.id: d
+        for d in documents(ledger)
+        if d.kind == "invoice" and not d.undo and d.on_account and d.side == side and d.event.id not in gone
+    }
+
+
+def _ref(d: Doc) -> str:
+    return d.reference or f"{d.name} {d.event.date:%d/%m/%Y}"
+
+
+async def record_payment(books: Books, body: PaymentIn, user: str, *, today: date | None = None) -> PaymentRecord:
+    """Check the split against what is still owed, post the payment, save it, match its bank line.
+
+    Raises PaymentError (a 400) or InvoiceStateError (a 409) when it cannot be recorded."""
+    ledger = await load_ledger(books)
+    docs = _open(ledger, body.side)
+    settled = ledger.settlement()
+    if len({a.event_id for a in body.allocations}) != len(body.allocations):
+        raise PaymentError("A document is in the split twice")
+    chosen: list[Doc] = []
+    for a in body.allocations:
+        d = docs.get(a.event_id)
+        if d is None:
+            what = "sales invoice" if body.side == "sale" else "bill on account"
+            raise PaymentError(f"No open {what} {a.event_id[:8]}… (it may have been undone)")
+        owed = settled.outstanding(a.event_id)
+        if owed <= 0:
+            raise InvoiceStateError(f"{_ref(d)} is already paid")
+        if a.amount_pence > owed:
+            raise PaymentError(f"{_ref(d)} has {money(owed)} left to pay; put the rest down as an overpayment")
+        chosen.append(d)
+    if len({d.key for d in chosen}) > 1:
+        raise PaymentError("One payment is from one customer (or to one supplier); record the others separately")
+    when, amount = body.date, body.amount_pence
+    if body.bank_line_id:
+        try:
+            line = await books.find_bank_line(body.bank_line_id)
+        except FileNotFoundError as exc:
+            raise PaymentError("No such bank line") from exc
+        if line.resolved:
+            raise InvoiceStateError("This bank line is already settled; undo that first")
+        if (line.amount_pence > 0) != (body.side == "sale"):
+            raise PaymentError("That bank line is money " + ("out" if line.amount_pence < 0 else "in"))
+        if amount is not None and amount != abs(line.amount_pence):
+            raise PaymentError(f"The bank line is {money(abs(line.amount_pence))}, not {money(amount)}")
+        amount, when = abs(line.amount_pence), when or line.date
+        if body.account != BANK:
+            raise PaymentError("A bank statement line is money in 1200 Bank")
+    if amount is None:
+        raise PaymentError("Say how much was paid")
+    split = sum(a.amount_pence for a in body.allocations)
+    if split > amount:
+        raise PaymentError(f"The split adds up to {money(split)}, more than the payment of {money(amount)}")
+    when = when or today or london_today()
+    if when < min(d.event.date for d in chosen):
+        raise PaymentError("The payment is dated before the document it pays")
+    record = PaymentRecord(
+        id=uuid.uuid4().hex[:16],
+        side=body.side,
+        date=when,
+        amount_pence=amount,
+        account=body.account,
+        reference=(body.reference or "").strip() or None,
+        counterparty=chosen[0].name,
+        allocations=[Allocation(event_id=a.event_id, amount_pence=a.amount_pence) for a in body.allocations],
+        bank_line_id=body.bank_line_id,
+        created_by=user,
+        created_at=now(),
+    )
+    event = payment_event(record, user, [_ref(d) for d in chosen])
+    record.event_id = event.id
+    path = await books.post_event(event)
+    await books._update_json(PAYMENTS, [], lambda rows: [*(rows or []), record.model_dump(mode="json")])
+    if body.bank_line_id:
+        try:
+            await books.confirm_match(body.bank_line_id, [event.id], user)
+        except BankMatchError as exc:  # changed between the check and now: the payment stands, the line stays open
+            await books.audit(f"user:{user}", "payment_line_not_matched", {"payment": record.id, "reason": str(exc)})
+    await books.audit(
+        f"user:{user}",
+        "payment_recorded",
+        {
+            "payment": record.id,
+            "event": event.id,
+            "event_path": path,
+            "side": record.side,
+            "amount_pence": record.amount_pence,
+            "unallocated_pence": amount - split,
+            "documents": [a.event_id for a in body.allocations],
+            "invoice": ledger.refs.get(body.allocations[0].event_id),
+            "bank_line": body.bank_line_id,
+        },
+    )
+    await sync_invoices(books, {a.event_id for a in body.allocations})
+    await books.rebuild_safely(f"user:{user}")
+    return record
+
+
+async def remove_payment(books: Books, payment_id: str, user: str) -> list[str]:
+    """Take a payment back: reverse a recorded payment's entry (and unmatch its bank line), or unmatch a bank line
+    matched straight to documents. Returns the document event ids it had paid. Raises FileNotFoundError."""
+    records = {r.id: r for r in await _records(books)}
+    r = records.get(payment_id)
+    if r is None:
+        return await _unmatch_line(books, payment_id, user)
+    if r.removed_at:
+        raise InvoiceStateError("This payment has already been removed")
+    if r.event_id:
+        stored = await books.stored_bank_lines()
+        lines = [ln for ln in stored if ln.status == "matched" and r.event_id in ln.event_ids()]
+        for ln in lines:
+            if ln.id != r.bank_line_id:
+                raise InvoiceStateError("A bank line is matched to this payment on the Bank page; unmatch it first")
+            await books.unmatch(ln.id, user)
+        try:
+            original = await books.get_event(r.event_id)
+        except FileNotFoundError:
+            original = None
+        if original is not None:
+            reversal = reversal_of(original, user)
+            with contextlib.suppress(FileExistsError):
+                await books.post_event(reversal)
+            r.reversal_event_id = reversal.id
+    r.removed_at, r.removed_by = now(), user
+    payload = r.model_dump(mode="json")
+    await books._update_json(
+        PAYMENTS, [], lambda rows: [payload if isinstance(x, dict) and x.get("id") == r.id else x for x in rows or []]
+    )
+    ids = [a.event_id for a in r.allocations]
+    await books.audit(
+        f"user:{user}",
+        "payment_removed",
+        {"payment": r.id, "event": r.event_id, "reversal": r.reversal_event_id, "documents": ids},
+    )
+    await sync_invoices(books, set(ids))
+    await books.rebuild_safely(f"user:{user}")
+    return ids
+
+
+async def _unmatch_line(books: Books, line_id: str, user: str) -> list[str]:
+    line = await books.find_bank_line(line_id)
+    if line.status != "matched":
+        raise FileNotFoundError(line_id)
+    ids = line.event_ids()
+    await books.unmatch(line_id, user)  # audited there; syncs the invoices
+    return ids
+
+
+async def _records(books: Books) -> list[PaymentRecord]:
+    from app.settlement import load_records
+
+    return await load_records(books)
+
+
+# --------------------------------------------------------------------------- #
+# Invoices: their payments, balance and status
+# --------------------------------------------------------------------------- #
+
+
+class InvoicePayment(BaseModel):
+    id: str
+    source: Literal["recorded", "bank_line", "marked"]  # "marked": marked paid before payments were recorded
+    date: date | None
+    amount_pence: int  # the whole payment
+    applied_pence: int  # the part that paid this invoice
+    account: str | None = None
+    reference: str | None = None
+    description: str
+
+
+class AppliedCredit(BaseModel):
+    number: str | None  # CN-0001
+    event_id: str
+    applied_pence: int
+
+
+class InvoiceMoney(BaseModel):
+    paid_pence: int
+    credited_pence: int
+    balance_pence: int  # still owed
+    overpaid_pence: int  # money over, left as a credit on the customer
+    payment_status: PaymentStatus
+    payments: list[InvoicePayment]
+    credit_notes: list[AppliedCredit]
+
+
+def _applied(p: Payment, event_id: str) -> int:
+    return sum(a.amount_pence for a in p.allocations if a.event_id == event_id)
+
+
+def is_marked_paid(inv: Invoice) -> bool:
+    """Marked paid before payments were recorded (no amount was kept): shown as paid in full, posted nothing."""
+    return inv.status == "paid" and inv.paid_pence is None
+
+
+def invoice_money(inv: Invoice, ledger: Ledger) -> InvoiceMoney | None:
+    """Payments and credit notes against a sent invoice (None for drafts, void invoices and unposted ones)."""
+    if inv.status not in ("sent", "paid") or not inv.event_id:
+        return None
+    s = ledger.settlement()
+    eid = inv.event_id
+    pays = s.payments_for(eid)
+    out = [
+        InvoicePayment(
+            id=p.id,
+            source=p.source,
+            date=p.date,
+            amount_pence=p.amount_pence,
+            applied_pence=_applied(p, eid),
+            account=p.account,
+            reference=p.reference,
+            description=p.description,
+        )
+        for p in pays
+    ]
+    paid, credited = s.paid.get(eid, 0), s.credited.get(eid, 0)
+    if is_marked_paid(inv) and not paid and not credited:
+        owed = inv.total_pence
+        out.append(
+            InvoicePayment(
+                id="marked",
+                source="marked",
+                date=inv.paid_at,
+                amount_pence=owed,
+                applied_pence=owed,
+                reference=inv.payment_ref,
+                description="Marked paid (no payment was recorded)",
+            )
+        )
+        return InvoiceMoney(
+            paid_pence=owed,
+            credited_pence=0,
+            balance_pence=0,
+            overpaid_pence=0,
+            payment_status="paid",
+            payments=out,
+            credit_notes=[],
+        )
+    return InvoiceMoney(
+        paid_pence=paid,
+        credited_pence=credited,
+        balance_pence=max(0, s.outstanding(eid)) if eid in s.gross else 0,
+        overpaid_pence=sum(p.unallocated_pence for p in pays),
+        payment_status=s.status(eid),
+        payments=out,
+        credit_notes=[
+            AppliedCredit(number=ledger.refs.get(cn_id), event_id=cn_id, applied_pence=amt)
+            for cn_id, amt in s.credit_notes.get(eid, [])
+        ],
+    )
+
+
+async def sync_invoices(books: Books, event_ids: Iterable[str]) -> None:
+    """Refresh the payment copy on the sales invoices behind `event_ids`: paid when nothing is left to pay, sent
+    otherwise. Never fails the action that called it (a payment, a credit note, a bank match)."""
+    wanted = set(event_ids)
+    if not wanted:
+        return
+    try:
+        invoices = [i for i in await list_invoices(books) if i.event_id in wanted and i.status in ("sent", "paid")]
+        if not invoices:
+            return
+        ledger = await load_ledger(books)
+        for inv in invoices:
+            m = invoice_money(inv, ledger)
+            if m is None or (is_marked_paid(inv) and m.payments and m.payments[-1].source == "marked"):
+                continue
+            status = "paid" if m.balance_pence == 0 and (m.paid_pence + m.credited_pence) > 0 else "sent"
+            last = max((p.date for p in m.payments if p.date), default=None)
+            new = {
+                "status": status,
+                "paid_pence": m.paid_pence,
+                "credited_pence": m.credited_pence,
+                "balance_pence": m.balance_pence,
+                "payment_status": m.payment_status,
+                "paid_at": last if status == "paid" else None,
+            }
+            if any(getattr(inv, k) != v for k, v in new.items()):
+                for k, v in new.items():
+                    setattr(inv, k, v)
+                await save_invoice(books, inv)
+    except (ValueError, OSError):  # a hand-edited file: the figures are worked out again on every read anyway
+        return
+
+
+class OpenDocument(BaseModel):
+    event_id: str
+    side: Side
+    date: date
+    reference: str | None
+    counterparty: str
+    gross_pence: int
+    outstanding_pence: int
+
+
+def open_documents(ledger: Ledger, side: Side) -> list[OpenDocument]:
+    """Sales invoices or bills on account with something left to pay, oldest first (for the payment split)."""
+    s = ledger.settlement()
+    return [
+        OpenDocument(
+            event_id=d.event.id,
+            side=d.side,
+            date=d.event.date,
+            reference=d.reference,
+            counterparty=d.name,
+            gross_pence=d.gross,
+            outstanding_pence=s.outstanding(d.event.id),
+        )
+        for d in _open(ledger, side).values()
+        if s.outstanding(d.event.id) > 0
+    ]
