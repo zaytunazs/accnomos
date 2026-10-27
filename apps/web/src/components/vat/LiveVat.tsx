@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
+import { loadBusiness } from "@/lib/business";
+import PrintButton from "@/components/PrintButton";
 import { fetchLiveVat, type RtVatBox as Box, type RtVatPeriod, type RtVatView as VatView } from "@/lib/runtime";
 import { usePickedPeriod } from "@/lib/vat-period";
 import BoxExplain from "./BoxExplain";
@@ -38,6 +40,11 @@ export default function LiveVat() {
   const [view, setView] = useState<VatView | null>(null);
   const [periods, setPeriods] = useState<RtVatPeriod[] | null>(null);
   const [state, setState] = useState<"idle" | "live" | "off">("idle");
+  // Print-only: who the return is for. Read once (loadBusiness is localStorage-only and null-safe).
+  const [business] = useState<{ name: string; vatNumber: string } | null>(() => {
+    const b = loadBusiness();
+    return b && (b.name || b.vatNumber) ? { name: b.name, vatNumber: b.vatNumber } : null;
+  });
   const picked = usePickedPeriod();
 
   useEffect(() => {
@@ -86,11 +93,14 @@ export default function LiveVat() {
     : null;
   return (
     <section aria-labelledby="live-vat" className="rounded-2xl border border-teal bg-white p-5">
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3 print:hidden">
         <VatPeriodPicker account={account} onPeriods={setPeriods} />
-        <Link href="/ask" className="text-[15px] font-bold text-teal underline underline-offset-2 hover:text-teal-dark">
-          Ask about {view.label}
-        </Link>
+        <span className="flex flex-wrap items-center gap-3">
+          <Link href="/ask" className="text-[15px] font-bold text-teal underline underline-offset-2 hover:text-teal-dark">
+            Ask about {view.label}
+          </Link>
+          <PrintButton />
+        </span>
       </div>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="live-vat" className="text-lg font-extrabold">
@@ -98,6 +108,19 @@ export default function LiveVat() {
           {view.current ? " (current period)" : ""} · {uk(view.start)} – {uk(view.end)}
         </h2>
         <span className="text-sm text-muted">{view.events_in_period} approved entries · calculated by code</span>
+      </div>
+      {/* Paper only: who the return is for and whether it is still an estimate. */}
+      <div className="hidden print:block">
+        {business && (
+          <p className="mt-1 text-sm font-bold">
+            {business.name}
+            {business.name && business.vatNumber ? " · " : ""}
+            {business.vatNumber ? `VRN ${business.vatNumber}` : ""}
+          </p>
+        )}
+        <p className="text-sm text-muted">
+          {view.submitted ? "Submitted." : "Estimate until submitted."}
+        </p>
       </div>
       {/* The values animate to the new period (key) and announce politely. */}
       <div key={view.period} aria-live="polite" aria-label="VAT box values" className="vat-update">

@@ -1,9 +1,11 @@
 import ExplainMore from "@/components/ExplainMore";
 import LivePayroll from "@/components/payroll/LivePayroll";
 
+export const metadata = { title: "Payroll pay run · Accnomos" };
+
 export default function PayrollPage() {
   return (
-    <div className="flex flex-col gap-5">
+    <div data-print-page className="flex flex-col gap-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-3xl font-extrabold tracking-tight">Payroll</h1>

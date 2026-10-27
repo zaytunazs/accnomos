@@ -57,7 +57,15 @@ body {
 @media print {
   body:has([data-contacts-statement]) header,
   body:has([data-contacts-statement]) footer,
-  body:has([data-contacts-statement]) nav {
+  body:has([data-contacts-statement]) nav,
+  /* VAT return, invoice list, pay run and bank statement lines print the
+     same way: pages opt in with data-print-page. Shell chrome (header,
+     sidebar, tab bar, footer, the sample banner) and buttons never print. */
+  body:has([data-print-page]) header,
+  body:has([data-print-page]) footer,
+  body:has([data-print-page]) nav,
+  body:has([data-print-page]) aside[aria-label="Sample data"],
+  body:has([data-print-page]) button {
     display: none !important;
   }
   [data-contacts-statement] {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
+import PrintButton from "@/components/PrintButton";
 import { errorText, todayIso, useAccount } from "@/components/jobs/useAccount";
 import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import { gbp, runtime, ukDate, type RtPayRun, type RtPayRunList, type RtStaff } from "@/lib/runtime";
@@ -137,11 +138,12 @@ export default function LivePayroll() {
         {ESTIMATE}. Accnomos prepares the numbers; it does not run payroll or file RTI with HMRC.
       </p>
 
-      <div className="flex flex-wrap items-end gap-3">
+      <div className="flex flex-wrap items-end gap-3 print:hidden">
         <label className="flex flex-col gap-1 text-[13px] font-bold text-muted">
           Month
           <input type="month" value={period} max={periodOf(todayIso())} onChange={(e) => e.target.value && setPeriod(e.target.value)} className={input} />
         </label>
+        {run && <PrintButton />}
         {run && draft && (
           <button
             type="button"
@@ -331,7 +333,7 @@ export default function LivePayroll() {
       )}
 
       {run && draft && (
-        <section aria-labelledby="confirm" className="rounded-2xl border border-border bg-white p-5">
+        <section aria-labelledby="confirm" className="rounded-2xl border border-border bg-white p-5 print:hidden">
           <h2 id="confirm" className="text-[17px] font-extrabold">Confirm what was actually paid</h2>
           <p className="mt-1 text-sm leading-6 text-muted">
             When your payroll provider has run payroll, type in <strong>their</strong> totals (not the estimates above).
