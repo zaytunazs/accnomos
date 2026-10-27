@@ -3,6 +3,10 @@
     cd evals && python -m harness.run_extraction --mode local --limit 10 --messy
     (or from repo root: PYTHONPATH=evals python -m harness.run_extraction ...)
 
+--verify runs the Verifier (app/ai/verify.py) on every reading that passed the checks, as the
+runtime does, and reports agreement per field and whether agreement tracks correctness against
+gold. Without it the verifier is switched off (VERIFIER=off) so extraction numbers stay comparable.
+
 Writes <out>/NNN_case.json (+ .png), summary.json and report.md; prints the summary.
 """
 
@@ -12,10 +16,11 @@ import argparse
 import asyncio
 import difflib
 import json
+import os
 import statistics
 import sys
 import time
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -26,6 +31,7 @@ for extra in (REPO / "services" / "runtime", REPO / "packages" / "ledger" / "src
         sys.path.insert(0, str(extra))
 
 from app.ai.config import AiConfig  # noqa: E402
+from app.ai.verify import parse_date, select_backend  # noqa: E402
 from app.checks import normalise_vat_number  # noqa: E402
 from app.pipeline import process_image  # noqa: E402
 
@@ -68,6 +74,35 @@ def score(gold: dict[str, Any], proposal: dict[str, Any]) -> dict[str, bool]:
     }
 
 
+# Verifier field -> how to grade one reading of it against gold.
+_GOLD_GRADERS = {
+    "supplier_name": lambda g, v: _name_eq(g["supplier"]["name"], v),
+    "supplier_vat_number": lambda g, v: normalise_vat_number(g["supplier"].get("vat_number")) == normalise_vat_number(v),
+    "date": lambda g, v: (parse_date(v) or "") == parse_date(g["date"]),
+    "net_total": lambda g, v: _pence_eq(g["net_total"], v),
+    "vat_total": lambda g, v: _pence_eq(g["vat_total"], v),
+    "gross_total": lambda g, v: _pence_eq(g["gross_total"], v),
+}
+
+
+def score_verification(gold: dict[str, Any], proposal: dict[str, Any]) -> dict[str, Any] | None:
+    """Per field: did they agree, and was each reading right against gold?"""
+    v = proposal.get("verification")
+    if not v:
+        return None
+    if v.get("error"):
+        return {"error": v["error"], "fields": {}}
+    fields = {
+        name: {
+            "agree": f["agree"],
+            "extractor_right": _GOLD_GRADERS[name](gold, f["extractor"]),
+            "verifier_right": _GOLD_GRADERS[name](gold, f["verifier"]),
+        }
+        for name, f in v["fields"].items()
+    }
+    return {"error": None, "agree_all": v["agree_all"], "fields": fields}
+
+
 async def run_one(path: Path, idx: int, cfg: AiConfig, messy: bool, out: Path) -> dict[str, Any]:
     gold = json.loads(path.read_text(encoding="utf-8"))
     png = render_receipt(gold["printed_text"], messy=messy, seed=idx)
@@ -81,9 +116,19 @@ async def run_one(path: Path, idx: int, cfg: AiConfig, messy: bool, out: Path) -
     t0 = time.perf_counter()
     try:
         proposal = (await process_image(png, "image/png", cfg)).model_dump(mode="json")
-        rec |= {"proposal": proposal, "scores": score(gold, proposal), "error": None}
+        rec |= {
+            "proposal": proposal,
+            "scores": score(gold, proposal),
+            "verification": score_verification(gold, proposal),
+            "error": None,
+        }
     except Exception as exc:  # record and carry on; one bad doc must not stop the run
-        rec |= {"proposal": None, "scores": {f: False for f in FIELDS}, "error": f"{type(exc).__name__}: {exc}"}
+        rec |= {
+            "proposal": None,
+            "scores": {f: False for f in FIELDS},
+            "verification": None,
+            "error": f"{type(exc).__name__}: {exc}",
+        }
     rec["elapsed_s"] = round(time.perf_counter() - t0, 3)
     (out / f"{path.stem}.json").write_text(json.dumps(rec, indent=2, ensure_ascii=False), encoding="utf-8")
     return rec
@@ -118,6 +163,87 @@ def summarise(records: list[dict[str, Any]], cfg: AiConfig, messy: bool) -> dict
     }
 
 
+def _status_without_verifier(proposal: dict[str, Any]) -> str:
+    fails = [c for c in proposal["checks"] if not c["ok"] and c["severity"] == "fail" and c["code"] != "VERIFIER_AGREES"]
+    return "needs_a_look" if fails else "proposed"
+
+
+def summarise_verification(records: list[dict[str, Any]], verifier: str) -> dict[str, Any]:
+    """Agreement per field, and whether agreement means the Extractor was right (graded against gold)."""
+    ok = [r for r in records if r["error"] is None]
+    ran = [r for r in ok if r["verification"] and not r["verification"]["error"]]
+    pct = lambda k, n: round(k / n, 3) if n else None  # noqa: E731
+    per_field: dict[str, dict[str, Any]] = {}
+    for name in _GOLD_GRADERS:
+        fs = [r["verification"]["fields"][name] for r in ran]
+        per_field[name] = {
+            "agree": pct(sum(f["agree"] for f in fs), len(fs)),
+            "extractor_right": pct(sum(f["extractor_right"] for f in fs), len(fs)),
+            "verifier_right": pct(sum(f["verifier_right"] for f in fs), len(fs)),
+            "agreed_but_both_wrong": sum(f["agree"] and not f["extractor_right"] for f in fs),
+            "disagreed_extractor_wrong": sum(not f["agree"] and not f["extractor_right"] for f in fs),
+            "disagreed_extractor_right": sum(not f["agree"] and f["extractor_right"] for f in fs),
+        }
+    docs = Counter()
+    for r in ran:
+        v = r["verification"]
+        ex_right = all(f["extractor_right"] for f in v["fields"].values())
+        docs[("agree" if v["agree_all"] else "differ", "right" if ex_right else "wrong")] += 1
+    status_before = sum(_status_without_verifier(r["proposal"]) == r["expected_status"] for r in ok)
+    status_after = sum(r["proposal"]["status"] == r["expected_status"] for r in ok)
+    return {
+        "verifier": verifier,
+        "docs": len(records),
+        "passed_checks": sum(_status_without_verifier(r["proposal"]) == "proposed" for r in ok),
+        "verified": len(ran),
+        "verifier_errors": sum(bool(r["verification"] and r["verification"]["error"]) for r in ok),
+        "agree_all": pct(sum(r["verification"]["agree_all"] for r in ran), len(ran)),
+        "doc_outcomes": {
+            "agreed_and_extractor_right": docs[("agree", "right")],
+            "agreed_but_extractor_wrong": docs[("agree", "wrong")],
+            "disagreed_and_extractor_wrong": docs[("differ", "wrong")],
+            "disagreed_but_extractor_right": docs[("differ", "right")],
+        },
+        "per_field": per_field,
+        "status_accuracy_without_verifier": pct(status_before, len(ok)),
+        "status_accuracy_with_verifier": pct(status_after, len(ok)),
+        "mean_verifier_s": round(statistics.mean(ts), 2)
+        if (ts := [r["proposal"]["verification"]["elapsed_s"] for r in ran if r["proposal"]["verification"].get("elapsed_s")])
+        else None,
+    }
+
+
+def verification_md(v: dict[str, Any]) -> str:
+    fmt = lambda x: "—" if x is None else f"{x:.0%}"  # noqa: E731
+    o = v["doc_outcomes"]
+    out = [
+        f"## Verifier: {v['verifier']}",
+        "",
+        f"Docs: {v['docs']} | passed checks (so verified): {v['passed_checks']} | verified OK: {v['verified']} | "
+        f"verifier errors: {v['verifier_errors']} | all fields agree: {fmt(v['agree_all'])} | mean {v['mean_verifier_s']} s",
+        "",
+        "| Doc outcome (graded against gold) | Docs |",
+        "|---|---:|",
+        f"| Agreed, Extractor right (confirmed) | {o['agreed_and_extractor_right']} |",
+        f"| Agreed, Extractor wrong (missed) | {o['agreed_but_extractor_wrong']} |",
+        f"| Disagreed, Extractor wrong (caught) | {o['disagreed_and_extractor_wrong']} |",
+        f"| Disagreed, Extractor right (false alarm) | {o['disagreed_but_extractor_right']} |",
+        "",
+        "| Field | Agree | Extractor right | Verifier right | Agreed, both wrong | Disagreed, Extractor wrong | Disagreed, Extractor right |",
+        "|---|---:|---:|---:|---:|---:|---:|",
+        *(
+            f"| {k} | {fmt(f['agree'])} | {fmt(f['extractor_right'])} | {fmt(f['verifier_right'])} | "
+            f"{f['agreed_but_both_wrong']} | {f['disagreed_extractor_wrong']} | {f['disagreed_extractor_right']} |"
+            for k, f in v["per_field"].items()
+        ),
+        "",
+        f"Proposed / needs-a-look decision: {fmt(v['status_accuracy_without_verifier'])} without the verifier, "
+        f"{fmt(v['status_accuracy_with_verifier'])} with it.",
+        "",
+    ]
+    return "\n".join(out)
+
+
 def report_md(summary: dict[str, Any]) -> str:
     c = summary["config"]
     out = [
@@ -143,11 +269,18 @@ def report_md(summary: dict[str, Any]) -> str:
         ),
         "",
     ]
+    if summary.get("verification"):
+        out.append(verification_md(summary["verification"]))
     return "\n".join(out)
 
 
 async def main_async(args: argparse.Namespace) -> dict[str, Any]:
     cfg = AiConfig.resolve(mode=args.mode, model=args.model)
+    if not args.verify:
+        os.environ["VERIFIER"] = "off"
+    backend = select_backend(cfg)
+    if args.verify and backend is None:
+        raise SystemExit("--verify given but VERIFIER=off is set in the environment")
     out = Path(args.out) if args.out else REPO / "evals" / "runs" / datetime.now().strftime("%Y%m%d-%H%M%S")
     out.mkdir(parents=True, exist_ok=True)
     golds = sorted(GOLD_DIR.glob("*.json"))
@@ -166,6 +299,8 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
 
     records = await asyncio.gather(*(guarded(i, g) for i, g in enumerate(golds)))
     summary = summarise(list(records), cfg, args.messy)
+    if backend is not None:
+        summary["verification"] = summarise_verification(list(records), backend.label())
     summary["out_dir"] = str(out)
     (out / "summary.json").write_text(json.dumps(summary, indent=2), encoding="utf-8")
     (out / "report.md").write_text(report_md(summary), encoding="utf-8")
@@ -179,6 +314,7 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=0, help="0 = all")
     ap.add_argument("--messy", action="store_true", help="phone-photo style renders")
     ap.add_argument("--case", action="append", help="only these gold_case values (repeatable)")
+    ap.add_argument("--verify", action="store_true", help="run the Verifier after passing checks and report agreement")
     ap.add_argument("--concurrency", type=int, default=1, help="keep 1 for local (single GPU)")
     ap.add_argument("--out", default=None, help="default evals/runs/<timestamp>/")
     summary = asyncio.run(main_async(ap.parse_args()))

@@ -40,6 +40,7 @@ export default function PrivacyPage() {
         <ul className="list-disc space-y-2 pl-5">
           <li>Microsoft (sign-in and OneDrive) — under your Microsoft account terms.</li>
           <li>Meta Model API — only if you provide your own key; subject to Meta&apos;s terms for your key.</li>
+          <li>Baseten — only if you use your own key and the server owner has switched on the Muse Spark Open verifier; the document image is then sent there for an independent second reading. In local mode documents are never sent to Baseten.</li>
           <li>HM Revenue &amp; Customs — only if you connect HMRC.</li>
         </ul>
         <p>We do not sell data and we do not use advertising or analytics SDKs.</p>

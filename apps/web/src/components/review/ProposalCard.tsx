@@ -84,9 +84,37 @@ export default function ProposalCard({ proposal, remember, onRememberChange, hid
       <p className="mt-4 rounded-xl bg-ground p-4 text-[15px] leading-7">
         {proposal.reviewerNote}
       </p>
-      <p className="mt-3 rounded-xl bg-teal-tint p-4 text-[15px] leading-7 text-teal-dark">
-        {proposal.verifierNote}
-      </p>
+      <div
+        className={`mt-3 rounded-xl p-4 text-[15px] leading-7 ${
+          proposal.verifierTone === "differ"
+            ? "border border-warn-border bg-warn-bg text-warn-ink"
+            : proposal.verifierTone === "none"
+              ? "bg-ground text-muted"
+              : "bg-teal-tint text-teal-dark"
+        }`}
+      >
+        <p>{proposal.verifierNote}</p>
+        {proposal.verifierDiffs && proposal.verifierDiffs.length > 0 && (
+          <table className="mt-2 w-full text-left text-[14px]">
+            <thead>
+              <tr>
+                <th className="py-1 pr-3 font-semibold">Field</th>
+                <th className="py-1 pr-3 font-semibold">First reading</th>
+                <th className="py-1 font-semibold">Second reading</th>
+              </tr>
+            </thead>
+            <tbody>
+              {proposal.verifierDiffs.map((d) => (
+                <tr key={d.field} className="border-t border-warn-border">
+                  <td className="py-1 pr-3">{d.field}</td>
+                  <td className="py-1 pr-3 font-bold">{d.extractor}</td>
+                  <td className="py-1 font-bold">{d.verifier}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
 
       {!hideActions && (
       <div className="mt-5 flex flex-col gap-3 sm:flex-row">

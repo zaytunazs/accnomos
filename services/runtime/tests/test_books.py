@@ -51,7 +51,11 @@ def stub_extract(monkeypatch: pytest.MonkeyPatch) -> list[bytes]:
         calls.append(data)
         return DOCS_BY_BYTES[data], {"backend": "stub", "model": cfg.model}
 
+    async def no_verifier(*_a: object, **_kw: object) -> None:
+        return None
+
     monkeypatch.setattr(pipeline, "extract_document", fake_extract)
+    monkeypatch.setattr(pipeline, "verify", no_verifier)
     return calls
 
 

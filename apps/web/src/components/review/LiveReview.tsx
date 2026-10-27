@@ -21,6 +21,47 @@ const codeMeaning: Record<string, string> = {
   O: "outside the scope of UK VAT",
 };
 
+const fieldLabel: Record<string, string> = {
+  supplier_name: "Supplier",
+  supplier_vat_number: "VAT number",
+  date: "Date",
+  net_total: "Net",
+  vat_total: "VAT",
+  gross_total: "Total",
+};
+
+const verifierName = (model: string) =>
+  model.startsWith("baseten:") ? "Muse Spark Open" : model.startsWith("meta:") ? "Muse Spark" : model.replace(/^ollama:/, "");
+
+const shown = (v: string | number | null) => (v === null || v === "" ? "none" : typeof v === "number" ? v.toFixed(2) : v);
+
+/** The verifier chip, bound to the runtime's real second reading. Never claims agreement it did not see. */
+function verifierView(p: RtProposal): Pick<UiProposal, "verifierNote" | "verifierTone" | "verifierDiffs"> {
+  const v = p.verification;
+  const passed = `Checks run by code: ${p.checks.filter((c) => c.ok).length} of ${p.checks.length} passed`;
+  if (!v) {
+    const why = p.status === "needs_a_look" ? "skipped, checks already flagged it" : "not run";
+    return { verifierNote: `Second reading ${why} · ${passed}`, verifierTone: "none" };
+  }
+  if (v.error) return { verifierNote: `Second reading unavailable (${v.model}) · ${passed}`, verifierTone: "none" };
+  const fields = Object.entries(v.fields);
+  if (v.agree_all)
+    return { verifierNote: `Verifier agrees · all ${fields.length} fields match — ${verifierName(v.model)} · ${passed}`, verifierTone: "agree" };
+  const diffs = fields
+    .filter(([, f]) => !f.agree)
+    .map(([k, f]) => ({ field: fieldLabel[k] ?? k, extractor: shown(f.extractor), verifier: shown(f.verifier) }));
+  return {
+    verifierNote: `Verifier disagrees on ${diffs.length} of ${fields.length} fields — ${verifierName(v.model)}. Check the document before you approve.`,
+    verifierTone: "differ",
+    verifierDiffs: diffs,
+  };
+}
+
+/** Append the model/timing/crop suffix to the verifier line so the card keeps showing how the reading was made. */
+function withCrop<T extends { verifierNote: string }>(view: T, suffix: string): T {
+  return { ...view, verifierNote: `${view.verifierNote} · ${suffix}` };
+}
+
 /** Map a runtime proposal onto the card's display model (strings only, plain English). */
 export function toUi(p: RtProposal): UiProposal {
   const x = p.extracted;
@@ -52,7 +93,7 @@ export function toUi(p: RtProposal): UiProposal {
     paidBy: x.card_last4 ? `Card ending ${x.card_last4}` : (x.payment_method ?? "—"),
     lines,
     reviewerNote: why,
-    verifierNote: `Checks run by code: ${verified.filter((c) => c.ok).length} of ${verified.length} passed · ${p.model} · ${p.elapsed_s.toFixed(1)} s${cropped}`,
+    ...withCrop(verifierView(p), `${p.model} · ${p.elapsed_s.toFixed(1)} s${cropped}`),
   };
 }
 

@@ -55,6 +55,7 @@ export interface RtProposal {
   elapsed_s: number;
   /** How the photo was cropped before extraction; "none" = original used. Chip: crop.note. */
   crop?: { method: "sam" | "code" | "none"; box: [number, number, number, number] | null; note: string } | null;
+  verification?: RtVerification | null;
   source_path?: string;
   decided_by?: string | null;
   decided_at?: string | null;
@@ -92,6 +93,19 @@ export function setAutopilotOn(on: boolean): void {
   } catch {
     /* storage unavailable — the choice lives for this page only */
   }
+}
+/** Independent second reading (app/ai/verify.py); `agree` is decided by code, values are never merged. */
+export interface RtFieldAgreement {
+  extractor: string | number | null;
+  verifier: string | number | null;
+  agree: boolean;
+}
+export interface RtVerification {
+  fields: Record<string, RtFieldAgreement>;
+  agree_all: boolean;
+  model: string;
+  elapsed_s?: number | null;
+  error?: string | null;
 }
 export interface RtSummary {
   proposed: number;
