@@ -5,6 +5,8 @@ import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import BankUpload from "@/components/bank/BankUpload";
 import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import PrintButton from "@/components/PrintButton";
+import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import {
   runtime,
@@ -57,6 +59,52 @@ const STATUS_CHIP: Record<RtBankLine["status"], string> = {
   transfer: "bg-ground text-ink",
   ignored: "bg-ground text-muted",
 };
+
+const CSV_HEAD = ["date", "description", "reference", "amount_pence", "balance_pence", "status", "match", "source_file"];
+
+/** Every line with its status and match, money exactly as the runtime gave it (signed pence). */
+function bankRows(lines: RtBankLine[]): CsvValue[][] {
+  return [
+    CSV_HEAD,
+    ...lines.map((l) => [l.date, l.description, l.reference, l.amount_pence, l.balance_pence, l.status, l.matched_event_ids.join("; "), l.source_file]),
+  ];
+}
+
+/** Paper only: every statement line, however the on-screen sections are expanded. */
+function PrintLines({ lines }: { lines: RtBankLine[] }) {
+  return (
+    <section aria-label="Statement lines" className="hidden print:block">
+      <h2 className="text-lg font-extrabold">Statement lines</h2>
+      <table className="mt-2 w-full text-left text-[12px]">
+        <thead>
+          <tr className="border-b border-border text-left font-bold text-muted">
+            <th scope="col" className="py-1 pr-2">Date</th>
+            <th scope="col" className="py-1 pr-2">Description</th>
+            <th scope="col" className="py-1 pr-2 text-right">Amount</th>
+            <th scope="col" className="py-1 pr-2 text-right">Balance</th>
+            <th scope="col" className="py-1 pr-2">Status</th>
+            <th scope="col" className="py-1">Match</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((l) => (
+            <tr key={l.id} className="border-t border-border">
+              <td className="whitespace-nowrap py-1 pr-2">{ukDate(l.date)}</td>
+              <td className="py-1 pr-2">
+                {l.description || "—"}
+                {l.reference ? ` · ${l.reference}` : ""}
+              </td>
+              <td className="whitespace-nowrap py-1 pr-2 text-right font-bold tabular-nums">{money(l.amount_pence)}</td>
+              <td className="whitespace-nowrap py-1 pr-2 text-right tabular-nums">{l.balance_pence === null ? "—" : money(l.balance_pence)}</td>
+              <td className="py-1 pr-2">{STATUS_LABEL[l.status]}</td>
+              <td className="py-1">{l.matched_event_ids.map((id) => id.slice(0, 8)).join(", ") || "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
 
 async function load(a: AccountInfo): Promise<Data> {
   const [summary, statements, suggestions, unmatched, lines] = await Promise.all([
@@ -767,11 +815,24 @@ export default function LiveBank() {
           body="Each payment on your statement appears here to check against your books — matching never posts anything."
         />
       ) : (
-        <Statements list={data.statements} lines={data.lines} />
+        <>
+          <div className="flex flex-wrap gap-2 print:hidden">
+            <PrintButton />
+            <button
+              type="button"
+              onClick={() => downloadCsv(csvFilename("bank"), bankRows(data.lines))}
+              className="h-11 rounded-xl border border-border bg-white px-4 text-[15px] font-bold"
+            >
+              Export CSV
+            </button>
+          </div>
+          <Statements list={data.statements} lines={data.lines} />
+          <PrintLines lines={data.lines} />
+        </>
       )}
 
       {data.summary.total > 0 && (
-        <section aria-label="Bank lines" className="rounded-2xl border border-border bg-white p-5">
+        <section aria-label="Bank lines" className="rounded-2xl border border-border bg-white p-5 print:hidden">
           <div role="tablist" aria-label="Bank lines" className="flex flex-wrap gap-2 border-b border-border pb-3">
             {tabs.map((t) => (
               <button
