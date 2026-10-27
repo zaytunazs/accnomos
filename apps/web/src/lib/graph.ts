@@ -40,6 +40,8 @@ export interface DriveItem {
   name: string;
   webUrl?: string;
   eTag?: string;
+  size?: number; // bytes; for a folder, everything inside it
+  lastModifiedDateTime?: string;
   folder?: { childCount: number };
   file?: { mimeType: string };
 }
@@ -68,6 +70,27 @@ export function itemPath(account: AccountInfo, relPath = ""): string {
     return relPath ? `/me/drive/special/approot:/${enc}` : "/me/drive/special/approot";
   }
   return relPath ? `/me/drive/root:/Accnomos/${enc}` : "/me/drive/root:/Accnomos";
+}
+
+/** The books root itself (for its webUrl and total size). Read-only: never creates the folder. */
+export async function getRoot(account: AccountInfo): Promise<DriveItem> {
+  const token = await getToken(storageScopesFor(account));
+  return graph<DriveItem>(token, `${itemPath(account)}?$select=id,name,webUrl,size,lastModifiedDateTime,folder`);
+}
+
+/** Direct children of a folder in the books tree ("" = the root), following Graph's paging. Read-only. */
+export async function listChildren(account: AccountInfo, relPath = ""): Promise<DriveItem[]> {
+  const token = await getToken(storageScopesFor(account));
+  const select = "$select=id,name,webUrl,size,lastModifiedDateTime,folder,file&$top=200";
+  let path: string | null = `${itemPath(account, relPath)}${relPath ? ":" : ""}/children?${select}`;
+  const items: DriveItem[] = [];
+  while (path) {
+    const page: { value: DriveItem[]; "@odata.nextLink"?: string } = await graph(token, path);
+    items.push(...page.value);
+    const next = page["@odata.nextLink"];
+    path = next ? next.replace(GRAPH, "") : null;
+  }
+  return items;
 }
 
 export async function ensureRoot(account: AccountInfo): Promise<DriveItem> {
