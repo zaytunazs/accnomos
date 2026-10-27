@@ -22,6 +22,12 @@ ROOT = Path(__file__).resolve().parents[3]
 PATHS_PY = ROOT / "services/runtime/app/paths.py"
 SKIP_DIRS = {".venv", "node_modules", "__pycache__", ".git", "tests", "out", ".next", "build", "apps"}
 NUMBERED = re.compile(r"(^|/)0\d [A-Za-z]")
+# A known name anywhere in a string ("saved in 06 VAT returns after ..."), current or old.
+NAMED = re.compile("|".join(re.escape(n) for n in [*(f.name for f in paths.TOP), *paths.RENAMED]), re.I)
+
+
+def _hit(value: str) -> bool:
+    return bool(NUMBERED.search(value) or NAMED.search(value))
 OLD = re.compile("|".join(re.escape(old) for old in paths.RENAMED))
 # Current docs and code outside Python; docs/reviews/* are a record of what was true at the time.
 DOCS_AND_WEB = [
@@ -72,17 +78,18 @@ def test_no_folder_name_literal_outside_paths_py() -> None:
         docs = _docstrings(tree)
         for node in ast.walk(tree):
             if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in docs:
-                if NUMBERED.search(node.value):
+                if _hit(node.value):
                     bad.append(f"{p.relative_to(ROOT)}:{node.lineno}: {node.value[:60]!r}")
     assert not bad, "import the name from app/paths.py instead:\n" + "\n".join(bad)
 
 
 def test_the_literal_check_catches_one() -> None:
-    tree = ast.parse('"""Doc: 04 Bank statements."""\nX = "04 Bank statements"\nY = f"{A}/03 Sales/x"\n')
+    tree = ast.parse('"""Doc: 04 Bank statements."""\nX = "04 Bank statements"\nY = f"{A}/03 Sales/x"\n'
+                     'Z = "saved in 06 VAT returns after"\nD = "paid on 05 Oct"\n')
     docs = _docstrings(tree)
     hits = [n.value for n in ast.walk(tree)
-            if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs and NUMBERED.search(n.value)]
-    assert hits == ["04 Bank statements", "/03 Sales/x"]
+            if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs and _hit(n.value)]
+    assert sorted(hits) == ["/03 Sales/x", "04 Bank statements", "saved in 06 VAT returns after"]
 
 
 def _text_files() -> list[Path]:

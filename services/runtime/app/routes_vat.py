@@ -174,7 +174,7 @@ class VatPeriods(BaseModel):
     months: int
     start_month: int
     periods: list[VatPeriod]  # current first, then the 8 before it
-    status_source: str = "Submitted = a receipt saved in 06 VAT returns after a relay submission; HMRC's own list is in Connect to HMRC."
+    status_source: str = f"Submitted = a receipt saved in {VAT_RETURNS} after a relay submission; HMRC's own list is in Connect to HMRC."
 
 
 @router.get("/vat/periods", response_model=VatPeriods)

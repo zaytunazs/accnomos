@@ -147,6 +147,20 @@ async def test_old_path_is_used_while_the_old_folder_is_still_there(fake: FakeSt
     assert fake.files[dest] == b"old"
 
 
+def test_home_names_the_statement_where_it_is_now() -> None:
+    from datetime import date
+
+    from accnomos_ledger.bank import BankLine
+
+    from app import dashboard
+
+    line = BankLine(id="a" * 16, date=date(2026, 9, 30), amount_pence=-50, description="x", balance_pence=1050,
+                    source_file="03 Bank statements/2026-09-30_starling.csv", status="matched")  # imported earlier
+    cash = dashboard.cash_position([line])
+    assert cash.statement == "04 Bank statements/2026-09-30_starling.csv"
+    assert cash.bank == "starling" and cash.balance_pence == 1050
+
+
 # --------------------------------------------------------------------------- #
 # Wiring: get_books renames on first contact; GET /books/layout and /health
 # --------------------------------------------------------------------------- #
