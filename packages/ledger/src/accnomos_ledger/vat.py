@@ -82,7 +82,8 @@ def compute_vat_return(
             continue  # out of scope
         vat = ev.vat or 0
         sign = -1 if ev.kind == "reversal" else 1
-        is_sale = ev.kind == "sale" or (ev.kind == "reversal" and any(ln.credit and "Sales" in ln.account for ln in ev.lines))
+        # A reversal swaps every line's side, so the Sales line of an undone sale is a debit; purchases never touch Sales.
+        is_sale = ev.kind == "sale" or (ev.kind == "reversal" and any("Sales" in ln.account for ln in ev.lines))
         if is_sale:
             sales_net += sign * ev.net
             sales_vat += sign * vat

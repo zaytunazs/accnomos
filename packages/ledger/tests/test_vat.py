@@ -74,6 +74,22 @@ def test_net_due_and_rounding():
     }
 
 
+def reversal(ev: LedgerEvent) -> LedgerEvent:
+    """As the runtime undoes an entry (app/approve.py reversal_of): every line on the other side."""
+    return LedgerEvent(
+        kind="reversal", date=ev.date, net=ev.net, vat=ev.vat, reverses=ev.id,
+        lines=[Line(account=ln.account, debit=ln.credit, credit=ln.debit, vat_code=ln.vat_code) for ln in ev.lines],
+        **APPROVED,
+    )
+
+
+def test_reversed_sale_and_purchase_net_to_nothing():
+    s, p = sale(10_000, 2_000, date(2026, 8, 1)), purchase(5_000, 1_000, date(2026, 8, 2))
+    ret = compute_vat_return([s, reversal(s), p, reversal(p)], "26A3", date(2026, 7, 1), date(2026, 9, 30))
+    assert str(ret.vat_due_sales) == "0.00" and str(ret.vat_reclaimed) == "0.00"
+    assert ret.total_sales_ex_vat == 0 and ret.total_purchases_ex_vat == 0
+
+
 def test_outside_period_and_no_vat_receipt():
     outside = purchase(1000, 200, date(2026, 10, 1))
     parking = purchase(400, 0, date(2026, 9, 9), code=VatCode.NO_VAT)
