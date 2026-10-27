@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 
 import httpx
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .hmrc_client import HmrcClient, HmrcError, HmrcUnavailable
@@ -35,6 +36,15 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
     app.state.relay = Relay(settings, HmrcClient(settings, http), OAuth(settings, http))
     app.state.started = time.time()
     app.include_router(router)
+    # The PWA calls the relay straight from the browser (JSON + X-HMRC-Access-Token → preflight). Same origins
+    # the OAuth callback may redirect to, plus http://localhost / 127.0.0.1 for development. No cookies.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[o for o in settings.allowed_origins if o.startswith(("https://", "http://"))],
+        allow_origin_regex=r"http://(localhost|127\.0\.0\.1)(:\d+)?",
+        allow_methods=["GET", "POST"],
+        allow_headers=["Content-Type", "X-HMRC-Access-Token"],
+    )
 
     @app.middleware("http")
     async def stamp_received(request: Request, call_next):

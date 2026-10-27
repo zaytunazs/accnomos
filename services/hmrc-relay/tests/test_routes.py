@@ -23,6 +23,23 @@ def never(_: httpx.Request) -> httpx.Response:
     raise AssertionError("HMRC must not be called")
 
 
+# --- CORS (the PWA calls the relay straight from the browser) ----------------------------------------------
+
+@pytest.mark.parametrize("origin", ["https://app.accnomos.example", "http://localhost:3000"])
+async def test_cors_preflight_allows_pwa_origins(client_for, origin):
+    r = await client_for(never).options("/vat/123456789/obligations", headers={
+        "Origin": origin, "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type,x-hmrc-access-token"})
+    assert r.status_code == 200
+    assert r.headers["access-control-allow-origin"] == origin
+    assert "x-hmrc-access-token" in r.headers["access-control-allow-headers"].lower()
+
+
+async def test_cors_rejects_other_origins(client_for):
+    r = await client_for(never).get("/health", headers={"Origin": "https://evil.example"})
+    assert "access-control-allow-origin" not in r.headers
+
+
 async def test_health(client_for):
     r = await client_for(never).get("/health")
     assert set(r.json()) == {"ok", "service", "version", "sandbox", "configured", "uptime_s"}

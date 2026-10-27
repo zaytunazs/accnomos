@@ -51,3 +51,5 @@ export function aiHeaders(cfg: AiConfig): Record<string, string> {
 }
 
 export const RUNTIME_URL = process.env.NEXT_PUBLIC_RUNTIME_URL ?? "http://localhost:8780";
+/** Stateless HMRC relay (services/hmrc-relay); holds only the HMRC client secret. */
+export const RELAY_URL = process.env.NEXT_PUBLIC_RELAY_URL ?? "http://localhost:8787";

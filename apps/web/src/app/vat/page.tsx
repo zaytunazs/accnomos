@@ -1,6 +1,7 @@
 import Link from "next/link";
 import SubmitSheet from "@/components/vat/SubmitSheet";
 import LiveVat from "@/components/vat/LiveVat";
+import ConnectHmrc from "@/components/vat/ConnectHmrc";
 import { box4SampleRows, vatBoxes, vatMeta } from "@/lib/sample-vat";
 
 function EntriesCell({ box, count }: { box: number; count: number }) {
@@ -19,6 +20,7 @@ export default function VatPage() {
   return (
     <div className="flex flex-col gap-6">
       <LiveVat />
+      <ConnectHmrc />
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-[13px] font-semibold text-muted">
