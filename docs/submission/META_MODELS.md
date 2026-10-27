@@ -10,7 +10,7 @@ eval reports in `evals/`. Prices are quotes from our own docs or scripts unless 
 |---|---|---|
 | Muse Glimmer 30B | **Run** (extraction, verifier) | 60, 200 and 20-document evals, local on a DGX Spark; the other text tasks are stub-tested only |
 | Muse Spark 1.3 | **Unit-tested only** | No Meta key in our eval environment; never called live by us |
-| Muse Spark Open (Baseten) | **Unit-tested only, slug unconfirmed** | `meta-models/muse-spark-open` is a guess; the demo sets no Baseten key |
+| Muse Spark Open (Baseten) | **Unit-tested only** | slug `meta-models/muse-spark-open-1026` (from Baseten's model list); only key-mode users are verified by it |
 | Muse Voice Transcribe | **Modelled** | Request format from research notes, not dev.meta.ai; no live mic run anywhere |
 | SAM 3.1 | **Modelled, off by default** | Wire format is a guess; fixture is marked ILLUSTRATIVE; never run live |
 | Muse Image | **Run, build time only** | 12 images, USD 0.12 (commit message); not in the runtime |
@@ -43,7 +43,7 @@ Not used: `muse-wonder-1.0` is not called anywhere.
 ### Muse Spark Open (Baseten, optional verifier)
 
 - **Where:** `services/runtime/app/ai/verify.py`, key mode only, and only if the server owner sets `BASETEN_API_KEY` (`.env.example`).
-  Default slug `meta-models/muse-spark-open`, overridable with `VERIFIER_MODEL` or `BASETEN_MODEL`.
+  Default slug `meta-models/muse-spark-open-1026`, overridable with `VERIFIER_MODEL` or `BASETEN_MODEL`.
 - **Why:** an independent model for the second reading, so the checker is not the model that did the first reading. A different prompt is used and the verifier never sees the first answer.
 - **Verified:** unit-tested only (`services/runtime/tests/test_verify.py`). The slug is unconfirmed and no Baseten key is set on the demo, so the demo verifier is Glimmer (local)
   or Spark 1.3 (key mode). The one verifier eval is **Glimmer checking Glimmer** on 20 documents: 17 of 18 verified documents agreed on all six fields,

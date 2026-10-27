@@ -101,7 +101,7 @@ Severity:
 
 | Severity | Item |
 |---|---|
-| Medium | The Baseten slug `meta-models/muse-spark-open` is unconfirmed; the verifier needs a Baseten key on the server (the demo has none); no real Baseten or Meta verifier call has been made. |
+| Medium | The verifier (Baseten slug `meta-models/muse-spark-open-1026`) needs a Baseten key on the server (the demo has none); no real Baseten or Meta verifier call has been made. |
 | Medium | Mixed-rate receipts give false alarms; the prompt needs a mixed-rate hint. The catch rate is unmeasured (20 documents, Glimmer on Glimmer): run the full 60 and real photos. |
 | Medium | The SAM 3.1 wire format is unverified, so `SAM_CROP` stays off. Capture a real response first. |
 | Medium | The Muse Voice request (`/asr/transcribe`, multipart parts, response field) comes from research notes. No live mic run in any browser or on the phone. |
