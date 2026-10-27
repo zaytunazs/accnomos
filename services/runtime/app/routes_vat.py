@@ -6,7 +6,7 @@ from datetime import date
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return, reverses_sale
 from app.approve import submitted_spans
@@ -22,8 +22,13 @@ from app.deadlines import (
     recent_periods,
     stagger_of,
 )
-from app.paths import VAT_RETURNS
-from app.routes_books import get_books
+from app.paths import SYSTEM, VAT_RETURNS
+from app.routes_books import get_books, require_user
+
+#: HMRC obligations the web app fetched through the relay and posted back, so a return
+#: filed elsewhere still shows as submitted. The runtime holds no HMRC token; this file
+#: is the only thing it can know about HMRC's own list.
+OBLIGATIONS_PATH = f"{SYSTEM}/vat/obligations.json"
 from app.vat_cycle import VatCycle, vat_cycle
 
 router = APIRouter(prefix="/books", tags=["vat"])
@@ -36,6 +41,32 @@ class VatBox(BaseModel):
     entries: int
 
 
+class HmrcObligation(BaseModel):
+    """One HMRC VAT obligation, as the relay returns it. Posted by the web app after it
+    fetches obligations through the relay (the runtime holds no HMRC token)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    periodKey: str = Field(pattern=r"^[A-Za-z0-9#]{4}$", max_length=4)
+    start: date
+    end: date
+    due: date
+    status: Literal["O", "F"]  # open / fulfilled
+    received: date | None = None  # when HMRC received the return, for fulfilled ones
+
+    @model_validator(mode="after")
+    def _dates_add_up(self) -> HmrcObligation:
+        if self.end < self.start:
+            raise ValueError("end is before start")
+        return self
+
+
+class ObligationsBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    obligations: list[HmrcObligation]
+
+
 class VatReturnView(BaseModel):
     period_key: str
     start: date
@@ -43,7 +74,9 @@ class VatReturnView(BaseModel):
     period: str  # the period used, "2026-Q4" (quarterly) or "2026-11" (monthly)
     label: str  # "Oct–Dec 2026"
     current: bool  # the period we are in now
-    submitted: bool  # a relay submission receipt is saved for it
+    submitted: bool  # HMRC says fulfilled, or a relay submission receipt is saved for it
+    submitted_source: Literal["hmrc", "accnomos"] | None = None  # who says it is submitted
+    received: date | None = None  # when HMRC received the return, when it says fulfilled
     can_submit: bool  # current or previous period, not yet submitted
     boxes: list[VatBox]
     event_ids: list[str]
@@ -89,6 +122,26 @@ async def submitted_periods(books: Books) -> dict[tuple[date, date], str]:
     """{(start, end): HMRC period key} for each return the web app saved after a relay submission
     (`06 VAT returns/{periodKey}/return.json`). The runtime holds no HMRC token, so this is what it can know."""
     return await submitted_spans(books)
+
+
+async def read_obligations(books: Books) -> list[HmrcObligation]:
+    """HMRC's own obligations list, as the web app last posted it. A missing, corrupt or
+    hand-edited file means no obligations, never a 500 — receipts still count on their own."""
+    try:
+        raw = await books.read_json(OBLIGATIONS_PATH, None)
+    except ValueError:
+        return []
+    if isinstance(raw, list):
+        raw = {"obligations": raw}
+    if not isinstance(raw, dict) or not isinstance(raw.get("obligations"), list):
+        return []
+    out = []
+    for item in raw["obligations"]:
+        try:
+            out.append(HmrcObligation.model_validate(item))
+        except ValueError:
+            continue  # one bad row must not hide the rest, or the receipts
+    return out
 
 
 def _resolve(
@@ -155,7 +208,14 @@ async def vat_return(
         9: 0,
     }
     amounts = box_amounts(ret)
-    submitted = (start, end) in await submitted_periods(books)
+    receipt_key = (await submitted_periods(books)).get((start, end))
+    fulfilled = next((o for o in await read_obligations(books) if (o.start, o.end) == (start, end) and o.status == "F"), None)
+    if fulfilled is not None:
+        period_key, submitted, source, received = fulfilled.periodKey, True, "hmrc", fulfilled.received
+    elif receipt_key is not None:
+        submitted, source, received = True, "accnomos", None
+    else:
+        submitted, source, received = False, None, None
     return VatReturnView(
         period_key=period_key,
         start=start,
@@ -164,6 +224,8 @@ async def vat_return(
         label=period_label(start, end),
         current=(start, end) == cycle.current(today),
         submitted=submitted,
+        submitted_source=source,
+        received=received,
         can_submit=can_submit(start, cycle, today, submitted),
         boxes=[VatBox(box=i, label=LABELS[i], amount=amounts[i], entries=counts[i]) for i in range(1, 10)],
         event_ids=ret.event_ids,
@@ -181,8 +243,10 @@ class VatPeriod(BaseModel):
     label: str  # "Oct–Dec 2026"
     current: bool
     deadline: date
-    status: Literal["open", "submitted", "none"]  # submitted via the relay / still to file / nothing recorded
-    hmrc_period_key: str | None  # from the saved submission receipt
+    status: Literal["open", "submitted", "none"]  # submitted via HMRC or a receipt / still to file / nothing recorded
+    hmrc_period_key: str | None  # HMRC's key when its dates match, else from the saved submission receipt
+    submitted_source: Literal["hmrc", "accnomos"] | None = None  # who says it is submitted
+    received: date | None = None  # when HMRC received the return, when it says fulfilled
     entries: int  # approved entries dated in the period
     can_submit: bool
 
@@ -192,8 +256,10 @@ class VatPeriods(BaseModel):
     months: int
     start_month: int
     periods: list[VatPeriod]  # current first, then the 8 before it
+    warnings: list[str] = []  # e.g. our periods do not match the ones HMRC holds
     status_source: str = (
-        f"Submitted = a receipt saved in {VAT_RETURNS} after a relay submission; HMRC's own list is in Connect to HMRC."
+        "Submitted = HMRC marks the obligation fulfilled, or a receipt saved in "
+        f"{VAT_RETURNS} after a relay submission; HMRC's own list is in Connect to HMRC."
     )
 
 
@@ -208,11 +274,26 @@ async def vat_periods(
     spans = recent_periods(today, cycle.start_month, cycle.months)
     events = await books.list_events(spans[-1][0], spans[0][1])
     submitted = await submitted_periods(books)
+    obligations = {(o.start, o.end): o for o in await read_obligations(books)}
+    warnings = [
+        f"HMRC holds a VAT period {o.start.day} {o.start.strftime('%b %Y')} to {o.end.day} {o.end.strftime('%b %Y')} "
+        "that does not match your VAT periods in Accnomos. Check your VAT period setting in Settings › Business — "
+        "the dates HMRC holds decide what you can file."
+        for o in obligations.values()
+        if (o.start, o.end) not in spans
+    ]
     periods = []
     for i, (s, e) in enumerate(spans):
         entries = sum(s <= ev.date <= e for ev in events)
-        key = submitted.get((s, e))
-        status: Literal["open", "submitted", "none"] = "submitted" if key else "open" if (i == 0 or entries) else "none"
+        match = obligations.get((s, e))
+        fulfilled = match if match is not None and match.status == "F" else None
+        key = (fulfilled.periodKey if fulfilled else None) or submitted.get((s, e))
+        source: Literal["hmrc", "accnomos"] | None = (
+            "hmrc" if fulfilled else ("accnomos" if key is not None else None)
+        )
+        status: Literal["open", "submitted", "none"] = (
+            "submitted" if key else "open" if (i == 0 or entries) else "none"
+        )
         periods.append(
             VatPeriod(
                 period=period_id(s, cycle.months),
@@ -220,14 +301,31 @@ async def vat_periods(
                 end=e,
                 label=period_label(s, e),
                 current=i == 0,
-                deadline=filing_deadline(e),
+                deadline=fulfilled.due if fulfilled else filing_deadline(e),
                 status=status,
                 hmrc_period_key=key,
+                submitted_source=source,
+                received=fulfilled.received if fulfilled else None,
                 entries=entries,
                 can_submit=can_submit(s, cycle, today, key is not None),
             )
         )
-    return VatPeriods(today=today, months=cycle.months, start_month=cycle.start_month, periods=periods)
+    return VatPeriods(
+        today=today, months=cycle.months, start_month=cycle.start_month, periods=periods, warnings=warnings
+    )
+
+
+@router.post("/vat/obligations", status_code=201)
+async def post_obligations(
+    body: ObligationsBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> dict:
+    """Store HMRC's obligations list, fetched by the web app through the relay. Validated
+    (periodKey, start, end, due, status O/F, received); replaces what was stored before."""
+    await books.write_json(
+        OBLIGATIONS_PATH,
+        {"obligations": [o.model_dump(mode="json") for o in body.obligations], "updated_at": current_date().isoformat()},
+    )
+    return {"stored": len(body.obligations)}
 
 
 class PeriodDeadline(BaseModel):

@@ -19,7 +19,9 @@ Code: `apps/web/src/lib/hmrc.ts`, `apps/web/src/components/vat/ConnectHmrc.tsx`,
    secret, and the tokens come back to the browser. They are stored in `sessionStorage["accnomos.hmrc"]` with `expires_at`.
 4. **Obligations.** You enter the VRN. It is prefilled from `localStorage["accnomos.business.vrn"]`, or else from the
    onboarding VAT number. The page then calls `POST /vat/{vrn}/obligations` for the last 12 months. If an open obligation
-   has the same dates as the live return, it is preselected. Otherwise you pick one.
+   has the same dates as the live return, it is preselected. Otherwise you pick one. The list is also posted to
+   `POST /books/vat/obligations` on the runtime, so `/books/vat/periods` marks fulfilled periods submitted (source
+   `hmrc`) even when they were filed elsewhere, and warns when HMRC's dates match none of your periods.
 5. **Confirm.** The confirmation card shows the 11-field body that will be sent. It is the runtime's `hmrc_body` under the
    obligation's `periodKey`, with `finalised: true`. Boxes 1–5 are pence and 6–9 whole pounds. The card also shows HMRC's
    declaration text and a checkbox that must be ticked.

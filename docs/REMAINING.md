@@ -34,9 +34,9 @@ Severity:
 
 | Severity | Item |
 |---|---|
-| Medium | No call from the app to HMRC's sandbox has been made end to end; `/vat` submission is built and type-checked only. Never production. |
-| Medium | The runtime makes no HMRC obligations call, so "submitted" means a receipt our own submission saved; a return filed elsewhere shows as open. |
-| Low | The runtime's own period key (`26A4`) is a placeholder, the same for all three months of a monthly quarter; submission uses HMRC's key. |
+| Medium | No call from the app to HMRC's sandbox has been made end to end; `/vat` submission and the obligations round trip are built and type-checked only, against a faked relay. Sandbox only, untested against the live sandbox until the owner signs in. Never production. |
+| Medium | "Submitted" now follows HMRC's obligations list too (`POST /books/vat/obligations` stores it; fulfilled marks the period submitted), but the list only reaches the runtime when the web app is connected and fetches it; a return filed elsewhere still shows as open until then. |
+| Low | The runtime's own period key (`26A4`) is a placeholder, the same for all three months of a monthly quarter; HMRC's key is used when its dates match, and submission uses HMRC's key. |
 | Low | `?today=` on `/books/vat` and `/books/vat/periods` moves "current" and `can_submit`; the web gate is advisory. |
 | Low | No flat-rate scheme, annual accounting scheme or fuel scale-charge calculation. |
 
