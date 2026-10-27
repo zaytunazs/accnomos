@@ -153,6 +153,27 @@ class GraphService {
     return _json(token, itemPath(kind, relPath));
   }
 
+  /// OneDrive web URL of one file or folder in the books tree, for opening
+  /// a cited file. Null when it cannot be read. Mirrors `getFileWebUrl` in
+  /// `apps/web/src/lib/graph.ts`.
+  Future<String?> fileWebUrl(
+    String token,
+    AccountKind kind,
+    String relPath,
+  ) async {
+    try {
+      final trimmed = relPath.replaceAll(RegExp(r'/+$'), '');
+      final json = await _json(
+        token,
+        '${itemPath(kind, trimmed)}?\$select=webUrl',
+      );
+      final url = (json['webUrl'] ?? '').toString();
+      return url.isEmpty ? null : url;
+    } catch (_) {
+      return null;
+    }
+  }
+
   /// Children of the books folder (or a subfolder), folders first.
   /// Counts come from the `folder.childCount` facet; files carry `size`,
   /// `lastModifiedDateTime` and `webUrl` for the "Open" button.

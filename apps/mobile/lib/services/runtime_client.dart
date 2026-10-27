@@ -647,6 +647,65 @@ class RuntimeClient {
           body: {'since_days': sinceDays, 'dry_run': dryRun},
           what: 'check the inbox');
 
+  /// `POST /plan/day`: proposes a day and writes nothing. Same path and body
+  /// as the web's `planDay` in `apps/web/src/lib/runtime.ts`. The caller
+  /// passes a calendar-scoped token via [graphToken]: `Calendars.Read` is
+  /// asked for the first time the user plans a day — never at sign-in.
+  Future<Map<String, dynamic>> planDay({
+    required String date,
+    Map<String, dynamic>? constraints,
+    List<String> jobIds = const [],
+    String? graphToken,
+  }) {
+    final body = <String, Object?>{
+      'date': date,
+      'constraints': ?constraints,
+      if (jobIds.isNotEmpty) 'job_ids': jobIds,
+    };
+    return _mapWithToken('POST', '/plan/day',
+        body: body, what: 'plan that day', graphToken: graphToken);
+  }
+
+  /// `POST /plan/day/apply`: the plan's new items become calendar events.
+  /// Call only from the Apply confirmation: [graphToken] carries
+  /// `Calendars.ReadWrite`, asked for only now. Same path and body as the
+  /// web's `applyPlan`.
+  Future<Map<String, dynamic>> applyPlan({
+    required String date,
+    required List<Map<String, dynamic>> plan,
+    String? graphToken,
+  }) =>
+      _mapWithToken('POST', '/plan/day/apply',
+          body: {'date': date, 'plan': plan},
+          what: 'add that plan to your calendar',
+          graphToken: graphToken);
+
+  /// One books call with an optional calendar-scoped [graphToken] instead of
+  /// the sign-in token (day planning asks for calendar scopes only when used).
+  Future<Map<String, dynamic>> _mapWithToken(
+    String method,
+    String path, {
+    Object? body,
+    Map<String, String> query = const {},
+    required String what,
+    String? graphToken,
+  }) async {
+    if (graphToken != null) {
+      final saved = books;
+      final client = RuntimeClient(
+        settings,
+        books: BooksAuth(
+          graphToken: graphToken,
+          accountKind: saved?.accountKind ?? 'personal',
+          user: saved?.user,
+          businessName: saved?.businessName,
+        ),
+      );
+      return client._map(method, path, body: body, query: query, what: what);
+    }
+    return _map(method, path, body: body, query: query, what: what);
+  }
+
   // Bank statements (/books/bank/*).
 
   /// `POST /books/bank/import`: the same file twice changes nothing.
