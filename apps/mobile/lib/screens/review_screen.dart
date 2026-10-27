@@ -7,6 +7,7 @@ import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
 import 'capture_screen.dart';
+import 'edit_proposal_sheet.dart';
 
 const _warnBg = Color(0xFFFFF7ED);
 const _warnBorder = Color(0xFFF3C892);
@@ -117,11 +118,18 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 
-  /// Reload live proposals (signed-in only).
-  Future<void> _reload() async {
+  /// Pull-to-refresh entry point: reloads live proposals when signed in.
+  Future<void> _refresh() async {
+    if (!_signedIn) return;
+    await _reload(quiet: true);
+  }
+
+  /// Reload live proposals (signed-in only). [quiet] skips the full-screen
+  /// spinner so pull-to-refresh keeps the list visible.
+  Future<void> _reload({bool quiet = false}) async {
     if (!_signedIn || _loading) return;
     setState(() {
-      _loading = true;
+      if (!quiet) _loading = true;
       _error = null;
     });
     try {
@@ -149,7 +157,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       if (!mounted) return;
       setState(() => _error = _friendly(e));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (mounted && !quiet) setState(() => _loading = false);
     }
   }
 
@@ -237,6 +245,53 @@ class _ReviewScreenState extends State<ReviewScreen> {
       final client = await _booksClient();
       await client.approve(
         proposal.id,
+        always: _alwaysDo[proposal.id] ?? false,
+      );
+      if (!mounted) return;
+      _removeLive(proposal.id);
+      _say('Approved · posted to your books');
+    } catch (e) {
+      _say(_friendly(e));
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  /// Open the edit sheet, then save-and-approve the corrected proposal.
+  Future<void> _openEditSheet(Proposal proposal) async {
+    final result = await showModalBottomSheet<EditResult>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => EditProposalSheet(proposal: proposal),
+    );
+    if (result == null || !mounted) return;
+    await _saveAndApprove(proposal, result);
+  }
+
+  /// Send the sheet's `edits` inside `POST .../approve` (the runtime has no
+  /// separate edit endpoint). Signed out, the corrected copy stays local.
+  Future<void> _saveAndApprove(Proposal proposal, EditResult result) async {
+    if (!_signedIn) {
+      setState(() {
+        final at = _captured.indexWhere((p) => p.id == proposal.id);
+        if (at >= 0) {
+          _captured[at] = result.updated;
+        } else {
+          _captured.insert(0, result.updated);
+          _index = 0;
+        }
+      });
+      if (_pages.hasClients) _pages.jumpToPage(_index);
+      _say('Saved · approved locally');
+      return;
+    }
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final client = await _booksClient();
+      await client.approve(
+        proposal.id,
+        edits: result.edits.isEmpty ? null : result.edits,
         always: _alwaysDo[proposal.id] ?? false,
       );
       if (!mounted) return;
@@ -345,21 +400,60 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 if (_scanErrors.isNotEmpty) _scanErrorBox(),
                 Expanded(
                   child: proposals.isEmpty
-                      ? Center(
-                          child: Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text(
-                              _signedIn
-                                  ? 'Nothing waiting. Photograph a receipt or press “Scan inbox”.'
-                                  : 'Nothing here yet.',
-                              textAlign: TextAlign.center,
-                              style: const TextStyle(
-                                  color: AccnomosColors.muted,
-                                  height: 1.4),
-                            ),
+                      ? RefreshIndicator(
+                          onRefresh: _refresh,
+                          child: ListView(
+                            physics:
+                                const AlwaysScrollableScrollPhysics(),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.all(24),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      _signedIn
+                                          ? 'Nothing waiting. Photograph a receipt or press “Scan inbox”.'
+                                          : 'Nothing here yet.',
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                          color: AccnomosColors.muted,
+                                          height: 1.4),
+                                    ),
+                                    if (_signedIn) ...[
+                                      const SizedBox(height: 16),
+                                      FilledButton(
+                                        style: FilledButton.styleFrom(
+                                          backgroundColor:
+                                              AccnomosColors.teal,
+                                          minimumSize:
+                                              const Size.fromHeight(52),
+                                          padding: const EdgeInsets
+                                              .symmetric(horizontal: 8),
+                                          shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                      14)),
+                                        ),
+                                        onPressed: _scanning
+                                            ? null
+                                            : _scan,
+                                        child: const Text('Scan inbox',
+                                            softWrap: false,
+                                            style: TextStyle(
+                                                fontWeight:
+                                                    FontWeight.w800)),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         )
-                      : PageView.builder(
+                      : RefreshIndicator(
+                          onRefresh: _refresh,
+                          child: PageView.builder(
                           controller: _pages,
                           itemCount: proposals.length,
                           onPageChanged: (i) =>
@@ -376,60 +470,74 @@ class _ReviewScreenState extends State<ReviewScreen> {
                             }
                           },
                         ),
+                      ),
                 ),
               ],
             ),
     );
   }
 
+  /// Per-file scan errors in an expandable list (plus the summary
+  /// snackbar from [_scan]), so nothing is lost when several files fail.
   Widget _scanErrorBox() {
     final errors = _scanErrors;
     return Container(
       width: double.infinity,
-      constraints: const BoxConstraints(maxHeight: 148),
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: _warnBg,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: _warnBorder),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${errors.length} file${errors.length == 1 ? '' : 's'} could not be read',
-                  style: const TextStyle(
-                      color: _warnInk, fontWeight: FontWeight.w700),
-                ),
-              ),
-              InkWell(
-                onTap: () => setState(() => _scanErrors = const []),
-                child: const Padding(
-                  padding: EdgeInsets.all(8),
-                  child: Icon(Icons.close, size: 18, color: _warnInk),
-                ),
-              ),
-            ],
-          ),
-          Flexible(
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: errors.length,
-              itemBuilder: (context, i) => Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  '• ${errors[i].path}: ${errors[i].error}',
-                  style:
-                      const TextStyle(color: _warnInk, height: 1.4),
-                ),
+      child: ExpansionTile(
+        initiallyExpanded: true,
+        tilePadding:
+            const EdgeInsets.only(left: 12, right: 4, top: 4, bottom: 4),
+        childrenPadding:
+            const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+        iconColor: _warnInk,
+        collapsedIconColor: _warnInk,
+        title: Row(
+          children: [
+            Expanded(
+              child: Text(
+                '${errors.length} file${errors.length == 1 ? '' : 's'} could not be read',
+                style: const TextStyle(
+                    color: _warnInk,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14),
               ),
             ),
-          ),
+            IconButton(
+              constraints:
+                  const BoxConstraints(minWidth: 48, minHeight: 48),
+              icon:
+                  const Icon(Icons.close, size: 18, color: _warnInk),
+              tooltip: 'Dismiss',
+              onPressed: () =>
+                  setState(() => _scanErrors = const []),
+            ),
+          ],
+        ),
+        children: [
+          for (final error in errors)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('• ',
+                      style: TextStyle(color: _warnInk)),
+                  Expanded(
+                    child: Text(
+                      '${error.path}: ${error.error}',
+                      style: const TextStyle(
+                          color: _warnInk, height: 1.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
         ],
       ),
     );
@@ -579,7 +687,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 8),
               shape: buttonShape,
             ),
-            onPressed: () => _say('Editing arrives in the next update.'),
+            onPressed: _busy ? null : () => _openEditSheet(proposal),
             child: const Text('Edit', softWrap: false),
           ),
         ),
