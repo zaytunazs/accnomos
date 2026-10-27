@@ -260,7 +260,13 @@ class Books:
         return path
 
     async def list_events(self, start: date | None = None, end: date | None = None) -> list[LedgerEvent]:
-        """All posted ledger events (optionally within [start, end] by event date), oldest first.
+        """All posted ledger events (optionally within [start, end] by event date), oldest first."""
+        return [ev for _path, ev in await self.list_event_entries(start, end)]
+
+    async def list_event_entries(
+        self, start: date | None = None, end: date | None = None
+    ) -> list[tuple[str, LedgerEvent]]:
+        """(path, event) for posted ledger events within [start, end], oldest first.
 
         Months are folders, so only the months overlapping the range are read.
         """
@@ -272,16 +278,16 @@ class Books:
             months = [m for m in months if m >= start.strftime("%Y-%m")]
         if end:
             months = [m for m in months if m <= end.strftime("%Y-%m")]
-        events: list[LedgerEvent] = []
+        entries: list[tuple[str, LedgerEvent]] = []
         for m in sorted(months):
             for f in await self.list_files(f"{EVENTS}/{m}"):
                 if not f.name.endswith(".json"):
                     continue
                 ev = LedgerEvent.model_validate_json(await self.storage.read(f.path))
                 if (start is None or ev.date >= start) and (end is None or ev.date <= end):
-                    events.append(ev)
-        events.sort(key=lambda e: (e.date, e.approved_at))
-        return events
+                    entries.append((f.path, ev))
+        entries.sort(key=lambda pe: (pe[1].date, pe[1].approved_at))
+        return entries
 
     async def record_scan(self, when: datetime) -> None:
         await self._update_json(CURSORS, {}, lambda c: {**c, "last_scan": when.isoformat()})
