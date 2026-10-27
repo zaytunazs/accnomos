@@ -323,4 +323,32 @@ void main() {
       expect(tryParseProposalDate(''), isNull);
     });
   });
+
+  group('supplier VAT question', () {
+    Map<String, dynamic> wire(bool ok) => {
+          'status': ok ? 'proposed' : 'needs_a_look',
+          'extracted': {'supplier_name': 'Hargreaves & Sons Ironmongery', 'gross_total': 368.5},
+          'checks': [
+            {
+              'code': supplierVatUnknown,
+              'ok': ok,
+              'severity': 'fail',
+              'message': 'Is Hargreaves & Sons Ironmongery VAT-registered? '
+                  'Over £250 they should give a VAT invoice',
+            },
+          ],
+        };
+
+    test('a failed SUPPLIER_VAT_UNKNOWN offers the tick; its message is the question', () {
+      final p = Proposal.fromBooksJson(wire(false));
+      expect(p.asksVatStatus, isTrue);
+      expect(p.failedChecks.single.text, startsWith('Is Hargreaves & Sons Ironmongery VAT-registered?'));
+      expect(p.copyWith(category: 'Materials').asksVatStatus, isTrue);
+    });
+
+    test('no question, no tick', () {
+      expect(Proposal.fromBooksJson(wire(true)).asksVatStatus, isFalse);
+      expect(Proposal.fromBooksJson({'extracted': <String, dynamic>{}}).asksVatStatus, isFalse);
+    });
+  });
 }
