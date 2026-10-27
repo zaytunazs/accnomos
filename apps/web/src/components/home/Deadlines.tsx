@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import type { AccountInfo } from "@azure/msal-browser";
-import { deadlinesQuery, loadBusiness } from "@/lib/business";
-import { getMsal, msalConfigured } from "@/lib/msal";
-import { runtime, type RtPeriodDeadline } from "@/lib/runtime";
+import type { RtPeriodDeadline } from "@/lib/runtime";
 import { deadlines as sampleDeadlines, type Deadline } from "@/lib/sample-home";
+import { Skeleton, UNKNOWN, useHome } from "./HomeData";
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
@@ -43,30 +40,43 @@ function toTiles(current: RtPeriodDeadline, due: RtPeriodDeadline | null): Deadl
   ];
 }
 
-/** Home deadlines: from GET /books/deadlines when signed in, otherwise the sample. */
+/** Three "—" tiles when signed in but the VAT period is unknown. */
+function unknownTiles(sub: string): Deadline[] {
+  return ["VAT return due", "VAT payment due", "VAT period ends"].map((title) => ({ month: "", day: UNKNOWN, title, sub }));
+}
+
+/** Home deadlines: the VAT block of GET /books/dashboard when signed in, otherwise the sample. */
 export default function Deadlines() {
-  const [live, setLive] = useState<{ tiles: Deadline[]; rule: string } | null>(null);
+  const home = useHome();
+  const vat = home.mode === "live" && !home.annualVat ? home.data.vat : null;
+  const live = vat ? { tiles: toTiles(vat.current, vat.due), rule: vat.rule } : null;
+  const tiles: Deadline[] | null =
+    home.mode === "sample" ? sampleDeadlines
+    : live ? live.tiles
+    : home.mode === "live" && home.annualVat ? unknownTiles("Annual VAT returns are not worked out yet")
+    : home.mode === "live" || home.mode === "error" ? unknownTiles("Could not work out your VAT period")
+    : null;
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const query = deadlinesQuery(loadBusiness());
-        if (!query || !msalConfigured()) return;
-        const msal = await getMsal();
-        await msal.handleRedirectPromise().catch(() => null);
-        const acct: AccountInfo | undefined = msal.getActiveAccount() ?? msal.getAllAccounts()[0];
-        if (!acct) return;
-        // Today's date in the UK, not the runtime's time zone (UTC would be a day behind just after midnight BST).
-        const today = new Date().toLocaleDateString("en-CA", { timeZone: "Europe/London" });
-        const d = await runtime.deadlines(acct, `${query}&today=${today}`);
-        setLive({ tiles: toTiles(d.current, d.due), rule: d.rule });
-      } catch {
-        /* runtime unreachable or token expired: keep the sample */
-      }
-    })();
-  }, []);
+  if (tiles === null)
+    return (
+      <section aria-labelledby="deadlines-heading" aria-busy="true" className="flex flex-col gap-3">
+        <h2 id="deadlines-heading" className="text-lg font-extrabold tracking-tight">
+          Deadlines
+        </h2>
+        <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-center gap-3 rounded-2xl border border-border bg-white p-4">
+              <Skeleton className="h-14 w-14 shrink-0 rounded-xl" />
+              <div className="flex min-w-0 flex-col gap-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    );
 
-  const tiles = live?.tiles ?? sampleDeadlines;
   return (
     <section aria-labelledby="deadlines-heading" className="flex flex-col gap-3">
       <h2

@@ -4,6 +4,8 @@ import AskBar from "@/components/home/AskBar";
 import Deadlines from "@/components/home/Deadlines";
 import InboxTriage from "@/components/home/InboxTriage";
 import LastInboxCheck from "@/components/home/LastInboxCheck";
+import Greeting from "@/components/home/Greeting";
+import { HomeData } from "@/components/home/HomeData";
 import PlanToday from "@/components/home/PlanToday";
 import Tiles from "@/components/home/Tiles";
 import TodosTile from "@/components/home/TodosTile";
@@ -44,6 +46,15 @@ export default function HomePage() {
       <Tiles />
       <Deadlines />
       <Activity />
+      {/* Greeting, Tiles, Deadlines and Activity share one GET /books/dashboard (the sample when signed out). */}
+      <HomeData>
+        <Greeting />
+        <AskBar />
+        <PlanToday />
+        <Tiles />
+        <Deadlines />
+        <Activity />
+      </HomeData>
     </div>
   );
 }

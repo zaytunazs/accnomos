@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'screens/ask_screen.dart';
 import 'screens/more_screen.dart';
+import 'screens/home_screen.dart';
 import 'screens/review_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/vat_screen.dart';
@@ -92,7 +93,7 @@ class _ShellState extends State<Shell> {
             child: IndexedStack(
               index: _tab,
               children: const [
-                _HomeTab(),
+                HomeScreen(),
                 ReviewScreen(),
                 AskScreen(),
                 VatScreen(),
@@ -233,6 +234,34 @@ class _Tile extends StatelessWidget {
           Text(note,
               style: const TextStyle(
                   fontSize: 12, color: AccnomosColors.muted)),
+class _Placeholder extends StatelessWidget {
+  const _Placeholder(this.title, this.body);
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+                color: AccnomosColors.tealTint,
+                borderRadius: BorderRadius.circular(16)),
+            child: const Icon(Icons.hourglass_top,
+                color: AccnomosColors.tealDark),
+          ),
+          const SizedBox(height: 14),
+          Text(title, style: Theme.of(context).textTheme.titleMedium),
+          const SizedBox(height: 6),
+          Text(body,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                  color: AccnomosColors.muted, height: 1.4)),
         ],
       ),
     );

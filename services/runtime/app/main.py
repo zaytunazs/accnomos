@@ -127,6 +127,8 @@ async def unsafe_name(_request: Request, exc: UnsafeName) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": f"Bad file name: {exc}"})
 from app.routes_vat import router as vat_router  # noqa: E402  GET /books/vat
 app.include_router(vat_router)
+from app.routes_dashboard import router as dashboard_router  # noqa: E402  GET /books/dashboard
+app.include_router(dashboard_router)
 from app.routes_bank import router as bank_router  # noqa: E402  /books/bank/*
 app.include_router(bank_router)
 from app.routes_ask import router as ask_router  # noqa: E402  POST /books/ask, /books/ask/voice

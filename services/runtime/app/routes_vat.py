@@ -142,15 +142,30 @@ async def deadlines(
     books: Books = Depends(get_books),
 ) -> Deadlines:
     """Current VAT period, the return that is due next, days remaining and the Box 5 estimate (code, not a model)."""
+    first, today = vat_period_start(stagger, start_month, months), today or current_date()
+    window = deadline_window(today, first, months)
+    return compute_deadlines(await books.list_events(*window), today, first, months)
+
+
+def vat_period_start(stagger: int | None, start_month: int | None, months: int) -> int:
+    """A month in which a VAT period starts, from the query; 4xx for a bad combination."""
     if months not in (1, 3):
         raise HTTPException(status_code=422, detail="months must be 3 (quarterly) or 1 (monthly)")
     if stagger is not None and start_month is not None and stagger_of(start_month) != stagger:
         raise HTTPException(status_code=400, detail="stagger and start_month disagree; send one of them")
-    first = start_month or STAGGER_START_MONTH[stagger or 1]
-    today = today or current_date()
+    return start_month or STAGGER_START_MONTH[stagger or 1]
+
+
+def deadline_window(today: date, first: int, months: int) -> tuple[date, date]:
+    """(start of the previous period, end of the current one): the events `compute_deadlines` needs."""
+    cur_start, cur_end = period_containing(today, first, months)
+    return previous_period(cur_start, months)[0], cur_end
+
+
+def compute_deadlines(events: list[LedgerEvent], today: date, first: int, months: int) -> Deadlines:
     cur_start, cur_end = period_containing(today, first, months)
     prev_start, prev_end = previous_period(cur_start, months)
-    events = await books.list_events(prev_start, cur_end)
+    events = [e for e in events if prev_start <= e.date <= cur_end]
     due = (
         _period_deadline(events, prev_start, prev_end, months, today)
         if filing_deadline(prev_end) >= today else None

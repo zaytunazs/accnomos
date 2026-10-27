@@ -3,6 +3,7 @@ export type Tile = {
   value: string;
   sub: string;
   tone?: "default" | "amber" | "warn";
+  href?: string; // the sub line links here
 };
 
 export const tiles: Tile[] = [
@@ -18,6 +19,11 @@ export const tiles: Tile[] = [
     tone: "amber",
   },
   {
+    label: "Owed by you",
+    value: "£1,140",
+    sub: "2 unpaid bills, oldest 18 days",
+  },
+  {
     label: "VAT estimate · Q3",
     value: "£2,140",
     sub: "Calculated by code from approved entries",
@@ -27,6 +33,7 @@ export const tiles: Tile[] = [
     value: "3",
     sub: "Review now →",
     tone: "warn",
+    href: "/review",
   },
 ];
 
