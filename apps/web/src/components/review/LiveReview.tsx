@@ -198,7 +198,12 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
               disabled={busy !== null}
               onClick={() => {
                 const always = remember[p.id] ?? false;
-                const done = always ? `Approved · Autopilot will do this for ${p.extracted.supplier_name} next time` : "Approved · posted to your books";
+                const sale = p.extracted.doc_type === "sales_invoice";
+                const done = !always
+                  ? "Approved · posted to your books"
+                  : sale
+                    ? "Approved · posted to your books (Autopilot rules are for purchases only)"
+                    : `Approved · Autopilot will do this for ${p.extracted.supplier_name} next time`;
                 return act(p.id, () => runtime.approve(account!, p.id, { remember: always }), done);
               }}
               className="h-11 rounded-xl bg-teal px-5 text-[15px] font-bold text-white disabled:opacity-60"
