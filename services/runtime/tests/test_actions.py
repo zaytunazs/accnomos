@@ -426,6 +426,7 @@ def test_ask_asks_when_unsure(books: Books, monkeypatch: pytest.MonkeyPatch):
     body = r.json()
     assert body["proposed_action"] is None and body["clarification"]["field"] == "customer"
     assert set(body["clarification"]["candidates"]) == {"Hartley Builders", "Hartley Bros"}
+    assert body["clarification"]["ref"] == "Hartley"
 
 
 async def test_reject_route(books: Books):

@@ -398,7 +398,7 @@ def pick(ref: str, options: Sequence[Option], kind: ActionKind, field: str, noun
         return (exact or good)[0]
     if good:
         names = [p.option.name for p in good[:5]]
-        return Clarification(kind=kind, field=field, candidates=names,
+        return Clarification(kind=kind, field=field, candidates=names, ref=ref,
                              question_md=f"Which {noun} did you mean: {', '.join(names)}?")
     near = [p.option.name for p in scored if p.score >= NEAR_AT][:3]
     if not options:
@@ -406,7 +406,7 @@ def pick(ref: str, options: Sequence[Option], kind: ActionKind, field: str, noun
     ask = f"I couldn't find a {noun} called “{ref}”."
     if near:
         ask += f" Did you mean {', '.join(near)}?"
-    return Clarification(kind=kind, field=field, candidates=near, question_md=ask)
+    return Clarification(kind=kind, field=field, candidates=near, ref=ref, question_md=ask)
 
 
 async def customer_options(books: Books) -> list[Option]:

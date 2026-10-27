@@ -320,6 +320,7 @@ class Clarification(BaseModel):
     field: str  # customer | invoice | job | staff | vehicle | amount | hours | miles | date
     question_md: str
     candidates: list[str] = []
+    ref: str | None = None  # the words the user used ("Hartley"), so the app can re-ask with a candidate in their place
 
 
 class AskAnswer(AskModelOutput):
