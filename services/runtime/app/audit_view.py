@@ -191,6 +191,18 @@ SUMMARIES: dict[str, Summary] = {
     ),
     "payment_removed": lambda r, w: "Removed a payment; its entry was reversed",
     "payment_line_not_matched": lambda r, w: "Recorded a payment but could not match its bank line",
+    # Credits on contacts (app/credits.py)
+    "credit_applied": lambda r, w: "Applied a credit on account to another document" + _pounds(r, "amount_pence"),
+    "credit_refunded": lambda r, w: (
+        ("Refunded a customer's credit" if r.get("side") == "sale" else "Recorded a supplier refunding a credit")
+        + _pounds(r, "amount_pence")
+    ),
+    "refund_line_not_matched": lambda r, w: "Recorded a refund but could not match its bank line",
+    "credit_use_removed": lambda r, w: (
+        "Took back a refund of a credit; its entry was reversed"
+        if r.get("kind") == "refund"
+        else "Took back a credit applied to a document"
+    ),
     "credit_note_created": lambda r, w: (
         f"Created credit note {r.get('credit_note') or ''} for invoice {_inv(r)}" + _pounds(r, "total_pence")
     ),

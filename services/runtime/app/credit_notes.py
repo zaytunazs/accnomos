@@ -35,7 +35,8 @@ from accnomos_connectors.base import MailSender, OutgoingAttachment, OutgoingMai
 from accnomos_ledger.events import LedgerEvent, Line, VatCode
 from app import paths
 from app.approve import reversal_of
-from app.books import Books, now, today as london_today
+from app.books import Books, now
+from app.books import today as london_today
 from app.invoicing import (
     EMAIL_RE,
     ID_RE,
@@ -370,6 +371,10 @@ async def void_credit_note(books: Books, number: str, user: str, reason: str) ->
         raise InvoiceStateError(f"Credit note {number} is already {cn.status}")
     if not reason.strip():
         raise InvoiceError("Say why the credit note is void")
+    if cn.event_id:
+        from app.credits import refuse_while_used, uses_of
+
+        refuse_while_used(await uses_of(books, "credit_note", cn.event_id), f"credit note {number}")
     if cn.event_id:
         try:
             event = await books.get_event(cn.event_id)

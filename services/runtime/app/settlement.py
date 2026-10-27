@@ -10,7 +10,11 @@ settle it, taken in date order:
   money over is a credit on the contact (an overpayment);
 - a bank statement line matched to the document(s) on the Bank page, as before this module: nothing is posted. The
   line's amount is allocated to its documents in the order they were matched; a line within a penny a document of
-  what they owe pays them in full (the matcher allows a penny of rounding), any more is an overpayment.
+  what they owe pays them in full (the matcher allows a penny of rounding), any more is an overpayment;
+- a credit left on the contact (an overpayment, or a credit note bigger than what was owed) the user applied to
+  another of that contact's open documents (app/credits.py, `CreditUse` kind "apply": nothing is posted, it moves
+  within 1100 Debtors / 2100 Creditors), or refunded (kind "refund": posted Dr 1100 Debtors / Cr 1200 Bank for a
+  customer, Dr 1200 Bank / Cr 2100 Creditors for a supplier). A use takes no more than is left of its credit.
 
 Allocations are worked out on every request from the ledger events, the bank lines and
 _System/Payments/payments.json (the payments and the split the user chose), so they cannot drift from the books.
@@ -39,6 +43,7 @@ if TYPE_CHECKING:  # app.contacts imports this module
 
 log = logging.getLogger(__name__)
 PAYMENTS = f"{SYSTEM}/Payments/payments.json"
+CREDIT_USES = f"{SYSTEM}/Payments/credit_uses.json"
 PAYMENT_ACCOUNTS = (BANK, CASH)
 PENNY = 1  # the bank matcher's rounding tolerance per document (accnomos_ledger.matching.PENNY)
 Side = Literal["sale", "purchase"]
@@ -89,14 +94,63 @@ class Payment(BaseModel):
 
 
 class Credit(BaseModel):
-    """Money left on a contact's account: an overpayment, or a credit note bigger than what was owed."""
+    """Money left on a contact's account: an overpayment, or a credit note bigger than what was owed.
 
+    `amount_pence` is what is left after the credit was applied to other documents or refunded."""
+
+    id: str = ""  # "payment:<payment id>" or "credit_note:<event id>" (`credit_id`)
     side: Side
     date: date
     amount_pence: int
     source: Literal["payment", "credit_note"]
     source_id: str  # payment id, or the credit note's event id
     doc_event_id: str  # the document it came with, which says whose credit it is
+
+
+def credit_id(source: str, source_id: str) -> str:
+    return f"{source}:{source_id}"
+
+
+class CreditUse(BaseModel):
+    """A credit on a contact applied to another of its documents, or refunded; stored in credit_uses.json."""
+
+    id: str
+    kind: Literal["apply", "refund"]
+    side: Side
+    date: date
+    amount_pence: int = Field(gt=0)
+    credit: str  # the Credit's id: "payment:<id>" or "credit_note:<event id>"
+    credit_doc_event_id: str = ""  # the document the credit came with (whose contact it is), as it was then
+    doc_event_id: str | None = None  # apply: the invoice or bill it pays
+    account: str = BANK  # refund: where the money went out (or came in)
+    reference: str | None = None
+    counterparty: str = ""
+    event_id: str | None = None  # refund: Dr 1100 Debtors / Cr 1200 Bank (or the supplier mirror), posted by code
+    bank_line_id: str | None = None  # refund: the statement line it went out (or came in) on
+    created_by: str
+    created_at: datetime
+    removed_at: datetime | None = None
+    removed_by: str | None = None
+    reversal_event_id: str | None = None
+
+
+class UseShown(BaseModel):
+    """A credit use as it worked out: how much of it its credit (and, for "apply", its document) could take."""
+
+    id: str
+    kind: Literal["apply", "refund"]
+    side: Side
+    date: date
+    credit: str
+    source: Literal["payment", "credit_note"]
+    source_id: str
+    credit_doc_event_id: str  # the document the credit came with (whose contact it is)
+    doc_event_id: str | None
+    amount_pence: int  # asked
+    applied_pence: int  # what it actually took
+    reference: str | None = None
+    event_id: str | None = None
+    bank_line_id: str | None = None
 
 
 @dataclass
@@ -109,6 +163,15 @@ class Settlement:
     credit_notes: dict[str, list[tuple[str, int]]] = field(
         default_factory=lambda: defaultdict(list)
     )  # doc -> [(credit note event id, amount applied)]
+    uses: list[UseShown] = field(default_factory=list)  # credits applied or refunded, oldest first
+    used: dict[str, int] = field(default_factory=lambda: defaultdict(int))  # credit id -> taken by uses
+
+    def credit(self, cid: str) -> Credit | None:
+        return next((c for c in self.credits if c.id == cid), None)
+
+    def uses_for(self, event_id: str) -> list[UseShown]:
+        """Credits applied to this document."""
+        return [u for u in self.uses if u.kind == "apply" and u.doc_event_id == event_id and u.applied_pence]
 
     def outstanding(self, event_id: str) -> int:
         return self.gross.get(event_id, 0) - self.paid.get(event_id, 0) - self.credited.get(event_id, 0)
@@ -132,8 +195,10 @@ def settle(
     bank_lines: Iterable[BankLine],
     records: Iterable[PaymentRecord],
     reversed_ids: set[str],
+    uses: Iterable[CreditUse] = (),
 ) -> Settlement:
-    """Allocate every credit note and payment, oldest first (credit notes before payments on the same day)."""
+    """Allocate every credit note, payment and use of a credit, oldest first (on the same day: credit notes, then
+    payments, then uses)."""
     s = Settlement()
     live = {
         d.event.id: d
@@ -151,9 +216,14 @@ def settle(
     for n, ln in enumerate(bank_lines):
         if ln.status == "matched" and (ids := [i for i in ln.event_ids() if i in live]):
             items.append((ln.date, 1, 10_000_000 + n, (ln, ids)))
+    for n, u in enumerate(uses):
+        if u.removed_at is None and (u.event_id is None or u.event_id not in reversed_ids):
+            items.append((u.date, 2, n, u))
     for _, _, _, item in sorted(items, key=lambda t: t[:3]):
         if isinstance(item, PaymentRecord):
             _record(s, item, live)
+        elif isinstance(item, CreditUse):
+            _use(s, item, live)
         elif isinstance(item, tuple):
             line, ids = item
             _bank_line(s, line, ids, live)
@@ -176,6 +246,7 @@ def _credit_note(s: Settlement, cn: Doc) -> None:
     if cn.gross - applied > 0 and cn.on_account:
         s.credits.append(
             Credit(
+                id=credit_id("credit_note", cn.event.id),
                 side=cn.side,
                 date=cn.event.date,
                 amount_pence=cn.gross - applied,
@@ -252,6 +323,7 @@ def _add(s: Settlement, pay: Payment, first_doc: str) -> None:
     if pay.unallocated_pence > 0:
         s.credits.append(
             Credit(
+                id=credit_id("payment", pay.id),
                 side=pay.side,
                 date=pay.date,
                 amount_pence=pay.unallocated_pence,
@@ -260,6 +332,51 @@ def _add(s: Settlement, pay: Payment, first_doc: str) -> None:
                 doc_event_id=first_doc,
             )
         )
+
+
+def _use(s: Settlement, u: CreditUse, live: dict[str, Doc]) -> None:
+    """Take a use out of its credit: an "apply" pays the document (as a payment, or as credit for a credit note's
+    credit), a "refund" pays the money back. A use whose credit has gone (removed payment, voided credit note) or
+    whose document was undone takes nothing."""
+    c = s.credit(u.credit)
+    left = c.amount_pence if c and c.side == u.side else 0
+    want = min(u.amount_pence, left)
+    got = 0
+    if u.kind == "refund":
+        got = want
+    elif u.doc_event_id in live and live[u.doc_event_id].side == u.side:
+        got = _take(s, u.doc_event_id, want)
+        if got and c:
+            if c.source == "payment":
+                s.paid[u.doc_event_id] += got
+            else:
+                s.credited[u.doc_event_id] += got  # shown with its use (`uses_for`), not in `credit_notes`
+    if c and got:
+        c.amount_pence -= got
+        s.used[c.id] += got
+        if c.source == "payment" and (p := next((p for p in s.payments if p.id == c.source_id), None)):
+            p.unallocated_pence -= got
+        if c.amount_pence <= 0:
+            s.credits.remove(c)
+    source, _, source_id = u.credit.partition(":")
+    s.uses.append(
+        UseShown(
+            id=u.id,
+            kind=u.kind,
+            side=u.side,
+            date=u.date,
+            credit=u.credit,
+            source="credit_note" if source == "credit_note" else "payment",
+            source_id=source_id,
+            credit_doc_event_id=c.doc_event_id if c else u.credit_doc_event_id,
+            doc_event_id=u.doc_event_id,
+            amount_pence=u.amount_pence,
+            applied_pence=got,
+            reference=u.reference,
+            event_id=u.event_id,
+            bank_line_id=u.bank_line_id,
+        )
+    )
 
 
 async def load_records(books: Books) -> list[PaymentRecord]:
@@ -271,4 +388,16 @@ async def load_records(books: Books) -> list[PaymentRecord]:
             out.append(PaymentRecord.model_validate(row))
         except ValueError:
             log.warning("skipped an unreadable row in %s", PAYMENTS)
+    return out
+
+
+async def load_uses(books: Books) -> list[CreditUse]:
+    """credit_uses.json as saved; an unreadable row is skipped and logged."""
+    out: list[CreditUse] = []
+    raw: Any = await books.read_json(CREDIT_USES, [])
+    for row in raw if isinstance(raw, list) else []:
+        try:
+            out.append(CreditUse.model_validate(row))
+        except ValueError:
+            log.warning("skipped an unreadable row in %s", CREDIT_USES)
     return out

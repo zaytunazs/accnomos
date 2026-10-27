@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from datetime import date, datetime, timedelta
@@ -46,7 +46,17 @@ from app.books import SYSTEM, Books, now
 from app.checks import UNKNOWN_SUPPLIER, SupplierKnowledge, normalise_vat_number
 from app.journal import CREDITORS, DEBTORS, VAT_CONTROL
 from app.schemas import CATEGORIES, ExtractedDoc, Proposal, VatStatus
-from app.settlement import Credit, Payment, PaymentRecord, Settlement, load_records, settle
+from app.settlement import (
+    Credit,
+    CreditUse,
+    Payment,
+    PaymentRecord,
+    Settlement,
+    UseShown,
+    load_records,
+    load_uses,
+    settle,
+)
 
 CONTACTS = f"{SYSTEM}/Contacts/contacts.json"
 ContactKind = Literal["customer", "supplier", "both"]
@@ -125,6 +135,7 @@ class Ledger:
     proposals: dict[str, Proposal] = field(default_factory=dict)  # by id
     bank_lines: list[BankLine] = field(default_factory=list)
     records: list[PaymentRecord] = field(default_factory=list)  # _System/Payments/payments.json
+    uses: list[CreditUse] = field(default_factory=list)  # _System/Payments/credit_uses.json (app/credits.py)
     refs: dict[str, str] = field(default_factory=dict)  # event id -> invoice or credit note number (app/invoicing.py)
     dues: dict[str, date] = field(default_factory=dict)  # event id -> the sales invoice's due date
     _settled: Settlement | None = field(default=None, repr=False)
@@ -132,7 +143,7 @@ class Ledger:
     def settlement(self) -> Settlement:
         """Payments and credit notes allocated to documents (worked out once per Ledger)."""
         if self._settled is None:
-            self._settled = settle(documents(self), self.bank_lines, self.records, reversed_ids(self.events))
+            self._settled = settle(documents(self), self.bank_lines, self.records, reversed_ids(self.events), self.uses)
         return self._settled
 
 
@@ -153,6 +164,7 @@ async def load_ledger(books: Books) -> Ledger:
         proposals={p.id: p for p in await books.list_proposals()},
         bank_lines=await books.stored_bank_lines(),
         records=await load_records(books),
+        uses=await load_uses(books),
         refs=refs,
         dues=dues,
     )
@@ -319,17 +331,29 @@ def credits_for(docs: Iterable[Doc], ledger: Ledger) -> list[Credit]:
 
 
 def payments_for(docs: Iterable[Doc], ledger: Ledger) -> list[tuple[Payment, int]]:
-    """(payment, the part of it that concerns these documents' contact), oldest first."""
+    """(payment, the part of it that concerns these documents' contact), oldest first. Money over that was since
+    applied to another document or refunded still counts here: it came in (or went out) with this payment."""
     ids = {d.event.id for d in docs}
     settled = ledger.settlement()
     credit_by = {(c.source_id, c.doc_event_id): c.amount_pence for c in settled.credits if c.source == "payment"}
+    used_by = defaultdict(int)
+    for u in settled.uses:
+        if u.source == "payment" and u.credit_doc_event_id in ids:
+            used_by[u.source_id] += u.applied_pence
     out: list[tuple[Payment, int]] = []
     for p in settled.payments:
         mine = sum(a.amount_pence for a in p.allocations if a.event_id in ids)
         mine += sum(v for (pid, doc), v in credit_by.items() if pid == p.id and doc in ids)
+        mine += used_by.get(p.id, 0)
         if mine:
             out.append((p, mine))
     return sorted(out, key=lambda pm: pm[0].date)
+
+
+def refunds_for(docs: Iterable[Doc], ledger: Ledger) -> list[UseShown]:
+    """Credits paid back to (or by) the contact these documents belong to."""
+    ids = {d.event.id for d in docs}
+    return [u for u in ledger.settlement().uses if u.kind == "refund" and u.credit_doc_event_id in ids]
 
 
 class StatementLine(BaseModel):
@@ -340,8 +364,20 @@ class StatementLine(BaseModel):
     amount_pence: int = 0  # the document (a credit note has the opposite sign of an invoice)
     paid_pence: int = 0  # money that settled it, opposite sign
     balance_pence: int = 0
-    kind: Literal["invoice", "credit_note", "payment", "undo"] = "invoice"
-    payment_id: str | None = None  # a payment line: the recorded payment's id, or the bank line's
+    kind: Literal["invoice", "credit_note", "payment", "refund", "undo"] = "invoice"
+    payment_id: str | None = None  # a payment line: the recorded payment's id, or the bank line's; a refund: its id
+
+
+class OpenItem(BaseModel):
+    """A document of the contact's still waiting for money: what a payment or a credit can go towards."""
+
+    event_id: str
+    side: Side
+    date: date
+    due_date: date
+    reference: str | None
+    gross_pence: int
+    outstanding_pence: int
 
 
 class Statement(BaseModel):
@@ -352,6 +388,8 @@ class Statement(BaseModel):
     closing_balance_pence: int
     credit_pence: int = 0  # money on the contact's account (they overpaid, or a credit note was bigger than the debt)
     lines: list[StatementLine]
+    credits: list[Credit] = []  # that money, credit by credit (Apply credit / Refund, app/credits.py)
+    open_documents: list[OpenItem] = []  # invoices and bills with something left to pay, oldest first
 
 
 _DETAILS = {("sale", "invoice"): "Sales invoice", ("purchase", "invoice"): "Purchase"}
@@ -389,13 +427,25 @@ def _statement_lines(docs: Sequence[Doc], ledger: Ledger) -> list[StatementLine]
                 payment_id=p.id,
             )
         )
+    for u in refunds_for(docs, ledger):
+        out.append(
+            StatementLine(
+                date=u.date,
+                details="Credit refunded" if u.side == "sale" else "Credit refunded to you",
+                reference=u.reference,
+                event_id=u.event_id,
+                paid_pence=u.amount_pence if u.side == "sale" else -u.amount_pence,
+                kind="refund",
+                payment_id=u.id,
+            )
+        )
     return out
 
 
 def statement(
     contact: Contact, docs: Sequence[Doc], ledger: Ledger, start: date | None = None, end: date | None = None
 ) -> Statement:
-    lines = sorted(_statement_lines(docs, ledger), key=lambda ln: (ln.date, ln.kind == "payment"))
+    lines = sorted(_statement_lines(docs, ledger), key=lambda ln: (ln.date, ln.kind in ("payment", "refund")))
     opening = sum(ln.amount_pence + ln.paid_pence for ln in lines if start and ln.date < start)
     shown = [ln for ln in lines if (not start or ln.date >= start) and (not end or ln.date <= end)]
     balance = opening
@@ -410,6 +460,19 @@ def statement(
         closing_balance_pence=balance,
         credit_pence=sum(c.amount_pence for c in credits_for(docs, ledger)),
         lines=shown,
+        credits=credits_for(docs, ledger),
+        open_documents=[
+            OpenItem(
+                event_id=d.event.id,
+                side=d.side,
+                date=d.event.date,
+                due_date=due_date(d, contact),
+                reference=d.reference,
+                gross_pence=d.gross,
+                outstanding_pence=outstanding(d, ledger),
+            )
+            for d in open_docs(docs, ledger)
+        ],
     )
 
 

@@ -296,6 +296,11 @@ async def undo(books: Books, event_id: str, user: str) -> tuple[LedgerEvent, Pro
         raise ProposalStateError("Already undone")
     if any(event_id in ln.event_ids() for ln in await books.stored_bank_lines() if ln.status == "matched"):
         raise ApprovalError("A bank line is matched to this entry; unmatch it first")
+    if original.is_credit_note:
+        from app.credits import uses_of
+
+        if await uses_of(books, "credit_note", event_id):
+            raise ApprovalError("The credit this credit note left has been applied or refunded; remove that first")
     reversal = reversal_of(original, user)
     try:
         path = await books.post_event(reversal)

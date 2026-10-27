@@ -29,7 +29,8 @@ from pydantic import BaseModel, Field
 
 from accnomos_ledger.events import LedgerEvent, Line
 from app.approve import reversal_of
-from app.books import BankMatchError, Books, now, today as london_today
+from app.books import BankMatchError, Books, now
+from app.books import today as london_today
 from app.contacts import Doc, Ledger, documents, load_ledger
 from app.invoicing import Invoice, InvoiceError, InvoiceStateError, list_invoices, money, save_invoice
 from app.journal import BANK, CASH, CREDITORS, DEBTORS
@@ -199,6 +200,9 @@ async def remove_payment(books: Books, payment_id: str, user: str) -> list[str]:
         return await _unmatch_line(books, payment_id, user)
     if r.removed_at:
         raise InvoiceStateError("This payment has already been removed")
+    from app.credits import refuse_while_used, uses_of
+
+    refuse_while_used(await uses_of(books, "payment", r.id), "this payment")
     if r.event_id:
         stored = await books.stored_bank_lines()
         lines = [ln for ln in stored if ln.status == "matched" and r.event_id in ln.event_ids()]
@@ -235,6 +239,9 @@ async def _unmatch_line(books: Books, line_id: str, user: str) -> list[str]:
     line = await books.find_bank_line(line_id)
     if line.status != "matched":
         raise FileNotFoundError(line_id)
+    from app.credits import refuse_while_used, uses_of
+
+    refuse_while_used(await uses_of(books, "payment", line_id), "this bank line")
     ids = line.event_ids()
     await books.unmatch(line_id, user)  # audited there; syncs the invoices
     return ids
@@ -253,7 +260,9 @@ async def _records(books: Books) -> list[PaymentRecord]:
 
 class InvoicePayment(BaseModel):
     id: str
-    source: Literal["recorded", "bank_line", "marked"]  # "marked": marked paid before payments were recorded
+    # "marked": marked paid before payments were recorded; "credit": a customer's credit (an overpayment of another
+    # invoice) applied to this one (app/credits.py; `id` is the use's, Remove takes it back)
+    source: Literal["recorded", "bank_line", "marked", "credit"]
     date: date | None
     amount_pence: int  # the whole payment
     applied_pence: int  # the part that paid this invoice
@@ -266,6 +275,7 @@ class AppliedCredit(BaseModel):
     number: str | None  # CN-0001
     event_id: str
     applied_pence: int
+    use_id: str | None = None  # a credit note raised against another invoice, applied here (app/credits.py)
 
 
 class InvoiceMoney(BaseModel):
@@ -307,6 +317,21 @@ def invoice_money(inv: Invoice, ledger: Ledger) -> InvoiceMoney | None:
         )
         for p in pays
     ]
+    for u in s.uses_for(eid):
+        if u.source == "payment":
+            out.append(
+                InvoicePayment(
+                    id=u.id,
+                    source="credit",
+                    date=u.date,
+                    amount_pence=u.amount_pence,
+                    applied_pence=u.applied_pence,
+                    reference=ledger.refs.get(u.credit_doc_event_id),
+                    description="Credit applied (overpaid on "
+                    + (ledger.refs.get(u.credit_doc_event_id) or "another invoice")
+                    + ")",
+                )
+            )
     paid, credited = s.paid.get(eid, 0), s.credited.get(eid, 0)
     if is_marked_paid(inv) and not paid and not credited:
         owed = inv.total_pence
@@ -340,6 +365,13 @@ def invoice_money(inv: Invoice, ledger: Ledger) -> InvoiceMoney | None:
         credit_notes=[
             AppliedCredit(number=ledger.refs.get(cn_id), event_id=cn_id, applied_pence=amt)
             for cn_id, amt in s.credit_notes.get(eid, [])
+        ]
+        + [
+            AppliedCredit(
+                number=ledger.refs.get(u.source_id), event_id=u.source_id, applied_pence=u.applied_pence, use_id=u.id
+            )
+            for u in s.uses_for(eid)
+            if u.source == "credit_note"
         ],
     )
 
