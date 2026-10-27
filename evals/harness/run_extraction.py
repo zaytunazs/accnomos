@@ -129,15 +129,13 @@ async def run_one(path: Path, idx: int, cfg: AiConfig, messy: bool, out: Path, b
     }
     t0 = time.perf_counter()
     try:
-        proposal = (await process_image(png, "image/png", cfg)).model_dump(mode="json")
+        proposal = (await process_image(png, "image/png", cfg, business_name=business_name)).model_dump(mode="json")
         rec |= {
             "proposal": proposal,
             "scores": score(gold, proposal),
             "verification": score_verification(gold, proposal),
             "error": None,
         }
-        proposal = (await process_image(png, "image/png", cfg, business_name=business_name)).model_dump(mode="json")
-        rec |= {"proposal": proposal, "scores": score(gold, proposal), "error": None}
     except Exception as exc:  # record and carry on; one bad doc must not stop the run
         rec |= {
             "proposal": None,
