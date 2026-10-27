@@ -310,7 +310,7 @@ class _HomeTabState extends State<HomeTab> {
           physics: const NeverScrollableScrollPhysics(),
           mainAxisSpacing: 12,
           crossAxisSpacing: 12,
-          childAspectRatio: 1.35,
+          childAspectRatio: 1.2,
           children: const [
             _SampleTile(
                 label: 'Cash in bank', value: '—', note: 'Connect to see'),
@@ -367,7 +367,7 @@ class _HomeTabState extends State<HomeTab> {
             physics: const NeverScrollableScrollPhysics(),
             mainAxisSpacing: 12,
             crossAxisSpacing: 12,
-            childAspectRatio: 1.42,
+            childAspectRatio: 1.3,
             children: [
               _liveTile(
                 label: 'Needs a look',
@@ -620,6 +620,8 @@ class _SampleTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label.toUpperCase(),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
@@ -627,11 +629,15 @@ class _SampleTile extends StatelessWidget {
                   letterSpacing: 0.6)),
           const Spacer(),
           Text(value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                   fontSize: 26,
                   fontWeight: FontWeight.w800,
                   color: AccnomosColors.ink)),
           Text(note,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                   fontSize: 12, color: AccnomosColors.muted)),
         ],

@@ -43,6 +43,24 @@ void main() {
     expect(find.text('Connect your cloud'), findsOneWidget);
   });
 
+  testWidgets('compact 360 dp layouts do not overflow', (tester) async {
+    tester.view.physicalSize = const Size(360, 740);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    for (final screen in [
+      const Scaffold(body: HomeTab()),
+      const MoreScreen(),
+      const PayrollScreen(),
+      const BankScreen(),
+      const InvoicesScreen(),
+    ]) {
+      await tester.pumpWidget(shell(screen));
+      await tester.pumpAndSettle();
+    }
+    // Any RenderFlex overflow throws during pumpAndSettle above.
+  });
+
   testWidgets('more lists files, payroll and bank', (tester) async {
     await tester.pumpWidget(shell(const MoreScreen()));
     await tester.pumpAndSettle();
