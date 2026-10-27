@@ -95,6 +95,11 @@ class AuthService {
     return result.account;
   }
 
+  /// Extra scopes for sending an invoice from the user's Outlook. Asked for
+  /// only when the user first taps Send in the confirmation dialog, mirroring
+  /// the web's `mailSendScopesFor` — never at sign-in.
+  static const mailSendScopes = ['Mail.Send'];
+
   /// Graph access token: silent first, interactive on `MsalUiRequiredException`.
   Future<String> token() async {
     final pca = await _pcaAsync();
@@ -109,6 +114,25 @@ class AuthService {
       return result.accessToken;
     } on MsalNoCurrentAccountException {
       final result = await pca.acquireToken(scopes: scopesFor(_kind));
+      _record(result);
+      return result.accessToken;
+    }
+  }
+
+  /// Access token for extra [scopes] (e.g. [mailSendScopes]): silent first,
+  /// interactive when consent is needed.
+  Future<String> tokenFor(List<String> scopes) async {
+    final pca = await _pcaAsync();
+    try {
+      final result = await pca.acquireTokenSilent(scopes: scopes);
+      _record(result);
+      return result.accessToken;
+    } on MsalUiRequiredException {
+      final result = await pca.acquireToken(scopes: scopes);
+      _record(result);
+      return result.accessToken;
+    } on MsalNoCurrentAccountException {
+      final result = await pca.acquireToken(scopes: scopes);
       _record(result);
       return result.accessToken;
     }
