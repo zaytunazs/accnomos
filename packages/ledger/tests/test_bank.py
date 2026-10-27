@@ -4,7 +4,9 @@ from datetime import date, datetime
 
 import pytest
 from accnomos_ledger import LedgerEvent, Line, VatCode
-from accnomos_ledger.bank import BankCsvError, detect_bank, line_id, parse_amount, parse_bank_csv, parse_date, suggest_action
+from accnomos_ledger.bank import (
+    BankCsvError, detect_bank, line_id, parse_amount, parse_bank_csv, parse_date, reconciled_to, suggest_action,
+)
 from accnomos_ledger.matching import settlement_pence, suggest_matches, tokens
 
 STARLING = b"""Date,Counter Party,Reference,Type,Amount (GBP),Balance (GBP),Spending Category,Notes
@@ -72,6 +74,18 @@ def test_suggested_actions_for_unmatched_lines() -> None:
     hints = [suggest_action(ln) for ln in parse_bank_csv(csv, "s.csv")]
     assert [h.action for h in hints] == ["mark_transfer", "create_expense_proposal", "ignore", "create_expense_proposal", "ignore"]
     assert "bank charges" in hints[1].reason
+
+
+def test_reconciled_to_stops_before_the_first_open_day() -> None:
+    lines = parse_bank_csv(b"Date,Description,Amount\n01/10/2026,A,-1.00\n03/10/2026,B,-2.00\n03/10/2026,C,-3.00\n"
+                           b"05/10/2026,D,-4.00\n", "s.csv")
+    assert reconciled_to([]) is None and reconciled_to(lines) is None
+    lines[0].status, lines[1].status, lines[3].status = "matched", "transfer", "ignored"
+    assert reconciled_to(lines) == date(2026, 10, 1)  # 3 Oct is only half done
+    lines[2].status = "suggested"  # a suggestion is not a decision
+    assert reconciled_to(lines) == date(2026, 10, 1)
+    lines[2].status = "ignored"
+    assert reconciled_to(lines) == date(2026, 10, 5)
 
 
 def test_not_a_statement() -> None:
