@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test";
 import { createBooksFolder, expect, signIn, test } from "./fixtures";
 import { PAGES } from "./pages"; // every page of the static export, at phone width (project "phone"), signed in with a posted receipt
 
@@ -97,5 +98,50 @@ test.describe("Review at 390 px", () => {
     await expect(screwfix).toHaveCount(0);
     await page.keyboard.press("u");
     await expect(screwfix).toBeVisible();
+  });
+});
+
+test.describe("brand images at the size used, and reduced motion", () => {
+  /** The /brand files the signed-out Home (the one page with the hero) asks for at this width. */
+  async function brandRequests(page: Page): Promise<string[]> {
+    const seen: string[] = [];
+    page.on("request", (r) => {
+      const path = new URL(r.url()).pathname;
+      if (path.startsWith("/brand/")) seen.push(path);
+    });
+    await page.goto("/");
+    await expect(page.getByRole("link", { name: "See the demo books" })).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    return seen;
+  }
+
+  test("phone (412 px): the 800 px hero only; never hero.jpg or the Play feature graphic", async ({ page }) => {
+    expect(await brandRequests(page)).toEqual(["/brand/hero-800.jpg"]);
+  });
+
+  test.describe("1280 px", () => {
+    test.use({ viewport: { width: 1280, height: 800 } });
+    test("the full hero, still never the feature graphic", async ({ page }) => {
+      expect(await brandRequests(page)).toEqual(["/brand/hero.jpg"]);
+    });
+  });
+
+  test("prefers-reduced-motion: pulses stop and transitions are instant; otherwise they run", async ({ page }) => {
+    const motion = () =>
+      page.evaluate(() => {
+        const probe = document.createElement("span");
+        probe.className = "animate-pulse transition-all";
+        document.body.append(probe);
+        const s = getComputedStyle(probe);
+        const out = { iterations: s.animationIterationCount, transition: parseFloat(s.transitionDuration) };
+        probe.remove();
+        return out;
+      });
+    await page.goto("/privacy");
+    expect(await motion()).toEqual({ iterations: "infinite", transition: 0.15 });
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    const reduced = await motion();
+    expect(reduced.iterations).toBe("1");
+    expect(reduced.transition).toBeLessThan(0.001);
   });
 });
