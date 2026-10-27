@@ -44,7 +44,7 @@ import json
 import os
 import re
 import sys
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -76,7 +76,7 @@ from app import contacts as contacts_mod  # noqa: E402
 from app import inbox as inbox_mod  # noqa: E402
 from app import payroll as payroll_mod  # noqa: E402
 from app import todos as todos_mod  # noqa: E402
-from app.approve import approve  # noqa: E402
+from app.approve import ProposalStateError, approve  # noqa: E402
 from app.autopilot import supplier_key  # noqa: E402
 from app.books import Books, DocMeta, now  # noqa: E402
 from app.checks import (  # noqa: E402  sys.path first
@@ -89,7 +89,7 @@ from app.checks import (  # noqa: E402  sys.path first
 )
 from app.deadlines import STAGGER_START_MONTH, add_months, period_containing, period_label, previous_period  # noqa: E402
 from app.journal import BANK, VAT_CONTROL, draft_journal  # noqa: E402
-from app.paths import INBOX, REPORTS, readme_text  # noqa: E402
+from app.paths import DOCS, INBOX, REPORTS, readme_text  # noqa: E402
 from app.pdf import render_invoice  # noqa: E402
 from app.pipeline import sha256_hex, suggested_filename  # noqa: E402
 from app.repair import repair  # noqa: E402
@@ -1024,9 +1024,13 @@ async def _upload(books: Books, d: PlannedDoc) -> tuple[str, bytes]:
     return path, data
 
 
-async def _propose(books: Books, d: PlannedDoc, plan: Plan, arrived: tuple[str, bytes] | None = None) -> Proposal:
+async def _propose(
+    books: Books, d: PlannedDoc, plan: Plan, arrived: tuple[str, bytes] | None = None, again: bool = False
+) -> Proposal:
     """What scan_inbox_detailed does for one file, with the gold fields standing in for the model's reading.
-    `arrived`: (path, bytes) of a file already in 00 Inbox (Outlook intake put it there); else it is uploaded."""
+    `arrived`: (path, bytes) of a file already in 00 Inbox (Outlook intake put it there); else it is uploaded.
+    `again`: a resumed seed recorded this document (its _System/docs entry) but not its proposal, so its own hash
+    is not a duplicate."""
     path, data = arrived or await _upload(books, d)
     digest = sha256_hex(data)
     doc = d.doc()
@@ -1034,9 +1038,12 @@ async def _propose(books: Books, d: PlannedDoc, plan: Plan, arrived: tuple[str, 
     supplier = contacts_mod.supplier_knowledge(
         await contacts_mod.stored_contacts(books), doc
     )  # as the scan looks it up
+    known = await books.known_hashes()
+    if again:
+        known.discard(digest)
     checks = repair(doc, plan.business) + run_checks(
         doc,
-        known_hashes=await books.known_hashes(),
+        known_hashes=known,
         this_hash=digest,
         period_start=start,
         period_end=end,
@@ -1085,15 +1092,14 @@ async def seed_state(books: Books) -> str:
     return "complete" if done else "partial"
 
 
-async def _mail_in(books: Books, docs: list[PlannedDoc], plan: Plan) -> dict[str, tuple[str, bytes]]:
+async def _mail_in(books: Books, docs: list[tuple[int, PlannedDoc]], plan: Plan) -> None:
     """Outlook intake (app/intake.py scan_mail) copies these receipts from a stand-in mailbox into 00 Inbox, as it
-    would from the user's own. The real mailbox is never read. Returns {file_name: (inbox path, bytes)}."""
+    would from the user's own. The real mailbox is never read. `docs`: (n, document), n numbering the mails, so a
+    resumed seed sends the same messages again. Intake records where each one went (_mailed reads it back)."""
     box = FakeMailProvider()
     at = datetime.now(UTC)
-    pngs: dict[str, bytes] = {}
-    for n, d in enumerate(docs):
+    for n, d in docs:
         png, who = render_png(d.text), d.doc().supplier_name
-        pngs[f"att-{n}"] = png
         box.add(
             MailMessage(
                 id=f"sample-{n}",
@@ -1106,10 +1112,73 @@ async def _mail_in(books: Books, docs: list[PlannedDoc], plan: Plan) -> dict[str
             (MailAttachment(id=f"att-{n}", name=f"receipt-{n + 1}.png", content_type="image/png", size=len(png)), png),
         )
     result = await intake.scan_mail(books, box, since_days=2, user=f"accounts@{_slug(plan.business)}.example")
-    saved = {i.attachment_id: f"{INBOX}/{i.name}" for i in result.items}
-    if len(saved) != len(docs):
-        raise RuntimeError(f"Outlook intake copied {len(saved)} of {len(docs)} emailed receipts: {result.errors}")
-    return {d.file_name: (saved[f"att-{n}"], pngs[f"att-{n}"]) for n, d in enumerate(docs)}
+    if len(result.items) != len(docs):
+        raise RuntimeError(f"Outlook intake copied {len(result.items)} of {len(docs)} emailed receipts")
+
+
+async def _mailed(books: Books, d: PlannedDoc) -> tuple[str, bytes]:
+    """(path in 00 Inbox, bytes) of an emailed receipt, from intake's record of what it saved."""
+    png = render_png(d.text)
+    sha = sha256_hex(png)
+    for row in await books.read_json(intake.SEEN, []):
+        if isinstance(row, dict) and row.get("sha256") == sha:
+            return str(row["saved_as"]), png
+    raise RuntimeError(f"the emailed receipt {d.file_name} is not in the intake record")
+
+
+# --------------------------------------------------------------------------- #
+# The seed as a list of steps
+#
+# `seed` runs them all in one go. The runtime's "Load sample books" (app/sample_books.py) runs the same steps one
+# at a time in the background, records after each how many are done, and when it is stopped (the Graph token it
+# was given expires after about an hour, or the runtime restarts) carries on from the step that was cut short. So
+# every step is safe to run again after it stopped part-way: `resuming` is True for that one step, and it then
+# looks at what is already there before writing. A step that has not started yet runs exactly as in one go.
+# --------------------------------------------------------------------------- #
+
+
+@dataclass
+class Step:
+    name: str  # what the person waiting sees, e.g. "Receipts and bills (3 of 38)"
+    run: Callable[[Books, bool], Awaitable[None]]  # (books, resuming)
+
+
+def seed_steps(plan: Plan, sender: NotEmailed | None = None) -> list[Step]:
+    """Every step of the plan, in the order `seed` writes them."""
+    sender = sender or NotEmailed()
+    documents = sorted(plan.posted + plan.supplier_docs, key=lambda d: (d.date, d.gold))
+    mailed = [(n, d) for n, d in enumerate(d for d in plan.posted if d.via == "mail")]
+
+    def doc_step(n: int, d: PlannedDoc) -> Step:
+        return Step(f"Receipts and bills ({n} of {len(documents)})", lambda b, r: _step_document(b, plan, d, r))
+
+    steps = [
+        Step("Folders and business details", lambda b, r: _step_tree(b, plan)),
+        Step("Staff, jobs and timesheets", lambda b, r: _step_jobs(b, plan, r)),
+        Step("Vehicle and journeys", lambda b, r: _step_vehicle(b, plan, r)),
+        Step("Suppliers that aren't VAT-registered", lambda b, r: _step_not_registered(b, plan)),
+    ]
+    if mailed:
+        steps.append(Step("Receipts emailed in (Outlook intake)", lambda b, r: _step_mail(b, plan, mailed, r)))
+    steps += [doc_step(n, d) for n, d in enumerate(documents, start=1)]
+    steps += [
+        Step("Contacts", lambda b, r: _step_contacts(b, plan)),
+        Step("Sales invoices", lambda b, r: _step_invoices(b, plan, sender, r)),
+    ]
+    if plan.credit_notes:
+        steps.append(Step("Credit note", lambda b, r: _step_credit_notes(b, plan, r)))
+    steps += [
+        Step("Mileage claim", lambda b, r: _step_mileage_claim(b, plan, r)),
+        Step("Bank rules and statements", lambda b, r: _step_statements(b, plan)),
+        Step("Payments", lambda b, r: _step_payments(b, plan, r)),
+        Step("Bank reconciliation", lambda b, r: _step_reconcile(b, plan, r)),
+        Step("Pay run estimate and to-dos", lambda b, r: _step_payroll_todos(b, plan)),
+        Step(f"Documents waiting in {INBOX}", lambda b, r: _step_inbox(b, plan)),
+        Step("Books.xlsx", lambda b, r: _rebuild(b)),
+    ]
+    if plan.export_report:  # last: its file in 07 Reports is how a second run knows the seed finished
+        steps.append(Step(f"Reports in {REPORTS}", lambda b, r: _step_reports(b, plan, r)))
+    return steps
 
 
 async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] = print) -> dict[str, Any]:
@@ -1126,9 +1195,35 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
             if state == "partial"
             else "These books have entries the seed did not make; it only fills an empty folder"
         )
-    say("Folder tree")
+    sender = NotEmailed()
+    for step in seed_steps(plan, sender):
+        say(step.name)
+        await step.run(books, False)
+    return await _report(books, plan, emails=len(sender.sent))
+
+
+def proposal_id(plan: Plan, d: PlannedDoc) -> str:
+    return _hex(plan.business, d.gold, d.date)
+
+
+async def _proposal_or_none(books: Books, pid: str) -> Proposal | None:
+    try:
+        return await books.get_proposal(pid)
+    except FileNotFoundError:
+        return None
+
+
+async def _event_exists(books: Books, event_id: str) -> bool:
+    try:
+        await books.get_event(event_id)
+    except FileNotFoundError:
+        return False
+    return True
+
+
+async def _step_tree(books: Books, plan: Plan) -> None:
     await books.ensure_tree()
-    await storage.write("README.txt", readme_text().encode())  # the same text the web app writes (app/paths.py)
+    await books.storage.write("README.txt", readme_text().encode())  # the same text the web app writes (app/paths.py)
     slug = _slug(plan.business)
     await invoicing.save_profile(
         books,
@@ -1143,79 +1238,207 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
         USER,
     )
 
-    say("Staff, jobs, timesheets, vehicle and journeys")
+
+async def _step_jobs(books: Books, plan: Plan, resuming: bool) -> None:
     for s in plan.staff:
         await jobs.save_staff(books, s)
     for j in plan.jobs.values():
         await jobs.save_job(books, j)
+    have = {e.id for e in await jobs.load_entries(books)} if resuming else set()
     for t in plan.timesheets:
-        await jobs.add_entry(books, t)
-    vehicle = await mileage.add_vehicle(books, plan.vehicle, USER)
-    claim_ids = {j.id for j in plan.claim_journeys()}
-    for j in plan.journeys:
-        await mileage.add_entry(books, j.model_copy(update={"vehicle_id": vehicle.id}), USER)
+        if t.id not in have:  # entries are appended: a resumed step skips those already there
+            await jobs.add_entry(books, t)
 
-    say(f"{len(plan.not_vat_registered)} suppliers that aren't VAT-registered")
-    for name in plan.not_vat_registered:
+
+def _journey_key(j: mileage.MileageEntry) -> tuple[Any, ...]:
+    return (j.date, j.from_, j.to, j.miles, j.purpose, j.job_id)
+
+
+async def _step_vehicle(books: Books, plan: Plan, resuming: bool) -> None:
+    found = next((v for v in await mileage.load_vehicles(books) if v.name == plan.vehicle.name), None)
+    vehicle = found if resuming and found else await mileage.add_vehicle(books, plan.vehicle, USER)
+    have: set[tuple[Any, ...]] = set()
+    if resuming:
+        for ty in sorted({mileage.tax_year_of(j.date) for j in plan.journeys}):
+            have |= {_journey_key(e) for e in await mileage.load_entries(books, ty) if e.vehicle_id == vehicle.id}
+    for j in plan.journeys:
+        if _journey_key(j) not in have:  # the app gives each journey a new id, so they are told apart by content
+            await mileage.add_entry(books, j.model_copy(update={"vehicle_id": vehicle.id}), USER)
+
+
+async def _step_not_registered(books: Books, plan: Plan) -> None:
+    for name in plan.not_vat_registered:  # writes only when it changes
         await contacts_mod.set_vat_status(books, name, "not_registered", ACTOR)
 
-    mailed = [d for d in plan.posted if d.via == "mail"]
-    arrived = await _mail_in(books, mailed, plan) if mailed else {}
-    documents = sorted(plan.posted + plan.supplier_docs, key=lambda d: (d.date, d.gold))
-    say(f"{len(documents)} documents: upload (or email in), propose, approve")
-    sales: dict[str, str] = {}  # invoice number -> event, for the customers' payments
-    bills: dict[str, str] = {}  # supplier's invoice number -> event
-    for n, d in enumerate(documents, start=1):
-        p = await _propose(books, d, plan, arrived.get(d.file_name))
-        if d.by == "autopilot":
-            p = await _autopilot(books, p)
-        else:
-            edits = {"job_id": plan.jobs[d.job].id} if d.job else None
-            p = await approve(books, p.id, USER, edits, always=d.always, rebuild=False)
-        if p.extracted.invoice_number and p.event_id:
-            (sales if p.extracted.doc_type == "sales_invoice" else bills)[p.extracted.invoice_number] = p.event_id
-        if n % 10 == 0:
-            say(f"  {n}/{len(documents)}")
 
-    say("Contacts")
-    book, _ = await contacts_mod.refresh(books, USER)
+async def _step_mail(books: Books, plan: Plan, mailed: list[tuple[int, PlannedDoc]], resuming: bool) -> None:
+    if resuming:  # only the receipts intake has not recorded yet
+        seen = {r.get("sha256") for r in await books.read_json(intake.SEEN, []) if isinstance(r, dict)}
+        mailed = [(n, d) for n, d in mailed if sha256_hex(render_png(d.text)) not in seen]
+        if not mailed:
+            return
+    await _mail_in(books, mailed, plan)
+
+
+async def _left_part_way(
+    books: Books, d: PlannedDoc, arrived: tuple[str, bytes] | None
+) -> tuple[tuple[str, bytes] | None, bool]:
+    """A resumed document with no proposal yet: where its file is now, and whether it was already recorded."""
+    data = render_png(d.text)
+    meta = await books.read_json(f"{DOCS}/{sha256_hex(data)}.json", None)
+    if isinstance(meta, dict) and meta.get("filed_path") and await books.exists(meta["filed_path"]):
+        return (meta["filed_path"], data), True  # filed and recorded; only the proposal is missing
+    if arrived and await books.exists(arrived[0]):
+        return arrived, False
+    inbox = f"{INBOX}/{d.file_name}"
+    if d.via != "mail" and await books.exists(inbox):
+        return (inbox, data), False  # uploaded, not yet read
+    doc = d.doc()
+    folder, name = Books.filing_folder(doc), suggested_filename(doc, "image/png")
+    stem = name.rsplit(".", 1)[0]
+    for f in await books.list_files(folder):  # moved to its folder, then stopped before it was recorded
+        same_name = f.name == name or f.name.startswith(f"{stem} (")
+        if same_name and f.size in (0, len(data)) and await books.storage.read(f.path) == data:
+            return (f.path, data), False
+    return arrived, False  # nothing written yet
+
+
+async def _step_document(books: Books, plan: Plan, d: PlannedDoc, resuming: bool) -> None:
+    """Upload (or take from intake), propose, approve, as the person (or Autopilot) would."""
+    arrived = await _mailed(books, d) if d.via == "mail" else None
+    p = await _proposal_or_none(books, proposal_id(plan, d)) if resuming else None
+    if p is None:
+        again = False
+        if resuming:
+            arrived, again = await _left_part_way(books, d, arrived)
+        p = await _propose(books, d, plan, arrived, again)
+    if d.by == "autopilot":
+        if p.status != "posted":
+            p = await _autopilot(books, p, resuming)
+        return
+    edits = {"job_id": plan.jobs[d.job].id} if d.job else None
+    if p.status != "posted":
+        try:
+            p = await approve(books, p.id, USER, edits, always=d.always, rebuild=False)
+            return
+        except ProposalStateError:
+            if not resuming:
+                raise
+    await _finish_approval(books, p.id, USER, edits, d.always)  # resuming: posted, but the approval stopped part-way
+
+
+async def _finish_approval(books: Books, pid: str, user: str, edits: dict[str, Any] | None, always: bool) -> None:
+    """What approve() does after posting the entry, for an approval that stopped part-way (the entry is in the
+    ledger, its proposal is still open, or an Always-do-this rule was not saved). Raises if nothing was posted."""
+    from app import approve as approve_mod
+
+    p = await books.get_proposal(pid)
+    event = await books.get_event(p.event_id or p.id)  # FileNotFoundError: the approval never posted
+    actor = approve_mod._actor(user)
+    if p.status != "posted":
+        if edits and "job_id" in edits:
+            p.job_id = edits["job_id"]
+        p.status, p.event_id, p.decided_by, p.decided_at = "posted", event.id, user, now()
+        await books.save_proposal(p)
+        await contacts_mod.learn_from_approval(books, p, actor, False)
+        await books.audit(actor, "approved", {"proposal": p.id, "event": event.id, "resumed": True})
+    if always and not any(
+        r.supplier_key == supplier_key(p.extracted.supplier_name) for r in await autopilot.load_rules(books)
+    ):
+        await approve_mod._remember(books, p, user)
+        if auto_rule := autopilot.rule_from_proposal(p, user):
+            await autopilot.save_rule(books, auto_rule)
+
+
+async def _autopilot(books: Books, p: Proposal, resuming: bool = False) -> Proposal:
+    """What the scan does with a proposal from a supplier with an Autopilot rule (app/inbox.py)."""
+    rule = autopilot.match(p, await autopilot.load_rules(books))
+    p.autopilot = autopilot.evaluate(p, rule, True, await books.list_proposals())
+    await books.save_proposal(p)
+    if rule is None or not p.autopilot.auto_approve:
+        raise RuntimeError(f"Autopilot would not post {p.extracted.supplier_name}: {p.autopilot.reasons}")
+    posted = await inbox_mod._autopilot_post(books, p, rule)
+    if posted.status != "posted" and resuming and await _event_exists(books, p.id):
+        await _finish_approval(books, p.id, autopilot.AUTOPILOT, None, False)
+        await autopilot.record_hit(books, rule.supplier_key)
+        posted = await books.get_proposal(p.id)
+    if posted.status != "posted":
+        raise RuntimeError(f"Autopilot could not post {p.extracted.supplier_name}")
+    return posted
+
+
+async def _customer_ids(books: Books, plan: Plan) -> dict[str, str]:
+    book = await contacts_mod.stored_contacts(books)
     ids: dict[str, str] = {}
-    for name, edits in plan.customers.items():
+    for name in plan.customers:
         c = contacts_mod.find(book, supplier_key(name), None)
         if c is None:
             raise RuntimeError(f"{name} is not in the contact book")
         ids[name] = c.id
-        await contacts_mod.edit(books, c.id, edits, USER)
+    return ids
+
+
+async def _step_contacts(books: Books, plan: Plan) -> None:
+    await contacts_mod.refresh(books, USER)
+    ids = await _customer_ids(books, plan)
+    for name, edits in plan.customers.items():
+        await contacts_mod.edit(books, ids[name], edits, USER)
     for k, j in plan.jobs.items():
         await jobs.save_job(books, j.model_copy(update={"customer_id": ids[plan.job_customers[k]]}))
 
-    say(f"{len(plan.invoices)} sales invoices")
-    sender = NotEmailed()
+
+async def _rewind(books: Books, sequence: str, number: str) -> None:
+    """A resumed seed whose number was taken but whose invoice (or credit note) was never saved: give the number
+    back, so the folder's sequence matches the plan (the bank statement quotes the invoice numbers)."""
+    n = int(number.rsplit("-", 1)[1])
+    await books._update_json(sequence, {}, lambda s: {**s, "next": n} if int(s.get("next", 1)) > n else s)
+
+
+async def _step_invoices(books: Books, plan: Plan, sender: NotEmailed, resuming: bool) -> None:
+    ids = await _customer_ids(books, plan)
     profile = await invoicing.load_profile(books)
     for inv in plan.invoices:
-        draft = invoicing.InvoiceDraft(
-            customer=invoicing.InvoiceCustomer(
-                contact_id=ids.get(inv.customer), name=inv.customer, email=inv.email, address=inv.address
-            ),
-            issue_date=inv.issue,
-            due_date=inv.due,
-            lines=inv.lines,
-            notes=LABEL,
-        )
-        created = await invoicing.create_invoice(books, draft, USER)
-        if created.number != inv.number:  # the bank statement quotes the number the plan expected
-            raise RuntimeError(f"Invoice numbered {created.number}, expected {inv.number}: is the folder fresh?")
-        await invoicing.send_invoice(books, sender, created.number, USER, render_invoice(created, profile))
+        created: invoicing.Invoice | None = None
+        if resuming:
+            try:
+                created = await invoicing.get_invoice(books, inv.number)
+            except FileNotFoundError:
+                await _rewind(books, invoicing.SEQUENCE, inv.number)
+        if created is None:
+            draft = invoicing.InvoiceDraft(
+                customer=invoicing.InvoiceCustomer(
+                    contact_id=ids.get(inv.customer), name=inv.customer, email=inv.email, address=inv.address
+                ),
+                issue_date=inv.issue,
+                due_date=inv.due,
+                lines=inv.lines,
+                notes=LABEL,
+            )
+            created = await invoicing.create_invoice(books, draft, USER)
+            if created.number != inv.number:  # the bank statement quotes the number the plan expected
+                raise RuntimeError(f"Invoice numbered {created.number}, expected {inv.number}: is the folder fresh?")
+        unfinished = not created.event_id or (created.timesheet_entry_ids() and not created.timesheets_marked)
+        if created.status == "draft" or (created.status == "sent" and unfinished):  # a sent one: finishes posting
+            await invoicing.send_invoice(books, sender, created.number, USER, render_invoice(created, profile))
         if inv.job:
-            entries = [t.id for t in plan.timesheets if t.job_id == plan.jobs[inv.job].id]
+            job = plan.jobs[inv.job]
+            if resuming and (await jobs.get_job(books, job.id)).status == "closed":
+                continue
+            entries = [t.id for t in plan.timesheets if t.job_id == job.id]
             await jobs.mark_invoiced(books, entries, created.number)
-            await books.audit(
-                f"user:{USER}", "timesheets_invoiced", {"job": plan.jobs[inv.job].id, "invoice": created.number}
-            )
-            await jobs.save_job(
-                books, (await jobs.get_job(books, plan.jobs[inv.job].id)).model_copy(update={"status": "closed"})
-            )
+            await books.audit(f"user:{USER}", "timesheets_invoiced", {"job": job.id, "invoice": created.number})
+            await jobs.save_job(books, (await jobs.get_job(books, job.id)).model_copy(update={"status": "closed"}))
+
+
+async def _step_credit_notes(books: Books, plan: Plan, resuming: bool) -> None:
     for cn in plan.credit_notes:
+        if resuming:
+            issued = [c for c in await credit_notes.list_credit_notes(books, cn.invoice) if c.status == "issued"]
+            if issued:  # saved; post it if the post was cut short
+                if issued[0].event_id and not await _event_exists(books, issued[0].event_id):
+                    await credit_notes.post_credit_note(books, issued[0], USER)
+                continue
+            await _rewind(books, credit_notes.CN_SEQUENCE, "CN-0001")
         await credit_notes.create_credit_note(
             books,
             cn.invoice,
@@ -1229,44 +1452,92 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
     if any(i.email for i in plan.invoices):
         await contacts_mod.refresh(books, USER)  # the customers first met on an invoice
 
-    say("Mileage claim")
-    if claim_ids:
-        claim, _ = await mileage.propose_allowance(
-            books, mileage.tax_year_of(plan.claim_day), mileage.quarter_of(plan.claim_day), today=plan.claim_day
-        )
-        await approve(books, claim.id, USER, rebuild=False)
 
-    say("Bank rules and statements")
-    if plan.bank_rules:
+async def _step_mileage_claim(books: Books, plan: Plan, resuming: bool) -> None:
+    if not plan.claim_journeys():
+        return
+    ty, quarter = mileage.tax_year_of(plan.claim_day), mileage.quarter_of(plan.claim_day)
+    if resuming:
+        claims = [
+            c for c in await mileage.mileage_claims(books, ty) if c.mileage_claim and c.mileage_claim.period == quarter
+        ]
+        if any(c.status == "posted" for c in claims):
+            return
+    claim, _ = await mileage.propose_allowance(books, ty, quarter, today=plan.claim_day)
+    try:
+        await approve(books, claim.id, USER, rebuild=False)
+    except ProposalStateError:
+        if not resuming:
+            raise
+        await _finish_approval(books, claim.id, USER, None, False)
+
+
+async def _step_statements(books: Books, plan: Plan) -> None:
+    if plan.bank_rules:  # saving the rules again replaces them; a statement imported again changes nothing
         await bank_rules.save_bank_rules(books, plan.bank_rules)
         await books.audit(f"user:{USER}", "bank_rules_saved", {"rules": [r.id for r in plan.bank_rules]})
     for name, data in plan.statements:
         await books.import_bank_csv(data, name, USER)
+
+
+def _line_for(lines: list[Any], day: date, pence: int, reference: str) -> Any:
+    return next(ln for ln in lines if (ln.date, ln.amount_pence, ln.reference) == (day, pence, reference))
+
+
+def _bill_events(plan: Plan) -> dict[str, str]:
+    """Supplier's invoice number -> its entry. An entry approved from a proposal has the proposal's id."""
+    return {
+        d.extracted["invoice_number"]: proposal_id(plan, d)
+        for d in plan.posted + plan.supplier_docs
+        if d.extracted.get("invoice_number") and d.extracted["doc_type"] != "sales_invoice"
+    }
+
+
+def _sale_events(plan: Plan) -> dict[str, str]:
+    """Invoice number on a gold sales invoice -> its entry."""
+    return {
+        d.extracted["invoice_number"]: proposal_id(plan, d)
+        for d in plan.posted + plan.supplier_docs
+        if d.extracted.get("invoice_number") and d.extracted["doc_type"] == "sales_invoice"
+    }
+
+
+async def _step_payments(books: Books, plan: Plan, resuming: bool) -> None:
+    from app.settlement import load_records
+
     lines = await books.stored_bank_lines()
-
-    def line_for(day: date, pence: int, reference: str) -> str:
-        return next(ln.id for ln in lines if (ln.date, ln.amount_pence, ln.reference) == (day, pence, reference))
-
+    done = {r.bank_line_id for r in await load_records(books) if r.bank_line_id} if resuming else set()
     for inv in plan.invoices:
         for pay in inv.payments:
-            line_id = line_for(pay.day, pay.pence, pay.reference)
+            line = _line_for(lines, pay.day, pay.pence, pay.reference)
+            if line.id in done:
+                continue
             if pay.how == "exact":  # Bank → Reconcile: the exact invoice match, then Post as payment
-                await bank_reconcile.approve_line(books, line_id, "exact", USER)
-                await payments.payment_from_bank_line(books, line_id, USER)
+                if not (resuming and (await books.find_bank_line(line.id)).status == "matched"):
+                    await bank_reconcile.approve_line(books, line.id, "exact", USER)
+                await payments.payment_from_bank_line(books, line.id, USER)
             else:  # Invoices → Record payment, with the statement line
-                await invoicing.mark_paid(books, inv.number, USER, bank_line_id=line_id)
+                await invoicing.mark_paid(books, inv.number, USER, bank_line_id=line.id)
     if (b := plan.bill_payment) is not None:  # Contacts → Bills to pay → Record payment
-        await payments.record_payment(
-            books,
-            payments.PaymentIn(
-                side="purchase",
-                amount_pence=-b.pence,
-                reference=b.reference,
-                allocations=[payments.AllocationIn(event_id=bills[b.reference], amount_pence=-b.pence)],
-                bank_line_id=line_for(b.day, b.pence, b.reference),
-            ),
-            USER,
-        )
+        line = _line_for(lines, b.day, b.pence, b.reference)
+        if line.id not in done:
+            await payments.record_payment(
+                books,
+                payments.PaymentIn(
+                    side="purchase",
+                    amount_pence=-b.pence,
+                    reference=b.reference,
+                    allocations=[
+                        payments.AllocationIn(event_id=_bill_events(plan)[b.reference], amount_pence=-b.pence)
+                    ],
+                    bank_line_id=line.id,
+                ),
+                USER,
+            )
+
+
+async def _step_reconcile(books: Books, plan: Plan, resuming: bool) -> None:
+    sales = _sale_events(plan)
     older_end = plan.periods[0][1]
     by_id = {ln.id: ln for ln in await books.stored_bank_lines()}
     for m in await books.bank_suggestions():  # the older statement is reconciled; the newer one is left to confirm
@@ -1275,49 +1546,53 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
     for ln in await books.stored_bank_lines():  # a customer payment the matcher could not place: matched by hand
         if ln.date <= older_end and ln.status == "unmatched" and ln.reference in sales:
             await books.confirm_match(ln.id, [sales[ln.reference]], USER)
-    if plan.bank_rules:
-        for ln in await books.stored_bank_lines():  # Reconcile: every line a rule codes, approved
-            if not ln.resolved and await bank_reconcile.suggest_rule(books, ln):
-                coded = await bank_reconcile.approve_line(books, ln.id, "rule", USER)
-                # Approving posts the entry but leaves the line open (app/bank_reconcile.py); the Bank page then
-                # suggests the line to it, and the user confirms that, as here.
-                if not (await books.find_bank_line(ln.id)).resolved:
-                    await books.confirm_match(ln.id, [coded["event_id"]], USER)
-            elif not ln.resolved and ln.description == "Savings Space":  # the tax pot: money between own accounts
-                await books.mark_line(ln.id, "transfer", USER)
+    if not plan.bank_rules:
+        return
+    for ln in await books.stored_bank_lines():  # Reconcile: every line a rule codes, approved
+        if ln.resolved:
+            continue
+        if resuming and ln.proposal_id:  # coded before the seed stopped: finish that, don't code it twice
+            p = await books.get_proposal(ln.proposal_id)
+            if p.status != "posted":
+                p = await approve(books, p.id, USER, rebuild=False)
+            if p.event_id:
+                await books.confirm_match(ln.id, [p.event_id], USER)
+        elif await bank_reconcile.suggest_rule(books, ln):
+            coded = await bank_reconcile.approve_line(books, ln.id, "rule", USER)
+            # Approving posts the entry and matches the line to it (app/bank_reconcile.py); should it ever leave
+            # the line open, the Bank page would suggest the line to the entry and the user would confirm that.
+            if not (await books.find_bank_line(ln.id)).resolved:
+                await books.confirm_match(ln.id, [coded["event_id"]], USER)
+        elif ln.description == "Savings Space":  # the tax pot: money between own accounts
+            await books.mark_line(ln.id, "transfer", USER)
 
-    if plan.payroll_period:
-        say(f"Pay run estimate for {plan.payroll_period}")
+
+async def _step_payroll_todos(books: Books, plan: Plan) -> None:
+    if plan.payroll_period:  # replaces a draft, so it is safe to prepare again
         await payroll_mod.prepare(books, plan.payroll_period, None, USER)
-    for t in plan.todos:
+    for t in plan.todos:  # an identical to-do already on the list is left as it is
         await todos_mod.add_todo(books, t, USER)
 
-    say(f"{len(plan.inbox)} documents into {INBOX}")
-    for d in plan.inbox:
+
+async def _step_inbox(books: Books, plan: Plan) -> None:
+    for d in plan.inbox:  # same name, same bytes: writing again changes nothing
         await _upload(books, d)
 
-    say("Books.xlsx")
+
+async def _rebuild(books: Books) -> None:
     await Books.rebuild(books)
-    if plan.export_report:  # last: its file in 07 Reports is how a second run knows the seed finished
-        say(f"Reports into {REPORTS}")
-        await routes_reports.export(
-            body=routes_reports.ExportBody.model_validate({"report": "all"}),
-            today=plan.today,
-            cycle=VatCycle(start_month=plan.current[0].month),
-            books=books,
-            user=USER,
-        )
-    return await _report(books, plan, emails=len(sender.sent))
 
 
-async def _autopilot(books: Books, p: Proposal) -> Proposal:
-    """What the scan does with a proposal from a supplier with an Autopilot rule (app/inbox.py)."""
-    rule = autopilot.match(p, await autopilot.load_rules(books))
-    p.autopilot = autopilot.evaluate(p, rule, True, await books.list_proposals())
-    await books.save_proposal(p)
-    if rule is None or not p.autopilot.auto_approve:
-        raise RuntimeError(f"Autopilot would not post {p.extracted.supplier_name}: {p.autopilot.reasons}")
-    return await inbox_mod._autopilot_post(books, p, rule)
+async def _step_reports(books: Books, plan: Plan, resuming: bool) -> None:
+    if resuming and any(f.name.endswith(".xlsx") for f in await books.list_files(REPORTS)):
+        return
+    await routes_reports.export(
+        body=routes_reports.ExportBody.model_validate({"report": "all"}),
+        today=plan.today,
+        cycle=VatCycle(start_month=plan.current[0].month),
+        books=books,
+        user=USER,
+    )
 
 
 async def _report(books: Books, plan: Plan, *, emails: int = 0, already_seeded: bool = False) -> dict[str, Any]:
