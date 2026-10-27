@@ -3,49 +3,28 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
-import FileTree, { FileIcon, FolderIcon } from "@/components/files/FileTree";
+import BooksCard from "@/components/files/BooksCard";
+import FilePreview from "@/components/files/FilePreview";
+import FileTree from "@/components/files/FileTree";
+import FilesTree, {
+  OpenLink,
+  SYSTEM,
+  modified,
+  plural,
+  size,
+  type FilesTreeData,
+  type Selection,
+} from "@/components/files/FilesTree";
+import UploadToInbox from "@/components/review/UploadToInbox";
 import { EmptyState, ErrorNote, LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
-import { FOLDER, FOLDERS } from "@/lib/folders";
+import { FOLDERS } from "@/lib/folders";
 import { getRoot, listChildren, type DriveItem } from "@/lib/graph";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { runtime, type RtLayout } from "@/lib/runtime";
 
-const SYSTEM = "_System";
-const NEEDS_A_LOOK = FOLDER.needs_a_look;
 const ORDER = FOLDERS.filter((f) => !f.includes("/"));
 
-interface FolderRow {
-  item: DriveItem;
-  files: number; // files directly inside plus files one level down (e.g. 01 Receipts/2026-10)
-  subfolders: DriveItem[];
-}
-
-interface Tree {
-  root: DriveItem;
-  folders: FolderRow[];
-  files: DriveItem[];
-  system: DriveItem | null;
-  systemChildren: DriveItem[];
-}
-
-function size(bytes?: number): string {
-  if (bytes === undefined) return "";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024).toLocaleString("en-GB")} KB`;
-  return `${(bytes / 1024 / 1024).toLocaleString("en-GB", { maximumFractionDigits: 1 })} MB`;
-}
-
-function modified(iso?: string): string {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return isNaN(d.getTime())
-    ? ""
-    : d.toLocaleString("en-GB", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
-}
-
-const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
-
-async function loadTree(account: AccountInfo): Promise<Tree> {
+async function loadTree(account: AccountInfo): Promise<FilesTreeData> {
   const [root, top] = await Promise.all([getRoot(account), listChildren(account)]);
   const rank = (name: string) => (ORDER.includes(name) ? ORDER.indexOf(name) : ORDER.length);
   const folderItems = top
@@ -54,111 +33,149 @@ async function loadTree(account: AccountInfo): Promise<Tree> {
   const system = top.find((i) => i.folder && i.name === SYSTEM) ?? null;
   const [folders, systemChildren] = await Promise.all([
     Promise.all(
-      folderItems.map(async (item): Promise<FolderRow> => {
+      folderItems.map(async (item) => {
         const children = item.folder?.childCount ? await listChildren(account, item.name) : [];
         const subfolders = children.filter((c) => c.folder).sort((a, b) => b.name.localeCompare(a.name));
-        const files = children.filter((c) => c.file).length + subfolders.reduce((n, s) => n + (s.folder?.childCount ?? 0), 0);
-        return { item, files, subfolders };
+        const directFiles = children.filter((c) => c.file).sort((a, b) => a.name.localeCompare(b.name));
+        const files = directFiles.length + subfolders.reduce((n, s) => n + (s.folder?.childCount ?? 0), 0);
+        return { item, files, subfolders, directFiles };
       }),
     ),
     system ? listChildren(account, SYSTEM) : Promise.resolve([]),
   ]);
   const files = top.filter((i) => i.file).sort((a, b) => a.name.localeCompare(b.name));
-  return { root, folders, files, system, systemChildren: systemChildren.sort((a, b) => a.name.localeCompare(b.name)) };
+  return {
+    root,
+    folders,
+    files,
+    all: [...top].sort((a, b) => a.name.localeCompare(b.name)),
+    system,
+    systemChildren: systemChildren.sort((a, b) => a.name.localeCompare(b.name)),
+  };
 }
 
-function OpenLink({ item, label = "Open in OneDrive" }: { item: DriveItem; label?: string }) {
-  if (!item.webUrl) return null;
+/** The old-named folder and the new one it sits beside, with links to open both. Never a delete. */
+function ConflictCard({ layout, all }: { layout: RtLayout; all: DriveItem[] }) {
+  const find = (name: string) => all.find((i) => i.name.toLowerCase() === name.toLowerCase());
   return (
-    <a
-      href={item.webUrl}
-      target="_blank"
-      rel="noreferrer"
-      className="shrink-0 text-[13px] font-bold text-teal-dark hover:underline"
-      aria-label={`${label}: ${item.name}`}
+    <ErrorNote
+      title="Old and new folders side by side"
+      body={layout.warning ?? undefined}
+      action={
+        <ul className="flex list-disc flex-col gap-2 pl-5 text-[14px] leading-6 text-warn-ink">
+          {layout.conflicts.map((c) => {
+            const oldItem = find(c.old);
+            const newItem = find(c.new);
+            return (
+              <li key={c.old}>
+                {c.old} → {c.new}
+                {c.old_is_empty ? ": the old folder is empty — nothing to move." : ": move its files into the new folder."}{" "}
+                {oldItem?.webUrl && (
+                  <a href={oldItem.webUrl} target="_blank" rel="noreferrer" className="font-bold underline underline-offset-2">
+                    Open the old folder
+                  </a>
+                )}
+                {oldItem?.webUrl && newItem?.webUrl && " · "}
+                {newItem?.webUrl && (
+                  <a href={newItem.webUrl} target="_blank" rel="noreferrer" className="font-bold underline underline-offset-2">
+                    Open the new folder
+                  </a>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      }
+    />
+  );
+}
+
+function Breadcrumbs({ selection, onSelect }: { selection: Selection; onSelect: (sel: Selection) => void }) {
+  const segments = selection ? selection.path.split("/") : [];
+  return (
+    <nav aria-label="Breadcrumb" className="min-w-0">
+      <ol className="flex min-w-0 flex-wrap items-center gap-1 text-[13px] font-semibold">
+        <li className="flex min-w-0 items-center gap-1">
+          <button
+            type="button"
+            onClick={() => onSelect(null)}
+            aria-current={selection ? undefined : "page"}
+            className="shrink-0 rounded-lg px-1 py-0.5 text-teal-dark hover:underline"
+          >
+            Books
+          </button>
+        </li>
+        {segments.map((seg, i) => {
+          const last = i === segments.length - 1;
+          const path = segments.slice(0, i + 1).join("/");
+          const isFile = last && selection?.kind === "file";
+          return (
+            <li key={path} className="flex min-w-0 items-center gap-1">
+              <span aria-hidden="true" className="shrink-0 text-muted">
+                /
+              </span>
+              {last || isFile ? (
+                <span aria-current="page" className="min-w-0 truncate px-1 py-0.5 text-muted">
+                  {seg}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => onSelect({ kind: "folder", path })}
+                  className="min-w-0 truncate rounded-lg px-1 py-0.5 text-teal-dark hover:underline"
+                >
+                  {seg}
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ol>
+    </nav>
+  );
+}
+
+/** A selected folder: what it holds and a way to open it. Files inside are one tap away in the tree. */
+function FolderSummary({ tree, path, onClose }: { tree: FilesTreeData; path: string; onClose: () => void }) {
+  const [topName, ...rest] = path.split("/");
+  const top = tree.folders.find((f) => f.item.name === topName);
+  const sub = rest.length > 0 ? top?.subfolders.find((s) => s.name === rest.join("/")) : undefined;
+  const item = sub ?? top?.item ?? (path === SYSTEM ? tree.system : undefined) ?? null;
+  const count =
+    sub && sub.folder
+      ? plural(sub.folder.childCount, "item")
+      : top
+        ? plural(top.files, "file")
+        : tree.systemChildren.length > 0 && path === SYSTEM
+          ? plural(tree.systemChildren.length, "item")
+          : null;
+  return (
+    <section
+      aria-label={`Folder: ${path}`}
+      className="flex min-w-0 flex-col gap-3 rounded-2xl border border-border bg-white p-4 sm:p-5"
     >
-      {label}
-    </a>
-  );
-}
-
-function Meta({ item, count }: { item: DriveItem; count?: string }) {
-  return (
-    <span className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 text-[13px] font-medium tabular-nums text-muted">
-      {count !== undefined && <span>{count}</span>}
-      <span>{size(item.size)}</span>
-      <span className="hidden min-[560px]:inline">{modified(item.lastModifiedDateTime)}</span>
-    </span>
-  );
-}
-
-const row = "flex min-h-[44px] items-center gap-3 border-b border-border px-4 py-2.5 last:border-b-0";
-
-function LiveTree({ tree }: { tree: Tree }) {
-  return (
-    <ul className="flex flex-col overflow-hidden rounded-2xl border border-border bg-white">
-      {tree.folders.map(({ item, files, subfolders }) => (
-        <li key={item.id} className="border-b border-border last:border-b-0">
-          <div className={row}>
-            <FolderIcon />
-            <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{item.name}</span>
-            {item.name === NEEDS_A_LOOK && files > 0 ? (
-              <span className="rounded-full border border-warn-border bg-warn-bg px-2.5 py-0.5 text-[13px] font-bold text-warn-ink">
-                {plural(files, "file")}
-              </span>
-            ) : null}
-            <Meta item={item} count={item.name === NEEDS_A_LOOK && files > 0 ? undefined : plural(files, "file")} />
-            <OpenLink item={item} label="Open" />
-          </div>
-          {subfolders.length > 0 && (
-            <ul>
-              {subfolders.map((s) => (
-                <li key={s.id} className={`${row} pl-11`}>
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-muted">› {s.name}</span>
-                  <Meta item={s} count={plural(s.folder?.childCount ?? 0, "item")} />
-                  <OpenLink item={s} label="Open" />
-                </li>
-              ))}
-            </ul>
-          )}
-        </li>
-      ))}
-      {tree.files.map((f) => (
-        <li key={f.id} className={row}>
-          <FileIcon />
-          <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">{f.name}</span>
-          <Meta item={f} />
-          <OpenLink item={f} label="Open" />
-        </li>
-      ))}
-      {tree.system && (
-        <li className="relative border-b border-border last:border-b-0">
-          <details>
-            {/* The Open link sits beside the summary, not in it: no link inside the disclosure button. */}
-            <summary className={`${row} cursor-pointer list-none border-b-0 ${tree.system.webUrl ? "pr-16" : ""}`}>
-              <FolderIcon />
-              <span className="min-w-0 flex-1 truncate text-[15px] font-semibold">
-                {SYSTEM}
-                <span className="ml-2 text-[13px] font-medium text-muted">rules, audit log, ledger events · show</span>
-              </span>
-              <Meta item={tree.system} />
-            </summary>
-            <ul className="border-t border-border">
-              {tree.systemChildren.map((c) => (
-                <li key={c.id} className={`${row} pl-11`}>
-                  <span className="min-w-0 flex-1 truncate text-sm font-semibold text-muted">{c.name}</span>
-                  <Meta item={c} count={c.folder ? plural(c.folder.childCount, "item") : undefined} />
-                  <OpenLink item={c} label="Open" />
-                </li>
-              ))}
-            </ul>
-          </details>
-          <span className="absolute right-4 top-0 flex min-h-[44px] items-center">
-            <OpenLink item={tree.system} label="Open" />
-          </span>
-        </li>
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="truncate text-[15px] font-extrabold">{path}</h2>
+          <p className="text-[13px] font-medium tabular-nums text-muted">
+            {[count, item && size(item.size), item && modified(item.lastModifiedDateTime)].filter(Boolean).join(" · ")}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="shrink-0 whitespace-nowrap rounded-xl border border-border px-3 py-1.5 text-[13px] font-bold"
+        >
+          Close
+        </button>
+      </div>
+      <p className="text-sm text-muted">Pick a file in the tree to preview it here.</p>
+      {item && (
+        <div className="flex flex-wrap gap-2">
+          <OpenLink item={item} />
+        </div>
       )}
-    </ul>
+    </section>
   );
 }
 
@@ -166,16 +183,18 @@ function LiveTree({ tree }: { tree: Tree }) {
 export default function LiveFiles() {
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [state, setState] = useState<"checking" | "demo" | "loading" | "live" | "missing" | "error">("checking");
-  const [tree, setTree] = useState<Tree | null>(null);
+  const [tree, setTree] = useState<FilesTreeData | null>(null);
   const [note, setNote] = useState<string | null>(null);
-  const [rebuilding, setRebuilding] = useState(false);
   const [layout, setLayout] = useState<RtLayout | null>(null);
+  const [selection, setSelection] = useState<Selection>(null);
+  const [uploaded, setUploaded] = useState(false);
 
   const refresh = useCallback(async (acct: AccountInfo) => {
     try {
       // First, so a folder under an old name is renamed before we list the tree. The tree still loads without it.
       setLayout(await runtime.layout(acct).catch(() => null));
       setTree(await loadTree(acct));
+      setSelection(null);
       setState("live");
     } catch (e) {
       const msg = (e as Error).message;
@@ -201,34 +220,11 @@ export default function LiveFiles() {
     })();
   }, [refresh]);
 
-  async function rebuild() {
-    if (!account) return;
-    setRebuilding(true);
-    setNote(null);
-    try {
-      const r = await runtime.rebuild(account);
-      setNote(`Books.xlsx rebuilt from your ledger events · ${size(r.size)}`);
-      await refresh(account);
-    } catch (e) {
-      setNote(`Could not rebuild Books.xlsx: ${(e as Error).message}`);
-    } finally {
-      setRebuilding(false);
-    }
-  }
-
   const live = state === "live" && tree;
+  const booksFile = tree?.files.find((f) => f.name === "Books.xlsx") ?? null;
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3">
       <div className="flex flex-wrap items-center justify-end gap-2">
-        <button
-          type="button"
-          onClick={rebuild}
-          disabled={!account || rebuilding || state === "missing"}
-          title={account ? "Regenerate Books.xlsx from the ledger event files" : "Connect your OneDrive to rebuild"}
-          className="shrink-0 whitespace-nowrap rounded-xl border-2 border-teal bg-white px-4 py-2 text-sm font-bold text-teal-dark disabled:border-border disabled:text-muted"
-        >
-          {rebuilding ? "Rebuilding…" : "Rebuild Books.xlsx"}
-        </button>
         {live && tree.root.webUrl ? (
           <a
             href={tree.root.webUrl}
@@ -248,30 +244,9 @@ export default function LiveFiles() {
         )}
       </div>
 
-      {note && (
-        <p role="status" className="text-sm font-semibold text-teal-dark">
-          {note}
-        </p>
-      )}
-
       {live ? (
         <>
-          {layout?.warning && (
-            <ErrorNote
-              title="Old and new folders side by side"
-              body={layout.warning}
-              action={
-                <ul className="list-disc pl-5 text-[14px] leading-6 text-warn-ink">
-                  {layout.conflicts.map((c) => (
-                    <li key={c.old}>
-                      {c.old} → {c.new}
-                      {c.old_is_empty ? ": the old folder is empty, so you can delete it." : ": move its files into the new folder."}
-                    </li>
-                  ))}
-                </ul>
-              }
-            />
-          )}
+          {layout?.warning && <ConflictCard layout={layout} all={tree.all} />}
           {tree.folders.reduce((n, f) => n + f.files, tree.files.length) === 0 && (
             <EmptyState
               title="Your folder is empty"
@@ -286,7 +261,61 @@ export default function LiveFiles() {
               }
             />
           )}
-          <LiveTree tree={tree} />
+          <Breadcrumbs selection={selection} onSelect={setSelection} />
+          <div className="grid min-w-0 grid-cols-1 items-start gap-3 lg:grid-cols-5">
+            <div className="min-w-0 lg:col-span-3">
+              <FilesTree tree={tree} account={account!} selection={selection} onSelect={setSelection} />
+            </div>
+            <div className="min-w-0 lg:col-span-2">
+              {!selection && (
+                <div className="hidden rounded-2xl border border-border bg-white p-4 sm:p-5 lg:block">
+                  <p className="text-[15px] font-extrabold">Preview</p>
+                  <p className="mt-1 text-sm text-muted">
+                    Pick a file in the tree to see it here — photos and PDFs open directly, JSON and CSV show as text.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+          {selection && (
+            <div className="fixed inset-0 z-50 min-w-0 overflow-y-auto bg-white p-3 lg:static lg:z-auto lg:overflow-visible lg:bg-transparent lg:p-0">
+              <div className="mx-auto min-w-0 max-w-2xl lg:mx-0 lg:max-w-none">
+                {selection.kind === "file" ? (
+                  <FilePreview
+                    key={selection.path}
+                    account={account!}
+                    path={selection.path}
+                    item={selection.item}
+                    onClose={() => setSelection(null)}
+                  />
+                ) : (
+                  <FolderSummary tree={tree} path={selection.path} onClose={() => setSelection(null)} />
+                )}
+              </div>
+            </div>
+          )}
+          <section aria-label="Add files to 00 Inbox" className="flex min-w-0 flex-col gap-2">
+            <h2 className="text-[15px] font-extrabold">Add files</h2>
+            <UploadToInbox
+              account={account!}
+              onDone={() => {
+                setUploaded(true);
+                void refresh(account!);
+              }}
+            />
+            {uploaded && (
+              <p aria-live="polite" className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="text-muted">Files are in 00 Inbox.</span>
+                <Link
+                  href="/review"
+                  className="shrink-0 whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark"
+                >
+                  Scan now
+                </Link>
+              </p>
+            )}
+          </section>
+          <BooksCard account={account!} books={booksFile} onRebuilt={() => account && void refresh(account)} />
           <p className="text-[13px] font-medium text-muted">
             {plural(tree.folders.reduce((n, f) => n + f.files, tree.files.length), "file")} outside _System · {size(tree.root.size)} in
             total. Books.xlsx is generated from _System/Ledger/events; edits to it are overwritten.
