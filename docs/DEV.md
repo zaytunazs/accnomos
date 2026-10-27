@@ -54,11 +54,12 @@ $env:E2E_PYTHON='..\..\.venv\Scripts\python.exe'; pnpm run e2e:test   # Windows:
 pnpm exec playwright test e2e/review.spec.ts       # one spec (after one e2e:build); add :130 for the test on that line
 pnpm exec playwright test -g "plan my Thursday"    # tests whose title matches
 pnpm exec playwright test --project=phone          # only the phone-width tests
+pnpm run e2e:demo                                  # docs/DEMO.md end to end; writes docs/submission/shots/*.png
 pnpm exec playwright test --ui                     # UI mode: pick, watch and time-travel tests; starts both servers too
 pnpm exec playwright test e2e/review.spec.ts:130 --repeat-each=20   # hunting a flake
 ```
 
-56 tests (31 desktop, 25 phone) take about 40 s locally on 4 workers, including the runtime's start and its ~10 s warm-up; CI runs 3 workers with one retry. Rebuild with
+114 tests (38 desktop, 74 phone, 2 demo) take about 80 s locally on 4 workers, including the runtime's start and its ~10 s warm-up; CI runs 3 workers with one retry. Rebuild with
 `pnpm run e2e:build` after changing anything under `src/`: the tests run against `out-e2e/`, not the dev server.
 Ports are `E2E_WEB_PORT` (3100), `E2E_RUNTIME_PORT` (8781) and `E2E_RELAY_PORT` (8789), read by both the build and
 the config, so set them for both (e.g. `node --env-file=ports.env e2e/build.mjs`). Locally Playwright reuses servers
