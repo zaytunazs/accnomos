@@ -282,6 +282,23 @@ async def test_rebuild_after_approve_writes_books_xlsx(fake: FakeStorageProvider
     assert (await books.workbook_ref()) is not None
 
 
+async def test_rebuild_after_reject_drops_the_proposal_from_books_xlsx(fake: FakeStorageProvider) -> None:
+    from app.approve import reject
+    from app.books import PROPOSALS
+
+    books = Books(fake)
+    p = _proposal()
+    p.status, p.id, p.file_path = "proposed", "e" * 16, None
+    fake.files[f"{PROPOSALS}/{p.id}.json"] = p.model_dump_json().encode()
+
+    await reject(books, p.id, USER, "personal purchase")
+
+    wb = load_workbook(io.BytesIO(fake.files[WORKBOOK]))
+    assert wb["Proposals"].max_row == 1 and wb["Ledger"].max_row == 2  # header and an all-zero totals row
+    summ = {r[0]: r[1] for r in wb["Summary"].iter_rows(min_row=2, values_only=True)}
+    assert summ["Entries posted"] == 0 and summ["Proposals waiting"] == 0
+
+
 async def test_rebuild_failure_never_blocks_the_action(fake: FakeStorageProvider, monkeypatch) -> None:
     import app.projection as projection
 
