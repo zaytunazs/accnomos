@@ -1,0 +1,1190 @@
+{
+ "seed": 2027,
+ "documents": 140,
+ "documents_with_payment": 96,
+ "share": 0.686,
+ "split_payment_docs": [
+  "075_sales.json",
+  "084_sales.json",
+  "089_sales.json",
+  "100_sales.json",
+  "105_pi_merchant.json",
+  "144_sales.json",
+  "147_pi_subcontractor.json",
+  "164_pi_merchant.json",
+  "169_sales.json",
+  "182_edge_reverse_charge.json"
+ ],
+ "rounding_docs": [
+  "073_r_fuel.json",
+  "108_pi_software.json"
+ ],
+ "documents_without_payment": [
+  "063_credit_note.json",
+  "066_r_trade.json",
+  "067_utility.json",
+  "077_sales.json",
+  "080_sales.json",
+  "086_sales.json",
+  "087_r_parking.json",
+  "088_sales.json",
+  "090_sales.json",
+  "091_edge_handwritten.json",
+  "092_utility.json",
+  "093_r_fuel.json",
+  "114_edge_handwritten.json",
+  "115_credit_note.json",
+  "119_sales.json",
+  "124_sales.json",
+  "126_r_fuel.json",
+  "129_sales.json",
+  "131_edge_foreign_gbp.json",
+  "132_edge_zero.json",
+  "139_pi_software.json",
+  "140_credit_note.json",
+  "142_pi_software.json",
+  "143_sales.json",
+  "148_pi_subcontractor.json",
+  "149_pi_merchant.json",
+  "151_r_fuel.json",
+  "153_sales.json",
+  "155_sales.json",
+  "156_sales.json",
+  "161_pi_software.json",
+  "162_sales.json",
+  "163_r_trade.json",
+  "165_sales.json",
+  "173_pi_merchant.json",
+  "176_edge_foreign_gbp.json",
+  "178_sales.json",
+  "187_r_parking.json",
+  "188_r_cafe.json",
+  "190_r_fuel.json",
+  "191_pi_subcontractor.json",
+  "192_utility.json",
+  "193_edge_multi_rate.json",
+  "195_pi_subcontractor.json"
+ ],
+ "rows": [
+  {
+   "file": "barclays_julaug.csv",
+   "row": 1,
+   "date": "2026-07-06",
+   "amount_pence": -25200,
+   "gold": "133_pi_subcontractor.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 2,
+   "date": "2026-07-09",
+   "amount_pence": -6400,
+   "gold": null,
+   "kind": "insurance"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 3,
+   "date": "2026-07-15",
+   "amount_pence": -59229,
+   "gold": "105_pi_merchant.json",
+   "kind": "part"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 4,
+   "date": "2026-07-16",
+   "amount_pence": -147204,
+   "gold": "170_pi_merchant.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 5,
+   "date": "2026-07-16",
+   "amount_pence": -81804,
+   "gold": "102_pi_merchant.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 6,
+   "date": "2026-07-18",
+   "amount_pence": -41760,
+   "gold": "172_pi_merchant.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 7,
+   "date": "2026-07-19",
+   "amount_pence": -152652,
+   "gold": "099_pi_merchant.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 8,
+   "date": "2026-07-26",
+   "amount_pence": -59460,
+   "gold": "171_utility.json",
+   "kind": "direct debit"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 9,
+   "date": "2026-08-02",
+   "amount_pence": -95000,
+   "gold": null,
+   "kind": "rent"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 10,
+   "date": "2026-08-03",
+   "amount_pence": -6420,
+   "gold": "118_utility.json",
+   "kind": "direct debit"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 11,
+   "date": "2026-08-08",
+   "amount_pence": -91578,
+   "gold": null,
+   "kind": "tax"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 12,
+   "date": "2026-08-09",
+   "amount_pence": -138201,
+   "gold": "105_pi_merchant.json",
+   "kind": "part"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 13,
+   "date": "2026-08-12",
+   "amount_pence": -13555,
+   "gold": "112_utility.json",
+   "kind": "direct debit"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 14,
+   "date": "2026-08-16",
+   "amount_pence": -11400,
+   "gold": "071_utility.json",
+   "kind": "direct debit"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 15,
+   "date": "2026-08-17",
+   "amount_pence": -54753,
+   "gold": null,
+   "kind": "transfer"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 16,
+   "date": "2026-08-18",
+   "amount_pence": -548400,
+   "gold": "182_edge_reverse_charge.json",
+   "kind": "part"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 17,
+   "date": "2026-08-19",
+   "amount_pence": -110400,
+   "gold": "120_pi_subcontractor.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 18,
+   "date": "2026-08-21",
+   "amount_pence": -360000,
+   "gold": "197_edge_reverse_charge.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 19,
+   "date": "2026-08-21",
+   "amount_pence": -56018,
+   "gold": "150_pi_merchant.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 20,
+   "date": "2026-08-23",
+   "amount_pence": -37836,
+   "gold": "177_pi_merchant.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 21,
+   "date": "2026-08-24",
+   "amount_pence": -19048,
+   "gold": "164_pi_merchant.json",
+   "kind": "part"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 22,
+   "date": "2026-08-25",
+   "amount_pence": -130800,
+   "gold": "072_pi_subcontractor.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 23,
+   "date": "2026-08-28",
+   "amount_pence": -133,
+   "gold": "122_utility.json",
+   "kind": "direct debit"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 24,
+   "date": "2026-08-29",
+   "amount_pence": -75000,
+   "gold": "158_pi_subcontractor.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_julaug.csv",
+   "row": 25,
+   "date": "2026-08-29",
+   "amount_pence": -700,
+   "gold": null,
+   "kind": "bank fee"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 1,
+   "date": "2026-09-02",
+   "amount_pence": -1279600,
+   "gold": "182_edge_reverse_charge.json",
+   "kind": "part"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 2,
+   "date": "2026-09-04",
+   "amount_pence": -700,
+   "gold": null,
+   "kind": "bank fee"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 3,
+   "date": "2026-09-05",
+   "amount_pence": -41040,
+   "gold": "147_pi_subcontractor.json",
+   "kind": "part"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 4,
+   "date": "2026-09-07",
+   "amount_pence": -6400,
+   "gold": null,
+   "kind": "insurance"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 5,
+   "date": "2026-09-09",
+   "amount_pence": -84415,
+   "gold": null,
+   "kind": "drawings"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 6,
+   "date": "2026-09-09",
+   "amount_pence": -44444,
+   "gold": "164_pi_merchant.json",
+   "kind": "part"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 7,
+   "date": "2026-09-11",
+   "amount_pence": -37508,
+   "gold": "145_pi_merchant.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 8,
+   "date": "2026-09-12",
+   "amount_pence": -14820,
+   "gold": "110_utility.json",
+   "kind": "direct debit"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 9,
+   "date": "2026-09-15",
+   "amount_pence": -59700,
+   "gold": "194_utility.json",
+   "kind": "direct debit"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 10,
+   "date": "2026-09-17",
+   "amount_pence": -95760,
+   "gold": "147_pi_subcontractor.json",
+   "kind": "part"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 11,
+   "date": "2026-09-25",
+   "amount_pence": -46588,
+   "gold": "186_utility.json",
+   "kind": "direct debit"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 12,
+   "date": "2026-10-03",
+   "amount_pence": -11520,
+   "gold": "083_utility.json",
+   "kind": "direct debit"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 13,
+   "date": "2026-10-07",
+   "amount_pence": -888,
+   "gold": "146_utility.json",
+   "kind": "direct debit"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 14,
+   "date": "2026-10-10",
+   "amount_pence": -243075,
+   "gold": "101_utility.json",
+   "kind": "direct debit"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 15,
+   "date": "2026-10-15",
+   "amount_pence": -22200,
+   "gold": "068_pi_subcontractor.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 16,
+   "date": "2026-10-17",
+   "amount_pence": -82800,
+   "gold": "111_pi_subcontractor.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 17,
+   "date": "2026-10-17",
+   "amount_pence": -14700,
+   "gold": "181_utility.json",
+   "kind": "direct debit"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 18,
+   "date": "2026-10-19",
+   "amount_pence": -95000,
+   "gold": null,
+   "kind": "rent"
+  },
+  {
+   "file": "barclays_sepoct.csv",
+   "row": 19,
+   "date": "2026-10-30",
+   "amount_pence": -108942,
+   "gold": "175_pi_merchant.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 1,
+   "date": "2026-07-01",
+   "amount_pence": -6595,
+   "gold": "064_r_cafe.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 2,
+   "date": "2026-07-02",
+   "amount_pence": -3267,
+   "gold": "166_r_fuel.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 3,
+   "date": "2026-07-03",
+   "amount_pence": -19650,
+   "gold": "104_r_trade.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 4,
+   "date": "2026-07-03",
+   "amount_pence": -10975,
+   "gold": "189_r_trade.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 5,
+   "date": "2026-07-06",
+   "amount_pence": -28002,
+   "gold": "159_edge_multi_rate.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 6,
+   "date": "2026-07-06",
+   "amount_pence": -6085,
+   "gold": "196_r_cafe.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 7,
+   "date": "2026-07-08",
+   "amount_pence": -300,
+   "gold": "152_r_parking.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 8,
+   "date": "2026-07-17",
+   "amount_pence": -24831,
+   "gold": "185_r_trade.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 9,
+   "date": "2026-07-19",
+   "amount_pence": -18825,
+   "gold": "157_r_trade.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 10,
+   "date": "2026-07-20",
+   "amount_pence": -288787,
+   "gold": null,
+   "kind": "payroll"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 11,
+   "date": "2026-07-20",
+   "amount_pence": -94596,
+   "gold": null,
+   "kind": "tax"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 12,
+   "date": "2026-07-20",
+   "amount_pence": -35375,
+   "gold": "085_r_trade.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 13,
+   "date": "2026-07-25",
+   "amount_pence": -34085,
+   "gold": "128_edge_multi_rate.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 14,
+   "date": "2026-07-25",
+   "amount_pence": -866,
+   "gold": "174_r_parking.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 15,
+   "date": "2026-07-30",
+   "amount_pence": -95000,
+   "gold": null,
+   "kind": "rent"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 16,
+   "date": "2026-07-30",
+   "amount_pence": -2099,
+   "gold": "094_edge_zero.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 17,
+   "date": "2026-07-31",
+   "amount_pence": -735,
+   "gold": "109_r_parking.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 18,
+   "date": "2026-08-02",
+   "amount_pence": -107879,
+   "gold": "108_pi_software.json",
+   "kind": "rounding"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 19,
+   "date": "2026-08-13",
+   "amount_pence": -54000,
+   "gold": "135_pi_software.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 20,
+   "date": "2026-08-15",
+   "amount_pence": -1800,
+   "gold": "160_r_parking.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 21,
+   "date": "2026-08-17",
+   "amount_pence": -188108,
+   "gold": null,
+   "kind": "tax"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 22,
+   "date": "2026-08-19",
+   "amount_pence": -124213,
+   "gold": null,
+   "kind": "transfer"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 23,
+   "date": "2026-08-25",
+   "amount_pence": -13073,
+   "gold": "127_r_trade.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 24,
+   "date": "2026-08-27",
+   "amount_pence": -1700,
+   "gold": "198_edge_zero.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 25,
+   "date": "2026-08-28",
+   "amount_pence": -117060,
+   "gold": "179_pi_software.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 26,
+   "date": "2026-08-31",
+   "amount_pence": -4120,
+   "gold": "081_r_cafe.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_julaug.csv",
+   "row": 27,
+   "date": "2026-08-31",
+   "amount_pence": -311,
+   "gold": "134_r_parking.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 1,
+   "date": "2026-09-01",
+   "amount_pence": -18977,
+   "gold": "200_r_cafe.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 2,
+   "date": "2026-09-05",
+   "amount_pence": -1837,
+   "gold": "107_r_parking.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 3,
+   "date": "2026-09-06",
+   "amount_pence": -9035,
+   "gold": "095_r_trade.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 4,
+   "date": "2026-09-10",
+   "amount_pence": -152400,
+   "gold": "168_pi_software.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 5,
+   "date": "2026-09-10",
+   "amount_pence": -6251,
+   "gold": "167_edge_torn_faded.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 6,
+   "date": "2026-09-11",
+   "amount_pence": -6414,
+   "gold": "116_r_fuel.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 7,
+   "date": "2026-09-13",
+   "amount_pence": -11060,
+   "gold": "106_r_cafe.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 8,
+   "date": "2026-09-13",
+   "amount_pence": -6275,
+   "gold": "070_r_cafe.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 9,
+   "date": "2026-09-23",
+   "amount_pence": -4780,
+   "gold": "069_r_trade.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 10,
+   "date": "2026-09-25",
+   "amount_pence": -89508,
+   "gold": null,
+   "kind": "tax"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 11,
+   "date": "2026-09-25",
+   "amount_pence": -20660,
+   "gold": "141_r_trade.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 12,
+   "date": "2026-09-29",
+   "amount_pence": -1150,
+   "gold": "098_r_cafe.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 13,
+   "date": "2026-10-03",
+   "amount_pence": -119088,
+   "gold": null,
+   "kind": "tax"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 14,
+   "date": "2026-10-03",
+   "amount_pence": -31031,
+   "gold": "184_edge_foreign_gbp.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 15,
+   "date": "2026-10-04",
+   "amount_pence": -31607,
+   "gold": null,
+   "kind": "transfer"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 16,
+   "date": "2026-10-06",
+   "amount_pence": -23940,
+   "gold": "065_r_cafe.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 17,
+   "date": "2026-10-12",
+   "amount_pence": -9465,
+   "gold": "123_edge_torn_faded.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 18,
+   "date": "2026-10-12",
+   "amount_pence": -3980,
+   "gold": "113_r_cafe.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 19,
+   "date": "2026-10-13",
+   "amount_pence": -6604,
+   "gold": "082_r_fuel.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 20,
+   "date": "2026-10-14",
+   "amount_pence": -209760,
+   "gold": "130_pi_software.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 21,
+   "date": "2026-10-15",
+   "amount_pence": -95000,
+   "gold": null,
+   "kind": "rent"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 22,
+   "date": "2026-10-16",
+   "amount_pence": -3376,
+   "gold": "074_r_fuel.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 23,
+   "date": "2026-10-24",
+   "amount_pence": -6801,
+   "gold": "073_r_fuel.json",
+   "kind": "rounding"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 24,
+   "date": "2026-10-25",
+   "amount_pence": -22150,
+   "gold": "125_r_trade.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 25,
+   "date": "2026-10-25",
+   "amount_pence": -7865,
+   "gold": "183_r_fuel.json",
+   "kind": "card"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 26,
+   "date": "2026-10-25",
+   "amount_pence": -700,
+   "gold": null,
+   "kind": "bank fee"
+  },
+  {
+   "file": "starling_sepoct.csv",
+   "row": 27,
+   "date": "2026-10-31",
+   "amount_pence": -43821,
+   "gold": null,
+   "kind": "drawings"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 1,
+   "date": "2026-07-01",
+   "amount_pence": -6400,
+   "gold": null,
+   "kind": "insurance"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 2,
+   "date": "2026-07-06",
+   "amount_pence": 12876,
+   "gold": "079_credit_note.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 3,
+   "date": "2026-07-12",
+   "amount_pence": 105600,
+   "gold": "169_sales.json",
+   "kind": "part"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 4,
+   "date": "2026-07-16",
+   "amount_pence": 226724,
+   "gold": null,
+   "kind": "income (no invoice on file)"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 5,
+   "date": "2026-07-20",
+   "amount_pence": -700,
+   "gold": null,
+   "kind": "bank fee"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 6,
+   "date": "2026-07-20",
+   "amount_pence": 105600,
+   "gold": "169_sales.json",
+   "kind": "part"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 7,
+   "date": "2026-07-22",
+   "amount_pence": 153000,
+   "gold": "144_sales.json",
+   "kind": "part"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 8,
+   "date": "2026-07-23",
+   "amount_pence": -80814,
+   "gold": null,
+   "kind": "tax"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 9,
+   "date": "2026-07-27",
+   "amount_pence": 528000,
+   "gold": "180_sales.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 10,
+   "date": "2026-07-29",
+   "amount_pence": 31140,
+   "gold": "117_credit_note.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 11,
+   "date": "2026-07-29",
+   "amount_pence": 308160,
+   "gold": "100_sales.json",
+   "kind": "part"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 12,
+   "date": "2026-08-04",
+   "amount_pence": -81093,
+   "gold": null,
+   "kind": "drawings"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 13,
+   "date": "2026-08-04",
+   "amount_pence": 302400,
+   "gold": "089_sales.json",
+   "kind": "part"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 14,
+   "date": "2026-08-04",
+   "amount_pence": 357000,
+   "gold": "144_sales.json",
+   "kind": "part"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 15,
+   "date": "2026-08-12",
+   "amount_pence": 1209600,
+   "gold": "062_sales.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 16,
+   "date": "2026-08-15",
+   "amount_pence": -95000,
+   "gold": null,
+   "kind": "rent"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 17,
+   "date": "2026-08-19",
+   "amount_pence": 719040,
+   "gold": "100_sales.json",
+   "kind": "part"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 18,
+   "date": "2026-08-25",
+   "amount_pence": -118678,
+   "gold": null,
+   "kind": "tax"
+  },
+  {
+   "file": "tide_julaug.csv",
+   "row": 19,
+   "date": "2026-08-28",
+   "amount_pence": 705600,
+   "gold": "089_sales.json",
+   "kind": "part"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 1,
+   "date": "2026-09-04",
+   "amount_pence": 24900,
+   "gold": "137_credit_note.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 2,
+   "date": "2026-09-06",
+   "amount_pence": -54000,
+   "gold": "097_credit_note.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 3,
+   "date": "2026-09-08",
+   "amount_pence": 234720,
+   "gold": "084_sales.json",
+   "kind": "part"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 4,
+   "date": "2026-09-13",
+   "amount_pence": -123030,
+   "gold": null,
+   "kind": "tax"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 5,
+   "date": "2026-09-15",
+   "amount_pence": -700,
+   "gold": null,
+   "kind": "bank fee"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 6,
+   "date": "2026-09-16",
+   "amount_pence": 339600,
+   "gold": "154_sales.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 7,
+   "date": "2026-09-17",
+   "amount_pence": 686400,
+   "gold": "096_sales.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 8,
+   "date": "2026-09-20",
+   "amount_pence": -306344,
+   "gold": null,
+   "kind": "payroll"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 9,
+   "date": "2026-09-28",
+   "amount_pence": 828000,
+   "gold": "103_sales.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 10,
+   "date": "2026-10-03",
+   "amount_pence": -48002,
+   "gold": null,
+   "kind": "drawings"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 11,
+   "date": "2026-10-03",
+   "amount_pence": 352080,
+   "gold": "084_sales.json",
+   "kind": "part"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 12,
+   "date": "2026-10-04",
+   "amount_pence": 79800,
+   "gold": "075_sales.json",
+   "kind": "part"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 13,
+   "date": "2026-10-05",
+   "amount_pence": -6400,
+   "gold": null,
+   "kind": "insurance"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 14,
+   "date": "2026-10-05",
+   "amount_pence": 604800,
+   "gold": "078_sales.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 15,
+   "date": "2026-10-08",
+   "amount_pence": 526980,
+   "gold": "199_sales.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 16,
+   "date": "2026-10-11",
+   "amount_pence": 568800,
+   "gold": "121_sales.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 17,
+   "date": "2026-10-14",
+   "amount_pence": -95000,
+   "gold": null,
+   "kind": "rent"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 18,
+   "date": "2026-10-17",
+   "amount_pence": -5460,
+   "gold": "061_credit_note.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 19,
+   "date": "2026-10-20",
+   "amount_pence": 174000,
+   "gold": "138_sales.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 20,
+   "date": "2026-10-24",
+   "amount_pence": 160712,
+   "gold": null,
+   "kind": "transfer"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 21,
+   "date": "2026-10-27",
+   "amount_pence": 81000,
+   "gold": "076_credit_note.json",
+   "kind": "bacs"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 22,
+   "date": "2026-10-29",
+   "amount_pence": 79800,
+   "gold": "075_sales.json",
+   "kind": "part"
+  },
+  {
+   "file": "tide_sepoct.csv",
+   "row": 23,
+   "date": "2026-10-30",
+   "amount_pence": 20280,
+   "gold": "136_credit_note.json",
+   "kind": "bacs"
+  }
+ ]
+}

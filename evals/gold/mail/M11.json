@@ -1,0 +1,64 @@
+{
+ "id": "AAMk-sample-11",
+ "receivedDateTime": "2026-08-18T07:54:36Z",
+ "subject": "Two receipts",
+ "from": {
+  "emailAddress": {
+   "name": "Operations",
+   "address": "ops@bramblewood.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Two for the books please.",
+ "body": {
+  "contentType": "text",
+  "content": "Two for the books please."
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "f8f44cbfbe591124a81a",
+   "name": "129_sales.png",
+   "contentType": "image/png",
+   "size": 223512,
+   "isInline": false,
+   "path": "attachments/129_sales.png",
+   "gold": "129_sales.json"
+  },
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "31e3b3f7db5ba55cef0f",
+   "name": "124_sales.pdf",
+   "contentType": "application/pdf",
+   "size": 58578,
+   "isInline": false,
+   "path": "attachments/124_sales.pdf",
+   "gold": "124_sales.json"
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "document",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "129_sales.png",
+    "treat_as": "document",
+    "gold": "129_sales.json"
+   },
+   {
+    "attachment": "124_sales.pdf",
+    "treat_as": "document",
+    "gold": "124_sales.json"
+   }
+  ],
+  "note": "two documents"
+ }
+}

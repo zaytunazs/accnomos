@@ -1,0 +1,79 @@
+{
+ "id": "AAMk-sample-15",
+ "receivedDateTime": "2026-09-21T06:30:00Z",
+ "subject": "This week in joinery: 10% off oak",
+ "from": {
+  "emailAddress": {
+   "name": "Joinery Weekly",
+   "address": "news@joineryweekly.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Autumn offers inside. Unsubscribe at the bottom.",
+ "body": {
+  "contentType": "text",
+  "content": "Autumn offers inside. Unsubscribe at the bottom."
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "81c27284f77a447375ba",
+   "name": "logo.png",
+   "contentType": "image/png",
+   "size": 1293,
+   "isInline": true,
+   "path": "attachments/logo.png",
+   "gold": null
+  },
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "d29893089a1b8d03ba9b",
+   "name": "banner.png",
+   "contentType": "image/png",
+   "size": 1260,
+   "isInline": true,
+   "path": "attachments/banner.png",
+   "gold": null
+  },
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "722b192be97b0fbf41d6",
+   "name": "open.gif",
+   "contentType": "image/gif",
+   "size": 43,
+   "isInline": true,
+   "path": "attachments/open.gif",
+   "gold": null
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "decoy",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "logo.png",
+    "treat_as": "ignore",
+    "gold": null
+   },
+   {
+    "attachment": "banner.png",
+    "treat_as": "ignore",
+    "gold": null
+   },
+   {
+    "attachment": "open.gif",
+    "treat_as": "ignore",
+    "gold": null
+   }
+  ],
+  "note": "newsletter with inline images and a tracking pixel"
+ }
+}

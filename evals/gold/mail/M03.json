@@ -1,0 +1,49 @@
+{
+ "id": "AAMk-sample-03",
+ "receivedDateTime": "2026-09-29T10:54:50Z",
+ "subject": "Your receipt from Thornbury Flow Systems Ltd",
+ "from": {
+  "emailAddress": {
+   "name": "Thornbury Flow Systems Ltd",
+   "address": "noreply@thornburyflowsyste.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Thanks for your purchase on 2026-09-29. Your receipt is attached.",
+ "body": {
+  "contentType": "text",
+  "content": "Thanks for your purchase on 2026-09-29. Your receipt is attached."
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "b058eed1454301935d4d",
+   "name": "101_utility.pdf",
+   "contentType": "application/pdf",
+   "size": 60959,
+   "isInline": false,
+   "path": "attachments/101_utility.pdf",
+   "gold": "101_utility.json"
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "document",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "101_utility.pdf",
+    "treat_as": "document",
+    "gold": "101_utility.json"
+   }
+  ],
+  "note": "single document"
+ }
+}

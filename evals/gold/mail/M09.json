@@ -1,0 +1,49 @@
+{
+ "id": "AAMk-sample-09",
+ "receivedDateTime": "2026-10-23T15:17:02Z",
+ "subject": "Your receipt from Tyneside Pump & Go",
+ "from": {
+  "emailAddress": {
+   "name": "Tyneside Pump & Go",
+   "address": "noreply@tynesidepumpgo.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Thanks for your purchase on 2026-10-23. Your receipt is attached.",
+ "body": {
+  "contentType": "text",
+  "content": "Thanks for your purchase on 2026-10-23. Your receipt is attached."
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "c679aee4b748a7d99816",
+   "name": "183_r_fuel.pdf",
+   "contentType": "application/pdf",
+   "size": 39542,
+   "isInline": false,
+   "path": "attachments/183_r_fuel.pdf",
+   "gold": "183_r_fuel.json"
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "document",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "183_r_fuel.pdf",
+    "treat_as": "document",
+    "gold": "183_r_fuel.json"
+   }
+  ],
+  "note": "single document"
+ }
+}

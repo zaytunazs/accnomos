@@ -1,0 +1,64 @@
+{
+ "id": "AAMk-sample-16",
+ "receivedDateTime": "2026-09-30T06:30:00Z",
+ "subject": "Our new catalogue is here",
+ "from": {
+  "emailAddress": {
+   "name": "Oakhill Fixings Marketing",
+   "address": "marketing@oakhillfixings.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Catalogue attached - no order needed.",
+ "body": {
+  "contentType": "text",
+  "content": "Catalogue attached - no order needed."
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "0b9eab0dc38e2c2d90ca",
+   "name": "catalogue_autumn.pdf",
+   "contentType": "application/pdf",
+   "size": 5849,
+   "isInline": false,
+   "path": "attachments/catalogue_autumn.pdf",
+   "gold": null
+  },
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "b7da2cfe3ce8d40c10be",
+   "name": "promo.png",
+   "contentType": "image/png",
+   "size": 1196,
+   "isInline": true,
+   "path": "attachments/promo.png",
+   "gold": null
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "decoy",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "catalogue_autumn.pdf",
+    "treat_as": "ignore",
+    "gold": null
+   },
+   {
+    "attachment": "promo.png",
+    "treat_as": "ignore",
+    "gold": null
+   }
+  ],
+  "note": "marketing PDF is not a financial document"
+ }
+}

@@ -1,0 +1,49 @@
+{
+ "id": "AAMk-sample-08",
+ "receivedDateTime": "2026-08-11T17:47:59Z",
+ "subject": "Receipt",
+ "from": {
+  "emailAddress": {
+   "name": "Sam Hartley",
+   "address": "sam.hartley.phone@mailbox.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Sent from my phone",
+ "body": {
+  "contentType": "text",
+  "content": "Sent from my phone"
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "e53678bd8828453e80ed",
+   "name": "135_pi_software.png",
+   "contentType": "image/png",
+   "size": 216017,
+   "isInline": false,
+   "path": "attachments/135_pi_software.png",
+   "gold": "135_pi_software.json"
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "document",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "135_pi_software.png",
+    "treat_as": "document",
+    "gold": "135_pi_software.json"
+   }
+  ],
+  "note": "single document"
+ }
+}

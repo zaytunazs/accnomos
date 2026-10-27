@@ -1,0 +1,49 @@
+{
+ "id": "AAMk-sample-04",
+ "receivedDateTime": "2026-08-10T10:58:16Z",
+ "subject": "Invoice attached from Ripon Riverside Parking Ltd",
+ "from": {
+  "emailAddress": {
+   "name": "Ripon Riverside Parking Ltd",
+   "address": "accounts@riponriversidepark.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Hi,\n\nPlease find attached our invoice. Payment terms as stated.\n\nKind regards\nAccounts\nRipon Riverside Parking Ltd",
+ "body": {
+  "contentType": "text",
+  "content": "Hi,\n\nPlease find attached our invoice. Payment terms as stated.\n\nKind regards\nAccounts\nRipon Riverside Parking Ltd"
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "96d99ba1b773a184612f",
+   "name": "187_r_parking.png",
+   "contentType": "image/png",
+   "size": 133568,
+   "isInline": false,
+   "path": "attachments/187_r_parking.png",
+   "gold": "187_r_parking.json"
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "document",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "187_r_parking.png",
+    "treat_as": "document",
+    "gold": "187_r_parking.json"
+   }
+  ],
+  "note": "single document"
+ }
+}

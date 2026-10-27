@@ -1,0 +1,64 @@
+{
+ "id": "AAMk-sample-19",
+ "receivedDateTime": "2026-08-08T17:09:55Z",
+ "subject": "Invoice LMS-92838 attached",
+ "from": {
+  "emailAddress": {
+   "name": "LincConnect Mobile Solutions Ltd",
+   "address": "billing@lincconnectmobiles.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Invoice attached.\n\nLincConnect Mobile Solutions Ltd\nFollow us on social",
+ "body": {
+  "contentType": "text",
+  "content": "Invoice attached.\n\nLincConnect Mobile Solutions Ltd\nFollow us on social"
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "e43677dc08d9efa8ffce",
+   "name": "071_utility.pdf",
+   "contentType": "application/pdf",
+   "size": 59956,
+   "isInline": false,
+   "path": "attachments/071_utility.pdf",
+   "gold": "071_utility.json"
+  },
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "8bb1a58d7725f4d63efc",
+   "name": "signature_logo.png",
+   "contentType": "image/png",
+   "size": 845,
+   "isInline": true,
+   "path": "attachments/signature_logo.png",
+   "gold": null
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "mixed",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "071_utility.pdf",
+    "treat_as": "document",
+    "gold": "071_utility.json"
+   },
+   {
+    "attachment": "signature_logo.png",
+    "treat_as": "ignore",
+    "gold": null
+   }
+  ],
+  "note": "one real document plus a signature logo"
+ }
+}

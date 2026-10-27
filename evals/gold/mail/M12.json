@@ -1,0 +1,64 @@
+{
+ "id": "AAMk-sample-12",
+ "receivedDateTime": "2026-08-18T08:35:12Z",
+ "subject": "Two receipts",
+ "from": {
+  "emailAddress": {
+   "name": "Operations",
+   "address": "ops@bramblewood.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "Two for the books please.",
+ "body": {
+  "contentType": "text",
+  "content": "Two for the books please."
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "bfd5bd05a1f7bc2de551",
+   "name": "177_pi_merchant.png",
+   "contentType": "image/png",
+   "size": 293657,
+   "isInline": false,
+   "path": "attachments/177_pi_merchant.png",
+   "gold": "177_pi_merchant.json"
+  },
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "b232d3d761610ac56530",
+   "name": "099_pi_merchant.png",
+   "contentType": "image/png",
+   "size": 297540,
+   "isInline": false,
+   "path": "attachments/099_pi_merchant.png",
+   "gold": "099_pi_merchant.json"
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "document",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "177_pi_merchant.png",
+    "treat_as": "document",
+    "gold": "177_pi_merchant.json"
+   },
+   {
+    "attachment": "099_pi_merchant.png",
+    "treat_as": "document",
+    "gold": "099_pi_merchant.json"
+   }
+  ],
+  "note": "two documents"
+ }
+}

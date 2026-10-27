@@ -1,0 +1,64 @@
+{
+ "id": "AAMk-sample-17",
+ "receivedDateTime": "2026-10-06T06:30:00Z",
+ "subject": "Invitation: Site visit, Wed 14 Oct 09:00",
+ "from": {
+  "emailAddress": {
+   "name": "Calendar",
+   "address": "calendar@clientsuite.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": true,
+ "bodyPreview": "You are invited. Accept or decline.",
+ "body": {
+  "contentType": "text",
+  "content": "You are invited. Accept or decline."
+ },
+ "attachments": [
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "f96ca007a8785a695223",
+   "name": "invite.ics",
+   "contentType": "text/calendar",
+   "size": 224,
+   "isInline": false,
+   "path": "attachments/invite.ics",
+   "gold": null
+  },
+  {
+   "@odata.type": "#microsoft.graph.fileAttachment",
+   "id": "f4345798ab9907e64f31",
+   "name": "map.png",
+   "contentType": "image/png",
+   "size": 1104,
+   "isInline": true,
+   "path": "attachments/map.png",
+   "gold": null
+  }
+ ],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "decoy",
+ "expected": {
+  "intake": [
+   {
+    "attachment": "invite.ics",
+    "treat_as": "ignore",
+    "gold": null
+   },
+   {
+    "attachment": "map.png",
+    "treat_as": "ignore",
+    "gold": null
+   }
+  ],
+  "note": "calendar invite"
+ }
+}
