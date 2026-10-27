@@ -23,7 +23,7 @@ DATE_FORMATS = ("%d/%m/%Y", "%d-%m-%Y", "%Y-%m-%d", "%d %b %Y", "%d %B %Y", "%d/
 #: Column role -> header names that mean it (lowercase, compared after stripping punctuation).
 HEADERS: dict[str, tuple[str, ...]] = {
     "date": ("date", "transaction date", "posting date", "posted date", "value date"),
-    "description": ("description", "details", "narrative", "transaction description", "memo", "name",
+    "description": ("description", "details", "narrative", "transaction description", "transaction information", "memo", "name",
                     "counter party", "counterparty", "payee", "merchant"),
     "amount": ("amount", "amount (gbp)", "amount gbp", "value", "local amount"),
     "out": ("money out", "paid out", "debit", "debit amount", "out", "withdrawals"),
