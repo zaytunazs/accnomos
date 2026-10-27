@@ -7,22 +7,26 @@ implementation; Google Drive/Gmail/Calendar next. Providers never leak into ledg
 from accnomos_connectors.base import (
     CalendarProvider,
     FileRef,
+    MailAttachment,
     MailMessage,
     MailProvider,
     ConflictError,
     StorageProvider,
 )
-from accnomos_connectors.fake import FakeStorageProvider
-from accnomos_connectors.msgraph import GraphError, GraphStorageProvider
+from accnomos_connectors.fake import FakeMailProvider, FakeStorageProvider
+from accnomos_connectors.msgraph import GraphError, GraphMailProvider, GraphStorageProvider
 
 __all__ = [
     "CalendarProvider",
     "FileRef",
+    "MailAttachment",
     "MailMessage",
     "MailProvider",
     "StorageProvider",
     "ConflictError",
+    "FakeMailProvider",
     "FakeStorageProvider",
     "GraphError",
+    "GraphMailProvider",
     "GraphStorageProvider",
 ]

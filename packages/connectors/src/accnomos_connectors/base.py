@@ -22,11 +22,22 @@ class FileRef(BaseModel):
 
 class MailMessage(BaseModel):
     id: str
-    subject: str
-    sender: str
-    received: datetime
+    received_at: datetime
+    from_address: str = ""
+    from_name: str = ""
+    subject: str = ""
     has_attachments: bool = False
-    web_url: str | None = None
+    web_link: str | None = None
+
+
+class MailAttachment(BaseModel):
+    """A file attached to a message. Item and reference attachments are never listed."""
+
+    id: str
+    name: str
+    content_type: str = ""
+    size: int = 0
+    is_inline: bool = False
 
 
 class StorageProvider(ABC):
@@ -58,15 +69,22 @@ class StorageProvider(ABC):
 
 
 class MailProvider(ABC):
-    @abstractmethod
-    async def find_with_attachments(self, since: datetime, cursor: str | None) -> tuple[list[MailMessage], str]: ...
+    """Read-only access to the user's mailbox: nothing is ever moved, flagged, marked read or deleted."""
 
     @abstractmethod
-    async def attachments(self, message_id: str) -> list[tuple[str, bytes]]: ...
+    async def list_messages(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
+        """Messages with attachments received at or after `since`, newest first."""
 
     @abstractmethod
+    async def list_attachments(self, message_id: str) -> list[MailAttachment]:
+        """File attachments of one message (metadata only)."""
+
+    @abstractmethod
+    async def download_attachment(self, message_id: str, attachment_id: str) -> bytes: ...
+
     async def create_draft(self, to: str, subject: str, body_html: str) -> str:
-        """Returns the draft id. Sending is a separate, user-tapped action."""
+        """Returns the draft id. Sending is a separate, user-tapped action. Not implemented yet."""
+        raise NotImplementedError
 
 
 class CalendarProvider(ABC):

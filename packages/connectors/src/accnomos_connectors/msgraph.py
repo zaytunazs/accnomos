@@ -1,4 +1,4 @@
-"""Microsoft Graph (OneDrive) StorageProvider.
+"""Microsoft Graph: OneDrive StorageProvider and Outlook MailProvider.
 
 Addressing (paths are relative to the Accnomos books root):
 
@@ -14,13 +14,20 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable, Callable
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any, Literal
 from urllib.parse import quote, unquote
 
 import httpx
 
-from accnomos_connectors.base import ConflictError, FileRef, StorageProvider
+from accnomos_connectors.base import (
+    ConflictError,
+    FileRef,
+    MailAttachment,
+    MailMessage,
+    MailProvider,
+    StorageProvider,
+)
 
 GRAPH = "https://graph.microsoft.com/v1.0"
 SIMPLE_UPLOAD_MAX = 4 * 1024 * 1024
@@ -60,57 +67,30 @@ def _to_ref(item: dict[str, Any], path: str) -> FileRef:
     )
 
 
-class GraphStorageProvider(StorageProvider):
-    """OneDrive via Microsoft Graph, with a bearer token supplied per request."""
+class _GraphHttp:
+    """Bearer token, retries on 429/503 and error mapping shared by the Graph providers."""
 
     def __init__(
         self,
         token: str,
-        account_kind: AccountKind = "personal",
         *,
         client: httpx.AsyncClient | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
     ) -> None:
-        if account_kind not in ("personal", "work"):
-            raise ValueError(f"account_kind must be 'personal' or 'work', not {account_kind!r}")
-        self.account_kind: AccountKind = account_kind
         self._client = client or httpx.AsyncClient(timeout=60)
         self._owns_client = client is None
         self._auth = {"Authorization": f"Bearer {token}"}
         self._sleep = sleep
-        self._folders: dict[str, dict[str, Any]] = {}  # books-relative path -> drive item
-        self._root_drive_path: str | None = None  # e.g. '/Apps/Accnomos' once ensure_root has run
 
     async def aclose(self) -> None:
         if self._owns_client:
             await self._client.aclose()
 
-    async def __aenter__(self) -> GraphStorageProvider:
+    async def __aenter__(self) -> Any:
         return self
 
     async def __aexit__(self, *exc: object) -> None:
         await self.aclose()
-
-    # ------------------------------------------------------------------ #
-    # URLs and HTTP
-    # ------------------------------------------------------------------ #
-
-    def _item_url(self, path: str, action: str = "") -> str:
-        """Path-addressed item URL, optionally with an action such as 'content' or 'children'."""
-        path = path.strip("/")
-        if self.account_kind == "personal":
-            base = "/me/drive/special/approot"
-            if not path:
-                return f"{GRAPH}{base}" + (f"/{action}" if action else "")
-            url = f"{GRAPH}{base}:/{quote(path, safe='/')}"
-        else:
-            url = f"{GRAPH}/me/drive/root:/Accnomos" + (f"/{quote(path, safe='/')}" if path else "")
-        return url + (f":/{action}" if action else "")
-
-    def _delta_url(self) -> str:
-        if self.account_kind == "personal":
-            return f"{GRAPH}/me/drive/special/approot/delta"
-        return f"{GRAPH}/me/drive/root:/Accnomos:/delta"
 
     async def _request(
         self, method: str, url: str, *, auth: bool = True, ok404: bool = False, **kw: Any
@@ -138,6 +118,46 @@ class GraphStorageProvider(StorageProvider):
             return min(MAX_RETRY_AFTER_S, max(0.0, float(resp.headers.get("Retry-After", "1"))))
         except ValueError:
             return 1.0
+
+
+class GraphStorageProvider(_GraphHttp, StorageProvider):
+    """OneDrive via Microsoft Graph, with a bearer token supplied per request."""
+
+    def __init__(
+        self,
+        token: str,
+        account_kind: AccountKind = "personal",
+        *,
+        client: httpx.AsyncClient | None = None,
+        sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    ) -> None:
+        if account_kind not in ("personal", "work"):
+            raise ValueError(f"account_kind must be 'personal' or 'work', not {account_kind!r}")
+        super().__init__(token, client=client, sleep=sleep)
+        self.account_kind: AccountKind = account_kind
+        self._folders: dict[str, dict[str, Any]] = {}  # books-relative path -> drive item
+        self._root_drive_path: str | None = None  # e.g. '/Apps/Accnomos' once ensure_root has run
+
+    # ------------------------------------------------------------------ #
+    # URLs
+    # ------------------------------------------------------------------ #
+
+    def _item_url(self, path: str, action: str = "") -> str:
+        """Path-addressed item URL, optionally with an action such as 'content' or 'children'."""
+        path = path.strip("/")
+        if self.account_kind == "personal":
+            base = "/me/drive/special/approot"
+            if not path:
+                return f"{GRAPH}{base}" + (f"/{action}" if action else "")
+            url = f"{GRAPH}{base}:/{quote(path, safe='/')}"
+        else:
+            url = f"{GRAPH}/me/drive/root:/Accnomos" + (f"/{quote(path, safe='/')}" if path else "")
+        return url + (f":/{action}" if action else "")
+
+    def _delta_url(self) -> str:
+        if self.account_kind == "personal":
+            return f"{GRAPH}/me/drive/special/approot/delta"
+        return f"{GRAPH}/me/drive/root:/Accnomos:/delta"
 
     # ------------------------------------------------------------------ #
     # Folders
@@ -273,3 +293,66 @@ class GraphStorageProvider(StorageProvider):
                 return changed, page["@odata.deltaLink"]
             url = page.get("@odata.nextLink")
         raise GraphError(200, "delta response had neither nextLink nor deltaLink")
+
+
+def _iso(dt: str | None) -> datetime:
+    return datetime.fromisoformat((dt or "1970-01-01T00:00:00Z").replace("Z", "+00:00"))
+
+
+class GraphMailProvider(_GraphHttp, MailProvider):
+    """Outlook mail via Microsoft Graph (`Mail.Read`). Personal and work accounts use the same endpoints.
+
+    Read-only by construction: only GET requests are ever sent.
+    """
+
+    PAGE = 50
+
+    @staticmethod
+    def _message_url(message_id: str, rest: str = "") -> str:
+        return f"{GRAPH}/me/messages/{quote(message_id, safe='')}" + rest
+
+    async def list_messages(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
+        since_utc = since.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
+        # $orderby must use the first $filter property, or Graph rejects the query as "InefficientFilter".
+        params: dict[str, str] | None = {
+            "$filter": f"receivedDateTime ge {since_utc} and hasAttachments eq true",
+            "$select": "id,receivedDateTime,from,subject,hasAttachments,webLink",
+            "$orderby": "receivedDateTime desc",
+            "$top": str(min(self.PAGE, max(1, max_results))),
+        }
+        url: str | None = f"{GRAPH}/me/messages"
+        out: list[MailMessage] = []
+        while url and len(out) < max_results:
+            page = (await self._request("GET", url, params=params)).json()
+            params = None  # nextLink already carries the query
+            for m in page.get("value", []):
+                sender = (m.get("from") or {}).get("emailAddress") or {}
+                out.append(MailMessage(
+                    id=m["id"], received_at=_iso(m.get("receivedDateTime")),
+                    from_address=(sender.get("address") or "").lower(), from_name=sender.get("name") or "",
+                    subject=m.get("subject") or "", has_attachments=bool(m.get("hasAttachments")),
+                    web_link=m.get("webLink"),
+                ))
+            url = page.get("@odata.nextLink")
+        return out[:max_results]
+
+    async def list_attachments(self, message_id: str) -> list[MailAttachment]:
+        url: str | None = self._message_url(message_id, "/attachments")
+        params: dict[str, str] | None = {"$select": "id,name,contentType,size,isInline"}
+        out: list[MailAttachment] = []
+        while url:
+            page = (await self._request("GET", url, params=params)).json()
+            params = None
+            for a in page.get("value", []):
+                if a.get("@odata.type", "#microsoft.graph.fileAttachment") != "#microsoft.graph.fileAttachment":
+                    continue  # forwarded messages (itemAttachment) and cloud links (referenceAttachment)
+                out.append(MailAttachment(
+                    id=a["id"], name=a.get("name") or "attachment", content_type=(a.get("contentType") or "").lower(),
+                    size=int(a.get("size") or 0), is_inline=bool(a.get("isInline")),
+                ))
+            url = page.get("@odata.nextLink")
+        return out
+
+    async def download_attachment(self, message_id: str, attachment_id: str) -> bytes:
+        url = self._message_url(message_id, f"/attachments/{quote(attachment_id, safe='')}/$value")
+        return (await self._request("GET", url, follow_redirects=True)).content
