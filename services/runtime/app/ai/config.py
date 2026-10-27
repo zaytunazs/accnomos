@@ -47,6 +47,8 @@ def _norm(url: str) -> str:
 def base_url_allowed(url: str) -> bool:
     """A client-chosen AI base URL is used only if it is one the server already knows: the defaults, the
     OLLAMA_BASE / MODEL_API_BASE in use, or one listed in AI_ALLOWED_BASE_URLS (comma-separated)."""
+    if is_test_mode():  # nothing the browser names is fetched: every config is swapped for the stub
+        return True
     allowed = {DEFAULT_OLLAMA_BASE, DEFAULT_MODEL_API_BASE, os.getenv("OLLAMA_BASE", ""), os.getenv("MODEL_API_BASE", ""),
                *os.getenv("AI_ALLOWED_BASE_URLS", "").split(",")}
     return _norm(url) in {_norm(a) for a in allowed if a.strip()}

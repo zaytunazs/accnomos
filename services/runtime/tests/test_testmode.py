@@ -11,7 +11,7 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-from app import testmode
+from app import security, testmode
 from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai
 from app.ai import verify as verify_ai
@@ -70,6 +70,26 @@ def test_forces_stub_ai_and_pins_today(test_env: None) -> None:
     cfg = AiConfig.resolve(mode="key", base_url="https://api.meta.ai/v1", api_key="k")
     assert (cfg.mode, cfg.base_url, cfg.model, cfg.api_key) == ("local", STUB, TEST_AI_MODEL, None)
     assert today() == date(2026, 10, 27)
+
+
+def test_browser_ai_base_url_is_accepted_then_swapped(test_env: None) -> None:
+    """The web build points the browser at the stub; the allow-list must not refuse it (the e2e Ask/AI test 400'd)."""
+    cfg = AiConfig.from_headers({"X-AI-Mode": "local", "X-AI-Base-Url": "http://127.0.0.1:8781/__test/ai"})
+    assert (cfg.base_url, cfg.model) == (STUB, TEST_AI_MODEL)
+
+
+def test_test_routes_skip_the_rate_limit(test_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The browser's Graph and AI calls come to /__test in test mode; only real runtime routes use the per-IP budget."""
+    monkeypatch.setattr(security, "UNLIMITED_PREFIXES", ())
+    monkeypatch.setenv("CROP_MODE", "off")  # enable() setdefaults it; keep it from leaking into other tests
+    testmode.enable()
+    assert security.UNLIMITED_PREFIXES == ("/__test/",)
+    app = FastAPI()
+    app.include_router(testmode.router)
+    app.add_middleware(security.SecurityMiddleware, limiter=security.TokenBucket(2))
+    c = TestClient(app)
+    assert all(c.get("/__test/gold").status_code == 200 for _ in range(5))
+    assert [c.get("/books/x").status_code for _ in range(3)] == [404, 404, 429]
 
 
 def test_every_gold_receipt_reads_and_standard_ones_pass() -> None:

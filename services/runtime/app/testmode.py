@@ -45,6 +45,7 @@ from accnomos_connectors.base import FileRef
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 
+from app import security
 from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai
 from app.ai import verify as verify_ai
@@ -228,6 +229,8 @@ async def reset() -> dict[str, Any]:
     )
     cal = await STATE.calendar.ensure_calendar(CALENDAR)
     await STATE.calendar.upsert_all_day_event(cal, "vat-26A3", "2026-11-07", "VAT return due (Jul–Sep 2026)", "SAMPLE — FICTIONAL COMPANY")
+    if security.LIMITER:  # each test starts with a full request budget
+        security.LIMITER.reset()
     STATE.seeded = True
     return {"ok": True, "mail": len(STATE.mail.messages), "gold": len(golds)}
 
@@ -236,6 +239,8 @@ def enable() -> None:
     """Called once by app.main when ACCNOMOS_TEST_MODE=1."""
     os.environ.setdefault("ACCNOMOS_TEST_TODAY", DEFAULT_TODAY)
     os.environ.setdefault("CROP_MODE", "off")  # the stub knows the uploaded bytes, not a re-encoded crop
+    # The browser's Graph and AI calls come here instead of Microsoft/Ollama; they must not eat the per-IP budget.
+    security.UNLIMITED_PREFIXES = ("/__test/",)
     log.warning("ACCNOMOS_TEST_MODE=1: fake storage/mail/calendar and a stub AI; not for real books")
 
 
