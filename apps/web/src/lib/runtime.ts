@@ -66,10 +66,17 @@ export interface RtSummary {
 export async function runtimeHeaders(account: AccountInfo): Promise<Record<string, string>> {
   const token = await getToken(storageScopesFor(account));
   const ai = loadAiConfig();
+  let business = "";
+  try {
+    business = (JSON.parse(window.localStorage.getItem("accnomos.business") ?? "{}") as { name?: string }).name ?? "";
+  } catch {
+    /* no business details yet */
+  }
   return {
     "X-Graph-Token": token,
     "X-Account-Kind": isPersonalAccount(account) ? "personal" : "work",
     "X-User": account.username,
+    ...(business ? { "X-Business-Name": business } : {}),
     ...(ai ? aiHeaders(ai) : {}),
   };
 }

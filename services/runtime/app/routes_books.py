@@ -83,8 +83,9 @@ async def scan(
     limit: int = Query(10, ge=1, le=50),
     books: Books = Depends(get_books),
     cfg: AiConfig = Depends(ai_config_from_request),
+    x_business_name: str | None = Header(default=None),
 ) -> ScanResult:
-    proposals, errors = await scan_inbox_detailed(books, cfg, limit=limit)
+    proposals, errors = await scan_inbox_detailed(books, cfg, limit=limit, business_name=x_business_name)
     return ScanResult(proposals=proposals, errors=errors)
 
 

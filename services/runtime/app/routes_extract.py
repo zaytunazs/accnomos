@@ -5,7 +5,7 @@ Needs `python-multipart` installed for `UploadFile`.
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Header, HTTPException, UploadFile
 
 from app.ai.config import AiConfig, ai_config_from_request
 from app.ai.extract import SUPPORTED_MIME, ExtractionError
@@ -24,6 +24,7 @@ _SEEN_HASHES: set[str] = set()
 async def extract(
     file: UploadFile = File(...),
     cfg: AiConfig = Depends(ai_config_from_request),
+    x_business_name: str | None = Header(default=None),
 ) -> Proposal:
     mime = (file.content_type or "").lower()
     if mime == "image/jpg":
@@ -36,7 +37,7 @@ async def extract(
     if not data:
         raise HTTPException(status_code=400, detail="Empty upload")
     try:
-        proposal = await process_image(data, mime, cfg, known_hashes=frozenset(_SEEN_HASHES))
+        proposal = await process_image(data, mime, cfg, known_hashes=frozenset(_SEEN_HASHES), business_name=x_business_name)
     except ExtractionError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     _SEEN_HASHES.add(proposal.doc_sha256)

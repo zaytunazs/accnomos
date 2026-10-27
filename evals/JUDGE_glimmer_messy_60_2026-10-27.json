@@ -1,0 +1,3612 @@
+{
+  "summary": {
+    "model": "claude-haiku-5-5",
+    "escalate": "claude-sonnet-5-5",
+    "n": 60,
+    "skipped": 0,
+    "severity": {
+      "none": 18,
+      "major": 22,
+      "minor": 15,
+      "null": 1,
+      "unparsed": 4
+    },
+    "disagreements": 56,
+    "escalated": 56
+  },
+  "docs": [
+    {
+      "file": "001_standard.json",
+      "gold_case": "standard",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "lines[0].description",
+            "gold": "A4 Paper Ream (80gsm)",
+            "extracted": "2 x A4 Paper Ream (80gsm)"
+          },
+          {
+            "field": "lines[1].description",
+            "gold": "Gel Pens Black (10pk)",
+            "extracted": "1 x Gel Pens Black (10pk)"
+          },
+          {
+            "field": "supplier.address",
+            "gold": "14 Industrial Park, Leeds, LS10 1AB",
+            "extracted": "not extracted"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier name, VAT number, date, line nets, VAT per line, totals (net 43.25, VAT 8.65, gross 51.90), payment method, card last 4 and category all match. The VAT arithmetic on the printed receipt is correct. Descriptions carry the quantity prefix already held in qty, and the supplier address was dropped. Neither changes the books or the VAT return.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1127,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 723,
+          "output_tokens_details": {
+            "thinking_tokens": 416
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "All bookkeeping-relevant fields match the gold record: supplier, VAT number, date, line items, net/VAT/gross totals, payment method and card digits. The differences are harmless: the supplier name is upper-case, the line descriptions include the 'qty x' prefix, numbers are floats, and the category label is worded differently. The missing supplier address is not a field a bookkeeper would care about here.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1127,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 151,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "002_mixed.json",
+      "gold_case": "mixed",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1602,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 800
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "lines[4].unit_price",
+            "gold": "0.45",
+            "extracted": "0.9"
+          },
+          {
+            "field": "lines[4].net",
+            "gold": "0.9",
+            "extracted": "1.8"
+          },
+          {
+            "field": "lines[4].vat",
+            "gold": "0.18",
+            "extracted": "0.36"
+          },
+          {
+            "field": "supplier_name",
+            "gold": "Marrs & Ockway Provisions Ltd (printed: MARRS & OCKWAY PROVISIONS)",
+            "extracted": "MARR'S & OCKWAY PROVISIONS"
+          }
+        ],
+        "severity": "major",
+        "note": "The Palm Oil Soap Bar line is wrong. The receipt prints 0.90 as the line total for 2 bars, but the extraction took 0.90 as the unit price. That doubles the line net to 1.80 and the line VAT to 0.36. The line items then sum to a net of 10.35 and VAT of 0.72, which contradicts the correct document totals (9.45 net, 0.54 VAT). The supplier name also has a spurious apostrophe, which is minor. The truncated descriptions and the 'Sundry' category are acceptable.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1602,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 767,
+          "output_tokens_details": {
+            "thinking_tokens": 388
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "003_reduced.json",
+      "gold_case": "reduced",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"doc_type\",\"gold\":\"receipt\",\"extracted\":\"purchase_invoice\"}],\"severity\":\"major\",\"note\":\"Only one field is wrong. The document is marked as paid by Direct Debit, so classifying it as a purchase_invoice could push it into payables rather than recording it as a paid receipt. All amounts, VAT per line, totals, VAT number, date and invoice number match. The shortened line descri",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1222,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 656
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "receipt",
+            "extracted": "purchase_invoice"
+          }
+        ],
+        "severity": "minor",
+        "note": "Only the doc type differs. Supplier, VAT number, date, invoice number, line amounts and VAT, totals and payment method all match the gold record. 'Utilities' is a reasonable equivalent of 'Energy'. The doc type mismatch does not change any amounts or the VAT return, since both are purchase documents.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1222,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 589,
+          "output_tokens_details": {
+            "thinking_tokens": 430
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "004_zero.json",
+      "gold_case": "zero",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"doc_type\",\"gold\":\"purchase_invoice\",\"extracted\":\"sales_invoice\"},{\"field\":\"category_guess\",\"gold\":\"zero-rated_goods (category_hint)\",\"extracted\":\"Sales\"},{\"field\":\"supplier_name\",\"gold\":\"Thornbury & Finch Books Ltd\",\"extracted\":\"THORNBURO & FINCH BOOKS LTD\"}],\"severity\":\"major\",\"note\":\"The doc_type is wrong: the receipt is a supplier invoice the business",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1356,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 626
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "purchase_invoice",
+            "extracted": "sales_invoice"
+          },
+          {
+            "field": "supplier_name",
+            "gold": "Thornbury & Finch Books Ltd",
+            "extracted": "THORNBURO & FINCH BOOKS LTD"
+          },
+          {
+            "field": "category_guess",
+            "gold": "zero-rated_goods",
+            "extracted": "Sales"
+          }
+        ],
+        "severity": "major",
+        "note": "The document is a purchase (the business paid by card), but it was classed as a sales invoice and categorised as Sales. That would put it on the wrong side of the books and the VAT return. The supplier name copies the receipt's misprint 'THORNBURO', whereas gold has the correct spelling, so supplier matching could fail. The net total of 34.24 does not equal the line sum of 33.24, but that is printed on the receipt, so it was correctly copied. Abbreviated line descriptions match the printed text and are harmless. The totals, VAT, date, invoice number and card details are all correct.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1356,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 787,
+          "output_tokens_details": {
+            "thinking_tokens": 450
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "005_no_vat_number.json",
+      "gold_case": "no_vat_number",
+      "code_ok": false,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"lines[1].unit_price\",\"gold\":\"125.0\",\"extracted\":\"250.0\"},{\"field\":\"lines[1].net\",\"gold\":\"250.0\",\"extracted\":\"500.0\"},{\"field\":\"lines[2].unit_price\",\"gold\":\"18.25\",\"extracted\":\"73.0\"},{\"field\":\"lines[2].net\",\"gold\":\"73.0\",\"extracted\":\"292.0\"},{\"field\":\"net_total\",\"gold\":\"368.5\",\"extracted\":\"837.5\"},{\"field\":\"category\",\"gold\":\"Construction Materials\",\"extracted\":\"Tools & small equipment\"}],\"severity\":\"major\",\"note\":\"Line nets for the latch and hinges are wrong: the print",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1276,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 566
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "lines[1].unit_price",
+            "gold": "125.0",
+            "extracted": "250.0"
+          },
+          {
+            "field": "lines[1].net",
+            "gold": "250.0",
+            "extracted": "500.0"
+          },
+          {
+            "field": "lines[2].unit_price",
+            "gold": "18.25",
+            "extracted": "73.0"
+          },
+          {
+            "field": "lines[2].net",
+            "gold": "73.0",
+            "extracted": "292.0"
+          },
+          {
+            "field": "net_total",
+            "gold": "368.5",
+            "extracted": "837.5"
+          }
+        ],
+        " severity": "major",
+        "note": "The receipt's price column shows line totals (250.00 and 73.00), not unit prices. The extraction treated them as unit prices and multiplied by qty, which inflated the line nets and net_total to 837.5. Its gross_total of 368.5 is correct but now disagrees with net_total, which has no VAT. The category guess differs from gold but is plausible, so I did not count it as an error. The supplier, date, card details and zero VAT are correct.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1276,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 581,
+          "output_tokens_details": {
+            "thinking_tokens": 261
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": null
+    },
+    {
+      "file": "006_cash_no_vat.json",
+      "gold_case": "cash_no_vat",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "Supplier name, dates, all line amounts, net/VAT/gross totals, zero VAT and cash payment all match GOLD. Line descriptions are reworded but carry the same quantities and prices. 'Travel' vs 'Transport' is a reasonable synonym for bus fares and not clearly wrong. The dropped supplier address is not a bookkeeping field here.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1188,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 562,
+          "output_tokens_details": {
+            "thinking_tokens": 418
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": null,
+      "final_severity": "none"
+    },
+    {
+      "file": "007_full_invoice.json",
+      "gold_case": "full_invoice",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "sales_invoice",
+            "extracted": "purchase_invoice"
+          }
+        ],
+        "severity": "major",
+        "note": "The doc_type is wrong. Gold marks this as a sales invoice, but the extraction says purchase invoice, which would book the document to the wrong side of the ledger and affect the VAT return. All other fields match: supplier name and VAT number, customer, invoice number, dates, lines (qty, price, net, VAT), totals, and payment method. Shortened descriptions ('Solid Oak Flooring' vs '...20mm', 'Sanding Discs' vs '...Assorted') and the bank_transfer format are harmless. The supplier address was not extracted, but the schema has no address field, so it is not counted as an error.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1421,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 636,
+          "output_tokens_details": {
+            "thinking_tokens": 376
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "sales_invoice",
+            "extracted": "purchase_invoice"
+          }
+        ],
+        "severity": "major",
+        "note": "The doc type does not match the gold. Sales and purchase invoices go to different sides of the books and VAT return (output vs input VAT). All other fields match the gold: supplier, VAT number, invoice number, date, line amounts, totals, payment method and category. Shortened line descriptions match the printed text and are harmless. The missing supplier address is not material.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1421,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 379,
+          "output_tokens_details": {
+            "thinking_tokens": 209
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "008_sales_invoice.json",
+      "gold_case": "sales_invoice",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "category",
+            "gold": "Joinery and Carpentry",
+            "extracted": "Sundry"
+          },
+          {
+            "field": "supplier address",
+            "gold": "14 Mill Lane, Leeds, LS1 2AB",
+            "extracted": "not extracted"
+          }
+        ],
+        "severity": "minor",
+        "note": "All amounts, VAT per line, VAT number, invoice number, date, doc type, payment method and customer match the gold record; line description abbreviations and case differences are harmless. The category 'Sundry' is clearly wrong for joinery work, and the supplier address was omitted. Neither changes totals or the VAT return.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1522,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 506,
+          "output_tokens_details": {
+            "thinking_tokens": 301
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "category_hint",
+            "gold": "Joinery and Carpentry",
+            "extracted": "Sundry"
+          }
+        ],
+        "severity": "minor",
+        "note": "All financial, supplier, VAT and line data match the printed receipt. Only the category is off: it is too generic (Sundry instead of Joinery and Carpentry). Line descriptions follow the printed abbreviated text, so they are not errors.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1522,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 325,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "009_exempt.json",
+      "gold_case": "exempt",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"customer.name\",\"gold\":\"J. Thorne\",\"extracted\":\"null\"},{\"field\":\"lines[0].vat_rate\",\"gold\":\"0\",\"extracted\":\"null\"},{\"field\":\"lines[1].vat_rate\",\"gold\":\"0\",\"extracted\":\"null\"},{\"field\":\"category\",\"gold\":\"Postage & Insurance\",\"extracted\":\"Postage\"},{\"field\":\"supplier.address\",\"gold\":\"14 Mill Lane, Harrogate, HG1 2XY\",\"extracted\":\"missing (no address field)\"}],\"severity\":\"min",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1180,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 614
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "customer_name",
+            "gold": "J. Thorne",
+            "extracted": "null"
+          },
+          {
+            "field": "lines[].vat_rate",
+            "gold": "0 (exempt)",
+            "extracted": "null"
+          },
+          {
+            "field": "category_guess",
+            "gold": "Postage & Insurance",
+            "extracted": "Postage"
+          }
+        ],
+        "severity": "minor",
+        "note": "All amounts, date, supplier, VAT total, payment method and card digits are correct. The customer name is not printed on the receipt, so leaving it null is reasonable and arguably not an error. The VAT rate is missing (null instead of 0/exempt), but the VAT amounts are correctly 0.00, so the VAT return is unaffected. The category is slightly less specific, omitting insurance. Overall these are cosmetic differences only.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1180,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 261,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "010_foreign.json",
+      "gold_case": "foreign",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"lines[0].vat_rate\",\"gold\":\"0\",\"extracted\":\"null\"},{\"field\":\"lines[1].vat_rate\",\"gold\":\"0\",\"extracted\":\"null\"},{\"field\":\"category_guess\",\"gold\":\"",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1258,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 718
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "category",
+            "gold": "IT Hardware",
+            "extracted": "Tools & small equipment"
+          },
+          {
+            "field": "lines[].vat_rate",
+            "gold": "0 (reverse charge)",
+            "extracted": "null"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier, VAT number, invoice number, date, currency, all line amounts and totals, payment method and doc type match. Line descriptions are shortened exactly as printed on the receipt, so they are not errors. The category is arguably wrong, since IT Hardware fits better than Tools & small equipment. The vat_rate is null instead of 0 on both lines, but the VAT amounts are correctly 0.00, so the VAT return is unaffected. The reverse charge note is not captured as a field, but the gold record has no such field either.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1258,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 264,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "011_standard.json",
+      "gold_case": "standard",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "invoice_number",
+            "gold": "null",
+            "extracted": "RCPT-997375"
+          },
+          {
+            "field": "supplier.address",
+            "gold": "12 Industrial Park, Leeds, LS10 1AB",
+            "extracted": "missing"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier name, VAT number, date, line items, per-line VAT, totals, payment method and card digits all match gold. The receipt number was stored as invoice_number, where gold has null; this doesn't change the books. The supplier address was not extracted. Wording differences (A4 Paper, Stapler HD, Office supplies vs stationery) are harmless.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1306,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 777,
+          "output_tokens_details": {
+            "thinking_tokens": 562
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "All totals, VAT figures, line values, date, supplier, VAT number, payment method and card digits match. Line descriptions follow the abbreviated wording printed on the receipt. 'Office supplies' is equivalent to 'stationery'. The extracted invoice_number (RCPT-997375) is the receipt number printed on the receipt, so it is not an error even though gold has null.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1306,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 324,
+          "output_tokens_details": {
+            "thinking_tokens": 179
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "012_standard.json",
+      "gold_case": "standard",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "supplier_address",
+            "gold": "12 Industrial Park, Newcastle upon Tyne, NE1 6QD",
+            "extracted": "(missing)"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier name, VAT number, date, invoice number, all line amounts and VAT, totals, payment method, card last 4 and category all match the gold. The only gap is the omitted supplier address, which doesn't affect the books or VAT return. Line descriptions use the printed text (\"5x A4 Recycled Paper 80gsm\"), so the extra \"500 Sheets\" wording in gold isn't a miss.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1265,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 755,
+          "output_tokens_details": {
+            "thinking_tokens": 540
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "All bookkeeping-relevant fields match: supplier, VAT number, date, invoice number, line nets, VAT, totals, payment method and card last4. Line descriptions differ only in harmless wording (quantity prefix, omitted sheet count). Supplier address is not in the extracted schema, which has no address field, so it is not an extraction error. Category matches apart from case.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1265,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 143,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "013_mixed.json",
+      "gold_case": "mixed",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "lines[2].vat_rate (Chicken Breast 500g)",
+            "gold": "0",
+            "extracted": "20.0"
+          },
+          {
+            "field": "lines[2].vat (Chicken Breast 500g)",
+            "gold": "0.0",
+            "extracted": "0.9"
+          }
+        ],
+        "severity": "major",
+        "note": "Chicken Breast is zero-rated in gold and on the printed receipt (0% subtotal), but extraction applied 20% VAT (0.90). Line VAT now sums to 2.98 against a vat_total of 2.08, so the extraction is internally inconsistent and would overstate input VAT. Supplier name differs only by case, and VAT number, date, totals, other lines, and payment fields match. Minor, not counted as errors: category_guess 'Sundry' vs gold category_hint 'mixed' (a category, not clearly wrong), and the supplier address is not captured in the extracted record.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1570,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 780,
+          "output_tokens_details": {
+            "thinking_tokens": 475
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "lines[2].vat_rate",
+            "gold": "0",
+            "extracted": "20"
+          },
+          {
+            "field": "lines[2].vat",
+            "gold": "0.00",
+            "extracted": "0.90"
+          }
+        ],
+        "severity": "major",
+        "note": "Chicken Breast is zero-rated on the receipt (0% subtotal 6.75 = 1.30+0.95+4.50), but it was extracted as 20% VAT with 0.90 VAT. The extracted line VAT sums to 2.98, which contradicts the correct header vat_total of 2.08. Any per-line VAT postings would be wrong. All other fields match. The category 'Sundry' is vague but not clearly wrong, so I did not flag it.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1570,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 518,
+          "output_tokens_details": {
+            "thinking_tokens": 282
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "014_reduced.json",
+      "gold_case": "reduced",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "receipt",
+            "extracted": "purchase_invoice"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier, VAT number, invoice number, date, line net/VAT (5% reduced rate), totals and payment method all match the printed text. The only mismatch is doc_type: the document is a paid receipt (paid by direct debit, 'Thank you for your business'), but the extraction labels it purchase_invoice. This does not change the VAT figures. Category 'Utilities' is a reasonable equivalent of 'domestic_energy'. The supplier address was not extracted, which is an omission rather than a wrong value.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1139,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 656,
+          "output_tokens_details": {
+            "thinking_tokens": 433
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "receipt",
+            "extracted": "purchase_invoice"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier, VAT number, date, invoice number, line, VAT, totals and payment method all match. The only discrepancy is doc type, which was labelled purchase_invoice rather than receipt. The amounts and VAT are unaffected, so the books and VAT return are not changed. The category 'Utilities' is acceptable for domestic energy.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1139,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 465,
+          "output_tokens_details": {
+            "thinking_tokens": 299
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "015_zero.json",
+      "gold_case": "zero",
+      "code_ok": false,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"doc_type\",\"gold\":\"purchase_invoice\",\"extracted\":\"sales_invoice\"},{\"field\":\"supplier_vat_number\",\"gold\":\"GB 987654321\",\"extracted\":\"null\"},{\"field\":\"category\",\"gold\":\"Zero-rated children's clothing and books\",\"extracted\":\"Sundry\"}],\"severity\":\"major\",\"note\":\"The doc_type is wrong: this is a supplier invoice to the business (customer is null), so it should be purchase_invoice, and that changes the books. The supplier VAT number is missed, although it does not",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1170,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 614
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "purchase_invoice",
+            "extracted": "sales_invoice"
+          },
+          {
+            "field": "lines[0].unit_price",
+            "gold": "18.5",
+            "extracted": "37.0"
+          },
+          {
+            "field": "lines[1].unit_price",
+            "gold": "7.99",
+            "extracted": "23.97"
+          }
+        ],
+        "severity": "major",
+        "note": "The document is classed as a sales invoice instead of a purchase invoice, which would put it on the wrong side of the books and the VAT return. Both line unit prices are the line totals rather than per-unit prices, so qty x unit_price no longer equals net. The supplier VAT number is null in the extraction, but it is not printed on the receipt, so I did not count that as an error. Totals, date, invoice number, payment method and card digits are correct.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1170,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 579,
+          "output_tokens_details": {
+            "thinking_tokens": 316
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "016_no_vat_number.json",
+      "gold_case": "no_vat_number",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "invoice_number",
+            "gold": "null",
+            "extracted": "R-20260814-773"
+          },
+          {
+            "field": "category",
+            "gold": "Office Equipment",
+            "extracted": "Tools & small equipment"
+          },
+          {
+            "field": "supplier_address",
+            "gold": "14 Mill Lane, Bristol, BS1 6QR",
+            "extracted": "missing"
+          }
+        ],
+        "severity": "minor",
+        "note": "Totals, VAT (0%, no VAT number on either record), date, supplier name, payment and card details all match. The extracted invoice_number is the receipt's 'Ref' number, not an invoice number. The category guess differs from gold and is debatable for industrial shelving. The supplier address was not extracted. None of these change the books or the VAT return.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 994,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 794,
+          "output_tokens_details": {
+            "thinking_tokens": 550
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "invoice_number",
+            "gold": "null",
+            "extracted": "R-20260814-773"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier, date, line, totals, VAT (0.00), payment method and card digits all match. The extractor put the printed receipt reference (Ref: R-20260814-773) in invoice_number, where the gold has null. This is cosmetic and does not affect the books. The category guess 'Tools & small equipment' differs from the gold 'Office Equipment' but is arguably reasonable, so I haven't counted it as an error.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 994,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 433,
+          "output_tokens_details": {
+            "thinking_tokens": 242
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "017_cash_no_vat.json",
+      "gold_case": "cash_no_vat",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "category_guess",
+            "gold": "Travel & Transport",
+            "extracted": "Motor expenses"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier, VAT number (null), date, all totals, per-line VAT, payment method and doc type match gold. Line description is shortened to 'Daily Entry' (location dropped), which is harmless. The only discrepancy is the category: 'Motor expenses' differs from the gold 'Travel & Transport'. Car parking is commonly booked under motor expenses, so this is a category difference rather than a clear error. The extracted record also omits the supplier address, but the schema has no address field, so I did not count it.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1016,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 695,
+          "output_tokens_details": {
+            "thinking_tokens": 473
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "All key fields match: supplier, date, totals, VAT (0.00), line item, payment method. Line description is a harmless abbreviation. Category 'Motor expenses' vs 'Travel & Transport' is a defensible alternative for car parking, not clearly wrong.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1016,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 205,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "018_full_invoice.json",
+      "gold_case": "full_invoice",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "supplier.address",
+            "gold": "42 Industrial Way, Leeds, LS12 3XY",
+            "extracted": "(missing)"
+          },
+          {
+            "field": "category",
+            "gold": "Joinery Materials & Tools",
+            "extracted": "Materials"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier name, VAT number, customer, invoice number, date, all line VAT amounts and totals (net 440.90, VAT 88.18, gross 529.08) and payment method match gold. Line descriptions are harmless shortenings. The supplier address is dropped, and the category is less specific than the hint but not clearly wrong. Neither changes the books or the VAT return.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1454,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 668,
+          "output_tokens_details": {
+            "thinking_tokens": 443
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "Supplier, VAT number, invoice number, date, customer, totals, per-line VAT and payment method all match. The line descriptions follow the printed text, which is shorter than the gold wording (e.g. 'Oak Boards (4x1)' vs 'Premium Oak Boards (4x1) 4ft'), so this is harmless. The category 'Materials' is broadly consistent with 'Joinery Materials & Tools'.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1454,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 353,
+          "output_tokens_details": {
+            "thinking_tokens": 190
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "019_sales_invoice.json",
+      "gold_case": "sales_invoice",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"category_guess\",\"gold\":\"Joinery/Carpentry\",\"extracted\":\"Sundry\"}],\"severity\":\"minor\",\"note\":\"All amounts, VAT per line, totals, supplier and customer names, VAT number, invoice number, date, doc type and payment method match the gold record. The line-item arithmetic checks out and the per-",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1615,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 681
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "supplier_vat_number",
+            "gold": "GB 123 4567 89",
+            "extracted": "GB.123 4567 89"
+          },
+          {
+            "field": "category_guess",
+            "gold": "Joinery/Carpentry",
+            "extracted": "Sundry"
+          }
+        ],
+        "severity": "minor",
+        "note": "All amounts, dates, VAT per line, line items, doc type and payment method match. The VAT number has the right digits but a stray period after 'GB', which is a cosmetic fix. The category is a vague 'Sundry' instead of joinery. The shortened line descriptions match the printed text.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1615,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 496,
+          "output_tokens_details": {
+            "thinking_tokens": 300
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "020_exempt.json",
+      "gold_case": "exempt",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "supplier.address",
+            "gold": "14 High Street, Leeds, LS1 2AB",
+            "extracted": "(missing)"
+          }
+        ],
+        "severity": "minor",
+        "note": "Totals, dates, invoice number, VAT (0% exempt), line amounts, payment method and card last4 all match. The supplier name differs only in case. The line description and category wording differ but are equivalent. The only real gap is the omitted supplier address, which does not affect the books or VAT return.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1263,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 592,
+          "output_tokens_details": {
+            "thinking_tokens": 431
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "All key fields match the gold record: supplier, date, invoice number, line items, totals (net 30.25, VAT 0.00, gross 30.25), payment method and card last 4. The line description is abbreviated exactly as printed on the receipt, and the category 'Postage' is a harmless variant of 'Postage and Courier'. The address is missing from the extracted record, but it doesn't affect the books or the VAT return.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1263,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 157,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "021_foreign.json",
+      "gold_case": "foreign",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"lines[0].vat_rate\",\"gold\":\"0\",\"extracted\":\"21\"},{\"field\":\"lines[1].vat_rate\",\"gold\":\"0\",\"extracted\":\"21\"},{\"field\":\"payment_method\",\"gold\":\"bank transfer\",\"extracted\":\"null\"},{\"field\":\"category_guess\",\"gold\":\"Office Supplies\",\"extracted\":\"Materials\"}],\"severity\":\"major\",\"note\":\"The invoice is a reverse-charge supply with 0% VAT and the customer accounts for the VAT. The extraction records 21% on both lines, which would misstate the VAT return even though the line VAT a",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1261,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 542
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "lines[0].vat_rate",
+            "gold": "0",
+            "extracted": "21"
+          },
+          {
+            "field": "lines[1].vat_rate",
+            "gold": "0",
+            "extracted": "21"
+          }
+        ],
+        "severity": "major",
+        "note": "Supplier, VAT number, date, invoice number, line amounts and totals all match. The extractor copied the printed '21%' onto both lines, but the invoice is a reverse-charge supply with no VAT charged, so the lines should be 0% / reverse charge. Coding them at 21% would put the lines in the wrong VAT category and could misstate the reverse-charge treatment on the VAT return, even though the VAT amounts are 0.00. Payment method is null in the extraction. The gold says bank transfer, but the receipt text doesn't print it, so I did not count that as an error. The category difference (Materials vs Office Supplies) is a judgement call, not clearly wrong.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1261,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 729,
+          "output_tokens_details": {
+            "thinking_tokens": 426
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "022_standard.json",
+      "gold_case": "standard",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "supplier.address",
+            "gold": "Unit 4, Industrial Park, Brentford, TW8 9EF",
+            "extracted": "missing"
+          }
+        ],
+        "severity": "minor",
+        "note": "All bookkeeping-relevant fields match: supplier name, VAT number, date, currency, line items, per-line VAT, net/VAT/gross totals, payment method and card last 4. The only gap is the omitted supplier address, which does not affect the books or VAT return. The category case difference is ignored.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1338,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 536,
+          "output_tokens_details": {
+            "thinking_tokens": 366
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "All extracted fields match the gold record. Supplier, VAT number, date, line items, totals, payment method and card digits are correct. The extracted record omits the supplier address, which is not a field a bookkeeper would care about here. The category differs only in capitalisation.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1338,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 105,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "023_standard.json",
+      "gold_case": "standard",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "invoice_number",
+            "gold": "null",
+            "extracted": "#88214"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier, VAT number, date, all line items (qty, unit price, net, VAT per line), net/VAT/gross totals, payment method and card last 4 match the gold record. Description wording and the category label ('Office supplies' vs 'Stationery') are harmless. The only discrepancy is that the extractor filled invoice_number from the printed REF (#88214), which the gold record treats as null. This does not affect totals or VAT, so it is minor. The extracted record also has no supplier address field; the gold has one, but the schema difference is not a bookkeeping error.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1311,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 579,
+          "output_tokens_details": {
+            "thinking_tokens": 346
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "Supplier, VAT number, date, line items, VAT per line, totals, payment method and card last 4 all match the gold record. The line descriptions follow the printed receipt wording, which is acceptable. 'Office supplies' is an equivalent category to 'Stationery'. The extractor put the printed REF #88214 in invoice_number, where gold has null. That is a harmless capture of the receipt reference and does not affect the books or VAT.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1311,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 374,
+          "output_tokens_details": {
+            "thinking_tokens": 210
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "024_mixed.json",
+      "gold_case": "mixed",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"lines[0].unit_price\",\"gold\":\"1.25\",\"extracted\":\"2.5\"},{\"field\":\"lines[0].net\",\"gold\":\"2.5\",\"extracted\":\"5.0\"},{\"field\":\"lines[3].unit_price\",\"gold\":\"0.99\",\"extracted\":\"2.97\"},{\"field\":\"lines[3].net\",\"gold\":\"2.97\",\"extracted\":\"8.91\"},{\"field\":\"lines[3].vat\",\"gold\":\"0.6\",\"extracted\":\"1.78\"},{\"field\":\"",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1622,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 630
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "lines[0].unit_price",
+            "gold": "1.25",
+            "extracted": "2.5"
+          },
+          {
+            "field": "lines[0].net",
+            "gold": "2.5",
+            "extracted": "5.0"
+          },
+          {
+            "field": "lines[3].unit_price",
+            "gold": "0.99",
+            "extracted": "2.97"
+          },
+          {
+            "field": "lines[3].net",
+            "gold": "2.97",
+            "extracted": "8.91"
+          },
+          {
+            "field": "lines[3].vat",
+            "gold": "0.6",
+            "extracted": "1.78"
+          },
+          {
+            "field": "lines[4].unit_price",
+            "gold": "1.1",
+            "extracted": "2.2"
+          },
+          {
+            "field": "lines[4].net",
+            "gold": "2.2",
+            "extracted": "4.4"
+          },
+          {
+            "field": "lines[4].vat",
+            "gold": "0.44",
+            "extracted": "0.88"
+          },
+          {
+            "field": "category",
+            "gold": "Supermarket Receipt",
+            "extracted": "Sundry"
+          }
+        ],
+        "severity": "major",
+        "note": "The extractor put the printed line total into unit_price and then multiplied it by qty again for net. This affects every line with qty > 1: milk, chocolate and soft drink. The VAT on the two 20% lines is therefore doubled or worse (1.78 and 0.88). Line VAT sums to 2.66 against a stated vat_total of 1.04, and line nets sum to 24.79 against a net_total of 14.15. The document-level totals, supplier, VAT number, date, payment method and card digits are correct. The category 'Sundry' is a minor mismatch.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1622,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 761,
+          "output_tokens_details": {
+            "thinking_tokens": 272
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "025_reduced.json",
+      "gold_case": "reduced",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"lines[1].vat\",\"gold\":\"0.11\",\"extracted\":\"0.1\"",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1274,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 762
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "receipt",
+            "extracted": "sales_invoice"
+          },
+          {
+            "field": "lines[1].vat",
+            "gold": "0.11",
+            "extracted": "0.10"
+          }
+        ],
+        "severity": "major",
+        "note": "The document is a purchase receipt from the supplier, but it was classed as a sales_invoice. That would put it on the wrong side of the books and the VAT return. The Standing Charge VAT is 0.10 instead of 0.11, so the line VATs sum to 6.38 against the 6.39 total, which is a rounding mismatch. The category 'Utilities' versus 'Energy' is an acceptable equivalent, and the missing supplier address and shortened line descriptions are harmless. The supplier, VAT number, date, totals, payment method and other lines are correct.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1274,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 562,
+          "output_tokens_details": {
+            "thinking_tokens": 294
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "026_zero.json",
+      "gold_case": "zero",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "purchase_invoice",
+            "extracted": "sales_invoice"
+          },
+          {
+            "field": "category_guess",
+            "gold": "zero-rated purchase (books/children's clothing)",
+            "extracted": "Sundry"
+          }
+        ],
+        "severity": "major",
+        "note": "The receipt is from Whimsy Wardrobe to Harper & Sons Books, so it is a purchase invoice for the bookkeeper's client. Extracting it as a sales_invoice would book it on the wrong side of the ledger, which is a major error. The category 'Sundry' is generic and misses the zero-rated purchase classification, so it is a minor error. Other fields match the printed text, including the abbreviated line descriptions and 'HARPERS' customer name, and the zero VAT and totals are correct.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1299,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 696,
+          "output_tokens_details": {
+            "thinking_tokens": 429
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "purchase_invoice",
+            "extracted": "sales_invoice"
+          }
+        ],
+        "severity": "major",
+        "note": "The document type is reversed. Whimsy Wardrobe is the supplier and Harpers & Sons Books is the customer, so this is a purchase, not a sale. Booked as a sales invoice, it would be recorded as income and sent to the wrong side of the VAT return. All amounts, the VAT number, the date and the invoice number match. The customer name matches the printed text. The category 'Sundry' is vague but not clearly wrong.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1299,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 447,
+          "output_tokens_details": {
+            "thinking_tokens": 249
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "027_no_vat_number.json",
+      "gold_case": "no_vat_number",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"lines[1].unit_price\",\"gold\":\"18.5\",\"extracted\":\"37.0\"},{\"field\":\"category\",\"gold\":\"Office Equipment\",\"extracted\":\"Tools & small equipment\"}],\"severity\":\"minor\",\"note\":\"Totals, net, VAT (nil, no VAT number, not a VAT invoice), date, supplier, and payment are all correct. The hammer unit_price of 37.0 is wrong: the receipt shows 37.00 as the line amount for 2 units, so the unit price is 18.50. Net is still correct, so the",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1171,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 611
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "lines[1].unit_price",
+            "gold": "18.50",
+            "extracted": "37.00"
+          }
+        ],
+        "severity": "minor",
+        "note": "Hammer unit price is given as 37.00 (the line total) instead of 18.50, so qty x unit price (74.00) no longer matches the net of 37.00. Net, VAT and gross totals are all correct, so the books and VAT return are unaffected. Description prefixes and the category guess are acceptable differences.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1171,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 509,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "028_cash_no_vat.json",
+      "gold_case": "cash_no_vat",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"invoice_number\",\"gold\":\"null\",\"extracted\":\"TXN: #0094821\"}],\"severity\":\"minor\",\"note\":\"Supplier, VAT number, date, amounts, VAT (0.00), payment method and line values all match. The extracted invoice_number is a till transaction reference, not an invoice number, so it is a cosmetic misclassification. 'Motor expenses' for parking is a defensible UK bookkeeping category, not a clear error, so it is not flagged. vat_rate",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1031,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 630
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "invoice_number",
+            "gold": "null",
+            "extracted": "TXN: #0094821"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier, date, line, totals (net 8.50, VAT 0.00, gross 8.50) and payment method all match. The extractor put the till transaction number in invoice_number, but the receipt has no invoice number. This is cosmetic and does not affect the books or VAT. The line vat_rate is 0.0 where gold has null because the receipt says VAT (EXEMPT), but the VAT amount is the same, so I did not count it. The category 'Motor expenses' is a reasonable mapping for parking.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1031,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 426,
+          "output_tokens_details": {
+            "thinking_tokens": 205
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "029_full_invoice.json",
+      "gold_case": "full_invoice",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"doc_type\",\"gold\":\"sales_invoice\",\"extracted\":\"purchase_invoice\"}],\"severity\":\"major\",\"note\":\"doc_type is inverted relative to gold. Gold treats this as a sales invoice issued by the supplier, and the extraction labels it a purchase invoice, which changes how it posts in the books. All other fields match gold within tolerance: VAT number, invoice number, dates, line items, per-line VAT, totals and payment method. The supplier name omits the trailing 'Supplies' but match",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1643,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 609
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "sales_invoice",
+            "extracted": "purchase_invoice"
+          }
+        ],
+        "severity": "major",
+        "note": "The doc_type differs from gold, and sales versus purchase changes which side of the books and VAT return the document goes on. Every other field matches gold. The supplier name and line descriptions follow the printed text, so those differences are harmless. The category is equivalent, and bank transfer is the same payment method despite the different formatting. Gold treats the document as a sales invoice, so it is graded as an error even though the extraction could be read as a purchase from the point of view of the customer, Bramblewood.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1643,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 602,
+          "output_tokens_details": {
+            "thinking_tokens": 390
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "030_sales_invoice.json",
+      "gold_case": "sales_invoice",
+      "code_ok": false,
+      "first": {
+        "field_errors": [
+          {
+            "field": "lines",
+            "gold": "3 lines: Custom Oak Kitchen Units 2450.00 (VAT 490.00); Installation & Fitting Labour 12 x 95.00 = 1140.00 (VAT 228.00); Internal Fittings 320.50 (VAT 64.10)",
+            "extracted": "1 line only: Custom Oak Kitchen Units 2450.00 (VAT 490.00). Installation labour and internal fittings lines are missing."
+          },
+          {
+            "field": "category_guess",
+            "gold": "Joinery",
+            "extracted": "Materials"
+          }
+        ],
+        "severity": "major",
+        "note": "Header fields, supplier and customer names, VAT number, invoice number, dates, payment method and all three totals match the gold. However, two of the three invoice lines are dropped (1140.00 labour and 320.50 fittings, with 292.10 of line VAT), so the line detail no longer reconciles to the 782.10 VAT total. Category guess 'Materials' differs from the 'Joinery' hint. Supplier and customer addresses are not captured, which is a minor omission.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1382,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 686,
+          "output_tokens_details": {
+            "thinking_tokens": 321
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": null,
+      "final_severity": "major"
+    },
+    {
+      "file": "031_exempt.json",
+      "gold_case": "exempt",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "customer_name",
+            "gold": "J. Smith",
+            "extracted": "null"
+          },
+          {
+            "field": "supplier_address",
+            "gold": "14 High Street, Harrow, HA1 1AA",
+            "extracted": "not captured"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier, VAT number (null in both), invoice number, date, currency, all amounts, VAT rates and VAT per line, payment method and category all match. Line descriptions differ only in wording. Missing customer name and supplier address are not bookkeeping-critical and do not affect totals or the VAT return. The gold customer name is not visible in printed_text, so it may be a gold-side issue.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1189,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 706,
+          "output_tokens_details": {
+            "thinking_tokens": 485
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "All books-relevant fields match: supplier, date, receipt number, line nets, 0% VAT, totals, cash payment and the postage category. Line descriptions differ only in wording. The gold customer name 'J. Smith' does not appear in the printed receipt text, so the extracted null is faithful to the document and not counted as an error.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1189,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 263,
+          "output_tokens_details": {
+            "thinking_tokens": 135
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "032_foreign.json",
+      "gold_case": "foreign",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1061,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 800
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "receipt",
+            "extracted": "purchase_invoice"
+          },
+          {
+            "field": "lines[0].vat_rate",
+            "gold": "0 (reverse charge)",
+            "extracted": "null"
+          },
+          {
+            "field": "category_hint",
+            "gold": "reverse_charge",
+            "extracted": "Materials"
+          }
+        ],
+        "severity": "major",
+        "note": "The extraction does not flag the reverse charge treatment. The vat_rate is null and the category is Materials, so the customer-accounted VAT would be missed on the VAT return. The doc_type is also different. Amounts, date, supplier, VAT number and payment method are correct.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1061,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 611,
+          "output_tokens_details": {
+            "thinking_tokens": 400
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "033_standard.json",
+      "gold_case": "standard",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "purchase_invoice",
+            "extracted": "sales_invoice"
+          },
+          {
+            "field": "category",
+            "gold": "Office Supplies",
+            "extracted": "Materials"
+          }
+        ],
+        "severity": "major",
+        "note": "The doc_type is wrong: the supplier (Fictional Plastics Ltd) billed the customer (Acme Widgets PLC), so from the books' perspective this is a purchase invoice, and the sales_invoice label would misroute it in the ledger and VAT return. The category difference (Materials vs Office Supplies) is minor. Supplier, VAT number, date, invoice number, all line amounts and VAT, totals, and payment method match; the abbreviated line descriptions and the underscore in bank_transfer are harmless.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1353,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 539,
+          "output_tokens_details": {
+            "thinking_tokens": 281
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "purchase_invoice",
+            "extracted": "sales_invoice"
+          },
+          {
+            "field": "category",
+            "gold": "Office Supplies",
+            "extracted": "Materials"
+          }
+        ],
+        "severity": "major",
+        "note": "The document type is wrong. The invoice was issued by Fictional Plastics Ltd to Acme Widgets PLC, so it is a purchase invoice for the customer. Extracting it as a sales invoice would put VAT on the output side instead of claiming input VAT. Supplier, VAT number, date, invoice number, line amounts, totals and payment method all match. The shortened line descriptions match the printed receipt, so they are not errors. The category difference (Materials vs Office Supplies) is minor and arguably reasonable for plastics and adhesive.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1353,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 265,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "034_standard.json",
+      "gold_case": "standard",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "supplier_address",
+            "gold": "14 Oak Street, York, YO1 5AB",
+            "extracted": "absent"
+          }
+        ],
+        "severity": "minor",
+        "note": "Amounts, VAT number, date, VAT per line, totals, payment method and card digits all match the gold record. The only gap is the missing supplier address, which is cosmetic for the books. Name case, description wording and category capitalisation differences were ignored.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1144,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 585,
+          "output_tokens_details": {
+            "thinking_tokens": 440
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "All key fields match the gold record: supplier, VAT number, date, line items, VAT per line, totals, payment method and card last 4. The line descriptions are the shortened versions printed on the receipt, and the category wording differs only in case. The extracted record has no address, but that is not a field a bookkeeper would care about here.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1144,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 234,
+          "output_tokens_details": {
+            "thinking_tokens": 111
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "035_mixed.json",
+      "gold_case": "mixed",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1484,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 799
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"lines[0].unit_price\",\"gold\":\"1.5\",\"extracted\":\"3.0\"},{\"field\":\"lines[2].vat_rate\",\"gold\":\"20\",\"extracted\":\"0.0\"},{\"field\":\"lines[2].vat\",\"gold\":\"0.42\",\"extracted\":\"0.0\"},{\"field\":\"lines[3].unit_price\",\"gold\":\"0.8\",\"extracted\":\"2.4\"},{\"field\":\"lines[3].vat_rate\",\"gold\":\"20\",\"extracted\":\"0.0\"},{\"field\":\"lines[3].vat\",\"gold\":\"0.48\",\"extracted\":\"0.0\"},{\"field\":\"category\",\"gold\":\"groceries\",\"extracted\":\"Sundry\"}],\"severity\":\"major\",\"note\":\"Header fields, date, totals (net 1",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1484,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 372
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "unparsed"
+    },
+    {
+      "file": "036_reduced.json",
+      "gold_case": "reduced",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"doc_type\",\"gold\":\"receipt\",\"extracted\":\"sales_invoice\"}],\"severity\":\"major\",\"note\":\"Only one field is wrong. Supplier, VAT number, date, invoice number, all line items, per-line VAT, net/VAT/gross totals and payment method match. The printed VAT (5%) line of 12.19 is correct (7.26+4.93) and was extracted correctly. Doc type is the problem: a supplier-issued bill classed as",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1411,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 638
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "receipt",
+            "extracted": "sales_invoice"
+          }
+        ],
+        "severity": "major",
+        "note": "The document is a purchase receipt from a supplier, but it was classed as a sales invoice. In bookkeeping that would record the amounts as income and output VAT instead of an expense and input VAT, which changes the books and the VAT return. All other fields match: supplier, VAT number, date, line amounts and VAT, totals (net 253.70, VAT 14.19, gross 267.89), payment method and category.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1411,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 361,
+          "output_tokens_details": {
+            "thinking_tokens": 178
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "037_zero.json",
+      "gold_case": "zero",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "category_guess",
+            "gold": "Zero-rated goods (Books & Children's Clothing)",
+            "extracted": "Sundry"
+          },
+          {
+            "field": "supplier.address",
+            "gold": "42 Fable Lane, Reading, RG1 2AB",
+            "extracted": "(not extracted)"
+          }
+        ],
+        "severity": "minor",
+        "note": "Totals, VAT amounts (all zero-rated), VAT number, date, invoice number, line nets and payment method are correct. Supplier name case and line description wording differ harmlessly. The category 'Sundry' is a generic bucket rather than the zero-rated category, and the supplier address was dropped. Neither changes the figures or the VAT return.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1276,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 611,
+          "output_tokens_details": {
+            "thinking_tokens": 380
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "category_guess",
+            "gold": "Zero-rated goods (Books & Children's Clothing)",
+            "extracted": "Sundry"
+          }
+        ],
+        "severity": "minor",
+        "note": "All financial fields, supplier, VAT number, date, invoice number, lines and payment method match. Only the category is vague (Sundry vs zero-rated goods), which is cosmetic and does not affect the VAT return. Shortened line descriptions are harmless.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1276,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 305,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "038_no_vat_number.json",
+      "gold_case": "no_vat_number",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "lines[1].unit_price",
+            "gold": "14.5",
+            "extracted": "29.0"
+          }
+        ],
+        "severity": "major",
+        "note": "Bit Set line has unit_price 29.00 instead of 14.50 (qty 2 × 14.50 = 29.00 net). Net, totals, VAT, supplier, date, doc type and payment all match. Dropping '(Black)' from the drill description and the category wording difference are harmless and ignored.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1264,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 569,
+          "output_tokens_details": {
+            "thinking_tokens": 414
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "lines[1].unit_price",
+            "gold": "14.50",
+            "extracted": "29.00"
+          }
+        ],
+        "severity": "minor",
+        "note": "The extractor took the printed line total (29.00) as the unit price for 2x Bit Set. The correct unit price is 14.50. The line net (29.00), the VAT, and all totals are still correct, so the books and VAT return are unaffected. The drill description is missing '(Black)', but that is harmless because the receipt does not print it. The category is acceptable.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1264,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 458,
+          "output_tokens_details": {
+            "thinking_tokens": 287
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "039_cash_no_vat.json",
+      "gold_case": "cash_no_vat",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "invoice_number",
+            "gold": "null",
+            "extracted": "CSHP-993821"
+          },
+          {
+            "field": "lines[0].vat_rate",
+            "gold": "0",
+            "extracted": "null"
+          },
+          {
+            "field": "category",
+            "gold": "Cash car-parking ticket",
+            "extracted": "Motor expenses"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier, date, amounts, VAT per line, payment method and doc type all match. CSHP-993821 is the receipt REF, not an invoice number. The vat_rate of null where the receipt shows no VAT is cosmetic since VAT is 0.00. Motor expenses is a defensible category for parking, so it is only a minor difference.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 999,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 702,
+          "output_tokens_details": {
+            "thinking_tokens": 472
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "invoice_number",
+            "gold": "null",
+            "extracted": "CSHP-993821"
+          },
+          {
+            "field": "lines[0].vat_rate",
+            "gold": "0",
+            "extracted": "null"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier, date, totals, VAT amounts, payment method and doc type all match. The extractor put the receipt REF (CSHP-993821) into invoice_number, but the gold has no invoice number and this is only a ticket reference. It also left the line VAT rate null instead of 0, though the receipt says NO VAT CHARGED. The VAT amount is still 0.00, so the VAT return is unaffected. The 'Motor expenses' category is reasonable for a parking ticket and is not flagged.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 999,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 519,
+          "output_tokens_details": {
+            "thinking_tokens": 271
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "040_full_invoice.json",
+      "gold_case": "full_invoice",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "sales_invoice",
+            "extracted": "purchase_invoice"
+          }
+        ],
+        "severity": "major",
+        "note": "The document is issued by Oakthorn Timber to Bramblewood Joinery, so it is a sales invoice from the supplier's side. Labelling it purchase_invoice flips the books and VAT treatment (output vs input VAT). All other fields match: supplier, VAT number, invoice number, dates, line items, VAT per line, totals, and payment method (wording differences ignored). Description shortening and the 'Materials' vs 'Construction Materials' category are harmless and not counted.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1656,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 792,
+          "output_tokens_details": {
+            "thinking_tokens": 577
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "sales_invoice",
+            "extracted": "purchase_invoice"
+          }
+        ],
+        "severity": "major",
+        "note": "The doc type is the only error. Treating the document as a purchase instead of a sale would put the VAT on the wrong side of the return (input instead of output). Supplier, VAT number, invoice number, date, all line figures and totals, and payment method match. The line descriptions follow the printed abbreviations, which is acceptable, and the category 'Materials' is close enough to 'Construction Materials'.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1656,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 418,
+          "output_tokens_details": {
+            "thinking_tokens": 235
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "041_sales_invoice.json",
+      "gold_case": "sales_invoice",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "category_guess",
+            "gold": "Joinery/Contractor",
+            "extracted": "Materials"
+          },
+          {
+            "field": "supplier.address",
+            "gold": "Unit 4, Oakfield Business Park, Harrogate, HG1 5XY",
+            "extracted": "(missing)"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier name, VAT number, invoice number, date, customer, all line nets/VAT/rates, totals, and payment method match. Line description wording differences were ignored. The category 'Materials' does not fit a joinery/installation invoice, and the supplier address was dropped. Neither changes the amounts or VAT return.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1437,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 779,
+          "output_tokens_details": {
+            "thinking_tokens": 563
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "category",
+            "gold": "Joinery/Contractor",
+            "extracted": "Materials"
+          }
+        ],
+        "severity": "minor",
+        "note": "All identifiers, dates, line items, VAT and totals match the printed invoice. Only the category guess differs, and it does not affect the VAT return.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1437,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 248,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "042_exempt.json",
+      "gold_case": "exempt",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "category",
+            "gold": "Postage/Insurance",
+            "extracted": "Postage"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier, VAT number (null in both), date, currency, line amounts, VAT rates, totals, doc type and payment method all match. Line descriptions differ only in wording (the '(VAT Exempt)' suffix is dropped), which is harmless. The category guess is narrower than the gold hint but not clearly wrong. The extracted record has no address field, which is a schema gap rather than a bookkeeping error.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1128,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 542,
+          "output_tokens_details": {
+            "thinking_tokens": 355
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "All key fields match the gold record: supplier, date, lines, net/VAT/gross totals, payment method and card last4. The line descriptions omit the '(VAT Exempt)' wording, but the receipt does not print it, so this is harmless. The category 'Postage' is close enough to 'Postage/Insurance'.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1128,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 125,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "043_foreign.json",
+      "gold_case": "foreign",
+      "code_ok": false,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1343,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 799
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "supplier_vat_number",
+            "gold": "NL000000000B01",
+            "extracted": "NL00000000B01"
+          },
+          {
+            "field": "doc_type",
+            "gold": "receipt",
+            "extracted": "purchase_invoice"
+          }
+        ],
+        "severity": "major",
+        "note": "The supplier VAT number has lost a digit (eight zeros instead of nine), so it is invalid and would break the reverse-charge record. The document type is also wrong: gold has a receipt, extraction has a purchase invoice. The totals, lines, date, currency, invoice number, card details and zero VAT all match. The shortened line descriptions match the printed text, and the category wording is acceptable.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1343,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 474,
+          "output_tokens_details": {
+            "thinking_tokens": 253
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "044_standard.json",
+      "gold_case": "standard",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "All bookkeeping-relevant fields match. Supplier name, VAT number, date, invoice number, doc type, payment method and card last4 are correct. Line items, per-line VAT and totals match the printed receipt, and the arithmetic checks out (net 53.30, VAT 10.66, gross 63.96). The line description '(500)' follows the printed text rather than the gold's '(500 sheets)'. The supplier address is omitted from the extraction, which is not a field the bookkeeping checks depend on. Category differs only by case.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1376,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 697,
+          "output_tokens_details": {
+            "thinking_tokens": 501
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": null,
+      "final_severity": "none"
+    },
+    {
+      "file": "045_standard.json",
+      "gold_case": "standard",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "category",
+            "gold": "Office Supplies",
+            "extracted": "Materials"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier name, VAT number, date, doc type, line items, per-line and total VAT, totals, currency, and payment method (card, last4 4921) all match the gold record, with differences only in case and description wording. The one difference is the category guess: 'Materials' versus the gold hint 'Office Supplies'. Cardboard boxes and packing tape could plausibly sit under either, so this is minor, not a books-changing error. The extracted record also omits the supplier address, which is not in the scored fields.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1203,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 574,
+          "output_tokens_details": {
+            "thinking_tokens": 363
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "category_hint",
+            "gold": "Office Supplies",
+            "extracted": "Materials"
+          }
+        ],
+        "severity": "minor",
+        "note": "All financial fields, supplier, VAT number, date, lines and payment details match. Only the category differs, and 'Materials' is a plausible choice for boxes and packing tape. Line descriptions use the printed receipt text, which is acceptable.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1203,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 308,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    },
+    {
+      "file": "046_mixed.json",
+      "gold_case": "mixed",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"invoice_number\",\"gold\":\"RCPT-2026-8821\",\"extracted\":\"null\"},{\"field\":\"lines[2].qty\",\"gold\":\"0.75\",\"extracted\":\"1.0\"},{\"field\":\"l",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1601,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 721
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"lines[3].vat (Pot Noodle Beef Flavour)\",\"gold\":\"0.14\",\"extracted\":\"0.12\"},{\"field\":\"lines[4].vat (Chocolate Bar 45g)\",\"gold\":\"0.18\",\"extracted\":\"0.15\"},{\"field\":\"lines[2].qty / unit_price (",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1601,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 682
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "unparsed"
+    },
+    {
+      "file": "047_reduced.json",
+      "gold_case": "reduced",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"lines[1].qty\",\"gold\":\"4\",\"extracted\":\"1.0\"},{\"field\":\"lines[1].unit_price",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1261,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 749
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "All money fields, VAT number, date, supplier, invoice number and payment method match. The line descriptions follow the printed receipt. The gold qty 4 at 5.50 for Standing Charge isn't printed (only net 22.00 is), so qty 1 at 22.00 is a fair reading with the same net and VAT. 'Utilities' is an acceptable synonym for 'Energy'.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1261,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 449,
+          "output_tokens_details": {
+            "thinking_tokens": 299
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "048_zero.json",
+      "gold_case": "zero",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "category_guess",
+            "gold": "books/children's clothing",
+            "extracted": "Sundry"
+          },
+          {
+            "field": "supplier.address",
+            "gold": "142 High Street, Whittleton, ST12 4QZ",
+            "extracted": "(not captured)"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier name, date, lines, VAT (all zero-rated), totals, currency, payment method and card last 4 all match the printed receipt. The only issues are a generic 'Sundry' category where the hint points to books/children's clothing, and the supplier address was not extracted. Neither changes the books or the VAT return.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1173,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 579,
+          "output_tokens_details": {
+            "thinking_tokens": 373
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "Supplier, date (printed MM/DD, 14 Sep 2026), lines, zero VAT, totals, payment method and card digits all match. Line descriptions are the abbreviated printed text, which is harmless. The category 'Sundry' is vague but not clearly wrong.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1173,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 346,
+          "output_tokens_details": {
+            "thinking_tokens": 233
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "049_no_vat_number.json",
+      "gold_case": "no_vat_number",
+      "code_ok": false,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"lines[1].unit_price\",\"gold\":\"42.25\",\"extracted\":\"84.5\"},{\"field\":\"lines[1].net\",\"gold\":\"84.5\",\"extracted\":\"169.0\"},{\"field\":\"net_total\",\"gold\":\"270.0\",\"extracted\":\"354.5\"}],\"severity\":\"major\",\"note\":\"Line 2 (qty 2) was read as a unit price of 84.50 and the net was doubled to 169.00, so net_total came out at 354.50 instead of 270.00. Gross, VA",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1146,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 628
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "lines[1].unit_price",
+            "gold": "42.25",
+            "extracted": "84.5"
+          },
+          {
+            "field": "lines[1].net",
+            "gold": "84.5",
+            "extracted": "169.0"
+          },
+          {
+            "field": "net_total",
+            "gold": "270.0",
+            "extracted": "354.5"
+          }
+        ],
+        "severity": "major",
+        "note": "The receipt prints 84.50 as the line total for 2 socket sets, but the extraction treated it as the unit price. This doubled the line net to 169.00 and inflated net_total to 354.50, which no longer reconciles with the gross of 270.00 and nil VAT. Supplier, date, gross total, VAT, payment method and card digits are correct. The shortened line descriptions match the printed text and are harmless. The category wording differs but is acceptable.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1146,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 260,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "050_cash_no_vat.json",
+      "gold_case": "cash_no_vat",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "Supplier name, date, line item, net/VAT/gross totals, and cash payment all match. The vat_rate difference (null in gold, 0.0 in extracted) is harmless because the receipt states no VAT is charged. 'Travel' versus 'public_transport' is equivalent for a category guess, not a clearly wrong category. The missing address is a schema difference, not a books-affecting error.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1022,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 517,
+          "output_tokens_details": {
+            "thinking_tokens": 367
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": null,
+      "final_severity": "none"
+    },
+    {
+      "file": "051_full_invoice.json",
+      "gold_case": "full_invoice",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "sales_invoice",
+            "extracted": "purchase_invoice"
+          },
+          {
+            "field": "category",
+            "gold": "Hardware",
+            "extracted": "Materials"
+          }
+        ],
+        "severity": "major",
+        "note": "doc_type is wrong: Ironwood issued the invoice to Bramblewood, so it is a sales invoice, and a purchase_invoice classification would misdirect it in the books and VAT return. The category difference (Hardware vs Materials) is minor. Supplier, VAT number, dates, lines, VAT and totals all match, and the remaining differences are case, wording or schema only.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1468,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 696,
+          "output_tokens_details": {
+            "thinking_tokens": 488
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "sales_invoice",
+            "extracted": "purchase_invoice"
+          }
+        ],
+        "severity": "major",
+        "note": "The document type is wrong. Sales and purchase invoices are treated opposite ways on the VAT return (output tax versus input tax), so this changes the books. Everything else matches: supplier, VAT number, invoice number, date, line amounts, totals and payment method. The extracted line descriptions follow the printed text, so the shorter wording is not an error. The category 'Materials' versus 'Hardware' is not clearly wrong.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1468,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 461,
+          "output_tokens_details": {
+            "thinking_tokens": 266
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "052_sales_invoice.json",
+      "gold_case": "sales_invoice",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"doc_type\",\"gold\":\"sales_invoice\",\"extracted\":\"purchase_invoice\"},{\"field\":\"lines[0].qty\",\"gold\":\"3.2\",\"extracted\":\"1.0\"},{\"field\":\"lines[0].unit_price\",\"gold\":\"450.0\",\"extracted\":\"1440.0\"},{\"field\":\"lines[1].qty\",\"gold\":\"4\",\"extracted\":\"1.0\"},{\"field\":\"lines[1].unit_price\",\"gold\":\"1250.0\",\"extracted\":\"5000.0\"},{\"field\":\"lines[2].qty\",\"gold\":\"2.5\",\"extracted\":\"1.0\"},{\"field\":\"lines[2].unit_price\",\"gold\":\"800.0\",\"extracted\":\"2000.0\"},{\"field\":\"payment_method\",\"gold\":\"ban",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1470,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 545
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "sales_invoice",
+            "extracted": "purchase_invoice"
+          }
+        ],
+        "severity": "major",
+        "note": "The doc type is wrong. Bramblewood Joinery issued this invoice, so it should be a sale, not a purchase. Booking it as a purchase would put the 1,688.00 VAT on the input side instead of output, which changes the VAT return. Supplier, VAT number, invoice number, date, line nets, VAT and totals all match. The extracted qty of 1 and unit price equal to the net are fair readings of the printed text, which shows only amounts. The null payment method is also correct, since the text shows only 'PAYMENT DUE: 14 DAYS'. The category guess 'Materials' differs from gold's 'Carpentry & Joinery', but this follows from the purchase misclassification.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1470,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 791,
+          "output_tokens_details": {
+            "thinking_tokens": 506
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "053_exempt.json",
+      "gold_case": "exempt",
+      "code_ok": false,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"date\",\"gold\":\"2026-09-12\",\"extracted\":\"2026-12-09\"},{\"field\":\"customer_name\",\"gold\":\"M. Henderson\",\"extracted\":null},{\"field\":\"supplier.address\",\"gold\":\"14 Beacon Lane, Bristol, BS2 8QX\",\"extracted\":\"not captured\"},{\"field\":\"category\",\"gold\":\"postage_insurance_exempt\",\"extracted\":\"Postage\"}],\"severity\":\"major\",\"note\":\"The printed date 12/09/2026 is UK day/month format (12 September 2026). The extraction swapped day and month, giving 9 December, which moves the transact",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1200,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 573
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "date",
+            "gold": "2026-09-12",
+            "extracted": "2026-12-09"
+          }
+        ],
+        "severity": "major",
+        "note": "The date is wrong: the receipt prints 12/09/2026, which is 12 September in UK format, but the extraction read it as MM/DD and returned 9 December. This would put the transaction in the wrong period. The customer name is null in the extraction, but the printed receipt has no customer name, so that is not an error. The line description is shortened (it omits 'International (France)' and the printed text only says 'Registered Special Delivery'), which is harmless. Totals, VAT, payment method and card digits all match.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1200,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 214,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "054_foreign.json",
+      "gold_case": "foreign",
+      "code_ok": false,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"doc_type\",\"gold\":\"receipt\",\"extracted\":\"purchase_invoice\"},{\"field\":\"supplier_vat_number\",\"gold\":\"NL863124759B01\",\"extracted\":null},{\"field\":\"currency\",\"gold\":\"EUR\",\"extracted\":\"GBP\"},{\"field\":\"lines[0].qty\",\"gold\":\"2\",\"extracted\":\"1.0\"},{\"field\":\"lines[0].unit_price\",\"gold\":\"1450.0\",\"extracted\":\"2900.0\"},{\"field\":\"lines[0].vat_rate\",\"gold\":\"0\",\"extracted\":null},{\"field\":\"lines[1].vat_rate\",\"gold\":\"0\",\"extracted\":null},{\"field\":\"payment_method\",\"gold\":\"bank transfer\",\"",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1182,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 527
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"currency\",\"gold\":\"EUR\",\"extracted\":\"GBP",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1182,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 768
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "unparsed"
+    },
+    {
+      "file": "055_standard.json",
+      "gold_case": "standard",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "supplier.address",
+            "gold": "Unit 4, Industrial Park, Leeds, LS10 1AB",
+            "extracted": "missing (no address field)"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier name, VAT number, date, currency, all line amounts and VAT, totals, payment method, card digits and category all match. The only gap is the omitted supplier address, which doesn't affect the books or VAT return. Line description wording differences and the '2 x' quantity prefix are harmless.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1368,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 453,
+          "output_tokens_details": {
+            "thinking_tokens": 280
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "All key fields match the gold record: supplier, VAT number, receipt number, date, currency, line nets and VAT, totals (19.05 / 3.81 / 22.86), payment method and card last4. Differences are cosmetic only: the line descriptions include the quantity prefix and the printed short wording, the supplier name is uppercase, and the category label is worded differently. The supplier address is missing from the extraction, but it is not material to the books.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1368,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 163,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "056_standard.json",
+      "gold_case": "standard",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "supplier.address",
+            "gold": "14 Mill Lane, Sheffield, S10 2AB",
+            "extracted": "(not present)"
+          }
+        ],
+        "severity": "minor",
+        "note": "Supplier name case, category wording ('stationery' vs 'Office supplies'), and the extra confidence field are harmless. VAT number, date, all line items and per-line VAT, net/VAT/gross totals, payment method and card digits all match the printed receipt. Only the omitted supplier address is a difference, and it does not affect the books or VAT return.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1320,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 560,
+          "output_tokens_details": {
+            "thinking_tokens": 375
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "none",
+        "note": "Extraction matches gold on all material fields. Differences are limited to case, float formatting and an equivalent category label (Office supplies vs stationery).",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1320,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 318,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "none"
+    },
+    {
+      "file": "057_mixed.json",
+      "gold_case": "mixed",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"lines[0].unit_price\",\"gold\":\"1.25\",\"extracted\":\"2.5\"},{\"field\":\"lines[0].net\",\"gold\":\"2.5\",\"extracted\":\"5.0\"},{\"field\":\"lines[2].unit_price\",\"gold\":\"1.8\",\"",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1764,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 706
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"lines[0].unit_price\",\"gold\":\"1.25\",\"extracted\":\"2.5\"},{\"field\":\"lines[0].net\",\"gold\":\"2.5\",\"extracted\":\"5.0\"},{\"field\":\"lines[2].unit_price\",\"gold\":\"1.8\",\"extracted\":\"5.4\"},{\"field\":\"lines[2].net\",\"gold\":\"5.4\",\"extracted\":\"16.2\"},{\"field\":\"lines[2].vat\",\"gold\":\"1.08\",\"extracted\":\"3.24\"},{\"field\":\"lines[3].unit_price\",\"gold\":\"1.1\",\"extracted\":\"2.2\"},{\"field\":\"lines[3].net\",\"gold\":\"2.2\",\"extracted\":\"4.4\"},{\"field\":\"lines[3].vat\",\"gold\":\"0.44\",\"extracted\":\"0.88\"},{\"field\"",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1764,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 361
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "unparsed"
+    },
+    {
+      "file": "058_reduced.json",
+      "gold_case": "reduced",
+      "code_ok": true,
+      "first": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "receipt",
+            "extracted": "sales_invoice"
+          }
+        ],
+        "severity": "major",
+        "note": "Doc type is misclassified as sales_invoice, while gold is receipt; this could flip the document's direction in the books. Supplier, VAT number, date, invoice number, amounts, 5% VAT line, and direct debit payment all match. The category 'Utilities' vs gold 'Energy' is a plausible alternative label and not counted as an error. The line description difference is wording only.",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1111,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 757,
+          "output_tokens_details": {
+            "thinking_tokens": 581
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "doc_type",
+            "gold": "receipt",
+            "extracted": "sales_invoice"
+          }
+        ],
+        "severity": "major",
+        "note": "The supplier, VAT number, date, line values, totals and payment method all match. Only doc_type is wrong. A sales_invoice would be booked as income, but this is a purchase from an energy supplier, so the VAT would go on the wrong side of the return. The category 'Utilities' versus 'Energy' and the shortened line description are harmless differences.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1111,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 372,
+          "output_tokens_details": {
+            "thinking_tokens": 207
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "059_zero.json",
+      "gold_case": "zero",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"lines[0].unit_price\",\"gold\":\"9.5\",\"extracted\":\"19.0\"},{\"field\":\"lines[0].net\",\"gold\":\"19.0\",\"extracted\":\"38.0\"},{\"field\":\"lines[1].unit_price\",\"gold\":\"7.25\",\"extracted\":\"21.75\"},{\"field\":\"lines[1].net\",\"gold\":\"",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1456,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 680
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "lines[0].unit_price",
+            "gold": "9.5",
+            "extracted": "19.0"
+          },
+          {
+            "field": "lines[0].net",
+            "gold": "19.0",
+            "extracted": "38.0"
+          },
+          {
+            "field": "lines[1].unit_price",
+            "gold": "7.25",
+            "extracted": "21.75"
+          },
+          {
+            "field": "lines[1].net",
+            "gold": "21.75",
+            "extracted": "65.25"
+          },
+          {
+            "field": "category",
+            "gold": "zero-rated books and children's clothing",
+            "extracted": "Sundry"
+          }
+        ],
+        "severity": "major",
+        "note": "The extractor took the printed line totals (19.00 and 21.75) as unit prices and multiplied them by the quantity again. Line nets are now 38.00 and 65.25, so they no longer sum to the net total of 65.74. The header totals, VAT and payment details are correct. The category is vague, which is minor. The line-level errors change the books, so severity is major.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1456,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 305,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "major"
+    },
+    {
+      "file": "060_no_vat_number.json",
+      "gold_case": "no_vat_number",
+      "code_ok": true,
+      "first": {
+        "field_errors": [],
+        "severity": "unparsed",
+        "note": "{\"field_errors\":[{\"field\":\"supplier.address\",\"gold\":\"42 Mill Road, Bletchley, MK3 6XY\",\"extracted\":\"(omitted)\"},{\"field\":\"category\",\"gold\":\"Office Equipment\",\"extracted\":\"Tools & small equipment\"}],\"severity\":\"minor\",\"note\":\"Supplier name, VAT number (null on both), date, totals, payment method and card last4 all match. Line descriptions match the printed receipt;",
+        "model": "claude-haiku-5-5",
+        "usage": {
+          "input_tokens": 1269,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 800,
+          "output_tokens_details": {
+            "thinking_tokens": 653
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "escalated": {
+        "field_errors": [
+          {
+            "field": "category_hint",
+            "gold": "Office Equipment",
+            "extracted": "Tools & small equipment"
+          }
+        ],
+        "severity": "minor",
+        "note": "All financial fields, supplier, date, VAT number (null, none displayed) and payment details match. Line descriptions differ only slightly and match the printed receipt text (the gold descriptions are embellished beyond the print). The only difference is the category: hardware shelving and castors as 'Tools & small equipment' rather than 'Office Equipment' is a cosmetic/category choice and does not affect VAT or totals.",
+        "model": "claude-sonnet-5-5",
+        "usage": {
+          "input_tokens": 1269,
+          "cache_creation_input_tokens": 0,
+          "cache_read_input_tokens": 0,
+          "cache_creation": {
+            "ephemeral_5m_input_tokens": 0,
+            "ephemeral_1h_input_tokens": 0
+          },
+          "output_tokens": 197,
+          "output_tokens_details": {
+            "thinking_tokens": 0
+          },
+          "service_tier": "standard",
+          "inference_geo": "global",
+          "speed": "standard"
+        }
+      },
+      "final_severity": "minor"
+    }
+  ]
+}

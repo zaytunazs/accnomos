@@ -54,22 +54,22 @@ def apply_rule(p: Proposal, rule: Rule | None) -> None:
     p.checks.append(Check(code="RULE_APPLIED", ok=True, severity="warn", message=msg))
 
 
-async def _propose(books: Books, f: FileRef, mime: str, cfg: AiConfig, known: set[str], rules: list[Rule]) -> Proposal:
+async def _propose(books: Books, f: FileRef, mime: str, cfg: AiConfig, known: set[str], rules: list[Rule], business_name: str | None = None) -> Proposal:
     data = await books.storage.read(f.path)
     if mime == PDF_MIME:
         return pdf_placeholder(f.name, sha256_hex(data))
-    p = await process_image(data, mime, cfg, known_hashes=frozenset(known))
+    p = await process_image(data, mime, cfg, known_hashes=frozenset(known), business_name=business_name)
     apply_rule(p, books.match_rule(p.extracted, rules))
     return p
 
 
-async def scan_inbox(books: Books, cfg: AiConfig, limit: int = 10) -> list[Proposal]:
+async def scan_inbox(books: Books, cfg: AiConfig, limit: int = 10, business_name: str | None = None) -> list[Proposal]:
     """Backwards-compatible wrapper: proposals only."""
-    proposals, _ = await scan_inbox_detailed(books, cfg, limit)
+    proposals, _ = await scan_inbox_detailed(books, cfg, limit, business_name)
     return proposals
 
 
-async def scan_inbox_detailed(books: Books, cfg: AiConfig, limit: int = 10) -> tuple[list[Proposal], list[dict]]:
+async def scan_inbox_detailed(books: Books, cfg: AiConfig, limit: int = 10, business_name: str | None = None) -> tuple[list[Proposal], list[dict]]:
     """Process up to `limit` documents from the Inbox and return the new proposals.
 
     A file whose hash we have already seen is not skipped silently: the DUPLICATE check sends it
@@ -84,7 +84,7 @@ async def scan_inbox_detailed(books: Books, cfg: AiConfig, limit: int = 10) -> t
     candidates = [(f, mime) for f in await books.list_files(INBOX) if (mime := mime_for(f.name))]
     for f, mime in candidates[:limit]:  # failures count too: `limit` caps model calls
         try:
-            p = await _propose(books, f, mime, cfg, known, rules)
+            p = await _propose(books, f, mime, cfg, known, rules, business_name)
         except ExtractionError as exc:
             log.warning("extraction failed for %s: %s", f.path, exc)
             await books.audit(ACTOR, "extract_failed", {"path": f.path, "error": str(exc)[:200]})

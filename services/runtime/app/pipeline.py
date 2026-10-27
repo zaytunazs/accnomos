@@ -12,6 +12,7 @@ from app.ai.config import AiConfig
 from app.ai.extract import extract_document
 from app.checks import decide, run_checks
 from app.journal import draft_journal
+from app.repair import repair
 from app.schemas import ExtractedDoc, Proposal
 
 _EXT = {"image/jpeg": ".jpg", "image/jpg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
@@ -38,12 +39,14 @@ async def process_image(
     *,
     period_start: date | None = None,
     period_end: date | None = None,
+    business_name: str | None = None,
 ) -> Proposal:
     """Turn one document image into a reviewable `Proposal`. Raises `ExtractionError`."""
     t0 = time.perf_counter()
     digest = sha256_hex(image_bytes)
     doc, meta = await extract_document(image_bytes, mime, cfg)
-    checks = run_checks(
+    repairs = repair(doc, business_name)
+    checks = repairs + run_checks(
         doc, known_hashes=known_hashes, this_hash=digest, period_start=period_start, period_end=period_end
     )
     status, reasons = decide(checks)
