@@ -1,0 +1,37 @@
+{
+ "id": "AAMk-sample-b06",
+ "receivedDateTime": "2026-10-25T09:15:00Z",
+ "subject": "Your Riverbend Market order has been dispatched",
+ "from": {
+  "emailAddress": {
+   "name": "Riverbend Market",
+   "address": "order-update@riverbendmarket.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": false,
+ "bodyPreview": "Hello Sam, Good news: your order #204-5517790 is on its way. Arriving Tuesday 27 October. Track your parcel in Your orders.",
+ "body": {
+  "contentType": "text",
+  "content": "Hello Sam,\n\nGood news: your order #204-5517790 is on its way.\nArriving Tuesday 27 October.\n\nTrack your parcel in Your orders.\n"
+ },
+ "attachments": [],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "body_decoy",
+ "expected": {
+  "intake": [
+   {
+    "body": true,
+    "treat_as": "ignore"
+   }
+  ],
+  "note": "dispatch note for the order in B02: no amount, so no second document"
+ }
+}

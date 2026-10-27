@@ -1,0 +1,37 @@
+{
+ "id": "AAMk-sample-b04",
+ "receivedDateTime": "2026-10-24T10:00:00Z",
+ "subject": "Autumn sale: 20% off oak worktops this week",
+ "from": {
+  "emailAddress": {
+   "name": "Oakwood Direct",
+   "address": "offers@oakwooddirect.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": false,
+ "bodyPreview": "Our biggest autumn sale Solid oak worktops from £149.99 Total savings up to £120 on a kitchen Prices include VAT Shop now Unsubscribe",
+ "body": {
+  "contentType": "text",
+  "content": "Our biggest autumn sale\n\nSolid oak worktops from £149.99\nTotal savings up to £120 on a kitchen\nPrices include VAT\n\nShop now\nUnsubscribe\n"
+ },
+ "attachments": [],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "body_decoy",
+ "expected": {
+  "intake": [
+   {
+    "body": true,
+    "treat_as": "ignore"
+   }
+  ],
+  "note": "marketing: bulk sender and sale subject, even though it has prices and 'total'"
+ }
+}

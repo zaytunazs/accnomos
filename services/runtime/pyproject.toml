@@ -14,6 +14,8 @@ dependencies = [
   "pillow>=10",
   "numpy>=1.26",
   "fpdf2>=2.8",
+  "pypdfium2>=4.30",  # reads PDFs: text per page and a render of page 1 (app/formats.py); bundles PDFium
+  "pillow-heif>=0.18",  # iPhone HEIC/HEIF photos to JPEG; bundles libheif
   "accnomos-ledger",
   "accnomos-connectors",
 ]

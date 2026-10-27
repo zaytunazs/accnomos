@@ -1,7 +1,10 @@
-"""Image in, `Proposal` out.
+"""Document in, `Proposal` out.
 
 hash -> crop -> extract -> repair -> checks -> (second read if unsure) -> decide -> verify (if passed) -> journal
 -> filename.
+
+`process_document` takes any accepted file once `app.formats.prepare` has made it readable (a PDF's first page and
+its text, a HEIC as JPEG, an email body as text); `process_image` is the image path it shares.
 """
 
 from __future__ import annotations
@@ -14,10 +17,11 @@ from collections.abc import Callable
 from datetime import date
 
 from app.ai.config import AiConfig
-from app.ai.crop import crop_document, reread_image
+from app.ai.crop import CropResult, crop_document, reread_image
 from app.ai.extract import ExtractionError, extract_document
 from app.ai.verify import verify
 from app.checks import UNKNOWN_SUPPLIER, SupplierKnowledge, decide, run_checks
+from app.formats import Prepared
 from app.journal import draft_journal
 from app.repair import REPAIR_CODES, repair
 from app.schemas import Check, ExtractedDoc, Proposal, Verification
@@ -31,7 +35,14 @@ _FIELD_LABEL = {
     "gross_total": "total",
 }
 
-_EXT = {"image/jpeg": ".jpg", "image/jpg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+_EXT = {
+    "image/jpeg": ".jpg",
+    "image/jpg": ".jpg",
+    "image/png": ".png",
+    "image/webp": ".webp",
+    "application/pdf": ".pdf",
+    "text/plain": ".txt",
+}
 _SYMBOL = {"GBP": "£", "EUR": "€", "USD": "$"}
 _UNSAFE = re.compile(r'[\\/:*?"<>|\x00-\x1f]+')
 
@@ -104,8 +115,8 @@ def _check_score(checks: list[Check]) -> tuple[int, int]:
 
 
 async def process_image(
-    image_bytes: bytes,
-    mime: str,
+    image_bytes: bytes | None,
+    mime: str | None,
     cfg: AiConfig,
     known_hashes: frozenset[str] | set[str] = frozenset(),
     *,
@@ -114,17 +125,31 @@ async def process_image(
     business_name: str | None = None,
     suppliers: Callable[[ExtractedDoc], SupplierKnowledge] | None = None,
     business_vat_registered: bool = True,
+    text: str | None = None,
+    digest: str | None = None,
+    crop: bool = True,
+    file_mime: str | None = None,
 ) -> Proposal:
-    """Turn one document image into a reviewable `Proposal`. Raises `ExtractionError`.
+    """Turn one document image (and/or its text) into a reviewable `Proposal`. Raises `ExtractionError`.
 
     `suppliers` looks the reading's supplier up in the books (app/contacts.py `supplier_knowledge`); without it
-    every supplier is one the books don't know yet."""
+    every supplier is one the books don't know yet. `text` goes to the model with the image (or alone, when
+    `image_bytes` is None); `digest` is the original file's hash when the image was made from it (a PDF page);
+    `file_mime` is the filed file's type, for the suggested name's extension."""
     t0 = time.perf_counter()
-    digest = sha256_hex(image_bytes)  # of the original file: duplicate detection must not depend on cropping
-    cropped = await crop_document(image_bytes, cfg)
+    # Of the original file: duplicate detection must not depend on cropping
+    digest = digest or sha256_hex(image_bytes or (text or "").encode())
+    if image_bytes is not None and crop:
+        cropped = await crop_document(image_bytes, cfg)
+    else:
+        cropped = CropResult(image_bytes or b"", None, "none", "not a photo" if image_bytes else "no image")
+    page = cropped.image_bytes if image_bytes is not None else None
 
-    async def read(img: bytes) -> tuple[ExtractedDoc, dict, list[Check], list[Check]]:
-        doc, meta = await extract_document(img, mime, cfg)
+    async def read(img: bytes | None) -> tuple[ExtractedDoc, dict, list[Check], list[Check]]:
+        if text is None:
+            doc, meta = await extract_document(img, mime, cfg)
+        else:
+            doc, meta = await extract_document(img, mime, cfg, text=text)
         repairs = repair(doc, business_name)
         supplier = suppliers(doc) if suppliers else UNKNOWN_SUPPLIER  # after repair: it may swap the parties
         checks = run_checks(
@@ -138,10 +163,11 @@ async def process_image(
         )
         return doc, meta, repairs, repairs + checks
 
-    doc, meta, repairs, checks = await read(cropped.image_bytes)
-    if why := second_read_reason(doc, checks):  # at most one retry
+    doc, meta, repairs, checks = await read(page)
+    # At most one retry, and only on an image: the same text reads the same twice
+    if page is not None and (why := second_read_reason(doc, checks)):
         try:
-            second = await read(await reread_image(cropped.image_bytes))
+            second = await read(await reread_image(page))
         except ExtractionError as exc:
             checks.append(
                 Check(
@@ -173,7 +199,10 @@ async def process_image(
     status, reasons = decide(checks)
     verification = None
     if status == "proposed":  # only spend a second model call on readings that passed every check
-        verification = await verify(image_bytes, doc, cfg, mime=mime)
+        if text is None:
+            verification = await verify(image_bytes, doc, cfg, mime=mime)
+        else:
+            verification = await verify(image_bytes, doc, cfg, mime=mime, text=text)
         if verification is not None:
             checks.append(verification_check(verification))
             status, reasons = decide(checks)
@@ -184,7 +213,7 @@ async def process_image(
         checks=checks,
         status=status,
         reasons=reasons,
-        suggested_filename=suggested_filename(doc, mime),
+        suggested_filename=suggested_filename(doc, file_mime or mime or "image/jpeg"),
         journal_draft=draft_journal(doc),
         model=f"{meta['backend']}:{meta['model']}",
         verification=verification,
@@ -192,3 +221,37 @@ async def process_image(
         elapsed_s=round(time.perf_counter() - t0, 3),
         crop=cropped.public(),
     )
+
+
+async def process_document(
+    prep: Prepared,
+    cfg: AiConfig,
+    known_hashes: frozenset[str] | set[str] = frozenset(),
+    *,
+    digest: str,
+    period_start: date | None = None,
+    period_end: date | None = None,
+    business_name: str | None = None,
+    suppliers: Callable[[ExtractedDoc], SupplierKnowledge] | None = None,
+    business_vat_registered: bool = True,
+) -> Proposal:
+    """A prepared file (app/formats.py) through the same checks and the same card. `digest` is the hash of the file
+    that will be filed. Raises `ExtractionError`."""
+    p = await process_image(
+        prep.image,
+        prep.mime,
+        cfg,
+        known_hashes,
+        period_start=period_start,
+        period_end=period_end,
+        business_name=business_name,
+        suppliers=suppliers,
+        business_vat_registered=business_vat_registered,
+        text=prep.text,
+        digest=digest,
+        crop=prep.kind == "image",  # a rendered PDF page is already the page
+        file_mime=prep.source_mime,
+    )
+    if prep.note:  # ok=True: shown as a chip, never a reason
+        p.checks.append(Check(code="SOURCE", ok=True, severity="warn", message=prep.note))
+    return p

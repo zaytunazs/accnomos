@@ -1,4 +1,5 @@
-"""Verifier: a second, independent reading of the same image, compared field by field in code.
+"""Verifier: a second, independent reading of the same image (and text, for a PDF or an email), compared field by
+field in code.
 
 The Verifier never sees the Extractor's answer. It gets a different prompt (one plain question
 per field) and a different, smaller schema with different key names, so it cannot simply echo
@@ -31,7 +32,7 @@ import httpx
 from pydantic import BaseModel, Field, ValidationError
 
 from app.ai.config import AiConfig
-from app.ai.extract import SUPPORTED_MIME, ExtractionError, parse_model_json
+from app.ai.extract import ExtractionError, image_mime, parse_model_json, user_message
 from app.checks import p
 from app.schemas import ExtractedDoc, FieldAgreement, Verification, strict_json_schema
 
@@ -181,12 +182,14 @@ def compare(
 # --------------------------------------------------------------------------- #
 
 
-async def _call_ollama(client: httpx.AsyncClient, b64: str, be: VerifierBackend, schema: dict[str, Any]) -> str:
+async def _call_ollama(
+    client: httpx.AsyncClient, b64: str | None, be: VerifierBackend, schema: dict[str, Any], text: str | None = None
+) -> str:
     body = {
         "model": be.model,
         "messages": [
             {"role": "system", "content": VERIFIER_SYSTEM_PROMPT},
-            {"role": "user", "content": VERIFIER_USER_PROMPT, "images": [b64]},
+            user_message(VERIFIER_USER_PROMPT, b64, None, text, ollama=True),
         ],
         "format": schema,
         "think": False,
@@ -200,20 +203,19 @@ async def _call_ollama(client: httpx.AsyncClient, b64: str, be: VerifierBackend,
 
 
 async def _call_openai_compatible(
-    client: httpx.AsyncClient, b64: str, mime: str, be: VerifierBackend, schema: dict[str, Any]
+    client: httpx.AsyncClient,
+    b64: str | None,
+    mime: str | None,
+    be: VerifierBackend,
+    schema: dict[str, Any],
+    text: str | None = None,
 ) -> str:
     """Meta Model API and Baseten both speak OpenAI chat completions."""
     body: dict[str, Any] = {
         "model": be.model,
         "messages": [
             {"role": "system", "content": VERIFIER_SYSTEM_PROMPT},
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": VERIFIER_USER_PROMPT},
-                    {"type": "image_url", "image_url": {"url": f"data:{mime};base64,{b64}"}},
-                ],
-            },
+            user_message(VERIFIER_USER_PROMPT, b64, mime, text, ollama=False),
         ],
         "response_format": {
             "type": "json_schema",
@@ -234,19 +236,23 @@ async def _call_openai_compatible(
     return content
 
 
-async def read_independently(image_bytes: bytes, mime: str, be: VerifierBackend) -> VerifierReading:
-    """Ask the verifier model the field questions. Raises `ExtractionError`."""
-    mime = mime.lower().split(";")[0].strip().replace("image/jpg", "image/jpeg")
-    if mime not in SUPPORTED_MIME:
-        raise ExtractionError(f"Unsupported image type {mime!r}")
-    b64 = base64.b64encode(image_bytes).decode("ascii")
+async def read_independently(
+    image_bytes: bytes | None, mime: str | None, be: VerifierBackend, *, text: str | None = None
+) -> VerifierReading:
+    """Ask the verifier model the field questions about the image, its text, or both. Raises `ExtractionError`."""
+    if image_bytes is None and not text:
+        raise ExtractionError("Nothing to read: no image and no text")
+    b64 = None
+    if image_bytes is not None:
+        mime = image_mime(mime)
+        b64 = base64.b64encode(image_bytes).decode("ascii")
     schema = strict_json_schema(VerifierReading)
     try:
         async with httpx.AsyncClient(timeout=httpx.Timeout(TIMEOUT_S)) as client:
             if be.kind == "ollama":
-                text = await _call_ollama(client, b64, be, schema)
+                answer = await _call_ollama(client, b64, be, schema, text)
             else:
-                text = await _call_openai_compatible(client, b64, mime, be, schema)
+                answer = await _call_openai_compatible(client, b64, mime, be, schema, text)
     except httpx.HTTPStatusError as exc:
         raise ExtractionError(f"verifier {be.kind} HTTP {exc.response.status_code}: {exc.response.text[:300]}") from exc
     except httpx.HTTPError as exc:
@@ -254,18 +260,19 @@ async def read_independently(image_bytes: bytes, mime: str, be: VerifierBackend)
     except (ValueError, KeyError, IndexError, TypeError, AttributeError) as exc:  # 200 with an unexpected body
         raise ExtractionError(f"verifier {be.kind} returned an unexpected response: {exc!r}") from exc
     try:
-        return VerifierReading.model_validate(parse_model_json(text))
+        return VerifierReading.model_validate(parse_model_json(answer))
     except ValidationError as exc:
-        raise ExtractionError(f"Verifier JSON failed validation: {exc}", raw=text) from exc
+        raise ExtractionError(f"Verifier JSON failed validation: {exc}", raw=answer) from exc
 
 
 async def verify(
-    image_bytes: bytes,
+    image_bytes: bytes | None,
     extracted: ExtractedDoc,
     cfg: AiConfig,
     *,
-    mime: str = "image/jpeg",
+    mime: str | None = "image/jpeg",
     env: Mapping[str, str] | None = None,
+    text: str | None = None,
 ) -> Verification | None:
     """Independent second reading compared field by field. None when the verifier is switched off.
 
@@ -277,7 +284,10 @@ async def verify(
         return None
     t0 = time.perf_counter()
     try:
-        reading = await read_independently(image_bytes, mime, be)
+        if text is None:
+            reading = await read_independently(image_bytes, mime, be)
+        else:
+            reading = await read_independently(image_bytes, mime, be, text=text)
     except ExtractionError as exc:
         return Verification(fields={}, agree_all=False, model=be.label(), error=str(exc)[:500])
     return compare(extracted, reading, be.label(), elapsed_s=round(time.perf_counter() - t0, 3))

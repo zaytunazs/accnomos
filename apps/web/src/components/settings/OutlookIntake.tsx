@@ -84,22 +84,27 @@ export default function OutlookIntake({ card, heading }: { card: string; heading
             </h3>
             <Explain title="What Outlook intake reads and writes">
               <p>
-                When you tap “Check my inbox now”, Accnomos looks at emails with attachments from
-                the last 14 days. Plain code — no AI — keeps files that look like receipts or
-                invoices: PDF, JPEG, PNG or HEIC attachments between 10 KB and 15 MB, from a
-                sender outside your own domain, with words like receipt, invoice or VAT in the
-                subject or file name.
+                When you tap “Check my inbox now”, Accnomos looks at emails from the last 14
+                days. Plain code — no AI — keeps files that look like receipts or invoices: PDF,
+                JPEG, PNG or HEIC attachments between 10 KB and 25 MB, from a sender outside your
+                own domain, with words like receipt, invoice or VAT in the subject or file name.
+                HEIC photos are saved as JPEG.
               </p>
               <p>
-                Read: the message date, sender, subject and those attachments. Written, all in
-                your own folder: the file as 00 Inbox/&lt;date&gt;_&lt;sender&gt;_&lt;name&gt;, a
-                seen-list so nothing is copied twice, and a dated log.
+                Receipts written in the email itself (a taxi ride, an online order, a software
+                subscription) are kept too: for an email with no attachment whose subject or
+                preview mentions a receipt, order or payment, the text is read and kept when a
+                total or VAT line shows an amount. Newsletters and sale emails are skipped.
               </p>
               <p>
-                Never: sending, moving, flagging, marking as read or deleting mail; reading
-                message bodies; or keeping anything on our server. The last check time is kept
-                only in this browser. HEIC photos are copied but wait in 00 Inbox until the
-                reader supports them.
+                Read: the message date, sender, subject, those attachments and those email texts.
+                Written, all in your own folder: the file as
+                00 Inbox/&lt;date&gt;_&lt;sender&gt;_&lt;name&gt; (an email as …_&lt;subject&gt;.eml.txt),
+                a seen-list so nothing is copied twice, and a dated log.
+              </p>
+              <p>
+                Never: sending, moving, flagging, marking as read or deleting mail, or keeping
+                anything on our server. The last check time is kept only in this browser.
               </p>
             </Explain>
           </div>

@@ -1,0 +1,37 @@
+{
+ "id": "AAMk-sample-b02",
+ "receivedDateTime": "2026-10-22T08:05:44Z",
+ "subject": "Your Riverbend Market order #204-5517790 has been placed",
+ "from": {
+  "emailAddress": {
+   "name": "Riverbend Market",
+   "address": "order-update@riverbendmarket.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": false,
+ "bodyPreview": "Hello Sam, Thank you for your order. We'll let you know when your items are dispatched. Order #204-5517790 Placed on 22 October 2026 Item Qty Price Cordless combi drill, body only 1 £79.99 Wood glue 1 l 2 £11.98 Item(s) subtotal: £91.97 Postage & packing:",
+ "body": {
+  "contentType": "text",
+  "content": "Hello Sam,\n\nThank you for your order. We'll let you know when your items are dispatched.\n\nOrder #204-5517790\nPlaced on 22 October 2026\n\nItem\nQty\nPrice\nCordless combi drill, body only\n1\n£79.99\nWood glue 1 l\n2\n£11.98\n\nItem(s) subtotal:\n£91.97\nPostage & packing:\n£0.00\nOrder Total:\n£91.97\nVAT included:\n£15.33\n\nSold by Riverbend Market UK Ltd. VAT number GB 987 6543 21.\n"
+ },
+ "attachments": [],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "body_receipt",
+ "expected": {
+  "intake": [
+   {
+    "body": true,
+    "treat_as": "document"
+   }
+  ],
+  "note": "order confirmation; Graph's text has each table cell on its own line"
+ }
+}

@@ -63,7 +63,7 @@ Documents, filed by code and never deleted:
 | Path | Written by | Notes |
 |---|---|---|
 | `README.txt` | web onboarding (text from `paths.readme_text()`) | once |
-| `00 Inbox/<name>` | web and Android upload; Outlook intake as `<yyyy-mm-dd>_<sender-domain>_<name>` | moved out when read |
+| `00 Inbox/<name>` | web and Android upload; Outlook intake as `<yyyy-mm-dd>_<sender-domain>_<name>`, an email receipt as `…_<subject>.eml.txt` (`docs/INBOX.md`) | moved out when read |
 | `01 Receipts/<yyyy-mm>/<date> <supplier> £<total>.<ext>` | runtime, when a proposal is filed | |
 | `02 Needs a look/<name>` | runtime: documents that need a look, and rejected ones | |
 | `03 Sales/<name>` | runtime, a scanned document the reader classes as a sales invoice | |
@@ -99,6 +99,7 @@ Books.xlsx still show the path as it was saved.
 | `cursors.json` | last inbox scan | rewritten |
 | `bank/<sha256>.json` | lines of one statement with their match status | updated |
 | `Intake/seen.json`, `Intake/log/<yyyy-mm>.jsonl` | Outlook intake | |
+| `Originals/<name>.heic` | a HEIC photo from `00 Inbox`, once its JPEG has taken its place (`inbox.py`) | never deleted |
 | `Contacts/contacts.json` | names and details only, never money | rewritten whole (last write wins) |
 | `Jobs/jobs.json`, `Staff/staff.json`, `Timesheets/<yyyy-mm>.jsonl` | jobs, staff and rates, timesheet entries | entries edited and deleted |
 | `Vehicles/vehicles.json`, `Mileage/<tax-year>.jsonl` | tax year like `2026-27` | entries edited and deleted |

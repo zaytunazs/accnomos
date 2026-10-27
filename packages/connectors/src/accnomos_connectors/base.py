@@ -96,6 +96,15 @@ class MailProvider(ABC):
     @abstractmethod
     async def download_attachment(self, message_id: str, attachment_id: str) -> bytes: ...
 
+    async def list_without_attachments(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
+        """Inbox messages with no attachments received at or after `since`, newest first, with `body_preview`
+        filled in (Outlook intake looks for receipts written in the body)."""
+        raise NotImplementedError
+
+    async def message_text(self, message_id: str) -> str:
+        """The whole body of one message as plain text (HTML converted by the provider)."""
+        raise NotImplementedError
+
     async def list_recent(self, since: datetime, max_results: int = 100) -> list[MailMessage]:
         """Inbox messages (with or without attachments) received at or after `since`, newest first,
         with `conversation_id`, `body_preview` and `is_read` filled in."""

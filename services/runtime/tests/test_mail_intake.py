@@ -1,5 +1,5 @@
 """Outlook intake (F10) against FakeMailProvider + FakeStorageProvider:
-filtering, scoring, dedupe, dry run, size limits.
+filtering, scoring, dedupe, dry run, size limits, receipts in the body, HEIC on arrival.
 """
 
 from __future__ import annotations
@@ -18,7 +18,16 @@ from accnomos_connectors import FakeMailProvider, FakeStorageProvider, MailAttac
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.books import AUDIT, DOCS, RULES, Books  # noqa: E402
-from app.intake import SEEN, SEEN_MAX, scan_mail, score, skip_reason, target_name  # noqa: E402
+from app.intake import (  # noqa: E402
+    SEEN,
+    SEEN_MAX,
+    body_worth_reading,
+    looks_like_receipt,
+    scan_mail,
+    score,
+    skip_reason,
+    target_name,
+)
 
 USER = "sam@sambuilds.co.uk"
 NOW = datetime.now(UTC)
@@ -94,7 +103,7 @@ def _inbox(fake: FakeStorageProvider) -> list[str]:
             "type",
         ),
         ("tiny.pdf", "application/pdf", 9_000, False, "too_small"),
-        ("huge.pdf", "application/pdf", 16 * 1024 * 1024, False, "too_large"),
+        ("huge.pdf", "application/pdf", 25 * 1024 * 1024 + 1, False, "too_large"),
     ],
 )
 def test_skip_reason(name: str, ctype: str, size: int, inline: bool, reason: str | None) -> None:
@@ -235,7 +244,7 @@ async def test_large_attachment_is_saved_and_oversize_is_ignored(
 ) -> None:
     big = b"%PDF" + b"b" * (5 * 1024 * 1024)
     mail.add(_msg("m1"), _att("a1", "invoice.pdf", big))
-    mail.add(_msg("m2"), _att("a2", "statement.pdf", b"%PDF" + b"h" * (15 * 1024 * 1024 + 1)))
+    mail.add(_msg("m2"), _att("a2", "statement.pdf", b"%PDF" + b"h" * (25 * 1024 * 1024)))
     mail.add(_msg("m3"), _att("a3", "invoice-small.pdf", b"%PDF tiny"))
 
     r = await scan_mail(books, mail, user=USER)
@@ -317,3 +326,172 @@ def test_route_needs_a_graph_token() -> None:
     from app.main import app
 
     assert TestClient(app).post("/mail/scan").status_code == 401
+
+
+# ---------------------------------------------------------------------- #
+# Receipts in the body, HEIC on arrival (gold mail fixtures: M01-M20 with attachments, B01-B06 without)
+# ---------------------------------------------------------------------- #
+
+GOLD_MAIL = Path(__file__).resolve().parents[3] / "evals" / "gold" / "mail"
+GOLD_USER = "sam.hartley@bramblewood.example"
+HEIC = b"\x00\x00\x00\x18ftypheic" + b"h" * 20_000
+
+
+def _gold(prefix: str) -> list[dict]:
+    return [json.loads(p.read_text(encoding="utf-8")) for p in sorted(GOLD_MAIL.glob(f"{prefix}*.json"))]
+
+
+def _gold_message(f: dict) -> MailMessage:
+    sender = f["from"]["emailAddress"]
+    return MailMessage(
+        id=f["id"],
+        received_at=datetime.fromisoformat(f["receivedDateTime"].replace("Z", "+00:00")),
+        from_address=sender["address"].lower(),
+        from_name=sender.get("name", ""),
+        subject=f["subject"],
+        body_preview=f["bodyPreview"][:255],
+    )
+
+
+def _gold_mailbox(*prefixes: str) -> FakeMailProvider:
+    mail = FakeMailProvider()
+    for f in (f for p in prefixes for f in _gold(p)):
+        files = [
+            (
+                MailAttachment(
+                    id=a["id"], name=a["name"], content_type=a["contentType"], size=a["size"], is_inline=a["isInline"]
+                ),
+                (GOLD_MAIL / a["path"]).read_bytes(),
+            )
+            for a in f["attachments"]
+        ]
+        mail.add(_gold_message(f), *files, body=f["body"]["content"])
+    return mail
+
+
+def _since_days(*prefixes: str) -> int:
+    oldest = min(_gold_message(f).received_at for p in prefixes for f in _gold(p))
+    return (NOW - oldest).days + 2
+
+
+@pytest.mark.parametrize("f", _gold("B"), ids=lambda f: f["id"][-3:])
+def test_body_fixtures_are_kept_or_dropped_as_labelled(f: dict) -> None:
+    m = _gold_message(f)
+    kept = body_worth_reading(m, GOLD_USER) and looks_like_receipt(f["body"]["content"])
+    assert kept == (f["expected"]["intake"][0]["treat_as"] == "document"), f["expected"]["note"]
+
+
+@pytest.mark.parametrize("f", _gold("M"), ids=lambda f: f["id"][-2:])
+def test_please_find_attached_is_not_a_receipt(f: dict) -> None:
+    """The 20 attachment fixtures' bodies would never be kept (and are never read: they have attachments)."""
+    assert not looks_like_receipt(f["body"]["content"])
+
+
+@pytest.mark.parametrize(
+    ("text", "kept"),
+    [
+        ("Total £18.40", True),
+        ("VAT (20%) £2.40", True),
+        ("Amount paid: €12.00", True),
+        ("Order Total:\n£91.97", True),
+        ("TOTAL\n\nGBP 1,204.50", True),
+        ("Invoice INV-2291 – 120.00 GBP", True),
+        ("Happy to go ahead at £1,450 plus VAT", False),
+        ("Total: see attached", False),
+        ("Your order of 3 items has shipped", False),
+        ("Order Total:\nsee your account\n£5.00", False),
+    ],
+)
+def test_looks_like_receipt(text: str, kept: bool) -> None:
+    assert looks_like_receipt(text) is kept
+
+
+async def test_gold_mailbox_keeps_three_body_receipts_and_the_same_attachments(books: Books) -> None:
+    days = _since_days("M", "B")
+    mailbox = _gold_mailbox("M", "B")
+    r = await scan_mail(books, mailbox, since_days=days, user=GOLD_USER, max_messages=100)
+    without = await scan_mail(
+        Books(FakeStorageProvider()),
+        _gold_mailbox("M", "B"),
+        since_days=days,
+        user=GOLD_USER,
+        max_messages=100,
+        bodies=False,
+    )
+    bodies = sorted(n for n in r.saved if n.endswith(".eml.txt"))
+    assert bodies == [
+        "2026-10-21_northwayrides.example_Your Tuesday evening trip with Northway Rides.eml.txt",
+        "2026-10-22_riverbendmarket.example_Your Riverbend Market order _204-5517790 has been placed.eml.txt",
+        "2026-10-23_ledgerline.example_Your receipt from Ledgerline [_2291-4410].eml.txt",
+    ]
+    assert sorted(n for n in r.saved if not n.endswith(".eml.txt")) == sorted(without.saved)  # attachments unchanged
+    fetched = [c.removeprefix("message_text:") for c in mailbox.calls if c.startswith("message_text:")]
+    assert all(i.startswith("AAMk-sample-b") for i in fetched)  # mail with attachments: body never read
+    assert "AAMk-sample-b04" not in fetched  # marketing: body never fetched
+    assert {i.attachment_id for i in r.items if i.name in bodies} == {"body"}
+
+
+async def test_body_receipt_file_has_sender_date_and_text(books: Books, fake: FakeStorageProvider) -> None:
+    r = await scan_mail(books, _gold_mailbox("B"), since_days=_since_days("B"), user=GOLD_USER)
+    name = next(n for n in r.saved if "northwayrides" in n)
+    text = fake.files[f"00 Inbox/{name}"].decode()
+    assert text.startswith(
+        "From: Northway Rides <receipts@northwayrides.example>\nDate: 2026-10-21 19:42 UTC\n"
+        "Subject: Your Tuesday evening trip with Northway Rides\n\nThanks for riding, Sam"
+    )
+    assert "Total £18.40" in text and "VAT (20%) £3.07" in text
+
+
+async def test_body_receipts_are_deduplicated_and_dry_run_writes_nothing(
+    books: Books, fake: FakeStorageProvider
+) -> None:
+    days = _since_days("B")
+    dry = await scan_mail(books, _gold_mailbox("B"), since_days=days, user=GOLD_USER, dry_run=True)
+    assert len(dry.saved) == 3 and not _inbox(fake)
+    first = await scan_mail(books, _gold_mailbox("B"), since_days=days, user=GOLD_USER)
+    again = _gold_mailbox("B")
+    second = await scan_mail(books, again, since_days=days, user=GOLD_USER)
+    assert len(first.saved) == 3 and second.saved == [] and second.skipped_duplicates == 3
+    refetched = {c.removeprefix("message_text:") for c in again.calls if c.startswith("message_text:")}
+    assert refetched.isdisjoint({i.message_id for i in first.items})  # saved before: not even fetched
+
+
+async def test_body_from_yourself_is_never_read(books: Books, mail: FakeMailProvider) -> None:
+    mail.add(_msg("own", "Receipt for lunch", sender="sam@sambuilds.co.uk"), body="Total £23.50")
+    r = await scan_mail(books, mail, user=USER)
+    assert r.saved == [] and "message_text:own" not in mail.calls
+
+
+async def test_body_listing_failure_keeps_the_attachments(books: Books, mail: FakeMailProvider) -> None:
+    mail.add(_msg("m1"), _att("a1", "invoice.pdf"))
+
+    async def boom(*_a: object) -> list[MailMessage]:
+        raise RuntimeError("Graph 503")
+
+    mail.list_without_attachments = boom  # type: ignore[method-assign]
+    r = await scan_mail(books, mail, user=USER)
+    assert len(r.saved) == 1 and r.errors[0]["message"] == "mail without attachments"
+
+
+async def test_heic_attachment_is_saved_as_jpeg(
+    books: Books, fake: FakeStorageProvider, mail: FakeMailProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from app import intake
+    from app.formats import Prepared
+
+    def converted(data: bytes, hint: str) -> Prepared:
+        return Prepared("image", b"\xff\xd8jpeg", "image/jpeg", converted_from="HEIC")
+
+    monkeypatch.setattr(intake, "prepare", converted)
+    mail.add(_msg("m1", "Receipt"), _att("a1", "IMG_4410.HEIC", HEIC, "image/heic"))
+    (name,) = (await scan_mail(books, mail, user=USER)).saved
+    assert name.endswith("_IMG_4410.jpg") and fake.files[f"00 Inbox/{name}"] == b"\xff\xd8jpeg"
+
+
+async def test_heic_without_a_reader_is_saved_as_is_for_the_inbox_card(
+    books: Books, fake: FakeStorageProvider, mail: FakeMailProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setitem(sys.modules, "pillow_heif", None)
+    mail.add(_msg("m1", "Receipt"), _att("a1", "IMG_4410.HEIC", HEIC, "image/heic"))
+    (name,) = (await scan_mail(books, mail, user=USER)).saved
+    assert name.endswith("_IMG_4410.heic") and fake.files[f"00 Inbox/{name}"] == HEIC

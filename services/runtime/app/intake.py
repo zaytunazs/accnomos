@@ -3,14 +3,20 @@
 Code only, no model call. The mailbox is only read (nothing is moved, flagged, marked read or
 deleted); everything written goes to the user's own books folder:
 
-    00 Inbox/<yyyy-mm-dd>_<sender-domain>_<original-name>   the copied attachment
+    00 Inbox/<yyyy-mm-dd>_<sender-domain>_<original-name>   the copied attachment (a HEIC photo as a JPEG)
+    00 Inbox/<yyyy-mm-dd>_<sender-domain>_<subject>.eml.txt a receipt written in the body of a mail with no attachment
     _System/Intake/seen.json                                what we have already copied (max 5,000, newest kept)
     _System/Intake/log/<yyyy-mm>.jsonl                      one line per saved file
     _System/audit/<yyyy-mm>.jsonl                           one line per scan (DEV.md convention)
+
+Body receipts (Uber, Amazon, SaaS bills): only Inbox messages without attachments are listed; the full body is
+fetched only when the subject or preview has a receipt word, and kept only when a total/VAT line carries a
+currency amount (`looks_like_receipt`). Mail from the user, and marketing mail, is never kept.
 """
 
 from __future__ import annotations
 
+import asyncio
 import fnmatch
 import hashlib
 import json
@@ -23,6 +29,7 @@ from pydantic import BaseModel
 
 from accnomos_connectors.base import MailAttachment, MailMessage, MailProvider
 from app.books import SYSTEM, Books, Rule, _month, _with_suffix, now
+from app.formats import MAX_BYTES, FormatError, is_heif, prepare
 from app.paths import INBOX
 
 log = logging.getLogger(__name__)
@@ -34,12 +41,14 @@ SEEN_MAX = 5000
 ACTOR = "agent:intake"
 
 MIN_SIZE = 10 * 1024
-MAX_SIZE = 15 * 1024 * 1024
+MAX_SIZE = MAX_BYTES  # 25 MB, as everywhere a document comes in
 SIGNATURE_MAX = 40 * 1024
 THRESHOLD = 0.4
+BODY_ID = "body"  # attachment_id recorded for a body receipt
+BODY_MAX_CHARS = 100_000
 
 ACCEPTED_TYPES = {"application/pdf", "image/jpeg", "image/jpg", "image/pjpeg", "image/png", "image/heic", "image/heif"}
-ACCEPTED_EXTS = (".pdf", ".jpg", ".jpeg", ".png", ".heic")
+ACCEPTED_EXTS = (".pdf", ".jpg", ".jpeg", ".png", ".heic", ".heif")
 # A letter must not come straight before the keyword ('border' is not an order); '_' and digits may.
 KEYWORDS = re.compile(
     r"(?<![a-z])(receipt|invoice|inv[-_ ]?\d|bill|statement|order|payment|paid|vat|remittance|credit note|"
@@ -68,6 +77,25 @@ PUBLIC_MAIL_DOMAINS = {
     "proton.me",
 }
 _UNSAFE = re.compile(r'[\\/:*?"<>|#%\x00-\x1f]+')  # OneDrive-forbidden and URL-awkward characters
+
+# Body receipts. Worth fetching the body: a receipt word in the subject or preview.
+BODY_HINT = re.compile(
+    r"(?<![a-z])(receipt|invoice|order|payment|paid|trip|ride|booking|subscription|renewal|billing|bill|vat|total)",
+    re.IGNORECASE,
+)
+# Kept: total/VAT/invoice/receipt followed by a currency amount (`looks_like_receipt`). Graph's HTML-to-text
+# conversion often puts a table's label and amount on separate lines.
+LABEL_GAP = 30  # characters allowed between the label and its amount, e.g. ' (20%) ' or ' incl. VAT: '
+MONEY = re.compile(
+    r"(£|€|\$|\b(GBP|EUR|USD)\s?)\s?\d{1,3}(,\d{3})*(\.\d{2})?\b|\b\d+(,\d{3})*\.\d{2}\s?(GBP|EUR|USD)\b",
+    re.IGNORECASE,
+)
+TOTAL_LABEL = re.compile(r"(?<![a-z])(total|vat|invoice|receipt|amount (paid|due|charged)|balance due)(?![a-z])", re.I)
+# Bulk senders (Inbox triage drops them too): their mail is marketing, never a receipt.
+BULK_SENDER = re.compile(
+    r"^(newsletters?|news|marketing|promotions?|promo|offers|deals|digest|updates|mailer)([-_.+].*)?$"
+)
+MARKETING_SUBJECT = re.compile(r"% off\b|\bsale\b|newsletter|webinar|deals?\b|offers?\b|discount", re.IGNORECASE)
 
 
 class IntakeItem(BaseModel):
@@ -173,6 +201,60 @@ def target_name(m: MailMessage, a: MailAttachment) -> str:
     return f"{day}_{safe_component(domain_of(m.from_address) or 'unknown', 60)}_{original}"
 
 
+def body_worth_reading(m: MailMessage, user: str | None) -> bool:
+    """Cheap test on what the listing already has, before the full body is fetched."""
+    if not m.from_address or is_from_self(m, user):
+        return False
+    if BULK_SENDER.match(m.from_address.split("@", 1)[0]) or MARKETING_SUBJECT.search(m.subject or ""):
+        return False
+    return bool(BODY_HINT.search(m.subject or "") or BODY_HINT.search(m.body_preview or ""))
+
+
+def looks_like_receipt(text: str) -> bool:
+    """A total/VAT/invoice/receipt label followed by a currency amount: on the same line ('VAT (20%) £2.00'), or
+    the label alone and the amount starting the next line ('Order Total:' / '£64.97'). Prose that mentions VAT
+    after a price ('£1,450 plus VAT', a quote) does not count."""
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
+    for i, line in enumerate(lines):
+        for label in TOTAL_LABEL.finditer(line):
+            rest = line[label.end() :]
+            amount = MONEY.search(rest)
+            if amount and amount.start() <= LABEL_GAP:
+                return True
+            if len(rest.strip(" :.-–\t")) == 0 and i + 1 < len(lines) and MONEY.match(lines[i + 1]):
+                return True
+    return False
+
+
+def body_document(m: MailMessage, text: str) -> bytes:
+    """What is saved: who sent it and when (the reader needs the supplier), then the body as plain text."""
+    sender = f"{m.from_name} <{m.from_address}>" if m.from_name else m.from_address
+    head = f"From: {sender}\nDate: {m.received_at.astimezone(UTC).strftime('%Y-%m-%d %H:%M')} UTC\n"
+    return f"{head}Subject: {m.subject}\n\n{text.strip()[:BODY_MAX_CHARS]}\n".encode()
+
+
+def body_name(m: MailMessage) -> str:
+    """'2026-10-21_uber.com_Your Tuesday evening trip with Uber.eml.txt'."""
+    day = m.received_at.astimezone(UTC).strftime("%Y-%m-%d")
+    subject = safe_component(m.subject or "receipt", 80)
+    return f"{day}_{safe_component(domain_of(m.from_address) or 'unknown', 60)}_{subject}.eml.txt"
+
+
+def as_jpeg_if_heic(a: MailAttachment, data: bytes) -> tuple[MailAttachment, bytes]:
+    """A HEIC photo becomes a JPEG on arrival. Without a HEIC reader the original is kept: the Inbox scan then
+    shows a card asking for a JPEG."""
+    if not is_heif(data):
+        return a, data
+    try:
+        prep = prepare(data, a.name)
+    except FormatError:
+        return a, data
+    if prep.converted_from is None or prep.image is None:
+        return a, data
+    stem = a.name.rpartition(".")[0] or a.name
+    return a.model_copy(update={"name": f"{stem}.jpg", "content_type": "image/jpeg"}), prep.image
+
+
 def _free(name: str, taken: set[str]) -> str:
     candidate, n = name, 1
     while candidate in taken:
@@ -216,7 +298,10 @@ async def scan_mail(
     dry_run: bool = False,
     user: str | None = None,
     max_messages: int = 50,
+    bodies: bool = True,
 ) -> IntakeResult:
+    """Copy likely receipts from the last `since_days` into 00 Inbox: attachments of up to `max_messages` mails with
+    attachments, and (`bodies`) receipts written in up to `max_messages` mails without."""
     result = IntakeResult(dry_run=dry_run)
     seen: list[dict[str, Any]] = await books.read_json(SEEN, [])
     rules = await books.load_rules()
@@ -226,7 +311,45 @@ async def scan_mail(
     new_seen: list[dict[str, Any]] = []
     log_lines: list[dict[str, Any]] = []
 
-    messages = await mail.list_messages(started - timedelta(days=since_days), max_messages)
+    def keep(m: MailMessage, attachment_id: str, name: str, sha: str, sc: float) -> None:
+        dedupe.hashes.add(sha)
+        dedupe.seen_ids.add((m.id, attachment_id))
+        at = now().isoformat()
+        saved_as = f"{INBOX}/{name}"
+        new_seen.append(
+            {"sha256": sha, "message_id": m.id, "attachment_id": attachment_id, "saved_as": saved_as, "at": at}
+        )
+        log_lines.append(
+            {
+                "at": at,
+                "message_id": m.id,
+                "from": m.from_address,
+                "subject": m.subject[:200],
+                "score": sc,
+                "saved_as": saved_as,
+                "sha256": sha,
+            }
+        )
+        result.saved.append(name)
+        result.items.append(
+            IntakeItem(
+                name=name,
+                subject=m.subject[:200],
+                from_address=m.from_address,
+                score=sc,
+                message_id=m.id,
+                attachment_id=attachment_id,
+            )
+        )
+
+    def failed(m: MailMessage, what: str, exc: Exception) -> None:
+        log.warning("saving %s from %s failed: %s", what, m.id, exc)
+        result.errors.append(
+            {"message": m.subject[:120], "attachment": what, "error": f"{type(exc).__name__}: {str(exc)[:200]}"}
+        )
+
+    since = started - timedelta(days=since_days)
+    messages = await mail.list_messages(since, max_messages)
     result.scanned = len(messages)
     for m in messages:
         try:
@@ -251,51 +374,57 @@ async def scan_mail(
                 data = await mail.download_attachment(m.id, a.id)
                 if len(data) > MAX_SIZE:
                     continue
+                saved, data = await asyncio.to_thread(as_jpeg_if_heic, a, data)
                 sha = hashlib.sha256(data).hexdigest()
                 if await dedupe.known(sha):
                     result.skipped_duplicates += 1
                     continue
-                name = _free(target_name(m, a), taken)
+                name = _free(target_name(m, saved), taken)
                 if not dry_run:
                     await books.storage.write(f"{INBOX}/{name}", data)  # >4 MB goes through an upload session
             except Exception as exc:  # noqa: BLE001
-                log.warning("saving %s from %s failed: %s", a.name, m.id, exc)
-                result.errors.append(
-                    {
-                        "message": m.subject[:120],
-                        "attachment": a.name,
-                        "error": f"{type(exc).__name__}: {str(exc)[:200]}",
-                    }
-                )
+                failed(m, a.name, exc)
                 continue
-            dedupe.hashes.add(sha)
-            dedupe.seen_ids.add((m.id, a.id))
-            at = now().isoformat()
-            new_seen.append(
-                {"sha256": sha, "message_id": m.id, "attachment_id": a.id, "saved_as": f"{INBOX}/{name}", "at": at}
-            )
-            log_lines.append(
-                {
-                    "at": at,
-                    "message_id": m.id,
-                    "from": m.from_address,
-                    "subject": m.subject[:200],
-                    "score": sc,
-                    "saved_as": f"{INBOX}/{name}",
-                    "sha256": sha,
-                }
-            )
-            result.saved.append(name)
-            result.items.append(
-                IntakeItem(
-                    name=name,
-                    subject=m.subject[:200],
-                    from_address=m.from_address,
-                    score=sc,
-                    message_id=m.id,
-                    attachment_id=a.id,
-                )
-            )
+            keep(m, a.id, name, sha, sc)
+
+    if bodies:  # receipts written in the body of mail without attachments, saved as .eml.txt
+        try:
+            plain = await mail.list_without_attachments(since, max_messages)
+        except Exception as exc:  # noqa: BLE001  the attachments already copied still count
+            log.warning("listing mail without attachments failed: %s", exc)
+            result.errors.append({"message": "mail without attachments", "error": f"{type(exc).__name__}: {exc}"[:200]})
+            plain = []
+        result.scanned += len(plain)
+        for m in plain:
+            if not body_worth_reading(m, user):
+                continue
+            if (m.id, BODY_ID) in dedupe.seen_ids:
+                result.candidates += 1
+                result.skipped_duplicates += 1
+                continue
+            try:
+                text = await mail.message_text(m.id)
+            except FileNotFoundError:
+                continue
+            except Exception as exc:  # noqa: BLE001
+                failed(m, "message body", exc)
+                continue
+            if not looks_like_receipt(text):
+                continue
+            result.candidates += 1
+            data = body_document(m, text)
+            sha = hashlib.sha256(data).hexdigest()
+            if await dedupe.known(sha):
+                result.skipped_duplicates += 1
+                continue
+            name = _free(body_name(m), taken)
+            try:
+                if not dry_run:
+                    await books.storage.write(f"{INBOX}/{name}", data)
+            except Exception as exc:  # noqa: BLE001
+                failed(m, "message body", exc)
+                continue
+            keep(m, BODY_ID, name, sha, 1.0)
 
     if not dry_run:
         await _record(books, new_seen, log_lines, result, since_days)

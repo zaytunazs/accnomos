@@ -1,0 +1,37 @@
+{
+ "id": "AAMk-sample-b05",
+ "receivedDateTime": "2026-10-24T14:31:00Z",
+ "subject": "Re: Quote for oak staircase",
+ "from": {
+  "emailAddress": {
+   "name": "Jo Pennant",
+   "address": "jo.pennant@pennanthomes.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": false,
+ "bodyPreview": "Hi Sam, Thanks for coming round. Happy to go ahead at £1,450 plus VAT as quoted. Could you start on the 9th? Thanks Jo",
+ "body": {
+  "contentType": "text",
+  "content": "Hi Sam,\n\nThanks for coming round. Happy to go ahead at £1,450 plus VAT as quoted.\nCould you start on the 9th?\n\nThanks\nJo\n"
+ },
+ "attachments": [],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "body_decoy",
+ "expected": {
+  "intake": [
+   {
+    "body": true,
+    "treat_as": "ignore"
+   }
+  ],
+  "note": "a customer agreeing a price: VAT comes after the amount, so it is prose, not a receipt line"
+ }
+}

@@ -1,0 +1,37 @@
+{
+ "id": "AAMk-sample-b03",
+ "receivedDateTime": "2026-10-23T00:12:03Z",
+ "subject": "Your receipt from Ledgerline [#2291-4410]",
+ "from": {
+  "emailAddress": {
+   "name": "Ledgerline",
+   "address": "billing@ledgerline.example"
+  }
+ },
+ "toRecipients": [
+  {
+   "emailAddress": {
+    "name": "Sam Hartley",
+    "address": "sam.hartley@bramblewood.example"
+   }
+  }
+ ],
+ "hasAttachments": false,
+ "bodyPreview": "Receipt from Ledgerline Receipt #2291-4410 Amount paid £14.40 Date paid 23 Oct 2026 Payment method Mastercard – 0952 Summary Ledgerline Starter (monthly) 23 Oct – 22 Nov 2026 £12.00 VAT (20%) £2.40 Amount paid £14.40 Questions? Contact us at billing@ledge",
+ "body": {
+  "contentType": "text",
+  "content": "Receipt from Ledgerline\nReceipt #2291-4410\n\nAmount paid £14.40\nDate paid 23 Oct 2026\nPayment method Mastercard – 0952\n\nSummary\nLedgerline Starter (monthly) 23 Oct – 22 Nov 2026 £12.00\nVAT (20%) £2.40\nAmount paid £14.40\n\nQuestions? Contact us at billing@ledgerline.example.\nLedgerline Software Ltd, VAT GB 246 8135 79\n"
+ },
+ "attachments": [],
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "kind": "body_receipt",
+ "expected": {
+  "intake": [
+   {
+    "body": true,
+    "treat_as": "document"
+   }
+  ],
+  "note": "SaaS subscription receipt"
+ }
+}
