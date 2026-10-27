@@ -204,7 +204,7 @@ export default function JobDetail() {
             Add your staff and their rates in <Link href="/settings" className="font-bold text-teal-dark underline">Settings</Link> first.
           </p>
         )}
-        <form onSubmit={addRow} className="mt-3 overflow-x-auto" aria-label="Add hours">
+        <form onSubmit={addRow} className="relative mt-3 overflow-x-auto" aria-label="Add hours">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="text-xs font-bold text-muted">

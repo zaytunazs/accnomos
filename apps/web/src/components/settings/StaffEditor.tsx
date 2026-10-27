@@ -147,7 +147,7 @@ export default function StaffEditor({ card, heading }: { card: string; heading: 
       {staff === null ? (
         <p className="mt-3 text-sm text-muted">{account === null ? "Sign in to manage staff." : (note ?? "Loading…")}</p>
       ) : (
-        <div className="mt-3 overflow-x-auto">
+        <div className="relative mt-3 overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="text-xs font-bold text-muted">
