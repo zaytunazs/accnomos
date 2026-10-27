@@ -24,6 +24,8 @@ interface Data {
   statements: RtBankStatement[];
   suggestions: RtBankSuggestion[];
   unmatched: RtUnmatchedLine[];
+  /** Every line, for the per-statement view; `done` is the settled subset. */
+  lines: RtBankLine[];
   done: RtBankLine[];
 }
 
@@ -34,7 +36,6 @@ export function money(pence: number): string {
 }
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
-const fileName = (path: string) => path.split("/").pop() ?? path;
 
 const ACTIONS: { action: RtUnmatchedAction; label: string }[] = [
   { action: "create_expense_proposal", label: "Create expense proposal" },
@@ -42,6 +43,20 @@ const ACTIONS: { action: RtUnmatchedAction; label: string }[] = [
   { action: "ignore", label: "Ignore" },
 ];
 const DONE_LABEL: Record<string, string> = { matched: "Matched", transfer: "Transfer", ignored: "Ignored" };
+const STATUS_LABEL: Record<RtBankLine["status"], string> = {
+  matched: "Matched",
+  suggested: "Suggested",
+  unmatched: "Unmatched",
+  transfer: "Transfer",
+  ignored: "Ignored",
+};
+const STATUS_CHIP: Record<RtBankLine["status"], string> = {
+  matched: "bg-teal-tint text-teal-dark",
+  suggested: "border border-warn-border bg-warn-bg text-warn-ink",
+  unmatched: "border border-border bg-white text-ink",
+  transfer: "bg-ground text-ink",
+  ignored: "bg-ground text-muted",
+};
 
 async function load(a: AccountInfo): Promise<Data> {
   const [summary, statements, suggestions, unmatched, lines] = await Promise.all([
@@ -52,16 +67,31 @@ async function load(a: AccountInfo): Promise<Data> {
     runtime.bank.lines(a),
   ]);
   const done = lines.filter((l) => l.status === "matched" || l.status === "transfer" || l.status === "ignored").reverse();
-  return { summary, statements, suggestions, unmatched, done };
+  return { summary, statements, suggestions, unmatched, lines, done };
 }
 
-function Tile({ label, value, sub, tone }: { label: string; value: string; sub: string; tone?: "teal" | "warn" }) {
+function Tile({ label, value, sub, tone, hint }: { label: string; value: string; sub: string; tone?: "teal" | "warn"; hint?: string }) {
+  const [showHint, setShowHint] = useState(false);
   const box = tone === "warn" ? "border-warn-border bg-warn-bg" : tone === "teal" ? "border-teal bg-teal-tint" : "border-border bg-white";
   return (
     <div className={`rounded-2xl border p-4 ${box}`}>
       <p className={`text-sm font-semibold ${tone === "warn" ? "text-warn-ink" : "text-muted"}`}>{label}</p>
       <p className={`mt-1 text-2xl font-extrabold tracking-tight ${tone === "warn" ? "text-warn-ink" : "text-ink"}`}>{value}</p>
       <p className="mt-1 text-sm text-muted">{sub}</p>
+      {hint && (
+        <div className="mt-1">
+          <button
+            type="button"
+            aria-expanded={showHint}
+            title={hint}
+            onClick={() => setShowHint(!showHint)}
+            className="text-[13px] font-bold text-teal-dark underline underline-offset-2"
+          >
+            {showHint ? "Hide" : "What counts?"}
+          </button>
+          {showHint && <p className="mt-1 text-[13px] leading-6 text-muted">{hint}</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -74,6 +104,7 @@ function Tiles({ s }: { s: RtBankSummary }) {
         value={s.reconciled_to ? ukDate(s.reconciled_to) : s.total ? "Not yet" : "—"}
         sub={s.total ? "Every bank line up to here is accounted for" : "Upload a statement to start"}
         tone="teal"
+        hint="Decided means matched, marked as a transfer, or ignored — every line on or before this date. Suggested matches do not count until you confirm them."
       />
       <Tile label="Matched" value={String(s.matched)} sub={`${plural(s.transfer, "transfer")} · ${s.ignored} ignored`} />
       <Tile label="To confirm" value={String(s.suggested)} sub="Suggested matches" tone={s.suggested ? "warn" : undefined} />
@@ -82,7 +113,63 @@ function Tiles({ s }: { s: RtBankSummary }) {
   );
 }
 
-function Statements({ list }: { list: RtBankStatement[] }) {
+function StatementLines({ statement, lines }: { statement: RtBankStatement; lines: RtBankLine[] }) {
+  const [filter, setFilter] = useState<"all" | RtBankLine["status"]>("all");
+  const rows = lines.filter((l) => l.source_file === statement.path);
+  const counts = new Map<RtBankLine["status"], number>();
+  for (const l of rows) counts.set(l.status, (counts.get(l.status) ?? 0) + 1);
+  const shown = filter === "all" ? rows : rows.filter((l) => l.status === filter);
+  const id = `statement-filter-${statement.path}`;
+  return (
+    <div className="flex flex-col gap-2 border-t border-border py-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <label htmlFor={id} className="text-[13px] font-bold text-muted">
+          Show
+        </label>
+        <select
+          id={id}
+          value={filter}
+          onChange={(e) => setFilter(e.target.value as "all" | RtBankLine["status"])}
+          className="h-10 min-w-0 rounded-xl border border-border bg-white px-3 text-sm font-semibold"
+        >
+          <option value="all">All statuses ({rows.length})</option>
+          {(Object.keys(STATUS_LABEL) as RtBankLine["status"][])
+            .filter((s) => counts.has(s))
+            .map((s) => (
+              <option key={s} value={s}>
+                {STATUS_LABEL[s]} ({counts.get(s)})
+              </option>
+            ))}
+        </select>
+      </div>
+      {shown.length === 0 ? (
+        <p className="py-2 text-sm font-semibold text-muted">No lines with this status.</p>
+      ) : (
+        <ul className="flex flex-col divide-y divide-border">
+          {shown.map((l) => (
+            <li key={l.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2">
+              <span className="text-[13px] font-medium whitespace-nowrap text-muted">{ukDate(l.date)}</span>
+              <span className="min-w-0 flex-1 font-semibold">
+                {l.description || "—"}
+                {l.reference ? <span className="block text-[13px] font-medium text-muted">{l.reference}</span> : null}
+              </span>
+              <span className="font-bold whitespace-nowrap tabular-nums">{money(l.amount_pence)}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[12px] font-bold whitespace-nowrap ${STATUS_CHIP[l.status]}`}>
+                {STATUS_LABEL[l.status]}
+              </span>
+              <span className="w-full text-[13px] font-medium tabular-nums text-muted">
+                Balance {l.balance_pence === null ? "—" : money(l.balance_pence)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function Statements({ list, lines }: { list: RtBankStatement[]; lines: RtBankLine[] }) {
+  const [open, setOpen] = useState<string | null>(null);
   if (list.length === 0) return null;
   return (
     <section aria-labelledby="statements-heading" className="rounded-2xl border border-border bg-white p-5">
@@ -90,26 +177,37 @@ function Statements({ list }: { list: RtBankStatement[] }) {
         Statements
       </h2>
       <ul className="mt-2 flex flex-col">
-        {list.map((st) => (
-          <li key={st.path} className="flex min-h-[44px] flex-wrap items-center gap-x-4 gap-y-1 border-t border-border py-2 first:border-t-0">
-            <span className="min-w-0 flex-1 truncate text-[15px] font-semibold" title={st.path}>
-              {fileName(st.path)}
-            </span>
-            <span className="text-[13px] font-medium text-muted">
-              {ukDate(st.first_date)} – {ukDate(st.last_date)}
-            </span>
-            <span className="text-[13px] font-medium tabular-nums text-muted">
-              in {money(st.money_in_pence)} · out {money(st.money_out_pence)}
-            </span>
-            <span
-              className={`rounded-full px-2.5 py-0.5 text-[13px] font-bold ${
-                st.resolved === st.lines ? "bg-teal-tint text-teal-dark" : "border border-warn-border bg-warn-bg text-warn-ink"
-              }`}
-            >
-              {st.resolved}/{st.lines} done
-            </span>
-          </li>
-        ))}
+        {list.map((st) => {
+          const expanded = open === st.path;
+          return (
+            <li key={st.path} className="border-t border-border py-2 first:border-t-0">
+              <button
+                type="button"
+                aria-expanded={expanded}
+                onClick={() => setOpen(expanded ? null : st.path)}
+                className="flex min-h-[44px] w-full flex-wrap items-center gap-x-4 gap-y-1 rounded-xl text-left focus-visible:bg-ground focus-visible:outline-none"
+              >
+                <span className="min-w-0 flex-1 truncate text-[15px] font-semibold" title={st.path}>
+                  {st.path}
+                </span>
+                <span className="text-[13px] font-medium text-muted">
+                  {ukDate(st.first_date)} – {ukDate(st.last_date)}
+                </span>
+                <span className="text-[13px] font-medium tabular-nums text-muted">
+                  in {money(st.money_in_pence)} · out {money(st.money_out_pence)}
+                </span>
+                <span
+                  className={`rounded-full px-2.5 py-0.5 text-[13px] font-bold ${
+                    st.resolved === st.lines ? "bg-teal-tint text-teal-dark" : "border border-warn-border bg-warn-bg text-warn-ink"
+                  }`}
+                >
+                  {st.resolved}/{st.lines} done
+                </span>
+              </button>
+              {expanded && <StatementLines statement={st} lines={lines} />}
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
@@ -131,12 +229,91 @@ function LineCell({ line }: { line: RtBankLine }) {
   );
 }
 
+/** Bulk confirm covers true exacts only: a penny-out or name-only suggestion stays per row, with its reason shown. */
+const isBulkable = (r: RtBankSuggestion) =>
+  r.kind === "exact" &&
+  !r.reasons.some((reason) => reason.includes("1p out")) &&
+  r.events.reduce((sum, e) => sum + e.amount_pence, 0) === r.line.amount_pence;
+
+/** One runtime reason per chip; "exact amount, 1p out" becomes two chips so the penny shows. */
+function ReasonChips({ reasons }: { reasons: string[] }) {
+  const chips: { text: string; warn: boolean }[] = [];
+  for (const reason of reasons) {
+    const penny = /, 1p out$/.exec(reason);
+    if (penny) {
+      chips.push({ text: reason.slice(0, penny.index), warn: false });
+      chips.push({ text: "1p out", warn: true });
+    } else {
+      chips.push({ text: reason, warn: false });
+    }
+  }
+  return (
+    <ul aria-label="Why this matches" className="flex flex-wrap gap-1">
+      {chips.map((c, i) => (
+        <li
+          key={`${c.text}-${i}`}
+          className={`rounded-full px-2 py-0.5 text-[12px] font-bold ${
+            c.warn ? "border border-warn-border bg-warn-bg text-warn-ink" : "bg-ground text-ink"
+          }`}
+        >
+          {c.text}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function KindBadge({ kind }: { kind: RtBankSuggestion["kind"] }) {
+  return (
+    <span
+      className={`rounded-full px-2 py-0.5 text-[12px] font-bold ${
+        kind === "exact" ? "bg-teal-tint text-teal-dark" : "border border-warn-border bg-warn-bg text-warn-ink"
+      }`}
+    >
+      {kind === "exact" ? "Exact" : "Likely"}
+    </span>
+  );
+}
+
+function LedgerEntries({ r }: { r: RtBankSuggestion }) {
+  return (
+    <>
+      {r.events.map((e) => (
+        <span key={e.id} className="block">
+          <span className="font-semibold">{e.counterparty ?? "Entry"}</span>{" "}
+          <span className="text-[13px] text-muted">
+            {ukDate(e.date)} · {money(e.amount_pence)}
+          </span>
+        </span>
+      ))}
+    </>
+  );
+}
+
+function ConfirmMatchButton({ r, busy, onConfirm, wide }: { r: RtBankSuggestion; busy: string | null; onConfirm: () => void; wide?: boolean }) {
+  return (
+    <button
+      type="button"
+      disabled={busy !== null}
+      onClick={onConfirm}
+      aria-label={`Confirm match: ${r.line.description} ${money(r.line.amount_pence)}`}
+      className={`h-11 rounded-xl bg-teal font-bold text-white hover:bg-teal-dark disabled:opacity-60 ${
+        wide ? "w-full px-5 text-[15px]" : "px-4 text-sm"
+      }`}
+    >
+      {busy === r.line_id ? "…" : "Confirm"}
+    </button>
+  );
+}
+
 function Matches({ rows, busy, act }: { rows: RtBankSuggestion[]; busy: string | null; act: Act }) {
   if (rows.length === 0) return <Empty text="No matches to confirm. New suggestions appear when you post receipts or upload statements." />;
-  // "Exact" also covers a penny out; those are confirmed one by one, where the reason says so.
-  const exact = rows.filter(
-    (r) => r.kind === "exact" && r.events.reduce((sum, e) => sum + e.amount_pence, 0) === r.line.amount_pence,
-  );
+  const exact = rows.filter(isBulkable);
+  const confirm = (r: RtBankSuggestion) =>
+    act(r.line_id, async (a) => {
+      await runtime.bank.confirm(a, r.line_id, r.event_ids);
+      return `Matched ${r.line.description} to ${r.events[0]?.counterparty ?? "the ledger entry"}.`;
+    });
   return (
     <div className="flex flex-col gap-3">
       {exact.length > 1 && (
@@ -154,68 +331,97 @@ function Matches({ rows, busy, act }: { rows: RtBankSuggestion[]; busy: string |
           </button>
         </div>
       )}
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-[15px]">
-          <thead>
-            <tr className="border-b border-border text-[13px] font-bold text-muted">
-              <th scope="col" className={th}>Date</th>
-              <th scope="col" className={th}>Bank line</th>
-              <th scope="col" className={`${th} text-right`}>Amount</th>
-              <th scope="col" className={th}>Ledger entry</th>
-              <th scope="col" className={th}>Why</th>
-              <th scope="col" className={th}><span className="sr-only">Action</span></th>
+      {/* Phone: stacked cards. Wider screens: the table. */}
+      <ul className="flex flex-col gap-3 min-[560px]:hidden">
+        {rows.map((r) => (
+          <li key={r.line_id} className="flex flex-col gap-2 rounded-xl border border-border p-4">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="min-w-0 font-semibold">{r.line.description || "—"}</p>
+              <p className="shrink-0 font-bold tabular-nums">{money(r.line.amount_pence)}</p>
+            </div>
+            <p className="text-[13px] font-medium text-muted">
+              {ukDate(r.line.date)}
+              {r.line.reference ? ` · ${r.line.reference}` : ""}
+            </p>
+            <div className="text-sm">
+              <LedgerEntries r={r} />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <KindBadge kind={r.kind} />
+              <ReasonChips reasons={r.reasons} />
+            </div>
+            <div className="mt-1">
+              <ConfirmMatchButton r={r} busy={busy} onConfirm={() => confirm(r)} wide />
+            </div>
+          </li>
+        ))}
+      </ul>
+      <table className="hidden w-full text-left text-[15px] min-[560px]:table">
+        <thead>
+          <tr className="border-b border-border text-[13px] font-bold text-muted">
+            <th scope="col" className={th}>Date</th>
+            <th scope="col" className={th}>Bank line</th>
+            <th scope="col" className={`${th} text-right`}>Amount</th>
+            <th scope="col" className={th}>Ledger entry</th>
+            <th scope="col" className={th}>Why</th>
+            <th scope="col" className={th}><span className="sr-only">Action</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr
+              key={r.line_id}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && (e.target as HTMLElement).tagName !== "BUTTON" && busy === null) confirm(r);
+              }}
+              className="border-t border-border first:border-t-0 focus-visible:bg-ground focus-visible:outline-none"
+            >
+              <LineCell line={r.line} />
+              <td className={td}>
+                <LedgerEntries r={r} />
+              </td>
+              <td className={td}>
+                <span className="flex flex-wrap items-center gap-2">
+                  <KindBadge kind={r.kind} />
+                  <ReasonChips reasons={r.reasons} />
+                </span>
+              </td>
+              <td className={`${td} text-right`}>
+                <ConfirmMatchButton r={r} busy={busy} onConfirm={() => confirm(r)} />
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => (
-              <tr key={r.line_id} className="border-t border-border first:border-t-0">
-                <LineCell line={r.line} />
-                <td className={td}>
-                  {r.events.map((e) => (
-                    <span key={e.id} className="block">
-                      <span className="font-semibold">{e.counterparty ?? "Entry"}</span>{" "}
-                      <span className="text-[13px] text-muted">
-                        {ukDate(e.date)} · {money(e.amount_pence)}
-                      </span>
-                    </span>
-                  ))}
-                </td>
-                <td className={td}>
-                  <span
-                    className={`mr-2 rounded-full px-2 py-0.5 text-[12px] font-bold ${
-                      r.kind === "exact" ? "bg-teal-tint text-teal-dark" : "border border-warn-border bg-warn-bg text-warn-ink"
-                    }`}
-                  >
-                    {r.kind === "exact" ? "Exact" : "Likely"}
-                  </span>
-                  <span className="text-[13px] text-muted">{r.reasons.join(" · ")}</span>
-                </td>
-                <td className={`${td} text-right`}>
-                  <button
-                    type="button"
-                    disabled={busy !== null}
-                    onClick={() => act(r.line_id, async (a) => {
-                      await runtime.bank.confirm(a, r.line_id, r.event_ids);
-                      return `Matched ${r.line.description} to ${r.events[0]?.counterparty ?? "the ledger entry"}.`;
-                    })}
-                    aria-label={`Confirm match: ${r.line.description} ${money(r.line.amount_pence)}`}
-                    className="h-10 rounded-xl bg-teal px-4 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-60"
-                  >
-                    {busy === r.line_id ? "…" : "Confirm"}
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }
 
+/** What the confirm sheet tells the user before an unmatched action runs. Nothing here posts to the ledger. */
+function effectText(line: RtBankLine, action: RtUnmatchedAction): string {
+  if (action === "create_expense_proposal")
+    return `A ${money(Math.abs(line.amount_pence))} expense proposal with no VAT reclaimed will wait in Review.`;
+  if (action === "mark_transfer")
+    return `${line.description} will be marked as a transfer between your own accounts. Nothing will be booked.`;
+  return `${line.description} will be ignored. Nothing will be booked.`;
+}
+
 function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string | null; act: Act }) {
+  const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<{ line: RtBankLine; action: RtUnmatchedAction } | null>(null);
+  useEffect(() => {
+    if (!sheet) return;
+    const close = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSheet(null);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, [sheet]);
   if (rows.length === 0) return <Empty text="No unmatched bank lines." />;
   function run(line: RtBankLine, action: RtUnmatchedAction) {
+    setSheet(null);
+    setOpenMenu(null);
     act(`${line.id}:${action}`, async (a) => {
       if (action === "create_expense_proposal") {
         await runtime.bank.expenseProposal(a, line.id);
@@ -229,65 +435,172 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
       return `${line.description} ignored.`;
     });
   }
+  const sheetLabel = sheet ? ACTIONS.find((x) => x.action === sheet.action)?.label ?? "" : "";
   return (
-    <ul className="flex flex-col">
-      {rows.map(({ line, suggested, proposal_status }) => {
-        // A rejected proposal no longer counts: the user may make a fresh one.
-        const pending = proposal_status === "proposed" || proposal_status === "needs_a_look";
-        const posted = proposal_status === "posted";
-        return (
-        <li key={line.id} className="flex flex-col gap-2 border-t border-border py-3 first:border-t-0">
-          <div className="flex flex-wrap items-baseline gap-x-3">
-            <span className="text-[13px] font-medium text-muted">{ukDate(line.date)}</span>
-            <span className="min-w-0 flex-1 font-semibold">{line.description || "—"}</span>
-            <span className="font-bold tabular-nums">{money(line.amount_pence)}</span>
-          </div>
-          <p className="text-[13px] text-muted">
-            {pending ? (
-              <>
-                An expense proposal is waiting.{" "}
-                <Link href="/review" className="font-bold text-teal-dark underline underline-offset-2">
-                  Approve it on Review
-                </Link>{" "}
-                and this line will match it.
-              </>
-            ) : posted ? (
-              <>The expense from this line is posted but its amount or date no longer matches the line. Check it on Review.</>
-            ) : (
-              <>Suggested: {suggested.reason}</>
-            )}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {ACTIONS.filter((x) => !(x.action === "create_expense_proposal" && line.amount_pence >= 0)).map((x) => {
-              const primary = x.action === suggested.action && !pending && !posted;
-              const waiting = x.action === "create_expense_proposal" && (pending || posted);
-              return (
-                <button
-                  key={x.action}
-                  type="button"
-                  disabled={busy !== null || Boolean(waiting)}
-                  onClick={() => run(line, x.action)}
-                  className={`h-10 rounded-xl px-4 text-sm font-bold disabled:opacity-60 ${
-                    primary ? "bg-teal text-white hover:bg-teal-dark" : "border border-border bg-white text-ink hover:bg-ground"
-                  }`}
+    <>
+      <ul className="flex flex-col">
+        {rows.map(({ line, suggested, proposal_status }) => {
+          // A rejected proposal no longer counts: the user may make a fresh one.
+          const pending = proposal_status === "proposed" || proposal_status === "needs_a_look";
+          const posted = proposal_status === "posted";
+          const menuOpen = openMenu === line.id;
+          const items = ACTIONS.filter((x) => !(x.action === "create_expense_proposal" && line.amount_pence >= 0));
+          return (
+          <li key={line.id} className="flex flex-col gap-2 border-t border-border py-3 first:border-t-0">
+            <div className="flex flex-wrap items-baseline gap-x-3">
+              <span className="text-[13px] font-medium text-muted">{ukDate(line.date)}</span>
+              <span className="min-w-0 flex-1 font-semibold">{line.description || "—"}</span>
+              <span className="font-bold tabular-nums">{money(line.amount_pence)}</span>
+            </div>
+            <p className="text-[13px] text-muted">
+              {pending ? (
+                <>
+                  An expense proposal is waiting.{" "}
+                  <Link href="/review" className="font-bold text-teal-dark underline underline-offset-2">
+                    Approve it on Review
+                  </Link>{" "}
+                  and this line will match it.
+                </>
+              ) : posted ? (
+                <>The expense from this line is posted but its amount or date no longer matches the line. Check it on Review.</>
+              ) : (
+                <>Suggested: {suggested.reason}</>
+              )}
+            </p>
+            <div className="relative self-start">
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                aria-label={pending ? `Proposal created for ${line.description}` : `Actions for ${line.description}`}
+                disabled={busy !== null || pending}
+                onClick={() => setOpenMenu(menuOpen ? null : line.id)}
+                className="h-10 rounded-xl border border-border bg-white px-4 text-sm font-bold hover:bg-ground disabled:opacity-60"
+              >
+                {busy && busy.startsWith(`${line.id}:`) ? "…" : pending ? "Proposal created" : "Actions ▾"}
+              </button>
+              {menuOpen && !pending && (
+                <ul
+                  role="menu"
+                  aria-label={`Actions for ${line.description}`}
+                  className="absolute left-0 z-10 mt-1 w-64 rounded-xl border border-border bg-white py-1 shadow-lg"
                 >
-                  {busy === `${line.id}:${x.action}` ? "…" : waiting ? "Proposal created" : x.label}
-                </button>
-              );
-            })}
+                  {items.map((x) => {
+                    const primary = x.action === suggested.action && !posted;
+                    const waiting = x.action === "create_expense_proposal" && posted;
+                    return (
+                      <li key={x.action} role="none">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          disabled={busy !== null || waiting}
+                          onClick={() => setSheet({ line, action: x.action })}
+                          className={`flex min-h-[44px] w-full items-center px-4 text-left text-[15px] disabled:opacity-60 ${
+                            primary ? "font-bold text-teal-dark hover:bg-teal-tint" : "font-semibold hover:bg-ground"
+                          }`}
+                        >
+                          {x.label}
+                          {primary && (
+                            <span className="ml-2 rounded-full bg-teal-tint px-2 py-0.5 text-[12px] font-bold text-teal-dark">
+                              Suggested
+                            </span>
+                          )}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          </li>
+          );
+        })}
+      </ul>
+      {sheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 min-[560px]:items-center" onClick={() => setSheet(null)}>
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="bank-action-heading"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-2xl border border-border bg-white p-5"
+          >
+            <h2 id="bank-action-heading" className="text-[15px] font-extrabold tracking-tight">
+              {sheetLabel}
+            </h2>
+            <p className="mt-2 text-[15px] leading-7">{effectText(sheet.line, sheet.action)}</p>
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                autoFocus
+                disabled={busy !== null}
+                onClick={() => run(sheet.line, sheet.action)}
+                className="h-11 flex-1 rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60"
+              >
+                Confirm
+              </button>
+              <button
+                type="button"
+                onClick={() => setSheet(null)}
+                className="h-11 flex-1 rounded-xl border border-border bg-white px-5 text-[15px] font-bold hover:bg-ground"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
-        </li>
-        );
+        </div>
+      )}
+    </>
+  );
+}
+
+function UndoButton({ line, busy, act, wide }: { line: RtBankLine; busy: string | null; act: Act; wide?: boolean }) {
+  return (
+    <button
+      type="button"
+      disabled={busy !== null}
+      onClick={() => act(line.id, async (a) => {
+        await runtime.bank.reopen(a, line.id);
+        return `${line.description} reopened.`;
       })}
-    </ul>
+      aria-label={`Reopen ${line.description} ${money(line.amount_pence)}`}
+      className={`h-11 rounded-xl border border-border bg-white font-bold hover:bg-ground disabled:opacity-60 ${
+        wide ? "w-full px-5 text-[15px]" : "px-4 text-sm"
+      }`}
+    >
+      {busy === line.id ? "…" : "Undo"}
+    </button>
   );
 }
 
 function Done({ rows, busy, act }: { rows: RtBankLine[]; busy: string | null; act: Act }) {
   if (rows.length === 0) return <Empty text="Nothing settled yet." />;
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-left text-[15px]">
+    <div className="flex flex-col gap-3">
+      {/* Phone: stacked cards. Wider screens: the table. */}
+      <ul className="flex flex-col gap-3 min-[560px]:hidden">
+        {rows.map((l) => (
+          <li key={l.id} className="flex flex-col gap-2 rounded-xl border border-border p-4">
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="min-w-0 font-semibold">{l.description || "—"}</p>
+              <p className="shrink-0 font-bold tabular-nums">{money(l.amount_pence)}</p>
+            </div>
+            <p className="text-[13px] font-medium text-muted">
+              {ukDate(l.date)}
+              {l.reference ? ` · ${l.reference}` : ""}
+            </p>
+            <p>
+              <span className={`rounded-full px-2 py-0.5 text-[12px] font-bold ${STATUS_CHIP[l.status]}`}>
+                {DONE_LABEL[l.status]}
+              </span>
+            </p>
+            <div className="mt-1">
+              <UndoButton line={l} busy={busy} act={act} wide />
+            </div>
+          </li>
+        ))}
+      </ul>
+      <table className="hidden w-full text-left text-[15px] min-[560px]:table">
         <thead>
           <tr className="border-b border-border text-[13px] font-bold text-muted">
             <th scope="col" className={th}>Date</th>
@@ -308,17 +621,7 @@ function Done({ rows, busy, act }: { rows: RtBankLine[]; busy: string | null; ac
                 )}
               </td>
               <td className={`${td} text-right`}>
-                <button
-                  type="button"
-                  disabled={busy !== null}
-                  onClick={() => act(l.id, async (a) => {
-                    await runtime.bank.reopen(a, l.id);
-                    return `${l.description} reopened.`;
-                  })}
-                  className="h-10 rounded-xl border border-border bg-white px-4 text-sm font-bold hover:bg-ground disabled:opacity-60"
-                >
-                  {busy === l.id ? "…" : "Undo"}
-                </button>
+                <UndoButton line={l} busy={busy} act={act} />
               </td>
             </tr>
           ))}
@@ -343,6 +646,8 @@ export default function LiveBank() {
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [changed, setChanged] = useState(false);
+  const [rebuilding, setRebuilding] = useState(false);
 
   const refresh = useCallback(async (acct: AccountInfo) => {
     try {
@@ -380,7 +685,10 @@ export default function LiveBank() {
     setNote(null);
     setError(null);
     run(account)
-      .then((msg) => setNote(msg))
+      .then((msg) => {
+        setNote(msg);
+        setChanged(true);
+      })
       .catch((e: Error) => {
         const msg = e.message;
         if (isAuthError(msg) || isServerError(msg)) setError(msg);
@@ -391,6 +699,19 @@ export default function LiveBank() {
         setBusy(null);
       });
   };
+
+  async function rebuild() {
+    if (!account) return;
+    setRebuilding(true);
+    try {
+      await runtime.rebuild(account);
+      setNote("Books.xlsx rebuilt from your ledger events.");
+    } catch (e) {
+      setNote(`Could not rebuild Books.xlsx: ${(e as Error).message}`);
+    } finally {
+      setRebuilding(false);
+    }
+  }
 
   if (state === "demo") {
     return (
@@ -424,6 +745,19 @@ export default function LiveBank() {
           {note}
         </p>
       )}
+      {changed && (
+        <div>
+          <button
+            type="button"
+            onClick={rebuild}
+            disabled={!account || rebuilding}
+            title="Regenerate Books.xlsx from the ledger event files"
+            className="h-10 rounded-xl border-2 border-teal bg-white px-4 text-sm font-bold text-teal-dark disabled:opacity-60"
+          >
+            {rebuilding ? "Rebuilding…" : "Rebuild Books.xlsx"}
+          </button>
+        </div>
+      )}
       {error && <RuntimeErrorNote message={error} />}
       {/* One uploader in a fixed place: inside the empty state it remounted after the first import and lost its result. */}
       <BankUpload account={account} onDone={() => account && refresh(account)} />
@@ -433,7 +767,7 @@ export default function LiveBank() {
           body="Each payment on your statement appears here to check against your books — matching never posts anything."
         />
       ) : (
-        <Statements list={data.statements} />
+        <Statements list={data.statements} lines={data.lines} />
       )}
 
       {data.summary.total > 0 && (
@@ -457,7 +791,7 @@ export default function LiveBank() {
               </button>
             ))}
           </div>
-          <div role="tabpanel" id={`bank-panel-${tab}`} aria-labelledby={`bank-tab-${tab}`} className="pt-2">
+          <div role="tabpanel" id={`bank-panel-${tab}`} aria-labelledby={`bank-tab-${tab}`} aria-live="polite" className="pt-2">
             {tab === "matches" && <Matches rows={data.suggestions} busy={busy} act={act} />}
             {tab === "unmatched" && <Unmatched rows={data.unmatched} busy={busy} act={act} />}
             {tab === "done" && <Done rows={data.done} busy={busy} act={act} />}
