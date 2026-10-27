@@ -13,7 +13,7 @@ export default defineConfig({
   testDir: "./e2e",
   // Each worker has its own fake OneDrive in the runtime (X-Test-Tenant, e2e/fixtures.ts), so tests run in any order.
   fullyParallel: true,
-  workers: 4,
+  workers: process.env.CI ? 3 : 4, // ubuntu-latest has 4 vCPUs: leave one for the runtime and the static server
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   timeout: 30_000,

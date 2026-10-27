@@ -16,7 +16,7 @@ permissions:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 8 # budget: under 4 minutes warm (caches below), the rest is headroom for a cold cache
     defaults:
       run:
         working-directory: apps/web
@@ -26,26 +26,49 @@ jobs:
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
       - name: Install the runtime (uv workspace)
         run: uv sync --frozen --package accnomos-runtime
         working-directory: .
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 11
+          package_json_file: apps/web/package.json # its packageManager pins the version; no second one here
       - uses: actions/setup-node@v4
         with:
           node-version: 24
           cache: pnpm
           cache-dependency-path: apps/web/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
-      - name: Install Chromium for Playwright
-        run: pnpm exec playwright install --with-deps chromium
 
+      - name: Playwright version (browser cache key)
+        id: pw
+        run: echo "version=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-shell
+      - name: Install Chromium for Playwright (cache miss)
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps --only-shell chromium
+      - name: Install Chromium's system libraries (cache hit)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+
+      - name: Cache the Next build cache
+        uses: actions/cache@v4
+        with:
+          path: apps/web/.next/cache
+          key: next-e2e-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}-${{ hashFiles('apps/web/src/**', 'apps/web/next.config.ts') }}
+          restore-keys: next-e2e-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}-
       - name: Build the test-mode export (out-e2e/)
         run: pnpm run e2e:build
 
       - name: Run Playwright (starts the runtime in test mode and serves out-e2e/)
+        timeout-minutes: 4
         run: pnpm run e2e:test
         env:
           CI: "1"
