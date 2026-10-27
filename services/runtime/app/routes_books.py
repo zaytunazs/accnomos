@@ -17,7 +17,7 @@ from pydantic import BaseModel
 from app.ai.config import AiConfig, ai_config_from_request
 from app.approve import ApprovalError, ProposalStateError, approve, reject
 from app.books import Books, now
-from app.inbox import scan_inbox
+from app.inbox import scan_inbox_detailed
 from app.schemas import Proposal, ProposalStatus
 
 router = APIRouter(prefix="/books", tags=["books"])
@@ -72,13 +72,19 @@ def _approval_http(exc: ApprovalError) -> HTTPException:
     return HTTPException(status_code=409 if isinstance(exc, ProposalStateError) else 400, detail=str(exc))
 
 
-@router.post("/scan", response_model=list[Proposal])
+class ScanResult(BaseModel):
+    proposals: list[Proposal]
+    errors: list[dict] = []
+
+
+@router.post("/scan", response_model=ScanResult)
 async def scan(
     limit: int = Query(10, ge=1, le=50),
     books: Books = Depends(get_books),
     cfg: AiConfig = Depends(ai_config_from_request),
-) -> list[Proposal]:
-    return await scan_inbox(books, cfg, limit=limit)
+) -> ScanResult:
+    proposals, errors = await scan_inbox_detailed(books, cfg, limit=limit)
+    return ScanResult(proposals=proposals, errors=errors)
 
 
 @router.get("/proposals", response_model=list[Proposal])

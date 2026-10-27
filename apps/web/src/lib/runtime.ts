@@ -82,7 +82,7 @@ async function call<T>(account: AccountInfo, path: string, init: RequestInit = {
 }
 
 export const runtime = {
-  scan: (a: AccountInfo) => call<RtProposal[]>(a, "/books/scan", { method: "POST" }),
+  scan: (a: AccountInfo) => call<{ proposals: RtProposal[]; errors: { path: string; error: string }[] }>(a, "/books/scan", { method: "POST" }),
   proposals: (a: AccountInfo, status?: string) => call<RtProposal[]>(a, `/books/proposals${status ? `?status=${status}` : ""}`),
   approve: (a: AccountInfo, id: string, body: { edits?: Record<string, unknown>; always?: boolean }) =>
     call<RtProposal>(a, `/books/proposals/${id}/approve`, { method: "POST", body: JSON.stringify(body) }),

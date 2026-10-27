@@ -64,6 +64,12 @@ async def _propose(books: Books, f: FileRef, mime: str, cfg: AiConfig, known: se
 
 
 async def scan_inbox(books: Books, cfg: AiConfig, limit: int = 10) -> list[Proposal]:
+    """Backwards-compatible wrapper: proposals only."""
+    proposals, _ = await scan_inbox_detailed(books, cfg, limit)
+    return proposals
+
+
+async def scan_inbox_detailed(books: Books, cfg: AiConfig, limit: int = 10) -> tuple[list[Proposal], list[dict]]:
     """Process up to `limit` documents from the Inbox and return the new proposals.
 
     A file whose hash we have already seen is not skipped silently: the DUPLICATE check sends it
@@ -74,6 +80,7 @@ async def scan_inbox(books: Books, cfg: AiConfig, limit: int = 10) -> list[Propo
     known = await books.known_hashes()
     rules = await books.load_rules()
     out: list[Proposal] = []
+    errors: list[dict] = []
     candidates = [(f, mime) for f in await books.list_files(INBOX) if (mime := mime_for(f.name))]
     for f, mime in candidates[:limit]:  # failures count too: `limit` caps model calls
         try:
@@ -81,6 +88,7 @@ async def scan_inbox(books: Books, cfg: AiConfig, limit: int = 10) -> list[Propo
         except ExtractionError as exc:
             log.warning("extraction failed for %s: %s", f.path, exc)
             await books.audit(ACTOR, "extract_failed", {"path": f.path, "error": str(exc)[:200]})
+            errors.append({"path": f.path, "error": str(exc)[:300]})
             continue
         p.source_name, p.created_at = f.name, now()
         await books.file_document(p, f.path)
@@ -93,4 +101,4 @@ async def scan_inbox(books: Books, cfg: AiConfig, limit: int = 10) -> list[Propo
         await books.audit(ACTOR, "proposed", {"proposal": p.id, "doc": p.doc_sha256, "status": p.status, "path": p.file_path})
         out.append(p)
     await books.record_scan(now())
-    return out
+    return out, errors

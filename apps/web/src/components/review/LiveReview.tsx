@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import ProposalCard from "@/components/review/ProposalCard";
+import UploadToInbox from "@/components/review/UploadToInbox";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { gbp, runtime, ukDate, type RtProposal } from "@/lib/runtime";
 import type { Proposal as UiProposal } from "@/lib/sample-review";
@@ -96,7 +97,18 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
 
   async function scan() {
     if (!account) return;
-    await act("scan", () => runtime.scan(account), "Inbox scanned.");
+    setBusy("scan");
+    try {
+      const r = await runtime.scan(account);
+      const n = r.proposals.length;
+      const errs = r.errors.map((e) => `${e.path.split("/").pop()}: ${e.error}`).join(" · ");
+      setNote(`${n} new proposal${n === 1 ? "" : "s"}${errs ? ` · could not read: ${errs}` : ""}`);
+      await load(account);
+    } catch (e) {
+      setNote((e as Error).message);
+    } finally {
+      setBusy(null);
+    }
   }
 
   if (mode === "checking") return <p className="text-sm text-muted">Loading your proposals…</p>;
@@ -114,7 +126,8 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
         <button type="button" onClick={scan} disabled={busy !== null} className="h-11 rounded-xl bg-teal px-5 text-[15px] font-bold text-white disabled:opacity-60">
           {busy === "scan" ? "Reading your Inbox…" : "Scan 00 Inbox now"}
         </button>
-        <span className="text-sm text-muted">{items.length} waiting · drop files into OneDrive › Apps › Accnomos › 00 Inbox</span>
+        <UploadToInbox account={account!} onDone={() => setNote("Added to your Inbox.")} />
+        <span className="text-sm text-muted">{items.length} waiting · or drop files into OneDrive › Apps › Accnomos › 00 Inbox</span>
       </div>
       {note && <p role="status" className="rounded-xl bg-teal-tint px-4 py-2 text-sm text-teal-dark">{note}</p>}
       {items.length === 0 && <p className="rounded-2xl border border-border bg-white p-6 text-muted">Nothing to review. Your books are up to date.</p>}
