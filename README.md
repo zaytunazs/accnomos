@@ -45,6 +45,7 @@ Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI De
 | 27 Oct | Eval on 60 synthetic messy receipts (Glimmer, local): supplier 100%, VAT total 100%, gross 100%, date 98%, net 97%; proposed/needs-a-look decision 88% — `evals/REPORT_glimmer_messy_60_2026-10-27.md` |
 | 27 Oct | HMRC relay: OAuth, fraud-prevention headers v3.3, VAT MTD endpoints — unit-tested against mocks; sandbox call pending credentials |
 | 27 Oct | **HMRC (sandbox) in the web app:** on `/vat`, under the live 9-box return, *Connect to HMRC (sandbox)* (OAuth with PKCE through the relay, tokens only in the tab's `sessionStorage`) → open obligations → confirm the boxes and tick the legal declaration → submit → receipt saved to `05 VAT returns/<periodKey>/` in your OneDrive. Built and type-checked; end-to-end browser run pending. See `docs/HMRC.md` |
+| 27 Oct | **Autopilot L1:** tick *Always do this for &lt;supplier&gt;* on Approve → rule saved to `_System/Rules/rules.json` in your OneDrive → later scans post matching receipts as `autopilot` **only** when every code check passes, the VAT number and VAT treatment match and the total is ≤ 2× the usual; each one is audited and listed in Review under *Approved by Autopilot* with **Undo** (a reversing ledger entry, never a delete). Rules and an on/off switch in Settings. Fake-storage tests in `services/runtime/tests/test_autopilot.py`; end-to-end run pending. See `docs/AUTOPILOT.md` |
 
 ## Honesty notes
 
