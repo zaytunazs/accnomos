@@ -12,6 +12,7 @@ import '../services/review_rules.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/lookups.dart';
 import '../widgets/review_image.dart';
 import 'capture_screen.dart';
 import 'contacts_screen.dart';
@@ -38,6 +39,22 @@ String undoMessage(Map<String, dynamic>? response, String what) {
   return what.isEmpty
       ? 'Undone · back in your review list'
       : 'Undone · $what is back in Review';
+}
+
+/// Whether a review card offers the HMRC VAT check: signed in, a supplier
+/// VAT number on a purchase, and the reader configured for it (`GET
+/// /lookup/status`). The check runs only on a tap; Approve never waits.
+@visibleForTesting
+bool showReviewVatCheck({
+  required bool signedIn,
+  required String? supplierVrn,
+  required String docType,
+  required Map<String, dynamic>? lookups,
+}) {
+  if (!signedIn) return false;
+  if ((supplierVrn ?? '').trim().isEmpty) return false;
+  if (docType == 'sales_invoice') return false;
+  return lookups?['vat_check'] == true;
 }
 
 /// Review queue: a swipeable card per proposed entry.
@@ -109,6 +126,10 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   /// Saved Autopilot rules for the rule-match test (signed in only).
   List<ReviewRule> _rules = const [];
+
+  /// Which official look-ups the reader offers (`GET /lookup/status`); null
+  /// until known. The VAT check stays hidden while unknown or unconfigured.
+  Map<String, dynamic>? _lookups;
 
   /// Event ids from the last approval, for the snackbar Undo action.
   /// Signed out, the removed cards themselves are kept instead.
@@ -260,6 +281,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       // waits on them.
       unawaited(_loadAutopilot(client));
       unawaited(_loadRules(client));
+      unawaited(_loadLookups(client));
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = _friendly(e));
@@ -308,6 +330,18 @@ class _ReviewScreenState extends State<ReviewScreen> {
     } catch (_) {
       if (!mounted) return;
       setState(() => _rules = const []);
+    }
+  }
+
+  /// Which official look-ups the reader offers. The queue never waits on
+  /// it; the VAT check stays hidden until it answers.
+  Future<void> _loadLookups(RuntimeClient client) async {
+    try {
+      final status = await client.lookupStatus();
+      if (!mounted || status == null) return;
+      setState(() => _lookups = status);
+    } catch (_) {
+      // Stays hidden.
     }
   }
 
@@ -1603,6 +1637,33 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 
+  /// HMRC VAT check for the card's supplier VAT number: on a tap only, and
+  /// Approve never waits for it. Hidden without a supplier number, on sales
+  /// invoices, and while the runtime answers 503 `vat_check_not_configured`.
+  Widget _vatCheckRow(Proposal proposal) {
+    final vrn = (proposal.supplierVrn ?? '').trim();
+    if (!showReviewVatCheck(
+      signedIn: _signedIn,
+      supplierVrn: vrn,
+      docType: proposal.docType,
+      lookups: _lookups,
+    )) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: VatCheckSection(
+        key: ValueKey('review-vat-check-${proposal.id}'),
+        vrn: vrn,
+        name: proposal.supplier,
+        onCheck: () async =>
+            (await _booksClient()).vatCheck(vrn: vrn, name: proposal.supplier),
+        onNotConfigured: () =>
+            setState(() => _lookups = {...?_lookups, 'vat_check': false}),
+      ),
+    );
+  }
+
   Widget _proposedCard(
     Proposal proposal, {
     ReviewRule? rule,
@@ -1640,6 +1701,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
             _fieldRow('VAT to reclaim (20%)', _gbp(proposal.vat!)),
           if (proposal.vatNumber != null)
             _fieldRow('VAT number ✓', proposal.vatNumber!),
+          _vatCheckRow(proposal),
           if (proposal.reviewerNote != null)
             _noteBox(
               'Why: ${proposal.reviewerNote}',
