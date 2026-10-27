@@ -12,9 +12,12 @@ if ($Slug) {
 git add -A
 git commit -q -m $Message
 Write-Output "== python tests"
-& .\.venv\Scripts\python.exe -m pytest -q services/runtime services/hmrc-relay packages 2>&1 | Select-Object -Last 1
+$t = & .\.venv\Scripts\python.exe -m pytest -q services/runtime services/hmrc-relay packages 2>&1 | Select-Object -Last 1
+Write-Output $t
 Write-Output "== web build"
-Push-Location apps\web; pnpm run build 2>&1 | Select-String -Pattern 'rror|Compiled' | Select-Object -First 5; Pop-Location
+Push-Location apps\web; $b = pnpm run build 2>&1 | Select-String -Pattern 'rror|Compiled' | Select-Object -First 5; Pop-Location
+Write-Output $b
 if ($Mobile) { Push-Location apps\mobile; flutter analyze 2>&1 | Select-Object -Last 1; Pop-Location }
+if (("$t" -match 'failed|error') -or ("$b" -match 'rror')) { Write-Output "NOT PUSHED: fix the failures on main first"; exit 2 }
 git push -q origin main
 git log --oneline -1
