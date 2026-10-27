@@ -102,6 +102,27 @@ class ContactsProvider(ABC):
 
     @abstractmethod
     async def list_contacts(self, max_results: int = 1000) -> list[AddressBookContact]: ...
+class OutgoingAttachment(BaseModel):
+    name: str
+    content_type: str
+    data: bytes
+
+
+class OutgoingMail(BaseModel):
+    to: str
+    subject: str
+    body_text: str
+    attachments: list[OutgoingAttachment] = []
+
+
+class MailSender(ABC):
+    """Sends one email as the signed-in user (`Mail.Send`). Kept apart from MailProvider, which only reads.
+
+    Callers send only after the user has seen the message and confirmed it; nothing is sent on a schedule.
+    """
+
+    @abstractmethod
+    async def send(self, mail: OutgoingMail) -> None: ...
 
 
 class CalendarProvider(ABC):

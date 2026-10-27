@@ -13,6 +13,8 @@ from accnomos_connectors.base import (
     MailAttachment,
     MailMessage,
     MailProvider,
+    MailSender,
+    OutgoingMail,
     StorageProvider,
 )
 
@@ -60,6 +62,17 @@ class FakeContactsProvider(ContactsProvider):
     async def list_contacts(self, max_results: int = 1000) -> list[AddressBookContact]:
         self.calls += 1
         return self.contacts[:max_results]
+class FakeMailSender(MailSender):
+    """Records every message instead of sending it; set `fail` to make the next send raise."""
+
+    def __init__(self) -> None:
+        self.sent: list[OutgoingMail] = []
+        self.fail: Exception | None = None
+
+    async def send(self, mail: OutgoingMail) -> None:
+        if self.fail:
+            raise self.fail
+        self.sent.append(mail)
 
 
 class FakeStorageProvider(StorageProvider):

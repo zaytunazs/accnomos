@@ -238,7 +238,11 @@ def _messages(question: str, facts: dict[str, Any], history: list[AskTurn]) -> l
 
 async def _call_model(messages: list[dict[str, str]], cfg: AiConfig) -> str:
     """Raw JSON text from the configured backend."""
-    schema = strict_json_schema(AskModelOutput)
+    return await call_json_model(messages, cfg, strict_json_schema(AskModelOutput), "ask_answer")
+
+
+async def call_json_model(messages: list[dict[str, str]], cfg: AiConfig, schema: dict[str, Any], name: str) -> str:
+    """Raw JSON text from the user's backend, constrained to `schema` (also used by app/ai/remind.py)."""
     async with httpx.AsyncClient(timeout=httpx.Timeout(TIMEOUT_S)) as client:
         if cfg.mode == "local":
             body: dict[str, Any] = {
@@ -250,7 +254,7 @@ async def _call_model(messages: list[dict[str, str]], cfg: AiConfig) -> str:
             return r.json().get("message", {}).get("content", "")
         body = {
             "model": cfg.model, "messages": messages,
-            "response_format": {"type": "json_schema", "json_schema": {"name": "ask_answer", "strict": True, "schema": schema}},
+            "response_format": {"type": "json_schema", "json_schema": {"name": name, "strict": True, "schema": schema}},
             "reasoning_effort": "low",
         }
         r = await client.post(f"{cfg.base_url}/chat/completions", json=body, headers={"Authorization": f"Bearer {cfg.api_key}"})

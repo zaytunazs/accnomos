@@ -2,7 +2,7 @@
 
 import type { AccountInfo } from "@azure/msal-browser";
 import { aiHeaders, loadAiConfig, RUNTIME_URL } from "./ai-config";
-import { accountKind, contactsScopesFor, getToken, isPersonalAccount, mailScopesFor, storageScopesFor } from "./msal";
+import { accountKind, contactsScopesFor, getToken, isPersonalAccount, mailScopesFor, mailSendScopesFor, storageScopesFor } from "./msal";
 
 /** Runtime wire types (services/runtime/app/schemas.py). */
 export interface RtCheck {
@@ -268,6 +268,41 @@ export const runtime = {
     call<{ proposal: RtProposal; created: boolean }>(a, `/mileage/propose-allowance?tax_year=${taxYear}&period=${period}`, {
       method: "POST",
     }),
+  /** /invoices/* (services/runtime/app/routes_invoices.py). Totals and VAT are worked out by the runtime. */
+  invoices: (a: AccountInfo, status?: RtInvoiceStatus) => call<RtInvoice[]>(a, `/invoices${status ? `?status=${status}` : ""}`),
+  invoice: (a: AccountInfo, id: string) => call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}`),
+  createInvoice: (a: AccountInfo, draft: RtInvoiceDraft) =>
+    call<RtInvoice>(a, "/invoices", { method: "POST", body: JSON.stringify(draft) }),
+  updateInvoice: (a: AccountInfo, id: string, draft: RtInvoiceDraft) =>
+    call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(draft) }),
+  invoicePdf: (a: AccountInfo, id: string) => call<RtInvoicePdf>(a, `/invoices/${encodeURIComponent(id)}/pdf`, { method: "POST" }),
+  /** Sends from the user's Outlook. Call only from the confirmation dialog: `confirm: true` is the user's tap. */
+  sendInvoice: (a: AccountInfo, id: string, email: { to: string; subject: string; body: string }) =>
+    call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/send`, { method: "POST", body: JSON.stringify({ ...email, confirm: true }) },
+      mailSendScopesFor(accountKind(a))),
+  markInvoicePaid: (a: AccountInfo, id: string, body: { payment_ref?: string; paid_on?: string; bank_line_id?: string | null }) =>
+    call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/mark-paid`, { method: "POST", body: JSON.stringify(body) }),
+  invoiceBankCandidates: (a: AccountInfo, id: string) => call<RtBankLine[]>(a, `/invoices/${encodeURIComponent(id)}/bank-candidates`),
+  voidInvoice: (a: AccountInfo, id: string, reason: string) =>
+    call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/void`, { method: "POST", body: JSON.stringify({ reason }) }),
+  /** Drafting sends nothing; the user reads, edits and confirms before reminderSend. */
+  reminderDraft: (a: AccountInfo, id: string) =>
+    call<RtReminderDraft>(a, `/invoices/${encodeURIComponent(id)}/reminder-draft`, { method: "POST" }),
+  reminderSend: (a: AccountInfo, id: string, email: { to: string; subject: string; body: string }) =>
+    call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/reminder-send`, { method: "POST", body: JSON.stringify({ ...email, confirm: true }) },
+      mailSendScopesFor(accountKind(a))),
+  invoiceCustomers: (a: AccountInfo) => call<RtInvoiceCustomer[]>(a, "/invoices/customers"),
+  invoiceProfile: (a: AccountInfo) => call<RtInvoiceProfile>(a, "/invoices/profile"),
+  saveInvoiceProfile: (a: AccountInfo, profile: RtInvoiceProfile) =>
+    call<RtInvoiceProfile>(a, "/invoices/profile", { method: "PUT", body: JSON.stringify(profile) }),
+  /** PNG or JPEG up to 1 MB, saved in _System/Invoicing in the user's folder. */
+  uploadInvoiceLogo: async (a: AccountInfo, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${RUNTIME_URL}/invoices/profile/logo`, { method: "POST", headers: await runtimeHeaders(a), body: form });
+    if (!res.ok) throw new Error(`runtime POST /invoices/profile/logo -> ${res.status}: ${(await res.text()).slice(0, 300)}`);
+    return (await res.json()) as RtInvoiceProfile;
+  },
 };
 
 /** Jobs, staff and timesheets (services/runtime/app/jobs.py). Money is integer pence; hours are 0.25 steps. */
@@ -319,7 +354,8 @@ export interface RtJobSummary {
   by_staff: { staff_id: string; name: string; role: string; hours: number; labour_cost_pence: number; billable_value_pence: number }[];
   warnings: string[];
 }
-export interface RtInvoiceLine {
+/** A line proposed from timesheets (jobs); the Invoices feature's own line type is RtInvoiceLine below. */
+export interface RtJobInvoiceLine {
   description: string;
   qty: number;
   unit: string;
@@ -333,7 +369,7 @@ export interface RtInvoiceLine {
 export interface RtInvoiceProposal {
   job_id: string;
   customer_id: string | null;
-  lines: RtInvoiceLine[];
+  lines: RtJobInvoiceLine[];
   entry_ids: string[];
   net_pence: number;
   warnings: string[];
@@ -440,6 +476,89 @@ async function errorDetail(res: Response, what: string): Promise<string> {
 
 /** /books/bank/* wire types. Amounts are signed pence: money out is negative. Dates are YYYY-MM-DD. */
 export type RtBankLineStatus = "unmatched" | "matched" | "suggested" | "transfer" | "ignored";
+
+/** Sales invoices (services/runtime/app/invoicing.py). Money is integer pence. */
+export type RtInvoiceStatus = "draft" | "sent" | "paid" | "void";
+export type RtSalesVatCode = "S" | "R" | "Z" | "E" | "O";
+export interface RtInvoiceCustomer {
+  contact_id: string | null;
+  name: string;
+  email: string | null;
+  address: string | null;
+  vrn: string | null;
+}
+export interface RtInvoiceLineIn {
+  description: string;
+  quantity: string | number; // up to 3 decimal places; the runtime returns it as a string
+  unit: string | null;
+  unit_price_pence: number;
+  vat_code: RtSalesVatCode;
+}
+export interface RtInvoiceLine extends RtInvoiceLineIn {
+  vat_rate: number;
+  net_pence: number;
+  vat_pence: number;
+}
+export interface RtInvoiceDraft {
+  customer: RtInvoiceCustomer;
+  issue_date: string | null; // YYYY-MM-DD
+  due_date: string | null;
+  lines: RtInvoiceLineIn[];
+  reference: string | null;
+  notes: string | null;
+}
+export interface RtInvoice {
+  number: string;
+  status: RtInvoiceStatus;
+  customer: RtInvoiceCustomer;
+  issue_date: string;
+  due_date: string;
+  lines: RtInvoiceLine[];
+  vat_summary: { vat_code: RtSalesVatCode; vat_rate: number; net_pence: number; vat_pence: number }[];
+  net_pence: number;
+  vat_pence: number;
+  total_pence: number;
+  reference: string | null;
+  notes: string | null;
+  sent_at: string | null;
+  sent_to: string | null;
+  event_id: string | null;
+  paid_at: string | null;
+  payment_ref: string | null;
+  bank_line_id: string | null;
+  voided_at: string | null;
+  void_reason: string | null;
+  reminders: { sent_at: string; to: string; subject: string }[];
+  days_overdue: number | null; // only while sent and unpaid; 0 or less = not due yet
+}
+export interface RtInvoicePdf {
+  path: string;
+  size: number;
+  sha256: string;
+  data_url: string;
+  email: { to: string | null; subject: string; body: string };
+  problems: string[]; // why it cannot be sent yet
+}
+export interface RtReminderDraft {
+  to: string | null;
+  subject: string;
+  body: string;
+  days_overdue: number;
+  model: string;
+  fallback_reason: string | null; // the model's words were replaced by a draft written by code
+}
+export interface RtInvoiceProfile {
+  name: string;
+  address: string;
+  email: string | null;
+  phone: string | null;
+  vrn: string | null;
+  company_number: string | null;
+  bank: { account_name: string; sort_code: string; account_number: string; iban: string | null };
+  logo_path: string | null;
+  terms_days: number;
+  footer_note: string | null;
+}
 export interface RtBankLine {
   id: string;
   date: string;
@@ -557,6 +676,7 @@ export interface RtMileageSummary {
   locked_until: string | null;
   rates: { kind: RtVehicleKind; first_pence: number; after_pence: number; threshold_miles: number | null }[];
   notes: string[];
+  status: "unmatched" | "matched" | "suggested";
 }
 
 /** POST /books/rebuild (services/runtime/app/routes_books.py). */

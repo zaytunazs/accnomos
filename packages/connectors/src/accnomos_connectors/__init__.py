@@ -12,11 +12,16 @@ from accnomos_connectors.base import (
     MailAttachment,
     MailMessage,
     MailProvider,
+    MailSender,
     ConflictError,
+    OutgoingAttachment,
+    OutgoingMail,
     StorageProvider,
 )
 from accnomos_connectors.fake import FakeContactsProvider, FakeMailProvider, FakeStorageProvider
 from accnomos_connectors.msgraph import GraphContactsProvider, GraphError, GraphMailProvider, GraphStorageProvider
+from accnomos_connectors.fake import FakeMailProvider, FakeMailSender, FakeStorageProvider
+from accnomos_connectors.msgraph import GraphError, GraphMailProvider, GraphMailSender, GraphStorageProvider
 
 __all__ = [
     "AddressBookContact",
@@ -26,13 +31,18 @@ __all__ = [
     "MailAttachment",
     "MailMessage",
     "MailProvider",
+    "MailSender",
+    "OutgoingAttachment",
+    "OutgoingMail",
     "StorageProvider",
     "ConflictError",
     "FakeContactsProvider",
     "FakeMailProvider",
+    "FakeMailSender",
     "FakeStorageProvider",
     "GraphContactsProvider",
     "GraphError",
     "GraphMailProvider",
+    "GraphMailSender",
     "GraphStorageProvider",
 ]

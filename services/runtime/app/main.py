@@ -141,4 +141,6 @@ from app.routes_contacts import router as contacts_router  # noqa: E402  /contac
 app.include_router(contacts_router)
 from app.routes_vehicles import router as vehicles_router  # noqa: E402  /vehicles, /mileage
 app.include_router(vehicles_router)
+from app.routes_invoices import router as invoices_router  # noqa: E402  /invoices/*
+app.include_router(invoices_router)
 
