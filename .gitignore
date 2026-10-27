@@ -38,8 +38,16 @@ apps/mobile/android/app/.cxx/
 apps/mobile/.idea/
 *.iml
 
-# Evals / data
-evals/runs/
+# Evals / data (run outputs stay local; the small published reports are kept)
+evals/runs/*
+!evals/runs/bank_matching/
+!evals/runs/mail_intake/
+!evals/runs/ask_40/
+!evals/runs/glimmer_messy_200/
+evals/runs/glimmer_messy_200/*
+!evals/runs/glimmer_messy_200/report.md
+!evals/runs/glimmer_messy_200/judge.json
+!evals/runs/glimmer_messy_200/summary.json
 data/private/
 
 # OS / editors
