@@ -21,8 +21,9 @@ TAX_YEAR: Final = "2026-27"
 SOURCE_URL: Final = "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027"
 TAX_CODE: Final = "1257L"
 
-# Annual figures in pence. Monthly figures are these ÷ 12 (pro-rated), not HMRC's rounded monthly tables,
-# so estimates can differ from the provider's by a few pence.
+# Annual figures in pence. Monthly figures are these ÷ 12 (pro-rated), not HMRC's monthly tables, so estimates
+# differ from the provider's: code 1257L gives £1,048.25 free pay a month in HMRC's tables (not £1,047.50), so the
+# estimated tax runs about 20p a month high; HMRC's rounded monthly NI thresholds move NI by a few pence.
 PERSONAL_ALLOWANCE: Final = 1_257_000  # £12,570
 BASIC_RATE_LIMIT: Final = 5_027_000  # £50,270: basic rate band £37,700 above the allowance
 ADDITIONAL_RATE_THRESHOLD: Final = 12_514_000  # £125,140
