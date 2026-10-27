@@ -1012,6 +1012,8 @@ async def import_phone(books: Books, entries: Sequence[PhonePickedContact], user
     await save_contacts(books, merged)
     await books.audit(f"user:{user}", "contacts_imported", {"source": "phone", **result.model_dump()})
     return result
+
+
 # --------------------------------------------------------------------------- #
 # Merging: only on the user's approval, by code, and undoable
 # --------------------------------------------------------------------------- #

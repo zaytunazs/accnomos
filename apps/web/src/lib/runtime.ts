@@ -391,8 +391,6 @@ export const runtime = {
   /** /lookup/* (services/runtime/app/routes_lookup.py): Companies House suggestions; nothing is saved. */
   lookupCompanies: (a: AccountInfo, q: string) =>
     call<RtCompanySearch>(a, `/lookup/companies?${new URLSearchParams({ q }).toString()}`),
-}
-
   /** GET /contacts/duplicates: code evidence plus the user's model's view (ai is null when it could not answer). */
   duplicates: (a: AccountInfo) => call<RtDuplicates>(a, "/contacts/duplicates"),
   /** POST /contacts/duplicates/dismiss: remembered; never suggested again. */

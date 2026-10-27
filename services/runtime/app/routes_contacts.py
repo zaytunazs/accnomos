@@ -210,6 +210,8 @@ async def import_phone(
         )
     except cb.ContactEditError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 class DuplicateGroupOut(BaseModel):
     contact_ids: list[str]
     contacts: list[cb.Contact]
