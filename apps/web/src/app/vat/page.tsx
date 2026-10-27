@@ -6,6 +6,8 @@ import BoxExplain from "@/components/vat/BoxExplain";
 import SubmitSheet from "@/components/vat/SubmitSheet";
 import LiveVat from "@/components/vat/LiveVat";
 import ConnectHmrc from "@/components/vat/ConnectHmrc";
+import VatDeadlineStrip from "@/components/vat/VatDeadlineStrip";
+import { HomeData } from "@/components/home/HomeData";
 import { box4SampleRows, vatBoxes, vatMeta } from "@/lib/sample-vat";
 
 const SAMPLE_BOX5 = "£2,140 to pay · due 7 Nov · 12 days left";
@@ -27,6 +29,9 @@ function EntriesCell({ box, count }: { box: number; count: number }) {
 export default function VatPage() {
   return (
     <div className="flex flex-col gap-6">
+      <HomeData>
+        <VatDeadlineStrip />
+      </HomeData>
       <PageHeader
         title="VAT return"
         description="Your 9-box return, worked out by code from the entries you approved."
