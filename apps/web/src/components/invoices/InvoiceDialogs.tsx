@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import Modal, { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
+import { RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import { money, todayIso } from "@/lib/invoices";
 import { runtime, ukDate, type RtBankLine, type RtInvoice, type RtInvoicePdf, type RtReminderDraft } from "@/lib/runtime";
 
@@ -13,6 +14,12 @@ function errorText(e: unknown): string | null {
   if (msg === "redirecting for consent") return null; // back from Microsoft, the user taps Send again
   const detail = /"detail":"([^"]+)"/.exec(msg)?.[1];
   return detail ?? msg;
+}
+
+/** Dialog failures use the one shared strip: 401 signs in again, 5xx quotes its reference. */
+function Note({ note }: { note: string }) {
+  if (isAuthError(note) || isServerError(note)) return <RuntimeErrorNote message={note} />;
+  return <p role="alert" className="mt-3 text-sm font-bold text-warn-ink">{note}</p>;
 }
 
 function Confirm({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
@@ -150,7 +157,7 @@ export function PreviewSendDialog({ account, invoice, onClose, onDone }: { accou
           </div>
         </>
       )}
-      {note && <p role="alert" className="mt-3 text-sm font-bold text-warn-ink">{note}</p>}
+      {note && <div className="mt-3"><Note note={note} /></div>}
     </Modal>
   );
 }
@@ -212,7 +219,7 @@ export function MarkPaidDialog({ account, invoice, onClose, onDone }: { account:
         <button type="button" onClick={save} disabled={busy} className={primaryButton}>{busy ? "Saving…" : "Mark paid"}</button>
         <button type="button" onClick={onClose} className={secondaryButton}>Cancel</button>
       </div>
-      {note && <p role="alert" className="mt-3 text-sm font-bold text-warn-ink">{note}</p>}
+      {note && <div className="mt-3"><Note note={note} /></div>}
     </Modal>
   );
 }
@@ -274,7 +281,7 @@ export function ReminderDialog({ account, invoice, onClose, onDone }: { account:
           </div>
         </>
       )}
-      {note && <p role="alert" className="mt-3 text-sm font-bold text-warn-ink">{note}</p>}
+      {note && <div className="mt-3"><Note note={note} /></div>}
     </Modal>
   );
 }
@@ -310,7 +317,7 @@ export function VoidDialog({ account, invoice, onClose, onDone }: { account: Acc
         <button type="button" onClick={save} disabled={busy || !reason.trim()} className={primaryButton}>{busy ? "Voiding…" : "Void invoice"}</button>
         <button type="button" onClick={onClose} className={secondaryButton}>Cancel</button>
       </div>
-      {note && <p role="alert" className="mt-3 text-sm font-bold text-warn-ink">{note}</p>}
+      {note && <div className="mt-3"><Note note={note} /></div>}
     </Modal>
   );
 }

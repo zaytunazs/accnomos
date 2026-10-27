@@ -653,16 +653,26 @@ export interface RtContactImport {
   skipped: number;
 }
 
-/** FastAPI errors are {"detail": "..."}; show that sentence, not the JSON. */
+/**
+ * FastAPI errors are {"detail": "..."}; show that sentence, not the JSON. The HTTP status and the
+ * runtime's correlation id travel in a machine-readable suffix so the shared error states
+ * (components/States.tsx) can tell an expired sign-in (401) from a server fault (5xx) later.
+ * Calls, headers, payloads and storage keys are unchanged — only this error text.
+ */
 async function errorDetail(res: Response, what: string): Promise<string> {
   const text = await res.text();
+  let detail: unknown;
+  let correlation: unknown;
   try {
-    const detail = (JSON.parse(text) as { detail?: unknown }).detail;
-    if (typeof detail === "string") return detail;
+    const body = JSON.parse(text) as { detail?: unknown; correlation_id?: unknown };
+    detail = body.detail;
+    correlation = body.correlation_id;
   } catch {
     /* not JSON */
   }
-  return `Could not ${what} (${res.status}): ${text.slice(0, 200)}`;
+  const ref = typeof correlation === "string" && correlation ? ` · ref ${correlation}` : "";
+  if (typeof detail === "string") return `${detail} (status ${res.status}${ref})`;
+  return `Could not ${what} (${res.status}): ${text.slice(0, 200)}${ref}`;
 }
 
 /** /books/bank/* wire types. Amounts are signed pence: money out is negative. Dates are YYYY-MM-DD. */

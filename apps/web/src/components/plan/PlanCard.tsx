@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { Markdown } from "@/components/ask/AnswerCard";
 import { errorText } from "@/components/jobs/useAccount";
+import { RuntimeErrorNote } from "@/components/States";
 import { loadBusiness, planVat } from "@/lib/business";
 import { runtime, type RtPlan, type RtPlanApplied, type RtPlanItem } from "@/lib/runtime";
 
@@ -189,11 +190,7 @@ export default function PlanCard({
         </>
       )}
 
-      {error && (
-        <p role="alert" className="mt-4 text-sm font-bold text-warn-ink">
-          {error}
-        </p>
-      )}
+      {error && <RuntimeErrorNote message={error} />}
     </article>
   );
 }

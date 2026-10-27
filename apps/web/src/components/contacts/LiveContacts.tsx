@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
+import { markContactsImported } from "@/components/home/SetupChecklist";
+import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import {
   runtime,
   ukDate,
@@ -302,7 +304,9 @@ function SidePanel({ contact, account, onSaved, onClose }: {
         </>
       )}
 
-      {err && <p role="alert" className="text-sm font-semibold text-warn-ink">{err}</p>}
+      {err && (isAuthError(err) || isServerError(err)
+        ? <RuntimeErrorNote message={err} />
+        : <p role="alert" className="text-sm font-semibold text-warn-ink">{err}</p>)}
 
       <div>
         <h3 className="mb-2 text-[15px] font-extrabold">Statement</h3>
@@ -431,6 +435,7 @@ export default function LiveContacts() {
     setNote(null);
     try {
       const r = await runtime.importOutlookContacts(account, addNew);
+      markContactsImported(); // the setup checklist's optional step stays ticked
       setNote(
         `Read ${r.read} Outlook contacts: ${r.matched} already here (${r.updated} gained an email or phone)` +
           (addNew ? `, ${r.added} added` : "") + `, ${r.skipped} left out.`,
@@ -499,6 +504,9 @@ export default function LiveContacts() {
       )}
 
       {note && <p role="status" className="text-sm font-semibold text-teal-dark">{note}</p>}
+      {state === "error" && note && (isAuthError(note) || isServerError(note)) && (
+        <RuntimeErrorNote message={note} title="Could not read your contacts" />
+      )}
       {state === "demo" || state === "error" ? (
         <p className="text-[13px] font-medium text-muted">
           {state === "error" ? "Could not read your contacts; showing the sample instead. " : (
@@ -533,7 +541,22 @@ export default function LiveContacts() {
               aria-label="Search contacts"
               className={input}
             />
-            {shown.length === 0 ? (
+            {live && rows.length === 0 ? (
+              <EmptyState
+                title="No contacts yet"
+                body="Customers and suppliers appear here once you approve receipts and invoices — or import them from Outlook."
+                action={
+                  <button
+                    type="button"
+                    onClick={importOutlook}
+                    disabled={busy !== null}
+                    className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60"
+                  >
+                    {busy === "import" ? "Importing…" : "Import from Outlook"}
+                  </button>
+                }
+              />
+            ) : shown.length === 0 ? (
               <p className={`${card} p-4 text-sm font-semibold text-muted`}>
                 No customers or suppliers yet. They appear here once you approve receipts and invoices.
               </p>

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import BankUpload from "@/components/bank/BankUpload";
+import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import {
   runtime,
@@ -341,13 +342,17 @@ export default function LiveBank() {
   const [tab, setTab] = useState<Tab>("matches");
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const refresh = useCallback(async (acct: AccountInfo) => {
     try {
       setData(await load(acct));
+      setError(null);
       setState("live");
     } catch (e) {
-      setNote((e as Error).message);
+      const msg = (e as Error).message;
+      if (isAuthError(msg) || isServerError(msg)) setError(msg);
+      else setNote(msg);
       setState("error");
     }
   }, []);
@@ -373,9 +378,14 @@ export default function LiveBank() {
     if (!account) return;
     setBusy(key);
     setNote(null);
+    setError(null);
     run(account)
       .then((msg) => setNote(msg))
-      .catch((e: Error) => setNote(e.message))
+      .catch((e: Error) => {
+        const msg = e.message;
+        if (isAuthError(msg) || isServerError(msg)) setError(msg);
+        else setNote(msg);
+      })
       .finally(async () => {
         await refresh(account);
         setBusy(null);
@@ -393,6 +403,7 @@ export default function LiveBank() {
     );
   }
   if (state === "checking" || state === "loading" || !data) {
+    if (state === "error" && error) return <RuntimeErrorNote message={error} title="Could not read your bank lines" />;
     return (
       <p className="rounded-2xl border border-border bg-white p-4 text-sm font-semibold text-muted">
         {state === "error" ? `Could not read your bank lines: ${note}` : state === "loading" ? "Reading your bank lines…" : "Checking sign-in…"}
@@ -408,13 +419,27 @@ export default function LiveBank() {
   return (
     <div className="flex flex-col gap-5">
       <Tiles s={data.summary} />
-      <BankUpload account={account} onDone={() => account && refresh(account)} />
-      <Statements list={data.statements} />
-
       {note && (
         <p role="status" className="text-sm font-semibold text-teal-dark">
           {note}
         </p>
+      )}
+      {error && <RuntimeErrorNote message={error} />}
+      {data.summary.total === 0 ? (
+        <EmptyState
+          title="No statements yet"
+          body="Each payment on your statement appears here to check against your books — matching never posts anything."
+          action={
+            <span className="block text-left">
+              <BankUpload account={account} onDone={() => account && refresh(account)} />
+            </span>
+          }
+        />
+      ) : (
+        <>
+          <BankUpload account={account} onDone={() => account && refresh(account)} />
+          <Statements list={data.statements} />
+        </>
       )}
 
       {data.summary.total > 0 && (

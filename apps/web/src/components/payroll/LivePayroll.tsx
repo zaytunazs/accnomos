@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { errorText, todayIso, useAccount } from "@/components/jobs/useAccount";
+import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import { gbp, runtime, ukDate, type RtPayRun, type RtPayRunList, type RtStaff } from "@/lib/runtime";
 
 export const ESTIMATE = "Estimate — your payroll provider calculates the actual tax and NI";
@@ -45,6 +46,13 @@ export default function LivePayroll() {
   const [actual, setActual] = useState({ gross: "", erNi: "" });
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  function fail(e: unknown) {
+    const msg = errorText(e);
+    if (isAuthError(msg) || isServerError(msg)) setError(msg);
+    else setNote(msg);
+  }
 
   const run = list?.runs.find((r) => periodOf(r.period_start) === period) ?? null;
 
@@ -55,7 +63,7 @@ export default function LivePayroll() {
   }, []);
 
   useEffect(() => {
-    if (account) queueMicrotask(() => load(account).catch((e) => setNote(errorText(e))));
+    if (account) queueMicrotask(() => load(account).catch(fail));
   }, [account, load]);
 
   // Editable rows start from the saved run, and start again whenever another run (month, reload) is shown.
@@ -70,15 +78,21 @@ export default function LivePayroll() {
   async function act(key: string, fn: (a: AccountInfo) => Promise<unknown>, done?: string) {
     if (!account) return;
     setBusy(key);
+    setError(null);
     try {
       await fn(account);
       if (done) setNote(done);
       await load(account);
     } catch (e) {
-      setNote(errorText(e));
+      fail(e);
     } finally {
       setBusy(null);
     }
+  }
+
+  function prepare() {
+    if (run && !window.confirm("Prepare again from timesheets? Your edits to this draft will be replaced.")) return;
+    act("prepare", (a) => runtime.preparePayRun(a, period), `Pay run for ${monthName(period)} prepared from timesheets.`);
   }
 
   if (account === undefined) return <p className="text-sm text-muted">Loading pay runs…</p>;
@@ -111,7 +125,7 @@ export default function LivePayroll() {
       URL.revokeObjectURL(url);
       setNote(`Saved to ${r.path} in your OneDrive and downloaded. ${ESTIMATE}.`);
     } catch (e) {
-      setNote(errorText(e));
+      fail(e);
     } finally {
       setBusy(null);
     }
@@ -128,17 +142,14 @@ export default function LivePayroll() {
           Month
           <input type="month" value={period} max={periodOf(todayIso())} onChange={(e) => e.target.value && setPeriod(e.target.value)} className={input} />
         </label>
-        {(!run || draft) && (
+        {run && draft && (
           <button
             type="button"
             disabled={busy !== null}
-            onClick={() => {
-              if (run && !window.confirm("Prepare again from timesheets? Your edits to this draft will be replaced.")) return;
-              act("prepare", (a) => runtime.preparePayRun(a, period), `Pay run for ${monthName(period)} prepared from timesheets.`);
-            }}
-            className={run ? quiet : button}
+            onClick={prepare}
+            className={quiet}
           >
-            {busy === "prepare" ? "Adding up hours…" : run ? "Prepare again from timesheets" : `Prepare ${monthName(period)} pay run`}
+            {busy === "prepare" ? "Adding up hours…" : "Prepare again from timesheets"}
           </button>
         )}
         {run && (
@@ -153,13 +164,23 @@ export default function LivePayroll() {
           {note}
         </p>
       )}
+      {error && <RuntimeErrorNote message={error} />}
 
       {!run && (
-        <p className="rounded-2xl border border-border bg-white p-6 text-[15px] leading-7 text-muted">
-          No pay run for {monthName(period)} yet. Preparing one adds up everyone&apos;s timesheet hours for the month at
-          their hourly rate (set on the Jobs page) and estimates the deductions. You can change hours and rates before
-          exporting.
-        </p>
+        <EmptyState
+          title={`No pay run for ${monthName(period)} yet`}
+          body="Preparing adds up everyone's timesheet hours for the month and estimates the deductions — export it for your payroll provider."
+          action={
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={prepare}
+              className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60"
+            >
+              {busy === "prepare" ? "Adding up hours…" : `Prepare ${monthName(period)} pay run`}
+            </button>
+          }
+        />
       )}
 
       {run && (

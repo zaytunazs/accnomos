@@ -35,6 +35,47 @@ export function saveAiConfig(cfg: AiConfig): void {
   }
 }
 
+/** The last passing connection test, so Home's setup checklist can tell "chosen" from "tested". */
+export interface AiTestRecord {
+  ok: boolean;
+  mode: AiMode;
+  baseUrl: string;
+  model: string;
+  at: string;
+}
+
+const TEST_KEY = "accnomos.ai.test";
+
+export function loadAiTest(): AiTestRecord | null {
+  try {
+    const raw = window.localStorage.getItem(TEST_KEY);
+    return raw ? (JSON.parse(raw) as AiTestRecord) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveAiTest(cfg: AiConfig, ok: boolean): void {
+  try {
+    window.localStorage.setItem(
+      TEST_KEY,
+      JSON.stringify({ ok, mode: cfg.mode, baseUrl: cfg.baseUrl, model: cfg.model, at: new Date().toISOString() } satisfies AiTestRecord),
+    );
+  } catch {
+    /* storage unavailable — the checklist treats AI as untested */
+  }
+}
+
+/** True when the saved config answers: a passing test recorded for exactly this address and model. */
+export function aiTested(cfg: AiConfig | null): boolean {
+  if (!cfg) return false;
+  const hasAddress = cfg.baseUrl.trim() !== "" && cfg.model.trim() !== "";
+  const hasKey = cfg.mode !== "key" || (cfg.apiKey ?? "").trim() !== "";
+  if (!hasAddress || !hasKey) return false;
+  const test = loadAiTest();
+  return test?.ok === true && test.mode === cfg.mode && test.baseUrl === cfg.baseUrl && test.model === cfg.model;
+}
+
 /** Headers the runtime reads (see services/runtime/app/ai/config.py). */
 export function aiHeaders(cfg: AiConfig): Record<string, string> {
   const h: Record<string, string> = { "X-AI-Mode": cfg.mode, "X-AI-Base-Url": cfg.baseUrl, "X-AI-Model": cfg.model };
