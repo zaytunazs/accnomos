@@ -318,3 +318,29 @@ def test_routes_end_to_end(client: TestClient, fake: FakeStorageProvider) -> Non
     assert client.post("/jobs", json={"name": "x"}, headers={"X-Graph-Token": "tok"}).status_code == 400  # no X-User
     assert {e["id"] for e in client.get(f"/timesheets?job_id={job['id']}", headers=H).json()} == {e1["id"], e2["id"]}
     assert "Books.xlsx" in fake.files  # rebuilt after marking invoiced
+
+
+async def test_books_xlsx_jobs_sheet(fake: FakeStorageProvider, books: Books) -> None:
+    import io
+
+    from openpyxl import load_workbook
+
+    await jobs.add_entry(books, entry(SAM, 8))
+    await jobs.add_entry(books, entry(ALEX, 2.5))
+    fake.files[jobs.CONTACTS] = json.dumps([{"id": "c1", "name": "Mrs Patel"}]).encode()
+    p = await _open(books)
+    await approve(books, p.id, USER, {"job_id": JOB.id})  # rebuilds Books.xlsx
+    ws = load_workbook(io.BytesIO(fake.files["Books.xlsx"]))["Jobs"]
+    rows = list(ws.iter_rows(values_only=True))
+    assert rows[0] == ("Job", "Customer", "Status", "Hours", "Labour cost £", "Materials £", "Billable value £",
+                       "Invoiced £", "Margin £")
+    alex = jobs.pence_for(10, 1133)  # 2.5h at cost (no charge rate)
+    labour, value = 8 * 2000 + alex, 8 * 4500 + alex
+    assert rows[1] == (JOB.name, "Mrs Patel", "open", 10.5, labour / 100, 100.0, value / 100, 0.0, (value - labour - 10000) / 100)
+    assert rows[2][0] == "Total"
+
+
+async def test_a_broken_jobs_file_leaves_the_rest_of_books_xlsx(fake: FakeStorageProvider, books: Books) -> None:
+    fake.files[jobs.STAFF] = b'[{"id": "x"}]'  # no name or rate
+    await books.rebuild()
+    assert "Books.xlsx" in fake.files
