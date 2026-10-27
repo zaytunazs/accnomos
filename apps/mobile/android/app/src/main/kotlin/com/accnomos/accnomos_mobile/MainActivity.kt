@@ -4,7 +4,6 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.provider.ContactsContract
-import androidx.activity.result.contract.ActivityResultContracts
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
@@ -14,6 +13,7 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val CHANNEL = "accnomos/share"
         private const val CONTACTS_CHANNEL = "accnomos/phone-contacts"
+        private const val PICK_CONTACT = 4711
     }
 
     /** Shared files staged into our cache dir, waiting for Dart to collect. */
@@ -23,25 +23,27 @@ class MainActivity : FlutterActivity() {
     private var pickResult: MethodChannel.Result? = null
 
     /**
-     * The system contact picker. It returns the contact's URI with a
-     * one-time grant, so only that contact is readable and the app needs
-     * no `READ_CONTACTS` permission (nothing is added to the manifest).
+     * The system contact picker (ACTION_PICK on Contacts). It returns the contact's URI with a one-time read grant,
+     * so the app needs no `READ_CONTACTS` permission (nothing is added to the manifest). FlutterActivity is not a
+     * ComponentActivity, so this uses startActivityForResult rather than registerForActivityResult.
      */
-    private val pickContact =
-        registerForActivityResult(ActivityResultContracts.PickContact()) { uri: Uri? ->
-            val result = pickResult
-            pickResult = null
-            if (result == null) return@registerForActivityResult
-            if (uri == null) {
-                result.success(null) // the user backed out of the picker
-                return@registerForActivityResult
-            }
-            try {
-                result.success(readContact(uri))
-            } catch (_: Exception) {
-                result.error("READ_FAILED", "Could not read that contact.", null)
-            }
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        if (requestCode != PICK_CONTACT) return
+        val result = pickResult
+        pickResult = null
+        if (result == null) return
+        val uri = data?.data
+        if (resultCode != RESULT_OK || uri == null) {
+            result.success(null) // the user backed out of the picker
+            return
         }
+        try {
+            result.success(readContact(uri))
+        } catch (_: Exception) {
+            result.error("READ_FAILED", "Could not read that contact.", null)
+        }
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -61,7 +63,11 @@ class MainActivity : FlutterActivity() {
                         result.error("BUSY", "A contact pick is already open.", null)
                     } else {
                         pickResult = result
-                        pickContact.launch(null)
+                        @Suppress("DEPRECATION")
+                        startActivityForResult(
+                            Intent(Intent.ACTION_PICK, ContactsContract.Contacts.CONTENT_URI),
+                            PICK_CONTACT,
+                        )
                     }
                 } else {
                     result.notImplemented()
@@ -102,8 +108,10 @@ class MainActivity : FlutterActivity() {
             }
         }
         if (contactId.isBlank()) return mapOf("name" to name)
+        // Emails, phones and the address are best-effort: the picker's grant may cover only the contact's own URI,
+        // in which case Android refuses these queries and the import keeps the name alone.
         val emails = mutableListOf<String>()
-        contentResolver.query(
+        runCatching { contentResolver.query(
             ContactsContract.CommonDataKinds.Email.CONTENT_URI,
             arrayOf(ContactsContract.CommonDataKinds.Email.ADDRESS),
             "${ContactsContract.CommonDataKinds.Email.CONTACT_ID} = ?",
@@ -112,9 +120,9 @@ class MainActivity : FlutterActivity() {
             while (cursor.moveToNext() && emails.size < 5) {
                 cursor.getString(0)?.takeIf { it.isNotBlank() }?.let { emails.add(it) }
             }
-        }
+        } }
         val phones = mutableListOf<String>()
-        contentResolver.query(
+        runCatching { contentResolver.query(
             ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
             arrayOf(ContactsContract.CommonDataKinds.Phone.NUMBER),
             "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
@@ -123,9 +131,9 @@ class MainActivity : FlutterActivity() {
             while (cursor.moveToNext() && phones.size < 5) {
                 cursor.getString(0)?.takeIf { it.isNotBlank() }?.let { phones.add(it) }
             }
-        }
+        } }
         var address: String? = null
-        contentResolver.query(
+        runCatching { contentResolver.query(
             ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_URI,
             arrayOf(ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS),
             "${ContactsContract.CommonDataKinds.StructuredPostal.CONTACT_ID} = ?",
@@ -138,7 +146,7 @@ class MainActivity : FlutterActivity() {
                     break
                 }
             }
-        }
+        } }
         return mapOf(
             "name" to name,
             "emails" to emails,
