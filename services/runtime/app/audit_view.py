@@ -27,7 +27,7 @@ from pydantic import BaseModel
 
 from app.actions import ACTIONS_AUDIT
 from app.autopilot import AUTOPILOT
-from app.books import AUDIT, Books
+from app.books import AUDIT, REPORTS, Books
 from app.invoicing import money
 
 log = logging.getLogger(__name__)
@@ -236,7 +236,7 @@ SUMMARIES: dict[str, Summary] = {
             "trend": "the monthly trend",
             "all": "all reports",
         }.get(str(r.get("report")), "a report")
-        + " to 07 Reports as a spreadsheet"
+        + f" to {REPORTS} as a spreadsheet"
     ),
     # To-dos and housekeeping
     "todo_added": lambda r, w: "Added a to-do",
