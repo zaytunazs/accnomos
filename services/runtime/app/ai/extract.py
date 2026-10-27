@@ -28,7 +28,8 @@ SUPPORTED_MIME = {"image/jpeg", "image/png", "image/webp"}
 SYSTEM_PROMPT = (
     "You read UK receipts and invoices for a bookkeeper. Return only the JSON. "
     "Amounts in pounds (or the printed currency) to 2 dp exactly as printed; do not correct "
-    "arithmetic. If VAT is not shown use 0 and vat_rate null; never invent a VAT number. "
+    "arithmetic. vat_rate is a percentage number (20, 5 or 0), never a fraction. "
+    "If VAT is not shown use 0 and vat_rate null; never invent a VAT number. "
     "If line prices include VAT, net = price minus its VAT. Date as YYYY-MM-DD (UK receipts "
     "print day first). doc_type: receipt (till/card slip), purchase_invoice (bill to us), "
     "sales_invoice (we bill a customer). card_last4 only if printed. "
@@ -124,6 +125,16 @@ async def _call_meta(
     return content, data.get("usage") or {}
 
 
+def normalise_rates(obj: dict) -> None:
+    """Models sometimes return VAT rates as fractions (0.2) rather than percentages (20). Fix in place."""
+    for line in obj.get("lines") or []:
+        if not isinstance(line, dict):
+            continue
+        rate = line.get("vat_rate")
+        if isinstance(rate, (int, float)) and 0 < rate < 1:
+            line["vat_rate"] = round(rate * 100, 2)
+
+
 async def extract_document(
     image_bytes: bytes, mime: str, cfg: AiConfig
 ) -> tuple[ExtractedDoc, dict[str, Any]]:
@@ -155,6 +166,7 @@ async def extract_document(
     elapsed = time.perf_counter() - t0
 
     obj = parse_model_json(text)
+    normalise_rates(obj)
     try:
         doc = ExtractedDoc.model_validate(obj)
     except ValidationError as exc:
