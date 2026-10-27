@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import OutlookIntake from "@/components/settings/OutlookIntake";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
 
@@ -139,6 +140,8 @@ export default function SettingsPanels() {
           </div>
         </dl>
       </section>
+
+      <OutlookIntake card={card} heading={heading} />
 
       <section aria-labelledby="settings-autopilot" className={card}>
         <h2 id="settings-autopilot" className={heading}>

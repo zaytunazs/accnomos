@@ -2,6 +2,7 @@ import Link from "next/link";
 import Activity from "@/components/home/Activity";
 import AskBar from "@/components/home/AskBar";
 import Deadlines from "@/components/home/Deadlines";
+import LastInboxCheck from "@/components/home/LastInboxCheck";
 import Tiles from "@/components/home/Tiles";
 import Pitch from "@/components/home/Pitch";
 
@@ -26,9 +27,7 @@ export default function HomePage() {
             Good evening, Priya
           </h1>
         </div>
-        <p className="text-[13px] font-medium text-muted">
-          Last Autopilot run 4 min ago · 2 receipts imported from Outlook
-        </p>
+        <LastInboxCheck>Last Autopilot run 4 min ago · 2 receipts imported from Outlook</LastInboxCheck>
       </div>
 
       <AskBar />
