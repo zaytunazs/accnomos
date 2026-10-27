@@ -32,12 +32,14 @@ test("job + staff + timesheet → proposed invoice lines", async ({ page }) => {
   await hours.getByRole("button", { name: "Add", exact: true }).click();
   await expect(hours.getByRole("row", { name: /First fix/ })).toContainText("Alex Carter (Joiner)");
 
-  const invoice = page.getByRole("region", { name: "Invoice" });
-  await invoice.getByRole("button", { name: "Create invoice from unbilled hours" }).click();
-  const line = invoice.getByRole("row", { name: /Alex Carter/ });
-  await expect(line.getByRole("cell").nth(1)).toHaveText("6");
-  await expect(line.getByRole("cell").nth(2)).toHaveText("£45.00");
-  await expect(line.getByRole("cell").nth(3)).toHaveText("£270.00");
-  await expect(invoice.getByRole("row", { name: /Total ex VAT/ })).toContainText("£270.00");
-  await expect(invoice.getByRole("link", { name: "New invoice" })).toHaveAttribute("href", "/invoices/new");
+  // The proposed lines go straight into the invoice form, all editable; sending that invoice marks the hours.
+  await page.getByRole("region", { name: "Invoice" }).getByRole("button", { name: "Invoice these hours" }).click();
+  await expect(page).toHaveURL(/\/invoices\/new\?from=job$/);
+  const lines = page.getByRole("region", { name: "Lines" });
+  await expect(lines).toContainText("Hours from Kitchen refit, 12 Harbour Lane.");
+  await expect(lines.getByLabel("Description")).toHaveValue(/^Kitchen refit, 12 Harbour Lane: Joiner \(Alex Carter\), labour /);
+  await expect(lines.getByLabel("Qty")).toHaveValue("6");
+  await expect(lines.getByLabel("Unit", { exact: true })).toHaveValue("hours");
+  await expect(lines.getByLabel("Unit price (£, ex VAT)")).toHaveValue("45.00"); // the charge rate, not the cost
+  await expect(lines.getByText("Net£270.00")).toBeVisible();
 });
