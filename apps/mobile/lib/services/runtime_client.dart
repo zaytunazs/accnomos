@@ -413,6 +413,66 @@ class RuntimeClient {
     }
   }
 
+  /// Posted proposals decided by Autopilot (`decided_by == 'autopilot'`).
+  /// `GET /books/proposals?status=posted`, filtered client-side.
+  Future<List<AutopilotApproval>> autopilotApprovals() async {
+    final raw = await proposals(status: 'posted');
+    return AutopilotApproval.fromProposals(raw);
+  }
+
+  /// Whether this reader exposes `POST /books/undo/{event_id}`, checked
+  /// against its OpenAPI schema. False when offline or on runtimes that
+  /// predate the undo route (no such route in `routes_books.py` on main).
+  Future<bool> supportsUndo() async {
+    final uri = Uri.parse('${settings.runtimeUrl}/openapi.json');
+    try {
+      final response = await http
+          .get(uri, headers: _headers)
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode != 200) return false;
+      final decoded = json.decode(response.body);
+      if (decoded is Map && decoded['paths'] is Map) {
+        for (final key in (decoded['paths'] as Map).keys) {
+          if (key.toString().contains('/books/undo/')) return true;
+        }
+      }
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Reverse an Autopilot approval. `POST /books/undo/{event_id}`.
+  /// Throws [RuntimeException]; callers treat status 404 as "this reader
+  /// does not expose undo" and hide the Autopilot section.
+  Future<Map<String, dynamic>> undoEvent(String eventId) async {
+    _requireBooks();
+    final uri =
+        Uri.parse('${settings.runtimeUrl}/books/undo/$eventId');
+    try {
+      final response = await http
+          .post(
+            uri,
+            headers: {..._headers, 'Content-Type': 'application/json'},
+          )
+          .timeout(_timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        _fail(response.statusCode, response.body.trim());
+      }
+      final decoded = json.decode(response.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      return {'result': decoded.toString()};
+    } on SocketException {
+      throw RuntimeException(
+          'Could not reach the reader at ${settings.runtimeUrl}. '
+          'Is it running?');
+    } on RuntimeException {
+      rethrow;
+    } catch (e) {
+      throw RuntimeException('Undo failed. $e');
+    }
+  }
+
   Never _fail(int status, String body) {
     // FastAPI errors are `{"detail": "..."}` — quote the message, not JSON.
     String detail = body;
@@ -462,6 +522,51 @@ class VoiceAnswer {
           Map<String, dynamic>.from(rawAnswer));
     }
     return VoiceAnswer(transcript: transcript, answer: answer);
+  }
+}
+
+/// One entry the Autopilot approved on the user's behalf: a posted
+/// proposal with `decided_by == 'autopilot'` and a ledger `event_id` that
+/// `POST /books/undo/{event_id}` can reverse.
+class AutopilotApproval {
+  AutopilotApproval({
+    required this.proposalId,
+    required this.supplier,
+    required this.total,
+    required this.eventId,
+    this.decidedAt,
+  });
+
+  final String proposalId;
+  final String supplier;
+  final double total;
+  final String eventId;
+  final String? decidedAt;
+
+  /// Keep only Autopilot-decided postings that carry an event id.
+  static List<AutopilotApproval> fromProposals(
+      List<Map<String, dynamic>> raw) {
+    final items = <AutopilotApproval>[];
+    for (final json in raw) {
+      if ((json['decided_by'] ?? '').toString() != 'autopilot') continue;
+      final eventId = (json['event_id'] ?? '').toString();
+      if (eventId.isEmpty) continue;
+      final extracted = json['extracted'] is Map
+          ? Map<String, dynamic>.from(json['extracted'] as Map)
+          : <String, dynamic>{};
+      final gross = extracted['gross_total'];
+      items.add(AutopilotApproval(
+        proposalId: (json['id'] ?? '').toString(),
+        supplier: (extracted['supplier_name'] ?? 'Unknown supplier')
+            .toString(),
+        total: gross is num
+            ? gross.toDouble()
+            : double.tryParse(gross.toString()) ?? 0,
+        eventId: eventId,
+        decidedAt: json['decided_at']?.toString(),
+      ));
+    }
+    return items;
   }
 }
 

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 
@@ -19,7 +21,10 @@ String _gbp(double value) => '£${value.toStringAsFixed(2)}';
 ///
 /// Signed in: live proposals from the runtime. Approve/Reject call the
 /// runtime and remove the card; "Scan inbox" reads `00 Inbox` and shows
-/// per-file errors. Signed out: the fictional sample cards stay as a demo.
+/// per-file errors. Entries the Autopilot approved appear in their own
+/// section with Undo, but only when the reader exposes
+/// `POST /books/undo/{event_id}` — otherwise the section stays hidden.
+/// Signed out: the fictional sample cards stay as a demo.
 class ReviewScreen extends StatefulWidget {
   const ReviewScreen({super.key});
 
@@ -49,6 +54,13 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   /// Per-file scan errors from the latest `scan()`.
   List<ScanFileError> _scanErrors = const [];
+
+  /// Entries the Autopilot approved, shown only when the reader exposes
+  /// `POST /books/undo/{event_id}` (checked in `routes_books.py` terms via
+  /// the reader's OpenAPI schema; hidden otherwise).
+  List<AutopilotApproval> _auto = const [];
+  bool _undoSupported = false;
+  bool _undoBusy = false;
 
   bool get _signedIn => _account != null;
 
@@ -154,11 +166,72 @@ class _ReviewScreenState extends State<ReviewScreen> {
       if (_live.isNotEmpty && _pages.hasClients) {
         _pages.jumpToPage(_index);
       }
+      // Autopilot entries load separately so the queue never waits on them.
+      unawaited(_loadAutopilot(client));
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = _friendly(e));
     } finally {
       if (mounted && !quiet) setState(() => _loading = false);
+    }
+  }
+
+  /// Load "Approved by Autopilot" entries, but only when the reader
+  /// exposes `POST /books/undo/{event_id}`. The section stays hidden
+  /// otherwise (current runtimes have no such route).
+  Future<void> _loadAutopilot(RuntimeClient client) async {
+    try {
+      final supported = await client.supportsUndo();
+      if (!mounted) return;
+      if (!supported) {
+        setState(() {
+          _undoSupported = false;
+          _auto = const [];
+        });
+        return;
+      }
+      final items = await client.autopilotApprovals();
+      if (!mounted) return;
+      setState(() {
+        _undoSupported = true;
+        _auto = items;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _undoSupported = false;
+        _auto = const [];
+      });
+    }
+  }
+
+  /// Reverse one Autopilot approval. A 404 means the reader does not
+  /// expose undo after all, so the section hides itself.
+  Future<void> _undo(AutopilotApproval item) async {
+    if (_undoBusy) return;
+    setState(() => _undoBusy = true);
+    try {
+      final client = await _booksClient();
+      await client.undoEvent(item.eventId);
+      if (!mounted) return;
+      setState(() =>
+          _auto = _auto.where((a) => a.eventId != item.eventId).toList());
+      await _reload(quiet: true);
+      _say('Undone · back in your review list');
+    } catch (e) {
+      final message = _friendly(e);
+      if (!mounted) return;
+      if (message.contains('status 404')) {
+        setState(() {
+          _undoSupported = false;
+          _auto = const [];
+        });
+        _say('Undo is not on this reader yet.');
+      } else {
+        _say(message);
+      }
+    } finally {
+      if (mounted) setState(() => _undoBusy = false);
     }
   }
 
@@ -399,6 +472,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
                             const TextStyle(color: _warnInk, height: 1.4)),
                   ),
                 if (_scanErrors.isNotEmpty) _scanErrorBox(),
+                if (_signedIn && _undoSupported && _auto.isNotEmpty)
+                  _autopilotSection(),
                 Expanded(
                   child: proposals.isEmpty
                       ? RefreshIndicator(
@@ -539,6 +614,81 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 ],
               ),
             ),
+        ],
+      ),
+    );
+  }
+
+  /// Entries the Autopilot approved, each with an Undo button.
+  /// Rendered only when the reader exposes `POST /books/undo/{event_id}`.
+  Widget _autopilotSection() {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE3E1D8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Approved by Autopilot',
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              color: AccnomosColors.ink,
+            ),
+          ),
+          const SizedBox(height: 2),
+          const Text(
+            'Checked by your rules. Undo puts one back for review.',
+            style: TextStyle(
+                fontSize: 12, color: AccnomosColors.muted),
+          ),
+          for (final item in _auto)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.supplier,
+                          softWrap: false,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                              fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          _gbp(item.total),
+                          style: const TextStyle(
+                              color: AccnomosColors.muted),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      minimumSize: const Size(72, 40),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8),
+                      shape: RoundedRectangleBorder(
+                          borderRadius:
+                              BorderRadius.circular(12)),
+                    ),
+                    onPressed: _undoBusy ? null : () => _undo(item),
+                    child: const Text('Undo', softWrap: false),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(height: 6),
         ],
       ),
     );
