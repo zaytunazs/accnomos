@@ -1,11 +1,13 @@
 """/books/*: proposals stored in the user's own OneDrive.
 
 Every request carries `X-Graph-Token` (and optionally `X-Account-Kind: personal|work`);
-approvals and rejections also need `X-User`, the signed-in user's email.
+approvals, rejections and undos also need `X-User`, the signed-in user's email.
+`X-Autopilot: off` on a scan skips auto-approval (docs/AUTOPILOT.md).
 """
 
 from __future__ import annotations
 
+import re
 from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any
@@ -14,8 +16,11 @@ from accnomos_connectors.msgraph import GraphStorageProvider
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel
 
+from accnomos_ledger.events import LedgerEvent
+
+from app import autopilot
 from app.ai.config import AiConfig, ai_config_from_request
-from app.approve import ApprovalError, ProposalStateError, approve, reject
+from app.approve import ApprovalError, ProposalStateError, approve, reject, undo
 from app.books import Books, now
 from app.inbox import scan_inbox_detailed
 from app.schemas import Proposal, ProposalStatus
@@ -48,6 +53,7 @@ def require_user(x_user: str | None = Header(default=None)) -> str:
 class ApproveBody(BaseModel):
     edits: dict[str, Any] | None = None
     always: bool = False
+    remember: bool = False  # "Always do this for <supplier>"; same as `always`
 
 
 class RejectBody(BaseModel):
@@ -84,8 +90,10 @@ async def scan(
     books: Books = Depends(get_books),
     cfg: AiConfig = Depends(ai_config_from_request),
     x_business_name: str | None = Header(default=None),
+    x_autopilot: str | None = Header(default=None),
 ) -> ScanResult:
-    proposals, errors = await scan_inbox_detailed(books, cfg, limit=limit, business_name=x_business_name)
+    autopilot_on = (x_autopilot or "on").strip().lower() != "off"
+    proposals, errors = await scan_inbox_detailed(books, cfg, limit, x_business_name, autopilot_on)
     return ScanResult(proposals=proposals, errors=errors)
 
 
@@ -100,6 +108,7 @@ async def proposal(proposal_id: str, books: Books = Depends(get_books)) -> Propo
 
 
 @router.post("/proposals/{proposal_id}/approve", response_model=Proposal)
+@router.post("/approve/{proposal_id}", response_model=Proposal)
 async def approve_route(
     proposal_id: str, body: ApproveBody | None = None,
     books: Books = Depends(get_books), user: str = Depends(require_user),
@@ -107,7 +116,7 @@ async def approve_route(
     body = body or ApproveBody()
     await _proposal(books, proposal_id)
     try:
-        return await approve(books, proposal_id, user, body.edits, body.always)
+        return await approve(books, proposal_id, user, body.edits, body.always or body.remember)
     except ApprovalError as exc:
         raise _approval_http(exc) from exc
 
@@ -122,6 +131,44 @@ async def reject_route(
         return await reject(books, proposal_id, user, (body or RejectBody()).reason)
     except ApprovalError as exc:
         raise _approval_http(exc) from exc
+
+
+class UndoResult(BaseModel):
+    reversal: LedgerEvent
+    proposal: Proposal | None
+
+
+@router.post("/undo/{event_id}", response_model=UndoResult)
+async def undo_route(event_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)) -> UndoResult:
+    """Reverse a posted entry (a new reversal event; nothing is deleted) and put its proposal back in Review."""
+    try:
+        reversal, p = await undo(books, event_id, user)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="No such ledger entry") from exc
+    except ApprovalError as exc:
+        raise _approval_http(exc) from exc
+    return UndoResult(reversal=reversal, proposal=p)
+
+
+@router.get("/rules", response_model=list[autopilot.AutopilotRule])
+async def rules(books: Books = Depends(get_books)) -> list[autopilot.AutopilotRule]:
+    return await autopilot.load_rules(books)
+
+
+@router.delete("/rules/{supplier_key}", response_model=autopilot.AutopilotRule)
+async def delete_rule(
+    supplier_key: str, books: Books = Depends(get_books), user: str = Depends(require_user),
+) -> autopilot.AutopilotRule:
+    """Stop Autopilot for this supplier, and drop the account rule that was saved with it."""
+    gone = await autopilot.remove_rule(books, supplier_key) if autopilot.KEY_RE.fullmatch(supplier_key) else None
+    if gone is None:
+        raise HTTPException(status_code=404, detail="No such rule")
+    account_rules = await books.load_rules()
+    kept = [r for r in account_rules if autopilot.supplier_key(re.sub(r"\\(.)", r"\1", r.match.supplier_regex)) != supplier_key]
+    if len(kept) != len(account_rules):
+        await books.save_rules(kept)
+    await books.audit(f"user:{user}", "rule_removed", {"supplier_key": supplier_key, "account_rules_removed": len(account_rules) - len(kept)})
+    return gone
 
 
 @router.get("/summary", response_model=Summary)
