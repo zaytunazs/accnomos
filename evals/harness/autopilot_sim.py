@@ -163,6 +163,15 @@ async def build_books(plan: sd.Plan, golds: dict[str, dict[str, Any]]) -> tuple[
 # --------------------------------------------------------------------------- #
 
 
+def gold_expected(g: dict[str, Any]) -> str:
+    """run_extraction's expected status, except that a 001-060 "no_vat_number" receipt charging no VAT is fine: the
+    seller is not VAT-registered, VAT_NUMBER_REQUIRED only applies when VAT is charged, and the seed expects these
+    to be proposed (docs/reviews/verifier/REVIEW.md flags the harness rule)."""
+    if g.get("gold_case") == "no_vat_number" and not g.get("expected_status") and not g.get("vat_total"):
+        return "proposed"
+    return expected_status(g)
+
+
 def documents(plan: sd.Plan, golds: dict[str, dict[str, Any]], passes: list[str], limit: int) -> list[Doc]:
     """The gold set contains the documents the seed posted (re-dated into the seeded periods, otherwise the same
     print and invoice number): fed again with their original date they are `seeded_copy` duplicates."""
@@ -178,7 +187,7 @@ def documents(plan: sd.Plan, golds: dict[str, dict[str, Any]], passes: list[str]
         for i, (f, g) in enumerate(sorted(golds.items())):
             png = partial(render_receipt, g["printed_text"], messy=render == "messy", seed=i, damage=g.get("damage"))
             docs.append(Doc(f"{render}/{f}", render, render, png, g, f, dup="seeded_copy" if f in posted_golds else "",
-                            expect=expected_status(g)))
+                            expect=gold_expected(g)))
     if "dupes" in passes:
         purchases = [d for d in plan.posted if d.extracted["doc_type"] != "sales_invoice"]
         for i, d in enumerate(purchases):
@@ -302,12 +311,16 @@ async def feed(books: Books, d: Doc, cfg: AiConfig, plan: sd.Plan, origin: dict[
 def grade(rec: dict[str, Any], gold: dict[str, Any], event: dict[str, Any] | None) -> None:
     """Fill in diffs, false/correct/missed post. For a document left in Review, `would_be_false` says whether
     posting it anyway would have been a false post (used for the 2x rule's effect)."""
+    rec["diffs"] = [] if rec["error"] else field_diffs(gold, rec["extracted"], event if rec["posted"] else None)
+    _flags(rec)
+
+
+def _flags(rec: dict[str, Any]) -> None:
     if rec["error"]:
-        rec |= {"diffs": [], "false_post": False, "correct_post": False, "missed_post": rec["should_post"], "would_be_false": None}
+        rec |= {"false_post": False, "correct_post": False, "missed_post": rec["should_post"], "would_be_false": None}
         return
-    diffs = field_diffs(gold, rec["extracted"], event if rec["posted"] else None)
-    bad = bool(diffs) or rec["duplicate"] or rec["expected_status"] != "proposed"
-    rec |= {"diffs": diffs, "false_post": rec["posted"] and bad, "correct_post": rec["posted"] and not bad,
+    bad = bool(rec["diffs"]) or rec["duplicate"] or rec["expected_status"] != "proposed"
+    rec |= {"false_post": rec["posted"] and bad, "correct_post": rec["posted"] and not bad,
             "missed_post": rec["should_post"] and not rec["posted"], "would_be_false": bad}
 
 
@@ -430,7 +443,18 @@ def refusal_kind(reason: str) -> str:
     return reason[:40]
 
 
+def regrade(rec: dict[str, Any], golds: dict[str, dict[str, Any]]) -> None:
+    """Re-apply the current expected-status rule to a stored record (field diffs are kept as recorded)."""
+    if rec["pass"] in ("clean", "messy"):
+        rec["expected_status"] = gold_expected(golds[rec["gold_file"]])
+    rec["should_post"] = bool(rec["gold_decision"]["auto_approve"] and not rec["duplicate"] and rec["expected_status"] == "proposed")
+    _flags(rec)
+
+
 def summarise(meta: dict[str, Any], recs: list[dict[str, Any]]) -> dict[str, Any]:
+    golds = gold_receipts()
+    for r in recs:
+        regrade(r, golds)
     by_class = {c: tally([r for r in recs if r["class"] == c]) for c in CLASSES}
     by_pass = {p: tally([r for r in recs if r["pass"] == p]) for p in PASSES}
     by_dup = {k: tally([r for r in recs if r.get("dup_kind") == k]) for k in DUP_KINDS}

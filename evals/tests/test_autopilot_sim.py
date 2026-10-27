@@ -77,6 +77,12 @@ def test_the_seed_plan_gives_every_pass_its_documents() -> None:
     assert {d.gold_file for d in docs if d.dup == "seeded_copy" and d.pass_ == "clean"} == seeded
 
 
+def test_no_vat_number_receipt_charging_no_vat_is_expected_to_be_proposed() -> None:
+    assert sim.gold_expected(_gold("038_no_vat_number.json")) == "proposed"  # £0 VAT: seller not VAT-registered
+    assert sim.gold_expected(_gold("010_foreign.json")) == "needs_a_look"
+    assert sim.gold_expected(_gold("065_r_cafe.json")) == "needs_a_look"  # explicit on 061+
+
+
 def test_refusal_kinds() -> None:
     assert sim.refusal_kind("Check ARITH_LINES warned: line 1") == "ARITH_LINES warned"
     assert sim.refusal_kind("£80.00 is more than 2x the usual £38.47") == "over 2x"
