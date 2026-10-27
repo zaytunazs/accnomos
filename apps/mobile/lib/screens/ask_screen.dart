@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
+import 'package:record/record.dart';
 
 import '../models/ask_answer.dart';
 import '../services/auth.dart';
@@ -13,17 +16,22 @@ const _warnInk = Color(0xFF8A3F06);
 
 /// One live question and, once it arrives, its checked answer or an error.
 class _Turn {
-  _Turn(this.question);
+  _Turn(this.question, {this.spoken = false});
   final String question;
+
+  /// True when the question came from a voice recording.
+  final bool spoken;
   AskAnswer? answer;
   String? error;
 }
 
 /// Ask your books a question.
 ///
-/// Signed in, questions go to `POST /books/ask`: numbers come from code,
-/// words from the user's model. Signed out, this screen shows a sample
-/// conversation. Voice input arrives in a later update.
+/// Signed in, typed questions go to `POST /books/ask`: numbers come from
+/// code, words from the user's model. Hold the mic to ask with your voice
+/// instead: the recording (WAV 16 kHz mono) goes to `POST /ask/voice` and
+/// the transcript appears as your bubble with the answer below it. Signed
+/// out, this screen shows a sample conversation.
 class AskScreen extends StatefulWidget {
   const AskScreen({super.key});
 
@@ -35,10 +43,19 @@ class _AskScreenState extends State<AskScreen> {
   final TextEditingController _input = TextEditingController();
   final ScrollController _scroll = ScrollController();
   final AuthService _auth = AuthService();
+  final AudioRecorder _mic = AudioRecorder();
   AppSettings? _settings;
   Account? _account;
   final List<_Turn> _turns = [];
   bool _busy = false;
+
+  /// True between mic press and release; [_sendingVoice] while uploading.
+  bool _recording = false;
+  bool _sendingVoice = false;
+
+  /// Last voice failure (e.g. local mode without transcription): shown
+  /// above the thread with a prompt to type instead.
+  String? _voiceError;
 
   @override
   void initState() {
@@ -50,6 +67,7 @@ class _AskScreenState extends State<AskScreen> {
   void dispose() {
     _input.dispose();
     _scroll.dispose();
+    _mic.dispose();
     super.dispose();
   }
 
@@ -90,16 +108,8 @@ class _AskScreenState extends State<AskScreen> {
     _scrollToEnd();
     try {
       final token = await _auth.token();
-      final user = _account?.username ?? settings.userEmail;
-      final answer = await RuntimeClient(
-        settings,
-        books: BooksAuth(
-          graphToken: token,
-          accountKind: _auth.kind == AccountKind.work ? 'work' : 'personal',
-          user: (user != null && user.isNotEmpty) ? user : null,
-          businessName: settings.businessName,
-        ),
-      ).ask(question, history: history);
+      final answer =
+          await _booksClient(token).ask(question, history: history);
       if (!mounted) return;
       setState(() => turn.answer = answer);
     } catch (e) {
@@ -109,6 +119,181 @@ class _AskScreenState extends State<AskScreen> {
     } finally {
       if (mounted) setState(() => _busy = false);
       _scrollToEnd();
+    }
+  }
+
+  RuntimeClient _booksClient(String token) {
+    final settings = _settings!;
+    final user = _account?.username ?? settings.userEmail;
+    return RuntimeClient(
+      settings,
+      books: BooksAuth(
+        graphToken: token,
+        accountKind:
+            _auth.kind == AccountKind.work ? 'work' : 'personal',
+        user: (user != null && user.isNotEmpty) ? user : null,
+        businessName: settings.businessName,
+      ),
+    );
+  }
+
+  /// Mic pressed: start a WAV 16 kHz mono recording.
+  Future<void> _startVoice() async {
+    final settings = _settings;
+    if (settings == null || _account == null) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+              content: Text('Sign in to ask with your voice.')),
+        );
+      }
+      return;
+    }
+    if (_busy || _sendingVoice || _recording) return;
+    bool allowed = false;
+    try {
+      allowed = await _mic.hasPermission();
+    } catch (_) {
+      allowed = false;
+    }
+    if (!allowed) {
+      if (!mounted) return;
+      setState(() => _voiceError =
+          'Microphone access was refused. Allow it in the phone '
+          'settings, or type your question instead.');
+      return;
+    }
+    final path =
+        '${Directory.systemTemp.path}/accnomos_ask_${DateTime.now().millisecondsSinceEpoch}.wav';
+    try {
+      await _mic.start(
+        const RecordConfig(
+          encoder: AudioEncoder.wav,
+          sampleRate: 16000,
+          numChannels: 1,
+        ),
+        path: path,
+      );
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _voiceError =
+          'Could not start recording. Type your question instead.');
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _recording = true;
+      _voiceError = null;
+    });
+  }
+
+  /// Mic released: stop, upload to `POST /ask/voice`, and show the
+  /// transcript as the user's bubble with the answer below it.
+  Future<void> _stopVoiceAndSend() async {
+    if (!_recording) return;
+    String? path;
+    try {
+      path = await _mic.stop();
+    } catch (_) {
+      path = null;
+    }
+    if (!mounted) return;
+    setState(() => _recording = false);
+    if (path == null) {
+      setState(() => _voiceError =
+          'That recording was lost. Hold the mic and try again, '
+          'or type your question instead.');
+      return;
+    }
+    final file = File(path);
+    List<int> bytes = const [];
+    try {
+      bytes = await file.readAsBytes();
+    } catch (_) {
+      bytes = const [];
+    }
+    try {
+      await file.delete();
+    } catch (_) {
+      // Best effort: the OS clears the temp folder anyway.
+    }
+    if (bytes.isEmpty) {
+      if (!mounted) return;
+      setState(() => _voiceError =
+          'Nothing was heard. Hold the mic a moment longer, '
+          'or type your question instead.');
+      return;
+    }
+    await _sendVoice(bytes);
+  }
+
+  /// Mic gesture cancelled: discard the recording.
+  Future<void> _cancelVoice() async {
+    if (!_recording) return;
+    try {
+      final path = await _mic.stop();
+      if (path != null) {
+        try {
+          await File(path).delete();
+        } catch (_) {
+          // Best effort.
+        }
+      }
+    } catch (_) {
+      // Nothing to discard.
+    }
+    if (mounted) setState(() => _recording = false);
+  }
+
+  Future<void> _sendVoice(List<int> bytes) async {
+    final settings = _settings;
+    if (settings == null ||
+        _account == null ||
+        _busy ||
+        _sendingVoice) {
+      return;
+    }
+    setState(() => _sendingVoice = true);
+    try {
+      final token = await _auth.token();
+      final result =
+          await _booksClient(token).askVoice(bytes);
+      if (!mounted) return;
+      final transcript = result.transcript.trim();
+      if (transcript.isEmpty && result.answer == null) {
+        setState(() {
+          _sendingVoice = false;
+          _voiceError = 'Nothing was heard. Type your question instead.';
+        });
+        return;
+      }
+      final turn = _Turn(
+        transcript.isEmpty ? '(no speech heard)' : transcript,
+        spoken: true,
+      );
+      setState(() {
+        _sendingVoice = false;
+        _turns.add(turn);
+        if (result.answer != null) {
+          turn.answer = result.answer;
+        } else {
+          turn.error =
+              'Heard you, but no answer came back. Your words are in '
+              'the box below — send them as text instead.';
+          _input.text = transcript;
+        }
+      });
+    } catch (e) {
+      // Local mode or no transcription (400/503): show the runtime's
+      // message and fall back to typing.
+      if (!mounted) return;
+      setState(() {
+        _sendingVoice = false;
+        _voiceError = '${e.toString().replaceFirst('Exception: ', '')} '
+            'Type your question instead.';
+      });
+    } finally {
+      if (mounted) _scrollToEnd();
     }
   }
 
@@ -180,8 +365,15 @@ class _AskScreenState extends State<AskScreen> {
   }
 
   List<Widget> _liveThread() {
+    final head = <Widget>[
+      if (_voiceError != null) ...[
+        _warnBox(_voiceError!),
+        const SizedBox(height: 12),
+      ],
+    ];
     if (_turns.isEmpty) {
       return [
+        ...head,
         Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
@@ -200,8 +392,9 @@ class _AskScreenState extends State<AskScreen> {
       ];
     }
     return [
+      ...head,
       for (final t in _turns) ...[
-        _questionBubble(t.question),
+        _questionBubble(t.question, spoken: t.spoken),
         const SizedBox(height: 12),
         if (t.answer != null)
           _liveAnswer(t.answer!)
@@ -220,21 +413,39 @@ class _AskScreenState extends State<AskScreen> {
     ];
   }
 
-  Widget _questionBubble(String text) {
+  Widget _questionBubble(String text, {bool spoken = false}) {
     return Align(
       alignment: Alignment.centerRight,
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 320),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: AccnomosColors.teal,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Text(
-            text,
-            style: const TextStyle(color: Colors.white, height: 1.4),
-          ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (spoken)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 4),
+                child: Text(
+                  'Spoken',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AccnomosColors.muted,
+                  ),
+                ),
+              ),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: AccnomosColors.teal,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                text,
+                style:
+                    const TextStyle(color: Colors.white, height: 1.4),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -523,6 +734,7 @@ class _AskScreenState extends State<AskScreen> {
   }
 
   Widget _inputRow(bool live) {
+    final micActive = live && !_busy && !_sendingVoice;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       decoration: const BoxDecoration(
@@ -531,63 +743,121 @@ class _AskScreenState extends State<AskScreen> {
       ),
       child: SafeArea(
         top: false,
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: SizedBox(
-                height: 56,
-                child: TextField(
-                  controller: _input,
-                  enabled: !_busy,
-                  maxLength: 500,
-                  textInputAction: TextInputAction.send,
-                  onSubmitted: live ? (_) => _send() : null,
-                  decoration: InputDecoration(
-                    counterText: '',
-                    hintText: live
-                        ? 'Ask your books…'
-                        : 'Sign in to ask your own books',
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 16,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(28),
-                    ),
+            if (_recording)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Listening… release to send',
+                  style: TextStyle(
+                    color: AccnomosColors.tealDark,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
-            ),
-            const SizedBox(width: 8),
-            SizedBox(
-              width: 56,
-              height: 56,
-              child: FilledButton(
-                style: FilledButton.styleFrom(
-                  backgroundColor: AccnomosColors.teal,
-                  padding: EdgeInsets.zero,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(28),
+            Row(
+              children: [
+                GestureDetector(
+                  onLongPressStart: (_) => _startVoice(),
+                  onLongPressEnd: (_) => _stopVoiceAndSend(),
+                  onLongPressCancel: _cancelVoice,
+                  child: SizedBox(
+                    width: 48,
+                    height: 48,
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: _recording
+                            ? const Color(0xFFB3261E)
+                            : AccnomosColors.teal,
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(24),
+                        ),
+                      ),
+                      // Hold-to-talk is driven by the long-press above;
+                      // a plain tap only explains the gesture.
+                      onPressed: micActive
+                          ? () => ScaffoldMessenger.of(context)
+                              .showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                      'Hold the mic and speak, then release to send.'),
+                                ),
+                              )
+                          : null,
+                      child: _sendingVoice
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Icon(Icons.mic,
+                              color: Colors.white),
+                    ),
                   ),
                 ),
-                onPressed: live
-                    ? (_busy ? null : _send)
-                    : () => ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Voice arrives in the next update.'),
-                          ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: SizedBox(
+                    height: 56,
+                    child: TextField(
+                      controller: _input,
+                      enabled: !_busy && !_sendingVoice,
+                      maxLength: 500,
+                      textInputAction: TextInputAction.send,
+                      onSubmitted: live ? (_) => _send() : null,
+                      decoration: InputDecoration(
+                        counterText: '',
+                        hintText: live
+                            ? 'Ask your books…'
+                            : 'Sign in to ask your own books',
+                        contentPadding:
+                            const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 16,
                         ),
-                child: live && _busy
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(28),
                         ),
-                      )
-                    : Icon(live ? Icons.send : Icons.mic, color: Colors.white),
-              ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AccnomosColors.teal,
+                      padding: EdgeInsets.zero,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24),
+                      ),
+                    ),
+                    onPressed:
+                        live && !_busy && !_sendingVoice
+                            ? _send
+                            : null,
+                    child: live && _busy
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : const Icon(Icons.send,
+                            color: Colors.white),
+                  ),
+                ),
+              ],
             ),
           ],
         ),

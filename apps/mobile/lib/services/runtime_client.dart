@@ -370,8 +370,61 @@ class RuntimeClient {
     }
   }
 
+  /// Send a WAV recording and get back the transcript plus the checked
+  /// answer. `POST /ask/voice` (multipart field `audio`) →
+  /// `{transcript, answer?}` — `answer`, when present, has the same shape
+  /// as `POST /books/ask`.
+  ///
+  /// Throws [RuntimeException] carrying the server's message when the
+  /// runtime cannot transcribe (400/503 in local mode or without ffmpeg).
+  /// Callers fall back to typing in that case.
+  Future<VoiceAnswer> askVoice(
+    List<int> wavBytes, {
+    String filename = 'question.wav',
+  }) async {
+    _requireBooks();
+    final uri = Uri.parse('${settings.runtimeUrl}/ask/voice');
+    try {
+      final request = http.MultipartRequest('POST', uri)
+        ..headers.addAll(_headers)
+        ..files.add(http.MultipartFile.fromBytes(
+          'audio',
+          wavBytes,
+          filename: filename,
+        ));
+      final streamed = await request.send().timeout(_timeout);
+      final body = await streamed.stream.bytesToString();
+      if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
+        _fail(streamed.statusCode, body.trim());
+      }
+      return VoiceAnswer.fromJson(
+          json.decode(body) as Map<String, dynamic>);
+    } on TimeoutException {
+      throw RuntimeException(
+          'Listening took too long. Check the reader and try again.');
+    } on SocketException {
+      throw RuntimeException(
+          'Could not reach the reader at ${settings.runtimeUrl}. '
+          'Is it running?');
+    } on RuntimeException {
+      rethrow;
+    } catch (e) {
+      throw RuntimeException('Could not handle that recording. $e');
+    }
+  }
+
   Never _fail(int status, String body) {
-    final detail = body.length > 300 ? '${body.substring(0, 300)}…' : body;
+    // FastAPI errors are `{"detail": "..."}` — quote the message, not JSON.
+    String detail = body;
+    try {
+      final decoded = json.decode(body);
+      if (decoded is Map && decoded['detail'] != null) {
+        detail = decoded['detail'].toString();
+      }
+    } catch (_) {
+      // Not JSON: keep the raw body.
+    }
+    if (detail.length > 300) detail = '${detail.substring(0, 300)}…';
     throw RuntimeException(
         'The reader refused that request (status $status). $detail');
   }
@@ -383,6 +436,33 @@ class ScanOutcome {
   ScanOutcome({required this.proposals, required this.errors});
   final List<Map<String, dynamic>> proposals;
   final List<ScanFileError> errors;
+}
+
+/// Transcript plus checked answer from `POST /ask/voice`.
+///
+/// `answer` is null when the runtime transcribed but could not answer;
+/// the transcript still goes in the user's bubble and typing takes over.
+class VoiceAnswer {
+  VoiceAnswer({required this.transcript, this.answer});
+  final String transcript;
+  final AskAnswer? answer;
+
+  factory VoiceAnswer.fromJson(Map<String, dynamic> json) {
+    final transcript = (json['transcript'] ??
+            json['text'] ??
+            json['question'] ??
+            '')
+        .toString();
+    AskAnswer? answer;
+    final rawAnswer =
+        json['answer'] is Map ? json['answer'] : json;
+    if (rawAnswer is Map &&
+        (rawAnswer['answer_md'] ?? '').toString().isNotEmpty) {
+      answer = AskAnswer.fromJson(
+          Map<String, dynamic>.from(rawAnswer));
+    }
+    return VoiceAnswer(transcript: transcript, answer: answer);
+  }
 }
 
 /// One unreadable inbox file from `POST /books/scan`.
