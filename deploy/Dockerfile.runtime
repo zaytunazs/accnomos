@@ -1,6 +1,7 @@
 # Accnomos Agent Runtime — stateless; built from the repo root:  docker build -f deploy/Dockerfile.runtime -t accnomos-runtime .
 FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1
+# ffmpeg: converts voice questions (webm/ogg/m4a) to WAV mono 16 kHz for Muse Voice; /books/ask/voice answers 503 without it
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
 WORKDIR /srv
 COPY packages/ledger /srv/packages/ledger

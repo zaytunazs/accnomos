@@ -22,6 +22,12 @@ cd apps/mobile; flutter run
 
 Secrets live in `.env` (root, git-ignored) and `apps/web/.env.local`. See `.env.example`.
 
+**ffmpeg** must be on the runtime's `PATH` for voice questions (`POST /books/ask/voice` converts browser/phone audio to
+WAV mono 16 kHz before Muse Voice Transcribe). Windows: `winget install Gyan.FFmpeg`; macOS: `brew install ffmpeg`;
+Debian/Ubuntu: `apt install ffmpeg` (the runtime Docker image includes it). The runtime checks at startup: without
+ffmpeg it logs a warning, `/health` reports `"voice": false` and `/books/ask/voice` answers 503. Its tests skip the
+conversion cases when ffmpeg is missing. Voice works in key mode only (the user's Meta API key); local mode gets a 400.
+
 ## Evals (Meta model outputs graded against the synthetic gold set)
 
 ```powershell
