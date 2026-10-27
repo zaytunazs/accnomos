@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 
 import '../services/auth.dart';
+import '../services/proposal_editing.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
+import '../services/sign_in_messages.dart';
 import '../theme.dart';
 
 const _warnBg = Color(0xFFFFF7ED);
@@ -25,6 +27,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _aiModel = TextEditingController();
   final _apiKey = TextEditingController();
   final _businessName = TextEditingController();
+  final _vrn = TextEditingController();
+  String? _vrnError;
 
   AppSettings? _initial;
   Account? _account;
@@ -49,6 +53,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _aiModel.text = settings.aiModel;
         _apiKey.text = settings.apiKey ?? '';
         _businessName.text = settings.businessName ?? '';
+        _vrn.text = settings.vatNumber ?? '';
         _mode = settings.aiMode;
       });
     });
@@ -65,6 +70,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _aiModel.dispose();
     _apiKey.dispose();
     _businessName.dispose();
+    _vrn.dispose();
     super.dispose();
   }
 
@@ -79,6 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         businessName: _businessName.text.trim().isEmpty
             ? null
             : _businessName.text.trim(),
+        vatNumber: _vrn.text.trim().isEmpty ? null : _vrn.text.trim(),
       );
 
   Future<void> _signIn() async {
@@ -96,11 +103,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
             content: Text(
                 'Signed in as ${AuthService.displayName(account)}')),
       );
-    } on MsalUserCancelException {
-      // The user backed out of sign-in; nothing to report.
     } catch (e) {
       if (!mounted) return;
-      setState(() => _authError = e.toString());
+      // Never a raw exception: map MSAL failures to plain English.
+      setState(() => _authError = friendlySignInMessage(e));
     } finally {
       if (mounted) setState(() => _authBusy = false);
     }
@@ -118,7 +124,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       setState(() => _account = null);
     } catch (e) {
       if (!mounted) return;
-      setState(() => _authError = e.toString());
+      setState(() => _authError = friendlySignInMessage(e));
     } finally {
       if (mounted) setState(() => _authBusy = false);
     }
@@ -150,7 +156,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _save() async {
     if (_saving) return;
-    setState(() => _saving = true);
+    final vrnProblem = vrnError(_vrn.text);
+    if (vrnProblem != null) {
+      setState(() => _vrnError = vrnProblem);
+      return;
+    }
+    setState(() {
+      _vrnError = null;
+      _saving = true;
+    });
     await _current().save();
     if (!mounted) return;
     setState(() => _saving = false);
@@ -184,6 +198,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   helper: 'Sent as X-Business-Name so the reader '
                       'attributes sales to your business.',
                   controller: _businessName,
+                ),
+                const SizedBox(height: 16),
+                _field(
+                  label: 'VAT number',
+                  helper: 'Your 9-digit VAT registration number, e.g. '
+                      '123456789. Checked for format only.',
+                  controller: _vrn,
+                  error: _vrnError,
+                  onChanged: (_) {
+                    if (_vrnError != null) {
+                      setState(() => _vrnError = vrnError(_vrn.text));
+                    }
+                  },
                 ),
                 const SizedBox(height: 16),
                 _field(
@@ -408,6 +435,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     required TextEditingController controller,
     bool obscure = false,
     Widget? suffix,
+    String? error,
+    ValueChanged<String>? onChanged,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,6 +449,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           controller: controller,
           obscureText: obscure,
           autocorrect: false,
+          onChanged: onChanged,
           decoration: InputDecoration(
             filled: true,
             fillColor: Colors.white,
@@ -428,6 +458,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14)),
             suffixIcon: suffix,
+            errorText: error,
           ),
         ),
         const SizedBox(height: 4),
