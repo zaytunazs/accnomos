@@ -18,6 +18,16 @@ def resolve(text: str, path: str) -> str:
         if path.endswith("README.md") and head.lstrip().startswith("|") and theirs.lstrip().startswith("|"):
             h_rows, _, h_rest = head.partition("\n\n")
             return h_rows + "\n" + theirs.rstrip("\n") + "\n" + ("\n" + h_rest if h_rest else "")
+        if path.endswith((".ts", ".tsx")):
+            # Both sides appended members to the same `runtime = {...}` object: merge inside one closing `};`.
+            if "\n};\n" in head and "\n};\n" in theirs:
+                hm, hr = head.split("\n};\n", 1); tm, tr = theirs.split("\n};\n", 1)
+                return hm + "\n" + tm + "\n};\n" + hr + tr
+            # Git's common-suffix trimming can swallow a `}` that closes HEAD's last interface: put it back when HEAD's
+            # last line is still inside a block and THEIRS starts a new top-level declaration.
+            hl = head.rstrip("\n").splitlines()
+            if hl and hl[-1].startswith("  ") and re.match(r"(/\*\*|export |interface |type |const |function )", theirs.lstrip()):
+                return head.rstrip("\n") + "\n}\n\n" + theirs
         return head + theirs
     return HUNK.sub(f, text)
 
