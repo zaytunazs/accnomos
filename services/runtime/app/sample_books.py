@@ -6,7 +6,8 @@
 
 The books are exactly what `tools/seed_demo.py` writes (six months of every feature, each document labelled
 "SAMPLE — FICTIONAL COMPANY"): the same plan and the same steps (`seed_demo.seed_steps`), run here one at a time
-in the background, because they take minutes and several hundred Graph calls.
+in the background, because they take a long time: about 11,300 storage calls on the fake OneDrive, each roughly
+one Graph request (unmeasured against Graph).
 
 * Only into a folder with no ledger entries, proposals or contacts (409 otherwise). Nothing is ever deleted.
 * Progress is kept in the user's own folder, `_System/sample_seed.json` ({state, step, done, total, started_at,
@@ -41,7 +42,7 @@ from pydantic import BaseModel
 from accnomos_connectors.base import StorageProvider
 from accnomos_connectors.msgraph import GraphError, GraphStorageProvider
 from app import contacts as contacts_mod
-from app.books import PROPOSALS, SYSTEM, Books
+from app.books import EVENTS, PROPOSALS, SYSTEM, Books
 from app.books import today as current_date
 from app.deadlines import stagger_of
 from app.routes_books import get_books, require_user
@@ -191,12 +192,20 @@ def _stale(status: SampleStatus) -> bool:
 
 
 async def is_empty(books: Books) -> bool:
-    """No ledger entries, no proposals and no contacts: nothing sample books could mix with."""
-    if await books.list_events():
-        return False
+    """No proposals, no contacts and no ledger entries: nothing sample books could mix with. Home asks on every
+    visit, so it lists folders and reads no entry (cheapest first; real books stop at the first listing)."""
     if any(f.name.endswith(".json") for f in await books.list_files(PROPOSALS)):
         return False
-    return not await contacts_mod.stored_contacts(books)
+    if await contacts_mod.stored_contacts(books):
+        return False
+    try:
+        months = [f for f in await books.storage.list(EVENTS) if f.is_folder]
+    except FileNotFoundError:
+        return True
+    for m in months:
+        if any(f.name.endswith(".json") for f in await books.list_files(f"{EVENTS}/{m.name}")):
+            return False
+    return True
 
 
 def _safe_error(step: str | None, exc: BaseException) -> str:
