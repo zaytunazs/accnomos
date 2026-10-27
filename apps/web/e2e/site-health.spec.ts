@@ -1,0 +1,69 @@
+import { expect, test } from "./fixtures";
+
+/**
+ * Not-found, reader-down/offline and new-version strips. The reader-down test
+ * blocks /health with page.route (the fixture's way of stopping the runtime);
+ * the version test answers /version.json itself, so parallel workers sharing
+ * out-e2e/ never see each other's versions.
+ */
+
+test("unknown paths show the not-found page, served as a 404", async ({ page }) => {
+  const res = await page.goto("/no-such-page-xyz");
+  expect(res?.status()).toBe(404);
+  await expect(page.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Copy details" })).toBeVisible();
+  await page.getByRole("link", { name: "Back to Home" }).click();
+  await expect(page).toHaveURL("/");
+});
+
+test("reader down: one shared strip with retry; the page keeps what it can", async ({ page }) => {
+  await page.route("**/health", (route) => route.abort());
+  await page.goto("/");
+
+  const strip = page.getByRole("alert", { name: /isn't answering/ });
+  await expect(strip).toBeVisible();
+  await expect(strip).toContainText("your files are safe in OneDrive");
+  // Signed out, the page still renders the sample books underneath.
+  await expect(page.getByRole("link", { name: "See the demo books" })).toBeVisible();
+
+  await page.unroute("**/health");
+  await strip.getByRole("button", { name: "Try again" }).click();
+  await expect(strip).toHaveCount(0);
+});
+
+test("offline: the same strip says offline, then recovers", async ({ page }) => {
+  await page.route("**/health", (route) => route.abort());
+  await page.goto("/");
+  await expect(page.getByRole("alert", { name: /isn't answering/ })).toBeVisible();
+
+  await page.evaluate(() => window.dispatchEvent(new Event("offline")));
+  const strip = page.getByRole("alert", { name: /you're offline/i });
+  await expect(strip).toBeVisible();
+  await expect(strip).toContainText("Uploads will wait and resume");
+
+  await page.unroute("**/health");
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await expect(strip).toHaveCount(0);
+});
+
+test("new version: the strip appears when version.json changes, and reload clears it", async ({ page }) => {
+  let sha = "1111111";
+  await page.route("**/version.json", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ sha, builtAt: "2026-10-27T00:00:00Z" }),
+    });
+  });
+  await page.goto("/");
+  await page.waitForTimeout(500); // let the first poll take sha as the baseline
+  sha = "2222222";
+
+  const strip = page.getByRole("status", { name: /new version is available/i });
+  await expect(strip).toBeVisible({ timeout: 15_000 });
+  await strip.getByRole("button", { name: "Reload" }).click();
+  await page.waitForLoadState("load");
+  // After the reload the running sha is the baseline again: quiet for a full poll cycle.
+  await page.waitForTimeout(4500);
+  await expect(page.getByRole("status", { name: /new version is available/i })).toHaveCount(0);
+});
