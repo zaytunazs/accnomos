@@ -15,7 +15,7 @@ import {
 } from "@/lib/runtime";
 import { errorText, todayIso, useAccount } from "./useAccount";
 import SignInCta from "@/components/SignInCta";
-import { LoadingSkeleton, RuntimeErrorNote } from "@/components/States";
+import { LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import WeekGrid from "./WeekGrid";
 
 const hrs = (h: number) => h.toLocaleString("en-GB", { maximumFractionDigits: 2 });
@@ -37,7 +37,10 @@ export default function JobDetail() {
   const [row, setRow] = useState({ staff_id: "", date: todayIso(), hours: "", note: "", billable: true });
 
   const fail = useCallback((err: unknown) => {
-    setError(errorText(err));
+    // Sign-in and server trouble block the page; a refusal with a reason is a note.
+    const msg = errorText(err);
+    if (isAuthError(msg) || isServerError(msg)) setError(msg);
+    else setNote(msg);
   }, []);
 
   const load = useCallback(async () => {

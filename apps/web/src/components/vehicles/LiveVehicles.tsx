@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
-import { EmptyState, LoadingSkeleton, RuntimeErrorNote, parseRuntimeError } from "@/components/States";
+import { EmptyState, LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError, parseRuntimeError } from "@/components/States";
 import SignInCta from "@/components/SignInCta";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import {
@@ -55,7 +55,10 @@ export default function LiveVehicles() {
   const newVehicleRef = useRef<HTMLInputElement>(null);
 
   function fail(e: unknown) {
-    setError(errorText(e));
+    // Sign-in and server trouble block the page; a refusal with a reason ("has journeys in the mileage log") is a note.
+    const msg = errorText(e);
+    if (isAuthError(msg) || isServerError(msg)) setError(msg);
+    else setNote({ text: parseRuntimeError(msg).detail || msg });
   }
   const [newVehicle, setNewVehicle] = useState({ name: "", registration: "", kind: "car" as RtVehicleKind, owned_by: "personal" as "personal" | "business" });
   const [trip, setTrip] = useState({ vehicle_id: "", date: londonToday(), from: "", to: "", miles: "", purpose: "" });

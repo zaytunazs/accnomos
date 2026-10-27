@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import PlanCard from "@/components/plan/PlanCard";
 import SignInCta from "@/components/SignInCta";
-import { EmptyState, LoadingSkeleton, RuntimeErrorNote } from "@/components/States";
+import { EmptyState, LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import { pence, runtime, type RtContactRow, type RtJobSummary } from "@/lib/runtime";
 import { errorText, todayIso, useAccount } from "./useAccount";
 
@@ -30,7 +30,10 @@ export default function JobsList() {
   const newJobRef = useRef<HTMLInputElement>(null);
 
   const fail = useCallback((e: unknown) => {
-    setError(errorText(e));
+    // Sign-in and server trouble block the page; a refusal with a reason is a note.
+    const msg = errorText(e);
+    if (isAuthError(msg) || isServerError(msg)) setError(msg);
+    else setNote(msg);
   }, []);
 
   const load = useCallback(async () => {

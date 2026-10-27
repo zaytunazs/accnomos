@@ -5,7 +5,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import PrintButton from "@/components/PrintButton";
 import SignInCta from "@/components/SignInCta";
 import { errorText, todayIso, useAccount } from "@/components/jobs/useAccount";
-import { EmptyState, LoadingSkeleton, RuntimeErrorNote } from "@/components/States";
+import { EmptyState, LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import { gbp, runtime, ukDate, type RtPayRun, type RtPayRunList, type RtStaff } from "@/lib/runtime";
 
 export const ESTIMATE = "Estimate — your payroll provider calculates the actual tax and NI";
@@ -51,7 +51,10 @@ export default function LivePayroll() {
   const [error, setError] = useState<string | null>(null);
 
   function fail(e: unknown) {
-    setError(errorText(e));
+    // Sign-in and server trouble block the page; a refusal with a reason is a note.
+    const msg = errorText(e);
+    if (isAuthError(msg) || isServerError(msg)) setError(msg);
+    else setNote(msg);
   }
 
   const run = list?.runs.find((r) => periodOf(r.period_start) === period) ?? null;

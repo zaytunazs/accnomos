@@ -7,7 +7,7 @@ import BankReconcile, { type RulePrefillFrom } from "@/components/bank/BankRecon
 import BankRules from "@/components/bank/BankRules";
 import BankUpload from "@/components/bank/BankUpload";
 import SignInCta from "@/components/SignInCta";
-import { EmptyState, LoadingSkeleton, RuntimeErrorNote } from "@/components/States";
+import { EmptyState, LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import PrintButton from "@/components/PrintButton";
 import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import { getMsal, msalConfigured } from "@/lib/msal";
@@ -715,7 +715,9 @@ export default function LiveBank() {
       setState("live");
     } catch (e) {
       const msg = (e as Error).message;
-      setError(msg);
+      // Sign-in and server trouble block the page; a refusal with a reason is a note.
+      if (isAuthError(msg) || isServerError(msg)) setError(msg);
+      else setNote(msg);
       setState("error");
     }
   }, []);
@@ -748,7 +750,9 @@ export default function LiveBank() {
         setChanged(true);
       })
       .catch((e: Error) => {
-        setError(e.message);
+        const msg = e.message;
+        if (isAuthError(msg) || isServerError(msg)) setError(msg);
+        else setNote(msg);
       })
       .finally(async () => {
         await refresh(account);
