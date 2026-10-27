@@ -12,8 +12,9 @@ const LOCAL = /^(https?|wss?):\/\/(127\.0\.0\.1|localhost)(:\d+)?\//;
 export class Runtime {
   constructor(private readonly request: APIRequestContext) {}
 
-  async reset(): Promise<void> {
-    const r = await this.request.post(`${RUNTIME_URL}/__test/reset`);
+  /** Empty the fake OneDrive and reseed; `seed: "bank"` also posts the entries evals/gold/bank/barclays.csv pays for. */
+  async reset(seed?: "bank"): Promise<void> {
+    const r = await this.request.post(`${RUNTIME_URL}/__test/reset${seed ? `?seed=${seed}` : ""}`);
     expect(r.ok(), `POST /__test/reset -> ${r.status()}: is the runtime on ${RUNTIME_URL} in test mode?`).toBeTruthy();
   }
 
