@@ -113,7 +113,7 @@ export function useMsAccount(): { account: AccountInfo | null; ready: boolean } 
 
 /** Shown signed out. SAMPLE — FICTIONAL COMPANY. */
 export const SAMPLE_INVOICES: Pick<RtInvoice, "number" | "status" | "customer" | "issue_date" | "due_date" | "total_pence" | "days_overdue">[] = [
-  { number: "INV-0007", status: "draft", customer: { contact_id: null, name: "Harrogate Dental Ltd", email: null, address: null, vrn: null }, issue_date: "2026-10-27", due_date: "2026-11-26", total_pence: 186000, days_overdue: null },
+  { number: "INV-0007", status: "draft", customer: { contact_id: null, name: "Harrogate Dental Ltd", email: null, address: null, vrn: null }, issue_date: "2026-10-13", due_date: "2026-11-12", total_pence: 186000, days_overdue: null },
   { number: "INV-0006", status: "sent", customer: { contact_id: null, name: "Acme Kitchens Ltd", email: null, address: null, vrn: null }, issue_date: "2026-09-01", due_date: "2026-10-01", total_pence: 40500, days_overdue: 26 },
   { number: "INV-0005", status: "paid", customer: { contact_id: null, name: "Leeds Lettings", email: null, address: null, vrn: null }, issue_date: "2026-08-14", due_date: "2026-09-13", total_pence: 96000, days_overdue: null },
 ];

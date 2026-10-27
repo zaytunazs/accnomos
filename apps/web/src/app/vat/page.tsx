@@ -3,6 +3,7 @@ import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
 import PrintButton from "@/components/PrintButton";
 import SignedOutOnly from "@/components/SignedOutOnly";
+import SignInCta from "@/components/SignInCta";
 import BoxExplain from "@/components/vat/BoxExplain";
 import SubmitSheet from "@/components/vat/SubmitSheet";
 import LiveVat from "@/components/vat/LiveVat";
@@ -72,7 +73,8 @@ export default function VatPage() {
       <SignedOutOnly>
         <div className="flex flex-col gap-6">
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-medium text-muted">
-            <span>SAMPLE — FICTIONAL COMPANY · a mock-up of a finished return ({vatMeta.period}). Sign in to see yours.</span>
+            <span>A mock-up of a finished return ({vatMeta.period}). Fictional figures.</span>
+            <SignInCta />
             <span className="hidden print:inline">Estimate until submitted.</span>
             <span className="flex items-center gap-2 font-semibold whitespace-nowrap">
               <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-teal" />
@@ -258,12 +260,12 @@ export default function VatPage() {
                   a full VAT invoice.
                 </p>
                 <p className="mt-2 text-[14px] leading-6">
-                  <a
-                    href="#ask-howdens"
+                  <Link
+                    href="/ask"
                     className="font-bold text-teal-dark underline underline-offset-2"
                   >
-                    Ask Howdens for a VAT invoice (draft ready in Outlook)
-                  </a>{" "}
+                    Ask about the Howdens invoice
+                  </Link>{" "}
                   or exclude it from this return.
                 </p>
               </section>

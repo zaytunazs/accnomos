@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { csvFilename, downloadCsv } from "@/lib/csv";
+import { vatBoxes } from "@/lib/sample-vat";
 
 export default function SubmitSheet() {
   const [open, setOpen] = useState(false);
@@ -40,6 +42,13 @@ export default function SubmitSheet() {
         </button>
         <button
           type="button"
+          onClick={() =>
+            downloadCsv(
+              csvFilename("vat-return"),
+              [["box", "what", "amount"], ...vatBoxes.map((b) => [b.box, b.what, b.amount])],
+              { sample: true },
+            )
+          }
           className="h-11 whitespace-nowrap rounded-xl border border-border bg-white px-6 text-[15px] font-bold hover:bg-ground"
         >
           Export calc sheet
@@ -93,6 +102,7 @@ export default function SubmitSheet() {
               <button
                 type="button"
                 disabled={!confirmed}
+                title={confirmed ? "Send the return to HMRC's sandbox" : "Tick “I confirm” first"}
                 onClick={() => setSubmitted(true)}
                 className="h-11 rounded-xl bg-teal px-6 text-[15px] font-bold text-white hover:bg-teal-dark disabled:cursor-not-allowed disabled:opacity-50"
               >

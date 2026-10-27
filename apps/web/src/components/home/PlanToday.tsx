@@ -57,6 +57,7 @@ export default function PlanToday() {
         <button
           type="button"
           disabled={!account}
+          title={account ? "Propose a working day" : "Sign in to plan your day"}
           onClick={() => setDay(todayIso())}
           className="shrink-0 whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-60"
         >

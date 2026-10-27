@@ -18,7 +18,9 @@ export default function AskBar() {
       <button
         type="button"
         aria-label="Speak"
-        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted hover:bg-ground"
+        disabled
+        title="Sign in, then ask by voice on the Ask page"
+        className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-muted hover:bg-ground disabled:opacity-60"
       >
         <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
           <rect

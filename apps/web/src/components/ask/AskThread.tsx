@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import type { AccountInfo } from "@azure/msal-browser";
 import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
+import SignInCta from "@/components/SignInCta";
 import { EmptyState, LoadingSkeleton, ReaderErrorNote, RuntimeErrorNote } from "@/components/States";
 import { todayIso } from "@/components/jobs/useAccount";
 import { loadAiConfig, RUNTIME_URL } from "@/lib/ai-config";
@@ -268,7 +269,7 @@ export default function AskThread() {
                 </p>
               ) : (
                 <p className="w-fit rounded-full bg-ink px-3 py-1 text-[12px] font-bold tracking-wide whitespace-nowrap text-ground">
-                  SAMPLE — FICTIONAL COMPANY
+                  Sample thread
                 </p>
               )}
               <Explain title="Where answers come from">
@@ -435,13 +436,17 @@ export default function AskThread() {
           >
             {busy ? "Asking…" : "Ask"}
           </button>
-        ) : (
+        ) : offline ? (
           <Link
-            href={offline ? "/settings" : "/connect"}
+            href="/settings"
             className="flex h-10 shrink-0 items-center whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
           >
-            {offline ? "Settings" : "Sign in"}
+            Settings
           </Link>
+        ) : (
+          <span className="flex h-10 shrink-0 items-center whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark">
+            <SignInCta className="font-bold text-white" />
+          </span>
         )}
       </form>
       {voiceNote && (

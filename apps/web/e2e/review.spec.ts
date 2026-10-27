@@ -9,7 +9,7 @@ const focusedCard = (page: Page) => page.locator("section[aria-labelledby]:focus
 test.describe("signed out: the sample queue", () => {
   test("label, keyboard approve and undo, confirmed reject", async ({ page }) => {
     await page.goto("/review");
-    await expect(page.getByText("SAMPLE — FICTIONAL COMPANY · Bramblewood Joinery Ltd.")).toBeVisible();
+    await expect(page.getByText("SAMPLE — FICTIONAL COMPANY · demo data only")).toBeVisible();
     await expect(page.getByText("4 waiting for you")).toBeVisible();
 
     await page.keyboard.press("j");

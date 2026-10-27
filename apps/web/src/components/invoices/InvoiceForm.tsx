@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { PreviewSendDialog } from "@/components/invoices/InvoiceDialogs";
+import SignInCta from "@/components/SignInCta";
 import { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
 import { linePence, liveTotals, money, parsePounds, poundsInput, thousandths, todayIso, useMsAccount, VAT_CODES, type LiveTotals } from "@/lib/invoices";
 import { RuntimeErrorNote } from "@/components/States";
@@ -267,7 +268,12 @@ export default function InvoiceForm() {
   }
 
   if (ready && !account) {
-    return <p className="rounded-2xl bg-ground p-4 text-sm text-muted">Sign in with Microsoft to write invoices.</p>;
+    return (
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-ground p-4 text-sm text-muted">
+        <SignInCta />
+        <span>to write invoices.</span>
+      </p>
+    );
   }
   if (locked) {
     return (

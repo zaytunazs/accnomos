@@ -256,6 +256,7 @@ export default function SettingsPanels() {
                 <button
                   type="button"
                   disabled
+                  title="Sign in, then connect HMRC on the VAT page"
                   className="h-10 whitespace-nowrap rounded-xl border border-border bg-ground px-4 text-sm font-bold text-muted disabled:opacity-60"
                 >
                   Connect HMRC (sandbox)
@@ -277,8 +278,8 @@ export default function SettingsPanels() {
           <h2 id="settings-audit" className={heading}>
             Audit log
           </h2>
-          <Link href="#" className="mt-2 inline-block text-sm font-bold text-teal-dark">
-            Open _System/audit in OneDrive
+          <Link href="/files" className="mt-2 inline-block text-sm font-bold text-teal-dark">
+            Browse _System/audit in Files
           </Link>
         </section>
 

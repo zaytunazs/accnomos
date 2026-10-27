@@ -16,10 +16,18 @@ export default function ReviewPage() {
               <p>
                 Every proposal is read by AI, then checked by plain code — never by the model.
                 The checks are: the receipt lines add up; net plus VAT equals the total; the VAT
-                maths matches the rate (S 20%, R 5%, Z 0%); the VAT number has the right shape
-                (and over £250 a VAT number must be present); it is not a duplicate of something
-                already filed; it is in pounds sterling; the date is valid; and the reading is
-                confident enough.
+                maths matches the rate (S 20%, R 5%, Z 0%); the VAT number has the right shape;
+                it is not a duplicate of something already filed; it is in pounds sterling; the
+                date is valid; and the reading is confident enough.
+              </p>
+              <p>
+                The missing-VAT-number rule: when your business is VAT-registered and a purchase
+                over £250 shows no VAT and no VAT number, code asks the books whether the supplier
+                is VAT-registered. If the books have never seen them, the card asks you instead —
+                “Is {"<supplier>"} VAT-registered? Over £250 they should give a VAT invoice” — with
+                a tick for “isn’t VAT-registered”. The tick teaches “not registered”; a VAT number
+                seen on an approved receipt teaches “registered”; undoing the approval takes the
+                tick back; Contacts can change the stored answer any time.
               </p>
               <p>
                 Any failed check moves the card to <strong>Needs a look</strong> with the reason

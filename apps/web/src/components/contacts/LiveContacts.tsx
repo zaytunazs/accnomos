@@ -6,6 +6,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import { markContactsImported } from "@/components/home/SetupChecklist";
+import SignInCta from "@/components/SignInCta";
 import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import {
   runtime,
@@ -100,10 +101,11 @@ function AgedBars({ row }: { row: RtAgedRow | undefined }) {
   );
 }
 
-function QuickActions({ contact, onStatement, onEdit }: {
+function QuickActions({ contact, onStatement, onEdit, canEdit }: {
   contact: RtContactRow;
   onStatement: () => void;
   onEdit: () => void;
+  canEdit: boolean;
 }) {
   return (
     <span className="inline-flex flex-wrap items-center gap-1 print:hidden">
@@ -115,7 +117,13 @@ function QuickActions({ contact, onStatement, onEdit }: {
           New invoice
         </Link>
       )}
-      <button type="button" onClick={onEdit} className={quietAction}>
+      <button
+        type="button"
+        onClick={onEdit}
+        disabled={!canEdit}
+        title={canEdit ? "Edit this contact" : "Sign in to edit contacts"}
+        className={`${quietAction} disabled:opacity-60`}
+      >
         Edit
       </button>
     </span>
@@ -142,13 +150,14 @@ function ContactSubline({ contact, showKind }: { contact: RtContactRow; showKind
   );
 }
 
-function ContactList({ rows, agedById, showKind, selected, onSelect, onEdit }: {
+function ContactList({ rows, agedById, showKind, selected, onSelect, onEdit, canEdit }: {
   rows: RtContactRow[];
   agedById: Map<string, RtAgedRow>;
   showKind: boolean;
   selected: string | null;
   onSelect: (id: string) => void;
   onEdit: (id: string) => void;
+  canEdit: boolean;
 }) {
   if (!rows.length) {
     return <p className={`${card} p-4 text-sm font-semibold text-muted`}>No contacts match.</p>;
@@ -180,7 +189,7 @@ function ContactList({ rows, agedById, showKind, selected, onSelect, onEdit }: {
               <AgedBars row={agedById.get(c.id)} />
               <span className="text-[13px] tabular-nums text-muted">{ytd(c)}</span>
             </span>
-            <QuickActions contact={c} onStatement={() => onSelect(c.id)} onEdit={() => onEdit(c.id)} />
+            <QuickActions contact={c} onStatement={() => onSelect(c.id)} onEdit={() => onEdit(c.id)} canEdit={canEdit} />
           </li>
         ))}
       </ul>
@@ -219,7 +228,7 @@ function ContactList({ rows, agedById, showKind, selected, onSelect, onEdit }: {
                 </td>
                 <td className={`${td} text-right tabular-nums text-muted`}>{ytd(c)}</td>
                 <td className={`${td} whitespace-nowrap text-right`}>
-                  <QuickActions contact={c} onStatement={() => onSelect(c.id)} onEdit={() => onEdit(c.id)} />
+                  <QuickActions contact={c} onStatement={() => onSelect(c.id)} onEdit={() => onEdit(c.id)} canEdit={canEdit} />
                 </td>
               </tr>
             ))}
@@ -506,7 +515,13 @@ function SidePanel({ contact, account, editing, onEditingChange, onSaved, onClos
             <p className="text-[15px] tabular-nums">
               <Balance pence={contact.totals.balance_pence} />
             </p>
-            <button type="button" onClick={() => onEditingChange(true)} disabled={!account} className={secondary}>
+            <button
+              type="button"
+              onClick={() => onEditingChange(true)}
+              disabled={!account}
+              title={account ? "Edit this contact" : "Sign in to edit contacts"}
+              className={`${secondary} disabled:opacity-60`}
+            >
               Edit
             </button>
           </div>
@@ -843,11 +858,9 @@ export default function LiveContacts() {
         <RuntimeErrorNote message={note} title="Could not read your contacts" />
       )}
       {state === "demo" || state === "error" ? (
-        <p className="text-[13px] font-medium text-muted">
-          {state === "error" ? "Could not read your contacts; showing the sample instead. " : (
-            <>Sample contacts. <Link href="/connect" className="font-bold text-teal-dark underline">Connect your OneDrive</Link> to see yours. </>
-          )}
-          SAMPLE — FICTIONAL COMPANY
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] font-medium text-muted">
+          <span>{state === "error" ? "Could not read your contacts; showing the sample instead." : "Sample contacts from fictional companies."}</span>
+          {state === "demo" && <SignInCta />}
         </p>
       ) : null}
 
@@ -940,7 +953,7 @@ export default function LiveContacts() {
                 No customers or suppliers yet. They appear here once you approve receipts and invoices.
               </p>
             ) : (
-              <ContactList rows={filtered} agedById={agedById} showKind={kind === "all"} selected={selected} onSelect={select} onEdit={edit} />
+              <ContactList rows={filtered} agedById={agedById} showKind={kind === "all"} selected={selected} onSelect={select} onEdit={edit} canEdit={account !== null} />
             )}
           </div>
           {current && (

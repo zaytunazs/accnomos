@@ -48,7 +48,7 @@ export const sampleContacts: RtContactRow[] = [
 const zero = { "0-30": 0, "31-60": 0, "61-90": 0, "90+": 0 };
 
 export const sampleAged: RtAged = {
-  as_of: "2026-10-27",
+  as_of: "2026-10-26",
   debtors: {
     rows: [
       { contact_id: "5a11c0ffee000001", name: "Acme Kitchens Ltd", buckets: { ...zero, "31-60": 54000 }, total_pence: 54000, documents: [] },

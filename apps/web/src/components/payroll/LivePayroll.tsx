@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import PrintButton from "@/components/PrintButton";
+import SignInCta from "@/components/SignInCta";
 import { errorText, todayIso, useAccount } from "@/components/jobs/useAccount";
 import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import { gbp, runtime, ukDate, type RtPayRun, type RtPayRunList, type RtStaff } from "@/lib/runtime";
@@ -99,9 +100,12 @@ export default function LivePayroll() {
   if (account === undefined) return <p className="text-sm text-muted">Loading pay runs…</p>;
   if (account === null)
     return (
-      <p className="rounded-2xl border border-border bg-white p-6 text-[15px] leading-7 text-muted">
-        Sign in with Microsoft to prepare pay runs from your timesheets. Accnomos adds up the hours and estimates tax and
-        NI so you can hand clean numbers to your payroll provider. It does not run payroll or send anything to HMRC.
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-border bg-white p-6 text-[15px] leading-7 text-muted">
+        <SignInCta />
+        <span>
+          to prepare pay runs from your timesheets. Accnomos adds up the hours and estimates tax and
+          NI so you can hand clean numbers to your payroll provider. It does not run payroll or send anything to HMRC.
+        </span>
       </p>
     );
 

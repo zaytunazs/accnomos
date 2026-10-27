@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import EditSheet from "@/components/review/EditSheet";
+import Explain from "@/components/Explain";
 import Modal from "@/components/review/Modal";
 import ProposalCard from "@/components/review/ProposalCard";
 import ReviewImage, { type ImageSource } from "@/components/review/ReviewImage";
@@ -36,6 +37,36 @@ const isTyping = (t: EventTarget | null) =>
 const QUIET = new Set(["Autopilot is switched off", "No Autopilot rule for this supplier"]);
 /** "Check DUPLICATE failed: Looks like…" → "Looks like…": never show a raw check code. */
 const plainAutopilot = (r: string) => r.replace(/^Check [A-Z][A-Z0-9_]* (failed|warned):\s*/, "");
+
+/**
+ * The supplier VAT rule, exactly as implemented (services/runtime/app/checks.py
+ * `check_vat_number_required`, app/contacts.py `supplier_knowledge`): a registered business, a purchase
+ * over £250 with no VAT number and no VAT, from a supplier the books do not know yet, waits in Needs a
+ * look asking "Is <supplier> VAT-registered?". The tick teaches "not registered"; a VAT number seen on
+ * an approved receipt teaches "registered"; undoing the approval takes the tick back (a VAT number
+ * stays learnt); Contacts can change the stored answer any time.
+ */
+function VatQuestionExplain({ supplier }: { supplier: string }) {
+  return (
+    <Explain title="Why we ask about this supplier">
+      <p>
+        When your business is VAT-registered and a purchase over £250 shows no VAT and no VAT number,
+        code asks the books whether the supplier is VAT-registered. The books have never seen {supplier},
+        so the card asks you instead: “Is {supplier} VAT-registered? Over £250 they should give a VAT
+        invoice.”
+      </p>
+      <p>
+        Ticking “{supplier} isn’t VAT-registered” on approval remembers them as not registered, so their
+        receipts are not questioned again. A VAT number seen on an approved receipt remembers them as
+        registered instead.
+      </p>
+      <p>
+        Undoing the approval takes the tick back (a VAT number stays learnt: the number is evidence on
+        its own). You can change the stored answer any time on Contacts.
+      </p>
+    </Explain>
+  );
+}
 
 /** The runtime's "Is <supplier> VAT-registered?" check (services/runtime/app/checks.py); the card offers the tick for it. */
 export const SUPPLIER_VAT_UNKNOWN = "SUPPLIER_VAT_UNKNOWN";
@@ -221,6 +252,12 @@ export default function ReviewQueue<H>({
         }
       }
       setHistory((h) => h.slice(0, -1));
+      // Undo takes the tick back on the card, matching the runtime (forget_from_undo).
+      setNotRegistered((r) => {
+        const next = { ...r };
+        for (const id of last.ids) delete next[id];
+        return next;
+      });
       onNote(
         last.kind === "reject"
           ? `Undone · ${last.what} is back in Review`
@@ -351,18 +388,21 @@ export default function ReviewQueue<H>({
             actions={
               <>
                 {asksVatStatus(p) && (
-                  <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-warn-border bg-warn-bg px-4 py-2 text-[15px] font-semibold text-warn-ink">
-                    <input
-                      type="checkbox"
-                      className="h-5 w-5 shrink-0 accent-teal"
-                      checked={notRegistered[p.id] ?? false}
-                      onChange={(e) => setNotRegistered((r) => ({ ...r, [p.id]: e.target.checked }))}
-                    />
-                    <span>
-                      {p.extracted.supplier_name} isn&apos;t VAT-registered
-                      <span className="block text-[13px] font-medium">Approving remembers this, so their receipts aren&apos;t questioned again</span>
-                    </span>
-                  </label>
+                  <div className="flex min-h-11 items-center gap-3 rounded-xl border border-warn-border bg-warn-bg px-4 py-2 text-[15px] font-semibold text-warn-ink">
+                    <label className="flex min-w-0 flex-1 cursor-pointer items-center gap-3">
+                      <input
+                        type="checkbox"
+                        className="h-5 w-5 shrink-0 accent-teal"
+                        checked={notRegistered[p.id] ?? false}
+                        onChange={(e) => setNotRegistered((r) => ({ ...r, [p.id]: e.target.checked }))}
+                      />
+                      <span>
+                        {p.extracted.supplier_name} isn&apos;t VAT-registered
+                        <span className="block text-[13px] font-medium">Approving remembers this, so their receipts aren&apos;t questioned again</span>
+                      </span>
+                    </label>
+                    <VatQuestionExplain supplier={p.extracted.supplier_name} />
+                  </div>
                 )}
                 {/* Never wraps: three short buttons fit a 390 px phone. */}
                 <div className="flex flex-nowrap gap-2">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import PlanCard from "@/components/plan/PlanCard";
+import SignInCta from "@/components/SignInCta";
 import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import { pence, runtime, type RtContactRow, type RtJobSummary } from "@/lib/runtime";
 import { errorText, todayIso, useAccount } from "./useAccount";
@@ -76,7 +77,13 @@ export default function JobsList() {
     }
   }
 
-  if (account === null) return <p className="text-sm text-muted">Sign in to see the jobs in your OneDrive.</p>;
+  if (account === null)
+    return (
+      <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted">
+        <SignInCta />
+        <span>to see the jobs in your OneDrive.</span>
+      </p>
+    );
   if (jobs === null) return <p className="text-sm text-muted">{note ?? "Loading…"}</p>;
 
   const open = jobs.filter((s) => s.job.status === "open");

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import SignInCta from "@/components/SignInCta";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import {
   gbp,
@@ -130,10 +131,13 @@ export default function LiveVehicles() {
       <div className="flex flex-col gap-3">
         {error && <RuntimeErrorNote message={error} />}
         {note && <p className="rounded-xl bg-ground px-4 py-2 text-sm text-muted">{note.text}</p>}
-        <p className="rounded-2xl border border-border bg-white p-6 text-[15px] leading-7 text-muted">
-          Sign in with Microsoft to keep your vehicles and mileage log in your own OneDrive. Personal cars and vans used
-          for business earn 45p a mile for the first 10,000 business miles in the tax year, then 25p; motorcycles 24p;
-          bicycles 20p.
+        <p className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-border bg-white p-6 text-[15px] leading-7 text-muted">
+          <SignInCta />
+          <span>
+            to keep your vehicles and mileage log in your own OneDrive. Personal cars and vans used
+            for business earn 45p a mile for the first 10,000 business miles in the tax year, then 25p; motorcycles 24p;
+            bicycles 20p.
+          </span>
         </p>
       </div>
     );
