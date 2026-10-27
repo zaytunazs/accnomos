@@ -7,16 +7,23 @@ which does nothing until the user approves it with POST /actions/approve.
 A spoken question is transcribed by Muse Voice (app/ai/voice.py) and then takes exactly the same path.
 "Plan my Thursday" (typed or spoken) is not a question about the books: code spots it and answers with a
 `plan_day` action for that date, which the app opens as a day plan (POST /plan/day); no model is called.
+
+`POST /books/ask?stream=1` answers as server-sent events: `start` (code's key numbers, citations and buttons, at
+once), `token` events (the explanation as the model writes it; unchecked until the end), then `answer`, the
+checked AskAnswer exactly as the plain call returns it, whose words replace the streamed ones. An instruction or a
+day plan needs no model, so it comes as a single `answer` event.
 """
 
 from __future__ import annotations
 
+import json
+from collections.abc import AsyncIterator
 from datetime import date
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
-from pydantic import TypeAdapter, ValidationError
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from app import actions
 from app.ai import ask as ask_ai
@@ -57,10 +64,10 @@ def plan_answer(day: date, period: AskPeriod) -> AskAnswer:
     )
 
 
-async def _answer(
+async def _prepare(
     req: AskRequest, books: Books, cfg: AiConfig, business: str | None, token: str, cycle: VatCycle,
-) -> AskAnswer:
-    """Day-plan intent (code, no model) → instruction (proposed action) → question about the books (facts + model).
+) -> AskAnswer | dict[str, Any]:
+    """Day-plan intent (code, no model) → instruction (proposed action) → the facts pack for a question about the books.
 
     No period in the request: the current VAT period by the settings sent as `stagger`/`start_month`/`months`."""
     period = req.period or default_period(today(), cycle)
@@ -69,21 +76,49 @@ async def _answer(
     found = await actions.propose(req.question, books, cfg, token)
     if found is not None:
         return _action_answer(found, cfg, period)
-    facts = await build_facts(books, period, business)
-    return await ask_ai.answer(req.question, facts, req.history, cfg)
+    return await build_facts(books, period, business)
+
+
+async def _answer(
+    req: AskRequest, books: Books, cfg: AiConfig, business: str | None, token: str, cycle: VatCycle,
+) -> AskAnswer:
+    ready = await _prepare(req, books, cfg, business, token, cycle)
+    if isinstance(ready, AskAnswer):
+        return ready
+    return await ask_ai.answer(req.question, ready, req.history, cfg)
+
+
+def _sse(event: str, data: Any) -> str:
+    payload = data.model_dump(mode="json") if isinstance(data, BaseModel) else data
+    return f"event: {event}\ndata: {json.dumps(payload, ensure_ascii=False, separators=(',', ':'))}\n\n"
+
+
+async def _events(req: AskRequest, ready: AskAnswer | dict[str, Any], cfg: AiConfig) -> AsyncIterator[str]:
+    if isinstance(ready, AskAnswer):
+        yield _sse("answer", ready)
+        return
+    async for event, data in ask_ai.answer_stream(req.question, ready, req.history, cfg):
+        yield _sse(event, {"text": data} if event == "token" else data)
 
 
 @router.post("/ask", response_model=AskAnswer)
 async def ask(
     body: AskRequest,
+    stream: bool = Query(default=False, description="1: server-sent events (start, token…, answer) instead of one JSON answer"),
     books: Books = Depends(get_books),
     cfg: AiConfig = Depends(ai_config_from_request),
     business: str | None = Depends(business_name),
     token: str = Depends(graph_token),
     cycle: VatCycle = Depends(vat_cycle),
-) -> AskAnswer:
+) -> Any:
     """An answer about the books, or, for an instruction ("send a £100 invoice to …"), a proposed action to approve."""
-    return await _answer(body, books, cfg, business, token, cycle)
+    ready = await _prepare(body, books, cfg, business, token, cycle)  # before streaming, so its errors keep their status
+    if stream:
+        return StreamingResponse(_events(body, ready, cfg), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+    if isinstance(ready, AskAnswer):
+        return ready
+    return await ask_ai.answer(body.question, ready, body.history, cfg)
 
 
 @router.post("/ask/voice", response_model=AskVoiceAnswer)

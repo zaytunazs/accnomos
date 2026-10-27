@@ -18,6 +18,7 @@ from app.ai import verify as verify_ai
 from app.ai.config import TEST_AI_MODEL, AiConfig, is_test_mode
 from app.books import INBOX, Books, today
 from app.checks import decide, run_checks
+from app.ask_router import pack, route
 from app.facts import build_facts, default_period
 from app.routes_actions import _mail_sender
 from app.routes_books import get_books
@@ -188,9 +189,11 @@ def test_stub_ai_reads_gold_png_by_hash(client: TestClient) -> None:
 async def test_stub_ask_reply_is_grounded(test_env: None) -> None:
     await testmode.reset()
     facts = await build_facts(Books(testmode.STATE.storage), default_period(today()))
-    out = AskModelOutput.model_validate(testmode.ask_reply(facts))
-    answer = ask_ai.ground(out, facts, TEST_AI_MODEL)
-    assert answer.fallback_reason is None and len(answer.key_numbers) >= 2
+    for question in ("How much VAT do I owe this quarter?", "What was my VAT last quarter?", "What is my bank balance?"):
+        r = route(question, facts)
+        out = AskModelOutput.model_validate({"key_numbers": [], "citations": [], "suggested_actions": [], **testmode.ask_reply(pack(facts, r))})
+        answer = ask_ai.ground(out, facts, TEST_AI_MODEL, question)
+        assert answer.fallback_reason is None and len(answer.key_numbers) >= (2 if "VAT" in question else 0)
 
 
 def test_graph_lookalike_shares_storage_with_runtime(client: TestClient) -> None:

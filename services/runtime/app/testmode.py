@@ -58,7 +58,7 @@ from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai
 from app.ai import verify as verify_ai
 from app.ai.config import TEST_AI_MODEL
-from app.schemas import CATEGORIES, AskModelOutput
+from app.schemas import CATEGORIES, AskExplanation
 
 log = logging.getLogger("accnomos.testmode")
 
@@ -177,18 +177,16 @@ def verifier_reading_from_gold(gold: dict[str, Any]) -> dict[str, Any]:
 
 
 def ask_reply(facts: dict[str, Any]) -> dict[str, Any]:
-    """A grounded answer that quotes only figures from the facts pack (app/ai/ask.py checks every one)."""
-    key_numbers = [k.model_dump() for k in ask_ai._fact_key_numbers(facts)]
-    box5, prev_box5 = key_numbers[0]["value"], key_numbers[1]["value"]
-    answer = (
-        f"Your net VAT (Box 5) for this quarter is {box5} ({facts['derived']['vat_position']}), "
-        f"from {facts['this_period']['entries']} approved entries. Last quarter it was {prev_box5}."
-    )
-    out = {
-        "answer_md": answer, "key_numbers": key_numbers, "citations": ask_ai.vat_sources(facts),
-        "suggested_actions": [{"label": "Open the VAT return", "kind": "open_vat", "arg": None}], "confidence": "high",
-    }
-    return AskModelOutput.model_validate(out).model_dump()
+    """A grounded explanation that quotes only figures from the routed facts pack (app/ai/ask.py checks every one)."""
+    this, prev = facts["this_period"], facts["previous_period"]
+    if "vat" in this:
+        answer = (f"Your net VAT (Box 5) for this quarter is {ask_ai._gbp(this['vat']['box5'])} ({this['vat_position']}), "
+                  f"from {this['entries']} approved entries.")
+    elif "vat" in prev:
+        answer = f"Your net VAT (Box 5) for {prev['label']} was {ask_ai._gbp(prev['vat']['box5'])}."
+    else:
+        answer = "The books I was given don't show that."
+    return AskExplanation(answer_md=answer, confidence="high").model_dump()
 
 
 # --------------------------------------------------------------------------- #
