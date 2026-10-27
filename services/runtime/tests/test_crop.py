@@ -189,3 +189,36 @@ def test_request_body_shape():
     content = body["input"][0]["content"]
     assert content[0] == {"type": "input_text", "text": "receipt"}
     assert content[1]["type"] == "input_image"
+
+
+# --- pipeline wiring ----------------------------------------------------------
+
+
+async def test_process_image_extracts_cropped_bytes_and_records_crop(monkeypatch):
+    from app import pipeline
+    from app.schemas import ExtractedDoc
+
+    seen: list[bytes] = []
+
+    async def fake_extract(image_bytes, mime, cfg):
+        seen.append(image_bytes)
+        doc = ExtractedDoc(
+            doc_type="receipt", supplier_name="Wickes", supplier_vat_number=None, customer_name=None,
+            invoice_number=None, date="2026-10-26", currency="GBP", lines=[], net_total=10, vat_total=2,
+            gross_total=12, payment_method="card", card_last4=None, category_guess="Materials", confidence=0.9,
+        )
+        return doc, {"backend": "local", "model": "stub"}
+
+    monkeypatch.setattr(pipeline, "extract_document", fake_extract)
+    local = AiConfig(mode="local", base_url="http://x", model="m")
+    data = _photo()
+    p = await pipeline.process_image(data, "image/png", local)
+    assert p.doc_sha256 == pipeline.sha256_hex(data)  # hash of the original, not the crop
+    assert seen[0] != data and _size(seen[0]) == (p.crop["box"][2] - p.crop["box"][0], p.crop["box"][3] - p.crop["box"][1])
+    assert p.crop["method"] == "code"
+    chip = [c for c in p.checks if c.code == "CROP"]
+    assert chip and chip[0].ok and chip[0].message.startswith("Cropped by code")
+    assert not any(r.startswith("CROP") for r in p.reasons)
+
+    p2 = await pipeline.process_image(_photo(paper=(10, 10, 890, 1190)), "image/png", local)
+    assert p2.crop["method"] == "none" and not any(c.code == "CROP" for c in p2.checks)

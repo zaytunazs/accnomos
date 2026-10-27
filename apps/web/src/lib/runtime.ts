@@ -53,6 +53,8 @@ export interface RtProposal {
   journal_draft: RtJournalLine[];
   model: string;
   elapsed_s: number;
+  /** How the photo was cropped before extraction; "none" = original used. Chip: crop.note. */
+  crop?: { method: "sam" | "code" | "none"; box: [number, number, number, number] | null; note: string } | null;
   source_path?: string;
 }
 export interface RtSummary {
