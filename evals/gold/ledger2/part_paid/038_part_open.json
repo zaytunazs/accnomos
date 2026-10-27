@@ -36,7 +36,7 @@
    "bank_description": "CHQ THORNFIELD INT 10 AUG BRAMBLEWOOD JOINERY"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part_open",
  "expected": {
   "paid": 1080.0,

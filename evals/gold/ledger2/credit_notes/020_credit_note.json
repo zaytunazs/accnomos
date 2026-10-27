@@ -35,6 +35,6 @@
  "vat_total": -108.4,
  "gross_total": -650.4,
  "printed_text": "ASHWOOD & PINES TIMBER CO.\nUnit 4, Industrial Estate\nLeeds, LS12 3AB, UK\nVAT No: GB 123456789\n\nCREDIT NOTE\n\nDate: 2026-09-02\nCredit Note No: CN-2026-0892\nOriginal Invoice: INV-2026-1405\nOriginal Date: 2026-08-15\n\nBilled To:\nBramblewood Joinery Ltd\n\nReason for Credit:\nFull credit for goods returned due to manufacturing defects.\n\nDescription              Qty    Unit Price   Net Amount\nSolid Oak Worktop         2.00   -185.50     -371.00\nHardwood Wall Panels      4.00    -42.75     -171.00\n\nSubtotal (Net):                  -542.00\nVAT @ 20%:                        -108.40\nTOTAL CREDIT DUE:                 -650.40\n\nThank you for your business.",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

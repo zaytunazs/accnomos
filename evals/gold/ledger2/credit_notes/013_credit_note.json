@@ -27,6 +27,6 @@
  "vat_total": -17.0,
  "gross_total": -102.0,
  "printed_text": "CREDIT NOTE\n\nDate: 22 Aug 2026\nRef: CN-2026-045\nOriginal Invoice: INV-2026-089 (15 Jun 2026)\n\nCustomer: Bramblewood Joinery Ltd\n\nWe apologize for the inconvenience regarding the damaged item from your previous order. Please adjust your records accordingly. This credit note is issued for the one damaged oak panel.\n\nDescription Qty Unit Price Net VAT Total\nOak Panel 2400x600mm -1 £85.00 -£85.00 £17.00 -£102.00\n\nNet Total: -£85.00\nVAT (20%): -£17.00\nGross Total: -£102.00\n\nThank you for your business.\nOakfield Timber & Tools Ltd",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

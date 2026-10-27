@@ -36,7 +36,7 @@
    "bank_description": "BACS IN THORNFIELD INT INV 8942"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "over",
  "expected": {
   "paid": 1637.0,

@@ -27,6 +27,6 @@
  "vat_total": -1.35,
  "gross_total": -8.1,
  "printed_text": "IRONBRIDGE TIMBER CO LTD\nUnit 4, Mill Road, Shrewsbury, SY1 3AB\nVAT No: GB 987654321\n\nCREDIT NOTE\n\nDate: 28/09/2026\nCredit Note No: CN-2026-0981\nRef Invoice: INV-88452 (12/09/2026)\n\nBill To:\nBramblewood Joinery Ltd\n\nReason for Credit:\nPrice adjustment applied to rectify an overcharge on the original invoice. The unit price for Red Oak solid wood was incorrectly billed at the previous rate rather than the discounted trade rate effective from 01/09/2026.\n\nDESCRIPTION              QTY    UNIT PRICE     NET AMOUNT    VAT %    VAT AMOUNT\nCorr: Red Oak Wood      15.00    -0.4500      -6.75        20%      -1.35\n\n\nTOTALS\nNet Total:          -6.75\nVAT Total:          -1.35\nGROSS TOTAL:       -8.10\n\nThis credit note is to be offset against your next invoice payment.\n\nThank you for your business.\n\nIronbridge Timber Co Ltd",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

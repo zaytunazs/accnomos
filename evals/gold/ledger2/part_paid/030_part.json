@@ -50,7 +50,7 @@
    "bank_description": "CHQ 6038291 HOLLOWAY & SONS LTD INV-4921-2"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part",
  "expected": {
   "paid": 2870.4,

@@ -27,6 +27,6 @@
  "vat_total": -5.0,
  "gross_total": -30.0,
  "printed_text": "HARGREAVES INDUSTRIAL SUPPLIES LTD\n42 Factory Lane, Leeds, LS10 1AB\nVAT No: GB 123456789\n\nCREDIT NOTE\nDate: 2026-07-20\nReference: CN-2026-00942\nOriginal Invoice: INV-2026-4412 (2026-07-15)\n\nCustomer: Bramblewood Joinery Ltd\n\nReason: Price adjustment due to overcharge\n\nDescription: Oversized Panel Door - Oak\nQty: 1.00 | Unit Price: -25.00 | Net: -25.00\nVAT (20%): -5.00\n\nTotal Net: -25.00\nTotal VAT: -5.00\nTotal Gross: -30.00\n\nPlease apply this credit against your account.\nThank you for your business.",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

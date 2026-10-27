@@ -36,7 +36,7 @@
    "bank_description": "CHQ 3480.00 ALC INTERIORS INV-4829"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "exact",
  "expected": {
   "paid": 3480.0,

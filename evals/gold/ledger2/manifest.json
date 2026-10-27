@@ -1,6 +1,6 @@
 {
  "generated_by": "qwen3.8-27b on DGX Spark",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "count": 90,
  "items": [
   {
@@ -446,7 +446,7 @@
   {
    "file": "bank_pairs/001_meta.json",
    "case": "bank_overlap",
-   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "label": "SAMPLE — FICTIONAL COMPANY",
    "first": "001_a.csv",
    "second": "001_b.csv",
    "lines_a": 18,
@@ -458,7 +458,7 @@
   {
    "file": "bank_pairs/002_meta.json",
    "case": "bank_overlap",
-   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "label": "SAMPLE — FICTIONAL COMPANY",
    "first": "002_a.csv",
    "second": "002_b.csv",
    "lines_a": 18,
@@ -470,7 +470,7 @@
   {
    "file": "bank_pairs/003_meta.json",
    "case": "bank_overlap",
-   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "label": "SAMPLE — FICTIONAL COMPANY",
    "first": "003_a.csv",
    "second": "003_b.csv",
    "lines_a": 26,
@@ -482,7 +482,7 @@
   {
    "file": "bank_pairs/004_meta.json",
    "case": "bank_overlap",
-   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "label": "SAMPLE — FICTIONAL COMPANY",
    "first": "004_a.csv",
    "second": "004_b.csv",
    "lines_a": 16,
@@ -494,7 +494,7 @@
   {
    "file": "bank_pairs/005_meta.json",
    "case": "bank_overlap",
-   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "label": "SAMPLE — FICTIONAL COMPANY",
    "first": "005_a.csv",
    "second": "005_b.csv",
    "lines_a": 18,
@@ -506,7 +506,7 @@
   {
    "file": "bank_pairs/006_meta.json",
    "case": "bank_overlap",
-   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "label": "SAMPLE — FICTIONAL COMPANY",
    "first": "006_a.csv",
    "second": "006_b.csv",
    "lines_a": 18,
@@ -518,7 +518,7 @@
   {
    "file": "bank_pairs/007_meta.json",
    "case": "bank_overlap",
-   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "label": "SAMPLE — FICTIONAL COMPANY",
    "first": "007_a.csv",
    "second": "007_b.csv",
    "lines_a": 20,
@@ -530,7 +530,7 @@
   {
    "file": "bank_pairs/008_meta.json",
    "case": "bank_overlap",
-   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "label": "SAMPLE — FICTIONAL COMPANY",
    "first": "008_a.csv",
    "second": "008_b.csv",
    "lines_a": 20,
@@ -542,7 +542,7 @@
   {
    "file": "bank_pairs/009_meta.json",
    "case": "bank_overlap",
-   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "label": "SAMPLE — FICTIONAL COMPANY",
    "first": "009_a.csv",
    "second": "009_b.csv",
    "lines_a": 20,
@@ -554,7 +554,7 @@
   {
    "file": "bank_pairs/010_meta.json",
    "case": "bank_overlap",
-   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "label": "SAMPLE — FICTIONAL COMPANY",
    "first": "010_a.csv",
    "second": "010_b.csv",
    "lines_a": 18,

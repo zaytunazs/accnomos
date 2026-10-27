@@ -44,7 +44,7 @@
    "bank_description": "BACS PAYMENT HFW INTERIORS LTD INV-7429"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "over",
  "expected": {
   "paid": 2082.0,

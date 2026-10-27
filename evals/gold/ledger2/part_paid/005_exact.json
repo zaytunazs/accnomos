@@ -36,7 +36,7 @@
    "bank_description": "CHFT OAK & IRON INT INV-4821"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "exact",
  "expected": {
   "paid": 2568.0,

@@ -36,7 +36,7 @@
    "bank_description": "BRAMBLEWOOD JOIN LTD INV-4921"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "exact",
  "expected": {
   "paid": 2790.0,

@@ -27,6 +27,6 @@
  "vat_total": -125.0,
  "gross_total": -750.0,
  "printed_text": "SUPPLIER CREDIT NOTE\n\nSupplier:\nOakhaven Timber Supplies Ltd\nVAT No: GB 123456789\nUnit 4, Industrial Park, Leeds, LS10 1AB\n\nCustomer:\nBramblewood Joinery Ltd\n\nDate: 2026-07-10\nCredit Note No: CN-2026-0459\nOriginal Invoice: INV-2026-0412\nOriginal Date: 2026-06-15\n\nReason: Goods returned due to manufacturing defect in grain pattern\n\nLine Items:\n1. Solid Oak Plank 200x20x1000mm\n   Qty: 50 | Unit Price: -12.50 | Net: -625.00\n   VAT (20%): -125.00\n\nTotals:\nNet Total: -625.00\nVAT Total: -125.00\nGross Total: -750.00\n\nThank you for your business.\nOakhaven Timber Supplies Ltd",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

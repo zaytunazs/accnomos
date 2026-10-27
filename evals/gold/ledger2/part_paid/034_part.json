@@ -42,7 +42,7 @@
    "bank_description": "OFT INT LLP INV4829"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part",
  "expected": {
   "paid": 1260.0,

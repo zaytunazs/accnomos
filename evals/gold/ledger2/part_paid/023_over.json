@@ -44,7 +44,7 @@
    "bank_description": "CHQ 88231 Cedar Stone Interiors INV-7392"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "over",
  "expected": {
   "paid": 1149.0,

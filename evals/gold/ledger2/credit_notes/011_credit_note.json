@@ -43,6 +43,6 @@
  "vat_total": -131.0,
  "gross_total": -831.0,
  "printed_text": "HOLLOWAY TIMBER SUPPLY CO\nUnit 4, Oakfield Industrial Park\nManchester, M15 4AB\nVAT Reg: GB123456789\n\nCREDIT NOTE\n\nDate: 12/08/2026\nCredit Note No: CN-2026-0842\nRef Invoice: INV-2026-0719\nRef Date: 15/06/2026\n\nCustomer: Bramblewood Joinery Ltd\n\nReason: Goods returned due to moisture damage\nand incorrect species grade.\n\nItem Description                    Qty    Price     VAT%     Net        VAT\n--------------------------------------------------------------------------------\nOak Plank 25x150mm Grade AB        50.00   -12.50    20%    -625.00    -125.00\nTimber Shims (Bulk Bag)              2.00   -15.00    20%      -30.00      -6.00\nLogistical Handling (RC)             1.00   -45.00     0%      -45.00       0.00\n--------------------------------------------------------------------------------\n\nNet Total:                       -700.00\nVAT Total:                        -131.00\nGROSS TOTAL:                      -831.00\n\nThis credit note will be applied to your\naccount balance. Please retain for records.\n\nThank you for your business.",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

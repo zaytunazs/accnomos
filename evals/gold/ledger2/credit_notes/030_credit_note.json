@@ -35,6 +35,6 @@
  "vat_total": -144.2,
  "gross_total": -865.2,
  "printed_text": "CREDIT NOTE\n\nSupplier: Oakfield Timber & Hardware Supplies Ltd\nVAT No: GB123456789\nUnit 4, Industrial Estate\nLeeds LS12 3AB\n\nCustomer: Bramblewood Joinery Ltd\n\nCredit Note No: CN-2026-0912\nDate: 22/08/2026\nOriginal Invoice: INV-2026-0855 (15/07/2026)\n\nReason: Full credit for goods returned due to manufacturing defects\n\nDescription                              Qty   Unit Price    Net Amount\n---------------------------------------------------------------\nSolid Oak Beadboard Paneling 2440x305mm -12     -45.50     -546.00\nBrass Hinge Set 100mm (Per set)         -20      -8.75     -175.00\n---------------------------------------------------------------\n\nNet Total:                     -721.00\nVAT (20%):                     -144.20\nGross Total:                   -865.20\n\nThank you for your business.",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

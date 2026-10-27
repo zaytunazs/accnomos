@@ -42,7 +42,7 @@
    "bank_description": "CHQ HOLLOWAY & FINCH INT INV 4821 P2"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part",
  "expected": {
   "paid": 2460.0,

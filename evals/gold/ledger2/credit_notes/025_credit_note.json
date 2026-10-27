@@ -27,6 +27,6 @@
  "vat_total": -2.0,
  "gross_total": -12.0,
  "printed_text": "SUPPLIER CREDIT NOTE\nDate: 15/08/2026\nSupplier: Northgate Timber Supplies Ltd\nVAT No: GB123456789\nAddress: Unit 4, Industrial Estate, Leeds, LS10 1AB\n\nCustomer: Bramblewood Joinery Ltd\nReference: CN-2026-089\nOriginal Invoice: INV-2026-145 (12/08/2026)\n\nReason: Price adjustment for overcharged standard oak board feet\n\nDescription                  Qty    Unit Price     Net       VAT%\nStandard Oak Board Feet      250      -0.0400     -10.00     20%\n\nSubtotal (Net):                -10.00\nVAT (20%):                      -2.00\nTotal (Gross):                  -12.00\n\nPlease apply this credit to your account.\nThank you for your business.\n",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

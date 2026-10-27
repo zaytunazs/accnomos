@@ -51,6 +51,6 @@
  "vat_total": -27.12,
  "gross_total": -180.22,
  "printed_text": "CREDIT NOTE\n\nSupplier: Ashfield Timber & Hardware Ltd\nVAT No: GB123456789\nUnit 4, Industrial Park, Newcastle NE3 4AB\n\nCustomer: Bramblewood Joinery Ltd\n\nCredit Note No: CN-2026-0842\nDate: 2026-07-10\nRef Invoice: INV-2026-0791\n\nReason: Return of damaged goods\n\nDESCRIPTION                          QTY    UNIT PRICE     NET         VAT\n---------------------------------------------------------------\nOak Door Panel 600x800mm             2    -45.00      -90.00      -18.00\nMetal Hinges Set (4 pack)            1    -12.50      -12.50        0.00\nWooden Handle Bar 200mm              3    -15.20      -45.60       -9.12\nPackaging Waste Disposal             1     -5.00       -5.00         0.00\n---------------------------------------------------------------\nNET TOTAL: -153.10\nVAT TOTAL: -27.12\nGROSS TOTAL: -180.22\n\nPlease apply this credit to your account.\nThank you for your business.",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

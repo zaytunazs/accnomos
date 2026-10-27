@@ -27,6 +27,6 @@
  "vat_total": -29.1,
  "gross_total": -174.6,
  "printed_text": "ASHFORD & SONS TIMBER CO\nUnit 4, Industrial Estate, High Street, Ashford, Kent TN24 8XY\nVAT No: GB 123456789\n\nCUSTOMER: Bramblewood Joinery Ltd\n\nCREDIT NOTE NO: CN-2026-0045\nDATE: 02/08/2026\nREF: INV-2026-1099 (15/07/2026)\n\nREASON: Partial credit issued due to damage\nreported upon receipt of goods.\n\nDESCRIPTION                      QTY   UNIT PRICE     VAT     TOTAL\nOak Door Frame 750x2040 - Class A  1   -145.50      20%    -174.60\n\nNET TOTAL:                      -145.50\nVAT TOTAL:                        -29.10\nGROSS TOTAL:                      -174.60\n\nPLEASE APPLY TO ACCOUNT NO: 449201\n\nTHANK YOU FOR YOUR BUSINESS.\n",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

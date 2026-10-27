@@ -27,6 +27,6 @@
  "vat_total": -37.1,
  "gross_total": -222.6,
  "printed_text": "OAKFIELD TIMBER SUPPLIES LTD\nUnit 4, Industrial Estate\nManchester, M12 5QW\n\nSUPPLIER CREDIT NOTE\n\nDate: 10/07/2026\nCredit Note No: CN-2026-0452\nCustomer: Bramblewood Joinery Ltd\nOriginal Invoice: INV-8841 (15/06/2026)\n\nReason for Credit:\nGoods arrived damaged. 1 unit of White Oak\nDoor Frame (700x2040mm) has a fractured\nhinge rail and significant surface scratches.\nThis item has been quarantined and a\nreplacement has been booked for delivery.\n\nWe apologize for the inconvenience caused.\n\nPlease apply this credit to your account\nbalance. If you have already settled the\noriginal invoice, please advise our accounts\ndept so we can issue a refund or adjust\nyour future purchase order.\n\nThank you for your continued business.",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

@@ -42,7 +42,7 @@
    "bank_description": "BACS AWP 2049 4921"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part",
  "expected": {
   "paid": 2715.0,

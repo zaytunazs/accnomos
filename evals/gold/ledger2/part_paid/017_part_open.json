@@ -44,7 +44,7 @@
    "bank_description": "BACS CHARGED 25/07 OAK & IVY INT LTD INV-8421/PMT1"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part_open",
  "expected": {
   "paid": 600.0,

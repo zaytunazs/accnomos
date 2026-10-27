@@ -36,7 +36,7 @@
    "bank_description": "BACS IN HARROWGATE INTER LTD INV-4821"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "over",
  "expected": {
   "paid": 2465.0,

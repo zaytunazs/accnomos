@@ -50,7 +50,7 @@
    "bank_description": "CHQ 3028472 OAKFIELD HOME IMPROV"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part",
  "expected": {
   "paid": 1764.0,

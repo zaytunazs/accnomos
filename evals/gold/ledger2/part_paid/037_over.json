@@ -44,7 +44,7 @@
    "bank_description": "CHGS HARTWELL INTERIORS LTD"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "over",
  "expected": {
   "paid": 4856.0,

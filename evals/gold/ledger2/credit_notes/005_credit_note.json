@@ -27,6 +27,6 @@
  "vat_total": -58.2,
  "gross_total": -349.2,
  "printed_text": "OAKFIELD TIMBER SUPPLIES LTD\nUnit 4, Industrial Estate\nLeeds, LS10 1AB\nVAT No: GB123456789\n\nCREDIT NOTE\n\nDate: 01/06/2026\nCN No: CN-2026-089\nOriginal Invoice: INV-2026-112\nInvoice Date: 15/05/2026\n\nBilled To:\nBramblewood Joinery Ltd\n\nReason: Return of goods due to manufacturing defect\n\nDESCRIPTION                    QTY   UNIT PRICE    NET\nSolid Oak Door Frame 900x2040   2   -145.50    -291.00\n\nNET TOTAL: -291.00\nVAT (20%): -58.20\nGROSS TOTAL: -349.20\n\nPlease deduct this amount from your next payment.",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

@@ -27,6 +27,6 @@
  "vat_total": -37.0,
  "gross_total": -222.0,
  "printed_text": "ASHWORTH TIMBER & HARDWARE\nUnit 4, Elm Street Industrial Park\nLeeds, LS10 1AB\nTel: 0113 456 7890\n\nCREDIT NOTE\n\nDate: 22/07/2026\nCredit Note No: CN-2026-0042\nReference: INV-2026-0911\n\nBill To:\nBramblewood Joinery Ltd\n\nReason for Credit: Damaged goods returned - chipped edge on oak door panel\n\nDESCRIPTION                        QTY   UNIT PRICE       NET      VAT RATE     VAT\nSolid Oak Door Panel 800x2000mm     1     -185.00      -185.00       20%      -37.00\n\n------------------------------------------------------------------------------\nNET TOTAL: -185.00\nVAT TOTAL: -37.00\nGROSS TOTAL: -222.00\n\nPlease apply this credit against your outstanding balance or request a refund.\nThank you for your business.\n\nEND OF DOCUMENT",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

@@ -42,7 +42,7 @@
    "bank_description": "DFT OAKHAVEN GARDEN SUPPLIES INV-4821"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part",
  "expected": {
   "paid": 1134.6,

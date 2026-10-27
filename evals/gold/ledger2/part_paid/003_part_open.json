@@ -36,7 +36,7 @@
    "bank_description": "CHQ 4456789123456789 OAK & ASH LTD 42 HIGH ST LEEDS INV-7392"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part_open",
  "expected": {
   "paid": 600.0,

@@ -44,7 +44,7 @@
    "bank_description": "CHAPS PAYMENT - HARROW & FINCH LTD - INV 4821"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "over",
  "expected": {
   "paid": 1383.0,

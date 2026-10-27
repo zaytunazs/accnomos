@@ -42,7 +42,7 @@
    "bank_description": "BACS BRAMBLEWOOD JOIN LTD"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part",
  "expected": {
   "paid": 18840.0,

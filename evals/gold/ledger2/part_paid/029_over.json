@@ -36,7 +36,7 @@
    "bank_description": "BRAMBLEWOOD JOINERY LTD INV-4821"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "over",
  "expected": {
   "paid": 1660.0,

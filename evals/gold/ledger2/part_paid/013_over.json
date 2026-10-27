@@ -44,7 +44,7 @@
    "bank_description": "BACS CEDAR STONE INTERIORS INV-4921"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "over",
  "expected": {
   "paid": 2858.0,

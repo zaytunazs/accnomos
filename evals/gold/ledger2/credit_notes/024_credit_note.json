@@ -43,6 +43,6 @@
  "vat_total": -157.0,
  "gross_total": -992.0,
  "printed_text": "OAKHAVEN TIMBER & FIXINGS LTD\nUnit 4, Industrial Way\nLeeds, LS10 1AB\nVAT Reg: GB 987654321\n\nCREDIT NOTE\n\nDate: 2026-07-22\nNote No: CN-2026-0045\nRef Invoice: INV-2026-0089 (2026-07-15)\nCustomer: Bramblewood Joinery Ltd\n\nReason: Return of goods due to manufacturing defects\n\nDescription                     Qty    Unit Price    Net        VAT %   VAT\n--------------------------------------------------------------------------\nSolid Oak Boards 150x20mm       50.00    -12.50    -625.00      20%   -125.00\nBrass Cabinet Hinges 100mm      20.00     -8.00    -160.00      20%    -32.00\nTrade Discount Expeditied        1.00    -50.00     -50.00       0%      0.00\n--------------------------------------------------------------------------\nNet Total: -835.00\nVAT Total: -157.00\nGross Total: -992.00\n\nThank you for your business.",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

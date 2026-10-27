@@ -36,7 +36,7 @@
    "bank_description": "Faster payments - HOLLOW OAK INT INTERIORS LTD - INV-4821"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "exact",
  "expected": {
   "paid": 1224.0,

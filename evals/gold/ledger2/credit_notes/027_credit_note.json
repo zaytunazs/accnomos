@@ -27,6 +27,6 @@
  "vat_total": -3.0,
  "gross_total": -18.0,
  "printed_text": "CREDIT NOTE\n\nSupplier: Highgate Timber & Fixings Ltd\nUnit 4, Mill Lane Industrial Estate\nLeeds, LS10 4PW\nVAT No: GB 849201563\n\nDate: 2026-07-22\nCredit Note No: CN-2026-091\nRef: INV-2026-4482\n\nTo: Bramblewood Joinery Ltd\n\nReason: Price adjustment for overcharge.\n\nDescription          Qty   Unit Price     Net\n--------------------------------------------------\nPremium Oak Planks    10    -1.50         -15.00\n\nNet Total: -15.00\nVAT (20%): -3.00\nGross Total: -18.00\n\nPlease apply this credit to your account.",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

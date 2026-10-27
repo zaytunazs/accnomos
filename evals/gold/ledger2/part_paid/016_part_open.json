@@ -36,7 +36,7 @@
    "bank_description": "DEBIT H&F INT LTD 42 COBLERS LN LON INV4821 PART"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part_open",
  "expected": {
   "paid": 1150.0,

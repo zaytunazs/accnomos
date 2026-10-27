@@ -50,7 +50,7 @@
    "bank_description": "CHQ 492012 THORNFIELD INT LTD"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part",
  "expected": {
   "paid": 3216.0,

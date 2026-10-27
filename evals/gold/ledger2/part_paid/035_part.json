@@ -42,7 +42,7 @@
    "bank_description": "BACS IN HARWICK HOME INT 789012 INV-4821 P2"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part",
  "expected": {
   "paid": 3480.0,

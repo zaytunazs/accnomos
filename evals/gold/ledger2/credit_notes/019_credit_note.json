@@ -43,6 +43,6 @@
  "vat_total": -49.8,
  "gross_total": -383.8,
  "printed_text": "SUPPLIER CREDIT NOTE\n\nNorthgate Timber & Hardware\nUnit 4, Industrial Estate\nLeeds, LS10 1AB\nVAT Reg: GB 123456789\n\nDate: 15/08/2026\nCredit Note No: CN-2026-0451\nRef Invoice: INV-2026-0892\n\nBill To:\nBramblewood Joinery Ltd\n\nReason: Return of damaged goods\nand price correction.\n\nLine Items:\n1. OAK CHAIR FRAME - STD    -225.00 @ 20% VAT\n2. PINE BOARD - 2x4          -85.00 @ 0% VAT\n3. METAL HINGES - SS         -24.00 @ 20% VAT\n\nNet Total:       -334.00\nVAT Total:        -49.80\nGROSS TOTAL:     -383.80\n\nPlease apply to your accounts.\nThank you for your business.",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

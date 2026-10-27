@@ -36,7 +36,7 @@
    "bank_description": "BACS HROGWTE INTR 1360.00 INV-4821"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "over",
  "expected": {
   "paid": 1360.0,

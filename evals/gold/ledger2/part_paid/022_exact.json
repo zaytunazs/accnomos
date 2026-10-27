@@ -44,7 +44,7 @@
    "bank_description": "BACS CHQ - OAKHAVEN PROP DEV LTD - INV-8492"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "exact",
  "expected": {
   "paid": 11526.0,

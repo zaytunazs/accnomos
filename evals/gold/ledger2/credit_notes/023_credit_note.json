@@ -35,6 +35,6 @@
  "vat_total": -60.75,
  "gross_total": -364.5,
  "printed_text": "OAKHAVEN TIMBER SUPPLIES LTD\n14 Mill Road, Leeds, LS10 1AB\nVAT No: GB123456789\n\nSUPPLIER CREDIT NOTE\n\nDate: 10/07/2026\nCredit Note No: CN-2026-045\nOriginal Invoice: INV-2026-112 (15/06/2026)\n\nCustomer:\nBramblewood Joinery Ltd\n\nReason: Goods returned - Damaged in transit\n\nDescription | Qty | Unit Price | Net Amount | VAT\n----------------------------------------------------\nSolid Oak Worktop | 2 | -145.50 | -291.00 | -58.20\nHardwood Dowels | 1 | -12.75 | -12.75 | -2.55\n----------------------------------------------------\n\nNET TOTAL: -303.75\nVAT (20%): -60.75\n\nTOTAL CREDIT DUE: -364.50\n\nThank you for your business.",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

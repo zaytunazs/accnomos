@@ -27,6 +27,6 @@
  "vat_total": -2.5,
  "gross_total": -15.0,
  "printed_text": "CREDIT NOTE\n\nHarrow & Finch Hardware\n14 Industrial Park\nManchester, M15 4AB\nTel: 0161 555 0192\nVAT Reg: GB987654321\n\nDate: 22/09/2026\nCredit Note No: CN-2026-045\nRef Invoice: INV-2026-102 (15/08/2026)\n\nCustomer: Bramblewood Joinery Ltd\n\nReason: Damaged item returned: One (1) Hinge Set 100mm\n\nItem Description Qty Unit Price Net VAT Rate VAT Total\nHinge Set 100mm - Damaged 1 -12.50 -12.50 20% -2.50 -15.00\n\nNet Total: -12.50\nVAT Total: -2.50\nGross Total: -15.00\n\nPlease quote this credit note number against your payment.\nThank you for your business.",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

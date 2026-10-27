@@ -35,6 +35,6 @@
  "vat_total": -200.0,
  "gross_total": -1200.0,
  "printed_text": "OAKHAVEN TIMBER SUPPLIES LTD\nUnit 4, Millbrook Industrial Estate\nLeeds, LS12 3AB\nVAT Reg: GB123456789\n\nCREDIT NOTE\n\nDate: 02/09/2026\nCN No: CN-2026-0912\nInvoice Ref: INV-2026-0891\nDate: 15/08/2026\n\nTo: Bramblewood Joinery Ltd\n\nReason: Full credit for goods returned due to manufacturing defect in batch 44-B\n\nDescription | Qty | Unit Price | Net | VAT % | VAT\nSolid Oak Plank | 50 | -12.50 | -625.00 | 20 | -125.00\nWalnut Veneered | 20 | -18.75 | -375.00 | 20 | -75.00\n\nNet Total: -1000.00\nVAT Total: -200.00\nGROSS TOTAL: -1200.00\n\nPlease settle by direct bank transfer.",
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "credit_note"
 }

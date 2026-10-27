@@ -42,7 +42,7 @@
    "bank_description": "ACHLDERMNR INV4821 BAL"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part",
  "expected": {
   "paid": 1596.0,

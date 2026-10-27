@@ -44,7 +44,7 @@
    "bank_description": "BACS BRAMBLEWOOD JOIN LTD INV-4821"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "exact",
  "expected": {
   "paid": 3000.0,

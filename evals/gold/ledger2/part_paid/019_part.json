@@ -50,7 +50,7 @@
    "bank_description": "ELM PARK INT INV 4821/2"
   }
  ],
- "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "label": "SAMPLE — FICTIONAL COMPANY",
  "gold_case": "part",
  "expected": {
   "paid": 4332.0,
