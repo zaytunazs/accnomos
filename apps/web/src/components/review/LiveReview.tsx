@@ -42,6 +42,11 @@ const verifierName = (model: string) =>
 
 const shown = (v: string | number | null) => (v === null || v === "" ? "none" : typeof v === "number" ? v.toFixed(2) : v);
 
+/** Checker reasons arrive as "CODE: plain-English note" — show the note, never the raw code. */
+export function plainReason(reason: string): string {
+  return reason.replace(/^[A-Z][A-Z0-9_]*:\s*/, "");
+}
+
 /** The verifier chip, bound to the runtime's real second reading. Never claims agreement it did not see. */
 function verifierView(p: RtProposal): Pick<UiProposal, "verifierNote" | "verifierTone" | "verifierDiffs"> {
   const v = p.verification;
@@ -254,7 +259,7 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
         <div key={p.id} className="flex flex-col gap-2">
           {p.status === "needs_a_look" && (
             <div className="rounded-2xl border border-warn-border bg-warn-bg p-4 text-sm text-warn-ink">
-              <strong>Needs a look.</strong> {p.reasons.join(" · ")}
+              <strong>Needs a look.</strong> {p.reasons.map(plainReason).join(" · ")}
             </div>
           )}
           {p.autopilot && !p.autopilot.auto_approve && (

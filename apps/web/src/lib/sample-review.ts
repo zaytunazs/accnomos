@@ -53,7 +53,7 @@ export const proposal: Proposal = {
     },
   ],
   reviewerNote:
-    "Why: 3 lines are drill bits and screws; you approved Screwfix as “Tools & small equipment” on 14 Oct. Totals add up (32.06 + 6.41 = 38.47). — Reviewer, Muse Spark",
+    "Why: 3 lines are drill bits and screws; you approved Screwfix as “Tools & small equipment” on 14 Oct. Totals add up (32.06 + 6.41 = 38.47). — Checker, code",
   verifierNote:
     "Verifier agrees · all 6 fields match — Muse Spark Open (sample)",
   verifierTone: "agree",
