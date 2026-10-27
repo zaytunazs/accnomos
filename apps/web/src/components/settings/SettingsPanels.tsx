@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import OutlookIntake from "@/components/settings/OutlookIntake";
 import AutopilotRules from "@/components/settings/AutopilotRules";
+import StaffEditor from "@/components/settings/StaffEditor";
 import VatPeriodSettings from "@/components/settings/VatPeriodSettings";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
@@ -162,6 +163,8 @@ export default function SettingsPanels() {
       </section>
 
       <AutopilotRules card={card} heading={heading} />
+
+      <StaffEditor card={card} heading={heading} />
 
       <section aria-labelledby="settings-audit" className={card}>
         <h2 id="settings-audit" className={heading}>
