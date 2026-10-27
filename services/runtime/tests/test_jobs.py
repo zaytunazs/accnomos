@@ -311,6 +311,8 @@ def test_routes_end_to_end(client: TestClient, fake: FakeStorageProvider) -> Non
     assert client.put(f"/timesheets/{e2['id']}", json={"hours": 2}, headers=H).json()["hours"] == 2
     assert client.post(f"/jobs/{job['id']}/invoice-lines", headers=H).json()["lines"] == []
 
+    assert [j["id"] for j in client.get("/jobs/list?status=open", headers=H).json()] == [job["id"]]
+    assert client.get("/jobs/list?status=closed", headers=H).json() == []
     [listed] = client.get("/jobs", headers=H).json()
     assert listed["invoiced_value_pence"] == 30000 and listed["unbilled_hours"] == 0
     assert client.delete(f"/jobs/{job['id']}", headers=H).status_code == 409

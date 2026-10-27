@@ -51,6 +51,12 @@ async def list_jobs(books: Books = Depends(get_books)) -> list[JobSummary]:
     return await jobs.summaries(books)
 
 
+@router.get("/jobs/list", response_model=list[Job])
+async def list_plain_jobs(status: Literal["open", "closed"] | None = None, books: Books = Depends(get_books)) -> list[Job]:
+    """Just the jobs (no summaries, so no ledger read): for pickers such as Review's "Job" field."""
+    return sorted((j for j in await jobs.load_jobs(books) if status is None or j.status == status), key=lambda j: j.name.lower())
+
+
 @router.post("/jobs", response_model=Job)
 async def create_job(body: JobIn, books: Books = Depends(get_books), user: str = Depends(require_user)) -> Job:
     try:

@@ -136,6 +136,7 @@ export const runtime = {
       headers: autopilotOn() ? {} : { "X-Autopilot": "off" },
     }),
   proposals: (a: AccountInfo, status?: string) => call<RtProposal[]>(a, `/books/proposals${status ? `?status=${status}` : ""}`),
+  /** `edits.job_id` tags a purchase to a job (its net then counts as a job cost). */
   approve: (a: AccountInfo, id: string, body: { edits?: Record<string, unknown>; remember?: boolean }) =>
     call<RtProposal>(a, `/books/approve/${id}`, { method: "POST", body: JSON.stringify(body) }),
   undo: (a: AccountInfo, eventId: string) =>
@@ -158,7 +159,107 @@ export const runtime = {
   rebuild: (a: AccountInfo) => call<RtRebuild>(a, "/books/rebuild", { method: "POST" }),
   /** GET /books/deadlines?stagger=1 | start_month=5 | months=1 (see lib/business.ts deadlinesQuery). */
   deadlines: (a: AccountInfo, query: string) => call<RtDeadlines>(a, `/books/deadlines?${query}`),
+
+  /** Jobs, staff and timesheets (services/runtime/app/routes_jobs.py). */
+  jobs: (a: AccountInfo) => call<RtJobSummary[]>(a, "/jobs"),
+  /** Plain open jobs (no ledger read), for pickers. */
+  openJobs: (a: AccountInfo) => call<RtJob[]>(a, "/jobs/list?status=open"),
+  jobSummary: (a: AccountInfo, id: string) => call<RtJobSummary>(a, `/jobs/${encodeURIComponent(id)}/summary`),
+  createJob: (a: AccountInfo, body: RtJobIn) => call<RtJob>(a, "/jobs", { method: "POST", body: JSON.stringify(body) }),
+  updateJob: (a: AccountInfo, id: string, body: RtJobIn) =>
+    call<RtJob>(a, `/jobs/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(body) }),
+  /** Proposed lines from unbilled billable hours; marks nothing. */
+  jobInvoiceLines: (a: AccountInfo, id: string) =>
+    call<RtInvoiceProposal>(a, `/jobs/${encodeURIComponent(id)}/invoice-lines`, { method: "POST" }),
+  /** Only after the invoice has been sent. */
+  markInvoiced: (a: AccountInfo, id: string, invoiceId: string, entryIds: string[]) =>
+    call<RtTimesheetEntry[]>(a, `/jobs/${encodeURIComponent(id)}/mark-invoiced`, {
+      method: "POST",
+      body: JSON.stringify({ invoice_id: invoiceId, entry_ids: entryIds }),
+    }),
+  staff: (a: AccountInfo) => call<RtStaff[]>(a, "/staff"),
+  createStaff: (a: AccountInfo, body: RtStaffIn) => call<RtStaff>(a, "/staff", { method: "POST", body: JSON.stringify(body) }),
+  updateStaff: (a: AccountInfo, id: string, body: RtStaffIn) =>
+    call<RtStaff>(a, `/staff/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(body) }),
+  timesheets: (a: AccountInfo, jobId: string) => call<RtTimesheetEntry[]>(a, `/timesheets?job_id=${encodeURIComponent(jobId)}`),
+  addTimesheet: (a: AccountInfo, body: RtTimesheetIn) =>
+    call<RtTimesheetEntry>(a, "/timesheets", { method: "POST", body: JSON.stringify(body) }),
+  deleteTimesheet: (a: AccountInfo, id: string) =>
+    call<RtTimesheetEntry>(a, `/timesheets/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
+
+/** Jobs, staff and timesheets (services/runtime/app/jobs.py). Money is integer pence; hours are 0.25 steps. */
+export interface RtJobIn {
+  name: string;
+  customer_id: string | null;
+  site_address: string | null;
+  status: "open" | "closed";
+}
+export interface RtJob extends RtJobIn {
+  id: string;
+  created_at: string;
+}
+export interface RtStaffIn {
+  name: string;
+  role: string;
+  hourly_rate_pence: number;
+  charge_rate_pence: number | null;
+  active: boolean;
+}
+export interface RtStaff extends RtStaffIn {
+  id: string;
+}
+export interface RtTimesheetIn {
+  staff_id: string;
+  job_id: string;
+  date: string; // YYYY-MM-DD
+  hours: number;
+  note: string;
+  billable: boolean;
+}
+export interface RtTimesheetEntry extends RtTimesheetIn {
+  id: string;
+  invoiced_in: string | null;
+}
+export interface RtJobSummary {
+  job: RtJob;
+  customer_name: string | null;
+  hours: number;
+  billable_hours: number;
+  unbilled_hours: number;
+  labour_cost_pence: number;
+  billable_value_pence: number;
+  invoiced_value_pence: number;
+  unbilled_value_pence: number;
+  materials_pence: number;
+  purchases: { proposal_id: string; event_id: string; date: string; supplier: string | null; net_pence: number }[];
+  margin_pence: number;
+  by_staff: { staff_id: string; name: string; role: string; hours: number; labour_cost_pence: number; billable_value_pence: number }[];
+  warnings: string[];
+}
+export interface RtInvoiceLine {
+  description: string;
+  qty: number;
+  unit: string;
+  unit_price_pence: number;
+  net_pence: number;
+  vat_code: string;
+  staff_id: string;
+  role: string;
+  entry_ids: string[];
+}
+export interface RtInvoiceProposal {
+  job_id: string;
+  customer_id: string | null;
+  lines: RtInvoiceLine[];
+  entry_ids: string[];
+  net_pence: number;
+  warnings: string[];
+}
+
+/** Where "Create invoice from unbilled hours" leaves the proposed lines for the invoice form (sessionStorage). */
+export const INVOICE_DRAFT_KEY = "accnomos.invoice-draft";
+export const pence = (p: number) => gbp(p / 100);
 
 /** POST /books/rebuild (services/runtime/app/routes_books.py). */
 export interface RtRebuild {
