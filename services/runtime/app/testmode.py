@@ -2,15 +2,18 @@
 
 With it on, the runtime talks to nothing outside this process:
 
-* Storage, mail and the address book are in-memory fakes (accnomos_connectors.fake), shared by every request
-  whatever token it carries, so the browser and the runtime see one OneDrive. A fake calendar is held too.
+* Storage, mail (read and send), the address book and the calendar are in-memory fakes
+  (accnomos_connectors.fake), shared by every request whatever token it carries, so the browser and the
+  runtime see one OneDrive. Sent mail is only recorded (`GET /__test/state` lists it); day plans read and
+  write the fake calendar.
 * The browser's own Graph calls (folder setup, Files, "Add a receipt") go to a small Graph look-alike at
   `/__test/graph/v1.0`, backed by the same fake storage (the test-mode web build points `lib/graph.ts` there).
 * Every AI call goes to a stub at `/__test/ai` (Ollama-shaped, see app/ai/config.py). It reads a receipt only
   if it is a gold receipt rendered by evals/harness/render.py, found by the sha256 of the PNG bytes, and
   answers with that receipt's gold fields; questions get an answer built from the facts pack it is sent.
-* "Today" is pinned to ACCNOMOS_TEST_TODAY (default 2026-10-27) so the gold receipts (Jul-Sep 2026) fall in
-  the quarter the VAT page and Ask default to (the last complete one); timestamps stay real.
+* "Today" is pinned to ACCNOMOS_TEST_TODAY (default 2026-10-27): the gold receipts (Jul-Sep 2026) fall in the
+  previous VAT quarter, the one still to file (the VAT page and Ask default to the current one, Oct-Dec);
+  timestamps stay real.
 
 `POST /__test/reset` empties storage and reseeds the mailbox (three gold receipts by email plus one message
 that is not a receipt) and the calendar. `GET /__test/gold` lists the gold receipts; `GET /__test/gold/{file}.png`
@@ -30,13 +33,16 @@ from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from types import ModuleType
+from zoneinfo import ZoneInfo
 from typing import Any
 
 from accnomos_connectors import (
     AddressBookContact,
+    CalendarEvent,
     FakeCalendarProvider,
     FakeContactsProvider,
     FakeMailProvider,
+    FakeMailSender,
     FakeStorageProvider,
     MailAttachment,
     MailMessage,
@@ -57,6 +63,13 @@ log = logging.getLogger("accnomos.testmode")
 DEFAULT_TODAY = "2026-10-27"  # VAT and Ask default to the last complete quarter: Jul-Sep 2026, the gold set's
 MAIL_GOLD = ("001_standard.json", "011_standard.json", "022_standard.json")  # emailed in by the seeded suppliers
 CALENDAR = "Accnomos"
+SAMPLE = "SAMPLE — FICTIONAL COMPANY"
+# Thursday after the pinned today (Tue 27 Oct 2026): one busy hour in the morning.
+PLAN_EVENT = CalendarEvent(
+    id="evt-sample-thu", subject="Site meeting, Harbour Lane kitchen", location="12 Harbour Lane, Bristol BS1 4RW",
+    start=datetime(2026, 10, 29, 9, 0, tzinfo=ZoneInfo("Europe/London")),
+    end=datetime(2026, 10, 29, 10, 0, tzinfo=ZoneInfo("Europe/London")), body_preview=SAMPLE,
+)
 
 
 def _gold_dir() -> Path:
@@ -184,6 +197,7 @@ def ask_reply(facts: dict[str, Any]) -> dict[str, Any]:
 class State:
     storage: FakeStorageProvider
     mail: FakeMailProvider
+    sender: FakeMailSender
     contacts: FakeContactsProvider
     calendar: FakeCalendarProvider
     seeded = False
@@ -209,8 +223,9 @@ async def reset() -> dict[str, Any]:
     """Empty storage; reseed the mailbox, address book and calendar from the gold set."""
     STATE.storage = FakeStorageProvider()
     STATE.mail = FakeMailProvider()
+    STATE.sender = FakeMailSender()
     STATE.contacts = FakeContactsProvider()
-    STATE.calendar = FakeCalendarProvider()
+    STATE.calendar = FakeCalendarProvider([PLAN_EVENT])  # something for "plan my Thursday" to plan around
     received = datetime.now(UTC)
     golds = gold_receipts()
     for n, file in enumerate(MAIL_GOLD, start=1):
@@ -228,7 +243,7 @@ async def reset() -> dict[str, Any]:
         (MailAttachment(id="att-news", name="webinar.ics", content_type="text/calendar", size=900), b"BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n"),
     )
     cal = await STATE.calendar.ensure_calendar(CALENDAR)
-    await STATE.calendar.upsert_all_day_event(cal, "vat-26A3", "2026-11-07", "VAT return due (Jul–Sep 2026)", "SAMPLE — FICTIONAL COMPANY")
+    await STATE.calendar.upsert_all_day_event(cal, "vat-26A3", "2026-11-07", "VAT return due (Jul–Sep 2026)", SAMPLE)
     if security.LIMITER:  # each test starts with a full request budget
         security.LIMITER.reset()
     STATE.seeded = True
@@ -281,6 +296,7 @@ async def state_route() -> dict[str, Any]:
     s = await state()
     return {
         "files": sorted(s.storage.files), "mail_calls": s.mail.calls,
+        "sent": [{"to": m.to, "subject": m.subject, "attachments": [a.name for a in m.attachments]} for m in s.sender.sent],
         "calendar": {cid: {k: list(v) for k, v in ev.items()} for cid, ev in s.calendar.all_day.items()},
     }
 

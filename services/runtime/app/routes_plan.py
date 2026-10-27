@@ -18,7 +18,7 @@ from pydantic import BaseModel, Field
 
 from app import jobs
 from app.ai import plan as plan_ai
-from app.ai.config import AiConfig
+from app.ai.config import AiConfig, is_test_mode
 from app.books import Books
 from app.plan_apply import ApplyResult, PlanConflict, PlanError, apply_plan
 from app.planner import TZ, Constraints, PlanItem, VatSettings, build_plan, plan_hash, vat_due
@@ -31,6 +31,11 @@ async def get_calendar(request: Request) -> AsyncIterator[CalendarProvider]:
     token = request.headers.get("X-Graph-Token", "").strip().removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")
+    if is_test_mode():
+        from app import testmode
+
+        yield (await testmode.state()).calendar
+        return
     provider = GraphCalendarProvider(token)
     try:
         yield provider

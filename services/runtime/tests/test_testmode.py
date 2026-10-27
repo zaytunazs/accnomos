@@ -19,7 +19,10 @@ from app.ai.config import TEST_AI_MODEL, AiConfig, is_test_mode
 from app.books import INBOX, Books, today
 from app.checks import decide, run_checks
 from app.facts import build_facts, default_period
+from app.routes_actions import _mail_sender
 from app.routes_books import get_books
+from app.routes_invoices import get_sender
+from app.routes_plan import get_calendar
 from app.routes_contacts import get_address_book
 from app.routes_mail import get_mail
 from app.routes_mail import router as mail_router
@@ -183,6 +186,12 @@ async def test_runtime_dependencies_use_the_fakes(client: TestClient) -> None:
     assert await contacts.__anext__() is testmode.STATE.contacts
     assert len(testmode.STATE.contacts.contacts) == len(testmode.MAIL_GOLD)
 
+    # Sending and the day planner: the in-memory sender and calendar, never Graph.
+    assert await get_sender(Req()).__anext__() is testmode.STATE.sender  # type: ignore[arg-type]
+    assert _mail_sender("test-token")() is testmode.STATE.sender
+    assert await get_calendar(Req()).__anext__() is testmode.STATE.calendar  # type: ignore[arg-type]
+    assert [e.body_preview for e in await testmode.STATE.calendar.list_events(date(2026, 10, 29))] == [testmode.SAMPLE]
+
 
 async def test_dependencies_still_need_a_token_in_test_mode(test_env: None) -> None:
     from fastapi import HTTPException
@@ -190,7 +199,7 @@ async def test_dependencies_still_need_a_token_in_test_mode(test_env: None) -> N
     class Req:
         headers: dict[str, str] = {}
 
-    for dep in (get_books, get_mail, get_address_book):
+    for dep in (get_books, get_mail, get_address_book, get_sender, get_calendar):
         with pytest.raises(HTTPException) as exc:
             await dep(Req()).__anext__()  # type: ignore[arg-type]
         assert exc.value.status_code == 401

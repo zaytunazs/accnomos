@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 from app import actions
+from app.ai.config import is_test_mode
 from app.books import Books
 from app.routes_books import get_books, require_user
 from app.schemas import ProposedAction
@@ -31,6 +32,10 @@ def _mail_sender(token: str) -> Any:
     """() -> a Graph mail sender, or None on a build without sending (it lands with invoicing)."""
 
     def make() -> Any:
+        if is_test_mode():  # the in-memory sender (GET /__test/state lists what was "sent")
+            from app import testmode
+
+            return testmode.STATE.sender
         try:
             from accnomos_connectors.msgraph import GraphMailSender  # type: ignore[attr-defined]
         except ImportError:
