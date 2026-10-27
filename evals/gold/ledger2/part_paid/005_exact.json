@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Oak & Iron Interiors Ltd",
+  "address": "42 Mill Lane, Bristol, BS1 5AB, United Kingdom"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Bookcase - 6ft",
+   "qty": 1,
+   "unit_price": 1250.0,
+   "net": 1250.0,
+   "vat_rate": 20,
+   "vat": 250.0
+  },
+  {
+   "description": "Walnut Writing Desk - 48in",
+   "qty": 1,
+   "unit_price": 890.0,
+   "net": 890.0,
+   "vat_rate": 20,
+   "vat": 178.0
+  }
+ ],
+ "net_total": 2140.0,
+ "vat_total": 428.0,
+ "gross_total": 2568.0,
+ "payments": [
+  {
+   "date": "2026-08-05",
+   "amount": 2568.0,
+   "reference": "INV-4821",
+   "bank_description": "CHFT OAK & IRON INT INV-4821"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "exact",
+ "expected": {
+  "paid": 2568.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

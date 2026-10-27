@@ -1,0 +1,32 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakfield Timber Supply Co",
+  "vat_number": "GB 123456789",
+  "address": "Unit 4, Mill Lane, Sheffield, South Yorkshire, S3 8HQ"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-0089",
+ "original_invoice_number": "INV-2026-0452",
+ "original_invoice_date": "2026-06-15",
+ "date": "2026-07-10",
+ "reason": "Credit for damaged goods: 1x Solid Oak Door Frame (Ref: SK-24-88) arrived with significant structural cracks. Item was rejected and returned under DOA.",
+ "lines": [
+  {
+   "description": "Solid Oak Door Frame 820x2040mm (Ref: SK-24-88)",
+   "qty": 1,
+   "unit_price": -185.5,
+   "net": -185.5,
+   "vat_rate": 20,
+   "vat": -37.1
+  }
+ ],
+ "net_total": -185.5,
+ "vat_total": -37.1,
+ "gross_total": -222.6,
+ "printed_text": "OAKFIELD TIMBER SUPPLY CO\nVAT Reg: GB 123456789\nUnit 4, Mill Lane\nSheffield, S3 8HQ\n\nCREDIT NOTE\n\nDate: 10/07/2026\nRef: CN-2026-0089\nRelated Invoice: INV-2026-0452 (15/06/2026)\n\nBill To:\nBramblewood Joinery Ltd\n\nReason:\nDamaged goods returned - Structural damage to\nSolid Oak Door Frame. Item rejected.\n\nItem Description                Qty  Price      VAT     Total\nSolid Oak Door Frame 820x2040    1  -185.50   20%   -185.50\n\nNet Total: -185.50\nVAT (20%): -37.10\nGross Total: -222.60\n\nThank you for your business.\nPlease quote this credit note number when\nremitting any future payments or queries.\n\nEnd of Document",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

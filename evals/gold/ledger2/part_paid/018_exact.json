@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4921",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Harper & Finch Interiors",
+  "address": "12 Oakwood Avenue, Bristol, BS1 6LT"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Dining Table (1.8m)",
+   "qty": 1,
+   "unit_price": 1250.0,
+   "net": 1250.0,
+   "vat_rate": 20,
+   "vat": 250.0
+  },
+  {
+   "description": "Matching Oak Chairs",
+   "qty": 6,
+   "unit_price": 145.0,
+   "net": 870.0,
+   "vat_rate": 20,
+   "vat": 174.0
+  }
+ ],
+ "net_total": 2120.0,
+ "vat_total": 424.0,
+ "gross_total": 2544.0,
+ "payments": [
+  {
+   "date": "2026-08-10",
+   "amount": 2544.0,
+   "reference": "INV-4921",
+   "bank_description": "BACS HARPER FINCH INV-4921"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "exact",
+ "expected": {
+  "paid": 2544.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-8241",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Holloway & Sons Interiors",
+  "address": "14 Mill Lane, Leeds, LS1 2JD"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Dining Table - Hand Finished",
+   "qty": 1,
+   "unit_price": 1250.0,
+   "net": 1250.0,
+   "vat_rate": 20,
+   "vat": 250.0
+  },
+  {
+   "description": "Solid Walnut Stools (Set of 4)",
+   "qty": 4,
+   "unit_price": 180.0,
+   "net": 720.0,
+   "vat_rate": 20,
+   "vat": 144.0
+  }
+ ],
+ "net_total": 1970.0,
+ "vat_total": 394.0,
+ "gross_total": 2364.0,
+ "payments": [
+  {
+   "date": "2026-08-10",
+   "amount": 2398.0,
+   "reference": "INV-8241",
+   "bank_description": "B/CH BRAMBLEWOOD JOINERY INV-8241"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "over",
+ "expected": {
+  "paid": 2398.0,
+  "outstanding": -34.0,
+  "status": "overpaid"
+ }
+}

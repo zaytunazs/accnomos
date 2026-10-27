@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-8942",
+ "date": "2026-07-14",
+ "due_days": 30,
+ "customer": {
+  "name": "Thornfield Interiors Ltd",
+  "address": "Unit 4, Mill Lane, Sheffield, S1 2AB"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Dining Table",
+   "qty": 1,
+   "unit_price": 850.0,
+   "net": 850.0,
+   "vat_rate": 20,
+   "vat": 170.0
+  },
+  {
+   "description": "Solid Pine Bookshelf (3 Tier)",
+   "qty": 2,
+   "unit_price": 240.0,
+   "net": 480.0,
+   "vat_rate": 20,
+   "vat": 96.0
+  }
+ ],
+ "net_total": 1330.0,
+ "vat_total": 266.0,
+ "gross_total": 1596.0,
+ "payments": [
+  {
+   "date": "2026-08-05",
+   "amount": 1637.0,
+   "reference": "THORNFIELD/INV-8942",
+   "bank_description": "BACS IN THORNFIELD INT INV 8942"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "over",
+ "expected": {
+  "paid": 1637.0,
+  "outstanding": -41.0,
+  "status": "overpaid"
+ }
+}

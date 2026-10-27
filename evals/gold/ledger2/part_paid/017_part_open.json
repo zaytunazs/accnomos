@@ -1,0 +1,54 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-8421",
+ "date": "2026-07-14",
+ "due_days": 30,
+ "customer": {
+  "name": "Oak & Ivy Interiors Ltd",
+  "address": "Unit 4, The Old Mill, 12 Riverside Walk, Exeter, EX1 4LB"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Bookshelf, 2m tall, French polish finish",
+   "qty": 1,
+   "unit_price": 450.0,
+   "net": 450.0,
+   "vat_rate": 20,
+   "vat": 90.0
+  },
+  {
+   "description": "Walnut Console Table, 1.5m wide, hand-rubbed oil",
+   "qty": 1,
+   "unit_price": 320.0,
+   "net": 320.0,
+   "vat_rate": 20,
+   "vat": 64.0
+  },
+  {
+   "description": "On-site installation and fitting labor",
+   "qty": 2,
+   "unit_price": 120.0,
+   "net": 240.0,
+   "vat_rate": 20,
+   "vat": 48.0
+  }
+ ],
+ "net_total": 1010.0,
+ "vat_total": 202.0,
+ "gross_total": 1212.0,
+ "payments": [
+  {
+   "date": "2026-07-25",
+   "amount": 600.0,
+   "reference": "INV-8421/PMT1",
+   "bank_description": "BACS CHARGED 25/07 OAK & IVY INT LTD INV-8421/PMT1"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part_open",
+ "expected": {
+  "paid": 600.0,
+  "outstanding": 612.0,
+  "status": "part_paid"
+ }
+}

@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Harrowgate Interiors Ltd",
+  "address": "14 Cedar Court, Bristol, BS1 4QT"
+ },
+ "lines": [
+  {
+   "description": "Handmade Oak Bookshelf (8ft)",
+   "qty": 1,
+   "unit_price": 450.0,
+   "net": 450.0,
+   "vat_rate": 20,
+   "vat": 90.0
+  },
+  {
+   "description": "Solid Pine Window Seat",
+   "qty": 2,
+   "unit_price": 120.0,
+   "net": 240.0,
+   "vat_rate": 20,
+   "vat": 48.0
+  }
+ ],
+ "net_total": 690.0,
+ "vat_total": 138.0,
+ "gross_total": 828.0,
+ "payments": [
+  {
+   "date": "2026-08-12",
+   "amount": 849.0,
+   "reference": "INV-4821",
+   "bank_description": "CHAPS CREDIT 849.00 FROM HARROWGATE INT LTD"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "over",
+ "expected": {
+  "paid": 849.0,
+  "outstanding": -21.0,
+  "status": "overpaid"
+ }
+}

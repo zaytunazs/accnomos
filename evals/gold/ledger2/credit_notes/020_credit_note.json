@@ -1,0 +1,40 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Ashwood & Pines Timber Co.",
+  "vat_number": "GB 123456789",
+  "address": "Unit 4, Industrial Estate, Leeds, LS12 3AB, UK"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-0892",
+ "original_invoice_number": "INV-2026-1405",
+ "original_invoice_date": "2026-08-15",
+ "date": "2026-09-02",
+ "reason": "Full credit for goods returned due to manufacturing defects",
+ "lines": [
+  {
+   "description": "Solid Oak Worktop - 2000mm x 600mm",
+   "qty": 2,
+   "unit_price": -185.5,
+   "net": -371.0,
+   "vat_rate": 20,
+   "vat": -74.2
+  },
+  {
+   "description": "Hardwood Wall Panels - 3000mm x 150mm",
+   "qty": 4,
+   "unit_price": -42.75,
+   "net": -171.0,
+   "vat_rate": 20,
+   "vat": -34.2
+  }
+ ],
+ "net_total": -542.0,
+ "vat_total": -108.4,
+ "gross_total": -650.4,
+ "printed_text": "ASHWOOD & PINES TIMBER CO.\nUnit 4, Industrial Estate\nLeeds, LS12 3AB, UK\nVAT No: GB 123456789\n\nCREDIT NOTE\n\nDate: 2026-09-02\nCredit Note No: CN-2026-0892\nOriginal Invoice: INV-2026-1405\nOriginal Date: 2026-08-15\n\nBilled To:\nBramblewood Joinery Ltd\n\nReason for Credit:\nFull credit for goods returned due to manufacturing defects.\n\nDescription              Qty    Unit Price   Net Amount\nSolid Oak Worktop         2.00   -185.50     -371.00\nHardwood Wall Panels      4.00    -42.75     -171.00\n\nSubtotal (Net):                  -542.00\nVAT @ 20%:                        -108.40\nTOTAL CREDIT DUE:                 -650.40\n\nThank you for your business.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

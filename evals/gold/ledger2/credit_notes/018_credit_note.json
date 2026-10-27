@@ -1,0 +1,48 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Ironwood & Sons Timber Ltd",
+  "vat_number": "GB 482190334",
+  "address": "Unit 4, Harrowgate Industrial Park, Leeds, LS17 6AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-8842",
+ "original_invoice_number": "INV-2026-1093",
+ "original_invoice_date": "2026-06-12",
+ "date": "2026-08-15",
+ "reason": "Overstated quantity on original invoice; correction for excess stock supplied.",
+ "lines": [
+  {
+   "description": "Oak Timber Boards 2000mm x 150mm (Class A)",
+   "qty": -5,
+   "unit_price": -145.0,
+   "net": -725.0,
+   "vat_rate": 20,
+   "vat": -145.0
+  },
+  {
+   "description": "Standard Joinery Screws (M6x60) Box of 500",
+   "qty": -2,
+   "unit_price": -22.5,
+   "net": -45.0,
+   "vat_rate": 20,
+   "vat": -9.0
+  },
+  {
+   "description": "Fire-rated Door Assembly 900x2040mm",
+   "qty": -1,
+   "unit_price": -450.0,
+   "net": -450.0,
+   "vat_rate": 0,
+   "vat": -0.0
+  }
+ ],
+ "net_total": -1220.0,
+ "vat_total": -154.0,
+ "gross_total": -1374.0,
+ "printed_text": "CREDIT NOTE\n\nSUPPLIER: Ironwood & Sons Timber Ltd\nVAT No: GB 482190334\nUnit 4, Harrowgate Industrial Park\nLeeds, LS17 6AB\n\nBILL TO: Bramblewood Joinery Ltd\n\nDATE: 15/08/2026\nCREDIT NOTE NO: CN-2026-8842\nREF INVOICE: INV-2026-1093\n\nREASON: Overstated quantity on original invoice; correction for excess stock supplied.\n\nDESCRIPTION                QTY      UNIT PRICE      NET        VAT %     VAT\n--------------------------------------------------------------------------------\nOak Timber Boards 2000mm   -5.00    -145.00      -725.00      20.00    -145.00\nStandard Joinery Screws    -2.00      -22.50       -45.00      20.00      -9.00\nFire-rated Door Assembly   -1.00     -450.00      -450.00       0.00      -0.00\n--------------------------------------------------------------------------------\n\nNET TOTAL: -1,220.00\nVAT TOTAL: -154.00\nGROSS TOTAL: -1,374.00\n\nPlease apply this credit against our next invoice.\nThank you for your business.\n\nIronwood & Sons Timber Ltd",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

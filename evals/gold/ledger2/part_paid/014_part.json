@@ -1,0 +1,52 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-8492",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Harrow & Finch Interiors Ltd",
+  "address": "14 Oak Street, Manchester, M1 2AB"
+ },
+ "lines": [
+  {
+   "description": "Custom Solid Oak Kitchen Units",
+   "qty": 1,
+   "unit_price": 12500.0,
+   "net": 12500.0,
+   "vat_rate": 20,
+   "vat": 2500.0
+  },
+  {
+   "description": "Hardwood Staircase Handrail",
+   "qty": 1,
+   "unit_price": 3200.0,
+   "net": 3200.0,
+   "vat_rate": 20,
+   "vat": 640.0
+  }
+ ],
+ "net_total": 15700.0,
+ "vat_total": 3140.0,
+ "gross_total": 18840.0,
+ "payments": [
+  {
+   "date": "2026-07-29",
+   "amount": 9420.0,
+   "reference": "INV-8492-1",
+   "bank_description": "BACS BRAMBLEWOOD JOIN LTD"
+  },
+  {
+   "date": "2026-08-15",
+   "amount": 9420.0,
+   "reference": "INV-8492-2",
+   "bank_description": "BACS BRAMBLEWOOD JOIN LTD"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part",
+ "expected": {
+  "paid": 18840.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

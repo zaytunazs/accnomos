@@ -1,0 +1,32 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Ashgrove Timber & Hardware Supplies Ltd",
+  "vat_number": "GB 749201835",
+  "address": "Unit 4, Millbrook Industrial Estate, Coventry, CV3 4QX"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CRN-2026-0814",
+ "original_invoice_number": "INV-2026-0792",
+ "original_invoice_date": "2026-08-10",
+ "date": "2026-08-14",
+ "reason": "Correction of price overcharge for premium oak flooring planks due to catalogue listing error.",
+ "lines": [
+  {
+   "description": "Premium Oak Flooring Planks 190x120x14mm - Grade A",
+   "qty": 240,
+   "unit_price": -0.15,
+   "net": -36.0,
+   "vat_rate": 20,
+   "vat": -7.2
+  }
+ ],
+ "net_total": -36.0,
+ "vat_total": -7.2,
+ "gross_total": -43.2,
+ "printed_text": "ASHGROVE TIMBER & HARDWARE SUPPLIES LTD\nUnit 4, Millbrook Industrial Estate\nCoventry, CV3 4QX\n\nVAT No: GB 749201835\n\nCREDIT NOTE\n\nDate: 14/08/2026\nReference: CRN-2026-0814\n\nBilled To:\nBramblewood Joinery Ltd\n\nOriginal Invoice: INV-2026-0792\nInvoice Date: 10/08/2026\n\nReason for Credit:\nPrice adjustment due to overcharge\non premium oak flooring planks.\n\nDescription | Qty | Unit Price | Net Amount\nPremium Oak Flooring Planks | 240 | -0.15 | -36.00\n\nSubtotal (Net): -36.00\nVAT @ 20%: -7.20\n\nTOTAL CREDIT DUE: -43.20\n\nPlease apply this credit to your account.\nFor queries, contact our accounts team.\n\nThank you for your custom.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

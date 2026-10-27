@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-7821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Oakhaven Interiors Ltd",
+  "address": "42 Chestnut Avenue, Leeds, LS1 2AB"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Dining Table (180cm)",
+   "qty": 1,
+   "unit_price": 850.0,
+   "net": 850.0,
+   "vat_rate": 20,
+   "vat": 170.0
+  },
+  {
+   "description": "Matching Oak Chairs (Set of 6)",
+   "qty": 6,
+   "unit_price": 120.0,
+   "net": 720.0,
+   "vat_rate": 20,
+   "vat": 144.0
+  }
+ ],
+ "net_total": 1570.0,
+ "vat_total": 314.0,
+ "gross_total": 1884.0,
+ "payments": [
+  {
+   "date": "2026-08-05",
+   "amount": 1910.0,
+   "reference": "INV-7821",
+   "bank_description": "CHQ PAID OAKHAVEN INT INV7821"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "over",
+ "expected": {
+  "paid": 1910.0,
+  "outstanding": -26.0,
+  "status": "overpaid"
+ }
+}

@@ -1,0 +1,32 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakhaven Timber & Tools Ltd",
+  "vat_number": "GB 987654321",
+  "address": "Unit 4, Industrial Estate, Preston, PR1 9XY"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-07-105",
+ "original_invoice_number": "INV-2026-06-102",
+ "original_invoice_date": "2026-07-01",
+ "date": "2026-07-05",
+ "reason": "Price adjustment due to overcharge on unit price for solid oak door leaves",
+ "lines": [
+  {
+   "description": "Solid Oak Door Leaf 800x2050mm - Grade A",
+   "qty": 2,
+   "unit_price": -1.5,
+   "net": -3.0,
+   "vat_rate": 20,
+   "vat": -0.6
+  }
+ ],
+ "net_total": -3.0,
+ "vat_total": -0.6,
+ "gross_total": -3.6,
+ "printed_text": "OAKHAVEN TIMBER & TOOLS LTD\nUnit 4, Industrial Estate\nPreston, PR1 9XY\nVAT No: GB 987654321\n\nCREDIT NOTE\n\nDate: 2026-07-05\nCredit Note No: CN-2026-07-105\nRef Invoice: INV-2026-06-102\n\nCustomer:\nBramblewood Joinery Ltd\n\nDescription: Price adjustment due to overcharge on unit price for solid oak door leaves\n\nQty    Description                              Unit Price   Net       VAT      Gross\n2.00   Solid Oak Door Leaf 800x2050mm - Grade A -1.50     -3.00    -0.60    -3.60\n\nTotal Net: -3.00\nTotal VAT: -0.60\nTotal Gross: -3.60\n\nPlease apply this credit to your outstanding balance.\nThank you for your business.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

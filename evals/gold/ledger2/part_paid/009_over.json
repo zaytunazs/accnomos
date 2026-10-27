@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Harrowgate Interiors Ltd",
+  "address": "42 Pimlico Row, London SW1V 1AB"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Bookcase - 12ft",
+   "qty": 1,
+   "unit_price": 850.0,
+   "net": 850.0,
+   "vat_rate": 20,
+   "vat": 170.0
+  },
+  {
+   "description": "Solid Pine Dining Table - 1800mm",
+   "qty": 1,
+   "unit_price": 1200.0,
+   "net": 1200.0,
+   "vat_rate": 20,
+   "vat": 240.0
+  }
+ ],
+ "net_total": 2050.0,
+ "vat_total": 410.0,
+ "gross_total": 2460.0,
+ "payments": [
+  {
+   "date": "2026-08-05",
+   "amount": 2465.0,
+   "reference": "INV-4821",
+   "bank_description": "BACS IN HARROWGATE INTER LTD INV-4821"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "over",
+ "expected": {
+  "paid": 2465.0,
+  "outstanding": -5.0,
+  "status": "overpaid"
+ }
+}

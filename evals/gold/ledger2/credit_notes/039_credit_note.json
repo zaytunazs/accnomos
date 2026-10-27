@@ -1,0 +1,40 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Ashgrove Timber Supplies",
+  "vat_number": "GB 123456789",
+  "address": "Unit 4, Mill Road Industrial Estate, Sheffield, S10 2TN, United Kingdom"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-0482",
+ "original_invoice_number": "INV-2026-1105",
+ "original_invoice_date": "2026-07-10",
+ "date": "2026-07-18",
+ "reason": "Full credit for goods returned: Damaged oak battens upon delivery",
+ "lines": [
+  {
+   "description": "Oak Battens 75x25mm (4m length)",
+   "qty": -10,
+   "unit_price": -4.5,
+   "net": -45.0,
+   "vat_rate": 20,
+   "vat": -9.0
+  },
+  {
+   "description": "Hardwood Dowels 10mm x 300mm (50 pack)",
+   "qty": -3,
+   "unit_price": -12.8,
+   "net": -38.4,
+   "vat_rate": 20,
+   "vat": -7.68
+  }
+ ],
+ "net_total": -83.4,
+ "vat_total": -16.68,
+ "gross_total": -100.08,
+ "printed_text": "SUPPLIER CREDIT NOTE\n\nSupplier:\nAshgrove Timber Supplies\nUnit 4, Mill Road Industrial Estate\nSheffield, S10 2TN, United Kingdom\nVAT Reg No: GB 123456789\n\nCustomer:\nBramblewood Joinery Ltd\n\nCredit Note No: CN-2026-0482\nDate: 18/07/2026\nRef Invoice: INV-2026-1105 (10/07/2026)\n\nReason: Full credit for goods returned (Damaged oak battens)\n\nDescription                        Qty   Unit Price      Net       VAT\n---------------------------------- --- ------------- ---------- ---------\nOak Battens 75x25mm (4m length)    -10       -4.50     -45.00    -9.00\nHardwood Dowels 10mm x 300mm        -3      -12.80     -38.40    -7.68\n\n---------------------------------- --- ------------- ---------- ---------\nNet Total: -83.40\nVAT (20%): -16.68\nGross Total: -100.08\n\nThis credit note represents a full refund for the items listed.\nPlease apply this credit to your outstanding balance.\nThank you for your business.\n\nAshgrove Timber Supplies",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

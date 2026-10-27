@@ -1,0 +1,40 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Ironwood Timber Supplies Ltd",
+  "vat_number": "GB 123456789",
+  "address": "Unit 4, Riverside Business Park, Manchester, M15 4XY, United Kingdom"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-088",
+ "original_invoice_number": "INV-2026-405",
+ "original_invoice_date": "2026-07-15",
+ "date": "2026-07-28",
+ "reason": "Quality defect: Warp in 2x4 timbers (Batch #44-B)",
+ "lines": [
+  {
+   "description": "Premium Oak 2x4x8ft (Defective batch)",
+   "qty": -12,
+   "unit_price": -8.5,
+   "net": -102.0,
+   "vat_rate": 20,
+   "vat": -20.4
+  },
+  {
+   "description": "Reclaimed Pine Plank 6x200mm (Free replacement)",
+   "qty": -5,
+   "unit_price": -12.0,
+   "net": -60.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": -162.0,
+ "vat_total": -20.4,
+ "gross_total": -182.4,
+ "printed_text": "IRONWOOD TIMBER SUPPLIES LTD\nUnit 4, Riverside Business Park\nManchester, M15 4XY, United Kingdom\nVAT No: GB 123456789\n\nCREDIT NOTE\n\nDate: 2026-07-28\nRef: CN-2026-088\nOriginal Invoice: INV-2026-405 (2026-07-15)\n\nCustomer:\nBramblewood Joinery Ltd\n\nReason for Credit:\nQuality defect: Warp in 2x4 timbers (Batch #44-B)\n\nLine Items:\n1. Premium Oak 2x4x8ft (Defective batch)\n   Qty: -12 | Price: -8.50 | Net: -102.00 | VAT(20%): -20.40\n2. Reclaimed Pine Plank 6x200mm (Free replacement)\n   Qty: -5 | Price: -12.00 | Net: -60.00 | VAT(0%): 0.00\n\nTOTALS:\nNet Total: -162.00\nVAT Total: -20.40\nGross Total: -182.40\n\nPlease apply this credit to your outstanding balance.\nThank you for your business.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

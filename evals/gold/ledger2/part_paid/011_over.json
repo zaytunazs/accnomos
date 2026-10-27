@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Harrowgate Interiors Ltd",
+  "address": "14 Elm Street, Manchester, M1 4AB"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Bookcase",
+   "qty": 2,
+   "unit_price": 450.0,
+   "net": 900.0,
+   "vat_rate": 20,
+   "vat": 180.0
+  },
+  {
+   "description": "Solid Pine Shelving Unit",
+   "qty": 1,
+   "unit_price": 220.0,
+   "net": 220.0,
+   "vat_rate": 20,
+   "vat": 44.0
+  }
+ ],
+ "net_total": 1120.0,
+ "vat_total": 224.0,
+ "gross_total": 1344.0,
+ "payments": [
+  {
+   "date": "2026-08-10",
+   "amount": 1360.0,
+   "reference": "INV-4821",
+   "bank_description": "BACS HROGWTE INTR 1360.00 INV-4821"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "over",
+ "expected": {
+  "paid": 1360.0,
+  "outstanding": -16.0,
+  "status": "overpaid"
+ }
+}

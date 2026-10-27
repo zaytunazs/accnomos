@@ -1,0 +1,54 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Harlow & Finch Interiors Ltd",
+  "address": "12 Oakwood Avenue, Bristol, BS1 4QT, United Kingdom"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Kitchen Worktop",
+   "qty": 1,
+   "unit_price": 1250.0,
+   "net": 1250.0,
+   "vat_rate": 20,
+   "vat": 250.0
+  },
+  {
+   "description": "Solid Wood Pantry Unit",
+   "qty": 1,
+   "unit_price": 850.0,
+   "net": 850.0,
+   "vat_rate": 20,
+   "vat": 170.0
+  },
+  {
+   "description": "Installation and Fitting Service",
+   "qty": 1,
+   "unit_price": 400.0,
+   "net": 400.0,
+   "vat_rate": 20,
+   "vat": 80.0
+  }
+ ],
+ "net_total": 2500.0,
+ "vat_total": 500.0,
+ "gross_total": 3000.0,
+ "payments": [
+  {
+   "date": "2026-08-25",
+   "amount": 3000.0,
+   "reference": "INV-4821",
+   "bank_description": "BACS BRAMBLEWOOD JOIN LTD INV-4821"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "exact",
+ "expected": {
+  "paid": 3000.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

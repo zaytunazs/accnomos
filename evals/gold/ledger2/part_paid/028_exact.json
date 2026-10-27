@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4921",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Aster & Oak Interiors Ltd",
+  "address": "14 Willow Lane, Leeds, LS1 4AB, United Kingdom"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Dining Table (2.0m x 0.9m)",
+   "qty": 1,
+   "unit_price": 1450.0,
+   "net": 1450.0,
+   "vat_rate": 20,
+   "vat": 290.0
+  },
+  {
+   "description": "Solid Oak Dining Chairs (Set of 6)",
+   "qty": 1,
+   "unit_price": 875.0,
+   "net": 875.0,
+   "vat_rate": 20,
+   "vat": 175.0
+  }
+ ],
+ "net_total": 2325.0,
+ "vat_total": 465.0,
+ "gross_total": 2790.0,
+ "payments": [
+  {
+   "date": "2026-08-14",
+   "amount": 2790.0,
+   "reference": "INV-4921",
+   "bank_description": "BRAMBLEWOOD JOIN LTD INV-4921"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "exact",
+ "expected": {
+  "paid": 2790.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

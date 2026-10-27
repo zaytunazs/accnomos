@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4829",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Alderton & Co. Interiors",
+  "address": "14 Oakwood Lane, Harrogate, HG1 2XY"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Bookcase - 1.8m Wide",
+   "qty": 2,
+   "unit_price": 850.0,
+   "net": 1700.0,
+   "vat_rate": 20,
+   "vat": 340.0
+  },
+  {
+   "description": "Matching Oak Desk - 1.2m",
+   "qty": 1,
+   "unit_price": 1200.0,
+   "net": 1200.0,
+   "vat_rate": 20,
+   "vat": 240.0
+  }
+ ],
+ "net_total": 2900.0,
+ "vat_total": 580.0,
+ "gross_total": 3480.0,
+ "payments": [
+  {
+   "date": "2026-08-10",
+   "amount": 3480.0,
+   "reference": "INV-4829",
+   "bank_description": "CHQ 3480.00 ALC INTERIORS INV-4829"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "exact",
+ "expected": {
+  "paid": 3480.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

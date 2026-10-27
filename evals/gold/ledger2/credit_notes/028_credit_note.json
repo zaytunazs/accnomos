@@ -1,0 +1,32 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakhaven Timber Supplies Ltd",
+  "vat_number": "GB 123 456 789",
+  "address": "Unit 4, The Foundry, 12 Industrial Way, Leeds LS10 1AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-045",
+ "original_invoice_number": "INV-2026-089",
+ "original_invoice_date": "2026-07-15",
+ "date": "2026-08-10",
+ "reason": "Partial credit for 1 damaged oak shelf board received in original order.",
+ "lines": [
+  {
+   "description": "Oak Shelf Board 600mm (Damaged Item)",
+   "qty": 1,
+   "unit_price": -18.5,
+   "net": -18.5,
+   "vat_rate": 20,
+   "vat": -3.7
+  }
+ ],
+ "net_total": -18.5,
+ "vat_total": -3.7,
+ "gross_total": -22.2,
+ "printed_text": "OAKHAVEN TIMBER SUPPLIES LTD\nUnit 4, The Foundry, 12 Industrial Way\nLeeds LS10 1AB\nVAT Reg No: GB 123 456 789\n\nSUPPLIER CREDIT NOTE\n\nCredit Note No: CN-2026-045\nDate: 10 Aug 2026\n\nAccount: Bramblewood Joinery Ltd\nOriginal Invoice: INV-2026-089\nOriginal Date: 15 Jul 2026\n\nReason for Credit:\nPartial credit for 1 damaged oak\nshelf board received in original order.\n\nDescription          Qty    Unit Price   Net Amount\n--------------------------------------------------\nOak Shelf Board 600mm   1.00   -18.50.00     -18.50\n(Damaged Item)                         \n\nNet Total: -18.50\nVAT @ 20%: -3.70\n\nGross Total Due Back: -22.20\n\nThank you for your business.\nPlease reference this note on your return.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

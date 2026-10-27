@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4921",
+ "date": "2026-08-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Northgate Interiors Ltd",
+  "address": "42 Mill Lane, York, YO24 3AB"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Dining Table (180cm)",
+   "qty": 1,
+   "unit_price": 1250.0,
+   "net": 1250.0,
+   "vat_rate": 20,
+   "vat": 250.0
+  },
+  {
+   "description": "Matching Oak Chairs (Set of 6)",
+   "qty": 6,
+   "unit_price": 180.0,
+   "net": 1080.0,
+   "vat_rate": 20,
+   "vat": 216.0
+  }
+ ],
+ "net_total": 2330.0,
+ "vat_total": 466.0,
+ "gross_total": 2796.0,
+ "payments": [
+  {
+   "date": "2026-09-10",
+   "amount": 1398.0,
+   "reference": "INV-4921 PART",
+   "bank_description": "CHQ 549201 BRAMBLEWOOD JOINERY LTD INV-4921"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part_open",
+ "expected": {
+  "paid": 1398.0,
+  "outstanding": 1398.0,
+  "status": "part_paid"
+ }
+}

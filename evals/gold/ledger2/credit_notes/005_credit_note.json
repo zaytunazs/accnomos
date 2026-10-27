@@ -1,0 +1,32 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakfield Timber Supplies Ltd",
+  "vat_number": "GB123456789",
+  "address": "Unit 4, Industrial Estate, Leeds, LS10 1AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-089",
+ "original_invoice_number": "INV-2026-112",
+ "original_invoice_date": "2026-05-15",
+ "date": "2026-06-01",
+ "reason": "Return of goods due to manufacturing defect",
+ "lines": [
+  {
+   "description": "Solid Oak Door Frame 900x2040mm",
+   "qty": 2,
+   "unit_price": -145.5,
+   "net": -291.0,
+   "vat_rate": 20,
+   "vat": -58.2
+  }
+ ],
+ "net_total": -291.0,
+ "vat_total": -58.2,
+ "gross_total": -349.2,
+ "printed_text": "OAKFIELD TIMBER SUPPLIES LTD\nUnit 4, Industrial Estate\nLeeds, LS10 1AB\nVAT No: GB123456789\n\nCREDIT NOTE\n\nDate: 01/06/2026\nCN No: CN-2026-089\nOriginal Invoice: INV-2026-112\nInvoice Date: 15/05/2026\n\nBilled To:\nBramblewood Joinery Ltd\n\nReason: Return of goods due to manufacturing defect\n\nDESCRIPTION                    QTY   UNIT PRICE    NET\nSolid Oak Door Frame 900x2040   2   -145.50    -291.00\n\nNET TOTAL: -291.00\nVAT (20%): -58.20\nGROSS TOTAL: -349.20\n\nPlease deduct this amount from your next payment.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

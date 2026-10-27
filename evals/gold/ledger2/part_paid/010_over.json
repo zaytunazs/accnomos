@@ -1,0 +1,54 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Harrow & Finch Interiors Ltd",
+  "address": "Unit 4, The Foundry, 12 Mill Lane, Bristol, BS1 5AB"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Kitchen Worktop (1800mm x 600mm)",
+   "qty": 1,
+   "unit_price": 450.0,
+   "net": 450.0,
+   "vat_rate": 20,
+   "vat": 90.0
+  },
+  {
+   "description": "Walnut Shelving Unit (Modular, 3 tiers)",
+   "qty": 2,
+   "unit_price": 185.0,
+   "net": 370.0,
+   "vat_rate": 20,
+   "vat": 74.0
+  },
+  {
+   "description": "Professional Installation & Fitting",
+   "qty": 1,
+   "unit_price": 320.0,
+   "net": 320.0,
+   "vat_rate": 20,
+   "vat": 64.0
+  }
+ ],
+ "net_total": 1140.0,
+ "vat_total": 228.0,
+ "gross_total": 1368.0,
+ "payments": [
+  {
+   "date": "2026-08-10",
+   "amount": 1383.0,
+   "reference": "INV-4821",
+   "bank_description": "CHAPS PAYMENT - HARROW & FINCH LTD - INV 4821"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "over",
+ "expected": {
+  "paid": 1383.0,
+  "outstanding": -15.0,
+  "status": "overpaid"
+ }
+}

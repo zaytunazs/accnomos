@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Thornfield Interiors",
+  "address": "14 Oak Lane, Harrogate, HG2 0QT"
+ },
+ "lines": [
+  {
+   "description": "Custom oak shelving unit (1800mm x 600mm)",
+   "qty": 1,
+   "unit_price": 1450.0,
+   "net": 1450.0,
+   "vat_rate": 20,
+   "vat": 290.0
+  },
+  {
+   "description": "Installation and finishing services",
+   "qty": 1,
+   "unit_price": 350.0,
+   "net": 350.0,
+   "vat_rate": 20,
+   "vat": 70.0
+  }
+ ],
+ "net_total": 1800.0,
+ "vat_total": 360.0,
+ "gross_total": 2160.0,
+ "payments": [
+  {
+   "date": "2026-08-10",
+   "amount": 1080.0,
+   "reference": "INV-4821",
+   "bank_description": "CHQ THORNFIELD INT 10 AUG BRAMBLEWOOD JOINERY"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part_open",
+ "expected": {
+  "paid": 1080.0,
+  "outstanding": 1080.0,
+  "status": "part_paid"
+ }
+}

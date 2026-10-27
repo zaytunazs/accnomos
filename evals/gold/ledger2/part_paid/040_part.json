@@ -1,0 +1,52 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-14",
+ "due_days": 30,
+ "customer": {
+  "name": "Oakhaven Garden Supplies",
+  "address": "14 Elm Road, Bristol, BS1 5AB"
+ },
+ "lines": [
+  {
+   "description": "Oak Garden Gate, 8ft",
+   "qty": 2,
+   "unit_price": 450.0,
+   "net": 900.0,
+   "vat_rate": 20,
+   "vat": 180.0
+  },
+  {
+   "description": "Steel Hinges (Set of 4)",
+   "qty": 1,
+   "unit_price": 45.5,
+   "net": 45.5,
+   "vat_rate": 20,
+   "vat": 9.1
+  }
+ ],
+ "net_total": 945.5,
+ "vat_total": 189.1,
+ "gross_total": 1134.6,
+ "payments": [
+  {
+   "date": "2026-08-01",
+   "amount": 567.3,
+   "reference": "INV-4821",
+   "bank_description": "DFT OAKHAVEN GARDEN SUPPLIES INV-4821"
+  },
+  {
+   "date": "2026-08-15",
+   "amount": 567.3,
+   "reference": "INV-4821",
+   "bank_description": "DFT OAKHAVEN GARDEN SUPPLIES INV-4821"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part",
+ "expected": {
+  "paid": 1134.6,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

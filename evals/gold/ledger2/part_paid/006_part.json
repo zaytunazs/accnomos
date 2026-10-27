@@ -1,0 +1,52 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Ashford & Sons Property Developers",
+  "address": "14 Mill Lane, Bristol, BS1 4QT"
+ },
+ "lines": [
+  {
+   "description": "Custom oak dining table with extendable leaves",
+   "qty": 1,
+   "unit_price": 1850.0,
+   "net": 1850.0,
+   "vat_rate": 20,
+   "vat": 370.0
+  },
+  {
+   "description": "Matching oak benches (set of 4)",
+   "qty": 4,
+   "unit_price": 320.0,
+   "net": 1280.0,
+   "vat_rate": 20,
+   "vat": 256.0
+  }
+ ],
+ "net_total": 3130.0,
+ "vat_total": 626.0,
+ "gross_total": 3756.0,
+ "payments": [
+  {
+   "date": "2026-08-01",
+   "amount": 1878.0,
+   "reference": "INV-4821 PART 1",
+   "bank_description": "ASHFORD & SONS PAYMENT INV-4821"
+  },
+  {
+   "date": "2026-08-20",
+   "amount": 1878.0,
+   "reference": "INV-4821 PART 2",
+   "bank_description": "ASHFORD & SONS PAYMENT INV-4821 BAL"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part",
+ "expected": {
+  "paid": 3756.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

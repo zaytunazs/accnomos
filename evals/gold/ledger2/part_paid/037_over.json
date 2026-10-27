@@ -1,0 +1,54 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4921",
+ "date": "2026-07-14",
+ "due_days": 30,
+ "customer": {
+  "name": "Hartwell Interiors",
+  "address": "14 Oakwood Lane, Leeds, LS1 3JD"
+ },
+ "lines": [
+  {
+   "description": "Solid Oak Kitchen Worktop",
+   "qty": 1,
+   "unit_price": 1450.0,
+   "net": 1450.0,
+   "vat_rate": 20,
+   "vat": 290.0
+  },
+  {
+   "description": "Solid Oak Island Unit",
+   "qty": 1,
+   "unit_price": 2200.0,
+   "net": 2200.0,
+   "vat_rate": 20,
+   "vat": 440.0
+  },
+  {
+   "description": "Installation and Delivery",
+   "qty": 1,
+   "unit_price": 350.0,
+   "net": 350.0,
+   "vat_rate": 20,
+   "vat": 70.0
+  }
+ ],
+ "net_total": 4000.0,
+ "vat_total": 800.0,
+ "gross_total": 4800.0,
+ "payments": [
+  {
+   "date": "2026-08-05",
+   "amount": 4856.0,
+   "reference": "INV-4921",
+   "bank_description": "CHGS HARTWELL INTERIORS LTD"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "over",
+ "expected": {
+  "paid": 4856.0,
+  "outstanding": -56.0,
+  "status": "overpaid"
+ }
+}

@@ -1,0 +1,60 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-8492",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Oakfield Home Improvements Ltd",
+  "address": "Unit 4, Cedar Court, Manchester, M14 5PZ"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Bookcase - 6 Tier",
+   "qty": 2,
+   "unit_price": 450.0,
+   "net": 900.0,
+   "vat_rate": 20,
+   "vat": 180.0
+  },
+  {
+   "description": "Solid Pine Drawer Fronts (Set of 4)",
+   "qty": 1,
+   "unit_price": 220.0,
+   "net": 220.0,
+   "vat_rate": 20,
+   "vat": 44.0
+  },
+  {
+   "description": "Installation and Fitting Service",
+   "qty": 1,
+   "unit_price": 350.0,
+   "net": 350.0,
+   "vat_rate": 20,
+   "vat": 70.0
+  }
+ ],
+ "net_total": 1470.0,
+ "vat_total": 294.0,
+ "gross_total": 1764.0,
+ "payments": [
+  {
+   "date": "2026-08-10",
+   "amount": 882.0,
+   "reference": "INV-8492 PART 1",
+   "bank_description": "CHQ 3028471 OAKFIELD HOME IMPROV"
+  },
+  {
+   "date": "2026-08-25",
+   "amount": 882.0,
+   "reference": "INV-8492 BAL",
+   "bank_description": "CHQ 3028472 OAKFIELD HOME IMPROV"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part",
+ "expected": {
+  "paid": 1764.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

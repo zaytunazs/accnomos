@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-14",
+ "due_days": 30,
+ "customer": {
+  "name": "Harrowgate Interiors Ltd",
+  "address": "Unit 4, Northgate Business Park, Newcastle upon Tyne, NE6 2XT"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Kitchen Worktop - 3m linear",
+   "qty": 3.0,
+   "unit_price": 185.0,
+   "net": 555.0,
+   "vat_rate": 20,
+   "vat": 111.0
+  },
+  {
+   "description": "Shaker Style Drawer Fronts (Set of 12)",
+   "qty": 1.0,
+   "unit_price": 240.0,
+   "net": 240.0,
+   "vat_rate": 20,
+   "vat": 48.0
+  }
+ ],
+ "net_total": 795.0,
+ "vat_total": 159.0,
+ "gross_total": 954.0,
+ "payments": [
+  {
+   "date": "2026-08-05",
+   "amount": 987.0,
+   "reference": "INV-4821",
+   "bank_description": "BRAMBLEWOOD JOINERY LTD INV-4821"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "over",
+ "expected": {
+  "paid": 987.0,
+  "outstanding": -33.0,
+  "status": "overpaid"
+ }
+}

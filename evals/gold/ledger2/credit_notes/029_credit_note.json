@@ -1,0 +1,32 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakfield Timber Supplies Ltd",
+  "vat_number": "GB123456789",
+  "address": "Unit 4, Industrial Park, M1, Manchester, M20 4WD"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-0084",
+ "original_invoice_number": "INV-2026-0312",
+ "original_invoice_date": "2026-07-05",
+ "date": "2026-07-12",
+ "reason": "Credit for 1 damaged item: Solid Oak Door Leaf 84x204cm (Cracked on arrival)",
+ "lines": [
+  {
+   "description": "Solid Oak Door Leaf 84x204cm",
+   "qty": -1,
+   "unit_price": -185.0,
+   "net": -185.0,
+   "vat_rate": 20,
+   "vat": -37.0
+  }
+ ],
+ "net_total": -185.0,
+ "vat_total": -37.0,
+ "gross_total": -222.0,
+ "printed_text": "OAKFIELD TIMBER SUPPLIES LTD\nUnit 4, Industrial Park, M1, Manchester, M20 4WD\nVAT Reg No: GB123456789\n\nCUSTOMER: Bramblewood Joinery Ltd\nCREDIT NOTE: CN-2026-0084\nDATE: 12/07/2026\nREF INVOICE: INV-2026-0312 (Dated 05/07/2026)\n\nREASON: Damaged item returned - Solid Oak Door Leaf\n\nDESC.               QTY   PRICE       NET       VAT\nSolid Oak Door...   -1   -185.00   -185.00    -37.00\n\nNET TOTAL:          -185.00\nVAT (20%):          -37.00\nGROSS TOTAL:        -222.00\n\nThis credit note has been applied to your account.\nPlease contact our accounts department if there are any discrepancies.\nThank you for your business.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

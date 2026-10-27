@@ -1,0 +1,48 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakfield Hardware Supplies",
+  "vat_number": "GB 123456789",
+  "address": "Unit 4, Industrial Estate, Leeds LS10 1AB, United Kingdom"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-0045",
+ "original_invoice_number": "INV-2026-0892",
+ "original_invoice_date": "2026-06-20",
+ "date": "2026-07-15",
+ "reason": "Damaged goods on delivery (20% VAT items) and correction of zero-rated bulk timber (0% VAT items).",
+ "lines": [
+  {
+   "description": "Hardwood Door Panels - Oak",
+   "qty": 5.0,
+   "unit_price": -85.0,
+   "net": -425.0,
+   "vat_rate": 20,
+   "vat": -85.0
+  },
+  {
+   "description": "Structural Timber Beams - 4x2 inch",
+   "qty": 10.0,
+   "unit_price": -45.0,
+   "net": -450.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  },
+  {
+   "description": "Ironmongery Fixing Kit",
+   "qty": 2.0,
+   "unit_price": -15.0,
+   "net": -30.0,
+   "vat_rate": 20,
+   "vat": -6.0
+  }
+ ],
+ "net_total": -905.0,
+ "vat_total": -91.0,
+ "gross_total": -996.0,
+ "printed_text": "OAKFIELD HARDWARE SUPPLIES\nUnit 4, Industrial Estate\nLeeds LS10 1AB\nVAT No: GB 123456789\n\nSUPPLIER CREDIT NOTE\n\nDate: 2026-07-15\nCredit Note No: CN-2026-0045\nOriginal Invoice: INV-2026-0892 (2026-06-20)\nCustomer: Bramblewood Joinery Ltd\n\nReason: Damaged goods and zero-rated correction\n\nDescription | Qty | Unit Price | Net | VAT | Total\nHardwood Door Panels | 5.00 | -85.00 | -425.00 | -85.00 | -510.00\nStructural Timber Beams | 10.00 | -45.00 | -450.00 | 0.00 | -450.00\nIronmongery Fixing Kit | 2.00 | -15.00 | -30.00 | -6.00 | -36.00\n\nTotal Net: -905.00\nTotal VAT (20%): -91.00\nTotal VAT (0%): 0.00\nTOTAL GROSS CREDIT: -996.00\n\nThank you for your business.\nEnd of Credit Note",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

@@ -1,0 +1,567 @@
+{
+ "generated_by": "qwen3.8-27b on DGX Spark",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "count": 90,
+ "items": [
+  {
+   "file": "credit_notes/001_credit_note.json",
+   "case": "credit_note",
+   "gross": -996.0
+  },
+  {
+   "file": "credit_notes/002_credit_note.json",
+   "case": "credit_note",
+   "gross": -6.0
+  },
+  {
+   "file": "credit_notes/003_credit_note.json",
+   "case": "credit_note",
+   "gross": -30.0
+  },
+  {
+   "file": "credit_notes/004_credit_note.json",
+   "case": "credit_note",
+   "gross": -15.0
+  },
+  {
+   "file": "credit_notes/005_credit_note.json",
+   "case": "credit_note",
+   "gross": -349.2
+  },
+  {
+   "file": "credit_notes/006_credit_note.json",
+   "case": "credit_note",
+   "gross": -457.08
+  },
+  {
+   "file": "credit_notes/007_credit_note.json",
+   "case": "credit_note",
+   "gross": -5.04
+  },
+  {
+   "file": "credit_notes/008_credit_note.json",
+   "case": "credit_note",
+   "gross": -43.2
+  },
+  {
+   "file": "credit_notes/009_credit_note.json",
+   "case": "credit_note",
+   "gross": -2.88
+  },
+  {
+   "file": "credit_notes/010_credit_note.json",
+   "case": "credit_note",
+   "gross": -8.4
+  },
+  {
+   "file": "credit_notes/011_credit_note.json",
+   "case": "credit_note",
+   "gross": -831.0
+  },
+  {
+   "file": "credit_notes/012_credit_note.json",
+   "case": "credit_note",
+   "gross": -222.0
+  },
+  {
+   "file": "credit_notes/013_credit_note.json",
+   "case": "credit_note",
+   "gross": -102.0
+  },
+  {
+   "file": "credit_notes/014_credit_note.json",
+   "case": "credit_note",
+   "gross": -174.6
+  },
+  {
+   "file": "credit_notes/015_credit_note.json",
+   "case": "credit_note",
+   "gross": -180.22
+  },
+  {
+   "file": "credit_notes/016_credit_note.json",
+   "case": "credit_note",
+   "gross": -461.4
+  },
+  {
+   "file": "credit_notes/017_credit_note.json",
+   "case": "credit_note",
+   "gross": -1200.0
+  },
+  {
+   "file": "credit_notes/018_credit_note.json",
+   "case": "credit_note",
+   "gross": -1374.0
+  },
+  {
+   "file": "credit_notes/019_credit_note.json",
+   "case": "credit_note",
+   "gross": -383.8
+  },
+  {
+   "file": "credit_notes/020_credit_note.json",
+   "case": "credit_note",
+   "gross": -650.4
+  },
+  {
+   "file": "credit_notes/021_credit_note.json",
+   "case": "credit_note",
+   "gross": -182.4
+  },
+  {
+   "file": "credit_notes/022_credit_note.json",
+   "case": "credit_note",
+   "gross": -8.1
+  },
+  {
+   "file": "credit_notes/023_credit_note.json",
+   "case": "credit_note",
+   "gross": -364.5
+  },
+  {
+   "file": "credit_notes/024_credit_note.json",
+   "case": "credit_note",
+   "gross": -992.0
+  },
+  {
+   "file": "credit_notes/025_credit_note.json",
+   "case": "credit_note",
+   "gross": -12.0
+  },
+  {
+   "file": "credit_notes/026_credit_note.json",
+   "case": "credit_note",
+   "gross": -222.6
+  },
+  {
+   "file": "credit_notes/027_credit_note.json",
+   "case": "credit_note",
+   "gross": -18.0
+  },
+  {
+   "file": "credit_notes/028_credit_note.json",
+   "case": "credit_note",
+   "gross": -22.2
+  },
+  {
+   "file": "credit_notes/029_credit_note.json",
+   "case": "credit_note",
+   "gross": -222.0
+  },
+  {
+   "file": "credit_notes/030_credit_note.json",
+   "case": "credit_note",
+   "gross": -865.2
+  },
+  {
+   "file": "credit_notes/031_credit_note.json",
+   "case": "credit_note",
+   "gross": -4303.0
+  },
+  {
+   "file": "credit_notes/032_credit_note.json",
+   "case": "credit_note",
+   "gross": -72.0
+  },
+  {
+   "file": "credit_notes/033_credit_note.json",
+   "case": "credit_note",
+   "gross": -960.0
+  },
+  {
+   "file": "credit_notes/034_credit_note.json",
+   "case": "credit_note",
+   "gross": -750.0
+  },
+  {
+   "file": "credit_notes/035_credit_note.json",
+   "case": "credit_note",
+   "gross": -174.0
+  },
+  {
+   "file": "credit_notes/036_credit_note.json",
+   "case": "credit_note",
+   "gross": -157.4
+  },
+  {
+   "file": "credit_notes/037_credit_note.json",
+   "case": "credit_note",
+   "gross": -222.6
+  },
+  {
+   "file": "credit_notes/038_credit_note.json",
+   "case": "credit_note",
+   "gross": -3.6
+  },
+  {
+   "file": "credit_notes/039_credit_note.json",
+   "case": "credit_note",
+   "gross": -100.08
+  },
+  {
+   "file": "credit_notes/040_credit_note.json",
+   "case": "credit_note",
+   "gross": -54.0
+  },
+  {
+   "file": "part_paid/001_part.json",
+   "case": "part",
+   "gross": 2460.0,
+   "paid": 2460.0
+  },
+  {
+   "file": "part_paid/002_exact.json",
+   "case": "exact",
+   "gross": 3000.0,
+   "paid": 3000.0
+  },
+  {
+   "file": "part_paid/003_part_open.json",
+   "case": "part_open",
+   "gross": 1200.0,
+   "paid": 600.0
+  },
+  {
+   "file": "part_paid/004_over.json",
+   "case": "over",
+   "gross": 1596.0,
+   "paid": 1637.0
+  },
+  {
+   "file": "part_paid/005_exact.json",
+   "case": "exact",
+   "gross": 2568.0,
+   "paid": 2568.0
+  },
+  {
+   "file": "part_paid/006_part.json",
+   "case": "part",
+   "gross": 3756.0,
+   "paid": 3756.0
+  },
+  {
+   "file": "part_paid/007_over.json",
+   "case": "over",
+   "gross": 954.0,
+   "paid": 987.0
+  },
+  {
+   "file": "part_paid/008_exact.json",
+   "case": "exact",
+   "gross": 2220.0,
+   "paid": 2220.0
+  },
+  {
+   "file": "part_paid/009_over.json",
+   "case": "over",
+   "gross": 2460.0,
+   "paid": 2465.0
+  },
+  {
+   "file": "part_paid/010_over.json",
+   "case": "over",
+   "gross": 1368.0,
+   "paid": 1383.0
+  },
+  {
+   "file": "part_paid/011_over.json",
+   "case": "over",
+   "gross": 1344.0,
+   "paid": 1360.0
+  },
+  {
+   "file": "part_paid/012_exact.json",
+   "case": "exact",
+   "gross": 3480.0,
+   "paid": 3480.0
+  },
+  {
+   "file": "part_paid/013_over.json",
+   "case": "over",
+   "gross": 2820.0,
+   "paid": 2858.0
+  },
+  {
+   "file": "part_paid/014_part.json",
+   "case": "part",
+   "gross": 18840.0,
+   "paid": 18840.0
+  },
+  {
+   "file": "part_paid/015_part_open.json",
+   "case": "part_open",
+   "gross": 2796.0,
+   "paid": 1398.0
+  },
+  {
+   "file": "part_paid/016_part_open.json",
+   "case": "part_open",
+   "gross": 2355.6,
+   "paid": 1150.0
+  },
+  {
+   "file": "part_paid/017_part_open.json",
+   "case": "part_open",
+   "gross": 1212.0,
+   "paid": 600.0
+  },
+  {
+   "file": "part_paid/018_exact.json",
+   "case": "exact",
+   "gross": 2544.0,
+   "paid": 2544.0
+  },
+  {
+   "file": "part_paid/019_part.json",
+   "case": "part",
+   "gross": 4332.0,
+   "paid": 4332.0
+  },
+  {
+   "file": "part_paid/020_over.json",
+   "case": "over",
+   "gross": 1884.0,
+   "paid": 1910.0
+  },
+  {
+   "file": "part_paid/021_part.json",
+   "case": "part",
+   "gross": 3540.0,
+   "paid": 3540.0
+  },
+  {
+   "file": "part_paid/022_exact.json",
+   "case": "exact",
+   "gross": 11526.0,
+   "paid": 11526.0
+  },
+  {
+   "file": "part_paid/023_over.json",
+   "case": "over",
+   "gross": 1104.0,
+   "paid": 1149.0
+  },
+  {
+   "file": "part_paid/024_part.json",
+   "case": "part",
+   "gross": 2715.0,
+   "paid": 2715.0
+  },
+  {
+   "file": "part_paid/025_over.json",
+   "case": "over",
+   "gross": 828.0,
+   "paid": 849.0
+  },
+  {
+   "file": "part_paid/026_part.json",
+   "case": "part",
+   "gross": 1764.0,
+   "paid": 1764.0
+  },
+  {
+   "file": "part_paid/027_over.json",
+   "case": "over",
+   "gross": 2364.0,
+   "paid": 2398.0
+  },
+  {
+   "file": "part_paid/028_exact.json",
+   "case": "exact",
+   "gross": 2790.0,
+   "paid": 2790.0
+  },
+  {
+   "file": "part_paid/029_over.json",
+   "case": "over",
+   "gross": 1623.0,
+   "paid": 1660.0
+  },
+  {
+   "file": "part_paid/030_part.json",
+   "case": "part",
+   "gross": 2870.4,
+   "paid": 2870.4
+  },
+  {
+   "file": "part_paid/031_part.json",
+   "case": "part",
+   "gross": 3216.0,
+   "paid": 3216.0
+  },
+  {
+   "file": "part_paid/032_over.json",
+   "case": "over",
+   "gross": 2064.0,
+   "paid": 2082.0
+  },
+  {
+   "file": "part_paid/033_exact.json",
+   "case": "exact",
+   "gross": 1224.0,
+   "paid": 1224.0
+  },
+  {
+   "file": "part_paid/034_part.json",
+   "case": "part",
+   "gross": 1260.0,
+   "paid": 1260.0
+  },
+  {
+   "file": "part_paid/035_part.json",
+   "case": "part",
+   "gross": 3480.0,
+   "paid": 3480.0
+  },
+  {
+   "file": "part_paid/036_part.json",
+   "case": "part",
+   "gross": 1596.0,
+   "paid": 1596.0
+  },
+  {
+   "file": "part_paid/037_over.json",
+   "case": "over",
+   "gross": 4800.0,
+   "paid": 4856.0
+  },
+  {
+   "file": "part_paid/038_part_open.json",
+   "case": "part_open",
+   "gross": 2160.0,
+   "paid": 1080.0
+  },
+  {
+   "file": "part_paid/039_over.json",
+   "case": "over",
+   "gross": 2928.0,
+   "paid": 2977.0
+  },
+  {
+   "file": "part_paid/040_part.json",
+   "case": "part",
+   "gross": 1134.6,
+   "paid": 1134.6
+  },
+  {
+   "file": "bank_pairs/001_meta.json",
+   "case": "bank_overlap",
+   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "first": "001_a.csv",
+   "second": "001_b.csv",
+   "lines_a": 18,
+   "lines_b": 17,
+   "overlap": 8,
+   "expected_unique_lines": 27,
+   "closing_balance": 25297.45
+  },
+  {
+   "file": "bank_pairs/002_meta.json",
+   "case": "bank_overlap",
+   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "first": "002_a.csv",
+   "second": "002_b.csv",
+   "lines_a": 18,
+   "lines_b": 14,
+   "overlap": 4,
+   "expected_unique_lines": 28,
+   "closing_balance": 11936.35
+  },
+  {
+   "file": "bank_pairs/003_meta.json",
+   "case": "bank_overlap",
+   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "first": "003_a.csv",
+   "second": "003_b.csv",
+   "lines_a": 26,
+   "lines_b": 18,
+   "overlap": 4,
+   "expected_unique_lines": 40,
+   "closing_balance": 20614.02
+  },
+  {
+   "file": "bank_pairs/004_meta.json",
+   "case": "bank_overlap",
+   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "first": "004_a.csv",
+   "second": "004_b.csv",
+   "lines_a": 16,
+   "lines_b": 15,
+   "overlap": 6,
+   "expected_unique_lines": 25,
+   "closing_balance": 18688.61
+  },
+  {
+   "file": "bank_pairs/005_meta.json",
+   "case": "bank_overlap",
+   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "first": "005_a.csv",
+   "second": "005_b.csv",
+   "lines_a": 18,
+   "lines_b": 16,
+   "overlap": 6,
+   "expected_unique_lines": 28,
+   "closing_balance": 28568.43
+  },
+  {
+   "file": "bank_pairs/006_meta.json",
+   "case": "bank_overlap",
+   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "first": "006_a.csv",
+   "second": "006_b.csv",
+   "lines_a": 18,
+   "lines_b": 15,
+   "overlap": 5,
+   "expected_unique_lines": 28,
+   "closing_balance": 10637.16
+  },
+  {
+   "file": "bank_pairs/007_meta.json",
+   "case": "bank_overlap",
+   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "first": "007_a.csv",
+   "second": "007_b.csv",
+   "lines_a": 20,
+   "lines_b": 15,
+   "overlap": 5,
+   "expected_unique_lines": 30,
+   "closing_balance": 16447.62
+  },
+  {
+   "file": "bank_pairs/008_meta.json",
+   "case": "bank_overlap",
+   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "first": "008_a.csv",
+   "second": "008_b.csv",
+   "lines_a": 20,
+   "lines_b": 19,
+   "overlap": 8,
+   "expected_unique_lines": 31,
+   "closing_balance": 17311.18
+  },
+  {
+   "file": "bank_pairs/009_meta.json",
+   "case": "bank_overlap",
+   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "first": "009_a.csv",
+   "second": "009_b.csv",
+   "lines_a": 20,
+   "lines_b": 16,
+   "overlap": 5,
+   "expected_unique_lines": 31,
+   "closing_balance": 17192.61
+  },
+  {
+   "file": "bank_pairs/010_meta.json",
+   "case": "bank_overlap",
+   "label": "SAMPLE ??? FICTIONAL COMPANY",
+   "first": "010_a.csv",
+   "second": "010_b.csv",
+   "lines_a": 18,
+   "lines_b": 13,
+   "overlap": 4,
+   "expected_unique_lines": 27,
+   "closing_balance": 16913.22
+  }
+ ]
+}

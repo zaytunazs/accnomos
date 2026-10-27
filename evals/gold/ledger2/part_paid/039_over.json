@@ -1,0 +1,54 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-8492",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Hollow Oak Interiors",
+  "address": "14 Mill Lane, York, YO1 7QP"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Kitchen Worktop - 3200mm",
+   "qty": 1,
+   "unit_price": 1250.0,
+   "net": 1250.0,
+   "vat_rate": 20,
+   "vat": 250.0
+  },
+  {
+   "description": "Solid Timber Wall Unit - 4800mm",
+   "qty": 1,
+   "unit_price": 840.0,
+   "net": 840.0,
+   "vat_rate": 20,
+   "vat": 168.0
+  },
+  {
+   "description": "Professional Installation & Fitting",
+   "qty": 1,
+   "unit_price": 350.0,
+   "net": 350.0,
+   "vat_rate": 20,
+   "vat": 70.0
+  }
+ ],
+ "net_total": 2440.0,
+ "vat_total": 488.0,
+ "gross_total": 2928.0,
+ "payments": [
+  {
+   "date": "2026-08-05",
+   "amount": 2977.0,
+   "reference": "INV-8492",
+   "bank_description": "BRAMBLEWOOD JOIN LTD INV-8492"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "over",
+ "expected": {
+  "paid": 2977.0,
+  "outstanding": -49.0,
+  "status": "overpaid"
+ }
+}

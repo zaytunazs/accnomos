@@ -1,0 +1,52 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Holloway & Finch Interiors",
+  "address": "Unit 4, The Old Mill, 12 River Road, Bath, BA1 1AB"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Bookcase - 1800mm H x 900mm W",
+   "qty": 1,
+   "unit_price": 850.0,
+   "net": 850.0,
+   "vat_rate": 20,
+   "vat": 170.0
+  },
+  {
+   "description": "Walnut Writing Desk - 1200mm W",
+   "qty": 1,
+   "unit_price": 1200.0,
+   "net": 1200.0,
+   "vat_rate": 20,
+   "vat": 240.0
+  }
+ ],
+ "net_total": 2050.0,
+ "vat_total": 410.0,
+ "gross_total": 2460.0,
+ "payments": [
+  {
+   "date": "2026-08-05",
+   "amount": 1230.0,
+   "reference": "INV-4821 PART 1",
+   "bank_description": "CHQ HOLLOWAY & FINCH INT INV 4821 P1"
+  },
+  {
+   "date": "2026-08-20",
+   "amount": 1230.0,
+   "reference": "INV-4821 PART 2",
+   "bank_description": "CHQ HOLLOWAY & FINCH INT INV 4821 P2"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part",
+ "expected": {
+  "paid": 2460.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

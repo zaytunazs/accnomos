@@ -1,0 +1,32 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Halden & Pyle Timber Supplies Ltd",
+  "vat_number": "GB123456789",
+  "address": "Unit 4, Industrial Park, M25 Junction 29, Watford WD24 9AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-089",
+ "original_invoice_number": "INV-2026-4512",
+ "original_invoice_date": "2026-08-14",
+ "date": "2026-09-02",
+ "reason": "Price adjustment: Overcharge on item HJ-004 due to updated trade price list effective Aug 2026.",
+ "lines": [
+  {
+   "description": "Solid Oak 90x90mm 3m Length - Price Adjustment",
+   "qty": 4,
+   "unit_price": -1.25,
+   "net": -5.0,
+   "vat_rate": 20,
+   "vat": -1.0
+  }
+ ],
+ "net_total": -5.0,
+ "vat_total": -1.0,
+ "gross_total": -6.0,
+ "printed_text": "CREDIT NOTE\n\nSUPPLIER:\nHalden & Pyle Timber Supplies Ltd\nUnit 4, Industrial Park\nM25 Junction 29\nWatford WD24 9AB\nVAT No: GB123456789\n\nCUSTOMER:\nBramblewood Joinery Ltd\n\nCREDIT NOTE NO: CN-2026-089\nORIGINAL INVOICE: INV-2026-4512\nDATE: 2026-09-02\n\nREASON: Price adjustment for overcharge on original invoice.\n\nDESCRIPTION | QTY | UNIT PRICE | NET\nSolid Oak 90x90mm 3m | 4 | -1.25 | -5.00\n\nNET TOTAL: -5.00\nVAT (20%): -1.00\nGROSS TOTAL: -6.00\n\nThank you for your business.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

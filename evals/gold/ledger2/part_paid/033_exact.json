@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Hollow Oak Interiors",
+  "address": "12 Weaver Street, Bristol, BS1 5QW, United Kingdom"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Bookcase - 3 Shelves",
+   "qty": 2,
+   "unit_price": 450.0,
+   "net": 900.0,
+   "vat_rate": 20,
+   "vat": 180.0
+  },
+  {
+   "description": "Installation and Fitting Service",
+   "qty": 1,
+   "unit_price": 120.0,
+   "net": 120.0,
+   "vat_rate": 20,
+   "vat": 24.0
+  }
+ ],
+ "net_total": 1020.0,
+ "vat_total": 204.0,
+ "gross_total": 1224.0,
+ "payments": [
+  {
+   "date": "2026-08-14",
+   "amount": 1224.0,
+   "reference": "INV-4821",
+   "bank_description": "Faster payments - HOLLOW OAK INT INTERIORS LTD - INV-4821"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "exact",
+ "expected": {
+  "paid": 1224.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

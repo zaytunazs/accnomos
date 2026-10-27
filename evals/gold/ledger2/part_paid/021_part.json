@@ -1,0 +1,52 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-8921",
+ "date": "2026-07-14",
+ "due_days": 30,
+ "customer": {
+  "name": "Oakwood Interiors Ltd",
+  "address": "42 Market Street, Leeds, LS1 5AB, United Kingdom"
+ },
+ "lines": [
+  {
+   "description": "Handcrafted Oak Dining Table (2.4m)",
+   "qty": 1,
+   "unit_price": 1250.0,
+   "net": 1250.0,
+   "vat_rate": 20,
+   "vat": 250.0
+  },
+  {
+   "description": "Custom Built-in Shelving Unit (Walnut)",
+   "qty": 2,
+   "unit_price": 850.0,
+   "net": 1700.0,
+   "vat_rate": 20,
+   "vat": 340.0
+  }
+ ],
+ "net_total": 2950.0,
+ "vat_total": 590.0,
+ "gross_total": 3540.0,
+ "payments": [
+  {
+   "date": "2026-07-25",
+   "amount": 1770.0,
+   "reference": "INV-8921 Part 1",
+   "bank_description": "BRAMBLEWOOD JOIN LTD INV-8921"
+  },
+  {
+   "date": "2026-08-15",
+   "amount": 1770.0,
+   "reference": "INV-8921 Part 2",
+   "bank_description": "BRAMBLEWOOD JOIN LTD INV-8921"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part",
+ "expected": {
+  "paid": 3540.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

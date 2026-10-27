@@ -1,0 +1,32 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakfield Timber Supplies Ltd",
+  "vat_number": "GB987654321",
+  "address": "Unit 4, Industrial Estate, Mill Road, Leeds, LS10 1AB, UK"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-894",
+ "original_invoice_number": "INV-2026-742",
+ "original_invoice_date": "2026-06-15",
+ "date": "2026-07-22",
+ "reason": "Price adjustment due to overcharge on bulk discount for hardwood timber.",
+ "lines": [
+  {
+   "description": "Correction for Oak Hardwood Planks (25mm x 150mm)",
+   "qty": 40,
+   "unit_price": -1.5,
+   "net": -60.0,
+   "vat_rate": 20,
+   "vat": -12.0
+  }
+ ],
+ "net_total": -60.0,
+ "vat_total": -12.0,
+ "gross_total": -72.0,
+ "printed_text": "CREDIT NOTE\n\nSupplier: Oakfield Timber Supplies Ltd\nVAT No: GB987654321\nAddress: Unit 4, Industrial Estate, Mill Road, Leeds, LS10 1AB, UK\n\nCustomer: Bramblewood Joinery Ltd\n\nDate: 2026-07-22\nCredit Note No: CN-2026-894\nRef Invoice: INV-2026-742 (Dated: 2026-06-15)\n\nReason: Price adjustment due to overcharge on bulk discount.\n\nDescription                        Qty     Unit Price     Net        VAT       Total\n-----------------------------------------------------------------------------\nCorrection for Oak Hardwood      40.00   -1.50        -60.00     -12.00    -72.00\nPlanks (25mm x 150mm)\n\n-----------------------------------------------------------------------------\nNet Total: £-60.00\nVAT (20%): £-12.00\nGross Total: £-72.00\n\nThank you for your business.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

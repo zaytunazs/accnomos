@@ -1,0 +1,40 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakhaven Timber Supplies Ltd",
+  "vat_number": "GB 849203157",
+  "address": "Unit 4, Industrial Estate, Whitby Road, Scarborough, YO11 2JL"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-8841",
+ "original_invoice_number": "INV-2026-5502",
+ "original_invoice_date": "2026-09-10",
+ "date": "2026-10-15",
+ "reason": "Return of goods due to manufacturing defects",
+ "lines": [
+  {
+   "description": "Solid Oak Door Frame, 750x2050mm, Unfinished",
+   "qty": -4,
+   "unit_price": -85.5,
+   "net": -342.0,
+   "vat_rate": 20,
+   "vat": -68.4
+  },
+  {
+   "description": "Hinges, Butt Hinge, 75mm, Stainless Steel (Pack of 2)",
+   "qty": -10,
+   "unit_price": -4.25,
+   "net": -42.5,
+   "vat_rate": 20,
+   "vat": -8.5
+  }
+ ],
+ "net_total": -384.5,
+ "vat_total": -76.9,
+ "gross_total": -461.4,
+ "printed_text": "OAKHAVEN TIMBER SUPPLIES LTD\nUnit 4, Industrial Estate, Whitby Road\nScarborough, YO11 2JL\nVAT No: GB 849203157\n\nSUPPLIER CREDIT NOTE\n\nDate: 15/10/2026\nCredit Note No: CN-2026-8841\nRef: INV-2026-5502 (10/09/2026)\n\nCustomer: Bramblewood Joinery Ltd\nAddress: 12 Workshop Lane, Leeds, LS1 2AB\n\nReason: Return of goods due to manufacturing defects\n\nDescription                        Qty    Unit Price     Net Amount      VAT 20%       Total\nSolid Oak Door Frame, 750x2050mm,  -4     -85.50        -342.00         -68.40        -410.40\nUnfinished\nHinges, Butt Hinge, 75mm, SS (x2) -10     -4.25         -42.50          -8.50         -51.00\n\n------------------------------------------------------------------\nNet Total:                      -384.50\nVAT Total:                       -76.90\nGross Total:                     -461.40\n\nPlease process this credit note against your accounts.\nThank you for your custom.\n\nEnd of Document",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

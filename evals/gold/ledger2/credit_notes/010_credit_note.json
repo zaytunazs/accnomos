@@ -1,0 +1,32 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Ironclad Timber & Fixings Co",
+  "vat_number": "GB 123456789",
+  "address": "Unit 4, Steelworks Industrial Park, Sheffield, S9 1XY"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-0092",
+ "original_invoice_number": "INV-88412",
+ "original_invoice_date": "2026-06-15",
+ "date": "2026-07-10",
+ "reason": "Price adjustment due to overcharge on oak offcuts",
+ "lines": [
+  {
+   "description": "Oak Offcuts 150mm x 50mm x 500mm (Grade A)",
+   "qty": 2.0,
+   "unit_price": -3.5,
+   "net": -7.0,
+   "vat_rate": 20,
+   "vat": -1.4
+  }
+ ],
+ "net_total": -7.0,
+ "vat_total": -1.4,
+ "gross_total": -8.4,
+ "printed_text": "CREDIT NOTE\n\nDate: 2026-07-10\nRef: CN-2026-0092\n\nSupplier: Ironclad Timber & Fixtures Co\nVAT No: GB 123456789\nAddress: Unit 4, Steelworks Industrial Park\nSheffield, S9 1XY\n\nCustomer: Bramblewood Joinery Ltd\n\nReason: Price adjustment due to overcharge on oak offcuts\n\nOriginal Invoice: INV-88412 (2026-06-15)\n\nDescription: Oak Offcuts 150mm x 50mm x 500mm\nQty: 2.0\nPrice: -3.50\nNet: -7.00\nVAT (20%): -1.40\n\nNet Total: -7.00\nVAT Total: -1.40\nGross Total: -8.40\n\nPlease apply this credit to our account.\nThank you for your business.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

@@ -1,0 +1,40 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakham Timber Supplies",
+  "vat_number": "GB 123456789",
+  "address": "42 Forestry Lane, Ashford, Kent, TN24 8PL"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-8841",
+ "original_invoice_number": "INV-2026-3302",
+ "original_invoice_date": "2026-06-28",
+ "date": "2026-07-10",
+ "reason": "Goods returned due to manufacturing defects",
+ "lines": [
+  {
+   "description": "Solid Oak Door Panels 900x2100mm",
+   "qty": 2,
+   "unit_price": -145.5,
+   "net": -291.0,
+   "vat_rate": 20,
+   "vat": -58.2
+  },
+  {
+   "description": "Hinged Ironmongery Set (Black)",
+   "qty": 1,
+   "unit_price": -89.9,
+   "net": -89.9,
+   "vat_rate": 20,
+   "vat": -17.98
+  }
+ ],
+ "net_total": -380.9,
+ "vat_total": -76.18,
+ "gross_total": -457.08,
+ "printed_text": "OAKHAM TIMBER SUPPLIES\n42 Forestry Lane, Ashford, Kent, TN24 8PL\nTel: 01825 730011 | Email: sales@oakhamtimber.co.uk\nVAT Number: GB 123456789\n\nCREDIT NOTE\n\nDate: 10/07/2026\nCredit Note No: CN-2026-8841\nOriginal Invoice: INV-2026-3302 (28/06/2026)\n\nCustomer: Bramblewood Joinery Ltd\n\nReason for Credit: Goods returned due to manufacturing defects\n\n------------------------------------------------------------\nDescription                     Qty    Unit Price     Net\n------------------------------------------------------------\nSolid Oak Door Panels 900x2100mm  2    -145.50      -291.00\nHinged Ironmongery Set (Black)    1     -89.90       -89.90\n------------------------------------------------------------\n\nNet Total: -380.90\nVAT @ 20%: -76.18\nGross Total: -457.08\n\nPlease quote this credit note number for any queries.\nThank you for your business.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

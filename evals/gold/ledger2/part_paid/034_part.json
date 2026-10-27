@@ -1,0 +1,52 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4829",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Oakfield Interiors LLP",
+  "address": "14 Cedar Lane, Manchester, M14 5PX"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Shelving Unit",
+   "qty": 2,
+   "unit_price": 450.0,
+   "net": 900.0,
+   "vat_rate": 20,
+   "vat": 180.0
+  },
+  {
+   "description": "Installation & Fitting Service",
+   "qty": 1,
+   "unit_price": 150.0,
+   "net": 150.0,
+   "vat_rate": 20,
+   "vat": 30.0
+  }
+ ],
+ "net_total": 1050.0,
+ "vat_total": 210.0,
+ "gross_total": 1260.0,
+ "payments": [
+  {
+   "date": "2026-07-25",
+   "amount": 630.0,
+   "reference": "INV-4829 INST 1",
+   "bank_description": "OFT INT LLP INV4829"
+  },
+  {
+   "date": "2026-08-10",
+   "amount": 630.0,
+   "reference": "INV-4829 INST 2",
+   "bank_description": "OFT INT LLP INV4829"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part",
+ "expected": {
+  "paid": 1260.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

@@ -1,0 +1,40 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakhaven Timber Supply Co",
+  "vat_number": "GB987654321",
+  "address": "Unit 4, Industrial Estate, Leeds, LS10 1AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-091",
+ "original_invoice_number": "INV-2026-045",
+ "original_invoice_date": "2026-06-15",
+ "date": "2026-07-10",
+ "reason": "Goods returned due to incorrect grade specification",
+ "lines": [
+  {
+   "description": "Solid Oak Planks 150mm x 18mm x 2.4m (Grade A)",
+   "qty": 50,
+   "unit_price": -12.5,
+   "net": -625.0,
+   "vat_rate": 20,
+   "vat": -125.0
+  },
+  {
+   "description": "Hardwood Wall Planks 120mm x 15mm x 3m (Grade B)",
+   "qty": 20,
+   "unit_price": -8.75,
+   "net": -175.0,
+   "vat_rate": 20,
+   "vat": -35.0
+  }
+ ],
+ "net_total": -800.0,
+ "vat_total": -160.0,
+ "gross_total": -960.0,
+ "printed_text": "OAKHAVEN TIMBER SUPPLY CO\nUnit 4, Industrial Estate, Leeds, LS10 1AB\nTel: 0113 496 0000 | Email: sales@oakhaventimber.co.uk\n\nCREDIT NOTE\n\nDate: 2026-07-10\nCredit Note No: CN-2026-091\nRef Invoice: INV-2026-045 (2026-06-15)\n\nCustomer: Bramblewood Joinery Ltd\nAddress: 12 Workshop Lane, Manchester, M15 4QP\n\nReason: Goods returned due to incorrect grade specification\n\n--------------------------------------------------\nDescription                        Qty   Rate      Total\n--------------------------------------------------\nSolid Oak Planks 150mm (Gr A)     50  -12.50    -625.00\nHardwood Wall Planks 120mm (Gr B) 20   -8.75    -175.00\n--------------------------------------------------\nSubtotal (Net)                                       -800.00\nVAT @ 20%                                            -160.00\n--------------------------------------------------\nTOTAL CREDIT                                        -960.00\n--------------------------------------------------\n\nPlease apply this credit note to your outstanding balance.\nThank you for your business.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

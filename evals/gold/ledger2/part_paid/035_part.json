@@ -1,0 +1,52 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Harwick Home Interiors Ltd",
+  "address": "14 Chestnut Avenue, Bristol, BS1 5QZ"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Kitchen Worktops",
+   "qty": 2,
+   "unit_price": 850.0,
+   "net": 1700.0,
+   "vat_rate": 20,
+   "vat": 340.0
+  },
+  {
+   "description": "Shaker Style Base Units (Installation)",
+   "qty": 1,
+   "unit_price": 1200.0,
+   "net": 1200.0,
+   "vat_rate": 20,
+   "vat": 240.0
+  }
+ ],
+ "net_total": 2900.0,
+ "vat_total": 580.0,
+ "gross_total": 3480.0,
+ "payments": [
+  {
+   "date": "2026-08-05",
+   "amount": 1500.0,
+   "reference": "INV-4821 P1",
+   "bank_description": "CHQ FROM HARWICK HOME INT 123456 INV-4821 P1"
+  },
+  {
+   "date": "2026-08-18",
+   "amount": 1980.0,
+   "reference": "INV-4821 P2",
+   "bank_description": "BACS IN HARWICK HOME INT 789012 INV-4821 P2"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part",
+ "expected": {
+  "paid": 3480.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

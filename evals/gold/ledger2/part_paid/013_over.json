@@ -1,0 +1,54 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4921",
+ "date": "2026-07-12",
+ "due_days": 30,
+ "customer": {
+  "name": "Cedar & Stone Interiors",
+  "address": "14 Willow Way, Birmingham, B1 2XY, United Kingdom"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Kitchen Worktop",
+   "qty": 1,
+   "unit_price": 1250.0,
+   "net": 1250.0,
+   "vat_rate": 20,
+   "vat": 250.0
+  },
+  {
+   "description": "Handmade Oak Shelves (Pair)",
+   "qty": 2,
+   "unit_price": 350.0,
+   "net": 700.0,
+   "vat_rate": 20,
+   "vat": 140.0
+  },
+  {
+   "description": "Installation and Fitting",
+   "qty": 1,
+   "unit_price": 400.0,
+   "net": 400.0,
+   "vat_rate": 20,
+   "vat": 80.0
+  }
+ ],
+ "net_total": 2350.0,
+ "vat_total": 470.0,
+ "gross_total": 2820.0,
+ "payments": [
+  {
+   "date": "2026-08-01",
+   "amount": 2858.0,
+   "reference": "INV-4921",
+   "bank_description": "BACS CEDAR STONE INTERIORS INV-4921"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "over",
+ "expected": {
+  "paid": 2858.0,
+  "outstanding": -38.0,
+  "status": "overpaid"
+ }
+}

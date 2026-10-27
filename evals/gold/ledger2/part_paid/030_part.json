@@ -1,0 +1,60 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4921",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Holloway & Sons Interiors Ltd",
+  "address": "14 Oak Street, Camden, London, NW1 8QT"
+ },
+ "lines": [
+  {
+   "description": "Oak Kitchen Worktop (Custom Cut)",
+   "qty": 1,
+   "unit_price": 1200.0,
+   "net": 1200.0,
+   "vat_rate": 20,
+   "vat": 240.0
+  },
+  {
+   "description": "Solid Pine Shaker Door (42x72)",
+   "qty": 4,
+   "unit_price": 185.5,
+   "net": 742.0,
+   "vat_rate": 20,
+   "vat": 148.4
+  },
+  {
+   "description": "Installation & Fitting Labor",
+   "qty": 1,
+   "unit_price": 450.0,
+   "net": 450.0,
+   "vat_rate": 20,
+   "vat": 90.0
+  }
+ ],
+ "net_total": 2392.0,
+ "vat_total": 478.4,
+ "gross_total": 2870.4,
+ "payments": [
+  {
+   "date": "2026-08-10",
+   "amount": 1435.2,
+   "reference": "INV-4921-1",
+   "bank_description": "CHQ 6038291 HOLLOWAY & SONS LTD INV-4921-1"
+  },
+  {
+   "date": "2026-09-05",
+   "amount": 1435.2,
+   "reference": "INV-4921-2",
+   "bank_description": "CHQ 6038291 HOLLOWAY & SONS LTD INV-4921-2"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part",
+ "expected": {
+  "paid": 2870.4,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

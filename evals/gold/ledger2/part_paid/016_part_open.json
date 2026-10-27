@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Halloway & Finch Interiors",
+  "address": "42 Cobblers Lane, Camden, London NW1 8JD"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Kitchen Island Unit (1800mm x 900mm)",
+   "qty": 1,
+   "unit_price": 1450.0,
+   "net": 1450.0,
+   "vat_rate": 20,
+   "vat": 290.0
+  },
+  {
+   "description": "Recessed Drawer Systems (x6) with Soft Close",
+   "qty": 6,
+   "unit_price": 85.5,
+   "net": 513.0,
+   "vat_rate": 20,
+   "vat": 102.6
+  }
+ ],
+ "net_total": 1963.0,
+ "vat_total": 392.6,
+ "gross_total": 2355.6,
+ "payments": [
+  {
+   "date": "2026-08-05",
+   "amount": 1150.0,
+   "reference": "INV-4821 PARTIAL",
+   "bank_description": "DEBIT H&F INT LTD 42 COBLERS LN LON INV4821 PART"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part_open",
+ "expected": {
+  "paid": 1150.0,
+  "outstanding": 1205.6,
+  "status": "part_paid"
+ }
+}

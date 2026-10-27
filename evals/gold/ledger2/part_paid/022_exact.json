@@ -1,0 +1,54 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-8492",
+ "date": "2026-07-14",
+ "due_days": 30,
+ "customer": {
+  "name": "Oakhaven Property Developers Ltd",
+  "address": "12 Maple Court, Birmingham, B5 4JX, UK"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Kitchen Units - Installation & Supply",
+   "qty": 1,
+   "unit_price": 4500.0,
+   "net": 4500.0,
+   "vat_rate": 20,
+   "vat": 900.0
+  },
+  {
+   "description": "Stone Effect Worktop - 3.2m",
+   "qty": 3.2,
+   "unit_price": 400.0,
+   "net": 1280.0,
+   "vat_rate": 20,
+   "vat": 256.0
+  },
+  {
+   "description": "Hardwood Flooring - 45sqm",
+   "qty": 45,
+   "unit_price": 85.0,
+   "net": 3825.0,
+   "vat_rate": 20,
+   "vat": 765.0
+  }
+ ],
+ "net_total": 9605.0,
+ "vat_total": 1921.0,
+ "gross_total": 11526.0,
+ "payments": [
+  {
+   "date": "2026-08-10",
+   "amount": 11526.0,
+   "reference": "INV-8492",
+   "bank_description": "BACS CHQ - OAKHAVEN PROP DEV LTD - INV-8492"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "exact",
+ "expected": {
+  "paid": 11526.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

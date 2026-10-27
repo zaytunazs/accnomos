@@ -1,0 +1,46 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4921",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Oakfield Interiors Ltd",
+  "address": "14 Heritage Row, Leeds, LS1 4AB, United Kingdom"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Bookcase - 6 Tier",
+   "qty": 2,
+   "unit_price": 850.0,
+   "net": 1700.0,
+   "vat_rate": 20,
+   "vat": 340.0
+  },
+  {
+   "description": "Installation and Fitting Service",
+   "qty": 1,
+   "unit_price": 150.0,
+   "net": 150.0,
+   "vat_rate": 20,
+   "vat": 30.0
+  }
+ ],
+ "net_total": 1850.0,
+ "vat_total": 370.0,
+ "gross_total": 2220.0,
+ "payments": [
+  {
+   "date": "2026-08-05",
+   "amount": 2220.0,
+   "reference": "INV-4921",
+   "bank_description": "O/F OAKFIELD INTERIORS LTD INV-4921"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "exact",
+ "expected": {
+  "paid": 2220.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

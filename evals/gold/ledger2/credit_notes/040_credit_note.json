@@ -1,0 +1,32 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakfield Timber & Tools",
+  "vat_number": "GB 849201735",
+  "address": "Unit 4, Industrial Park, Leeds, LS12 3AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-0942",
+ "original_invoice_number": "INV-2026-1105",
+ "original_invoice_date": "2026-09-15",
+ "date": "2026-09-28",
+ "reason": "Partial credit for one damaged item (cracked edge) received in transit.",
+ "lines": [
+  {
+   "description": "Solid Oak Edge Banding 20mm",
+   "qty": 1,
+   "unit_price": -45.0,
+   "net": -45.0,
+   "vat_rate": 20,
+   "vat": -9.0
+  }
+ ],
+ "net_total": -45.0,
+ "vat_total": -9.0,
+ "gross_total": -54.0,
+ "printed_text": "OAKFIELD TIMBER & TOOLS\nUnit 4, Industrial Park\nLeeds, LS12 3AB\nVAT Reg: GB 849201735\n\nCREDIT NOTE\n\nDate: 28/09/2026\nCredit Note No: CN-2026-0942\nRef Invoice: INV-2026-1105 (15/09/2026)\n\nCustomer:\nBramblewood Joinery Ltd\n\nReason for Credit:\nPartial credit for one damaged item\n(cracked edge) received in transit.\n\nDescription          Qty   Unit Price   Net       VAT(20%)   Gross\n-----------------------------------------------------------------\nSolid Oak Edge      1.00   -45.00      -45.00     -9.00      -54.00\nBanding 20mm\n\nTotals:             -45.00               -9.00      -54.00\n\nPlease apply this credit to your account.\nIf payment has already been made,\nwe will refund via bank transfer.\n\nThank you for your business.\nOakfield Timber & Tools Ltd",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

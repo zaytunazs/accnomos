@@ -1,0 +1,48 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakridge Timber & Fixings Ltd",
+  "vat_number": "GB123456789",
+  "address": "Unit 4, Industrial Estate, Birmingham, B12 9XY"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-089",
+ "original_invoice_number": "INV-2026-442",
+ "original_invoice_date": "2026-06-15",
+ "date": "2026-07-10",
+ "reason": "Replacement of damaged goods and reversal of delivery fee",
+ "lines": [
+  {
+   "description": "Oak Plank 20x150x2400mm - Damaged on arrival",
+   "qty": 5.0,
+   "unit_price": -18.5,
+   "net": -92.5,
+   "vat_rate": 20,
+   "vat": -18.5
+  },
+  {
+   "description": "Standard Hinge Set 35mm - Returns",
+   "qty": 2.0,
+   "unit_price": -4.75,
+   "net": -9.5,
+   "vat_rate": 20,
+   "vat": -1.9
+  },
+  {
+   "description": "Carriage & Delivery - Reversal",
+   "qty": 1.0,
+   "unit_price": -35.0,
+   "net": -35.0,
+   "vat_rate": 0,
+   "vat": 0.0
+  }
+ ],
+ "net_total": -137.0,
+ "vat_total": -20.4,
+ "gross_total": -157.4,
+ "printed_text": "OAKRIDGE TIMBER & FIXINGS LTD\nUnit 4, Industrial Estate, Birmingham, B12 9XY\nVAT No: GB123456789\n\nCUSTOMER: Bramblewood Joinery Ltd\n\nDATE: 2026-07-10\nCREDIT NOTE NO: CN-2026-089\nREF INVOICE: INV-2026-442\n\nDESCRIPTION: QTY      UNIT PRICE    NET        VAT RATE  VAT\nOak Plank 20x150x2400mm  5.00   -18.50    -92.50    20%     -18.50\nStd Hinge Set 35mm       2.00    -4.75     -9.50    20%      -1.90\nCarriage & Delivery      1.00   -35.00    -35.00     0%       0.00\n\n\nNET TOTAL: -137.00\nVAT TOTAL: -20.40\nGROSS TOTAL: -157.40\n\nREASON: Replacement of damaged goods and reversal of delivery fee\n\nPlease apply this credit against future invoices or request a refund.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

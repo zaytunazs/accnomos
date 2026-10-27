@@ -1,0 +1,60 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Thornfield Interiors Ltd",
+  "address": "14 Oak Avenue, Leeds, LS1 2AB"
+ },
+ "lines": [
+  {
+   "description": "Solid Oak Bespoke Dining Table (180x90cm)",
+   "qty": 1,
+   "unit_price": 1250.0,
+   "net": 1250.0,
+   "vat_rate": 20,
+   "vat": 250.0
+  },
+  {
+   "description": "Solid Oak Dining Chairs (Set of 4)",
+   "qty": 4,
+   "unit_price": 320.0,
+   "net": 1280.0,
+   "vat_rate": 20,
+   "vat": 256.0
+  },
+  {
+   "description": "Professional Fitting and Installation",
+   "qty": 1,
+   "unit_price": 150.0,
+   "net": 150.0,
+   "vat_rate": 20,
+   "vat": 30.0
+  }
+ ],
+ "net_total": 2680.0,
+ "vat_total": 536.0,
+ "gross_total": 3216.0,
+ "payments": [
+  {
+   "date": "2026-08-15",
+   "amount": 1608.0,
+   "reference": "INV-4821/1",
+   "bank_description": "CHQ 492011 THORNFIELD INT LTD"
+  },
+  {
+   "date": "2026-09-15",
+   "amount": 1608.0,
+   "reference": "INV-4821/2",
+   "bank_description": "CHQ 492012 THORNFIELD INT LTD"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part",
+ "expected": {
+  "paid": 3216.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

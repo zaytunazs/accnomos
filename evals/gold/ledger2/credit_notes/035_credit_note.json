@@ -1,0 +1,32 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakhaven Timber Supplies Ltd",
+  "vat_number": "GB 123456789",
+  "address": "Unit 4, Mill Lane, Stoke-on-Trent, ST4 5AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-0042",
+ "original_invoice_number": "INV-2026-0018",
+ "original_invoice_date": "2026-07-15",
+ "date": "2026-08-02",
+ "reason": "Part credit for one damaged item from previous invoice (cracked edge on delivery)",
+ "lines": [
+  {
+   "description": "Solid Oak Door Frame 900x2100mm",
+   "qty": 1,
+   "unit_price": -145.0,
+   "net": -145.0,
+   "vat_rate": 20,
+   "vat": -29.0
+  }
+ ],
+ "net_total": -145.0,
+ "vat_total": -29.0,
+ "gross_total": -174.0,
+ "printed_text": "OAKHAVEN TIMBER SUPPLIES LTD\nUnit 4, Mill Lane, Stoke-on-Trent, ST4 5AB\nTel: 01782 555 019\nVAT Reg: GB 123456789\n\nSUPPLIER CREDIT NOTE\n\nDate: 02/08/2026\nCredit Note No: CN-2026-0042\nOriginal Invoice: INV-2026-0018 (15/07/2026)\n\nCustomer:\nBramblewood Joinery Ltd\n\nReason for Credit:\nPart credit for one damaged item from previous invoice\n(cracked edge on delivery)\n\nDescription                Qty   Unit Price    Net Amount   VAT\nSolid Oak Door Frame      1.00  -145.00     -145.00   -29.00\n900x2100mm                                        (20% VAT)\n\n--------------------------------------------------------------------------------\nNet Total:                       -145.00\nVAT Total:                         -29.00\nGross Credit Total:                -174.00\n\nThis credit note is to be applied against your next payment.\nIf you have already settled the original invoice, please contact\nour accounts department to arrange a refund or credit transfer.\n\nThank you for your business.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

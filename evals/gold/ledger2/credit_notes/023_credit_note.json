@@ -1,0 +1,40 @@
+{
+ "doc_type": "credit_note",
+ "supplier": {
+  "name": "Oakhaven Timber Supplies Ltd",
+  "vat_number": "GB123456789",
+  "address": "14 Mill Road, Leeds, LS10 1AB"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "credit_note_number": "CN-2026-045",
+ "original_invoice_number": "INV-2026-112",
+ "original_invoice_date": "2026-06-15",
+ "date": "2026-07-10",
+ "reason": "Goods returned - Damaged in transit",
+ "lines": [
+  {
+   "description": "Solid Oak Worktop 2000x600x28mm",
+   "qty": 2,
+   "unit_price": -145.5,
+   "net": -291.0,
+   "vat_rate": 20,
+   "vat": -58.2
+  },
+  {
+   "description": "Hardwood Dowels 8mm x 100mm (50 pack)",
+   "qty": 1,
+   "unit_price": -12.75,
+   "net": -12.75,
+   "vat_rate": 20,
+   "vat": -2.55
+  }
+ ],
+ "net_total": -303.75,
+ "vat_total": -60.75,
+ "gross_total": -364.5,
+ "printed_text": "OAKHAVEN TIMBER SUPPLIES LTD\n14 Mill Road, Leeds, LS10 1AB\nVAT No: GB123456789\n\nSUPPLIER CREDIT NOTE\n\nDate: 10/07/2026\nCredit Note No: CN-2026-045\nOriginal Invoice: INV-2026-112 (15/06/2026)\n\nCustomer:\nBramblewood Joinery Ltd\n\nReason: Goods returned - Damaged in transit\n\nDescription | Qty | Unit Price | Net Amount | VAT\n----------------------------------------------------\nSolid Oak Worktop | 2 | -145.50 | -291.00 | -58.20\nHardwood Dowels | 1 | -12.75 | -12.75 | -2.55\n----------------------------------------------------\n\nNET TOTAL: -303.75\nVAT (20%): -60.75\n\nTOTAL CREDIT DUE: -364.50\n\nThank you for your business.",
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "credit_note"
+}

@@ -1,0 +1,60 @@
+{
+ "doc_type": "sales_invoice",
+ "invoice_number": "INV-4821",
+ "date": "2026-07-15",
+ "due_days": 30,
+ "customer": {
+  "name": "Elm Park Interiors",
+  "address": "14 The Green, Chipping Norton, Oxfordshire, OX7 4LP"
+ },
+ "lines": [
+  {
+   "description": "Custom Oak Kitchen Units (Hob & Sink)",
+   "qty": 1,
+   "unit_price": 2400.0,
+   "net": 2400.0,
+   "vat_rate": 20,
+   "vat": 480.0
+  },
+  {
+   "description": "Walnut Worktop (Cut to size)",
+   "qty": 1,
+   "unit_price": 850.0,
+   "net": 850.0,
+   "vat_rate": 20,
+   "vat": 170.0
+  },
+  {
+   "description": "Internal Shelving Units",
+   "qty": 3,
+   "unit_price": 120.0,
+   "net": 360.0,
+   "vat_rate": 20,
+   "vat": 72.0
+  }
+ ],
+ "net_total": 3610.0,
+ "vat_total": 722.0,
+ "gross_total": 4332.0,
+ "payments": [
+  {
+   "date": "2026-08-01",
+   "amount": 2166.0,
+   "reference": "INV-4821/1",
+   "bank_description": "ELM PARK INT INV 4821/1"
+  },
+  {
+   "date": "2026-08-14",
+   "amount": 2166.0,
+   "reference": "INV-4821/2",
+   "bank_description": "ELM PARK INT INV 4821/2"
+  }
+ ],
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "gold_case": "part",
+ "expected": {
+  "paid": 4332.0,
+  "outstanding": 0.0,
+  "status": "paid"
+ }
+}

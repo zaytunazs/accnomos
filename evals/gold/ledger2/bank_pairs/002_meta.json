@@ -1,0 +1,10 @@
+{
+ "label": "SAMPLE ??? FICTIONAL COMPANY",
+ "first": "002_a.csv",
+ "second": "002_b.csv",
+ "lines_a": 18,
+ "lines_b": 14,
+ "overlap": 4,
+ "expected_unique_lines": 28,
+ "closing_balance": 11936.35
+}
