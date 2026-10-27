@@ -10,7 +10,8 @@ export const SYSTEM = "_System";
 
 export interface FolderRow {
   item: DriveItem;
-  files: number; // files directly inside plus files one level down (e.g. 01 Receipts/2026-10)
+  files: number; // files only: directly inside plus one level down (e.g. 01 Receipts/2026-10)
+  folders: number; // folders directly inside plus one level down
   subfolders: DriveItem[];
   directFiles: DriveItem[]; // files directly inside, so they can be previewed
 }
@@ -52,6 +53,10 @@ export function modified(iso?: string): string {
 }
 
 export const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
+
+/** "3 files" or, when there are folders too, "3 files, 2 folders". */
+export const fileCount = (files: number, folders: number) =>
+  folders > 0 ? `${plural(files, "file")}, ${plural(folders, "folder")}` : plural(files, "file");
 
 export function OpenLink({ item, label = "Open in OneDrive" }: { item: DriveItem; label?: string }) {
   if (!item.webUrl) return null;
@@ -204,7 +209,7 @@ export default function FilesTree({
       aria-label="Books folders"
       className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-white"
     >
-      {tree.folders.map(({ item, files, subfolders, directFiles }) => {
+      {tree.folders.map(({ item, files, folders, subfolders, directFiles }) => {
         const id = item.name;
         const open = !collapsed.has(id);
         return (
@@ -215,10 +220,10 @@ export default function FilesTree({
               item,
               item.name === FOLDER.needs_a_look && files > 0 ? (
                 <span className="rounded-full border border-warn-border bg-warn-bg px-2.5 py-0.5 text-[13px] font-bold text-warn-ink">
-                  {plural(files, "file")}
+                  {fileCount(files, folders)}
                 </span>
               ) : (
-                <span className="shrink-0 text-[13px] font-medium tabular-nums text-muted">{plural(files, "file")}</span>
+                <span className="shrink-0 text-[13px] font-medium tabular-nums text-muted">{fileCount(files, folders)}</span>
               ),
               () => toggle(id),
               undefined,

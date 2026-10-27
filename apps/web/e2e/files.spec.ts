@@ -41,3 +41,19 @@ test("Files: old-named folders are renamed once; old and new side by side get a 
   const tree = page.getByRole("list").filter({ hasText: "04 Bank statements" }).first();
   await expect(tree.getByText("04 Bank statements", { exact: true })).toBeVisible();
 });
+
+test("Files: a folder's count is files only; nested folders are counted as folders", async ({ page, runtime }) => {
+  await runtime.putFile("01 Receipts/2026-09/a.txt", "a");
+  await runtime.putFile("01 Receipts/2026-09/b.txt", "b");
+  await runtime.putFile("01 Receipts/2026-09/older/c.txt", "c"); // a folder inside the month: not a file
+  await runtime.putFile("00 Inbox/only.txt", "x"); // no folders in here: plain "1 file"
+
+  await signIn(page);
+  await page.goto("/files");
+  const tree = page.getByRole("list", { name: "Books folders" });
+  const receipts = tree.locator(":scope > li").filter({ hasText: "01 Receipts" }).first();
+  await expect(receipts).toContainText("2 files, 2 folders"); // 2026-09 and older; c.txt is below the second level
+  const inbox = tree.locator(":scope > li").filter({ hasText: "00 Inbox" }).first();
+  await expect(inbox).toContainText("1 file");
+  await expect(inbox).not.toContainText("folder");
+});

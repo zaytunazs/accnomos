@@ -38,8 +38,13 @@ async function loadTree(account: AccountInfo): Promise<FilesTreeData> {
         const children = item.folder?.childCount ? await listChildren(account, item.name) : [];
         const subfolders = children.filter((c) => c.folder).sort((a, b) => b.name.localeCompare(a.name));
         const directFiles = children.filter((c) => c.file).sort((a, b) => a.name.localeCompare(b.name));
-        const files = directFiles.length + subfolders.reduce((n, s) => n + (s.folder?.childCount ?? 0), 0);
-        return { item, files, subfolders, directFiles };
+        // A folder's childCount counts folders as well as files, so list each subfolder and count files only.
+        const nested = await Promise.all(
+          subfolders.map((s) => (s.folder?.childCount ? listChildren(account, `${item.name}/${s.name}`) : Promise.resolve([]))),
+        );
+        const files = directFiles.length + nested.reduce((n, kids) => n + kids.filter((c) => c.file).length, 0);
+        const folders = subfolders.length + nested.reduce((n, kids) => n + kids.filter((c) => c.folder).length, 0);
+        return { item, files, folders, subfolders, directFiles };
       }),
     ),
     system ? listChildren(account, SYSTEM) : Promise.resolve([]),
