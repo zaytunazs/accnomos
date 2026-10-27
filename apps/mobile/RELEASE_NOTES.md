@@ -1,5 +1,40 @@
 # Release notes — Accnomos mobile
 
+## 0.3.1 (version code 4)
+
+Play "What's new" (361 characters):
+
+Contacts show balances, statements and VAT status for each supplier
+and customer. Settings is grouped into connection, AI, autopilot and
+business. Capture queues several receipt photos, then reads them
+together. Home lists your to-dos and inbox. Review approves all rule
+matches at once, with undo. Signed out, everything is a clearly
+labelled fictional sample.
+
+## Emulator release check (0.3.1+4, debug APK, AVD accnomos_pixel)
+
+- Signed-out walk of Home (to-dos, inbox), Review (bulk approve,
+  edit sheet, image viewer, undo), Ask (sample thread), VAT,
+  More → Files, Contacts (list, detail, VAT status), Invoices, Jobs,
+  Vehicles, Bank, Payroll, Settings groups (Connection, AI,
+  Automation, Business): no exceptions and no RenderFlex overflows
+  in `adb logcat`.
+- Capture multi-shot: two photos queued, "Read with Meta AI" offered.
+- Landscape on Home, Review, Ask and Contacts: no overflow, state
+  kept (Review stayed on its card, Ask kept its thread and draft).
+- System dark mode: the app stays on its light theme
+  (`ThemeMode.light`), so everything stays readable.
+- AI Test connection needs sign-in: the button is disabled with an
+  explanation while signed out. The connected and not-connected
+  result lines are covered by widget tests.
+- The live Ask action card and day-plan sheet need a signed-in
+  account, so they were verified by widget tests, not on the device.
+- Fixed: the contact VAT-number helper was cut to one line; it now
+  shows in full. No crashes or overflows remained.
+- Screenshots in `screenshots/` (1080×2400 PNG, each under 1 MB),
+  adding `contacts.png` and `more.png`.
+- `flutter analyze` clean, `flutter test` green.
+
 ## 0.3.0 (version code 3)
 
 Play "What's new" (433 characters):
