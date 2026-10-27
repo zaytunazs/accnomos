@@ -7,7 +7,7 @@ from datetime import date
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return, reverses_sale
 from app.books import Books
@@ -23,7 +23,7 @@ from app.deadlines import (
     stagger_of,
 )
 from app.paths import SYSTEM, VAT_RETURNS
-from app.routes_books import get_books
+from app.routes_books import get_books, require_user
 
 #: HMRC obligations the web app fetched through the relay and posted back, so a return
 #: filed elsewhere still shows as submitted. The runtime holds no HMRC token; this file
@@ -45,7 +45,9 @@ class HmrcObligation(BaseModel):
     """One HMRC VAT obligation, as the relay returns it. Posted by the web app after it
     fetches obligations through the relay (the runtime holds no HMRC token)."""
 
-    periodKey: str = Field(pattern=r"^[A-Za-z0-9#]{4}$")
+    model_config = ConfigDict(extra="forbid")
+
+    periodKey: str = Field(pattern=r"^[A-Za-z0-9#]{4}$", max_length=4)
     start: date
     end: date
     due: date
@@ -60,6 +62,8 @@ class HmrcObligation(BaseModel):
 
 
 class ObligationsBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     obligations: list[HmrcObligation]
 
 
@@ -337,7 +341,9 @@ async def vat_periods(
 
 
 @router.post("/vat/obligations", status_code=201)
-async def post_obligations(body: ObligationsBody, books: Books = Depends(get_books)) -> dict:
+async def post_obligations(
+    body: ObligationsBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> dict:
     """Store HMRC's obligations list, fetched by the web app through the relay. Validated
     (periodKey, start, end, due, status O/F, received); replaces what was stored before."""
     await books.write_json(

@@ -20,7 +20,7 @@ from app.books import Books
 from app.main import app
 from app.routes_books import get_books
 
-H = {"X-Graph-Token": "t"}
+H = {"X-Graph-Token": "t", "X-User": "sam@sambuilds.example"}
 
 FULFILLED_Q3 = {
     "periodKey": "26A3",
