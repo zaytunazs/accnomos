@@ -4,10 +4,7 @@ A flat list, grouped by area, from the code on `main` and the "What remains" sec
 (duplicates merged). Severity-ordered tables are in `docs/REMAINING.md`; what each feature does and how it is tested is the
 README table. We could not reach accnomos.com or api.accnomos.com from this session, so the live sites are unchecked.
 
-Checked 27 Oct 2026 on this branch: `uv run pytest services/runtime -q` gives 970 passed, 1 skipped, 8 failed — the 8 fail
-identically on the untouched tree, all with `UnicodeDecodeError: 'charmap' codec can't decode` (source-scanning tests in
-`test_audit.py`, `test_docs.py`, `test_security.py`, `test_security_routes.py` read UTF-8 files with Windows' cp1252 default;
-`set PYTHONUTF8=1` should turn them green). `flutter analyze` is clean and `flutter test` passes (18 files, 148 tests).
+Checked 27 Oct 2026 on main (Linux): runtime and packages 1,176 passed, 1 skipped; evals 258; relay 102; Playwright 195; `flutter analyze` clean and `flutter test` 158 passed. On Windows, set `PYTHONUTF8=1` first: four source-scanning test files read UTF-8 with the cp1252 default otherwise.
 `pnpm run build` and `npx eslint src` pass in `apps/web`; `pnpm run e2e` passes whole (191 tests) with `E2E_PYTHON` pointed at the
 project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 
@@ -52,7 +49,7 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 
 ## Models
 
-- **Verifier needs a Baseten key.** Muse Spark Open runs only in key mode and only if the server owner sets `BASETEN_API_KEY`; the demo deployment sets none. Without one, key mode verifies with the request's model (muse-spark-1.3 by default) and local mode with Glimmer. No real Baseten or Meta verifier call has ever been made, The Baseten model id `meta-models/muse-spark-open` is the one Baseten's `/v1/models` lists (checked 27 Oct 2026).
+- **Verifier needs a Baseten key.** Muse Spark Open runs only in key mode and only if the server owner sets `BASETEN_API_KEY`; the demo deployment now sets one. Without one, key mode verifies with the request's model (muse-spark-1.3 by default) and local mode with Glimmer. The server has a Baseten key since 27 Oct 2026, and a real call through `ai/verify.py` read a gold receipt correctly in 7 s; an eval over the 200 gold receipts is in `evals/runs/spark_open_200` once it lands. No real Meta (muse-spark-1.3) verifier call has been made. The Baseten model id `meta-models/muse-spark-open` is the one Baseten's `/v1/models` lists (checked 27 Oct 2026).
 - The verifier's catch rate is unmeasured (Glimmer checking Glimmer, 20 documents, 0 extra catches). Mixed-rate receipts give false alarms (it reads the standard-rated subtotal as net); the prompt needs a mixed-rate hint. All six fields are decisive, which is stricter than the original brief.
 - The card cannot adopt the second reading: on a disagreement the user can approve the first reading or reject.
 - **SAM 3.1 crop is off by default** (`SAM_CROP=1`); its wire format is unverified and has never run live; the default crop is plain code, measured on synthetic scenes only (mean IoU 0.88). No separate crop chip: the crop note is appended to the card's verifier line.
@@ -115,8 +112,8 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 
 ## Android
 
-- `flutter analyze` is clean and `flutter test` passes on this checkout (18 files, 148 tests, run 27 Oct 2026). Nothing on the phone has been run on a device.
-- **Play signing hash → Entra is pending** (maintainers' status; nothing in the repo records it). The MSAL redirect URI contains the APK signing hash. The app defaults to the **debug** key's hash; `assets/msal_config.json` has `broker_redirect_uri_registered: false`. The Google Play (App Signing) release hash has not been registered as a redirect URI in Entra, so a release or Play build may not be able to sign in (the app then says so and stays on sample data). Not confirmed either way.
+- `flutter analyze` is clean and `flutter test` passes (158 tests, 27 Oct 2026); both now run on every Android merge. Nothing on the phone has been run on a real device.
+- **Play signing hash → Entra: registered 27 Oct 2026.** Play re-signs with Google's app signing key (SHA-1 `54:C9:BB:EE:…:42:B0`), whose MSAL hash `VMm77tAADe8/UZxWIvqfRmMiQrA=` the owner added in Entra (Android platform, `com.accnomos.app`). Release builds from 0.3.1+4 carry it (`tools/build_release.ps1`; checked inside the 0.3.1+4 bundle). Builds up to 0.3.0+3 carried the debug hash and could not sign in from Play. Sign-in on a Play install has **not yet been tried on a real phone**. `broker_redirect_uri_registered` stays `false` (browser sign-in, no broker).
 - **The phone has no working VAT stagger.** Settings saves a stagger and custom start month, but no request sends them, so Home deadlines, the VAT picker, the dashboard and the Reports default period use calendar quarters.
 - The Meta API key is not in secure storage (`flutter_secure_storage` is the TODO in `apps/mobile/lib/services/settings.dart`).
 - On the phone, Payroll is read-only and Bank only confirms matches the runtime is sure about. Reports (More → Reports: P&L, aged, VAT, trend, *Save to 07 Reports*) is a thin client over `GET /reports/*` with no offline copy. No HMRC filing on the phone.

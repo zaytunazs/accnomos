@@ -100,7 +100,7 @@ Severity:
 
 | Severity | Item |
 |---|---|
-| Medium | The Baseten slug `meta-models/muse-spark-open` is unconfirmed; the verifier needs a Baseten key on the server (the demo has none); no real Baseten or Meta verifier call has been made. |
+| Medium | The Baseten verifier (`meta-models/muse-spark-open`) is wired and one real call was checked; its eval over 200 receipts is pending; no real Meta (muse-spark-1.3) verifier call has been made. |
 | Medium | Mixed-rate receipts give false alarms; the prompt needs a mixed-rate hint. The catch rate is unmeasured (20 documents, Glimmer on Glimmer): run the full 60 and real photos. |
 | Medium | The SAM 3.1 wire format is unverified, so `SAM_CROP` stays off. Capture a real response first. |
 | Medium | The Muse Voice request (`/asr/transcribe`, multipart parts, response field) comes from research notes. No live mic run in any browser or on the phone. |
@@ -113,7 +113,7 @@ Severity:
 | Severity | Item |
 |---|---|
 | Low | Reports on the phone is a thin client over `GET /reports/*` with no offline copy; a failed load shows a retry, not stale figures. |
-| Medium | Play signing hash → Entra is pending (maintainers' status): a release or Play build may not be able to sign in. The app defaults to the debug key's hash (`broker_redirect_uri_registered: false`). |
+| Medium | Sign-in on a Play install (0.3.1+4 onwards, Play signing hash registered in Entra on 27 Oct) has not been tried on a real phone. |
 | Medium | The phone saves a VAT stagger in Settings but sends it nowhere, so Home, the dashboard, the VAT picker and the Reports default period use calendar quarters. |
 | Low | The Meta API key is not in secure storage (`apps/mobile/lib/services/settings.dart`). Payroll is read-only; Bank only confirms certain matches and lists bank rules; no HMRC filing. |
 
