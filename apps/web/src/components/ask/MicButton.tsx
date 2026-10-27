@@ -96,7 +96,8 @@ export default function MicButton({ disabled, reason, onRecorded, onError }: Pro
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-2">
+    // the tooltip sits on the wrapper too: some browsers don't show a disabled button's title
+    <div className="flex shrink-0 items-center gap-2" title={disabled ? reason : undefined}>
       {recording && (
         <div className="flex h-8 items-end gap-[3px]" aria-hidden="true">
           {[0.5, 0.8, 1, 0.8, 0.5].map((w, i) => (
