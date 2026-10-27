@@ -13,7 +13,7 @@ Your books are files in your own OneDrive (no Accnomos database); Meta models re
 | Path | What |
 |---|---|
 | `apps/web` | Next.js PWA (Home · Review · Ask · Invoices · Bank · VAT return · Jobs · Payroll · Reports · Contacts · Vehicles · Files · Settings) |
-| `apps/mobile` | Flutter Android app (Home · Review · Ask · VAT · More: Files, Contacts, Invoices, Jobs, Vehicles, Bank, Payroll; Settings), same runtime API |
+| `apps/mobile` | Flutter Android app (Home · Review · Ask · VAT · More: Files, Contacts, Invoices, Jobs, Vehicles, Bank, Payroll, Reports, Audit trail; Settings), same runtime API — web parity in `apps/mobile/PARITY.md` (0.3.4+7) |
 | `services/runtime` | Stateless Agent Runtime (FastAPI): receives the user's cloud token + AI config per request, keeps nothing |
 | `services/hmrc-relay` | Stateless HMRC relay: holds the HMRC client secret, adds fraud-prevention headers |
 | `packages/ledger` | Append-only ledger events, projections, deterministic VAT 9-box engine, bank CSV parsing and matching, tests |
