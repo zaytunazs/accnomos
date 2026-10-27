@@ -2,7 +2,8 @@ import Link from "next/link";
 import Activity from "@/components/home/Activity";
 import AskBar from "@/components/home/AskBar";
 import Deadlines from "@/components/home/Deadlines";
-import LastInboxCheck from "@/components/home/LastInboxCheck";
+import Greeting from "@/components/home/Greeting";
+import { HomeData } from "@/components/home/HomeData";
 import PlanToday from "@/components/home/PlanToday";
 import Tiles from "@/components/home/Tiles";
 import Pitch from "@/components/home/Pitch";
@@ -21,21 +22,15 @@ export default function HomePage() {
         </Link>
       </div>
 
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <p className="text-sm font-semibold text-muted">Monday 26 October</p>
-          <h1 className="mt-1 text-3xl font-extrabold tracking-tight">
-            Good evening, Priya
-          </h1>
-        </div>
-        <LastInboxCheck>Last Autopilot run 4 min ago · 2 receipts imported from Outlook</LastInboxCheck>
-      </div>
-
-      <AskBar />
-      <PlanToday />
-      <Tiles />
-      <Deadlines />
-      <Activity />
+      {/* Greeting, Tiles, Deadlines and Activity share one GET /books/dashboard (the sample when signed out). */}
+      <HomeData>
+        <Greeting />
+        <AskBar />
+        <PlanToday />
+        <Tiles />
+        <Deadlines />
+        <Activity />
+      </HomeData>
     </div>
   );
 }

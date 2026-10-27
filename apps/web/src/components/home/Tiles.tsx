@@ -1,53 +1,109 @@
-import Link from "next/link";
-import { tiles } from "@/lib/sample-home";
+"use client";
 
+import Link from "next/link";
+import type { RtDashboard } from "@/lib/runtime";
+import { tiles as sampleTiles, type Tile } from "@/lib/sample-home";
+import { pounds, shortDate, Skeleton, UNKNOWN, useHome } from "./HomeData";
+
+const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`;
+
+function cashTile(cash: RtDashboard["cash"]): Tile {
+  const label = "Cash in bank";
+  if (!cash) return { label, value: UNKNOWN, sub: "Could not read the bank statements" };
+  if (cash.balance_pence === null) return { label, value: UNKNOWN, sub: "Import a statement and match a line", href: "/bank" };
+  const reconciled = cash.reconciled_to ? ` · reconciled to ${shortDate(cash.reconciled_to)}` : "";
+  return { label, value: pounds(cash.balance_pence), sub: `Balance on ${shortDate(cash.as_of)}${reconciled}` };
+}
+
+function owedToYouTile(owed: RtDashboard["owed_to_you"]): Tile {
+  const label = "Owed to you";
+  if (!owed) return { label, value: UNKNOWN, sub: "Could not read the ledger" };
+  if (owed.overdue)
+    return {
+      label, value: pounds(owed.total_pence), tone: "amber", href: "/invoices",
+      sub: `${plural(owed.overdue, "invoice")} overdue, ${plural(owed.most_overdue_days ?? 0, "day")} at most`,
+    };
+  return { label, value: pounds(owed.total_pence), sub: owed.documents ? `${plural(owed.documents, "unpaid sale")}` : "Nothing unpaid" };
+}
+
+function owedByYouTile(owed: RtDashboard["owed_by_you"]): Tile {
+  const label = "Owed by you";
+  if (!owed) return { label, value: UNKNOWN, sub: "Could not read the ledger" };
+  const oldest = owed.oldest_days !== null ? `, oldest ${plural(owed.oldest_days, "day")}` : "";
+  return { label, value: pounds(owed.total_pence), sub: owed.documents ? `${plural(owed.documents, "unpaid bill")}${oldest}` : "Nothing unpaid" };
+}
+
+function vatTile(vat: RtDashboard["vat"], annual: boolean): Tile {
+  if (annual) return { label: "VAT estimate", value: UNKNOWN, sub: "Annual returns are not estimated yet" };
+  if (!vat) return { label: "VAT estimate", value: UNKNOWN, sub: "Could not work out the VAT period" };
+  const next = vat.due ?? vat.current; // the return to file next
+  const amount = `£${Math.round(Number(next.box5)).toLocaleString("en-GB")}`;
+  const sub = `${next.box5_direction === "reclaim" ? "To reclaim" : "To pay"} by ${shortDate(next.deadline)}${
+    next === vat.current ? " · so far" : ""}`;
+  return { label: `VAT estimate · ${next.label}`, value: next.box5_direction === "nil" ? "£0" : amount, sub, href: "/vat" };
+}
+
+function attentionTile(a: RtDashboard["attention"]): Tile {
+  const label = "Needs attention";
+  if (!a) return { label, value: UNKNOWN, sub: "Could not read your books" };
+  if (!a.total) return { label, value: "0", sub: "Nothing waiting" };
+  const parts = [
+    a.proposed && `${a.proposed} to approve`,
+    a.needs_a_look && `${a.needs_a_look} to look at`,
+    a.unmatched_bank_lines && plural(a.unmatched_bank_lines, "bank line"),
+    a.overdue_invoices && `${a.overdue_invoices} overdue`,
+  ].filter(Boolean);
+  const href = a.proposed || a.needs_a_look ? "/review" : a.unmatched_bank_lines ? "/bank" : "/invoices";
+  return { label, value: String(a.total), sub: `${parts.join(" · ")} →`, tone: "warn", href };
+}
+
+function liveTiles(d: RtDashboard, annualVat: boolean): Tile[] {
+  return [cashTile(d.cash), owedToYouTile(d.owed_to_you), owedByYouTile(d.owed_by_you), vatTile(d.vat, annualVat),
+    attentionTile(d.attention)];
+}
+
+const LABELS = ["Cash in bank", "Owed to you", "Owed by you", "VAT estimate", "Needs attention"];
+
+/** Home tiles: GET /books/dashboard when signed in, the sample when signed out. */
 export default function Tiles() {
+  const home = useHome();
+  const tiles: Tile[] | null =
+    home.mode === "sample" ? sampleTiles
+    : home.mode === "live" ? liveTiles(home.data, home.annualVat)
+    : home.mode === "error" ? LABELS.map((label) => ({ label, value: UNKNOWN, sub: "Could not reach your books" }))
+    : null;
+
   return (
-    <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 min-[1100px]:grid-cols-4">
-      {tiles.map((tile) => {
-        const warn = tile.tone === "warn";
-        return (
-          <div
-            key={tile.label}
-            className={`rounded-2xl border p-4 ${
-              warn
-                ? "border-warn-border bg-warn-bg"
-                : "border-border bg-white"
-            }`}
-          >
-            <p
-              className={`text-sm font-semibold ${
-                warn ? "text-warn-ink" : "text-muted"
-              }`}
-            >
-              {tile.label}
-            </p>
-            <p
-              className={`mt-1 text-2xl font-extrabold tracking-tight ${
-                warn ? "text-warn-ink" : "text-ink"
-              }`}
-            >
-              {tile.value}
-            </p>
-            {warn ? (
-              <Link
-                href="/review"
-                className="mt-1 inline-block text-sm font-bold text-warn-ink underline"
-              >
-                {tile.sub}
-              </Link>
-            ) : (
-              <p
-                className={`mt-1 text-[13px] font-semibold ${
-                  tile.tone === "amber" ? "text-amber" : "text-muted"
-                }`}
-              >
-                {tile.sub}
-              </p>
-            )}
-          </div>
-        );
-      })}
+    <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 min-[900px]:grid-cols-3 min-[1180px]:grid-cols-5">
+      {tiles === null
+        ? LABELS.map((label) => (
+            <div key={label} className="rounded-2xl border border-border bg-white p-4" aria-busy="true">
+              <p className="text-sm font-semibold text-muted">{label}</p>
+              <Skeleton className="mt-2 h-7 w-24" />
+              <Skeleton className="mt-2 h-4 w-36" />
+            </div>
+          ))
+        : tiles.map((tile) => <TileCard key={tile.label} tile={tile} />)}
+    </div>
+  );
+}
+
+function TileCard({ tile }: { tile: Tile }) {
+  const warn = tile.tone === "warn";
+  const subClass = warn
+    ? "text-sm font-bold text-warn-ink underline"
+    : `text-[13px] font-semibold ${tile.tone === "amber" ? "text-amber" : "text-muted"}`;
+  return (
+    <div className={`rounded-2xl border p-4 ${warn ? "border-warn-border bg-warn-bg" : "border-border bg-white"}`}>
+      <p className={`text-sm font-semibold ${warn ? "text-warn-ink" : "text-muted"}`}>{tile.label}</p>
+      <p className={`mt-1 text-2xl font-extrabold tracking-tight ${warn ? "text-warn-ink" : "text-ink"}`}>{tile.value}</p>
+      {tile.href ? (
+        <Link href={tile.href} className={`mt-1 inline-block hover:underline ${subClass}`}>
+          {tile.sub}
+        </Link>
+      ) : (
+        <p className={`mt-1 ${subClass}`}>{tile.sub}</p>
+      )}
     </div>
   );
 }
