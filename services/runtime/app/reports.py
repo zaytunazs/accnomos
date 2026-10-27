@@ -287,7 +287,8 @@ def pl_sheet(ws: Worksheet, pl: ProfitAndLoss) -> None:
         ws.cell(row=i + 2, column=2).font = Font(bold=True)
     ws.append([])
     ws.append([pl.basis])
-    ws.append([f"{pl.entries} approved entries. Worked out by code from _System/Ledger/events; no model involved."])
+    entries = f"{pl.entries} approved {'entry' if pl.entries == 1 else 'entries'}"
+    ws.append([f"{entries}. Worked out by code from _System/Ledger/events; no model involved."])
 
 
 def _aged_sheet(ws: Worksheet, who: str, table: AgedTable, as_of: date) -> None:

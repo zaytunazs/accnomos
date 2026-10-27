@@ -31,7 +31,7 @@ test("signed in: P&L for a picked period from the ledger, exported to 07 Reports
   const pl = page.getByRole("table", { name: "Profit and loss by account, Jul–Sep 2026" });
   await expect(pl.getByRole("row", { name: /Total overheads/ })).toContainText("£43.25"); // ex VAT: VAT is not a cost
   await expect(pl.getByRole("row", { name: /Net loss/ })).toContainText("-£43.25");
-  await expect(page.getByText("1 approved entries · calculated by code")).toBeVisible();
+  await expect(page.getByText("1 approved entry · calculated by code")).toBeVisible();
 
   await page.getByRole("button", { name: "Export to OneDrive" }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved to" })).toContainText(

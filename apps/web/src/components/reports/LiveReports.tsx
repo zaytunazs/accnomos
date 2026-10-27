@@ -11,6 +11,7 @@ import {
   runtime,
   ukDate,
   type RtAged,
+  type RtAgedReport,
   type RtAgedBucket,
   type RtAgedTable,
   type RtPlSection,
@@ -73,7 +74,9 @@ function ProfitAndLoss({ pl }: { pl: RtProfitAndLoss }) {
         <h2 id="pl-heading" className="text-lg font-extrabold">
           Profit and loss · {pl.label} · {ukDate(pl.start)} – {ukDate(pl.end)}
         </h2>
-        <span className="text-sm text-muted">{pl.entries} approved entries · calculated by code</span>
+        <span className="text-sm text-muted">
+          {pl.entries} approved {pl.entries === 1 ? "entry" : "entries"} · calculated by code
+        </span>
       </div>
       <p className="mt-1 text-[13px] text-muted">{pl.basis}</p>
       <Scroll label={`Profit and loss table, ${pl.label}`}>
@@ -251,7 +254,7 @@ export default function LiveReports() {
   const [state, setState] = useState<"checking" | "demo" | "live" | "error">("checking");
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<{ period: string | null; pl: RtProfitAndLoss } | null>(null);
-  const [aged, setAged] = useState<RtAged | null>(null);
+  const [aged, setAged] = useState<RtAgedReport | null>(null);
   const [vat, setVat] = useState<RtVatSummary | null>(null);
   const [trend, setTrend] = useState<RtTrend | null>(null);
   const [exporting, setExporting] = useState(false);
@@ -362,6 +365,10 @@ export default function LiveReports() {
             </p>
           </div>
         </div>
+      )}
+      {/* Signed in to the demo seed's books: the runtime flags them, and the page (and the paper) must say so. */}
+      {[pl, aged, vat, trend].some((r) => r?.sample) && (
+        <p className="text-sm font-bold text-warn-ink">SAMPLE — FICTIONAL COMPANY · these are the demo books</p>
       )}
       {state === "error" && error ? <RuntimeErrorNote message={error} title="Couldn't work out the reports" /> : null}
       {state === "live" && <Reports pl={pl} aged={aged} vat={vat} trend={trend} />}
