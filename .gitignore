@@ -49,6 +49,22 @@ evals/runs/glimmer_messy_200/*
 !evals/runs/glimmer_messy_200/report.md
 !evals/runs/glimmer_messy_200/summary.json
 !evals/runs/autopilot_l2/
+!evals/runs/spark_open_200/
+evals/runs/spark_open_200/*
+!evals/runs/spark_open_200/report.md
+!evals/runs/spark_open_200/summary.json
+!evals/runs/spark_open_messy_200/
+evals/runs/spark_open_messy_200/*
+!evals/runs/spark_open_messy_200/report.md
+!evals/runs/spark_open_messy_200/summary.json
+!evals/runs/glimmer_200_v2/
+evals/runs/glimmer_200_v2/*
+!evals/runs/glimmer_200_v2/report.md
+!evals/runs/glimmer_200_v2/summary.json
+!evals/runs/glimmer_messy_200_v2/
+evals/runs/glimmer_messy_200_v2/*
+!evals/runs/glimmer_messy_200_v2/report.md
+!evals/runs/glimmer_messy_200_v2/summary.json
 data/private/
 
 # OS / editors

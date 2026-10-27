@@ -1,0 +1,250 @@
+{
+  "config": {
+    "mode": "local",
+    "base_url": "https://meta-spark--accnomos-glimmer-serve.us-east.modal.run",
+    "model": "muse-glimmer:30b"
+  },
+  "messy": true,
+  "n": 200,
+  "errors": 0,
+  "field_accuracy": {
+    "supplier_name": 1.0,
+    "vat_number": 0.98,
+    "date": 1.0,
+    "net_total": 0.97,
+    "vat_total": 0.97,
+    "gross_total": 0.99,
+    "line_count": 0.995,
+    "side": 1.0,
+    "status": 0.83
+  },
+  "all_fields_correct": 0.8,
+  "by_case": {
+    "cash_no_vat": {
+      "n": 5,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "credit_note": {
+      "n": 10,
+      "all_fields": 0.9,
+      "status": 0.9,
+      "errors": 0
+    },
+    "edge_foreign_gbp": {
+      "n": 3,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "edge_handwritten": {
+      "n": 2,
+      "all_fields": 0.0,
+      "status": 0.5,
+      "errors": 0
+    },
+    "edge_multi_rate": {
+      "n": 3,
+      "all_fields": 0.0,
+      "status": 0.0,
+      "errors": 0
+    },
+    "edge_reverse_charge": {
+      "n": 2,
+      "all_fields": 0.5,
+      "status": 0.5,
+      "errors": 0
+    },
+    "edge_torn_faded": {
+      "n": 2,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "edge_zero": {
+      "n": 3,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "exempt": {
+      "n": 5,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "foreign": {
+      "n": 5,
+      "all_fields": 0.4,
+      "status": 1.0,
+      "errors": 0
+    },
+    "full_invoice": {
+      "n": 5,
+      "all_fields": 0.8,
+      "status": 0.8,
+      "errors": 0
+    },
+    "mixed": {
+      "n": 6,
+      "all_fields": 0.833,
+      "status": 0.833,
+      "errors": 0
+    },
+    "no_vat_number": {
+      "n": 6,
+      "all_fields": 0.667,
+      "status": 0.667,
+      "errors": 0
+    },
+    "pi_merchant": {
+      "n": 12,
+      "all_fields": 0.833,
+      "status": 0.833,
+      "errors": 0
+    },
+    "pi_software": {
+      "n": 8,
+      "all_fields": 0.75,
+      "status": 0.75,
+      "errors": 0
+    },
+    "pi_subcontractor": {
+      "n": 10,
+      "all_fields": 0.8,
+      "status": 0.8,
+      "errors": 0
+    },
+    "r_cafe": {
+      "n": 10,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "r_fuel": {
+      "n": 10,
+      "all_fields": 0.9,
+      "status": 1.0,
+      "errors": 0
+    },
+    "r_parking": {
+      "n": 8,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "r_trade": {
+      "n": 12,
+      "all_fields": 0.917,
+      "status": 0.917,
+      "errors": 0
+    },
+    "reduced": {
+      "n": 6,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "sales": {
+      "n": 30,
+      "all_fields": 0.467,
+      "status": 0.467,
+      "errors": 0
+    },
+    "sales_invoice": {
+      "n": 5,
+      "all_fields": 0.8,
+      "status": 0.8,
+      "errors": 0
+    },
+    "standard": {
+      "n": 11,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "utility": {
+      "n": 15,
+      "all_fields": 1.0,
+      "status": 1.0,
+      "errors": 0
+    },
+    "zero": {
+      "n": 6,
+      "all_fields": 0.833,
+      "status": 1.0,
+      "errors": 0
+    }
+  },
+  "mean_elapsed_s": 24.14,
+  "max_elapsed_s": 111.3,
+  "verification": {
+    "verifier": "ollama:muse-glimmer:30b",
+    "docs": 200,
+    "passed_checks": 178,
+    "verified": 178,
+    "verifier_errors": 0,
+    "agree_all": 0.826,
+    "doc_outcomes": {
+      "agreed_and_extractor_right": 145,
+      "agreed_but_extractor_wrong": 2,
+      "disagreed_and_extractor_wrong": 5,
+      "disagreed_but_extractor_right": 26
+    },
+    "per_field": {
+      "supplier_name": {
+        "agree": 1.0,
+        "extractor_right": 1.0,
+        "verifier_right": 1.0,
+        "agreed_but_both_wrong": 0,
+        "disagreed_extractor_wrong": 0,
+        "disagreed_extractor_right": 0
+      },
+      "supplier_vat_number": {
+        "agree": 1.0,
+        "extractor_right": 0.994,
+        "verifier_right": 0.994,
+        "agreed_but_both_wrong": 1,
+        "disagreed_extractor_wrong": 0,
+        "disagreed_extractor_right": 0
+      },
+      "date": {
+        "agree": 0.989,
+        "extractor_right": 1.0,
+        "verifier_right": 0.989,
+        "agreed_but_both_wrong": 0,
+        "disagreed_extractor_wrong": 0,
+        "disagreed_extractor_right": 2
+      },
+      "net_total": {
+        "agree": 0.843,
+        "extractor_right": 0.966,
+        "verifier_right": 0.831,
+        "agreed_but_both_wrong": 3,
+        "disagreed_extractor_wrong": 3,
+        "disagreed_extractor_right": 25
+      },
+      "vat_total": {
+        "agree": 0.933,
+        "extractor_right": 0.966,
+        "verifier_right": 0.944,
+        "agreed_but_both_wrong": 2,
+        "disagreed_extractor_wrong": 4,
+        "disagreed_extractor_right": 8
+      },
+      "gross_total": {
+        "agree": 0.843,
+        "extractor_right": 0.989,
+        "verifier_right": 0.848,
+        "agreed_but_both_wrong": 0,
+        "disagreed_extractor_wrong": 2,
+        "disagreed_extractor_right": 26
+      }
+    },
+    "status_accuracy_without_verifier": 0.985,
+    "status_accuracy_with_verifier": 0.83,
+    "mean_verifier_s": 5.13
+  },
+  "out_dir": "runs/glimmer_messy_200_v2"
+}

@@ -33,7 +33,7 @@ Refreshed 27 Oct 2026. `[x]` means done on 27 Oct according to the owner's statu
 ## 4. Meta models
 
 - [x] **Muse Spark Open on Baseten is wired as the Verifier for key-mode users** (27 Oct): Baseten's `/v1/models` lists `meta-models/muse-spark-open`, and one real call through the verifier code read a gold receipt correctly in 7 s. That is one call, not an eval.
-- [ ] **Wait for the Spark Open extraction eval** (all 200 gold receipts, reader and verifier, running on the Spark; `evals/runs/spark_open_200`). When it lands, copy its numbers into the placeholder rows in `META_MODELS.md` and `DESCRIPTION.md` and delete the "[pending: ...]" markers. If it does not finish, leave the markers out of the form text and say "one live call, no eval".
+- [x] **Spark Open extraction eval** landed 27 Oct (`evals/runs/spark_open_200`, `spark_open_messy_200`); numbers are in `META_MODELS.md` and `JUDGING.md`.
 - [ ] `MODEL_API_KEY` in the root `.env` (git-ignored). If you have a Meta key, `cd evals && python -m harness.run_extraction --mode key --out runs/<name>` gives the first Muse Spark 1.3 numbers; nothing in the repo has them. Until then say "unit-tested only".
 - [ ] Do **not** film the mic or turn on `SAM_CROP` unless you have tested each live and `docs/HONESTY.md` says so.
 
