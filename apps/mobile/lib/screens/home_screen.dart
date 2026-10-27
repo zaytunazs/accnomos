@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 
 import '../models/dashboard.dart';
+import '../models/suggestions.dart';
 import '../services/auth.dart';
-import '../services/runtime_client.dart';
+import '../services/books.dart' show booksClient;
 import '../services/settings.dart';
 import '../theme.dart';
+import 'bank_screen.dart';
+import 'home_cards.dart';
+import 'invoices_screen.dart';
+import 'review_screen.dart';
 import 'settings_screen.dart';
+import 'vat_screen.dart';
 
 /// Home: tiles from `GET /books/dashboard` when signed in (grey bars while
 /// loading, "—" for anything unknown); "Connect to see" when signed out.
@@ -19,10 +25,25 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final AuthService _auth = AuthService();
+  AppSettings? _settings;
   Account? _account;
   bool _loading = false;
   String? _error;
   Dashboard? _data;
+  int _refresh = 0;
+
+  /// Opens the screen a dashboard suggestion points at.
+  void _openSuggestion(SuggestionTarget target) {
+    final screen = switch (target) {
+      SuggestionTarget.review => const ReviewScreen(),
+      SuggestionTarget.invoices => const InvoicesScreen(),
+      SuggestionTarget.bank => const BankScreen(),
+      SuggestionTarget.vat => const VatScreen(),
+    };
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => screen),
+    );
+  }
 
   @override
   void initState() {
@@ -47,23 +68,19 @@ class _HomeScreenState extends State<HomeScreen> {
     }
     if (!mounted) return;
     setState(() {
+      _settings = settings;
       _account = account;
       _loading = account != null;
       _error = null;
+      _refresh++;
     });
     if (account == null) return;
     try {
-      final token = await _auth.token();
-      final user = account.username ?? settings.userEmail;
-      final json = await RuntimeClient(
-        settings,
-        books: BooksAuth(
-          graphToken: token,
-          accountKind: _auth.kind == AccountKind.work ? 'work' : 'personal',
-          user: (user != null && user.isNotEmpty) ? user : null,
-          businessName: settings.businessName,
-        ),
-      ).dashboard(today: _today());
+      // The VAT estimate uses the saved VAT period (Settings › VAT
+      // quarter); dashboard() sends it as stagger=/start_month=.
+      final client =
+          await booksClient(settings, _auth, account);
+      final json = await client.dashboard(today: _today());
       if (!mounted) return;
       setState(() => _data = Dashboard.fromJson(json));
     } catch (e) {
@@ -191,6 +208,24 @@ class _HomeScreenState extends State<HomeScreen> {
             childAspectRatio: 1.35,
             children: _tiles(),
           ),
+          const SizedBox(height: 12),
+          TodosCard(
+            settings: _settings ?? AppSettings(),
+            auth: _auth,
+            account: _account,
+            suggestions: _data == null
+                ? const []
+                : suggestionsFor(_data!),
+            onOpen: _openSuggestion,
+            refresh: _refresh,
+          ),
+          const SizedBox(height: 12),
+          if (_settings != null)
+            InboxCard(
+              settings: _settings!,
+              auth: _auth,
+              account: _account,
+            ),
           if (!signedIn) ...[
             const SizedBox(height: 20),
             FilledButton(
