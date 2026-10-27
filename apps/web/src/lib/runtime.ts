@@ -60,6 +60,10 @@ export interface RtProposal {
   decided_at?: string | null;
   event_id?: string | null;
   autopilot?: { auto_approve: boolean; reasons: string[]; supplier_key: string | null } | null;
+  /** Business vehicle this cost is tagged to (pre-filled when there is exactly one). */
+  vehicle_id?: string | null;
+  /** Set on mileage allowance claims, which code builds: approve them as they are. */
+  mileage_claim?: { tax_year: string; period: string; covers_to: string; entry_ids: string[]; miles: number } | null;
 }
 /** An Autopilot rule (services/runtime/app/autopilot.py), stored in _System/Rules/rules.json. */
 export interface RtRule {
@@ -158,7 +162,84 @@ export const runtime = {
   rebuild: (a: AccountInfo) => call<RtRebuild>(a, "/books/rebuild", { method: "POST" }),
   /** GET /books/deadlines?stagger=1 | start_month=5 | months=1 (see lib/business.ts deadlinesQuery). */
   deadlines: (a: AccountInfo, query: string) => call<RtDeadlines>(a, `/books/deadlines?${query}`),
+  vehicles: (a: AccountInfo) => call<RtVehicle[]>(a, "/vehicles"),
+  addVehicle: (a: AccountInfo, v: Omit<RtVehicle, "id">) =>
+    call<RtVehicle>(a, "/vehicles", { method: "POST", body: JSON.stringify(v) }),
+  updateVehicle: (a: AccountInfo, id: string, patch: Partial<Omit<RtVehicle, "id">>) =>
+    call<RtVehicle>(a, `/vehicles/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+  deleteVehicle: (a: AccountInfo, id: string) => call<RtVehicle>(a, `/vehicles/${id}`, { method: "DELETE" }),
+  mileage: (a: AccountInfo, taxYear: string) => call<RtMileageEntry[]>(a, `/mileage?tax_year=${taxYear}`),
+  addMileage: (a: AccountInfo, e: Omit<RtMileageEntry, "id" | "source">) =>
+    call<RtMileageEntry>(a, "/mileage", { method: "POST", body: JSON.stringify(e) }),
+  deleteMileage: (a: AccountInfo, id: string) => call<RtMileageEntry>(a, `/mileage/${id}`, { method: "DELETE" }),
+  mileageSummary: (a: AccountInfo, taxYear: string) => call<RtMileageSummary>(a, `/mileage/summary?tax_year=${taxYear}`),
+  /** POST /mileage/propose-allowance: the quarter's allowance as a proposal in Review (one per quarter). */
+  proposeAllowance: (a: AccountInfo, taxYear: string, period: string) =>
+    call<{ proposal: RtProposal; created: boolean }>(a, `/mileage/propose-allowance?tax_year=${taxYear}&period=${period}`, {
+      method: "POST",
+    }),
 };
+
+/** Vehicles and mileage (services/runtime/app/mileage.py). Amounts in pence, miles in 0.1 steps. */
+export type RtVehicleKind = "car" | "van" | "motorcycle" | "bicycle";
+export interface RtVehicle {
+  id: string;
+  name: string;
+  registration: string | null;
+  kind: RtVehicleKind;
+  owned_by: "business" | "personal";
+  active: boolean;
+}
+export interface RtMileageEntry {
+  id: string;
+  vehicle_id: string;
+  date: string;
+  from: string;
+  to: string;
+  miles: number;
+  purpose: string;
+  job_id: string | null;
+  source: "manual" | "proposal";
+}
+export interface RtVehicleSummary {
+  vehicle_id: string;
+  name: string;
+  registration: string | null;
+  kind: RtVehicleKind;
+  owned_by: "business" | "personal";
+  active: boolean;
+  miles: number;
+  journeys: number;
+  allowance_pence: number;
+  cost_pence: number;
+  cost_entries: number;
+  pence_per_mile: number | null;
+}
+export interface RtMileageQuarter {
+  period: string;
+  start: string;
+  end: string;
+  miles: number;
+  allowance_pence: number;
+  claimed_pence: number;
+  unclaimed_pence: number;
+  waiting_claim_id: string | null;
+}
+export interface RtMileageSummary {
+  tax_year: string;
+  start: string;
+  end: string;
+  vehicles: RtVehicleSummary[];
+  car_van_miles: number;
+  threshold_miles: number;
+  threshold_crossed_on: string | null;
+  allowance_pence: number;
+  claimed_pence: number;
+  quarters: RtMileageQuarter[];
+  locked_until: string | null;
+  rates: { kind: RtVehicleKind; first_pence: number; after_pence: number; threshold_miles: number | null }[];
+  notes: string[];
+}
 
 /** POST /books/rebuild (services/runtime/app/routes_books.py). */
 export interface RtRebuild {
