@@ -65,6 +65,11 @@ def _whole_pounds(pence: int) -> int:
     return int((Decimal(pence) / 100).quantize(Decimal("1"), rounding=ROUND_DOWN))
 
 
+def reverses_sale(ev: LedgerEvent) -> bool:
+    """True for a reversal of a sale. A reversal swaps every line, so undoing a sale *debits* Sales."""
+    return ev.kind == "reversal" and any(ln.debit and "Sales" in ln.account for ln in ev.lines)
+
+
 def compute_vat_return(
     events: list[LedgerEvent], period_key: str, start: date, end: date
 ) -> VatReturn:
@@ -82,8 +87,7 @@ def compute_vat_return(
             continue  # out of scope
         vat = ev.vat or 0
         sign = -1 if ev.kind == "reversal" else 1
-        is_sale = ev.kind == "sale" or (ev.kind == "reversal" and any(ln.credit and "Sales" in ln.account for ln in ev.lines))
-        if is_sale:
+        if ev.kind == "sale" or reverses_sale(ev):
             sales_net += sign * ev.net
             sales_vat += sign * vat
         else:

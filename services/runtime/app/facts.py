@@ -14,7 +14,7 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from accnomos_ledger import LedgerEvent, compute_vat_return
+from accnomos_ledger import LedgerEvent, compute_vat_return, reverses_sale
 
 from app.books import EVENTS, PROPOSALS, VAT_RETURNS, WORKBOOK, Books
 from app.routes_vat import box_amounts, period_key_for, quarter_bounds
@@ -23,7 +23,6 @@ from app.schemas import AskPeriod
 FACTS_MAX_BYTES = 6 * 1024
 TOP_N = 8
 PROPOSALS_CHEAP = 40  # read proposal files to count pending ones only when there are this few
-SALES_ACCOUNT = "Sales"
 
 
 def pounds(pence: int) -> str:
@@ -60,8 +59,7 @@ def side(ev: LedgerEvent) -> tuple[str, int] | None:
     if ev.kind == "purchase":
         return "purchases", 1
     if ev.kind == "reversal":
-        is_sale = any(ln.credit and SALES_ACCOUNT in ln.account for ln in ev.lines)
-        return ("sales" if is_sale else "purchases"), -1
+        return ("sales" if reverses_sale(ev) else "purchases"), -1
     return None
 
 
