@@ -221,6 +221,18 @@ SUMMARIES: dict[str, Summary] = {
     "mileage_refreshed": lambda r, w: (
         f"Updated the mileage claim: {_plural(_n(r, 'journeys'), 'journey')}" + _pounds(r, "pence")
     ),
+    # Reports
+    "report_exported": lambda r, w: (
+        "Saved "
+        + {
+            "pl": "the profit and loss",
+            "aged": "the aged debtors and creditors",
+            "vat": "the VAT summary",
+            "trend": "the monthly trend",
+            "all": "all reports",
+        }.get(str(r.get("report")), "a report")
+        + " to 07 Reports as a spreadsheet"
+    ),
     # To-dos and housekeeping
     "todo_added": lambda r, w: "Added a to-do",
     "todo_deleted": lambda r, w: "Ticked off a to-do",
