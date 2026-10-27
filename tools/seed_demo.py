@@ -1480,6 +1480,12 @@ async def _step_statements(books: Books, plan: Plan) -> None:
         await books.import_bank_csv(data, name, USER)
 
 
+def bank_reconcile_model() -> str:
+    from app.bank_actions import MODEL as CODED_FROM_A_LINE
+
+    return CODED_FROM_A_LINE
+
+
 def _line_for(lines: list[Any], day: date, pence: int, reference: str) -> Any:
     return next(ln for ln in lines if (ln.date, ln.amount_pence, ln.reference) == (day, pence, reference))
 
@@ -1503,37 +1509,107 @@ def _sale_events(plan: Plan) -> dict[str, str]:
 
 
 async def _step_payments(books: Books, plan: Plan, resuming: bool) -> None:
-    from app.settlement import load_records
-
     lines = await books.stored_bank_lines()
-    done = {r.bank_line_id for r in await load_records(books) if r.bank_line_id} if resuming else set()
-    for inv in plan.invoices:
-        for pay in inv.payments:
-            line = _line_for(lines, pay.day, pay.pence, pay.reference)
-            if line.id in done:
-                continue
-            if pay.how == "exact":  # Bank → Reconcile: the exact invoice match, then Post as payment
-                if not (resuming and (await books.find_bank_line(line.id)).status == "matched"):
-                    await bank_reconcile.approve_line(books, line.id, "exact", USER)
-                await payments.payment_from_bank_line(books, line.id, USER)
-            else:  # Invoices → Record payment, with the statement line
-                await invoicing.mark_paid(books, inv.number, USER, bank_line_id=line.id)
-    if (b := plan.bill_payment) is not None:  # Contacts → Bills to pay → Record payment
-        line = _line_for(lines, b.day, b.pence, b.reference)
-        if line.id not in done:
+    todo: list[tuple[Any, PlannedInvoice | None, PlannedPayment]] = [
+        (_line_for(lines, pay.day, pay.pence, pay.reference), inv, pay) for inv in plan.invoices for pay in inv.payments
+    ]
+    if (b := plan.bill_payment) is not None:
+        todo.append((_line_for(lines, b.day, b.pence, b.reference), None, b))
+    if resuming:
+        todo = [t for t in todo if not await _payment_resumed(books, plan, *t)]
+    for line, inv, pay in todo:
+        if inv is None:  # Contacts → Bills to pay → Record payment
             await payments.record_payment(
                 books,
                 payments.PaymentIn(
                     side="purchase",
-                    amount_pence=-b.pence,
-                    reference=b.reference,
+                    amount_pence=-pay.pence,
+                    reference=pay.reference,
                     allocations=[
-                        payments.AllocationIn(event_id=_bill_events(plan)[b.reference], amount_pence=-b.pence)
+                        payments.AllocationIn(event_id=_bill_events(plan)[pay.reference], amount_pence=-pay.pence)
                     ],
                     bank_line_id=line.id,
                 ),
                 USER,
             )
+        elif pay.how == "exact":  # Bank → Reconcile: the exact invoice match, then Post as payment
+            if not (resuming and (await books.find_bank_line(line.id)).status == "matched"):
+                await bank_reconcile.approve_line(books, line.id, "exact", USER)
+            await payments.payment_from_bank_line(books, line.id, USER)
+        else:  # Invoices → Record payment, with the statement line
+            await invoicing.mark_paid(books, inv.number, USER, bank_line_id=line.id)
+    if resuming:  # what record_payment / mark_paid do last, for a payment cut short after it was saved
+        await payments.sync_invoices(books, {i.event_id for i in await invoicing.list_invoices(books) if i.event_id})
+        for line, inv, _pay in _invoice_payments(plan, lines):
+            if inv is not None:
+                saved = await invoicing.get_invoice(books, inv.number)
+                if saved.bank_line_id is None and saved.status in ("sent", "paid"):
+                    found = await books.find_bank_line(line.id)
+                    if found.resolved:
+                        saved.bank_line_id, saved.payment_ref = line.id, saved.payment_ref or line.reference
+                        await invoicing.save_invoice(books, saved)
+
+
+def _invoice_payments(plan: Plan, lines: list[Any]) -> list[tuple[Any, PlannedInvoice | None, PlannedPayment]]:
+    return [(_line_for(lines, p.day, p.pence, p.reference), i, p) for i in plan.invoices for p in i.payments]
+
+
+async def _payment_resumed(
+    books: Books, plan: Plan, line: Any, inv: PlannedInvoice | None, pay: PlannedPayment
+) -> bool:
+    """A resumed Payments step: True when this payment is (now) in the books. A payment recorded before the seed
+    stopped is left as it is, its bank line matched if that was cut short; an entry posted without its record (the
+    seed stopped between the two writes) gets its record, rather than a second entry."""
+    from app.settlement import PAYMENTS, Allocation, PaymentRecord, load_records
+
+    records = await load_records(books)
+    rec = next((r for r in records if r.bank_line_id == line.id and r.removed_at is None), None)
+    if rec is not None:
+        if rec.event_id and not (await books.find_bank_line(line.id)).resolved:
+            await books.confirm_match(line.id, [rec.event_id], USER)
+        return True
+    recorded = {r.event_id for r in records}
+    amount = abs(line.amount_pence)
+    orphan = next(
+        (
+            e
+            for e in await books.list_events(line.date, line.date)
+            if e.kind == "bank"
+            and e.id not in recorded
+            and e.approved_by == USER
+            and any(ln.memo and ln.memo.startswith("Payment") for ln in e.lines)
+            and sum(ln.debit for ln in e.lines) == amount
+        ),
+        None,
+    )
+    if orphan is None:
+        return False
+    if inv is None:
+        side, target, applied = "purchase", _bill_events(plan)[pay.reference], amount
+    else:
+        saved = await invoicing.get_invoice(books, inv.number)
+        side, target, applied = "sale", saved.event_id or "", min(amount, inv.total_pence)
+    if (await books.find_bank_line(line.id)).status == "matched":  # the exact match before Post as payment
+        await books.unmatch(line.id, USER)
+    record = PaymentRecord(
+        id=_hex(orphan.id, "record", n=16),
+        side=side,  # type: ignore[arg-type]
+        date=line.date,
+        amount_pence=amount,
+        reference=line.reference,
+        counterparty=orphan.counterparty or line.description,
+        allocations=[Allocation(event_id=target, amount_pence=applied)],
+        event_id=orphan.id,
+        bank_line_id=line.id,
+        created_by=USER,
+        created_at=now(),
+    )
+    await books._update_json(PAYMENTS, [], lambda rows: [*(rows or []), record.model_dump(mode="json")])
+    await books.confirm_match(line.id, [orphan.id], USER)
+    await books.audit(
+        f"user:{USER}", "payment_recorded", {"payment": record.id, "event": orphan.id, "bank_line": line.id}
+    )
+    return True
 
 
 async def _step_reconcile(books: Books, plan: Plan, resuming: bool) -> None:
@@ -1548,15 +1624,27 @@ async def _step_reconcile(books: Books, plan: Plan, resuming: bool) -> None:
             await books.confirm_match(ln.id, [sales[ln.reference]], USER)
     if not plan.bank_rules:
         return
+    coding = (
+        {p.doc_sha256: p for p in await books.list_proposals() if p.model == bank_reconcile_model()} if resuming else {}
+    )
     for ln in await books.stored_bank_lines():  # Reconcile: every line a rule codes, approved
         if ln.resolved:
             continue
-        if resuming and ln.proposal_id:  # coded before the seed stopped: finish that, don't code it twice
-            p = await books.get_proposal(ln.proposal_id)
-            if p.status != "posted":
-                p = await approve(books, p.id, USER, rebuild=False)
-            if p.event_id:
-                await books.confirm_match(ln.id, [p.event_id], USER)
+        coded = coding.get(hashlib.sha256(f"bank-line:{ln.id}".encode()).hexdigest()) if resuming else None
+        if coded is not None:  # coded before the seed stopped: finish that, don't code it twice
+            if coded.status != "posted":
+                if ln.proposal_id != coded.id:
+                    await books.link_proposal(ln.id, coded.id)
+                try:
+                    account = coded.account_override
+                    coded = await approve(
+                        books, coded.id, USER, {"account": account} if account else None, rebuild=False
+                    )
+                except ProposalStateError:
+                    await _finish_approval(books, coded.id, USER, None, False)
+                    coded = await books.get_proposal(coded.id)
+            if coded.event_id:
+                await books.confirm_match(ln.id, [coded.event_id], USER)
         elif await bank_reconcile.suggest_rule(books, ln):
             coded = await bank_reconcile.approve_line(books, ln.id, "rule", USER)
             # Approving posts the entry and matches the line to it (app/bank_reconcile.py); should it ever leave

@@ -131,6 +131,10 @@ from app.routes_books import router as books_router  # noqa: E402  /books/*
 
 app.include_router(books_router)
 
+from app.sample_books import router as sample_router  # noqa: E402  /books/sample (Load sample books)
+
+app.include_router(sample_router)
+
 
 @app.exception_handler(GraphError)
 async def graph_error(_request: Request, exc: GraphError) -> JSONResponse:
