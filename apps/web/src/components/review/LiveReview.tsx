@@ -29,7 +29,7 @@ const fieldLabel: Record<string, string> = {
 };
 
 const verifierName = (model: string) =>
-  model.startsWith("baseten:") ? "Muse Spark Open" : model.startsWith("meta:") ? "Muse Spark" : "Glimmer 30B";
+  model.startsWith("baseten:") ? "Muse Spark Open" : model.startsWith("meta:") ? "Muse Spark" : model.replace(/^ollama:/, "");
 
 const shown = (v: string | number | null) => (v === null || v === "" ? "none" : typeof v === "number" ? v.toFixed(2) : v);
 
@@ -49,7 +49,7 @@ function verifierView(p: RtProposal): Pick<UiProposal, "verifierNote" | "verifie
     .filter(([, f]) => !f.agree)
     .map(([k, f]) => ({ field: fieldLabel[k] ?? k, extractor: shown(f.extractor), verifier: shown(f.verifier) }));
   return {
-    verifierNote: `Verifier disagrees on ${diffs.length} of ${fields.length} fields — ${verifierName(v.model)}. Check the document and choose.`,
+    verifierNote: `Verifier disagrees on ${diffs.length} of ${fields.length} fields — ${verifierName(v.model)}. Check the document before you approve.`,
     verifierTone: "differ",
     verifierDiffs: diffs,
   };

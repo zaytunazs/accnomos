@@ -65,7 +65,8 @@ When the first reading passes every code check, a Verifier model reads the same 
 (one question per field) and never sees the first answer. Code then compares supplier, VAT number, date, net, VAT
 and total: names ignoring case, punctuation and Ltd/Limited, dates by value, money to the penny (±1p), VAT numbers
 by digits. If all six agree, the Review card says *Verifier agrees · all 6 fields match*. Any disagreement sends the
-proposal to *Needs a look* with both readings side by side, and you choose. The model never merges values. **Which
+proposal to *Needs a look* with both readings side by side; check the document, then approve or reject. Neither the
+model nor the code picks or merges values (choosing the second reading in the card is not built yet). **Which
 model:** in local mode it is Glimmer on your machine, so the document stays there. With your own key it is Muse Spark
 Open on Baseten if the server owner has set `BASETEN_API_KEY`, otherwise muse-spark-1.3 with your key.
 `VERIFIER=off` disables it. First numbers (20 messy receipts, Glimmer/Glimmer): 94% full agreement, 0 errors caught
