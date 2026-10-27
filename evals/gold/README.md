@@ -71,8 +71,8 @@ paid in two parts, 2 card payments 1p off (rounding), cash receipts never appear
 HMRC, rent, transfers...). `expected_matches.json` lists every row's document (or `null`), the split and rounding documents and the
 documents with no payment.
 
-`python -m harness.check_bank_mail` checks the CSVs against `accnomos_ledger.bank.parse_bank_csv`. **The Tide-style files are rejected
-by that parser** (`Transaction Information` is not a known description header), kept as they are so the gap is visible.
+`python -m harness.check_bank_mail` checks the CSVs against `accnomos_ledger.bank.parse_bank_csv`; all six parse (the Tide
+`Transaction Information` header was added to the parser in review). `pytest evals/tests` runs the same checks offline.
 
 ## Mailbox fixtures (`mail/`)
 
