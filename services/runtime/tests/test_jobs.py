@@ -452,3 +452,20 @@ async def test_a_broken_jobs_file_leaves_the_rest_of_books_xlsx(fake: FakeStorag
     fake.files[jobs.STAFF] = b'[{"id": "x"}]'  # no name or rate
     await books.rebuild()
     assert "Books.xlsx" in fake.files
+
+
+def test_mark_invoiced_caps_the_number_of_entries(client: TestClient) -> None:
+    from app.routes_jobs import MAX_MARK_ENTRIES
+
+    assert MAX_MARK_ENTRIES == 500
+    job = client.post("/jobs", json={"name": "Loft boarding"}, headers=H).json()
+    url = f"/jobs/{job['id']}/mark-invoiced"
+
+    def body(n: int) -> dict[str, object]:
+        return {"invoice_id": "INV-1", "entry_ids": [f"e{i}" for i in range(n)]}
+
+    too_many = client.post(url, json=body(501), headers=H)
+    assert too_many.status_code == 422
+    assert "500" in too_many.text  # the limit is named in the error
+    # At the cap the body is accepted: the request gets past validation (the ids simply match nothing).
+    assert client.post(url, json=body(500), headers=H).status_code != 422

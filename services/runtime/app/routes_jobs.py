@@ -122,9 +122,12 @@ async def job_invoice_lines(job_id: str, books: Books = Depends(get_books)) -> j
     return jobs.invoice_lines(job, await jobs.load_entries(books), await jobs.load_staff(books))
 
 
+MAX_MARK_ENTRIES = 500  # timesheet entries one mark-invoiced call may name; more is a 422
+
+
 class MarkInvoicedBody(StrictBody):
     invoice_id: str = Field(min_length=1, max_length=64)
-    entry_ids: list[Annotated[str, Field(max_length=32)]] = Field(min_length=1, max_length=1000)
+    entry_ids: list[Annotated[str, Field(max_length=32)]] = Field(min_length=1, max_length=MAX_MARK_ENTRIES)
 
 
 @router.post("/jobs/{job_id}/mark-invoiced", response_model=list[TimesheetEntry])
