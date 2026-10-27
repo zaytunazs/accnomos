@@ -235,6 +235,9 @@ class Books:
         wrote in between. Without create-only, two requests creating the same file would both win: the actions log
         (app/actions.py) relies on exactly one of them seeing the other's claim."""
         for attempt in range(2):
+            forget = getattr(self.storage, "forget", None)  # the request memo (app/cache.py): stat and read fresh
+            if forget is not None:
+                forget(path)
             ref = await self._stat(path)
             current = await self.storage.read(path) if ref else None
             try:

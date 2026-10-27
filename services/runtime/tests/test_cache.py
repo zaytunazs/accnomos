@@ -135,3 +135,26 @@ def test_user_key_is_a_hash_not_the_token() -> None:
     assert cache.user_cache_key("my-graph-token") == key  # stable
     assert cache.user_cache_key("my-graph-token", "worker-2") != key
     assert cache.user_cache_key("another-token") != key
+
+
+async def test_conflict_retry_reads_past_the_memo() -> None:
+    """Another device writes between this request's read and its write: the If-Match retry must
+    re-read storage (not the memo), keep the other write, and succeed."""
+    inner = FakeStorageProvider()
+    books = Books(inner, cache_key="u1")
+    await books.write_json("_System/notes.json", ["a"])
+    assert await books.read_json("_System/notes.json", []) == ["a"]  # memoised now
+    await inner.write("_System/notes.json", b'["a", "other device"]')  # behind the memo's back
+    await books._update_json("_System/notes.json", [], lambda old: [*old, "mine"])
+    assert await Books(inner).read_json("_System/notes.json", []) == ["a", "other device", "mine"]
+
+
+async def test_create_only_loser_sees_the_winner() -> None:
+    """Two requests claim the same new file: the loser's retry must see the winner's claim (app/actions.py)."""
+    inner = FakeStorageProvider()
+    books = Books(inner, cache_key="u1")
+    assert await books.read_json("_System/claim.json", None) is None
+    await books.list_files("_System")  # memoise a listing without the file
+    await inner.write("_System/claim.json", b'{"by": "winner"}')
+    await books._update_json("_System/claim.json", {}, lambda old: {**old, "seen": True})
+    assert await Books(inner).read_json("_System/claim.json", {}) == {"by": "winner", "seen": True}

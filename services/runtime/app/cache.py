@@ -25,6 +25,7 @@ Caching rules (also in ``docs/ARCHITECTURE.md``):
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 from collections import OrderedDict
 
@@ -36,6 +37,10 @@ IMMUTABLE_PREFIX = "_System/Ledger/events/"
 #: Bounds for the in-process immutable cache: about a thousand small event files.
 MAX_FILES = 1000
 MAX_BYTES = 8 * 1024 * 1024
+
+#: Round trips one request may have in flight at once (the parallel reads in Books), so a big book
+#: does not fire hundreds of Graph calls together and get throttled.
+MAX_IN_FLIGHT = 8
 
 _cache: OrderedDict[tuple[str, str], bytes] = OrderedDict()
 _cache_bytes = 0
@@ -120,6 +125,7 @@ class RequestMemoStorage(StorageProvider):
         self.user_key = user_key
         self.lists: dict[str, list[FileRef]] = {}
         self.reads: dict[str, bytes] = {}
+        self._gate = asyncio.Semaphore(MAX_IN_FLIGHT)
 
     @staticmethod
     def _parent(path: str) -> str:
@@ -137,7 +143,8 @@ class RequestMemoStorage(StorageProvider):
     async def list(self, path: str) -> list[FileRef]:
         key = _norm(path)
         if key not in self.lists:
-            self.lists[key] = await self.inner.list(path)
+            async with self._gate:
+                self.lists[key] = await self.inner.list(path)
         return list(self.lists[key])
 
     async def read(self, path: str) -> bytes:
@@ -148,7 +155,8 @@ class RequestMemoStorage(StorageProvider):
             if hit is not None:
                 self.reads[key] = hit
         if hit is None:
-            hit = await self.inner.read(path)
+            async with self._gate:
+                hit = await self.inner.read(path)
             self.reads[key] = hit
             if self.user_key is not None and is_immutable(key):
                 put_cached(self.user_key, key, hit)
@@ -165,8 +173,22 @@ class RequestMemoStorage(StorageProvider):
     def _forget_list(self, folder: str) -> None:
         self.lists.pop(_norm(folder), None)
 
+    def forget(self, path: str) -> None:
+        """Drop the memo for one file and its folder listing, so the next stat and read reach storage.
+        Books._update calls this before a read-modify-write: the bytes it changes and the etag it sends
+        must be what storage holds now, or another device's write could be lost."""
+        self.reads.pop(_norm(path), None)
+        self._forget_list(self._parent(path))
+
     async def write(self, path: str, data: bytes, *, if_match: str | None = None, create_only: bool = False) -> FileRef:
-        ref = await self.inner.write(path, data, if_match=if_match, create_only=create_only)
+        try:
+            ref = await self.inner.write(path, data, if_match=if_match, create_only=create_only)
+        except BaseException:
+            # A refused conditional write (If-Match or create-only) means someone else changed the file:
+            # Books._update retries by listing and reading again, which must reach storage, not this memo.
+            self._forget_read(path)
+            self._forget_list(self._parent(path))
+            raise
         self._forget_list(self._parent(path))
         # A blind in-request memo must not hide this write; the immutable
         # cache only ever holds event files, which are written once and never
