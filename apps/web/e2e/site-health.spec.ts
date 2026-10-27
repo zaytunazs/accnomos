@@ -1,4 +1,4 @@
-import { expect, test } from "./fixtures";
+import { createBooksFolder, expect, signIn, test } from "./fixtures";
 
 /**
  * Not-found, reader-down/offline and new-version strips. The reader-down test
@@ -7,13 +7,38 @@ import { expect, test } from "./fixtures";
  * out-e2e/ never see each other's versions.
  */
 
-test("unknown paths show the not-found page, served as a 404", async ({ page }) => {
+test("unknown paths show the not-found page, served as a 404", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
   const res = await page.goto("/no-such-page-xyz");
   expect(res?.status()).toBe(404);
   await expect(page.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Copy details" })).toBeVisible();
+  await page.getByRole("button", { name: "Copy details" }).click();
+  const clip = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clip).toContain("Page not found");
+  expect(clip).toContain("Page: http://127.0.0.1:3100/no-such-page-xyz");
   await page.getByRole("link", { name: "Back to Home" }).click();
   await expect(page).toHaveURL("/");
+});
+
+test("a runtime 500 shows its correlation id, with copy", async ({ page, context, runtime }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]);
+  await signIn(page);
+  await createBooksFolder(page);
+  await runtime.reset("bank");
+  await page.route("**/books/bank/summary", async (route) => {
+    await route.fulfill({
+      status: 500,
+      contentType: "application/json",
+      body: JSON.stringify({ detail: "Ledger read failed", correlation_id: "corr-e2e-500" }),
+    });
+  });
+  await page.goto("/bank");
+  const note = page.getByRole("alert").filter({ hasText: /Something went wrong on our side/ });
+  await expect(note).toBeVisible();
+  await expect(note).toContainText("corr-e2e-500");
+  await note.getByRole("button", { name: "Copy" }).click();
+  const clip = await page.evaluate(() => navigator.clipboard.readText());
+  expect(clip).toBe("Accnomos error (status 500): Ledger read failed [ref corr-e2e-500]");
 });
 
 test("reader down: one shared strip with retry; the page keeps what it can", async ({ page }) => {
