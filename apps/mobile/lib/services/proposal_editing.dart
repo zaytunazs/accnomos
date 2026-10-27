@@ -9,8 +9,11 @@
 /// limited to `DOC_EDITS` in `services/runtime/app/approve.py` —
 /// `category`, `net_total`, `vat_total`, `gross_total`, `date`,
 /// `supplier_name`, `doc_type`, `payment_method` (plus `account`). The VAT
-/// code below is therefore validated locally only and never sent.
+/// code and the VAT number below are therefore validated locally only and
+/// never sent.
 library;
+
+import 'review_rules.dart';
 
 /// VAT codes offered by the edit sheet.
 const List<String> kVatCodes = ['S', 'R', 'Z', 'E', 'O', 'N'];
@@ -51,15 +54,12 @@ const List<String> kCategories = [
 ];
 
 /// Parse a pounds string ('£12.34', '12,34', ' 7 ') to integer pence.
-/// Returns null when the text is not a non-negative amount.
+/// Returns null when the text is not a non-negative amount with at most
+/// two decimals (same rule as the web's `parsePence`).
 int? parsePoundsToPence(String text) {
-  var cleaned = text.trim().replaceAll('£', '').replaceAll(',', '').replaceAll(' ', '');
-  if (cleaned.isEmpty) return null;
-  final value = double.tryParse(cleaned);
-  if (value == null || value.isNaN || value.isInfinite || value < 0) {
-    return null;
-  }
-  return (value * 100).round();
+  final cleaned = text.replaceAll('£', '').replaceAll(',', '').replaceAll(RegExp(r'\s+'), '');
+  if (!RegExp(r'^\d+(\.\d{1,2})?$').hasMatch(cleaned)) return null;
+  return (double.parse(cleaned) * 100).round();
 }
 
 /// Format integer pence as pounds ('£12.34').
@@ -79,15 +79,17 @@ String? totalsDiscrepancy({
 }
 
 /// Returns a discrepancy line when the VAT amount does not fit the code's
-/// rate, else null. Allows 1p of rounding (receipts often round per line).
+/// rate, else null. Allows the runtime's VAT_MATH tolerance: 2p plus 1p
+/// per extracted line (receipts often round per line).
 String? vatRateDiscrepancy({
   required String code,
   required int netPence,
   required int vatPence,
+  int linesCount = 0,
 }) {
   final expected = (netPence * vatRateForCode(code)).round();
   final diff = (vatPence - expected).abs();
-  if (diff <= 1) return null;
+  if (diff <= 2 + linesCount) return null;
   final rateLabel = _rateLabel(code);
   return 'VAT looks off for code $code ($rateLabel): expected about '
       '${formatPence(expected)}, entered ${formatPence(vatPence)}.';
@@ -185,6 +187,118 @@ const _months = [
 /// Format a [DateTime] the way proposal cards show it ('21 Oct 2026').
 String formatDisplayDate(DateTime date) =>
     '${date.day} ${_months[date.month - 1]} ${date.year}';
+
+/// One reason the edit form cannot be saved yet. [field] names the sheet
+/// field ('supplier', 'date', 'net', 'vat', 'gross', 'category', 'vrn'),
+/// mirroring the web's `EditProblem`.
+class EditFieldProblem {
+  const EditFieldProblem({required this.field, required this.message});
+  final String field;
+  final String message;
+}
+
+/// True when [dateIso] ('YYYY-MM-DD') is after the user's today.
+bool isFutureIsoDate(String dateIso, {DateTime? now}) {
+  final today = now ?? DateTime.now();
+  return dateIso.compareTo(formatIsoDate(today)) > 0;
+}
+
+/// Every reason the edit form cannot be saved, in plain English, first
+/// problem first. Same rules as the web's `validate`: supplier present, a
+/// real date no later than today, strict amounts, net + VAT = gross in
+/// pence, VAT fitting the code, a known category, a valid VAT number that
+/// the runtime keeps as read (so it cannot be changed here).
+List<EditFieldProblem> validateEditForm({
+  required String supplier,
+  required String dateIso,
+  required String netText,
+  required String vatText,
+  required String grossText,
+  required String category,
+  required String vrnText,
+  required String? initialVrn,
+  required String vatCode,
+  required int linesCount,
+  DateTime? now,
+}) {
+  final problems = <EditFieldProblem>[];
+  if (supplier.trim().isEmpty) {
+    problems.add(const EditFieldProblem(
+      field: 'supplier',
+      message: "Enter the supplier's name.",
+    ));
+  }
+  if (!RegExp(r'^\d{4}-\d{2}-\d{2}$').hasMatch(dateIso) ||
+      DateTime.tryParse(dateIso) == null) {
+    problems.add(const EditFieldProblem(
+      field: 'date',
+      message: 'Enter the date on the document.',
+    ));
+  } else if (isFutureIsoDate(dateIso, now: now)) {
+    problems.add(const EditFieldProblem(
+      field: 'date',
+      message: 'The date is in the future. Use the date printed on the document.',
+    ));
+  }
+  final net = parsePoundsToPence(netText);
+  final vat = parsePoundsToPence(vatText);
+  final gross = parsePoundsToPence(grossText);
+  if (net == null) {
+    problems.add(const EditFieldProblem(
+      field: 'net',
+      message: 'Net must be an amount, e.g. 32.06.',
+    ));
+  }
+  if (vat == null) {
+    problems.add(const EditFieldProblem(
+      field: 'vat',
+      message: 'VAT must be an amount, e.g. 6.41 (0 if none).',
+    ));
+  }
+  if (gross == null) {
+    problems.add(const EditFieldProblem(
+      field: 'gross',
+      message: 'Total must be an amount, e.g. 38.47.',
+    ));
+  }
+  if (net != null && vat != null && gross != null) {
+    final totals = totalsDiscrepancy(
+      netPence: net,
+      vatPence: vat,
+      grossPence: gross,
+    );
+    if (totals != null) {
+      problems.add(EditFieldProblem(field: 'gross', message: totals));
+    }
+    final rate = vatRateDiscrepancy(
+      code: vatCode,
+      netPence: net,
+      vatPence: vat,
+      linesCount: linesCount,
+    );
+    if (rate != null) {
+      problems.add(EditFieldProblem(field: 'vat', message: rate));
+    }
+  }
+  if (category.isEmpty) {
+    problems.add(const EditFieldProblem(
+      field: 'category',
+      message: 'Choose a category.',
+    ));
+  }
+  if (!vrnLooksValid(vrnText)) {
+    problems.add(const EditFieldProblem(
+      field: 'vrn',
+      message: 'That is not a UK VAT number: GB and 9 digits, e.g. GB 123 4567 89.',
+    ));
+  } else if (normaliseVrn(vrnText) != normaliseVrn(initialVrn)) {
+    problems.add(const EditFieldProblem(
+      field: 'vrn',
+      message: "The VAT number can't be corrected on approval yet; the runtime keeps it as read. Put it back, or Reject and rescan a clearer copy.",
+    ));
+  }
+  return problems;
+}
 
 /// Parse back either an ISO date or a card display date ('21 Oct 2026').
 /// Returns null when neither parses.
