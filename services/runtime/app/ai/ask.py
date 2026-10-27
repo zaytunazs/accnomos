@@ -18,7 +18,7 @@ from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
 import httpx
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError, parse_model_json
@@ -215,6 +215,8 @@ def ground(out: AskModelOutput, facts: dict[str, Any], model: str) -> AskAnswer:
     for a in out.suggested_actions:
         if a.kind == "chase_supplier" and (not a.arg or a.arg.strip().lower() not in names):
             continue  # never chase a supplier the books don't know
+        if a.kind == "plan_day":
+            continue  # only code offers a day plan (app/routes_ask.py)
         actions.append(SuggestedAction(label=_clip(a.label, LABEL_MAX), kind=a.kind, arg=_clip(a.arg, LABEL_MAX) if a.arg else None))
 
     return AskAnswer(
@@ -236,9 +238,11 @@ def _messages(question: str, facts: dict[str, Any], history: list[AskTurn]) -> l
     ]
 
 
-async def _call_model(messages: list[dict[str, str]], cfg: AiConfig) -> str:
-    """Raw JSON text from the configured backend."""
-    return await call_json_model(messages, cfg, strict_json_schema(AskModelOutput), "ask_answer")
+async def _call_model(
+    messages: list[dict[str, str]], cfg: AiConfig, output: type[BaseModel] = AskModelOutput, name: str = "ask_answer",
+) -> str:
+    """Raw JSON text from the configured backend, constrained to `output`'s schema (app/ai/plan.py uses it too)."""
+    return await call_json_model(messages, cfg, strict_json_schema(output), name)
 
 
 async def call_json_model(messages: list[dict[str, str]], cfg: AiConfig, schema: dict[str, Any], name: str) -> str:

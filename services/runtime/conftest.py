@@ -1,4 +1,4 @@
-"""Make `pytest` import this checkout's `app`, not another editable install of accnomos-runtime."""
+"""Make `pytest` import this checkout's `app` and packages, not another editable install of them."""
 
 import sys
 from pathlib import Path
@@ -16,3 +16,7 @@ def _fresh_rate_limit():
     if security.LIMITER:
         security.LIMITER.reset()
     yield
+HERE = Path(__file__).resolve().parent
+for path in (HERE.parents[1] / "packages" / "connectors" / "src", HERE.parents[1] / "packages" / "ledger" / "src", HERE):
+    if path.is_dir():
+        sys.path.insert(0, str(path))

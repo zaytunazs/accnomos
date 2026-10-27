@@ -257,7 +257,7 @@ def extraction_json_schema() -> dict[str, Any]:
 
 ASK_ANSWER_MAX = 1200
 ASK_HISTORY_MAX = 6
-AskActionKind = Literal["open_review", "open_vat", "chase_supplier", "none"]
+AskActionKind = Literal["open_review", "open_vat", "chase_supplier", "plan_day", "none"]  # plan_day: code only
 Confidence = Literal["high", "medium", "low"]
 
 

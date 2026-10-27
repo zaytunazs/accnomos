@@ -21,6 +21,9 @@ export interface Business {
   customStartMonth: number; // 1-12, used when stagger is "custom"
   flatRate: boolean;
   email: string;
+  workStart: string; // "HH:MM", the day planner's default working hours
+  workEnd: string;
+  maxVisits: number;
 }
 
 const KEY = "accnomos.business";
@@ -46,7 +49,12 @@ export const DEFAULT_BUSINESS: Business = {
   customStartMonth: 1,
   flatRate: false,
   email: "",
+  workStart: "08:00",
+  workEnd: "17:30",
+  maxVisits: 5,
 };
+
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 export function loadBusiness(): Business | null {
   try {
@@ -56,12 +64,18 @@ export function loadBusiness(): Business | null {
     // Saved before the stagger setting existed: derive it from the period-end choice.
     const stagger = parsed.stagger ?? STAGGER_OPTIONS.find((o) => o.periodEnd === parsed.periodEnd)?.value ?? "1";
     const month = Number(parsed.customStartMonth);
+    const visits = Number(parsed.maxVisits);
+    const start = HHMM.test(parsed.workStart ?? "") ? parsed.workStart! : DEFAULT_BUSINESS.workStart;
+    const end = HHMM.test(parsed.workEnd ?? "") ? parsed.workEnd! : DEFAULT_BUSINESS.workEnd;
     return {
       ...DEFAULT_BUSINESS,
       ...parsed,
       stagger,
       customStartMonth: month >= 1 && month <= 12 ? month : 1,
       flatRate: parsed.flatRate === true,
+      workStart: start < end ? start : DEFAULT_BUSINESS.workStart,
+      workEnd: start < end ? end : DEFAULT_BUSINESS.workEnd,
+      maxVisits: visits >= 1 && visits <= 12 ? Math.round(visits) : DEFAULT_BUSINESS.maxVisits,
     };
   } catch {
     return null;
@@ -77,6 +91,22 @@ export function deadlinesQuery(b: Business | null): string | null {
   if (business.vatPeriod === "annual") return null;
   if (business.vatPeriod === "monthly") return "months=1";
   return business.stagger === "custom" ? `start_month=${business.customStartMonth}` : `stagger=${business.stagger}`;
+}
+
+export interface PlanVat {
+  stagger?: number;
+  start_month?: number;
+  months: 1 | 3;
+}
+
+/** VAT periods for POST /plan/day (admin time when a return is due), or null when not worked out (annual). */
+export function planVat(b: Business | null): PlanVat | null {
+  const business = b ?? DEFAULT_BUSINESS;
+  if (business.vatPeriod === "annual") return null;
+  if (business.vatPeriod === "monthly") return { months: 1 };
+  return business.stagger === "custom"
+    ? { start_month: business.customStartMonth, months: 3 }
+    : { stagger: Number(business.stagger), months: 3 };
 }
 
 export function saveBusiness(business: Business): void {

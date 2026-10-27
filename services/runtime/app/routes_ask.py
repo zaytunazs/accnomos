@@ -5,11 +5,13 @@ code then checks every figure and citation (app/ai/ask.py). Nothing is kept afte
 An instruction ("send a £100 invoice to JM Trading") gets a proposed action instead (app/actions.py),
 which does nothing until the user approves it with POST /actions/approve.
 A spoken question is transcribed by Muse Voice (app/ai/voice.py) and then takes exactly the same path.
+"Plan my Thursday" (typed or spoken) is not a question about the books: code spots it and answers with a
+`plan_day` action for that date, which the app opens as a day plan (POST /plan/day); no model is called.
 """
 
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, UploadFile
@@ -23,7 +25,8 @@ from app.books import Books
 from app.facts import build_facts, default_period
 from app.routes_actions import graph_token
 from app.routes_books import get_books
-from app.schemas import AskAnswer, AskPeriod, AskRequest, AskTurn, AskVoiceAnswer, Clarification, ProposedAction
+from app.planner import TZ, plan_intent, uk_day
+from app.schemas import AskAnswer, AskPeriod, AskRequest, AskTurn, AskVoiceAnswer, Clarification, ProposedAction, SuggestedAction
 
 router = APIRouter(prefix="/books", tags=["ask"])
 _TURNS = TypeAdapter(list[AskTurn])
@@ -42,8 +45,21 @@ def _action_answer(found: ProposedAction | Clarification | actions.NotAvailable,
     return AskAnswer(answer_md=found.message, **base)
 
 
+def plan_answer(day: date, period: AskPeriod) -> AskAnswer:
+    label = uk_day(day)
+    return AskAnswer(
+        answer_md=f"I can plan {label} from your calendar and open jobs: visits grouped by postcode, travel, lunch "
+                  "and any admin that is due. Nothing goes in your calendar until you approve it.",
+        key_numbers=[], citations=[], confidence="high", model="code", period=period,
+        suggested_actions=[SuggestedAction(label=f"Plan {label}", kind="plan_day", arg=day.isoformat())],
+    )
+
+
 async def _answer(req: AskRequest, books: Books, cfg: AiConfig, business: str | None, token: str) -> AskAnswer:
+    """Day-plan intent (code, no model) → instruction (proposed action) → question about the books (facts + model)."""
     period = req.period or default_period(date.today())
+    if (day := plan_intent(req.question, datetime.now(TZ).date())) is not None:
+        return plan_answer(day, period)
     found = await actions.propose(req.question, books, cfg, token)
     if found is not None:
         return _action_answer(found, cfg, period)

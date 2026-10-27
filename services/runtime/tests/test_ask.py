@@ -243,3 +243,31 @@ def test_ask_route_needs_a_token():
 
     r = TestClient(app).post("/books/ask", json={"question": "hi"})
     assert r.status_code == 401
+
+
+async def test_ask_plan_my_thursday_offers_a_day_plan_without_the_model(books: Books, monkeypatch: pytest.MonkeyPatch):
+    from app.main import app
+    from app.routes_books import get_books
+
+    async def boom(*_a: object, **_k: object) -> str:
+        raise AssertionError("the model must not be called for a day plan")
+
+    async def override():
+        yield books
+
+    monkeypatch.setattr(ask_ai, "_call_model", boom)
+    app.dependency_overrides[get_books] = override
+    try:
+        headers = {"X-Graph-Token": "t", "X-AI-Mode": "local"}
+        r = TestClient(app).post("/books/ask", json={"question": "Plan my Thursday"}, headers=headers)
+    finally:
+        app.dependency_overrides.clear()
+    assert r.status_code == 200, r.text
+    action = r.json()["suggested_actions"][0]
+    assert action["kind"] == "plan_day" and action["label"].startswith("Plan Thursday")
+    assert date.fromisoformat(action["arg"]).weekday() == 3
+
+
+def test_ground_drops_a_plan_day_action_from_the_model(facts: dict):
+    out = _out(suggested_actions=[{"label": "Plan", "kind": "plan_day", "arg": "2026-10-29"}])
+    assert ask_ai.ground(out, facts, "m").suggested_actions == []

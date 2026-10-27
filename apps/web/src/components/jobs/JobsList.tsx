@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import PlanCard from "@/components/plan/PlanCard";
 import { pence, runtime, type RtJobSummary } from "@/lib/runtime";
-import { errorText, useAccount } from "./useAccount";
+import { errorText, todayIso, useAccount } from "./useAccount";
 
 const hrs = (h: number) => `${h.toLocaleString("en-GB", { maximumFractionDigits: 2 })} h`;
 
@@ -13,9 +14,12 @@ export default function JobsList() {
   const [jobs, setJobs] = useState<RtJobSummary[] | null>(null);
   const [name, setName] = useState("");
   const [site, setSite] = useState("");
+  const [estimate, setEstimate] = useState("");
   const [showClosed, setShowClosed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
+  const [planDate, setPlanDate] = useState("");
+  const [planning, setPlanning] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!account) return;
@@ -35,9 +39,14 @@ export default function JobsList() {
     if (!account || !name.trim()) return;
     setBusy(true);
     try {
-      await runtime.createJob(account, { name: name.trim(), site_address: site.trim() || null, customer_id: null, status: "open" });
+      const hours = Number(estimate);
+      await runtime.createJob(account, {
+        name: name.trim(), site_address: site.trim() || null, customer_id: null, status: "open",
+        estimate_hours: estimate.trim() && hours > 0 ? hours : null,
+      });
       setName("");
       setSite("");
+      setEstimate("");
       setNote("Job added.");
       await load();
     } catch (err) {
@@ -124,6 +133,36 @@ export default function JobsList() {
         )}
       </section>
 
+      {open.length > 0 &&
+        (planning && account ? (
+          <PlanCard account={account} date={planning} jobIds={open.map((s) => s.job.id)} onClose={() => setPlanning(null)} />
+        ) : (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              setPlanning(planDate || todayIso());
+            }}
+            className={`${card} flex flex-wrap items-end gap-3`}
+            aria-label="Plan a day with these jobs"
+          >
+            <label className="flex flex-col gap-1 text-sm font-bold text-ink">
+              Day
+              <input
+                type="date"
+                value={planDate || todayIso()}
+                onChange={(e) => setPlanDate(e.target.value)}
+                className="h-11 rounded-xl border border-border px-3 font-normal"
+              />
+            </label>
+            <button type="submit" className="h-11 rounded-xl border border-teal px-5 text-[15px] font-extrabold text-teal hover:bg-teal-tint">
+              Plan a day with these jobs
+            </button>
+            <p className="basis-full text-[13px] text-muted">
+              Open jobs with a postcode, grouped by district around your calendar. Nothing is added until you approve.
+            </p>
+          </form>
+        ))}
+
       <form onSubmit={create} className={`${card} flex flex-wrap items-end gap-3`} aria-label="New job">
         <label className="flex min-w-56 flex-1 flex-col gap-1 text-sm font-bold text-ink">
           New job
@@ -135,8 +174,21 @@ export default function JobsList() {
           />
         </label>
         <label className="flex min-w-56 flex-1 flex-col gap-1 text-sm font-bold text-ink">
-          Site address (optional)
+          Site address with postcode (optional)
           <input value={site} onChange={(e) => setSite(e.target.value)} className="h-11 rounded-xl border border-border px-3 font-normal" />
+        </label>
+        <label className="flex w-36 flex-col gap-1 text-sm font-bold text-ink">
+          Visit length (h)
+          <input
+            type="number"
+            min="0.25"
+            max="12"
+            step="0.25"
+            value={estimate}
+            onChange={(e) => setEstimate(e.target.value)}
+            placeholder="2"
+            className="h-11 rounded-xl border border-border px-3 font-normal"
+          />
         </label>
         <button
           type="submit"

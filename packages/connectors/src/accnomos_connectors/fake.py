@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import hashlib
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time, timedelta
+from zoneinfo import ZoneInfo
 
 from accnomos_connectors.base import (
     AddressBookContact,
+    CalendarEvent,
+    CalendarProvider,
     ConflictError,
     ContactsProvider,
     FileRef,
@@ -73,6 +76,33 @@ class FakeMailSender(MailSender):
         if self.fail:
             raise self.fail
         self.sent.append(mail)
+
+
+class FakeCalendarProvider(CalendarProvider):
+    """A calendar in memory: seed `events`; `created` lists what `create_event` added (also appended to `events`)."""
+
+    def __init__(self, events: list[CalendarEvent] | None = None) -> None:
+        self.events = list(events or [])
+        self.created: list[CalendarEvent] = []
+        self.calls: list[str] = []
+
+    async def list_events(self, day: date, tz: str = "Europe/London") -> list[CalendarEvent]:
+        self.calls.append(f"list_events:{day.isoformat()}")
+        zone = ZoneInfo(tz)
+        start, end = datetime.combine(day, time(0), zone), datetime.combine(day + timedelta(days=1), time(0), zone)
+        return sorted((e for e in self.events if e.start < end and e.end > start), key=lambda e: e.start)
+
+    async def create_event(self, subject: str, start: datetime, end: datetime, location: str, body: str) -> str:
+        if start.tzinfo is None or end.tzinfo is None:
+            raise ValueError("start and end must be timezone-aware")
+        self.calls.append(f"create_event:{subject}")
+        event = CalendarEvent(
+            id=f"fake-event-{len(self.created) + 1}", subject=subject, start=start, end=end, location=location,
+            body_preview=body[:255],
+        )
+        self.created.append(event)
+        self.events.append(event)
+        return event.id
 
 
 class FakeStorageProvider(StorageProvider):

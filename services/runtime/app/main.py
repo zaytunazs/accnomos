@@ -148,3 +148,5 @@ app.include_router(actions_router)
 from app.routes_payroll import router as payroll_router  # noqa: E402  /payroll/runs
 app.include_router(payroll_router)
 
+from app.routes_plan import router as plan_router  # noqa: E402  /plan/day, /plan/day/apply
+app.include_router(plan_router)

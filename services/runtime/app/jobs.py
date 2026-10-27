@@ -1,6 +1,6 @@
 """Jobs, staff and timesheets, as files in the user's folder; invoice lines from unbilled hours.
 
-    _System/Jobs/jobs.json             [{id, name, customer_id, site_address, status, created_at}]
+    _System/Jobs/jobs.json             [{id, name, customer_id, site_address, estimate_hours, status, created_at}]
     _System/Staff/staff.json           [{id, name, role, hourly_rate_pence, charge_rate_pence, active}]
     _System/Timesheets/{yyyy-mm}.jsonl one entry per line, filed by the entry's date
 
@@ -97,6 +97,7 @@ class Job(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     customer_id: str | None = None
     site_address: str | None = None
+    estimate_hours: float | None = Field(None, gt=0, le=MAX_HOURS_PER_ENTRY, description="time on site for one visit")
     status: Literal["open", "closed"] = "open"
     created_at: datetime = Field(default_factory=now)
 

@@ -1,4 +1,4 @@
-"""Microsoft Graph: OneDrive StorageProvider and Outlook MailProvider.
+"""Microsoft Graph: OneDrive StorageProvider, Outlook MailProvider, ContactsProvider and CalendarProvider.
 
 Addressing (paths are relative to the Accnomos books root):
 
@@ -15,14 +15,17 @@ from __future__ import annotations
 import asyncio
 import base64
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, time, timedelta
 from typing import Any, Literal
 from urllib.parse import quote, unquote
+from zoneinfo import ZoneInfo
 
 import httpx
 
 from accnomos_connectors.base import (
     AddressBookContact,
+    CalendarEvent,
+    CalendarProvider,
     ConflictError,
     ContactsProvider,
     FileRef,
@@ -416,3 +419,60 @@ class GraphMailSender(_GraphHttp, MailSender):
             ],
         }
         await self._request("POST", f"{GRAPH}/me/sendMail", json={"message": message, "saveToSentItems": True})
+
+
+def _graph_utc(value: dict[str, Any] | None) -> datetime:
+    """A Graph dateTimeTimeZone read with `Prefer: outlook.timezone="UTC"` -> aware UTC datetime."""
+    raw = ((value or {}).get("dateTime") or "1970-01-01T00:00:00")[:26]  # Graph sends 7 fractional digits
+    return datetime.fromisoformat(raw.removesuffix("Z")).replace(tzinfo=UTC)
+
+
+class GraphCalendarProvider(_GraphHttp, CalendarProvider):
+    """Outlook calendar via Microsoft Graph. Reading needs `Calendars.Read`; `create_event` needs
+    `Calendars.ReadWrite`, which the app asks for only when the user approves a plan."""
+
+    PAGE = 100
+    SELECT = "subject,start,end,location,bodyPreview,isAllDay,showAs,isCancelled"
+
+    async def list_events(self, day: date, tz: str = "Europe/London") -> list[CalendarEvent]:
+        zone = ZoneInfo(tz)
+        start = datetime.combine(day, time(0), zone).astimezone(UTC)
+        end = datetime.combine(day + timedelta(days=1), time(0), zone).astimezone(UTC)
+        params: dict[str, str] | None = {
+            "startDateTime": start.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "endDateTime": end.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "$select": self.SELECT, "$orderby": "start/dateTime", "$top": str(self.PAGE),
+        }
+        headers = {"Prefer": 'outlook.timezone="UTC"'}
+        url: str | None = f"{GRAPH}/me/calendarView"
+        out: list[CalendarEvent] = []
+        while url:
+            page = (await self._request("GET", url, params=params, headers=headers)).json()
+            params = None  # nextLink already carries the query
+            for e in page.get("value", []):
+                if e.get("isCancelled"):
+                    continue
+                out.append(CalendarEvent(
+                    id=e["id"], subject=e.get("subject") or "", start=_graph_utc(e.get("start")),
+                    end=_graph_utc(e.get("end")), location=((e.get("location") or {}).get("displayName") or ""),
+                    body_preview=e.get("bodyPreview") or "", is_all_day=bool(e.get("isAllDay")),
+                    show_as=e.get("showAs") or "busy",
+                ))
+            url = page.get("@odata.nextLink")
+        return sorted(out, key=lambda e: e.start)
+
+    async def create_event(self, subject: str, start: datetime, end: datetime, location: str, body: str) -> str:
+        if start.tzinfo is None or end.tzinfo is None:
+            raise ValueError("start and end must be timezone-aware")
+
+        def stamp(dt: datetime) -> dict[str, str]:
+            return {"dateTime": dt.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%S"), "timeZone": "UTC"}
+
+        payload: dict[str, Any] = {
+            "subject": subject, "start": stamp(start), "end": stamp(end),
+            "body": {"contentType": "text", "content": body},
+            "showAs": "busy", "isReminderOn": False,
+        }
+        if location:
+            payload["location"] = {"displayName": location}
+        return (await self._request("POST", f"{GRAPH}/me/events", json=payload)).json()["id"]

@@ -7,6 +7,7 @@ import AutopilotRules from "@/components/settings/AutopilotRules";
 import StaffEditor from "@/components/settings/StaffEditor";
 import VatPeriodSettings from "@/components/settings/VatPeriodSettings";
 import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
+import WorkingHours from "@/components/settings/WorkingHours";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
 
@@ -132,6 +133,8 @@ export default function SettingsPanels() {
           </div>
         </dl>
       </section>
+
+      <WorkingHours card={card} heading={heading} />
 
       <VatPeriodSettings card={card} heading={heading} />
 

@@ -2,7 +2,18 @@
 
 import type { AccountInfo } from "@azure/msal-browser";
 import { aiHeaders, loadAiConfig, RUNTIME_URL } from "./ai-config";
-import { accountKind, contactsScopesFor, getToken, isPersonalAccount, mailScopesFor, mailSendScopesFor, storageScopesFor } from "./msal";
+import type { PlanVat } from "./business";
+import {
+  accountKind,
+  CALENDAR_READ_SCOPES,
+  CALENDAR_SCOPES,
+  contactsScopesFor,
+  getToken,
+  isPersonalAccount,
+  mailScopesFor,
+  mailSendScopesFor,
+  storageScopesFor,
+} from "./msal";
 
 /** Runtime wire types (services/runtime/app/schemas.py). */
 export interface RtCheck {
@@ -197,6 +208,13 @@ export const runtime = {
   /** GET /books/deadlines?stagger=1 | start_month=5 | months=1 (see lib/business.ts deadlinesQuery). */
   deadlines: (a: AccountInfo, query: string) => call<RtDeadlines>(a, `/books/deadlines?${query}`),
 
+  /** POST /plan/day: proposes a day and writes nothing. Asks for Calendars.Read the first time. */
+  planDay: (a: AccountInfo, body: RtPlanRequest) =>
+    call<RtPlan>(a, "/plan/day", { method: "POST", body: JSON.stringify(body) }, CALENDAR_READ_SCOPES),
+  /** POST /plan/day/apply: the plan's new items become calendar events. Asks for Calendars.ReadWrite only now. */
+  applyPlan: (a: AccountInfo, date: string, plan: RtPlanItem[]) =>
+    call<RtPlanApplied>(a, "/plan/day/apply", { method: "POST", body: JSON.stringify({ date, plan }) }, CALENDAR_SCOPES),
+
   /** Jobs, staff and timesheets (services/runtime/app/routes_jobs.py). */
   jobs: (a: AccountInfo) => call<RtJobSummary[]>(a, "/jobs"),
   /** Plain open jobs (no ledger read), for pickers. */
@@ -373,11 +391,61 @@ export interface RtPayRunList {
   source_url: string;
 }
 
+/** Day planner (services/runtime/app/planner.py, routes_plan.py). Times carry their UK offset. */
+export interface RtPlanItem {
+  kind: "visit" | "travel" | "lunch" | "admin" | "existing";
+  start: string;
+  end: string;
+  job_id: string | null;
+  title: string;
+  location: string | null;
+}
+export interface RtPlanConstraints {
+  start?: string;
+  end?: string;
+  max_visits?: number;
+}
+export interface RtPlanRequest {
+  date: string;
+  constraints?: RtPlanConstraints;
+  vat?: PlanVat | null;
+  job_ids?: string[];
+}
+export interface RtPlan {
+  date: string;
+  plan: RtPlanItem[];
+  rationale_md: string;
+  warnings: string[];
+  plan_hash: string;
+  model: string | null;
+  fallback_reason: string | null;
+}
+export interface RtMileageProposal {
+  date: string;
+  vehicle_id: string;
+  job_id: string;
+  from_district: string | null;
+  to_district: string | null;
+  miles: number | null;
+  status: string;
+  note: string;
+}
+export interface RtPlanApplied {
+  date: string;
+  plan_hash: string;
+  event_ids: string[];
+  created: { title: string; start: string; event_id: string; reused: boolean }[];
+  already_applied: boolean;
+  mileage_proposals: RtMileageProposal[];
+}
+
 /** Jobs, staff and timesheets (services/runtime/app/jobs.py). Money is integer pence; hours are 0.25 steps. */
 export interface RtJobIn {
   name: string;
   customer_id: string | null;
   site_address: string | null;
+  /** Hours on site for one visit; the day planner uses 2 h when unset. */
+  estimate_hours?: number | null;
   status: "open" | "closed";
 }
 export interface RtJob extends RtJobIn {
@@ -793,7 +861,7 @@ export interface RtKeyNumber {
 }
 export interface RtSuggestedAction {
   label: string;
-  kind: "open_review" | "open_vat" | "chase_supplier" | "none";
+  kind: "open_review" | "open_vat" | "chase_supplier" | "plan_day" | "none"; // plan_day: arg = YYYY-MM-DD
   arg: string | null;
 }
 export interface RtAskAnswer {
