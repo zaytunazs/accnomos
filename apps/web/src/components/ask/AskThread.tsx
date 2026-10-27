@@ -100,6 +100,17 @@ export default function AskThread() {
   const [voiceNote, setVoiceNote] = useState<string | null>(null);
   const [voiceOff, setVoiceOff] = useState<string | null>("Sign in to ask by voice");
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
+
+  /** Questions for an empty thread from the dashboard payload — code, not a model. */
+  const refreshSuggestions = useCallback(async (acct: AccountInfo) => {
+    try {
+      const vat = deadlinesQuery(loadBusiness());
+      const dash = await runtime.dashboard(acct, `${vat ? `${vat}&` : ""}today=${todayIso()}`);
+      setSuggestions(suggestedQuestions(dash));
+    } catch {
+      setSuggestions(FALLBACK_QUESTIONS);
+    }
+  }, []);
   const end = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const asked = useRef(false);
@@ -185,17 +196,10 @@ export default function AskThread() {
         asked.current = true; // the home page's Ask bar sent a question: answer it straight away
         await ask(q, acct, stored);
       } else if (stored.length === 0) {
-        // An empty thread offers questions built from the dashboard payload — code, not a model.
-        try {
-          const vat = deadlinesQuery(loadBusiness());
-          const dash = await runtime.dashboard(acct, `${vat ? `${vat}&` : ""}today=${todayIso()}`);
-          setSuggestions(suggestedQuestions(dash));
-        } catch {
-          setSuggestions(FALLBACK_QUESTIONS);
-        }
+        await refreshSuggestions(acct);
       }
     })();
-  }, [ask]);
+  }, [ask, refreshSuggestions]);
 
   useEffect(() => {
     const reduceMotion =
@@ -220,6 +224,7 @@ export default function AskThread() {
     } catch {
       /* nothing stored */
     }
+    if (account) void refreshSuggestions(account);
   }
 
   const live = mode === "live";
