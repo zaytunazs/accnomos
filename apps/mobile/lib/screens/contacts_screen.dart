@@ -7,6 +7,7 @@ import '../services/phone_contacts.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/duplicates.dart';
 import '../widgets/lookups.dart';
 import '../widgets/vat_status.dart';
 import 'contact_edit_sheet.dart';
@@ -35,6 +36,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
   bool _loading = false;
   String? _error;
   List<Map<String, dynamic>> _rows = const [];
+  List<Map<String, dynamic>> _dupGroups = const [];
   String _query = '';
 
   @override
@@ -77,6 +79,19 @@ class _ContactsScreenState extends State<ContactsScreen> {
       final client = await booksClient(settings, _auth, _account);
       final decoded = await client.contacts();
       final contacts = decoded['contacts'];
+      List<Map<String, dynamic>> groups = const [];
+      try {
+        final dup = await client.duplicates();
+        final raw = dup['groups'];
+        if (raw is List) {
+          groups = [
+            for (final g in raw)
+              if (g is Map) Map<String, dynamic>.from(g),
+          ];
+        }
+      } catch (_) {
+        // Duplicates stay hidden when that call fails; the list is the core.
+      }
       if (!mounted) return;
       setState(() {
         _rows = [
@@ -84,6 +99,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
             for (final c in contacts)
               if (c is Map) Map<String, dynamic>.from(c),
         ];
+        _dupGroups = groups;
       });
     } catch (e) {
       if (!mounted) return;
@@ -241,10 +257,37 @@ class _ContactsScreenState extends State<ContactsScreen> {
     }).toList();
   }
 
+  /// Possible duplicates card: code evidence plus the model's view per
+  /// group, merge on approval (naming the kept contact), Not the same, and
+  /// Undo after merging. Hidden while empty.
+  Widget _duplicatesCard() {
+    return DuplicatesCard(
+      groups: _dupGroups,
+      onMerge: ({required keepId, required mergeIds, name}) async {
+        final client =
+            await booksClient(_settings!, _auth, _account);
+        return client.mergeContacts(
+            keepId: keepId, mergeIds: mergeIds, name: name);
+      },
+      onDismiss: (ids) async {
+        final client =
+            await booksClient(_settings!, _auth, _account);
+        await client.dismissDuplicates(ids);
+      },
+      onUndo: (mergeId) async {
+        final client =
+            await booksClient(_settings!, _auth, _account);
+        await client.undoContactMerge(mergeId);
+      },
+      onChanged: _reload,
+    );
+  }
+
   Widget _listView(List<Map<String, dynamic>> all, {bool sample = false}) {
     final rows = _filter(all);
     return Column(
       children: [
+        if (!sample) _duplicatesCard(),
         if (sample)
           Container(
             width: double.infinity,
