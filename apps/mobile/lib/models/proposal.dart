@@ -64,7 +64,19 @@ class Proposal {
   /// payment_method, card_last4}, `status` ("proposed"|"needs_a_look"),
   /// `reasons` (list of strings), `model`, and `checks`
   /// (list of {code, ok, message}).
-  factory Proposal.fromRuntime(Map<String, dynamic> json) {
+  /// Build a proposal from a stored books proposal (`GET /books/proposals`,
+  /// `POST /books/scan`, `.../approve`, `.../reject` — see
+  /// `services/runtime/app/schemas.py`). Same wire shape as [fromRuntime],
+  /// but the id comes from the books rather than the clock.
+  factory Proposal.fromBooksJson(Map<String, dynamic> json) {
+    final id = (json['id'] as String?)?.trim();
+    return Proposal.fromRuntime(
+      json,
+      id: (id != null && id.isNotEmpty) ? id : null,
+    );
+  }
+
+  factory Proposal.fromRuntime(Map<String, dynamic> json, {String? id}) {
     final extracted = json['extracted'] is Map
         ? Map<String, dynamic>.from(json['extracted'] as Map)
         : <String, dynamic>{};
@@ -135,7 +147,7 @@ class Proposal {
         (extracted['category_guess'] as String?)?.trim() ?? '';
 
     return Proposal(
-      id: 'runtime-${DateTime.now().millisecondsSinceEpoch}',
+      id: id ?? 'runtime-${DateTime.now().millisecondsSinceEpoch}',
       supplier: supplier.isNotEmpty ? supplier : 'Unknown supplier',
       total: _toDouble(extracted['gross_total']) ?? 0,
       date: _displayDate(extracted['date']),

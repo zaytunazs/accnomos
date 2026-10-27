@@ -12,6 +12,7 @@ class AppSettings {
     this.aiModel = 'muse-glimmer:30b',
     this.apiKey,
     this.userEmail,
+    this.businessName,
   });
 
   /// Address of the reader service. The default is the Android emulator's
@@ -34,12 +35,17 @@ class AppSettings {
 
   final String? userEmail;
 
+  /// Business name sent as `X-Business-Name` so the reader attributes
+  /// sales correctly (mirrors the web's `accnomos.business` value).
+  final String? businessName;
+
   static const _kRuntimeUrl = 'accnomos.runtimeUrl';
   static const _kAiMode = 'accnomos.aiMode';
   static const _kAiBaseUrl = 'accnomos.aiBaseUrl';
   static const _kAiModel = 'accnomos.aiModel';
   static const _kApiKey = 'accnomos.apiKey';
   static const _kUserEmail = 'accnomos.userEmail';
+  static const _kBusinessName = 'accnomos.businessName';
 
   /// Load saved settings, falling back to defaults for anything missing.
   static Future<AppSettings> load() async {
@@ -51,6 +57,7 @@ class AppSettings {
       aiModel: prefs.getString(_kAiModel) ?? 'muse-glimmer:30b',
       apiKey: prefs.getString(_kApiKey),
       userEmail: prefs.getString(_kUserEmail),
+      businessName: prefs.getString(_kBusinessName),
     );
   }
 
@@ -70,6 +77,11 @@ class AppSettings {
       await prefs.remove(_kUserEmail);
     } else {
       await prefs.setString(_kUserEmail, userEmail!);
+    }
+    if (businessName == null || businessName!.isEmpty) {
+      await prefs.remove(_kBusinessName);
+    } else {
+      await prefs.setString(_kBusinessName, businessName!);
     }
   }
 }

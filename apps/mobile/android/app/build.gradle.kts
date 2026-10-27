@@ -29,6 +29,15 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // MSAL signature hash for the redirect URI
+        // (msauth://com.accnomos.app/<hash>). It differs per signing key, so
+        // pass release keys with -PmsalSignatureHash=... ; without it the
+        // debug key hash below is used. The same value must reach Dart via
+        // --dart-define=MSAL_SIG_HASH=... (see lib/services/auth.dart).
+        val msalSigHash: String =
+            (project.findProperty("msalSignatureHash") as String?)
+                ?: "3NuO8lO3x1Q9/IdBwhH5qMZmiIU="
+        manifestPlaceholders["msalSignatureHash"] = msalSigHash
     }
 
     // Upload-key signing. android/key.properties is git-ignored and created by the owner
