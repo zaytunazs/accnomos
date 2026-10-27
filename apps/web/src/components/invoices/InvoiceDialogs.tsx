@@ -3,7 +3,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import Modal, { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
-import { RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import { RuntimeErrorNote, isAuthError, isServerError, parseRuntimeError } from "@/components/States";
 import { money } from "@/lib/invoices";
 import { runtime, ukDate, type RtInvoice, type RtInvoicePdf, type RtReminderDraft } from "@/lib/runtime";
 
@@ -47,7 +47,7 @@ function errorText(e: unknown): string | null {
 /** Dialog failures use the one shared strip: 401 signs in again, 5xx quotes its reference. */
 function Note({ note }: { note: string }) {
   if (isAuthError(note) || isServerError(note)) return <RuntimeErrorNote message={note} />;
-  return <p role="alert" className="mt-3 text-sm font-bold text-warn-ink">{note}</p>;
+  return <p role="alert" className="mt-3 text-sm font-bold text-warn-ink">{parseRuntimeError(note).detail || note}</p>;
 }
 
 function Confirm({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {

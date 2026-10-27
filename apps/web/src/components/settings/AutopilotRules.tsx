@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
@@ -112,6 +113,14 @@ export default function AutopilotRules({ card, heading }: { card: string; headin
           <EmptyState
             title="No rules yet"
             body="Tick “Always do this” when you approve and the rule will appear here."
+            action={
+              <Link
+                href="/review"
+                className="inline-flex h-11 items-center whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
+              >
+                Go to Review
+              </Link>
+            }
           />
         </div>
       ) : (

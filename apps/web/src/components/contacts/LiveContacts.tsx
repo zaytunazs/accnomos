@@ -7,7 +7,7 @@ import { getMsal, msalConfigured } from "@/lib/msal";
 import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import { markContactsImported } from "@/components/home/SetupChecklist";
 import SignInCta from "@/components/SignInCta";
-import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import { EmptyState, LoadingSkeleton, RuntimeErrorNote, SamplePill, parseRuntimeError } from "@/components/States";
 import { ApplyCreditDialog, BillPaymentDialog, RefundDialog, errorText } from "@/components/invoices/CreditDialogs";
 import {
   AGED_BUCKETS,
@@ -167,7 +167,7 @@ function ContactList({ rows, agedById, showKind, selected, onSelect, onEdit, can
   canEdit: boolean;
 }) {
   if (!rows.length) {
-    return <p className={`${card} p-4 text-sm font-semibold text-muted`}>No contacts match.</p>;
+    return <p className={`${card} p-4 text-sm font-semibold text-muted`}>No contacts match — try a different search, or clear it to see everyone.</p>;
   }
   return (
     <>
@@ -536,7 +536,8 @@ function MoneyActions({ account, contact, st, onChanged }: {
       await runtime.removeCreditUse(account, id);
       await onChanged(`${what} taken back.`);
     } catch (e) {
-      setNote(errorText(e));
+      const detail = errorText(e);
+      setNote(detail ? parseRuntimeError(detail).detail || "That did not go through — try again." : "That did not go through — try again.");
     } finally {
       setBusy(null);
     }
@@ -787,9 +788,9 @@ function SidePanel({ contact, account, editing, onEditingChange, onSaved, onClos
 
       {rangeError
         ? <p role="alert" className="text-sm font-semibold text-warn-ink">{rangeError}</p>
-        : err && (isAuthError(err) || isServerError(err)
-          ? <RuntimeErrorNote message={err} />
-          : <p role="alert" className="text-sm font-semibold text-warn-ink">{err}</p>)}
+        : err
+          ? <RuntimeErrorNote message={err} title="Could not read the statement" />
+          : null}
 
       <section data-contacts-statement aria-label={`Statement for ${contact.name}`} className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -1092,7 +1093,7 @@ function DuplicatesCard({ account, groups, onChanged }: {
           </button>
         </p>
       )}
-      {err && <p role="alert" className="text-sm font-semibold text-warn-ink">{err}</p>}
+      {err && <RuntimeErrorNote message={err} title="Could not check for duplicates" />}
     </section>
   );
 }
@@ -1163,7 +1164,7 @@ export default function LiveContacts() {
       setState("live");
       setNote(`${list.contacts.length} contacts saved to _System/Contacts/contacts.json in your OneDrive.`);
     } catch (e) {
-      setNote(`Could not refresh: ${(e as Error).message}`);
+      setNote(`Could not refresh: ${parseRuntimeError((e as Error).message).detail || "try again."}`);
     } finally {
       setBusy(null);
     }
@@ -1184,7 +1185,7 @@ export default function LiveContacts() {
       await load(account);
     } catch (e) {
       const msg = (e as Error).message;
-      if (!/redirecting for consent/.test(msg)) setNote(`Could not import from Outlook: ${msg}`);
+      if (!/redirecting for consent/.test(msg)) setNote(`Could not import from Outlook: ${parseRuntimeError(msg).detail || "try again."}`);
     } finally {
       setBusy(null);
     }
@@ -1280,12 +1281,13 @@ export default function LiveContacts() {
         </div>
       </div>
 
-      {note && <p role="status" className="text-sm font-semibold text-teal-dark">{note}</p>}
-      {state === "error" && note && (isAuthError(note) || isServerError(note)) && (
+      {state !== "error" && note && <p role="status" className="text-sm font-semibold text-teal-dark">{note}</p>}
+      {state === "error" && note ? (
         <RuntimeErrorNote message={note} title="Could not read your contacts" />
-      )}
+      ) : null}
       {state === "demo" || state === "error" ? (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] font-medium text-muted">
+          <SamplePill />
           <span>{state === "error" ? "Could not read your contacts; showing the sample instead." : "Sample contacts from fictional companies."}</span>
           {state === "demo" && <SignInCta />}
         </p>
@@ -1314,9 +1316,10 @@ export default function LiveContacts() {
       )}
 
       {state === "checking" || state === "loading" ? (
-        <p className={`${card} p-4 text-sm font-semibold text-muted`}>
-          {state === "loading" ? "Reading your books…" : "Checking sign-in…"}
-        </p>
+        <LoadingSkeleton
+          lines={4}
+          label={state === "loading" ? "Reading your contacts…" : "Checking sign-in…"}
+        />
       ) : tab === "aged" ? (
         agedShown && (
           <div className="flex flex-col gap-6">
@@ -1369,11 +1372,22 @@ export default function LiveContacts() {
                 </select>
               </label>
             </div>
-            <p aria-live="polite" className="text-[13px] font-medium text-muted">
-              {filtered.length === 0
-                ? `No ${kindName} match your search.`
-                : `Showing ${filtered.length} of ${shown.length} ${kindName}.`}
-            </p>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <p aria-live="polite" className="text-[13px] font-medium text-muted">
+                {filtered.length === 0
+                  ? `No ${kindName} match your search.`
+                  : `Showing ${filtered.length} of ${shown.length} ${kindName}.`}
+              </p>
+              {filtered.length === 0 && shown.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => { setQuery(""); setKind("all"); }}
+                  className="shrink-0 whitespace-nowrap text-[13px] font-bold text-teal underline underline-offset-2 hover:text-teal-dark"
+                >
+                  Clear search
+                </button>
+              )}
+            </div>
             {live && rows.length === 0 ? (
               <EmptyState
                 title="No contacts yet"

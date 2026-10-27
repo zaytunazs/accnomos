@@ -106,6 +106,28 @@ export function LoadingSkeleton({
   );
 }
 
+/** Small "Sample" pill flagging fictional sample content (signed out). Same words everywhere. */
+export function SamplePill() {
+  return (
+    <span className="inline-block shrink-0 rounded-full bg-ground px-2 py-0.5 align-middle text-[11px] font-extrabold uppercase tracking-wide text-muted">
+      Sample
+    </span>
+  );
+}
+
+/** "Try again": re-runs the failed read when the page knows how, otherwise reloads the page. */
+export function RetryButton({ onRetry }: { onRetry?: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => (onRetry ? onRetry() : window.location.reload())}
+      className="shrink-0 whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark"
+    >
+      Try again
+    </button>
+  );
+}
+
 export function ErrorNote({
   title = "Something went wrong",
   body,
@@ -155,7 +177,7 @@ export function AuthErrorStrip() {
 }
 
 /** A 5xx from the runtime: the sentence plus its correlation id, with copy, so support can find it. */
-export function ServerErrorNote({ message }: { message: string }) {
+export function ServerErrorNote({ message, onRetry }: { message: string; onRetry?: () => void }) {
   const info = parseRuntimeError(message);
   const [copied, setCopied] = useState(false);
   const quote = `Accnomos error (status ${info.status ?? "unknown"}): ${info.detail}${info.ref ? ` [ref ${info.ref}]` : ""}`;
@@ -187,16 +209,27 @@ export function ServerErrorNote({ message }: { message: string }) {
         >
           {copied ? "Copied" : "Copy"}
         </button>
+        <RetryButton onRetry={onRetry} />
       </p>
     </div>
   );
 }
 
-/** Route a runtime failure to the one shared strip: 401 signs in again, 5xx quotes its reference. */
-export function RuntimeErrorNote({ message, title }: { message: string; title?: string }) {
+/**
+ * Route a runtime failure to the one shared strip: 401 signs in again, 5xx quotes its reference.
+ * Every other failure shows the runtime's plain sentence plus Try again (re-runs `onRetry`,
+ * otherwise reloads the page) — never a status code or JSON.
+ */
+export function RuntimeErrorNote({ message, title, onRetry }: { message: string; title?: string; onRetry?: () => void }) {
   if (isAuthError(message)) return <AuthErrorStrip />;
-  if (isServerError(message)) return <ServerErrorNote message={message} />;
-  return <ErrorNote title={title ?? "Couldn't finish that"} body={parseRuntimeError(message).detail} />;
+  if (isServerError(message)) return <ServerErrorNote message={message} onRetry={onRetry} />;
+  return (
+    <ErrorNote
+      title={title ?? "Couldn't finish that"}
+      body={parseRuntimeError(message).detail || "Something went wrong on our side."}
+      action={<RetryButton onRetry={onRetry} />}
+    />
+  );
 }
 
 /** The reader (runtime) service is unreachable from this browser. */

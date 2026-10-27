@@ -17,7 +17,7 @@ import FilesTree, {
   type Selection,
 } from "@/components/files/FilesTree";
 import UploadToInbox from "@/components/review/UploadToInbox";
-import { EmptyState, ErrorNote, LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import { EmptyState, ErrorNote, LoadingSkeleton, RuntimeErrorNote, SamplePill } from "@/components/States";
 import { FOLDERS } from "@/lib/folders";
 import { getRoot, listChildren, type DriveItem } from "@/lib/graph";
 import { getMsal, msalConfigured } from "@/lib/msal";
@@ -348,17 +348,16 @@ export default function LiveFiles() {
         />
       ) : (
         <>
-          {state === "error" && (
-            note && (isAuthError(note) || isServerError(note)) ? (
-              <RuntimeErrorNote message={note} title="Couldn't read your folder" />
-            ) : (
-              <ErrorNote
-                title="Couldn't read your folder"
-                body={note ? `${note} Showing the sample instead.` : "Showing the sample instead."}
-              />
-            )
-          )}
+          {state === "error" && note ? (
+            <RuntimeErrorNote message={note} title="Couldn't read your folder" />
+          ) : state === "error" ? (
+            <ErrorNote
+              title="Couldn't read your folder"
+              body="Showing the sample instead."
+            />
+          ) : null}
           <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] font-medium text-muted">
+            <SamplePill />
             <span>{state === "error" ? "Could not read your folder; showing the sample instead." : "Sample folder with fictional files."}</span>
             {state === "demo" && <SignInCta />}
           </p>

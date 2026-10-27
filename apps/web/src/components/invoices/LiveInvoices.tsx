@@ -13,7 +13,7 @@ import {
 } from "@/components/invoices/PaymentDialogs";
 import { ApplyCreditDialog, RefundDialog } from "@/components/invoices/CreditDialogs";
 import SignInCta from "@/components/SignInCta";
-import { EmptyState, RuntimeErrorNote } from "@/components/States";
+import { EmptyState, LoadingSkeleton, RuntimeErrorNote, SamplePill } from "@/components/States";
 import PrintButton from "@/components/PrintButton";
 import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import { money, SAMPLE_INVOICES, STATUS_LABEL, useMsAccount } from "@/lib/invoices";
@@ -141,6 +141,7 @@ export default function LiveInvoices() {
       <div className="space-y-3">
         <p className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl bg-ground p-4 text-sm text-muted">
           <SignInCta />
+          <SamplePill />
           <span>to write invoices; they are saved in your OneDrive under 03 Sales/invoices. The list below is a fictional sample.</span>
         </p>
         <div className="flex flex-wrap gap-2 print:hidden">
@@ -237,7 +238,7 @@ export default function LiveInvoices() {
       )}
       {note && <p role="status" className="rounded-xl bg-teal-tint px-4 py-3 text-sm font-bold text-teal-dark">{note}</p>}
       {error && <RuntimeErrorNote message={error} title="Could not load invoices" />}
-      {!invoices && !error && <p className="text-sm text-muted">Loading invoices…</p>}
+      {!invoices && !error && <LoadingSkeleton lines={3} label="Loading your invoices…" />}
       {invoices && invoices.length === 0 && (
         <EmptyState
           title="No invoices yet"

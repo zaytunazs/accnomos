@@ -5,7 +5,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import PrintButton from "@/components/PrintButton";
 import SignInCta from "@/components/SignInCta";
 import { errorText, todayIso, useAccount } from "@/components/jobs/useAccount";
-import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import { EmptyState, LoadingSkeleton, RuntimeErrorNote } from "@/components/States";
 import { gbp, runtime, ukDate, type RtPayRun, type RtPayRunList, type RtStaff } from "@/lib/runtime";
 
 export const ESTIMATE = "Estimate — your payroll provider calculates the actual tax and NI";
@@ -51,9 +51,7 @@ export default function LivePayroll() {
   const [error, setError] = useState<string | null>(null);
 
   function fail(e: unknown) {
-    const msg = errorText(e);
-    if (isAuthError(msg) || isServerError(msg)) setError(msg);
-    else setNote(msg);
+    setError(errorText(e));
   }
 
   const run = list?.runs.find((r) => periodOf(r.period_start) === period) ?? null;
@@ -97,7 +95,7 @@ export default function LivePayroll() {
     act("prepare", (a) => runtime.preparePayRun(a, period), `Pay run for ${monthName(period)} prepared from timesheets.`);
   }
 
-  if (account === undefined) return <p className="text-sm text-muted">Loading pay runs…</p>;
+  if (account === undefined) return <LoadingSkeleton lines={3} label="Loading pay runs…" />;
   if (account === null)
     return (
       <p className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-border bg-white p-6 text-[15px] leading-7 text-muted">

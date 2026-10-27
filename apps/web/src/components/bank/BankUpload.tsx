@@ -5,7 +5,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { runtime } from "@/lib/runtime";
 import { READER_BACK } from "@/lib/service-status";
 import { flushUploads, queueUpload, queuedUploads, subscribeQueue } from "@/lib/upload-queue";
-import { isReaderError } from "@/components/States";
+import { isReaderError, parseRuntimeError } from "@/components/States";
 
 const MAX = 5 * 1024 * 1024; // the runtime's limit (routes_bank.py MAX_CSV)
 
@@ -75,7 +75,7 @@ export default function BankUpload({ account, onDone }: { account: AccountInfo |
           queueUpload(f);
           out.push(`${f.name}: the reader isn't answering — queued, and will resume on its own.`);
         } else {
-          out.push(`${f.name}: ${message}`);
+          out.push(`${f.name}: ${parseRuntimeError(message).detail || "the upload did not finish — try again."}`);
         }
       }
     }
@@ -86,7 +86,7 @@ export default function BankUpload({ account, onDone }: { account: AccountInfo |
   }
 
   return (
-    <section aria-labelledby="bank-upload-heading" className="flex flex-col gap-2">
+    <section id="bank-upload" aria-labelledby="bank-upload-heading" className="flex flex-col gap-2 scroll-mt-4">
       <h2 id="bank-upload-heading" className="sr-only">
         Upload a bank statement
       </h2>

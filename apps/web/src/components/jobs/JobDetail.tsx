@@ -15,7 +15,7 @@ import {
 } from "@/lib/runtime";
 import { errorText, todayIso, useAccount } from "./useAccount";
 import SignInCta from "@/components/SignInCta";
-import { RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import { LoadingSkeleton, RuntimeErrorNote } from "@/components/States";
 import WeekGrid from "./WeekGrid";
 
 const hrs = (h: number) => h.toLocaleString("en-GB", { maximumFractionDigits: 2 });
@@ -37,9 +37,7 @@ export default function JobDetail() {
   const [row, setRow] = useState({ staff_id: "", date: todayIso(), hours: "", note: "", billable: true });
 
   const fail = useCallback((err: unknown) => {
-    const msg = errorText(err);
-    if (isAuthError(msg) || isServerError(msg)) setError(msg);
-    else setNote(msg);
+    setError(errorText(err));
   }, []);
 
   const load = useCallback(async () => {
@@ -116,7 +114,24 @@ export default function JobDetail() {
         <span>to see this job.</span>
       </span>,
     );
-  if (!summary) return bare(note ?? "Loading…");
+  if (!summary && error)
+    return (
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight">Job</h1>
+        <div className="mt-2">
+          <RuntimeErrorNote message={error} title="Could not read this job" />
+        </div>
+      </div>
+    );
+  if (!summary)
+    return (
+      <div>
+        <h1 className="text-3xl font-extrabold tracking-tight">Job</h1>
+        <div className="mt-2">
+          <LoadingSkeleton lines={3} label="Loading this job…" />
+        </div>
+      </div>
+    );
 
   const job = summary.job;
   const names = Object.fromEntries(staff.map((s) => [s.id, s.role ? `${s.name} (${s.role})` : s.name]));

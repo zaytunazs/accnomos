@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { runtime, type RtBankRule, type RtBankRuleIn } from "@/lib/runtime";
+import { LoadingSkeleton, RuntimeErrorNote, parseRuntimeError } from "@/components/States";
 
 const OPS = [
   { op: "contains", label: "contains" },
@@ -200,14 +201,15 @@ export default function BankRules({ account, prefill, onPrefillUsed }: {
       onPrefillUsed();
       await reload();
     } catch (e) {
-      setFormError(`${note}: ${(e as Error).message}`);
+      setFormError(`${note}: ${parseRuntimeError((e as Error).message).detail}`);
     } finally {
       setBusy(false);
     }
   }
 
   if (rules === null) {
-    return <p className="py-6 text-center text-sm font-semibold text-muted">{error ?? "Reading your bank rules…"}</p>;
+    if (error) return <RuntimeErrorNote message={error} title="Could not read your bank rules" />;
+    return <LoadingSkeleton lines={2} label="Reading your bank rules…" />;
   }
 
   const formInitial: RtBankRuleIn = prefill && adding
@@ -239,11 +241,18 @@ export default function BankRules({ account, prefill, onPrefillUsed }: {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted">Rules run in order and the first match wins. Matching is plain code, never the AI.</p>
-      {error && (
-        <p role="alert" className="text-sm font-semibold text-warn-ink">{error}</p>
-      )}
+      {error && <RuntimeErrorNote message={error} title="Could not read your bank rules" />}
       {rules.length === 0 && !adding ? (
-        <p className="py-6 text-center text-sm font-semibold text-muted">No rules yet. Add one, or approve a bank line and choose “Create rule from this”.</p>
+        <div className="flex flex-col items-center gap-3 py-6 text-center">
+          <p className="text-sm font-semibold text-muted">No rules yet. Rules file repeat payments for you — add one, or approve a bank line and choose “Create rule from this”.</p>
+          <button
+            type="button"
+            onClick={() => { setAdding(true); setFormError(null); }}
+            className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
+          >
+            Add your first rule
+          </button>
+        </div>
       ) : (
         <ul className="flex flex-col gap-2">
           {rules.map((r, i) => (

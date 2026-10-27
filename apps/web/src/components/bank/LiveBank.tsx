@@ -7,7 +7,7 @@ import BankReconcile, { type RulePrefillFrom } from "@/components/bank/BankRecon
 import BankRules from "@/components/bank/BankRules";
 import BankUpload from "@/components/bank/BankUpload";
 import SignInCta from "@/components/SignInCta";
-import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import { EmptyState, LoadingSkeleton, RuntimeErrorNote } from "@/components/States";
 import PrintButton from "@/components/PrintButton";
 import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import { getMsal, msalConfigured } from "@/lib/msal";
@@ -476,7 +476,7 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
     window.addEventListener("keydown", close);
     return () => window.removeEventListener("keydown", close);
   }, [sheet]);
-  if (rows.length === 0) return <Empty text="No unmatched bank lines." />;
+  if (rows.length === 0) return <Empty text="No unmatched bank lines. Upload a statement and anything new appears here for you to settle." />;
   function run(line: RtBankLine, action: RtUnmatchedAction) {
     setSheet(null);
     setOpenMenu(null);
@@ -632,7 +632,7 @@ function UndoButton({ line, busy, act, wide }: { line: RtBankLine; busy: string 
 }
 
 function Done({ rows, busy, act }: { rows: RtBankLine[]; busy: string | null; act: Act }) {
-  if (rows.length === 0) return <Empty text="Nothing settled yet." />;
+  if (rows.length === 0) return <Empty text="Nothing settled yet. Confirm a match or settle an unmatched line and it shows here." />;
   return (
     <div className="flex flex-col gap-3">
       {/* Phone: stacked cards. Wider screens: the table. */}
@@ -715,8 +715,7 @@ export default function LiveBank() {
       setState("live");
     } catch (e) {
       const msg = (e as Error).message;
-      if (isAuthError(msg) || isServerError(msg)) setError(msg);
-      else setNote(msg);
+      setError(msg);
       setState("error");
     }
   }, []);
@@ -749,9 +748,7 @@ export default function LiveBank() {
         setChanged(true);
       })
       .catch((e: Error) => {
-        const msg = e.message;
-        if (isAuthError(msg) || isServerError(msg)) setError(msg);
-        else setNote(msg);
+        setError(e.message);
       })
       .finally(async () => {
         await refresh(account);
@@ -782,10 +779,12 @@ export default function LiveBank() {
   }
   if (state === "checking" || state === "loading" || !data) {
     if (state === "error" && error) return <RuntimeErrorNote message={error} title="Could not read your bank lines" />;
+    if (state === "error") return <RuntimeErrorNote message={note ?? "Could not read your bank lines."} title="Could not read your bank lines" />;
     return (
-      <p className="rounded-2xl border border-border bg-white p-4 text-sm font-semibold text-muted">
-        {state === "error" ? `Could not read your bank lines: ${note}` : state === "loading" ? "Reading your bank lines…" : "Checking sign-in…"}
-      </p>
+      <LoadingSkeleton
+        lines={4}
+        label={state === "loading" ? "Reading your bank lines…" : "Checking sign-in…"}
+      />
     );
   }
 
@@ -795,7 +794,7 @@ export default function LiveBank() {
       setRulePrefill(await runtime.bank.ruleDraft(account, from.lineId, from));
       setTab("rules");
     } catch (e) {
-      setNote((e as Error).message);
+      setError((e as Error).message);
     }
   }
 
@@ -834,6 +833,15 @@ export default function LiveBank() {
         <EmptyState
           title="No statements yet"
           body="Each payment on your statement appears here to check against your books — matching never posts anything."
+          action={
+            <button
+              type="button"
+              onClick={() => document.getElementById("bank-upload")?.scrollIntoView({ behavior: "smooth", block: "center" })}
+              className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
+            >
+              Upload your first statement
+            </button>
+          }
         />
       ) : (
         <>

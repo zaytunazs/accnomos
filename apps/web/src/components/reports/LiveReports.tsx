@@ -7,7 +7,7 @@ import { getMsal, msalConfigured } from "@/lib/msal";
 import { loadBusiness } from "@/lib/business";
 import PrintButton from "@/components/PrintButton";
 import SignInCta from "@/components/SignInCta";
-import { LoadingSkeleton, RuntimeErrorNote } from "@/components/States";
+import { LoadingSkeleton, RuntimeErrorNote, SamplePill, parseRuntimeError } from "@/components/States";
 import VatPeriodPicker from "@/components/vat/VatPeriodPicker";
 import {
   runtime,
@@ -527,7 +527,7 @@ export default function LiveReports() {
       const r = await runtime.reports.export(account, { report: "all", ...(span ? { from: span.start, to: span.end } : {}) });
       setSaved({ text: `Saved to ${r.path} in your OneDrive (${r.sheets.filter((s) => s !== "About").join(", ")}).`, url: r.web_url });
     } catch (e) {
-      setSaved({ text: `Could not save the report: ${(e as Error).message}`, url: null });
+      setSaved({ text: `Could not save the report: ${parseRuntimeError((e as Error).message).detail || "try again."}`, url: null });
     } finally {
       setExporting(false);
     }
@@ -540,6 +540,7 @@ export default function LiveReports() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-3 print:hidden">
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] font-medium text-muted">
+            <SamplePill />
             <span>A mock-up of a business&apos;s reports ({samplePl.label}). Fictional figures.</span>
             <SignInCta />
           </p>

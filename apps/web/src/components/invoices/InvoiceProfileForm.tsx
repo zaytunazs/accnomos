@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
+import { parseRuntimeError } from "@/components/States";
 import { fieldArea, fieldInput, fieldLabel, primaryButton } from "@/components/invoices/Modal";
 import { loadBusiness } from "@/lib/business";
 import { useMsAccount } from "@/lib/invoices";
@@ -170,7 +171,7 @@ export default function InvoiceProfileForm({ card, heading }: { card: string; he
         </form>
       )}
       {note && <p role="status" className="mt-3 text-sm font-bold text-teal-dark">{note}</p>}
-      {error && <p role="alert" className="mt-3 text-sm font-bold text-warn-ink">{error}</p>}
+      {error && <p role="alert" className="mt-3 text-sm font-bold text-warn-ink">{parseRuntimeError(error).detail || "Your invoice details did not save — try again."}</p>}
     </section>
   );
 }

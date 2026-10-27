@@ -6,7 +6,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import SignInCta from "@/components/SignInCta";
-import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import { EmptyState, LoadingSkeleton, RuntimeErrorNote, SamplePill } from "@/components/States";
 import { runtime, type RtAuditEntry } from "@/lib/runtime";
 import { SAMPLE_AUDIT_DAY, sampleAudit } from "@/lib/sample-audit";
 
@@ -243,14 +243,13 @@ export default function LiveAudit() {
 
       {sample && (
         <p className="flex flex-wrap items-center gap-x-3 gap-y-2 text-[13px] font-medium text-muted">
+          <SamplePill />
           <span>Sample day at a fictional company: {dayHeading(SAMPLE_AUDIT_DAY)}.</span>
           <SignInCta />
         </p>
       )}
-      {state === "error" && note && (isAuthError(note) || isServerError(note)) ? (
+      {state === "error" && note ? (
         <RuntimeErrorNote message={note} title="Could not read your audit trail" />
-      ) : state === "error" && note ? (
-        <p role="alert" className="text-sm font-semibold text-warn-ink">Could not read your audit trail: {note}</p>
       ) : null}
       {from > to && !sample && <p role="alert" className="text-sm font-semibold text-warn-ink">The From day is after the To day.</p>}
       {tooWide && !sample && (
@@ -263,11 +262,28 @@ export default function LiveAudit() {
       )}
 
       {state === "checking" || state === "loading" ? (
-        <p className="rounded-2xl border border-border bg-white p-4 text-sm font-semibold text-muted">
-          {state === "loading" ? "Reading your audit trail…" : "Checking sign-in…"}
-        </p>
+        <LoadingSkeleton
+          lines={4}
+          label={state === "loading" ? "Reading your audit trail…" : "Checking sign-in…"}
+        />
       ) : state !== "error" && shown.length === 0 ? (
-        <EmptyState title="Nothing in this range" body="Try a longer range, or Everyone and Everything." />
+        <EmptyState
+          title="Nothing in this range"
+          body="No audit lines match these filters — widen the range or clear the filters to see everything."
+          action={
+            <button
+              type="button"
+              onClick={() => {
+                setWho("all");
+                setKind("");
+                setFrom(daysBefore(to, MAX_DAYS));
+              }}
+              className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark"
+            >
+              Show everything
+            </button>
+          }
+        />
       ) : (
         <ol aria-label="Audit trail" className="flex flex-col gap-4">
           {days.map(([day, list]) => (
