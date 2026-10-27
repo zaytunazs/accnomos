@@ -1,27 +1,21 @@
-# Task: Autopilot L1 — "Always do this for <supplier>" rules and auto-approval with audit
+# Task: Voice → Ask (Muse Voice Transcribe) in runtime + web
 
-Accnomos monorepo (public; UK English; no secrets; stateless runtime; AI proposes, user approves, code calculates).
-Read first: `README.md`, `docs/DEV.md`, `services/runtime/app/{routes_books.py,approve.py,inbox.py,pipeline.py,books.py,checks.py}`,
-`packages/ledger/src/accnomos_ledger/events.py`, `apps/web/src/components/review/*`, `apps/web/src/lib/runtime.ts`.
-
-## Goal
-When the user approves a proposal with **"Always do this for <supplier>"** ticked, Accnomos saves a rule in the user's folder
-(`_System/Rules/rules.json`, append/replace by supplier key). On later scans, a proposal that matches a rule **and** passes all
-code checks (no warnings) is auto-approved and posted, with an audit line, and shown in Review under "Approved by Autopilot — undo".
-Nothing is ever auto-approved when a check warns, when the amount is > 2× the rule's typical amount, or when the supplier's VAT number differs.
+Accnomos monorepo (public; UK English; no secrets). Read first: `services/runtime/app/{routes_ask.py (if present on main — otherwise
+the branch claude/ask-books may not be merged yet: implement `/ask/voice` so it calls the same `answer()` once it exists, with a thin
+stub that returns the transcript if `/books/ask` is unavailable)}`, `ai/config.py`, `apps/web/src/app/ask/page.tsx` and components.
+Research notes (verify against https://dev.meta.ai docs before coding): `POST https://api.meta.ai/v1/asr/transcribe` multipart with a
+`request` JSON part and an `audio` part; WAV mono 16-bit at 16 or 24 kHz; ≤ 32 MB, ≤ 10 min; model `muse-voice-transcribe-1.0`.
 
 ## Runtime
-- Rule schema: `{ supplier_key (normalised name), category, vat_code, side, typical_gross_pence, vrn|null, created_at, created_from_proposal_id, hits }`.
-- `POST /books/approve/{id}` accepts `{ "remember": true }` → writes/updates the rule.
-- Scan path: after proposals are built, evaluate rules (`app/autopilot.py`): decide `auto_approve: bool` with a `reason` list; auto-approved
-  ones are posted via the existing approve code path with `approved_by: "autopilot"` and recorded in `_System/Audit/autopilot/<yyyy-mm>.jsonl`.
-- `POST /books/undo/{event_id}`: append a reversing ledger event (never delete) and mark the proposal back to pending.
-- `GET /books/rules` and `DELETE /books/rules/{supplier_key}`.
-- Tests with fake storage: rule creation, match + auto-approve, each refusal reason, undo reversal balances.
+- `POST /ask/voice` multipart: `audio` (webm/ogg/m4a/wav from the browser or phone) + optional `period`. Steps: convert to WAV mono
+  16 kHz with `ffmpeg` (check availability at startup; if missing, return 503 with a clear message and document it in DEV.md and the
+  Dockerfile — add ffmpeg to `deploy/Dockerfile.runtime`), call Muse Voice with the user's Meta key (header `X-Meta-Api-Key`; in
+  `local` mode return 400 "voice needs a Meta API key"), then run the Ask pipeline with the transcript. Response adds `transcript`.
+- Tests: ffmpeg conversion on a generated 1-second tone (skip if ffmpeg missing), transcribe client with a stubbed HTTP, error mapping.
 
 ## Web
-- Review card: the "Always do this for X" checkbox is wired to `remember`. A section "Approved by Autopilot (n)" with Undo buttons.
-- Settings: "Autopilot rules" list with remove buttons, and a master switch (localStorage) that sends `X-Autopilot: off` to skip auto-approval.
-- README row + `docs/AUTOPILOT.md` (what it does, what it never does). `pnpm run build` passes.
+- Ask page: a hold-to-talk mic button (MediaRecorder → webm/opus), level indicator, "Transcribing…" state, transcript shown as the
+  user's bubble, then the normal answer rendering. Disabled with a tooltip in local-AI mode. No new dependencies. `pnpm run build` passes.
+- README row: "Voice ask (Muse Voice Transcribe) — key mode only".
 
-Commit in small steps; do not push. Finish with `git log --oneline -8` and five lines a human must verify.
+Commit in small steps; do not push. Finish with `git log --oneline -8` and five lines a human must verify (browser mic test).
