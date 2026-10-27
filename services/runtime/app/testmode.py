@@ -60,7 +60,7 @@ from app.schemas import CATEGORIES, AskModelOutput
 
 log = logging.getLogger("accnomos.testmode")
 
-DEFAULT_TODAY = "2026-10-27"  # VAT and Ask default to the last complete quarter: Jul-Sep 2026, the gold set's
+DEFAULT_TODAY = "2026-10-27"  # the gold set's quarter (Jul-Sep 2026) is the one still to file; VAT and Ask default to Oct-Dec
 MAIL_GOLD = ("001_standard.json", "011_standard.json", "022_standard.json")  # emailed in by the seeded suppliers
 CALENDAR = "Accnomos"
 SAMPLE = "SAMPLE — FICTIONAL COMPANY"
