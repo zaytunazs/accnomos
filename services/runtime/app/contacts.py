@@ -411,7 +411,7 @@ async def contact_book(books: Books, ledger: Ledger | None = None) -> tuple[list
 async def refresh(books: Books, user: str | None = None) -> tuple[list[Contact], Ledger]:
     contacts, ledger, _ = await contact_book(books)
     await save_contacts(books, contacts)
-    await books.audit(f"user:{user}" if user else "system", "contacts_refreshed", {"contacts": len(contacts)})
+    await books.audit(f"user:{user}" if user else "agent:contacts", "contacts_refreshed", {"contacts": len(contacts)})
     return contacts, ledger
 
 

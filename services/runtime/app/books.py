@@ -275,17 +275,18 @@ class Books:
     # Audit, ledger, cursors
     # ------------------------------------------------------------------ #
 
-    async def audit(self, actor: str, action: str, refs: dict[str, Any]) -> None:
-        """Append one JSON line to _System/audit/{yyyy-mm}.jsonl."""
+    async def audit(self, actor: str, action: str, refs: dict[str, Any], folder: str = AUDIT) -> None:
+        """Append one line {"ts", "actor", "action", "refs"} to {folder}/{yyyy-mm}.jsonl (_System/audit by default).
+
+        `actor` is "user:{email}" for something a person did, or "agent:{name}" for something done for them.
+        """
         ts = now()
         line = json.dumps({"ts": ts.isoformat(), "actor": actor, "action": action, "refs": refs}, ensure_ascii=False)
-        await self._update(f"{AUDIT}/{_month(ts)}.jsonl", lambda old: (old or b"") + line.encode() + b"\n")
+        await self._update(f"{folder}/{_month(ts)}.jsonl", lambda old: (old or b"") + line.encode() + b"\n")
 
-    async def audit_autopilot(self, entry: dict[str, Any]) -> None:
-        """Append one JSON line to _System/audit/autopilot/{yyyy-mm}.jsonl."""
-        ts = now()
-        line = json.dumps({"ts": ts.isoformat(), **entry}, ensure_ascii=False)
-        await self._update(f"{AUTOPILOT_AUDIT}/{_month(ts)}.jsonl", lambda old: (old or b"") + line.encode() + b"\n")
+    async def audit_autopilot(self, actor: str, action: str, refs: dict[str, Any]) -> None:
+        """The same line in _System/audit/autopilot/{yyyy-mm}.jsonl: Autopilot's own record, with its reasons."""
+        await self.audit(actor, action, refs, folder=AUTOPILOT_AUDIT)
 
     async def post_event(self, event: LedgerEvent) -> str:
         """Write an immutable ledger event and return its path. Refuses to overwrite."""

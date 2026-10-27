@@ -14,6 +14,7 @@ from typing import Any
 
 from accnomos_ledger.events import LedgerEvent, Line, VatCode
 
+from app.autopilot import ACTOR as AUTOPILOT_ACTOR
 from app.autopilot import AUTOPILOT, rule_from_proposal, save_rule
 from app.books import NEEDS_A_LOOK, Books, Rule, RuleMatch, now
 from app.checks import decide
@@ -173,7 +174,7 @@ async def _vehicle_tag(books: Books, p: Proposal, vehicle_id: Any) -> str | None
 
 
 def _actor(user: str) -> str:
-    return AUTOPILOT if user == AUTOPILOT else f"user:{user}"
+    return AUTOPILOT_ACTOR if user == AUTOPILOT else f"user:{user}"
 
 
 async def _remember(books: Books, p: Proposal, user: str) -> Rule | None:
@@ -234,8 +235,8 @@ async def undo(books: Books, event_id: str, user: str) -> tuple[LedgerEvent, Pro
         "originally_approved_by": original.approved_by,
     })
     if original.approved_by == AUTOPILOT:
-        await books.audit_autopilot({
-            "action": "undone", "by": user, "event": event_id, "reversal": reversal.id, "proposal": original.proposal_id,
+        await books.audit_autopilot(f"user:{user}", "undone", {
+            "event": event_id, "reversal": reversal.id, "proposal": original.proposal_id,
         })
     await books.rebuild_safely(user)
     return reversal, p
