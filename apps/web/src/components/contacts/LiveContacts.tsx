@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
+import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import { markContactsImported } from "@/components/home/SetupChecklist";
 import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
 import {
@@ -59,6 +60,14 @@ function ytd(c: RtContactRow): string {
 
 function lastActivity(c: RtContactRow): string {
   return c.totals.last_activity ? `Last active ${ukDate(c.totals.last_activity)}` : "No activity yet";
+}
+
+/** Contacts with their balances, money exactly as the runtime gave it (signed pence). */
+function contactRows(list: RtContactRow[]): CsvValue[][] {
+  return [
+    ["name", "kind", "email", "phone", "vrn", "balance_pence", "ytd_sales_net_pence", "ytd_purchases_net_pence"],
+    ...list.map((c) => [c.name, c.kind, c.email, c.phone, c.vrn, c.totals.balance_pence, c.totals.ytd_sales_net_pence, c.totals.ytd_purchases_net_pence]),
+  ];
 }
 
 const card = "rounded-2xl border border-border bg-white";
@@ -790,6 +799,15 @@ export default function LiveContacts() {
             className="shrink-0 rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-60">
             Import from Outlook
           </button>
+          {filtered.length > 0 && (
+            <button
+              type="button"
+              onClick={() => downloadCsv(csvFilename("contacts"), contactRows(filtered), { sample: !live })}
+              className="shrink-0 rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold print:hidden"
+            >
+              Export CSV
+            </button>
+          )}
         </div>
       </div>
 
