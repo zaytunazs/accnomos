@@ -6,7 +6,9 @@ import Greeting from "@/components/home/Greeting";
 import { HomeData } from "@/components/home/HomeData";
 import InboxTriage from "@/components/home/InboxTriage";
 import Pitch from "@/components/home/Pitch";
+import HomeError from "@/components/home/HomeError";
 import PlanToday from "@/components/home/PlanToday";
+import SetupChecklist from "@/components/home/SetupChecklist";
 import Tiles from "@/components/home/Tiles";
 import TodosTile from "@/components/home/TodosTile";
 
@@ -29,7 +31,9 @@ export default function HomePage() {
       {/* Greeting, Tiles, Deadlines and Activity share one GET /books/dashboard (the sample when signed out). */}
       <HomeData>
         <Greeting />
+        <HomeError />
         <AskBar />
+        <SetupChecklist />
         <PlanToday />
         <div className="grid grid-cols-1 items-start gap-3 min-[900px]:grid-cols-[2fr_1fr]">
           <InboxTriage />
