@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import ReadyPanel from "@/components/onboarding/ReadyPanel";
 import ConnectSteps from "@/components/connect/ConnectSteps";
 
@@ -12,9 +11,7 @@ export default function ReadyPage() {
       <p className="mt-2 text-[15px] leading-relaxed text-muted">
         Your books live in your OneDrive and your assistants are set. Here&apos;s what happens next.
       </p>
-      <Suspense fallback={<p className="mt-6 text-sm text-muted">Loading…</p>}>
-        <ReadyPanel />
-      </Suspense>
+      <ReadyPanel />
     </div>
   );
 }

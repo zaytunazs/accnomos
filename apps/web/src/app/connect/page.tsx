@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import ConnectMicrosoft from "@/components/ConnectMicrosoft";
 import ConnectSteps from "@/components/connect/ConnectSteps";
 
@@ -13,9 +12,7 @@ export default function ConnectPage() {
         Your books will live in a folder in your own OneDrive. Accnomos keeps nothing on its servers: sign in
         with Microsoft, and we create the folder in your account.
       </p>
-      <Suspense fallback={<p className="mt-6 text-sm text-[#4B5159]">Loading…</p>}>
-        <ConnectMicrosoft />
-      </Suspense>
+      <ConnectMicrosoft />
     </div>
   );
 }

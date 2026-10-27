@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense } from "react";
-import { useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export const CONNECT_STEPS = [
   { n: 1, label: "Sign in", href: "/connect" },
@@ -20,11 +19,22 @@ export function withNext(href: string, next: string | null): string {
   return `${href}?next=${encodeURIComponent(next)}`;
 }
 
-/** The validated ?next= value, or null when absent or not a same-site path. */
+/**
+ * The validated ?next= value, or null when absent or not a same-site path.
+ * Read from window.location on the client (no useSearchParams), so this hook
+ * works on any page — including ones reused outside the wizard, like Settings —
+ * without needing a Suspense boundary in a static export.
+ */
 export function useNextParam(): string | null {
-  const raw = useSearchParams().get("next");
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return null;
-  return raw;
+  const [next, setNext] = useState<string | null>(null);
+  useEffect(() => {
+    // Defer to avoid a synchronous setState in the effect body.
+    queueMicrotask(() => {
+      const raw = new URLSearchParams(window.location.search).get("next");
+      setNext(raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : null);
+    });
+  }, []);
+  return next;
 }
 
 function StepsList({ current, next }: { current: number; next: string | null }) {
@@ -80,9 +90,5 @@ function StepsWithNext({ current }: { current: number }) {
 
 /** The four-step progress bar shared by every /connect page. Current step carries aria-current. */
 export default function ConnectSteps({ current }: { current: 1 | 2 | 3 | 4 }) {
-  return (
-    <Suspense fallback={<StepsList current={current} next={null} />}>
-      <StepsWithNext current={current} />
-    </Suspense>
-  );
+  return <StepsWithNext current={current} />;
 }

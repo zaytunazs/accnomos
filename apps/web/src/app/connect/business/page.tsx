@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import BusinessForm from "@/components/onboarding/BusinessForm";
 import ConnectSteps from "@/components/connect/ConnectSteps";
 
@@ -12,9 +11,7 @@ export default function BusinessPage() {
       <p className="mt-2 text-[15px] leading-relaxed text-muted">
         This shapes your VAT return and where your books live. It stays on this device.
       </p>
-      <Suspense fallback={<p className="mt-6 text-sm text-muted">Loading…</p>}>
-        <BusinessForm />
-      </Suspense>
+      <BusinessForm />
     </div>
   );
 }

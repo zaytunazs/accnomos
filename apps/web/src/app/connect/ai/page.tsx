@@ -1,4 +1,3 @@
-import { Suspense } from "react";
 import ChooseAi from "@/components/ChooseAi";
 import ConnectSteps from "@/components/connect/ConnectSteps";
 
@@ -13,9 +12,7 @@ export default function ChooseAiPage() {
         Either way, we never see your data. The key or the address stays on this device and goes only to your
         runtime.
       </p>
-      <Suspense fallback={<p className="mt-6 text-sm text-[#4B5159]">Loading…</p>}>
-        <ChooseAi />
-      </Suspense>
+      <ChooseAi />
     </div>
   );
 }
