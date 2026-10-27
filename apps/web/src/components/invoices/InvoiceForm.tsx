@@ -7,7 +7,15 @@ import { PreviewSendDialog } from "@/components/invoices/InvoiceDialogs";
 import { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
 import { linePence, liveTotals, money, parsePounds, poundsInput, thousandths, todayIso, useMsAccount, VAT_CODES } from "@/lib/invoices";
 import { RuntimeErrorNote } from "@/components/States";
-import { runtime, type RtInvoice, type RtInvoiceCustomer, type RtInvoiceDraft, type RtSalesVatCode } from "@/lib/runtime";
+import {
+  INVOICE_DRAFT_KEY,
+  runtime,
+  type JobInvoiceDraft,
+  type RtInvoice,
+  type RtInvoiceCustomer,
+  type RtInvoiceDraft,
+  type RtSalesVatCode,
+} from "@/lib/runtime";
 
 interface LineForm {
   key: number;
@@ -16,16 +24,32 @@ interface LineForm {
   unit: string;
   price: string; // pounds as typed
   vat_code: RtSalesVatCode;
+  entry_ids: string[]; // job hours this line bills; marked invoiced when the invoice is sent
 }
 
 const EMPTY_CUSTOMER: RtInvoiceCustomer = { contact_id: null, name: "", email: null, address: null, vrn: null };
 let nextKey = 1;
-const blankLine = (): LineForm => ({ key: nextKey++, description: "", quantity: "1", unit: "", price: "", vat_code: "S" });
+const blankLine = (): LineForm => ({ key: nextKey++, description: "", quantity: "1", unit: "", price: "", vat_code: "S", entry_ids: [] });
 
-/** /invoices/new, and /invoices/new?id=INV-0001 to change a draft. Sums are previews; the runtime prices it on save. */
+/** The lines and customer a job's "Invoice these hours" left in sessionStorage, or null. */
+function readJobDraft(): JobInvoiceDraft | null {
+  try {
+    const d = JSON.parse(window.sessionStorage.getItem(INVOICE_DRAFT_KEY) ?? "null") as JobInvoiceDraft | null;
+    return d?.proposal?.lines?.length ? d : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * /invoices/new, /invoices/new?id=INV-0001 to change a draft, and /invoices/new?from=job for a job's unbilled hours
+ * (prefilled from INVOICE_DRAFT_KEY, all editable). Sums are previews; the runtime prices it on save.
+ */
 export default function InvoiceForm() {
   const router = useRouter();
-  const editId = useSearchParams().get("id");
+  const params = useSearchParams();
+  const editId = params.get("id");
+  const fromJob = !editId && params.get("from") === "job";
   const { account, ready } = useMsAccount();
   const [customers, setCustomers] = useState<RtInvoiceCustomer[]>([]);
   const [customer, setCustomer] = useState<RtInvoiceCustomer>(EMPTY_CUSTOMER);
@@ -40,10 +64,35 @@ export default function InvoiceForm() {
   const [saved, setSaved] = useState<RtInvoice | null>(null);
   const [preview, setPreview] = useState(false);
   const [locked, setLocked] = useState<string | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobNote, setJobNote] = useState<{ name: string; warnings: string[] } | null>(null);
+
+  useEffect(() => {
+    if (!fromJob) return;
+    const d = readJobDraft();
+    // Deferred to avoid a synchronous setState in the effect body.
+    queueMicrotask(() => {
+      if (!d) return setError("No job hours to invoice here. Open the job and press Invoice these hours again.");
+      setJobId(d.proposal.job_id);
+      setJobNote({ name: d.job_name, warnings: d.proposal.warnings });
+      setCustomer({ ...EMPTY_CUSTOMER, contact_id: d.proposal.customer_id, name: d.customer_name ?? "" });
+      setLines(d.proposal.lines.map((l) => ({
+        key: nextKey++, description: l.description, quantity: String(l.qty), unit: l.unit === "hour" ? "hours" : l.unit,
+        price: poundsInput(l.unit_price_pence), vat_code: l.vat_code as RtSalesVatCode, entry_ids: l.entry_ids,
+      })));
+    });
+  }, [fromJob]);
 
   useEffect(() => {
     if (!account) return;
-    runtime.invoiceCustomers(account).then(setCustomers).catch(() => setCustomers([]));
+    runtime.invoiceCustomers(account).then((cs) => {
+      setCustomers(cs);
+      // A job's customer arrives as a contact id and name: fill in the rest from the contact book.
+      setCustomer((c) => {
+        const known = c.contact_id && !c.email && !c.address ? cs.find((x) => x.contact_id === c.contact_id) : undefined;
+        return known ? { ...known } : c;
+      });
+    }).catch(() => setCustomers([]));
     runtime.invoiceProfile(account).then((p) => setTerms(p.terms_days)).catch(() => setTerms(null));
     if (!editId) return;
     runtime.invoice(account, editId).then((inv) => {
@@ -54,9 +103,10 @@ export default function InvoiceForm() {
       setDueDate(inv.due_date);
       setReference(inv.reference ?? "");
       setNotes(inv.notes ?? "");
+      setJobId(inv.job_id);
       setLines(inv.lines.map((l) => ({
         key: nextKey++, description: l.description, quantity: String(l.quantity), unit: l.unit ?? "",
-        price: poundsInput(l.unit_price_pence), vat_code: l.vat_code,
+        price: poundsInput(l.unit_price_pence), vat_code: l.vat_code, entry_ids: l.timesheet_entry_ids ?? [],
       })));
     }).catch((e) => setError((e as Error).message));
   }, [account, editId]);
@@ -84,13 +134,17 @@ export default function InvoiceForm() {
       if (thousandths(l.quantity) === null || thousandths(l.quantity) === 0) return `Line ${n + 1}: quantity must be a number above 0 (up to 3 decimals).`;
       const p = parsePounds(l.price);
       if (p === null) return `Line ${n + 1}: unit price must be pounds and pence, e.g. 45.00.`;
-      out.push({ description: l.description.trim(), quantity: l.quantity.trim(), unit: l.unit.trim() || null, unit_price_pence: p, vat_code: l.vat_code });
+      out.push({
+        description: l.description.trim(), quantity: l.quantity.trim(), unit: l.unit.trim() || null, unit_price_pence: p, vat_code: l.vat_code,
+        timesheet_entry_ids: l.entry_ids,
+      });
     }
     if (!out.length) return "Add at least one line.";
     const clean = (s: string | null) => (s && s.trim()) || null;
     return {
       customer: { ...customer, name: customer.name.trim(), email: clean(customer.email), address: clean(customer.address), vrn: clean(customer.vrn) },
       issue_date: issueDate || null, due_date: dueDate || null, lines: out, reference: clean(reference), notes: clean(notes),
+      job_id: jobId,
     };
   }
 
@@ -103,6 +157,13 @@ export default function InvoiceForm() {
     setError(null);
     try {
       const inv = saved ? await runtime.updateInvoice(account, saved.number, draft) : await runtime.createInvoice(account, draft);
+      if (fromJob && !saved) {
+        try {
+          window.sessionStorage.removeItem(INVOICE_DRAFT_KEY); // the draft now holds the hours
+        } catch {
+          /* storage unavailable: nothing to clear */
+        }
+      }
       setSaved(inv);
       setDueDate(inv.due_date);
       if (thenPreview) setPreview(true);
@@ -181,6 +242,17 @@ export default function InvoiceForm() {
 
       <section className={card} aria-labelledby="inv-lines">
         <h2 id="inv-lines" className="text-[17px] font-extrabold">Lines</h2>
+        {jobId && lines.some((l) => l.entry_ids.length > 0) && (
+          <div className="mt-2 rounded-xl bg-teal-tint p-3 text-sm">
+            <p>
+              Hours from {jobNote ? <strong>{jobNote.name}</strong> : "a job"}. When this invoice is sent, the hours on these
+              lines are marked invoiced with its number. Removing a line leaves its hours unbilled.
+            </p>
+            {jobNote?.warnings.map((w) => (
+              <p key={w} className="mt-1 font-semibold text-warn-ink">{w}</p>
+            ))}
+          </div>
+        )}
         <div className="mt-3 space-y-3">
           {lines.map((l, n) => {
             const p = linePence(priced[n]);
