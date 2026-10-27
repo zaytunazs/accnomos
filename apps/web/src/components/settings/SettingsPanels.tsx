@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import ChooseAi from "@/components/ChooseAi";
 import OutlookIntake from "@/components/settings/OutlookIntake";
 import AutopilotRules from "@/components/settings/AutopilotRules";
 import StaffEditor from "@/components/settings/StaffEditor";
@@ -10,9 +11,38 @@ import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
 import WorkingHours from "@/components/settings/WorkingHours";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
+type GroupId = "connection" | "ai" | "automation" | "business";
 
 const AUTOPILOT_KEY = "accnomos.autopilot";
 const AI_KEY = "accnomos.ai";
+const GROUP_KEY = "accnomos.settings.group";
+
+const GROUPS: { id: GroupId; label: string }[] = [
+  { id: "connection", label: "Connection" },
+  { id: "ai", label: "AI" },
+  { id: "automation", label: "Automation" },
+  { id: "business", label: "Business" },
+];
+
+/** Every deep link target stays working: the hash decides which tab opens. */
+const HASH_GROUP: Record<string, GroupId> = {
+  "settings-connections": "connection",
+  "settings-audit": "connection",
+  "settings-disconnect": "connection",
+  "settings-ai": "ai",
+  "settings-verifier": "ai",
+  agent: "ai",
+  lmodel: "ai",
+  apikey: "ai",
+  "settings-autopilot": "automation",
+  "settings-rules": "automation",
+  "settings-intake": "automation",
+  "settings-business-hours": "automation",
+  "settings-vat-periods": "business",
+  "invoice-profile": "business",
+  "invoice-profile-title": "business",
+  "settings-staff": "business",
+};
 
 const AUTOPILOT_OPTIONS: { value: AutopilotLevel; label: string; description: string }[] = [
   { value: "L0", label: "L0 Suggest", description: "Nothing automatic; everything is a proposal" },
@@ -28,11 +58,34 @@ function readLocalStorage(key: string): string | null {
   }
 }
 
+function writeLocalStorage(key: string, value: string): void {
+  try {
+    window.localStorage.setItem(key, value);
+  } catch {
+    /* storage unavailable — the choice lives for this page only */
+  }
+}
+
 export default function SettingsPanels() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
   const [aiSummary, setAiSummary] = useState("Not set up");
   const [autopilot, setAutopilot] = useState<AutopilotLevel>("L1");
   const [disconnected, setDisconnected] = useState(false);
+  const [group, setGroup] = useState<GroupId>("connection");
+  const pendingHash = useRef<string | null>(null);
+
+  function choose(g: GroupId) {
+    setGroup(g);
+    writeLocalStorage(GROUP_KEY, g);
+  }
+
+  function openHashTarget() {
+    const raw = window.location.hash.replace(/^#/, "");
+    const g = (raw && HASH_GROUP[raw]) || null;
+    if (!g) return;
+    pendingHash.current = raw;
+    choose(g);
+  }
 
   useEffect(() => {
     // Defer to avoid synchronous setState in the effect body.
@@ -62,16 +115,46 @@ export default function SettingsPanels() {
 
       const rawAuto = readLocalStorage(AUTOPILOT_KEY);
       if (rawAuto === "L0" || rawAuto === "L1" || rawAuto === "L2") setAutopilot(rawAuto);
+
+      const rawHash = window.location.hash.replace(/^#/, "");
+      const hashed = (rawHash && HASH_GROUP[rawHash]) || null;
+      if (rawHash && hashed) pendingHash.current = rawHash;
+      const stored = readLocalStorage(GROUP_KEY);
+      const remembered =
+        stored === "connection" || stored === "ai" || stored === "automation" || stored === "business"
+          ? stored
+          : null;
+      setGroup(hashed ?? remembered ?? "connection");
     });
+    window.addEventListener("hashchange", openHashTarget);
+    return () => window.removeEventListener("hashchange", openHashTarget);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // After the right tab is showing, bring the deep-linked section into view.
+  useEffect(() => {
+    if (!pendingHash.current) return;
+    const el = document.getElementById(pendingHash.current);
+    pendingHash.current = null;
+    el?.scrollIntoView({ block: "start" });
+  });
+
+  function onTabKeys(e: React.KeyboardEvent<HTMLDivElement>) {
+    if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Home" && e.key !== "End") return;
+    e.preventDefault();
+    const order = GROUPS.map((g) => g.id);
+    let i = order.indexOf(group);
+    if (e.key === "ArrowRight") i = (i + 1) % order.length;
+    else if (e.key === "ArrowLeft") i = (i - 1 + order.length) % order.length;
+    else if (e.key === "Home") i = 0;
+    else i = order.length - 1;
+    choose(order[i]);
+    document.getElementById(`tab-${order[i]}`)?.focus();
+  }
 
   function chooseAutopilot(level: AutopilotLevel) {
     setAutopilot(level);
-    try {
-      window.localStorage.setItem(AUTOPILOT_KEY, level);
-    } catch {
-      /* storage unavailable — level lives for this page only */
-    }
+    writeLocalStorage(AUTOPILOT_KEY, level);
   }
 
   function disconnect() {
@@ -94,113 +177,199 @@ export default function SettingsPanels() {
   const heading = "text-[17px] font-extrabold text-ink";
 
   return (
-    <div className="mt-6 space-y-4">
-      <section aria-labelledby="settings-connections" className={card}>
-        <h2 id="settings-connections" className={heading}>
-          Connections
-        </h2>
-        <dl className="mt-3 divide-y divide-border">
-          <div className="flex items-center justify-between gap-3 py-3">
-            <dt className="text-[15px] font-bold text-ink">Microsoft</dt>
-            <dd className="text-sm text-muted">
-              {signedIn === null ? "Checking…" : signedIn ? "Signed in" : "Not signed in"}
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-3 py-3">
-            <dt className="text-[15px] font-bold text-ink">AI</dt>
-            <dd className="text-sm text-muted">{aiSummary}</dd>
-          </div>
-          <div className="flex items-center justify-between gap-3 py-3">
-            <dt className="text-[15px] font-bold text-ink">HMRC</dt>
-            <dd className="flex items-center gap-3">
-              <span className="text-sm text-muted">Sandbox · not connected</span>
-              <button
-                type="button"
-                disabled
-                className="h-10 rounded-xl border border-border bg-ground px-4 text-sm font-bold text-muted disabled:opacity-60"
-              >
-                Connect HMRC (sandbox)
-              </button>
-            </dd>
-          </div>
-          <div className="flex items-center justify-between gap-3 py-3">
-            <dt className="text-[15px] font-bold text-ink">Google Drive</dt>
-            <dd>
-              <span className="rounded-full bg-ground px-2 py-0.5 text-[11px] font-extrabold text-muted">
-                Coming next
-              </span>
-            </dd>
-          </div>
-        </dl>
-      </section>
+    <div className="mt-6">
+      <div
+        role="tablist"
+        aria-label="Settings groups"
+        onKeyDown={onTabKeys}
+        className="grid grid-cols-2 gap-2 min-[560px]:grid-cols-4"
+      >
+        {GROUPS.map((g) => {
+          const active = group === g.id;
+          return (
+            <button
+              key={g.id}
+              type="button"
+              role="tab"
+              id={`tab-${g.id}`}
+              aria-selected={active}
+              aria-controls={`panel-${g.id}`}
+              tabIndex={active ? 0 : -1}
+              onClick={() => choose(g.id)}
+              className={`h-11 whitespace-nowrap rounded-xl border px-3 text-[15px] font-bold ${
+                active
+                  ? "border-2 border-teal bg-teal-tint text-teal-dark"
+                  : "border-border bg-white text-ink hover:bg-ground"
+              }`}
+            >
+              {g.label}
+            </button>
+          );
+        })}
+      </div>
 
-      <WorkingHours card={card} heading={heading} />
+      <div
+        role="tabpanel"
+        id="panel-connection"
+        aria-labelledby="tab-connection"
+        hidden={group !== "connection"}
+        className="mt-4 space-y-4"
+      >
+        <section aria-labelledby="settings-connections" className={card}>
+          <h2 id="settings-connections" className={heading}>
+            Connections
+          </h2>
+          <dl className="mt-3 divide-y divide-border">
+            <div className="flex items-center justify-between gap-3 py-3">
+              <dt className="text-[15px] font-bold text-ink">Microsoft</dt>
+              <dd className="text-sm text-muted">
+                {signedIn === null ? "Checking…" : signedIn ? "Signed in" : "Not signed in"}
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-3 py-3">
+              <dt className="text-[15px] font-bold text-ink">AI</dt>
+              <dd className="text-sm text-muted">{aiSummary}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-3 py-3">
+              <dt className="text-[15px] font-bold text-ink">HMRC</dt>
+              <dd className="flex items-center gap-3">
+                <span className="text-sm text-muted">Sandbox · not connected</span>
+                <button
+                  type="button"
+                  disabled
+                  className="h-10 rounded-xl border border-border bg-ground px-4 text-sm font-bold text-muted disabled:opacity-60"
+                >
+                  Connect HMRC (sandbox)
+                </button>
+              </dd>
+            </div>
+            <div className="flex items-center justify-between gap-3 py-3">
+              <dt className="text-[15px] font-bold text-ink">Google Drive</dt>
+              <dd>
+                <span className="rounded-full bg-ground px-2 py-0.5 text-[11px] font-extrabold text-muted">
+                  Coming next
+                </span>
+              </dd>
+            </div>
+          </dl>
+        </section>
 
-      <VatPeriodSettings card={card} heading={heading} />
+        <section aria-labelledby="settings-audit" className={card}>
+          <h2 id="settings-audit" className={heading}>
+            Audit log
+          </h2>
+          <Link href="#" className="mt-2 inline-block text-sm font-bold text-teal-dark">
+            Open _System/audit in OneDrive
+          </Link>
+        </section>
 
-      <InvoiceProfileForm card={card} heading={heading} />
-
-      <OutlookIntake card={card} heading={heading} />
-
-      <section aria-labelledby="settings-autopilot" className={card}>
-        <h2 id="settings-autopilot" className={heading}>
-          Autopilot level
-        </h2>
-        <div className="mt-3 space-y-2" role="radiogroup" aria-label="Autopilot level">
-          {AUTOPILOT_OPTIONS.map((opt) => {
-            const active = autopilot === opt.value;
-            return (
-              <button
-                key={opt.value}
-                type="button"
-                role="radio"
-                aria-checked={active}
-                onClick={() => chooseAutopilot(opt.value)}
-                className={`block w-full rounded-2xl border p-4 text-left ${
-                  active ? "border-2 border-teal bg-teal-tint" : "border-border"
-                }`}
-              >
-                <span className="text-[15px] font-extrabold text-ink">{opt.label}</span>
-                <span className="mt-1 block text-sm text-muted">{opt.description}</span>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <AutopilotRules card={card} heading={heading} />
-
-      <StaffEditor card={card} heading={heading} />
-
-      <section aria-labelledby="settings-audit" className={card}>
-        <h2 id="settings-audit" className={heading}>
-          Audit log
-        </h2>
-        <Link href="#" className="mt-2 inline-block text-sm font-bold text-teal-dark">
-          Open _System/audit in OneDrive
-        </Link>
-      </section>
-
-      <section aria-labelledby="settings-disconnect" className={card}>
-        <h2 id="settings-disconnect" className={heading}>
-          Disconnect
-        </h2>
-        <p className="mt-1 text-sm text-muted">
-          Your files stay in your OneDrive. We remove this device&apos;s sign-in and settings.
-        </p>
-        <button
-          type="button"
-          onClick={disconnect}
-          className="mt-3 h-12 rounded-xl border-2 border-teal bg-white px-5 text-[15px] font-extrabold text-teal-dark"
-        >
-          Disconnect Accnomos
-        </button>
-        {disconnected && (
-          <p role="status" className="mt-2 text-sm font-bold text-teal-dark">
-            Disconnected.
+        <section aria-labelledby="settings-disconnect" className={card}>
+          <h2 id="settings-disconnect" className={heading}>
+            Disconnect
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Your files stay in your OneDrive. We remove this device&apos;s sign-in and settings.
           </p>
-        )}
-      </section>
+          <button
+            type="button"
+            onClick={disconnect}
+            className="mt-3 h-12 rounded-xl border-2 border-teal bg-white px-5 text-[15px] font-extrabold text-teal-dark"
+          >
+            Disconnect Accnomos
+          </button>
+          {disconnected && (
+            <p role="status" className="mt-2 text-sm font-bold text-teal-dark">
+              Disconnected.
+            </p>
+          )}
+        </section>
+      </div>
+
+      <div
+        role="tabpanel"
+        id="panel-ai"
+        aria-labelledby="tab-ai"
+        hidden={group !== "ai"}
+        className="mt-4 space-y-4"
+      >
+        <section aria-labelledby="settings-ai" className={card}>
+          <h2 id="settings-ai" className={heading}>
+            AI
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            How Accnomos answers your questions and reads your documents. The address or key never
+            leaves this device.
+          </p>
+          <ChooseAi />
+        </section>
+
+        <section aria-labelledby="settings-verifier" className={card}>
+          <h2 id="settings-verifier" className={heading}>
+            Second reading (verifier)
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Every extraction that passes the code checks is read again by a second model with a
+            different prompt that never sees the first answer. Code compares six fields: when all
+            agree, the Review card says so; any disagreement sends the proposal to Needs a look
+            showing both values. If the second reading cannot run, the proposal waits for you —
+            that is the safety design, not a pass.
+          </p>
+        </section>
+      </div>
+
+      <div
+        role="tabpanel"
+        id="panel-automation"
+        aria-labelledby="tab-automation"
+        hidden={group !== "automation"}
+        className="mt-4 space-y-4"
+      >
+        <section aria-labelledby="settings-autopilot" className={card}>
+          <h2 id="settings-autopilot" className={heading}>
+            Autopilot level
+          </h2>
+          <div className="mt-3 space-y-2" role="radiogroup" aria-label="Autopilot level">
+            {AUTOPILOT_OPTIONS.map((opt) => {
+              const active = autopilot === opt.value;
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  role="radio"
+                  aria-checked={active}
+                  onClick={() => chooseAutopilot(opt.value)}
+                  className={`block w-full rounded-2xl border p-4 text-left ${
+                    active ? "border-2 border-teal bg-teal-tint" : "border-border"
+                  }`}
+                >
+                  <span className="text-[15px] font-extrabold text-ink">{opt.label}</span>
+                  <span className="mt-1 block text-sm text-muted">{opt.description}</span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <AutopilotRules card={card} heading={heading} />
+
+        <OutlookIntake card={card} heading={heading} />
+
+        <WorkingHours card={card} heading={heading} />
+      </div>
+
+      <div
+        role="tabpanel"
+        id="panel-business"
+        aria-labelledby="tab-business"
+        hidden={group !== "business"}
+        className="mt-4 space-y-4"
+      >
+        <InvoiceProfileForm card={card} heading={heading} />
+
+        <VatPeriodSettings card={card} heading={heading} />
+
+        <StaffEditor card={card} heading={heading} />
+      </div>
     </div>
   );
 }
