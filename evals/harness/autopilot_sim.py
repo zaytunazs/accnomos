@@ -463,7 +463,8 @@ def summarise(meta: dict[str, Any], recs: list[dict[str, Any]]) -> dict[str, Any
              for r in recs if r["false_post"]]
     reasons = Counter(refusal_kind(x) for r in recs if not r["posted"] and not r["error"] and r.get("rule")
                       for x in r["autopilot_reasons"])
-    return {"meta": meta, "all": tally(recs), "history_rules_only": tally(recs, history_only=True), "by_class": by_class,
+    return {"meta": meta, "all": tally(recs), "without_seeded_copies": tally([r for r in recs if r.get("dup_kind") != "seeded_copy"]),
+            "history_rules_only": tally(recs, history_only=True), "by_class": by_class,
             "by_pass": by_pass, "by_duplicate_kind": by_dup, "two_x": two_x(recs), "seconds": times(recs),
             "verifier_seconds": times([{"seconds": r["verifier"]["elapsed_s"], "error": None} for r in recs
                                        if r.get("verifier") and r["verifier"]["elapsed_s"]]),
@@ -494,11 +495,16 @@ def report(out: Path) -> Path:
         *(f"- **Verifier {m}: {runs[m]['all']['false_posts']} false posts in {runs[m]['all']['docs']} documents = "
           f"{_pct(runs[m]['all']['false_post_rate'])}** (clean documents: {runs[m]['by_class']['clean']['false_posts']}"
           f"/{runs[m]['by_class']['clean']['docs']} = {_pct(runs[m]['by_class']['clean']['false_post_rate'])}); "
-          f"{a[m]['would_post']} posted, {a[m]['missed_posts']} of {a[m]['should_post']} expected posts missed."
+          f"{a[m]['would_post']} posted, {a[m]['missed_posts']} of {a[m]['should_post']} expected posts missed. "
+          f"Without the seeded copies: {runs[m]['without_seeded_copies']['false_posts']} in "
+          f"{runs[m]['without_seeded_copies']['docs']} = {_pct(runs[m]['without_seeded_copies']['false_post_rate'])}."
           for m in modes),
         "",
         "A false post is a document Autopilot posted where a field differs from gold, gold says it needs a look, or the "
-        "same document is already in the books. Rates are per document fed.",
+        "same document is already in the books. Rates are per document fed. *Seeded copies* are gold documents the seed "
+        "had already posted, re-dated into the seeded periods, fed again with their own (different) date: for a receipt "
+        "without an invoice number that is indistinguishable from buying the same thing again, so they are counted as "
+        "false posts but shown separately.",
         "",
         "## Overall",
         "",
@@ -582,9 +588,13 @@ def report(out: Path) -> Path:
         + (f", first {meta['limit']} per pass" if meta["limit"] else "") + ".",
         "",
         "Reproduce: `cd evals && python -m harness.autopilot_sim --verifier on && python -m harness.autopilot_sim "
-        "--verifier off && python -m harness.autopilot_sim --report`.",
+        "--verifier off && python -m harness.autopilot_sim --report`. "
+        "`--passes clean --shard 1/2` runs part of it (each shard starts from fresh seeded books).",
         "",
     ]
+    notes = out / "NOTES.md"
+    if notes.exists():  # hand-written context for this run (how it was run, what the numbers do not show)
+        lines += [notes.read_text(encoding="utf-8").strip(), ""]
     path = out / "report.md"
     path.write_text("\n".join(lines), encoding="utf-8")
     return path
