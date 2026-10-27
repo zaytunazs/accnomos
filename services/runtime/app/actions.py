@@ -51,6 +51,7 @@ INVOICE_PROFILE = f"{SYSTEM}/Invoicing/profile.json"  # app/invoicing.py owns it
 TTL = timedelta(minutes=15)
 MATCH_AT = 0.8  # difflib ratio a name must reach to be picked without asking
 NEAR_AT = 0.5  # shown as "did you mean" when nothing reaches MATCH_AT
+CLEAR_LEAD = 0.1  # several reach MATCH_AT: the best is picked only this far ahead of the next, otherwise ask
 DEFAULT_TERMS_DAYS = 30
 RATES: dict[str, int] = {"S": 20, "R": 5, "Z": 0, "E": 0, "O": 0}  # same table as app/invoicing.py
 VatCode = Literal["S", "R", "Z", "E", "O"]
@@ -371,19 +372,29 @@ def _norm(name: str) -> str:
     return supplier_key(name).replace("-", "") or name.strip().lower()
 
 
+PART_WEIGHT = 0.99  # "Alex" for "Alex Green" or "Oak Lane" for "Bathroom, 4 Oak Lane": a match, just below a full one
+
+
+def similarity(ref: str, name: str) -> float:
+    """difflib ratio against the whole name, or against a run of the name's words as long as `ref`."""
+    ratio = difflib.SequenceMatcher(None, _norm(ref), _norm(name)).ratio()
+    want, words = supplier_key(ref).split("-"), supplier_key(name).split("-")
+    if len(want) < len(words) and len("".join(want)) >= 3:
+        for i in range(len(words) - len(want) + 1):
+            part = "".join(words[i:i + len(want)])
+            ratio = max(ratio, PART_WEIGHT * difflib.SequenceMatcher(None, "".join(want), part).ratio())
+    return ratio
+
+
 def pick(ref: str, options: Sequence[Option], kind: ActionKind, field: str, noun: str) -> Picked | Clarification:
     """The one option whose name (or alias) is at least MATCH_AT like `ref`; otherwise ask, with the candidates."""
-    want = _norm(ref)
     scored = sorted(
-        (
-            Picked(o, max(difflib.SequenceMatcher(None, want, _norm(n)).ratio() for n in (o.name, *o.aliases)))
-            for o in options
-        ),
+        (Picked(o, max(similarity(ref, n) for n in (o.name, *o.aliases))) for o in options),
         key=lambda p: (-p.score, p.option.name.lower()),
     )
     good = [p for p in scored if p.score >= MATCH_AT]
     exact = [p for p in good if p.score == 1.0]
-    if len(exact) == 1 or (len(good) == 1):
+    if len(exact) == 1 or len(good) == 1 or (len(good) > 1 and good[0].score - good[1].score >= CLEAR_LEAD):
         return (exact or good)[0]
     if good:
         names = [p.option.name for p in good[:5]]
