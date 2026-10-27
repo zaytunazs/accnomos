@@ -162,7 +162,7 @@ export default function InvoiceForm() {
   }
 
   function pickNew() {
-    // New customer inline: keep what was typed below, forget the contact link.
+    // New customer inline: forget the contact link and start blank for the name and email below.
     setCustomer((c) => (c.contact_id ? { ...EMPTY_CUSTOMER, name: "", email: "" } : c));
     setDirty(true);
     setQuery("");
