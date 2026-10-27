@@ -18,6 +18,7 @@ from app.approve import ApprovalError, approve
 from app.books import INBOX, Books, DocMeta, Rule, now
 from app.checks import decide
 from app.journal import with_expense_account
+from app.mileage import MileageError, Vehicle, load_vehicles, prefill_vehicle
 from app.pipeline import process_image, sha256_hex
 from app.schemas import AutopilotDecision, Check, ExtractedDoc, Proposal
 
@@ -60,13 +61,26 @@ def apply_rule(p: Proposal, rule: Rule | None) -> None:
     p.checks.append(Check(code="RULE_APPLIED", ok=True, severity="warn", message=msg))
 
 
-async def _propose(books: Books, f: FileRef, mime: str, cfg: AiConfig, known: set[str], rules: list[Rule], business_name: str | None = None) -> Proposal:
+async def _propose(
+    books: Books, f: FileRef, mime: str, cfg: AiConfig, known: set[str], rules: list[Rule], business_name: str | None = None,
+    vehicles: list[Vehicle] | None = None,
+) -> Proposal:
     data = await books.storage.read(f.path)
     if mime == PDF_MIME:
         return pdf_placeholder(f.name, sha256_hex(data))
     p = await process_image(data, mime, cfg, known_hashes=frozenset(known), business_name=business_name)
     apply_rule(p, books.match_rule(p.extracted, rules))
+    prefill_vehicle(p, vehicles or [])
     return p
+
+
+async def _vehicles(books: Books) -> list[Vehicle]:
+    """The user's vehicles; a broken vehicles file only means no vehicle is pre-filled."""
+    try:
+        return await load_vehicles(books)
+    except MileageError:
+        log.warning("vehicles file unreadable; scanning without vehicle tagging")
+        return []
 
 
 async def _autopilot_post(books: Books, p: Proposal, rule: autopilot.AutopilotRule) -> Proposal:
@@ -108,12 +122,13 @@ async def scan_inbox_detailed(
     known = await books.known_hashes()
     rules = await books.load_rules()
     auto_rules = await autopilot.load_rules(books)
+    vehicles = await _vehicles(books)
     out: list[Proposal] = []
     errors: list[dict] = []
     candidates = [(f, mime) for f in await books.list_files(INBOX) if (mime := mime_for(f.name))]
     for f, mime in candidates[:limit]:  # failures count too: `limit` caps model calls
         try:
-            p = await _propose(books, f, mime, cfg, known, rules, business_name)
+            p = await _propose(books, f, mime, cfg, known, rules, business_name, vehicles)
         except ExtractionError as exc:
             log.warning("extraction failed for %s: %s", f.path, exc)
             await books.audit(ACTOR, "extract_failed", {"path": f.path, "error": str(exc)[:200]})

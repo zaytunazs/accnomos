@@ -18,6 +18,7 @@ from app.autopilot import AUTOPILOT, rule_from_proposal, save_rule
 from app.books import NEEDS_A_LOOK, Books, Rule, RuleMatch, now
 from app.checks import decide
 from app.journal import VAT_CONTROL, draft_journal, with_expense_account
+from app.mileage import load_vehicles
 from app.schemas import CATEGORIES, ExtractedDoc, JournalLine, Proposal
 
 #: Edits the review screen may send; `category` maps to the document's category_guess.
@@ -34,10 +35,13 @@ class ProposalStateError(ApprovalError):
 
 
 def apply_edits(p: Proposal, edits: dict[str, Any]) -> None:
-    """Apply the user's corrections to the document and the expense account, then redraw the journal."""
-    unknown = set(edits) - DOC_EDITS - {"account"}
+    """Apply the user's corrections to the document and the expense account, then redraw the journal.
+    (`vehicle_id` is checked against the vehicles file and applied by approve().)"""
+    unknown = set(edits) - DOC_EDITS - {"account", "vehicle_id"}
     if unknown:
         raise ApprovalError(f"Can't edit {', '.join(sorted(unknown))}")
+    if p.mileage_claim and edits:
+        raise ApprovalError("A mileage claim is calculated by code: change the mileage log on Vehicles instead")
     if "category" in edits and edits["category"] not in CATEGORIES:
         raise ApprovalError(f"Unknown category {edits['category']!r}")
     updates = {("category_guess" if k == "category" else k): v for k, v in edits.items() if k in DOC_EDITS}
@@ -104,6 +108,9 @@ async def approve(
     (the account rule and the Autopilot rule)."""
     p = await _open_proposal(books, proposal_id)
     apply_edits(p, edits or {})
+    if "vehicle_id" in (edits or {}):
+        p.vehicle_id = await _vehicle_tag(books, p, (edits or {})["vehicle_id"])
+    always = always and p.mileage_claim is None  # Autopilot never posts a mileage claim
     p.journal_draft = final_journal(p)
     event = build_event(p, p.journal_draft, user)
     try:
@@ -121,11 +128,29 @@ async def approve(
     await books.audit(_actor(user), "approved", {
         "proposal": p.id, "event": event.id, "event_path": event_path, "doc": p.doc_sha256,
         "edits": sorted((edits or {}).keys()), "rule": rule.match.supplier_regex if rule else None,
-        "autopilot_rule": auto_rule.supplier_key if auto_rule else None,
+        "autopilot_rule": auto_rule.supplier_key if auto_rule else None, "vehicle": p.vehicle_id,
     })
     if rebuild:
         await books.rebuild_safely(user)
     return p
+
+
+async def _vehicle_tag(books: Books, p: Proposal, vehicle_id: Any) -> str | None:
+    """A purchase may be tagged to a business vehicle (its cost then counts against that vehicle); None clears it."""
+    if vehicle_id in (None, ""):
+        return None
+    if p.extracted.doc_type == "sales_invoice" or p.mileage_claim:
+        raise ApprovalError("Only purchase receipts can be tagged to a vehicle")
+    try:
+        known = await load_vehicles(books)
+    except ValueError as exc:  # hand-edited vehicles.json: say so rather than fail the request
+        raise ApprovalError("The vehicles file could not be read, so the purchase can't be tagged") from exc
+    v = next((v for v in known if v.id == vehicle_id), None)
+    if v is None:
+        raise ApprovalError(f"No such vehicle {vehicle_id!r}")
+    if v.owned_by != "business":
+        raise ApprovalError(f"{v.name} is a personal vehicle: the mileage allowance covers its running costs, so receipts aren't tagged to it")
+    return v.id
 
 
 def _actor(user: str) -> str:
