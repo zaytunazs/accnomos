@@ -133,6 +133,7 @@ test("keyboard only: Home → Review → approve → Settings tab → Ask", asyn
 });
 
 test("Tab runs through each main page and out the other end: never trapped, focus always visible", async ({ page, runtime }) => {
+  test.slow(); // six pages, every focusable element: well over 30 s when the suite runs in parallel
   await signIn(page);
   await createBooksFolder(page);
   await runtime.postGold();
