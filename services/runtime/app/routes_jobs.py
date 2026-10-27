@@ -42,6 +42,7 @@ class JobIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
     customer_id: str | None = Field(None, max_length=64)
     site_address: str | None = Field(None, max_length=500)
+    estimate_hours: float | None = Field(None, gt=0, le=jobs.MAX_HOURS_PER_ENTRY)
     status: Literal["open", "closed"] = "open"
 
 
@@ -71,7 +72,7 @@ async def create_job(body: JobIn, books: Books = Depends(get_books), user: str =
 async def update_job(job_id: str, body: JobIn, books: Books = Depends(get_books), user: str = Depends(require_user)) -> Job:
     try:
         old = await jobs.get_job(books, _id(job_id))
-        job = await jobs.save_job(books, Job(**{**old.model_dump(), **body.model_dump()}))
+        job = await jobs.save_job(books, Job(**{**old.model_dump(), **body.model_dump(exclude_unset=True)}))
     except (NotFound, ValueError) as exc:
         raise _http(exc) from exc
     await books.audit(f"user:{user}", "job_updated", {"job": job.id, "status": job.status})

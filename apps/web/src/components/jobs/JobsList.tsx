@@ -13,6 +13,7 @@ export default function JobsList() {
   const [jobs, setJobs] = useState<RtJobSummary[] | null>(null);
   const [name, setName] = useState("");
   const [site, setSite] = useState("");
+  const [estimate, setEstimate] = useState("");
   const [showClosed, setShowClosed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
@@ -35,9 +36,14 @@ export default function JobsList() {
     if (!account || !name.trim()) return;
     setBusy(true);
     try {
-      await runtime.createJob(account, { name: name.trim(), site_address: site.trim() || null, customer_id: null, status: "open" });
+      const hours = Number(estimate);
+      await runtime.createJob(account, {
+        name: name.trim(), site_address: site.trim() || null, customer_id: null, status: "open",
+        estimate_hours: estimate.trim() && hours > 0 ? hours : null,
+      });
       setName("");
       setSite("");
+      setEstimate("");
       setNote("Job added.");
       await load();
     } catch (err) {
@@ -135,8 +141,21 @@ export default function JobsList() {
           />
         </label>
         <label className="flex min-w-56 flex-1 flex-col gap-1 text-sm font-bold text-ink">
-          Site address (optional)
+          Site address with postcode (optional)
           <input value={site} onChange={(e) => setSite(e.target.value)} className="h-11 rounded-xl border border-border px-3 font-normal" />
+        </label>
+        <label className="flex w-36 flex-col gap-1 text-sm font-bold text-ink">
+          Visit length (h)
+          <input
+            type="number"
+            min="0.25"
+            max="12"
+            step="0.25"
+            value={estimate}
+            onChange={(e) => setEstimate(e.target.value)}
+            placeholder="2"
+            className="h-11 rounded-xl border border-border px-3 font-normal"
+          />
         </label>
         <button
           type="submit"

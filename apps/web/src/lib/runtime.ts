@@ -230,6 +230,8 @@ export interface RtJobIn {
   name: string;
   customer_id: string | null;
   site_address: string | null;
+  /** Hours on site for one visit; the day planner uses 2 h when unset. */
+  estimate_hours?: number | null;
   status: "open" | "closed";
 }
 export interface RtJob extends RtJobIn {
