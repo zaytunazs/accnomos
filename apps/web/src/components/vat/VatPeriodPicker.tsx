@@ -1,38 +1,59 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { runtime, type RtVatPeriod } from "@/lib/runtime";
-import { pickedPeriod, pickPeriod, usePickedPeriod } from "@/lib/vat-period";
+import { periodFromUrl, pickedPeriod, pickPeriod, usePickedPeriod, type PickedPeriod } from "@/lib/vat-period";
 
 const short = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 
-function optionText(p: RtVatPeriod): string {
-  const status =
-    p.status === "submitted"
-      ? `submitted${p.hmrc_period_key ? ` (${p.hmrc_period_key})` : ""}`
-      : p.status === "open"
-        ? p.current
-          ? "current"
-          : `open · due ${short(p.deadline)}`
-        : "nothing recorded";
-  return `${p.label} · ${status}${p.entries ? ` · ${p.entries} entries` : ""}`;
+const CHIP: Record<RtVatPeriod["status"], { text: string; className: string }> = {
+  open: { text: "Open", className: "bg-teal-tint text-teal-dark" },
+  submitted: { text: "Submitted", className: "bg-ground text-muted" },
+  none: { text: "None", className: "bg-ground text-muted" },
+};
+
+function detail(p: RtVatPeriod): string {
+  const bits: string[] = [];
+  if (p.current) bits.push("current period");
+  else if (p.status === "open") bits.push(`due ${short(p.deadline)}`);
+  else if (p.status === "submitted") bits.push(p.hmrc_period_key ? `filed as ${p.hmrc_period_key}` : "filed");
+  else bits.push("nothing recorded");
+  if (p.entries) bits.push(`${p.entries} ${p.entries === 1 ? "entry" : "entries"}`);
+  return bits.join(" · ");
 }
 
-/** The current VAT period and the 8 before it, from GET /books/vat/periods; the pick is shared with the HMRC card and Ask. */
-export default function VatPeriodPicker({ account }: { account: AccountInfo }) {
+const toPick = (p: RtVatPeriod): PickedPeriod | null =>
+  p.current ? null : { period: p.period, start: p.start, end: p.end, label: p.label };
+
+/**
+ * The current VAT period and the 8 before it, from GET /books/vat/periods, as a segmented
+ * radio list with status chips; the pick is shared with the HMRC card and Ask, and mirrored in
+ * `?period=` so a period can be linked. Arrow keys move through the periods.
+ */
+export default function VatPeriodPicker({ account, onPeriods }: { account: AccountInfo; onPeriods?: (periods: RtVatPeriod[]) => void }) {
   const picked = usePickedPeriod();
   const [periods, setPeriods] = useState<RtVatPeriod[] | null>(null);
   const [failed, setFailed] = useState(false);
+  const buttons = useRef<(HTMLButtonElement | null)[]>([]);
+  const onPeriodsRef = useRef(onPeriods);
+  onPeriodsRef.current = onPeriods;
 
   useEffect(() => {
     runtime.vatPeriods(account).then(
       (r) => {
         setPeriods(r.periods);
-        // A pick from before the VAT settings changed may not be one of these periods any more.
-        const was = pickedPeriod();
-        const still = r.periods.find((p) => p.period === was?.period && p.start === was?.start);
-        if (was && (!still || still.current)) pickPeriod(null);
+        onPeriodsRef.current?.(r.periods);
+        const byName = (name: string | null) => r.periods.find((p) => p.period === name);
+        // A linked ?period= wins over the remembered pick; a stale pick is cleared.
+        const linked = byName(periodFromUrl());
+        if (linked) {
+          if (linked.current ? pickedPeriod() !== null : pickedPeriod()?.period !== linked.period) pickPeriod(toPick(linked));
+        } else {
+          const was = pickedPeriod();
+          const still = was && byName(was.period);
+          if ((was && !still) || still?.current) pickPeriod(null);
+        }
       },
       () => setFailed(true),
     );
@@ -40,23 +61,68 @@ export default function VatPeriodPicker({ account }: { account: AccountInfo }) {
 
   if (failed || !periods) return null;
   const value = picked?.period ?? periods[0].period;
+  const focus = Math.max(0, periods.findIndex((p) => p.period === value));
+
+  function choose(i: number) {
+    const p = periods![(i + periods!.length) % periods!.length];
+    pickPeriod(toPick(p));
+    buttons.current[periods!.indexOf(p)]?.focus();
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (e.key === "ArrowDown" || e.key === "ArrowRight") {
+      e.preventDefault();
+      choose(focus + 1);
+    } else if (e.key === "ArrowUp" || e.key === "ArrowLeft") {
+      e.preventDefault();
+      choose(focus - 1);
+    } else if (e.key === "Home") {
+      e.preventDefault();
+      choose(0);
+    } else if (e.key === "End") {
+      e.preventDefault();
+      choose(periods.length - 1);
+    }
+  }
+
   return (
-    <label className="flex flex-wrap items-center gap-2 text-[15px] font-bold">
-      VAT period
-      <select
-        value={value}
-        onChange={(e) => {
-          const p = periods.find((x) => x.period === e.target.value)!;
-          pickPeriod(p.current ? null : { period: p.period, start: p.start, end: p.end, label: p.label });
-        }}
-        className="h-11 rounded-xl border border-border bg-white px-3 text-[15px] font-semibold focus-visible:outline-2 focus-visible:outline-teal"
+    <div>
+      <p id="vat-period-label" className="text-[15px] font-bold">
+        VAT period
+      </p>
+      <div
+        role="radiogroup"
+        aria-labelledby="vat-period-label"
+        onKeyDown={onKeyDown}
+        className="mt-1 flex max-w-full flex-col gap-1"
       >
-        {periods.map((p) => (
-          <option key={p.period} value={p.period}>
-            {optionText(p)}
-          </option>
-        ))}
-      </select>
-    </label>
+        {periods.map((p, i) => {
+          const selected = p.period === value;
+          const chip = CHIP[p.status];
+          return (
+            <button
+              key={p.period}
+              ref={(el) => {
+                buttons.current[i] = el;
+              }}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              tabIndex={i === focus ? 0 : -1}
+              onClick={() => pickPeriod(toPick(p))}
+              className={`flex min-h-11 flex-wrap items-center gap-x-2 gap-y-0.5 rounded-xl border px-3 py-1.5 text-left text-[14px] ${
+                selected ? "border-teal bg-teal-tint" : "border-border bg-white hover:bg-ground"
+              }`}
+            >
+              <span className="font-extrabold">{p.label}</span>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${chip.className}`}>
+                {chip.text}
+              </span>
+              <span className="text-[13px] font-medium text-muted">{detail(p)}</span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

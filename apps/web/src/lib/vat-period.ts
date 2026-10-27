@@ -49,7 +49,34 @@ export function pickPeriod(p: PickedPeriod | null) {
   } catch {
     /* kept in `memory` until the page reloads */
   }
+  writeUrl(p);
   listeners.forEach((l) => l());
+}
+
+const PERIOD_RE = /^\d{4}-(Q[1-4]|[01]\d)$/; // "2026-Q4" quarterly, "2026-11" monthly
+
+/** `?period=` from the address bar, when it names a period — so a period can be linked. */
+export function periodFromUrl(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const p = new URLSearchParams(window.location.search).get("period");
+    return p && PERIOD_RE.test(p) ? p : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Reflect the pick in `?period=` (null = the current period: the param is removed). */
+function writeUrl(p: PickedPeriod | null) {
+  if (typeof window === "undefined") return;
+  try {
+    const url = new URL(window.location.href);
+    if (p) url.searchParams.set("period", p.period);
+    else url.searchParams.delete("period");
+    window.history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+  } catch {
+    /* the address bar is unavailable — the pick still lives in this tab */
+  }
 }
 
 export function pickedPeriod(): PickedPeriod | null {

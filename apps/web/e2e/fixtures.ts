@@ -124,10 +124,10 @@ export async function settingsTab(page: Page, name: "Connection" | "AI" | "Autom
 
 /** Pick a VAT period on /vat by its label (e.g. "Jul–Sep 2026"); the picker defaults to the current one. */
 export async function pickVatPeriod(page: Page, label: string): Promise<void> {
-  const select = page.getByLabel("VAT period");
-  const value = await select.locator("option", { hasText: label }).getAttribute("value");
-  expect(value, `no VAT period option "${label}"`).toBeTruthy();
-  await select.selectOption(value!);
+  const group = page.getByRole("radiogroup", { name: "VAT period" });
+  const option = group.getByRole("radio", { name: label });
+  await expect(option, `no VAT period option "${label}"`).toHaveCount(1);
+  await option.click();
 }
 
 export const test = base.extend<{ runtime: Runtime; localOnly: void }>({
