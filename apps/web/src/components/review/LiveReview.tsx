@@ -5,7 +5,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import ProposalCard from "@/components/review/ProposalCard";
 import UploadToInbox from "@/components/review/UploadToInbox";
 import { getMsal, msalConfigured } from "@/lib/msal";
-import { gbp, runtime, ukDate, type RtProposal } from "@/lib/runtime";
+import { gbp, runtime, ukDate, type RtJob, type RtProposal } from "@/lib/runtime";
 import type { Proposal as UiProposal } from "@/lib/sample-review";
 
 type Mode = "checking" | "demo" | "live";
@@ -64,6 +64,8 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
   const [note, setNote] = useState<string | null>(null);
   const [remember, setRemember] = useState<Record<string, boolean>>({});
   const [autoPosted, setAutoPosted] = useState<RtProposal[]>([]);
+  const [openJobs, setOpenJobs] = useState<RtJob[]>([]);
+  const [jobFor, setJobFor] = useState<Record<string, string>>({});
 
   const load = useCallback(async (acct: AccountInfo) => {
     const [proposed, flagged, posted] = await Promise.all([
@@ -74,6 +76,7 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
     setItems([...proposed, ...flagged]);
     const since = Date.now() - AUTOPILOT_WINDOW_DAYS * 86_400_000;
     setAutoPosted(posted.filter((p) => p.decided_by === "autopilot" && p.event_id && new Date(p.decided_at ?? 0).getTime() >= since));
+    setOpenJobs(await runtime.openJobs(acct).catch(() => [])); // no jobs feature in use: no picker
   }, []);
 
   useEffect(() => {
@@ -206,7 +209,9 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
                   : sale
                     ? "Approved · posted to your books (Autopilot rules are for purchases only)"
                     : `Approved · Autopilot will do this for ${p.extracted.supplier_name} next time`;
-                return act(p.id, () => runtime.approve(account!, p.id, { remember: always }), done);
+                const job = sale ? "" : (jobFor[p.id] ?? "");
+                const edits = job ? { job_id: job } : undefined;
+                return act(p.id, () => runtime.approve(account!, p.id, { remember: always, edits }), done);
               }}
               className="h-11 rounded-xl bg-teal px-5 text-[15px] font-bold text-white disabled:opacity-60"
             >
@@ -220,6 +225,21 @@ export default function LiveReview({ fallback }: { fallback: React.ReactNode }) 
             >
               Reject
             </button>
+            {openJobs.length > 0 && p.extracted.doc_type !== "sales_invoice" && (
+              <label className="flex items-center gap-2 text-sm font-bold text-ink">
+                Job
+                <select
+                  value={jobFor[p.id] ?? ""}
+                  onChange={(e) => setJobFor((j) => ({ ...j, [p.id]: e.target.value }))}
+                  className="h-11 rounded-xl border border-border bg-white px-3 font-normal"
+                >
+                  <option value="">None</option>
+                  {openJobs.map((j) => (
+                    <option key={j.id} value={j.id}>{j.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
           </div>
         </div>
       ))}
