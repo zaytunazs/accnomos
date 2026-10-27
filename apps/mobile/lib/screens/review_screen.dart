@@ -14,6 +14,7 @@ import '../services/settings.dart';
 import '../theme.dart';
 import '../widgets/review_image.dart';
 import 'capture_screen.dart';
+import 'contacts_screen.dart';
 import 'edit_proposal_sheet.dart';
 
 const _warnBg = Color(0xFFFFF7ED);
@@ -1403,30 +1404,102 @@ class _ReviewScreenState extends State<ReviewScreen> {
   Widget _notRegisteredRow(Proposal proposal) {
     return Container(
       margin: const EdgeInsets.only(top: 4),
+      padding: const EdgeInsets.only(bottom: 4),
       decoration: BoxDecoration(
         color: _warnBg,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: _warnBorder),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Checkbox(
-            key: ValueKey('review-not-vat-registered-${proposal.id}'),
-            value: _notRegistered[proposal.id] ?? false,
-            activeColor: AccnomosColors.teal,
-            onChanged: (v) =>
-                setState(() => _notRegistered[proposal.id] = v ?? false),
+          Row(
+            children: [
+              Checkbox(
+                key: ValueKey('review-not-vat-registered-${proposal.id}'),
+                value: _notRegistered[proposal.id] ?? false,
+                activeColor: AccnomosColors.teal,
+                onChanged: (v) =>
+                    setState(() => _notRegistered[proposal.id] = v ?? false),
+              ),
+              Expanded(
+                child: Text(
+                  "${proposal.supplier} isn't VAT-registered "
+                  "(approving remembers this)",
+                  style: const TextStyle(color: _warnInk, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ),
-          Expanded(
-            child: Text(
-              "${proposal.supplier} isn't VAT-registered "
-              "(approving remembers this)",
-              style: const TextStyle(color: _warnInk, fontWeight: FontWeight.w600),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              key: ValueKey('review-vat-status-${proposal.id}'),
+              style: TextButton.styleFrom(
+                foregroundColor: AccnomosColors.tealDark,
+                minimumSize: const Size(48, 48),
+              ),
+              onPressed: () => _openSupplierContact(proposal),
+              child: Text('Set for ${proposal.supplier} in Contacts'),
             ),
           ),
         ],
       ),
     );
+  }
+
+  /// Open the supplier behind a "Is `supplier` VAT-registered?" card in
+  /// Contacts, with the VAT status control focused so the question is
+  /// answered for good. Signed out there is no contact book to open.
+  Future<void> _openSupplierContact(Proposal proposal) async {
+    final settings = _settings;
+    final account = _account;
+    if (!_signedIn || settings == null || account == null) {
+      _say('Sign in to open this supplier in Contacts.');
+      return;
+    }
+    try {
+      final client = await _booksClient();
+      final decoded = await client.contacts();
+      final list = decoded['contacts'];
+      Map<String, dynamic>? match;
+      if (list is List) {
+        final want = proposal.supplier.trim().toLowerCase();
+        for (final c in list) {
+          if (c is Map &&
+              (c['name'] ?? '')
+                      .toString()
+                      .trim()
+                      .toLowerCase() ==
+                  want) {
+            match = Map<String, dynamic>.from(c);
+            break;
+          }
+        }
+      }
+      if (!mounted) return;
+      if (match == null) {
+        _say('${proposal.supplier} is not in your contacts yet.');
+        return;
+      }
+      final found = match;
+      await Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (_) => ContactDetailScreen(
+            contactId: (found['id'] ?? '').toString(),
+            name: proposal.supplier,
+            settings: settings,
+            auth: _auth,
+            account: account,
+            contact: found,
+            focusVatStatus: true,
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      _say(_friendly(e));
+    }
   }
 
   Widget _alwaysRow(Proposal proposal) {
