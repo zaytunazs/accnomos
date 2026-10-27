@@ -8,8 +8,10 @@ checks that too. Nothing is written to the calendar until the user taps **Apply*
 ## Flow
 
 1. **Ask** (`POST /books/ask`, and `/books/ask/voice` after transcription): code spots a plan request
-   (`app/planner.py` `plan_intent`: *today*, *tomorrow*, a weekday, *next* + weekday, or `YYYY-MM-DD`) and answers
-   with a `plan_day` action for that date, without calling the model. The app links it to `/?plan=YYYY-MM-DD`, and
+   (`app/planner.py` `plan_intent`: *plan*, *schedule* or *organise* followed directly by the day — *my day*,
+   *today*, *tomorrow*, a weekday, *next* + weekday, or `YYYY-MM-DD`) and answers with a `plan_day` action for that
+   date, without calling the model. A books question that only mentions planning and a day ("should I schedule
+   the payment on Friday?") is answered as a question. The app links it to `/?plan=YYYY-MM-DD`, and
    Home opens the plan.
 2. **Propose** (`POST /plan/day`): the runtime reads the day from `/me/calendarView` (`Calendars.Read`, asked for
    the first time the user plans a day) and `_System/Jobs/jobs.json`, then builds the plan. It **never writes**.
@@ -42,7 +44,10 @@ POST /plan/day/apply  {date, plan}   (needs X-User)
 ```
 
 Headers are the same as `/books/*` (`X-Graph-Token`, `X-Account-Kind`). The AI headers are optional on
-`/plan/day`.
+`/plan/day`. The app asks for each calendar permission through MSAL before calling (a redirect to Microsoft the
+first time); if Graph still refuses (401/403) the runtime answers 401, like the other Graph routes, and the plan
+card shows the error. Working hours and the visit limit are saved on the device (Settings ›
+Business · working hours) and sent as `constraints`; the runtime keeps nothing.
 
 ## Rationale
 
@@ -77,5 +82,6 @@ In that case, or with no AI set up, or if the model fails, code writes the ratio
 - Only VAT returns count as "due"; other filing deadlines are not tracked yet.
 
 Tests: `services/runtime/tests/test_planner.py` (grouping, order, travel, no overlaps, constraints, lunch, admin,
-intent, rationale checks, routes, apply idempotency, retry, conflict, mileage) and
+intent, rationale checks, routes, apply idempotency, retry, conflict, mileage, missing scope, damaged
+`applied.json`) and
 `packages/connectors/tests/test_calendar.py` (Graph request shapes against a mock transport, and the fake).
