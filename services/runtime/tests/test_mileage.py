@@ -394,6 +394,31 @@ async def test_scan_prefills_the_only_business_vehicle(books: Books, fake: FakeS
     assert sorted((p.extracted.supplier_name, p.vehicle_id) for p in out) == [("Screwfix", None), ("Shell", works.id)]
 
 
+async def test_books_xlsx_vehicles_sheet(books: Books, fake: FakeStorageProvider) -> None:
+    import io
+
+    from openpyxl import load_workbook
+
+    golf = await m.add_vehicle(books, car(registration="AB12 CDE"), USER)
+    works = await m.add_vehicle(books, car(name="Transit", kind="van", owned_by="business"), USER)
+    ty = m.tax_year_of(date.today())
+    day = max(m.tax_year_bounds(ty)[0], date(date.today().year, date.today().month, 1)).isoformat()
+    await m.add_entry(books, trip(golf, day, 100.0), USER)
+    await m.add_entry(books, trip(works, day, 40.0), USER)
+    await books.rebuild()
+    ws = load_workbook(io.BytesIO(fake.files["Books.xlsx"]))["Vehicles"]
+    assert ws["F1"].value == f"Business miles {ty}" and ws.freeze_panes == "A2"
+    rows = {r[0]: r for r in ws.iter_rows(min_row=2, max_row=4, values_only=True)}
+    assert rows["Golf"][1:8] == ("AB12 CDE", "car", "personal", "yes", 100, 1, 45)
+    assert rows["Transit"][7] is None and rows["Transit"][8] == 0
+    assert rows["Total"][5:8] == (140, 2, 45)
+    assert any("ask your accountant" in (r[0] or "") for r in ws.iter_rows(min_row=5, values_only=True))
+
+    fake.files[m.VEHICLES] = b'[{"name": ""}]'  # hand-edited and broken: the sheet is empty, the rest still builds
+    await books.rebuild()
+    assert load_workbook(io.BytesIO(fake.files["Books.xlsx"]))["Vehicles"].max_row == 1
+
+
 # --------------------------------------------------------------------------- #
 # HTTP
 # --------------------------------------------------------------------------- #

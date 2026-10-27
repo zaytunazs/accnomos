@@ -16,6 +16,7 @@ Layout (relative to the books root):
     _System/rules.json  _System/cursors.json
     _System/Rules/rules.json       Autopilot rules, one per supplier (app/autopilot.py)
     _System/audit/autopilot/{yyyy-mm}.jsonl   one line per Autopilot decision that posted something
+    _System/Vehicles/vehicles.json  _System/Mileage/{tax-year}.jsonl   vehicles and business journeys (app/mileage.py)
     Books.xlsx                     read-only spreadsheet projection, rebuilt after every decision
 """
 
@@ -475,10 +476,16 @@ class Books:
 
     async def rebuild(self) -> FileRef:
         """Regenerate Books.xlsx at the root from the events, bank lines and open proposals."""
+        from app import mileage
         from app.projection import build_books_xlsx
 
+        try:
+            vehicles = await mileage.summary(self, mileage.tax_year_of(now().date()))
+        except mileage.MileageError:  # a hand-edited vehicles or mileage file must not stop the rest of the workbook
+            log.exception("Vehicles sheet left empty: a vehicles or mileage file could not be read")
+            vehicles = None
         proposals = [p for p in await self.list_proposals() if p.status in ("proposed", "needs_a_look")]
-        data = build_books_xlsx(await self.list_events(), await self.list_bank_lines(), proposals)
+        data = build_books_xlsx(await self.list_events(), await self.list_bank_lines(), proposals, mileage=vehicles)
         if len(data) > WORKBOOK_LIMIT:
             log.warning("Books.xlsx is %d bytes, over the %d byte simple-upload size", len(data), WORKBOOK_LIMIT)
         return await self.storage.write(WORKBOOK, data)
