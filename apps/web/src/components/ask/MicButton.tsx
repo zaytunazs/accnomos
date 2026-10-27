@@ -132,11 +132,11 @@ export default function MicButton({ disabled, reason, onRecorded, onError }: Pro
           if (e.key === " " || e.key === "Enter") stop();
         }}
         onContextMenu={(e) => e.preventDefault()}
-        className={`flex h-10 w-10 touch-none select-none items-center justify-center rounded-xl border text-ink disabled:cursor-not-allowed disabled:opacity-40 ${
+        className={`flex h-14 w-14 touch-none select-none items-center justify-center rounded-xl border text-ink disabled:cursor-not-allowed disabled:opacity-40 ${
           recording ? "border-teal bg-teal text-white" : "border-border bg-white hover:border-teal"
         }`}
       >
-        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
           <rect x="9" y="3" width="6" height="12" rx="3" />
           <path d="M5 11a7 7 0 0 0 14 0M12 18v3" strokeLinecap="round" />
         </svg>
