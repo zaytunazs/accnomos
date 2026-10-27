@@ -243,3 +243,19 @@ async def test_approve_route_takes_the_tick(client: TestClient, fake: FakeStorag
     r = client.post(url.format(asked.id), json={"edits": {NOT_VAT_REGISTERED: True}}, headers=H)
     assert r.status_code == 200 and r.json()["status"] == "posted"
     assert _stored(fake)[IRONMONGER]["vat_status"] == "not_registered"
+
+
+async def test_undo_takes_back_the_not_registered_tick(fake: FakeStorageProvider, books: Books) -> None:
+    """Undoing the approval that taught 'not registered' forgets it; a VAT number seen on a receipt stays learnt."""
+    from app.approve import undo
+
+    (iron,) = await _scan(fake, books, b"iron-1")
+    posted = await approve(books, iron.id, USER, {NOT_VAT_REGISTERED: True})
+    assert _stored(fake)[IRONMONGER]["vat_status"] == "not_registered"
+    await undo(books, posted.event_id, USER)
+    assert _stored(fake)[IRONMONGER]["vat_status"] == "unknown"
+
+    (fix,) = await _scan(fake, books, b"screwfix-1")  # carries a VAT number
+    posted = await approve(books, fix.id, USER)
+    await undo(books, posted.event_id, USER)
+    assert _stored(fake)["Screwfix"]["vat_status"] == "registered"

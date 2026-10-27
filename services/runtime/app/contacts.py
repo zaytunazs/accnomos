@@ -555,6 +555,21 @@ async def learn_from_approval(books: Books, p: Proposal, actor: str, not_registe
     return await set_vat_status(books, p.extracted.supplier_name, status, actor, normalise_vat_number(p.extracted.supplier_vat_number))
 
 
+async def forget_from_undo(books: Books, p: Proposal, actor: str) -> Contact | None:
+    """Undoing an approval takes back what the user's "isn't VAT-registered" tick taught (a VAT number seen on the
+    receipt stays learnt: the number is evidence on its own). Returns the contact when it changed."""
+    doc = p.extracted
+    if doc.doc_type == "sales_invoice" or not supplier_key(doc.supplier_name) or normalise_vat_number(doc.supplier_vat_number):
+        return None
+    try:
+        c = find(await stored_contacts(books), supplier_key(doc.supplier_name), None)
+    except ValueError:
+        return None
+    if c is None or c.vat_status != "not_registered":
+        return None
+    return await set_vat_status(books, doc.supplier_name, "unknown", actor)
+
+
 class ImportResult(BaseModel):
     read: int
     matched: int  # address-book entries that are already contacts

@@ -20,7 +20,7 @@ from app.autopilot import AUTOPILOT, rule_from_proposal, save_rule
 from app.books import Books, Rule, RuleMatch, now
 from app.paths import NEEDS_A_LOOK, upgrade
 from app.checks import decide, normalise_vat_number
-from app.contacts import learn_from_approval
+from app.contacts import forget_from_undo, learn_from_approval
 from app.journal import VAT_CONTROL, draft_journal, with_expense_account
 from app.mileage import load_vehicles
 from app.schemas import CATEGORIES, ExtractedDoc, JournalLine, Proposal
@@ -256,6 +256,8 @@ async def undo(books: Books, event_id: str, user: str) -> tuple[LedgerEvent, Pro
     except FileExistsError as exc:
         raise ProposalStateError("Already undone") from exc
     p = await _reopen(books, original)
+    if p is not None:
+        await forget_from_undo(books, p, f"user:{user}")
     await books.audit(f"user:{user}", "undone", {
         "event": event_id, "reversal": reversal.id, "reversal_path": path, "proposal": original.proposal_id,
         "originally_approved_by": original.approved_by,
