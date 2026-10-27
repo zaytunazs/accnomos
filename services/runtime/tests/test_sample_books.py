@@ -342,12 +342,15 @@ class RefusedAt(Expiring):
     """The token "expires" at a chosen moment: on the first write or move whose path matches `pattern` (and whose
     data contains `content`), refused (`after` False) or done and then everything after it refused (`after` True)."""
 
-    def __init__(self, inner: FakeStorageProvider, pattern: str, *, content: bytes = b"", after: bool = False) -> None:
+    def __init__(
+        self, inner: FakeStorageProvider, pattern: str, *, content: bytes | tuple[bytes, ...] = b"", after: bool = False
+    ) -> None:
         super().__init__(inner, None)
-        self.pattern, self.content, self.after, self.fired = re.compile(pattern), content, after, False
+        self.pattern, self.after, self.fired = re.compile(pattern), after, False
+        self.content = content if isinstance(content, tuple) else (content,)
 
     def _hit(self, path: str, data: bytes = b"") -> bool:
-        if self.fired or not self.pattern.search(path) or self.content not in data:
+        if self.fired or not self.pattern.search(path) or not all(c in data for c in self.content):
             return False
         self.fired = True
         return True
@@ -385,6 +388,10 @@ WINDOWS = {
     "payment posted, no record": dict(pattern=r"^_System/Ledger/events/", content=b"Payment for", after=True),
     "payment recorded, line not matched": dict(pattern=r"^_System/Payments/payments\.json$", after=True),
     "rule coding proposed, not linked": dict(pattern=r"^_System/proposals/", content=b'"bank-line"', after=True),
+    "rule coding posted, proposal not saved": dict(
+        pattern=r"^_System/proposals/", content=(b'"bank-line"', b'"posted"')
+    ),
+    "emailed receipt copied, not recorded": dict(pattern=r"^00 Inbox/2026-", after=True),
 }
 
 

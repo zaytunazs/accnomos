@@ -1117,13 +1117,23 @@ async def _mail_in(books: Books, docs: list[tuple[int, PlannedDoc]], plan: Plan)
 
 
 async def _mailed(books: Books, d: PlannedDoc) -> tuple[str, bytes]:
-    """(path in 00 Inbox, bytes) of an emailed receipt, from intake's record of what it saved."""
+    """(path in 00 Inbox, bytes) of an emailed receipt, from intake's record of what it saved (or, if the seed
+    stopped after intake copied it but before intake recorded it, the copy itself)."""
     png = render_png(d.text)
     sha = sha256_hex(png)
     for row in await books.read_json(intake.SEEN, []):
         if isinstance(row, dict) and row.get("sha256") == sha:
             return str(row["saved_as"]), png
+    if (path := await _in_inbox(books, png)) is not None:
+        return path, png
     raise RuntimeError(f"the emailed receipt {d.file_name} is not in the intake record")
+
+
+async def _in_inbox(books: Books, data: bytes) -> str | None:
+    for f in await books.list_files(INBOX):
+        if f.size in (0, len(data)) and await books.storage.read(f.path) == data:
+            return f.path
+    return None
 
 
 # --------------------------------------------------------------------------- #
@@ -1272,9 +1282,10 @@ async def _step_not_registered(books: Books, plan: Plan) -> None:
 
 
 async def _step_mail(books: Books, plan: Plan, mailed: list[tuple[int, PlannedDoc]], resuming: bool) -> None:
-    if resuming:  # only the receipts intake has not recorded yet
+    if resuming:  # only the receipts intake has neither recorded nor copied yet
         seen = {r.get("sha256") for r in await books.read_json(intake.SEEN, []) if isinstance(r, dict)}
         mailed = [(n, d) for n, d in mailed if sha256_hex(render_png(d.text)) not in seen]
+        mailed = [(n, d) for n, d in mailed if await _in_inbox(books, render_png(d.text)) is None]
         if not mailed:
             return
     await _mail_in(books, mailed, plan)
@@ -1643,6 +1654,8 @@ async def _payment_resumed(
 
 
 async def _step_reconcile(books: Books, plan: Plan, resuming: bool) -> None:
+    if resuming and plan.bank_rules:
+        await _finish_codings(books)  # first: the matcher below would otherwise suggest their lines to them
     sales = _sale_events(plan)
     older_end = plan.periods[0][1]
     by_id = {ln.id: ln for ln in await books.stored_bank_lines()}
@@ -1654,28 +1667,10 @@ async def _step_reconcile(books: Books, plan: Plan, resuming: bool) -> None:
             await books.confirm_match(ln.id, [sales[ln.reference]], USER)
     if not plan.bank_rules:
         return
-    coding = (
-        {p.doc_sha256: p for p in await books.list_proposals() if p.model == bank_reconcile_model()} if resuming else {}
-    )
     for ln in await books.stored_bank_lines():  # Reconcile: every line a rule codes, approved
         if ln.resolved:
             continue
-        coded = coding.get(hashlib.sha256(f"bank-line:{ln.id}".encode()).hexdigest()) if resuming else None
-        if coded is not None:  # coded before the seed stopped: finish that, don't code it twice
-            if coded.status != "posted":
-                if ln.proposal_id != coded.id:
-                    await books.link_proposal(ln.id, coded.id)
-                try:
-                    account = coded.account_override
-                    coded = await approve(
-                        books, coded.id, USER, {"account": account} if account else None, rebuild=False
-                    )
-                except ProposalStateError:
-                    await _finish_approval(books, coded.id, USER, None, False)
-                    coded = await books.get_proposal(coded.id)
-            if coded.event_id:
-                await books.confirm_match(ln.id, [coded.event_id], USER)
-        elif await bank_reconcile.suggest_rule(books, ln):
+        if await bank_reconcile.suggest_rule(books, ln):
             coded = await bank_reconcile.approve_line(books, ln.id, "rule", USER)
             # Approving posts the entry and matches the line to it (app/bank_reconcile.py); should it ever leave
             # the line open, the Bank page would suggest the line to the entry and the user would confirm that.
@@ -1683,6 +1678,27 @@ async def _step_reconcile(books: Books, plan: Plan, resuming: bool) -> None:
                 await books.confirm_match(ln.id, [coded["event_id"]], USER)
         elif ln.description == "Savings Space":  # the tax pot: money between own accounts
             await books.mark_line(ln.id, "transfer", USER)
+
+
+async def _finish_codings(books: Books) -> None:
+    """A resumed Reconcile step: lines a rule coded before the seed stopped (their proposal is found by the line's
+    hash) are finished, approved and matched, rather than coded twice."""
+    coding = {p.doc_sha256: p for p in await books.list_proposals() if p.model == bank_reconcile_model()}
+    for ln in await books.stored_bank_lines():
+        coded = coding.get(hashlib.sha256(f"bank-line:{ln.id}".encode()).hexdigest())
+        if coded is None:
+            continue
+        if coded.status != "posted":
+            if ln.proposal_id != coded.id:
+                await books.link_proposal(ln.id, coded.id)
+            try:
+                account = coded.account_override
+                coded = await approve(books, coded.id, USER, {"account": account} if account else None, rebuild=False)
+            except ProposalStateError:
+                await _finish_approval(books, coded.id, USER, None, False)
+                coded = await books.get_proposal(coded.id)
+        if coded.event_id and not (await books.find_bank_line(ln.id)).resolved:
+            await books.confirm_match(ln.id, [coded.event_id], USER)
 
 
 async def _step_payroll_todos(books: Books, plan: Plan) -> None:
