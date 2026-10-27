@@ -132,7 +132,10 @@ function LineCell({ line }: { line: RtBankLine }) {
 
 function Matches({ rows, busy, act }: { rows: RtBankSuggestion[]; busy: string | null; act: Act }) {
   if (rows.length === 0) return <Empty text="No matches to confirm. New suggestions appear when you post receipts or upload statements." />;
-  const exact = rows.filter((r) => r.kind === "exact");
+  // "Exact" also covers a penny out; those are confirmed one by one, where the reason says so.
+  const exact = rows.filter(
+    (r) => r.kind === "exact" && r.events.reduce((sum, e) => sum + e.amount_pence, 0) === r.line.amount_pence,
+  );
   return (
     <div className="flex flex-col gap-3">
       {exact.length > 1 && (

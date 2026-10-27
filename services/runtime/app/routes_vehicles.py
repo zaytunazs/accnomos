@@ -118,8 +118,9 @@ async def entries(tax_year: str | None = None, books: Books = Depends(get_books)
 
 @router.post("/mileage", response_model=MileageEntry)
 async def add_entry(body: MileageEntry, books: Books = Depends(get_books), user: str = Depends(require_user)) -> MileageEntry:
+    manual = body.model_copy(update={"source": "manual"})  # only code makes journeys from proposals
     try:
-        return await mileage.add_entry(books, body, user)
+        return await mileage.add_entry(books, manual, user)
     except MileageError as exc:
         raise _http(exc) from exc
 
