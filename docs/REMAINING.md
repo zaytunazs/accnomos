@@ -62,7 +62,7 @@ Severity:
 | Low | One movement counted once: a statement line is suggested to a recorded payment or refund of exactly the same signed amount, dated 5 days before to 14 days after it; a payment of a different amount, or outside that window, is not suggested (match it by hand to the payment's entry). A match to a document already settled is refused (409) with the way out named. A refund line is offered against a contact's credit only for the exact amount. |
 | Low | Customer VAT numbers only via *Edit*. Outlook contacts added with "also add" are always customers. `credit_uses.json`, like `payments.json`, is rewritten whole (last write wins). |
 | Low | An invoice marked paid before payments were recorded (no amount kept) counts as paid on Invoices and Home but stays open in Contacts and *Aged balances*, as before; *Remove* on it puts it back to sent. `payments.json` is rewritten whole (last write wins). |
-| Low | `contacts.json` is rewritten whole: two tabs editing at once means last write wins. After *Edit* the side panel does not reload the statement (figures stay right). |
+| Low | Two tabs editing the same contact's same field at once: the second save wins on that field (edits to different contacts, or different fields, merge). |
 | Low | `Contacts.Read` may need admin consent on work accounts (untested). |
 
 ## Files, Books.xlsx, dashboard and deadlines
