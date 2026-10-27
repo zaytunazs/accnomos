@@ -27,6 +27,7 @@ from app.routes_actions import graph_token
 from app.planner import TZ, plan_intent, uk_day
 from app.routes_books import business_name, get_books
 from app.schemas import AskAnswer, AskPeriod, AskRequest, AskTurn, AskVoiceAnswer, Clarification, ProposedAction, SuggestedAction
+from app.vat_cycle import VatCycle, vat_cycle
 
 router = APIRouter(prefix="/books", tags=["ask"])
 _TURNS = TypeAdapter(list[AskTurn])
@@ -55,9 +56,13 @@ def plan_answer(day: date, period: AskPeriod) -> AskAnswer:
     )
 
 
-async def _answer(req: AskRequest, books: Books, cfg: AiConfig, business: str | None, token: str) -> AskAnswer:
-    """Day-plan intent (code, no model) → instruction (proposed action) → question about the books (facts + model)."""
-    period = req.period or default_period(date.today())
+async def _answer(
+    req: AskRequest, books: Books, cfg: AiConfig, business: str | None, token: str, cycle: VatCycle,
+) -> AskAnswer:
+    """Day-plan intent (code, no model) → instruction (proposed action) → question about the books (facts + model).
+
+    No period in the request: the current VAT period by the settings sent as `stagger`/`start_month`/`months`."""
+    period = req.period or default_period(date.today(), cycle)
     if (day := plan_intent(req.question, datetime.now(TZ).date())) is not None:
         return plan_answer(day, period)
     found = await actions.propose(req.question, books, cfg, token)
@@ -74,9 +79,10 @@ async def ask(
     cfg: AiConfig = Depends(ai_config_from_request),
     business: str | None = Depends(business_name),
     token: str = Depends(graph_token),
+    cycle: VatCycle = Depends(vat_cycle),
 ) -> AskAnswer:
     """An answer about the books, or, for an instruction ("send a £100 invoice to …"), a proposed action to approve."""
-    return await _answer(body, books, cfg, business, token)
+    return await _answer(body, books, cfg, business, token, cycle)
 
 
 @router.post("/ask/voice", response_model=AskVoiceAnswer)
@@ -88,6 +94,7 @@ async def ask_voice(
     cfg: AiConfig = Depends(ai_config_from_request),
     business: str | None = Depends(business_name),
     token: str = Depends(graph_token),
+    cycle: VatCycle = Depends(vat_cycle),
 ) -> AskVoiceAnswer:
     """Spoken question (webm/ogg/m4a/wav) -> WAV via ffmpeg -> Muse Voice Transcribe -> the /books/ask answer.
 
@@ -111,5 +118,5 @@ async def ask_voice(
         req = AskRequest(question=transcript, period=when, history=turns)
     except ValidationError as exc:
         raise HTTPException(422, f"That question is too long ({len(transcript)} characters; keep it under 500)") from exc
-    answer = await _answer(req, books, cfg, business, token)
+    answer = await _answer(req, books, cfg, business, token, cycle)
     return AskVoiceAnswer(**answer.model_dump(), transcript=transcript)
