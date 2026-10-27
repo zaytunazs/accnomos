@@ -160,3 +160,51 @@ test("signed in: edit sends only changed fields, U undoes through the runtime, p
   await expect(novex).toBeVisible();
   expect((await runtime.files()).filter((f) => f.startsWith("_System/Ledger/events/"))).toHaveLength(2); // posting + reversal
 });
+
+test("signed in: U pressed while an approve is in flight undoes it once it lands, and nothing if it fails", async ({ page, runtime }) => {
+  await signIn(page);
+  await createBooksFolder(page);
+  await page.goto("/review");
+  await page.locator('input[type="file"]').first().setInputFiles({ name: `${GOLD}.png`, mimeType: "image/png", buffer: await runtime.goldPng() });
+  await expect(page.getByText("1 file added to 00 Inbox")).toBeVisible();
+  await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
+  const status = page.locator('p[role="status"][aria-live="polite"]');
+  await expect(status).toHaveText("1 new proposal");
+  const novex = card(page, "Novex Office Supplies Ltd · £51.90");
+  const events = async () => (await runtime.files()).filter((f) => f.startsWith("_System/Ledger/events/"));
+  const APPROVE = "**/books/proposals/*/approve";
+
+  // Hold the approve until U has been pressed, then let it through: the queued press undoes it.
+  let release!: () => void;
+  const pressed = new Promise<void>((r) => (release = r));
+  await page.route(APPROVE, async (route) => {
+    await pressed;
+    await route.continue();
+  });
+  await page.keyboard.press("j");
+  await expect(focusedCard(page)).toHaveText("Novex Office Supplies Ltd · £51.90");
+  await page.keyboard.press("a");
+  await page.keyboard.press("u");
+  release();
+  await expect(status).toContainText("a reversing entry was added; it is back in Review");
+  await expect(novex).toBeVisible();
+  expect(await events()).toHaveLength(2); // posting + reversal
+
+  // The same, but the approve fails: the queued press is dropped, not spent on the decision before it.
+  await page.unroute(APPROVE);
+  let fail!: () => void;
+  const failPressed = new Promise<void>((r) => (fail = r));
+  await page.route(APPROVE, async (route) => {
+    await failPressed;
+    await route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ detail: "Held back by the test" }) });
+  });
+  await page.keyboard.press("j");
+  await expect(focusedCard(page)).toHaveText("Novex Office Supplies Ltd · £51.90");
+  await page.keyboard.press("a");
+  await page.keyboard.press("u");
+  fail();
+  await expect(page.getByText("Held back by the test")).toBeVisible();
+  await expect(novex).toBeVisible();
+  await expect(status).not.toContainText("Nothing to undo yet");
+  expect(await events()).toHaveLength(2);
+});

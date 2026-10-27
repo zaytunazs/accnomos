@@ -114,6 +114,8 @@ export default function ReviewQueue<H>({
     [items],
   );
 
+  // U pressed while busy: run once busy clears (see the keys handler), unless what was busy failed.
+  const undoQueued = useRef(false);
   async function run(id: string, fn: () => Promise<void>) {
     setBusy(id);
     onError(null);
@@ -121,6 +123,7 @@ export default function ReviewQueue<H>({
       await fn();
       await afterDecision?.();
     } catch (e) {
+      undoQueued.current = false; // the press meant "undo that", which never happened: don't undo the decision before it
       onError((e as Error).message);
     } finally {
       setBusy(null);
@@ -221,7 +224,6 @@ export default function ReviewQueue<H>({
 
   // J/K move, A approve, E edit, R reject (confirmed), U undo. Ignored while typing or in a dialog.
   const keys = useRef<(e: KeyboardEvent) => void>(() => {});
-  const undoQueued = useRef(false);
   useEffect(() => {
     if (busy !== null || !undoQueued.current) return;
     undoQueued.current = false;
