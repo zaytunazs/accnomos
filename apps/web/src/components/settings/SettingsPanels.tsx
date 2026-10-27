@@ -5,6 +5,7 @@ import Link from "next/link";
 import OutlookIntake from "@/components/settings/OutlookIntake";
 import AutopilotRules from "@/components/settings/AutopilotRules";
 import VatPeriodSettings from "@/components/settings/VatPeriodSettings";
+import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
 
@@ -132,6 +133,8 @@ export default function SettingsPanels() {
       </section>
 
       <VatPeriodSettings card={card} heading={heading} />
+
+      <InvoiceProfileForm card={card} heading={heading} />
 
       <OutlookIntake card={card} heading={heading} />
 
