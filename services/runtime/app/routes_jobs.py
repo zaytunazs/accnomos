@@ -40,8 +40,8 @@ def _id(value: str) -> str:
 
 class JobIn(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    customer_id: str | None = None
-    site_address: str | None = None
+    customer_id: str | None = Field(None, max_length=64)
+    site_address: str | None = Field(None, max_length=500)
     status: Literal["open", "closed"] = "open"
 
 
@@ -115,7 +115,7 @@ async def job_invoice_lines(job_id: str, books: Books = Depends(get_books)) -> j
 
 class MarkInvoicedBody(BaseModel):
     invoice_id: str = Field(min_length=1, max_length=64)
-    entry_ids: list[str]
+    entry_ids: list[str] = Field(min_length=1)
 
 
 @router.post("/jobs/{job_id}/mark-invoiced", response_model=list[TimesheetEntry])

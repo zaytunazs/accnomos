@@ -139,7 +139,11 @@ async def _job_tag(books: Books, p: Proposal, job_id: Any) -> str | None:
         raise ApprovalError("Only purchases can be tagged to a job")
     from app.jobs import load_jobs
 
-    if not any(j.id == job_id for j in await load_jobs(books)):
+    try:
+        known = await load_jobs(books)
+    except ValueError as exc:  # hand-edited jobs.json: say so rather than fail the request
+        raise ApprovalError("The jobs file could not be read, so the purchase can't be tagged") from exc
+    if not any(j.id == job_id for j in known):
         raise ApprovalError(f"No such job {job_id!r}")
     return str(job_id)
 

@@ -268,6 +268,14 @@ async def test_sales_invoices_cannot_be_tagged(books: Books) -> None:
         await approve(books, p.id, USER, {"job_id": JOB.id})
 
 
+async def test_a_broken_jobs_file_refuses_the_tag_not_the_request(fake: FakeStorageProvider, books: Books) -> None:
+    p = await _open(books)
+    fake.files[jobs.JOBS] = b"[{not json"
+    with pytest.raises(ApprovalError, match="jobs file could not be read"):
+        await approve(books, p.id, USER, {"job_id": JOB.id})
+    assert (await approve(books, p.id, USER)).status == "posted"  # untagged approval still works
+
+
 # --------------------------------------------------------------------------- #
 # Routes
 # --------------------------------------------------------------------------- #
@@ -320,6 +328,20 @@ def test_routes_end_to_end(client: TestClient, fake: FakeStorageProvider) -> Non
     assert client.post("/jobs", json={"name": "x"}, headers={"X-Graph-Token": "tok"}).status_code == 400  # no X-User
     assert {e["id"] for e in client.get(f"/timesheets?job_id={job['id']}", headers=H).json()} == {e1["id"], e2["id"]}
     assert "Books.xlsx" in fake.files  # rebuilt after marking invoiced
+
+
+def test_mark_invoiced_refuses_empty_lists_and_other_jobs_entries(client: TestClient, fake: FakeStorageProvider) -> None:
+    a = client.post("/jobs", json={"name": "Kitchen"}, headers=H).json()
+    b = client.post("/jobs", json={"name": "Bathroom"}, headers=H).json()
+    sam = client.post("/staff", json={"name": "Sam", "hourly_rate_pence": 1800}, headers=H).json()
+    e = client.post("/timesheets", json={"staff_id": sam["id"], "job_id": b["id"], "date": "2026-10-20", "hours": 2},
+                    headers=H).json()
+    url = f"/jobs/{a['id']}/mark-invoiced"
+    assert client.post(url, json={"invoice_id": "INV-1", "entry_ids": []}, headers=H).status_code == 422
+    r = client.post(url, json={"invoice_id": "INV-1", "entry_ids": [e["id"]]}, headers=H)
+    assert r.status_code == 400 and "another job" in r.json()["detail"]
+    assert all(row["invoiced_in"] is None for row in _sheet(fake, "2026-10"))
+    assert client.post("/jobs", json={"name": "x", "site_address": "y" * 501}, headers=H).status_code == 422
 
 
 async def test_books_xlsx_jobs_sheet(fake: FakeStorageProvider, books: Books) -> None:
