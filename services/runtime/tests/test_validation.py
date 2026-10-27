@@ -59,6 +59,38 @@ async def test_free_path_is_the_backstop():
         await books.free_path("03 Bank statements/2026-10", "..")
 
 
+def test_hand_edited_proposal_with_a_path_name_is_a_400_not_a_500():
+    """Proposals live in the user's own folder and can be edited there; free_path's refusal must reach the user."""
+    import asyncio
+    from datetime import UTC, datetime
+
+    from app.schemas import Proposal
+
+    storage = FakeStorageProvider()
+    storage.files["00 Inbox/x.jpg"] = b"\xff\xd8"
+    books = Books(storage)
+    doc = ExtractedDoc(
+        doc_type="receipt", supplier_name="Wickes", supplier_vat_number=None, customer_name=None, invoice_number=None,
+        date="2026-10-26", currency="GBP", lines=[], net_total=10, vat_total=2, gross_total=12, payment_method="card",
+        card_last4=None, category_guess="Materials", confidence=0.6,
+    )
+    p = Proposal(id="c" * 16, doc_sha256="cd" * 32, extracted=doc, checks=[], status="proposed", reasons=[],
+                 suggested_filename="../../escape.jpg", file_path="00 Inbox/x.jpg", journal_draft=[], model="stub",
+                 elapsed_s=1.0, created_at=datetime(2026, 10, 26, 9, tzinfo=UTC))
+    asyncio.run(books.save_proposal(p))
+
+    async def _books():
+        yield books
+
+    app.dependency_overrides[get_books] = _books
+    try:
+        r = TestClient(app).post(f"/books/proposals/{p.id}/reject", headers=H, json={})
+    finally:
+        app.dependency_overrides.clear()
+    assert r.status_code == 400 and "file name" in r.json()["detail"]
+    assert not any("escape" in k for k in storage.files)
+
+
 def test_model_output_cannot_put_a_path_in_the_filed_name():
     doc = ExtractedDoc(
         doc_type="receipt", supplier_name="../../Documents/x", supplier_vat_number=None, customer_name=None,

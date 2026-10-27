@@ -112,6 +112,15 @@ async def graph_error(_request: Request, exc: GraphError) -> JSONResponse:
     """Expired/insufficient Graph token -> 401 so the app re-authenticates; anything else -> 502."""
     status = 401 if exc.status in (401, 403) else 502
     return JSONResponse(status_code=status, content={"detail": scrub(str(exc))})
+
+
+from app.validation import UnsafeName  # noqa: E402
+
+
+@app.exception_handler(UnsafeName)
+async def unsafe_name(_request: Request, exc: UnsafeName) -> JSONResponse:
+    """A file name that could climb out of its folder (e.g. a hand-edited proposal in the user's books) -> 400."""
+    return JSONResponse(status_code=400, content={"detail": f"Bad file name: {exc}"})
 from app.routes_vat import router as vat_router  # noqa: E402  GET /books/vat
 app.include_router(vat_router)
 from app.routes_bank import router as bank_router  # noqa: E402  /books/bank/*
