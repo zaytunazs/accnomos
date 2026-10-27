@@ -13,7 +13,6 @@ Severity:
 | Severity | Item |
 |---|---|
 | High | **Almost nothing has run against a real OneDrive, a real Meta key, HMRC's sandbox or a phone.** Only sign-in, folder setup, read → approve → ledger and the VAT boxes were run by hand (maintainers' word; no log committed). Everything else is tested on fakes. |
-| Medium | `uv.lock` is stale: the `accnomos-runtime` entry lists none of `pillow`, `numpy` or `fpdf2`, and the lock has no `numpy` or `fpdf2` package, so `uv sync --frozen` would leave them out (crop imports numpy, invoices use fpdf2). Docker installs with `pip` and is fine. Run `uv lock`. |
 | Medium | In key mode with no `X-Meta-Api-Key` header, `AiConfig` falls back to the server's `META_API_KEY`: typed and voice Ask would run on the operator's key. A product decision, not changed. |
 | Medium | The Autopilot level lives in the browser's `localStorage`. The Android app never sends `X-Autopilot`, so phone scans run Autopilot whenever a rule exists. |
 | Medium | `flutter analyze` and `flutter test` have never been run on the current `apps/mobile`. |

@@ -115,7 +115,6 @@ in `apps/web` passes; the Playwright suite was not re-run. `ruff` has not been r
 - The Graph provider's `_safe_path` raises a plain `ValueError`, so a hand-edited unsafe path in the user's books returns a 500 with a correlation id, not a 400 (nothing can escape the folder either way).
 - Deploy files are checked by config tests only: images not built, `docker compose up` and `nginx -t` not run, `.htaccess` not tried on Apache/Plesk, base images pinned by tag not digest, nothing tried against live `api.accnomos.com`. `Permissions-Policy` lists the deprecated `interest-cohort`.
 - No authentication of callers beyond holding a valid token; `X-User` is not checked against the token. No script CSP on the web app. The AI key and HMRC tokens live in browser storage, readable by an XSS on the web origin. Prompt injection beyond file names is only mitigated by checks and approval.
-- `uv.lock` is stale: its `accnomos-runtime` entry lists none of `pillow`, `numpy` or `fpdf2` (all required in `services/runtime/pyproject.toml`) and the lock has no `numpy` or `fpdf2` package, so `uv sync --frozen` would leave them out. Docker installs with `pip`.
 - The shared `.venv` on the Spark can hold editable installs from another checkout; run `uv sync --all-packages` in the checkout you serve from.
 
 ## Testing and process
