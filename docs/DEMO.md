@@ -22,7 +22,7 @@ other approved entries dated Oct–Dec 2026, the figures rise by theirs: check b
 1. Sign in on a laptop and complete *Connect* once, so the folder exists and the tree is visible. Empty `00 Inbox`.
 2. `curl https://api.accnomos.com/health` returns `"ok": true`. On the Spark, `ollama list` shows `muse-glimmer:30b`; run one dummy scan so the model is warm. (Not checked from this review: the live sites were unreachable.)
 3. Settings → *Autopilot level* stays **L1** (propose only). Settings → *VAT periods* stays **Quarterly, stagger 1**.
-4. Download the sample receipt to the laptop. Have `docs/META_MODELS.md`, `pytest -q` in `services/hmrc-relay` (100 pass, HMRC mocked) and a screen recording ready as the last resorts below.
+4. Download the sample receipt to the laptop. Have `docs/META_MODELS.md`, `pytest -q` in `services/hmrc-relay` (102 pass, HMRC mocked) and a screen recording ready as the last resorts below.
 
 For judges who want to click through six months of books rather than one receipt, `tools/seed_demo.md` fills a
 **separate** throwaway account; don't seed the account used for this script (it leaves 25 documents in `00 Inbox`).
