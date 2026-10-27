@@ -67,6 +67,15 @@ export function mailScopesFor(kind: AccountKind): string[] {
   return ["Mail.Read"];
 }
 
+/**
+ * Sending an invoice or a reminder from the user's Outlook. Asked for only when the user first taps Send in a
+ * confirmation dialog (H26), together with the storage scopes, as the runtime also saves the sent copy.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export function mailSendScopesFor(kind: AccountKind): string[] {
+  return ["Mail.Send"];
+}
+
 /** Access token for the given scopes; falls back to an interactive redirect when consent is needed. */
 export async function getToken(scopes: string[]): Promise<string> {
   const msal = await getMsal();
