@@ -92,37 +92,53 @@ class _HomeScreenState extends State<HomeScreen> {
       ];
     }
     final d = _data;
-    final overdue = d?.overdueInvoices ?? 0;
-    final owedBy = d?.owedByYouPence;
-    final attention = d?.attentionTotal;
-    final vat = d?.vatBox5 == null
+    if (d == null) {
+      // The runtime could not be reached: the message is shown above.
+      return const [
+        HomeTile(label: 'Cash in bank', value: '—', note: 'Could not load'),
+        HomeTile(label: 'Owed to you', value: '—', note: 'Could not load'),
+        HomeTile(label: 'VAT estimate', value: '—', note: 'Could not load'),
+        HomeTile(label: 'Needs attention', value: '—', note: 'Could not load'),
+      ];
+    }
+    final overdue = d.overdueInvoices ?? 0;
+    final owedBy = d.owedByYouPence;
+    final attention = d.attentionTotal;
+    final box5 = double.tryParse(d.vatBox5 ?? '');
+    final vat = box5 == null
         ? '—'
-        : d?.vatDirection == 'nil'
+        : d.vatDirection == 'nil'
             ? '£0'
-            : poundsFromPence((double.parse(d!.vatBox5!) * 100).round());
+            : poundsFromPence((box5 * 100).round());
+    final vatVerb = d.vatDirection == 'reclaim'
+        ? 'Reclaim'
+        : d.vatDirection == 'nil'
+            ? 'Nothing to pay'
+            : 'Pay';
     return [
       HomeTile(
         label: 'Cash in bank',
-        value: poundsFromPence(d?.cashPence),
-        note: d?.cashAsOf == null
+        value: poundsFromPence(d.cashPence),
+        note: d.cashAsOf == null
             ? 'Match a bank line to see'
-            : 'Balance on ${shortDate(d?.cashAsOf)}',
+            : 'Balance on ${shortDate(d.cashAsOf)}',
       ),
       HomeTile(
         label: 'Owed to you',
-        value: poundsFromPence(d?.owedToYouPence),
+        value: poundsFromPence(d.owedToYouPence),
         note: overdue > 0
             ? '$overdue overdue'
-            : 'You owe ${poundsFromPence(owedBy)}',
+            : owedBy == null
+                ? 'Unpaid sales'
+                : 'You owe ${poundsFromPence(owedBy)}',
         amber: overdue > 0,
       ),
       HomeTile(
         label: 'VAT estimate',
         value: vat,
-        note: d?.vatDeadline == null
+        note: d.vatDeadline == null
             ? 'Calculated by code'
-            : '${d?.vatDirection == 'reclaim' ? 'Reclaim' : 'Pay'} by '
-                '${shortDate(d?.vatDeadline)}',
+            : '$vatVerb by ${shortDate(d.vatDeadline)}',
       ),
       HomeTile(
         label: 'Needs attention',
