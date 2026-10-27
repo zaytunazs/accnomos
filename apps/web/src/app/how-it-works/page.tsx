@@ -1,5 +1,6 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
+import SignInCta from "@/components/SignInCta";
 import { FOLDER } from "@/lib/folders";
 
 export const metadata = { title: "How it works · Accnomos" };
@@ -21,7 +22,7 @@ const features: Feature[] = [
     title: "Receipts: snap, check, approve",
     does: "Photograph or upload a receipt, or drop it in 00 Inbox. It is read, checked against plain rules, and held on the Review page until you tap Approve or Reject. Approval writes one balanced ledger event that is never edited or deleted; Undo adds a reversing event.",
     ai: "The AI reads the document into a strict list: supplier, VAT number, date, lines, net, VAT and total. It also guesses the category.",
-    code: "Code checks the reading: lines and totals add up, VAT maths and rates are right, the VAT number has the right shape, it is not a duplicate, it is in pounds, the date is valid and confidence is high enough. Anything that fails waits in Needs a look.",
+    code: "Code checks the reading: lines and totals add up, VAT maths and rates are right, the VAT number has the right shape, it is not a duplicate, it is in pounds, the date is valid and confidence is high enough. A purchase over £250 with no VAT and no VAT number from a supplier the books do not know yet also waits, asking “Is <supplier> VAT-registered?” — the tick teaches “not registered”, a VAT number seen on an approved receipt teaches “registered”, undoing the approval takes the tick back, and Contacts can change the stored answer. Anything that fails waits in Needs a look.",
     gap: "Not verified yet: key-mode reading (Muse Spark) is unit-tested only; HEIC photos are copied but not read; evals use made-up receipts, so real phone photos will score lower.",
   },
   {
@@ -182,6 +183,10 @@ const faqs: { q: string; a: string }[] = [
   {
     q: "What if the AI is wrong?",
     a: "Three things stand between a wrong reading and your books: plain code checks (maths, VAT, duplicates, currency, dates, confidence), a second independent reading that code compares field by field, and your Approve tap. Anything unsure waits in Needs a look with the reason shown.",
+  },
+  {
+    q: "When is a missing VAT number questioned?",
+    a: "When your business is VAT-registered and a purchase over £250 shows no VAT and no VAT number from a supplier the books do not know yet. The card asks “Is <supplier> VAT-registered? Over £250 they should give a VAT invoice”, with a tick for “isn't VAT-registered”. The tick teaches “not registered”; a VAT number seen on an approved receipt teaches “registered”; undoing the approval takes the tick back; you can change the stored answer any time on Contacts.",
   },
   {
     q: "What does the verifier do?",
@@ -434,9 +439,10 @@ export default function HowItWorksPage() {
         <h2 id="next-heading" className="sr-only">
           Next steps
         </h2>
+        <SignInCta className="whitespace-nowrap rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark" />
         <Link
           href="/review"
-          className="whitespace-nowrap rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark"
+          className="whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold text-ink hover:bg-ground"
         >
           See the demo books
         </Link>
