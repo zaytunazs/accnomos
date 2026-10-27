@@ -9,12 +9,24 @@ from relay.oauth import OAuth
 
 from .conftest import make_settings, web_facts
 
-TOKENS = {"access_token": "AT1", "refresh_token": "RT2", "expires_in": 14400, "scope": "read:vat write:vat",
-          "token_type": "bearer"}
+TOKENS = {
+    "access_token": "AT1",
+    "refresh_token": "RT2",
+    "expires_in": 14400,
+    "scope": "read:vat write:vat",
+    "token_type": "bearer",
+}
 RETURN = {
-    "periodKey": "A1#1", "vatDueSales": 1000.10, "vatDueAcquisitions": 0, "totalVatDue": 1000.10,
-    "vatReclaimedCurrPeriod": 1200.00, "netVatDue": 199.90, "totalValueSalesExVAT": 5000,
-    "totalValuePurchasesExVAT": 6000, "totalValueGoodsSuppliedExVAT": 0, "totalAcquisitionsExVAT": 0,
+    "periodKey": "A1#1",
+    "vatDueSales": 1000.10,
+    "vatDueAcquisitions": 0,
+    "totalVatDue": 1000.10,
+    "vatReclaimedCurrPeriod": 1200.00,
+    "netVatDue": 199.90,
+    "totalValueSalesExVAT": 5000,
+    "totalValuePurchasesExVAT": 6000,
+    "totalValueGoodsSuppliedExVAT": 0,
+    "totalAcquisitionsExVAT": 0,
     "finalised": True,
 }
 
@@ -25,11 +37,17 @@ def never(_: httpx.Request) -> httpx.Response:
 
 # --- CORS (the PWA calls the relay straight from the browser) ----------------------------------------------
 
+
 @pytest.mark.parametrize("origin", ["https://app.accnomos.example", "http://localhost:3000"])
 async def test_cors_preflight_allows_pwa_origins(client_for, origin):
-    r = await client_for(never).options("/vat/123456789/obligations", headers={
-        "Origin": origin, "Access-Control-Request-Method": "POST",
-        "Access-Control-Request-Headers": "content-type,x-hmrc-access-token"})
+    r = await client_for(never).options(
+        "/vat/123456789/obligations",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type,x-hmrc-access-token",
+        },
+    )
     assert r.status_code == 200
     assert r.headers["access-control-allow-origin"] == origin
     assert "x-hmrc-access-token" in r.headers["access-control-allow-headers"].lower()
@@ -48,9 +66,11 @@ async def test_health(client_for):
 
 # --- OAuth -----------------------------------------------------------------------------------------------
 
+
 async def test_authorize_url_has_no_secret(client_for):
-    r = await client_for(never).get("/hmrc/authorize", params={"redirect_to": "https://app.accnomos.example/cb",
-                                                                "code_challenge": "x" * 43})
+    r = await client_for(never).get(
+        "/hmrc/authorize", params={"redirect_to": "https://app.accnomos.example/cb", "code_challenge": "x" * 43}
+    )
     url = urlsplit(r.json()["url"])
     q = parse_qs(url.query)
     assert f"{url.scheme}://{url.netloc}{url.path}" == "https://test-www.tax.service.gov.uk/oauth/authorize"
@@ -72,7 +92,9 @@ async def test_callback_puts_tokens_in_fragment(client_for):
         return httpx.Response(200, json=TOKENS)
 
     c = client_for(hmrc)
-    state = (await c.get("/hmrc/authorize", params={"redirect_to": "https://app.accnomos.example/cb?x=1"})).json()["state"]
+    state = (await c.get("/hmrc/authorize", params={"redirect_to": "https://app.accnomos.example/cb?x=1"})).json()[
+        "state"
+    ]
     r = await c.get("/hmrc/callback", params={"code": "C0DE", "state": state})
     assert r.status_code == 303
     loc = urlsplit(r.headers["location"])
@@ -89,8 +111,9 @@ async def test_callback_pkce_returns_code_then_exchange(client_for):
         return httpx.Response(200, json=TOKENS)
 
     c = client_for(hmrc)
-    state = (await c.get("/hmrc/authorize", params={"redirect_to": "http://localhost:5173/cb",
-                                                     "code_challenge": "c" * 43})).json()["state"]
+    state = (
+        await c.get("/hmrc/authorize", params={"redirect_to": "http://localhost:5173/cb", "code_challenge": "c" * 43})
+    ).json()["state"]
     r = await c.get("/hmrc/callback", params={"code": "C0DE", "state": state})
     frag = parse_qs(urlsplit(r.headers["location"]).fragment)
     assert frag == {"code": ["C0DE"], "state": [state]}
@@ -134,6 +157,7 @@ async def test_refresh_error_is_mapped(client_for):
 
 # --- VAT -------------------------------------------------------------------------------------------------
 
+
 def body(**kw) -> dict:
     return {"client_facts": web_facts(), "method": "WEB_APP_VIA_SERVER", **kw}
 
@@ -143,12 +167,18 @@ async def test_submit_return_sends_headers_and_echoes_them(client_for):
 
     def hmrc(req: httpx.Request) -> httpx.Response:
         sent["req"] = req
-        return httpx.Response(201, json={"processingDate": "2026-10-27T09:30:02.000Z", "formBundleNumber": "256660290587"},
-                              headers={"Receipt-ID": "r-1", "X-CorrelationId": "corr-1"})
+        return httpx.Response(
+            201,
+            json={"processingDate": "2026-10-27T09:30:02.000Z", "formBundleNumber": "256660290587"},
+            headers={"Receipt-ID": "r-1", "X-CorrelationId": "corr-1"},
+        )
 
     c = client_for(hmrc)
-    r = await c.post("/vat/123456789/returns", json=body(**{"return": RETURN}, gov_test_scenario="SOME_SCENARIO"),
-                     headers={"X-HMRC-Access-Token": "AT1", "X-Forwarded-For": "203.0.113.9"})
+    r = await c.post(
+        "/vat/123456789/returns",
+        json=body(**{"return": RETURN}, gov_test_scenario="SOME_SCENARIO"),
+        headers={"X-HMRC-Access-Token": "AT1", "X-Forwarded-For": "203.0.113.9"},
+    )
     assert r.status_code == 201, r.text
     req = sent["req"]
     assert str(req.url) == "https://test-api.service.hmrc.gov.uk/organisations/vat/123456789/returns"
@@ -164,22 +194,28 @@ async def test_submit_return_sends_headers_and_echoes_them(client_for):
     assert out["fraud_headers_missing"] == ["Gov-Client-Public-Port"]  # behind a proxy without X-Client-Port
 
 
-@pytest.mark.parametrize("change", [
-    {"totalValueSalesExVAT": 5000.5},             # whole pounds only
-    {"netVatDue": -199.90},                       # absolute value
-    {"vatReclaimedCurrPeriod": 1200.001},         # 2 dp
-    {"periodKey": "A1#"},                         # 4 chars
-    {"totalVatDue": 999.00},                      # box 3 != box 1 + box 2
-    {"netVatDue": 10.00},                         # box 5 != |box 3 - box 4|
-])
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"totalValueSalesExVAT": 5000.5},  # whole pounds only
+        {"netVatDue": -199.90},  # absolute value
+        {"vatReclaimedCurrPeriod": 1200.001},  # 2 dp
+        {"periodKey": "A1#"},  # 4 chars
+        {"totalVatDue": 999.00},  # box 3 != box 1 + box 2
+        {"netVatDue": 10.00},  # box 5 != |box 3 - box 4|
+    ],
+)
 async def test_submit_return_validated_before_hmrc(client_for, change):
-    r = await client_for(never).post("/vat/123456789/returns", json=body(**{"return": RETURN | change}),
-                                     headers={"X-HMRC-Access-Token": "AT1"})
+    r = await client_for(never).post(
+        "/vat/123456789/returns", json=body(**{"return": RETURN | change}), headers={"X-HMRC-Access-Token": "AT1"}
+    )
     assert r.status_code == 422
 
 
 async def test_vat_requires_user_token(client_for):
-    r = await client_for(never).post("/vat/123456789/obligations", json=body(**{"from": "2026-01-01", "to": "2026-12-31"}))
+    r = await client_for(never).post(
+        "/vat/123456789/obligations", json=body(**{"from": "2026-01-01", "to": "2026-12-31"})
+    )
     assert r.status_code == 401
 
 
@@ -192,8 +228,9 @@ async def test_obligations_and_view_paths(client_for):
 
     c = client_for(hmrc)
     h = {"X-HMRC-Access-Token": "AT1"}
-    await c.post("/vat/123456789/obligations", json=body(**{"from": "2026-01-01", "to": "2026-12-31", "status": "O"}),
-                 headers=h)
+    await c.post(
+        "/vat/123456789/obligations", json=body(**{"from": "2026-01-01", "to": "2026-12-31", "status": "O"}), headers=h
+    )
     await c.post("/vat/123456789/returns/A1%231/view", json=body(), headers=h)
     assert urls == [
         "https://test-api.service.hmrc.gov.uk/organisations/vat/123456789/obligations?from=2026-01-01&to=2026-12-31&status=O",
@@ -203,12 +240,16 @@ async def test_obligations_and_view_paths(client_for):
 
 async def test_hmrc_error_passthrough(client_for):
     c = client_for(lambda _: httpx.Response(403, json={"code": "CLIENT_OR_AGENT_NOT_AUTHORISED", "message": "no"}))
-    r = await c.post("/vat/123456789/payments", json=body(**{"from": "2026-01-01", "to": "2026-03-31"}),
-                     headers={"X-HMRC-Access-Token": "AT1"})
+    r = await c.post(
+        "/vat/123456789/payments",
+        json=body(**{"from": "2026-01-01", "to": "2026-03-31"}),
+        headers={"X-HMRC-Access-Token": "AT1"},
+    )
     assert r.status_code == 403 and r.json()["code"] == "CLIENT_OR_AGENT_NOT_AUTHORISED"
 
 
 # --- application-restricted --------------------------------------------------------------------------------
+
 
 def app_restricted(api: dict[str, tuple[int, dict]], log: list):
     def hmrc(req: httpx.Request) -> httpx.Response:
@@ -219,6 +260,7 @@ def app_restricted(api: dict[str, tuple[int, dict]], log: list):
         assert req.headers["authorization"] == "Bearer APP"
         status, payload = api[req.url.path]
         return httpx.Response(status, json=payload)
+
     return hmrc
 
 

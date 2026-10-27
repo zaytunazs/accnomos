@@ -32,11 +32,11 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Literal
 
+from pydantic import BaseModel, Field
+
 from accnomos_connectors.base import AddressBookContact
 from accnomos_ledger.bank import BankLine
 from accnomos_ledger.events import LedgerEvent, VatCode
-from pydantic import BaseModel, Field
-
 from app.autopilot import supplier_key
 from app.books import SYSTEM, Books, now
 from app.checks import UNKNOWN_SUPPLIER, SupplierKnowledge, normalise_vat_number
@@ -66,7 +66,9 @@ class Contact(BaseModel):
     default_category: str | None = None
     default_vat_code: str | None = None
     source: ContactSource = "ledger"
-    vat_status: VatStatus = "unknown"  # learnt on approval (`learn_vat_status`) or set on Contacts; see `supplier_knowledge`
+    vat_status: VatStatus = (
+        "unknown"  # learnt on approval (`learn_vat_status`) or set on Contacts; see `supplier_knowledge`
+    )
     aliases: list[str] = []  # other normalised names that mean this contact (old names, other spellings)
     edited: list[str] = []  # fields the user changed; refreshing leaves them alone
     created_at: datetime = Field(default_factory=now)
@@ -89,7 +91,11 @@ def find(contacts: Iterable[Contact], key: str, vrn: str | None) -> Contact | No
     if vrn and (hit := next((c for c in contacts if c.vrn == vrn), None)):
         return hit
     return next(
-        (c for c in contacts if key and (key == c.normalised_key or key in c.aliases) and not (vrn and c.vrn and c.vrn != vrn)),
+        (
+            c
+            for c in contacts
+            if key and (key == c.normalised_key or key in c.aliases) and not (vrn and c.vrn and c.vrn != vrn)
+        ),
         None,
     )
 
@@ -150,15 +156,21 @@ def documents(ledger: Ledger) -> list[Doc]:
         p = ledger.proposals.get(source.proposal_id or "")
         doc = p.extracted if p else None
         account = DEBTORS if side == "sale" else CREDITORS
-        out.append(Doc(
-            event=e, side=side, sign=-1 if original else 1, name=name, key=supplier_key(name) if name else "",
-            vrn=normalise_vat_number(doc.supplier_vat_number) if doc and side == "purchase" else None,
-            gross=sum(ln.debit for ln in source.lines),
-            on_account=any(ln.account == account for ln in source.lines),
-            reference=doc.invoice_number if doc else None,
-            category=doc.category_guess if doc and side == "purchase" else None,
-            vat_code=_expense_vat_code(source) if side == "purchase" else None,
-        ))
+        out.append(
+            Doc(
+                event=e,
+                side=side,
+                sign=-1 if original else 1,
+                name=name,
+                key=supplier_key(name) if name else "",
+                vrn=normalise_vat_number(doc.supplier_vat_number) if doc and side == "purchase" else None,
+                gross=sum(ln.debit for ln in source.lines),
+                on_account=any(ln.account == account for ln in source.lines),
+                reference=doc.invoice_number if doc else None,
+                category=doc.category_guess if doc and side == "purchase" else None,
+                vat_code=_expense_vat_code(source) if side == "purchase" else None,
+            )
+        )
     return out
 
 
@@ -176,8 +188,15 @@ def merge_ledger(contacts: Sequence[Contact], ledger: Ledger, at: datetime | Non
             continue
         c = find(book, d.key, d.vrn)
         if c is None:
-            c = Contact(id=contact_id(d.key, d.vrn), kind=_kind({d.side}), name=d.name, normalised_key=d.key,
-                        vrn=d.vrn, created_at=at, updated_at=at)
+            c = Contact(
+                id=contact_id(d.key, d.vrn),
+                kind=_kind({d.side}),
+                name=d.name,
+                normalised_key=d.key,
+                vrn=d.vrn,
+                created_at=at,
+                updated_at=at,
+            )
             book.append(c)
         if d.vrn and not c.vrn and "vrn" not in c.edited:
             c.vrn = d.vrn
@@ -266,25 +285,44 @@ def _statement_lines(docs: Sequence[Doc], ledger: Ledger) -> list[StatementLine]
         label = _DETAILS[d.side] + ("" if d.on_account else ", paid at the time")
         if d.sign < 0:
             label = f"Undo: {label[0].lower()}{label[1:]}"
-        out.append(StatementLine(date=d.event.date, details=label, reference=d.reference, event_id=d.event.id,
-                                 amount_pence=amount, paid_pence=0 if d.on_account else -amount))
+        out.append(
+            StatementLine(
+                date=d.event.date,
+                details=label,
+                reference=d.reference,
+                event_id=d.event.id,
+                amount_pence=amount,
+                paid_pence=0 if d.on_account else -amount,
+            )
+        )
         if d.on_account and d.sign > 0 and (ln := paid.get(d.event.id)):
-            out.append(StatementLine(date=ln.date, details=f"Bank: {ln.description}", reference=ln.reference,
-                                     event_id=d.event.id, paid_pence=-amount))
+            out.append(
+                StatementLine(
+                    date=ln.date,
+                    details=f"Bank: {ln.description}",
+                    reference=ln.reference,
+                    event_id=d.event.id,
+                    paid_pence=-amount,
+                )
+            )
     return out
 
 
-def statement(contact: Contact, docs: Sequence[Doc], ledger: Ledger,
-              start: date | None = None, end: date | None = None) -> Statement:
-    lines = sorted(_statement_lines(docs, ledger), key=lambda ln: (ln.date, ln.paid_pence != 0 and ln.amount_pence == 0))
+def statement(
+    contact: Contact, docs: Sequence[Doc], ledger: Ledger, start: date | None = None, end: date | None = None
+) -> Statement:
+    lines = sorted(
+        _statement_lines(docs, ledger), key=lambda ln: (ln.date, ln.paid_pence != 0 and ln.amount_pence == 0)
+    )
     opening = sum(ln.amount_pence + ln.paid_pence for ln in lines if start and ln.date < start)
     shown = [ln for ln in lines if (not start or ln.date >= start) and (not end or ln.date <= end)]
     balance = opening
     for ln in shown:
         balance += ln.amount_pence + ln.paid_pence
         ln.balance_pence = balance
-    return Statement(contact=contact, start=start, end=end, opening_balance_pence=opening,
-                     closing_balance_pence=balance, lines=shown)
+    return Statement(
+        contact=contact, start=start, end=end, opening_balance_pence=opening, closing_balance_pence=balance, lines=shown
+    )
 
 
 class ContactTotals(BaseModel):
@@ -364,16 +402,31 @@ def aged(contacts: Sequence[Contact], ledger: Ledger, as_of: date) -> AgedBalanc
                 continue
             age = (as_of - d.event.date).days
             row = tables[d.side].setdefault(
-                cid, AgedRow(contact_id=cid, name=names[cid], buckets=dict.fromkeys(BUCKETS, 0), total_pence=0, documents=[]))
+                cid,
+                AgedRow(
+                    contact_id=cid, name=names[cid], buckets=dict.fromkeys(BUCKETS, 0), total_pence=0, documents=[]
+                ),
+            )
             row.buckets[bucket(age)] += d.gross
             row.total_pence += d.gross
-            row.documents.append(AgedDoc(event_id=d.event.id, date=d.event.date, reference=d.reference,
-                                         amount_pence=d.gross, age_days=age, bucket=bucket(age)))
+            row.documents.append(
+                AgedDoc(
+                    event_id=d.event.id,
+                    date=d.event.date,
+                    reference=d.reference,
+                    amount_pence=d.gross,
+                    age_days=age,
+                    bucket=bucket(age),
+                )
+            )
 
     def table(rows: dict[str, AgedRow]) -> AgedTable:
         ordered = sorted(rows.values(), key=lambda r: (-r.total_pence, r.name.lower()))
-        return AgedTable(rows=ordered, buckets={b: sum(r.buckets[b] for r in ordered) for b in BUCKETS},
-                         total_pence=sum(r.total_pence for r in ordered))
+        return AgedTable(
+            rows=ordered,
+            buckets={b: sum(r.buckets[b] for r in ordered) for b in BUCKETS},
+            total_pence=sum(r.total_pence for r in ordered),
+        )
 
     return AgedBalances(as_of=as_of, debtors=table(tables["sale"]), creditors=table(tables["purchase"]))
 
@@ -384,8 +437,10 @@ class ContactRow(Contact):
 
 def with_totals(contacts: Sequence[Contact], ledger: Ledger, year_start: date, today: date) -> list[ContactRow]:
     by_contact = assign(contacts, documents(ledger))
-    return [ContactRow(**c.model_dump(), totals=totals(by_contact.get(c.id, []), ledger, year_start, today))
-            for c in contacts]
+    return [
+        ContactRow(**c.model_dump(), totals=totals(by_contact.get(c.id, []), ledger, year_start, today))
+        for c in contacts
+    ]
 
 
 # --------------------------------------------------------------------------- #
@@ -509,8 +564,9 @@ def learnt_vat_status(doc: ExtractedDoc, not_registered_tick: bool) -> VatStatus
     return None
 
 
-def remember_vat_status(contacts: Sequence[Contact], name: str, status: VatStatus, vrn: str | None = None,
-                        at: datetime | None = None) -> tuple[list[Contact], Contact, bool]:
+def remember_vat_status(
+    contacts: Sequence[Contact], name: str, status: VatStatus, vrn: str | None = None, at: datetime | None = None
+) -> tuple[list[Contact], Contact, bool]:
     """(the book, the supplier's contact, whether anything changed). The contact is created when the book has
     no-one by that name or VAT number yet, with the id a later ledger refresh would give it."""
     at = at or now()
@@ -519,7 +575,14 @@ def remember_vat_status(contacts: Sequence[Contact], name: str, status: VatStatu
     c = find(book, key, vrn)
     created = c is None
     if c is None:
-        c = Contact(id=contact_id(key, vrn), kind="supplier", name=name.strip(), normalised_key=key, created_at=at, updated_at=at)
+        c = Contact(
+            id=contact_id(key, vrn),
+            kind="supplier",
+            name=name.strip(),
+            normalised_key=key,
+            created_at=at,
+            updated_at=at,
+        )
         book.append(c)
     before = (c.vat_status, c.vrn)
     c.vat_status = status
@@ -531,7 +594,9 @@ def remember_vat_status(contacts: Sequence[Contact], name: str, status: VatStatu
     return sorted(book, key=lambda x: x.name.lower()), c, changed
 
 
-async def set_vat_status(books: Books, name: str, status: VatStatus, actor: str, vrn: str | None = None) -> Contact | None:
+async def set_vat_status(
+    books: Books, name: str, status: VatStatus, actor: str, vrn: str | None = None
+) -> Contact | None:
     """Record a supplier's VAT status in contacts.json: one read and, only if it changes, one write (the ledger is
     not loaded). Returns the contact when it changed."""
     if not remember_vat_status(await stored_contacts(books), name, status, vrn)[2]:
@@ -548,18 +613,26 @@ async def set_vat_status(books: Books, name: str, status: VatStatus, actor: str,
     return changed[0]
 
 
-async def learn_from_approval(books: Books, p: Proposal, actor: str, not_registered_tick: bool = False) -> Contact | None:
+async def learn_from_approval(
+    books: Books, p: Proposal, actor: str, not_registered_tick: bool = False
+) -> Contact | None:
     status = learnt_vat_status(p.extracted, not_registered_tick)
     if status is None:
         return None
-    return await set_vat_status(books, p.extracted.supplier_name, status, actor, normalise_vat_number(p.extracted.supplier_vat_number))
+    return await set_vat_status(
+        books, p.extracted.supplier_name, status, actor, normalise_vat_number(p.extracted.supplier_vat_number)
+    )
 
 
 async def forget_from_undo(books: Books, p: Proposal, actor: str) -> Contact | None:
     """Undoing an approval takes back what the user's "isn't VAT-registered" tick taught (a VAT number seen on the
     receipt stays learnt: the number is evidence on its own). Returns the contact when it changed."""
     doc = p.extracted
-    if doc.doc_type == "sales_invoice" or not supplier_key(doc.supplier_name) or normalise_vat_number(doc.supplier_vat_number):
+    if (
+        doc.doc_type == "sales_invoice"
+        or not supplier_key(doc.supplier_name)
+        or normalise_vat_number(doc.supplier_vat_number)
+    ):
         return None
     try:
         c = find(await stored_contacts(books), supplier_key(doc.supplier_name), None)
@@ -582,8 +655,9 @@ def _names(entry: AddressBookContact) -> list[str]:
     return [n for n in (entry.company_name, entry.display_name) if n and supplier_key(n)]
 
 
-def import_address_book(contacts: Sequence[Contact], entries: Sequence[AddressBookContact], add_new: bool,
-                        at: datetime | None = None) -> tuple[list[Contact], ImportResult]:
+def import_address_book(
+    contacts: Sequence[Contact], entries: Sequence[AddressBookContact], add_new: bool, at: datetime | None = None
+) -> tuple[list[Contact], ImportResult]:
     """Fill blank emails and phones of contacts the address book knows (by company name, then display name);
     with `add_new`, add the rest as customers (source "outlook"). Never overwrites anything already set."""
     at = at or now()
@@ -602,8 +676,19 @@ def import_address_book(contacts: Sequence[Contact], entries: Sequence[AddressBo
                 skipped += 1
                 continue
             key = supplier_key(names[0])
-            book.append(Contact(id=contact_id(key, None), kind="customer", name=names[0], normalised_key=key,
-                                email=email, phone=phone, source="outlook", created_at=at, updated_at=at))
+            book.append(
+                Contact(
+                    id=contact_id(key, None),
+                    kind="customer",
+                    name=names[0],
+                    normalised_key=key,
+                    email=email,
+                    phone=phone,
+                    source="outlook",
+                    created_at=at,
+                    updated_at=at,
+                )
+            )
             added += 1
             continue
         matched += 1

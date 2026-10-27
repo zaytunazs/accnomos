@@ -31,20 +31,35 @@ from app.ai import voice
 from app.ai.config import AiConfig, ai_config_from_request
 from app.books import Books, today
 from app.facts import build_facts, default_period
-from app.routes_actions import graph_token
 from app.planner import TZ, plan_intent, uk_day
+from app.routes_actions import graph_token
 from app.routes_books import business_name, get_books
-from app.schemas import AskAnswer, AskPeriod, AskRequest, AskTurn, AskVoiceAnswer, Clarification, ProposedAction, SuggestedAction
+from app.schemas import (
+    AskAnswer,
+    AskPeriod,
+    AskRequest,
+    AskTurn,
+    AskVoiceAnswer,
+    Clarification,
+    ProposedAction,
+    SuggestedAction,
+)
 from app.vat_cycle import VatCycle, vat_cycle
 
 router = APIRouter(prefix="/books", tags=["ask"])
 _TURNS = TypeAdapter(list[AskTurn])
 
 
-def _action_answer(found: ProposedAction | Clarification | actions.NotAvailable, cfg: AiConfig, period: AskPeriod) -> AskAnswer:
+def _action_answer(
+    found: ProposedAction | Clarification | actions.NotAvailable, cfg: AiConfig, period: AskPeriod
+) -> AskAnswer:
     """An instruction gets a card (or one follow-up question) instead of a facts answer."""
     base: dict[str, Any] = {
-        "key_numbers": [], "citations": [], "suggested_actions": [], "confidence": "high", "model": cfg.model or cfg.mode,
+        "key_numbers": [],
+        "citations": [],
+        "suggested_actions": [],
+        "confidence": "high",
+        "model": cfg.model or cfg.mode,
         "period": period,
     }
     if isinstance(found, ProposedAction):
@@ -58,14 +73,23 @@ def plan_answer(day: date, period: AskPeriod) -> AskAnswer:
     label = uk_day(day)
     return AskAnswer(
         answer_md=f"I can plan {label} from your calendar and open jobs: visits grouped by postcode, travel, lunch "
-                  "and any admin that is due. Nothing goes in your calendar until you approve it.",
-        key_numbers=[], citations=[], confidence="high", model="code", period=period,
+        "and any admin that is due. Nothing goes in your calendar until you approve it.",
+        key_numbers=[],
+        citations=[],
+        confidence="high",
+        model="code",
+        period=period,
         suggested_actions=[SuggestedAction(label=f"Plan {label}", kind="plan_day", arg=day.isoformat())],
     )
 
 
 async def _prepare(
-    req: AskRequest, books: Books, cfg: AiConfig, business: str | None, token: str, cycle: VatCycle,
+    req: AskRequest,
+    books: Books,
+    cfg: AiConfig,
+    business: str | None,
+    token: str,
+    cycle: VatCycle,
 ) -> AskAnswer | dict[str, Any]:
     """Day-plan intent (code, no model) → instruction (proposed action) → the facts pack for a question about the books.
 
@@ -80,7 +104,12 @@ async def _prepare(
 
 
 async def _answer(
-    req: AskRequest, books: Books, cfg: AiConfig, business: str | None, token: str, cycle: VatCycle,
+    req: AskRequest,
+    books: Books,
+    cfg: AiConfig,
+    business: str | None,
+    token: str,
+    cycle: VatCycle,
 ) -> AskAnswer:
     ready = await _prepare(req, books, cfg, business, token, cycle)
     if isinstance(ready, AskAnswer):
@@ -104,7 +133,9 @@ async def _events(req: AskRequest, ready: AskAnswer | dict[str, Any], cfg: AiCon
 @router.post("/ask", response_model=AskAnswer)
 async def ask(
     body: AskRequest,
-    stream: bool = Query(default=False, description="1: server-sent events (start, token…, answer) instead of one JSON answer"),
+    stream: bool = Query(
+        default=False, description="1: server-sent events (start, token…, answer) instead of one JSON answer"
+    ),
     books: Books = Depends(get_books),
     cfg: AiConfig = Depends(ai_config_from_request),
     business: str | None = Depends(business_name),
@@ -112,10 +143,15 @@ async def ask(
     cycle: VatCycle = Depends(vat_cycle),
 ) -> Any:
     """An answer about the books, or, for an instruction ("send a £100 invoice to …"), a proposed action to approve."""
-    ready = await _prepare(body, books, cfg, business, token, cycle)  # before streaming, so its errors keep their status
+    ready = await _prepare(
+        body, books, cfg, business, token, cycle
+    )  # before streaming, so its errors keep their status
     if stream:
-        return StreamingResponse(_events(body, ready, cfg), media_type="text/event-stream",
-                                 headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+        return StreamingResponse(
+            _events(body, ready, cfg),
+            media_type="text/event-stream",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
     if isinstance(ready, AskAnswer):
         return ready
     return await ask_ai.answer(body.question, ready, body.history, cfg)
@@ -153,6 +189,8 @@ async def ask_voice(
     try:
         req = AskRequest(question=transcript, period=when, history=turns)
     except ValidationError as exc:
-        raise HTTPException(422, f"That question is too long ({len(transcript)} characters; keep it under 500)") from exc
+        raise HTTPException(
+            422, f"That question is too long ({len(transcript)} characters; keep it under 500)"
+        ) from exc
     answer = await _answer(req, books, cfg, business, token, cycle)
     return AskVoiceAnswer(**answer.model_dump(), transcript=transcript)

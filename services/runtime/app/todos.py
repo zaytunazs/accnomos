@@ -25,9 +25,9 @@ class TodoError(ValueError):
 
 class TodoSource(StrictBody):
     kind: Literal["mail"] = "mail"
-    message_id: str | None = Field(None, max_length=512)
-    subject: str = Field("", max_length=200)
-    web_link: str | None = Field(None, max_length=2000)
+    message_id: str | None = Field(default=None, max_length=512)
+    subject: str = Field(default="", max_length=200)
+    web_link: str | None = Field(default=None, max_length=2000)
 
     @field_validator("web_link")
     @classmethod
@@ -71,7 +71,9 @@ def _parse(raw: Any) -> list[Todo]:
 
 
 def _same(a: TodoIn, b: TodoIn) -> bool:
-    return a.text.casefold() == b.text.casefold() and (a.source and a.source.message_id) == (b.source and b.source.message_id)
+    return a.text.casefold() == b.text.casefold() and (a.source and a.source.message_id) == (
+        b.source and b.source.message_id
+    )
 
 
 async def list_todos(books: Books) -> list[Todo]:
@@ -95,7 +97,9 @@ async def add_todo(books: Books, body: TodoIn, user: str) -> tuple[Todo, bool]:
     await books._update_json(TODOS, [], change)
     if found:
         return found[0], False
-    await books.audit(f"user:{user}", "todo_added", {"todo": new.id, "source": body.source.kind if body.source else None})
+    await books.audit(
+        f"user:{user}", "todo_added", {"todo": new.id, "source": body.source.kind if body.source else None}
+    )
     return new, True
 
 

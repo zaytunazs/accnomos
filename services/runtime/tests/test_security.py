@@ -44,15 +44,19 @@ def tiny_app(limiter: TokenBucket | None = None) -> FastAPI:
 
 # --- 1. secrets never reach logs or error bodies ---------------------------------------------------------------
 
-@pytest.mark.parametrize("text", [
-    f"X-Graph-Token: {JWT}",
-    "headers={'x-meta-api-key': 'mk-live-123456'}",
-    "x-hmrc-access-token=abc123def",
-    "Authorization: Bearer abc.def.ghi",
-    "call failed with bearer 0123456789abcdef",
-    f"token {JWT} expired",
-    '{"access_token": "AT-secret", "refresh_token": "RT-secret"}',
-])
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        f"X-Graph-Token: {JWT}",
+        "headers={'x-meta-api-key': 'mk-live-123456'}",
+        "x-hmrc-access-token=abc123def",
+        "Authorization: Bearer abc.def.ghi",
+        "call failed with bearer 0123456789abcdef",
+        f"token {JWT} expired",
+        '{"access_token": "AT-secret", "refresh_token": "RT-secret"}',
+    ],
+)
 def test_scrub_removes_secrets(text):
     out = scrub(text)
     for secret in (JWT, "mk-live-123456", "abc123def", "abc.def.ghi", "0123456789abcdef", "AT-secret", "RT-secret"):
@@ -82,8 +86,14 @@ def test_uvicorn_access_log_still_formats_after_scrubbing():
     from uvicorn.logging import AccessFormatter
 
     record = logging.getLogger("uvicorn.access").makeRecord(
-        "uvicorn.access", logging.INFO, __file__, 1, '%s - "%s %s HTTP/%s" %d',
-        ("1.2.3.4:5", "GET", f"/x?access_token={JWT}", "1.1", 200), None)
+        "uvicorn.access",
+        logging.INFO,
+        __file__,
+        1,
+        '%s - "%s %s HTTP/%s" %d',
+        ("1.2.3.4:5", "GET", f"/x?access_token={JWT}", "1.1", 200),
+        None,
+    )
     line = AccessFormatter('%(client_addr)s - "%(request_line)s" %(status_code)s', use_colors=False).format(record)
     assert line.startswith('1.2.3.4:5 - "GET /x?access_token=') and line.endswith('HTTP/1.1" 200 OK')
     assert JWT not in line and "[redacted]" in line
@@ -96,8 +106,9 @@ def test_secret_split_between_format_and_args_is_scrubbed(caplog):
 
 
 def test_clean_records_are_left_untouched():
-    record = logging.getLogger("accnomos.test").makeRecord("accnomos.test", logging.INFO, __file__, 1,
-                                                          "%s filed %d documents", ("Screwfix", 3), None)
+    record = logging.getLogger("accnomos.test").makeRecord(
+        "accnomos.test", logging.INFO, __file__, 1, "%s filed %d documents", ("Screwfix", 3), None
+    )
     assert record.args == ("Screwfix", 3) and record.getMessage() == "Screwfix filed 3 documents"
 
 
@@ -137,6 +148,7 @@ def test_credentials_allowed_over_https_or_without_a_proxy():
 
 # --- 2. limits ----------------------------------------------------------------------------------------------------
 
+
 def test_token_bucket_refills():
     now = [0.0]
     b = TokenBucket(60, clock=lambda: now[0])
@@ -164,8 +176,9 @@ def test_health_is_not_rate_limited(tc, monkeypatch):
 
 
 def test_json_body_cap_by_content_length():
-    r = TestClient(tiny_app()).post("/echo", content=b"{" + b" " * JSON_LIMIT + b"}",
-                                    headers={"Content-Type": "application/json"})
+    r = TestClient(tiny_app()).post(
+        "/echo", content=b"{" + b" " * JSON_LIMIT + b"}", headers={"Content-Type": "application/json"}
+    )
     assert r.status_code == 413
 
 
@@ -195,8 +208,11 @@ def test_upload_cap_is_25_mb(tc):
 
 def test_every_outbound_http_client_has_a_timeout():
     """Graph, Meta, Ollama, SAM and HMRC calls all go through httpx clients created with an explicit timeout."""
-    sources = [*(ROOT / "services/runtime/app").rglob("*.py"), *(ROOT / "packages/connectors/src").rglob("*.py"),
-               *(ROOT / "services/hmrc-relay/relay").rglob("*.py")]
+    sources = [
+        *(ROOT / "services/runtime/app").rglob("*.py"),
+        *(ROOT / "packages/connectors/src").rglob("*.py"),
+        *(ROOT / "services/hmrc-relay/relay").rglob("*.py"),
+    ]
     found = 0
     for path in sources:
         for node in ast.walk(ast.parse(path.read_text())):
@@ -204,7 +220,13 @@ def test_every_outbound_http_client_has_a_timeout():
                 found += 1
                 assert any(k.arg == "timeout" for k in node.keywords), f"{path}:{node.lineno} has no timeout"
             if isinstance(node, ast.Call) and ast.unparse(node.func) in (
-                "httpx.get", "httpx.post", "httpx.put", "httpx.delete", "httpx.request", "requests.get", "requests.post"
+                "httpx.get",
+                "httpx.post",
+                "httpx.put",
+                "httpx.delete",
+                "httpx.request",
+                "requests.get",
+                "requests.post",
             ):
                 raise AssertionError(f"{path}:{node.lineno}: module-level HTTP call; use a client with a timeout")
     assert found >= 5
@@ -212,40 +234,63 @@ def test_every_outbound_http_client_has_a_timeout():
 
 def test_relay_copy_of_the_middleware_has_not_drifted():
     """services/hmrc-relay/relay/security.py is a copy (separate image); the request handling must stay identical."""
+
     def handler(path: Path) -> str:
         text = path.read_text()
-        return text[text.index("    async def __call__"):]
+        return text[text.index("    async def __call__") :]
 
     assert handler(ROOT / "services/runtime/app/security.py") == handler(ROOT / "services/hmrc-relay/relay/security.py")
 
 
 # --- 3. CORS ------------------------------------------------------------------------------------------------------
 
+
 def test_cors_preflight_is_exact_and_cached(tc):
-    r = tc.options("/books/summary", headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "GET",
-                                               "Access-Control-Request-Headers": "x-graph-token"})
+    r = tc.options(
+        "/books/summary",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "x-graph-token",
+        },
+    )
     assert r.status_code == 200 and r.headers["access-control-allow-origin"] == "http://localhost:3000"
     assert r.headers["access-control-max-age"] == "600"
-    evil = tc.options("/books/summary", headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "GET"})
+    evil = tc.options(
+        "/books/summary", headers={"Origin": "https://evil.example", "Access-Control-Request-Method": "GET"}
+    )
     assert "access-control-allow-origin" not in evil.headers
 
 
-@pytest.mark.parametrize("raw", ["*", "https://app.accnomos.com,*", "https://app.accnomos.com/path", "app.accnomos.com",
-                                 "https://*.accnomos.com"])
+@pytest.mark.parametrize(
+    "raw",
+    ["*", "https://app.accnomos.com,*", "https://app.accnomos.com/path", "app.accnomos.com", "https://*.accnomos.com"],
+)
 def test_cors_origins_refuse_wildcards_and_non_origins(raw):
     with pytest.raises(RuntimeError):
         cors_origins(raw)
 
 
 def test_cors_origins_exact():
-    assert cors_origins(" https://app.accnomos.com/, http://localhost:3000 ") == ["https://app.accnomos.com",
-                                                                                 "http://localhost:3000"]
+    assert cors_origins(" https://app.accnomos.com/, http://localhost:3000 ") == [
+        "https://app.accnomos.com",
+        "http://localhost:3000",
+    ]
 
 
 # --- 4. client-chosen AI base URL (SSRF) ---------------------------------------------------------------------
 
-@pytest.mark.parametrize("url", ["http://169.254.169.254/latest", "http://relay:8787", "http://127.0.0.1:8780",
-                                 "https://api.meta.ai.evil.example/v1", "file:///etc/passwd"])
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://169.254.169.254/latest",
+        "http://relay:8787",
+        "http://127.0.0.1:8780",
+        "https://api.meta.ai.evil.example/v1",
+        "file:///etc/passwd",
+    ],
+)
 def test_unknown_ai_base_url_refused(url, tc):
     assert not base_url_allowed(url)
     with pytest.raises(ValueError, match="allow-list"):
@@ -255,8 +300,14 @@ def test_unknown_ai_base_url_refused(url, tc):
 
 def test_known_ai_base_urls_allowed(monkeypatch):
     monkeypatch.setenv("AI_ALLOWED_BASE_URLS", "http://192.168.1.176:11434, https://models.example/v1")
-    for url in ("https://api.meta.ai/v1/", "http://localhost:11434", "http://192.168.1.176:11434",
-                "HTTPS://models.example/v1"):
+    for url in (
+        "https://api.meta.ai/v1/",
+        "http://localhost:11434",
+        "http://192.168.1.176:11434",
+        "HTTPS://models.example/v1",
+    ):
         assert base_url_allowed(url)
-    assert AiConfig.from_headers({"X-AI-Mode": "local", "X-AI-Base-Url": "http://192.168.1.176:11434"}).base_url \
+    assert (
+        AiConfig.from_headers({"X-AI-Mode": "local", "X-AI-Base-Url": "http://192.168.1.176:11434"}).base_url
         == "http://192.168.1.176:11434"
+    )

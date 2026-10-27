@@ -3,10 +3,10 @@
 from datetime import date, datetime
 
 import pytest
-from accnomos_connectors import FakeStorageProvider
-from accnomos_ledger import LedgerEvent, Line, VatCode
 from fastapi.testclient import TestClient
 
+from accnomos_connectors import FakeStorageProvider
+from accnomos_ledger import LedgerEvent, Line, VatCode
 from app.books import Books
 from app.deadlines import filing_deadline, period_containing, period_label, previous_period, stagger_of
 from app.main import app
@@ -16,14 +16,17 @@ H = {"X-Graph-Token": "t"}
 APPROVED = dict(approved_by="sam@example.co.uk", approved_at=datetime(2026, 10, 1, 12, 0))
 
 
-@pytest.mark.parametrize(("end", "due"), [
-    (date(2026, 9, 30), date(2026, 11, 7)),
-    (date(2026, 10, 31), date(2026, 12, 7)),
-    (date(2026, 12, 31), date(2027, 2, 7)),
-    (date(2027, 1, 31), date(2027, 3, 7)),  # February is short: 28 Feb + 7
-    (date(2028, 1, 31), date(2028, 3, 7)),  # and in a leap year: 29 Feb + 7
-    (date(2026, 11, 30), date(2027, 1, 7)),
-])
+@pytest.mark.parametrize(
+    ("end", "due"),
+    [
+        (date(2026, 9, 30), date(2026, 11, 7)),
+        (date(2026, 10, 31), date(2026, 12, 7)),
+        (date(2026, 12, 31), date(2027, 2, 7)),
+        (date(2027, 1, 31), date(2027, 3, 7)),  # February is short: 28 Feb + 7
+        (date(2028, 1, 31), date(2028, 3, 7)),  # and in a leap year: 29 Feb + 7
+        (date(2026, 11, 30), date(2027, 1, 7)),
+    ],
+)
 def test_filing_deadline_is_one_month_and_seven_days(end: date, due: date) -> None:
     assert filing_deadline(end) == due
 
@@ -44,18 +47,34 @@ def test_periods_for_each_stagger() -> None:
 
 def _purchase(eid: str, when: date, net: int, vat: int) -> LedgerEvent:
     return LedgerEvent(
-        id=eid, kind="purchase", date=when, net=net, vat=vat, counterparty="Screwfix",
-        lines=[Line(account="5100 Tools", debit=net, vat_code=VatCode.STANDARD), Line(account="2200 VAT control", debit=vat),
-               Line(account="1200 Bank", credit=net + vat)],
+        id=eid,
+        kind="purchase",
+        date=when,
+        net=net,
+        vat=vat,
+        counterparty="Screwfix",
+        lines=[
+            Line(account="5100 Tools", debit=net, vat_code=VatCode.STANDARD),
+            Line(account="2200 VAT control", debit=vat),
+            Line(account="1200 Bank", credit=net + vat),
+        ],
         **APPROVED,
     )
 
 
 def _sale(eid: str, when: date, net: int, vat: int) -> LedgerEvent:
     return LedgerEvent(
-        id=eid, kind="sale", date=when, net=net, vat=vat, counterparty="Acme",
-        lines=[Line(account="1100 Debtors", debit=net + vat), Line(account="4000 Sales", credit=net, vat_code=VatCode.STANDARD),
-               Line(account="2200 VAT control", credit=vat)],
+        id=eid,
+        kind="sale",
+        date=when,
+        net=net,
+        vat=vat,
+        counterparty="Acme",
+        lines=[
+            Line(account="1100 Debtors", debit=net + vat),
+            Line(account="4000 Sales", credit=net, vat_code=VatCode.STANDARD),
+            Line(account="2200 VAT control", credit=vat),
+        ],
         **APPROVED,
     )
 
@@ -87,7 +106,12 @@ async def test_deadlines_route_stagger_1(client) -> None:
     assert (due["start"], due["end"], due["deadline"]) == ("2026-07-01", "2026-09-30", "2026-11-07")
     assert due["days_remaining"] == 11 and due["period_key"] == "26A3" and due["label"] == "Jul–Sep 2026"
     assert due["box5"] == "193.59" and due["box5_direction"] == "pay" and due["entries"] == 2
-    assert (cur["end"], cur["deadline"], cur["days_to_end"], cur["days_remaining"]) == ("2026-12-31", "2027-02-07", 65, 103)
+    assert (cur["end"], cur["deadline"], cur["days_to_end"], cur["days_remaining"]) == (
+        "2026-12-31",
+        "2027-02-07",
+        65,
+        103,
+    )
     assert cur["box5"] == "10.00" and cur["box5_direction"] == "reclaim" and cur["entries"] == 1
 
 

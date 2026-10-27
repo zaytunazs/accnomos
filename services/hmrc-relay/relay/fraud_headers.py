@@ -169,8 +169,14 @@ def build_headers(method: Method, client_facts: ClientFacts, meta: RequestMeta, 
         )
     if cf.screens:
         h["Gov-Client-Screens"] = ",".join(
-            _pairs({"width": s.width, "height": s.height, "scaling-factor": f"{s.scaling_factor:g}",
-                    "colour-depth": s.colour_depth})
+            _pairs(
+                {
+                    "width": s.width,
+                    "height": s.height,
+                    "scaling-factor": f"{s.scaling_factor:g}",
+                    "colour-depth": s.colour_depth,
+                }
+            )
             for s in cf.screens
         )
     if cf.timezone:
@@ -186,9 +192,14 @@ def build_headers(method: Method, client_facts: ClientFacts, meta: RequestMeta, 
     else:
         if cf.user_agent:
             ua = cf.user_agent
-            h["Gov-Client-User-Agent"] = _pairs({"os-family": ua.os_family, "os-version": ua.os_version,
-                                                 "device-manufacturer": ua.device_manufacturer,
-                                                 "device-model": ua.device_model})
+            h["Gov-Client-User-Agent"] = _pairs(
+                {
+                    "os-family": ua.os_family,
+                    "os-version": ua.os_version,
+                    "device-manufacturer": ua.device_manufacturer,
+                    "device-model": ua.device_model,
+                }
+            )
         if cf.local_ips:
             h["Gov-Client-Local-IPs"] = ",".join(enc(ip) for ip in cf.local_ips)
         if cf.local_ips_timestamp:
@@ -221,7 +232,10 @@ def missing(headers: Mapping[str, str], method: Method) -> list[str]:
     For mobile, Gov-Vendor-Version is also reported if it lacks the app *and* server pairs the spec requires.
     """
     gaps = [name for name in REQUIRED[method] if name not in headers]
-    if method == "MOBILE_APP_VIA_SERVER" and "Gov-Vendor-Version" in headers:
-        if headers["Gov-Vendor-Version"].count("=") < 2:
-            gaps.append("Gov-Vendor-Version")
+    if (
+        method == "MOBILE_APP_VIA_SERVER"
+        and "Gov-Vendor-Version" in headers
+        and headers["Gov-Vendor-Version"].count("=") < 2
+    ):
+        gaps.append("Gov-Vendor-Version")
     return gaps

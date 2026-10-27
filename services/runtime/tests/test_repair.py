@@ -107,7 +107,9 @@ def test_doubled_quantity_undone_and_net_anchored_on_the_total() -> None:
     # 005_no_vat_number: printed line totals 250.00 / 73.00 read as unit prices and multiplied by qty again.
     doc = _doc(
         [_ln(1, 45.50, 45.50, 0, None), _ln(2, 250.00, 500.00, 0, None), _ln(4, 73.00, 292.00, 0, None)],
-        net=837.50, vat=0.00, gross=368.50,
+        net=837.50,
+        vat=0.00,
+        gross=368.50,
     )
     chk = repair_lines(doc)
     assert chk is not None and chk.code == "LINES_REPAIRED"

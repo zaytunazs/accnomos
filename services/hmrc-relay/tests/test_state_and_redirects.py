@@ -27,6 +27,7 @@ def make_oauth() -> OAuth:
 
 # --- state ------------------------------------------------------------------------------------------------
 
+
 def test_state_ttl_is_ten_minutes(monkeypatch):
     o = make_oauth()
     t0 = time.time()
@@ -88,8 +89,9 @@ async def test_callback_replay_refused(client_for):
 
 async def test_exchange_replay_refused(client_for):
     c = client_for(tokens)
-    state = (await c.get("/hmrc/authorize", params={"redirect_to": "http://localhost:3000/cb",
-                                                     "code_challenge": "c" * 43})).json()["state"]
+    state = (
+        await c.get("/hmrc/authorize", params={"redirect_to": "http://localhost:3000/cb", "code_challenge": "c" * 43})
+    ).json()["state"]
     body = {"code": "C", "state": state, "code_verifier": "v" * 43}
     assert (await c.post("/hmrc/exchange", json=body)).status_code == 200
     r = await c.post("/hmrc/exchange", json=body)
@@ -98,43 +100,52 @@ async def test_exchange_replay_refused(client_for):
 
 # --- redirect allow-list ----------------------------------------------------------------------------------
 
-@pytest.mark.parametrize("url", [
-    "https://app.accnomos.example/cb",
-    "https://APP.accnomos.example/cb?x=1",
-    "http://localhost:3000/cb",
-    "http://127.0.0.1/cb",
-])
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://app.accnomos.example/cb",
+        "https://APP.accnomos.example/cb?x=1",
+        "http://localhost:3000/cb",
+        "http://127.0.0.1/cb",
+    ],
+)
 def test_redirect_allowed(url):
     assert make_settings().redirect_allowed(url)
 
 
-@pytest.mark.parametrize("url", [
-    "https://evil.example/cb",
-    "https://app.accnomos.example.evil.example/cb",       # suffix
-    "https://evilapp.accnomos.example/cb",
-    "https://app.accnomos.example@evil.example/cb",       # userinfo: the host is evil.example
-    "https://user:pw@app.accnomos.example/cb",            # userinfo on the right host: still refused
-    "https://app.accnomos.example\\@evil.example/cb",     # backslash (browsers read it as a slash)
-    "https://app.accnomos.example\t.evil.example/cb",     # tab, dropped by urlsplit but not by us
-    "https://app.accnomos.example/cb\r\nSet-Cookie: x=1",  # header injection
-    "http://app.accnomos.example/cb",                     # downgrade to http
-    "https://app.accnomos.example:8443/cb",               # other port
-    "//app.accnomos.example/cb",                          # scheme-relative
-    "/cb",
-    "javascript:alert(1)",
-    "data:text/html,hi",
-    "https:app.accnomos.example",
-    "http://localhost.evil.example/cb",
-    "http://127.0.0.1.nip.io/cb",
-    "http://localhost@evil.example/cb",
-    "https://localhost/cb",                               # the dev exception covers plain http only
-    "",
-])
+@pytest.mark.parametrize(
+    "url",
+    [
+        "https://evil.example/cb",
+        "https://app.accnomos.example.evil.example/cb",  # suffix
+        "https://evilapp.accnomos.example/cb",
+        "https://app.accnomos.example@evil.example/cb",  # userinfo: the host is evil.example
+        "https://user:pw@app.accnomos.example/cb",  # userinfo on the right host: still refused
+        "https://app.accnomos.example\\@evil.example/cb",  # backslash (browsers read it as a slash)
+        "https://app.accnomos.example\t.evil.example/cb",  # tab, dropped by urlsplit but not by us
+        "https://app.accnomos.example/cb\r\nSet-Cookie: x=1",  # header injection
+        "http://app.accnomos.example/cb",  # downgrade to http
+        "https://app.accnomos.example:8443/cb",  # other port
+        "//app.accnomos.example/cb",  # scheme-relative
+        "/cb",
+        "javascript:alert(1)",
+        "data:text/html,hi",
+        "https:app.accnomos.example",
+        "http://localhost.evil.example/cb",
+        "http://127.0.0.1.nip.io/cb",
+        "http://localhost@evil.example/cb",
+        "https://localhost/cb",  # the dev exception covers plain http only
+        "",
+    ],
+)
 def test_redirect_bypass_attempts_refused(url):
     assert not make_settings().redirect_allowed(url)
 
 
-@pytest.mark.parametrize("url", ["https://app.accnomos.example@evil.example/cb", "https://evil.example/#https://app.accnomos.example"])
+@pytest.mark.parametrize(
+    "url", ["https://app.accnomos.example@evil.example/cb", "https://evil.example/#https://app.accnomos.example"]
+)
 async def test_authorize_refuses_bypass_redirects(client_for, url):
     r = await client_for(never).get("/hmrc/authorize", params={"redirect_to": url})
     assert r.status_code == 400

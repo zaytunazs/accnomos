@@ -39,14 +39,27 @@ EVENTS = f"{SYSTEM}/Ledger/events"
 BANK_LINES = f"{SYSTEM}/bank"
 
 TOP: tuple[Folder, ...] = (
-    Folder("inbox", INBOX, "drop receipts, invoices or statements here (photo, PDF, email attachment) and Accnomos "
-                           "will read them."),
-    Folder("receipts", RECEIPTS, 'purchase documents Accnomos has filed, by month, renamed like '
-                                 '"2026-10-21 Screwfix £38.47.pdf".'),
-    Folder("needs_a_look", NEEDS_A_LOOK, "anything odd (duplicates, missing VAT number, unreadable), with a reason. "
-                                         "Nothing in here is posted."),
-    Folder("sales", SALES, "sales documents. Invoices you write in Accnomos are in invoices/, and the exact PDF "
-                           "each customer was sent is in invoices/sent/."),
+    Folder(
+        "inbox",
+        INBOX,
+        "drop receipts, invoices or statements here (photo, PDF, email attachment) and Accnomos will read them.",
+    ),
+    Folder(
+        "receipts",
+        RECEIPTS,
+        'purchase documents Accnomos has filed, by month, renamed like "2026-10-21 Screwfix £38.47.pdf".',
+    ),
+    Folder(
+        "needs_a_look",
+        NEEDS_A_LOOK,
+        "anything odd (duplicates, missing VAT number, unreadable), with a reason. Nothing in here is posted.",
+    ),
+    Folder(
+        "sales",
+        SALES,
+        "sales documents. Invoices you write in Accnomos are in invoices/, and the exact PDF "
+        "each customer was sent is in invoices/sent/.",
+    ),
     Folder("bank", BANK, "the bank statement files you imported."),
     Folder("payroll", PAYROLL, "pay run exports for your payroll provider, one per month."),
     Folder("vat_returns", VAT_RETURNS, "the 9-box calculation and HMRC receipt for each period."),

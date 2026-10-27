@@ -12,13 +12,12 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator
 
-from accnomos_connectors.base import MailProvider
-from accnomos_connectors.msgraph import GraphMailProvider
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
-from app.ai.config import is_test_mode
-from app.ai.config import AiConfig
+from accnomos_connectors.base import MailProvider
+from accnomos_connectors.msgraph import GraphMailProvider
+from app.ai.config import AiConfig, is_test_mode
 from app.books import Books
 from app.intake import IntakeResult, scan_mail
 from app.routes_books import business_name, get_books, optional_user, require_user
@@ -46,9 +45,9 @@ async def get_mail(request: Request) -> AsyncIterator[MailProvider]:
 
 
 class MailScanBody(StrictBody):
-    since_days: int = Field(14, ge=1, le=90)
+    since_days: int = Field(default=14, ge=1, le=90)
     dry_run: bool = False
-    max_messages: int = Field(50, ge=1, le=200)
+    max_messages: int = Field(default=50, ge=1, le=200)
 
 
 @router.post("/scan", response_model=IntakeResult)
@@ -60,8 +59,12 @@ async def mail_scan(
 ) -> IntakeResult:
     body = body or MailScanBody()
     return await scan_mail(
-        books, mail, since_days=body.since_days, dry_run=body.dry_run,
-        user=user, max_messages=body.max_messages,
+        books,
+        mail,
+        since_days=body.since_days,
+        dry_run=body.dry_run,
+        user=user,
+        max_messages=body.max_messages,
     )
 
 
@@ -74,8 +77,8 @@ def chosen_ai(request: Request) -> AiConfig | None:
 
 
 class TriageBody(StrictBody):
-    since_days: int = Field(7, ge=1, le=30)
-    max_threads: int = Field(20, ge=1, le=50)
+    since_days: int = Field(default=7, ge=1, le=30)
+    max_threads: int = Field(default=20, ge=1, le=50)
 
 
 @router.post("/triage", response_model=TriageResult)
@@ -90,7 +93,13 @@ async def mail_triage(
     """Reads the Inbox (previews only) and writes nothing but one audit line of counts."""
     body = body or TriageBody()
     return await triage_mail(
-        books, mail, cfg, since_days=body.since_days, max_threads=body.max_threads, user=user, business_name=business,
+        books,
+        mail,
+        cfg,
+        since_days=body.since_days,
+        max_threads=body.max_threads,
+        user=user,
+        business_name=business,
     )
 
 
@@ -119,7 +128,13 @@ async def mail_draft_reply(
         draft = await mail.create_reply_draft(body.message_id, text)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="That email is no longer in your mailbox") from exc
-    await books.audit(f"user:{user}", "mail_draft_created", {
-        "reply_to": body.message_id, "draft": draft.id, "chars": len(text),
-    })
+    await books.audit(
+        f"user:{user}",
+        "mail_draft_created",
+        {
+            "reply_to": body.message_id,
+            "draft": draft.id,
+            "chars": len(text),
+        },
+    )
     return DraftReplyResult(draft_id=draft.id, web_link=draft.web_link)

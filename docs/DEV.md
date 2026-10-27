@@ -33,6 +33,17 @@ Debian/Ubuntu: `apt install ffmpeg` (the runtime Docker image includes it). The 
 ffmpeg it logs a warning, `/health` reports `"voice": false` and `/books/ask/voice` answers 503. Its tests skip the
 conversion cases when ffmpeg is missing. Voice works in key mode only (the user's Meta API key); local mode gets a 400.
 
+## Lint and type checks
+
+What `.github/workflows/lint.yml` runs (ruff and pyright scope and rules are in the root `pyproject.toml`):
+
+```powershell
+uvx ruff@0.17.3 check . ; uvx ruff@0.17.3 format --check . ; uvx pyright@1.1.414 --pythonpath .venv/bin/python ; cd apps/web ; pnpm run lint ; pnpm exec tsc --noEmit ; cd ../..
+```
+
+On Windows the pyright path is `.venv\Scripts\python.exe`. `uvx ruff@0.17.3 check --fix . ; uvx ruff@0.17.3 format .`
+fixes most findings. `noUncheckedIndexedAccess` is not on in `apps/web/tsconfig.json` (95 errors when tried, 27 Oct 2026).
+
 ## Evals (Meta model outputs graded against the synthetic gold set)
 
 ```powershell

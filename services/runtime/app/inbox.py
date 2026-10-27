@@ -12,18 +12,17 @@ from dataclasses import dataclass
 from datetime import date
 
 from accnomos_connectors.base import FileRef
-
 from app import autopilot
 from app import contacts as contact_book
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError
 from app.approve import ApprovalError, approve
 from app.books import Books, DocMeta, Rule, now
-from app.paths import INBOX
 from app.checks import SupplierKnowledge, decide
 from app.invoicing import load_profile
 from app.journal import with_expense_account
 from app.mileage import MileageError, Vehicle, load_vehicles, prefill_vehicle
+from app.paths import INBOX
 from app.pipeline import process_image, sha256_hex
 from app.schemas import AutopilotDecision, Check, ExtractedDoc, Proposal
 
@@ -42,17 +41,38 @@ def mime_for(name: str) -> str | None:
 
 def pdf_placeholder(name: str, digest: str) -> Proposal:
     """A needs-a-look proposal for a PDF we cannot read yet; the user types the amounts in on approval."""
-    check = Check(code="PDF_UNSUPPORTED", ok=False, severity="fail", message="PDFs can't be read yet; please check by hand")
+    check = Check(
+        code="PDF_UNSUPPORTED", ok=False, severity="fail", message="PDFs can't be read yet; please check by hand"
+    )
     doc = ExtractedDoc(
-        doc_type="purchase_invoice", supplier_name=name.rsplit(".", 1)[0], supplier_vat_number=None,
-        customer_name=None, invoice_number=None, date=now().date().isoformat(), currency="GBP", lines=[],
-        net_total=0, vat_total=0, gross_total=0, payment_method=None, card_last4=None,
-        category_guess="Sundry", confidence=0,
+        doc_type="purchase_invoice",
+        supplier_name=name.rsplit(".", 1)[0],
+        supplier_vat_number=None,
+        customer_name=None,
+        invoice_number=None,
+        date=now().date().isoformat(),
+        currency="GBP",
+        lines=[],
+        net_total=0,
+        vat_total=0,
+        gross_total=0,
+        payment_method=None,
+        card_last4=None,
+        category_guess="Sundry",
+        confidence=0,
     )
     status, reasons = decide([check])
     return Proposal(
-        id=uuid.uuid4().hex, doc_sha256=digest, extracted=doc, checks=[check], status=status, reasons=reasons,
-        suggested_filename=name, journal_draft=[], model="none", elapsed_s=0,
+        id=uuid.uuid4().hex,
+        doc_sha256=digest,
+        extracted=doc,
+        checks=[check],
+        status=status,
+        reasons=reasons,
+        suggested_filename=name,
+        journal_draft=[],
+        model="none",
+        elapsed_s=0,
     )
 
 
@@ -67,8 +87,16 @@ def apply_rule(p: Proposal, rule: Rule | None) -> None:
 
 
 async def _propose(
-    books: Books, f: FileRef, mime: str, cfg: AiConfig, known: set[str], rules: list[Rule], business_name: str | None = None,
-    vehicles: list[Vehicle] | None = None, period: tuple[date, date] | None = None, vat: VatContext | None = None,
+    books: Books,
+    f: FileRef,
+    mime: str,
+    cfg: AiConfig,
+    known: set[str],
+    rules: list[Rule],
+    business_name: str | None = None,
+    vehicles: list[Vehicle] | None = None,
+    period: tuple[date, date] | None = None,
+    vat: VatContext | None = None,
 ) -> Proposal:
     data = await books.storage.read(f.path)
     if mime == PDF_MIME:
@@ -76,8 +104,15 @@ async def _propose(
     start, end = period or (None, None)
     vat = vat or VatContext([], True)
     p = await process_image(
-        data, mime, cfg, known_hashes=frozenset(known), business_name=business_name, period_start=start, period_end=end,
-        suppliers=vat.knowledge, business_vat_registered=vat.business_registered,
+        data,
+        mime,
+        cfg,
+        known_hashes=frozenset(known),
+        business_name=business_name,
+        period_start=start,
+        period_end=end,
+        suppliers=vat.knowledge,
+        business_vat_registered=vat.business_registered,
     )
     apply_rule(p, books.match_rule(p.extracted, rules))
     prefill_vehicle(p, vehicles or [])
@@ -126,21 +161,35 @@ async def _autopilot_post(books: Books, p: Proposal, rule: autopilot.AutopilotRu
     try:
         posted = await approve(books, p.id, autopilot.AUTOPILOT, autopilot.edits_for(rule), rebuild=False)
     except ApprovalError as exc:
-        p.autopilot = AutopilotDecision(auto_approve=False, reasons=[f"Could not post: {exc}"], supplier_key=rule.supplier_key)
+        p.autopilot = AutopilotDecision(
+            auto_approve=False, reasons=[f"Could not post: {exc}"], supplier_key=rule.supplier_key
+        )
         await books.save_proposal(p)
         return p
     await autopilot.record_hit(books, rule.supplier_key)
-    await books.audit_autopilot(autopilot.ACTOR, "approved", {
-        "proposal": p.id, "event": posted.event_id, "doc": p.doc_sha256,
-        "supplier_key": rule.supplier_key, "gross_pence": autopilot.pence(p.extracted.gross_total),
-        "typical_gross_pence": rule.typical_gross_pence, "rule_from_proposal": rule.created_from_proposal_id,
-        "reasons": p.autopilot.reasons if p.autopilot else [],
-    })
+    await books.audit_autopilot(
+        autopilot.ACTOR,
+        "approved",
+        {
+            "proposal": p.id,
+            "event": posted.event_id,
+            "doc": p.doc_sha256,
+            "supplier_key": rule.supplier_key,
+            "gross_pence": autopilot.pence(p.extracted.gross_total),
+            "typical_gross_pence": rule.typical_gross_pence,
+            "rule_from_proposal": rule.created_from_proposal_id,
+            "reasons": p.autopilot.reasons if p.autopilot else [],
+        },
+    )
     return posted
 
 
 async def scan_inbox(
-    books: Books, cfg: AiConfig, limit: int = 10, business_name: str | None = None, autopilot_on: bool = True,
+    books: Books,
+    cfg: AiConfig,
+    limit: int = 10,
+    business_name: str | None = None,
+    autopilot_on: bool = True,
     period: tuple[date, date] | None = None,
 ) -> list[Proposal]:
     """Backwards-compatible wrapper: proposals only."""
@@ -149,7 +198,11 @@ async def scan_inbox(
 
 
 async def scan_inbox_detailed(
-    books: Books, cfg: AiConfig, limit: int = 10, business_name: str | None = None, autopilot_on: bool = True,
+    books: Books,
+    cfg: AiConfig,
+    limit: int = 10,
+    business_name: str | None = None,
+    autopilot_on: bool = True,
     period: tuple[date, date] | None = None,
 ) -> tuple[list[Proposal], list[dict]]:
     """Process up to `limit` documents from the Inbox and return the new proposals.
@@ -179,15 +232,24 @@ async def scan_inbox_detailed(
         p.source_name, p.created_at = f.name, now()
         await books.file_document(p, f.path)
         if p.doc_sha256 not in known:
-            await books.save_doc(DocMeta(
-                sha256=p.doc_sha256, source_name=f.name, mime=mime, size=f.size, proposal_id=p.id, filed_path=p.file_path,
-            ))
+            await books.save_doc(
+                DocMeta(
+                    sha256=p.doc_sha256,
+                    source_name=f.name,
+                    mime=mime,
+                    size=f.size,
+                    proposal_id=p.id,
+                    filed_path=p.file_path,
+                )
+            )
             known.add(p.doc_sha256)
         rule = autopilot.match(p, auto_rules)
         if rule is not None:
             p.autopilot = autopilot.evaluate(p, rule, autopilot_on)
         await books.save_proposal(p)
-        await books.audit(ACTOR, "proposed", {"proposal": p.id, "doc": p.doc_sha256, "status": p.status, "path": p.file_path})
+        await books.audit(
+            ACTOR, "proposed", {"proposal": p.id, "doc": p.doc_sha256, "status": p.status, "path": p.file_path}
+        )
         if rule is not None and p.autopilot and p.autopilot.auto_approve:
             p = await _autopilot_post(books, p, rule)
         out.append(p)

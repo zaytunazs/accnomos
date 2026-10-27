@@ -5,10 +5,10 @@ Contact VRN format: tests/test_contacts.py (edit errors). Relay VRN/period key: 
 from __future__ import annotations
 
 import pytest
-from accnomos_connectors import FakeStorageProvider
-from accnomos_connectors.msgraph import GraphStorageProvider
 from fastapi.testclient import TestClient
 
+from accnomos_connectors import FakeStorageProvider
+from accnomos_connectors.msgraph import GraphStorageProvider
 from app.books import Books
 from app.main import app
 from app.pipeline import suggested_filename
@@ -33,15 +33,36 @@ def tc():
 
 # --- file names ---------------------------------------------------------------------------------------------
 
-@pytest.mark.parametrize("name", ["statement.csv", "Barclays Oct 2026.csv", "a..b.csv", "£38.47 receipt.jpg", ".hidden"])
+
+@pytest.mark.parametrize(
+    "name", ["statement.csv", "Barclays Oct 2026.csv", "a..b.csv", "£38.47 receipt.jpg", ".hidden"]
+)
 def test_plain_names_pass(name):
     assert check_name(name) == name
 
 
-@pytest.mark.parametrize("name", [
-    "", ".", "..", "...", " .. ", "../x.csv", "..\\x.csv", "a/b.csv", "/etc/passwd", "\\\\server\\share",
-    "C:\\Users\\x.csv", "c:x.csv", "x\x00.csv", "x\n.csv", "x\x1b[31m.csv", "x\x7f.csv", "a" * 201,
-])
+@pytest.mark.parametrize(
+    "name",
+    [
+        "",
+        ".",
+        "..",
+        "...",
+        " .. ",
+        "../x.csv",
+        "..\\x.csv",
+        "a/b.csv",
+        "/etc/passwd",
+        "\\\\server\\share",
+        "C:\\Users\\x.csv",
+        "c:x.csv",
+        "x\x00.csv",
+        "x\n.csv",
+        "x\x1b[31m.csv",
+        "x\x7f.csv",
+        "a" * 201,
+    ],
+)
 def test_unsafe_names_refused(name):
     with pytest.raises(UnsafeName):
         check_name(name)
@@ -70,13 +91,36 @@ def test_hand_edited_proposal_with_a_path_name_is_a_400_not_a_500():
     storage.files["00 Inbox/x.jpg"] = b"\xff\xd8"
     books = Books(storage)
     doc = ExtractedDoc(
-        doc_type="receipt", supplier_name="Wickes", supplier_vat_number=None, customer_name=None, invoice_number=None,
-        date="2026-10-26", currency="GBP", lines=[], net_total=10, vat_total=2, gross_total=12, payment_method="card",
-        card_last4=None, category_guess="Materials", confidence=0.6,
+        doc_type="receipt",
+        supplier_name="Wickes",
+        supplier_vat_number=None,
+        customer_name=None,
+        invoice_number=None,
+        date="2026-10-26",
+        currency="GBP",
+        lines=[],
+        net_total=10,
+        vat_total=2,
+        gross_total=12,
+        payment_method="card",
+        card_last4=None,
+        category_guess="Materials",
+        confidence=0.6,
     )
-    p = Proposal(id="c" * 16, doc_sha256="cd" * 32, extracted=doc, checks=[], status="proposed", reasons=[],
-                 suggested_filename="../../escape.jpg", file_path="00 Inbox/x.jpg", journal_draft=[], model="stub",
-                 elapsed_s=1.0, created_at=datetime(2026, 10, 26, 9, tzinfo=UTC))
+    p = Proposal(
+        id="c" * 16,
+        doc_sha256="cd" * 32,
+        extracted=doc,
+        checks=[],
+        status="proposed",
+        reasons=[],
+        suggested_filename="../../escape.jpg",
+        file_path="00 Inbox/x.jpg",
+        journal_draft=[],
+        model="stub",
+        elapsed_s=1.0,
+        created_at=datetime(2026, 10, 26, 9, tzinfo=UTC),
+    )
     asyncio.run(books.save_proposal(p))
 
     async def _books():
@@ -93,9 +137,21 @@ def test_hand_edited_proposal_with_a_path_name_is_a_400_not_a_500():
 
 def test_model_output_cannot_put_a_path_in_the_filed_name():
     doc = ExtractedDoc(
-        doc_type="receipt", supplier_name="../../Documents/x", supplier_vat_number=None, customer_name=None,
-        invoice_number=None, date="../../../Desktop", currency="/../", lines=[], net_total=1, vat_total=0,
-        gross_total=1, payment_method=None, card_last4=None, category_guess="Sundry", confidence=0.5,
+        doc_type="receipt",
+        supplier_name="../../Documents/x",
+        supplier_vat_number=None,
+        customer_name=None,
+        invoice_number=None,
+        date="../../../Desktop",
+        currency="/../",
+        lines=[],
+        net_total=1,
+        vat_total=0,
+        gross_total=1,
+        payment_method=None,
+        card_last4=None,
+        category_guess="Sundry",
+        confidence=0.5,
     )
     name = suggested_filename(doc, "image/jpeg")
     assert check_name(name) == name and "/" not in name and ".." not in name
@@ -114,19 +170,23 @@ def test_graph_provider_accepts_normal_paths():
 
 # --- strict bodies, keys --------------------------------------------------------------------------------------
 
-@pytest.mark.parametrize(("method", "path", "body"), [
-    ("post", "/books/ask", {"question": "How much VAT?", "admin": True}),
-    ("post", "/books/proposals/abcdef12/reject", {"reason": "dup", "status": "posted"}),
-    ("post", "/books/approve/abcdef12", {"edits": {}, "user": "someone-else"}),
-    ("post", "/books/bank/lines/0123456789abcdef/match", {"event_id": "abc", "extra": 1}),
-    ("post", "/jobs", {"name": "Kitchen", "status": "open", "id": "chosen-by-client"}),
-    ("post", "/staff", {"name": "Al", "hourly_rate_pence": 1500, "is_admin": True}),
-    ("post", "/timesheets", {"staff_id": "s", "job_id": "j", "date": "2026-10-01", "hours": 1, "rate": 99}),
-    ("put", "/contacts/0123456789abcdef", {"name": "Acme", "id": "other"}),
-    ("post", "/contacts/import-outlook", {"add_new": True, "x": 1}),
-    ("post", "/mail/scan", {"since_days": 7, "folder": "../"}),
-    ("post", "/ai/test", {"mode": "local", "api_key": "leak"}),
-])
+
+@pytest.mark.parametrize(
+    ("method", "path", "body"),
+    [
+        ("post", "/books/ask", {"question": "How much VAT?", "admin": True}),
+        ("post", "/books/proposals/abcdef12/reject", {"reason": "dup", "status": "posted"}),
+        ("post", "/books/approve/abcdef12", {"edits": {}, "user": "someone-else"}),
+        ("post", "/books/bank/lines/0123456789abcdef/match", {"event_id": "abc", "extra": 1}),
+        ("post", "/jobs", {"name": "Kitchen", "status": "open", "id": "chosen-by-client"}),
+        ("post", "/staff", {"name": "Al", "hourly_rate_pence": 1500, "is_admin": True}),
+        ("post", "/timesheets", {"staff_id": "s", "job_id": "j", "date": "2026-10-01", "hours": 1, "rate": 99}),
+        ("put", "/contacts/0123456789abcdef", {"name": "Acme", "id": "other"}),
+        ("post", "/contacts/import-outlook", {"add_new": True, "x": 1}),
+        ("post", "/mail/scan", {"since_days": 7, "folder": "../"}),
+        ("post", "/ai/test", {"mode": "local", "api_key": "leak"}),
+    ],
+)
 def test_unknown_fields_are_rejected(tc, method, path, body):
     r = getattr(tc, method)(path, headers=H, json=body)
     assert r.status_code == 422, r.text
@@ -144,5 +204,9 @@ def test_vat_period_key_format(tc, key):
 
 def test_vat_period_key_accepts_hmrc_shapes(tc):
     for key in ("26A3", "18AD", "#001"):
-        assert tc.get("/books/vat", headers=H, params={"period_key": key, "start": "2026-07-01",
-                                                       "end": "2026-09-30"}).status_code == 200
+        assert (
+            tc.get(
+                "/books/vat", headers=H, params={"period_key": key, "start": "2026-07-01", "end": "2026-09-30"}
+            ).status_code
+            == 200
+        )

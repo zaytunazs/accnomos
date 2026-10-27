@@ -1,4 +1,6 @@
-"""Judge-facing docs stay in step with the repo: one README feature table, cited files exist, sheet list matches the code."""
+"""Judge-facing docs stay in step with the repo: one README feature table, cited files exist,
+sheet list matches the code.
+"""
 
 from __future__ import annotations
 
@@ -10,9 +12,16 @@ import pytest
 from app.projection import SHEETS
 
 ROOT = Path(__file__).resolve().parents[3]
-DOCS = ("README.md", "docs/ARCHITECTURE.md", "docs/HONESTY.md", "docs/DEMO.md", "docs/REMAINING.md",
-        *(f"docs/submission/{n}.md" for n in ("DESCRIPTION", "META_MODELS", "VIDEO_SCRIPT", "JUDGING", "CHECKLIST")))
-# A backticked name with a code-ish extension; OneDrive paths (`_System/...`, `Books.xlsx`, `*.json`) are not repo files.
+DOCS = (
+    "README.md",
+    "docs/ARCHITECTURE.md",
+    "docs/HONESTY.md",
+    "docs/DEMO.md",
+    "docs/REMAINING.md",
+    *(f"docs/submission/{n}.md" for n in ("DESCRIPTION", "META_MODELS", "VIDEO_SCRIPT", "JUDGING", "CHECKLIST")),
+)
+# A backticked name with a code-ish extension;
+# OneDrive paths (`_System/...`, `Books.xlsx`, `*.json`) are not repo files.
 CITED = re.compile(r"`([A-Za-z0-9_./-]+\.(?:py|ts|tsx|dart|md|yml|yaml|mjs|png))`")
 
 
@@ -26,7 +35,9 @@ def _what_works_rows() -> list[str]:
         if not ln.startswith("|"):
             break
         table.append(ln)
-    assert not any(ln.startswith("|") for ln in lines[first + len(table):]), "the table is split by a blank or text line"
+    assert not any(ln.startswith("|") for ln in lines[first + len(table) :]), (
+        "the table is split by a blank or text line"
+    )
     return table[2:]
 
 
@@ -39,10 +50,16 @@ def test_readme_what_works_is_one_table_with_one_row_per_feature():
 
 @pytest.mark.parametrize("doc", DOCS)
 def test_files_cited_in_docs_exist(doc: str):
-    repo = [p.relative_to(ROOT).as_posix() for p in ROOT.rglob("*")
-            if p.is_file() and not {"node_modules", ".git", ".venv", ".next", "out"} & set(p.parts)]
-    missing = [ref for ref in sorted(set(CITED.findall((ROOT / doc).read_text())))
-               if not any(f == ref or f.endswith("/" + ref) for f in repo)]
+    repo = [
+        p.relative_to(ROOT).as_posix()
+        for p in ROOT.rglob("*")
+        if p.is_file() and not {"node_modules", ".git", ".venv", ".next", "out"} & set(p.parts)
+    ]
+    missing = [
+        ref
+        for ref in sorted(set(CITED.findall((ROOT / doc).read_text())))
+        if not any(f == ref or f.endswith("/" + ref) for f in repo)
+    ]
     assert not missing, f"{doc} cites files that do not exist: {missing}"
 
 

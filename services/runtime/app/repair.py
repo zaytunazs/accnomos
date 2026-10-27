@@ -43,10 +43,19 @@ def orient_doc_type(doc: ExtractedDoc, business_name: str | None) -> Check | Non
             doc.doc_type = "sales_invoice"
         elif doc.doc_type == "sales_invoice":
             doc.doc_type = purchase_kind
-    elif doc.doc_type == "sales_invoice" and not doc.customer_name and doc.payment_method in {"card", "cash", "direct_debit"}:
+    elif (
+        doc.doc_type == "sales_invoice"
+        and not doc.customer_name
+        and doc.payment_method in {"card", "cash", "direct_debit"}
+    ):
         doc.doc_type = purchase_kind  # paid at a till or by DD with no customer named: something we bought
     if doc.doc_type != before:
-        return Check(code="DOC_TYPE_ORIENTED", ok=True, severity="warn", message=f"Treated as {doc.doc_type} (model said {before})")
+        return Check(
+            code="DOC_TYPE_ORIENTED",
+            ok=True,
+            severity="warn",
+            message=f"Treated as {doc.doc_type} (model said {before})",
+        )
     return None
 
 
@@ -87,7 +96,11 @@ def repair_vat_inclusive_totals(doc: ExtractedDoc) -> Check | None:
             msg = f"VAT {gbp(vat)} did not fit net {gbp(net)} and total {gbp(gross)} at {rate:g}%; VAT set to {gbp(gross - net)}"
         else:
             return None
-    elif rate is not None and abs(round(net * rate / 100) - vat) > tol and abs(round(net * rate / (100 + rate)) - vat) <= tol:
+    elif (
+        rate is not None
+        and abs(round(net * rate / 100) - vat) > tol
+        and abs(round(net * rate / (100 + rate)) - vat) <= tol
+    ):
         doc.gross_total, doc.net_total = net / 100, (net - vat) / 100
         msg = f"VAT had been added on top of the VAT-inclusive total {gbp(net)}; total set to {gbp(net)}, net to {gbp(net - vat)}"
     else:
@@ -109,7 +122,9 @@ def _undo_double_qty(doc: ExtractedDoc, anchor: int) -> int:
     nets = [p(ln.net) for ln in doc.lines]
     if abs(sum(nets) - anchor) <= tol:
         return 0
-    cands = [i for i, ln in enumerate(doc.lines) if ln.qty > 1 and abs(p(ln.net) - round(ln.qty * ln.unit_price * 100)) <= 1]
+    cands = [
+        i for i, ln in enumerate(doc.lines) if ln.qty > 1 and abs(p(ln.net) - round(ln.qty * ln.unit_price * 100)) <= 1
+    ]
     if not cands or len(cands) > 12:
         return 0
     for size in range(1, len(cands) + 1):
@@ -131,7 +146,12 @@ def _lines_to_net(doc: ExtractedDoc) -> int:
     tol = _lines_tol(doc)
     net, vat, gross = p(doc.net_total), p(doc.vat_total), p(doc.gross_total)
     incl = [p(ln.net) for ln in doc.lines]
-    if vat <= 0 or abs(sum(incl) - net) <= tol or abs(sum(incl) - gross) > tol or any(ln.vat_rate is None for ln in doc.lines):
+    if (
+        vat <= 0
+        or abs(sum(incl) - net) <= tol
+        or abs(sum(incl) - gross) > tol
+        or any(ln.vat_rate is None for ln in doc.lines)
+    ):
         return 0
     split = [(round(a * 100 / (100 + (ln.vat_rate or 0))), ln) for a, ln in zip(incl, doc.lines)]
     if abs(sum(n for n, _ in split) - net) > tol or abs(sum(a - n for a, (n, _) in zip(incl, split)) - vat) > tol:
@@ -175,7 +195,9 @@ def repair_lines(doc: ExtractedDoc) -> Check | None:
         notes.append(f"{doubled} line(s) had the printed line total multiplied by the quantity again; line total kept")
         if net != anchor:
             doc.net_total = anchor / 100
-            notes.append(f"net set to the lines' sum {gbp(anchor)} (total {gbp(gross)} − VAT {gbp(vat)}), was {gbp(net)}")
+            notes.append(
+                f"net set to the lines' sum {gbp(anchor)} (total {gbp(gross)} − VAT {gbp(vat)}), was {gbp(net)}"
+            )
     if split := _lines_to_net(doc):
         notes.append(f"{split} line(s) were VAT-inclusive; split into net and VAT at each line's rate")
     if units := _fix_unit_prices(doc):

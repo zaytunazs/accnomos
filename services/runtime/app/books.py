@@ -5,7 +5,8 @@ Layout (relative to the books root; the folder names live in app/paths.py):
     00 Inbox/                      new documents land here
     01 Receipts/{yyyy-mm}/         filed purchases and receipts
     02 Needs a look/               anything a human should check
-    03 Sales/                      filed sales documents; invoices raised here are in 03 Sales/invoices/ (app/invoicing.py)
+    03 Sales/                      filed sales documents; invoices raised here are in
+                                   03 Sales/invoices/ (app/invoicing.py)
     04 Bank statements/            imported bank statement CSVs, "{last date}_{bank}.csv"
     05 Payroll/{yyyy-mm}.csv       pay run exports for the payroll provider
     06 VAT returns/  07 Reports/
@@ -31,23 +32,35 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
-import os
 import re
 from collections.abc import Callable
 from datetime import UTC, date, datetime, tzinfo
 from typing import Any, Literal
 
+from pydantic import BaseModel, Field
+
 from accnomos_connectors.base import ConflictError, FileRef, StorageProvider
 from accnomos_ledger.bank import BankLine, BankLineStatus, BankName, detect_bank, parse_bank_csv
 from accnomos_ledger.events import LedgerEvent
 from accnomos_ledger.matching import Match, suggest_matches
-from pydantic import BaseModel, Field
-
 from app.ai.config import is_test_mode
 from app.checks import parse_iso_date
 from app.paths import (  # noqa: F401  (re-exported: other modules import the folder names from here too)
-    AUDIT, BANK, BANK_LINES, DOCS, EVENTS, INBOX, NEEDS_A_LOOK, PROPOSALS, RECEIPTS, REPORTS, SALES, SYSTEM, TREE,
-    VAT_RETURNS, upgrade,
+    AUDIT,
+    BANK,
+    BANK_LINES,
+    DOCS,
+    EVENTS,
+    INBOX,
+    NEEDS_A_LOOK,
+    PROPOSALS,
+    RECEIPTS,
+    REPORTS,
+    SALES,
+    SYSTEM,
+    TREE,
+    VAT_RETURNS,
+    upgrade,
 )
 from app.schemas import ExtractedDoc, Proposal, ProposalStatus
 from app.validation import check_name
@@ -420,7 +433,9 @@ class Books:
         lines = parse_bank_csv(data, name)
         bank = detect_bank(data)
         if await self.exists(store):
-            return BankImport(sha256=sha, filed_path=None, lines=len(lines), new_lines=0, duplicate_file=True, bank=bank)
+            return BankImport(
+                sha256=sha, filed_path=None, lines=len(lines), new_lines=0, duplicate_file=True, bank=bank
+            )
         known = {ln.id for ln in await self.stored_bank_lines()}
         fresh = [ln for ln in lines if ln.id not in known]
         last = max((ln.date for ln in lines), default=now().date())
@@ -429,9 +444,18 @@ class Books:
         for ln in fresh:
             ln.source_file = filed
         await self.write_json(store, [ln.model_dump(mode="json") for ln in fresh])
-        await self.audit(f"user:{user}", "bank_imported", {
-            "sha256": sha, "path": filed, "uploaded_as": name, "bank": bank, "lines": len(lines), "new": len(fresh),
-        })
+        await self.audit(
+            f"user:{user}",
+            "bank_imported",
+            {
+                "sha256": sha,
+                "path": filed,
+                "uploaded_as": name,
+                "bank": bank,
+                "lines": len(lines),
+                "new": len(fresh),
+            },
+        )
         return BankImport(sha256=sha, filed_path=filed, lines=len(lines), new_lines=len(fresh), bank=bank)
 
     async def bank_statements(self) -> list[BankStatement]:
@@ -441,8 +465,12 @@ class Books:
             by_file.setdefault(upgrade(ln.source_file), []).append(ln)  # where it is now, after a folder rename
         out = [
             BankStatement(
-                path=path, bank=bank_of(path), first_date=min(ln.date for ln in lines),
-                last_date=max(ln.date for ln in lines), lines=len(lines), resolved=sum(ln.resolved for ln in lines),
+                path=path,
+                bank=bank_of(path),
+                first_date=min(ln.date for ln in lines),
+                last_date=max(ln.date for ln in lines),
+                lines=len(lines),
+                resolved=sum(ln.resolved for ln in lines),
                 money_in_pence=sum(ln.amount_pence for ln in lines if ln.amount_pence > 0),
                 money_out_pence=sum(ln.amount_pence for ln in lines if ln.amount_pence < 0),
             )
@@ -454,7 +482,8 @@ class Books:
         """Event id -> card last 4 digits, from the documents behind posted proposals."""
         return {
             p.event_id: p.extracted.card_last4
-            for p in await self.list_proposals("posted") if p.event_id and p.extracted.card_last4
+            for p in await self.list_proposals("posted")
+            if p.event_id and p.extracted.card_last4
         }
 
     async def bank_suggestions(self, lines: list[BankLine] | None = None) -> list[Match]:
@@ -521,9 +550,16 @@ class Books:
             raise BankMatchError("This bank line is still open; there is nothing to undo")
         update: dict[str, Any] = {"status": "unmatched", "matched_event_id": None, "matched_event_ids": []}
         await self._set_line(path, line_id, update)
-        await self.audit(f"user:{user}", "bank_unmatched", {
-            "line": line_id, "was": line.status, "events": line.event_ids(), "file": path,
-        })
+        await self.audit(
+            f"user:{user}",
+            "bank_unmatched",
+            {
+                "line": line_id,
+                "was": line.status,
+                "events": line.event_ids(),
+                "file": path,
+            },
+        )
         await self.rebuild_safely(f"user:{user}")
         return line.model_copy(update=update)
 
@@ -550,7 +586,9 @@ class Books:
     # ------------------------------------------------------------------ #
 
     async def rebuild(self) -> FileRef:
-        """Regenerate Books.xlsx at the root from the events, bank lines, open proposals, contacts, jobs, vehicles and pay runs."""
+        """Regenerate Books.xlsx at the root from the events, bank lines, open proposals, contacts,
+        jobs, vehicles and pay runs.
+        """
         from app import mileage, payroll
         from app.contacts import contact_book, load_ledger
         from app.jobs import summaries
@@ -576,9 +614,17 @@ class Books:
             runs, names = [], {}
         proposals = [p for p in every if p.status in ("proposed", "needs_a_look")]
         proposals.sort(key=lambda p: p.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
-        data = build_books_xlsx(ledger.events, await self.list_bank_lines(), proposals,
-                                jobs=jobs, contacts=contacts, ledger=ledger, mileage=vehicles,
-                                payroll=runs, staff_names=names)
+        data = build_books_xlsx(
+            ledger.events,
+            await self.list_bank_lines(),
+            proposals,
+            jobs=jobs,
+            contacts=contacts,
+            ledger=ledger,
+            mileage=vehicles,
+            payroll=runs,
+            staff_names=names,
+        )
         if len(data) > WORKBOOK_LIMIT:
             log.warning("Books.xlsx is %d bytes, over the %d byte simple-upload size", len(data), WORKBOOK_LIMIT)
         return await self.storage.write(WORKBOOK, data)

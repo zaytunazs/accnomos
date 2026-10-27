@@ -14,8 +14,25 @@ accnomos-connectors = { workspace = true }
 accnomos-runtime = { workspace = true }
 
 [tool.ruff]
-line-length = 110
+line-length = 120
 target-version = "py312"
+extend-exclude = ["evals/runs", "**/node_modules"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM"]
+
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency markers are meant to be called in defaults; VatCycle is a frozen dataclass.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.File", "fastapi.Query", "app.vat_cycle.VatCycle"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app", "relay", "accnomos_ledger", "accnomos_connectors", "harness"]
+
+[tool.pyright]
+include = ["services/runtime/app", "packages/ledger/src", "packages/connectors/src"]
+extraPaths = ["services/runtime", "packages/ledger/src", "packages/connectors/src"]
+typeCheckingMode = "basic"
+pythonVersion = "3.12"
 
 [tool.pytest.ini_options]
 testpaths = ["packages", "services", "evals"]

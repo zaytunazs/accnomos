@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import contextlib
 import io
 import json
 import logging
@@ -193,7 +194,9 @@ def code_box(img: Image.Image) -> tuple[Box | None, dict[str, Any]]:
 # before enabling.
 
 _BOX_KEYS = ("box", "bbox", "bounding_box", "xyxy")
-_QUAD = re.compile(r"\[\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\]")
+_QUAD = re.compile(
+    r"\[\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\]"
+)
 
 
 def sam_request_body(noun: str, data_url: str) -> dict[str, Any]:
@@ -276,10 +279,8 @@ def parse_sam_boxes(data: dict[str, Any]) -> list[tuple[Box, float | None]]:
             _walk(json.loads(text), found)
         except json.JSONDecodeError:
             start, end = text.find("{"), text.rfind("}")
-            try:
+            with contextlib.suppress(json.JSONDecodeError):
                 _walk(json.loads(text[start : end + 1]), found) if 0 <= start < end else None
-            except json.JSONDecodeError:
-                pass
             if not found:
                 found = [(b, None) for q in _QUAD.findall(text) if (b := _as_box([float(n) for n in q]))]
     return found

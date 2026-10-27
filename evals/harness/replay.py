@@ -17,12 +17,11 @@ import copy
 import json
 from pathlib import Path
 
-from harness.run_extraction import FIELDS, GOLD_DIR, expected_status, score  # noqa: F401 (sets sys.path for app.*)
-
 from app.checks import decide, run_checks  # noqa: E402
 from app.repair import REPAIR_CODES, repair  # noqa: E402
 from app.schemas import Check, ExtractedDoc  # noqa: E402
 from app.testmode import extracted_from_gold  # noqa: E402
+from harness.run_extraction import FIELDS, GOLD_DIR, expected_status, score  # noqa: F401 (sets sys.path for app.*)
 
 MONEY = ("net_total", "vat_total", "gross_total")
 
@@ -63,9 +62,11 @@ def main_gold(business_name: str | None, show: bool) -> None:
     rows = gold_statuses(business_name)
     false_passes = [f[:3] for f, s, e, _ in rows if s == "proposed" and e == "needs_a_look"]
     false_alarms = [f[:3] for f, s, e, _ in rows if s == "needs_a_look" and e == "proposed"]
-    print(f"perfect readings: status {sum(s == e for _, s, e, _ in rows)}/{len(rows)}; "
-          f"false passes {len(false_passes)} ({', '.join(false_passes)}); "
-          f"false alarms {len(false_alarms)} ({', '.join(false_alarms)})")
+    print(
+        f"perfect readings: status {sum(s == e for _, s, e, _ in rows)}/{len(rows)}; "
+        f"false passes {len(false_passes)} ({', '.join(false_passes)}); "
+        f"false alarms {len(false_alarms)} ({', '.join(false_alarms)})"
+    )
     if show:
         for f, s, e, reasons in rows:
             if s != e:
@@ -109,9 +110,11 @@ def main() -> None:
         if args.show and (s0 != s1 or new["repaired_by_code"]):
             lost = [f for f in FIELDS if s0[f] and not s1[f]]
             won = [f for f in FIELDS if s1[f] and not s0[f]]
-            print(f"{rec['file']}: +{won} -{lost} {rec['proposal']['status']}->{new['status']} | {new['repaired_by_code']}")
+            print(
+                f"{rec['file']}: +{won} -{lost} {rec['proposal']['status']}->{new['status']} | {new['repaired_by_code']}"
+            )
     n = tally["n"]
-    print(f"\n| Field | before | after |\n|---|---:|---:|")
+    print("\n| Field | before | after |\n|---|---:|---:|")
     for f in FIELDS:
         print(f"| {f} | {sum(before[f]) / n:.1%} | {sum(after[f]) / n:.1%} |")
     print(f"| all fields | {tally['all_before'] / n:.1%} | {tally['all_after'] / n:.1%} |")

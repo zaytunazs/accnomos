@@ -12,12 +12,11 @@ from collections.abc import AsyncIterator
 from datetime import datetime
 from typing import Any
 
-from accnomos_connectors.msgraph import GraphStorageProvider
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from accnomos_connectors.msgraph import GraphStorageProvider
 from accnomos_ledger.events import LedgerEvent
-
 from app import autopilot, layout
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.approve import ApprovalError, ProposalStateError, approve, reject, undo
@@ -76,13 +75,13 @@ def business_name(x_business_name: str | None = Header(default=None)) -> str | N
 
 
 class ApproveBody(StrictBody):
-    edits: dict[str, Any] | None = Field(None, max_length=50)
+    edits: dict[str, Any] | None = Field(default=None, max_length=50)
     always: bool = False
     remember: bool = False  # "Always do this for <supplier>"; same as `always`
 
 
 class RejectBody(StrictBody):
-    reason: str = Field("", max_length=1000)
+    reason: str = Field(default="", max_length=1000)
 
 
 class Summary(BaseModel):
@@ -118,7 +117,9 @@ async def scan(
     x_autopilot: str | None = Header(default=None),
     cycle: VatCycle = Depends(vat_cycle),
 ) -> ScanResult:
-    """VAT settings (`stagger`/`start_month`/`months`, as for /books/deadlines) set the period dates are checked against."""
+    """VAT settings (`stagger`/`start_month`/`months`, as for /books/deadlines)
+    set the period dates are checked against.
+    """
     autopilot_on = (x_autopilot or "on").strip().lower() != "off"
     period = cycle.current(today())
     proposals, errors = await scan_inbox_detailed(books, cfg, limit, business, autopilot_on, period)
@@ -138,8 +139,10 @@ async def proposal(proposal_id: str, books: Books = Depends(get_books)) -> Propo
 @router.post("/proposals/{proposal_id}/approve", response_model=Proposal)
 @router.post("/approve/{proposal_id}", response_model=Proposal)
 async def approve_route(
-    proposal_id: str, body: ApproveBody | None = None,
-    books: Books = Depends(get_books), user: str = Depends(require_user),
+    proposal_id: str,
+    body: ApproveBody | None = None,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> Proposal:
     body = body or ApproveBody()
     await _proposal(books, proposal_id)
@@ -151,8 +154,10 @@ async def approve_route(
 
 @router.post("/proposals/{proposal_id}/reject", response_model=Proposal)
 async def reject_route(
-    proposal_id: str, body: RejectBody | None = None,
-    books: Books = Depends(get_books), user: str = Depends(require_user),
+    proposal_id: str,
+    body: RejectBody | None = None,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> Proposal:
     await _proposal(books, proposal_id)
     try:
@@ -185,17 +190,27 @@ async def rules(books: Books = Depends(get_books)) -> list[autopilot.AutopilotRu
 
 @router.delete("/rules/{supplier_key}", response_model=autopilot.AutopilotRule)
 async def delete_rule(
-    supplier_key: str, books: Books = Depends(get_books), user: str = Depends(require_user),
+    supplier_key: str,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> autopilot.AutopilotRule:
     """Stop Autopilot for this supplier, and drop the account rule that was saved with it."""
     gone = await autopilot.remove_rule(books, supplier_key) if autopilot.KEY_RE.fullmatch(supplier_key) else None
     if gone is None:
         raise HTTPException(status_code=404, detail="No such rule")
     account_rules = await books.load_rules()
-    kept = [r for r in account_rules if autopilot.supplier_key(re.sub(r"\\(.)", r"\1", r.match.supplier_regex)) != supplier_key]
+    kept = [
+        r
+        for r in account_rules
+        if autopilot.supplier_key(re.sub(r"\\(.)", r"\1", r.match.supplier_regex)) != supplier_key
+    ]
     if len(kept) != len(account_rules):
         await books.save_rules(kept)
-    await books.audit(f"user:{user}", "rule_removed", {"supplier_key": supplier_key, "account_rules_removed": len(account_rules) - len(kept)})
+    await books.audit(
+        f"user:{user}",
+        "rule_removed",
+        {"supplier_key": supplier_key, "account_rules_removed": len(account_rules) - len(kept)},
+    )
     return gone
 
 

@@ -26,7 +26,7 @@ SYSTEM_PROMPT = (
     "from their calendar, open jobs and VAT deadlines. Say why it is ordered this way (visits grouped by "
     "postcode district to cut driving), mention lunch and any admin, and repeat any warnings simply. "
     "Rules: quote clock times only exactly as they appear in PLAN (HH:MM); never change the order or times, "
-    "never add visits, never estimate distances or miles. Return JSON {\"rationale_md\": \"...\"}."
+    'never add visits, never estimate distances or miles. Return JSON {"rationale_md": "..."}.'
 )
 
 
@@ -39,14 +39,13 @@ def facts(plan: Plan) -> dict[str, Any]:
     return {
         "day": uk_day(plan.date),
         "working_hours": [hhmm(plan.window[0]), hhmm(plan.window[1])],
-        "items": [
-            {"kind": i.kind, "start": hhmm(i.start), "end": hhmm(i.end), "title": i.title}
-            for i in plan.items
-        ],
+        "items": [{"kind": i.kind, "start": hhmm(i.start), "end": hhmm(i.end), "title": i.title} for i in plan.items],
         "visit_districts_in_order": plan.districts,
         "rules": {
-            "travel_minutes_same_district": TRAVEL_SAME_MIN, "travel_minutes_new_district": TRAVEL_OTHER_MIN,
-            "lunch_minutes": LUNCH_MIN, "admin_minutes": ADMIN_MIN,
+            "travel_minutes_same_district": TRAVEL_SAME_MIN,
+            "travel_minutes_new_district": TRAVEL_OTHER_MIN,
+            "lunch_minutes": LUNCH_MIN,
+            "admin_minutes": ADMIN_MIN,
         },
         "warnings": plan.warnings,
     }

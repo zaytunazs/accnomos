@@ -8,6 +8,7 @@ from accnomos_connectors.base import (
     AddressBookContact,
     CalendarEvent,
     CalendarProvider,
+    ConflictError,
     ContactsProvider,
     FileRef,
     MailAttachment,
@@ -15,17 +16,25 @@ from accnomos_connectors.base import (
     MailMessage,
     MailProvider,
     MailSender,
-    ConflictError,
     OutgoingAttachment,
     OutgoingMail,
     StorageProvider,
 )
-from accnomos_connectors.fake import FakeCalendarProvider, FakeContactsProvider, FakeMailProvider, FakeStorageProvider
-from accnomos_connectors.msgraph import GraphContactsProvider, GraphError, GraphMailProvider, GraphStorageProvider
-from accnomos_connectors.fake import FakeMailProvider, FakeMailSender, FakeStorageProvider
-from accnomos_connectors.msgraph import GraphError, GraphMailProvider, GraphMailSender, GraphStorageProvider
-from accnomos_connectors.fake import FakeCalendarProvider, FakeContactsProvider, FakeMailProvider, FakeStorageProvider
-from accnomos_connectors.msgraph import GraphCalendarProvider, GraphContactsProvider, GraphError, GraphMailProvider, GraphStorageProvider
+from accnomos_connectors.fake import (
+    FakeCalendarProvider,
+    FakeContactsProvider,
+    FakeMailProvider,
+    FakeMailSender,
+    FakeStorageProvider,
+)
+from accnomos_connectors.msgraph import (
+    GraphCalendarProvider,
+    GraphContactsProvider,
+    GraphError,
+    GraphMailProvider,
+    GraphMailSender,
+    GraphStorageProvider,
+)
 
 __all__ = [
     "AddressBookContact",

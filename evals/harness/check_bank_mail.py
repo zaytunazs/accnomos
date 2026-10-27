@@ -1,6 +1,6 @@
 """Sanity-check the bank CSVs and mail fixtures against the repo's own parsers and the truth files.
 
-    cd evals && python -m harness.check_bank_mail
+cd evals && python -m harness.check_bank_mail
 """
 
 from __future__ import annotations
@@ -29,7 +29,10 @@ def main() -> None:
         except BankCsvError as exc:
             print(f"{csv_path.name}: PARSER REJECTS FILE ({exc})")
             continue
-        ok = len(lines) == len(rows) and all(ln.amount_pence == r["amount_pence"] and ln.date.isoformat() == r["date"] for ln, r in zip(lines, rows))
+        ok = len(lines) == len(rows) and all(
+            ln.amount_pence == r["amount_pence"] and ln.date.isoformat() == r["date"]
+            for ln, r in zip(lines, rows, strict=True)
+        )
         print(f"{csv_path.name}: {len(lines)}/{len(rows)} rows parsed, amounts and dates {'match' if ok else 'DIFFER'}")
     for p in sorted((GOLD / "mail").glob("M*.json")):
         m = json.loads(p.read_text(encoding="utf-8"))

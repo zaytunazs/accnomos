@@ -6,18 +6,23 @@ import asyncio
 from datetime import date
 from typing import Literal
 
-from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 
+from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return
 from app.books import Books
 from app.books import today as current_date  # `today` is a query parameter below
 from app.deadlines import (
-    STAGGER_START_MONTH, filing_deadline, period_containing, period_label, previous_period, stagger_of,
+    filing_deadline,
+    period_containing,
+    period_from_id,
+    period_id,
+    period_label,
+    previous_period,
+    recent_periods,
+    stagger_of,
 )
-from app.books import Books
 from app.paths import VAT_RETURNS
-from app.deadlines import filing_deadline, period_from_id, period_id, period_label, previous_period, recent_periods, stagger_of
 from app.routes_books import get_books
 from app.vat_cycle import VatCycle, vat_cycle
 
@@ -67,9 +72,15 @@ def period_key_for(start: date) -> str:
 def box_amounts(ret: VatReturn) -> dict[int, str]:
     """The 9 boxes as HMRC will receive them: pounds to 2 dp for 1-5, whole pounds for 6-9."""
     return {
-        1: f"{ret.vat_due_sales:.2f}", 2: f"{ret.vat_due_acquisitions:.2f}", 3: f"{ret.total_vat_due:.2f}",
-        4: f"{ret.vat_reclaimed:.2f}", 5: f"{ret.net_vat_due:.2f}", 6: str(ret.total_sales_ex_vat),
-        7: str(ret.total_purchases_ex_vat), 8: str(ret.goods_supplied_ni_eu), 9: str(ret.acquisitions_ni_eu),
+        1: f"{ret.vat_due_sales:.2f}",
+        2: f"{ret.vat_due_acquisitions:.2f}",
+        3: f"{ret.total_vat_due:.2f}",
+        4: f"{ret.vat_reclaimed:.2f}",
+        5: f"{ret.net_vat_due:.2f}",
+        6: str(ret.total_sales_ex_vat),
+        7: str(ret.total_purchases_ex_vat),
+        8: str(ret.goods_supplied_ni_eu),
+        9: str(ret.acquisitions_ni_eu),
     }
 
 
@@ -80,6 +91,7 @@ async def submitted_periods(books: Books) -> dict[tuple[date, date], str]:
         folders = [f for f in await books.storage.list(VAT_RETURNS) if f.is_folder]
     except FileNotFoundError:
         return {}
+
     async def receipt(folder: str) -> object:
         try:
             return await books.read_json(f"{folder}/return.json", None)
@@ -92,15 +104,23 @@ async def submitted_periods(books: Books) -> dict[tuple[date, date], str]:
         if not isinstance(saved, dict):
             continue
         for span in (saved.get("obligation"), saved.get("calculated_for")):
+            if not isinstance(span, dict):
+                continue
             try:
-                out[(date.fromisoformat(span["start"]), date.fromisoformat(span["end"]))] = str(saved.get("periodKey") or folder.name)
+                out[(date.fromisoformat(span["start"]), date.fromisoformat(span["end"]))] = str(
+                    saved.get("periodKey") or folder.name
+                )
             except (KeyError, TypeError, ValueError):
                 continue
     return out
 
 
 def _resolve(
-    cycle: VatCycle, today: date, period: str | None, period_start: date | None, period_end: date | None,
+    cycle: VatCycle,
+    today: date,
+    period: str | None,
+    period_start: date | None,
+    period_end: date | None,
 ) -> tuple[date, date]:
     if period_start is not None or period_end is not None:
         if period_start is None or period_end is None:
@@ -128,7 +148,9 @@ def can_submit(start: date, cycle: VatCycle, today: date, submitted: bool) -> bo
 async def vat_return(
     period_start: date | None = Query(None, description="ISO date; send with period_end"),
     period_end: date | None = Query(None, description="ISO date; send with period_start"),
-    period: str | None = Query(None, pattern=r"^\d{4}-(Q[1-4]|\d{2})$", description="2026-Q4 (quarterly) or 2026-11 (monthly)"),
+    period: str | None = Query(
+        None, pattern=r"^\d{4}-(Q[1-4]|\d{2})$", description="2026-Q4 (quarterly) or 2026-11 (monthly)"
+    ),
     start: date | None = Query(None, include_in_schema=False),  # older clients: same as period_start
     end: date | None = Query(None, include_in_schema=False),
     period_key: str | None = Query(None, pattern=r"^[A-Za-z0-9#]{4}$"),  # HMRC period key, e.g. 26A3
@@ -144,14 +166,32 @@ async def vat_return(
     ret = compute_vat_return(events, period_key, start, end)
     sales = [e for e in events if e.kind == "sale"]
     purchases = [e for e in events if e.kind == "purchase"]
-    counts = {1: len(sales), 2: 0, 3: len(sales), 4: len(purchases), 5: len(events), 6: len(sales), 7: len(purchases), 8: 0, 9: 0}
+    counts = {
+        1: len(sales),
+        2: 0,
+        3: len(sales),
+        4: len(purchases),
+        5: len(events),
+        6: len(sales),
+        7: len(purchases),
+        8: 0,
+        9: 0,
+    }
     amounts = box_amounts(ret)
     submitted = (start, end) in await submitted_periods(books)
     return VatReturnView(
-        period_key=period_key, start=start, end=end, period=period_id(start, cycle.months), label=period_label(start, end),
-        current=(start, end) == cycle.current(today), submitted=submitted, can_submit=can_submit(start, cycle, today, submitted),
+        period_key=period_key,
+        start=start,
+        end=end,
+        period=period_id(start, cycle.months),
+        label=period_label(start, end),
+        current=(start, end) == cycle.current(today),
+        submitted=submitted,
+        can_submit=can_submit(start, cycle, today, submitted),
         boxes=[VatBox(box=i, label=LABELS[i], amount=amounts[i], entries=counts[i]) for i in range(1, 10)],
-        event_ids=ret.event_ids, warnings=ret.warnings, hmrc_body=ret.to_hmrc(finalised=False),
+        event_ids=ret.event_ids,
+        warnings=ret.warnings,
+        hmrc_body=ret.to_hmrc(finalised=False),
         events_in_period=len(events),
     )
 
@@ -174,7 +214,9 @@ class VatPeriods(BaseModel):
     months: int
     start_month: int
     periods: list[VatPeriod]  # current first, then the 8 before it
-    status_source: str = f"Submitted = a receipt saved in {VAT_RETURNS} after a relay submission; HMRC's own list is in Connect to HMRC."
+    status_source: str = (
+        f"Submitted = a receipt saved in {VAT_RETURNS} after a relay submission; HMRC's own list is in Connect to HMRC."
+    )
 
 
 @router.get("/vat/periods", response_model=VatPeriods)
@@ -193,11 +235,20 @@ async def vat_periods(
         entries = sum(s <= ev.date <= e for ev in events)
         key = submitted.get((s, e))
         status: Literal["open", "submitted", "none"] = "submitted" if key else "open" if (i == 0 or entries) else "none"
-        periods.append(VatPeriod(
-            period=period_id(s, cycle.months), start=s, end=e, label=period_label(s, e), current=i == 0,
-            deadline=filing_deadline(e), status=status, hmrc_period_key=key, entries=entries,
-            can_submit=can_submit(s, cycle, today, key is not None),
-        ))
+        periods.append(
+            VatPeriod(
+                period=period_id(s, cycle.months),
+                start=s,
+                end=e,
+                label=period_label(s, e),
+                current=i == 0,
+                deadline=filing_deadline(e),
+                status=status,
+                hmrc_period_key=key,
+                entries=entries,
+                can_submit=can_submit(s, cycle, today, key is not None),
+            )
+        )
     return VatPeriods(today=today, months=cycle.months, start_month=cycle.start_month, periods=periods)
 
 
@@ -231,9 +282,16 @@ def _period_deadline(events: list[LedgerEvent], start: date, end: date, months: 
     diff = ret.total_vat_due - ret.vat_reclaimed
     deadline = filing_deadline(end)
     return PeriodDeadline(
-        start=start, end=end, label=period_label(start, end), period_key=key, deadline=deadline,
-        days_to_end=(end - today).days, days_remaining=(deadline - today).days, box5=f"{ret.net_vat_due:.2f}",
-        box5_direction="pay" if diff > 0 else "reclaim" if diff < 0 else "nil", entries=len(ret.event_ids),
+        start=start,
+        end=end,
+        label=period_label(start, end),
+        period_key=key,
+        deadline=deadline,
+        days_to_end=(end - today).days,
+        days_remaining=(deadline - today).days,
+        box5=f"{ret.net_vat_due:.2f}",
+        box5_direction="pay" if diff > 0 else "reclaim" if diff < 0 else "nil",
+        entries=len(ret.event_ids),
     )
 
 
@@ -259,12 +317,12 @@ def compute_deadlines(events: list[LedgerEvent], today: date, first: int, months
     cur_start, cur_end = period_containing(today, first, months)
     prev_start, prev_end = previous_period(cur_start, months)
     events = [e for e in events if prev_start <= e.date <= cur_end]
-    due = (
-        _period_deadline(events, prev_start, prev_end, months, today)
-        if filing_deadline(prev_end) >= today else None
-    )
+    due = _period_deadline(events, prev_start, prev_end, months, today) if filing_deadline(prev_end) >= today else None
     return Deadlines(
-        today=today, months=months, start_month=stagger_of(first) if months == 3 else 1,
+        today=today,
+        months=months,
+        start_month=stagger_of(first) if months == 3 else 1,
         stagger=stagger_of(first) if months == 3 else None,
-        current=_period_deadline(events, cur_start, cur_end, months, today), due=due,
+        current=_period_deadline(events, cur_start, cur_end, months, today),
+        due=due,
     )

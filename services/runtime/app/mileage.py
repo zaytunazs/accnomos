@@ -24,6 +24,7 @@ import hashlib
 import json
 import re
 from collections.abc import Callable, Iterable
+from collections.abc import Set as AbstractSet
 from dataclasses import dataclass
 from datetime import date
 from typing import Literal
@@ -133,7 +134,7 @@ def _new_id() -> str:
 class Vehicle(StrictBody):
     id: str = Field(default_factory=_new_id, max_length=32)
     name: str = Field(min_length=1, max_length=60)
-    registration: str | None = Field(None, max_length=12)  # as the user typed it, upper-cased
+    registration: str | None = Field(default=None, max_length=12)  # as the user typed it, upper-cased
     kind: VehicleKind
     owned_by: Ownership
     active: bool = True
@@ -162,11 +163,11 @@ class MileageEntry(StrictBody):
     id: str = Field(default_factory=_new_id, max_length=32)
     vehicle_id: str = Field(max_length=32)
     date: Day
-    from_: str = Field("", alias="from", max_length=120)
-    to: str = Field("", max_length=120)
+    from_: str = Field(default="", alias="from", max_length=120)
+    to: str = Field(default="", max_length=120)
     miles: float = Field(gt=0, le=2000)
     purpose: str = Field(min_length=1, max_length=200)
-    job_id: str | None = Field(None, max_length=32)  # a job in _System/Jobs/jobs.json, as on purchases
+    job_id: str | None = Field(default=None, max_length=32)  # a job in _System/Jobs/jobs.json, as on purchases
     source: Literal["manual", "proposal"] = "manual"
 
     @field_validator("miles")
@@ -241,7 +242,9 @@ async def load_entries(books: Books, tax_year: str) -> list[MileageEntry]:
     return sorted(_parse(raw), key=lambda e: (e.date, e.id))
 
 
-async def _change_entries(books: Books, tax_year: str, change: Callable[[list[MileageEntry]], list[MileageEntry]]) -> None:
+async def _change_entries(
+    books: Books, tax_year: str, change: Callable[[list[MileageEntry]], list[MileageEntry]]
+) -> None:
     await books._update(_mileage_path(tax_year), lambda raw: _dump(change(_parse(raw))))
 
 
@@ -263,7 +266,9 @@ class JourneyAllowance:
     after_tenths: int  # tenths of a mile at the rate beyond the threshold
 
 
-def allowances(entries: Iterable[MileageEntry], vehicles: Iterable[Vehicle], claimed: set[str] = frozenset()) -> list[JourneyAllowance]:
+def allowances(
+    entries: Iterable[MileageEntry], vehicles: Iterable[Vehicle], claimed: AbstractSet[str] = frozenset()
+) -> list[JourneyAllowance]:
     """The allowance for each journey of one tax year, in the order the threshold is counted.
 
     That order is by date; on the same day, journeys already in a posted claim count first, so a journey
@@ -300,7 +305,8 @@ def threshold_crossed_on(rows: Iterable[JourneyAllowance]) -> date | None:
 
 async def mileage_claims(books: Books, tax_year: str | None = None) -> list[Proposal]:
     return [
-        p for p in await books.list_proposals()
+        p
+        for p in await books.list_proposals()
         if p.mileage_claim and (tax_year is None or p.mileage_claim.tax_year == tax_year)
     ]
 
@@ -341,17 +347,30 @@ def _line(v: Vehicle | None, rows: list[JourneyAllowance]) -> ExtractedLine:
     pence = sum(a.pence for a in rows)
     first, after = sum(a.first_tenths for a in rows), sum(a.after_tenths for a in rows)
     if v is None:  # unreachable: only personal vehicles earn an allowance
-        return ExtractedLine(description="Mileage", qty=1, unit_price=pence / 100, net=pence / 100, vat_rate=None, vat=0)
+        return ExtractedLine(
+            description="Mileage", qty=1, unit_price=pence / 100, net=pence / 100, vat_rate=None, vat=0
+        )
     rate = RATES[v.kind]
-    parts = [f"{_miles(first)} mi at {rate.first_pence}p"] + ([f"{_miles(after)} mi at {rate.after_pence}p"] if after else [])
+    parts = [f"{_miles(first)} mi at {rate.first_pence}p"] + (
+        [f"{_miles(after)} mi at {rate.after_pence}p"] if after else []
+    )
     return ExtractedLine(
-        description=f"{v.label()}, {v.kind}: {', '.join(parts)}", qty=1, unit_price=pence / 100, net=pence / 100,
-        vat_rate=None, vat=0,
+        description=f"{v.label()}, {v.kind}: {', '.join(parts)}",
+        qty=1,
+        unit_price=pence / 100,
+        net=pence / 100,
+        vat_rate=None,
+        vat=0,
     )
 
 
 def claim_proposal(
-    proposal_id: str, tax_year: str, period: str, covers_to: date, rows: list[JourneyAllowance], vehicles: list[Vehicle],
+    proposal_id: str,
+    tax_year: str,
+    period: str,
+    covers_to: date,
+    rows: list[JourneyAllowance],
+    vehicles: list[Vehicle],
 ) -> Proposal:
     """An expense proposal for these journeys: category "Motor — mileage allowance", VAT code N
     (no supplier VAT number), credited to the owner who paid for the journeys."""
@@ -363,26 +382,59 @@ def claim_proposal(
     pence = sum(a.pence for a in rows)
     tenths = sum(a.entry.tenths for a in rows)
     doc = ExtractedDoc(
-        doc_type="purchase_invoice", supplier_name="Mileage allowance", supplier_vat_number=None, customer_name=None,
-        invoice_number=f"MILEAGE-{tax_year}-{period}", date=covers_to.isoformat(), currency="GBP", lines=lines,
-        net_total=pence / 100, vat_total=0, gross_total=pence / 100, payment_method=None, card_last4=None,
-        category_guess=MILEAGE_CATEGORY, confidence=1,
+        doc_type="purchase_invoice",
+        supplier_name="Mileage allowance",
+        supplier_vat_number=None,
+        customer_name=None,
+        invoice_number=f"MILEAGE-{tax_year}-{period}",
+        date=covers_to.isoformat(),
+        currency="GBP",
+        lines=lines,
+        net_total=pence / 100,
+        vat_total=0,
+        gross_total=pence / 100,
+        payment_method=None,
+        card_last4=None,
+        category_guess=MILEAGE_CATEGORY,
+        confidence=1,
     )
-    checks = [Check(
-        code="MILEAGE", ok=True, severity="warn",
-        message=f"Calculated by code: {_miles(tenths)} business miles in personal vehicles, {period} {tax_year} "
-                f"to {covers_to:%d/%m/%Y}, at HMRC approved mileage rates",
-    )]
+    checks = [
+        Check(
+            code="MILEAGE",
+            ok=True,
+            severity="warn",
+            message=f"Calculated by code: {_miles(tenths)} business miles in personal vehicles, {period} {tax_year} "
+            f"to {covers_to:%d/%m/%Y}, at HMRC approved mileage rates",
+        )
+    ]
     if not rows:
-        checks.append(Check(code="NO_MILES", ok=False, severity="fail", message="No unclaimed miles left in this period; reject this claim"))
+        checks.append(
+            Check(
+                code="NO_MILES",
+                ok=False,
+                severity="fail",
+                message="No unclaimed miles left in this period; reject this claim",
+            )
+        )
     status, reasons = decide(checks)
     evidence = json.dumps([[a.entry.id, a.pence] for a in rows]).encode()
     return Proposal(
-        id=proposal_id, doc_sha256=hashlib.sha256(evidence).hexdigest(), extracted=doc, checks=checks, status=status,
-        reasons=reasons, suggested_filename=f"Mileage {tax_year} {period}", journal_draft=draft_journal(doc),
-        model="code:mileage", elapsed_s=0,
+        id=proposal_id,
+        doc_sha256=hashlib.sha256(evidence).hexdigest(),
+        extracted=doc,
+        checks=checks,
+        status=status,
+        reasons=reasons,
+        suggested_filename=f"Mileage {tax_year} {period}",
+        journal_draft=draft_journal(doc),
+        model="code:mileage",
+        elapsed_s=0,
         mileage_claim=MileageClaim(
-            tax_year=tax_year, period=period, covers_to=covers_to, entry_ids=[a.entry.id for a in rows], miles=tenths / 10,
+            tax_year=tax_year,
+            period=period,
+            covers_to=covers_to,
+            entry_ids=[a.entry.id for a in rows],
+            miles=tenths / 10,
         ),
     )
 
@@ -390,7 +442,9 @@ def claim_proposal(
 _CALCULATED = ("doc_sha256", "extracted", "checks", "status", "reasons", "journal_draft", "mileage_claim")
 
 
-async def propose_allowance(books: Books, tax_year: str, period: str, today: date | None = None) -> tuple[Proposal, bool]:
+async def propose_allowance(
+    books: Books, tax_year: str, period: str, today: date | None = None
+) -> tuple[Proposal, bool]:
     """Create (or bring up to date) the period's mileage allowance proposal; (proposal, created).
 
     Idempotent: while a claim for the period is waiting in Review it is the one returned, refreshed
@@ -406,13 +460,16 @@ async def propose_allowance(books: Books, tax_year: str, period: str, today: dat
     waiting = next((c for c in every if c.mileage_claim.period == period and c.status in OPEN), None)  # type: ignore[union-attr]
     vehicles = await load_vehicles(books)
     rows = [
-        a for a in allowances(await load_entries(books, tax_year), vehicles, paid)
+        a
+        for a in allowances(await load_entries(books, tax_year), vehicles, paid)
         if start <= a.entry.date <= covers_to and a.entry.id not in paid and a.pence > 0
     ]
     if not rows and waiting is None:
         raise MileageError(f"No unclaimed business miles in personal vehicles for {period} {tax_year}")
     n = sum(c.mileage_claim.period == period for c in every)  # type: ignore[union-attr]
-    fresh = claim_proposal(waiting.id if waiting else _claim_id(tax_year, period, n), tax_year, period, covers_to, rows, vehicles)
+    fresh = claim_proposal(
+        waiting.id if waiting else _claim_id(tax_year, period, n), tax_year, period, covers_to, rows, vehicles
+    )
     if waiting is None:
         p = fresh.model_copy(update={"created_at": now()})
     else:  # keep its history (created_at, undone_events, ...): only what code calculated changes
@@ -420,10 +477,17 @@ async def propose_allowance(books: Books, tax_year: str, period: str, today: dat
         if p.model_dump() == waiting.model_dump():
             return waiting, False
     await books.save_proposal(p)
-    await books.audit(ACTOR, "mileage_proposed" if waiting is None else "mileage_refreshed", {
-        "proposal": p.id, "tax_year": tax_year, "period": period, "journeys": len(rows),
-        "pence": round(p.extracted.gross_total * 100),
-    })
+    await books.audit(
+        ACTOR,
+        "mileage_proposed" if waiting is None else "mileage_refreshed",
+        {
+            "proposal": p.id,
+            "tax_year": tax_year,
+            "period": period,
+            "journeys": len(rows),
+            "pence": round(p.extracted.gross_total * 100),
+        },
+    )
     return p, waiting is None
 
 
@@ -560,7 +624,8 @@ async def delete_entry(books: Books, entry_id: str, user: str) -> MileageEntry:
 # --------------------------------------------------------------------------- #
 
 _VEHICLE_WORDS = re.compile(
-    r"\b(fuel|petrol|diesel|unleaded|parking|car park|tolls?|congestion charge|dart charge|ulez|mot|tyres?)\b", re.IGNORECASE,
+    r"\b(fuel|petrol|diesel|unleaded|parking|car park|tolls?|congestion charge|dart charge|ulez|mot|tyres?)\b",
+    re.IGNORECASE,
 )
 
 
@@ -579,7 +644,14 @@ def prefill_vehicle(p: Proposal, vehicles: Iterable[Vehicle]) -> None:
     business = [v for v in vehicles if v.active and v.owned_by == "business"]
     if p.vehicle_id is None and len(business) == 1 and is_vehicle_cost(p.extracted):
         p.vehicle_id = business[0].id
-        p.checks.append(Check(code="VEHICLE", ok=True, severity="warn", message=f"Tagged to {business[0].label()}, your only business vehicle"))
+        p.checks.append(
+            Check(
+                code="VEHICLE",
+                ok=True,
+                severity="warn",
+                message=f"Tagged to {business[0].label()}, your only business vehicle",
+            )
+        )
 
 
 def vehicle_cost_pence(p: Proposal) -> int:
@@ -664,33 +736,59 @@ async def summary(books: Books, tax_year: str) -> MileageSummary:
         cost = sum(vehicle_cost_pence(p) for p in costs)
         allowance = sum(a.pence for a in mine)
         spend = cost if v.owned_by == "business" else allowance
-        per_vehicle.append(VehicleSummary(
-            vehicle_id=v.id, name=v.name, registration=v.registration, kind=v.kind, owned_by=v.owned_by, active=v.active,
-            miles=tenths / 10, journeys=len(mine), allowance_pence=allowance, cost_pence=cost, cost_entries=len(costs),
-            pence_per_mile=round(spend * 10 / tenths) if tenths else None,
-        ))
+        per_vehicle.append(
+            VehicleSummary(
+                vehicle_id=v.id,
+                name=v.name,
+                registration=v.registration,
+                kind=v.kind,
+                owned_by=v.owned_by,
+                active=v.active,
+                miles=tenths / 10,
+                journeys=len(mine),
+                allowance_pence=allowance,
+                cost_pence=cost,
+                cost_entries=len(costs),
+                pence_per_mile=round(spend * 10 / tenths) if tenths else None,
+            )
+        )
     quarters = []
     for q in QUARTERS:
         qs, qe = quarter_bounds(tax_year, q)
         mine = [a for a in rows if qs <= a.entry.date <= qe]
         mine_claims = [c for c in claims if c.mileage_claim.period == q]  # type: ignore[union-attr]
-        quarters.append(QuarterSummary(
-            period=q, start=qs, end=qe, miles=sum(a.entry.tenths for a in mine) / 10,
-            allowance_pence=sum(a.pence for a in mine),
-            claimed_pence=sum(round(c.extracted.gross_total * 100) for c in _posted(mine_claims)),
-            unclaimed_pence=sum(a.pence for a in mine if a.entry.id not in paid),
-            waiting_claim_id=next((c.id for c in mine_claims if c.status in OPEN), None),
-        ))
+        quarters.append(
+            QuarterSummary(
+                period=q,
+                start=qs,
+                end=qe,
+                miles=sum(a.entry.tenths for a in mine) / 10,
+                allowance_pence=sum(a.pence for a in mine),
+                claimed_pence=sum(round(c.extracted.gross_total * 100) for c in _posted(mine_claims)),
+                unclaimed_pence=sum(a.pence for a in mine if a.entry.id not in paid),
+                waiting_claim_id=next((c.id for c in mine_claims if c.status in OPEN), None),
+            )
+        )
     thresholded = [
-        a for a in rows
+        a
+        for a in rows
         if (v := by_id.get(a.entry.vehicle_id)) and v.owned_by == "personal" and RATES[v.kind].threshold_miles
     ]
     return MileageSummary(
-        tax_year=tax_year, start=start, end=end, vehicles=per_vehicle,
-        car_van_miles=sum(a.entry.tenths for a in thresholded) / 10, threshold_miles=THRESHOLD_MILES,
-        threshold_crossed_on=threshold_crossed_on(rows), allowance_pence=sum(a.pence for a in rows),
-        claimed_pence=sum(q.claimed_pence for q in quarters), quarters=quarters, locked_until=locked_until(claims),
-        rates=[RateRow(kind=k, first_pence=r.first_pence, after_pence=r.after_pence, threshold_miles=r.threshold_miles)  # type: ignore[arg-type]
-               for k, r in RATES.items()],
+        tax_year=tax_year,
+        start=start,
+        end=end,
+        vehicles=per_vehicle,
+        car_van_miles=sum(a.entry.tenths for a in thresholded) / 10,
+        threshold_miles=THRESHOLD_MILES,
+        threshold_crossed_on=threshold_crossed_on(rows),
+        allowance_pence=sum(a.pence for a in rows),
+        claimed_pence=sum(q.claimed_pence for q in quarters),
+        quarters=quarters,
+        locked_until=locked_until(claims),
+        rates=[
+            RateRow(kind=k, first_pence=r.first_pence, after_pence=r.after_pence, threshold_miles=r.threshold_miles)  # type: ignore[arg-type]
+            for k, r in RATES.items()
+        ],
         notes=[ALLOWANCE_NOTE, FUEL_SCALE_NOTE],
     )

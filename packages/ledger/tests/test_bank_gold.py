@@ -5,6 +5,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pytest
+
 from accnomos_ledger import LedgerEvent, Line, VatCode
 from accnomos_ledger.bank import detect_bank, parse_bank_csv, suggest_action
 from accnomos_ledger.matching import suggest_matches
@@ -18,12 +19,27 @@ def gold_event(spec: dict) -> LedgerEvent:
     gross = spec["gross_pence"]
     when = date.fromisoformat(spec["date"])
     if spec["kind"] == "sale":
-        lines = [Line(account="1100 Debtors", debit=gross), Line(account="4000 Sales", credit=gross, vat_code=VatCode.STANDARD)]
+        lines = [
+            Line(account="1100 Debtors", debit=gross),
+            Line(account="4000 Sales", credit=gross, vat_code=VatCode.STANDARD),
+        ]
     else:
-        lines = [Line(account="7999 Sundry expenses", debit=gross, vat_code=VatCode.STANDARD), Line(account="1200 Bank", credit=gross)]
-    return LedgerEvent(id=spec["id"], kind=spec["kind"], date=when, lines=lines, net=gross, vat=0,
-                       counterparty=spec["counterparty"], evidence=["ab" * 32], approved_by="gold@example.co.uk",
-                       approved_at=datetime(2026, 10, 26))
+        lines = [
+            Line(account="7999 Sundry expenses", debit=gross, vat_code=VatCode.STANDARD),
+            Line(account="1200 Bank", credit=gross),
+        ]
+    return LedgerEvent(
+        id=spec["id"],
+        kind=spec["kind"],
+        date=when,
+        lines=lines,
+        net=gross,
+        vat=0,
+        counterparty=spec["counterparty"],
+        evidence=["ab" * 32],
+        approved_by="gold@example.co.uk",
+        approved_at=datetime(2026, 10, 26),
+    )
 
 
 EVENTS = [gold_event(e) for e in EXPECTED["events"]]
@@ -35,7 +51,9 @@ def test_gold_statement_parses_and_names_its_bank(name: str) -> None:
     data = (GOLD / name).read_bytes()
     lines = parse_bank_csv(data, name)
     assert detect_bank(data) == want["bank"]
-    assert [(ln.description, ln.amount_pence) for ln in lines] == [(w["description"], w["amount_pence"]) for w in want["lines"]]
+    assert [(ln.description, ln.amount_pence) for ln in lines] == [
+        (w["description"], w["amount_pence"]) for w in want["lines"]
+    ]
     assert max(ln.date for ln in lines).isoformat() == want["last_date"]
 
 

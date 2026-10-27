@@ -14,9 +14,9 @@ from collections.abc import Awaitable, Callable, Sequence
 from datetime import date, datetime
 from typing import Any, Literal
 
-from accnomos_ledger.bank import BankLine, reconciled_to
 from pydantic import BaseModel
 
+from accnomos_ledger.bank import BankLine, reconciled_to
 from app import contacts as cb
 from app import invoicing
 from app.books import AUDIT, AUTOPILOT_AUDIT, Books, bank_of
@@ -116,15 +116,18 @@ def cash_position(lines: Sequence[BankLine]) -> Cash:
     closing = closing_line(latest[1]) if latest else None
     statement = latest[0] if latest and closing else None
     return Cash(
-        balance_pence=closing.balance_pence if closing else None, as_of=closing.date if closing else None,
-        bank=bank_of(statement) if statement else None, statement=statement,
+        balance_pence=closing.balance_pence if closing else None,
+        as_of=closing.date if closing else None,
+        bank=bank_of(statement) if statement else None,
+        statement=statement,
         reconciled_to=reconciled_to(lines),
     )
 
 
 def owed(docs: Sequence[cb.Doc], today: date) -> Owed:
     return Owed(
-        total_pence=sum(d.gross for d in docs), documents=len(docs),
+        total_pence=sum(d.gross for d in docs),
+        documents=len(docs),
         oldest_days=max(((today - d.event.date).days for d in docs), default=None),
     )
 
@@ -133,15 +136,17 @@ def owed_to_you(ledger: cb.Ledger, invoices: list[invoicing.Invoice] | None, tod
     """Unpaid sales and purchases on account, from the ledger. A sales invoice marked paid without a bank line
     is paid too; overdue counts come from the invoices' due dates (other sales carry none)."""
     paid = {i.event_id for i in invoices or [] if i.status == "paid" and i.event_id}
-    open_docs = [d for d in cb.open_docs(cb.documents(ledger), ledger)
-                 if d.event.id not in paid and d.event.date <= today]
+    open_docs = [
+        d for d in cb.open_docs(cb.documents(ledger), ledger) if d.event.id not in paid and d.event.date <= today
+    ]
     sales = [d for d in open_docs if d.side == "sale"]
     purchases = [d for d in open_docs if d.side == "purchase"]
     late: list[tuple[int, int]] | None = None
     if invoices is not None:
         still_open = {d.event.id for d in sales}
         late = [
-            (days, i.total_pence) for i in invoices
+            (days, i.total_pence)
+            for i in invoices
             if i.event_id in still_open and (days := i.overdue_days(today)) is not None and days > 0
         ]
     return OwedToYou(
@@ -201,13 +206,22 @@ def activity_text(line: dict[str, Any], ledger: cb.Ledger) -> tuple[str, bool]:
 
 
 def recent_activity(
-    lines: Sequence[dict[str, Any]], ledger: cb.Ledger, limit: int = ACTIVITY_LIMIT,
+    lines: Sequence[dict[str, Any]],
+    ledger: cb.Ledger,
+    limit: int = ACTIVITY_LIMIT,
 ) -> list[ActivityItem]:
     out: list[ActivityItem] = []
     for line in sorted(lines, key=lambda x: x["ts"], reverse=True)[:limit]:
         text, warn = activity_text(line, ledger)
-        out.append(ActivityItem(at=line["ts"], actor=actor_label(str(line.get("actor", ""))),
-                                action=str(line.get("action", "")), text=text, tone="warn" if warn else "ok"))
+        out.append(
+            ActivityItem(
+                at=line["ts"],
+                actor=actor_label(str(line.get("actor", ""))),
+                action=str(line.get("action", "")),
+                text=text,
+                tone="warn" if warn else "ok",
+            )
+        )
     return out
 
 
@@ -221,11 +235,17 @@ def last_runs(audit: Sequence[dict[str, Any]], autopilot: Sequence[dict[str, Any
     intake_refs = (intake or {}).get("refs") or {}
     return Runs(
         scan=Run(at=last_scan, summary=None) if last_scan else None,
-        autopilot=Run(at=auto["ts"], summary=f"Posted {auto.get('supplier_key') or 'an entry'} "
-                      f"{invoicing.money(int(auto.get('gross_pence') or 0))}") if auto else None,
+        autopilot=Run(
+            at=auto["ts"],
+            summary=f"Posted {auto.get('supplier_key') or 'an entry'} "
+            f"{invoicing.money(int(auto.get('gross_pence') or 0))}",
+        )
+        if auto
+        else None,
         intake=Run(at=intake["ts"], summary=f"{intake_refs.get('saved', 0)} imported from Outlook") if intake else None,
         triage=Run(at=triage["ts"], summary=str(triage.get("action", "")).replace("_", " ").capitalize())
-        if triage else None,
+        if triage
+        else None,
     )
 
 

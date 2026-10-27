@@ -19,7 +19,7 @@ from app.checks import normalise_vat_number, p
 from app.schemas import MILEAGE_CATEGORY, ExtractedDoc, ExtractedLine, JournalLine
 
 try:
-    from accnomos_ledger.events import VatCode
+    from accnomos_ledger.events import VatCode  # pyright: ignore[reportAssignmentType]  (same members as the fallback)
 except ImportError:  # runtime used without packages/ledger on sys.path
 
     class VatCode(StrEnum):  # type: ignore[no-redef]
@@ -126,7 +126,11 @@ def draft_journal(doc: ExtractedDoc) -> list[JournalLine]:
             out.append(JournalLine(account=SALES, credit_pence=net, vat_code=_code(name)))
             vat_total += vat
         if vat_total:
-            out.append(JournalLine(account=VAT_CONTROL, credit_pence=vat_total, vat_code=_code(max(groups, key=lambda k: groups[k][1]))))
+            out.append(
+                JournalLine(
+                    account=VAT_CONTROL, credit_pence=vat_total, vat_code=_code(max(groups, key=lambda k: groups[k][1]))
+                )
+            )
         credits = sum(j.credit_pence for j in out)
         out.insert(0, JournalLine(account=DEBTORS, debit_pence=credits, vat_code=None))
         return out
@@ -156,6 +160,5 @@ def with_expense_account(journal: list[JournalLine], account: str) -> list[Journ
     if any(j.account == DEBTORS for j in journal):  # sales: no expense leg to override
         return journal
     return [
-        j.model_copy(update={"account": account}) if j.debit_pence and j.account != VAT_CONTROL else j
-        for j in journal
+        j.model_copy(update={"account": account}) if j.debit_pence and j.account != VAT_CONTROL else j for j in journal
     ]

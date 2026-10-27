@@ -9,6 +9,7 @@ from datetime import date
 from pathlib import Path
 
 import pytest
+
 from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger.events import LedgerEvent, VatCode
 
@@ -39,7 +40,9 @@ def car(**kw: object) -> m.Vehicle:
 
 
 def trip(vehicle: m.Vehicle, d: str, miles: float, **kw: object) -> m.MileageEntry:
-    return m.MileageEntry.model_validate({"vehicle_id": vehicle.id, "date": d, "miles": miles, "purpose": "Site visit", **kw})
+    return m.MileageEntry.model_validate(
+        {"vehicle_id": vehicle.id, "date": d, "miles": miles, "purpose": "Site visit", **kw}
+    )
 
 
 def trips(vehicle: m.Vehicle, d: str, total: float) -> list[m.MileageEntry]:
@@ -89,7 +92,10 @@ def test_quarters_of_the_tax_year() -> None:
 
 def test_one_rates_table_with_hmrc_rates() -> None:
     assert {k: (r.first_pence, r.after_pence, r.threshold_miles) for k, r in m.RATES.items()} == {
-        "car": (45, 25, 10_000), "van": (45, 25, 10_000), "motorcycle": (24, 24, None), "bicycle": (20, 20, None),
+        "car": (45, 25, 10_000),
+        "van": (45, 25, 10_000),
+        "motorcycle": (24, 24, None),
+        "bicycle": (20, 20, None),
     }
 
 
@@ -104,7 +110,9 @@ def test_journey_crossing_10000_miles_is_split() -> None:
 
 def test_exactly_10000_miles_is_all_at_45p_and_the_next_mile_at_25p() -> None:
     golf = car()
-    rows = m.allowances([trip(golf, "2026-05-01", 1000.0, id=f"{i:032x}") for i in range(10)] + [trip(golf, "2026-05-02", 1.0)], [golf])
+    rows = m.allowances(
+        [trip(golf, "2026-05-01", 1000.0, id=f"{i:032x}") for i in range(10)] + [trip(golf, "2026-05-02", 1.0)], [golf]
+    )
     assert sum(a.pence for a in rows[:10]) == 450_000
     assert m.threshold_crossed_on(rows[:10]) is None
     assert rows[10].pence == 25 and m.threshold_crossed_on(rows) == date(2026, 5, 2)
@@ -115,8 +123,11 @@ def test_threshold_is_shared_by_cars_and_vans_only() -> None:
     bike, moto = car(name="Bike", kind="bicycle"), car(name="Moto", kind="motorcycle")
     works = car(name="Works van", kind="van", owned_by="business")
     entries = [
-        *trips(golf, "2026-05-01", 6000.0), *trips(van, "2026-05-02", 5000.0),
-        trip(bike, "2026-05-03", 100.0), trip(moto, "2026-05-04", 100.0), trip(works, "2026-05-05", 500.0),
+        *trips(golf, "2026-05-01", 6000.0),
+        *trips(van, "2026-05-02", 5000.0),
+        trip(bike, "2026-05-03", 100.0),
+        trip(moto, "2026-05-04", 100.0),
+        trip(works, "2026-05-05", 500.0),
     ]
     rows = m.allowances(entries, [golf, van, bike, moto, works])
 
@@ -144,7 +155,9 @@ def test_miles_go_in_tenths() -> None:
 
 
 def test_entry_round_trips_from_alias() -> None:
-    e = m.MileageEntry.model_validate({"vehicle_id": "v", "date": "2026-05-01", "from": "Leeds", "to": "York", "miles": 25, "purpose": "Quote"})
+    e = m.MileageEntry.model_validate(
+        {"vehicle_id": "v", "date": "2026-05-01", "from": "Leeds", "to": "York", "miles": 25, "purpose": "Quote"}
+    )
     assert e.from_ == "Leeds" and e.model_dump(by_alias=True)["from"] == "Leeds"
     assert e.job_id is None and e.source == "manual"
 
@@ -156,10 +169,15 @@ def test_entry_round_trips_from_alias() -> None:
 
 async def test_entries_are_filed_by_tax_year_and_threshold_resets(books: Books, fake: FakeStorageProvider) -> None:
     golf = await m.add_vehicle(books, car(), USER)
-    for e in [*trips(golf, "2025-04-05", 10_000.0), *trips(golf, "2025-04-06", 10_000.0), trip(golf, "2026-04-05", 2.0)]:
+    for e in [
+        *trips(golf, "2025-04-05", 10_000.0),
+        *trips(golf, "2025-04-06", 10_000.0),
+        trip(golf, "2026-04-05", 2.0),
+    ]:
         await m.add_entry(books, e, USER)
     assert {p for p in fake.files if p.startswith("_System/Mileage/")} == {
-        "_System/Mileage/2024-25.jsonl", "_System/Mileage/2025-26.jsonl",
+        "_System/Mileage/2024-25.jsonl",
+        "_System/Mileage/2025-26.jsonl",
     }
     s = await m.summary(books, "2025-26")
     assert s.car_van_miles == 10_002.0
@@ -230,18 +248,30 @@ async def test_model_cannot_pick_the_code_only_mileage_category(monkeypatch: pyt
     from app.ai.config import AiConfig
 
     reply = {
-        "doc_type": "purchase_invoice", "supplier_name": "Shell", "supplier_vat_number": None, "customer_name": None,
-        "invoice_number": None, "date": "2025-10-10", "currency": "GBP",
+        "doc_type": "purchase_invoice",
+        "supplier_name": "Shell",
+        "supplier_vat_number": None,
+        "customer_name": None,
+        "invoice_number": None,
+        "date": "2025-10-10",
+        "currency": "GBP",
         "lines": [{"description": "Unleaded", "qty": 1, "unit_price": 50, "net": 50, "vat_rate": None, "vat": 0}],
-        "net_total": 50, "vat_total": 0, "gross_total": 50, "payment_method": None, "card_last4": None,
-        "category_guess": MILEAGE_CATEGORY, "confidence": 0.9,
+        "net_total": 50,
+        "vat_total": 0,
+        "gross_total": 50,
+        "payment_method": None,
+        "card_last4": None,
+        "category_guess": MILEAGE_CATEGORY,
+        "confidence": 0.9,
     }
 
     async def fake_ollama(*_a: object, **_k: object) -> tuple[str, dict]:
         return json.dumps(reply), {}
 
     monkeypatch.setattr(extract, "_call_ollama", fake_ollama)
-    doc, _ = await extract.extract_document(b"x", "image/png", AiConfig(mode="local", base_url="http://ollama.invalid", model="stub"))
+    doc, _ = await extract.extract_document(
+        b"x", "image/png", AiConfig(mode="local", base_url="http://ollama.invalid", model="stub")
+    )
     assert doc.category_guess == "Sundry"
     assert draft_journal(doc)[-1].account != OWNER_LOAN
 
@@ -262,7 +292,9 @@ async def test_claim_this_quarter_so_far(books: Books) -> None:
     assert p.extracted.date == "2025-11-01" and p.mileage_claim and p.mileage_claim.covers_to == date(2025, 11, 1)
 
 
-async def test_approved_claim_posts_no_vat_owed_to_owner_and_never_becomes_a_rule(books: Books, fake: FakeStorageProvider) -> None:
+async def test_approved_claim_posts_no_vat_owed_to_owner_and_never_becomes_a_rule(
+    books: Books, fake: FakeStorageProvider
+) -> None:
     golf = await m.add_vehicle(books, car(), USER)
     await m.add_entry(books, trip(golf, "2025-10-10", 100.0), USER)
     p, _ = await m.propose_allowance(books, "2025-26", "Q3")
@@ -273,7 +305,8 @@ async def test_approved_claim_posts_no_vat_owed_to_owner_and_never_becomes_a_rul
     (ev,) = _events(fake)
     assert ev.kind == "purchase" and ev.vat == 0 and ev.net == 4500 and ev.counterparty == "Mileage allowance"
     assert [(ln.account, ln.debit, ln.credit, ln.vat_code) for ln in ev.lines] == [
-        ("7310 Motor — mileage allowance", 4500, 0, VatCode.NO_VAT), (OWNER_LOAN, 0, 4500, None),
+        ("7310 Motor — mileage allowance", 4500, 0, VatCode.NO_VAT),
+        (OWNER_LOAN, 0, 4500, None),
     ]
     assert await load_autopilot_rules(books) == [] and await books.load_rules() == []
 
@@ -300,7 +333,12 @@ async def test_posted_claim_locks_its_journeys_and_earlier_ones(books: Books) ->
     assert created and top_up.id != p.id and top_up.extracted.gross_total == 4.50
     s = await m.summary(books, "2025-26")
     q3 = next(q for q in s.quarters if q.period == "Q3")
-    assert (q3.allowance_pence, q3.claimed_pence, q3.unclaimed_pence, q3.waiting_claim_id) == (4950, 4500, 450, top_up.id)
+    assert (q3.allowance_pence, q3.claimed_pence, q3.unclaimed_pence, q3.waiting_claim_id) == (
+        4950,
+        4500,
+        450,
+        top_up.id,
+    )
     assert s.locked_until == date(2025, 11, 1)
 
 
@@ -347,18 +385,36 @@ async def test_deleting_a_vehicle_in_use_is_refused(books: Books) -> None:
 
 def _receipt(category: str = "Motor expenses", supplier: str = "Shell", description: str = "Unleaded") -> ExtractedDoc:
     return ExtractedDoc(
-        doc_type="receipt", supplier_name=supplier, supplier_vat_number="GB 232 4567 89", customer_name=None,
-        invoice_number=None, date="2025-10-21", currency="GBP",
+        doc_type="receipt",
+        supplier_name=supplier,
+        supplier_vat_number="GB 232 4567 89",
+        customer_name=None,
+        invoice_number=None,
+        date="2025-10-21",
+        currency="GBP",
         lines=[ExtractedLine(description=description, qty=1, unit_price=60, net=50, vat_rate=20, vat=10)],
-        net_total=50, vat_total=10, gross_total=60, payment_method="card", card_last4="1234",
-        category_guess=category, confidence=0.9,
+        net_total=50,
+        vat_total=10,
+        gross_total=60,
+        payment_method="card",
+        card_last4="1234",
+        category_guess=category,
+        confidence=0.9,
     )
 
 
 def _proposal(doc: ExtractedDoc) -> Proposal:
     return Proposal(
-        id=uuid.uuid4().hex, doc_sha256="0" * 64, extracted=doc, checks=[], status="proposed", reasons=[],
-        suggested_filename="r.jpg", journal_draft=draft_journal(doc), model="stub", elapsed_s=0,
+        id=uuid.uuid4().hex,
+        doc_sha256="0" * 64,
+        extracted=doc,
+        checks=[],
+        status="proposed",
+        reasons=[],
+        suggested_filename="r.jpg",
+        journal_draft=draft_journal(doc),
+        model="stub",
+        elapsed_s=0,
     )
 
 
@@ -411,18 +467,25 @@ async def test_approve_tags_a_business_vehicle_and_counts_its_costs(books: Books
         await m.delete_vehicle(books, works.id, USER)
 
 
-async def test_scan_prefills_the_only_business_vehicle(books: Books, fake: FakeStorageProvider, monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_scan_prefills_the_only_business_vehicle(
+    books: Books, fake: FakeStorageProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
     from app import pipeline
     from app.ai.config import AiConfig
     from app.inbox import scan_inbox
 
     async def fake_extract(data: bytes, mime: str, cfg: object) -> tuple[ExtractedDoc, dict[str, str]]:
-        return _receipt() if data == b"fuel" else _receipt("Materials", "Screwfix", "Screws"), {"backend": "stub", "model": "stub"}
+        return _receipt() if data == b"fuel" else _receipt("Materials", "Screwfix", "Screws"), {
+            "backend": "stub",
+            "model": "stub",
+        }
 
     monkeypatch.setattr(pipeline, "extract_document", fake_extract)
     works = await m.add_vehicle(books, car(name="Transit", kind="van", owned_by="business"), USER)
     fake.files.update({"00 Inbox/fuel.jpg": b"fuel", "00 Inbox/screws.jpg": b"screws"})
-    out = await scan_inbox(books, AiConfig(mode="local", base_url="http://ollama.invalid", model="stub"), autopilot_on=False)
+    out = await scan_inbox(
+        books, AiConfig(mode="local", base_url="http://ollama.invalid", model="stub"), autopilot_on=False
+    )
     assert sorted((p.extracted.supplier_name, p.vehicle_id) for p in out) == [("Screwfix", None), ("Shell", works.id)]
 
 
@@ -474,14 +537,27 @@ def client(fake: FakeStorageProvider):
 
 
 def test_vehicle_and_mileage_routes(client, fake: FakeStorageProvider) -> None:
-    r = client.post("/vehicles", headers=H, json={"name": "Golf", "kind": "car", "owned_by": "personal", "registration": "ab12 cde"})
+    r = client.post(
+        "/vehicles", headers=H, json={"name": "Golf", "kind": "car", "owned_by": "personal", "registration": "ab12 cde"}
+    )
     assert r.status_code == 200 and r.json()["registration"] == "AB12 CDE"
     vid = r.json()["id"]
-    assert client.post("/vehicles", headers=H, json={"name": "X", "kind": "lorry", "owned_by": "personal"}).status_code == 422
+    assert (
+        client.post("/vehicles", headers=H, json={"name": "X", "kind": "lorry", "owned_by": "personal"}).status_code
+        == 422
+    )
     assert client.patch(f"/vehicles/{vid}", headers=H, json={"name": "VW Golf"}).json()["name"] == "VW Golf"
     assert client.patch("/vehicles/" + "f" * 32, headers=H, json={"name": "x"}).status_code == 404
 
-    trip_body = {"vehicle_id": vid, "date": "2025-10-10", "from": "Leeds", "to": "York", "miles": 25.4, "purpose": "Quote", "job_id": None}
+    trip_body = {
+        "vehicle_id": vid,
+        "date": "2025-10-10",
+        "from": "Leeds",
+        "to": "York",
+        "miles": 25.4,
+        "purpose": "Quote",
+        "job_id": None,
+    }
     assert client.post("/mileage", headers={"X-Graph-Token": "tok"}, json=trip_body).status_code == 400  # no X-User
     r = client.post("/mileage", headers=H, json=trip_body)
     assert r.status_code == 200 and r.json()["from"] == "Leeds" and r.json()["source"] == "manual"

@@ -126,6 +126,7 @@ def install_log_scrubbing() -> None:
 
 # --- rate limit -----------------------------------------------------------------------------------------------
 
+
 class TokenBucket:
     """`rate` requests per minute per key, bursting to `rate`. In memory, per process."""
 
@@ -152,18 +153,24 @@ class TokenBucket:
 
     def _prune(self, now: float) -> None:
         """Drop buckets that have refilled completely (they behave exactly like a fresh one)."""
-        self._buckets = {k: (t, last) for k, (t, last) in self._buckets.items()
-                         if t + (now - last) * self.per_s < self.capacity}
+        self._buckets = {
+            k: (t, last) for k, (t, last) in self._buckets.items() if t + (now - last) * self.per_s < self.capacity
+        }
 
 
 # --- middleware -----------------------------------------------------------------------------------------------
+
 
 class BodyTooLarge(HTTPException):
     """Raised from `receive`; a Starlette HTTPException so FastAPI's body parser lets it through as a 413."""
 
     def __init__(self, limit: int):
-        super().__init__(413, f"Request body over {limit // 1024} KB" if limit < 1024 * 1024
-                         else f"Request body over {limit // (1024 * 1024)} MB")
+        super().__init__(
+            413,
+            f"Request body over {limit // 1024} KB"
+            if limit < 1024 * 1024
+            else f"Request body over {limit // (1024 * 1024)} MB",
+        )
 
 
 def body_limit(path: str) -> int:
@@ -198,8 +205,11 @@ class SecurityMiddleware:
 
         async def reply(status: int, detail: str, extra: dict[str, str] | None = None) -> None:
             body = json.dumps({"detail": detail, "correlation_id": cid}).encode()
-            hdrs = [(b"content-type", b"application/json"), (b"content-length", str(len(body)).encode()),
-                    *((k.encode(), v.encode()) for k, v in (extra or {}).items())]
+            hdrs = [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(body)).encode()),
+                *((k.encode(), v.encode()) for k, v in (extra or {}).items()),
+            ]
             await send_with_id({"type": "http.response.start", "status": status, "headers": hdrs})
             await send_with_id({"type": "http.response.body", "body": body})
 
@@ -214,8 +224,12 @@ class SecurityMiddleware:
         _request_secrets.set(tuple(s for v in values for s in {v, v.removeprefix("Bearer ").strip()} if len(s) >= 8))
 
         # 2. rate limit (preflights and health checks are free)
-        if (self.limiter and method != "OPTIONS" and path not in UNLIMITED_PATHS
-                and not (UNLIMITED_PREFIXES and path.startswith(UNLIMITED_PREFIXES))):
+        if (
+            self.limiter
+            and method != "OPTIONS"
+            and path not in UNLIMITED_PATHS
+            and not (UNLIMITED_PREFIXES and path.startswith(UNLIMITED_PREFIXES))
+        ):
             client = scope.get("client")
             wait = self.limiter.take(client[0] if client else "unknown")
             if wait:

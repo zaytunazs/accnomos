@@ -1,4 +1,3 @@
-"""Make `pytest` import this checkout's ledger, not another editable install of it."""
 """Make `pytest` import this checkout's `accnomos_ledger`, not another checkout's editable install."""
 
 import sys

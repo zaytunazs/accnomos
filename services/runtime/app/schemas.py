@@ -136,6 +136,8 @@ class AutopilotDecision(BaseModel):
     auto_approve: bool
     reasons: list[str]
     supplier_key: str | None = None
+
+
 class FieldAgreement(BaseModel):
     """One field as read by the Extractor and, independently, by the Verifier. Code decides `agree`."""
 
@@ -339,7 +341,7 @@ class ProposedAction(StrictBody):
     confirm_text: str = Field(max_length=400)
     created_at: datetime
     expires_at: datetime
-    signature: str = Field("", max_length=64)
+    signature: str = Field(default="", max_length=64)
 
 
 class Clarification(BaseModel):

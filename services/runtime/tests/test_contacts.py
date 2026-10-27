@@ -6,10 +6,10 @@ import json
 from datetime import UTC, date, datetime
 
 import pytest
-from accnomos_connectors import AddressBookContact, FakeContactsProvider, FakeStorageProvider
-from accnomos_ledger import LedgerEvent, Line, VatCode
 from fastapi.testclient import TestClient
 
+from accnomos_connectors import AddressBookContact, FakeContactsProvider, FakeStorageProvider
+from accnomos_ledger import LedgerEvent, Line, VatCode
 from app import contacts as cb
 from app.books import AUDIT, Books
 from app.schemas import ExtractedDoc, Proposal
@@ -28,39 +28,92 @@ def _id(prefix: str, length: int = 32) -> str:
     return f"{prefix}{_n:0{length - 1}x}"
 
 
-def _event(gross: int, when: date, who: str, *, sale: bool = False, on_account: bool = True,
-           proposal_id: str | None = None, eid: str | None = None) -> LedgerEvent:
+def _event(
+    gross: int,
+    when: date,
+    who: str,
+    *,
+    sale: bool = False,
+    on_account: bool = True,
+    proposal_id: str | None = None,
+    eid: str | None = None,
+) -> LedgerEvent:
     net = round(gross / 1.2)
     lines = (
-        [Line(account="1100 Debtors", debit=gross), Line(account="4000 Sales", credit=net, vat_code=VatCode.STANDARD),
-         Line(account="2200 VAT control", credit=gross - net)]
-        if sale else
-        [Line(account="5000 Materials", debit=net, vat_code=VatCode.STANDARD),
-         Line(account="2200 VAT control", debit=gross - net),
-         Line(account="2100 Creditors" if on_account else "1200 Bank", credit=gross)]
+        [
+            Line(account="1100 Debtors", debit=gross),
+            Line(account="4000 Sales", credit=net, vat_code=VatCode.STANDARD),
+            Line(account="2200 VAT control", credit=gross - net),
+        ]
+        if sale
+        else [
+            Line(account="5000 Materials", debit=net, vat_code=VatCode.STANDARD),
+            Line(account="2200 VAT control", debit=gross - net),
+            Line(account="2100 Creditors" if on_account else "1200 Bank", credit=gross),
+        ]
     )
-    return LedgerEvent(id=eid or _id("e"), kind="sale" if sale else "purchase", date=when, lines=lines, net=net,
-                       vat=gross - net, counterparty=who, approved_by=USER, proposal_id=proposal_id,
-                       approved_at=datetime(2026, 10, 25, tzinfo=UTC))
+    return LedgerEvent(
+        id=eid or _id("e"),
+        kind="sale" if sale else "purchase",
+        date=when,
+        lines=lines,
+        net=net,
+        vat=gross - net,
+        counterparty=who,
+        approved_by=USER,
+        proposal_id=proposal_id,
+        approved_at=datetime(2026, 10, 25, tzinfo=UTC),
+    )
 
 
 def _reversal(e: LedgerEvent) -> LedgerEvent:
     return LedgerEvent(
-        id=_id("c"), kind="reversal", date=e.date, reverses=e.id, net=e.net, vat=e.vat, counterparty=e.counterparty,
-        approved_by=USER, approved_at=datetime(2026, 10, 26, tzinfo=UTC), proposal_id=e.proposal_id,
+        id=_id("c"),
+        kind="reversal",
+        date=e.date,
+        reverses=e.id,
+        net=e.net,
+        vat=e.vat,
+        counterparty=e.counterparty,
+        approved_by=USER,
+        approved_at=datetime(2026, 10, 26, tzinfo=UTC),
+        proposal_id=e.proposal_id,
         lines=[Line(account=ln.account, debit=ln.credit, credit=ln.debit, vat_code=ln.vat_code) for ln in e.lines],
     )
 
 
-def _proposal(supplier: str, vrn: str | None, *, sale: bool = False, invoice: str | None = None,
-              category: str = "Materials") -> Proposal:
+def _proposal(
+    supplier: str, vrn: str | None, *, sale: bool = False, invoice: str | None = None, category: str = "Materials"
+) -> Proposal:
     doc = ExtractedDoc(
-        doc_type="sales_invoice" if sale else "purchase_invoice", supplier_name=supplier, supplier_vat_number=vrn,
-        customer_name=None, invoice_number=invoice, date="2026-09-01", currency="GBP", lines=[], net_total=10,
-        vat_total=2, gross_total=12, payment_method=None, card_last4=None, category_guess=category, confidence=0.9,
+        doc_type="sales_invoice" if sale else "purchase_invoice",
+        supplier_name=supplier,
+        supplier_vat_number=vrn,
+        customer_name=None,
+        invoice_number=invoice,
+        date="2026-09-01",
+        currency="GBP",
+        lines=[],
+        net_total=10,
+        vat_total=2,
+        gross_total=12,
+        payment_method=None,
+        card_last4=None,
+        category_guess=category,
+        confidence=0.9,
     )
-    return Proposal(id=_id("a", 16), doc_sha256="cd" * 32, extracted=doc, checks=[], status="posted", reasons=[],
-                    suggested_filename="x.pdf", journal_draft=[], model="stub", elapsed_s=1.0)
+    return Proposal(
+        id=_id("a", 16),
+        doc_sha256="cd" * 32,
+        extracted=doc,
+        checks=[],
+        status="posted",
+        reasons=[],
+        suggested_filename="x.pdf",
+        journal_draft=[],
+        model="stub",
+        elapsed_s=1.0,
+    )
 
 
 def _ledger(events: list[LedgerEvent], proposals: list[Proposal] = (), bank_lines=()) -> cb.Ledger:
@@ -118,13 +171,26 @@ def test_reversal_adds_nobody_and_nets_off() -> None:
 def test_manual_edits_survive_refresh() -> None:
     first = _ledger([_event(3000, date(2026, 9, 1), "Howdens")])
     (c,) = cb.merge_ledger([], first)
-    cb.apply_edit(c, {"name": "Howdens Joinery Co", "email": " accounts@howdens.example ", "default_category": "Rent",
-                      "vrn": "gb 123 4567 89"}, [c])
+    cb.apply_edit(
+        c,
+        {
+            "name": "Howdens Joinery Co",
+            "email": " accounts@howdens.example ",
+            "default_category": "Rent",
+            "vrn": "gb 123 4567 89",
+        },
+        [c],
+    )
     assert c.normalised_key == "howdens-joinery" and c.aliases == ["howdens"] and c.email == "accounts@howdens.example"
     assert c.vrn == "GB123456789" and sorted(c.edited) == ["default_category", "email", "name", "vrn"]
 
-    later = _ledger([*first.events, _event(1800, date(2026, 10, 1), "Howdens"),
-                     _event(54000, date(2026, 10, 2), "Howdens", sale=True)])
+    later = _ledger(
+        [
+            *first.events,
+            _event(1800, date(2026, 10, 1), "Howdens"),
+            _event(54000, date(2026, 10, 2), "Howdens", sale=True),
+        ]
+    )
     (again,) = cb.merge_ledger([c], later)  # the old name still finds the renamed contact
     assert again.id == c.id and again.name == "Howdens Joinery Co" and again.default_category == "Rent"
     assert again.email == "accounts@howdens.example" and again.vrn == "GB123456789"
@@ -134,13 +200,27 @@ def test_manual_edits_survive_refresh() -> None:
 
 def test_bad_edits_are_refused() -> None:
     (c,) = cb.merge_ledger([], _ledger([_event(3000, date(2026, 9, 1), "Howdens")]))
-    other = c.model_copy(update={"id": "0" * 16, "vrn": "GB123456789", "name": "Screwfix", "normalised_key": "screwfix",
-                                 "aliases": ["screwfix-trade"]})
-    for edits, msg in [({"name": "  "}, "empty"), ({"name": "SCREWFIX LTD"}, "already called"),
-                       ({"name": "Screwfix Trade"}, "already called"),({"kind": "friend"}, "Kind"), ({"vrn": "12345"}, "VAT number"),
-                       ({"vrn": "GB123456789"}, "Another contact"), ({"email": "nope"}, "email"),
-                       ({"default_category": "Snacks"}, "category"), ({"default_vat_code": "X"}, "VAT code"),
-                       ({"balance": 1}, "Can't edit")]:
+    other = c.model_copy(
+        update={
+            "id": "0" * 16,
+            "vrn": "GB123456789",
+            "name": "Screwfix",
+            "normalised_key": "screwfix",
+            "aliases": ["screwfix-trade"],
+        }
+    )
+    for edits, msg in [
+        ({"name": "  "}, "empty"),
+        ({"name": "SCREWFIX LTD"}, "already called"),
+        ({"name": "Screwfix Trade"}, "already called"),
+        ({"kind": "friend"}, "Kind"),
+        ({"vrn": "12345"}, "VAT number"),
+        ({"vrn": "GB123456789"}, "Another contact"),
+        ({"email": "nope"}, "email"),
+        ({"default_category": "Snacks"}, "category"),
+        ({"default_vat_code": "X"}, "VAT code"),
+        ({"balance": 1}, "Can't edit"),
+    ]:
         with pytest.raises(cb.ContactEditError, match=msg):
             cb.apply_edit(c.model_copy(deep=True), edits, [c, other])
 
@@ -151,9 +231,16 @@ def test_bad_edits_are_refused() -> None:
 
 
 def _bank_line(when: date, amount: int, event_ids: list[str]) -> cb.BankLine:
-    return cb.BankLine(id=_id("b", 16), date=when, amount_pence=amount, description="ACME KITCHENS INV 42",
-                       source_file="04 Bank statements/2026-09/sep.csv", status="matched",
-                       matched_event_id=event_ids[0], matched_event_ids=event_ids)
+    return cb.BankLine(
+        id=_id("b", 16),
+        date=when,
+        amount_pence=amount,
+        description="ACME KITCHENS INV 42",
+        source_file="04 Bank statements/2026-09/sep.csv",
+        status="matched",
+        matched_event_id=event_ids[0],
+        matched_event_ids=event_ids,
+    )
 
 
 def test_statement_running_balance_payments_and_reversal() -> None:
@@ -201,8 +288,16 @@ def test_uk_tax_year_start() -> None:
 
 
 def test_bucket_edges() -> None:
-    assert [cb.bucket(d) for d in (0, 30, 31, 60, 61, 90, 91, 400)] == \
-        ["0-30", "0-30", "31-60", "31-60", "61-90", "61-90", "90+", "90+"]
+    assert [cb.bucket(d) for d in (0, 30, 31, 60, 61, 90, 91, 400)] == [
+        "0-30",
+        "0-30",
+        "31-60",
+        "31-60",
+        "61-90",
+        "61-90",
+        "90+",
+        "90+",
+    ]
 
 
 def test_aged_debtors_and_creditors() -> None:
@@ -238,16 +333,25 @@ def test_aged_debtors_and_creditors() -> None:
 
 
 ADDRESS_BOOK = [
-    AddressBookContact(id="o1", display_name="Sam Patel", company_name="Acme Kitchens Ltd",
-                       emails=["sam@acme.example", "other@acme.example"], business_phones=["020 7946 0000"]),
-    AddressBookContact(id="o2", display_name="Howdens", emails=["new@howdens.example"], business_phones=["0161 000 0000"]),
+    AddressBookContact(
+        id="o1",
+        display_name="Sam Patel",
+        company_name="Acme Kitchens Ltd",
+        emails=["sam@acme.example", "other@acme.example"],
+        business_phones=["020 7946 0000"],
+    ),
+    AddressBookContact(
+        id="o2", display_name="Howdens", emails=["new@howdens.example"], business_phones=["0161 000 0000"]
+    ),
     AddressBookContact(id="o3", display_name="Mum", emails=["mum@example.com"]),
     AddressBookContact(id="o4", display_name="", company_name="", emails=["x@example.com"]),
 ]
 
 
 def test_import_maps_and_never_overwrites() -> None:
-    ledger = _ledger([_event(120000, date(2026, 9, 1), "Acme Kitchens", sale=True), _event(3000, date(2026, 9, 2), "Howdens")])
+    ledger = _ledger(
+        [_event(120000, date(2026, 9, 1), "Acme Kitchens", sale=True), _event(3000, date(2026, 9, 2), "Howdens")]
+    )
     book = cb.merge_ledger([], ledger)
     howdens = next(c for c in book if c.name == "Howdens")
     howdens.email = "accounts@howdens.example"
@@ -281,8 +385,10 @@ async def books(fake: FakeStorageProvider) -> Books:
     b = Books(fake)
     p = _proposal("Howdens Joinery Ltd", "GB123456789", invoice="H-77")
     await b.save_proposal(p)
-    for ev in [_event(24000, date(2026, 9, 30), "Howdens Joinery Ltd", proposal_id=p.id, eid="d" * 32),
-               _event(120000, date(2026, 8, 31), "Acme Kitchens Ltd", sale=True, eid="f" * 32)]:
+    for ev in [
+        _event(24000, date(2026, 9, 30), "Howdens Joinery Ltd", proposal_id=p.id, eid="d" * 32),
+        _event(120000, date(2026, 8, 31), "Acme Kitchens Ltd", sale=True, eid="f" * 32),
+    ]:
         await b.post_event(ev)
     return b
 
@@ -311,7 +417,12 @@ def client(books: Books, address_book: FakeContactsProvider):
 
 
 def _audit(fake: FakeStorageProvider) -> list[str]:
-    return [json.loads(x)["action"] for p, d in sorted(fake.files.items()) if p.startswith(f"{AUDIT}/") for x in d.decode().splitlines()]
+    return [
+        json.loads(x)["action"]
+        for p, d in sorted(fake.files.items())
+        if p.startswith(f"{AUDIT}/")
+        for x in d.decode().splitlines()
+    ]
 
 
 def test_contact_routes(client: TestClient, fake: FakeStorageProvider, address_book: FakeContactsProvider) -> None:
@@ -333,14 +444,22 @@ def test_contact_routes(client: TestClient, fake: FakeStorageProvider, address_b
     assert all("totals" not in c and "balance_pence" not in json.dumps(c) for c in stored)  # no money stored
 
     r = client.put(f"/contacts/{acme['id']}", headers=H, json={"phone": "01234 567890", "address": "1 High St"})
-    assert r.status_code == 200 and r.json()["phone"] == "01234 567890" and sorted(r.json()["edited"]) == ["address", "phone"]
+    assert (
+        r.status_code == 200
+        and r.json()["phone"] == "01234 567890"
+        and sorted(r.json()["edited"]) == ["address", "phone"]
+    )
     assert client.put(f"/contacts/{acme['id']}", headers=H, json={"email": "nope"}).status_code == 400
     assert client.put("/contacts/0123456789abcdef", headers=H, json={"phone": "1"}).status_code == 404
     assert client.put("/contacts/..%2F..", headers=H, json={"phone": "1"}).status_code == 404
 
     st = client.get(f"/contacts/{howdens['id']}/statement?from=2026-09-01&to=2026-12-31", headers=H).json()
-    assert [(ln["details"], ln["reference"], ln["balance_pence"]) for ln in st["lines"]] == [("Purchase", "H-77", -24000)]
-    assert client.get(f"/contacts/{howdens['id']}/statement?from=2026-10-01&to=2026-09-01", headers=H).status_code == 400
+    assert [(ln["details"], ln["reference"], ln["balance_pence"]) for ln in st["lines"]] == [
+        ("Purchase", "H-77", -24000)
+    ]
+    assert (
+        client.get(f"/contacts/{howdens['id']}/statement?from=2026-10-01&to=2026-09-01", headers=H).status_code == 400
+    )
     assert client.get("/contacts/0123456789abcdef/statement", headers=H).status_code == 404
 
     aged = client.get("/contacts/aged?as_of=2026-10-27", headers=H).json()
@@ -357,7 +476,6 @@ def test_contact_routes(client: TestClient, fake: FakeStorageProvider, address_b
 def test_import_without_consent_is_401_and_writes_nothing(client: TestClient, fake: FakeStorageProvider) -> None:
     """Graph says 403 when Contacts.Read was not granted; the app gets 401 so it asks for consent again."""
     from accnomos_connectors.msgraph import GraphError
-
     from app.main import app
     from app.routes_contacts import get_address_book
 

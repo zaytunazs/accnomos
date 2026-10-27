@@ -31,7 +31,7 @@ import httpx
 from pydantic import BaseModel, Field, ValidationError
 
 from app.ai.config import AiConfig
-from app.ai.extract import ExtractionError, SUPPORTED_MIME, parse_model_json
+from app.ai.extract import SUPPORTED_MIME, ExtractionError, parse_model_json
 from app.checks import p
 from app.schemas import ExtractedDoc, FieldAgreement, Verification, strict_json_schema
 
@@ -73,7 +73,9 @@ def select_backend(cfg: AiConfig, env: Mapping[str, str] | None = None) -> Verif
 
 class VerifierReading(BaseModel):
     seller: str = Field(description="Business that issued the document")
-    vat_registration: str | None = Field(description="Seller's VAT registration number exactly as printed; null if none")
+    vat_registration: str | None = Field(
+        description="Seller's VAT registration number exactly as printed; null if none"
+    )
     issue_date: str = Field(description="YYYY-MM-DD")
     amount_before_vat: float
     vat_amount: float
@@ -112,7 +114,9 @@ _PUNCT = str.maketrans({c: " " for c in string.punctuation + "“”–—£"} |
 
 
 def normalise_name(s: str | None) -> str:
-    """Case-, accent-, punctuation- and whitespace-insensitive; '&' = 'and'; legal suffixes (Ltd/Limited/PLC…) dropped."""
+    """Case-, accent-, punctuation- and whitespace-insensitive; '&' = 'and';
+    legal suffixes (Ltd/Limited/PLC…) dropped.
+    """
     if not s:
         return ""
     s = s.replace("&", " and ").translate(_PUNCT)  # before ASCII folding, which would drop curly quotes
@@ -160,7 +164,9 @@ def field_agree(kind: str, a: Any, b: Any) -> bool:
     raise ValueError(f"unknown comparison {kind!r}")
 
 
-def compare(extracted: ExtractedDoc, reading: VerifierReading, model: str, elapsed_s: float | None = None) -> Verification:
+def compare(
+    extracted: ExtractedDoc, reading: VerifierReading, model: str, elapsed_s: float | None = None
+) -> Verification:
     fields: dict[str, FieldAgreement] = {}
     for name, (vkey, kind) in FIELD_MAP.items():
         a, b = getattr(extracted, name), getattr(reading, vkey)

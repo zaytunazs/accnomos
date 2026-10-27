@@ -22,7 +22,7 @@ NEW = [p for p in sorted(GOLD_DIR.glob("*.json")) if int(p.name[:3]) >= 61]
 
 def _vrn_ok(v: str) -> bool:
     d = re.sub(r"\D", "", v)
-    w = sum(int(c) * k for c, k in zip(d[:7], range(8, 1, -1))) + int(d[7:])
+    w = sum(int(c) * k for c, k in zip(d[:7], range(8, 1, -1), strict=False)) + int(d[7:])
     return len(d) == 9 and (w % 97 == 0 or (w + 55) % 97 == 0)
 
 
@@ -39,7 +39,10 @@ def test_new_gold_is_labelled_and_adds_up_in_pence(path: Path) -> None:
     assert g["label"] == LABEL and LABEL in g["printed_text"]
     assert g["net_pence"] + g["vat_pence"] == g["gross_pence"]
     assert (round(g["net_total"] * 100), round(g["vat_total"] * 100), round(g["gross_total"] * 100)) == (
-        g["net_pence"], g["vat_pence"], g["gross_pence"])
+        g["net_pence"],
+        g["vat_pence"],
+        g["gross_pence"],
+    )
     assert abs(sum(round(ln["net"] * 100) for ln in g["lines"]) - g["net_pence"]) <= 1
     assert g["side"] in ("purchase", "sale") and g["expected_status"] in ("proposed", "needs_a_look")
     assert (g["side"] == "sale") == g["supplier"]["name"].startswith("Bramblewood")
@@ -64,9 +67,16 @@ def test_expected_status_explicit_overrides_rules() -> None:
 
 def test_score_side_and_status() -> None:
     gold = json.loads(next(p for p in NEW if "_sales" in p.name).read_text(encoding="utf-8"))
-    ex = {"supplier_name": gold["supplier"]["name"], "supplier_vat_number": gold["supplier"]["vat_number"],
-          "date": gold["date"], "net_total": gold["net_total"], "vat_total": gold["vat_total"],
-          "gross_total": gold["gross_total"] + 0.01, "lines": gold["lines"], "doc_type": "sales_invoice"}
+    ex = {
+        "supplier_name": gold["supplier"]["name"],
+        "supplier_vat_number": gold["supplier"]["vat_number"],
+        "date": gold["date"],
+        "net_total": gold["net_total"],
+        "vat_total": gold["vat_total"],
+        "gross_total": gold["gross_total"] + 0.01,
+        "lines": gold["lines"],
+        "doc_type": "sales_invoice",
+    }
     s = score(gold, {"extracted": ex, "status": gold["expected_status"]})
     assert tuple(s) == FIELDS and all(s.values())  # 1p tolerance on money
     s = score(gold, {"extracted": ex | {"doc_type": "purchase_invoice"}, "status": "needs_a_look"})
@@ -85,19 +95,25 @@ def test_render_damage_modes_are_rgb_and_deterministic(damage: str | None, messy
 
 def test_handwriting_marker_only_affects_marked_lines() -> None:
     assert render_receipt("~A\nB", seed=1) != render_receipt("A\nB", seed=1)
-    assert not any(ln.startswith("~") for p in sorted(GOLD_DIR.glob("0[0-5]*.json"))
-                   for ln in json.loads(p.read_text(encoding="utf-8"))["printed_text"].splitlines())
+    assert not any(
+        ln.startswith("~")
+        for p in sorted(GOLD_DIR.glob("0[0-5]*.json"))
+        for ln in json.loads(p.read_text(encoding="utf-8"))["printed_text"].splitlines()
+    )
 
 
 def test_bank_csvs_parse_and_match_truth() -> None:
     truth = json.loads((GOLD / "bank" / "expected_matches.json").read_text(encoding="utf-8"))
-    # The bank-ui gold set (barclays.csv …, truth in expected.json) shares this folder; only the six two-month exports are ours.
+    # The bank-ui gold set (barclays.csv …, truth in expected.json) shares this folder;
+    # only the six two-month exports are ours.
     csvs = sorted(p for p in (GOLD / "bank").glob("*.csv") if p.name in {r["file"] for r in truth["rows"]})
     assert len(csvs) == 6
     for p in csvs:
         rows = [r for r in truth["rows"] if r["file"] == p.name]
         lines = parse_bank_csv(p.read_bytes(), p.name)
-        assert [(ln.date.isoformat(), ln.amount_pence) for ln in lines] == [(r["date"], r["amount_pence"]) for r in rows], p.name
+        assert [(ln.date.isoformat(), ln.amount_pence) for ln in lines] == [
+            (r["date"], r["amount_pence"]) for r in rows
+        ], p.name
 
 
 def test_mail_fixtures_reference_real_files() -> None:

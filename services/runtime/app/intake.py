@@ -19,9 +19,9 @@ import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from accnomos_connectors.base import MailAttachment, MailMessage, MailProvider
 from pydantic import BaseModel
 
+from accnomos_connectors.base import MailAttachment, MailMessage, MailProvider
 from app.books import SYSTEM, Books, Rule, _month, _with_suffix, now
 from app.paths import INBOX
 
@@ -48,9 +48,24 @@ KEYWORDS = re.compile(
 )
 # Sharing a domain with these says nothing about the sender being "you".
 PUBLIC_MAIL_DOMAINS = {
-    "outlook.com", "hotmail.com", "hotmail.co.uk", "live.com", "live.co.uk", "msn.com", "gmail.com",
-    "googlemail.com", "yahoo.com", "yahoo.co.uk", "icloud.com", "me.com", "aol.com", "btinternet.com",
-    "sky.com", "virginmedia.com", "protonmail.com", "proton.me",
+    "outlook.com",
+    "hotmail.com",
+    "hotmail.co.uk",
+    "live.com",
+    "live.co.uk",
+    "msn.com",
+    "gmail.com",
+    "googlemail.com",
+    "yahoo.com",
+    "yahoo.co.uk",
+    "icloud.com",
+    "me.com",
+    "aol.com",
+    "btinternet.com",
+    "sky.com",
+    "virginmedia.com",
+    "protonmail.com",
+    "proton.me",
 }
 _UNSAFE = re.compile(r'[\\/:*?"<>|#%\x00-\x1f]+')  # OneDrive-forbidden and URL-awkward characters
 
@@ -245,31 +260,70 @@ async def scan_mail(
                     await books.storage.write(f"{INBOX}/{name}", data)  # >4 MB goes through an upload session
             except Exception as exc:  # noqa: BLE001
                 log.warning("saving %s from %s failed: %s", a.name, m.id, exc)
-                result.errors.append({"message": m.subject[:120], "attachment": a.name, "error": f"{type(exc).__name__}: {str(exc)[:200]}"})
+                result.errors.append(
+                    {
+                        "message": m.subject[:120],
+                        "attachment": a.name,
+                        "error": f"{type(exc).__name__}: {str(exc)[:200]}",
+                    }
+                )
                 continue
             dedupe.hashes.add(sha)
             dedupe.seen_ids.add((m.id, a.id))
             at = now().isoformat()
-            new_seen.append({"sha256": sha, "message_id": m.id, "attachment_id": a.id, "saved_as": f"{INBOX}/{name}", "at": at})
-            log_lines.append({"at": at, "message_id": m.id, "from": m.from_address, "subject": m.subject[:200], "score": sc, "saved_as": f"{INBOX}/{name}", "sha256": sha})
+            new_seen.append(
+                {"sha256": sha, "message_id": m.id, "attachment_id": a.id, "saved_as": f"{INBOX}/{name}", "at": at}
+            )
+            log_lines.append(
+                {
+                    "at": at,
+                    "message_id": m.id,
+                    "from": m.from_address,
+                    "subject": m.subject[:200],
+                    "score": sc,
+                    "saved_as": f"{INBOX}/{name}",
+                    "sha256": sha,
+                }
+            )
             result.saved.append(name)
-            result.items.append(IntakeItem(name=name, subject=m.subject[:200], from_address=m.from_address, score=sc, message_id=m.id, attachment_id=a.id))
+            result.items.append(
+                IntakeItem(
+                    name=name,
+                    subject=m.subject[:200],
+                    from_address=m.from_address,
+                    score=sc,
+                    message_id=m.id,
+                    attachment_id=a.id,
+                )
+            )
 
     if not dry_run:
         await _record(books, new_seen, log_lines, result, since_days)
     return result
 
 
-async def _record(books: Books, new_seen: list[dict[str, Any]], log_lines: list[dict[str, Any]], result: IntakeResult, since_days: int) -> None:
+async def _record(
+    books: Books, new_seen: list[dict[str, Any]], log_lines: list[dict[str, Any]], result: IntakeResult, since_days: int
+) -> None:
     if new_seen:
         await books._update_json(SEEN, [], lambda old: [*old, *new_seen][-SEEN_MAX:])
         by_month: dict[str, list[str]] = {}
         for line in log_lines:
-            by_month.setdefault(_month(datetime.fromisoformat(line["at"])), []).append(json.dumps(line, ensure_ascii=False))
+            by_month.setdefault(_month(datetime.fromisoformat(line["at"])), []).append(
+                json.dumps(line, ensure_ascii=False)
+            )
         for month, lines in by_month.items():
             text = ("\n".join(lines) + "\n").encode()
             await books._update(f"{INTAKE_LOG}/{month}.jsonl", lambda old, t=text: (old or b"") + t)
-    await books.audit(ACTOR, "mail_scanned", {
-        "since_days": since_days, "scanned": result.scanned, "candidates": result.candidates,
-        "saved": len(result.saved), "skipped_duplicates": result.skipped_duplicates, "errors": len(result.errors),
-    })
+    await books.audit(
+        ACTOR,
+        "mail_scanned",
+        {
+            "since_days": since_days,
+            "scanned": result.scanned,
+            "candidates": result.candidates,
+            "saved": len(result.saved),
+            "skipped_duplicates": result.skipped_duplicates,
+            "errors": len(result.errors),
+        },
+    )

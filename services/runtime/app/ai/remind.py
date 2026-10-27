@@ -90,14 +90,33 @@ def fallback_draft(facts: dict[str, Any]) -> tuple[str, str]:
     follow = "Following up on my earlier email: " if facts["reminders_already_sent"] else ""
     if facts["status"] == "overdue":
         days = facts["days_overdue"]
-        line = f"{follow}invoice {n} for {amount} was due on {due} and is now {days} day{'s' if days != 1 else ''} overdue."
-        ask = "Could you let me know when it will be paid? If it is already on its way, thank you, and please ignore this."
+        line = (
+            f"{follow}invoice {n} for {amount} was due on {due}"
+            f" and is now {days} day{'s' if days != 1 else ''} overdue."
+        )
+        ask = (
+            "Could you let me know when it will be paid?"
+            " If it is already on its way, thank you, and please ignore this."
+        )
     else:
         line = f"{follow}this is a quick reminder that invoice {n} for {amount} is due on {due}."
         ask = "Thank you in advance."
-    line = line[0].upper() + line[1:]  # "Following up…: invoice" keeps its lower case; a bare sentence starts with a capital
+    line = (
+        line[0].upper() + line[1:]
+    )  # "Following up…: invoice" keeps its lower case; a bare sentence starts with a capital
     where = " The payment details are on the attached invoice." if facts["payment_details_on_invoice"] else ""
-    body = "\n".join(["Hello,", "", line + where, "", ask, "", "Kind regards,", *([facts["business_name"]] if facts["business_name"] else [])])
+    body = "\n".join(
+        [
+            "Hello,",
+            "",
+            line + where,
+            "",
+            ask,
+            "",
+            "Kind regards,",
+            *([facts["business_name"]] if facts["business_name"] else []),
+        ]
+    )
     return f"Reminder: invoice {n} ({amount})", body
 
 
@@ -143,6 +162,10 @@ async def draft_reminder(inv: Invoice, profile: InvoiceProfile, cfg: AiConfig, t
         reason, checked = checked, fallback_draft(facts)
     subject, body = checked
     return ReminderDraft(
-        to=inv.customer.email, subject=subject, body=body, days_overdue=facts["days_overdue"],
-        model=cfg.model, fallback_reason=reason,
+        to=inv.customer.email,
+        subject=subject,
+        body=body,
+        days_overdue=facts["days_overdue"],
+        model=cfg.model,
+        fallback_reason=reason,
     )

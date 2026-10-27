@@ -12,14 +12,17 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from pydantic import BaseModel
 
-try:  # FastAPI must see the real class to inject the request
+if TYPE_CHECKING:
     from starlette.requests import Request
-except ImportError:  # harness-only installs without FastAPI
-    Request = Any  # type: ignore[misc,assignment]
+else:
+    try:  # FastAPI must see the real class to inject the request
+        from starlette.requests import Request
+    except ImportError:  # harness-only installs without FastAPI
+        Request = Any
 
 AiMode = Literal["local", "key"]
 
@@ -49,8 +52,13 @@ def base_url_allowed(url: str) -> bool:
     OLLAMA_BASE / MODEL_API_BASE in use, or one listed in AI_ALLOWED_BASE_URLS (comma-separated)."""
     if is_test_mode():  # nothing the browser names is fetched: every config is swapped for the stub
         return True
-    allowed = {DEFAULT_OLLAMA_BASE, DEFAULT_MODEL_API_BASE, os.getenv("OLLAMA_BASE", ""), os.getenv("MODEL_API_BASE", ""),
-               *os.getenv("AI_ALLOWED_BASE_URLS", "").split(",")}
+    allowed = {
+        DEFAULT_OLLAMA_BASE,
+        DEFAULT_MODEL_API_BASE,
+        os.getenv("OLLAMA_BASE", ""),
+        os.getenv("MODEL_API_BASE", ""),
+        *os.getenv("AI_ALLOWED_BASE_URLS", "").split(","),
+    }
     return _norm(url) in {_norm(a) for a in allowed if a.strip()}
 
 
@@ -93,7 +101,7 @@ class AiConfig(BaseModel):
         X-AI-Base-Url must be on the server's allow-list: the runtime fetches that URL, so a free choice
         would let any caller point it at hosts only the server can reach.
         """
-        get = lambda k: (headers.get(k) or headers.get(k.lower()) or None)  # noqa: E731
+        get = lambda k: headers.get(k) or headers.get(k.lower()) or None  # noqa: E731
         base_url = get("X-AI-Base-Url")
         if base_url and not is_test_mode() and not base_url_allowed(base_url):  # test mode never uses it (resolve)
             raise ValueError("X-AI-Base-Url is not on this server's allow-list (AI_ALLOWED_BASE_URLS)")

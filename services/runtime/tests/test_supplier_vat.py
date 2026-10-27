@@ -8,9 +8,9 @@ from __future__ import annotations
 import json
 
 import pytest
-from accnomos_connectors import FakeStorageProvider
 from fastapi.testclient import TestClient
 
+from accnomos_connectors import FakeStorageProvider
 from app import contacts as cb
 from app import invoicing, pipeline
 from app.ai.config import AiConfig
@@ -26,14 +26,28 @@ USER = "sam@example.co.uk"
 H = {"X-Graph-Token": "tok", "X-User": USER}
 
 
-def _doc(supplier: str, gross: float, vat: float = 0.0, vrn: str | None = None, day: str = "2026-10-21") -> ExtractedDoc:
+def _doc(
+    supplier: str, gross: float, vat: float = 0.0, vrn: str | None = None, day: str = "2026-10-21"
+) -> ExtractedDoc:
     net = round(gross - vat, 2)
     return ExtractedDoc(
-        doc_type="receipt", supplier_name=supplier, supplier_vat_number=vrn, customer_name=None, invoice_number=None,
-        date=day, currency="GBP",
-        lines=[ExtractedLine(description="Goods", qty=1, unit_price=net, net=net, vat_rate=20 if vat else None, vat=vat)],
-        net_total=net, vat_total=vat, gross_total=gross, payment_method="card", card_last4="9304",
-        category_guess="Materials", confidence=0.95,
+        doc_type="receipt",
+        supplier_name=supplier,
+        supplier_vat_number=vrn,
+        customer_name=None,
+        invoice_number=None,
+        date=day,
+        currency="GBP",
+        lines=[
+            ExtractedLine(description="Goods", qty=1, unit_price=net, net=net, vat_rate=20 if vat else None, vat=vat)
+        ],
+        net_total=net,
+        vat_total=vat,
+        gross_total=gross,
+        payment_method="card",
+        card_last4="9304",
+        category_guess="Materials",
+        confidence=0.95,
     )
 
 
@@ -82,7 +96,12 @@ def _stored(fake: FakeStorageProvider) -> dict[str, dict]:
 
 
 def _audit(fake: FakeStorageProvider) -> list[dict]:
-    return [json.loads(x) for p, d in sorted(fake.files.items()) if p.startswith(f"{AUDIT}/") for x in d.decode().splitlines()]
+    return [
+        json.loads(x)
+        for p, d in sorted(fake.files.items())
+        if p.startswith(f"{AUDIT}/")
+        for x in d.decode().splitlines()
+    ]
 
 
 def _question(p) -> str | None:  # noqa: ANN001
@@ -127,7 +146,10 @@ async def test_a_vat_number_teaches_registered(fake: FakeStorageProvider, books:
     (missed,) = await _scan(fake, books, b"screwfix-2")
     msg = next(c.message for c in missed.checks if c.code == "VAT_NUMBER_REQUIRED")
     assert missed.status == "needs_a_look"
-    assert msg == "VAT charged but no VAT number shown; their VAT number is usually GB232456789; the VAT can't be reclaimed without it"
+    assert (
+        msg
+        == "VAT charged but no VAT number shown; their VAT number is usually GB232456789; the VAT can't be reclaimed without it"
+    )
 
     (zero,) = await _scan(fake, books, b"screwfix-3")  # a known registered supplier with nothing to reclaim: not asked
     assert zero.status == "proposed" and _question(zero) is None
@@ -154,7 +176,9 @@ async def test_business_not_vat_registered_never_asks(fake: FakeStorageProvider,
     await invoicing.save_profile(books, invoicing.InvoiceProfile(name="Sam's Joinery", vat_registered=False), USER)
     first, vat = await _scan(fake, books, b"iron-1", b"iron-3")
     assert (first.status, vat.status) == ("proposed", "proposed")
-    assert all("isn't VAT-registered" in c.message for c in (first.checks + vat.checks) if c.code == "VAT_NUMBER_REQUIRED")
+    assert all(
+        "isn't VAT-registered" in c.message for c in (first.checks + vat.checks) if c.code == "VAT_NUMBER_REQUIRED"
+    )
 
 
 def test_a_vat_number_in_the_profile_means_registered() -> None:
@@ -163,7 +187,9 @@ def test_a_vat_number_in_the_profile_means_registered() -> None:
     assert invoicing.InvoiceProfile(vat_registered=False, vrn="GB 123 4567 89").is_vat_registered
 
 
-async def test_broken_contacts_file_neither_blocks_a_scan_nor_an_approval(fake: FakeStorageProvider, books: Books) -> None:
+async def test_broken_contacts_file_neither_blocks_a_scan_nor_an_approval(
+    fake: FakeStorageProvider, books: Books
+) -> None:
     fake.files[CONTACTS] = b"{not json"
     (p,) = await _scan(fake, books, b"iron-1")
     assert p.status == "needs_a_look" and _question(p)
@@ -213,7 +239,9 @@ def client(books: Books):  # noqa: ANN201
     app.dependency_overrides.clear()
 
 
-async def test_contacts_route_shows_and_edits_vat_status(client: TestClient, fake: FakeStorageProvider, books: Books) -> None:
+async def test_contacts_route_shows_and_edits_vat_status(
+    client: TestClient, fake: FakeStorageProvider, books: Books
+) -> None:
     (p,) = await _scan(fake, books, b"other")
     await approve(books, p.id, USER, {NOT_VAT_REGISTERED: True})
     rows = client.get("/contacts", headers=H).json()["contacts"]

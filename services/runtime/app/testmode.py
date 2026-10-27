@@ -17,9 +17,9 @@ With it on, the runtime talks to nothing outside this process:
   previous VAT quarter, the one still to file (the VAT page and Ask default to the current one, Oct-Dec);
   timestamps stay real. The `demo` seed moves its tenant to docs/DEMO.md's stage date (4 Nov 2026).
 
-`POST /__test/reset` empties the caller's tenant's storage and reseeds the mailbox (three gold receipts by email plus one message
-that is not a receipt) and the calendar. `GET /__test/gold` lists the gold receipts; `GET /__test/gold/{file}.png`
-serves one as the PNG the stub recognises.
+`POST /__test/reset` empties the caller's tenant's storage and reseeds the mailbox (three gold receipts by email
+plus one message that is not a receipt) and the calendar. `GET /__test/gold` lists the gold receipts;
+`GET /__test/gold/{file}.png` serves one as the PNG the stub recognises.
 """
 
 from __future__ import annotations
@@ -33,11 +33,15 @@ import os
 import re
 from contextvars import ContextVar
 from datetime import UTC, date, datetime, timedelta
-from functools import lru_cache
+from functools import cache, lru_cache
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 from zoneinfo import ZoneInfo
+
+from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 from accnomos_connectors import (
     AddressBookContact,
@@ -51,10 +55,6 @@ from accnomos_connectors import (
     MailMessage,
 )
 from accnomos_connectors.base import FileRef
-from fastapi import APIRouter, HTTPException, Request, Response
-from fastapi.responses import JSONResponse
-from starlette.types import ASGIApp, Receive, Scope, Send
-
 from app import actions, security
 from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai
@@ -64,19 +64,25 @@ from app.schemas import CATEGORIES, AskExplanation
 
 log = logging.getLogger("accnomos.testmode")
 
-DEFAULT_TODAY = "2026-10-27"  # the gold set's quarter (Jul-Sep 2026) is the one still to file; VAT and Ask default to Oct-Dec
+DEFAULT_TODAY = (
+    "2026-10-27"  # the gold set's quarter (Jul-Sep 2026) is the one still to file; VAT and Ask default to Oct-Dec
+)
 MAIL_GOLD = ("001_standard.json", "011_standard.json", "022_standard.json")  # emailed in by the seeded suppliers
 CALENDAR = "Accnomos"
 SAMPLE = "SAMPLE — FICTIONAL COMPANY"
 DEMO_TODAY = date(2026, 11, 4)  # docs/DEMO.md's stage date: the sample receipt (2 Nov) is in the current quarter
 DEMO_RECEIPT = "sample-receipt.png"  # apps/web/public/, drawn by tools/make_sample_receipt.py
-DEMO_CUSTOMER = AddressBookContact(id="contact-jm", display_name="JM Trading Ltd", company_name="JM Trading Ltd",
-                                   emails=["accounts@jmtrading.example"])
+DEMO_CUSTOMER = AddressBookContact(
+    id="contact-jm", display_name="JM Trading Ltd", company_name="JM Trading Ltd", emails=["accounts@jmtrading.example"]
+)
 # Thursday after the pinned today (Tue 27 Oct 2026): one busy hour in the morning.
 PLAN_EVENT = CalendarEvent(
-    id="evt-sample-thu", subject="Site meeting, Harbour Lane kitchen", location="12 Harbour Lane, Bristol BS1 4RW",
+    id="evt-sample-thu",
+    subject="Site meeting, Harbour Lane kitchen",
+    location="12 Harbour Lane, Bristol BS1 4RW",
     start=datetime(2026, 10, 29, 9, 0, tzinfo=ZoneInfo("Europe/London")),
-    end=datetime(2026, 10, 29, 10, 0, tzinfo=ZoneInfo("Europe/London")), body_preview=SAMPLE,
+    end=datetime(2026, 10, 29, 10, 0, tzinfo=ZoneInfo("Europe/London")),
+    body_preview=SAMPLE,
 )
 
 
@@ -110,7 +116,7 @@ def gold_receipts() -> dict[str, dict[str, Any]]:
     return {i["file"]: json.loads((folder / i["file"]).read_text(encoding="utf-8")) for i in manifest["items"]}
 
 
-@lru_cache(maxsize=None)
+@cache
 def gold_png(file: str) -> bytes:
     return _renderer().render_receipt(gold_receipts()[file]["printed_text"], messy=False, seed=0)
 
@@ -124,7 +130,9 @@ def _demo_receipt_png() -> bytes | None:
 
 @lru_cache(maxsize=1)
 def _documents() -> dict[str, dict[str, Any]]:
-    """Every document the stub reads: the gold receipts, and the demo receipt (gold 001 as printed, dated 2 Nov 2026)."""
+    """Every document the stub reads: the gold receipts, and the demo receipt
+    (gold 001 as printed, dated 2 Nov 2026).
+    """
     return {**gold_receipts(), DEMO_RECEIPT: {**gold_receipts()["001_standard.json"], "date": "2026-11-02"}}
 
 
@@ -141,13 +149,29 @@ def _by_hash() -> dict[str, str]:
 # Gold -> what a model would have read
 # --------------------------------------------------------------------------- #
 
-_PAYMENT = {"card": "card", "cash": "cash", "bank transfer": "bank_transfer", "direct debit": "direct_debit", "cheque": "cheque"}
+_PAYMENT = {
+    "card": "card",
+    "cash": "cash",
+    "bank transfer": "bank_transfer",
+    "direct debit": "direct_debit",
+    "cheque": "cheque",
+}
 _CATEGORY_WORDS = (  # first match wins; the gold hints are free text from the generator
-    ("office", "Office supplies"), ("stationery", "Office supplies"), ("it hardware", "Office supplies"),
-    ("tool", "Tools & small equipment"), ("hardware", "Tools & small equipment"),
-    ("material", "Materials"), ("joinery", "Materials"), ("carpentry", "Materials"),
-    ("parking", "Motor expenses"), ("transport", "Travel"), ("postage", "Postage"), ("courier", "Postage"),
-    ("energy", "Utilities"), ("grocer", "Subsistence"), ("supermarket", "Subsistence"),
+    ("office", "Office supplies"),
+    ("stationery", "Office supplies"),
+    ("it hardware", "Office supplies"),
+    ("tool", "Tools & small equipment"),
+    ("hardware", "Tools & small equipment"),
+    ("material", "Materials"),
+    ("joinery", "Materials"),
+    ("carpentry", "Materials"),
+    ("parking", "Motor expenses"),
+    ("transport", "Travel"),
+    ("postage", "Postage"),
+    ("courier", "Postage"),
+    ("energy", "Utilities"),
+    ("grocer", "Subsistence"),
+    ("supermarket", "Subsistence"),
 )
 
 
@@ -175,8 +199,12 @@ def extracted_from_gold(gold: dict[str, Any]) -> dict[str, Any]:
         "currency": gold.get("currency") or "GBP",
         "lines": [
             {
-                "description": ln.get("description") or "", "qty": ln.get("qty") or 1, "unit_price": ln.get("unit_price") or 0,
-                "net": ln.get("net") or 0, "vat_rate": ln.get("vat_rate"), "vat": ln.get("vat") or 0,
+                "description": ln.get("description") or "",
+                "qty": ln.get("qty") or 1,
+                "unit_price": ln.get("unit_price") or 0,
+                "net": ln.get("net") or 0,
+                "vat_rate": ln.get("vat_rate"),
+                "vat": ln.get("vat") or 0,
             }
             for ln in gold.get("lines") or []
         ],
@@ -193,8 +221,12 @@ def extracted_from_gold(gold: dict[str, Any]) -> dict[str, Any]:
 def verifier_reading_from_gold(gold: dict[str, Any]) -> dict[str, Any]:
     supplier = gold.get("supplier") or {}
     return {
-        "seller": supplier.get("name") or "", "vat_registration": supplier.get("vat_number"), "issue_date": gold["date"],
-        "amount_before_vat": gold["net_total"], "vat_amount": gold["vat_total"], "amount_payable": gold["gross_total"],
+        "seller": supplier.get("name") or "",
+        "vat_registration": supplier.get("vat_number"),
+        "issue_date": gold["date"],
+        "amount_before_vat": gold["net_total"],
+        "vat_amount": gold["vat_total"],
+        "amount_payable": gold["gross_total"],
     }
 
 
@@ -202,8 +234,10 @@ def ask_reply(facts: dict[str, Any]) -> dict[str, Any]:
     """A grounded explanation that quotes only figures from the routed facts pack (app/ai/ask.py checks every one)."""
     this, prev = facts["this_period"], facts["previous_period"]
     if "vat" in this:
-        answer = (f"Your net VAT (Box 5) for this quarter is {ask_ai._gbp(this['vat']['box5'])} ({this['vat_position']}), "
-                  f"from {this['entries']} approved entries.")
+        answer = (
+            f"Your net VAT (Box 5) for this quarter is {ask_ai._gbp(this['vat']['box5'])} ({this['vat_position']}), "
+            f"from {this['entries']} approved entries."
+        )
     elif "vat" in prev:
         answer = f"Your net VAT (Box 5) for {prev['label']} was {ask_ai._gbp(prev['vat']['box5'])}."
     else:
@@ -213,7 +247,8 @@ def ask_reply(facts: dict[str, Any]) -> dict[str, Any]:
 
 _INVOICE_WORDS = re.compile(
     r"^\s*(?P<send>send|email)?\s*(?:an?\s+)?(?P<amount>£[\d,]+(?:\.\d+)?)\s+invoice\s+to\s+(?P<customer>.+?)"
-    r"(?:\s+for\s+(?P<description>.+?))?[.!]?\s*$", re.I,
+    r"(?:\s+for\s+(?P<description>.+?))?[.!]?\s*$",
+    re.I,
 )
 
 
@@ -223,8 +258,14 @@ def intent_reply(question: str) -> dict[str, Any]:
     m = _INVOICE_WORDS.match(question)
     if m is None:
         return {**fields, "kind": "none"}
-    return {**fields, "kind": "create_invoice", "customer_ref": m["customer"], "amount_text": m["amount"],
-            "description": m["description"], "send": bool(m["send"])}
+    return {
+        **fields,
+        "kind": "create_invoice",
+        "customer_ref": m["customer"],
+        "amount_text": m["amount"],
+        "description": m["description"],
+        "send": bool(m["send"]),
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -300,24 +341,46 @@ def _sender(gold: dict[str, Any]) -> tuple[str, str]:
 
 # The business on its invoices, so an invoice can be sent without filling Settings in first.
 SAMPLE_PROFILE = {
-    "name": "Sam Builds Ltd", "address": "1 Sample Street\nBristol\nBS1 1AA", "email": "sam@sambuilds.example",
-    "phone": "0117 496 0000", "vrn": "GB123456789", "terms_days": 30, "footer_note": SAMPLE,
+    "name": "Sam Builds Ltd",
+    "address": "1 Sample Street\nBristol\nBS1 1AA",
+    "email": "sam@sambuilds.example",
+    "phone": "0117 496 0000",
+    "vrn": "GB123456789",
+    "terms_days": 30,
+    "footer_note": SAMPLE,
     "bank": {"account_name": "Sam Builds Ltd", "sort_code": "00-00-00", "account_number": "00000000"},
 }
 
 
 def _bank_event(spec: dict[str, Any]) -> Any:
-    """One posted event from evals/gold/bank/expected.json (purchases paid from 1200 Bank, sales owed in 1100 Debtors)."""
+    """One posted event from evals/gold/bank/expected.json
+    (purchases paid from 1200 Bank, sales owed in 1100 Debtors).
+    """
     from accnomos_ledger import LedgerEvent, Line, VatCode
 
     gross = spec["gross_pence"]
     if spec["kind"] == "sale":
-        lines = [Line(account="1100 Debtors", debit=gross), Line(account="4000 Sales", credit=gross, vat_code=VatCode.STANDARD)]
+        lines = [
+            Line(account="1100 Debtors", debit=gross),
+            Line(account="4000 Sales", credit=gross, vat_code=VatCode.STANDARD),
+        ]
     else:
-        lines = [Line(account="7999 Sundry expenses", debit=gross, vat_code=VatCode.STANDARD), Line(account="1200 Bank", credit=gross)]
-    return LedgerEvent(id=spec["id"], kind=spec["kind"], date=date.fromisoformat(spec["date"]), lines=lines, net=gross, vat=0,
-                       counterparty=spec["counterparty"], evidence=["ab" * 32], approved_by="sam@sambuilds.example",
-                       approved_at=datetime(2026, 10, 26, tzinfo=UTC))
+        lines = [
+            Line(account="7999 Sundry expenses", debit=gross, vat_code=VatCode.STANDARD),
+            Line(account="1200 Bank", credit=gross),
+        ]
+    return LedgerEvent(
+        id=spec["id"],
+        kind=spec["kind"],
+        date=date.fromisoformat(spec["date"]),
+        lines=lines,
+        net=gross,
+        vat=0,
+        counterparty=spec["counterparty"],
+        evidence=["ab" * 32],
+        approved_by="sam@sambuilds.example",
+        approved_at=datetime(2026, 10, 26, tzinfo=UTC),
+    )
 
 
 async def _seed_bank(s: State) -> None:
@@ -342,7 +405,9 @@ SEEDS = {"bank": _seed_bank, "demo": _seed_demo}  # opt-in: they change the VAT 
 
 
 async def reset(seed: str | None = None) -> dict[str, Any]:
-    """This tenant only: empty storage; reseed the mailbox, address book, calendar and invoice profile; then any `seed`."""
+    """This tenant only: empty storage; reseed the mailbox, address book, calendar and invoice profile;
+    then any `seed`.
+    """
     from app.invoicing import PROFILE, InvoiceProfile
 
     if seed is not None and seed not in SEEDS:
@@ -361,15 +426,35 @@ async def reset(seed: str | None = None) -> dict[str, Any]:
         gold, png = golds[file], gold_png(file)
         name, address = _sender(gold)
         s.mail.add(
-            MailMessage(id=f"msg-{n}", received_at=received - timedelta(days=n), from_address=address, from_name=name,
-                        subject=f"Your receipt from {name}"),
-            (MailAttachment(id=f"att-{n}", name=f"receipt-{file.split('_')[0]}.png", content_type="image/png", size=len(png)), png),
+            MailMessage(
+                id=f"msg-{n}",
+                received_at=received - timedelta(days=n),
+                from_address=address,
+                from_name=name,
+                subject=f"Your receipt from {name}",
+            ),
+            (
+                MailAttachment(
+                    id=f"att-{n}", name=f"receipt-{file.split('_')[0]}.png", content_type="image/png", size=len(png)
+                ),
+                png,
+            ),
         )
-        s.contacts.contacts.append(AddressBookContact(id=f"contact-{n}", display_name=name, company_name=name, emails=[address]))
+        s.contacts.contacts.append(
+            AddressBookContact(id=f"contact-{n}", display_name=name, company_name=name, emails=[address])
+        )
     s.mail.add(  # a newsletter with a calendar invite: intake must skip it
-        MailMessage(id="msg-news", received_at=received - timedelta(hours=6), from_address="news@trade-weekly.example",
-                    from_name="Trade Weekly", subject="This week's offers"),
-        (MailAttachment(id="att-news", name="webinar.ics", content_type="text/calendar", size=900), b"BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n"),
+        MailMessage(
+            id="msg-news",
+            received_at=received - timedelta(hours=6),
+            from_address="news@trade-weekly.example",
+            from_name="Trade Weekly",
+            subject="This week's offers",
+        ),
+        (
+            MailAttachment(id="att-news", name="webinar.ics", content_type="text/calendar", size=900),
+            b"BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n",
+        ),
     )
     cal = await s.calendar.ensure_calendar(CALENDAR)
     await s.calendar.upsert_all_day_event(cal, "vat-26A3", "2026-11-07", "VAT return due (Jul–Sep 2026)", SAMPLE)
@@ -412,11 +497,19 @@ async def reset_route(seed: str | None = None) -> dict[str, Any]:
 async def gold_list() -> list[dict[str, Any]]:
     out = []
     for file, gold in gold_receipts().items():
-        out.append({
-            "file": file, "case": gold.get("gold_case"), "supplier": (gold.get("supplier") or {}).get("name"),
-            "date": gold["date"], "gross": gold["gross_total"], "vat": gold["vat_total"], "net": gold["net_total"],
-            "doc_type": gold["doc_type"], "png_sha256": hashlib.sha256(gold_png(file)).hexdigest(),
-        })
+        out.append(
+            {
+                "file": file,
+                "case": gold.get("gold_case"),
+                "supplier": (gold.get("supplier") or {}).get("name"),
+                "date": gold["date"],
+                "gross": gold["gross_total"],
+                "vat": gold["vat_total"],
+                "net": gold["net_total"],
+                "doc_type": gold["doc_type"],
+                "png_sha256": hashlib.sha256(gold_png(file)).hexdigest(),
+            }
+        )
     return out
 
 
@@ -432,8 +525,11 @@ async def state_route() -> dict[str, Any]:
     """What the fakes hold, for debugging a failed run."""
     s = await state()
     return {
-        "files": sorted(s.storage.files), "mail_calls": s.mail.calls,
-        "sent": [{"to": m.to, "subject": m.subject, "attachments": [a.name for a in m.attachments]} for m in s.sender.sent],
+        "files": sorted(s.storage.files),
+        "mail_calls": s.mail.calls,
+        "sent": [
+            {"to": m.to, "subject": m.subject, "attachments": [a.name for a in m.attachments]} for m in s.sender.sent
+        ],
         "calendar": {cid: {k: list(v) for k, v in ev.items()} for cid, ev in s.calendar.all_day.items()},
     }
 
@@ -447,8 +543,14 @@ async def ai_tags() -> dict[str, Any]:
 
 
 def _ollama(content: dict[str, Any]) -> dict[str, Any]:
-    return {"model": TEST_AI_MODEL, "message": {"role": "assistant", "content": json.dumps(content)}, "done": True,
-            "prompt_eval_count": 0, "eval_count": 0, "total_duration": 0}
+    return {
+        "model": TEST_AI_MODEL,
+        "message": {"role": "assistant", "content": json.dumps(content)},
+        "done": True,
+        "prompt_eval_count": 0,
+        "eval_count": 0,
+        "total_duration": 0,
+    }
 
 
 @router.post("/ai/api/chat")
@@ -499,20 +601,30 @@ def _drive_item(ref: FileRef) -> dict[str, Any]:
     st = current().storage
     path = ref.path.strip("/")
     item: dict[str, Any] = {
-        "id": _id(path), "name": ref.name or "Accnomos", "eTag": ref.etag,
+        "id": _id(path),
+        "name": ref.name or "Accnomos",
+        "eTag": ref.etag,
         "webUrl": f"https://onedrive.test.invalid/Accnomos/{path}",
         "lastModifiedDateTime": (ref.modified or datetime.now(UTC)).isoformat().replace("+00:00", "Z"),
     }
     if ref.is_folder:
         prefix = f"{path}/" if path else ""
         item["size"] = sum(len(v) for k, v in st.files.items() if k.startswith(prefix))
-        children = {k[len(prefix):].split("/", 1)[0] for k in [*st.files, *st.folders] if k and k.startswith(prefix)}
+        children = {k[len(prefix) :].split("/", 1)[0] for k in [*st.files, *st.folders] if k and k.startswith(prefix)}
         item["folder"] = {"childCount": len(children)}
     else:
         item["size"] = ref.size
         ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
-        item["file"] = {"mimeType": {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "pdf": "application/pdf",
-                                     "json": "application/json", "txt": "text/plain"}.get(ext, "application/octet-stream")}
+        item["file"] = {
+            "mimeType": {
+                "png": "image/png",
+                "jpg": "image/jpeg",
+                "jpeg": "image/jpeg",
+                "pdf": "application/pdf",
+                "json": "application/json",
+                "txt": "text/plain",
+            }.get(ext, "application/octet-stream")
+        }
     return item
 
 
@@ -559,7 +671,7 @@ async def graph(rest: str, request: Request) -> Response:
     root = next((r for r in _ROOTS if rest == r or rest.startswith(r + ":/") or rest.startswith(r + "/")), None)
     if root is None:
         return _not_found(rest)
-    tail = rest[len(root):]
+    tail = rest[len(root) :]
     action = ""
     if tail in ("/children", ":/children"):
         rel, action = "", "children"
@@ -576,7 +688,13 @@ async def graph(rest: str, request: Request) -> Response:
         if rel not in st.files:
             return _not_found(rel)
         ext = rel.rsplit(".", 1)[-1].lower()  # the Review preview reads the filed receipt
-        mime = {"png": "image/png", "jpg": "image/jpeg", "jpeg": "image/jpeg", "webp": "image/webp", "pdf": "application/pdf"}
+        mime = {
+            "png": "image/png",
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+            "webp": "image/webp",
+            "pdf": "application/pdf",
+        }
         return Response(st.files[rel], media_type=mime.get(ext, "application/octet-stream"))
     if action == "children":
         if rel not in st.folders:

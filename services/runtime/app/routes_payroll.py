@@ -87,7 +87,9 @@ async def get_run(period: str, books: Books = Depends(get_books)) -> PayRun:
 
 
 @router.put("/payroll/runs/{period}", response_model=PayRun)
-async def edit(period: str, body: EditBody, books: Books = Depends(get_books), user: str = Depends(require_user)) -> PayRun:
+async def edit(
+    period: str, body: EditBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> PayRun:
     try:
         return await payroll.update(books, period, body.lines, body.pay_date, user)
     except (PayrollError, FileNotFoundError) as exc:
@@ -106,7 +108,10 @@ async def export(period: str, books: Books = Depends(get_books), user: str = Dep
 
 @router.post("/payroll/runs/{period}/confirm", response_model=PayRun)
 async def confirm(
-    period: str, body: ConfirmBody, books: Books = Depends(get_books), user: str = Depends(require_user),
+    period: str,
+    body: ConfirmBody,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> PayRun:
     """Posts the actual gross pay and employer NI (from the payroll provider) as staff costs."""
     try:

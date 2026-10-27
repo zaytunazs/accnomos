@@ -23,11 +23,21 @@ LOCAL = AiConfig(mode="local", base_url="http://x", model="m")
 
 def _doc(net: float = 10.00, vat: float = 2.00, gross: float = 12.00, confidence: float = 0.9) -> ExtractedDoc:
     return ExtractedDoc(
-        doc_type="receipt", supplier_name="Wickes", supplier_vat_number="GB123456789", customer_name=None,
-        invoice_number=None, date="2026-10-26", currency="GBP",
+        doc_type="receipt",
+        supplier_name="Wickes",
+        supplier_vat_number="GB123456789",
+        customer_name=None,
+        invoice_number=None,
+        date="2026-10-26",
+        currency="GBP",
         lines=[ExtractedLine(description="Screws", qty=1, unit_price=10.00, net=10.00, vat_rate=20, vat=2.00)],
-        net_total=net, vat_total=vat, gross_total=gross, payment_method="card", card_last4=None,
-        category_guess="Materials", confidence=confidence,
+        net_total=net,
+        vat_total=vat,
+        gross_total=gross,
+        payment_method="card",
+        card_last4=None,
+        category_guess="Materials",
+        confidence=confidence,
     )
 
 

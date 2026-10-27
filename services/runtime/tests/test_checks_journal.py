@@ -125,9 +125,17 @@ NOT_REGISTERED = SupplierKnowledge("not_registered")
 
 def _no_vat(gross: float = 368.50, **kw: object) -> ExtractedDoc:
     """A zero-VAT receipt with no VAT number, like gold 005 ("No VAT charged")."""
-    return _doc(**{"supplier_name": "Hargreaves & Sons Ironmongery", "supplier_vat_number": None,
-                   "lines": [ExtractedLine(description="Latches", qty=1, unit_price=gross, net=gross, vat_rate=None, vat=0.0)],
-                   "net_total": gross, "vat_total": 0.0, "gross_total": gross, **kw})
+    return _doc(
+        **{
+            "supplier_name": "Hargreaves & Sons Ironmongery",
+            "supplier_vat_number": None,
+            "lines": [ExtractedLine(description="Latches", qty=1, unit_price=gross, net=gross, vat_rate=None, vat=0.0)],
+            "net_total": gross,
+            "vat_total": 0.0,
+            "gross_total": gross,
+            **kw,
+        }
+    )
 
 
 def _vat_no_number(**kw: object) -> ExtractedDoc:
@@ -187,7 +195,9 @@ def test_rule4_does_not_ask_about_the_users_own_sales_invoice() -> None:
 def test_rule5_no_vat_under_250_or_a_known_registered_supplier_is_ok() -> None:
     assert check_vat_number_required(_no_vat(250.0)).ok  # £250 exactly is a simplified invoice
     assert check_vat_number_required(_no_vat(231.24)).ok  # gold 038
-    c = check_vat_number_required(_no_vat(), REGISTERED)  # zero-rated goods from a registered supplier: nothing to reclaim
+    c = check_vat_number_required(
+        _no_vat(), REGISTERED
+    )  # zero-rated goods from a registered supplier: nothing to reclaim
     assert c.ok and c.code == "VAT_NUMBER_REQUIRED"
 
 
@@ -199,8 +209,9 @@ def test_eur_needs_a_look(eur: ExtractedDoc) -> None:
 
 
 def test_duplicate_and_period(standard: ExtractedDoc) -> None:
-    checks = run_checks(standard, known_hashes={H}, this_hash=H,
-                        period_start=date(2026, 11, 1), period_end=date(2027, 1, 31))
+    checks = run_checks(
+        standard, known_hashes={H}, this_hash=H, period_start=date(2026, 11, 1), period_end=date(2027, 1, 31)
+    )
     status, reasons = decide(checks)
     assert status == "needs_a_look"
     assert _codes(reasons) == {"DUPLICATE", "DATE_IN_PERIOD"}
@@ -251,9 +262,16 @@ def test_eur_coded_outside_scope(eur: ExtractedDoc) -> None:
 
 
 def test_sales_invoice_journal() -> None:
-    doc = _doc(doc_type="sales_invoice", customer_name="Acme Ltd", category_guess="Sales",
-               lines=[ExtractedLine(description="Consultancy", qty=2, unit_price=100, net=200, vat_rate=20, vat=40)],
-               net_total=200, vat_total=40, gross_total=240, payment_method=None)
+    doc = _doc(
+        doc_type="sales_invoice",
+        customer_name="Acme Ltd",
+        category_guess="Sales",
+        lines=[ExtractedLine(description="Consultancy", qty=2, unit_price=100, net=200, vat_rate=20, vat=40)],
+        net_total=200,
+        vat_total=40,
+        gross_total=240,
+        payment_method=None,
+    )
     j = draft_journal(doc)
     assert is_balanced(j)
     assert (j[0].account, j[0].debit_pence) == ("1100 Debtors", 24000)
@@ -261,10 +279,16 @@ def test_sales_invoice_journal() -> None:
 
 
 def test_mixed_rates_split_by_code() -> None:
-    doc = _doc(lines=[
-        ExtractedLine(description="Sandwich", qty=1, unit_price=3.50, net=3.50, vat_rate=0, vat=0),
-        ExtractedLine(description="Hot coffee", qty=1, unit_price=3.00, net=2.50, vat_rate=20, vat=0.50),
-    ], net_total=6.00, vat_total=0.50, gross_total=6.50, category_guess="Subsistence")
+    doc = _doc(
+        lines=[
+            ExtractedLine(description="Sandwich", qty=1, unit_price=3.50, net=3.50, vat_rate=0, vat=0),
+            ExtractedLine(description="Hot coffee", qty=1, unit_price=3.00, net=2.50, vat_rate=20, vat=0.50),
+        ],
+        net_total=6.00,
+        vat_total=0.50,
+        gross_total=6.50,
+        category_guess="Subsistence",
+    )
     assert _status(doc)[0] == "proposed"
     j = draft_journal(doc)
     assert is_balanced(j)

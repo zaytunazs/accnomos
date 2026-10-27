@@ -83,8 +83,10 @@ async def test_write_412_raises_conflict_and_sends_if_match():
             return httpx.Response(200, json=_item("SYS", "_System", True))
         if req.method == "PUT":
             assert path == f"{APPROOT}:/_System/rules.json:/content"
-            return httpx.Response(412) if req.headers.get("If-Match") == '"old"' else httpx.Response(
-                200, json=_item("R", "rules.json")
+            return (
+                httpx.Response(412)
+                if req.headers.get("If-Match") == '"old"'
+                else httpx.Response(200, json=_item("R", "rules.json"))
             )
         return httpx.Response(400)
 
@@ -94,12 +96,15 @@ async def test_write_412_raises_conflict_and_sends_if_match():
         await g.write("_System/rules.json", b"[]", if_match='"old"')
 
 
-@pytest.mark.parametrize("link", [
-    "https://evil.example/v1.0/me/drive/root/delta?token=x",
-    "http://graph.microsoft.com/v1.0/me/drive/root/delta",      # downgraded scheme
-    "https://graph.microsoft.com.evil.example/v1.0/x",          # look-alike host
-    "https://graph.microsoft.com@evil.example/v1.0/x",          # userinfo trick
-])
+@pytest.mark.parametrize(
+    "link",
+    [
+        "https://evil.example/v1.0/me/drive/root/delta?token=x",
+        "http://graph.microsoft.com/v1.0/me/drive/root/delta",  # downgraded scheme
+        "https://graph.microsoft.com.evil.example/v1.0/x",  # look-alike host
+        "https://graph.microsoft.com@evil.example/v1.0/x",  # userinfo trick
+    ],
+)
 async def test_the_token_never_follows_a_link_off_graph(link: str):
     """A nextLink or delta cursor is followed with the bearer token, so only Graph's own origin is accepted."""
     hosts: list[str] = []
@@ -226,19 +231,28 @@ async def test_delta_follows_next_link_and_skips_folders_and_deletions():
     def handler(req: httpx.Request) -> httpx.Response:
         url = str(req.url)
         if url == f"{GRAPH}/me/drive/special/approot/delta":
-            return httpx.Response(200, json={
-                "value": [
-                    _item("ROOT", "Accnomos", True, root={}),
-                    _item("IN", "00 Inbox", True),
-                    _item("A", "a.jpg", parentReference=parent),
-                ],
-                "@odata.nextLink": page2,
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "value": [
+                        _item("ROOT", "Accnomos", True, root={}),
+                        _item("IN", "00 Inbox", True),
+                        _item("A", "a.jpg", parentReference=parent),
+                    ],
+                    "@odata.nextLink": page2,
+                },
+            )
         if url == page2:
-            return httpx.Response(200, json={
-                "value": [_item("B", "b.jpg", deleted={"state": "deleted"}), _item("C", "c.pdf", parentReference=parent)],
-                "@odata.deltaLink": final,
-            })
+            return httpx.Response(
+                200,
+                json={
+                    "value": [
+                        _item("B", "b.jpg", deleted={"state": "deleted"}),
+                        _item("C", "c.pdf", parentReference=parent),
+                    ],
+                    "@odata.deltaLink": final,
+                },
+            )
         return httpx.Response(400)
 
     changed, cursor = await _provider(handler).changes(None)

@@ -17,6 +17,7 @@ explanation arrives in one piece; OpenAI-compatible servers send it token by tok
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import re
 from collections import defaultdict
@@ -30,7 +31,19 @@ from pydantic import BaseModel, ValidationError
 
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError, parse_model_json
-from app.ask_router import EVERYTHING, PREV, PREV_WORDS, THIS, THIS_WORDS, Route, other, pack, period_key, route, sources_for
+from app.ask_router import (
+    EVERYTHING,
+    PREV,
+    PREV_WORDS,
+    THIS,
+    THIS_WORDS,
+    Route,
+    other,
+    pack,
+    period_key,
+    route,
+    sources_for,
+)
 from app.facts import vat_sources
 from app.schemas import (
     ASK_ANSWER_MAX,
@@ -44,7 +57,9 @@ from app.schemas import (
     strict_json_schema,
 )
 
-TIMEOUT_S = 120.0  # whole-reply timeout for the short structured calls that are not streamed (actions, triage, reminders)
+TIMEOUT_S = (
+    120.0  # whole-reply timeout for the short structured calls that are not streamed (actions, triage, reminders)
+)
 FIRST_CHUNK_S = 90.0  # loading the model and reading the prompt (and, on Glimmer, writing the whole buffered reply)
 TOKEN_GAP_S = 20.0  # once it is replying, the longest silence between two chunks
 ANSWER_TOKENS_MAX = 320  # Glimmer writes about 8 tokens/s here: at most ~40 s, and a good answer needs ~100
@@ -61,7 +76,8 @@ SYSTEM_PROMPT = (
     f"Keep answer_md under {ASK_ANSWER_MAX} characters. "
     "You are given FACTS as JSON, calculated by code from the owner's ledger. Every figure sits under the period it "
     "belongs to: this_period is the period the owner picked (what they mean by 'this quarter'), previous_period the "
-    "one before it ('last quarter'); each has its label. FACTS.question_is_about says which one the question means. Rules: "
+    "one before it ('last quarter'); each has its label."
+    " FACTS.question_is_about says which one the question means. Rules: "
     "1) Quote numbers only exactly as they appear in FACTS (you may add £ and thousands commas), and only for "
     "their own period: say which period a figure is for. "
     "Never add, subtract, average or estimate anything yourself: for changes use the `derived` values. "
@@ -76,7 +92,13 @@ SYSTEM_PROMPT = (
 _NUMBER = re.compile(r"[-−]?£?\d[\d,]*(?:\.\d+)?%?")
 _SENTENCE = re.compile(r"(?<=[.!?])\s+|\n+")
 #: Which period the values under each top-level key of the facts pack belong to (anything else: ANY).
-_PERIOD_OF = {"this_period": THIS, "previous_period": PREV, "top_suppliers": THIS, "top_customers": THIS, "largest_transactions": THIS}
+_PERIOD_OF = {
+    "this_period": THIS,
+    "previous_period": PREV,
+    "top_suppliers": THIS,
+    "top_customers": THIS,
+    "largest_transactions": THIS,
+}
 
 
 class AiStalled(Exception):
@@ -90,6 +112,7 @@ class AiStalled(Exception):
 # --------------------------------------------------------------------------- #
 # Numbers: what the facts contain (and from which period), and what an answer quotes
 # --------------------------------------------------------------------------- #
+
 
 def _parse(token: str) -> Decimal | None:
     clean = token.replace("−", "-").replace("£", "").replace(",", "").rstrip("%")
@@ -174,7 +197,11 @@ def _names_period(text: str, p: str, facts: dict[str, Any]) -> bool:
     """Does this sentence say which period it means ("last quarter", "Apr–Jun 2026", "26A2")?"""
     full = facts[period_key(p)]
     dashed = re.sub(r"\s*[-—]\s*", "–", text)  # "Jul-Sep 2026" or "Jul — Sep 2026" names the label "Jul–Sep 2026" too
-    return bool((PREV_WORDS if p == PREV else THIS_WORDS).search(text)) or full["label"] in dashed or full["period_key"] in text
+    return (
+        bool((PREV_WORDS if p == PREV else THIS_WORDS).search(text))
+        or full["label"] in dashed
+        or full["period_key"] in text
+    )
 
 
 def wrong_period(text: str, known: KnownNumbers, facts: dict[str, Any], r: Route) -> list[tuple[str, str]]:
@@ -198,8 +225,14 @@ def wrong_period(text: str, known: KnownNumbers, facts: dict[str, Any], r: Route
 # --------------------------------------------------------------------------- #
 
 BOX_LABELS = {
-    1: "VAT on sales (Box 1)", 2: "VAT on EU goods (Box 2)", 3: "Total VAT due (Box 3)", 4: "VAT reclaimed (Box 4)",
-    5: "Net VAT (Box 5)", 6: "Sales before VAT (Box 6)", 7: "Purchases before VAT (Box 7)", 8: "Goods to the EU (Box 8)",
+    1: "VAT on sales (Box 1)",
+    2: "VAT on EU goods (Box 2)",
+    3: "Total VAT due (Box 3)",
+    4: "VAT reclaimed (Box 4)",
+    5: "Net VAT (Box 5)",
+    6: "Sales before VAT (Box 6)",
+    7: "Purchases before VAT (Box 7)",
+    8: "Goods to the EU (Box 8)",
     9: "Goods from the EU (Box 9)",
 }
 CODE_NAMES = {"S": "standard rate", "R": "reduced rate", "Z": "zero rate", "E": "exempt", "N": "no VAT"}
@@ -260,7 +293,9 @@ def code_key_numbers(facts: dict[str, Any], r: Route) -> list[KeyNumber]:
                 add(f"Change in {s} before VAT vs {tag(PREV)}, %", f"{d[f'{s}_net_change_pct_vs_prev']} %", src[THIS])
 
     if THIS in r.periods:  # entries and contacts: the lists are for the current period only
-        rows = {t["name"]: ("Spent with", t) for t in facts["top_suppliers"]} | {t["name"]: ("Sales to", t) for t in facts["top_customers"]}
+        rows = {t["name"]: ("Spent with", t) for t in facts["top_suppliers"]} | {
+            t["name"]: ("Sales to", t) for t in facts["top_customers"]
+        }
         for name in r.names[:2]:
             if name in rows:
                 verb, row = rows[name]
@@ -344,8 +379,10 @@ def preview(facts: dict[str, Any], r: Route, model: str) -> dict[str, Any]:
     """What code can show before the model replies (the first event of a streamed answer)."""
     key_numbers = code_key_numbers(facts, r)
     return {
-        "key_numbers": [k.model_dump() for k in key_numbers], "citations": code_citations(facts, r, key_numbers),
-        "suggested_actions": [a.model_dump() for a in code_actions(facts, r)], "model": model,
+        "key_numbers": [k.model_dump() for k in key_numbers],
+        "citations": code_citations(facts, r, key_numbers),
+        "suggested_actions": [a.model_dump() for a in code_actions(facts, r)],
+        "model": model,
         "period": _period(facts).model_dump(mode="json"),
     }
 
@@ -354,8 +391,12 @@ def preview(facts: dict[str, Any], r: Route, model: str) -> dict[str, Any]:
 # Post-validation
 # --------------------------------------------------------------------------- #
 
+
 def fallback_answer(facts: dict[str, Any], model: str, reason: str, r: Route = EVERYTHING) -> AskAnswer:
-    """The facts for the asked period, quoted directly by code. Used when the model fails or a figure doesn't check out."""
+    """The facts for the asked period, quoted directly by code.
+
+    Used when the model fails or a figure doesn't check out.
+    """
     key_numbers = code_key_numbers(facts, r)
     this, prev, d = facts["this_period"], facts["previous_period"], facts["derived"]
     if r.matched and key_numbers:
@@ -363,8 +404,11 @@ def fallback_answer(facts: dict[str, Any], model: str, reason: str, r: Route = E
             f"I couldn't check a written explanation against your books, so here are the figures for {r.label(facts)} "
             "exactly as calculated from your ledger:",
             "",
-            *(f"- {k.label}: {k.value}" + (f" ({d['vat_position']})" if k.label == f"Net VAT (Box 5), {this['period_key']}" else "")
-              for k in key_numbers),
+            *(
+                f"- {k.label}: {k.value}"
+                + (f" ({d['vat_position']})" if k.label == f"Net VAT (Box 5), {this['period_key']}" else "")
+                for k in key_numbers
+            ),
         ]
     else:
         lines = [
@@ -374,7 +418,8 @@ def fallback_answer(facts: dict[str, Any], model: str, reason: str, r: Route = E
             f"- Net VAT (Box 5), {_uk(this['start'])} to {_uk(this['end'])}: {_gbp(this['vat']['box5'])} "
             f"({d['vat_position']})",
             f"- Previous period ({_uk(prev['start'])} to {_uk(prev['end'])}): {_gbp(prev['vat']['box5'])}",
-            f"- Sales {_gbp(this['totals']['sales']['net'])} net, purchases {_gbp(this['totals']['purchases']['net'])} net, "
+            f"- Sales {_gbp(this['totals']['sales']['net'])} net,"
+            f" purchases {_gbp(this['totals']['purchases']['net'])} net, "
             f"from {this['entries']} approved entries",
         ]
         key_numbers = _fact_key_numbers(facts)[:3]
@@ -385,8 +430,14 @@ def fallback_answer(facts: dict[str, Any], model: str, reason: str, r: Route = E
     if _pending(facts):
         actions.append(SuggestedAction(label="Review waiting entries", kind="open_review", arg=None))
     return AskAnswer(
-        answer_md="\n".join(lines), key_numbers=key_numbers, citations=code_citations(facts, r, key_numbers),
-        suggested_actions=actions, confidence="low", model=model, period=_period(facts), fallback_reason=reason,
+        answer_md="\n".join(lines),
+        key_numbers=key_numbers,
+        citations=code_citations(facts, r, key_numbers),
+        suggested_actions=actions,
+        confidence="low",
+        model=model,
+        period=_period(facts),
+        fallback_reason=reason,
     )
 
 
@@ -404,7 +455,9 @@ def _whole_sentences(text: str) -> str:
     return text.strip()[: ends[-1]] if ends else ""
 
 
-def ground(out: AskModelOutput, facts: dict[str, Any], model: str, question: str = "", r: Route | None = None) -> AskAnswer:
+def ground(
+    out: AskModelOutput, facts: dict[str, Any], model: str, question: str = "", r: Route | None = None
+) -> AskAnswer:
     """Check the model's answer against the facts (and the question's own figures, and the period it asks about);
     return it with code's key numbers and citations, or the fallback if a figure doesn't check out."""
     r = r or (route(question, facts) if question.strip() else EVERYTHING)
@@ -420,11 +473,19 @@ def ground(out: AskModelOutput, facts: dict[str, Any], model: str, question: str
         return fallback_answer(facts, model, f"The model quoted figures that are not in your books ({shown}).", r)
     misplaced = wrong_period(answer_md, known, facts, r)
     for kn in out.key_numbers:
-        misplaced += [(t, p) for t, p in wrong_period(kn.value, known, facts, r) if not _names_period(kn.label, p, facts)]
+        misplaced += [
+            (t, p) for t, p in wrong_period(kn.value, known, facts, r) if not _names_period(kn.label, p, facts)
+        ]
     if misplaced:
         tok, p = misplaced[0]
         return fallback_answer(
-            facts, model, f"The model quoted {tok}, a figure for {facts[period_key(p)]['label']}, in an answer about {r.label(facts)}.", r,
+            facts,
+            model,
+            (
+                f"The model quoted {tok}, a figure for {facts[period_key(p)]['label']},"
+                f" in an answer about {r.label(facts)}."
+            ),
+            r,
         )
 
     sources = set(facts["sources"])
@@ -433,8 +494,13 @@ def ground(out: AskModelOutput, facts: dict[str, Any], model: str, question: str
     have = {k.value for k in key_numbers}
     for k in out.key_numbers:  # a model that still sends key numbers (older prompts, other backends): after code's
         if k.value.strip() and k.value.strip() not in have:
-            key_numbers.append(KeyNumber(label=_clip(k.label, LABEL_MAX), value=k.value.strip(),
-                                         source=k.source if k.source in sources else default_src))
+            key_numbers.append(
+                KeyNumber(
+                    label=_clip(k.label, LABEL_MAX),
+                    value=k.value.strip(),
+                    source=k.source if k.source in sources else default_src,
+                )
+            )
     key_numbers = key_numbers[: KEY_NUMBERS[1]]
 
     citations = list(dict.fromkeys(code_citations(facts, r, key_numbers) + [c for c in out.citations if c in sources]))
@@ -447,18 +513,27 @@ def ground(out: AskModelOutput, facts: dict[str, Any], model: str, question: str
             continue  # never chase a supplier the books don't know
         if a.kind == "plan_day":
             continue  # only code offers a day plan (app/routes_ask.py)
-        actions.append(SuggestedAction(label=_clip(a.label, LABEL_MAX), kind=a.kind, arg=_clip(a.arg, LABEL_MAX) if a.arg else None))
+        actions.append(
+            SuggestedAction(
+                label=_clip(a.label, LABEL_MAX), kind=a.kind, arg=_clip(a.arg, LABEL_MAX) if a.arg else None
+            )
+        )
 
     return AskAnswer(
-        answer_md=answer_md, key_numbers=key_numbers, citations=citations,
+        answer_md=answer_md,
+        key_numbers=key_numbers,
+        citations=citations,
         suggested_actions=(actions or code_actions(facts, r))[:MAX_ACTIONS],
-        confidence=out.confidence, model=model, period=_period(facts),
+        confidence=out.confidence,
+        model=model,
+        period=_period(facts),
     )
 
 
 # --------------------------------------------------------------------------- #
 # Model call
 # --------------------------------------------------------------------------- #
+
 
 class AnswerText:
     """Pulls the answer_md string out of a JSON reply while it streams in, unescaping as it goes."""
@@ -494,13 +569,11 @@ class AnswerText:
                 new.append(self._ESC.get(raw[i + 1], raw[i + 1]))
                 i += 2
             else:
-                width = 12 if raw[i + 2:i + 4].lower() in ("d8", "d9", "da", "db") else 6  # a surrogate pair
+                width = 12 if raw[i + 2 : i + 4].lower() in ("d8", "d9", "da", "db") else 6  # a surrogate pair
                 if i + width > len(raw):
                     break
-                try:
-                    new.append(json.loads(f'"{raw[i:i + width]}"'))
-                except ValueError:
-                    pass
+                with contextlib.suppress(ValueError):
+                    new.append(json.loads(f'"{raw[i : i + width]}"'))
                 i += width
         self._pos = i
         text = "".join(new)
@@ -535,16 +608,28 @@ def _json_line(line: str) -> dict[str, Any]:
 
 
 async def stream_json_model(
-    messages: list[dict[str, str]], cfg: AiConfig, schema: dict[str, Any], name: str, max_tokens: int | None = None,
+    messages: list[dict[str, str]],
+    cfg: AiConfig,
+    schema: dict[str, Any],
+    name: str,
+    max_tokens: int | None = None,
 ) -> AsyncIterator[str]:
-    """The reply's text as it arrives from the user's backend, constrained to `schema`. Raises httpx errors and AiStalled."""
+    """The reply's text as it arrives from the user's backend, constrained to `schema`.
+
+    Raises httpx errors and AiStalled.
+    """
     timeout = httpx.Timeout(connect=15.0, read=None, write=30.0, pool=15.0)  # reads are timed per chunk by _lines
     async with httpx.AsyncClient(timeout=timeout) as client:
         if cfg.mode == "local":
             options: dict[str, Any] = {"temperature": 0} | ({"num_predict": max_tokens} if max_tokens else {})
             body: dict[str, Any] = {
-                "model": cfg.model, "messages": messages, "format": schema, "think": False, "stream": True,
-                "options": options, "keep_alive": "24h",
+                "model": cfg.model,
+                "messages": messages,
+                "format": schema,
+                "think": False,
+                "stream": True,
+                "options": options,
+                "keep_alive": "24h",
             }
             async with client.stream("POST", f"{cfg.base_url}/api/chat", json=body) as r:
                 if r.is_error:
@@ -562,9 +647,12 @@ async def stream_json_model(
                         return
             return
         body = {
-            "model": cfg.model, "messages": messages, "stream": True,
+            "model": cfg.model,
+            "messages": messages,
+            "stream": True,
             "response_format": {"type": "json_schema", "json_schema": {"name": name, "strict": True, "schema": schema}},
-            "reasoning_effort": "low", **({"max_tokens": max_tokens} if max_tokens else {}),
+            "reasoning_effort": "low",
+            **({"max_tokens": max_tokens} if max_tokens else {}),
         }
         headers = {"Authorization": f"Bearer {cfg.api_key}"}
         async with client.stream("POST", f"{cfg.base_url}/chat/completions", json=body, headers=headers) as r:
@@ -586,7 +674,10 @@ async def stream_json_model(
 
 
 async def _call_model(
-    messages: list[dict[str, str]], cfg: AiConfig, output: type[BaseModel] = AskExplanation, name: str = "ask_answer",
+    messages: list[dict[str, str]],
+    cfg: AiConfig,
+    output: type[BaseModel] = AskExplanation,
+    name: str = "ask_answer",
 ) -> str:
     """Raw JSON text from the configured backend, constrained to `output`'s schema (app/ai/plan.py uses it too).
     Streamed underneath, so it is timed per chunk; Ask's own answer is capped at ANSWER_TOKENS_MAX."""
@@ -599,7 +690,9 @@ def _answer_cap(cfg: AiConfig) -> int:
 
 
 async def _stream_model(messages: list[dict[str, str]], cfg: AiConfig) -> AsyncIterator[str]:
-    async for text in stream_json_model(messages, cfg, strict_json_schema(AskExplanation), "ask_answer", _answer_cap(cfg)):
+    async for text in stream_json_model(
+        messages, cfg, strict_json_schema(AskExplanation), "ask_answer", _answer_cap(cfg)
+    ):
         yield text
 
 
@@ -608,18 +701,26 @@ async def call_json_model(messages: list[dict[str, str]], cfg: AiConfig, schema:
     async with httpx.AsyncClient(timeout=httpx.Timeout(TIMEOUT_S)) as client:
         if cfg.mode == "local":
             body: dict[str, Any] = {
-                "model": cfg.model, "messages": messages, "format": schema, "think": False, "stream": False,
-                "options": {"temperature": 0}, "keep_alive": "24h",
+                "model": cfg.model,
+                "messages": messages,
+                "format": schema,
+                "think": False,
+                "stream": False,
+                "options": {"temperature": 0},
+                "keep_alive": "24h",
             }
             r = await client.post(f"{cfg.base_url}/api/chat", json=body)
             r.raise_for_status()
             return r.json().get("message", {}).get("content", "")
         body = {
-            "model": cfg.model, "messages": messages,
+            "model": cfg.model,
+            "messages": messages,
             "response_format": {"type": "json_schema", "json_schema": {"name": name, "strict": True, "schema": schema}},
             "reasoning_effort": "low",
         }
-        r = await client.post(f"{cfg.base_url}/chat/completions", json=body, headers={"Authorization": f"Bearer {cfg.api_key}"})
+        r = await client.post(
+            f"{cfg.base_url}/chat/completions", json=body, headers={"Authorization": f"Bearer {cfg.api_key}"}
+        )
         r.raise_for_status()
         content = r.json()["choices"][0]["message"].get("content") or ""
         if isinstance(content, list):
@@ -672,7 +773,9 @@ async def answer(question: str, facts: dict[str, Any], history: list[AskTurn], c
     return _checked(text, facts, cfg, question, r)
 
 
-async def answer_stream(question: str, facts: dict[str, Any], history: list[AskTurn], cfg: AiConfig) -> AsyncIterator[tuple[str, Any]]:
+async def answer_stream(
+    question: str, facts: dict[str, Any], history: list[AskTurn], cfg: AiConfig
+) -> AsyncIterator[tuple[str, Any]]:
     """("start", code's key numbers and citations) at once, then ("token", text) as the explanation arrives, then
     ("answer", the checked AskAnswer), which may replace the streamed words. Never raises for model trouble."""
     r = route(question, facts)

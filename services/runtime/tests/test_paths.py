@@ -28,11 +28,20 @@ NAMED = re.compile("|".join(re.escape(n) for n in [*(f.name for f in paths.TOP),
 
 def _hit(value: str) -> bool:
     return bool(NUMBERED.search(value) or NAMED.search(value))
+
+
 OLD = re.compile("|".join(re.escape(old) for old in paths.RENAMED))
 # Current docs and code outside Python; docs/reviews/* are a record of what was true at the time.
 DOCS_AND_WEB = [
-    "README.md", "docs/ARCHITECTURE.md", "docs/DEMO.md", "docs/HMRC.md", "docs/HONESTY.md", "docs/REMAINING.md",
-    "tools/seed_demo.md", "apps/web/src", "apps/web/e2e",
+    "README.md",
+    "docs/ARCHITECTURE.md",
+    "docs/DEMO.md",
+    "docs/HMRC.md",
+    "docs/HONESTY.md",
+    "docs/REMAINING.md",
+    "tools/seed_demo.md",
+    "apps/web/src",
+    "apps/web/e2e",
 ]
 
 
@@ -67,8 +76,13 @@ def _docstrings(tree: ast.AST) -> set[int]:
 
 def test_the_scan_sees_the_modules_that_use_folders() -> None:
     found = {p.relative_to(ROOT).as_posix() for p in python_sources()}
-    assert {"services/runtime/app/books.py", "services/runtime/app/invoicing.py", "services/runtime/app/payroll.py",
-            "tools/seed_demo.py", "packages/connectors/src/accnomos_connectors/msgraph.py"} <= found
+    assert {
+        "services/runtime/app/books.py",
+        "services/runtime/app/invoicing.py",
+        "services/runtime/app/payroll.py",
+        "tools/seed_demo.py",
+        "packages/connectors/src/accnomos_connectors/msgraph.py",
+    } <= found
 
 
 def test_no_folder_name_literal_outside_paths_py() -> None:
@@ -77,18 +91,27 @@ def test_no_folder_name_literal_outside_paths_py() -> None:
         tree = ast.parse(p.read_text(encoding="utf-8"))
         docs = _docstrings(tree)
         for node in ast.walk(tree):
-            if isinstance(node, ast.Constant) and isinstance(node.value, str) and id(node) not in docs:
-                if _hit(node.value):
-                    bad.append(f"{p.relative_to(ROOT)}:{node.lineno}: {node.value[:60]!r}")
+            if (
+                isinstance(node, ast.Constant)
+                and isinstance(node.value, str)
+                and id(node) not in docs
+                and _hit(node.value)
+            ):
+                bad.append(f"{p.relative_to(ROOT)}:{node.lineno}: {node.value[:60]!r}")
     assert not bad, "import the name from app/paths.py instead:\n" + "\n".join(bad)
 
 
 def test_the_literal_check_catches_one() -> None:
-    tree = ast.parse('"""Doc: 04 Bank statements."""\nX = "04 Bank statements"\nY = f"{A}/03 Sales/x"\n'
-                     'Z = "saved in 06 VAT returns after"\nD = "paid on 05 Oct"\n')
+    tree = ast.parse(
+        '"""Doc: 04 Bank statements."""\nX = "04 Bank statements"\nY = f"{A}/03 Sales/x"\n'
+        'Z = "saved in 06 VAT returns after"\nD = "paid on 05 Oct"\n'
+    )
     docs = _docstrings(tree)
-    hits = [n.value for n in ast.walk(tree)
-            if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs and _hit(n.value)]
+    hits = [
+        n.value
+        for n in ast.walk(tree)
+        if isinstance(n, ast.Constant) and isinstance(n.value, str) and id(n) not in docs and _hit(n.value)
+    ]
     assert sorted(hits) == ["/03 Sales/x", "04 Bank statements", "saved in 06 VAT returns after"]
 
 
@@ -111,8 +134,9 @@ def test_no_old_folder_names_left() -> None:
 
 def test_generated_files_are_up_to_date() -> None:
     gen = _gen()
-    stale = [str(path.relative_to(ROOT)) for path, text in gen.render().items()
-             if path.read_text(encoding="utf-8") != text]
+    stale = [
+        str(path.relative_to(ROOT)) for path, text in gen.render().items() if path.read_text(encoding="utf-8") != text
+    ]
     assert not stale, f"run `python tools/gen_folders.py`; out of date: {stale}"
 
 
@@ -131,8 +155,14 @@ def test_runtime_web_and_android_lists_are_byte_for_byte_equal() -> None:
 
 def test_tree_shape() -> None:
     assert [f.name for f in paths.TOP] == [
-        "00 Inbox", "01 Receipts", "02 Needs a look", "03 Sales", "04 Bank statements", "05 Payroll",
-        "06 VAT returns", "07 Reports",
+        "00 Inbox",
+        "01 Receipts",
+        "02 Needs a look",
+        "03 Sales",
+        "04 Bank statements",
+        "05 Payroll",
+        "06 VAT returns",
+        "07 Reports",
     ]
     assert paths.INVOICES == "03 Sales/invoices" and paths.SENT == "03 Sales/invoices/sent"
     assert {paths.INVOICES, paths.SENT, "_System/audit", "_System/Ledger/events"} <= set(paths.TREE)
@@ -142,14 +172,17 @@ def test_tree_shape() -> None:
     assert set(paths.RENAMED.values()) <= {f.name for f in paths.TOP}
 
 
-@pytest.mark.parametrize(("old", "new"), [
-    ("04 Needs a look/a.pdf", "02 Needs a look/a.pdf"),
-    ("03 bank statements/2026-09-30_starling.csv", "04 Bank statements/2026-09-30_starling.csv"),
-    ("05 VAT returns", "06 VAT returns"),
-    ("04 Bank statements/a.csv", "04 Bank statements/a.csv"),
-    ("_System/docs/x.json", "_System/docs/x.json"),
-    ("05 VAT returnsX/a", "05 VAT returnsX/a"),
-])
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [
+        ("04 Needs a look/a.pdf", "02 Needs a look/a.pdf"),
+        ("03 bank statements/2026-09-30_starling.csv", "04 Bank statements/2026-09-30_starling.csv"),
+        ("05 VAT returns", "06 VAT returns"),
+        ("04 Bank statements/a.csv", "04 Bank statements/a.csv"),
+        ("_System/docs/x.json", "_System/docs/x.json"),
+        ("05 VAT returnsX/a", "05 VAT returnsX/a"),
+    ],
+)
 def test_upgrade(old: str, new: str) -> None:
     assert paths.upgrade(old) == new
 

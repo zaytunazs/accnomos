@@ -107,7 +107,12 @@ def check_vat_math(doc: ExtractedDoc) -> Check:
     expected = round(doc.net_total * rate)  # pence
     tol = 2 + len(doc.lines)
     if abs(expected - p(doc.vat_total)) > tol:
-        return _chk("VAT_MATH", False, "fail", f"VAT {doc.vat_total:.2f} ≠ {rate:g}% of net {doc.net_total:.2f} ({expected / 100:.2f})")
+        return _chk(
+            "VAT_MATH",
+            False,
+            "fail",
+            f"VAT {doc.vat_total:.2f} ≠ {rate:g}% of net {doc.net_total:.2f} ({expected / 100:.2f})",
+        )
     return _chk("VAT_MATH", True, "fail", f"VAT is {rate:g}% of net")
 
 
@@ -142,7 +147,9 @@ UNKNOWN_SUPPLIER = SupplierKnowledge()
 
 
 def check_vat_number_required(
-    doc: ExtractedDoc, supplier: SupplierKnowledge = UNKNOWN_SUPPLIER, business_vat_registered: bool = True,
+    doc: ExtractedDoc,
+    supplier: SupplierKnowledge = UNKNOWN_SUPPLIER,
+    business_vat_registered: bool = True,
 ) -> Check:
     """VAT can only be reclaimed with the supplier's VAT number on the invoice.
 
@@ -159,7 +166,9 @@ def check_vat_number_required(
     if normalise_vat_number(doc.supplier_vat_number) is not None:
         return _chk("VAT_NUMBER_REQUIRED", True, "fail", "VAT number shown")
     if not business_vat_registered:
-        return _chk("VAT_NUMBER_REQUIRED", True, "fail", "Your business isn't VAT-registered, so no VAT number is needed")
+        return _chk(
+            "VAT_NUMBER_REQUIRED", True, "fail", "Your business isn't VAT-registered, so no VAT number is needed"
+        )
     if doc.vat_total > 0:
         if supplier.vat_status == "registered":
             usual = f"their VAT number is usually {supplier.vrn}" if supplier.vrn else "they are VAT-registered"
@@ -170,12 +179,18 @@ def check_vat_number_required(
             msg = "VAT charged but no VAT number shown, so the VAT can't be reclaimed"
         return _chk("VAT_NUMBER_REQUIRED", False, "fail", msg)
     if supplier.vat_status == "not_registered":
-        return _chk("VAT_NUMBER_REQUIRED", True, "fail", "No VAT charged; your books say this supplier isn't VAT-registered")
-    if (supplier.vat_status == "unknown" and doc.doc_type != "sales_invoice"
-            and doc.gross_total > FULL_INVOICE_THRESHOLD_GBP):
+        return _chk(
+            "VAT_NUMBER_REQUIRED", True, "fail", "No VAT charged; your books say this supplier isn't VAT-registered"
+        )
+    if (
+        supplier.vat_status == "unknown"
+        and doc.doc_type != "sales_invoice"
+        and doc.gross_total > FULL_INVOICE_THRESHOLD_GBP
+    ):
         name = doc.supplier_name.strip() or "this supplier"
-        return _chk(SUPPLIER_VAT_UNKNOWN, False, "fail",
-                    f"Is {name} VAT-registered? Over £250 they should give a VAT invoice")
+        return _chk(
+            SUPPLIER_VAT_UNKNOWN, False, "fail", f"Is {name} VAT-registered? Over £250 they should give a VAT invoice"
+        )
     return _chk("VAT_NUMBER_REQUIRED", True, "fail", "No VAT charged, so no VAT number is needed")
 
 
@@ -225,7 +240,10 @@ def check_date_in_period(d: date, start: date, end: date) -> Check:
         where = "falls in the previous period"
     else:
         where = "falls in an earlier period"
-    msg = f"Dated {d.day} {MONTHS[d.month - 1]} {d.year} — {where} ({period_label(its_start, its_end)}); it will go on that return"
+    msg = (
+        f"Dated {d.day} {MONTHS[d.month - 1]} {d.year} — {where}"
+        f" ({period_label(its_start, its_end)}); it will go on that return"
+    )
     return _chk("DATE_IN_PERIOD", False, "warn", msg)
 
 

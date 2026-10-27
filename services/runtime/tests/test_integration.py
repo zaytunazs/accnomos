@@ -14,9 +14,10 @@ from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 
 import pytest
-from accnomos_connectors import FakeMailProvider, FakeStorageProvider, MailAttachment, MailMessage
 from fastapi.testclient import TestClient
 from openpyxl import load_workbook
+
+from accnomos_connectors import FakeMailProvider, FakeStorageProvider, MailAttachment, MailMessage
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
@@ -65,7 +66,6 @@ def fake() -> FakeStorageProvider:
 @pytest.fixture
 def client(fake: FakeStorageProvider):
     from accnomos_connectors import FakeContactsProvider
-
     from app.main import app
     from app.routes_books import get_books
     from app.routes_contacts import get_address_book
@@ -73,9 +73,17 @@ def client(fake: FakeStorageProvider):
 
     mail = FakeMailProvider()
     mail.add(
-        MailMessage(id="m1", received_at=datetime.now(UTC) - timedelta(days=1), from_address="orders@screwfix.com",
-                    from_name="Screwfix", subject="Your Screwfix invoice"),
-        (MailAttachment(id="a1", name="Invoice 123.pdf", content_type="application/pdf", size=20_026), b"%PDF-1.7 " + b"x" * 20_017),
+        MailMessage(
+            id="m1",
+            received_at=datetime.now(UTC) - timedelta(days=1),
+            from_address="orders@screwfix.com",
+            from_name="Screwfix",
+            subject="Your Screwfix invoice",
+        ),
+        (
+            MailAttachment(id="a1", name="Invoice 123.pdf", content_type="application/pdf", size=20_026),
+            b"%PDF-1.7 " + b"x" * 20_017,
+        ),
     )
 
     async def books() -> Books:
@@ -97,7 +105,9 @@ def ok(r):  # noqa: ANN001, ANN201
     return r.json()
 
 
-def test_every_feature_writes_inside_the_layout_and_books_xlsx_has_every_sheet(client: TestClient, fake: FakeStorageProvider) -> None:
+def test_every_feature_writes_inside_the_layout_and_books_xlsx_has_every_sheet(
+    client: TestClient, fake: FakeStorageProvider
+) -> None:
     # Outlook intake
     assert len(ok(client.post("/mail/scan", headers=H, json={}))["saved"]) == 1
 
@@ -111,20 +121,40 @@ def test_every_feature_writes_inside_the_layout_and_books_xlsx_has_every_sheet(c
 
     # Jobs, staff and timesheets
     job = ok(client.post("/jobs", headers=H, json={"name": "Loft boarding"}))
-    sam = ok(client.post("/staff", headers=H, json={"name": "Sam", "role": "Carpenter",
-                                                     "hourly_rate_pence": 1800, "charge_rate_pence": 4000}))
-    entry = ok(client.post("/timesheets", headers=H, json={"job_id": job["id"], "staff_id": sam["id"],
-                                                           "date": date.today().isoformat(), "hours": 7.5}))
-    ok(client.post(f"/jobs/{job['id']}/mark-invoiced", headers=H, json={"invoice_id": "INV-1", "entry_ids": [entry["id"]]}))
+    sam = ok(
+        client.post(
+            "/staff",
+            headers=H,
+            json={"name": "Sam", "role": "Carpenter", "hourly_rate_pence": 1800, "charge_rate_pence": 4000},
+        )
+    )
+    entry = ok(
+        client.post(
+            "/timesheets",
+            headers=H,
+            json={"job_id": job["id"], "staff_id": sam["id"], "date": date.today().isoformat(), "hours": 7.5},
+        )
+    )
+    ok(
+        client.post(
+            f"/jobs/{job['id']}/mark-invoiced", headers=H, json={"invoice_id": "INV-1", "entry_ids": [entry["id"]]}
+        )
+    )
 
     # Vehicles and mileage: a claim is a proposal; approving it posts
     car = ok(client.post("/vehicles", headers=H, json={"name": "Golf", "kind": "car", "owned_by": "personal"}))
     ty = mileage.tax_year_of(date.today())
-    ok(client.post("/mileage", headers=H, json={"vehicle_id": car["id"], "date": date.today().isoformat(),
-                                                 "miles": 100, "purpose": "Site visit"}))
+    ok(
+        client.post(
+            "/mileage",
+            headers=H,
+            json={"vehicle_id": car["id"], "date": date.today().isoformat(), "miles": 100, "purpose": "Site visit"},
+        )
+    )
     assert ok(client.get(f"/mileage/summary?tax_year={ty}", headers=H))["allowance_pence"] == 4500
-    claim = ok(client.post(f"/mileage/propose-allowance?tax_year={ty}&period={mileage.quarter_of(date.today())}",
-                           headers=H))["proposal"]
+    claim = ok(
+        client.post(f"/mileage/propose-allowance?tax_year={ty}&period={mileage.quarter_of(date.today())}", headers=H)
+    )["proposal"]
     assert ok(client.post(f"/books/proposals/{claim['id']}/approve", headers=H, json={}))["status"] == "posted"
 
     # Contacts, then undo the bank expense (a reversal, then a rebuild)

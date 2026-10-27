@@ -15,11 +15,11 @@ from pathlib import Path
 from types import ModuleType
 
 import pytest
+from openpyxl import load_workbook
+
 from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger.bank import detect_bank, parse_bank_csv
 from accnomos_ledger.vat import compute_vat_return
-from openpyxl import load_workbook
-
 from app import contacts as contacts_mod
 from app import invoicing, jobs, mileage
 from app.books import INBOX, NEEDS_A_LOOK, Books
@@ -77,8 +77,15 @@ def test_every_journal_balances(plan) -> None:  # noqa: ANN001
 
 def test_dates_spread_over_the_last_two_periods(plan) -> None:  # noqa: ANN001
     (q1_start, q1_end), (q2_start, q2_end) = plan.periods
-    assert (q1_start, q1_end, q2_start, q2_end) == (date(2026, 4, 1), date(2026, 6, 30), date(2026, 7, 1), date(2026, 9, 30))
-    dated = [(d.date, d.extracted["doc_type"]) for d in plan.posted] + [(i.issue, "sales_invoice") for i in plan.invoices]
+    assert (q1_start, q1_end, q2_start, q2_end) == (
+        date(2026, 4, 1),
+        date(2026, 6, 30),
+        date(2026, 7, 1),
+        date(2026, 9, 30),
+    )
+    dated = [(d.date, d.extracted["doc_type"]) for d in plan.posted] + [
+        (i.issue, "sales_invoice") for i in plan.invoices
+    ]
     dated.append((plan.claim_day, "purchase_invoice"))
     assert all(q1_start <= day <= q2_end for day, _ in dated)
     for lo, hi in plan.periods:
@@ -167,16 +174,18 @@ async def test_wipe_on_yes_deletes_only_inside_the_folder(seed_demo: ModuleType)
     assert set(deleted) == top and storage._folders == {}
 
 
-def test_no_token_changes_nothing(seed_demo: ModuleType, monkeypatch: pytest.MonkeyPatch,
-                                  capsys: pytest.CaptureFixture[str]) -> None:
+def test_no_token_changes_nothing(
+    seed_demo: ModuleType, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     monkeypatch.setenv("ACCNOMOS_GRAPH_TOKEN", "   ")
     monkeypatch.setattr(seed_demo.getpass, "getpass", lambda _p: "")
     assert seed_demo.main([]) == 1
     assert "nothing changed" in capsys.readouterr().err
 
 
-def test_expired_token_is_explained(seed_demo: ModuleType, monkeypatch: pytest.MonkeyPatch,
-                                    capsys: pytest.CaptureFixture[str]) -> None:
+def test_expired_token_is_explained(
+    seed_demo: ModuleType, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
     from accnomos_connectors.msgraph import GraphError
 
     async def refused(*_a: object) -> int:
@@ -201,7 +210,9 @@ def test_dry_run_prints_the_plan(seed_demo: ModuleType, capsys: pytest.CaptureFi
 
 
 async def test_seed_on_fake_storage(seed_demo: ModuleType) -> None:
-    plan = seed_demo.build_plan("Bramblewood Joinery Ltd", TODAY)  # in the past from now on: journeys can't be in the future
+    plan = seed_demo.build_plan(
+        "Bramblewood Joinery Ltd", TODAY
+    )  # in the past from now on: journeys can't be in the future
     fake = FakeStorageProvider()
     report = await seed_demo.seed(fake, plan, say=lambda _msg: None)
     books = Books(fake)
@@ -231,7 +242,8 @@ async def test_seed_on_fake_storage(seed_demo: ModuleType) -> None:
     older_end = plan.periods[0][1]
     older = [ln for ln in lines if ln.date <= older_end]
     assert [(ln.description, ln.reference) for ln in older if ln.status != "matched"] == [
-        ("Savings Space", "Tax pot"), ("Starling Bank", "Account fee"),  # left for "transfer" / a bank-charge entry
+        ("Savings Space", "Tax pot"),
+        ("Starling Bank", "Account fee"),  # left for "transfer" / a bank-charge entry
     ]
     assert all(ln.status == "unmatched" for ln in lines if ln.date > older_end)
     assert len(await books.bank_suggestions()) == 16  # left for the judge to confirm (2 are customer payments on terms)
@@ -239,23 +251,43 @@ async def test_seed_on_fake_storage(seed_demo: ModuleType) -> None:
 
     # The figures tools/seed_demo.md tells the judge to expect (run in Oct-Dec 2026, stagger 1).
     boxes = [compute_vat_return(events, "X", lo, hi).to_hmrc(finalised=False) for lo, hi in plan.periods]
-    assert [(b["vatDueSales"], b["vatReclaimedCurrPeriod"], b["netVatDue"], b["totalValueSalesExVAT"],
-             b["totalValuePurchasesExVAT"]) for b in boxes] == [
-        (1053.0, 270.5, 782.5, 5265, 2414), (2944.63, 141.3, 2803.33, 14723, 2465),
+    assert [
+        (
+            b["vatDueSales"],
+            b["vatReclaimedCurrPeriod"],
+            b["netVatDue"],
+            b["totalValueSalesExVAT"],
+            b["totalValuePurchasesExVAT"],
+        )
+        for b in boxes
+    ] == [
+        (1053.0, 270.5, 782.5, 5265, 2414),
+        (2944.63, 141.3, 2803.33, 14723, 2465),
     ]
     book, _, _ = await contacts_mod.contact_book(books)
     # 13 suppliers from the ledger, plus the inbox's Hargreaves & Son Hardware, recorded up front as not VAT-registered
     assert (sum(c.kind == "customer" for c in book), sum(c.kind == "supplier" for c in book)) == (4, 14)
-    assert sorted(c.name for c in book if c.vat_status == "not_registered") == plan.not_vat_registered == [
-        "Hargreaves & Son Hardware Ltd", "Hargreaves & Sons Ironmongery", "Harrow & Finch Trading Ltd", "Havoc Hardware & Tools Ltd",
-    ]
+    assert (
+        sorted(c.name for c in book if c.vat_status == "not_registered")
+        == plan.not_vat_registered
+        == [
+            "Hargreaves & Son Hardware Ltd",
+            "Hargreaves & Sons Ironmongery",
+            "Harrow & Finch Trading Ltd",
+            "Havoc Hardware & Tools Ltd",
+        ]
+    )
     assert all(c.vat_status == "registered" for c in book if c.vrn)  # learnt from the VAT numbers on approval
     asked = [p for p in proposals if any(c.code == SUPPLIER_VAT_UNKNOWN for c in p.checks)]
-    assert asked == [] and sum(p.extracted.supplier_name in plan.not_vat_registered for p in proposals) == 3  # 005, 016, 027
+    assert (
+        asked == [] and sum(p.extracted.supplier_name in plan.not_vat_registered for p in proposals) == 3
+    )  # 005, 016, 027
     stored = await contacts_mod.stored_contacts(books)  # what the judge's scan looks suppliers up in
     for d in plan.inbox:  # 23 proposals and 2 Needs a look, 049 included (Hargreaves & Son Hardware is known now)
         doc = d.doc()
-        checks = run_checks(doc, known_hashes=set(), this_hash="x", supplier=contacts_mod.supplier_knowledge(stored, doc))
+        checks = run_checks(
+            doc, known_hashes=set(), this_hash="x", supplier=contacts_mod.supplier_knowledge(stored, doc)
+        )
         assert decide(checks)[0] == d.expect, d.gold
     assert (len(plan.journeys), round(sum(j.miles for j in plan.journeys), 1)) == (13, 181.7)
 

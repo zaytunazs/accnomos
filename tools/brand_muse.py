@@ -3,23 +3,26 @@
 Reads MODEL_API_KEY from the repo .env (never printed). Writes PNGs to builds/listing/muse/ in the project folder.
 Usage: python tools/brand_muse.py [--n 4]
 """
+
 from __future__ import annotations
 
 import argparse
 import base64
 import json
-import os
 import pathlib
 import sys
 import urllib.request
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-OUT = pathlib.Path(r"C:\Users\zohai\Downloads\coworksetup\CoWork\Projects\Meta Hackathon - AI Accounting\builds\listing\muse")
+OUT = pathlib.Path(
+    r"C:\Users\zohai\Downloads\coworksetup\CoWork\Projects\Meta Hackathon - AI Accounting\builds\listing\muse"
+)
 
 BRIEF = (
     "Accnomos is a UK small-business bookkeeping app: receipts are read by AI, the owner approves each entry, "
     "and the VAT return is computed by code. Brand feel: calm, trustworthy, modern, warm off-white paper and deep teal "
-    "(#0F6E63) with a darker teal (#0A4F47) and charcoal (#1B1F24). No text, no letters, no numbers, no logos of other companies."
+    "(#0F6E63) with a darker teal (#0A4F47) and charcoal (#1B1F24)."
+    " No text, no letters, no numbers, no logos of other companies."
 )
 
 PROMPTS = {
@@ -34,7 +37,8 @@ PROMPTS = {
         "off-white shapes, generous empty space on the right third for a headline to be added later. No text at all."
     ),
     "hero": (
-        f"{BRIEF} Design a website hero illustration, landscape: a tradesperson's phone photographing a crumpled receipt, "
+        f"{BRIEF} Design a website hero illustration, landscape: a"
+        " tradesperson's phone photographing a crumpled receipt, "
         "which turns into neat ledger lines with a teal tick; flat vector style, warm off-white and teal palette, "
         "no text, no faces."
     ),
@@ -49,10 +53,22 @@ def load_key() -> str:
 
 
 def generate(key: str, prompt: str, size: str, n: int) -> list[bytes]:
-    body = json.dumps({"model": "muse-image-1.0", "prompt": prompt, "n": n, "size": size,
-                       "response_format": "b64_json", "output_format": "png"}).encode()
-    req = urllib.request.Request("https://api.meta.ai/v1/images/generations", data=body, method="POST",
-                                 headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    body = json.dumps(
+        {
+            "model": "muse-image-1.0",
+            "prompt": prompt,
+            "n": n,
+            "size": size,
+            "response_format": "b64_json",
+            "output_format": "png",
+        }
+    ).encode()
+    req = urllib.request.Request(
+        "https://api.meta.ai/v1/images/generations",
+        data=body,
+        method="POST",
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+    )
     with urllib.request.urlopen(req, timeout=300) as r:
         data = json.load(r)
     return [base64.b64decode(d["b64_json"]) for d in data["data"]]
@@ -79,7 +95,7 @@ def main() -> None:
             p = OUT / f"{name}-{i}.png"
             p.write_bytes(b)
             total += 1
-            print(f"{name}-{i}.png {len(b)//1024} KB")
+            print(f"{name}-{i}.png {len(b) // 1024} KB")
     print(f"done: {total} images (~${total * 0.01:.2f})")
 
 

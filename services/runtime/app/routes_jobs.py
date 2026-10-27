@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import Field
 
 from app import jobs
 from app.books import Books
@@ -40,9 +40,9 @@ def _id(value: str) -> str:
 
 class JobIn(StrictBody):
     name: str = Field(min_length=1, max_length=200)
-    customer_id: str | None = Field(None, max_length=64)
-    site_address: str | None = Field(None, max_length=500)
-    estimate_hours: float | None = Field(None, gt=0, le=jobs.MAX_HOURS_PER_ENTRY)
+    customer_id: str | None = Field(default=None, max_length=64)
+    site_address: str | None = Field(default=None, max_length=500)
+    estimate_hours: float | None = Field(default=None, gt=0, le=jobs.MAX_HOURS_PER_ENTRY)
     status: Literal["open", "closed"] = "open"
 
 
@@ -53,9 +53,13 @@ async def list_jobs(books: Books = Depends(get_books)) -> list[JobSummary]:
 
 
 @router.get("/jobs/list", response_model=list[Job])
-async def list_plain_jobs(status: Literal["open", "closed"] | None = None, books: Books = Depends(get_books)) -> list[Job]:
+async def list_plain_jobs(
+    status: Literal["open", "closed"] | None = None, books: Books = Depends(get_books)
+) -> list[Job]:
     """Just the jobs (no summaries, so no ledger read): for pickers such as Review's "Job" field."""
-    return sorted((j for j in await jobs.load_jobs(books) if status is None or j.status == status), key=lambda j: j.name.lower())
+    return sorted(
+        (j for j in await jobs.load_jobs(books) if status is None or j.status == status), key=lambda j: j.name.lower()
+    )
 
 
 @router.post("/jobs", response_model=Job)
@@ -69,7 +73,9 @@ async def create_job(body: JobIn, books: Books = Depends(get_books), user: str =
 
 
 @router.put("/jobs/{job_id}", response_model=Job)
-async def update_job(job_id: str, body: JobIn, books: Books = Depends(get_books), user: str = Depends(require_user)) -> Job:
+async def update_job(
+    job_id: str, body: JobIn, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> Job:
     try:
         old = await jobs.get_job(books, _id(job_id))
         job = await jobs.save_job(books, Job(**{**old.model_dump(), **body.model_dump(exclude_unset=True)}))
@@ -97,7 +103,9 @@ async def job_summary(job_id: str, books: Books = Depends(get_books)) -> JobSumm
     posted = [p for p in await books.list_proposals("posted") if p.job_id == job.id]
     names = await jobs.customer_names(books)
     return jobs.summarise(
-        job, await jobs.load_entries(books), await jobs.load_staff(books),
+        job,
+        await jobs.load_entries(books),
+        await jobs.load_staff(books),
         jobs.job_purchases(job.id, posted, await books.list_events() if posted else []),
         names.get(job.customer_id or ""),
     )
@@ -121,7 +129,10 @@ class MarkInvoicedBody(StrictBody):
 
 @router.post("/jobs/{job_id}/mark-invoiced", response_model=list[TimesheetEntry])
 async def mark_invoiced(
-    job_id: str, body: MarkInvoicedBody, books: Books = Depends(get_books), user: str = Depends(require_user),
+    job_id: str,
+    body: MarkInvoicedBody,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> list[TimesheetEntry]:
     """Record the invoice the entries were billed on. Call only once the invoice has been sent.
 
@@ -137,8 +148,11 @@ async def mark_invoiced(
         marked = await jobs.mark_invoiced(books, body.entry_ids, body.invoice_id.strip())
     except (NotFound, JobsError) as exc:
         raise _http(exc) from exc
-    await books.audit(f"user:{user}", "timesheets_invoiced",
-                      {"job": job_id, "invoice": body.invoice_id, "entries": [e.id for e in marked]})
+    await books.audit(
+        f"user:{user}",
+        "timesheets_invoiced",
+        {"job": job_id, "invoice": body.invoice_id, "entries": [e.id for e in marked]},
+    )
     await books.rebuild_safely(f"user:{user}")
     return marked
 
@@ -150,9 +164,9 @@ async def mark_invoiced(
 
 class StaffIn(StrictBody):
     name: str = Field(min_length=1, max_length=120)
-    role: str = Field("", max_length=120)
+    role: str = Field(default="", max_length=120)
     hourly_rate_pence: Pence = Field(ge=0, le=100_000)  # up to £1,000 an hour, as payroll
-    charge_rate_pence: Pence | None = Field(None, ge=0, le=100_000)
+    charge_rate_pence: Pence | None = Field(default=None, ge=0, le=100_000)
     active: bool = True
 
 
@@ -162,7 +176,9 @@ async def list_staff(books: Books = Depends(get_books)) -> list[StaffMember]:
 
 
 @router.post("/staff", response_model=StaffMember)
-async def create_staff(body: StaffIn, books: Books = Depends(get_books), user: str = Depends(require_user)) -> StaffMember:
+async def create_staff(
+    body: StaffIn, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> StaffMember:
     try:
         member = await jobs.save_staff(books, StaffMember(**body.model_dump()))
     except ValueError as exc:
@@ -173,7 +189,10 @@ async def create_staff(body: StaffIn, books: Books = Depends(get_books), user: s
 
 @router.put("/staff/{staff_id}", response_model=StaffMember)
 async def update_staff(
-    staff_id: str, body: StaffIn, books: Books = Depends(get_books), user: str = Depends(require_user),
+    staff_id: str,
+    body: StaffIn,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> StaffMember:
     if not any(s.id == _id(staff_id) for s in await jobs.load_staff(books)):
         raise HTTPException(status_code=404, detail="No such staff member")
@@ -204,24 +223,28 @@ class EntryIn(StrictBody):
     job_id: str = Field(max_length=32)
     date: Day
     hours: float
-    note: str = Field("", max_length=500)
+    note: str = Field(default="", max_length=500)
     billable: bool = True
 
 
 @router.get("/timesheets", response_model=list[TimesheetEntry])
 async def list_entries(
-    job_id: str | None = None, staff_id: str | None = None,
+    job_id: str | None = None,
+    staff_id: str | None = None,
     month: str | None = Query(None, pattern=r"^\d{4}-\d{2}$"),
     books: Books = Depends(get_books),
 ) -> list[TimesheetEntry]:
     return [
-        e for e in await jobs.load_entries(books, month)
+        e
+        for e in await jobs.load_entries(books, month)
         if (job_id is None or e.job_id == job_id) and (staff_id is None or e.staff_id == staff_id)
     ]
 
 
 @router.post("/timesheets", response_model=TimesheetEntry)
-async def create_entry(body: EntryIn, books: Books = Depends(get_books), user: str = Depends(require_user)) -> TimesheetEntry:
+async def create_entry(
+    body: EntryIn, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> TimesheetEntry:
     try:
         entry = await jobs.add_entry(books, TimesheetEntry(**body.model_dump()))
     except (NotFound, ValueError) as exc:
@@ -232,7 +255,10 @@ async def create_entry(body: EntryIn, books: Books = Depends(get_books), user: s
 
 @router.put("/timesheets/{entry_id}", response_model=TimesheetEntry)
 async def update_entry(
-    entry_id: str, body: dict[str, Any], books: Books = Depends(get_books), user: str = Depends(require_user),
+    entry_id: str,
+    body: dict[str, Any],
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> TimesheetEntry:
     """Partial update: send only the fields that change (staff_id, job_id, date, hours, note, billable)."""
     if unknown := set(body) - set(EntryIn.model_fields):
@@ -246,7 +272,9 @@ async def update_entry(
 
 
 @router.delete("/timesheets/{entry_id}", response_model=TimesheetEntry)
-async def delete_entry(entry_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)) -> TimesheetEntry:
+async def delete_entry(
+    entry_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> TimesheetEntry:
     try:
         entry = await jobs.delete_entry(books, _id(entry_id))
     except (NotFound, JobsError) as exc:

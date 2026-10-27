@@ -64,9 +64,12 @@ IntentKind = Literal["create_invoice", "chase_invoice", "log_mileage", "log_time
 
 # Only questions that might be an instruction cost a second model call.
 _ACTION_WORDS = re.compile(
-    r"\b(invoice|bill|send|chase|remind|reminder|log|record|add|book|miles?|mileage|drove|driven|hours?|timesheet)\b", re.I,
+    r"\b(invoice|bill|send|chase|remind|reminder|log|record|add|book|miles?|mileage|drove|driven|hours?|timesheet)\b",
+    re.I,
 )
-_QUESTION_START = re.compile(r"^\s*(how|what|why|which|who|whose|when|where|did|was|were|is|are|does|do|have|has)\b", re.I)
+_QUESTION_START = re.compile(
+    r"^\s*(how|what|why|which|who|whose|when|where|did|was|were|is|are|does|do|have|has)\b", re.I
+)
 
 
 class ActionError(ValueError):
@@ -92,7 +95,7 @@ INTENT_PROMPT = (
     "one (S standard 20%, R reduced 5%, Z zero, E exempt, O outside scope). due_days only if the user gave "
     "payment terms in days. send: true if the user asked to send or email it. date_text: the day as said "
     "('yesterday', 'Monday', '3 Oct') or null. description: what the invoice is for, in the user's words "
-    "(e.g. \"this month's work\"); for a timesheet, any note. Leave every field that does not apply null."
+    '(e.g. "this month\'s work"); for a timesheet, any note. Leave every field that does not apply null.'
 )
 
 
@@ -144,7 +147,7 @@ class CreateInvoiceIntent(BaseModel):
     amount_includes_vat: bool = False
     lines: list[LineIntent] | None = None
     vat_code: VatCode | None = None
-    due_days: int | None = Field(None, ge=0, le=120)
+    due_days: int | None = Field(default=None, ge=0, le=120)
     send: bool = False
 
 
@@ -189,9 +192,11 @@ class NotAvailable:
 # --------------------------------------------------------------------------- #
 
 _NUM = re.compile(r"(\d[\d,]*(?:\.\d+)?)\s*(k\b)?", re.I)
-_MONTHS = {m.lower(): i for i, m in enumerate(calendar.month_name) if m} | {
-    m.lower(): i for i, m in enumerate(calendar.month_abbr) if m
-} | {"sept": 9}
+_MONTHS = (
+    {m.lower(): i for i, m in enumerate(calendar.month_name) if m}
+    | {m.lower(): i for i, m in enumerate(calendar.month_abbr) if m}
+    | {"sept": 9}
+)
 _WEEKDAYS = {d.lower(): i for i, d in enumerate(calendar.day_name)}
 
 
@@ -287,7 +292,9 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
             return None
         d = parse_day(out.date_text, today)
         if d is None or d > today:
-            return Clarification(kind=kind, field="date", question_md=f"Which day was that? I couldn't read “{out.date_text}”.")
+            return Clarification(
+                kind=kind, field="date", question_md=f"Which day was that? I couldn't read “{out.date_text}”."
+            )
         return d
 
     if out.kind == "create_invoice":
@@ -295,32 +302,61 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
             return Clarification(kind="create_invoice", field="customer", question_md="Who is the invoice for?")
         lines: list[LineIntent] = []
         for ln in out.lines or []:
-            qty = figure(ln.quantity_text, "create_invoice", "amount", "How many of each line? I couldn't match the quantities to what you said.")
-            price = figure(ln.unit_price_text, "create_invoice", "amount", "What's the price of each line? I couldn't match the prices to what you said.")
+            qty = figure(
+                ln.quantity_text,
+                "create_invoice",
+                "amount",
+                "How many of each line? I couldn't match the quantities to what you said.",
+            )
+            price = figure(
+                ln.unit_price_text,
+                "create_invoice",
+                "amount",
+                "What's the price of each line? I couldn't match the prices to what you said.",
+            )
             if isinstance(qty, Clarification):
                 return qty
             if isinstance(price, Clarification):
                 return price
             if price is None:
                 continue
-            lines.append(LineIntent(description=ln.description.strip() or "Work", quantity=qty or Decimal(1), unit_price_pence=to_pence(price)))
-        amount = figure(out.amount_text, "create_invoice", "amount", "How much should the invoice be for? Say the amount, e.g. “£100”.")
+            lines.append(
+                LineIntent(
+                    description=ln.description.strip() or "Work",
+                    quantity=qty or Decimal(1),
+                    unit_price_pence=to_pence(price),
+                )
+            )
+        amount = figure(
+            out.amount_text,
+            "create_invoice",
+            "amount",
+            "How much should the invoice be for? Say the amount, e.g. “£100”.",
+        )
         if isinstance(amount, Clarification):
             return amount
         if not lines and amount is None:
-            return Clarification(kind="create_invoice", field="amount", question_md="How much should the invoice be for?")
+            return Clarification(
+                kind="create_invoice", field="amount", question_md="How much should the invoice be for?"
+            )
         terms = out.due_days  # terms the user did not say fall back to the profile's, like any other unsaid figure
         if terms is None or not 0 <= terms <= 120 or Decimal(terms) not in said:
             terms = None
         return CreateInvoiceIntent(
-            customer_ref=out.customer_ref.strip(), description=month_words(out.description or "Work", today),  # type: ignore[union-attr]
-            amount_pence=to_pence(amount) if amount is not None else None, amount_includes_vat=bool(out.amount_includes_vat),
-            lines=lines or None, vat_code=out.vat_code,
-            due_days=terms, send=bool(out.send),
+            customer_ref=(out.customer_ref or "").strip(),  # checked non-empty above
+            description=month_words(out.description or "Work", today),  # type: ignore[union-attr]
+            amount_pence=to_pence(amount) if amount is not None else None,
+            amount_includes_vat=bool(out.amount_includes_vat),
+            lines=lines or None,
+            vat_code=out.vat_code,
+            due_days=terms,
+            send=bool(out.send),
         )
     if out.kind == "chase_invoice":
         if not (out.customer_ref or out.invoice_ref):
-            return Clarification(kind="chase_invoice", field="invoice", question_md="Which invoice, or which customer, should I chase?")
+            return Clarification(
+                kind="chase_invoice", field="invoice", question_md="Which invoice, or which customer, should I chase?"
+            )
         return ChaseInvoiceIntent(customer_ref=out.customer_ref, invoice_ref=out.invoice_ref)
     if out.kind == "log_mileage":
         miles = figure(out.miles_text, "log_mileage", "miles", "How many miles was the journey?")
@@ -329,13 +365,19 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
         if isinstance(miles, Clarification):
             return miles
         if not (out.from_place and out.to_place):
-            return Clarification(kind="log_mileage", field="route", question_md="Where did the journey start and finish?")
+            return Clarification(
+                kind="log_mileage", field="route", question_md="Where did the journey start and finish?"
+            )
         d = day("log_mileage")
         if isinstance(d, Clarification):
             return d
         return LogMileageIntent(
-            miles=miles, from_place=out.from_place.strip(), to_place=out.to_place.strip(),
-            job_ref=out.job_ref, vehicle_ref=out.vehicle_ref, date=d,
+            miles=miles,
+            from_place=out.from_place.strip(),
+            to_place=out.to_place.strip(),
+            job_ref=out.job_ref,
+            vehicle_ref=out.vehicle_ref,
+            date=d,
         )
     if out.kind == "log_timesheet":
         hours = figure(out.hours_text, "log_timesheet", "hours", "How many hours?")
@@ -351,7 +393,11 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
         if isinstance(d, Clarification):
             return d
         return LogTimesheetIntent(
-            staff_ref=out.staff_ref.strip(), job_ref=out.job_ref.strip(), hours=hours, date=d, note=(out.description or "").strip()[:500],
+            staff_ref=out.staff_ref.strip(),
+            job_ref=out.job_ref.strip(),
+            hours=hours,
+            date=d,
+            note=(out.description or "").strip()[:500],
         )
     return None
 
@@ -389,7 +435,7 @@ def similarity(ref: str, name: str) -> float:
     want, words = supplier_key(ref).split("-"), supplier_key(name).split("-")
     if len(want) < len(words) and len("".join(want)) >= 3:
         for i in range(len(words) - len(want) + 1):
-            part = "".join(words[i:i + len(want)])
+            part = "".join(words[i : i + len(want)])
             ratio = max(ratio, PART_WEIGHT * difflib.SequenceMatcher(None, "".join(want), part).ratio())
     return ratio
 
@@ -406,8 +452,13 @@ def pick(ref: str, options: Sequence[Option], kind: ActionKind, field: str, noun
         return (exact or good)[0]
     if good:
         names = [p.option.name for p in good[:5]]
-        return Clarification(kind=kind, field=field, candidates=names, ref=ref,
-                             question_md=f"Which {noun} did you mean: {', '.join(names)}?")
+        return Clarification(
+            kind=kind,
+            field=field,
+            candidates=names,
+            ref=ref,
+            question_md=f"Which {noun} did you mean: {', '.join(names)}?",
+        )
     near = [p.option.name for p in scored if p.score >= NEAR_AT][:3]
     if not options:
         return Clarification(kind=kind, field=field, question_md=f"You don't have any {noun}s set up yet.")
@@ -464,10 +515,17 @@ def price_lines(lines: Sequence[tuple[str, Decimal, int, str]]) -> dict[str, Any
     for desc, qty, unit, code in lines:
         net = _half_up(qty * unit)
         vat = line_vat(net, code)
-        priced.append({
-            "description": desc, "quantity": format(qty.normalize(), "f"),  # 10 -> "10", not "1E+1"
-            "unit_price_pence": unit, "vat_code": code, "vat_rate": RATES[code], "net_pence": net, "vat_pence": vat,
-        })
+        priced.append(
+            {
+                "description": desc,
+                "quantity": format(qty.normalize(), "f"),  # 10 -> "10", not "1E+1"
+                "unit_price_pence": unit,
+                "vat_code": code,
+                "vat_rate": RATES[code],
+                "net_pence": net,
+                "vat_pence": vat,
+            }
+        )
         row = summary.setdefault(code, {"vat_code": code, "vat_rate": RATES[code], "net_pence": 0, "vat_pence": 0})
         row["net_pence"] += net
         row["vat_pence"] += vat
@@ -475,8 +533,11 @@ def price_lines(lines: Sequence[tuple[str, Decimal, int, str]]) -> dict[str, Any
     vat = sum(p["vat_pence"] for p in priced)
     order = list(RATES)
     return {
-        "lines": priced, "vat_summary": sorted(summary.values(), key=lambda r: order.index(r["vat_code"])),
-        "net_pence": net, "vat_pence": vat, "total_pence": net + vat,
+        "lines": priced,
+        "vat_summary": sorted(summary.values(), key=lambda r: order.index(r["vat_code"])),
+        "net_pence": net,
+        "vat_pence": vat,
+        "total_pence": net + vat,
     }
 
 
@@ -510,8 +571,19 @@ def _module(name: str, *attrs: str) -> ModuleType | None:
 
 def invoicing() -> ModuleType | None:
     """app/invoicing.py (claude/invoicing) when it is on this build."""
-    return _module("app.invoicing", "create_invoice", "send_invoice", "send_reminder", "list_invoices",
-                   "InvoiceDraft", "InvoiceCustomer", "LineIn", "price_lines", "load_profile", "sent_pdf")
+    return _module(
+        "app.invoicing",
+        "create_invoice",
+        "send_invoice",
+        "send_reminder",
+        "list_invoices",
+        "InvoiceDraft",
+        "InvoiceCustomer",
+        "LineIn",
+        "price_lines",
+        "load_profile",
+        "sent_pdf",
+    )
 
 
 def mileage() -> ModuleType | None:
@@ -566,28 +638,47 @@ async def resolve_invoice(books: Books, intent: CreateInvoiceIntent, today: date
         rows = [(intent.description, Decimal(1), unit, code)]
     priced = price_lines(rows)
     if intent.amount_includes_vat and intent.amount_pence and priced["total_pence"] != intent.amount_pence:
-        warnings.append(f"{money(intent.amount_pence)} can't be split exactly into net and VAT; the total is {money(priced['total_pence'])}.")
+        warnings.append(
+            f"{money(intent.amount_pence)} can't be split exactly into"
+            f" net and VAT; the total is {money(priced['total_pence'])}."
+        )
     terms = intent.due_days if intent.due_days is not None else int(profile.get("terms_days") or DEFAULT_TERMS_DAYS)
     due = today + timedelta(days=terms)
     email = contact.email or None
     send = intent.send and bool(email)
     if intent.send and not email:
-        warnings.append(f"{contact.name} has no email address in your contacts, so the invoice will be saved as a draft, not sent.")
+        warnings.append(
+            f"{contact.name} has no email address in your contacts, so the invoice will be saved as a draft, not sent."
+        )
     preview = {
-        "customer": {"contact_id": contact.id, "name": contact.name, "email": email, "address": contact.address, "vrn": contact.vrn},
-        "issue_date": today.isoformat(), "due_date": due.isoformat(), "terms_days": terms, "reference": None,
-        **priced, "send": send, "send_to": email if send else None, "warnings": warnings,
+        "customer": {
+            "contact_id": contact.id,
+            "name": contact.name,
+            "email": email,
+            "address": contact.address,
+            "vrn": contact.vrn,
+        },
+        "issue_date": today.isoformat(),
+        "due_date": due.isoformat(),
+        "terms_days": terms,
+        "reference": None,
+        **priced,
+        "send": send,
+        "send_to": email if send else None,
+        "warnings": warnings,
     }
     vat_words = f"VAT {money(priced['vat_pence'])}" if priced["vat_pence"] else "no VAT"
     head = "Send" if send else "Create"
     summary = (
         f"**{head} an invoice to {_md(contact.name)}** for **{money(priced['total_pence'])}** "
         f"({money(priced['net_pence'])} + {vat_words}), due {uk_date(due)}."
-        + (f"\n\n- {_md(intent.description)}" if not intent.lines else "".join(f"\n- {_md(ln['description'])}" for ln in priced["lines"]))
+        + (
+            f"\n\n- {_md(intent.description)}"
+            if not intent.lines
+            else "".join(f"\n- {_md(ln['description'])}" for ln in priced["lines"])
+        )
     )
-    confirm = (
-        f"Create the invoice and email it to {email}" if send else "Create the invoice as a draft (not sent)"
-    )
+    confirm = f"Create the invoice and email it to {email}" if send else "Create the invoice as a draft (not sent)"
     return Draft("create_invoice", summary, preview, confirm)
 
 
@@ -597,11 +688,19 @@ async def resolve_chase(books: Books, intent: ChaseInvoiceIntent, cfg: AiConfig,
     unpaid = await inv_mod.list_invoices(books, "sent")
     if intent.invoice_ref:
         digits = re.sub(r"\D", "", intent.invoice_ref)
-        found = [i for i in unpaid if i.number.upper() == intent.invoice_ref.strip().upper()
-                 or (digits and re.sub(r"\D", "", i.number).lstrip("0") == digits.lstrip("0"))]
+        found = [
+            i
+            for i in unpaid
+            if i.number.upper() == intent.invoice_ref.strip().upper()
+            or (digits and re.sub(r"\D", "", i.number).lstrip("0") == digits.lstrip("0"))
+        ]
         if not found:
-            return Clarification(kind="chase_invoice", field="invoice", candidates=[i.number for i in unpaid[:5]],
-                                 question_md=f"I couldn't find an unpaid invoice “{intent.invoice_ref}”.")
+            return Clarification(
+                kind="chase_invoice",
+                field="invoice",
+                candidates=[i.number for i in unpaid[:5]],
+                question_md=f"I couldn't find an unpaid invoice “{intent.invoice_ref}”.",
+            )
     else:
         options = [Option(i.number, i.customer.name, (), i) for i in unpaid]
         hit = pick(intent.customer_ref or "", options, "chase_invoice", "customer", "customer with an unpaid invoice")
@@ -610,24 +709,39 @@ async def resolve_chase(books: Books, intent: ChaseInvoiceIntent, cfg: AiConfig,
         found = [i for i in unpaid if _norm(i.customer.name) == _norm(hit.option.name)]
     if len(found) > 1:
         names = [f"{i.number} ({money(i.total_pence)})" for i in found[:5]]
-        return Clarification(kind="chase_invoice", field="invoice", candidates=[i.number for i in found[:5]],
-                             question_md=f"Which invoice should I chase: {', '.join(names)}?")
+        return Clarification(
+            kind="chase_invoice",
+            field="invoice",
+            candidates=[i.number for i in found[:5]],
+            question_md=f"Which invoice should I chase: {', '.join(names)}?",
+        )
     inv = found[0]
     from app.ai import remind  # only with invoicing
 
     draft = await remind.draft_reminder(inv, await inv_mod.load_profile(books), cfg, today)
     if not draft.to:
-        return Clarification(kind="chase_invoice", field="customer",
-                             question_md=f"{_md(inv.customer.name)} has no email address on invoice {inv.number}; add one first.")
+        return Clarification(
+            kind="chase_invoice",
+            field="customer",
+            question_md=f"{_md(inv.customer.name)} has no email address on invoice {inv.number}; add one first.",
+        )
     overdue = (today - inv.due_date).days
     when = f"{overdue} days overdue" if overdue > 0 else f"due {uk_date(inv.due_date)}"
     preview = {
-        "invoice": inv.number, "customer": inv.customer.name, "total_pence": inv.total_pence, "due_date": inv.due_date.isoformat(),
-        "days_overdue": max(overdue, 0), "to": draft.to, "subject": draft.subject, "body": draft.body,
+        "invoice": inv.number,
+        "customer": inv.customer.name,
+        "total_pence": inv.total_pence,
+        "due_date": inv.due_date.isoformat(),
+        "days_overdue": max(overdue, 0),
+        "to": draft.to,
+        "subject": draft.subject,
+        "body": draft.body,
         "warnings": [f"The message was written by code: {draft.fallback_reason}"] if draft.fallback_reason else [],
     }
-    summary = (f"**Chase {_md(inv.customer.name)}** about invoice **{inv.number}** for **{money(inv.total_pence)}** "
-               f"({when}).\n\n> " + _md(draft.body).replace("\n", "\n> "))
+    summary = (
+        f"**Chase {_md(inv.customer.name)}** about invoice **{inv.number}** for **{money(inv.total_pence)}** "
+        f"({when}).\n\n> " + _md(draft.body).replace("\n", "\n> ")
+    )
     return Draft("chase_invoice", summary, preview, f"Email this reminder to {draft.to}")
 
 
@@ -645,8 +759,14 @@ async def resolve_timesheet(books: Books, intent: LogTimesheetIntent, today: dat
     warnings = [] if hours == intent.hours else [f"{intent.hours} hours rounded to the nearest quarter: {hours}."]
     day = intent.date or today
     preview = {
-        "staff_id": staff.option.id, "staff_name": staff.option.name, "job_id": job.option.id, "job_name": job.option.name,
-        "date": day.isoformat(), "hours": str(hours), "note": intent.note, "warnings": warnings,
+        "staff_id": staff.option.id,
+        "staff_name": staff.option.name,
+        "job_id": job.option.id,
+        "job_name": job.option.name,
+        "date": day.isoformat(),
+        "hours": str(hours),
+        "note": intent.note,
+        "warnings": warnings,
     }
     summary = f"**Log {hours} hours** for **{_md(staff.option.name)}** on **{_md(job.option.name)}**, {uk_date(day)}."
     return Draft("log_timesheet", summary, preview, "Add the hours to the timesheet")
@@ -662,10 +782,14 @@ async def resolve_mileage(books: Books, intent: LogMileageIntent, today: date) -
     elif len(vehicles) == 1:
         vehicle = vehicles[0]
     elif not vehicles:
-        return Clarification(kind="log_mileage", field="vehicle", question_md="Add a vehicle on the Vehicles page first.")
+        return Clarification(
+            kind="log_mileage", field="vehicle", question_md="Add a vehicle on the Vehicles page first."
+        )
     else:
         names = [v.name for v in vehicles[:5]]
-        return Clarification(kind="log_mileage", field="vehicle", candidates=names, question_md=f"Which vehicle: {', '.join(names)}?")
+        return Clarification(
+            kind="log_mileage", field="vehicle", candidates=names, question_md=f"Which vehicle: {', '.join(names)}?"
+        )
     job = None
     if intent.job_ref:
         hit = pick(intent.job_ref, await job_options(books), "log_mileage", "job", "open job")
@@ -675,12 +799,21 @@ async def resolve_mileage(books: Books, intent: LogMileageIntent, today: date) -
     miles = intent.miles.quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
     day = intent.date or today
     preview = {
-        "vehicle_id": vehicle.id, "vehicle_name": vehicle.name, "date": day.isoformat(), "from": intent.from_place,
-        "to": intent.to_place, "miles": str(miles), "job_id": job.id if job else None, "job_name": job.name if job else None,
+        "vehicle_id": vehicle.id,
+        "vehicle_name": vehicle.name,
+        "date": day.isoformat(),
+        "from": intent.from_place,
+        "to": intent.to_place,
+        "miles": str(miles),
+        "job_id": job.id if job else None,
+        "job_name": job.name if job else None,
         "warnings": [],
     }
-    summary = (f"**Log {miles} miles** in **{_md(vehicle.name)}**, {_md(intent.from_place)} to {_md(intent.to_place)}, {uk_date(day)}"
-               + (f", for {_md(job.name)}." if job else "."))
+    summary = (
+        f"**Log {miles} miles** in **{_md(vehicle.name)}**,"
+        f" {_md(intent.from_place)} to {_md(intent.to_place)}, {uk_date(day)}"
+        + (f", for {_md(job.name)}." if job else ".")
+    )
     return Draft("log_mileage", summary, preview, "Add the journey to the mileage log")
 
 
@@ -707,12 +840,15 @@ def _tenant() -> bytes:
 
 
 def _payload(action: ProposedAction) -> bytes:
-    return json.dumps(action.model_dump(mode="json", exclude={"signature"}), sort_keys=True, separators=(",", ":"),
-                      ensure_ascii=False).encode()
+    return json.dumps(
+        action.model_dump(mode="json", exclude={"signature"}), sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    ).encode()
 
 
 def sign(action: ProposedAction, graph_token: str) -> ProposedAction:
-    return action.model_copy(update={"signature": hmac.new(_key(graph_token), _payload(action), hashlib.sha256).hexdigest()})
+    return action.model_copy(
+        update={"signature": hmac.new(_key(graph_token), _payload(action), hashlib.sha256).hexdigest()}
+    )
 
 
 def verify(action: ProposedAction, graph_token: str, at: datetime | None = None, check_expiry: bool = True) -> None:
@@ -726,8 +862,13 @@ def verify(action: ProposedAction, graph_token: str, at: datetime | None = None,
 def new_action(draft: Draft, graph_token: str, at: datetime | None = None) -> ProposedAction:
     created = (at or now()).astimezone(UTC).replace(microsecond=0)
     action = ProposedAction(
-        id=uuid.uuid4().hex, kind=draft.kind, summary_md=draft.summary_md, preview=draft.preview,
-        confirm_text=draft.confirm_text, created_at=created, expires_at=created + TTL,
+        id=uuid.uuid4().hex,
+        kind=draft.kind,
+        summary_md=draft.summary_md,
+        preview=draft.preview,
+        confirm_text=draft.confirm_text,
+        created_at=created,
+        expires_at=created + TTL,
     )
     return sign(action, graph_token)
 
@@ -755,7 +896,11 @@ async def read_intent(question: str, cfg: AiConfig) -> IntentModelOutput | None:
 
 
 async def propose(
-    question: str, books: Books, cfg: AiConfig, graph_token: str, today: date | None = None,
+    question: str,
+    books: Books,
+    cfg: AiConfig,
+    graph_token: str,
+    today: date | None = None,
 ) -> ProposedAction | Clarification | NotAvailable | None:
     """None when the question is not an instruction (Ask answers it as usual)."""
     if not looks_like_action(question):
@@ -827,8 +972,15 @@ async def _append(books: Books, action: ProposedAction, row: dict[str, Any]) -> 
 
 async def _claim(books: Books, action: ProposedAction, user: str) -> dict[str, Any] | None:
     """Mark the action as being approved. Returns the earlier result when it was already done."""
-    row = {"ts": now().isoformat(), "action_id": action.id, "kind": action.kind, "event": "approving", "user": user,
-           "summary_md": action.summary_md, "preview": action.preview}
+    row = {
+        "ts": now().isoformat(),
+        "action_id": action.id,
+        "kind": action.kind,
+        "event": "approving",
+        "user": user,
+        "summary_md": action.summary_md,
+        "preview": action.preview,
+    }
 
     def change(raw: bytes | None) -> bytes:
         events = [r for r in _rows(raw) if r.get("action_id") == action.id]
@@ -839,9 +991,14 @@ async def _claim(books: Books, action: ProposedAction, user: str) -> dict[str, A
             raise ActionError("You rejected this proposal; ask again to make a new one.", 409)
         if last and last.get("event") == "approving":
             if _stale(last):
-                raise ActionError("The earlier approval of this action did not finish, so it may or may not have happened. "
-                                  "Check, then reject this card and ask again if it is still needed.", 409)
-            raise ActionError("This action is already being approved. If nothing happened, check before asking again.", 409)
+                raise ActionError(
+                    "The earlier approval of this action did not finish, so it may or may not have happened. "
+                    "Check, then reject this card and ask again if it is still needed.",
+                    409,
+                )
+            raise ActionError(
+                "This action is already being approved. If nothing happened, check before asking again.", 409
+            )
         return (raw or b"") + _line(row)  # a failed attempt may be retried
 
     try:
@@ -864,13 +1021,19 @@ Executor = Callable[[ProposedAction, Context], Awaitable[tuple[str, dict[str, An
 async def run_timesheet(action: ProposedAction, ctx: Context) -> tuple[str, dict[str, Any]]:
     p = action.preview
     entry = jobs_.TimesheetEntry(
-        id=action.id[:12], staff_id=p["staff_id"], job_id=p["job_id"], date=date.fromisoformat(p["date"]),
-        hours=p["hours"], note=p.get("note") or "",
+        id=action.id[:12],
+        staff_id=p["staff_id"],
+        job_id=p["job_id"],
+        date=date.fromisoformat(p["date"]),
+        hours=p["hours"],
+        note=p.get("note") or "",
     )
     await jobs_.add_entry(ctx.books, entry)
     await ctx.books.audit(f"user:{ctx.user}", "timesheet_added", {"entry": entry.id, "action": action.id})
-    return (f"Logged {p['hours']} hours for {_md(p['staff_name'])} on {_md(p['job_name'])}.",
-            {"entry_id": entry.id, "hours": p["hours"], "date": p["date"]})
+    return (
+        f"Logged {p['hours']} hours for {_md(p['staff_name'])} on {_md(p['job_name'])}.",
+        {"entry_id": entry.id, "hours": p["hours"], "date": p["date"]},
+    )
 
 
 async def run_mileage(action: ProposedAction, ctx: Context) -> tuple[str, dict[str, Any]]:
@@ -878,12 +1041,21 @@ async def run_mileage(action: ProposedAction, ctx: Context) -> tuple[str, dict[s
     if mod is None:
         raise ActionError(UNAVAILABLE["log_mileage"], 501)
     p = action.preview
-    try:  # fields as in the vehicles & mileage contract: {id, vehicle_id, date, from, to, miles, purpose, job_id, source}
-        entry = mod.MileageEntry.model_validate({
-            "id": action.id[:12], "vehicle_id": p["vehicle_id"], "date": p["date"], "from": p["from"], "to": p["to"],
-            "miles": p["miles"], "purpose": p.get("job_name") or f"{p['from']} to {p['to']}"[:200],
-            "job_id": p.get("job_id"), "source": "manual",
-        })
+    # Fields as in the vehicles & mileage contract: {id, vehicle_id, date, from, to, miles, purpose, job_id, source}
+    try:
+        entry = mod.MileageEntry.model_validate(
+            {
+                "id": action.id[:12],
+                "vehicle_id": p["vehicle_id"],
+                "date": p["date"],
+                "from": p["from"],
+                "to": p["to"],
+                "miles": p["miles"],
+                "purpose": p.get("job_name") or f"{p['from']} to {p['to']}"[:200],
+                "job_id": p.get("job_id"),
+                "source": "manual",
+            }
+        )
     except (ValidationError, AttributeError) as exc:
         raise ActionError("The mileage log in this version doesn't accept journeys from Ask yet.", 501) from exc
     entry = await mod.add_entry(ctx.books, entry, ctx.user)  # audited as user:<X-User>
@@ -903,19 +1075,31 @@ async def run_invoice(action: ProposedAction, ctx: Context) -> tuple[str, dict[s
         raise ActionError(UNAVAILABLE["create_invoice"], 501)
     p = action.preview
     lines = [
-        inv_mod.LineIn(description=ln["description"], quantity=Decimal(ln["quantity"]), unit_price_pence=ln["unit_price_pence"],
-                       vat_code=ln["vat_code"])
+        inv_mod.LineIn(
+            description=ln["description"],
+            quantity=Decimal(ln["quantity"]),
+            unit_price_pence=ln["unit_price_pence"],
+            vat_code=ln["vat_code"],
+        )
         for ln in p["lines"]
     ]
     _, _, net, vat = inv_mod.price_lines(lines)
     if (net, vat) != (p["net_pence"], p["vat_pence"]):  # the invoice module is the authority on money
         raise ActionError("The invoice totals no longer match what you approved; ask again.", 409)
     draft = inv_mod.InvoiceDraft(
-        customer=inv_mod.InvoiceCustomer(**p["customer"]), issue_date=date.fromisoformat(p["issue_date"]),
-        due_date=date.fromisoformat(p["due_date"]), lines=lines, notes=None,
+        customer=inv_mod.InvoiceCustomer(**p["customer"]),
+        issue_date=date.fromisoformat(p["issue_date"]),
+        due_date=date.fromisoformat(p["due_date"]),
+        lines=lines,
+        notes=None,
     )
     inv = await inv_mod.create_invoice(ctx.books, draft, ctx.user)
-    result: dict[str, Any] = {"invoice": inv.number, "total_pence": inv.total_pence, "status": inv.status, "sent_to": None}
+    result: dict[str, Any] = {
+        "invoice": inv.number,
+        "total_pence": inv.total_pence,
+        "status": inv.status,
+        "sent_to": None,
+    }
     if not p.get("send"):
         return f"Invoice **{inv.number}** for {money(inv.total_pence)} saved as a draft.", result
     try:
@@ -930,8 +1114,11 @@ async def run_invoice(action: ProposedAction, ctx: Context) -> tuple[str, dict[s
                 await sender.aclose()
     except Exception as exc:  # noqa: BLE001  the invoice exists either way; say why it was not sent
         result["send_error"] = str(exc)[:300]
-        return (f"Invoice **{inv.number}** for {money(inv.total_pence)} was saved as a draft but **not sent**: "
-                f"{_md(str(exc)[:200])}. Open Invoices to send it.", result)
+        return (
+            f"Invoice **{inv.number}** for {money(inv.total_pence)} was saved as a draft but **not sent**: "
+            f"{_md(str(exc)[:200])}. Open Invoices to send it.",
+            result,
+        )
     result.update(status=inv.status, sent_to=inv.sent_to)
     return f"Invoice **{inv.number}** for {money(inv.total_pence)} sent to {_md(inv.sent_to or '')}.", result
 
@@ -946,18 +1133,29 @@ async def run_chase(action: ProposedAction, ctx: Context) -> tuple[str, dict[str
         raise ActionError("Email is not available on this runtime.", 501)
     try:
         inv = await inv_mod.send_reminder(
-            ctx.books, sender, p["invoice"], ctx.user, to=p["to"], subject=p["subject"], body=p["body"],
+            ctx.books,
+            sender,
+            p["invoice"],
+            ctx.user,
+            to=p["to"],
+            subject=p["subject"],
+            body=p["body"],
             pdf=await inv_mod.sent_pdf(ctx.books, p["invoice"]),
         )
     finally:
         if hasattr(sender, "aclose"):
             await sender.aclose()
-    return (f"Reminder for invoice **{inv.number}** sent to {_md(p['to'])}.",
-            {"invoice": inv.number, "sent_to": p["to"], "reminders": len(inv.reminders)})
+    return (
+        f"Reminder for invoice **{inv.number}** sent to {_md(p['to'])}.",
+        {"invoice": inv.number, "sent_to": p["to"], "reminders": len(inv.reminders)},
+    )
 
 
 EXECUTORS: dict[str, Executor] = {
-    "create_invoice": run_invoice, "chase_invoice": run_chase, "log_mileage": run_mileage, "log_timesheet": run_timesheet,
+    "create_invoice": run_invoice,
+    "chase_invoice": run_chase,
+    "log_mileage": run_mileage,
+    "log_timesheet": run_timesheet,
 }
 
 
@@ -966,8 +1164,13 @@ async def approve(action: ProposedAction, ctx: Context) -> ActionResult:
     verify(action, ctx.graph_token)
     earlier = await _claim(ctx.books, action, ctx.user)
     if earlier is not None:
-        return ActionResult(action_id=action.id, kind=action.kind, status="already_done",
-                            summary_md=earlier.get("result_md", ""), result=earlier.get("result", {}))
+        return ActionResult(
+            action_id=action.id,
+            kind=action.kind,
+            status="already_done",
+            summary_md=earlier.get("result_md", ""),
+            result=earlier.get("result", {}),
+        )
     try:
         summary, result = await EXECUTORS[action.kind](action, ctx)
     except Exception as exc:
@@ -984,8 +1187,15 @@ async def reject(action: ProposedAction, ctx: Context, reason: str | None = None
     also how an `approving` line older than APPROVING_STALE is cleared (the run that wrote it died).
     """
     verify(action, ctx.graph_token, check_expiry=False)
-    row = {"ts": now().isoformat(), "action_id": action.id, "kind": action.kind, "event": "rejected", "user": ctx.user,
-           "reason": (reason or "").strip()[:300] or None, "summary_md": action.summary_md}
+    row = {
+        "ts": now().isoformat(),
+        "action_id": action.id,
+        "kind": action.kind,
+        "event": "rejected",
+        "user": ctx.user,
+        "reason": (reason or "").strip()[:300] or None,
+        "summary_md": action.summary_md,
+    }
 
     def change(raw: bytes | None) -> bytes:
         events = [r for r in _rows(raw) if r.get("action_id") == action.id]

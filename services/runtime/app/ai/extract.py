@@ -135,9 +135,7 @@ def normalise_rates(obj: dict) -> None:
             line["vat_rate"] = round(rate * 100, 2)
 
 
-async def extract_document(
-    image_bytes: bytes, mime: str, cfg: AiConfig
-) -> tuple[ExtractedDoc, dict[str, Any]]:
+async def extract_document(image_bytes: bytes, mime: str, cfg: AiConfig) -> tuple[ExtractedDoc, dict[str, Any]]:
     """Run the configured vision model; return the validated doc and call metadata.
 
     Metadata keys: backend, model, elapsed_s, usage, raw (model text).

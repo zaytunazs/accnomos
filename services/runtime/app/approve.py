@@ -14,15 +14,14 @@ from datetime import date
 from typing import Any
 
 from accnomos_ledger.events import LedgerEvent, Line, VatCode
-
 from app.autopilot import ACTOR as AUTOPILOT_ACTOR
 from app.autopilot import AUTOPILOT, rule_from_proposal, save_rule
 from app.books import Books, Rule, RuleMatch, now
-from app.paths import NEEDS_A_LOOK, upgrade
 from app.checks import decide, normalise_vat_number
 from app.contacts import forget_from_undo, learn_from_approval
 from app.journal import VAT_CONTROL, draft_journal, with_expense_account
 from app.mileage import load_vehicles
+from app.paths import NEEDS_A_LOOK, upgrade
 from app.schemas import CATEGORIES, ExtractedDoc, JournalLine, Proposal
 
 log = logging.getLogger(__name__)
@@ -80,9 +79,14 @@ def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEve
     except ValueError as exc:
         raise ApprovalError(f"Date {doc.date!r} is not YYYY-MM-DD") from exc
     lines = [
-        Line(account=j.account, debit=j.debit_pence, credit=j.credit_pence,
-             vat_code=VatCode(j.vat_code) if j.vat_code else None)
-        for j in journal if j.debit_pence or j.credit_pence
+        Line(
+            account=j.account,
+            debit=j.debit_pence,
+            credit=j.credit_pence,
+            vat_code=VatCode(j.vat_code) if j.vat_code else None,
+        )
+        for j in journal
+        if j.debit_pence or j.credit_pence
     ]
     if len(lines) < 2:
         raise ApprovalError("Nothing to post: enter the amounts first")
@@ -95,8 +99,15 @@ def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEve
     try:
         return LedgerEvent(
             id=event_id,
-            kind="sale" if sale else "purchase", date=when, lines=lines, evidence=[p.doc_sha256],
-            approved_by=user, approved_at=now(), proposal_id=p.id, net=gross - vat, vat=vat,
+            kind="sale" if sale else "purchase",
+            date=when,
+            lines=lines,
+            evidence=[p.doc_sha256],
+            approved_by=user,
+            approved_at=now(),
+            proposal_id=p.id,
+            net=gross - vat,
+            vat=vat,
             counterparty=(doc.customer_name if sale else None) or doc.supplier_name,
         )
     except ValueError as exc:  # e.g. unbalanced; draft_journal should make this impossible
@@ -111,8 +122,13 @@ async def _open_proposal(books: Books, proposal_id: str) -> Proposal:
 
 
 async def approve(
-    books: Books, proposal_id: str, user: str, edits: dict[str, Any] | None = None, always: bool = False,
-    *, rebuild: bool = True,
+    books: Books,
+    proposal_id: str,
+    user: str,
+    edits: dict[str, Any] | None = None,
+    always: bool = False,
+    *,
+    rebuild: bool = True,
 ) -> Proposal:
     """Post the proposal to the ledger as `user`; with `always`, remember this supplier's treatment
     (the account rule and the Autopilot rule)."""
@@ -144,11 +160,21 @@ async def approve(
     auto_rule = rule_from_proposal(p, user) if always else None
     if auto_rule:
         await save_rule(books, auto_rule)
-    await books.audit(_actor(user), "approved", {
-        "proposal": p.id, "event": event.id, "event_path": event_path, "doc": p.doc_sha256,
-        "edits": sorted((edits or {}).keys()), "rule": rule.match.supplier_regex if rule else None,
-        "autopilot_rule": auto_rule.supplier_key if auto_rule else None, "job": p.job_id, "vehicle": p.vehicle_id,
-    })
+    await books.audit(
+        _actor(user),
+        "approved",
+        {
+            "proposal": p.id,
+            "event": event.id,
+            "event_path": event_path,
+            "doc": p.doc_sha256,
+            "edits": sorted((edits or {}).keys()),
+            "rule": rule.match.supplier_regex if rule else None,
+            "autopilot_rule": auto_rule.supplier_key if auto_rule else None,
+            "job": p.job_id,
+            "vehicle": p.vehicle_id,
+        },
+    )
     if rebuild:
         await books.rebuild_safely(_actor(user))
     return p
@@ -185,7 +211,9 @@ async def _vehicle_tag(books: Books, p: Proposal, vehicle_id: Any) -> str | None
     if v is None:
         raise ApprovalError(f"No such vehicle {vehicle_id!r}")
     if v.owned_by != "business":
-        raise ApprovalError(f"{v.name} is a personal vehicle: the mileage allowance covers its running costs, so receipts aren't tagged to it")
+        raise ApprovalError(
+            f"{v.name} is a personal vehicle: the mileage allowance covers its running costs, so receipts aren't tagged to it"
+        )
     return v.id
 
 
@@ -208,7 +236,9 @@ async def _remember(books: Books, p: Proposal, user: str) -> Rule | None:
     expense = next((j.account for j in p.journal_draft if j.debit_pence and j.account != VAT_CONTROL), None)
     if p.extracted.doc_type == "sales_invoice" or expense is None:
         return None
-    rule = Rule(match=RuleMatch(supplier_regex=re.escape(p.extracted.supplier_name.strip())), account=expense, source="user")
+    rule = Rule(
+        match=RuleMatch(supplier_regex=re.escape(p.extracted.supplier_name.strip())), account=expense, source="user"
+    )
     await books.add_rule(rule)
     return rule
 
@@ -220,7 +250,9 @@ async def reject(books: Books, proposal_id: str, user: str, reason: str) -> Prop
         await books.file_document(p, p.file_path, NEEDS_A_LOOK)
     p.status, p.reject_reason, p.decided_by, p.decided_at = "rejected", reason, user, now()
     await books.save_proposal(p)
-    await books.audit(f"user:{user}", "rejected", {"proposal": p.id, "doc": p.doc_sha256, "reason": reason, "path": p.file_path})
+    await books.audit(
+        f"user:{user}", "rejected", {"proposal": p.id, "doc": p.doc_sha256, "reason": reason, "path": p.file_path}
+    )
     await books.rebuild_safely(f"user:{user}")
     return p
 
@@ -232,11 +264,21 @@ def reversal_of(event: LedgerEvent, user: str) -> LedgerEvent:
     reversals negatively). Its id is derived from the original's, so a retried undo cannot post twice.
     """
     return LedgerEvent(
-        id=hashlib.sha256(f"{event.id}:undo".encode()).hexdigest()[:32], kind="reversal", date=event.date,
-        lines=[Line(account=ln.account, debit=ln.credit, credit=ln.debit, vat_code=ln.vat_code, memo=f"Undo of {event.id}")
-               for ln in event.lines],
-        evidence=event.evidence, approved_by=user, approved_at=now(), proposal_id=event.proposal_id,
-        reverses=event.id, net=event.net, vat=event.vat, counterparty=event.counterparty,
+        id=hashlib.sha256(f"{event.id}:undo".encode()).hexdigest()[:32],
+        kind="reversal",
+        date=event.date,
+        lines=[
+            Line(account=ln.account, debit=ln.credit, credit=ln.debit, vat_code=ln.vat_code, memo=f"Undo of {event.id}")
+            for ln in event.lines
+        ],
+        evidence=event.evidence,
+        approved_by=user,
+        approved_at=now(),
+        proposal_id=event.proposal_id,
+        reverses=event.id,
+        net=event.net,
+        vat=event.vat,
+        counterparty=event.counterparty,
     )
 
 
@@ -258,14 +300,27 @@ async def undo(books: Books, event_id: str, user: str) -> tuple[LedgerEvent, Pro
     p = await _reopen(books, original)
     if p is not None:
         await forget_from_undo(books, p, f"user:{user}")
-    await books.audit(f"user:{user}", "undone", {
-        "event": event_id, "reversal": reversal.id, "reversal_path": path, "proposal": original.proposal_id,
-        "originally_approved_by": original.approved_by,
-    })
+    await books.audit(
+        f"user:{user}",
+        "undone",
+        {
+            "event": event_id,
+            "reversal": reversal.id,
+            "reversal_path": path,
+            "proposal": original.proposal_id,
+            "originally_approved_by": original.approved_by,
+        },
+    )
     if original.approved_by == AUTOPILOT:
-        await books.audit_autopilot(f"user:{user}", "undone", {
-            "event": event_id, "reversal": reversal.id, "proposal": original.proposal_id,
-        })
+        await books.audit_autopilot(
+            f"user:{user}",
+            "undone",
+            {
+                "event": event_id,
+                "reversal": reversal.id,
+                "proposal": original.proposal_id,
+            },
+        )
     await books.rebuild_safely(f"user:{user}")
     return reversal, p
 

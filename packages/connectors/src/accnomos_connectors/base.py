@@ -125,6 +125,8 @@ class ContactsProvider(ABC):
 
     @abstractmethod
     async def list_contacts(self, max_results: int = 1000) -> list[AddressBookContact]: ...
+
+
 class OutgoingAttachment(BaseModel):
     name: str
     content_type: str

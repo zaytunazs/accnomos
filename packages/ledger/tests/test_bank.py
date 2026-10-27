@@ -3,9 +3,17 @@
 from datetime import date, datetime
 
 import pytest
+
 from accnomos_ledger import LedgerEvent, Line, VatCode
 from accnomos_ledger.bank import (
-    BankCsvError, detect_bank, line_id, parse_amount, parse_bank_csv, parse_date, reconciled_to, suggest_action,
+    BankCsvError,
+    detect_bank,
+    line_id,
+    parse_amount,
+    parse_bank_csv,
+    parse_date,
+    reconciled_to,
+    suggest_action,
 )
 from accnomos_ledger.matching import settlement_pence, suggest_matches, tokens
 
@@ -14,10 +22,13 @@ STARLING = b"""Date,Counter Party,Reference,Type,Amount (GBP),Balance (GBP),Spen
 22/10/2026,Acme Kitchens Ltd,INV-0042,FASTER PAYMENT,"1,200.00","2,161.53",INCOME,
 """
 
-LLOYDS = b"""Transaction Date,Transaction Type,Sort Code,Account Number,Transaction Description,Debit Amount,Credit Amount,Balance
+LLOYDS = (
+    b"Transaction Date,Transaction Type,Sort Code,Account Number,Transaction Description,Debit Amount,Credit Amount,"
+    b"""Balance
 21/10/2026,DEB,'30-99-50,12345678,TOOLSTATION 1234 CD 1234,12.00,,988.00
 23-10-2026,FPI,'30-99-50,12345678,ACME KITCHENS INV 43,,250.50,"1,238.50"
 """
+)
 
 HSBC = """Statement for SAMPLE — FICTIONAL COMPANY LTD
 Account,12345678
@@ -32,7 +43,12 @@ Date,Details,Paid out,Paid in,Balance,Ref
 def test_starling_signed_amount_column() -> None:
     a, b = parse_bank_csv(STARLING, "starling.csv")
     assert (a.date, a.amount_pence, a.description, a.reference, a.balance_pence) == (
-        date(2026, 10, 21), -3847, "SCREWFIX DIRECT", "CARD 1234", 96153)
+        date(2026, 10, 21),
+        -3847,
+        "SCREWFIX DIRECT",
+        "CARD 1234",
+        96153,
+    )
     assert (b.amount_pence, b.balance_pence, b.source_file, b.status) == (120000, 216153, "starling.csv", "unmatched")
     assert a.id == line_id(a.date, -3847, "SCREWFIX DIRECT", 96153) and len(a.id) == 16
 
@@ -51,11 +67,18 @@ def test_hsbc_preamble_parentheses_cr_dr_and_text_dates() -> None:
 
 
 def test_tide_transaction_information_and_paid_columns() -> None:
-    csv = (b"Transaction ID,Transaction Date,Transaction Type,Transaction Information,Paid In,Paid Out,Balance\n"
-           b"TD1,2026-07-01,TRANSFER,INSURANCE DIRECT DD,,64.00,5475.00\n"
-           b"TD2,2026-07-06,Faster Payment In,NORTHGATE TIMBER CN8525,128.76,,5603.76\n")
+    csv = (
+        b"Transaction ID,Transaction Date,Transaction Type,Transaction Information,Paid In,Paid Out,Balance\n"
+        b"TD1,2026-07-01,TRANSFER,INSURANCE DIRECT DD,,64.00,5475.00\n"
+        b"TD2,2026-07-06,Faster Payment In,NORTHGATE TIMBER CN8525,128.76,,5603.76\n"
+    )
     out, inn = parse_bank_csv(csv, "tide.csv")
-    assert (out.date, out.amount_pence, out.description, out.balance_pence) == (date(2026, 7, 1), -6400, "INSURANCE DIRECT DD", 547500)
+    assert (out.date, out.amount_pence, out.description, out.balance_pence) == (
+        date(2026, 7, 1),
+        -6400,
+        "INSURANCE DIRECT DD",
+        547500,
+    )
     assert (inn.amount_pence, inn.description) == (12876, "NORTHGATE TIMBER CN8525")
 
 
@@ -78,16 +101,26 @@ def test_detect_bank_falls_back_to_bank() -> None:
 
 
 def test_suggested_actions_for_unmatched_lines() -> None:
-    csv = (b"Date,Description,Amount\n21/10/2026,TFR TO SAVINGS,-100.00\n21/10/2026,MONTHLY ACCOUNT FEE,-5.00\n"
-           b"21/10/2026,CARD REVERSAL,0.00\n21/10/2026,COFFEE,-2.50\n21/10/2026,MYSTERY CREDIT,10.00\n")
+    csv = (
+        b"Date,Description,Amount\n21/10/2026,TFR TO SAVINGS,-100.00\n21/10/2026,MONTHLY ACCOUNT FEE,-5.00\n"
+        b"21/10/2026,CARD REVERSAL,0.00\n21/10/2026,COFFEE,-2.50\n21/10/2026,MYSTERY CREDIT,10.00\n"
+    )
     hints = [suggest_action(ln) for ln in parse_bank_csv(csv, "s.csv")]
-    assert [h.action for h in hints] == ["mark_transfer", "create_expense_proposal", "ignore", "create_expense_proposal", "ignore"]
+    assert [h.action for h in hints] == [
+        "mark_transfer",
+        "create_expense_proposal",
+        "ignore",
+        "create_expense_proposal",
+        "ignore",
+    ]
     assert "bank charges" in hints[1].reason
 
 
 def test_reconciled_to_stops_before_the_first_open_day() -> None:
-    lines = parse_bank_csv(b"Date,Description,Amount\n01/10/2026,A,-1.00\n03/10/2026,B,-2.00\n03/10/2026,C,-3.00\n"
-                           b"05/10/2026,D,-4.00\n", "s.csv")
+    lines = parse_bank_csv(
+        b"Date,Description,Amount\n01/10/2026,A,-1.00\n03/10/2026,B,-2.00\n03/10/2026,C,-3.00\n05/10/2026,D,-4.00\n",
+        "s.csv",
+    )
     assert reconciled_to([]) is None and reconciled_to(lines) is None
     lines[0].status, lines[1].status, lines[3].status = "matched", "transfer", "ignored"
     assert reconciled_to(lines) == date(2026, 10, 1)  # 3 Oct is only half done
@@ -110,18 +143,36 @@ def test_not_a_statement() -> None:
 def _purchase(gross: int, when: date, who: str, eid: str) -> LedgerEvent:
     net = round(gross / 1.2)
     return LedgerEvent(
-        id=eid, kind="purchase", date=when, counterparty=who, net=net, vat=gross - net,
-        approved_by="sam@example.co.uk", approved_at=datetime(2026, 10, 25, 9, 0),
-        lines=[Line(account="5100 Tools", debit=net, vat_code=VatCode.STANDARD),
-               Line(account="2200 VAT control", debit=gross - net), Line(account="1200 Bank", credit=gross)],
+        id=eid,
+        kind="purchase",
+        date=when,
+        counterparty=who,
+        net=net,
+        vat=gross - net,
+        approved_by="sam@example.co.uk",
+        approved_at=datetime(2026, 10, 25, 9, 0),
+        lines=[
+            Line(account="5100 Tools", debit=net, vat_code=VatCode.STANDARD),
+            Line(account="2200 VAT control", debit=gross - net),
+            Line(account="1200 Bank", credit=gross),
+        ],
     )
 
 
 def _sale(gross: int, when: date, who: str, eid: str) -> LedgerEvent:
     return LedgerEvent(
-        id=eid, kind="sale", date=when, counterparty=who, net=gross, vat=0,
-        approved_by="sam@example.co.uk", approved_at=datetime(2026, 10, 25, 9, 0),
-        lines=[Line(account="1100 Debtors", debit=gross), Line(account="4000 Sales", credit=gross, vat_code=VatCode.ZERO)],
+        id=eid,
+        kind="sale",
+        date=when,
+        counterparty=who,
+        net=gross,
+        vat=0,
+        approved_by="sam@example.co.uk",
+        approved_at=datetime(2026, 10, 25, 9, 0),
+        lines=[
+            Line(account="1100 Debtors", debit=gross),
+            Line(account="4000 Sales", credit=gross, vat_code=VatCode.ZERO),
+        ],
     )
 
 
@@ -137,7 +188,10 @@ def test_settlement_and_tokens() -> None:
 
 def test_exact_match_same_day_with_name_and_card() -> None:
     lines = _lines(STARLING)
-    events = [_purchase(3847, date(2026, 10, 21), "Screwfix", "e1"), _sale(120000, date(2026, 10, 22), "Acme Kitchens", "e2")]
+    events = [
+        _purchase(3847, date(2026, 10, 21), "Screwfix", "e1"),
+        _sale(120000, date(2026, 10, 22), "Acme Kitchens", "e2"),
+    ]
     m1, m2 = sorted(suggest_matches(lines, events, {"e1": "1234"}), key=lambda m: m.event_id)
     assert (m1.line_id, m1.event_id, m1.kind, m1.score) == (lines[0].id, "e1", "exact", 1.0)
     assert "card last 4 digits" in m1.reasons and "exact amount" in m1.reasons
@@ -165,7 +219,10 @@ def test_payments_on_terms_may_come_later_but_need_the_name() -> None:
     assert suggest_matches(unnamed, [_purchase(59460, date(2026, 10, 25), "Cumbria Voltic Grid Ltd", "e1")]) == []
     # Card digits alone (0.5 + 0.1) would reach "suggested": a late payment still needs the name.
     card = _lines(b"Date,Description,Amount\n05/11/2026,FP 4417 REF 7688713,-594.60\n")
-    assert suggest_matches(card, [_purchase(59460, date(2026, 10, 25), "Cumbria Voltic Grid Ltd", "e1")], {"e1": "4417"}) == []
+    assert (
+        suggest_matches(card, [_purchase(59460, date(2026, 10, 25), "Cumbria Voltic Grid Ltd", "e1")], {"e1": "4417"})
+        == []
+    )
     # An invoice on terms (debtors): the customer pays weeks later, never before the invoice by more than 5 days.
     paid = _lines(b"Date,Description,Amount\n20/11/2026,ACME KITCHENS INV-0042,1200.00\n")
     (s,) = suggest_matches(paid, [_sale(120000, date(2026, 10, 22), "Acme Kitchens", "e2")])
@@ -175,9 +232,15 @@ def test_payments_on_terms_may_come_later_but_need_the_name() -> None:
 
 
 def test_monthly_same_amount_bill_takes_the_nearer_document() -> None:
-    dd = _lines(b"Date,Description,Amount\n12/10/2026,THORNFIELD COMMS DD REF 1,-64.20\n12/11/2026,THORNFIELD COMMS DD REF 2,-64.20\n")
-    events = [_purchase(6420, date(2026, 10, 2), "Thornfield Communications", "oct"),
-              _purchase(6420, date(2026, 11, 2), "Thornfield Communications", "nov")]
+    dd = _lines(
+        b"Date,Description,Amount\n"
+        b"12/10/2026,THORNFIELD COMMS DD REF 1,-64.20\n"
+        b"12/11/2026,THORNFIELD COMMS DD REF 2,-64.20\n"
+    )
+    events = [
+        _purchase(6420, date(2026, 10, 2), "Thornfield Communications", "oct"),
+        _purchase(6420, date(2026, 11, 2), "Thornfield Communications", "nov"),
+    ]
     got = {m.line_id: m.event_id for m in suggest_matches(dd, events)}
     assert got == {dd[0].id: "oct", dd[1].id: "nov"}
 
@@ -205,8 +268,11 @@ def test_transfers_and_ignored_lines_are_not_matched() -> None:
 
 def test_one_bank_line_pays_several_same_day_events() -> None:
     lines = _lines(b"Date,Description,Amount\n21/10/2026,SCREWFIX DIRECT,-60.00\n")
-    events = [_purchase(2500, date(2026, 10, 21), "Screwfix", "a"), _purchase(3500, date(2026, 10, 21), "Screwfix", "b"),
-              _purchase(1000, date(2026, 10, 21), "Toolstation", "c")]
+    events = [
+        _purchase(2500, date(2026, 10, 21), "Screwfix", "a"),
+        _purchase(3500, date(2026, 10, 21), "Screwfix", "b"),
+        _purchase(1000, date(2026, 10, 21), "Toolstation", "c"),
+    ]
     (m,) = suggest_matches(lines, events)
     assert sorted(m.event_ids) == ["a", "b"] and m.kind == "exact" and "sum of 2 events" in m.reasons
 
