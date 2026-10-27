@@ -490,7 +490,13 @@ async def test_standalone_credit_note_posts_and_leaves_a_credit(books: Books, se
                 "customer": ACME,
                 "lines": [
                     {"description": "Goodwill gesture", "quantity": "1", "unit_price_pence": 5000, "vat_code": "S"},
-                    {"description": "Return postage", "quantity": "2", "unit": "parcels", "unit_price_pence": 250, "vat_code": "Z"},
+                    {
+                        "description": "Return postage",
+                        "quantity": "2",
+                        "unit": "parcels",
+                        "unit_price_pence": 250,
+                        "vat_code": "Z",
+                    },
                 ],
                 "issue_date": "2026-10-05",
                 "reason": "goodwill",

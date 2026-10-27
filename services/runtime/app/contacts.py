@@ -647,6 +647,13 @@ def _dump(contacts: Iterable[Contact]) -> list[dict[str, Any]]:
     return [c.model_dump(mode="json") for c in sorted(contacts, key=lambda c: c.name.lower())]
 
 
+async def save_contacts(books: Books, contacts: Sequence[Contact]) -> None:
+    """Replace contacts.json with exactly `contacts`: for whole-book operations (a merge, its undo) that have just
+    read the latest book. Single-contact edits use the conflict-safe read-merge writes instead."""
+    payload = _dump(contacts)
+    await books._update_json(CONTACTS, [], lambda _old: payload)
+
+
 def _parse_stored(raw: Any) -> list[Contact]:
     """contacts.json as saved (ValidationError when hand-edited badly, as before)."""
     return [Contact.model_validate(c) for c in raw or []]
@@ -675,9 +682,7 @@ async def refresh(books: Books, user: str | None = None) -> tuple[list[Contact],
         return _dump(merged)
 
     await books._update_json(CONTACTS, [], change)
-    await books.audit(
-        f"user:{user}" if user else "agent:contacts", "contacts_refreshed", {"contacts": len(merged)}
-    )
+    await books.audit(f"user:{user}" if user else "agent:contacts", "contacts_refreshed", {"contacts": len(merged)})
     return merged, ledger
 
 
