@@ -30,3 +30,34 @@ test.describe("phone viewport smoke", () => {
     });
   }
 });
+
+test.describe("Review at 390 px", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  test("signed-out sample: no horizontal scroll, action rows never wrap, approve and undo work", async ({ page }) => {
+    await page.goto("/review");
+    await expect(page.getByText("SAMPLE — FICTIONAL COMPANY · Bramblewood Joinery Ltd.")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    const { scroll, width } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, width: window.innerWidth }));
+    expect(scroll, `review is ${scroll}px wide in a ${width}px viewport`).toBeLessThanOrEqual(width);
+
+    // Approve, Edit and Reject sit on one line on every card.
+    const rows = await page.getByRole("button", { name: /^Approve .* and post to books$/ }).evaluateAll((buttons) =>
+      buttons.map((b) => {
+        const row = [...b.parentElement!.children].map((c) => c.getBoundingClientRect());
+        return { tops: new Set(row.map((r) => Math.round(r.top))).size, right: Math.max(...row.map((r) => r.right)) };
+      }),
+    );
+    expect(rows.length).toBe(4);
+    for (const r of rows) {
+      expect(r.tops).toBe(1);
+      expect(r.right).toBeLessThanOrEqual(390);
+    }
+
+    const screwfix = page.getByRole("region", { name: "Screwfix · £38.47" });
+    await screwfix.getByRole("button", { name: /^Approve Screwfix/ }).click();
+    await expect(screwfix).toHaveCount(0);
+    await page.keyboard.press("u");
+    await expect(screwfix).toBeVisible();
+  });
+});
