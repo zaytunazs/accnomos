@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 import 'dart:ui' as ui;
@@ -144,7 +145,7 @@ class PngEncoder {
       raw.addByte(0); // filter type 0 (none)
       raw.add(rgba.sublist(y * rowBytes, (y + 1) * rowBytes));
     }
-    _chunk(out, 'IDAT', ZLibEncoder().convert(raw.toBytes()));
+    _chunk(out, 'IDAT', zlib.encode(raw.toBytes()));
     _chunk(out, 'IEND', const []);
     return out.toBytes();
   }
