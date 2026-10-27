@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
+from collections.abc import AsyncIterator
 from datetime import date, datetime
+from typing import Any
 
 import httpx
 import pytest
@@ -13,6 +16,7 @@ from fastapi.testclient import TestClient
 
 from app.ai import ask as ask_ai
 from app.ai.config import AiConfig
+from app.ask_router import PACK_TOKENS, PREV, THIS, approx_tokens, pack, route
 from app.books import EVENTS, PROPOSALS, Books
 from app.facts import FACTS_MAX_BYTES, build_facts, default_period, previous_period
 from app.schemas import AskModelOutput, AskPeriod
@@ -153,7 +157,8 @@ async def test_ground_keeps_a_faithful_answer(facts: dict):
     got = ask_ai.ground(_out(), facts, "stub-model")
     assert got.fallback_reason is None and got.confidence == "high" and got.model == "stub-model"
     assert got.answer_md.startswith("Your VAT bill is **£2,081.59**")
-    assert got.citations == ["_System/Ledger/events/2026-08/"]  # the invented path is stripped
+    assert "C:/secret/elsewhere.xlsx" not in got.citations and set(got.citations) <= set(facts["sources"])  # invented path stripped
+    assert "_System/Ledger/events/2026-08/" in got.citations
     assert got.key_numbers[1].source in facts["sources"]  # made-up source replaced
     assert [a.arg for a in got.suggested_actions] == [None, "Howdens"]  # unknown supplier dropped
     assert got.period == Q3
@@ -253,7 +258,9 @@ async def test_ask_route(books: Books, monkeypatch: pytest.MonkeyPatch):
     got = r.json()
     assert got["model"] == "muse-glimmer:30b" and got["fallback_reason"] is None
     assert got["period"] == {"start": "2026-07-01", "end": "2026-09-30"}
-    assert got["key_numbers"][0]["value"] == "£2,081.59" and "C:/secret/elsewhere.xlsx" not in got["citations"]
+    values = [k["value"] for k in got["key_numbers"]]
+    assert values[0] == "+£1,281.59" and "£2,081.59" in values and "£800.00" in values  # a comparison: the change first
+    assert "C:/secret/elsewhere.xlsx" not in got["citations"]
     assert len(seen[0]) == 1 + 6 + 1  # system, the last six turns, the question with facts
     assert bad.status_code == 422
 
@@ -290,4 +297,226 @@ async def test_ask_plan_my_thursday_offers_a_day_plan_without_the_model(books: B
 
 def test_ground_drops_a_plan_day_action_from_the_model(facts: dict):
     out = _out(suggested_actions=[{"label": "Plan", "kind": "plan_day", "arg": "2026-10-29"}])
-    assert ask_ai.ground(out, facts, "m").suggested_actions == []
+    assert "plan_day" not in {a.kind for a in ask_ai.ground(out, facts, "m").suggested_actions}
+
+
+# --------------------------------------------------------------------------- #
+# The router and the pack the model sees
+# --------------------------------------------------------------------------- #
+
+def test_route_picks_sections_and_the_period(facts: dict):
+    r = route("How much VAT did I reclaim last quarter?", facts)
+    assert r.sections == {"vat"} and r.periods == {PREV} and r.boxes == (4,) and not r.compare
+    r = route("By how much has my VAT bill changed since last quarter?", facts)
+    assert r.periods == {THIS, PREV} and r.compare
+    r = route("How much did I spend with Howdens this quarter?", facts)
+    assert {"suppliers", "transactions"} <= r.sections and r.names == ("Howdens",) and r.periods == {THIS}
+    assert route("What did I spend in May?", facts).periods == {PREV}  # a month inside the previous period
+    assert route("What did I spend in March 2025?", facts).periods == {THIS}  # outside both: the default
+    assert route("What is my bank balance?", facts).sections == frozenset()  # not in the facts: summary only
+    assert not route("Tell me something", facts).matched  # nothing matched: every section
+
+
+def test_pack_leaves_out_the_other_period_and_stays_in_budget(facts: dict):
+    p = pack(facts, route("How much VAT did I reclaim last quarter?", facts))
+    assert p["previous_period"]["vat"]["box4"] == "200.00" and p["previous_period"]["label"] == "Apr–Jun 2026"
+    assert "vat" not in p["this_period"] and "totals" not in p["this_period"] and "418.41" not in json.dumps(p)
+    assert all(f"{EVENTS}/2026-0{m}" not in s for s in p["sources"] for m in "789")  # only the asked period's files
+    assert "derived" not in p and approx_tokens(p) < approx_tokens(facts)
+    both = pack(facts, route("Why is my VAT higher than last quarter?", facts))
+    assert both["this_period"]["vat"]["box5"] == "2081.59" and both["derived"]["box5_delta_vs_prev"] == "1281.59"
+    assert "sales_net_delta_vs_prev" not in both["derived"]  # VAT only: the totals' changes are not needed
+    assert approx_tokens(pack(facts, route("Tell me everything", facts))) <= PACK_TOKENS
+
+
+async def test_pack_fits_the_budget_on_big_books():
+    b = Books(FakeStorageProvider())
+    for i in range(80):
+        await b.post_event(_ev("purchase", date(2026, 7 + i % 3, 1 + i % 28), 10_000 + i, 2_000, f"Supplier with a long trading name {i}"))
+        await b.post_event(_ev("sale", date(2026, 7 + i % 3, 1 + i % 28), 50_000 + i, 10_000, f"Customer with a long trading name {i}"))
+    facts = await build_facts(b, Q3)
+    p = pack(facts, route("Give me the full picture of suppliers, customers and the largest transactions", facts))
+    assert approx_tokens(p) <= PACK_TOKENS and p["this_period"]["entries"] == 160
+
+
+def test_code_key_numbers_follow_the_question(facts: dict):
+    def shown(q: str) -> dict[str, str]:
+        return {k.label: k.value for k in ask_ai.code_key_numbers(facts, route(q, facts))}
+
+    assert shown("How much VAT do I owe this quarter?") == {
+        "Net VAT (Box 5), 26A3": "£2,081.59", "VAT on sales (Box 1), 26A3": "£2,500.00", "VAT reclaimed (Box 4), 26A3": "£418.41"}
+    assert shown("How much VAT did I reclaim last quarter?")["VAT reclaimed (Box 4), 26A2"] == "£200.00"
+    assert shown("By how much has my VAT bill changed since last quarter?")["Change in Net VAT (Box 5) vs 26A2"] == "+£1,281.59"
+    assert shown("How much did I spend with Howdens this quarter?")["Spent with Howdens, 26A3"] == "£2,060.00"
+    assert shown("What is my bank balance?") == {}
+
+
+# --------------------------------------------------------------------------- #
+# Period-aware grounding: a real figure from the wrong period
+# --------------------------------------------------------------------------- #
+
+LAST_Q = "How much VAT did I reclaim last quarter?"
+
+
+async def test_ground_replaces_a_figure_from_the_wrong_period(facts: dict):
+    planted = _out(answer_md="You reclaimed **£418.41** in VAT last quarter.", key_numbers=[], citations=[], suggested_actions=[])
+    got = ask_ai.ground(planted, facts, "m", LAST_Q)
+    assert got.confidence == "low" and "418.41" in (got.fallback_reason or "") and "Jul–Sep 2026" in (got.fallback_reason or "")
+    assert "£418.41" not in got.answer_md and "£200.00" in got.answer_md  # the asked period's Box 4 instead
+    assert got.key_numbers[0].label == "VAT reclaimed (Box 4), 26A2" and got.key_numbers[0].value == "£200.00"
+    assert got.citations and all(c.startswith(tuple(f"{EVENTS}/2026-0{m}" for m in "456")) for c in got.citations)
+
+
+async def test_ground_checks_the_period_of_key_numbers_too(facts: dict):
+    bad = [{"label": "VAT reclaimed", "value": "£418.41", "source": "_System/Ledger/events/2026-08/"}]
+    got = ask_ai.ground(_out(answer_md="Here is what you reclaimed.", key_numbers=bad), facts, "m", LAST_Q)
+    assert got.fallback_reason and "418.41" in got.fallback_reason
+    labelled = [{"label": "VAT reclaimed, Jul–Sep 2026", "value": "£418.41", "source": "_System/Ledger/events/2026-08/"}]
+    assert ask_ai.ground(_out(answer_md="See below.", key_numbers=labelled), facts, "m", LAST_Q).fallback_reason is None
+
+
+async def test_ground_accepts_the_other_period_when_the_sentence_says_so(facts: dict):
+    text = "Last quarter you reclaimed £200.00. This quarter it is £418.41."
+    assert ask_ai.ground(_out(answer_md=text, key_numbers=[]), facts, "m", LAST_Q).fallback_reason is None
+    for dash in ("–", "-", " - "):
+        text = f"You owe £2,081.59, up from £800.00 in Apr{dash}Jun 2026."
+        assert ask_ai.ground(_out(answer_md=text), facts, "m", "How much VAT do I owe?").fallback_reason is None
+    both = "Your VAT is £2,081.59 now against £800.00 before."  # a comparison asks about both periods
+    assert ask_ai.ground(_out(answer_md=both), facts, "m", "Why is my VAT higher than last quarter?").fallback_reason is None
+
+
+async def test_ground_flags_last_quarters_figure_quoted_for_this_quarter(facts: dict):
+    got = ask_ai.ground(_out(answer_md="You owe £800.00 this time."), facts, "m", "How much VAT do I owe this quarter?")
+    assert got.fallback_reason and "Apr–Jun 2026" in got.fallback_reason and "£2,081.59" in got.answer_md
+
+
+# --------------------------------------------------------------------------- #
+# Streaming
+# --------------------------------------------------------------------------- #
+
+def test_answer_text_unescapes_across_chunks():
+    text = 'VAT is **£2,081.59**.\n"Box 5" — café ✓ 😀'
+    reply = json.dumps({"answer_md": text, "confidence": "high"}, ensure_ascii=True)
+    reader = ask_ai.AnswerText()
+    assert "".join(reader.feed(reply[i:i + 3]) for i in range(0, len(reply), 3)) == text and reader.done
+
+
+async def _events(facts: dict, chunks: list[str] | Exception, monkeypatch: pytest.MonkeyPatch) -> list[tuple[str, Any]]:
+    async def fake_stream(messages: list[dict], cfg: AiConfig) -> AsyncIterator[str]:
+        if isinstance(chunks, Exception):
+            raise chunks
+        for c in chunks:
+            yield c
+
+    monkeypatch.setattr(ask_ai, "_stream_model", fake_stream)
+    return [e async for e in ask_ai.answer_stream("How much VAT do I owe this quarter?", facts, [], CFG)]
+
+
+async def test_answer_stream_sends_code_figures_first_then_words_then_the_checked_answer(facts: dict, monkeypatch: pytest.MonkeyPatch):
+    reply = json.dumps({"answer_md": "You owe £2,081.59 for Jul–Sep 2026.", "confidence": "high"})
+    events = await _events(facts, [reply[i:i + 7] for i in range(0, len(reply), 7)], monkeypatch)
+    kinds = [k for k, _ in events]
+    assert kinds[0] == "start" and kinds[-1] == "answer" and set(kinds[1:-1]) == {"token"}
+    start, final = events[0][1], events[-1][1]
+    assert start["key_numbers"][0] == {"label": "Net VAT (Box 5), 26A3", "value": "£2,081.59", "source": f"{EVENTS}/2026-07/"}
+    assert "".join(t for k, t in events if k == "token") == "You owe £2,081.59 for Jul–Sep 2026."
+    assert final.fallback_reason is None and final.answer_md == "You owe £2,081.59 for Jul–Sep 2026."
+    assert [k.model_dump() for k in final.key_numbers] == start["key_numbers"] and final.citations == start["citations"]
+
+
+async def test_answer_stream_replaces_words_that_fail_the_check(facts: dict, monkeypatch: pytest.MonkeyPatch):
+    events = await _events(facts, ['{"answer_md":"You owe £9,999.00.","confidence":"high"}'], monkeypatch)
+    assert ("token", "You owe £9,999.00.") in events
+    assert events[-1][1].fallback_reason and "£9,999.00" not in events[-1][1].answer_md
+
+
+async def test_a_reply_cut_off_by_the_length_cap_keeps_its_whole_sentences(facts: dict, monkeypatch: pytest.MonkeyPatch):
+    events = await _events(facts, ['{"answer_md":"You owe £2,081.59. That is up on last quar'], monkeypatch)
+    final = events[-1][1]
+    assert final.fallback_reason is None and final.answer_md == "You owe £2,081.59." and final.confidence == "medium"
+
+
+async def test_a_stalled_model_gets_the_fallback_not_an_error(facts: dict, monkeypatch: pytest.MonkeyPatch):
+    events = await _events(facts, ask_ai.AiStalled(20), monkeypatch)
+    assert [k for k, _ in events] == ["start", "answer"] and "stopped replying for 20 s" in events[-1][1].fallback_reason
+
+
+async def test_the_timeout_is_per_chunk_not_per_answer(monkeypatch: pytest.MonkeyPatch):
+    class Slow:
+        def __init__(self, gaps: list[float]) -> None:
+            self.gaps = gaps
+
+        async def aiter_lines(self) -> AsyncIterator[str]:
+            for i, gap in enumerate(self.gaps):
+                await asyncio.sleep(gap)
+                yield f"line {i}"
+
+    monkeypatch.setattr(ask_ai, "FIRST_CHUNK_S", 0.3)
+    monkeypatch.setattr(ask_ai, "TOKEN_GAP_S", 0.1)
+    steady = [line async for line in ask_ai._lines(Slow([0.2] + [0.05] * 12))]  # 0.8 s in all, but no long gap
+    assert len(steady) == 13
+    with pytest.raises(ask_ai.AiStalled):
+        _ = [line async for line in ask_ai._lines(Slow([0.05, 0.05, 0.2]))]
+
+
+def _transport(monkeypatch: pytest.MonkeyPatch, body: str, seen: list[httpx.Request]) -> None:
+    """Every httpx client the backends open answers with `body` (the wire format of a streamed reply)."""
+    real = httpx._client.AsyncClient  # not the name a previous call may have patched
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, text=body)
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+
+
+async def test_stream_json_model_reads_both_wire_formats(monkeypatch: pytest.MonkeyPatch):
+    seen: list[httpx.Request] = []
+    ollama = "\n".join(json.dumps({"message": {"content": c}, "done": False}) for c in ('{"answer_md":"Hi', '."}'))
+    _transport(monkeypatch, ollama + "\n" + json.dumps({"message": {"content": ""}, "done": True}) + "\n", seen)
+    got = [t async for t in ask_ai.stream_json_model([], CFG, {}, "n", 320)]
+    assert got == ['{"answer_md":"Hi', '."}'] and seen[-1].url.path == "/api/chat"
+    assert json.loads(seen[-1].content)["options"]["num_predict"] == 320
+
+    sse = "".join(f"data: {json.dumps({'choices': [{'delta': {'content': c}}]})}\n\n" for c in ("a", "b")) + "data: [DONE]\n\n"
+    _transport(monkeypatch, sse, seen)
+    key = AiConfig(mode="key", base_url="http://api.invalid/v1", model="m", api_key="k")
+    assert [t async for t in ask_ai.stream_json_model([], key, {}, "n", 1500)] == ["a", "b"]
+    assert seen[-1].url.path == "/v1/chat/completions" and json.loads(seen[-1].content)["max_tokens"] == 1500
+
+
+async def test_a_garbled_chunk_gets_the_fallback_not_an_error(facts: dict, monkeypatch: pytest.MonkeyPatch):
+    _transport(monkeypatch, '{"message":{"content":"{\\"answer_md\\""}}\nnot json\n', [])
+    got = await ask_ai.answer("How much VAT do I owe this quarter?", facts, [], CFG)
+    assert got.fallback_reason == "Your AI (local) sent a reply that could not be read." and "£2,081.59" in got.answer_md
+    events = [e async for e in ask_ai.answer_stream("How much VAT do I owe this quarter?", facts, [], CFG)]
+    assert [k for k, _ in events] == ["start", "answer"] and events[-1][1].fallback_reason
+
+
+async def test_ask_route_streams_server_sent_events(books: Books, monkeypatch: pytest.MonkeyPatch):
+    from app.main import app
+    from app.routes_books import get_books
+
+    async def fake_stream(messages: list[dict], cfg: AiConfig) -> AsyncIterator[str]:
+        for c in ('{"answer_md":"You owe ', "£2,081.59", '.","confidence":"high"}'):
+            yield c
+
+    async def override():
+        yield books
+
+    monkeypatch.setattr(ask_ai, "_stream_model", fake_stream)
+    app.dependency_overrides[get_books] = override
+    try:
+        headers = {"X-Graph-Token": "t", "X-AI-Mode": "local", "X-AI-Model": "muse-glimmer:30b"}
+        body = {"question": "How much VAT do I owe this quarter?", "period": {"start": "2026-07-01", "end": "2026-09-30"}}
+        r = TestClient(app).post("/books/ask?stream=1", json=body, headers=headers)
+        plan = TestClient(app).post("/books/ask?stream=1", json={"question": "Plan my Thursday"}, headers=headers)
+    finally:
+        app.dependency_overrides.clear()
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/event-stream")
+    events = [(b.split("\n")[0].removeprefix("event: "), json.loads(b.split("\n")[1].removeprefix("data: ")))
+              for b in r.text.strip().split("\n\n")]
+    assert [e for e, _ in events] == ["start", "token", "token", "token", "answer"]
+    assert events[0][1]["key_numbers"][0]["value"] == "£2,081.59"
+    assert events[-1][1]["answer_md"] == "You owe £2,081.59." and events[-1][1]["fallback_reason"] is None
+    assert plan.text.startswith("event: answer\n") and '"plan_day"' in plan.text  # no model call: just the answer

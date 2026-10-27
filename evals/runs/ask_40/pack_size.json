@@ -1,0 +1,259 @@
+{
+ "summary": {
+  "whole_pack": {
+   "median": 2434,
+   "max": 2441
+  },
+  "routed_pack": {
+   "median": 813,
+   "max": 1792
+  }
+ },
+ "rows": [
+  {
+   "id": "vat_box5",
+   "whole_pack": 2432,
+   "routed_pack": 667,
+   "routed_estimate": 315,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "vat_box1",
+   "whole_pack": 2434,
+   "routed_pack": 669,
+   "routed_estimate": 315,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "vat_box4",
+   "whole_pack": 2431,
+   "routed_pack": 666,
+   "routed_estimate": 315,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "vat_box6",
+   "whole_pack": 2434,
+   "routed_pack": 819,
+   "routed_estimate": 467,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "vat_box7",
+   "whole_pack": 2431,
+   "routed_pack": 666,
+   "routed_estimate": 315,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "vat_prev_box5",
+   "whole_pack": 2431,
+   "routed_pack": 659,
+   "routed_estimate": 306,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "vat_delta",
+   "whole_pack": 2434,
+   "routed_pack": 851,
+   "routed_estimate": 489,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "vat_pct",
+   "whole_pack": 2436,
+   "routed_pack": 853,
+   "routed_estimate": 489,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "vat_prev_box4",
+   "whole_pack": 2431,
+   "routed_pack": 659,
+   "routed_estimate": 306,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "vat_prev_box6",
+   "whole_pack": 2430,
+   "routed_pack": 658,
+   "routed_estimate": 306,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "vat_box4_delta",
+   "whole_pack": 2434,
+   "routed_pack": 851,
+   "routed_estimate": 489,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "vat_position",
+   "whole_pack": 2441,
+   "routed_pack": 676,
+   "routed_estimate": 315,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "sales_net",
+   "whole_pack": 2430,
+   "routed_pack": 746,
+   "routed_estimate": 406,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "purchases_net",
+   "whole_pack": 2435,
+   "routed_pack": 820,
+   "routed_estimate": 467,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "sales_count",
+   "whole_pack": 2431,
+   "routed_pack": 747,
+   "routed_estimate": 406,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "purchases_count",
+   "whole_pack": 2433,
+   "routed_pack": 749,
+   "routed_estimate": 406,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "sales_growth",
+   "whole_pack": 2434,
+   "routed_pack": 994,
+   "routed_estimate": 658,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "purchases_pct",
+   "whole_pack": 2433,
+   "routed_pack": 993,
+   "routed_estimate": 658,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "prev_sales_net",
+   "whole_pack": 2430,
+   "routed_pack": 747,
+   "routed_estimate": 406,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "sales_vat",
+   "whole_pack": 2434,
+   "routed_pack": 819,
+   "routed_estimate": 467,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "entries",
+   "whole_pack": 2434,
+   "routed_pack": 750,
+   "routed_estimate": 406,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "prev_purchases_net",
+   "whole_pack": 2435,
+   "routed_pack": 813,
+   "routed_estimate": 458,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "top_supplier",
+   "whole_pack": 2438,
+   "routed_pack": 911,
+   "routed_estimate": 594,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "oakhurst_net",
+   "whole_pack": 2437,
+   "routed_pack": 1667,
+   "routed_estimate": 1322,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "top_customer",
+   "whole_pack": 2436,
+   "routed_pack": 814,
+   "routed_estimate": 482,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "hartwell_net",
+   "whole_pack": 2438,
+   "routed_pack": 1792,
+   "routed_estimate": 1413,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "sterling_count",
+   "whole_pack": 2435,
+   "routed_pack": 1605,
+   "routed_estimate": 1252,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "largest",
+   "whole_pack": 2434,
+   "routed_pack": 1726,
+   "routed_estimate": 1336,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "harrowgate_gross",
+   "whole_pack": 2439,
+   "routed_pack": 1678,
+   "routed_estimate": 1313,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "oakhurst_vat",
+   "whole_pack": 2436,
+   "routed_pack": 1735,
+   "routed_estimate": 1384,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "reduced_rate",
+   "whole_pack": 2439,
+   "routed_pack": 755,
+   "routed_estimate": 406,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "no_vat_invoice",
+   "whole_pack": 2440,
+   "routed_pack": 887,
+   "routed_estimate": 543,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "bank_balance",
+   "whole_pack": 2429,
+   "routed_pack": 595,
+   "routed_estimate": 254,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "corp_tax",
+   "whole_pack": 2433,
+   "routed_pack": 668,
+   "routed_estimate": 315,
+   "whole_estimate": 2080
+  },
+  {
+   "id": "fuel_2025",
+   "whole_pack": 2434,
+   "routed_pack": 750,
+   "routed_estimate": 406,
+   "whole_estimate": 2080
+  }
+ ]
+}

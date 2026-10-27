@@ -11,11 +11,17 @@ test("ask about the picked VAT period → an answer with key numbers and the fil
   await page.getByRole("link", { name: "Ask about Jul–Sep 2026" }).click();
   await expect(page).toHaveURL(/\/ask$/);
 
+  const asks: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/books/ask")) asks.push(r.url());
+  });
   await page.getByLabel("Ask your books").fill("How much VAT do I owe this quarter?");
   await page.getByRole("button", { name: "Ask", exact: true }).click();
 
   const answer = page.getByRole("article");
   await expect(answer).toContainText("Your net VAT (Box 5) for this quarter is £8.65");
+  expect(asks).toHaveLength(1); // streamed (server-sent events), no fallback to the plain call
+  expect(asks[0]).toContain("stream=1");
   const keyNumbers = answer.getByRole("table", { name: "Key numbers" });
   await expect(keyNumbers.getByRole("row").filter({ hasText: "Net VAT (Box 5), 26A3" })).toContainText("£8.65"); // 26A3 = Jul–Sep
   await expect(keyNumbers.getByRole("row").filter({ hasText: "VAT reclaimed (Box 4)" })).toContainText("£8.65");

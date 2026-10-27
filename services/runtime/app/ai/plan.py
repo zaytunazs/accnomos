@@ -108,10 +108,8 @@ async def rationale(plan: Plan, cfg: AiConfig | None) -> tuple[str, str | None, 
     try:
         raw = await ask_ai._call_model(messages, cfg, PlanModelOutput, "plan_rationale")
         out = PlanModelOutput.model_validate(parse_model_json(raw))
-    except httpx.HTTPStatusError as exc:
-        return code_rationale(plan), cfg.model, f"Your AI ({cfg.mode}) returned HTTP {exc.response.status_code}."
-    except httpx.HTTPError:
-        return code_rationale(plan), cfg.model, f"Your AI ({cfg.mode}) could not be reached at {cfg.base_url}."
+    except (httpx.HTTPError, ask_ai.AiStalled) as exc:
+        return code_rationale(plan), cfg.model, ask_ai._trouble(exc, cfg)
     except (ExtractionError, ValidationError):
         return code_rationale(plan), cfg.model, "The model's reply was not in the expected format."
     if reason := check(out.rationale_md, plan):

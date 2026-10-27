@@ -136,23 +136,30 @@ export default function AnswerCard({
   answer,
   account = null,
   elapsedS = null,
+  pending = false,
 }: {
   answer: RtAskAnswer;
   account?: AccountInfo | null;
   /** How long the answer took, timed around the ask call. */
   elapsedS?: number | null;
+  /** Streaming: the key numbers are code's already; the words are still being written and are not yet checked. */
+  pending?: boolean;
 }) {
   const actions = answer.suggested_actions.filter((a) => actionHref(a));
   const sheet = workbookSheet(answer);
   const elapsed = elapsedS !== null && Number.isFinite(elapsedS) ? ` · ${elapsedS < 10 ? elapsedS.toFixed(1) : Math.round(elapsedS)} s` : "";
   return (
-    <article className="min-w-0 rounded-2xl border border-border bg-white p-5">
+    <article className="min-w-0 rounded-2xl border border-border bg-white p-5" aria-busy={pending || undefined}>
       {answer.fallback_reason && (
         <p className="mb-3 rounded-xl border border-warn-border bg-warn-bg p-3 text-[14px] leading-6 text-warn-ink">
           {answer.fallback_reason} These figures come straight from your ledger.
         </p>
       )}
-      <Markdown md={answer.answer_md} />
+      {pending && !answer.answer_md ? (
+        <p className="text-[15px] leading-7 text-muted">Writing the explanation…</p>
+      ) : (
+        <Markdown md={answer.answer_md} />
+      )}
 
       {answer.key_numbers.length > 0 && (
         <div className="mt-4 overflow-x-auto">
@@ -183,8 +190,14 @@ export default function AnswerCard({
       )}
 
       <p className="mt-3 text-[13px] text-muted">
-        {answer.model === "code" ? "Worked out by code" : <>Numbers by code · explanation by {answer.model}</>}
-        {answer.confidence !== "high" && ` · confidence ${answer.confidence}`}
+        {pending ? (
+          <>Numbers by code · {answer.model} is writing the explanation; every figure in it is checked before it stays</>
+        ) : answer.model === "code" ? (
+          "Worked out by code"
+        ) : (
+          <>Numbers by code · explanation by {answer.model}</>
+        )}
+        {!pending && answer.confidence !== "high" && ` · confidence ${answer.confidence}`}
         {elapsed}
       </p>
 

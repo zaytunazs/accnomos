@@ -4,12 +4,11 @@
   "records": [
    {
     "id": "vat_box5",
-    "answer": "For 2026-07-01 to 2026-09-30 your VAT return shows box 5 at £2,803.33. That’s the amount to pay HMRC for the quarter.\n\nKey numbers\n- Box 5 (VAT to pay): £2,803.33\n- Box 1 (output VAT): £2,944.63\n- Box 4 (input VAT): £141.30\n- Box 3 (total output VAT): £2,944.63\n\nSources: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx",
+    "answer": "For Jul–Sep 2026 you owe £2,803.33 VAT to HMRC. That’s box 5 net VAT for the period, with £2,944.63 VAT due on sales and £141.30 reclaimed on purchases.",
     "key_numbers": [
-     "2803.33",
-     "2944.63",
-     "141.30",
-     "2944.63"
+     "£2,803.33",
+     "£2,944.63",
+     "£141.30"
     ],
     "citations": [
      "_System/Ledger/events/2026-07/",
@@ -23,19 +22,23 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 315,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "2803.33"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "How much VAT do I owe for this quarter?",
-    "seconds": 88.4
+    "seconds": 16.0
    },
    {
     "id": "vat_box1",
-    "answer": "Your Box 1 for the current period 2026-07-01 to 2026-09-30 is £2,944.63.\n\nKey numbers\n- Box 1: 2944.63 (source: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx)\n- Box 3: 2944.63 (source: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx)\n- Box 5: 2803.33 (source: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx)\n- Sales net: 14723.15 (source: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx)\n\nSuggested actions\n- open_vat",
+    "answer": "The Box 1 figure for Jul–Sep 2026 is £2,944.63. That’s the VAT you charged on sales for this quarter.",
     "key_numbers": [
-     "2944.63",
+     "£2,944.63",
      "£2,803.33"
     ],
     "citations": [
@@ -50,22 +53,24 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 315,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "2944.63"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "What is the Box 1 figure on my VAT return?",
-    "seconds": 82.3
+    "seconds": 20.4
    },
    {
     "id": "vat_box4",
-    "answer": "You can reclaim £141.30 of input VAT this quarter.\n\n- Box 4 input VAT: £141.30\n- Box 5 VAT to pay HMRC: £2,803.33\n\nKey numbers\n- £141.30 — this_period.vat.box4\n- £2,803.33 — this_period.vat.box5\n- £2,944.63 — this_period.vat.box3\n- £14,723 — this_period.vat.box6\n\nSources: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx\n\nSuggested actions: open_vat\nConfidence: high",
+    "answer": "You can reclaim £141.30 of VAT for Jul–Sep 2026. That’s the amount shown in box 4 for this quarter. The net VAT you still owe HMRC for the quarter is £2,803.33.",
     "key_numbers": [
-     "141.30",
-     "2803.33",
-     "2944.63",
-     "14723"
+     "£141.30",
+     "£2,803.33"
     ],
     "citations": [
      "_System/Ledger/events/2026-07/",
@@ -79,1243 +84,89 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 315,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "141.30"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "How much VAT can I reclaim this quarter?",
-    "seconds": 81.4
+    "seconds": 19.2
    },
    {
     "id": "vat_box6",
-    "answer": "Box 6 is sales including VAT. Total sales excluding VAT for the period 2026-07-01 to 2026-09-30 is £14,723.15.\n\nKey numbers\n- £14,723.15 sales net — this_period.totals.sales.net\n- £14,723 box 6 — this_period.vat.box6\n- £2,944.63 box 1 — this_period.vat.box1\n- £2,803.33 box 5 — this_period.vat.box5\n\nSources: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx",
+    "answer": "For Jul–Sep 2026, Box 6 sales before VAT are £14,723. That’s the total sales excluding VAT shown in the books for this quarter.",
     "key_numbers": [
-     "14723.15",
-     "14723",
-     "2944.63",
-     "2803.33"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/",
-     "Books.xlsx"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "14723"
-    ],
-    "numbers_exact": true,
-    "prompt": "What are my total sales excluding VAT for Box 6?",
-    "seconds": 73.7
-   },
-   {
-    "id": "vat_box7",
-    "answer": "I couldn't check a written explanation against your books, so here are the figures exactly as calculated from your ledger:\n\n- Net VAT (Box 5), 1 Jul 2026 to 30 Sep 2026: £2,803.33 (pay HMRC)\n- Previous period (1 Apr 2026 to 30 Jun 2026): £782.50\n- Sales £14,723.15 net, purchases £2,465.28 net, from 21 approved entries",
-    "key_numbers": [
-     "£2,803.33",
-     "£782.50",
-     "£2,944.63"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": "Your AI (local) could not be reached at http://localhost:11434.",
-    "card": false,
-    "raw_parsed": false,
-    "raw_invented": [],
-    "no_invented_figure": false,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "2465"
-    ],
-    "numbers_exact": false,
-    "prompt": "What goes in Box 7 this quarter?",
-    "seconds": 120.0
-   },
-   {
-    "id": "vat_prev_box5",
-    "answer": "Last quarter is 2026-04-01 to 2026-06-30. VAT you owed HMRC was £782.50.\n\nKey numbers\n- Box 5 VAT due: £782.50 (previous_period.vat.box5)\n- Box 1 sales VAT: £1,053.00 (previous_period.vat.box1)\n- Box 4 purchases VAT: £270.50 (previous_period.vat.box4)\n- Sales net: £5,265.00 (previous_period.totals.sales.net)\n\nSuggested actions:\n- open_vat\n\nConfidence: high",
-    "key_numbers": [
-     "782.50",
-     "1053.00",
-     "270.50",
-     "5265.00"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "782.50"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much VAT did I owe last quarter?",
-    "seconds": 78.1
-   },
-   {
-    "id": "vat_delta",
-    "answer": "I couldn't check a written explanation against your books, so here are the figures exactly as calculated from your ledger:\n\n- Net VAT (Box 5), 1 Jul 2026 to 30 Sep 2026: £2,803.33 (pay HMRC)\n- Previous period (1 Apr 2026 to 30 Jun 2026): £782.50\n- Sales £14,723.15 net, purchases £2,465.28 net, from 21 approved entries",
-    "key_numbers": [
-     "£2,803.33",
-     "£782.50",
-     "£2,944.63"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": "Your AI (local) could not be reached at http://localhost:11434.",
-    "card": false,
-    "raw_parsed": false,
-    "raw_invented": [],
-    "no_invented_figure": false,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "2020.83"
-    ],
-    "numbers_exact": false,
-    "prompt": "By how much has my VAT bill changed since last quarter?",
-    "seconds": 140.9
-   },
-   {
-    "id": "vat_pct",
-    "answer": "Your VAT bill is Box 5. It rose from £782.50 last quarter to £2,803.33 this quarter.\n\nThat is a rise of 258.3% versus the previous period, with a change of £2,020.83.\n\nKey numbers\n- Box 5 this period: £2,803.33\n- Box 5 previous period: £782.50\n- Box 5 change % vs prev: 258.3%\n- Box 5 delta vs prev: £2,020.83\n\nSources: _System/Ledger/events/2026-04/, _System/Ledger/events/2026-05/, _System/Ledger/events/2026-06/, _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx",
-    "key_numbers": [
-     "2803.33",
-     "782.50",
-     "258.3",
-     "2020.83"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/",
-     "Books.xlsx"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "258.3"
-    ],
-    "numbers_exact": true,
-    "prompt": "By what percentage did my VAT bill go up compared with last quarter?",
-    "seconds": 121.9
-   },
-   {
-    "id": "vat_prev_box4",
-    "answer": "You reclaimed £141.30 in VAT last quarter.\n\n- Box 4 input VAT for 26A3 (2026-07-01 to 2026-09-30) is £141.30.\n\nKey numbers\n- £141.30 — this_period.vat.box4\n- £141.30 — this_period.totals.purchases.vat\n\nSources: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx\n\nSuggested actions: none\nConfidence: high",
-    "key_numbers": [
-     "141.30",
-     "141.30"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/",
-     "Books.xlsx"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "270.50"
-    ],
-    "numbers_exact": false,
-    "prompt": "How much VAT did I reclaim last quarter?",
-    "seconds": 57.9
-   },
-   {
-    "id": "vat_prev_box6",
-    "answer": "Box 6 last quarter was £5,265.\n\nKey numbers\n- Box 6: 5,265 from _System/Ledger/events/2026-04/",
-    "key_numbers": [
-     "5,265",
-     "£2,803.33"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "5265"
-    ],
-    "numbers_exact": true,
-    "prompt": "What was Box 6 last quarter?",
-    "seconds": 21.6
-   },
-   {
-    "id": "vat_box4_delta",
-    "answer": "I couldn't check a written explanation against your books, so here are the figures exactly as calculated from your ledger:\n\n- Net VAT (Box 5), 1 Jul 2026 to 30 Sep 2026: £2,803.33 (pay HMRC)\n- Previous period (1 Apr 2026 to 30 Jun 2026): £782.50\n- Sales £14,723.15 net, purchases £2,465.28 net, from 21 approved entries",
-    "key_numbers": [
-     "£2,803.33",
-     "£782.50",
-     "£2,944.63"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": "Your AI (local) could not be reached at http://localhost:11434.",
-    "card": false,
-    "raw_parsed": false,
-    "raw_invented": [],
-    "no_invented_figure": false,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "-129.20"
-    ],
-    "numbers_exact": false,
-    "prompt": "How much less VAT am I reclaiming than last quarter?",
-    "seconds": 120.1
-   },
-   {
-    "id": "vat_position",
-    "answer": "I couldn't check a written explanation against your books, so here are the figures exactly as calculated from your ledger:\n\n- Net VAT (Box 5), 1 Jul 2026 to 30 Sep 2026: £2,803.33 (pay HMRC)\n- Previous period (1 Apr 2026 to 30 Jun 2026): £782.50\n- Sales £14,723.15 net, purchases £2,465.28 net, from 21 approved entries",
-    "key_numbers": [
-     "£2,803.33",
-     "£782.50",
-     "£2,944.63"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": "Your AI (local) could not be reached at http://localhost:11434.",
-    "card": false,
-    "raw_parsed": false,
-    "raw_invented": [],
-    "no_invented_figure": false,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "2803.33"
-    ],
-    "numbers_exact": true,
-    "prompt": "Do I have to pay HMRC this quarter or will they repay me, and how much?",
-    "seconds": 120.0
-   },
-   {
-    "id": "sales_net",
-    "answer": "Your net sales for the quarter 2026-07-01 to 2026-09-30 are £14,723.15.\n\nKey numbers\n- Net sales: 14723.15 from this_period.totals.sales.net\n- VAT on sales: 2944.63 from this_period.totals.sales.vat\n- Sales count: 5 from this_period.totals.sales.count\n- Net sales change vs previous quarter: 9458.15 from derived.sales_net_delta_vs_prev\n\nSources: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx\n\nSuggested actions: none\nConfidence: high",
-    "key_numbers": [
-     "14723.15",
-     "2944.63",
-     "5",
-     "9458.15"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/",
-     "Books.xlsx"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "14723.15"
-    ],
-    "numbers_exact": true,
-    "prompt": "What were my net sales this quarter?",
-    "seconds": 75.2
-   },
-   {
-    "id": "purchases_net",
-    "answer": "You spent £2,465.28 net on purchases this quarter (2026-07-01 to 2026-09-30).\n\n- Purchases net: £2,465.28\n- Purchases VAT: £141.30\n- Purchase entries: 16",
-    "key_numbers": [
-     "2465.28",
-     "141.30",
-     "16"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "2465.28"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much did I spend on purchases this quarter, before VAT?",
-    "seconds": 47.0
-   },
-   {
-    "id": "sales_count",
-    "answer": "There are 5 sales entries this quarter.\n\n- sales count: 5\n\nkey_numbers:\n- 5 (sales count) source: _System/Ledger/events/2026-07/,_System/Ledger/events/2026-08/,_System/Ledger/events/2026-09/\n\ncitations:\n- _System/Ledger/events/2026-07/\n- _System/Ledger/events/2026-08/\n- _System/Ledger/events/2026-09/\n\nsuggested_actions:\n- none\n\nconfidence: high",
-    "key_numbers": [
-     "5",
-     "£2,803.33"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "5"
-    ],
-    "numbers_exact": true,
-    "prompt": "How many sales entries are there this quarter?",
-    "seconds": 54.5
-   },
-   {
-    "id": "purchases_count",
-    "answer": "There are 16 purchase entries in the books for this quarter (2026-07-01 to 2026-09-30).\n\nKey numbers\n- purchases count: 16\n- purchases net: £2,465.28\n- purchases VAT: £141.30\n- sales count: 5\n\nSources: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx",
-    "key_numbers": [
-     "16",
-     "2465.28",
-     "141.30",
-     "5"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/",
-     "Books.xlsx"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "16"
-    ],
-    "numbers_exact": true,
-    "prompt": "How many purchase entries are in the books this quarter?",
-    "seconds": 70.0
-   },
-   {
-    "id": "sales_growth",
-    "answer": "Net sales for 2026-07-01 to 2026-09-30 are £14,723.15. Net sales for the previous quarter 2026-04-01 to 2026-06-30 are £5,265.00. That is an increase of £9,458.15, a 179.6% rise.\n\nKey numbers\n- £14,723.15 net sales this period\n- £5,265.00 net sales previous period\n- £9,458.15 sales_net_delta_vs_prev\n- 179.6% sales_net_change_pct_vs_prev\n\nSources: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, _System/Ledger/events/2026-04/, _System/Ledger/events/2026-05/, _System/Ledger/events/2026-06/",
-    "key_numbers": [
-     "14723.15",
-     "5265.00",
-     "9458.15",
-     "179.6"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/",
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "9458.15"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much did my net sales grow compared with last quarter?",
-    "seconds": 95.3
-   },
-   {
-    "id": "purchases_pct",
-    "answer": "Purchases net rose by 2.1% from last quarter.\n\n- Purchases net this quarter: £2,465.28\n- Purchases net last quarter: £2,414.80\n- Change: +£50.48, +2.1%",
-    "key_numbers": [
-     "2465.28",
-     "2414.80",
-     "2.1",
-     "50.48"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-04/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "2.1"
-    ],
-    "numbers_exact": true,
-    "prompt": "By what percentage did my purchases change from last quarter?",
-    "seconds": 53.8
-   },
-   {
-    "id": "prev_sales_net",
-    "answer": "Your net sales for the previous quarter (2026-04-01 to 2026-06-30, period 26A2) were £5,265.00.\n\nKey numbers\n- Net sales: 5265.00 from _System/Ledger/events/2026-04/,_System/Ledger/events/2026-05/,_System/Ledger/events/2026-06/\n- VAT on sales: 1053.00 from _System/Ledger/events/2026-04/,_System/Ledger/events/2026-05/,_System/Ledger/events/2026-06/\n- Sales count: 2 from _System/Ledger/events/2026-04/,_System/Ledger/events/2026-05/,_System/Ledger/events/2026-06/\n- Box 6 net sales: 5265 from _System/Ledger/events/2026-04/,_System/Ledger/events/2026-05/,_System/Ledger/events/2026-06/",
-    "key_numbers": [
-     "5265.00",
-     "1053.00",
-     "2",
-     "5265"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "5265.00"
-    ],
-    "numbers_exact": true,
-    "prompt": "What were my net sales last quarter?",
-    "seconds": 112.3
-   },
-   {
-    "id": "sales_vat",
-    "answer": "You charged £2,944.63 VAT on sales this quarter (period 26A3, 2026-07-01 to 2026-09-30).\n\n- Box 1 (VAT on sales): £2,944.63\n- Box 3 (total VAT on sales): £2,944.63\n- Sales net: £14,723.15, VAT: £2,944.63, count 5\n\nKey numbers\n- 2944.63 (source: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx)\n- 2944.63 (source: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx)\n- 14723.15 (source: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx)\n\nSuggested actions\n- open_vat",
-    "key_numbers": [
-     "2944.63",
-     "2944.63",
-     "14723.15"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/",
-     "Books.xlsx"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "2944.63"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much VAT did I charge on my sales this quarter?",
-    "seconds": 97.8
-   },
-   {
-    "id": "entries",
-    "answer": "There are 21 approved entries in the books for this quarter (2026-07-01 to 2026-09-30).\n\nKey numbers\n- entries: 21 — source: _System/Ledger/events/2026-07/,_System/Ledger/events/2026-08/,_System/Ledger/events/2026-09/\n- period_key: 26A3 — source: _System/Ledger/events/2026-07/,_System/Ledger/events/2026-08/,_System/Ledger/events/2026-09/\n- sales net: £14,723.15 — source: _System/Ledger/events/2026-07/,_System/Ledger/events/2026-08/,_System/Ledger/events/2026-09/\n- purchases net: £2,465.28 — source: _System/Ledger/events/2026-07/,_System/Ledger/events/2026-08/,_System/Ledger/events/2026-09/",
-    "key_numbers": [
-     "21",
-     "26A3",
-     "14723.15",
-     "2465.28"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "21"
-    ],
-    "numbers_exact": true,
-    "prompt": "How many approved entries are in the books for this quarter?",
-    "seconds": 44.8
-   },
-   {
-    "id": "prev_purchases_net",
-    "answer": "For the quarter ending 2026-06-30 (period 26A2) purchases net of VAT were £2,414.80.\n\nKey numbers\n- purchases net: 2414.80 (source: _System/Ledger/events/2026-04/, _System/Ledger/events/2026-05/, _System/Ledger/events/2026-06/, Books.xlsx)\n- purchases VAT: 270.50 (source: _System/Ledger/events/2026-04/, _System/Ledger/events/2026-05/, _System/Ledger/events/2026-06/, Books.xlsx)\n- purchases count: 17 (source: _System/Ledger/events/2026-04/, _System/Ledger/events/2026-05/, _System/Ledger/events/2026-06/, Books.xlsx)\n- period key: 26A2 (source: _System/Ledger/events/2026-04/, _System/Ledger/events/2026-05/, _System/Ledger/events/2026-06/, Books.xlsx)",
-    "key_numbers": [
-     "2414.80",
-     "£2,803.33"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
-     "Books.xlsx"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "2414.80"
-    ],
-    "numbers_exact": true,
-    "prompt": "What did I spend on purchases last quarter, net of VAT?",
-    "seconds": 29.8
-   },
-   {
-    "id": "top_supplier",
-    "answer": "Your biggest supplier this quarter was Whimsy Wardrobe Ltd. You spent £504.50 net with them.\n\nKey numbers\n- Supplier net spend: £504.50\n- Supplier name: Whimsy Wardrobe Ltd\n- Period: 2026-07-01 to 2026-09-30\n\nSources\n- _System/Ledger/events/2026-07/\n- _System/Ledger/events/2026-08/\n- _System/Ledger/events/2026-09/\n- Books.xlsx",
-    "key_numbers": [
-     "504.50",
-     "£2,803.33"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/",
-     "Books.xlsx"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "Whimsy Wardrobe Ltd",
-     "504.50"
-    ],
-    "numbers_exact": true,
-    "prompt": "Who was my biggest supplier this quarter and how much did I spend with them?",
-    "seconds": 19.1
-   },
-   {
-    "id": "oakhurst_net",
-    "answer": "You spent £440.90 net with Oakhurst Timber & Tools this quarter.\n\n- Net spend: £440.90\n- VAT on that purchase: £88.18\n- Gross: £529.08\n- VAT code: S\n- Date: 2026-07-20\n\nKey numbers\n- 440.90 — source: _System/Ledger/events/2026-07/20261027T075629Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json\n- 88.18 — source: _System/Ledger/events/2026-07/20261027T075629Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json\n- 529.08 — source: _System/Ledger/events/2026-07/20261027T075629Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json\n- 440.90 — source: _System/Ledger/events/2026-07/20261027T075629Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json\n\nSuggested actions\n- none\n\nConfidence: high",
-    "key_numbers": [
-     "440.90",
-     "88.18",
-     "529.08",
-     "440.90"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/20261027T075629Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "440.90"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much did I spend with Oakhurst Timber & Tools this quarter?",
-    "seconds": 50.1
-   },
-   {
-    "id": "top_customer",
-    "answer": "Your biggest customer this quarter is Sterling & Co. Architects.\n\n- Net sales to them: £6,233.00\n- Invoices: 2\n\nKey numbers\n- £6,233.00 net sales to Sterling & Co. Architects\n- £4,579.65 net sales to Hartwell Property Maintenance\n- £3,910.50 net sales to Harrowgate Interiors\n- 5 sales invoices this quarter\n\nSources: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx",
-    "key_numbers": [
-     "6233.00",
-     "£2,803.33"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/",
-     "Books.xlsx"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "Sterling & Co. Architects",
-     "6233.00"
-    ],
-    "numbers_exact": true,
-    "prompt": "Who is my biggest customer this quarter and how much did they spend?",
-    "seconds": 20.7
-   },
-   {
-    "id": "hartwell_net",
-    "answer": "Hartwell Property Maintenance bought £4,579.65 net from you this quarter.\n\nKey numbers\n- £4,579.65 net sales to Hartwell Property Maintenance, this period — source: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/\n- £6,233.00 net sales to Sterling & Co. Architects, this period — source: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/\n- £3,910.50 net sales to Harrowgate Interiors, this period — source: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/\n- £14,723.15 total sales net, this period — source: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/",
-    "key_numbers": [
-     "4579.65",
-     "6233.00",
-     "3910.50",
-     "14723.15"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "4579.65"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much did Hartwell Property Maintenance buy from me this quarter, before VAT?",
-    "seconds": 48.9
-   },
-   {
-    "id": "sterling_count",
-    "answer": "Sterling & Co. Architects had 2 invoices this quarter.\n\nKey numbers\n- count: 2 (source: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx)\n- net: £6,233.00 (source: _System/Ledger/events/2026-07/, _System/Ledger/events/2026-08/, _System/Ledger/events/2026-09/, Books.xlsx)\n\nConfidence: high",
-    "key_numbers": [
-     "2",
-     "£2,803.33"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/",
-     "Books.xlsx"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "2"
-    ],
-    "numbers_exact": true,
-    "prompt": "How many invoices did Sterling & Co. Architects get this quarter?",
-    "seconds": 20.0
-   },
-   {
-    "id": "largest",
-    "answer": "Your largest single transaction this quarter was the sale to Sterling & Co. Architects on 2026-09-27.\n\n- Gross amount including VAT: £5,259.60\n- Net: £4,383.00, VAT: £876.60, VAT code S\n\nKey figures\n- £5,259.60 gross – source: _System/Ledger/events/2026-09/20261027T075630Z-runtime-8b03d3faf29f81ef126cb2525607c2b3.json\n- £4,383.00 net – source: _System/Ledger/events/2026-09/20261027T075630Z-runtime-8b03d3faf29f81ef126cb2525607c2b3.json\n- £876.60 VAT – source: _System/Ledger/events/2026-09/20261027T075630Z-runtime-8b03d3faf29f81ef126cb2525607c2b3.json\n- Counterparty Sterling & Co. Architects – source: _System/Ledger/events/2026-09/20261027T075630Z-runtime-8b03d3faf29f81ef126cb2525607c2b3.json",
-    "key_numbers": [
-     "5259.60",
-     "4383.00",
-     "876.60"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-09/20261027T075630Z-runtime-8b03d3faf29f81ef126cb2525607c2b3.json"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "5259.60"
-    ],
-    "numbers_exact": true,
-    "prompt": "What was my largest single transaction this quarter, including VAT?",
-    "seconds": 44.5
-   },
-   {
-    "id": "harrowgate_gross",
-    "answer": "The Harrowgate Interiors sale on 19 September 2026 was £4,692.60 including VAT.\n\n- Net £3,910.50, VAT £782.10, gross £4,692.60\n\nkey_numbers:\n- 3910.50 source: _System/Ledger/events/2026-09/20261027T075630Z-runtime-ab302fa52eb9b4a31ad5baf6810431ed.json\n- 782.10 source: _System/Ledger/events/2026-09/20261027T075630Z-runtime-ab302fa52eb9b4a31ad5baf6810431ed.json\n- 4692.60 source: _System/Ledger/events/2026-09/20261027T075630Z-runtime-ab302fa52eb9b4a31ad5baf6810431ed.json\n\ncitations:\n- _System/Ledger/events/2026-09/20261027T075630Z-runtime-ab302fa52eb9b4a31ad5baf6810431ed.json\n\nsuggested_actions:\n- none\n\nconfidence: high",
-    "key_numbers": [
-     "3910.50",
-     "782.10",
-     "4692.60"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-09/20261027T075630Z-runtime-ab302fa52eb9b4a31ad5baf6810431ed.json"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "4692.60"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much was the Harrowgate Interiors invoice on 19 September including VAT?",
-    "seconds": 43.6
-   },
-   {
-    "id": "oakhurst_vat",
-    "answer": "The Oakhurst Timber & Tools purchase shows VAT of £88.18.\n\n- VAT: 88.18\n- Net: 440.90\n- Gross: 529.08\n- VAT code: S\n- Date: 2026-07-20\n\nKey numbers\n- 88.18 source: _System/Ledger/events/2026-07/20261027T075629Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json\n- 440.90 source: _System/Ledger/events/2026-07/20261027T075629Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json\n- 529.08 source: _System/Ledger/events/2026-07/20261027T075629Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json\n- 2026-07-20 source: _System/Ledger/events/2026-07/20261027T075629Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json",
-    "key_numbers": [
-     "88.18",
-     "440.90",
-     "529.08",
-     "2026-07-20"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/20261027T075629Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "88.18"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much VAT was on the Oakhurst Timber & Tools purchase?",
-    "seconds": 46.9
-   },
-   {
-    "id": "reduced_rate",
-    "answer": "You spent £774.85 net on reduced-rate (5 %) purchases this quarter.\n\n- purchases:R net: £774.85\n\nKey numbers\n- purchases:R net: £774.85 (source: _System/Ledger/events/2026-07/)\n- purchases:R net: £774.85 (source: _System/Ledger/events/2026-08/)\n- purchases:R net: £774.85 (source: _System/Ledger/events/2026-09/)\n- purchases:R net: £774.85 (source: Books.xlsx)\n\nSuggested actions\n- none\n\nConfidence: high",
-    "key_numbers": [
-     "774.85",
-     "774.85",
-     "774.85",
-     "774.85"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/",
-     "Books.xlsx"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "774.85"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much did I spend on reduced-rate (5 %) purchases this quarter, net?",
-    "seconds": 29.2
-   },
-   {
-    "id": "no_vat_invoice",
-    "answer": "You spent £671.74 net on purchases with VAT code N this quarter.\n\n- Purchases N net: £671.74\n- Purchases N VAT: £0.00\n- Purchases N count: 5\n\nKey numbers\n- 671.74 — purchases:N net — source: _System/Ledger/events/2026-07/\n- 0.00 — purchases:N vat — source: _System/Ledger/events/2026-07/\n- 5 — purchases:N count — source: _System/Ledger/events/2026-07/\n- 671.74 — purchases:N net — source: Books.xlsx\n\nSuggested actions\n- none\n\nConfidence: high",
-    "key_numbers": [
-     "671.74",
-     "0.00",
-     "5",
-     "671.74"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "Books.xlsx"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "671.74"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much did I spend on purchases with no VAT invoice (code N) this quarter?",
-    "seconds": 29.9
-   },
-   {
-    "id": "bank_balance",
-    "answer": "I can’t see a bank balance in the ledger facts you’ve shared. The data covers VAT boxes, sales and purchases for 2026-07-01 to 2026-09-30 and the prior quarter, plus top suppliers/customers and largest transactions, but there’s no bank or cash account figure.\n\nIf you have a bank feed or a cash/bank account in your books, I can pull the current balance from that source.",
-    "key_numbers": [
-     "£2,803.33",
-     "£782.50"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": null,
-    "declined": true,
-    "numbers_exact": null,
-    "prompt": "What is my bank balance today?",
-    "seconds": 10.2
-   },
-   {
-    "id": "corp_tax",
-    "answer": "I can’t tell from the books you’ve shared. Corporation tax is based on taxable profit, not VAT, and there’s no profit and loss or corporation tax calculation in the FACTS.\n\nIf you want an estimate, I’d need your profit for the accounting period, any allowable deductions, and the applicable corporation tax rate. Do you have a profit figure or a management accounts summary I can use?",
-    "key_numbers": [
-     "£2,803.33",
-     "£782.50"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": null,
-    "declined": true,
-    "numbers_exact": null,
-    "prompt": "How much corporation tax will I owe for this year?",
-    "seconds": 8.8
-   },
-   {
-    "id": "fuel_2025",
-    "answer": "I can’t see any fuel spend for March 2025 in the books you’ve shared. The ledger here only covers 2026-04-01 to 2026-09-30, so there’s no data for March 2025.\n\nIf you have a separate file or period for 2025, I can check that for fuel purchases once it’s in the system.",
-    "key_numbers": [
-     "£2,803.33",
-     "£782.50"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": null,
-    "declined": true,
-    "numbers_exact": null,
-    "prompt": "What did I spend on fuel in March 2025?",
-    "seconds": 10.4
-   },
-   {
-    "id": "act_invoice",
-    "prompt": "Send a £450 invoice to Sterling & Co. Architects for the staircase repair",
-    "expected_kind": "create_invoice",
-    "got": "create_invoice",
-    "answer": "**Send an invoice to Sterling & Co. Architects** for **£540.00** (£450.00 + VAT £90.00), due 26 November 2026.\n\n- Staircase repair",
-    "card": true,
-    "card_right_kind": true,
-    "clarification": false,
-    "seconds": 9.2
-   },
-   {
-    "id": "act_chase",
-    "prompt": "Chase the overdue invoice INV-0002",
-    "expected_kind": "chase_invoice",
-    "got": "chase_invoice",
-    "answer": "**Chase Sterling & Co. Architects** about invoice **INV-0002** for **£2,220.00** (68 days overdue).\n\n> Dear Sterling & Co. Architects,\n> \n> I hope you are well. I am writing to follow up on invoice INV-0002 dated 21 July 2026 for £2,220.00, which was due on 20 August 2026 and is now overdue.\n> \n> Could you please arrange payment at your earliest convenience, or let me know if there is an issue I can help with.\n> \n> The payment details are on the attached invoice.\n> \n> Kind regards,\n> Bramblewood Joinery Ltd",
-    "card": true,
-    "card_right_kind": true,
-    "clarification": false,
-    "seconds": 19.0
-   },
-   {
-    "id": "act_mileage",
-    "prompt": "Log 42 miles in the director's car yesterday from the workshop to Harrogate",
-    "expected_kind": "log_mileage",
-    "got": "log_mileage",
-    "answer": "**Log 42.0 miles** in **Director's car (own)**, workshop to Harrogate, 26 October 2026.",
-    "card": true,
-    "card_right_kind": true,
-    "clarification": false,
-    "seconds": 10.7
-   },
-   {
-    "id": "act_timesheet",
-    "prompt": "Record 6 hours for Sam Ashdown on the office partitions job today",
-    "expected_kind": "log_timesheet",
-    "got": "log_timesheet",
-    "answer": "**Log 6 hours** for **Sam Ashdown** on **Office partitions and doors**, 27 October 2026.",
-    "card": true,
-    "card_right_kind": true,
-    "clarification": false,
-    "seconds": 10.8
-   },
-   {
-    "id": "act_invoice_vat",
-    "prompt": "Bill Hartwell Property Maintenance £1,200 plus VAT for the office doors",
-    "expected_kind": "create_invoice",
-    "got": "clarification",
-    "answer": "How many of each line? I couldn't match the quantities to what you said.",
-    "card": false,
-    "card_right_kind": false,
-    "clarification": true,
-    "seconds": 10.5
-   }
-  ],
-  "summary": {
-   "questions": 35,
-   "with_gold": 32,
-   "numbers_exact": 28,
-   "citation_present": 32,
-   "no_invented_figure": 31,
-   "raw_unparsed": 4,
-   "fallbacks": 4,
-   "shipped_invented": 0,
-   "unanswerable": 3,
-   "declined": 3,
-   "instructions": 5,
-   "cards": 4,
-   "cards_right_kind": 4,
-   "clarifications": 1,
-   "answered_instead": 0,
-   "seconds": 2229.3
-  }
- },
- "qwen": {
-  "model": "qwen3.8-27b",
-  "records": [
-   {
-    "id": "vat_box5",
-    "answer": "You owe HMRC **£2,803.33** for the July–September quarter.\n\nThat's a big jump from £782.50 in the previous quarter (April–June) — up by £2,020.83, or about 258%.\n\nThe main driver is your sales VAT (box 1): £2,944.63 output VAT against only £141.30 input VAT, which works to the £2,803.33 figure.",
-    "key_numbers": [
-     "2803.33",
-     "2944.63",
-     "141.30",
-     "2020.83"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "2803.33"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much VAT do I owe for this quarter?",
-    "seconds": 48.7
-   },
-   {
-    "id": "vat_box1",
-    "answer": "Your Box 1 (VAT on sales) for the period 1 July – 30 September 2026 is **£2,944.63**.\n\nThat's up £1,891.63 compared to the same figure last quarter, which reflects the jump in sales net (from £5,265.00 to £14,723.15).",
-    "key_numbers": [
-     "2944.63",
-     "1891.63"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "2944.63"
-    ],
-    "numbers_exact": true,
-    "prompt": "What is the Box 1 figure on my VAT return?",
-    "seconds": 33.3
-   },
-   {
-    "id": "vat_box4",
-    "answer": "No VAT to reclaim this quarter, unfortunately. You're actually in a **pay** position.\n\n- Box 5 (VAT payable to HMRC): £2,803.33\n- That's up from £782.50 last quarter, an increase of £2,020.83 (+258.3%)\n\nThe jump comes from your sales VAT (Box 1) climbing to £2,944.63 from £1,053.00 last quarter, driven by a big uptick in sales (net £14,723 vs £5,265). Your input VAT (Box 4) actually went *down* to £141.30 from £270.50, which widens the gap further.\n\nYou'll need to settle the £2,803.33 with HMRC when the return is due.",
-    "key_numbers": [
-     "2803.33",
-     "2944.63",
-     "141.30",
-     "2020.83"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "141.30"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much VAT can I reclaim this quarter?",
-    "seconds": 45.3
-   },
-   {
-    "id": "vat_box6",
-    "answer": "Your Box 6 (total sales net of VAT) for this period is £14,723.\n\nThat's up from £5,265 last quarter — an increase of £9,458 or 179.6%.",
-    "key_numbers": [
-     "14723",
-     "5265",
-     "9458",
-     "179.6"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "14723"
-    ],
-    "numbers_exact": true,
-    "prompt": "What are my total sales excluding VAT for Box 6?",
-    "seconds": 37.5
-   },
-   {
-    "id": "vat_box7",
-    "answer": "Box 7 is your total purchases (excluding VAT) for the quarter. For Q3 2026 (July–Sep) that's **£2,465**.\n\n- Up by £51 compared to Q2 (which was £2,414).\n- 16 purchase entries made up that total, spread across several suppliers.\n\nIt's a fairly flat quarter spending-wise compared to the big jump in sales.",
-    "key_numbers": [
-     "2465",
-     "51"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/",
-     "Books.xlsx"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "2465"
-    ],
-    "numbers_exact": true,
-    "prompt": "What goes in Box 7 this quarter?",
-    "seconds": 36.9
-   },
-   {
-    "id": "vat_prev_box5",
-    "answer": "Last quarter (April–June 2026) you owed HMRC **£782.50** in VAT.\n\n- Output VAT (Box 1): £1,053.00\n- Input VAT reclaimed (Box 4): £270.50\n- Net VAT payable (Box 5): £782.50",
-    "key_numbers": [
-     "782.50",
-     "1053.00",
-     "270.50"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "782.50"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much VAT did I owe last quarter?",
-    "seconds": 51.7
-   },
-   {
-    "id": "vat_delta",
-    "answer": "Your VAT bill jumped by £2,020.83 this quarter compared to the last one.\n\n- Last quarter (Q2): £782.50\n- This quarter (Q3): £2,803.33\n- Change: +£2,020.83 (up 258.3%)\n\nThe main driver is sales VAT — box 1 went from £1,053.00 to £2,944.63, which tracks with your sales nearly tripling (from £5,265 to £14,723). Input VAT actually dropped slightly (box 4 fell by £129.20), so you're paying more overall despite reclaiming a bit less on purchases.\n\nYou're still in a \"pay HMRC\" position, so that £2,803.33 is what's due on your return.",
-    "key_numbers": [
-     "2803.33",
-     "782.50",
-     "2020.83",
-     "258.3"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/",
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "2020.83"
-    ],
-    "numbers_exact": true,
-    "prompt": "By how much has my VAT bill changed since last quarter?",
-    "seconds": 82.2
-   },
-   {
-    "id": "vat_pct",
-    "answer": "Your VAT bill (Box 5) went up by **258.3%** compared with last quarter. That's an increase of £2,020.83, taking you from £782.50 to £2,803.33.\n\nThe main driver is the big jump in sales VAT — Box 6 net sales rose from £5,265 to £14,723, so you're charging a lot more VAT out than in.",
-    "key_numbers": [
-     "258.3%",
-     "£2,803.33",
-     "£782.50",
-     "£2,020.83"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
-     "_System/Ledger/events/2026-07/",
-     "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "258.3"
-    ],
-    "numbers_exact": true,
-    "prompt": "By what percentage did my VAT bill go up compared with last quarter?",
-    "seconds": 58.1
-   },
-   {
-    "id": "vat_prev_box4",
-    "answer": "Last quarter (Apr–Jun 2026) you didn't actually reclaim VAT – you paid HMRC.\n\n- Input VAT (Box 4, what you were reclaiming on purchases): £270.50\n- Net position (Box 5): £782.50 paid to HMRC\n\nYour output VAT (£1,053.00) was well above your input, so the balance went out rather than back to you.\n\nIf you're thinking of the current quarter (Jul–Sep), that's also a payment: £2,803.33.",
-    "key_numbers": [
-     "270.50",
-     "782.50"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "270.50"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much VAT did I reclaim last quarter?",
-    "seconds": 100.5
-   },
-   {
-    "id": "vat_prev_box6",
-    "answer": "Box 6 last quarter (April–June 2026) was £5,265. That's your total sales including VAT for that period.\n\nFor comparison, this quarter it's £14,723, so you're up by £9,458.",
-    "key_numbers": [
-     "£5,265",
+     "£14,723.15",
      "£14,723"
     ],
     "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 467,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "14723"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "What are my total sales excluding VAT for Box 6?",
+    "seconds": 13.3
+   },
+   {
+    "id": "vat_box7",
+    "answer": "Box 7 for Jul–Sep 2026 is £2,465. That’s purchases before VAT for this quarter.",
+    "key_numbers": [
+     "£2,465",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 315,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "2465"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "What goes in Box 7 this quarter?",
+    "seconds": 10.9
+   },
+   {
+    "id": "vat_prev_box5",
+    "answer": "For Apr–Jun 2026 the books show a net VAT of £782.50 to pay. That’s box 5, with £1,053.00 VAT due on sales and £270.50 reclaimed on purchases.",
+    "key_numbers": [
+     "£782.50",
+     "£1,053.00",
+     "£270.50"
+    ],
+    "citations": [
      "_System/Ledger/events/2026-04/",
      "_System/Ledger/events/2026-05/",
      "_System/Ledger/events/2026-06/",
@@ -1327,29 +178,168 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 306,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "782.50"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much VAT did I owe last quarter?",
+    "seconds": 17.7
+   },
+   {
+    "id": "vat_delta",
+    "answer": "Your VAT bill rose by £2,020.83 from Apr–Jun 2026 to Jul–Sep 2026. That’s net VAT of £2,803.33 this quarter versus £782.50 last quarter. The books you were given don’t show bank balances, payroll, jobs, deadlines, corporation tax or contact details.",
+    "key_numbers": [
+     "+£2,020.83",
+     "258.3 %",
+     "£2,803.33",
+     "£782.50"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 489,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "2020.83"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "By how much has my VAT bill changed since last quarter?",
+    "seconds": 49.8
+   },
+   {
+    "id": "vat_pct",
+    "answer": "Your VAT bill rose by 258.3% compared with last quarter. That’s net VAT of £2,803.33 for Jul–Sep 2026 versus £782.50 for Apr–Jun 2026.",
+    "key_numbers": [
+     "+£2,020.83",
+     "258.3 %",
+     "£2,803.33",
+     "£782.50"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 489,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "258.3"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "By what percentage did my VAT bill go up compared with last quarter?",
+    "seconds": 46.3
+   },
+   {
+    "id": "vat_prev_box4",
+    "answer": "You reclaimed £270.50 in the Apr–Jun 2026 quarter. That’s box 4 for that period. The books you were given don’t show bank balances, payroll, jobs, deadlines, corporation tax or contact details.",
+    "key_numbers": [
+     "£270.50",
+     "£782.50"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 306,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "270.50"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much VAT did I reclaim last quarter?",
+    "seconds": 18.3
+   },
+   {
+    "id": "vat_prev_box6",
+    "answer": "Box 6 for Apr–Jun 2026 was £5,265. That’s sales before VAT for the previous period. Confidence: high.",
+    "key_numbers": [
+     "£5,265",
+     "£782.50"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 306,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "5265"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "What was Box 6 last quarter?",
-    "seconds": 27.8
+    "seconds": 12.8
    },
    {
     "id": "vat_box4_delta",
-    "answer": "You're reclaiming **£129.20 less** input VAT this quarter compared to the last.\n\n- This quarter (Jul–Sep): £141.30 reclaimable\n- Last quarter (Apr–Jun): £270.50 reclaimable\n- Difference: −£129.20\n\nThe drop is mostly because your purchases with VAT (standard-rated and reduced-rate) came in lower this period — your S-code purchase VAT went from £229.71 down to £100.01.",
+    "answer": "You’re reclaiming £141.30 in Jul–Sep 2026 versus £270.50 in Apr–Jun 2026. That’s £129.20 less to reclaim than last quarter.",
     "key_numbers": [
-     "141.30",
-     "270.50",
-     "-129.20"
+     "-£129.20",
+     "£141.30",
+     "£270.50"
     ],
     "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
      "_System/Ledger/events/2026-09/",
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/"
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -1357,27 +347,31 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 489,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "-129.20"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "How much less VAT am I reclaiming than last quarter?",
-    "seconds": 61.0
+    "seconds": 14.4
    },
    {
     "id": "vat_position",
-    "answer": "You owe HMRC for this quarter. You'll pay **£2,803.33** (Box 5 on your VAT return, period 26A3, Jul–Sep 2026).\n\nThat's the difference between your output VAT of £2,944.63 and the input VAT you've claimed back of £141.30.\n\nA couple of things worth noting:\n\n- Your output VAT jumped a lot compared to last quarter (up by £1,891.63), which is mostly because your sales nearly tripled (£14,723 net vs £5,265 net).\n- Your input VAT actually went *down* slightly (−£129.20), so most of the jump in what you owe is just from the extra sales.\n\nNothing unusual there – just a strong quarter.",
+    "answer": "For Jul–Sep 2026 you have to pay HMRC. The net VAT due is £2,803.33.",
     "key_numbers": [
-     "2803.33",
-     "2944.63",
-     "141.30",
-     "pay HMRC"
+     "£2,803.33",
+     "£2,944.63",
+     "£141.30"
     ],
     "citations": [
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -1385,30 +379,29 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 315,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "2803.33"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "Do I have to pay HMRC this quarter or will they repay me, and how much?",
-    "seconds": 53.9
+    "seconds": 16.4
    },
    {
     "id": "sales_net",
-    "answer": "Your net sales this quarter (July–Sept 2026) were **£14,723.15** across 5 sales entries.\n\nThat's up **£9,458.15** (about 179.6%) compared to the previous quarter, which was £5,265.00. A big jump — mostly driven by two strong months of work with Sterling & Co. Architects and Hartwell Property Maintenance.\n\n- This quarter net sales: £14,723.15\n- Previous quarter net sales: £5,265.00\n- Change: +£9,458.15 (+179.6%)\n- Number of sales entries: 5",
+    "answer": "Your net sales for Jul–Sep 2026 are £14,723.15. That’s the net sales figure shown for this quarter in the books you provided.",
     "key_numbers": [
-     "14723.15",
-     "5265.00",
-     "9458.15",
-     "179.6"
+     "£14,723.15",
+     "£2,803.33"
     ],
     "citations": [
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
      "_System/Ledger/events/2026-09/",
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
      "Books.xlsx"
     ],
     "fallback": null,
@@ -1417,83 +410,60 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "14723.15"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "What were my net sales this quarter?",
-    "seconds": 51.9
+    "seconds": 14.5
    },
    {
     "id": "purchases_net",
-    "answer": "I couldn't check a written explanation against your books, so here are the figures exactly as calculated from your ledger:\n\n- Net VAT (Box 5), 1 Jul 2026 to 30 Sep 2026: £2,803.33 (pay HMRC)\n- Previous period (1 Apr 2026 to 30 Jun 2026): £782.50\n- Sales £14,723.15 net, purchases £2,465.28 net, from 21 approved entries",
+    "answer": "You spent £2,465 on purchases before VAT in Jul–Sep 2026. That’s the net purchases total for the period shown in your books.",
     "key_numbers": [
-     "£2,803.33",
-     "£782.50",
-     "£2,944.63"
+     "£2,465.28",
+     "£2,803.33"
     ],
     "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
-    "fallback": "The model quoted figures that are not in your books (£2,606.58).",
+    "fallback": null,
     "card": false,
     "raw_parsed": true,
-    "raw_invented": [
-     "£2,606.58"
-    ],
-    "no_invented_figure": false,
+    "raw_invented": [],
+    "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 467,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "2465.28"
     ],
     "numbers_exact": true,
+    "words_exact": false,
     "prompt": "How much did I spend on purchases this quarter, before VAT?",
-    "seconds": 39.8
+    "seconds": 11.6
    },
    {
     "id": "sales_count",
-    "answer": "You have **5 sales entries** this quarter (July–September 2026), totalling £14,723.15 net.",
+    "answer": "There are 5 sales entries for Jul–Sep 2026. The books you were given don’t show anything else about sales this quarter.",
     "key_numbers": [
      "5",
      "£2,803.33"
     ],
     "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "5"
-    ],
-    "numbers_exact": true,
-    "prompt": "How many sales entries are there this quarter?",
-    "seconds": 17.1
-   },
-   {
-    "id": "purchases_count",
-    "answer": "You have **16 purchase entries** in the books this quarter (July–September 2026).",
-    "key_numbers": [
-     "16",
-     "£2,803.33"
-    ],
-    "citations": [
+     "_System/Ledger/events/2026-09/",
      "Books.xlsx"
     ],
     "fallback": null,
@@ -1502,22 +472,57 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "5"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How many sales entries are there this quarter?",
+    "seconds": 12.4
+   },
+   {
+    "id": "purchases_count",
+    "answer": "There are 16 purchase entries in the books for Jul–Sep 2026.",
+    "key_numbers": [
+     "16",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "16"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "How many purchase entries are in the books this quarter?",
-    "seconds": 15.9
+    "seconds": 8.4
    },
    {
     "id": "sales_growth",
-    "answer": "Net sales grew by £9,458.15 compared with last quarter, taking you from £5,265.00 to £14,723.15 — a 179.6% increase.\n\nThat's a big jump, largely driven by a couple of large jobs: Sterling & Co. Architects contributed £6,233.00 and Hartwell Property Maintenance £4,579.65 across the quarter.",
+    "answer": "Net sales for Jul–Sep 2026 were £14,723.15, up £9,458.15 from Apr–Jun 2026. That’s a 179.6% increase on last quarter.",
     "key_numbers": [
-     "14723.15",
-     "5265.00",
-     "9458.15",
-     "179.6"
+     "+£9,458.15",
+     "179.6 %",
+     "£14,723.15",
+     "£5,265.00"
     ],
     "citations": [
      "_System/Ledger/events/2026-04/",
@@ -1525,7 +530,8 @@
      "_System/Ledger/events/2026-06/",
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -1533,20 +539,26 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 658,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "9458.15"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "How much did my net sales grow compared with last quarter?",
-    "seconds": 44.3
+    "seconds": 14.3
    },
    {
     "id": "purchases_pct",
-    "answer": "Your purchases are up just **2.1%** compared to last quarter – a rise of £50.48, from £2,414.80 to £2,465.28. Pretty much flat, which is good news if you're trying to keep costs steady.",
+    "answer": "Purchases net rose by 2.1% from Apr–Jun 2026 to Jul–Sep 2026. That’s an increase of £50.48 on a net basis.",
     "key_numbers": [
-     "2.1",
-     "50.48"
+     "+£50.48",
+     "2.1 %",
+     "£2,465.28",
+     "£2,414.80"
     ],
     "citations": [
      "_System/Ledger/events/2026-04/",
@@ -1554,7 +566,8 @@
      "_System/Ledger/events/2026-06/",
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -1562,25 +575,30 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 658,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "2.1"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "By what percentage did my purchases change from last quarter?",
-    "seconds": 31.9
+    "seconds": 20.6
    },
    {
     "id": "prev_sales_net",
-    "answer": "Your net sales last quarter (April–June 2026) were **£5,265.00**.\n\nThat's from 2 sales invoices during that period.",
+    "answer": "Your net sales for Apr–Jun 2026 were £5,265.00. That’s the net sales figure for the previous period you asked about. I can’t see any other sales detail in the books you’ve given.",
     "key_numbers": [
-     "5265.00",
-     "£2,803.33"
+     "£5,265.00",
+     "£782.50"
     ],
     "citations": [
      "_System/Ledger/events/2026-04/",
      "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/"
+     "_System/Ledger/events/2026-06/",
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -1588,25 +606,30 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "5265.00"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "What were my net sales last quarter?",
-    "seconds": 23.8
+    "seconds": 16.8
    },
    {
     "id": "sales_vat",
-    "answer": "You charged **£2,944.63** in VAT on your sales this quarter (Jul–Sep 2026). That's all from your standard-rate sales of £14,723.15 (5 invoices).\n\n- Box 1 (output VAT): £2,944.63\n- Sales net: £14,723.15",
+    "answer": "You charged £2,944.63 VAT on sales in Jul–Sep 2026. That’s box 1 for this quarter, with net sales of £14,723. The books you were given don’t show how much VAT you charged in other periods.",
     "key_numbers": [
-     "2944.63",
-     "14723.15"
+     "£14,723.15",
+     "£2,944.63"
     ],
     "citations": [
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -1614,17 +637,21 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 467,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "2944.63"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "How much VAT did I charge on my sales this quarter?",
-    "seconds": 30.0
+    "seconds": 21.6
    },
    {
     "id": "entries",
-    "answer": "You've got **21 entries** recorded for this quarter (1 July – 30 September 2026).",
+    "answer": "There are 21 approved entries in the books for Jul–Sep 2026. That’s what the ledger shows for this quarter.",
     "key_numbers": [
      "21",
      "£2,803.33"
@@ -1632,7 +659,8 @@
     "citations": [
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -1640,20 +668,55 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "21"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "How many approved entries are in the books for this quarter?",
-    "seconds": 22.0
+    "seconds": 10.3
    },
    {
     "id": "prev_purchases_net",
-    "answer": "You spent **£2,465.28** on purchases (net of VAT) in Q3 (July–September 2026). That's 16 entries in total. The biggest chunk was standard-rated (S) purchases at £500.04, followed by reduced-rate (R) at £774.85, zero-rated (Z) at £518.65, and exempt (N) at £671.74.",
+    "answer": "For Apr–Jun 2026, purchases net of VAT were £2,415. The books you were given don’t show the VAT-inclusive amount or a breakdown by supplier, so I can’t confirm that from the ledger.",
     "key_numbers": [
-     "2465.28",
-     "141.30"
+     "£2,414.80",
+     "£782.50"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 458,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "2414.80"
+    ],
+    "numbers_exact": true,
+    "words_exact": false,
+    "prompt": "What did I spend on purchases last quarter, net of VAT?",
+    "seconds": 14.6
+   },
+   {
+    "id": "top_supplier",
+    "answer": "Your biggest supplier this quarter was Whimsy Wardrobe Ltd. You spent £504.50 net with them in Jul–Sep 2026.",
+    "key_numbers": [
+     "£504.50",
+     "£2,803.33"
     ],
     "citations": [
      "_System/Ledger/events/2026-07/",
@@ -1667,126 +730,31 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "2414.80"
-    ],
-    "numbers_exact": false,
-    "prompt": "What did I spend on purchases last quarter, net of VAT?",
-    "seconds": 31.4
-   },
-   {
-    "id": "top_supplier",
-    "answer": "Your biggest supplier this quarter was **Whimsy Wardrobe Ltd**, with a spend of **£504.50** (one transaction in September). That was also their only purchase code on the books this quarter (Z – zero-rated), so no VAT was charged on it.\n\nFor context, your second and third biggest were Oakhurst Timber & Tools at £440.90 and Havoc Hardware & Tools Ltd at £322.00.",
-    "key_numbers": [
-     "504.50",
-     "440.90"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-09/20261027T075630Z-runtime-9b716fb46b02d400ee7f8c749da4feb9.json",
-     "_System/Ledger/events/2026-07/20261027T075629Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
+    "pack_tokens": 594,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "Whimsy Wardrobe Ltd",
      "504.50"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "Who was my biggest supplier this quarter and how much did I spend with them?",
-    "seconds": 59.7
+    "seconds": 24.0
    },
    {
     "id": "oakhurst_net",
-    "answer": "You spent **£440.90** (net) with Oakhurst Timber & Tools this quarter — that's one purchase, dated 21 July 2026. Including VAT of £88.18, the total invoice was **£529.08**.\n\n- Net: £440.90\n- VAT: £88.18\n- Total (gross): £529.08",
+    "answer": "You spent £440.90 net with Oakhurst Timber & Tools in Jul–Sep 2026. That’s the only purchase from them in the quarter, on 20 July 2026.",
     "key_numbers": [
-     "440.90",
-     "88.18",
-     "529.08"
+     "£440.90",
+     "£529.08"
     ],
     "citations": [
-     "_System/Ledger/events/2026-07/20261027T075629Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "440.90"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much did I spend with Oakhurst Timber & Tools this quarter?",
-    "seconds": 41.0
-   },
-   {
-    "id": "top_customer",
-    "answer": "Your biggest customer this quarter is **Sterling & Co. Architects** at £6,233.00 net across 2 sales. That's nearly a third of your total sales for the period.\n\nTheir two jobs were:\n- £4,383.00 (27 Sep)\n- £1,850.00 (21 Jul)\n\nRunner-up is Hartwell Property Maintenance at £4,579.65.",
-    "key_numbers": [
-     "£6,233.00",
-     "2"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-09/20261027T075630Z-runtime-8b03d3faf29f81ef126cb2525607c2b3.json",
-     "_System/Ledger/events/2026-07/20261027T075630Z-runtime-2ee78cfbbfde6e8d487abd59c4a79604.json"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "Sterling & Co. Architects",
-     "6233.00"
-    ],
-    "numbers_exact": true,
-    "prompt": "Who is my biggest customer this quarter and how much did they spend?",
-    "seconds": 59.4
-   },
-   {
-    "id": "hartwell_net",
-    "answer": "Hartwell Property Maintenance spent **£4,579.65** (before VAT) with you this quarter, across 2 invoices.",
-    "key_numbers": [
-     "4579.65",
-     "2"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/20261027T075629Z-runtime-db59c04760b4fdffcc4bf5e17e07aa87.json",
-     "_System/Ledger/events/2026-09/20261027T075630Z-runtime-000ad24cc122845f45e809a724d06228.json"
-    ],
-    "fallback": null,
-    "card": false,
-    "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
-    "shipped_invented": [],
-    "citation_present": true,
-    "gold": [
-     "4579.65"
-    ],
-    "numbers_exact": true,
-    "prompt": "How much did Hartwell Property Maintenance buy from me this quarter, before VAT?",
-    "seconds": 41.9
-   },
-   {
-    "id": "sterling_count",
-    "answer": "Sterling & Co. Architects got **2 invoices** from you this quarter (Q3 2026, Jul–Sep).\n\n- 21 Jul – £1,850.00 net\n- 27 Sep – £4,383.00 net\n\nThat's £6,233.00 net in total from them.",
-    "key_numbers": [
-     "2",
-     "£6,233.00"
-    ],
-    "citations": [
-     "_System/Ledger/events/2026-07/20261027T075630Z-runtime-2ee78cfbbfde6e8d487abd59c4a79604.json",
-     "_System/Ledger/events/2026-09/20261027T075630Z-runtime-8b03d3faf29f81ef126cb2525607c2b3.json",
+     "_System/Ledger/events/2026-07/20261027T104408Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
      "Books.xlsx"
     ],
     "fallback": null,
@@ -1795,24 +763,129 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 1322,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "440.90"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much did I spend with Oakhurst Timber & Tools this quarter?",
+    "seconds": 15.5
+   },
+   {
+    "id": "top_customer",
+    "answer": "Sterling & Co. Architects is your biggest customer for Jul–Sep 2026, with £6,233.00 net sales across 2 entries.",
+    "key_numbers": [
+     "£6,233.00",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 482,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "Sterling & Co. Architects",
+     "6233.00"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "Who is my biggest customer this quarter and how much did they spend?",
+    "seconds": 14.4
+   },
+   {
+    "id": "hartwell_net",
+    "answer": "Hartwell Property Maintenance bought £4,579.65 net from you in Jul–Sep 2026. That’s the total for the quarter before VAT.",
+    "key_numbers": [
+     "£4,579.65",
+     "£4,437.90",
+     "£739.65"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/20261027T104408Z-runtime-db59c04760b4fdffcc4bf5e17e07aa87.json",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 1413,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "4579.65"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much did Hartwell Property Maintenance buy from me this quarter, before VAT?",
+    "seconds": 16.2
+   },
+   {
+    "id": "sterling_count",
+    "answer": "Sterling & Co. Architects got 2 invoices in Jul–Sep 2026. The books you were given don’t show the invoice numbers themselves.",
+    "key_numbers": [
+     "£6,233.00",
+     "2",
+     "£5,259.60"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-09/20261027T104409Z-runtime-8b03d3faf29f81ef126cb2525607c2b3.json",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 1252,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "2"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "How many invoices did Sterling & Co. Architects get this quarter?",
-    "seconds": 38.0
+    "seconds": 13.1
    },
    {
     "id": "largest",
-    "answer": "Your largest single transaction this quarter was a **sale to Sterling & Co. Architects** on 27 September 2026, totalling **£5,259.60** including VAT (net £4,383.00 + VAT £876.60).\n\nIt was one of two sales to that customer this period — the other being £2,220.00 on 21 July.",
+    "answer": "Your largest single transaction in Jul–Sep 2026 including VAT was the sale to Sterling & Co. Architects on 2026-09-27 for £5,259.60 gross. That’s the biggest entry in the books for this quarter.",
     "key_numbers": [
-     "5259.60",
-     "4383.00",
-     "876.60"
+     "£5,259.60",
+     "£2,803.33"
     ],
     "citations": [
-     "_System/Ledger/events/2026-09/20261027T075630Z-runtime-8b03d3faf29f81ef126cb2525607c2b3.json"
+     "_System/Ledger/events/2026-09/20261027T104409Z-runtime-8b03d3faf29f81ef126cb2525607c2b3.json",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -1820,24 +893,32 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 1336,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "5259.60"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "What was my largest single transaction this quarter, including VAT?",
-    "seconds": 46.3
+    "seconds": 18.6
    },
    {
     "id": "harrowgate_gross",
-    "answer": "The Harrowgate Interiors invoice dated 19 September 2026 was **£4,692.60** including VAT (net £3,910.50 + VAT £782.10).",
+    "answer": "The Harrowgate Interiors sale on 19 September 2026 was £4,692.60 gross including VAT. That’s net £3,910.50 plus VAT £782.10 for Jul–Sep 2026.",
     "key_numbers": [
-     "£4,692.60",
      "£3,910.50",
+     "£4,692.60",
      "£782.10"
     ],
     "citations": [
-     "_System/Ledger/events/2026-09/20261027T075630Z-runtime-ab302fa52eb9b4a31ad5baf6810431ed.json"
+     "_System/Ledger/events/2026-09/20261027T104409Z-runtime-ab302fa52eb9b4a31ad5baf6810431ed.json",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -1845,23 +926,32 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 1313,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "4692.60"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "How much was the Harrowgate Interiors invoice on 19 September including VAT?",
-    "seconds": 35.2
+    "seconds": 21.7
    },
    {
     "id": "oakhurst_vat",
-    "answer": "The VAT on your Oakhurst Timber & Tools purchase (20 July 2026) was £88.18, on a net cost of £440.90 (rate S, 20%).",
+    "answer": "The books you were given don’t show the VAT on that purchase. The ledger lists the net amount for Oakhurst Timber & Tools in Jul–Sep 2026, but VAT on purchases isn’t broken down by supplier in the figures provided.",
     "key_numbers": [
-     "88.18",
-     "440.90"
+     "£440.90",
+     "£529.08",
+     "£88.18"
     ],
     "citations": [
-     "_System/Ledger/events/2026-07/20261027T075629Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json"
+     "_System/Ledger/events/2026-07/20261027T104408Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -1869,26 +959,30 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 1384,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "88.18"
     ],
     "numbers_exact": true,
+    "words_exact": false,
     "prompt": "How much VAT was on the Oakhurst Timber & Tools purchase?",
-    "seconds": 32.5
+    "seconds": 24.9
    },
    {
     "id": "reduced_rate",
-    "answer": "You spent **£774.85** (net) on reduced-rate (5%) purchases this quarter — 6 transactions in total, with £40.25 VAT on them.",
+    "answer": "You spent £774.85 net on reduced-rate (5 %) purchases in Jul–Sep 2026. That’s the purchases:R net total for the period. The books you were given don’t show the VAT on those purchases separately from the net figure here.",
     "key_numbers": [
      "£774.85",
-     "£40.25",
-     "6"
+     "£2,803.33"
     ],
     "citations": [
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -1896,29 +990,30 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "774.85"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "How much did I spend on reduced-rate (5 %) purchases this quarter, net?",
-    "seconds": 33.7
+    "seconds": 19.1
    },
    {
     "id": "no_vat_invoice",
-    "answer": "You spent **£671.74** (net) on purchases with no VAT invoice (code N) this quarter, across **5** purchases. No VAT was reclaimed on these, as expected.",
+    "answer": "You spent £671.74 net on purchases with no VAT invoice (code N) in Jul–Sep 2026. That’s from 5 entries and the VAT on those purchases is £0.00. The books you were given don’t show the gross amount paid, only the net and VAT figures.",
     "key_numbers": [
      "£671.74",
-     "5",
-     "£0.00"
+     "£2,803.33"
     ],
     "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -1926,28 +1021,27 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 543,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": [
      "671.74"
     ],
     "numbers_exact": true,
+    "words_exact": true,
     "prompt": "How much did I spend on purchases with no VAT invoice (code N) this quarter?",
-    "seconds": 35.6
+    "seconds": 24.7
    },
    {
     "id": "bank_balance",
-    "answer": "I don't have your current bank balance in the data I've been given. The ledger shows your sales, purchases and VAT for the period, but not a running bank balance.\n\n- If your bank feed is connected in your bookkeeping software, you should be able to see it on the dashboard or bank screen.\n- Alternatively, checking your online banking directly will give you today's figure.",
-    "key_numbers": [
-     "£2,803.33",
-     "£782.50"
-    ],
+    "answer": "The books you were given don’t show bank balances. I can’t see a current bank balance from the ledger entries you’ve shared.",
+    "key_numbers": [],
     "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -1955,55 +1049,62 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 254,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": null,
     "declined": true,
     "numbers_exact": null,
+    "words_exact": null,
     "prompt": "What is my bank balance today?",
-    "seconds": 20.6
+    "seconds": 9.9
    },
    {
     "id": "corp_tax",
-    "answer": "I can't work out your corporation tax from what's here. The figures I have are all VAT-return data (boxes 1–9, sales/purchase totals) for Q3 2026 and Q2 2026 — they don't give me a profit figure or a full year's income and expenses, which is what corporation tax is calculated on.\n\nTo get an answer you'd need:\n- A year-to-date profit and loss (total income minus allowable business expenses), or\n- An estimate from your accountant who knows about any other reliefs, capital allowances, or group relief that apply.\n\nHappy to help with anything the VAT or trading figures can tell you in the meantime.",
+    "answer": "I couldn't check a written explanation against your books, so here are the figures for Jul–Sep 2026 exactly as calculated from your ledger:\n\n- Net VAT (Box 5), 26A3: £2,803.33 (pay HMRC)\n- VAT on sales (Box 1), 26A3: £2,944.63\n- VAT reclaimed (Box 4), 26A3: £141.30",
     "key_numbers": [
      "£2,803.33",
-     "£782.50"
+     "£2,944.63",
+     "£141.30"
     ],
     "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
-    "fallback": null,
+    "fallback": "The model quoted figures that are not in your books (600).",
     "card": false,
     "raw_parsed": true,
-    "raw_invented": [],
-    "no_invented_figure": true,
+    "raw_invented": [
+     "600"
+    ],
+    "no_invented_figure": false,
     "shipped_invented": [],
+    "pack_tokens": 315,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": null,
-    "declined": true,
+    "declined": false,
     "numbers_exact": null,
+    "words_exact": null,
     "prompt": "How much corporation tax will I owe for this year?",
-    "seconds": 42.2
+    "seconds": 20.0
    },
    {
     "id": "fuel_2025",
-    "answer": "I don't have any data for March 2025 in the books I've been given — my records only cover April to September 2026. I can't tell you what you spent on fuel in March 2025 from what's here.\n\nIf you have those older books (a spreadsheet or ledger export for March 2025), pop them in and I'll be happy to dig through them for you.",
+    "answer": "The books you were given don’t show that. They only cover Jul–Sep 2026, so there’s no fuel spend for March 2025 in the ledger I can see.",
     "key_numbers": [
-     "£2,803.33",
-     "£782.50"
+     "£2,465.28",
+     "£2,803.33"
     ],
     "citations": [
-     "_System/Ledger/events/2026-04/",
-     "_System/Ledger/events/2026-05/",
-     "_System/Ledger/events/2026-06/",
      "_System/Ledger/events/2026-07/",
      "_System/Ledger/events/2026-08/",
-     "_System/Ledger/events/2026-09/"
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
     ],
     "fallback": null,
     "card": false,
@@ -2011,12 +1112,16 @@
     "raw_invented": [],
     "no_invented_figure": true,
     "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
     "citation_present": true,
     "gold": null,
     "declined": true,
     "numbers_exact": null,
+    "words_exact": null,
     "prompt": "What did I spend on fuel in March 2025?",
-    "seconds": 28.9
+    "seconds": 17.9
    },
    {
     "id": "act_invoice",
@@ -2027,18 +1132,18 @@
     "card": true,
     "card_right_kind": true,
     "clarification": false,
-    "seconds": 18.4
+    "seconds": 30.7
    },
    {
     "id": "act_chase",
     "prompt": "Chase the overdue invoice INV-0002",
     "expected_kind": "chase_invoice",
     "got": "chase_invoice",
-    "answer": "**Chase Sterling & Co. Architects** about invoice **INV-0002** for **£2,220.00** (68 days overdue).\n\n> Hello,\n> \n> Invoice INV-0002 for £2,220.00 was due on 20 August 2026 and is now 68 days overdue.\n> \n> Could you let me know when it will be paid? If it is already on its way, thank you, and please ignore this.\n> \n> Kind regards,\n> Bramblewood Joinery Ltd",
+    "answer": "**Chase Sterling & Co. Architects** about invoice **INV-0002** for **£2,220.00** (68 days overdue).\n\n> Dear Sterling & Co. Architects,\n> \n> I hope you are well. I am writing to follow up on invoice INV-0002 dated 21 July 2026 for £2,220.00, which was due on 20 August 2026 and is now overdue.\n> \n> Could you please arrange payment at your earliest convenience, or let me know if there is an issue I can help with. The payment details are on the attached invoice.\n> \n> Thank you for your prompt attention.\n> \n> Kind regards,\n> Bramblewood Joinery Ltd",
     "card": true,
     "card_right_kind": true,
     "clarification": false,
-    "seconds": 141.9
+    "seconds": 71.0
    },
    {
     "id": "act_mileage",
@@ -2049,7 +1154,7 @@
     "card": false,
     "card_right_kind": false,
     "clarification": true,
-    "seconds": 26.4
+    "seconds": 28.0
    },
    {
     "id": "act_timesheet",
@@ -2060,37 +1165,1246 @@
     "card": true,
     "card_right_kind": true,
     "clarification": false,
-    "seconds": 23.9
+    "seconds": 33.1
    },
    {
     "id": "act_invoice_vat",
     "prompt": "Bill Hartwell Property Maintenance £1,200 plus VAT for the office doors",
     "expected_kind": "create_invoice",
-    "got": "create_invoice",
-    "answer": "**Create an invoice to Hartwell Property Maintenance** for **£1,440.00** (£1,200.00 + VAT £240.00), due 26 November 2026.\n\n- Office doors",
-    "card": true,
-    "card_right_kind": true,
-    "clarification": false,
-    "seconds": 27.2
+    "got": "clarification",
+    "answer": "How many of each line? I couldn't match the quantities to what you said.",
+    "card": false,
+    "card_right_kind": false,
+    "clarification": true,
+    "seconds": 27.5
    }
   ],
   "summary": {
    "questions": 35,
    "with_gold": 32,
-   "numbers_exact": 31,
+   "numbers_exact": 32,
+   "words_exact": 29,
    "citation_present": 32,
    "no_invented_figure": 34,
    "raw_unparsed": 0,
    "fallbacks": 1,
    "shipped_invented": 0,
    "unanswerable": 3,
-   "declined": 3,
+   "declined": 2,
+   "instructions": 5,
+   "cards": 3,
+   "cards_right_kind": 3,
+   "clarifications": 2,
+   "answered_instead": 0,
+   "timeouts": 0,
+   "wrong_period": 0,
+   "seconds": 830.9,
+   "median_seconds": 16.4,
+   "max_seconds": 49.8,
+   "pack_tokens_median": 458
+  }
+ },
+ "qwen": {
+  "model": "qwen3.8-27b",
+  "records": [
+   {
+    "id": "vat_box5",
+    "answer": "You owe HMRC £2,803.33 in VAT for Jul–Sep 2026. That's your £2,944.63 charged on sales minus the £141.30 you reclaimed on purchases.",
+    "key_numbers": [
+     "£2,803.33",
+     "£2,944.63",
+     "£141.30"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 315,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "2803.33"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much VAT do I owe for this quarter?",
+    "seconds": 11.4
+   },
+   {
+    "id": "vat_box1",
+    "answer": "Your Box 1 figure for Jul–Sep 2026 is £2,944.63. That's the VAT you've charged on sales in that quarter.",
+    "key_numbers": [
+     "£2,944.63",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 315,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "2944.63"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "What is the Box 1 figure on my VAT return?",
+    "seconds": 13.5
+   },
+   {
+    "id": "vat_box4",
+    "answer": "This quarter (Jul–Sep 2026) you won't be repaid any VAT — your net position is to pay HMRC **£2,803.33**. The £141.30 input VAT you reclaimed on purchases has already been netted off your £2,944.63 output VAT to give that figure.",
+    "key_numbers": [
+     "£141.30",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 315,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "141.30"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much VAT can I reclaim this quarter?",
+    "seconds": 29.8
+   },
+   {
+    "id": "vat_box6",
+    "answer": "Your Box 6 (sales before VAT) for Jul–Sep 2026 is £14,723.",
+    "key_numbers": [
+     "£14,723.15",
+     "£14,723"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 467,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "14723"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "What are my total sales excluding VAT for Box 6?",
+    "seconds": 9.5
+   },
+   {
+    "id": "vat_box7",
+    "answer": "Box 7 for Jul–Sep 2026 is £2,465. That's your purchases before VAT for the quarter.",
+    "key_numbers": [
+     "£2,465",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 315,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "2465"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "What goes in Box 7 this quarter?",
+    "seconds": 9.4
+   },
+   {
+    "id": "vat_prev_box5",
+    "answer": "For Apr–Jun 2026 you owed £782.50 in net VAT (box 5). That's the £1,053.00 on your sales minus the £270.50 you reclaimed on purchases.",
+    "key_numbers": [
+     "£782.50",
+     "£1,053.00",
+     "£270.50"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 306,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "782.50"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much VAT did I owe last quarter?",
+    "seconds": 19.7
+   },
+   {
+    "id": "vat_delta",
+    "answer": "Your VAT bill went up by £2,020.83. You owed £782.50 for Apr–Jun 2026 and £2,803.33 for Jul–Sep 2026.",
+    "key_numbers": [
+     "+£2,020.83",
+     "258.3 %",
+     "£2,803.33",
+     "£782.50"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 489,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "2020.83"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "By how much has my VAT bill changed since last quarter?",
+    "seconds": 31.0
+   },
+   {
+    "id": "vat_pct",
+    "answer": "Your VAT bill (box 5) went up by 258.3% in Jul–Sep 2026 compared with Apr–Jun 2026.",
+    "key_numbers": [
+     "+£2,020.83",
+     "258.3 %",
+     "£2,803.33",
+     "£782.50"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 489,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "258.3"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "By what percentage did my VAT bill go up compared with last quarter?",
+    "seconds": 28.9
+   },
+   {
+    "id": "vat_prev_box4",
+    "answer": "You reclaimed £270.50 in VAT on purchases last quarter (Apr–Jun 2026). That's box 4 on your VAT return.",
+    "key_numbers": [
+     "£270.50",
+     "£782.50"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 306,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "270.50"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much VAT did I reclaim last quarter?",
+    "seconds": 11.0
+   },
+   {
+    "id": "vat_prev_box6",
+    "answer": "Your Box 6 (sales before VAT) for Apr–Jun 2026 was £5,265.",
+    "key_numbers": [
+     "£5,265",
+     "£782.50"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 306,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "5265"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "What was Box 6 last quarter?",
+    "seconds": 12.1
+   },
+   {
+    "id": "vat_box4_delta",
+    "answer": "You reclaimed £141.30 in VAT on purchases this quarter (Jul–Sep 2026), compared with £270.50 last quarter (Apr–Jun 2026) — that's £129.20 less.",
+    "key_numbers": [
+     "-£129.20",
+     "£141.30",
+     "£270.50"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 489,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "-129.20"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much less VAT am I reclaiming than last quarter?",
+    "seconds": 17.4
+   },
+   {
+    "id": "vat_position",
+    "answer": "You need to pay HMRC for Jul–Sep 2026. The net VAT is **£2,803.33** (that's box 5: £2,944.63 charged on sales minus £141.30 reclaimed on purchases).",
+    "key_numbers": [
+     "£2,803.33",
+     "£2,944.63",
+     "£141.30"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 315,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "2803.33"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "Do I have to pay HMRC this quarter or will they repay me, and how much?",
+    "seconds": 14.7
+   },
+   {
+    "id": "sales_net",
+    "answer": "Your net sales for Jul–Sep 2026 were £14,723.15.",
+    "key_numbers": [
+     "£14,723.15",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "14723.15"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "What were my net sales this quarter?",
+    "seconds": 10.5
+   },
+   {
+    "id": "purchases_net",
+    "answer": "You spent **£2,465.28** on purchases before VAT in Jul–Sep 2026 (16 purchase entries in total).",
+    "key_numbers": [
+     "£2,465.28",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 467,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "2465.28"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much did I spend on purchases this quarter, before VAT?",
+    "seconds": 13.6
+   },
+   {
+    "id": "sales_count",
+    "answer": "There are **5 sales entries** in your Jul–Sep 2026 quarter.",
+    "key_numbers": [
+     "5",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "5"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How many sales entries are there this quarter?",
+    "seconds": 7.7
+   },
+   {
+    "id": "purchases_count",
+    "answer": "There are 16 purchase entries in your books for Jul–Sep 2026.",
+    "key_numbers": [
+     "16",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "16"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How many purchase entries are in the books this quarter?",
+    "seconds": 9.4
+   },
+   {
+    "id": "sales_growth",
+    "answer": "Your net sales grew by £9,458.15 from Apr–Jun 2026 to Jul–Sep 2026 – that's a 179.6% jump. Lovely quarter.",
+    "key_numbers": [
+     "+£9,458.15",
+     "179.6 %",
+     "£14,723.15",
+     "£5,265.00"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 658,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "9458.15"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much did my net sales grow compared with last quarter?",
+    "seconds": 21.6
+   },
+   {
+    "id": "purchases_pct",
+    "answer": "Your net purchases went up by 2.1% from Apr–Jun 2026 (£2,414.80) to Jul–Sep 2026 (£2,465.28) — a difference of £50.48.",
+    "key_numbers": [
+     "+£50.48",
+     "2.1 %",
+     "£2,465.28",
+     "£2,414.80"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 658,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "2.1"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "By what percentage did my purchases change from last quarter?",
+    "seconds": 13.7
+   },
+   {
+    "id": "prev_sales_net",
+    "answer": "Your net sales for Apr–Jun 2026 were £5,265.00, spread across 2 entries.",
+    "key_numbers": [
+     "£5,265.00",
+     "£782.50"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "5265.00"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "What were my net sales last quarter?",
+    "seconds": 13.1
+   },
+   {
+    "id": "sales_vat",
+    "answer": "You charged £2,944.63 VAT on your sales in Jul–Sep 2026 (box 1).",
+    "key_numbers": [
+     "£14,723.15",
+     "£2,944.63"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 467,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "2944.63"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much VAT did I charge on my sales this quarter?",
+    "seconds": 11.0
+   },
+   {
+    "id": "entries",
+    "answer": "There are **21 entries** in the books for Jul–Sep 2026 — 5 sales and 16 purchases.",
+    "key_numbers": [
+     "21",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "21"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How many approved entries are in the books for this quarter?",
+    "seconds": 12.4
+   },
+   {
+    "id": "prev_purchases_net",
+    "answer": "Your purchases last quarter (Apr–Jun 2026) came to **£2,414.80** net of VAT, across 17 entries.",
+    "key_numbers": [
+     "£2,414.80",
+     "£782.50"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-04/",
+     "_System/Ledger/events/2026-05/",
+     "_System/Ledger/events/2026-06/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 458,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "2414.80"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "What did I spend on purchases last quarter, net of VAT?",
+    "seconds": 17.5
+   },
+   {
+    "id": "top_supplier",
+    "answer": "Your biggest supplier in Jul–Sep 2026 was Whimsy Wardrobe Ltd, with £504.50 across one purchase.",
+    "key_numbers": [
+     "£504.50",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 594,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "Whimsy Wardrobe Ltd",
+     "504.50"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "Who was my biggest supplier this quarter and how much did I spend with them?",
+    "seconds": 11.7
+   },
+   {
+    "id": "oakhurst_net",
+    "answer": "You spent £440.90 with Oakhurst Timber & Tools in Jul–Sep 2026 — that was one purchase.",
+    "key_numbers": [
+     "£440.90",
+     "£529.08"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/20261027T104408Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 1322,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "440.90"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much did I spend with Oakhurst Timber & Tools this quarter?",
+    "seconds": 13.2
+   },
+   {
+    "id": "top_customer",
+    "answer": "Your biggest customer for Jul–Sep 2026 is **Sterling & Co. Architects**, who spent £6,233.00 (before VAT) across two invoices.",
+    "key_numbers": [
+     "£6,233.00",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 482,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "Sterling & Co. Architects",
+     "6233.00"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "Who is my biggest customer this quarter and how much did they spend?",
+    "seconds": 17.8
+   },
+   {
+    "id": "hartwell_net",
+    "answer": "Hartwell Property Maintenance bought **£4,579.65** (before VAT) from you in Jul–Sep 2026, across two sales.",
+    "key_numbers": [
+     "£4,579.65",
+     "£4,437.90",
+     "£739.65"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/20261027T104408Z-runtime-db59c04760b4fdffcc4bf5e17e07aa87.json",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 1413,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "4579.65"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much did Hartwell Property Maintenance buy from me this quarter, before VAT?",
+    "seconds": 24.6
+   },
+   {
+    "id": "sterling_count",
+    "answer": "Sterling & Co. Architects got 2 invoices from you this quarter (Jul–Sep 2026): one on 21 July and one on 27 September.",
+    "key_numbers": [
+     "£6,233.00",
+     "2",
+     "£5,259.60"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-09/20261027T104409Z-runtime-8b03d3faf29f81ef126cb2525607c2b3.json",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 1252,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "2"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How many invoices did Sterling & Co. Architects get this quarter?",
+    "seconds": 22.6
+   },
+   {
+    "id": "largest",
+    "answer": "Your largest single transaction this quarter was a sale to Sterling & Co. Architects on 27 September 2026, totalling £5,259.60 including VAT (net £4,383.00 plus £876.60 VAT).",
+    "key_numbers": [
+     "£5,259.60",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-09/20261027T104409Z-runtime-8b03d3faf29f81ef126cb2525607c2b3.json",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 1336,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "5259.60"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "What was my largest single transaction this quarter, including VAT?",
+    "seconds": 19.8
+   },
+   {
+    "id": "harrowgate_gross",
+    "answer": "That Harrowgate Interiors invoice from 19 September was **£4,692.60** including VAT.",
+    "key_numbers": [
+     "£3,910.50",
+     "£4,692.60",
+     "£782.10"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-09/20261027T104409Z-runtime-ab302fa52eb9b4a31ad5baf6810431ed.json",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 1313,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "4692.60"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much was the Harrowgate Interiors invoice on 19 September including VAT?",
+    "seconds": 16.6
+   },
+   {
+    "id": "oakhurst_vat",
+    "answer": "The Oakhurst Timber & Tools purchase on 20 July 2026 had £88.18 VAT on it (net £440.90, standard rate).",
+    "key_numbers": [
+     "£440.90",
+     "£529.08",
+     "£88.18"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/20261027T104408Z-runtime-a69ab2e74105a76b40a442b2ef7430eb.json",
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 1384,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "88.18"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much VAT was on the Oakhurst Timber & Tools purchase?",
+    "seconds": 13.7
+   },
+   {
+    "id": "reduced_rate",
+    "answer": "You spent **£774.85** (net) on reduced-rate (5%) purchases in Jul–Sep 2026 — that's 6 entries in your ledger.",
+    "key_numbers": [
+     "£774.85",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "774.85"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much did I spend on reduced-rate (5 %) purchases this quarter, net?",
+    "seconds": 24.5
+   },
+   {
+    "id": "no_vat_invoice",
+    "answer": "For Jul–Sep 2026 you spent £671.74 on purchases coded N (no VAT invoice) — that's 5 entries with no VAT on them.",
+    "key_numbers": [
+     "£671.74",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 543,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": [
+     "671.74"
+    ],
+    "numbers_exact": true,
+    "words_exact": true,
+    "prompt": "How much did I spend on purchases with no VAT invoice (code N) this quarter?",
+    "seconds": 15.4
+   },
+   {
+    "id": "bank_balance",
+    "answer": "The books I was given don't include your bank balance. To see that, you'd need to check your online banking or ask your accountant to pull the latest bank statement for Bramblewood Joinery Ltd.",
+    "key_numbers": [],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 254,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": null,
+    "declined": true,
+    "numbers_exact": null,
+    "words_exact": null,
+    "prompt": "What is my bank balance today?",
+    "seconds": 13.9
+   },
+   {
+    "id": "corp_tax",
+    "answer": "The books I've got don't show corporation tax figures. You'd need your company's taxable profit for the full accounting year (and any reliefs or small-profits-rate thresholds) to work that out – your accountant or a self-assessment tool would be the best place to look.",
+    "key_numbers": [
+     "£2,803.33",
+     "£2,944.63",
+     "£141.30"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 315,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": null,
+    "declined": true,
+    "numbers_exact": null,
+    "words_exact": null,
+    "prompt": "How much corporation tax will I owe for this year?",
+    "seconds": 16.1
+   },
+   {
+    "id": "fuel_2025",
+    "answer": "The books I've looked at only cover Jul–Sep 2026 and Apr–Jun 2026, so March 2025 isn't in here. They also don't break purchases down by type like fuel — just by VAT code. If you could share the ledger or books for that quarter, I'd be happy to dig through them for you.",
+    "key_numbers": [
+     "£2,465.28",
+     "£2,803.33"
+    ],
+    "citations": [
+     "_System/Ledger/events/2026-07/",
+     "_System/Ledger/events/2026-08/",
+     "_System/Ledger/events/2026-09/",
+     "Books.xlsx"
+    ],
+    "fallback": null,
+    "card": false,
+    "raw_parsed": true,
+    "raw_invented": [],
+    "no_invented_figure": true,
+    "shipped_invented": [],
+    "pack_tokens": 406,
+    "timeout": false,
+    "wrong_period": false,
+    "citation_present": true,
+    "gold": null,
+    "declined": false,
+    "numbers_exact": null,
+    "words_exact": null,
+    "prompt": "What did I spend on fuel in March 2025?",
+    "seconds": 21.5
+   },
+   {
+    "id": "act_invoice",
+    "prompt": "Send a £450 invoice to Sterling & Co. Architects for the staircase repair",
+    "expected_kind": "create_invoice",
+    "got": "create_invoice",
+    "answer": "**Send an invoice to Sterling & Co. Architects** for **£540.00** (£450.00 + VAT £90.00), due 26 November 2026.\n\n- Staircase repair",
+    "card": true,
+    "card_right_kind": true,
+    "clarification": false,
+    "seconds": 23.7
+   },
+   {
+    "id": "act_chase",
+    "prompt": "Chase the overdue invoice INV-0002",
+    "expected_kind": "chase_invoice",
+    "got": "chase_invoice",
+    "answer": "**Chase Sterling & Co. Architects** about invoice **INV-0002** for **£2,220.00** (68 days overdue).\n\n> Dear Sterling & Co. Architects,\n> \n> I'm writing regarding invoice INV-0002 for £2,220.00, dated 21 July 2026, which was due on 20 August 2026. The invoice is now 68 days overdue.\n> \n> Could you please arrange payment at your earliest convenience? If there is an issue with the invoice or the amount, please do reply and let me know so we can sort it out.\n> \n> Payment details are on the attached invoice.\n> \n> Kind regards,\n> Bramblewood Joinery Ltd",
+    "card": true,
+    "card_right_kind": true,
+    "clarification": false,
+    "seconds": 120.2
+   },
+   {
+    "id": "act_mileage",
+    "prompt": "Log 42 miles in the director's car yesterday from the workshop to Harrogate",
+    "expected_kind": "log_mileage",
+    "got": "log_mileage",
+    "answer": "**Log 42.0 miles** in **Director's car (own)**, workshop to Harrogate, 26 October 2026.",
+    "card": true,
+    "card_right_kind": true,
+    "clarification": false,
+    "seconds": 22.7
+   },
+   {
+    "id": "act_timesheet",
+    "prompt": "Record 6 hours for Sam Ashdown on the office partitions job today",
+    "expected_kind": "log_timesheet",
+    "got": "log_timesheet",
+    "answer": "**Log 6 hours** for **Sam Ashdown** on **Office partitions and doors**, 27 October 2026.",
+    "card": true,
+    "card_right_kind": true,
+    "clarification": false,
+    "seconds": 27.3
+   },
+   {
+    "id": "act_invoice_vat",
+    "prompt": "Bill Hartwell Property Maintenance £1,200 plus VAT for the office doors",
+    "expected_kind": "create_invoice",
+    "got": "clarification",
+    "answer": "How many of each line? I couldn't match the quantities to what you said.",
+    "card": false,
+    "card_right_kind": false,
+    "clarification": true,
+    "seconds": 61.5
+   }
+  ],
+  "summary": {
+   "questions": 35,
+   "with_gold": 32,
+   "numbers_exact": 32,
+   "words_exact": 32,
+   "citation_present": 32,
+   "no_invented_figure": 35,
+   "raw_unparsed": 0,
+   "fallbacks": 0,
+   "shipped_invented": 0,
+   "unanswerable": 3,
+   "declined": 2,
    "instructions": 5,
    "cards": 4,
    "cards_right_kind": 4,
    "clarifications": 1,
    "answered_instead": 0,
-   "seconds": 1697.8
+   "timeouts": 0,
+   "wrong_period": 0,
+   "seconds": 825.7,
+   "median_seconds": 13.9,
+   "max_seconds": 31.0,
+   "pack_tokens_median": 458
   }
  }
 }

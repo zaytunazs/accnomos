@@ -10,7 +10,7 @@ import { todayIso } from "@/components/jobs/useAccount";
 import { loadAiConfig, RUNTIME_URL } from "@/lib/ai-config";
 import { deadlinesQuery, loadBusiness } from "@/lib/business";
 import { getMsal, msalConfigured } from "@/lib/msal";
-import { runtime, runtimeHealth, type RtAskAnswer, type RtAskTurn } from "@/lib/runtime";
+import { askStream, runtime, runtimeHealth, type RtAskAnswer, type RtAskTurn } from "@/lib/runtime";
 import { sampleAnswer, sampleQuestion } from "@/lib/sample-ask";
 import { pickedPeriod } from "@/lib/vat-period";
 import ActionCard, { ClarifyCard, withPicked } from "./ActionCard";
@@ -21,6 +21,8 @@ import { FALLBACK_QUESTIONS, suggestedQuestions } from "./suggested";
 interface Turn {
   question: string; // empty while a spoken question is being transcribed
   answer?: RtAskAnswer;
+  /** While streaming: code's key numbers and citations, and the explanation so far (not yet checked). */
+  draft?: RtAskAnswer;
   error?: string;
   /** Seconds the answer took, timed around the ask call (the runtime sends no timing). */
   elapsedS?: number;
@@ -133,7 +135,23 @@ export default function AskThread() {
     setInput("");
     setBusy(true);
     try {
-      const answer = await runtime.ask(acct, q, askPeriod(), history);
+      // Streamed: the figures from code show at once, then the explanation as it is written, then the checked answer.
+      let draft: RtAskAnswer | null = null;
+      const show = (d: RtAskAnswer) => {
+        draft = d;
+        setTurns([...before, { question: q, draft: d }]);
+      };
+      let answer: RtAskAnswer;
+      try {
+        answer = await askStream(acct, q, askPeriod(), history, {
+          onStart: (p) => show({ ...p, answer_md: "", confidence: "high", fallback_reason: null }),
+          onToken: (text) => {
+            if (draft) show({ ...draft, answer_md: draft.answer_md + text });
+          },
+        });
+      } catch {
+        answer = await runtime.ask(acct, q, askPeriod(), history); // an older reader service, or the stream broke
+      }
       setTurns([...before, { question: q, answer, elapsedS: (performance.now() - started) / 1000 }]);
     } catch (e) {
       setTurns([...before, { question: q, error: e instanceof Error ? e.message : String(e) }]);
@@ -355,6 +373,8 @@ export default function AskThread() {
                 />
               ) : t.answer ? (
                 <AnswerCard answer={t.answer} account={account} elapsedS={t.elapsedS} />
+              ) : t.draft ? (
+                <AnswerCard answer={t.draft} account={account} pending />
               ) : t.error ? (
                 <RuntimeErrorNote message={t.error} title="Couldn't get an answer" />
               ) : (

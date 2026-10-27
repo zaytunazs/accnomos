@@ -258,6 +258,16 @@ async def test_rationale_uses_the_model_when_it_checks_out(monkeypatch: pytest.M
     assert (text, model, reason) == ("- LS6 first at 08:30, then over to LS7.", "m", None)
 
 
+async def test_rationale_falls_back_to_code_when_the_model_stalls(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def stalled(messages, cfg, output, name):  # type: ignore[no-untyped-def]
+        raise plan_ai.ask_ai.AiStalled(90)
+
+    monkeypatch.setattr(plan_ai.ask_ai, "_call_model", stalled)
+    cfg = plan_ai.AiConfig(mode="local", base_url="http://x", model="m")
+    text, model, reason = await plan_ai.rationale(_plan(), cfg)
+    assert model == "m" and "stopped replying for 90 s" in (reason or "") and "LS6" in text
+
+
 async def test_rationale_without_ai_is_written_by_code() -> None:
     text, model, reason = await plan_ai.rationale(_plan(), None)
     assert model is None and "No AI" in (reason or "") and "LS6" in text

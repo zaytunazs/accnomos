@@ -310,6 +310,14 @@ class AskModelOutput(BaseModel):
     confidence: Confidence
 
 
+class AskExplanation(BaseModel):
+    """What the model is asked for: the words only. Key numbers, citations and buttons come from code (app/ai/ask.py),
+    which halves what a slow local model has to write. `answer_md` comes first so it can be streamed as it arrives."""
+
+    answer_md: str
+    confidence: Confidence
+
+
 ActionKind = Literal["create_invoice", "chase_invoice", "log_mileage", "log_timesheet"]
 
 
