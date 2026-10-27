@@ -44,6 +44,7 @@ from accnomos_ledger.events import LedgerEvent, VatCode
 from app.autopilot import supplier_key
 from app.books import SYSTEM, Books, now
 from app.checks import UNKNOWN_SUPPLIER, SupplierKnowledge, normalise_vat_number
+from app.company_lookup import BadQuery, VatCheck, normalise_company_number
 from app.journal import CREDITORS, DEBTORS, VAT_CONTROL
 from app.schemas import CATEGORIES, ExtractedDoc, Proposal, VatStatus
 from app.settlement import (
@@ -73,6 +74,7 @@ EDITABLE = (
     "default_vat_code",
     "vat_status",
     "terms_days",
+    "company_number",
 )
 VAT_STATUSES = ("registered", "not_registered", "unknown")
 #: "current": not due yet; the others are days past the due date.
@@ -99,10 +101,20 @@ class Contact(BaseModel):
         "unknown"  # learnt on approval (`learn_vat_status`) or set on Contacts; see `supplier_knowledge`
     )
     terms_days: int | None = Field(default=None, ge=0, le=365)  # payment terms; ageing assumes 30 days when unset
+    # Companies House number, set by the user (often after Look up on Contacts). Files saved before it load as None.
+    company_number: str | None = None
+    # The last HMRC Check a UK VAT number result for `vrn`, kept so the same number is not checked again on every
+    # visit. Only a user's tap fills it (record_vat_check); a later VRN edit drops it.
+    vat_check: VatCheck | None = None
     aliases: list[str] = []  # other normalised names that mean this contact (old names, other spellings)
     edited: list[str] = []  # fields the user changed; refreshing leaves them alone
     created_at: datetime = Field(default_factory=now)
     updated_at: datetime = Field(default_factory=now)
+
+    def verified_vat_name(self) -> str | None:
+        """HMRC's registered name for this contact's current VAT number, if it has been checked (for merging)."""
+        vc = self.vat_check
+        return vc.name if vc and vc.registered and vc.vrn == self.vrn else None
 
 
 def contact_id(key: str, vrn: str | None) -> str:
@@ -689,6 +701,11 @@ def apply_edit(c: Contact, edits: dict[str, Any], others: Sequence[Contact], at:
         elif k == "terms_days" and v is not None:
             if isinstance(v, bool) or not isinstance(v, int) or not 0 <= v <= 365:
                 raise ContactEditError("Payment terms are a number of days, 0 to 365")
+        elif k == "company_number" and v:
+            try:
+                v = normalise_company_number(v)
+            except BadQuery as exc:
+                raise ContactEditError(str(exc)) from exc
         elif k == "vat_status":
             v = v or "unknown"
             if v not in VAT_STATUSES:
@@ -703,6 +720,8 @@ def apply_edit(c: Contact, edits: dict[str, Any], others: Sequence[Contact], at:
         setattr(c, k, v)
         if k not in c.edited:
             c.edited.append(k)
+    if c.vat_check and c.vat_check.vrn != c.vrn:
+        c.vat_check = None  # it was about another number
     c.updated_at = at or now()
     return c
 
@@ -716,6 +735,26 @@ async def edit(books: Books, cid: str, edits: dict[str, Any], user: str) -> Cont
     apply_edit(c, edits, contacts)
     await save_contacts(books, contacts)
     await books.audit(f"user:{user}", "contact_edited", {"contact": cid, "fields": sorted(edits)})
+    return c
+
+
+async def record_vat_check(books: Books, check: VatCheck, user: str, cid: str | None = None) -> Contact | None:
+    """Keep `check` on the contact it is about (by id, else by VAT number). Nothing else changes: the VAT status
+    stays the user's call. Returns the contact, or None when no contact has that number (nothing is created)."""
+    contacts, _, _ = await contact_book(books)
+    c = next((c for c in contacts if c.id == cid), None) if cid and ID_RE.fullmatch(cid) else None
+    if c is None or c.vrn != check.vrn:
+        c = next((c for c in contacts if c.vrn == check.vrn), None)
+    if c is None:
+        return None
+    c.vat_check = check
+    c.updated_at = now()
+    await save_contacts(books, contacts)
+    await books.audit(
+        f"user:{user}",
+        "contact_vat_checked",
+        {"contact": c.id, "vrn": check.vrn, "registered": check.registered, "source": check.source},
+    )
     return c
 
 

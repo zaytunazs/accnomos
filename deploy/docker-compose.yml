@@ -28,6 +28,11 @@ services:
       BASETEN_API_KEY: ${BASETEN_API_KEY:-}
       VERIFIER: ${VERIFIER:-}
       VERIFIER_MODEL: ${VERIFIER_MODEL:-}
+      # Companies House Public Data API key (free; developer.company-information.service.gov.uk). Empty = the
+      # company look-up is off (routes answer 503 and the app hides it). Set in .env; never commit it.
+      COMPANIES_HOUSE_API_KEY: ${COMPANIES_HOUSE_API_KEY:-}
+      # The VAT number check goes through the relay, which holds the HMRC credentials (docs/PRODUCTION.md).
+      HMRC_RELAY_URL: ${HMRC_RELAY_URL:-http://relay:8787}
     # Uploads over 1 MB spool to /tmp, and ffmpeg converts voice there: 25 MB uploads need the headroom.
     tmpfs: ["/tmp:size=256m,mode=1777"]
     extra_hosts: ["host.docker.internal:host-gateway"]

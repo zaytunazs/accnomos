@@ -216,6 +216,7 @@ TALKS_HTTP = {
     "ai/remind.py": "httpx errors only",
     "ai/plan.py": "httpx errors only",
     "ai/triage.py": "httpx errors only",
+    "company_lookup.py": "Companies House (CH_BASE constant) and the relay (HMRC_RELAY_URL): server env only",
 }
 
 

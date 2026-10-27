@@ -245,6 +245,11 @@ SUMMARIES: dict[str, Summary] = {
     "contact_vat_status": lambda r, w: (
         "Set a supplier as " + VAT_STATUS.get(str(r.get("vat_status")), str(r.get("vat_status")))
     ),
+    "contact_vat_checked": lambda r, w: (
+        f"Checked VAT number {r.get('vrn', '')} with HMRC: "
+        + ("registered" if r.get("registered") else "not VAT-registered")
+        + {"hmrc-sandbox": " (HMRC sandbox)", "sample": " (sample)"}.get(str(r.get("source")), "")
+    ),
     "contacts_imported": lambda r, w: "Imported contacts from Outlook",
     # Vehicles and mileage
     "vehicle_added": lambda r, w: "Added a vehicle",
