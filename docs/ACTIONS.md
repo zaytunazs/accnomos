@@ -62,12 +62,12 @@ second invoice.
 | Kind | Runs | Available |
 |---|---|---|
 | `log_timesheet` | `jobs.add_entry` (job must be open, staff must exist) | now |
-| `create_invoice` | `invoicing.create_invoice` → PDF (`app/pdf.py`) → `invoicing.send_invoice` through Graph if `send` | when `app/invoicing.py` is on the build (branch `claude/invoicing`) |
-| `chase_invoice` | `invoicing.send_reminder` with the reminder shown on the card and the sent PDF attached | same as above |
-| `log_mileage` | `mileage.add_entry(books, MileageEntry)` with the fields in the vehicles & mileage brief | when `app/mileage.py` lands with that function |
+| `create_invoice` | `invoicing.create_invoice` → PDF (`app/pdf.py`) → `invoicing.send_invoice` through Graph if `send` | on `main` (`app/invoicing.py`) |
+| `chase_invoice` | `invoicing.send_reminder` with the reminder shown on the card and the sent PDF attached | on `main` |
+| `log_mileage` | `mileage.add_entry(books, MileageEntry, user)` | on `main` (`app/mileage.py`) |
 
-Feature checks are done at runtime (`actions.invoicing()`, `actions.mileage()`). Until a module is there, Ask
-says plainly that it can't do that yet, and never shows a card it couldn't carry out.
+Feature checks are still done at runtime (`actions.invoicing()`, `actions.mileage()`); both modules are on `main`, so
+they pass. If one were missing, Ask would say plainly that it can't do that yet and never show a card it couldn't carry out.
 
 ## Not built
 

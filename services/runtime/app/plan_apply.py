@@ -7,7 +7,7 @@ calendar. A retry after a half-finished apply reuses the events it finds with th
 Every event's subject starts with "[Accnomos]"; a visit's body carries "Accnomos job <id>", which is also
 how a later plan for that day knows the job is already booked.
 
-Mileage: only when the books have vehicles (`_System/Vehicles/vehicles.json`, a later feature), each visit
+Mileage: only when the books have vehicles (`_System/Vehicles/vehicles.json`, written by the Vehicles page), each visit
 gets a mileage *proposal* in the response: route and job filled in, miles left for the user (no maps API).
 Nothing is written for mileage.
 """
