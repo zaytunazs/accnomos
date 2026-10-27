@@ -30,18 +30,20 @@ export function plainReason(reason: string): string {
   return reason.replace(/^[A-Z][A-Z0-9_]*:\s*/, "");
 }
 
-/** The verifier chip, bound to the runtime's real second reading. Never claims agreement it did not see. */
+/**
+ * The verifier chip, bound to the runtime's real second reading. Never claims agreement it did not see.
+ * The code-check count is added once, by toUi's suffix (which leaves the crop/vehicle/mileage notes out of it).
+ */
 function verifierView(p: RtProposal): Pick<UiProposal, "verifierNote" | "verifierTone" | "verifierDiffs"> {
   const v = p.verification;
-  const passed = `Checks run by code: ${p.checks.filter((c) => c.ok).length} of ${p.checks.length} passed`;
   if (!v) {
     const why = p.status === "needs_a_look" ? "skipped, checks already flagged it" : "not run";
-    return { verifierNote: `Second reading ${why} · ${passed}`, verifierTone: "none" };
+    return { verifierNote: `Second reading ${why}`, verifierTone: "none" };
   }
-  if (v.error) return { verifierNote: `Second reading unavailable (${v.model}) · ${passed}`, verifierTone: "none" };
+  if (v.error) return { verifierNote: `Second reading unavailable (${v.model})`, verifierTone: "none" };
   const fields = Object.entries(v.fields);
   if (v.agree_all)
-    return { verifierNote: `Verifier agrees · all ${fields.length} fields match — ${verifierName(v.model)} · ${passed}`, verifierTone: "agree" };
+    return { verifierNote: `Verifier agrees · all ${fields.length} fields match — ${verifierName(v.model)}`, verifierTone: "agree" };
   const diffs = fields
     .filter(([, f]) => !f.agree)
     .map(([k, f]) => ({ field: fieldLabel[k] ?? k, extractor: shown(f.extractor), verifier: shown(f.verifier) }));
