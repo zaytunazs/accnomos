@@ -493,9 +493,12 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
         await mileage.add_entry(books, j.model_copy(update={"vehicle_id": vehicle.id}), USER)
 
     say(f"{len(plan.posted)} documents: upload, propose, approve")
+    sales: dict[str, str] = {}  # invoice number -> event, for the customers' payments
     for n, d in enumerate(plan.posted, start=1):
         p = await _propose(books, d, plan)
-        await approve(books, p.id, USER, {"job_id": plan.jobs[d.job].id} if d.job else None, rebuild=False)
+        p = await approve(books, p.id, USER, {"job_id": plan.jobs[d.job].id} if d.job else None, rebuild=False)
+        if p.extracted.doc_type == "sales_invoice" and p.extracted.invoice_number and p.event_id:
+            sales[p.extracted.invoice_number] = p.event_id
         if n % 10 == 0:
             say(f"  {n}/{len(plan.posted)}")
 
@@ -546,6 +549,9 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
     for m in await books.bank_suggestions():  # the older statement is reconciled; the newer one is left to confirm
         if by_id[m.line_id].date <= older_end:
             await books.confirm_match(m.line_id, m.event_ids, USER)
+    for ln in by_id.values():  # a sale posts to Debtors, so its payment is never suggested: matched by hand
+        if ln.date <= older_end and ln.status == "unmatched" and ln.reference in sales:
+            await books.confirm_match(ln.id, [sales[ln.reference]], USER)
 
     say(f"{len(plan.inbox)} documents into {INBOX}")
     for d in plan.inbox:

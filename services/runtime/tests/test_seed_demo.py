@@ -181,7 +181,10 @@ async def test_seed_on_fake_storage(seed_demo: ModuleType) -> None:
     assert len(await books.bank_statements()) == 2
     lines = await books.stored_bank_lines()
     older_end = plan.periods[0][1]
-    assert any(ln.status == "matched" for ln in lines if ln.date <= older_end)
+    older = [ln for ln in lines if ln.date <= older_end]
+    assert [(ln.description, ln.reference) for ln in older if ln.status != "matched"] == [
+        ("Savings Space", "Tax pot"), ("Starling Bank", "Account fee"),  # left for "transfer" / a bank-charge entry
+    ]
     assert all(ln.status == "unmatched" for ln in lines if ln.date > older_end)
     assert await books.bank_suggestions()  # left for the judge to confirm
 
