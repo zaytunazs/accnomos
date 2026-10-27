@@ -1,21 +1,21 @@
 import Link from "next/link";
 
-const points = [
+const claims = [
   {
-    title: "Your data stays yours",
-    body: "Books, receipts and VAT returns live in your own OneDrive. Accnomos runs no user database and keeps no copy — delete the folder and it is gone.",
+    title: "Your books live in your OneDrive",
+    body: "Receipts, ledger, Books.xlsx and VAT returns sit in your own OneDrive folder. Accnomos runs no user database and keeps no copy.",
+  },
+  {
+    title: "AI proposes, you approve, code calculates",
+    body: "The AI reads each receipt and proposes an entry; nothing is posted until you approve it. The ledger and the 9-box VAT return are worked out by deterministic code, never by a model.",
   },
   {
     title: "AI you control",
-    body: "Run Meta's open-weight Muse Glimmer on your own machine, or bring your own Meta API key. Either way the key or the address never leaves your device.",
-  },
-  {
-    title: "You approve, code calculates",
-    body: "AI proposes every entry; nothing is posted until you say so. The ledger and the 9-box VAT return are computed by deterministic code, not by a model.",
+    body: "Run Meta's open-weight Muse Glimmer on your own machine, or bring your own Meta API key. The address or the key never leaves your device.",
   },
 ];
 
-/** Public pitch shown at the top of the home page: why Accnomos is different. */
+/** Public pitch above the sample books: the three claims that are true today, with Connect as the one action. */
 export default function Pitch() {
   return (
     <section
@@ -34,12 +34,7 @@ export default function Pitch() {
             <br />
             <span className="text-teal">Stored only by you.</span>
           </h2>
-          <p className="text-[15px] leading-relaxed text-muted">
-            Snap a receipt, approve what the AI read, and your ledger, Books.xlsx and VAT return are written
-            straight into <strong className="text-ink">your</strong> OneDrive. No cloud accounting platform holding
-            your data. No subscription lock-in on your own numbers.
-          </p>
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link
               href="/connect"
               className="whitespace-nowrap rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark"
@@ -48,13 +43,13 @@ export default function Pitch() {
             </Link>
             <Link
               href="/review"
-              className="whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold text-ink hover:bg-ground"
+              className="text-sm font-bold text-teal-dark underline underline-offset-2 hover:text-teal"
             >
               See the demo books
             </Link>
             <Link
               href="/how-it-works"
-              className="whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-bold text-teal-dark hover:bg-ground"
+              className="text-sm font-bold text-teal-dark underline underline-offset-2 hover:text-teal"
             >
               How it works
             </Link>
@@ -67,7 +62,7 @@ export default function Pitch() {
         />
       </div>
       <ul className="grid gap-px border-t border-border bg-border min-[760px]:grid-cols-3">
-        {points.map((p) => (
+        {claims.map((p) => (
           <li key={p.title} className="bg-white p-5">
             <p className="text-sm font-extrabold text-ink">{p.title}</p>
             <p className="mt-1 text-[13px] leading-relaxed text-muted">{p.body}</p>
