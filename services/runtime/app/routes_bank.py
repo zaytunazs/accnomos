@@ -22,7 +22,7 @@ from collections.abc import Awaitable, Callable
 from datetime import date
 
 from accnomos_ledger.bank import BankCsvError, BankLine, BankLineStatus, reconciled_to
-from accnomos_ledger.matching import Match
+from accnomos_ledger.matching import Match, settlement_pence
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel
 
@@ -38,6 +38,20 @@ MAX_CSV = 5 * 1024 * 1024
 class MatchBody(BaseModel):
     event_id: str | None = None
     event_ids: list[str] | None = None  # one payment covering several entries
+
+
+class EventBrief(BaseModel):
+    id: str
+    date: date
+    counterparty: str | None
+    amount_pence: int  # signed bank movement: purchases negative
+
+
+class Suggestion(Match):
+    """A proposed match with what the review table shows: the bank line and the ledger entries."""
+
+    line: BankLine
+    events: list[EventBrief]
 
 
 class BankSummary(BaseModel):
@@ -86,9 +100,18 @@ async def lines(status: BankLineStatus | None = None, books: Books = Depends(get
     return await books.list_bank_lines(status)
 
 
-@router.get("/suggestions", response_model=list[Match])
-async def suggestions(books: Books = Depends(get_books)) -> list[Match]:
-    return await books.bank_suggestions()
+@router.get("/suggestions", response_model=list[Suggestion])
+async def suggestions(books: Books = Depends(get_books)) -> list[Suggestion]:
+    lines = await books.stored_bank_lines()
+    by_line = {ln.id: ln for ln in lines}
+    events = {e.id: e for e in await books.live_events()}
+    return [
+        Suggestion(**m.model_dump(), line=by_line[m.line_id], events=[
+            EventBrief(id=e.id, date=e.date, counterparty=e.counterparty, amount_pence=settlement_pence(e))
+            for e in (events[i] for i in m.event_ids)
+        ])
+        for m in await books.bank_suggestions(lines)
+    ]
 
 
 @router.get("/unmatched", response_model=list[UnmatchedLine])

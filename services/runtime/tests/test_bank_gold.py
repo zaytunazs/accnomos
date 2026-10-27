@@ -87,6 +87,9 @@ def test_gold_suggestions_unmatched_actions_and_reconciled_to(client: TestClient
     by_event = {m["event_id"]: m for m in client.get("/books/bank/suggestions", headers=H).json()}
     assert sorted(by_event) == sorted(w["match"] for w in want if "match" in w)
     assert {e: m["kind"] for e, m in by_event.items()} == {w["match"]: w["kind"] for w in want if "match" in w}
+    travis = by_event["gold-bc-travis"]  # a penny out and five days apart, carried by the name
+    assert (travis["line"]["amount_pence"], travis["events"]) == (-4501, [
+        {"id": "gold-bc-travis", "date": "2026-10-15", "counterparty": "Travis Perkins", "amount_pence": -4500}])
 
     unmatched = client.get("/books/bank/unmatched", headers=H).json()
     got = sorted((u["line"]["description"], u["line"]["amount_pence"], u["suggested"]["action"]) for u in unmatched)
