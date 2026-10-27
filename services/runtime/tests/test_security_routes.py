@@ -234,6 +234,78 @@ def test_the_verifier_only_leaves_for_baseten_or_the_users_own_ai():
 
 
 # --------------------------------------------------------------------------- #
+# Test mode is inert unless ACCNOMOS_TEST_MODE=1
+# --------------------------------------------------------------------------- #
+
+_PROBE = r"""
+import json
+from fastapi.testclient import TestClient
+from app.main import app
+from app import security
+
+def walk(items):
+    for r in items:
+        if hasattr(r, "original_router"):
+            yield from walk(r.original_router.routes)
+        else:
+            yield r
+
+c = TestClient(app)
+pre = c.options("/books/summary", headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "GET",
+                                           "Access-Control-Request-Headers": "x-test-tenant"})
+print(json.dumps({
+    "test_paths": sorted(p for r in walk(app.routes) if (p := getattr(r, "path", "")).startswith("/__test")),
+    "middleware": [m.cls.__name__ for m in app.user_middleware],
+    "state": c.get("/__test/state").status_code,
+    "reset": c.post("/__test/reset").status_code,
+    "graph": c.get("/__test/graph/v1.0/me/drive/special/approot").status_code,
+    "tenant_header_allowed": "x-test-tenant" in pre.headers.get("access-control-allow-headers", "").lower(),
+    "health_test_mode": "test_mode" in c.get("/health").json(),
+    "unlimited": list(security.UNLIMITED_PREFIXES),
+}))
+"""
+
+
+@pytest.mark.parametrize("flag", [None, "0", "true", ""])
+def test_without_the_flag_no_test_route_header_or_middleware_exists(flag: str | None):
+    """Imported fresh, the way the Docker image starts it (ACCNOMOS_TEST_MODE=0) and with the variable unset."""
+    import json
+    import os
+    import subprocess
+    import sys
+
+    env = {k: v for k, v in os.environ.items() if not k.startswith("ACCNOMOS_")}
+    env.update({"CORS_ORIGINS": "http://localhost:3000", **({"ACCNOMOS_TEST_MODE": flag} if flag is not None else {})})
+    out = subprocess.run([sys.executable, "-c", _PROBE], cwd=APP.parent, env=env, capture_output=True, text=True, timeout=120)
+    assert out.returncode == 0, out.stderr[-2000:]
+    got = json.loads(out.stdout.strip().splitlines()[-1])
+    assert got == {"test_paths": [], "middleware": got["middleware"], "state": 404, "reset": 404, "graph": 404,
+                   "tenant_header_allowed": False, "health_test_mode": False, "unlimited": []}
+    assert "TenantMiddleware" not in got["middleware"]
+
+
+def test_cors_allows_every_method_a_route_uses_and_no_other():
+    """The web app edits vehicles and mileage with PATCH; a method missing here fails only in the browser."""
+    used = {m for r in routes() for m in r.methods} - {"HEAD", "OPTIONS"}
+    c = TestClient(app)
+    for method in sorted(used | {"TRACE", "CONNECT"}):
+        r = c.options("/vehicles/abc", headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": method})
+        assert (r.status_code == 200) == (method in used), method
+
+
+def test_the_test_mode_web_build_is_never_published():
+    root = APP.parents[2] / ".github/workflows"
+    deploy, e2e = (root / "deploy-web.yml").read_text(), (root / "e2e.yml").read_text()
+    assert 'NEXT_PUBLIC_TEST_MODE: ""' in deploy and "publish_dir: apps/web/out\n" in deploy
+    guard, publish = deploy.index("Refuse to publish a test-mode build"), deploy.index("publish_dir:")
+    assert guard < publish and "__test/(graph|ai)" in deploy[guard:publish]
+    assert "permissions:\n  contents: read" in e2e
+    assert not any(word in e2e for word in ("secrets.", "gh-pages", "publish_dir", "contents: write", "docker push"))
+    build = (APP.parents[2] / "apps/web/e2e/build.mjs").read_text()
+    assert "out-e2e" in build and 'NEXT_PUBLIC_TEST_MODE: "1"' in build
+
+
+# --------------------------------------------------------------------------- #
 # Upload caps and rate limits on the logo route
 # --------------------------------------------------------------------------- #
 
