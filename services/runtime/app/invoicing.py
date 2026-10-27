@@ -496,8 +496,9 @@ async def post_sale(books: Books, inv: Invoice, user: str) -> str:
 async def mark_hours(books: Books, inv: Invoice, user: str) -> None:
     """Mark the timesheet entries on a sent invoice's lines as invoiced on its number (jobs.mark_invoiced).
 
-    The email has already gone, so this never fails the send. Entries removed, made unbillable or billed on
-    another invoice since the draft was saved are skipped and listed in the audit log; the rest are marked.
+    The email has already gone, so this never fails the send. send_invoice refuses, before emailing, a draft
+    whose hours are already on another invoice; entries removed or made unbillable since the draft was saved
+    (or billed elsewhere in the moment between that check and this) are skipped and listed in the audit log.
     Marking again with the same number changes nothing, so a retried send is safe.
     """
     ids = inv.timesheet_entry_ids()
@@ -542,6 +543,13 @@ async def send_invoice(
     to = (to or inv.customer.email or "").strip()
     if problems := send_problems(inv, profile, to):
         raise (InvoiceStateError if inv.status != "draft" else InvoiceError)("; ".join(problems))
+    if ids := inv.timesheet_entry_ids():  # two drafts from the same hours: refuse the second before emailing
+        entries = await jobs.load_entries(books)
+        billed = {e.id: e.invoiced_in for e in entries if e.invoiced_in not in (None, inv.number)}
+        if taken := [i for i in ids if i in billed]:
+            raise InvoiceError(
+                f"Timesheet entry {taken[0]} is already on invoice {billed[taken[0]]}; remove that line first"
+            )
     d_subject, d_body = default_email(inv, profile)
     await sender.send(OutgoingMail(
         to=to, subject=(subject or "").strip() or d_subject, body_text=(body or "").strip() or d_body,

@@ -375,6 +375,17 @@ async def test_hours_changed_after_the_draft_are_skipped_not_fatal(books: Books,
     assert row["refs"]["entries"] == [a.id] and row["refs"]["skipped"] == [b.id]
 
 
+async def test_a_second_draft_of_the_same_hours_is_refused_before_it_is_emailed(books: Books, sender: FakeMailSender):
+    (a,) = await _hours(books, (3, True))
+    first = await inv_.create_invoice(books, _job_draft(await _proposal(books)), USER)
+    second = await inv_.create_invoice(books, _job_draft(await _proposal(books)), USER)  # both drafts: nothing marked yet
+    await inv_.send_invoice(books, sender, first.number, USER, b"%PDF-1.4")
+    with pytest.raises(InvoiceError, match=f"already on invoice {first.number}"):
+        await inv_.send_invoice(books, sender, second.number, USER, b"%PDF-1.4")
+    assert len(sender.sent) == 1 and (await inv_.get_invoice(books, second.number)).status == "draft"
+    assert (await jobs.get_entry(books, a.id)).invoiced_in == first.number
+
+
 async def test_hours_are_marked_before_the_sale_posts_and_a_retry_does_not_email_again(
     books: Books, sender: FakeMailSender, monkeypatch,
 ):
