@@ -246,6 +246,9 @@ SUMMARIES: dict[str, Summary] = {
         "Set a supplier as " + VAT_STATUS.get(str(r.get("vat_status")), str(r.get("vat_status")))
     ),
     "contacts_imported": lambda r, w: "Imported contacts from Outlook",
+    "contacts_not_same": lambda r, w: f"Marked {_plural(len(r.get('contacts', [])), 'contact')} as not the same business",
+    "contacts_merged": lambda r, w: f"Merged {_plural(len(r.get('merged', [])), 'contact')} into one ({r.get('name', 'a contact')})",
+    "contacts_merge_undone": lambda r, w: "Undid a contact merge",
     # Vehicles and mileage
     "vehicle_added": lambda r, w: "Added a vehicle",
     "vehicle_changed": lambda r, w: "Changed a vehicle" + _fields(r),
