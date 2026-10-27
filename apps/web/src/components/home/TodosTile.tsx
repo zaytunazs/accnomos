@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
 import { RuntimeErrorNote } from "@/components/States";
@@ -90,6 +91,7 @@ export default function TodosTile() {
           </ul>
         )}
       </div>
+      <ByWhom className="mt-2" code="Added by you from your inbox" ai="suggested by your AI" />
       {account ? (
         <div className="mt-auto pt-4">
           <a

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
 import type { RtDashboard } from "@/lib/runtime";
 import { tiles as sampleTiles, type Tile } from "@/lib/sample-home";
@@ -131,6 +132,11 @@ export function TodayCard() {
           {tiles.map((tile) => <NumberBlock key={tile.label} tile={tile} />)}
         </div>
       )}
+      {sample ? (
+        <ByWhom className="mt-3" code="Sample figures from the fictional Bramblewood books" ai="no AI involved" />
+      ) : (
+        <ByWhom className="mt-3" code="Figures by code from your books" ai="no AI involved" />
+      )}
       <div className="mt-4">
         <Link
           href="/review"
@@ -183,6 +189,11 @@ export function AttentionCard() {
           </p>
         </div>
       )}
+      <ByWhom
+        className="mt-2"
+        code={sample ? "Sample count from the fictional Bramblewood books" : "Counted by code from your books"}
+        ai={sample ? "sample readings, not AI" : "proposals read by AI"}
+      />
       <div className="mt-auto pt-4">
         {tile !== null && tile.href ? (
           <Link

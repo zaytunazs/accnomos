@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
 import PlanCard, { dayLabel } from "@/components/plan/PlanCard";
 import { todayIso, useAccount } from "@/components/jobs/useAccount";
@@ -51,6 +52,7 @@ export default function PlanToday() {
             ? `Opening the plan for ${dayLabel(day)}…`
             : "Visits grouped by postcode, travel, lunch and admin, around what is already in your calendar."}
       </p>
+      <ByWhom className="mt-2" code="Days planned by code from your calendar and jobs" ai="rationale by your AI" />
       <div className="mt-auto pt-4">
         <button
           type="button"

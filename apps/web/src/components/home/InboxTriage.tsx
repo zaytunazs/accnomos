@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
 import type { AccountInfo } from "@azure/msal-browser";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
@@ -185,6 +186,7 @@ export default function InboxTriage() {
           {showOther ? "Hide other email" : `Show ${other.length} other thread${other.length === 1 ? "" : "s"}`}
         </button>
       )}
+      <ByWhom className="mt-3" code="Nothing sent" ai="summaries by your AI" />
     </section>
   );
 }

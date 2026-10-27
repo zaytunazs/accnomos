@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
 import { activity as sampleActivity } from "@/lib/sample-home";
 import { SampleTag, Skeleton, useHome } from "./HomeData";
@@ -199,6 +200,7 @@ export default function Activity() {
           ))}
         </div>
       )}
+      <ByWhom className="mt-3" code="Logged by code as things happen" ai="no AI involved" />
       <div className="mt-auto pt-4">
         <Link
           href="/review"

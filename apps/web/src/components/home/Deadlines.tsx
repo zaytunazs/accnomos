@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
 import VatDeadlineStrip from "@/components/vat/VatDeadlineStrip";
 import type { RtPeriodDeadline } from "@/lib/runtime";
@@ -128,9 +129,12 @@ export default function Deadlines() {
         </div>
       )}
       {live && (
-        <p className="text-[13px] font-medium text-muted">
-          Calculated by code from your approved entries and VAT quarters in Settings. {live.rule}
-        </p>
+        <>
+          <p className="text-[13px] font-medium text-muted">
+            Calculated by code from your approved entries and VAT quarters in Settings. {live.rule}
+          </p>
+          <ByWhom code="Dates and boxes by code" ai="no AI involved" />
+        </>
       )}
       <div className="mt-auto">
         <Link
