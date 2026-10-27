@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import BooksCard from "@/components/files/BooksCard";
 import SignInCta from "@/components/SignInCta";
-import FilePreview from "@/components/files/FilePreview";
+import dynamic from "next/dynamic";
 import FileTree from "@/components/files/FileTree";
 import FilesTree, {
   OpenLink,
@@ -24,6 +24,12 @@ import { getMsal, msalConfigured } from "@/lib/msal";
 import { runtime, type RtLayout } from "@/lib/runtime";
 
 const ORDER = FOLDERS.filter((f) => !f.includes("/"));
+
+/** The file preview loads only when a file is picked, never on first paint. */
+const FilePreview = dynamic(() => import("@/components/files/FilePreview"), {
+  ssr: false,
+  loading: () => <p className="text-sm text-muted">Loading preview…</p>,
+});
 
 async function loadTree(account: AccountInfo): Promise<FilesTreeData> {
   const [root, top] = await Promise.all([getRoot(account), listChildren(account)]);
