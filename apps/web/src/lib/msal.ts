@@ -5,7 +5,7 @@ import type { AccountInfo, IPublicClientApplication } from "@azure/msal-browser"
 /**
  * Microsoft sign-in for Accnomos (public client, PKCE, no secret). Tokens live only in this browser.
  * Scopes are requested incrementally (decision H26): sign-in + storage first; mail/calendar when first used.
- * The library (~80 kB gzipped) is imported on first use, so it is in no page's first-load JS (docs/PERF.md);
+ * The library (68 kB gzipped) is imported on first use, so it is in no page's first-load JS (docs/PERF.md);
  * keep every other import of @azure/msal-browser type-only.
  */
 export const SIGN_IN_SCOPES = ["User.Read", "offline_access"];
