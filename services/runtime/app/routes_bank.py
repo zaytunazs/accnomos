@@ -6,7 +6,7 @@ matches can be marked as a transfer, ignored, or turned into an expense proposal
     POST /import                       upload a CSV (multipart "file"); the same file twice is a no-op
     GET  /statements                   imported statements
     GET  /lines?status=                every line (matched|suggested|unmatched|transfer|ignored)
-    GET  /suggestions                  proposed matches (amount ±1p, date ±5 days, counterparty)
+    GET  /suggestions                  proposed matches (amount ±1p, date ±5 days or up to 60 days later on terms, counterparty)
     GET  /unmatched                    open lines with no suggestion, each with a suggested action
     POST /lines/{id}/match             confirm: {"event_id": ...} or {"event_ids": [...]}
     POST /lines/{id}/unmatch           reopen a matched, transfer or ignored line

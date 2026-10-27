@@ -233,7 +233,7 @@ async def test_seed_on_fake_storage(seed_demo: ModuleType) -> None:
         ("Savings Space", "Tax pot"), ("Starling Bank", "Account fee"),  # left for "transfer" / a bank-charge entry
     ]
     assert all(ln.status == "unmatched" for ln in lines if ln.date > older_end)
-    assert len(await books.bank_suggestions()) == 14  # left for the judge to confirm
+    assert len(await books.bank_suggestions()) == 16  # left for the judge to confirm (2 are customer payments on terms)
     assert sum(ln.status == "matched" for ln in older) == 18 and len(lines) - len(older) == 18
 
     # The figures tools/seed_demo.md tells the judge to expect (run in Oct-Dec 2026, stagger 1).

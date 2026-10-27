@@ -550,7 +550,7 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
     for m in await books.bank_suggestions():  # the older statement is reconciled; the newer one is left to confirm
         if by_id[m.line_id].date <= older_end:
             await books.confirm_match(m.line_id, m.event_ids, USER)
-    for ln in by_id.values():  # a sale posts to Debtors, so its payment is never suggested: matched by hand
+    for ln in await books.stored_bank_lines():  # a customer payment the matcher could not place: matched by hand
         if ln.date <= older_end and ln.status == "unmatched" and ln.reference in sales:
             await books.confirm_match(ln.id, [sales[ln.reference]], USER)
 
