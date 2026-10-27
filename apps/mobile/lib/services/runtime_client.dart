@@ -327,8 +327,6 @@ class RuntimeClient {
     }
   }
 
-  /// The 9 VAT boxes for the current period. `GET /books/vat`.
-  Future<Map<String, dynamic>> vat() async {
   /// The 9 VAT boxes for [period] ("2026-Q3", from [vatPeriods]), or for the
   /// current period when null. `GET /books/vat`.
   Future<Map<String, dynamic>> vat({String? period}) {
