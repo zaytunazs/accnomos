@@ -218,11 +218,6 @@ class Books:
         """Matching rule (the most recently added wins), or None."""
         return next((r for r in reversed(rules) if r.matches(doc)), None)
 
-    async def apply_rules(self, doc: ExtractedDoc) -> str | None:
-        """Account a stored rule says `doc` belongs to, or None."""
-        rule = self.match_rule(doc, await self.load_rules())
-        return rule.account if rule else None
-
     # ------------------------------------------------------------------ #
     # Documents and proposals
     # ------------------------------------------------------------------ #
@@ -235,8 +230,6 @@ class Books:
 
     async def save_proposal(self, p: Proposal) -> None:
         await self.write_json(f"{PROPOSALS}/{p.id}.json", p.model_dump(mode="json"))
-
-    update_proposal = save_proposal
 
     async def get_proposal(self, proposal_id: str) -> Proposal:
         """Raises FileNotFoundError (also for ids that are not plain hex, to keep paths inside _System)."""

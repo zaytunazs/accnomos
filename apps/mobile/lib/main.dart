@@ -168,7 +168,7 @@ class _HomeTab extends StatelessWidget {
             _Tile(label: 'Cash in bank', value: '—', note: 'Connect to see'),
             _Tile(label: 'Owed to you', value: '—', note: 'Connect to see'),
             _Tile(label: 'VAT estimate', value: '—', note: 'Calculated by code'),
-            _Tile(label: 'Needs attention', value: '0', note: 'Nothing waiting'),
+            _Tile(label: 'Needs a look', value: '0', note: 'Nothing waiting'),
           ],
         ),
         const SizedBox(height: 20),

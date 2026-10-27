@@ -23,7 +23,7 @@ from typing import Any, Literal
 from accnomos_ledger.events import LedgerEvent
 from pydantic import BaseModel, Field, field_validator
 
-from app.books import SYSTEM, Books, now
+from app.books import SYSTEM, Books, _month, now
 from app.schemas import Proposal
 
 JOBS = f"{SYSTEM}/Jobs/jobs.json"
@@ -148,10 +148,6 @@ class TimesheetEntry(BaseModel):
 # --------------------------------------------------------------------------- #
 # Storage
 # --------------------------------------------------------------------------- #
-
-
-def _month(d: date) -> str:
-    return f"{d.year:04d}-{d.month:02d}"
 
 
 def _sheet_path(month: str) -> str:

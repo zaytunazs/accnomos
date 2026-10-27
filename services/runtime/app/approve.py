@@ -123,7 +123,7 @@ async def approve(
     if p.file_path and p.file_path.startswith(f"{NEEDS_A_LOOK}/"):
         await books.file_document(p, p.file_path, books.filing_folder(p.extracted))
     p.status, p.event_id, p.decided_by, p.decided_at = "posted", event.id, user, now()
-    await books.update_proposal(p)
+    await books.save_proposal(p)
     rule = await _remember(books, p, user) if always else None
     auto_rule = rule_from_proposal(p, user) if always else None
     if auto_rule:
@@ -193,7 +193,7 @@ async def reject(books: Books, proposal_id: str, user: str, reason: str) -> Prop
     if p.file_path:
         await books.file_document(p, p.file_path, NEEDS_A_LOOK)
     p.status, p.reject_reason, p.decided_by, p.decided_at = "rejected", reason, user, now()
-    await books.update_proposal(p)
+    await books.save_proposal(p)
     await books.audit(f"user:{user}", "rejected", {"proposal": p.id, "doc": p.doc_sha256, "reason": reason, "path": p.file_path})
     await books.rebuild_safely(user)
     return p
@@ -257,5 +257,5 @@ async def _reopen(books: Books, event: LedgerEvent) -> Proposal | None:
     p.undone_events.append(event.id)
     if p.file_path:
         await books.file_document(p, p.file_path)
-    await books.update_proposal(p)
+    await books.save_proposal(p)
     return p

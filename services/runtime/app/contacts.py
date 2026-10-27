@@ -391,10 +391,6 @@ def with_totals(contacts: Sequence[Contact], ledger: Ledger, year_start: date, t
 # --------------------------------------------------------------------------- #
 
 
-async def load_contacts(books: Books) -> list[Contact]:
-    return [Contact.model_validate(c) for c in await books.read_json(CONTACTS, [])]
-
-
 async def save_contacts(books: Books, contacts: Sequence[Contact]) -> None:
     payload = [c.model_dump(mode="json") for c in sorted(contacts, key=lambda c: c.name.lower())]
     await books._update_json(CONTACTS, [], lambda _old: payload)

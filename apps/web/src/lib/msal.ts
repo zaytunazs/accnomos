@@ -14,8 +14,6 @@ import {
 export const SIGN_IN_SCOPES = ["User.Read", "offline_access"];
 export const STORAGE_SCOPES = ["Files.ReadWrite.AppFolder"]; // personal accounts
 export const STORAGE_SCOPES_WORK = ["Files.ReadWrite"]; // work/school accounts (AppFolder is MSA-only)
-export const MAIL_SCOPES = ["Mail.ReadWrite", "Mail.Send"];
-export const CALENDAR_SCOPES = ["Calendars.ReadWrite"];
 
 const clientId = process.env.NEXT_PUBLIC_MS_CLIENT_ID ?? "";
 const authority = process.env.NEXT_PUBLIC_MS_AUTHORITY ?? "https://login.microsoftonline.com/common";
