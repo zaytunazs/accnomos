@@ -765,6 +765,10 @@ class RuntimeClient {
       'POST', '/books/bank/lines/${_seg(lineId)}/expense-proposal',
       what: 'propose that expense');
 
+  /// Bank rules (`GET /books/bank/rules`): read-only on the phone.
+  Future<List<Map<String, dynamic>>> bankRules() =>
+      _list('GET', '/books/bank/rules', what: 'load bank rules');
+
   // Contacts (/contacts/*).
 
   Future<Map<String, dynamic>> contacts() =>

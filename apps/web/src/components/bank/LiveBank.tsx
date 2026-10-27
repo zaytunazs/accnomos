@@ -375,7 +375,7 @@ function Matches({ rows, busy, act }: { rows: RtBankSuggestion[]; busy: string |
             disabled={busy !== null}
             onClick={() => act("all", async (a) => {
               for (const r of exact) await runtime.bank.confirm(a, r.line_id, r.event_ids);
-              return `Confirmed ${plural(exact.length, "exact match")}.`;
+              return `Confirmed ${exact.length} exact ${exact.length === 1 ? "match" : "matches"}.`;
             })}
             className="h-11 rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60"
           >
@@ -846,7 +846,12 @@ export default function LiveBank() {
         </>
       )}
 
-      {data.summary.total > 0 && (
+      {data.summary.total === 0 ? (
+        <p className="rounded-2xl border border-border bg-white p-5 text-[15px] font-semibold print:hidden">
+          Bank rules live here too: open the <strong>Rules</strong> tab below to add one before your first statement arrives.
+        </p>
+      ) : null}
+      {
         <section aria-label="Bank lines" className="rounded-2xl border border-border bg-white p-5 print:hidden">
           <div role="tablist" aria-label="Bank lines" className="flex flex-wrap gap-2 border-b border-border pb-3">
             {tabs.map((t) => (
@@ -881,7 +886,7 @@ export default function LiveBank() {
             {tab === "done" && <Done rows={data.done} busy={busy} act={act} />}
           </div>
         </section>
-      )}
+      }
     </div>
   );
 }

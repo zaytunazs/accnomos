@@ -32,6 +32,7 @@ class _BankScreenState extends State<BankScreen> {
   List<Map<String, dynamic>> _statements = const [];
   List<Map<String, dynamic>> _unmatched = const [];
   List<Map<String, dynamic>> _suggestions = const [];
+  List<Map<String, dynamic>> _rules = const [];
 
   @override
   void initState() {
@@ -83,12 +84,14 @@ class _BankScreenState extends State<BankScreen> {
         client.bankStatements(),
         client.bankLines(status: 'unmatched'),
         client.bankSuggestions(),
+        client.bankRules(),
       ]);
       if (!mounted) return;
       setState(() {
         _statements = results[0].cast<Map<String, dynamic>>();
         _unmatched = results[1].cast<Map<String, dynamic>>();
         _suggestions = results[2].cast<Map<String, dynamic>>();
+        _rules = results[3].cast<Map<String, dynamic>>();
       });
     } catch (e) {
       if (!mounted) return;
@@ -244,6 +247,12 @@ class _BankScreenState extends State<BankScreen> {
             const _EmptyLine('Nothing unmatched — every line is resolved.')
           else
             for (final line in _unmatched) _lineCard(line),
+          const SizedBox(height: 8),
+          _heading('Bank rules'),
+          if (_rules.isEmpty)
+            const _EmptyLine('No bank rules yet — add them in the web app.')
+          else
+            for (final rule in _rules) _ruleCard(rule),
           const SizedBox(height: 12),
           const Text(
             'Read-only on the phone, except for confirming a single suggested match — everything else happens in the web app.',
@@ -414,6 +423,40 @@ class _BankScreenState extends State<BankScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _ruleCard(Map<String, dynamic> rule) {
+    final name = (rule['name'] ?? '').toString();
+    final match = rule['match'] is Map ? Map<String, dynamic>.from(rule['match'] as Map) : <String, dynamic>{};
+    final action = rule['action'] is Map ? Map<String, dynamic>.from(rule['action'] as Map) : <String, dynamic>{};
+    final account = (action['account'] ?? '').toString();
+    final title = name.isEmpty ? 'Bank rule' : name;
+    final when = 'When the description ${(match['op'] ?? 'contains').toString()} ${(match['value'] ?? '').toString()}';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE3E1D8)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          const SizedBox(height: 2),
+          Text(when,
+              style: const TextStyle(
+                  color: AccnomosColors.muted, fontSize: 12, height: 1.4)),
+          const SizedBox(height: 4),
+          Text(account.isEmpty ? 'No account set' : 'Code it to $account',
+              style: const TextStyle(
+                  color: AccnomosColors.ink,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700)),
+        ],
+      ),
     );
   }
 
