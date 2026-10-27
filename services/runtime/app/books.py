@@ -1,25 +1,7 @@
 """The user's books, as files in their own storage. No database: the folder is the source of truth.
 
-Layout (relative to the books root):
-
-    00 Inbox/                      new documents land here
-    01 Receipts/{yyyy-mm}/         filed purchases and receipts
-    02 Sales invoices/
-    03 Bank statements/            imported bank statement CSVs, "{last date}_{bank}.csv"
-    04 Needs a look/               anything a human should check
-    05 VAT returns/  06 Reports/
-    _System/docs/{sha256}.json     one per processed document (its hash is the duplicate key)
-    _System/proposals/{id}.json    proposals and their decisions
-    _System/audit/{yyyy-mm}.jsonl  append-only audit trail
-    _System/Ledger/events/{yyyy-mm}/{ts}-{device}-{id}.json   immutable ledger events
-    _System/bank/{sha256}.json     bank lines parsed from one statement (matches recorded on them)
-    _System/rules.json  _System/cursors.json
-    _System/Rules/rules.json       Autopilot rules, one per supplier (app/autopilot.py)
-    _System/audit/autopilot/{yyyy-mm}.jsonl   one line per Autopilot decision that posted something
-    _System/Jobs/jobs.json  _System/Staff/staff.json  _System/Timesheets/{yyyy-mm}.jsonl   (app/jobs.py)
-    _System/Contacts/contacts.json customers and suppliers (app/contacts.py); no money is stored there
-    _System/Vehicles/vehicles.json  _System/Mileage/{tax-year}.jsonl   vehicles and business journeys (app/mileage.py)
-    Books.xlsx                     read-only spreadsheet projection, rebuilt after every decision
+The folder layout (every path, who writes it, which files are append-only) is in docs/ARCHITECTURE.md;
+tests/test_integration.py checks that everything written fits it.
 """
 
 from __future__ import annotations

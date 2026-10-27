@@ -66,5 +66,5 @@ original whenever it is unsure. The result is on the proposal as `crop` plus an 
 - `packages/ledger` and `packages/connectors` never import provider or model code. VAT boxes come from code only.
 - Runtime package is `app`; relay package is `relay` (two services, two names — they share one venv).
 - Money is integer pence inside the ledger; the model returns pounds to 2 dp.
-- Every automatic action writes one line to `_System/audit/{yyyy-mm}.jsonl` in the user's folder.
+- Every automatic action writes one line to `_System/audit/{yyyy-mm}.jsonl` in the user's folder (format and the full folder layout: `docs/ARCHITECTURE.md`).
 - Branch names: `muse/*` (Muse Code jobs), `claude/*` (Claude Code jobs on the Spark); every merge is reviewed.
