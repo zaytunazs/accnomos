@@ -83,8 +83,16 @@ export function VersionStrip() {
       if (document.hidden) return; // a hidden tab waits its turn
       try {
         const res = await fetch("/version.json", { cache: "no-store" });
+        // Always drain the body first (a missing file serves the 404 page):
+        // an unread body leaves the request in flight and stalls later fetches.
+        const text = await res.text();
         if (!res.ok) return;
-        const info = (await res.json()) as Partial<VersionInfo>;
+        let info: Partial<VersionInfo>;
+        try {
+          info = JSON.parse(text) as Partial<VersionInfo>;
+        } catch {
+          return;
+        }
         if (typeof info.sha !== "string" || info.sha === "") return;
         if (baseline === null) baseline = info.sha;
         else if (live && info.sha !== baseline) setShow(true);
@@ -103,7 +111,7 @@ export function VersionStrip() {
   if (!show) return null;
   return (
     <div role="status" className={bar}>
-      <span>A new version is available — reload to get it.</span>
+      <span>A new version is available — reload.</span>
       <button type="button" onClick={() => window.location.reload()} className={button}>
         Reload
       </button>

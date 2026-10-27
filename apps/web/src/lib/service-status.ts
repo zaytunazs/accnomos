@@ -27,6 +27,9 @@ export async function checkReader(): Promise<ReaderState> {
   const timer = setTimeout(() => ctrl.abort(), 8000);
   try {
     const res = await fetch(`${RUNTIME_URL}/health`, { cache: "no-store", signal: ctrl.signal });
+    // Always drain the body, even when the status is useless: an unread body
+    // leaves the request in flight, which stalls later same-origin fetches.
+    await res.arrayBuffer().catch(() => null);
     if (res.ok) return "up";
     return looksOffline() ? "offline" : "down";
   } catch {
