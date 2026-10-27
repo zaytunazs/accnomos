@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
+import { loadBusiness } from "@/lib/business";
 import PrintButton from "@/components/PrintButton";
 import SignInCta from "@/components/SignInCta";
 import { LoadingSkeleton, RuntimeErrorNote } from "@/components/States";
@@ -15,13 +17,14 @@ import {
   AGED_BUCKETS,
   agedBucketLabel,
   type RtAgedBucket,
+  type RtAgedRow,
   type RtAgedTable,
   type RtPlSection,
   type RtProfitAndLoss,
   type RtTrend,
   type RtVatSummary,
 } from "@/lib/runtime";
-import { sampleAged, samplePl, sampleTrend, sampleVat } from "@/lib/sample-reports";
+import { sampleAged, samplePl, samplePlPrev, samplePlYear, sampleTrend, sampleVat } from "@/lib/sample-reports";
 import { usePickedPeriod } from "@/lib/vat-period";
 import TrendBars from "./TrendBars";
 
@@ -37,6 +40,139 @@ function Scroll({ label, children }: { label: string; children: ReactNode }) {
     <div role="region" aria-label={label} tabIndex={0} className="mt-2 overflow-x-auto">
       {children}
     </div>
+  );
+}
+
+/** Paper only: who the report is for. Business details live on this device (localStorage), read once. */
+function PrintHeader({ title, period }: { title: string; period: string }) {
+  const [business] = useState<{ name: string; vatNumber: string } | null>(() => {
+    const b = loadBusiness();
+    return b && (b.name || b.vatNumber) ? { name: b.name, vatNumber: b.vatNumber } : null;
+  });
+  return (
+    <div className="hidden print:block">
+      <p className="text-sm font-bold">
+        {business?.name ? business.name : "Reports"}
+        {business?.name && business?.vatNumber ? " · " : ""}
+        {business?.vatNumber ? `VRN ${business.vatNumber}` : ""}
+      </p>
+      <p className="text-sm">
+        {title} · {period}
+      </p>
+      <p className="text-sm text-muted">Calculated by code from approved entries.</p>
+    </div>
+  );
+}
+
+const dayMs = 86_400_000;
+const isoToUtc = (iso: string) => {
+  const [y, m, d] = iso.split("-").map(Number);
+  return Date.UTC(y, m - 1, d);
+};
+const toIso = (t: number) => new Date(t).toISOString().slice(0, 10);
+
+/** The same-length period ending the day before `start` (e.g. the previous quarter). */
+export function prevSpan(start: string, end: string): { start: string; end: string } {
+  const days = Math.round((isoToUtc(end) - isoToUtc(start)) / dayMs) + 1;
+  const pe = isoToUtc(start) - dayMs;
+  return { start: toIso(pe - (days - 1) * dayMs), end: toIso(pe) };
+}
+
+/** The same dates a year earlier (29 Feb becomes 28 Feb). */
+export function yearSpan(start: string, end: string): { start: string; end: string } {
+  const back = (iso: string) => {
+    const [y, m, d] = iso.split("-").map(Number);
+    const last = new Date(Date.UTC(y - 1, m, 0)).getUTCDate();
+    return toIso(Date.UTC(y - 1, m - 1, Math.min(d, last)));
+  };
+  return { start: back(start), end: back(end) };
+}
+
+const signedMoney = (pence: number) =>
+  (pence / 100).toLocaleString("en-GB", { style: "currency", currency: "GBP", signDisplay: "exceptZero" });
+const pct = (current: number, base: number) =>
+  base === 0 ? "—" : `${current >= base ? "+" : "−"}${(Math.abs(current - base) / Math.abs(base) * 100).toFixed(1)}%`;
+
+/** One horizontal bar per value (this period, previous, last year): inline SVG, never colour alone (the figures sit beside it). */
+function SectionBar({ label, values }: { label: string; values: [number, number, number] }) {
+  const names = ["this period", "previous period", "same period last year"];
+  const fills = ["#0f6e63", "#4b5159", "#b45309"];
+  const max = Math.max(...values.map(Math.abs), 1);
+  return (
+    <svg
+      viewBox="0 0 120 34"
+      role="img"
+      aria-label={`${label}: ${values.map((v, i) => `${money(v)} ${names[i]}`).join(", ")}`}
+      className="h-[34px] w-[120px] max-w-none shrink-0"
+    >
+      {values.map((v, i) => (
+        <rect key={i} x={0} y={i * 12} width={Math.max((Math.abs(v) / max) * 120, v === 0 ? 0 : 2)} height={8} rx={2} fill={fills[i]}>
+          <title>{`${names[i]}: ${money(v)}`}</title>
+        </rect>
+      ))}
+    </svg>
+  );
+}
+
+function CompareCell({ current, base }: { current: number; base: number | null }) {
+  if (base === null) return <span className="text-muted">…</span>;
+  return (
+    <span>
+      <span className="font-bold">{signedMoney(current - base)}</span> <span className="text-muted">({pct(current, base)})</span>
+    </span>
+  );
+}
+
+/** This period against the previous period and the same period last year, with change £ and %. */
+function PlCompare({ pl, prev, year }: { pl: RtProfitAndLoss; prev: RtProfitAndLoss | null; year: RtProfitAndLoss | null }) {
+  const rows: { name: string; now: number; was: number | null; last: number | null }[] = [
+    { name: "Sales", now: pl.sales.total_pence, was: prev?.sales.total_pence ?? null, last: year?.sales.total_pence ?? null },
+    { name: "Cost of sales", now: pl.cost_of_sales.total_pence, was: prev?.cost_of_sales.total_pence ?? null, last: year?.cost_of_sales.total_pence ?? null },
+    { name: "Gross profit", now: pl.gross_profit_pence, was: prev?.gross_profit_pence ?? null, last: year?.gross_profit_pence ?? null },
+    { name: "Overheads", now: pl.overheads.total_pence, was: prev?.overheads.total_pence ?? null, last: year?.overheads.total_pence ?? null },
+    { name: "Net profit", now: pl.net_profit_pence, was: prev?.net_profit_pence ?? null, last: year?.net_profit_pence ?? null },
+  ];
+  return (
+    <>
+      <h3 className="mt-5 text-[15px] font-extrabold">Compared with earlier periods</h3>
+      <Scroll label={`Profit and loss compared with earlier periods, ${pl.label}`}>
+        <table className="w-full min-w-[640px] border-collapse">
+          <caption className="sr-only">
+            Sales, costs and profit for {pl.label} against {prev?.label ?? "the previous period"} and {year?.label ?? "the same period last year"}
+          </caption>
+          <thead>
+            <tr className="border-b border-border">
+              <th scope="col" className={th}>Measure</th>
+              <th scope="col" className={th}>Trend</th>
+              <th scope="col" className={`${th} text-right`}>{pl.label}</th>
+              <th scope="col" className={`${th} text-right`}>{prev?.label ?? "Previous"}</th>
+              <th scope="col" className={`${th} text-right`}>{year?.label ?? "Last year"}</th>
+              <th scope="col" className={`${th} text-right`}>Change vs previous</th>
+              <th scope="col" className={`${th} text-right`}>Change vs last year</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.name} className="border-t border-border">
+                <th scope="row" className={`${td} text-left font-semibold`}>{r.name}</th>
+                <td className={td}>
+                  <SectionBar label={r.name} values={[r.now, r.was ?? 0, r.last ?? 0]} />
+                </td>
+                <td className={`${td} text-right font-bold tabular-nums`}>{money(r.now)}</td>
+                <td className={`${td} text-right tabular-nums`}>{r.was === null ? "…" : money(r.was)}</td>
+                <td className={`${td} text-right tabular-nums`}>{r.last === null ? "…" : money(r.last)}</td>
+                <td className={`${td} text-right tabular-nums`}><CompareCell current={r.now} base={r.was} /></td>
+                <td className={`${td} text-right tabular-nums`}><CompareCell current={r.now} base={r.last} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </Scroll>
+      <p className="mt-1 text-[13px] text-muted">
+        Previous is the {pl.label} period shifted back ({prev?.label ?? "loading…"});
+        last year is the same dates a year earlier ({year?.label ?? "loading…"}).
+      </p>
+    </>
   );
 }
 
@@ -68,10 +204,11 @@ function PlRows({ title, section }: { title: string; section: RtPlSection }) {
   );
 }
 
-function ProfitAndLoss({ pl }: { pl: RtProfitAndLoss }) {
+function ProfitAndLoss({ pl, prev, year }: { pl: RtProfitAndLoss; prev: RtProfitAndLoss | null; year: RtProfitAndLoss | null }) {
   const loss = pl.net_profit_pence < 0;
   return (
     <section aria-labelledby="pl-heading" className={card}>
+      <PrintHeader title="Profit and loss" period={`${pl.label} · ${ukDate(pl.start)} – ${ukDate(pl.end)}`} />
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="pl-heading" className="text-lg font-extrabold">
           Profit and loss · {pl.label} · {ukDate(pl.start)} – {ukDate(pl.end)}
@@ -81,6 +218,7 @@ function ProfitAndLoss({ pl }: { pl: RtProfitAndLoss }) {
         </span>
       </div>
       <p className="mt-1 text-[13px] text-muted">{pl.basis}</p>
+      <PlCompare pl={pl} prev={prev} year={year} />
       <Scroll label={`Profit and loss table, ${pl.label}`}>
         <table className="w-full min-w-[420px] border-collapse">
           <caption className="sr-only">Profit and loss by account, {pl.label}</caption>
@@ -111,19 +249,61 @@ function ProfitAndLoss({ pl }: { pl: RtProfitAndLoss }) {
   );
 }
 
+const AGED_FILLS: Record<RtAgedBucket, string> = {
+  current: "#0f6e63",
+  "0-30": "#b45309",
+  "31-60": "#1d4ed8",
+  "61-90": "#be123c",
+  "90+": "#713f12",
+};
+
+/** What each contact owes as one stacked bar (not yet due / 1–30 / 31–60 / 61–90 / 90+ days late). */
+function AgedBar({ row }: { row: RtAgedRow }) {
+  const total = Math.max(row.total_pence, 1);
+  let x = 0;
+  const parts = BUCKETS.map((b) => {
+    const w = (row.buckets[b] / total) * 120;
+    const seg = { b, x, w, amount: row.buckets[b] };
+    x += w;
+    return seg;
+  });
+  return (
+    <svg
+      viewBox="0 0 120 10"
+      role="img"
+      aria-label={`${row.name}: ${BUCKETS.map((b) => `${money(row.buckets[b])} ${agedBucketLabel(b).toLowerCase()}`).join(", ")}`}
+      className="h-[10px] w-[120px] max-w-none"
+    >
+      <rect x={0} width={120} height={10} rx={3} fill="#e3e1d8" />
+      {parts.map((p) =>
+        p.w > 0 ? <rect key={p.b} x={p.x} width={Math.max(p.w, 2)} height={10} fill={AGED_FILLS[p.b]}><title>{`${agedBucketLabel(p.b)}: ${money(p.amount)}`}</title></rect> : null,
+      )}
+    </svg>
+  );
+}
+
 function AgedTable({ title, hint, table }: { title: string; hint: string; table: RtAgedTable }) {
   return (
     <section aria-label={title} className={`${card} min-w-0 flex-1`}>
       <h3 className="text-[15px] font-extrabold">{title}</h3>
       <p className="text-[13px] text-muted">{hint}</p>
+      <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[12px] font-semibold text-muted">
+        {BUCKETS.map((b) => (
+          <span key={b} className="flex items-center gap-1">
+            <span aria-hidden="true" className="h-2.5 w-2.5 rounded-sm" style={{ background: AGED_FILLS[b] }} />
+            {agedBucketLabel(b)}
+          </span>
+        ))}
+      </p>
       {table.rows.length === 0 ? (
         <p className="mt-3 text-sm font-semibold text-muted">Nothing unpaid.</p>
       ) : (
         <Scroll label={`${title} table`}>
-          <table className="w-full min-w-[480px] border-collapse tabular-nums">
+          <table className="w-full min-w-[560px] border-collapse tabular-nums">
             <thead className="border-b border-border">
               <tr>
                 <th scope="col" className={th}>Name</th>
+                <th scope="col" className={th}>Age</th>
                 {BUCKETS.map((b) => <th key={b} scope="col" className={`${th} text-right`}>{agedBucketLabel(b)}</th>)}
                 <th scope="col" className={`${th} text-right`}>Total</th>
               </tr>
@@ -131,7 +311,15 @@ function AgedTable({ title, hint, table }: { title: string; hint: string; table:
             <tbody>
               {table.rows.map((r) => (
                 <tr key={r.contact_id} className="border-b border-border">
-                  <th scope="row" className={`${td} text-left font-semibold`}>{r.name}</th>
+                  <th scope="row" className={`${td} text-left font-semibold`}>
+                    <Link
+                      href={`/contacts?id=${encodeURIComponent(r.contact_id)}`}
+                      className="text-teal-dark underline underline-offset-2 hover:text-teal"
+                    >
+                      {r.name}
+                    </Link>
+                  </th>
+                  <td className={td}><AgedBar row={r} /></td>
                   {BUCKETS.map((b) => (
                     <td key={b} className={`${td} text-right ${b === "90+" && r.buckets[b] ? "font-bold text-warn-ink" : ""}`}>
                       {r.buckets[b] ? money(r.buckets[b]) : "—"}
@@ -142,6 +330,7 @@ function AgedTable({ title, hint, table }: { title: string; hint: string; table:
               ))}
               <tr className="bg-ground">
                 <th scope="row" className={`${td} text-left font-bold`}>Total</th>
+                <td />
                 {BUCKETS.map((b) => <td key={b} className={`${td} text-right font-bold`}>{money(table.buckets[b])}</td>)}
                 <td className={`${td} text-right font-extrabold`}>{money(table.total_pence)}</td>
               </tr>
@@ -155,42 +344,43 @@ function AgedTable({ title, hint, table }: { title: string; hint: string; table:
 
 function Trend({ trend }: { trend: RtTrend }) {
   return (
-    <section aria-labelledby="trend-heading" className={card}>
+    <section aria-labelledby="trend-heading" className={`${card} report-page-break`}>
+      <PrintHeader title="Last 12 months" period={`${trend.months[0]?.label ?? ""} to ${trend.months.at(-1)?.label ?? ""}`} />
       <h2 id="trend-heading" className="text-lg font-extrabold">Last 12 months</h2>
       <p className="mb-3 text-[13px] text-muted">Each month&apos;s net is its net profit, from the same accounts as the profit and loss.</p>
       <TrendBars months={trend.months} />
-      <details className="mt-3">
-        <summary className="cursor-pointer text-[14px] font-bold text-teal-dark">Show the figures as a table</summary>
-        <Scroll label="Monthly figures table">
-          <table className="w-full min-w-[420px] border-collapse tabular-nums">
-            <thead className="border-b border-border">
-              <tr>
-                <th scope="col" className={th}>Month</th>
-                <th scope="col" className={`${th} text-right`}>Sales</th>
-                <th scope="col" className={`${th} text-right`}>Purchases</th>
-                <th scope="col" className={`${th} text-right`}>Net</th>
+      <h3 className="mt-4 text-[15px] font-extrabold">Monthly figures</h3>
+      <Scroll label="Monthly figures table">
+        <table className="w-full min-w-[420px] border-collapse tabular-nums">
+          <caption className="sr-only">Sales, purchases and net per month, {trend.months[0]?.label} to {trend.months.at(-1)?.label}</caption>
+          <thead className="border-b border-border">
+            <tr>
+              <th scope="col" className={th}>Month</th>
+              <th scope="col" className={`${th} text-right`}>Sales</th>
+              <th scope="col" className={`${th} text-right`}>Purchases</th>
+              <th scope="col" className={`${th} text-right`}>Net</th>
+            </tr>
+          </thead>
+          <tbody>
+            {trend.months.map((m) => (
+              <tr key={m.month} className="border-b border-border">
+                <th scope="row" className={`${td} text-left font-normal`}>{m.label}</th>
+                <td className={`${td} text-right`}>{money(m.sales_pence)}</td>
+                <td className={`${td} text-right`}>{money(m.purchases_pence)}</td>
+                <td className={`${td} text-right font-bold ${m.net_pence < 0 ? "text-warn-ink" : ""}`}>{money(m.net_pence)}</td>
               </tr>
-            </thead>
-            <tbody>
-              {trend.months.map((m) => (
-                <tr key={m.month} className="border-b border-border">
-                  <th scope="row" className={`${td} text-left font-normal`}>{m.label}</th>
-                  <td className={`${td} text-right`}>{money(m.sales_pence)}</td>
-                  <td className={`${td} text-right`}>{money(m.purchases_pence)}</td>
-                  <td className={`${td} text-right font-bold ${m.net_pence < 0 ? "text-warn-ink" : ""}`}>{money(m.net_pence)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Scroll>
-      </details>
+            ))}
+          </tbody>
+        </table>
+      </Scroll>
     </section>
   );
 }
 
 function VatSummary({ vat }: { vat: RtVatSummary }) {
   return (
-    <section aria-labelledby="vat-summary-heading" className={card}>
+    <section aria-labelledby="vat-summary-heading" className={`${card} report-page-break`}>
+      <PrintHeader title="VAT by period" period={`${vat.periods[0]?.label ?? ""} to ${vat.periods.at(-1)?.label ?? ""}`} />
       <h2 id="vat-summary-heading" className="text-lg font-extrabold">VAT by period</h2>
       <p className="text-[13px] text-muted">The 9-box calculation for each period, as on the VAT return page. Positive net VAT is to pay.</p>
       <Scroll label="VAT by period table">
@@ -231,13 +421,21 @@ function VatSummary({ vat }: { vat: RtVatSummary }) {
   );
 }
 
-function Reports({ pl, aged, vat, trend }: { pl: RtProfitAndLoss | null; aged: RtAged | null; vat: RtVatSummary | null; trend: RtTrend | null }) {
+function Reports({ pl, prev, year, aged, vat, trend }: {
+  pl: RtProfitAndLoss | null;
+  prev: RtProfitAndLoss | null;
+  year: RtProfitAndLoss | null;
+  aged: RtAged | null;
+  vat: RtVatSummary | null;
+  trend: RtTrend | null;
+}) {
   return (
     <div className="flex flex-col gap-6">
-      {pl ? <ProfitAndLoss pl={pl} /> : <LoadingSkeleton lines={6} label="Working out the profit and loss…" />}
+      {pl ? <ProfitAndLoss pl={pl} prev={prev} year={year} /> : <LoadingSkeleton lines={6} label="Working out the profit and loss…" />}
       {trend && <Trend trend={trend} />}
       {aged && (
-        <section aria-labelledby="aged-heading" className="flex flex-col gap-3">
+        <section aria-labelledby="aged-heading" className="flex flex-col gap-3 report-page-break">
+          <PrintHeader title="Aged balances" period={`at ${ukDate(aged.as_of)}`} />
           <h2 id="aged-heading" className="text-lg font-extrabold">Aged balances · at {ukDate(aged.as_of)}</h2>
           <div className="flex flex-col gap-4 min-[1000px]:flex-row">
             <AgedTable title="Debtors" hint="Customers who owe you: what is still owed on each sales invoice after part payments and credit notes, by days past its due date." table={aged.debtors} />
@@ -256,6 +454,7 @@ export default function LiveReports() {
   const [state, setState] = useState<"checking" | "demo" | "live" | "error">("checking");
   const [error, setError] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<{ period: string | null; pl: RtProfitAndLoss } | null>(null);
+  const [compare, setCompare] = useState<{ period: string | null; prev: RtProfitAndLoss | null; year: RtProfitAndLoss | null } | null>(null);
   const [aged, setAged] = useState<RtAgedReport | null>(null);
   const [vat, setVat] = useState<RtVatSummary | null>(null);
   const [trend, setTrend] = useState<RtTrend | null>(null);
@@ -304,6 +503,30 @@ export default function LiveReports() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [account, period]);
 
+  // The two extra P&L calls: the previous period and the same period last
+  // year, worked out from the loaded period's own dates. Reads only.
+  useEffect(() => {
+    if (!account || !pl) {
+      setCompare(null);
+      return;
+    }
+    let stale = false;
+    setCompare((c) => (c && c.period === period ? c : { period, prev: null, year: null }));
+    const [ps, ys] = [prevSpan(pl.start, pl.end), yearSpan(pl.start, pl.end)];
+    Promise.all([runtime.reports.pl(account, ps), runtime.reports.pl(account, ys)]).then(
+      ([p, y]) => {
+        if (!stale) setCompare({ period, prev: p, year: y });
+      },
+      () => {
+        if (!stale) setCompare({ period, prev: null, year: null }); // the P&L stands without its comparisons
+      },
+    );
+    return () => {
+      stale = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [account, pl]);
+
   async function exportToOneDrive() {
     if (!account) return;
     setExporting(true);
@@ -332,7 +555,7 @@ export default function LiveReports() {
         </div>
         {/* Paper only: the banner does not print, and a printed sample must still say what it is. */}
         <p className="hidden text-sm font-bold print:block">SAMPLE — FICTIONAL COMPANY · fictional figures</p>
-        <Reports pl={samplePl} aged={sampleAged} vat={sampleVat} trend={sampleTrend} />
+        <Reports pl={samplePl} prev={samplePlPrev} year={samplePlYear} aged={sampleAged} vat={sampleVat} trend={sampleTrend} />
       </div>
     );
   }
@@ -373,7 +596,16 @@ export default function LiveReports() {
         <p className="text-sm font-bold text-warn-ink">SAMPLE — FICTIONAL COMPANY · these are the demo books</p>
       )}
       {state === "error" && error ? <RuntimeErrorNote message={error} title="Couldn't work out the reports" /> : null}
-      {state === "live" && <Reports pl={pl} aged={aged} vat={vat} trend={trend} />}
+      {state === "live" && (
+        <Reports
+          pl={pl}
+          prev={compare && compare.period === period ? compare.prev : null}
+          year={compare && compare.period === period ? compare.year : null}
+          aged={aged}
+          vat={vat}
+          trend={trend}
+        />
+      )}
     </div>
   );
 }
