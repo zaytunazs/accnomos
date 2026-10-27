@@ -9,20 +9,27 @@ Run with the runtime's venv. The token is read from ACCNOMOS_GRAPH_TOKEN or a hi
 command line, and is kept in memory only. Walkthrough and how to get a token: tools/seed_demo.md.
 
 Two halves. `build_plan` is pure and deterministic (same business, day and stagger give the same plan): it picks
-gold documents from evals/gold, re-dates them, labels each "SAMPLE — FICTIONAL COMPANY" and lays out jobs,
-timesheets, mileage, invoices and two bank statements. `seed` then applies it through the functions the app's own
-routes call (approve(), invoicing, jobs, mileage, contacts, Books.import_bank_csv...), so every file is written
-by app code; nothing here writes JSON by hand. What it posts:
+gold documents from evals/gold (and evals/gold/ledger2 for part payments and credit notes), re-dates them, labels
+each "SAMPLE — FICTIONAL COMPANY" and lays out jobs, timesheets, mileage, invoices and two bank statements. `seed`
+then applies it through the functions the app's own routes call (approve(), invoicing, payments, credit notes, bank
+reconcile, jobs, mileage, contacts, payroll, to-dos, the reports export...), so every file is written by app code;
+nothing here writes JSON by hand. What it posts (stagger 1, run in Oct-Dec 2026; `--dry-run` prints it for any day):
 
-* 40 approved ledger events, all inside the last two complete VAT periods: 36 documents approved in Review, one
-  mileage allowance claim and three sales invoices.
+* 59 ledger events, all inside the last two complete VAT periods. 45 approved entries: 38 documents (36 gold
+  receipts, a supplier's bill and its credit note; two receipts arrive by email through Outlook intake, and
+  Autopilot posts the second bill of each of six energy suppliers), one mileage claim and six sales invoices.
+  14 posted by code for an action: five payments (one an overpayment, one part payment, one exact bank match turned
+  into a payment, one bill paid from Contacts), credit note CN-0001, and eight statement lines coded by two bank rules.
 * 25 more documents left in "00 Inbox", dated in the current period, for the judge to scan; two of them will land
   in "Needs a look" (an EUR invoice and a malformed VAT number).
 * Before any of that, four suppliers marked "not VAT-registered" in the contacts: their receipts over £250 charge no
   VAT and show no VAT number, which for a supplier the books don't know means "Is <supplier> VAT-registered?".
+* A pay-run estimate, two to-dos, Books.xlsx, and last every report in "07 Reports" (how a re-run knows the seed
+  finished: it then changes nothing).
 
 The documents are read by nobody: their proposals carry the gold set's fields (model "seed:gold-reading"),
-the same "perfect reading" test mode uses. Code still runs every check and drafts every journal.
+the same "perfect reading" test mode uses. Code still runs every check and drafts every journal. No email is sent
+and the user's mailbox is never read (intake reads a stand-in mailbox holding the two fictional receipts).
 """
 
 from __future__ import annotations
@@ -33,11 +40,13 @@ import csv
 import getpass
 import hashlib
 import io
+import json
 import os
+import re
 import sys
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 from typing import Any
@@ -48,9 +57,25 @@ for _p in ("packages/connectors/src", "packages/ledger/src", "services/runtime")
     if str(ROOT / _p) not in sys.path:
         sys.path.insert(0, str(ROOT / _p))
 
-from accnomos_connectors.base import MailSender, OutgoingMail, StorageProvider  # noqa: E402
+from accnomos_connectors import FakeMailProvider  # noqa: E402
+from accnomos_connectors.base import MailAttachment, MailMessage, MailSender, OutgoingMail, StorageProvider  # noqa: E402
+from accnomos_ledger.bank import reconciled_to  # noqa: E402
+from app import (  # noqa: E402
+    autopilot,
+    bank_reconcile,
+    bank_rules,
+    credit_notes,
+    intake,
+    invoicing,
+    jobs,
+    mileage,
+    payments,
+    routes_reports,
+)
 from app import contacts as contacts_mod  # noqa: E402
-from app import invoicing, jobs, mileage  # noqa: E402
+from app import inbox as inbox_mod  # noqa: E402
+from app import payroll as payroll_mod  # noqa: E402
+from app import todos as todos_mod  # noqa: E402
 from app.approve import approve  # noqa: E402
 from app.autopilot import supplier_key  # noqa: E402
 from app.books import Books, DocMeta, now  # noqa: E402
@@ -64,12 +89,13 @@ from app.checks import (  # noqa: E402  sys.path first
 )
 from app.deadlines import STAGGER_START_MONTH, add_months, period_containing, period_label, previous_period  # noqa: E402
 from app.journal import BANK, VAT_CONTROL, draft_journal  # noqa: E402
-from app.paths import INBOX, readme_text  # noqa: E402
+from app.paths import INBOX, REPORTS, readme_text  # noqa: E402
 from app.pdf import render_invoice  # noqa: E402
 from app.pipeline import sha256_hex, suggested_filename  # noqa: E402
 from app.repair import repair  # noqa: E402
 from app.schemas import ExtractedDoc, JournalLine, Proposal  # noqa: E402
 from app.testmode import _renderer, extracted_from_gold, gold_receipts  # noqa: E402
+from app.vat_cycle import VatCycle  # noqa: E402
 
 LABEL = "SAMPLE — FICTIONAL COMPANY"
 GOLD_BUSINESS = "Bramblewood Joinery Ltd"  # the seller on the gold sales invoices
@@ -98,11 +124,25 @@ class PlannedDoc:
     job: str | None = None  # "job1" / "job2": tagged on approval
     expect: str = "proposed"
 
+    by: str = "user"  # "autopilot": Autopilot posts it (the supplier's rule was saved on an earlier approval)
+    always: bool = False  # approved with "Always do this for <supplier>" ticked: saves the Autopilot rule
+    via: str = "upload"  # "mail": it arrives by email and Outlook intake copies it into 00 Inbox
+
     def doc(self) -> ExtractedDoc:
         return ExtractedDoc.model_validate(self.extracted)
 
     def journal(self) -> list[JournalLine]:
         return draft_journal(self.doc())
+
+
+@dataclass
+class PlannedPayment:
+    day: date
+    pence: int  # what reached the bank (an overpayment is more than the invoice)
+    reference: str  # as on the statement line
+    how: str = "recorded"  # "recorded": Record payment with the statement line; "exact": the Bank page's exact
+    # invoice match, then Post as payment
+    party: str = ""  # the statement's counter party; default the customer
 
 
 @dataclass
@@ -112,13 +152,52 @@ class PlannedInvoice:
     issue: date
     due: date
     lines: list[invoicing.LineIn]
-    paid_on: date | None = None
+    payments: list[PlannedPayment] = field(default_factory=list)
     job: str | None = None  # bills that job's timesheet hours
+    gold: str | None = None  # evals/gold/ledger2/part_paid file its lines and payments come from
+    email: str | None = None  # for a customer not yet in the contact book
+    address: str | None = None
 
     @property
     def total_pence(self) -> int:
         _, _, net, vat = invoicing.price_lines(self.lines)
         return net + vat
+
+    @property
+    def net_pence(self) -> int:
+        return invoicing.price_lines(self.lines)[2]
+
+    @property
+    def paid_pence(self) -> int:
+        return sum(p.pence for p in self.payments)
+
+    @property
+    def paid_on(self) -> date | None:
+        """The day it was paid in full (or over), else None."""
+        return self.payments[-1].day if self.payments and self.paid_pence >= self.total_pence else None
+
+    def state(self, today: date) -> str:
+        if self.paid_pence > self.total_pence:
+            return "overpaid"
+        if self.paid_pence == self.total_pence:
+            return "paid"
+        late = " and OVERDUE" if self.due < today else ""
+        return ("part paid" if self.paid_pence else "sent") + (late or " (not due yet)")
+
+
+@dataclass
+class PlannedCreditNote:
+    invoice: str
+    day: date
+    line: int  # the invoice line credited
+    quantity: Decimal
+    reason: str
+
+    def pence(self, inv: PlannedInvoice) -> tuple[int, int]:
+        """(net, VAT) credited."""
+        ln = inv.lines[self.line].model_copy(update={"quantity": self.quantity})
+        _, _, net, vat = invoicing.price_lines([ln])
+        return net, vat
 
 
 @dataclass
@@ -140,6 +219,15 @@ class Plan:
     not_vat_registered: list[str]  # suppliers recorded as not VAT-registered before any document is proposed
     job_customers: dict[str, str]  # job key -> customer name
     statements: list[tuple[str, bytes]] = field(default_factory=list)  # (upload name, CSV bytes)
+    # The rest of the features, from evals/gold/ledger2 where it has the figures (build_plan(extras=False): none)
+    supplier_docs: list[PlannedDoc] = field(default_factory=list)  # a bill on account, then its credit note
+    bill_payment: PlannedPayment | None = None  # the rest of that bill, paid from Contacts
+    credit_notes: list[PlannedCreditNote] = field(default_factory=list)
+    bank_rules: list[bank_rules.BankRule] = field(default_factory=list)
+    rule_rows: list[tuple[date, str, str, str, int]] = field(default_factory=list)  # statement lines the rules code
+    payroll_period: str | None = None  # a pay run estimated from that month's timesheets (not confirmed)
+    todos: list[todos_mod.TodoIn] = field(default_factory=list)
+    export_report: bool = False  # 07 Reports: every report in one spreadsheet (written last)
 
     @property
     def window(self) -> tuple[date, date]:
@@ -150,8 +238,22 @@ class Plan:
         return [j for j in self.journeys if start <= j.date <= self.claim_day]
 
     @property
+    def approved_count(self) -> int:
+        """Entries approved from documents (Review, Autopilot), the mileage claim and the invoices sent."""
+        return len(self.posted) + len(self.supplier_docs) + len(self.invoices) + (1 if self.claim_journeys() else 0)
+
+    @property
+    def coded_count(self) -> int:
+        """Entries code posts for an action: payments recorded, credit notes, statement lines coded by a rule."""
+        payments = sum(len(i.payments) for i in self.invoices) + (1 if self.bill_payment else 0)
+        return payments + len(self.credit_notes) + len(self.rule_rows) + sum(1 for r in _fee_rows(self))
+
+    @property
     def event_count(self) -> int:
-        return len(self.posted) + len(self.invoices) + (1 if self.claim_journeys() else 0)
+        return self.approved_count + self.coded_count
+
+    def invoice(self, number: str) -> PlannedInvoice:
+        return next(i for i in self.invoices if i.number == number)
 
 
 def _hex(*parts: object, n: int = 32) -> str:
@@ -199,8 +301,13 @@ def _planned(file: str, gold: dict[str, Any], when: date, business: str, n: int,
     return PlannedDoc(gold=file, date=when, text=f"{text}\n\n{LABEL}", extracted=doc.model_dump(), file_name=name)
 
 
-def build_plan(business: str = GOLD_BUSINESS, today: date | None = None, stagger: int = 1) -> Plan:
-    """Everything the seed will write, decided up front. Raises ValueError when the gold set can't fill it."""
+def build_plan(
+    business: str = GOLD_BUSINESS, today: date | None = None, stagger: int = 1, *, extras: bool = True
+) -> Plan:
+    """Everything the seed will write, decided up front. Raises ValueError when the gold set can't fill it.
+
+    `extras=False` leaves out what came after the first 40 entries (part payments, credit notes, bank rules,
+    Autopilot, intake, payroll, to-dos, the report export): the books the stored eval reports were run on."""
     today = today or date.today()
     current = period_containing(today, STAGGER_START_MONTH[stagger])
     newer = previous_period(current[0])
@@ -370,7 +477,7 @@ def build_plan(business: str = GOLD_BUSINESS, today: date | None = None, stagger
                 )
                 for ln in job1_lines
             ],
-            paid_on=inv1_issue + timedelta(days=12),
+            payments=[PlannedPayment(inv1_issue + timedelta(days=12), 0, "INV-0001")],  # pence: set below
             job="job1",
         ),
         PlannedInvoice(
@@ -389,7 +496,7 @@ def build_plan(business: str = GOLD_BUSINESS, today: date | None = None, stagger
             ],
         ),
         PlannedInvoice(
-            "INV-0003",
+            "INV-0006" if extras else "INV-0003",
             "Hartwell Property Maintenance",
             newer[1] - timedelta(days=3),
             today + timedelta(days=21),
@@ -411,6 +518,9 @@ def build_plan(business: str = GOLD_BUSINESS, today: date | None = None, stagger
             ],
         ),
     ]
+    invoices[0].payments[0].pence = invoices[0].total_pence
+    if extras:
+        invoices[2:2] = _gold_invoices(newer, business)
     plan = Plan(
         business=business,
         today=today,
@@ -429,8 +539,250 @@ def build_plan(business: str = GOLD_BUSINESS, today: date | None = None, stagger
         not_vat_registered=not_registered,
         job_customers={k: cust for k, (_, cust, _, _) in job_defs.items()},
     )
+    if extras:
+        _plan_extras(plan, utilities)
     plan.statements = [_statement(plan, lo, hi, n) for n, (lo, hi) in enumerate(plan.periods)]
     return plan
+
+
+# --------------------------------------------------------------------------- #
+# The rest of the features: figures from evals/gold/ledger2 where it has them
+# --------------------------------------------------------------------------- #
+
+LEDGER2 = ROOT / "evals" / "gold" / "ledger2"
+GOLD_INVOICES = ("004_over.json", "003_part_open.json", "002_exact.json")  # overpaid, part paid, exact bank match
+GOLD_SUPPLIER_CN = "001_credit_note.json"  # Oakfield Hardware Supplies credits part of bill INV-2026-0892
+GOLD_JULY = date(2026, 7, 1)  # the ledger2 gold is dated July 2026: moved to the newer period, 10 days in
+INSURER = "Ashworth Mutual Insurance"
+INSURANCE_PENCE = -4250
+
+
+def _ledger2(kind: str, file: str) -> dict[str, Any]:
+    return json.loads((LEDGER2 / kind / file).read_text(encoding="utf-8"))
+
+
+def _shift(newer: tuple[date, date]) -> timedelta:
+    return newer[0] + timedelta(days=10) - GOLD_JULY
+
+
+def _email_slug(name: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+
+
+def _gold_invoices(newer: tuple[date, date], business: str) -> list[PlannedInvoice]:
+    """INV-0003, -0004, -0005 from the ledger2 part-payment gold: its customers, lines, payment days and amounts,
+    numbered by this folder's sequence (the gold's own numbers are replaced in the payment references)."""
+    shift = _shift(newer)
+    golds = sorted(((f, _ledger2("part_paid", f)) for f in GOLD_INVOICES), key=lambda fg: (fg[1]["date"], fg[0]))
+    out: list[PlannedInvoice] = []
+    for n, (f, g) in enumerate(golds, start=3):
+        number = f"INV-{n:04d}"
+        issue = date.fromisoformat(g["date"]) + shift
+        lines = [
+            invoicing.LineIn(
+                description=ln["description"],
+                quantity=Decimal(str(ln["qty"])),
+                unit="each",
+                unit_price_pence=round(Decimal(str(ln["unit_price"])) * 100),
+                vat_code="S" if ln["vat_rate"] == 20 else "Z",
+            )
+            for ln in g["lines"]
+        ]
+        how = "exact" if g["gold_case"] == "exact" else "recorded"
+        inv = PlannedInvoice(
+            number,
+            g["customer"]["name"],
+            issue,
+            issue + timedelta(days=g["due_days"]),
+            lines,
+            payments=[
+                PlannedPayment(
+                    date.fromisoformat(p["date"]) + shift,
+                    round(Decimal(str(p["amount"])) * 100),
+                    p["reference"].replace(g["invoice_number"], number),
+                    how,
+                )
+                for p in g["payments"]
+            ],
+            gold=f,
+            email=f"accounts@{_email_slug(g['customer']['name'])}.example",
+            address=g["customer"]["address"],
+        )
+        want = round(Decimal(str(g["gross_total"])) * 100), round(Decimal(str(g["expected"]["paid"])) * 100)
+        if (inv.total_pence, inv.paid_pence) != want:
+            raise ValueError(f"ledger2 {f}: priced {inv.total_pence}p paid {inv.paid_pence}p, the gold says {want}")
+        if not all(newer[0] <= p.day <= newer[1] for p in inv.payments):
+            raise ValueError(f"ledger2 {f}: a payment falls outside {newer}")
+        out.append(inv)
+    return out
+
+
+def _supplier_docs(newer: tuple[date, date], business: str) -> list[PlannedDoc]:
+    """The ledger2 supplier credit note, and the bill it credits. The gold has only the credit note, so the bill is
+    its lines at twice the quantity: half the goods came back damaged or mis-rated."""
+    g = _ledger2("credit_notes", GOLD_SUPPLIER_CN)
+    shift = _shift(newer)
+    cn_day = date.fromisoformat(g["date"]) + shift
+    bill_day = date.fromisoformat(g["original_invoice_date"]) + shift
+    sup = g["supplier"]
+
+    def doc(doc_type: str, number: str, when: date, k: Decimal) -> dict[str, Any]:
+        lines = [
+            {
+                "description": ln["description"],
+                "qty": float(Decimal(str(ln["qty"])) * abs(k)),
+                "unit_price": float(Decimal(str(ln["unit_price"])) * (k / abs(k))),
+                "net": float(Decimal(str(ln["net"])) * k),
+                "vat_rate": ln["vat_rate"],
+                "vat": float(Decimal(str(ln["vat"])) * k),
+            }
+            for ln in g["lines"]
+        ]
+        return ExtractedDoc.model_validate(
+            {
+                "doc_type": doc_type,
+                "supplier_name": sup["name"],
+                "supplier_vat_number": sup["vat_number"],
+                "customer_name": business,
+                "invoice_number": number,
+                "original_invoice_number": g["original_invoice_number"] if doc_type == "credit_note" else None,
+                "date": when.isoformat(),
+                "currency": "GBP",
+                "lines": lines,
+                "net_total": float(Decimal(str(g["net_total"])) * k),
+                "vat_total": float(Decimal(str(g["vat_total"])) * k),
+                "gross_total": float(Decimal(str(g["gross_total"])) * k),
+                "payment_method": None,  # on account: Cr 2100 Creditors
+                "card_last4": None,
+                "category_guess": "Materials",
+                "confidence": 0.97,
+            }
+        ).model_dump()
+
+    bill = doc("purchase_invoice", g["original_invoice_number"], bill_day, Decimal(-2))
+    rows = "\n".join(
+        f"{ln['description']} | {ln['qty']:.2f} | {ln['unit_price']:.2f} | {ln['net']:.2f} | {ln['vat']:.2f} | "
+        f"{ln['net'] + ln['vat']:.2f}"
+        for ln in bill["lines"]
+    )
+    bill_text = (
+        f"{sup['name'].upper()}\n{sup['address']}\nVAT No: {sup['vat_number']}\n\nINVOICE\n\n"
+        f"Date: {bill_day.isoformat()}\nInvoice No: {g['original_invoice_number']}\nCustomer: {business}\n"
+        f"Terms: 30 days from invoice\n\nDescription | Qty | Unit Price | Net | VAT | Total\n{rows}\n\n"
+        f"Total Net: {bill['net_total']:.2f}\nTotal VAT: {bill['vat_total']:.2f}\nTOTAL DUE: {bill['gross_total']:.2f}"
+    )
+    cn_text = (
+        g["printed_text"]
+        .replace(g["date"], cn_day.isoformat())
+        .replace(g["original_invoice_date"], bill_day.isoformat())
+        .replace(GOLD_BUSINESS, business)
+    )
+    return [
+        PlannedDoc(
+            gold=f"ledger2 {GOLD_SUPPLIER_CN} (the bill it credits)",
+            date=bill_day,
+            text=f"{bill_text}\n\n{LABEL}",
+            extracted=bill,
+            file_name=f"SAMPLE {bill_day.isoformat()} bill.png",
+        ),
+        PlannedDoc(
+            gold=f"ledger2 {GOLD_SUPPLIER_CN}",
+            date=cn_day,
+            text=f"{cn_text}\n\n{LABEL}",
+            extracted=doc("credit_note", g["credit_note_number"], cn_day, Decimal(1)),
+            file_name=f"SAMPLE {cn_day.isoformat()} credit note.png",
+        ),
+    ]
+
+
+def _fee_rows(plan: Plan) -> list[tuple[date, str, str, str, int]]:
+    """The statements' account fees: coded by the first bank rule when there are rules."""
+    return [r for r in _bank_rows(plan) if r[1] == "Starling Bank"] if plan.bank_rules else []
+
+
+def _plan_extras(plan: Plan, utilities: list[str]) -> None:
+    (start, _), newer = plan.window, plan.periods[1]
+    # Autopilot: each energy supplier's first bill is approved with "Always do this" ticked, the second (a quarter
+    # later, the same amount) is posted by Autopilot.
+    seen: set[str] = set()
+    for d in plan.posted:  # sorted by date
+        if d.gold in utilities:
+            if d.gold in seen:
+                d.by = "autopilot"
+            else:
+                d.always = True
+                seen.add(d.gold)
+    # Outlook intake: two card receipts of the newer period arrive by email.
+    mailed = [
+        d
+        for d in plan.posted
+        if newer[0] <= d.date <= newer[1]
+        and d.job is None
+        and d.by == "user"
+        and not d.always
+        and d.extracted["doc_type"] == "receipt"
+        and d.extracted.get("payment_method") == "card"
+    ]
+    if len(mailed) < 2:
+        raise ValueError("the newer period has fewer than two card receipts to arrive by email")
+    for d in mailed[:2]:
+        d.via = "mail"
+
+    plan.supplier_docs = _supplier_docs(newer, plan.business)
+    bill, cn = plan.supplier_docs
+    owed = round(bill.doc().gross_total * 100) - abs(round(cn.doc().gross_total * 100))
+    plan.bill_payment = PlannedPayment(
+        cn.date + timedelta(days=6), -owed, bill.extracted["invoice_number"], party=bill.doc().supplier_name
+    )
+    last = plan.invoices[-1]  # INV-0006: one of the three sash windows was left for the customer's glazier
+    plan.credit_notes = [
+        PlannedCreditNote(
+            last.number, newer[1] - timedelta(days=1), 0, Decimal(1), "One sash window left out of the job"
+        )
+    ]
+    plan.bank_rules = [
+        bank_rules.BankRule(
+            id=_hex(plan.business, "rule", "fee", n=12),
+            name="Starling account fee",
+            match=bank_rules.BankRuleMatch(op="contains", value="Starling Bank"),
+            direction="out",
+            action=bank_rules.BankRuleAction(account="7900 Bank charges", vat_code="E", contact="Starling Bank"),
+            created_by=USER,
+        ),
+        bank_rules.BankRule(
+            id=_hex(plan.business, "rule", "insurance", n=12),
+            name="Business insurance",
+            match=bank_rules.BankRuleMatch(op="contains", value="Ashworth Mutual"),
+            direction="out",
+            amount_min_pence=INSURANCE_PENCE,
+            amount_max_pence=INSURANCE_PENCE,
+            action=bank_rules.BankRuleAction(account="7700 Insurance", vat_code="E", contact=INSURER),
+            created_by=USER,
+        ),
+    ]
+    plan.rule_rows = [
+        (add_months(start, k) + timedelta(days=2), INSURER, "POLICY BW-2231", "DIRECT DEBIT", INSURANCE_PENCE)
+        for k in range(6)
+    ]
+    month = newer[1].replace(day=1)
+    if not any(month <= t.date <= newer[1] for t in plan.timesheets):
+        raise ValueError(f"no timesheet hours in {month:%B %Y} for the pay run")
+    plan.payroll_period = f"{month:%Y-%m}"
+    part = next(i for i in plan.invoices if i.gold and i.state(plan.today).startswith("part paid"))
+    over = next(i for i in plan.invoices if i.state(plan.today) == "overpaid")
+    plan.todos = [
+        todos_mod.TodoIn(
+            text=f"Chase {part.customer} for the {invoicing.money(part.total_pence - part.paid_pence)} "
+            f"left on {part.number}",
+            due=plan.today + timedelta(days=3),
+        ),
+        todos_mod.TodoIn(
+            text=f"Ask {over.customer} whether to refund the {invoicing.money(over.paid_pence - over.total_pence)} "
+            "overpayment or keep it on account",
+            due=plan.today + timedelta(days=7),
+        ),
+    ]
+    plan.export_report = True
 
 
 def _supplier(gold: dict[str, Any]) -> str:
@@ -498,8 +850,12 @@ def _bank_rows(plan: Plan) -> list[tuple[date, str, str, str, int]]:
                 )
             )
     for inv in plan.invoices:
-        if inv.paid_on:
-            rows.append((inv.paid_on, inv.customer, inv.number, "FASTER PAYMENT", inv.total_pence))
+        for pay in inv.payments:
+            rows.append((pay.day, pay.party or inv.customer, pay.reference, "FASTER PAYMENT", pay.pence))
+    if plan.bill_payment:
+        b = plan.bill_payment
+        rows.append((b.day, b.party, b.reference, "FASTER PAYMENT", b.pence))
+    rows += plan.rule_rows
     for lo, _ in plan.periods:
         rows.append((add_months(lo, 1) + timedelta(days=19), "Savings Space", "Tax pot", "INTERNAL TRANSFER", -100_000))
         rows.append((add_months(lo, 3) - timedelta(days=1), "Starling Bank", "Account fee", "FEE", -500))
@@ -551,14 +907,18 @@ def describe(plan: Plan) -> str:
         f"Today {plan.today:%d/%m/%Y}; current VAT period {period_label(*plan.current)}; "
         f"seeded periods {' and '.join(period_label(*p) for p in plan.periods)}",
         "",
-        f"{plan.event_count} approved ledger events:",
+        f"{plan.event_count} ledger events: {plan.approved_count} approved entries "
+        f"and {plan.coded_count} posted by code for an action (payments, credit notes, bank-rule codings)",
     ]
-    for d in plan.posted:
+    for d in sorted(plan.posted + plan.supplier_docs, key=lambda d: (d.date, d.gold)):
         doc = d.doc()
-        who = doc.customer_name if doc.doc_type == "sales_invoice" else doc.supplier_name
+        who = (doc.customer_name if doc.doc_type == "sales_invoice" else doc.supplier_name) or ""
+        kind = {"sales_invoice": "sale    ", "credit_note": "credit  "}.get(doc.doc_type, "purchase")
         tag = f"  [{plan.jobs[d.job].name}]" if d.job else ""
+        tag += {"autopilot": "  [Autopilot]"}.get(d.by, "") + ("  [Always do this]" if d.always else "")
+        tag += "  [emailed in]" if d.via == "mail" else ""
         lines.append(
-            f"  {d.date:%d/%m/%Y}  {'sale    ' if doc.doc_type == 'sales_invoice' else 'purchase'}  "
+            f"  {d.date:%d/%m/%Y}  {kind}  "
             f"{who[:34]:34} {money(round(doc.gross_total * 100)):>11}  VAT {money(round(doc.vat_total * 100)):>9}{tag}"
         )
     claim = plan.claim_journeys()
@@ -568,12 +928,20 @@ def describe(plan: Plan) -> str:
         "(allowance worked out by code)"
     )
     for inv in plan.invoices:
-        state = (
-            f"paid {inv.paid_on:%d/%m/%Y}" if inv.paid_on else ("OVERDUE" if inv.due < plan.today else "not due yet")
-        )
         lines.append(
-            f"  {inv.issue:%d/%m/%Y}  invoice   {inv.customer[:34]:34} {money(inv.total_pence):>11}  "
-            f"due {inv.due:%d/%m/%Y}, {state}"
+            f"  {inv.issue:%d/%m/%Y}  {inv.number} {inv.customer[:30]:30} {money(inv.total_pence):>11}  "
+            f"due {inv.due:%d/%m/%Y}, {inv.state(plan.today)}"
+        )
+        for pay in inv.payments:
+            how = "exact match on the Bank page, then Post as payment" if pay.how == "exact" else "Record payment"
+            lines.append(f"      {pay.day:%d/%m/%Y}  paid {money(pay.pence):>11}  ({how})")
+    for cn in plan.credit_notes:
+        net, vat = cn.pence(plan.invoice(cn.invoice))
+        lines.append(f"  {cn.day:%d/%m/%Y}  CN-0001 against {cn.invoice}: {money(net + vat)} ({cn.reason})")
+    if plan.bill_payment:
+        b = plan.bill_payment
+        lines.append(
+            f"  {b.day:%d/%m/%Y}  bill {b.reference} {b.party}: the rest, {money(-b.pence)}, paid from Contacts"
         )
     for lo, hi in plan.periods:
         sale_vat = sum(
@@ -581,12 +949,11 @@ def describe(plan: Plan) -> str:
             for d in plan.posted
             if lo <= d.date <= hi and d.doc().doc_type == "sales_invoice"
         )
-        sale_vat += sum(
-            inv.total_pence - invoicing.price_lines(inv.lines)[2] for inv in plan.invoices if lo <= inv.issue <= hi
-        )
+        sale_vat += sum(inv.total_pence - inv.net_pence for inv in plan.invoices if lo <= inv.issue <= hi)
+        sale_vat -= sum(cn.pence(plan.invoice(cn.invoice))[1] for cn in plan.credit_notes if lo <= cn.day <= hi)
         buy_vat = sum(
-            j.debit_pence
-            for d in plan.posted
+            j.debit_pence - j.credit_pence
+            for d in plan.posted + plan.supplier_docs
             if lo <= d.date <= hi
             for j in d.journal()
             if j.account == VAT_CONTROL and d.doc().doc_type != "sales_invoice"
@@ -607,8 +974,20 @@ def describe(plan: Plan) -> str:
         f"Vehicle: {plan.vehicle.label()}, {len(plan.journeys)} journeys",
         f"Bank statements: {', '.join(name for name, _ in plan.statements)}",
         f"Not VAT-registered (recorded first): {', '.join(plan.not_vat_registered)}",
-        "Then: contacts refreshed from the ledger, Books.xlsx rebuilt.",
     ]
+    if plan.bank_rules:
+        coded = len(plan.rule_rows) + len(_fee_rows(plan))
+        lines.append(
+            f"Bank rules: {'; '.join(bank_rules.describe(r) for r in plan.bank_rules)}; they code {coded} lines"
+        )
+    if plan.payroll_period:
+        lines.append(f"Pay run: an estimate for {plan.payroll_period} from the timesheets (not confirmed)")
+    if plan.todos:
+        lines.append(f"{len(plan.todos)} to-dos: " + "; ".join(t.text for t in plan.todos))
+    lines.append(
+        "Then: contacts refreshed from the ledger, Books.xlsx rebuilt"
+        + (f", every report saved in {REPORTS}." if plan.export_report else ".")
+    )
     return "\n".join(lines)
 
 
@@ -645,9 +1024,10 @@ async def _upload(books: Books, d: PlannedDoc) -> tuple[str, bytes]:
     return path, data
 
 
-async def _propose(books: Books, d: PlannedDoc, plan: Plan) -> Proposal:
-    """What scan_inbox_detailed does for one file, with the gold fields standing in for the model's reading."""
-    path, data = await _upload(books, d)
+async def _propose(books: Books, d: PlannedDoc, plan: Plan, arrived: tuple[str, bytes] | None = None) -> Proposal:
+    """What scan_inbox_detailed does for one file, with the gold fields standing in for the model's reading.
+    `arrived`: (path, bytes) of a file already in 00 Inbox (Outlook intake put it there); else it is uploaded."""
+    path, data = arrived or await _upload(books, d)
     digest = sha256_hex(data)
     doc = d.doc()
     start, end = period_containing(d.date, plan.current[0].month)  # checked when it arrived, in its own period
@@ -674,14 +1054,14 @@ async def _propose(books: Books, d: PlannedDoc, plan: Plan) -> Proposal:
         journal_draft=draft_journal(doc),
         model=MODEL,
         elapsed_s=0,
-        source_name=d.file_name,
+        source_name=path.rsplit("/", 1)[-1],
         created_at=now(),
     )
     await books.file_document(p, path)
     await books.save_doc(
         DocMeta(
             sha256=digest,
-            source_name=d.file_name,
+            source_name=path.rsplit("/", 1)[-1],
             mime="image/png",
             size=len(data),
             proposal_id=p.id,
@@ -693,8 +1073,59 @@ async def _propose(books: Books, d: PlannedDoc, plan: Plan) -> Proposal:
     return p
 
 
+async def seed_state(books: Books) -> str:
+    """ "empty", "complete" (seeded by this tool to the end: the report export is its last write), "partial" (seeded
+    but stopped part-way) or "foreign" (entries someone else approved: never the seed's to touch). Reads only."""
+    events = await books.list_events()
+    if not events:
+        return "empty"
+    if any(e.approved_by not in (USER, autopilot.AUTOPILOT) for e in events):
+        return "foreign"
+    done = [f for f in await books.list_files(REPORTS) if f.name.endswith(".xlsx")]
+    return "complete" if done else "partial"
+
+
+async def _mail_in(books: Books, docs: list[PlannedDoc], plan: Plan) -> dict[str, tuple[str, bytes]]:
+    """Outlook intake (app/intake.py scan_mail) copies these receipts from a stand-in mailbox into 00 Inbox, as it
+    would from the user's own. The real mailbox is never read. Returns {file_name: (inbox path, bytes)}."""
+    box = FakeMailProvider()
+    at = datetime.now(UTC)
+    pngs: dict[str, bytes] = {}
+    for n, d in enumerate(docs):
+        png, who = render_png(d.text), d.doc().supplier_name
+        pngs[f"att-{n}"] = png
+        box.add(
+            MailMessage(
+                id=f"sample-{n}",
+                received_at=at - timedelta(hours=n + 1),
+                from_address=f"receipts@{_email_slug(who)}.example",
+                from_name=who,
+                subject=f"Your receipt from {who} ({LABEL})",
+                has_attachments=True,
+            ),
+            (MailAttachment(id=f"att-{n}", name=f"receipt-{n + 1}.png", content_type="image/png", size=len(png)), png),
+        )
+    result = await intake.scan_mail(books, box, since_days=2, user=f"accounts@{_slug(plan.business)}.example")
+    saved = {i.attachment_id: f"{INBOX}/{i.name}" for i in result.items}
+    if len(saved) != len(docs):
+        raise RuntimeError(f"Outlook intake copied {len(saved)} of {len(docs)} emailed receipts: {result.errors}")
+    return {d.file_name: (saved[f"att-{n}"], pngs[f"att-{n}"]) for n, d in enumerate(docs)}
+
+
 async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] = print) -> dict[str, Any]:
+    """Apply the plan. On books it already seeded to the end this writes nothing and says so (`already_seeded`);
+    books it seeded part-way, or anyone else's, are refused (RuntimeError)."""
     books = SeedBooks(storage)
+    state = await seed_state(books)
+    if state == "complete":
+        say("Already seeded: nothing to do")
+        return await _report(books, plan, already_seeded=True)
+    if state != "empty":
+        raise RuntimeError(
+            "These books were seeded part-way (start again with --wipe)"
+            if state == "partial"
+            else "These books have entries the seed did not make; it only fills an empty folder"
+        )
     say("Folder tree")
     await books.ensure_tree()
     await storage.write("README.txt", readme_text().encode())  # the same text the web app writes (app/paths.py)
@@ -728,15 +1159,23 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
     for name in plan.not_vat_registered:
         await contacts_mod.set_vat_status(books, name, "not_registered", ACTOR)
 
-    say(f"{len(plan.posted)} documents: upload, propose, approve")
+    mailed = [d for d in plan.posted if d.via == "mail"]
+    arrived = await _mail_in(books, mailed, plan) if mailed else {}
+    documents = sorted(plan.posted + plan.supplier_docs, key=lambda d: (d.date, d.gold))
+    say(f"{len(documents)} documents: upload (or email in), propose, approve")
     sales: dict[str, str] = {}  # invoice number -> event, for the customers' payments
-    for n, d in enumerate(plan.posted, start=1):
-        p = await _propose(books, d, plan)
-        p = await approve(books, p.id, USER, {"job_id": plan.jobs[d.job].id} if d.job else None, rebuild=False)
-        if p.extracted.doc_type == "sales_invoice" and p.extracted.invoice_number and p.event_id:
-            sales[p.extracted.invoice_number] = p.event_id
+    bills: dict[str, str] = {}  # supplier's invoice number -> event
+    for n, d in enumerate(documents, start=1):
+        p = await _propose(books, d, plan, arrived.get(d.file_name))
+        if d.by == "autopilot":
+            p = await _autopilot(books, p)
+        else:
+            edits = {"job_id": plan.jobs[d.job].id} if d.job else None
+            p = await approve(books, p.id, USER, edits, always=d.always, rebuild=False)
+        if p.extracted.invoice_number and p.event_id:
+            (sales if p.extracted.doc_type == "sales_invoice" else bills)[p.extracted.invoice_number] = p.event_id
         if n % 10 == 0:
-            say(f"  {n}/{len(plan.posted)}")
+            say(f"  {n}/{len(documents)}")
 
     say("Contacts")
     book, _ = await contacts_mod.refresh(books, USER)
@@ -750,12 +1189,14 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
     for k, j in plan.jobs.items():
         await jobs.save_job(books, j.model_copy(update={"customer_id": ids[plan.job_customers[k]]}))
 
-    say("Sales invoices")
+    say(f"{len(plan.invoices)} sales invoices")
     sender = NotEmailed()
     profile = await invoicing.load_profile(books)
     for inv in plan.invoices:
         draft = invoicing.InvoiceDraft(
-            customer=invoicing.InvoiceCustomer(contact_id=ids[inv.customer], name=inv.customer),
+            customer=invoicing.InvoiceCustomer(
+                contact_id=ids.get(inv.customer), name=inv.customer, email=inv.email, address=inv.address
+            ),
             issue_date=inv.issue,
             due_date=inv.due,
             lines=inv.lines,
@@ -774,6 +1215,19 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
             await jobs.save_job(
                 books, (await jobs.get_job(books, plan.jobs[inv.job].id)).model_copy(update={"status": "closed"})
             )
+    for cn in plan.credit_notes:
+        await credit_notes.create_credit_note(
+            books,
+            cn.invoice,
+            credit_notes.CreditNoteDraft(
+                lines=[credit_notes.CreditLineIn(line=cn.line, quantity=cn.quantity)],
+                issue_date=cn.day,
+                reason=f"{cn.reason} ({LABEL})",
+            ),
+            USER,
+        )
+    if any(i.email for i in plan.invoices):
+        await contacts_mod.refresh(books, USER)  # the customers first met on an invoice
 
     say("Mileage claim")
     if claim_ids:
@@ -782,14 +1236,37 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
         )
         await approve(books, claim.id, USER, rebuild=False)
 
-    say("Bank statements")
+    say("Bank rules and statements")
+    if plan.bank_rules:
+        await bank_rules.save_bank_rules(books, plan.bank_rules)
+        await books.audit(f"user:{USER}", "bank_rules_saved", {"rules": [r.id for r in plan.bank_rules]})
     for name, data in plan.statements:
         await books.import_bank_csv(data, name, USER)
     lines = await books.stored_bank_lines()
+
+    def line_for(day: date, pence: int, reference: str) -> str:
+        return next(ln.id for ln in lines if (ln.date, ln.amount_pence, ln.reference) == (day, pence, reference))
+
     for inv in plan.invoices:
-        if inv.paid_on:
-            line = next(ln for ln in lines if ln.reference == inv.number and ln.date == inv.paid_on)
-            await invoicing.mark_paid(books, inv.number, USER, bank_line_id=line.id)
+        for pay in inv.payments:
+            line_id = line_for(pay.day, pay.pence, pay.reference)
+            if pay.how == "exact":  # Bank → Reconcile: the exact invoice match, then Post as payment
+                await bank_reconcile.approve_line(books, line_id, "exact", USER)
+                await payments.payment_from_bank_line(books, line_id, USER)
+            else:  # Invoices → Record payment, with the statement line
+                await invoicing.mark_paid(books, inv.number, USER, bank_line_id=line_id)
+    if (b := plan.bill_payment) is not None:  # Contacts → Bills to pay → Record payment
+        await payments.record_payment(
+            books,
+            payments.PaymentIn(
+                side="purchase",
+                amount_pence=-b.pence,
+                reference=b.reference,
+                allocations=[payments.AllocationIn(event_id=bills[b.reference], amount_pence=-b.pence)],
+                bank_line_id=line_for(b.day, b.pence, b.reference),
+            ),
+            USER,
+        )
     older_end = plan.periods[0][1]
     by_id = {ln.id: ln for ln in await books.stored_bank_lines()}
     for m in await books.bank_suggestions():  # the older statement is reconciled; the newer one is left to confirm
@@ -798,6 +1275,22 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
     for ln in await books.stored_bank_lines():  # a customer payment the matcher could not place: matched by hand
         if ln.date <= older_end and ln.status == "unmatched" and ln.reference in sales:
             await books.confirm_match(ln.id, [sales[ln.reference]], USER)
+    if plan.bank_rules:
+        for ln in await books.stored_bank_lines():  # Reconcile: every line a rule codes, approved
+            if not ln.resolved and await bank_reconcile.suggest_rule(books, ln):
+                coded = await bank_reconcile.approve_line(books, ln.id, "rule", USER)
+                # Approving posts the entry but leaves the line open (app/bank_reconcile.py); the Bank page then
+                # suggests the line to it, and the user confirms that, as here.
+                if not (await books.find_bank_line(ln.id)).resolved:
+                    await books.confirm_match(ln.id, [coded["event_id"]], USER)
+            elif not ln.resolved and ln.description == "Savings Space":  # the tax pot: money between own accounts
+                await books.mark_line(ln.id, "transfer", USER)
+
+    if plan.payroll_period:
+        say(f"Pay run estimate for {plan.payroll_period}")
+        await payroll_mod.prepare(books, plan.payroll_period, None, USER)
+    for t in plan.todos:
+        await todos_mod.add_todo(books, t, USER)
 
     say(f"{len(plan.inbox)} documents into {INBOX}")
     for d in plan.inbox:
@@ -805,13 +1298,38 @@ async def seed(storage: StorageProvider, plan: Plan, say: Callable[[str], None] 
 
     say("Books.xlsx")
     await Books.rebuild(books)
-    events = await books.list_events()
+    if plan.export_report:  # last: its file in 07 Reports is how a second run knows the seed finished
+        say(f"Reports into {REPORTS}")
+        await routes_reports.export(
+            body=routes_reports.ExportBody.model_validate({"report": "all"}),
+            today=plan.today,
+            cycle=VatCycle(start_month=plan.current[0].month),
+            books=books,
+            user=USER,
+        )
+    return await _report(books, plan, emails=len(sender.sent))
+
+
+async def _autopilot(books: Books, p: Proposal) -> Proposal:
+    """What the scan does with a proposal from a supplier with an Autopilot rule (app/inbox.py)."""
+    rule = autopilot.match(p, await autopilot.load_rules(books))
+    p.autopilot = autopilot.evaluate(p, rule, True, await books.list_proposals())
+    await books.save_proposal(p)
+    if rule is None or not p.autopilot.auto_approve:
+        raise RuntimeError(f"Autopilot would not post {p.extracted.supplier_name}: {p.autopilot.reasons}")
+    return await inbox_mod._autopilot_post(books, p, rule)
+
+
+async def _report(books: Books, plan: Plan, *, emails: int = 0, already_seeded: bool = False) -> dict[str, Any]:
+    lines = await books.stored_bank_lines()
     return {
-        "events": len(events),
+        "events": len(await books.list_events()),
         "inbox": len(await books.list_files(INBOX)),
         "invoices": [i.number for i in plan.invoices],
-        "bank_lines": len(await books.stored_bank_lines()),
-        "emails_not_sent": len(sender.sent),
+        "bank_lines": len(lines),
+        "reconciled_to": reconciled_to(lines),
+        "emails_not_sent": emails,
+        "already_seeded": already_seeded,
     }
 
 
@@ -889,8 +1407,13 @@ async def _seed_graph(args: argparse.Namespace, plan: Plan, token: str) -> int:
         if args.wipe and not await _wipe(storage):
             print("Nothing changed.")
             return 1
-        if await Books(storage).list_events():
-            print("This folder already has ledger entries. Use a fresh account, or --wipe.", file=sys.stderr)
+        state = await seed_state(Books(storage))
+        if state == "complete":
+            print("This folder is already seeded to the end: nothing to do.")
+            return 0
+        if state != "empty":
+            what = "was seeded part-way" if state == "partial" else "already has ledger entries"
+            print(f"This folder {what}. Use a fresh account, or --wipe.", file=sys.stderr)
             return 1
         print(describe(plan) + "\n")
         report = await seed(storage, plan)
