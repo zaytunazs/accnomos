@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from app.books import Books
 from app.intake import IntakeResult, scan_mail
 from app.routes_books import get_books
+from app.validation import StrictBody
 
 router = APIRouter(prefix="/mail", tags=["mail"])
 
@@ -29,7 +30,7 @@ async def get_mail(request: Request) -> AsyncIterator[MailProvider]:
         await mail.aclose()
 
 
-class MailScanBody(BaseModel):
+class MailScanBody(StrictBody):
     since_days: int = Field(14, ge=1, le=90)
     dry_run: bool = False
     max_messages: int = Field(50, ge=1, le=200)

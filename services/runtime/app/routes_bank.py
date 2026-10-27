@@ -8,18 +8,19 @@ from __future__ import annotations
 from accnomos_ledger.bank import BankCsvError, BankLine, BankLineStatus
 from accnomos_ledger.matching import Match
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.books import BankImport, BankMatchError, Books
 from app.routes_books import get_books, require_user
+from app.validation import StrictBody, UnsafeName, check_name
 
 router = APIRouter(prefix="/books/bank", tags=["bank"])
 MAX_CSV = 5 * 1024 * 1024
 
 
-class MatchBody(BaseModel):
-    event_id: str | None = None
-    event_ids: list[str] | None = None  # one payment covering several entries
+class MatchBody(StrictBody):
+    event_id: str | None = Field(None, max_length=64)
+    event_ids: list[str] | None = Field(None, max_length=200)  # one payment covering several entries
 
 
 class BankSummary(BaseModel):
@@ -37,11 +38,15 @@ def _not_found(exc: FileNotFoundError) -> HTTPException:
 async def import_csv(
     file: UploadFile = File(...), books: Books = Depends(get_books), user: str = Depends(require_user),
 ) -> BankImport:
+    try:
+        name = check_name(file.filename) if file.filename else "statement.csv"
+    except UnsafeName as exc:
+        raise HTTPException(status_code=400, detail=f"Bad file name: {exc}") from exc
     data = await file.read(MAX_CSV + 1)
     if len(data) > MAX_CSV:
         raise HTTPException(status_code=413, detail="Bank statement CSV is over 5 MB")
     try:
-        result = await books.import_bank_csv(data, file.filename or "statement.csv", user)
+        result = await books.import_bank_csv(data, name, user)
     except BankCsvError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     if not result.duplicate_file:

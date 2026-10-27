@@ -37,9 +37,12 @@ def sha256_hex(data: bytes) -> str:
 
 def suggested_filename(doc: ExtractedDoc, mime: str) -> str:
     """e.g. '2026-10-21 Screwfix £38.47.jpg' (filesystem-safe, supplier max 40 chars)."""
-    supplier = re.sub(r"\s+", " ", _UNSAFE.sub(" ", doc.supplier_name)).strip()[:40].strip() or "Unknown"
-    symbol = _SYMBOL.get(doc.currency, f"{doc.currency} ")
-    return f"{doc.date} {supplier} {symbol}{doc.gross_total:.2f}{_EXT.get(mime.lower(), '.jpg')}"
+    def clean(text: str, limit: int) -> str:  # every part comes from the model, i.e. from the document
+        return re.sub(r"\s+", " ", _UNSAFE.sub(" ", text)).strip(" .")[:limit].strip()
+
+    supplier = clean(doc.supplier_name, 40) or "Unknown"
+    symbol = _SYMBOL.get(doc.currency) or f"{clean(doc.currency, 3) or 'XXX'} "
+    return f"{clean(doc.date, 10) or 'undated'} {supplier} {symbol}{doc.gross_total:.2f}{_EXT.get(mime.lower(), '.jpg')}"
 
 
 def _shown(v: object) -> str:
