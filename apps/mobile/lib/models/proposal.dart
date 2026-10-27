@@ -239,6 +239,14 @@ class Proposal {
       reviewerNote = 'Checks: $passed of ${checks.length} passed'
           '${firstFailure != null ? ' · $firstFailure' : ''}';
     }
+    final repaired = json['repaired_by_code'] is List
+        ? (json['repaired_by_code'] as List).map((e) => e.toString()).where((e) => e.isNotEmpty).toList()
+        : const <String>[];
+    if (repaired.isNotEmpty) {
+      // Never silent: the card says code changed the model's figures, and how.
+      final note = "Figures repaired by code from the receipt's own arithmetic: ${repaired.join('; ')}";
+      reviewerNote = reviewerNote == null ? note : '$note · $reviewerNote';
+    }
 
     final supplier =
         (extracted['supplier_name'] as String?)?.trim() ?? '';

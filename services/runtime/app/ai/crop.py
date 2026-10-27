@@ -395,3 +395,32 @@ async def crop_document(image_bytes: bytes, cfg: AiConfig | None = None) -> Crop
         return _original(image_bytes, f"could not encode crop: {exc}", **details)
     label = "Cropped with SAM 3.1" if method == "sam" else "Cropped by code"
     return CropResult(out, box, method, label, details)
+
+
+REREAD_SCALE = 2.0
+REREAD_MAX_SIDE = 2000  # px, longest side of the second-read image
+
+
+def _upscale(image_bytes: bytes) -> bytes:
+    src = Image.open(io.BytesIO(image_bytes))
+    fmt = _ALIASES.get(src.format or "", src.format or "")
+    if fmt not in _FORMATS:  # re-encoding would no longer match the caller's MIME type
+        return image_bytes
+    img = ImageOps.exif_transpose(src)
+    scale =min(REREAD_SCALE, REREAD_MAX_SIDE / max(img.size))
+    if scale > 1:
+        img = img.resize((round(img.width * scale), round(img.height * scale)), Image.Resampling.LANCZOS)
+    img = ImageOps.autocontrast(img.convert("RGB"), cutoff=1)  # lifts faded thermal print and pale ink
+    return _encode(img, fmt)
+
+
+async def reread_image(image_bytes: bytes) -> bytes:
+    """The (already cropped) document at up to 2x resolution with auto-contrast, for a second read.
+
+    Keeps the source format, so the caller's MIME type still holds; on any error returns the input.
+    """
+    try:
+        return await asyncio.to_thread(_upscale, image_bytes)
+    except Exception as exc:  # noqa: BLE001 - a second read on the same image is still worth having
+        log.warning("re-read upscale failed: %r", exc)
+        return image_bytes

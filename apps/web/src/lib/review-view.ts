@@ -73,14 +73,17 @@ export function toUi(p: RtProposal): UiProposal {
   const fails = p.checks.filter((c) => !c.ok);
   // One line per failed check; the verifier's own disagreement is shown by its table, not repeated here.
   const failedChecks = fails.filter((c) => c.code !== "VERIFIER_AGREES").map((c) => ({ text: c.message, warn: c.severity === "warn" }));
-  const verified = p.checks.filter((c) => !["CROP", "VEHICLE", "MILEAGE"].includes(c.code)); // notes, not checks
+  const verified = p.checks.filter((c) => !["CROP", "VEHICLE", "MILEAGE", "SECOND_READ", "TOTALS_REPAIRED", "LINES_REPAIRED"].includes(c.code)); // notes, not checks
   const cropped = p.crop && p.crop.method !== "none" ? ` · ${p.crop.note}` : "";
   const mileageNote = p.checks.find((c) => c.code === "MILEAGE");
+  const repaired = p.repaired_by_code?.length
+    ? `Figures repaired by code from the receipt's own arithmetic: ${p.repaired_by_code.join("; ")}. `
+    : "";
   const why = fails.length
-    ? "" // the failed checks are listed on the card, one line each
+    ? repaired.trim() // the failed checks are listed on the card, one line each
     : mileageNote
       ? `Why: ${mileageNote.message}. Your mileage log is the evidence; change it on Vehicles, not here.`
-      : `Why: ${x.lines.length} line${x.lines.length === 1 ? "" : "s"}, totals add up (${x.net_total.toFixed(2)} + ${x.vat_total.toFixed(2)} = ${x.gross_total.toFixed(2)}); category "${x.category_guess}". — Checker, code`;
+      : `${repaired}Why: ${x.lines.length} line${x.lines.length === 1 ? "" : "s"}, totals add up (${x.net_total.toFixed(2)} + ${x.vat_total.toFixed(2)} = ${x.gross_total.toFixed(2)}); category "${x.category_guess}". — Checker, code`;
   return {
     id: p.id,
     supplier: x.supplier_name,

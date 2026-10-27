@@ -18,6 +18,9 @@ from typing import Any
 from harness.run_extraction import FIELDS, GOLD_DIR, gold_side, score
 
 NEW_FROM = 61
+RUN_NOTE = ("no extraction code was changed. Differences from the 60-document report: `side` is a new scored field, expected "
+            "status is explicit per document on 061-200, and the books owner's name is passed to the pipeline so sale/purchase "
+            "orientation runs.")
 
 
 def load(run: Path, rescore: bool = False) -> list[dict[str, Any]]:
@@ -162,6 +165,7 @@ def main() -> None:
     ap.add_argument("--diagnoses", type=Path)
     ap.add_argument("--fixes", type=Path)
     ap.add_argument("--candidates", action="store_true")
+    ap.add_argument("--note", default=RUN_NOTE, help="sentence after the run command (what changed in this run)")
     ap.add_argument("--rescore", action="store_true", help="write re-scored results back into the run's NNN_*.json (do before the judge)")
     args = ap.parse_args()
     recs = load(args.run, args.rescore)
@@ -178,9 +182,7 @@ def main() -> None:
         f"# Extraction eval: Glimmer on 200 messy documents ({cfg['model']}, {cfg['mode']})", "",
         f"Docs: **{len(recs)}** (60 original + 140 new from Qwen) | messy phone-photo renders | errors: {summary['errors']} | "
         f"mean {summary['mean_elapsed_s']} s per document (max {summary['max_elapsed_s']} s)", "",
-        "Run: `python -m harness.run_extraction --mode local --messy --business-name 'Bramblewood Joinery Ltd'`; no extraction code was changed. "
-        "Differences from the 60-document report: `side` is a new scored field, expected status is explicit per document on 061-200, "
-        "and the books owner's name is passed to the pipeline so sale/purchase orientation runs.", "",
+        f"Run: `python -m harness.run_extraction --mode local --messy --business-name 'Bramblewood Joinery Ltd'`; {args.note}", "",
         "## Headline", "",
         f"- All fields correct (incl. side and status): **{pct([all(r['scores'].values()) for r in recs])}** "
         f"(original 60: {pct([all(r['scores'].values()) for r in recs if r['no'] < NEW_FROM])}, new 140: {pct([all(r['scores'].values()) for r in new])})",
@@ -193,8 +195,9 @@ def main() -> None:
     out += ["## Ten worst cases", "", "| Document | Case | Failed | Diagnosis |", "|---|---|---|---|"]
     for r in worst(recs):
         failed = ", ".join(k for k, v in r["scores"].items() if not v)
-        out.append(f"| {r['file']} | {r['gold_case']} | {failed} | {diag.get(r['file'], 'TODO')} |")
-    out += ["", "## Suggested fixes", "", args.fixes.read_text(encoding="utf-8") if args.fixes else "TODO", ""]
+        out.append(f"| {r['file']} | {r['gold_case']} | {failed} | {diag.get(r['file'], '—')} |")
+    if args.fixes:
+        out += ["", "## Suggested fixes", "", args.fixes.read_text(encoding="utf-8"), ""]
     args.out.write_text("\n".join(out), encoding="utf-8")
     print(f"wrote {args.out}")
 
