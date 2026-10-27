@@ -430,6 +430,9 @@ def apply_edit(c: Contact, edits: dict[str, Any], others: Sequence[Contact], at:
         if k == "name":
             if not v or not supplier_key(v):
                 raise ContactEditError("Name can't be empty")
+            key = supplier_key(v)
+            if any(o.id != c.id and (key == o.normalised_key or key in o.aliases) for o in others):
+                raise ContactEditError(f"Another contact is already called {v}")
         elif k == "kind" and v not in ("customer", "supplier", "both"):
             raise ContactEditError("Kind must be customer, supplier or both")
         elif k == "vrn":

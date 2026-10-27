@@ -134,8 +134,10 @@ def test_manual_edits_survive_refresh() -> None:
 
 def test_bad_edits_are_refused() -> None:
     (c,) = cb.merge_ledger([], _ledger([_event(3000, date(2026, 9, 1), "Howdens")]))
-    other = c.model_copy(update={"id": "0" * 16, "vrn": "GB123456789"})
-    for edits, msg in [({"name": "  "}, "empty"), ({"kind": "friend"}, "Kind"), ({"vrn": "12345"}, "VAT number"),
+    other = c.model_copy(update={"id": "0" * 16, "vrn": "GB123456789", "name": "Screwfix", "normalised_key": "screwfix",
+                                 "aliases": ["screwfix-trade"]})
+    for edits, msg in [({"name": "  "}, "empty"), ({"name": "SCREWFIX LTD"}, "already called"),
+                       ({"name": "Screwfix Trade"}, "already called"),({"kind": "friend"}, "Kind"), ({"vrn": "12345"}, "VAT number"),
                        ({"vrn": "GB123456789"}, "Another contact"), ({"email": "nope"}, "email"),
                        ({"default_category": "Snacks"}, "category"), ({"default_vat_code": "X"}, "VAT code"),
                        ({"balance": 1}, "Can't edit")]:
