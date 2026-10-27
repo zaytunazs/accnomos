@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import date, datetime
 from typing import Protocol
 
 from pydantic import BaseModel
@@ -104,12 +104,35 @@ class ContactsProvider(ABC):
     async def list_contacts(self, max_results: int = 1000) -> list[AddressBookContact]: ...
 
 
+class CalendarEvent(BaseModel):
+    """One event on the user's calendar, as read. Times are timezone-aware."""
+
+    id: str
+    subject: str = ""
+    start: datetime
+    end: datetime
+    location: str = ""
+    body_preview: str = ""
+    is_all_day: bool = False
+    show_as: str = "busy"  # free | tentative | busy | oof | workingElsewhere | unknown
+
+
 class CalendarProvider(ABC):
-    @abstractmethod
-    async def ensure_calendar(self, name: str) -> str: ...
+    """The user's default calendar: read a day, and create events (only after the user approves them)."""
 
     @abstractmethod
-    async def upsert_all_day_event(self, calendar_id: str, key: str, date: str, title: str, body: str) -> str: ...
+    async def list_events(self, day: date, tz: str = "Europe/London") -> list[CalendarEvent]:
+        """Every non-cancelled event overlapping `day` (midnight to midnight in `tz`), earliest first."""
+
+    @abstractmethod
+    async def create_event(self, subject: str, start: datetime, end: datetime, location: str, body: str) -> str:
+        """Create one event; returns its id. `start`/`end` must be timezone-aware."""
+
+    async def ensure_calendar(self, name: str) -> str:
+        raise NotImplementedError
+
+    async def upsert_all_day_event(self, calendar_id: str, key: str, date: str, title: str, body: str) -> str:
+        raise NotImplementedError
 
 
 class ConflictError(Exception):

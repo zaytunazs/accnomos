@@ -6,6 +6,7 @@ implementation; Google Drive/Gmail/Calendar next. Providers never leak into ledg
 
 from accnomos_connectors.base import (
     AddressBookContact,
+    CalendarEvent,
     CalendarProvider,
     ContactsProvider,
     FileRef,
@@ -15,11 +16,12 @@ from accnomos_connectors.base import (
     ConflictError,
     StorageProvider,
 )
-from accnomos_connectors.fake import FakeContactsProvider, FakeMailProvider, FakeStorageProvider
-from accnomos_connectors.msgraph import GraphContactsProvider, GraphError, GraphMailProvider, GraphStorageProvider
+from accnomos_connectors.fake import FakeCalendarProvider, FakeContactsProvider, FakeMailProvider, FakeStorageProvider
+from accnomos_connectors.msgraph import GraphCalendarProvider, GraphContactsProvider, GraphError, GraphMailProvider, GraphStorageProvider
 
 __all__ = [
     "AddressBookContact",
+    "CalendarEvent",
     "CalendarProvider",
     "ContactsProvider",
     "FileRef",
@@ -28,9 +30,11 @@ __all__ = [
     "MailProvider",
     "StorageProvider",
     "ConflictError",
+    "FakeCalendarProvider",
     "FakeContactsProvider",
     "FakeMailProvider",
     "FakeStorageProvider",
+    "GraphCalendarProvider",
     "GraphContactsProvider",
     "GraphError",
     "GraphMailProvider",
