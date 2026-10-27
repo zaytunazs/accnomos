@@ -4,8 +4,9 @@ import type { AccountInfo, AuthenticationResult, IPublicClientApplication } from
 
 /**
  * Test-mode sign-in (NEXT_PUBLIC_TEST_MODE=1 builds only; see msal.ts). No network: "signing in" sets a flag in
- * localStorage and reloads, as the real redirect would; every token is the literal "test-token", which only a
- * runtime started with ACCNOMOS_TEST_MODE=1 accepts (it never forwards it anywhere).
+ * localStorage and reloads, as the real redirect would; every token is the literal "test-token". A runtime started
+ * with ACCNOMOS_TEST_MODE=1 uses its fakes and never forwards it; any other runtime would pass it to Microsoft,
+ * which rejects it.
  */
 const SIGNED_IN = "msal.accnomos-test.signedIn"; // "msal." like the real cache: Settings shows it, Disconnect clears it
 

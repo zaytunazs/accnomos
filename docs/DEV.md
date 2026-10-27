@@ -59,8 +59,10 @@ failure; locally `pnpm exec playwright show-trace test-results/<test>/trace.zip`
 sets it to 0 and does not even contain `evals/gold`, which it needs.
 
 - Storage, mail, address book and calendar are the in-memory fakes from `accnomos_connectors.fake`, shared by every
-  request whatever token it carries. The browser's own Graph calls go to a look-alike at `/__test/graph/v1.0` over the
-  same storage.
+  request whatever token it carries (a token is still required, as in production). The calendar holds one sample
+  VAT deadline but no runtime route uses a calendar yet, so no e2e flow touches it. The browser's own Graph calls go
+  to a look-alike at `/__test/graph/v1.0` over the same storage.
+- The stub AI proves the plumbing, not the models: it never reads a document it was not given the answer to.
 - Every AI call is forced to a stub at `/__test/ai` (Ollama-shaped), whatever the request headers say. It reads a
   document only if it is a gold receipt rendered by `evals/harness/render.py` (matched by the PNG's sha256) and
   returns its gold fields; Ask gets an answer built from the facts pack, so grounding passes.
@@ -71,7 +73,8 @@ sets it to 0 and does not even contain `evals/gold`, which it needs.
 
 **Web test build** (`NEXT_PUBLIC_TEST_MODE=1`, made by `e2e/build.mjs`): `src/lib/msal.ts` uses a fake account from
 `msal-test.ts` (no network; "Sign in" sets `msal.accnomos-test.signedIn` in localStorage) and `src/lib/graph.ts` uses
-the runtime's look-alike. A normal `pnpm build` folds both away: `out/` contains no fake account and no `/__test` URL.
+the runtime's look-alike. A normal `pnpm build` folds both away: `out/` contains no fake account and no `/__test` URL
+(`deploy-web.yml` checks this before publishing).
 
 ## Document crop (before extraction)
 
