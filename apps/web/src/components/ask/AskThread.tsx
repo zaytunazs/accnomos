@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
@@ -19,6 +19,10 @@ interface Turn {
   question: string; // empty while a spoken question is being transcribed
   answer?: RtAskAnswer;
   error?: string;
+  /** Seconds the answer took, timed around the ask call (the runtime sends no timing). */
+  elapsedS?: number;
+  /** From hold-to-talk: tapping the transcript puts it back in the box to edit. */
+  voice?: boolean;
 }
 
 type Mode = "loading" | "sample" | "live";
@@ -65,36 +69,38 @@ export default function AskThread() {
       ]);
   }
 
-  async function ask(question: string, acct: AccountInfo, before: Turn[]) {
+  const ask = useCallback(async (question: string, acct: AccountInfo, before: Turn[]) => {
     const q = question.trim();
     if (!q) return;
     const history = historyOf(before);
+    const started = performance.now();
     setTurns([...before, { question: q }]);
     setInput("");
     setBusy(true);
     try {
       const answer = await runtime.ask(acct, q, askPeriod(), history);
-      setTurns([...before, { question: q, answer }]);
+      setTurns([...before, { question: q, answer, elapsedS: (performance.now() - started) / 1000 }]);
     } catch (e) {
       setTurns([...before, { question: q, error: e instanceof Error ? e.message : String(e) }]);
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
   /** A spoken question: "Transcribing…" bubble, then the transcript replaces it and the answer renders as usual. */
-  async function askVoice(audio: Blob, acct: AccountInfo, before: Turn[]) {
+  const askVoice = useCallback(async (audio: Blob, acct: AccountInfo, before: Turn[]) => {
+    const started = performance.now();
     setTurns([...before, { question: "" }]);
     setBusy(true);
     try {
       const { transcript, ...answer } = await runtime.askVoice(acct, audio, askPeriod(), historyOf(before));
-      setTurns([...before, { question: transcript, answer }]);
+      setTurns([...before, { question: transcript, answer, elapsedS: (performance.now() - started) / 1000, voice: true }]);
     } catch (e) {
       setTurns([...before, { question: "(voice question)", error: e instanceof Error ? e.message : String(e) }]);
     } finally {
       setBusy(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -134,7 +140,7 @@ export default function AskThread() {
         await ask(q, acct, []);
       }
     })();
-  }, []);
+  }, [ask]);
 
   useEffect(() => {
     const reduceMotion =
@@ -239,7 +245,7 @@ export default function AskThread() {
                   }}
                 />
               ) : t.answer ? (
-                <AnswerCard answer={t.answer} />
+                <AnswerCard answer={t.answer} account={account} elapsedS={t.elapsedS} />
               ) : t.error ? (
                 <RuntimeErrorNote message={t.error} title="Couldn't get an answer" />
               ) : (
