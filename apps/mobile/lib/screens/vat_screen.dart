@@ -12,8 +12,9 @@ const _warnBg = Color(0xFFFFF7ED);
 const _warnBorder = Color(0xFFF3C892);
 const _warnInk = Color(0xFF8A3F06);
 
-/// VAT return for the current period: the 9 boxes from `GET /books/vat`,
-/// computed by code from the user's own ledger events.
+/// VAT return for a period (the current one unless picked): the 9 boxes from
+/// `GET /books/vat`, computed by code from the user's own ledger events. The
+/// picker lists `GET /books/vat/periods`; the phone does no VAT maths.
 class VatScreen extends StatefulWidget {
   const VatScreen({super.key});
 
@@ -29,6 +30,8 @@ class _VatScreenState extends State<VatScreen> {
   bool _loading = false;
   String? _error;
   VatReturn? _vat;
+  List<VatPeriod> _periods = const [];
+  String? _picked; // null: the current period
 
   @override
   void initState() {
@@ -56,7 +59,8 @@ class _VatScreenState extends State<VatScreen> {
     if (account != null) await _reload();
   }
 
-  Future<void> _reload() async {
+  /// The boxes, and the period list too unless only the pick changed.
+  Future<void> _reload({bool withPeriods = true}) async {
     final settings = _settings;
     if (settings == null || _account == null || _loading) return;
     setState(() {
@@ -66,18 +70,21 @@ class _VatScreenState extends State<VatScreen> {
     try {
       final token = await _auth.token();
       final user = _account?.username ?? settings.userEmail;
-      final vat = VatReturn.fromJson(
-        await RuntimeClient(
-          settings,
-          books: BooksAuth(
-            graphToken: token,
-            accountKind:
-                _auth.kind == AccountKind.work ? 'work' : 'personal',
-            user: (user != null && user.isNotEmpty) ? user : null,
-            businessName: settings.businessName,
-          ),
-        ).vat(),
+      final client = RuntimeClient(
+        settings,
+        books: BooksAuth(
+          graphToken: token,
+          accountKind: _auth.kind == AccountKind.work ? 'work' : 'personal',
+          user: (user != null && user.isNotEmpty) ? user : null,
+          businessName: settings.businessName,
+        ),
       );
+      final results = await Future.wait([
+        client.vat(period: _picked),
+        if (withPeriods || _periods.isEmpty) client.vatPeriods(),
+      ]);
+      final vat = VatReturn.fromJson(results[0]);
+      if (results.length > 1) _periods = VatPeriod.listFromJson(results[1]);
       if (!mounted) return;
       setState(() => _vat = vat);
     } catch (e) {
@@ -217,8 +224,15 @@ class _VatScreenState extends State<VatScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (_periods.isNotEmpty) ...[
+                _periodPicker(vat),
+                const SizedBox(height: 10),
+              ],
               Text(
-                'Period ${vat.periodKey}',
+                vat.label.isEmpty
+                    ? 'Period ${vat.periodKey}'
+                    : '${vat.label}${vat.current ? ' (current)' : ''}'
+                        '${vat.submitted ? ' · submitted' : ''}',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 2),
@@ -259,6 +273,36 @@ class _VatScreenState extends State<VatScreen> {
           style: TextStyle(color: AccnomosColors.muted, fontSize: 12),
         ),
       ],
+    );
+  }
+
+  Widget _periodPicker(VatReturn vat) {
+    final value = _periods.any((p) => p.period == vat.period)
+        ? vat.period
+        : _periods.first.period;
+    return DropdownButtonFormField<String>(
+      key: ValueKey(value),
+      initialValue: value,
+      isExpanded: true,
+      decoration: const InputDecoration(
+        labelText: 'VAT period',
+        border: OutlineInputBorder(),
+      ),
+      items: [
+        for (final p in _periods)
+          DropdownMenuItem(
+            value: p.period,
+            child: Text(p.caption, overflow: TextOverflow.ellipsis),
+          ),
+      ],
+      onChanged: _loading
+          ? null
+          : (period) {
+              if (period == null || period == vat.period) return;
+              final pick = _periods.firstWhere((p) => p.period == period);
+              _picked = pick.current ? null : period;
+              _reload(withPeriods: false);
+            },
     );
   }
 

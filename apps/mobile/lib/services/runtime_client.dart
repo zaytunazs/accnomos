@@ -302,26 +302,19 @@ class RuntimeClient {
     }
   }
 
-  /// The 9 VAT boxes for the current period. `GET /books/vat`.
-  Future<Map<String, dynamic>> vat() async {
+  /// The 9 VAT boxes for [period] ("2026-Q3", from [vatPeriods]), or for the
+  /// current period when null. `GET /books/vat`.
+  Future<Map<String, dynamic>> vat({String? period}) {
     _requireBooks();
-    final uri = Uri.parse('${settings.runtimeUrl}/books/vat');
-    try {
-      final response =
-          await http.get(uri, headers: _headers).timeout(_timeout);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        _fail(response.statusCode, response.body.trim());
-      }
-      return json.decode(response.body) as Map<String, dynamic>;
-    } on SocketException {
-      throw RuntimeException(
-          'Could not reach the reader at ${settings.runtimeUrl}. '
-          'Is it running?');
-    } on RuntimeException {
-      rethrow;
-    } catch (e) {
-      throw RuntimeException('Could not load the VAT return. $e');
-    }
+    return _map('GET', '/books/vat',
+        query: {'period': ?period}, what: 'load the VAT return');
+  }
+
+  /// The current VAT period and the 8 before it, with status, newest first.
+  /// `GET /books/vat/periods`.
+  Future<Map<String, dynamic>> vatPeriods() {
+    _requireBooks();
+    return _map('GET', '/books/vat/periods', what: 'load VAT periods');
   }
 
   /// Ask the books a question. `POST /books/ask` → a checked [AskAnswer].
