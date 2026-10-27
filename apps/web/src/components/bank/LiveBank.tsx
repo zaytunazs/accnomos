@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
+import BankReconcile, { type RulePrefillFrom } from "@/components/bank/BankReconcile";
+import BankRules from "@/components/bank/BankRules";
 import BankUpload from "@/components/bank/BankUpload";
 import SignInCta from "@/components/SignInCta";
 import { EmptyState, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
@@ -13,6 +15,7 @@ import {
   runtime,
   ukDate,
   type RtBankLine,
+  type RtBankRule,
   type RtBankStatement,
   type RtBankSuggestion,
   type RtBankSummary,
@@ -20,7 +23,7 @@ import {
   type RtUnmatchedLine,
 } from "@/lib/runtime";
 
-type Tab = "matches" | "unmatched" | "done";
+type Tab = "matches" | "unmatched" | "reconcile" | "rules" | "done";
 
 interface Data {
   summary: RtBankSummary;
@@ -697,6 +700,7 @@ export default function LiveBank() {
   const [error, setError] = useState<string | null>(null);
   const [changed, setChanged] = useState(false);
   const [rebuilding, setRebuilding] = useState(false);
+  const [rulePrefill, setRulePrefill] = useState<RtBankRule | null>(null);
 
   const refresh = useCallback(async (acct: AccountInfo) => {
     try {
@@ -779,9 +783,21 @@ export default function LiveBank() {
     );
   }
 
-  const tabs: { id: Tab; label: string; count: number }[] = [
+  async function createRuleFrom(from: RulePrefillFrom) {
+    if (!account) return;
+    try {
+      setRulePrefill(await runtime.bank.ruleDraft(account, from.lineId, from));
+      setTab("rules");
+    } catch (e) {
+      setNote((e as Error).message);
+    }
+  }
+
+  const tabs: { id: Tab; label: string; count: number | null }[] = [
     { id: "matches", label: "Matches", count: data.suggestions.length },
     { id: "unmatched", label: "Unmatched", count: data.unmatched.length },
+    { id: "reconcile", label: "Reconcile", count: null },
+    { id: "rules", label: "Rules", count: null },
     { id: "done", label: "Done", count: data.done.length },
   ];
   return (
@@ -847,13 +863,21 @@ export default function LiveBank() {
                 }`}
               >
                 {t.label}
-                <span className="rounded-full bg-ground px-2 text-[13px] font-bold tabular-nums">{t.count}</span>
+                {t.count !== null && (
+                  <span className="rounded-full bg-ground px-2 text-[13px] font-bold tabular-nums">{t.count}</span>
+                )}
               </button>
             ))}
           </div>
           <div role="tabpanel" id={`bank-panel-${tab}`} aria-labelledby={`bank-tab-${tab}`} aria-live="polite" className="pt-2">
             {tab === "matches" && <Matches rows={data.suggestions} busy={busy} act={act} />}
             {tab === "unmatched" && <Unmatched rows={data.unmatched} busy={busy} act={act} />}
+            {tab === "reconcile" && account && (
+              <BankReconcile account={account} lines={data.lines} onChanged={() => account && refresh(account)} onCreateRule={(from) => void createRuleFrom(from)} />
+            )}
+            {tab === "rules" && account && (
+              <BankRules account={account} prefill={rulePrefill} onPrefillUsed={() => setRulePrefill(null)} />
+            )}
             {tab === "done" && <Done rows={data.done} busy={busy} act={act} />}
           </div>
         </section>

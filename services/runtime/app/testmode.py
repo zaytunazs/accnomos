@@ -553,11 +553,26 @@ def _ollama(content: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def bank_ai_reply(content: str) -> dict[str, Any]:
+    """Deterministic coding for a bank line (app/bank_reconcile.py): the stub never invents accounts."""
+    try:
+        facts = json.loads(content.split("LINE:\n", 1)[1])
+    except (ValueError, IndexError, AttributeError):
+        facts = {}
+    accounts = [a for a in (facts.get("accounts") or []) if isinstance(a, str)]
+    account = next((a for a in accounts if "Sundry" in a), accounts[0] if accounts else "7999 Sundry expenses")
+    return {"account": account, "vat_code": "N", "contact": None, "reason": "Test stub coding: no real model ran."}
+
+
 @router.post("/ai/api/chat")
 async def ai_chat(request: Request) -> JSONResponse:
     body = await request.json()
     messages = body.get("messages") or []
     system = next((m.get("content") for m in messages if m.get("role") == "system"), "")
+    from app import bank_reconcile as bank_rec
+
+    if system == bank_rec.BANK_SUGGEST_PROMPT:
+        return JSONResponse(_ollama(bank_ai_reply(messages[-1]["content"])))
     images = [img for m in messages for img in (m.get("images") or [])]
     if system == actions.INTENT_PROMPT:
         return JSONResponse(_ollama(intent_reply(messages[-1]["content"])))

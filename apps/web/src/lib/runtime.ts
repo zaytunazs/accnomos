@@ -392,6 +392,36 @@ export const runtime = {
     ignore: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/ignore`, { method: "POST" }),
     expenseProposal: (a: AccountInfo, lineId: string) =>
       call<RtProposal>(a, `/books/bank/lines/${lineId}/expense-proposal`, { method: "POST" }),
+    /** Bank rules (services/runtime/app/bank_rules.py): first match wins, in order. */
+    rules: (a: AccountInfo) => call<RtBankRule[]>(a, "/books/bank/rules"),
+    createRule: (a: AccountInfo, rule: RtBankRuleIn) =>
+      call<RtBankRule>(a, "/books/bank/rules", { method: "POST", body: JSON.stringify(rule) }),
+    updateRule: (a: AccountInfo, id: string, rule: RtBankRuleIn) =>
+      call<RtBankRule>(a, `/books/bank/rules/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(rule) }),
+    deleteRule: (a: AccountInfo, id: string) =>
+      call<RtBankRule>(a, `/books/bank/rules/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    reorderRules: (a: AccountInfo, ids: string[]) =>
+      call<RtBankRule[]>(a, "/books/bank/rules/reorder", { method: "POST", body: JSON.stringify({ ids }) }),
+    codingOptions: (a: AccountInfo) => call<{ accounts: string[]; vat_codes: string[] }>(a, "/books/bank/coding-options"),
+    /** Reconcile (services/runtime/app/bank_reconcile.py): exact and rule suggestions per open line. */
+    reconcile: (a: AccountInfo) => call<RtReconcileRow[]>(a, "/books/bank/reconcile"),
+    /** Ask the user's own model to code one line; null when it cannot. Labelled "suggested by AI". */
+    aiSuggestion: (a: AccountInfo, lineId: string) =>
+      call<RtAiSuggestion | null>(a, `/books/bank/lines/${lineId}/ai-suggestion`),
+    /** Pre-fill "Create rule from this" for a line. */
+    ruleDraft: (a: AccountInfo, lineId: string, from: { account?: string; vat_code?: string | null; contact?: string | null; job_id?: string | null }) => {
+      const q = new URLSearchParams({
+        ...(from.account ? { account: from.account } : {}),
+        ...(from.vat_code ? { vat_code: from.vat_code } : {}),
+        ...(from.contact ? { contact: from.contact } : {}),
+        ...(from.job_id ? { job_id: from.job_id } : {}),
+      }).toString();
+      return call<RtBankRule>(a, `/books/bank/lines/${lineId}/rule-draft${q ? `?${q}` : ""}`);
+    },
+    /** Approve one suggestion: exact records the match; rule/AI posts through Review approval. */
+    reconcileApprove: (a: AccountInfo, lineId: string, kind: "exact" | "rule" | "ai", ai?: RtAiSuggestion | null) =>
+      call<{ line: RtBankLine; proposal_id: string | null; event_id: string | null }>(
+        a, `/books/bank/lines/${lineId}/approve`, { method: "POST", body: JSON.stringify({ kind, ai: ai ?? null }) }),
   },
   vehicles: (a: AccountInfo) => call<RtVehicle[]>(a, "/vehicles"),
   addVehicle: (a: AccountInfo, v: Omit<RtVehicle, "id">) =>
@@ -966,6 +996,57 @@ export interface RtBankSummary {
   transfer: number;
   ignored: number;
   reconciled_to: string | null;
+}
+/** A bank rule (services/runtime/app/bank_rules.py): "when the description contains X, code it to Y". */
+export interface RtBankRule {
+  id: string;
+  name: string;
+  match: { op: "contains" | "equals" | "regex"; value: string };
+  amount_min_pence: number | null;
+  amount_max_pence: number | null;
+  direction: "in" | "out" | "either";
+  action: { account: string; vat_code: string | null; contact: string | null; job_id: string | null };
+  created_at: string;
+  created_by: string | null;
+}
+export interface RtBankRuleIn {
+  name: string;
+  match: { op: "contains" | "equals" | "regex"; value: string };
+  amount_min_pence: number | null;
+  amount_max_pence: number | null;
+  direction: "in" | "out" | "either";
+  action: { account: string; vat_code: string | null; contact: string | null; job_id: string | null };
+}
+/** One reconcile row (services/runtime/app/bank_reconcile.py): exact, rule and AI suggestions per open line. */
+export interface RtExactSuggestion {
+  kind: "exact";
+  event_ids: string[];
+  reference: string | null;
+  reasons: string[];
+}
+export interface RtRuleSuggestion {
+  kind: "rule";
+  rule_id: string;
+  rule_name: string;
+  account: string;
+  vat_code: string | null;
+  contact: string | null;
+  job_id: string | null;
+  reasons: string[];
+}
+export interface RtAiSuggestion {
+  kind: "ai";
+  account: string;
+  vat_code: string | null;
+  contact: string | null;
+  reason: string;
+  by: string; // always "suggested by AI"
+}
+export interface RtReconcileRow {
+  line_id: string;
+  exact: RtExactSuggestion | null;
+  rule: RtRuleSuggestion | null;
+  ai: RtAiSuggestion | null;
 }
 
 /** Vehicles and mileage (services/runtime/app/mileage.py). Amounts in pence, miles in 0.1 steps. */

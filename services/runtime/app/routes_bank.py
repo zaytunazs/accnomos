@@ -351,6 +351,19 @@ async def reconcile_approve(
     return ApproveResult(**out)
 
 
+class CodingOptions(BaseModel):
+    accounts: list[str]
+    vat_codes: list[str]
+
+
+@router.get("/coding-options", response_model=CodingOptions)
+async def coding_options() -> CodingOptions:
+    """Valid accounts and VAT codes for bank rules and AI codings (the runtime's chart)."""
+    from app.journal import CATEGORY_ACCOUNTS, SUNDRY
+
+    return CodingOptions(accounts=sorted(set(CATEGORY_ACCOUNTS.values()) | {SUNDRY}), vat_codes=["S", "R", "Z", "E", "O", "N"])
+
+
 @router.get("/summary", response_model=BankSummary)
 async def summary(books: Books = Depends(get_books)) -> BankSummary:
     every = await books.list_bank_lines()
