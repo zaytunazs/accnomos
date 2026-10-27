@@ -37,8 +37,14 @@ NEEDS_LOOK_CASES = {"arith_error", "no_vat_number"}
 
 
 def gold_side(gold: dict[str, Any]) -> str:
-    """'sale' when the books owner issued the document, else 'purchase'."""
-    return gold.get("side") or ("sale" if gold.get("doc_type") == "sales_invoice" else "purchase")
+    """'sale' when the books owner issued the document, else 'purchase'.
+
+    001-060 have no `side` and four of their `doc_type: sales_invoice` labels are wrong (Bramblewood is the
+    customer), so the supplier decides.
+    """
+    if gold.get("side"):
+        return gold["side"]
+    return "sale" if gold["supplier"]["name"].lower().startswith("bramblewood") else "purchase"
 
 
 def expected_status(gold: dict[str, Any]) -> str:
