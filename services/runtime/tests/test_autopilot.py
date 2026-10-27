@@ -74,6 +74,10 @@ DOCS: dict[bytes, ExtractedDoc] = {
         lines=[ExtractedLine(description="Bits", qty=1, unit_price=38.47, net=38.47, vat_rate=0, vat=0)],
     ),
     b"toolstation": _doc("Toolstation"),
+    b"first-photo-2": _doc("SCREWFIX LTD"),  # the first receipt, photographed again: new bytes, same reading
+    b"inv-a": _doc(gross=40.00, date="2026-10-22", invoice_number="INV-7"),
+    b"inv-a-photo-2": _doc(gross=40.00, date="2026-10-22", invoice_number="INV-7"),
+    b"inv-a-redated": _doc(gross=40.00, date="2026-10-23", invoice_number="inv-7 "),
 }
 
 
@@ -234,6 +238,29 @@ async def test_failed_check_is_refused(fake: FakeStorageProvider, books: Books) 
     (p,) = await _scan(fake, books, b"first")  # the very same file again: DUPLICATE fails
     assert p.status == "needs_a_look" and not p.autopilot.auto_approve  # type: ignore[union-attr]
     assert any("Check DUPLICATE failed" in r for r in p.autopilot.reasons)  # type: ignore[union-attr]
+
+
+async def test_another_photo_of_a_posted_receipt_is_refused(fake: FakeStorageProvider, books: Books) -> None:
+    """The file hash differs, so DUPLICATE passes; same supplier, date and total stops Autopilot (eval: 21 of 32
+    re-photographed receipts were posted twice before this condition, evals/runs/autopilot_l2/report.md)."""
+    await _learn(fake, books)
+    (p,) = await _scan(fake, books, b"first-photo-2")
+    assert p.status == "proposed" and p.decided_by is None and not p.autopilot.auto_approve  # type: ignore[union-attr]
+    assert any("already in the books (posted, 2026-10-21, £38.47)" in r for r in p.autopilot.reasons)  # type: ignore[union-attr]
+    assert len(_events(fake)) == 1
+
+
+async def test_a_copy_of_a_document_waiting_in_review_or_a_repeated_invoice_number_is_refused(
+    fake: FakeStorageProvider,
+    books: Books,
+) -> None:
+    await _learn(fake, books)
+    (waiting,) = await _scan(fake, books, b"inv-a", on=False)
+    assert waiting.status == "proposed"
+    copy_, redated = await _scan(fake, books, b"inv-a-photo-2", b"inv-a-redated")
+    for p in (copy_, redated):
+        assert p.decided_by is None and any("already in the books (proposed" in r for r in p.autopilot.reasons)  # type: ignore[union-attr]
+    assert len(_events(fake)) == 1
 
 
 async def test_switched_off_and_no_rule(fake: FakeStorageProvider, books: Books) -> None:

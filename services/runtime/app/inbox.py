@@ -232,6 +232,7 @@ async def scan_inbox_detailed(
     auto_rules = await autopilot.load_rules(books)
     vehicles = await _vehicles(books)
     vat = await vat_context(books)
+    earlier: list[Proposal] | None = None  # proposals already in the books, for Autopilot's same-document condition
     out: list[Proposal] = []
     errors: list[dict] = []
     candidates: list[tuple[FileRef, str]] = []
@@ -266,8 +267,12 @@ async def scan_inbox_detailed(
             known.add(p.doc_sha256)
         rule = autopilot.match(p, auto_rules)
         if rule is not None:
-            p.autopilot = autopilot.evaluate(p, rule, autopilot_on)
+            if earlier is None:  # read once per scan, and only when a rule could post something
+                earlier = await books.list_proposals()
+            p.autopilot = autopilot.evaluate(p, rule, autopilot_on, earlier)
         await books.save_proposal(p)
+        if earlier is not None:
+            earlier.append(p)
         await books.audit(
             ACTOR, "proposed", {"proposal": p.id, "doc": p.doc_sha256, "status": p.status, "path": p.file_path}
         )

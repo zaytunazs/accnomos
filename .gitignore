@@ -48,6 +48,7 @@ evals/runs/*
 evals/runs/glimmer_messy_200/*
 !evals/runs/glimmer_messy_200/report.md
 !evals/runs/glimmer_messy_200/summary.json
+!evals/runs/autopilot_l2/
 data/private/
 
 # OS / editors
