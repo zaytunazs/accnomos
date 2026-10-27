@@ -142,7 +142,7 @@ class Proposal {
   /// Supplier VAT number exactly as read (the runtime keeps it as read).
   final String? supplierVrn;
 
-  /// The runtime asked "Is <supplier> VAT-registered?" (failed check
+  /// The runtime asked "Is `<supplier>` VAT-registered?" (failed check
   /// `SUPPLIER_VAT_UNKNOWN`: over £250, no VAT, no VAT number, a supplier the
   /// books don't know). The card then offers the "isn't VAT-registered" tick.
   final bool asksVatStatus;
@@ -521,7 +521,7 @@ String _shown(Object? value) {
   return text.isEmpty ? 'none' : text;
 }
 
-/// The runtime check "Is <supplier> VAT-registered?"
+/// The runtime check "Is `<supplier>` VAT-registered?"
 /// (services/runtime/app/checks.py).
 const supplierVatUnknown = 'SUPPLIER_VAT_UNKNOWN';
 

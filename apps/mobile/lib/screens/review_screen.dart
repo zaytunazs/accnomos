@@ -43,7 +43,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   int _index = 0;
   final Map<String, bool> _alwaysDo = {};
 
-  /// "<supplier> isn't VAT-registered", ticked on cards that ask about it.
+  /// "`<supplier>` isn't VAT-registered", ticked on cards that ask about it.
   final Map<String, bool> _notRegistered = {};
 
   /// The tick as an approve edit, merged into what else is sent.
