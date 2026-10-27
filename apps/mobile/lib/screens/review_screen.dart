@@ -80,7 +80,8 @@ class _ReviewScreenState extends State<ReviewScreen> {
     Account? account;
     try {
       account = await _auth.account();
-    } on MsalException {
+    } catch (_) {
+      // No account (or no MSAL on this platform): signed-out fallback.
       account = null;
     }
     if (!mounted) return;
