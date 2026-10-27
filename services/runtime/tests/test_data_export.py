@@ -201,3 +201,12 @@ def test_size_and_file_caps_refuse_with_413(client: TestClient, monkeypatch: pyt
 
 def test_export_needs_x_user(client: TestClient) -> None:
     assert client.post(f"/books/export?today={TODAY}", headers={"X-Graph-Token": "tok"}).status_code == 400
+
+
+def test_csv_quotes_text_excel_would_run_as_a_formula() -> None:
+    from app.data_export import _csv
+
+    out = _csv([{"name": '=HYPERLINK("http://x")', "amount": "-12.50", "note": "@SUM(A1)"}], ["name", "amount", "note"])
+    text = out.decode("utf-8")
+    assert "'=HYPERLINK" in text and "'@SUM" in text
+    assert ",-12.50," in text  # a plain negative number stays a number

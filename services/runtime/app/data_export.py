@@ -25,6 +25,7 @@ from typing import Any
 from app.books import AUDIT, Books
 from app.books import today as current_date
 from app.paths import REPORTS, SALES, VAT_RETURNS
+from app.projection import _safe_text
 
 #: Where the zips live, under 07 Reports.
 EXPORTS = f"{REPORTS}/Exports"
@@ -88,13 +89,14 @@ async def _read_capped(books: Books, paths: list[str], taken: dict[str, int]) ->
 
 
 def _csv(rows: list[dict[str, Any]], columns: list[str]) -> bytes:
-    """CSV bytes with a UTF-8 BOM, so Excel opens them as text, not mojibake."""
+    """CSV bytes with a UTF-8 BOM, so Excel opens them as text, not mojibake. Text that Excel would run as a
+    formula (=, +, -, @ at the start, e.g. a supplier named "=HYPERLINK(...)") is quoted, as Books.xlsx does."""
     buf = io.StringIO()
     buf.write("﻿")
     writer = csv.DictWriter(buf, fieldnames=columns, extrasaction="ignore")
     writer.writeheader()
     for row in rows:
-        writer.writerow({c: row.get(c, "") for c in columns})
+        writer.writerow({c: _safe_text(row.get(c, "")) for c in columns})
     return buf.getvalue().encode("utf-8")
 
 
