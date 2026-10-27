@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
+import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import { runtime, type RtStaff, type RtTimesheetEntry } from "@/lib/runtime";
 import { errorText, todayIso } from "./useAccount";
 
@@ -191,6 +192,18 @@ export default function WeekGrid({ account, jobId, open, staff, entries, reload 
   }
 
   const weekLabel = `${dayLabel(monday)} – ${dayLabel(days[6])}`;
+
+  /** The picked week's timesheets, hours exactly as the runtime gave them. */
+  function exportWeek() {
+    const inWeek = entries
+      .filter((e) => e.date >= monday && e.date <= days[6])
+      .sort((a, b) => a.date.localeCompare(b.date) || (names[a.staff_id] ?? a.staff_id).localeCompare(names[b.staff_id] ?? b.staff_id));
+    const rows: CsvValue[][] = [
+      ["date", "staff", "hours", "note", "billable", "invoiced_in"],
+      ...inWeek.map((e) => [e.date, names[e.staff_id] ?? e.staff_id, e.hours, e.note, e.billable ? "Yes" : "No", e.invoiced_in]),
+    ];
+    downloadCsv(csvFilename("jobs"), rows);
+  }
   const cellInput = (s: RtStaff, date: string) => {
     const k = cellKey(s.id, date);
     const cell = byCell.get(k) ?? [];
@@ -243,10 +256,15 @@ export default function WeekGrid({ account, jobId, open, staff, entries, reload 
         <h2 id="job-week" className="text-[17px] font-extrabold text-ink">
           Week
         </h2>
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Pick a week">
-          <button type="button" onClick={() => setMonday(addDays(monday, -7))} aria-label="Previous week" className="h-10 rounded-xl border border-border bg-white px-3 text-sm font-bold text-ink">←</button>
-          <button type="button" onClick={() => setMonday(mondayOf(todayIso()))} className="h-10 rounded-xl border border-border bg-white px-3 text-sm font-bold text-ink">This week</button>
-          <button type="button" onClick={() => setMonday(addDays(monday, 7))} aria-label="Next week" className="h-10 rounded-xl border border-border bg-white px-3 text-sm font-bold text-ink">→</button>
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Pick a week">
+            <button type="button" onClick={() => setMonday(addDays(monday, -7))} aria-label="Previous week" className="h-10 rounded-xl border border-border bg-white px-3 text-sm font-bold text-ink">←</button>
+            <button type="button" onClick={() => setMonday(mondayOf(todayIso()))} className="h-10 rounded-xl border border-border bg-white px-3 text-sm font-bold text-ink">This week</button>
+            <button type="button" onClick={() => setMonday(addDays(monday, 7))} aria-label="Next week" className="h-10 rounded-xl border border-border bg-white px-3 text-sm font-bold text-ink">→</button>
+          </div>
+          <button type="button" onClick={exportWeek} className="h-10 rounded-xl border border-border bg-white px-3 text-sm font-bold text-ink">
+            Export CSV
+          </button>
         </div>
       </div>
       <p className="mt-1 text-sm text-muted">
