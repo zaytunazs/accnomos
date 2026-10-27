@@ -43,7 +43,7 @@ from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError, parse_model_json
 from app.autopilot import supplier_key
 from app.books import AUDIT, SYSTEM, Books, now
-from app.schemas import ActionKind, Clarification, ProposedAction
+from app.schemas import ActionKind, Clarification, ProposedAction, strict_json_schema
 
 ACTIONS_AUDIT = f"{AUDIT}/actions"
 VEHICLES = f"{SYSTEM}/Vehicles/vehicles.json"  # vehicles & mileage contract (app/mileage.py when it lands)
@@ -728,7 +728,7 @@ async def read_intent(question: str, cfg: AiConfig) -> IntentModelOutput | None:
     """The model's structured reading of the instruction; None when the model is unreachable or off-format."""
     messages = [{"role": "system", "content": INTENT_PROMPT}, {"role": "user", "content": question.strip()}]
     try:
-        text = await ask_ai._call_model(messages, cfg, IntentModelOutput, "action_intent")
+        text = await ask_ai.call_json_model(messages, cfg, strict_json_schema(IntentModelOutput), "action_intent")
         return IntentModelOutput.model_validate(parse_model_json(text))
     except (ExtractionError, ValidationError):
         return None

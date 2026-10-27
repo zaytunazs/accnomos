@@ -9,6 +9,7 @@ from decimal import Decimal
 from types import SimpleNamespace
 from typing import Any
 
+import httpx
 import pytest
 from accnomos_connectors import FakeStorageProvider
 from fastapi.testclient import TestClient
@@ -61,12 +62,12 @@ def out(kind: str, **kw: Any) -> IntentModelOutput:
 
 
 def stub_model(monkeypatch: pytest.MonkeyPatch, reply: IntentModelOutput | str, seen: list | None = None) -> None:
-    async def fake(messages: list[dict], cfg: AiConfig, output: Any = None, name: str = "") -> str:
+    async def fake(messages: list[dict], cfg: AiConfig, schema: dict, name: str) -> str:
         if seen is not None:
-            seen.append((messages, output, name))
+            seen.append((messages, schema, name))
         return reply if isinstance(reply, str) else reply.model_dump_json()
 
-    monkeypatch.setattr(ask_ai, "_call_model", fake)
+    monkeypatch.setattr(ask_ai, "call_json_model", fake)
 
 
 def with_invoicing(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -127,8 +128,8 @@ async def test_propose_with_stubbed_model(books: Books, monkeypatch: pytest.Monk
                                 amount_text="£100", send=True), seen)
     got = await actions.propose("send a £100 invoice to JM Trading for this month's work", books, CFG, TOKEN, TODAY)
     assert isinstance(got, ProposedAction) and got.kind == "create_invoice"
-    messages, schema_model, name = seen[0]
-    assert schema_model is IntentModelOutput and name == "action_intent"
+    messages, schema, name = seen[0]
+    assert name == "action_intent" and schema["properties"]["kind"]["enum"][-1] == "none" and not schema["additionalProperties"]
     assert "JM Trading Ltd" not in json.dumps(messages)  # the contact list never goes to the model
     p = got.preview
     assert p["customer"]["name"] == "JM Trading Ltd" and p["send_to"] == "accounts@jmtrading.example"
@@ -340,6 +341,38 @@ async def test_invoice_approval_uses_the_invoicing_module(books: Books):
     again = await actions.approve(action, ctx)
     assert done.result["status"] == "sent" and done.result["total_pence"] == 12_000
     assert again.status == "already_done" and len(sender.sent) == 1
+
+
+async def test_chase_proposes_the_reminder_text_and_sends_it_once(books: Books, monkeypatch: pytest.MonkeyPatch):
+    """Runs only on a build with app/invoicing.py (claude/invoicing)."""
+    inv_mod = pytest.importorskip("app.invoicing")
+    from accnomos_connectors import FakeMailSender  # type: ignore[attr-defined]
+
+    from app.ai import remind
+
+    await books.write_json("_System/Invoicing/profile.json", {"name": "Sam Electrical", "address": "1 High St", "vrn": "GB123456789"})
+    draft = inv_mod.InvoiceDraft(
+        customer=inv_mod.InvoiceCustomer(name="JM Trading Ltd", email="accounts@jmtrading.example"),
+        issue_date=date(2026, 9, 1), due_date=date(2026, 10, 1),
+        lines=[inv_mod.LineIn(description="Work", quantity=Decimal(1), unit_price_pence=10_000)],
+    )
+    inv = await inv_mod.create_invoice(books, draft, USER)
+    sender = FakeMailSender()
+    await inv_mod.send_invoice(books, sender, inv.number, USER, b"%PDF-1.4 test")
+
+    async def no_model(*_a: Any, **_k: Any) -> str:
+        raise httpx.ConnectError("offline")
+
+    monkeypatch.setattr(remind, "_call_model", no_model)  # code writes the reminder instead
+    got = await actions.resolve_chase(books, actions.ChaseInvoiceIntent(customer_ref="JM Trading"), CFG, TODAY)
+    assert isinstance(got, actions.Draft), got
+    assert got.preview["invoice"] == inv.number and got.preview["days_overdue"] == 26 and got.preview["to"] == "accounts@jmtrading.example"
+    assert got.preview["body"] in got.summary_md.replace("\\", "").replace("> ", "")
+    action = actions.new_action(got, TOKEN)
+    ctx = actions.Context(books=books, user=USER, graph_token=TOKEN, mail_sender=lambda: sender)
+    await actions.approve(action, ctx)
+    await actions.approve(action, ctx)
+    assert [m.subject for m in sender.sent][1:] == [got.preview["subject"]]  # the invoice, then one reminder
 
 
 # --------------------------------------------------------------------------- #

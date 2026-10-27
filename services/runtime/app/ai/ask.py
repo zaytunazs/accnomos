@@ -18,7 +18,7 @@ from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
 import httpx
-from pydantic import BaseModel, ValidationError
+from pydantic import ValidationError
 
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError, parse_model_json
@@ -236,11 +236,13 @@ def _messages(question: str, facts: dict[str, Any], history: list[AskTurn]) -> l
     ]
 
 
-async def _call_model(
-    messages: list[dict[str, str]], cfg: AiConfig, output: type[BaseModel] = AskModelOutput, name: str = "ask_answer",
-) -> str:
-    """Raw JSON text from the configured backend, shaped by `output`'s strict schema."""
-    schema = strict_json_schema(output)
+async def _call_model(messages: list[dict[str, str]], cfg: AiConfig) -> str:
+    """Raw JSON text from the configured backend."""
+    return await call_json_model(messages, cfg, strict_json_schema(AskModelOutput), "ask_answer")
+
+
+async def call_json_model(messages: list[dict[str, str]], cfg: AiConfig, schema: dict[str, Any], name: str) -> str:
+    """Raw JSON text from the user's backend, constrained to `schema` (also used by app/ai/remind.py)."""
     async with httpx.AsyncClient(timeout=httpx.Timeout(TIMEOUT_S)) as client:
         if cfg.mode == "local":
             body: dict[str, Any] = {
