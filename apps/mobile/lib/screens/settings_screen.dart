@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -402,7 +401,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.clear();
     if (!mounted) return;
-    const defaults = AppSettings(
+    final defaults = AppSettings(
       runtimeUrl: kDefaultRuntimeUrl,
       aiMode: 'local',
       aiBaseUrl: 'http://192.168.1.176:11434',
@@ -718,9 +717,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
       body: _initial == null
           ? const Center(child: CircularProgressIndicator())
-          : ListView(
+          // A scroll view, not a list: every group builds (and keeps its
+          // fields) whether or not it is on screen.
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(16),
-              children: [
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
                 _groupTile(
                   id: 'connection',
                   title: 'Connection',
@@ -854,26 +857,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         style: TextStyle(
                             fontWeight: FontWeight.w700,
                             color: AccnomosColors.ink)),
-                    ..._autopilotOptions.map((opt) => RadioListTile<String>(
-                          value: opt.value,
-                          groupValue: _level,
-                          onChanged: !_signedIn
-                              ? null
-                              : (v) {
-                                  if (v != null) _chooseLevel(v);
-                                },
-                          title: Text(opt.label,
-                              style: const TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: AccnomosColors.ink)),
-                          subtitle: Text(opt.description,
-                              style: const TextStyle(
-                                  color: AccnomosColors.muted,
-                                  fontSize: 12,
-                                  height: 1.4)),
-                          contentPadding: EdgeInsets.zero,
-                          dense: true,
-                        )),
+                    RadioGroup<String>(
+                      groupValue: _level,
+                      // Signed out the options only show the saved level.
+                      onChanged: (v) {
+                        if (!_signedIn || v == null) return;
+                        _chooseLevel(v);
+                      },
+                      child: IgnorePointer(
+                        ignoring: !_signedIn,
+                        child: Opacity(
+                          opacity: _signedIn ? 1.0 : 0.6,
+                          child: Column(
+                            children: [
+                              ..._autopilotOptions.map(
+                                  (opt) => RadioListTile<String>(
+                                        value: opt.value,
+                                        title: Text(opt.label,
+                                            style: const TextStyle(
+                                                fontWeight:
+                                                    FontWeight.w700,
+                                                color:
+                                                    AccnomosColors.ink)),
+                                        subtitle: Text(opt.description,
+                                            style: const TextStyle(
+                                                color: AccnomosColors.muted,
+                                                fontSize: 12,
+                                                height: 1.4)),
+                                        contentPadding: EdgeInsets.zero,
+                                        dense: true,
+                                      )),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     _rulesSection(),
                     const SizedBox(height: 16),
@@ -966,6 +984,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ),
               ],
             ),
+          ),
     );
   }
 
@@ -1059,49 +1078,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const Text('Where should the reading happen?',
             style: TextStyle(
                 fontWeight: FontWeight.w700, color: AccnomosColors.ink)),
-        RadioListTile<String>(
-          value: 'local',
+        RadioGroup<String>(
           groupValue: _mode,
-          onChanged: !_signedIn
-              ? null
-              : (v) {
-                  if (v != null) setState(() => _mode = v);
-                },
-          title: const Row(
-            children: [
-              Expanded(
-                  child: Text('On your own machine',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: AccnomosColors.ink))),
-              _PrivateBadge(),
-            ],
+          // Signed out the options only show the saved choice: taps and
+          // dimming are handled below, the group itself stays inert.
+          onChanged: (v) {
+            if (!_signedIn || v == null) return;
+            setState(() => _mode = v);
+          },
+          child: IgnorePointer(
+            ignoring: !_signedIn,
+            child: Opacity(
+              opacity: _signedIn ? 1.0 : 0.6,
+              child: Column(
+                children: [
+              RadioListTile<String>(
+                value: 'local',
+                title: const Row(
+                  children: [
+                    Expanded(
+                        child: Text('On your own machine',
+                            style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: AccnomosColors.ink))),
+                    _PrivateBadge(),
+                  ],
+                ),
+                subtitle: const Text(
+                    'Muse Glimmer 30B, open weights, running on your computer. Receipts never leave your network.',
+                    style: TextStyle(
+                        color: AccnomosColors.muted,
+                        fontSize: 12,
+                        height: 1.4)),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
+              RadioListTile<String>(
+                value: 'key',
+                title: const Text('My own Meta API key',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AccnomosColors.ink)),
+                subtitle: const Text(
+                    'Muse Spark via the Meta Model API. Fast, no hardware needed.',
+                    style: TextStyle(
+                        color: AccnomosColors.muted,
+                        fontSize: 12,
+                        height: 1.4)),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
+                ],
+              ),
+            ),
           ),
-          subtitle: const Text(
-              'Muse Glimmer 30B, open weights, running on your computer. Receipts never leave your network.',
-              style: TextStyle(
-                  color: AccnomosColors.muted, fontSize: 12, height: 1.4)),
-          contentPadding: EdgeInsets.zero,
-          dense: true,
-        ),
-        RadioListTile<String>(
-          value: 'key',
-          groupValue: _mode,
-          onChanged: !_signedIn
-              ? null
-              : (v) {
-                  if (v != null) setState(() => _mode = v);
-                },
-          title: const Text('My own Meta API key',
-              style: TextStyle(
-                  fontWeight: FontWeight.w700,
-                  color: AccnomosColors.ink)),
-          subtitle: const Text(
-              'Muse Spark via the Meta Model API. Fast, no hardware needed.',
-              style: TextStyle(
-                  color: AccnomosColors.muted, fontSize: 12, height: 1.4)),
-          contentPadding: EdgeInsets.zero,
-          dense: true,
         ),
       ],
     );
@@ -1118,7 +1148,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
         const SizedBox(height: 4),
         Text(
           account == null
-              ? 'Your books live in your own OneDrive. Sign in to see them.'
+              ? (_authChecked
+                  ? 'Your books live in your own OneDrive. Sign in to see them.'
+                  : 'Checking\u2026')
               : 'Signed in as ${AuthService.displayName(account)}',
           style: const TextStyle(
               color: AccnomosColors.muted, fontSize: 12, height: 1.4),
