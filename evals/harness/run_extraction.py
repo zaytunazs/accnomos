@@ -32,11 +32,18 @@ from app.pipeline import process_image  # noqa: E402
 from harness.render import render_receipt  # noqa: E402
 
 GOLD_DIR = REPO / "evals" / "gold" / "receipts"
-FIELDS = ("supplier_name", "vat_number", "date", "net_total", "vat_total", "gross_total", "line_count", "status")
+FIELDS = ("supplier_name", "vat_number", "date", "net_total", "vat_total", "gross_total", "line_count", "side", "status")
 NEEDS_LOOK_CASES = {"arith_error", "no_vat_number"}
 
 
+def gold_side(gold: dict[str, Any]) -> str:
+    """'sale' when the books owner issued the document, else 'purchase'."""
+    return gold.get("side") or ("sale" if gold.get("doc_type") == "sales_invoice" else "purchase")
+
+
 def expected_status(gold: dict[str, Any]) -> str:
+    if gold.get("expected_status"):  # explicit on docs 061+; the rules below cover the original 60
+        return gold["expected_status"]
     if gold.get("gold_case") in NEEDS_LOOK_CASES or gold.get("currency", "GBP") != "GBP":
         return "needs_a_look"
     return "proposed"
@@ -64,13 +71,14 @@ def score(gold: dict[str, Any], proposal: dict[str, Any]) -> dict[str, bool]:
         "vat_total": _pence_eq(gold["vat_total"], ex["vat_total"]),
         "gross_total": _pence_eq(gold["gross_total"], ex["gross_total"]),
         "line_count": len(gold["lines"]) == len(ex["lines"]),
+        "side": gold_side(gold) == ("sale" if ex["doc_type"] == "sales_invoice" else "purchase"),
         "status": proposal["status"] == expected_status(gold),
     }
 
 
-async def run_one(path: Path, idx: int, cfg: AiConfig, messy: bool, out: Path) -> dict[str, Any]:
+async def run_one(path: Path, idx: int, cfg: AiConfig, messy: bool, out: Path, business_name: str | None = None) -> dict[str, Any]:
     gold = json.loads(path.read_text(encoding="utf-8"))
-    png = render_receipt(gold["printed_text"], messy=messy, seed=idx)
+    png = render_receipt(gold["printed_text"], messy=messy, seed=idx, damage=gold.get("damage"))
     (out / f"{path.stem}.png").write_bytes(png)
     rec: dict[str, Any] = {
         "file": path.name,
@@ -80,7 +88,7 @@ async def run_one(path: Path, idx: int, cfg: AiConfig, messy: bool, out: Path) -
     }
     t0 = time.perf_counter()
     try:
-        proposal = (await process_image(png, "image/png", cfg)).model_dump(mode="json")
+        proposal = (await process_image(png, "image/png", cfg, business_name=business_name)).model_dump(mode="json")
         rec |= {"proposal": proposal, "scores": score(gold, proposal), "error": None}
     except Exception as exc:  # record and carry on; one bad doc must not stop the run
         rec |= {"proposal": None, "scores": {f: False for f in FIELDS}, "error": f"{type(exc).__name__}: {exc}"}
@@ -159,7 +167,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
 
     async def guarded(i: int, g: Path) -> dict[str, Any]:
         async with sem:
-            rec = await run_one(g, i, cfg, args.messy, out)
+            rec = await run_one(g, i, cfg, args.messy, out, args.business_name)
             mark = "ERR" if rec["error"] else ("ok " if all(rec["scores"].values()) else "MISS")
             print(f"[{mark}] {g.name} {rec['elapsed_s']:.1f}s {rec['error'] or ''}", flush=True)
             return rec
@@ -179,6 +187,7 @@ def main() -> None:
     ap.add_argument("--limit", type=int, default=0, help="0 = all")
     ap.add_argument("--messy", action="store_true", help="phone-photo style renders")
     ap.add_argument("--case", action="append", help="only these gold_case values (repeatable)")
+    ap.add_argument("--business-name", default=None, help="books owner, enables sale/purchase orientation (e.g. 'Bramblewood Joinery Ltd')")
     ap.add_argument("--concurrency", type=int, default=1, help="keep 1 for local (single GPU)")
     ap.add_argument("--out", default=None, help="default evals/runs/<timestamp>/")
     summary = asyncio.run(main_async(ap.parse_args()))
