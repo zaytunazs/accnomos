@@ -3,10 +3,12 @@ import Activity from "@/components/home/Activity";
 import AskBar from "@/components/home/AskBar";
 import Deadlines from "@/components/home/Deadlines";
 import Tiles from "@/components/home/Tiles";
+import Pitch from "@/components/home/Pitch";
 
 export default function HomePage() {
   return (
     <div className="flex flex-col gap-5">
+      <Pitch />
       <div className="flex items-center justify-between gap-3 rounded-2xl border border-border bg-white px-4 py-3">
         <p className="text-sm font-semibold text-muted">Not connected yet?</p>
         <Link
