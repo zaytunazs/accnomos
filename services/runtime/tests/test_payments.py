@@ -14,6 +14,7 @@ from accnomos_connectors import FakeMailSender, FakeStorageProvider
 from accnomos_ledger.vat import compute_vat_return
 from app import contacts as cb
 from app import credit_notes as cn_
+from app import credits as cr_
 from app import invoicing as inv_
 from app import payments as pay_
 from app.approve import approve, undo
@@ -23,6 +24,7 @@ from app.invoicing import PROFILE, InvoiceDraft, InvoiceError, InvoiceProfile, I
 from app.journal import draft_journal
 from app.pdf import render_invoice
 from app.schemas import ExtractedDoc, ExtractedLine, Proposal
+from app.settlement import credit_id
 
 USER = "sam@sambuilds.co.uk"
 H = {"X-Graph-Token": "tok", "X-User": USER}
@@ -534,3 +536,365 @@ async def test_contact_statement_route_lists_payments_and_credits(
         ("payment", "Payment received", -45000),
     ]
     assert st["credit_pence"] == 4500 and st["lines"][0]["reference"] == inv.number
+
+
+# --------------------------------------------------------------------------- #
+# Credits on a contact: applied to another document, or refunded (app/credits.py)
+# --------------------------------------------------------------------------- #
+
+FIX = {"description": "Fixings", "quantity": "10", "unit": "boxes", "unit_price_pence": 250}  # £30.00 with VAT
+
+
+def _ledger_sum(events, account: str) -> int:
+    return sum(ln.debit - ln.credit for e in events for ln in e.lines if ln.account == account)
+
+
+async def _overpaid(books: Books, sender: FakeMailSender) -> tuple[inv_.Invoice, inv_.Invoice, str]:
+    """INV-0001 £405 paid £500 (credit £95); INV-0002 £30 open."""
+    a = await _sent(books, sender, date(2026, 9, 1))
+    b = await _sent(books, sender, date(2026, 9, 5), lines=[FIX])
+    await inv_.mark_paid(books, a.number, USER, amount_pence=50000, paid_on=date(2026, 9, 20))
+    (credit,) = (await pay_.load_ledger(books)).settlement().credits
+    assert credit.amount_pence == 9500 and credit.id.startswith("payment:")
+    return a, b, credit.id
+
+
+async def test_an_overpayment_applied_to_another_invoice_pays_it_without_posting(books: Books, sender: FakeMailSender):
+    a, b, cid = await _overpaid(books, sender)
+    before = len(await books.list_events())
+    use = await cr_.apply_credit(
+        books, cr_.ApplyIn(credit=cid, event_id=b.event_id or ""), USER, today=date(2026, 9, 21)
+    )
+    assert (use.kind, use.amount_pence) == ("apply", 3000)  # as much as both allow: what INV-0002 owes
+    assert len(await books.list_events()) == before  # an allocation, no new bank movement
+
+    mb = await _money(books, b.number)
+    assert (mb.payment_status, mb.paid_pence, mb.balance_pence) == ("paid", 3000, 0)
+    assert [(p.source, p.applied_pence) for p in mb.payments] == [("credit", 3000)]
+    assert (await inv_.get_invoice(books, b.number)).status == "paid"  # the file's copy was refreshed
+    ma = await _money(books, a.number)
+    assert (ma.payment_status, ma.overpaid_pence) == ("overpaid", 6500)  # £65 still on account
+
+    _, st, t = await _acme(books)
+    assert (st.credit_pence, st.closing_balance_pence) == (6500, -6500)
+    assert [c.amount_pence for c in st.credits] == [6500] and st.open_documents == []
+    assert (t.open_receivable_pence, t.customer_credit_pence, t.balance_pence) == (0, 6500, -6500)
+    assert _ledger_sum(await books.list_events(), "1100 Debtors") == st.closing_balance_pence  # books agree
+
+    # Remove it: INV-0002 is owed again and the credit is whole
+    await cr_.remove_use(books, use.id, USER)
+    assert (await _money(books, b.number)).balance_pence == 3000
+    assert (await inv_.get_invoice(books, b.number)).status == "sent"
+    _, st, _ = await _acme(books)
+    assert st.credit_pence == 9500
+    with pytest.raises(InvoiceStateError):
+        await cr_.remove_use(books, use.id, USER)
+
+
+async def test_apply_checks(books: Books, sender: FakeMailSender):
+    a, b, cid = await _overpaid(books, sender)
+    with pytest.raises(cr_.CreditError, match="left to pay"):
+        await cr_.apply_credit(books, cr_.ApplyIn(credit=cid, event_id=b.event_id or "", amount_pence=4000), USER)
+    with pytest.raises(InvoiceStateError, match="already paid"):
+        await cr_.apply_credit(books, cr_.ApplyIn(credit=cid, event_id=a.event_id or ""), USER)
+    other = await _sent(books, sender, date(2026, 9, 6), lines=[FIX], name="Other Ltd", email="o@x.example")
+    with pytest.raises(cr_.CreditError, match="Acme Kitchens Ltd's"):
+        await cr_.apply_credit(books, cr_.ApplyIn(credit=cid, event_id=other.event_id or ""), USER)
+    with pytest.raises(cr_.CreditError, match="used up"):
+        await cr_.apply_credit(books, cr_.ApplyIn(credit="payment:" + "0" * 16, event_id=b.event_id or ""), USER)
+    with pytest.raises(cr_.CreditError, match="before"):
+        await cr_.apply_credit(books, cr_.ApplyIn(credit=cid, event_id=b.event_id or "", date=date(2026, 9, 10)), USER)
+
+
+async def test_refunding_a_customer_credit_posts_debtors_against_the_bank_and_matches_its_line(
+    books: Books, sender: FakeMailSender
+):
+    a, _, cid = await _overpaid(books, sender)
+    await books.import_bank_csv(b"Date,Description,Amount\n25/09/2026,REFUND ACME KITCHENS,-95.00\n", "s.csv", USER)
+    (line,) = await books.stored_bank_lines()
+    use = await cr_.refund_credit(books, cr_.RefundIn(credit=cid, bank_line_id=line.id), USER)
+    assert (use.amount_pence, use.date) == (9500, date(2026, 9, 25))  # from the bank line
+    ev = await books.get_event(use.event_id or "")
+    assert ev.kind == "bank" and (ev.net, ev.vat) == (0, 0)
+    assert {ln.account: (ln.debit, ln.credit) for ln in ev.lines} == {"1100 Debtors": (9500, 0), "1200 Bank": (0, 9500)}
+    (matched,) = await books.stored_bank_lines()
+    assert matched.status == "matched" and matched.event_ids() == [ev.id]
+
+    _, st, t = await _acme(books)
+    assert [ln.kind for ln in st.lines][-1] == "refund" and st.lines[-1].paid_pence == 9500
+    assert (st.credit_pence, st.closing_balance_pence, t.balance_pence) == (0, 3000, 3000)  # INV-0002 still owed
+    assert _ledger_sum(await books.list_events(), "1100 Debtors") == 3000
+    assert (await _money(books, a.number)).payment_status == "paid"  # nothing over any more
+
+    # While refunded, the overpayment cannot be removed from under it
+    (pay,) = [p for p in (await _money(books, a.number)).payments if p.source == "recorded"]
+    with pytest.raises(InvoiceStateError, match="refunded"):
+        await pay_.remove_payment(books, pay.id, USER)
+    # Remove the refund: its entry is reversed and the line reopened
+    await cr_.remove_use(books, use.id, USER)
+    (reopened,) = await books.stored_bank_lines()
+    assert reopened.status == "unmatched"
+    assert _ledger_sum(await books.list_events(), "1100 Debtors") == 3000 - 9500
+    await pay_.remove_payment(books, pay.id, USER)  # now it can go
+
+
+async def test_refund_checks(books: Books, sender: FakeMailSender):
+    _, _, cid = await _overpaid(books, sender)
+    with pytest.raises(cr_.CreditError, match="no more than"):
+        await cr_.refund_credit(books, cr_.RefundIn(credit=cid, amount_pence=9600), USER)
+    await books.import_bank_csv(b"Date,Description,Amount\n25/09/2026,ACME,95.00\n", "s.csv", USER)
+    (line,) = await books.stored_bank_lines()
+    with pytest.raises(cr_.CreditError, match="money out"):
+        await cr_.refund_credit(books, cr_.RefundIn(credit=cid, bank_line_id=line.id), USER)
+    part = await cr_.refund_credit(books, cr_.RefundIn(credit=cid, amount_pence=4000, date=date(2026, 9, 30)), USER)
+    assert part.account == "1200 Bank"
+    (left,) = (await pay_.load_ledger(books)).settlement().credits
+    assert left.amount_pence == 5500
+
+
+async def test_a_customer_credit_note_bigger_than_the_debt_applied_to_another_invoice(
+    books: Books, sender: FakeMailSender
+):
+    a = await _sent(books, sender, date(2026, 9, 1))  # £405
+    b = await _sent(books, sender, date(2026, 9, 5), lines=[FIX])  # £30
+    await inv_.mark_paid(books, a.number, USER, amount_pence=40500, paid_on=date(2026, 9, 6))
+    cn = await cn_.create_credit_note(
+        books, a.number, CreditNoteDraft(reason="Snagging", issue_date=date(2026, 9, 7)), USER
+    )
+    cid = credit_id("credit_note", cn.event_id or "")
+    use = await cr_.apply_credit(
+        books, cr_.ApplyIn(credit=cid, event_id=b.event_id or ""), USER, today=date(2026, 9, 8)
+    )
+    mb = await _money(books, b.number)
+    assert (mb.credited_pence, mb.balance_pence, mb.payment_status) == (3000, 0, "paid")
+    assert [(c.number, c.applied_pence, c.use_id) for c in mb.credit_notes] == [(cn.number, 3000, use.id)]
+    with pytest.raises(InvoiceStateError, match="applied to another document"):
+        await cn_.void_credit_note(books, cn.number, USER, "wrong")
+    with pytest.raises(InvoiceStateError, match="credit has been applied"):
+        await inv_.void_invoice(books, b.number, USER, "wrong")
+    _, st, _ = await _acme(books)
+    assert st.credit_pence == 40500 - 3000
+    assert [(u.kind, u.source, u.applied_pence, u.doc_event_id) for u in st.credit_uses] == [
+        ("apply", "credit_note", 3000, b.event_id)
+    ]
+
+
+async def test_a_supplier_credit_refunded_by_the_supplier_on_a_bank_line(books: Books):
+    bill = await _post(books, _bill(240.00, 40.00))
+    await pay_.record_payment(
+        books,
+        pay_.PaymentIn(
+            side="purchase",
+            date=date(2026, 9, 30),
+            amount_pence=24000,
+            allocations=[pay_.AllocationIn(event_id=bill.event_id or "", amount_pence=24000)],
+        ),
+        USER,
+    )
+    cn = await _post(books, _bill(-60.00, -10.00, day="2026-10-05", doc_type="credit_note"))
+    rows = (await pay_.load_ledger(books)).settlement().credits
+    assert [(c.side, c.amount_pence, c.source) for c in rows] == [("purchase", 6000, "credit_note")]
+    await books.import_bank_csv(b"Date,Description,Amount\n09/10/2026,HOWDENS REFUND,60.00\n", "s.csv", USER)
+    (line,) = await books.stored_bank_lines()
+    use = await cr_.refund_credit(books, cr_.RefundIn(credit=rows[0].id, bank_line_id=line.id), USER)
+    ev = await books.get_event(use.event_id or "")
+    assert {ln.account: (ln.debit, ln.credit) for ln in ev.lines} == {
+        "1200 Bank": (6000, 0),
+        "2100 Creditors": (0, 6000),
+    }
+    contacts, ledger, _ = await cb.contact_book(books)
+    howdens = next(c for c in contacts if c.name == "Howdens Joinery")
+    docs = cb.assign(contacts, cb.documents(ledger))[howdens.id]
+    st = cb.statement(howdens, docs, ledger)
+    assert (st.credit_pence, st.closing_balance_pence) == (0, 0)
+    assert st.lines[-1].kind == "refund" and st.lines[-1].paid_pence == -6000
+    assert _ledger_sum(await books.list_events(), "2100 Creditors") == 0
+    with pytest.raises(Exception, match="applied or refunded"):
+        await undo(books, cn.event_id or "", USER)
+
+
+async def test_credit_routes(client, books: Books, sender: FakeMailSender):
+    _, b, cid = await _overpaid(books, sender)
+    rows = client.get("/credits?side=sale", headers=H).json()
+    assert [(r["id"], r["amount_pence"], r["counterparty"], r["reference"]) for r in rows] == [
+        (cid, 9500, "Acme Kitchens Ltd", "INV-0001")
+    ]
+    r = client.post("/credits/apply", json={"credit": cid, "event_id": b.event_id, "amount_pence": 1000}, headers=H)
+    assert r.status_code == 200, r.text
+    inv = client.get(f"/invoices/{b.number}", headers=H).json()
+    row = next(p for p in inv["money"]["payments"] if p["source"] == "credit")
+    assert inv["money"]["balance_pence"] == 2000
+    # Remove from the invoice page
+    r = client.delete(f"/invoices/{b.number}/payments/{row['id']}", headers=H)
+    assert r.status_code == 200 and r.json()["money"]["balance_pence"] == 3000
+    r = client.post("/credits/refund", json={"credit": cid, "amount_pence": 99999}, headers=H)
+    assert r.status_code == 400
+    r = client.post("/credits/refund", json={"credit": cid, "date": "2026-09-30"}, headers=H)
+    assert r.status_code == 200 and r.json()["amount_pence"] == 9500
+    assert client.delete(f"/credits/uses/{r.json()['id']}", headers=H).status_code == 200
+    assert client.delete("/credits/uses/0123456789abcdef", headers=H).status_code == 404
+    contact = next(c for c in client.get("/contacts", headers=H).json()["contacts"] if c["name"] == "Acme Kitchens Ltd")
+    st = client.get(f"/contacts/{contact['id']}/statement", headers=H).json()
+    assert [c["id"] for c in st["credits"]] == [cid]
+    assert [d["reference"] for d in st["open_documents"]] == [b.number]
+    assert st["credit_uses"] == []  # both were removed above
+    # Payment terms are editable through the route (used by ageing)
+    r = client.put(f"/contacts/{contact['id']}", json={"terms_days": 14}, headers=H)
+    assert r.status_code == 200 and r.json()["terms_days"] == 14
+    assert client.put(f"/contacts/{contact['id']}", json={"terms_days": 400}, headers=H).status_code == 422
+
+
+async def test_a_supplier_credit_note_naming_its_bill_is_allocated_to_it(books: Books):
+    bill = await _post(books, _bill(240.00, 40.00))  # H-77
+    other = _bill(120.00, 20.00, day="2026-09-03")
+    other.invoice_number = "H-78"
+    await _post(books, other)
+    doc = _bill(-60.00, -10.00, day="2026-10-05", doc_type="credit_note")
+    doc.original_invoice_number = "Inv no. h 77"  # as printed: spacing, case and a prefix differ
+    cn = await _post(books, doc)
+    ev = await books.get_event(cn.event_id or "")
+    assert ev.credits == bill.event_id
+    ledger = await pay_.load_ledger(books)
+    s = ledger.settlement()
+    assert s.outstanding(bill.event_id or "") == 18000 and s.credits == []  # off the bill, not a loose credit
+    (h77,) = [d for d in pay_.open_documents(ledger, "purchase") if d.reference == "H-77"]
+    assert h77.outstanding_pence == 18000
+
+
+async def test_a_supplier_credit_note_for_an_unknown_bill_stays_a_credit(books: Books):
+    await _post(books, _bill(240.00, 40.00))
+    doc = _bill(-60.00, -10.00, day="2026-10-05", doc_type="credit_note")
+    doc.original_invoice_number = "H-99"
+    cn = await _post(books, doc)
+    assert (await books.get_event(cn.event_id or "")).credits is None
+    (credit,) = (await pay_.load_ledger(books)).settlement().credits
+    assert (credit.side, credit.amount_pence) == ("purchase", 6000)
+
+
+def test_credit_note_invoice_numbers_are_compared_as_printed():
+    from app.approve import same_number
+
+    assert same_number("Inv no. H 77", "H-77") and same_number("H77", "h-77") and same_number("#H-77", "H-77")
+    assert not same_number("H-177", "77") and not same_number("H-77", "H-78") and not same_number("Credit", "Credit")
+    assert not same_number(None, "H-77") and not same_number("H-77", None)
+
+
+# --------------------------------------------------------------------------- #
+# One movement counted once: recorded payments and Bank-page matches
+# --------------------------------------------------------------------------- #
+
+
+async def test_a_bank_line_for_a_recorded_payment_is_linked_to_it_not_counted_again(
+    client, books: Books, sender: FakeMailSender
+):
+    """The review's scenario: Record payment for INV-0001 (no statement yet), then the statement arrives with the
+    same £405 in. Matching the line to the invoice too would make it 'overpaid' by £405."""
+    from app.books import BankMatchError
+
+    inv = await _sent(books, sender)
+    await inv_.mark_paid(books, inv.number, USER, paid_on=date(2026, 9, 20))  # records £405, posts Dr Bank
+    await books.import_bank_csv(b"Date,Description,Amount\n22/09/2026,ACME KITCHENS,405.00\n", "s.csv", USER)
+    (line,) = await books.stored_bank_lines()
+    (rec,) = await pay_._records(books)
+
+    # The Bank page suggests the recorded payment, not the invoice
+    (sug,) = await books.bank_suggestions()
+    assert (sug.line_id, sug.event_ids) == (line.id, [rec.event_id])
+    rows = client.get("/books/bank/suggestions", headers=H).json()
+    assert rows[0]["events"][0]["amount_pence"] == 40500
+    assert rows[0]["events"][0]["label"].startswith("Recorded payment of £405.00 on 20/09/2026")
+    # Matching it to the invoice again is refused, with the way out named
+    with pytest.raises(BankMatchError, match="Link this line to that recorded payment"):
+        await books.confirm_match(line.id, [inv.event_id or ""], USER)
+    r = client.post(f"/books/bank/lines/{line.id}/match", json={"event_id": inv.event_id}, headers=H)
+    assert r.status_code == 409
+    # Linking it: counted once
+    await books.confirm_match(line.id, [rec.event_id or ""], USER)
+    m = await _money(books, inv.number)
+    assert (m.paid_pence, m.overpaid_pence, m.payment_status) == (40500, 0, "paid")
+    assert (await pay_.load_ledger(books)).settlement().credits == []
+    (linked,) = await pay_._records(books)
+    assert linked.bank_line_id == line.id
+    # Removing the payment unmatches its line too
+    await pay_.remove_payment(books, rec.id, USER)
+    (line,) = await books.stored_bank_lines()
+    assert line.status == "unmatched" and (await _money(books, inv.number)).balance_pence == 40500
+
+
+async def test_a_line_must_be_the_recorded_payments_amount_and_unlinking_clears_it(
+    books: Books, sender: FakeMailSender
+):
+    from app.books import BankMatchError
+
+    inv = await _sent(books, sender)
+    await inv_.mark_paid(books, inv.number, USER, paid_on=date(2026, 9, 20))
+    await books.import_bank_csv(
+        b"Date,Description,Amount\n22/09/2026,ACME KITCHENS,400.00\n23/09/2026,ACME KITCHENS,405.00\n", "s.csv", USER
+    )
+    short, exact = await books.stored_bank_lines()
+    (rec,) = await pay_._records(books)
+    assert [m.line_id for m in await books.bank_suggestions()] == [exact.id]  # only the line of the same amount
+    with pytest.raises(BankMatchError, match="£400.00 in"):
+        await books.confirm_match(short.id, [rec.event_id or ""], USER)
+    await books.confirm_match(exact.id, [rec.event_id or ""], USER)
+    await books.unmatch(exact.id, USER)  # undone on the Bank page
+    (rec,) = await pay_._records(books)
+    assert rec.bank_line_id is None
+
+
+async def test_the_reverse_a_bank_page_match_is_posted_as_a_payment_not_recorded_again(
+    client, books: Books, sender: FakeMailSender
+):
+    inv = await _sent(books, sender)
+    await books.import_bank_csv(b"Date,Description,Amount\n22/09/2026,ACME KITCHENS,405.00\n", "s.csv", USER)
+    (line,) = await books.stored_bank_lines()
+    await books.confirm_match(line.id, [inv.event_id or ""], USER)  # on the Bank page: nothing posted
+    with pytest.raises(InvoiceStateError, match="Post as payment"):
+        await pay_.record_payment(books, _pay("sale", 40500, (inv.event_id, 40500)), USER)
+
+    r = client.post(f"/payments/from-bank-line/{line.id}", headers=H)
+    assert r.status_code == 200, r.text
+    rec = r.json()
+    assert (rec["amount_pence"], rec["date"], rec["bank_line_id"]) == (40500, "2026-09-22", line.id)
+    pay = await books.get_event(rec["event_id"])
+    assert {ln.account: (ln.debit, ln.credit) for ln in pay.lines} == {
+        "1200 Bank": (40500, 0),
+        "1100 Debtors": (0, 40500),
+    }
+    (line,) = await books.stored_bank_lines()
+    assert line.status == "matched" and line.event_ids() == [rec["event_id"]]
+    m = await _money(books, inv.number)
+    assert (m.paid_pence, m.overpaid_pence, [p.source for p in m.payments]) == (40500, 0, ["recorded"])
+    assert client.post(f"/payments/from-bank-line/{line.id}", headers=H).status_code == 400  # not a Bank-page match
+
+
+async def test_the_bank_page_offers_a_refund_line_against_a_credit(books: Books, sender: FakeMailSender):
+    from app.bank_reconcile import approve_line, reconcile_lines
+
+    inv = await _sent(books, sender)
+    await inv_.mark_paid(books, inv.number, USER, amount_pence=50000, paid_on=date(2026, 9, 20))  # £95 over
+    await books.import_bank_csv(b"Date,Description,Amount\n28/09/2026,ACME KITCHENS REFUND,-95.00\n", "s.csv", USER)
+    (line,) = await books.stored_bank_lines()
+    (row,) = await reconcile_lines(books)
+    assert row.refund is not None and (row.refund.side, row.refund.counterparty) == ("sale", "Acme Kitchens Ltd")
+    out = await approve_line(books, line.id, "refund", USER)
+    assert out["line"].status == "matched"
+    ev = await books.get_event(out["event_id"])
+    assert {ln.account: (ln.debit, ln.credit) for ln in ev.lines} == {"1100 Debtors": (9500, 0), "1200 Bank": (0, 9500)}
+    assert (await pay_.load_ledger(books)).settlement().credits == []
+
+
+async def test_a_supplier_refund_line_matches_the_supplier_credit(books: Books):
+    from app.bank_reconcile import approve_line, reconcile_lines
+
+    await _post(books, _bill(-60.00, -10.00, day="2026-10-05", doc_type="credit_note"))  # nothing owed: all credit
+    await books.import_bank_csv(b"Date,Description,Amount\n09/10/2026,HOWDENS JOINERY,60.00\n", "s.csv", USER)
+    (line,) = await books.stored_bank_lines()
+    (row,) = await reconcile_lines(books)
+    assert row.refund is not None and row.refund.side == "purchase" and row.exact is None
+    out = await approve_line(books, line.id, "refund", USER)
+    ev = await books.get_event(out["event_id"])
+    assert {ln.account: (ln.debit, ln.credit) for ln in ev.lines} == {
+        "1200 Bank": (6000, 0),
+        "2100 Creditors": (0, 6000),
+    }

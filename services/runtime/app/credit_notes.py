@@ -372,6 +372,10 @@ async def void_credit_note(books: Books, number: str, user: str, reason: str) ->
     if not reason.strip():
         raise InvoiceError("Say why the credit note is void")
     if cn.event_id:
+        from app.credits import refuse_while_used, uses_of
+
+        refuse_while_used(await uses_of(books, "credit_note", cn.event_id), f"credit note {number}")
+    if cn.event_id:
         try:
             event = await books.get_event(cn.event_id)
         except FileNotFoundError:

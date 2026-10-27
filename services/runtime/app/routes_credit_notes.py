@@ -1,5 +1,5 @@
-"""/credit-notes/* and /payments/*: credit notes to customers (app/credit_notes.py) and payments against sales
-invoices and bills (app/payments.py).
+"""/credit-notes/*, /payments/* and /credits/*: credit notes to customers (app/credit_notes.py), payments against
+sales invoices and bills (app/payments.py), and credits on contacts applied or refunded (app/credits.py).
 
 Same headers as /invoices/*. Creating a credit note posts it, so the body must carry `confirm: true`, which the app
 sets only after the user ticked the confirmation; emailing one needs `Mail.Send` and `confirm: true` too.
@@ -15,15 +15,17 @@ from pydantic import BaseModel, Field, StrictBool
 
 from accnomos_connectors.base import MailSender
 from app import credit_notes as cn_
+from app import credits as cr_
 from app import invoicing as inv_
 from app import payments as pay_
-from app.books import Books
+from app.books import BankMatchError, Books
+from app.contacts import documents as cb_documents
 from app.credit_notes import CreditLineIn, CreditNote, CreditNoteDraft
 from app.invoicing import InvoiceError, InvoiceStateError
 from app.pdf import render_invoice
 from app.routes_books import get_books, require_user
 from app.routes_invoices import EmailDraft, SendBody, VoidBody, get_sender
-from app.settlement import Payment, PaymentRecord, Side
+from app.settlement import Credit, CreditUse, Payment, PaymentRecord, Side
 from app.validation import Day, StrictBody
 
 router = APIRouter(tags=["credit notes", "payments"])
@@ -177,6 +179,22 @@ async def record(
         raise _http(exc) from exc
 
 
+@router.post("/payments/from-bank-line/{line_id}", response_model=PaymentRecord)
+async def from_bank_line(
+    line_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> PaymentRecord:
+    """*Post as payment*: a line matched straight to invoices or bills on the Bank page becomes a recorded payment for
+    the same split (posted to 1200 Bank and Debtors/Creditors), and the line is matched to it."""
+    try:
+        return await pay_.payment_from_bank_line(books, line_id, user)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="No such bank line") from exc
+    except BankMatchError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except InvoiceError as exc:
+        raise _http(exc) from exc
+
+
 class Removed(BaseModel):
     documents: list[str]
 
@@ -188,5 +206,71 @@ async def remove(payment_id: str, books: Books = Depends(get_books), user: str =
         return Removed(documents=await pay_.remove_payment(books, payment_id, user))
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="No such payment") from exc
+    except InvoiceError as exc:
+        raise _http(exc) from exc
+
+
+# --------------------------------------------------------------------------- #
+# Credits on a contact: apply to another document, or refund (app/credits.py)
+# --------------------------------------------------------------------------- #
+
+
+class CreditRow(Credit):
+    counterparty: str
+    reference: str | None  # the document the credit came with (INV-0001, CN-0002, the supplier's number)
+
+
+@router.get("/credits", response_model=list[CreditRow])
+async def list_credits(side: Side | None = None, books: Books = Depends(get_books)) -> list[CreditRow]:
+    """Money left on customers' and suppliers' accounts, credit by credit (what is left after uses)."""
+    ledger = await pay_.load_ledger(books)
+    docs = {d.event.id: d for d in cb_documents(ledger)}
+    out: list[CreditRow] = []
+    for c in ledger.settlement().credits:
+        if side is not None and c.side != side:
+            continue
+        d = docs.get(c.doc_event_id)
+        out.append(
+            CreditRow(
+                **c.model_dump(),
+                counterparty=d.name if d else "",
+                reference=(ledger.refs.get(c.doc_event_id) or (d.reference if d else None)),
+            )
+        )
+    return sorted(out, key=lambda r: (r.date, r.id))
+
+
+@router.post("/credits/apply", response_model=CreditUse)
+async def apply_credit(
+    body: cr_.ApplyIn, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> CreditUse:
+    """Put a contact's credit towards another of its open invoices or bills. Nothing is posted."""
+    try:
+        return await cr_.apply_credit(books, body, user)
+    except InvoiceError as exc:
+        raise _http(exc) from exc
+
+
+@router.post("/credits/refund", response_model=CreditUse)
+async def refund_credit(
+    body: cr_.RefundIn, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> CreditUse:
+    """Pay a customer's credit back (Dr 1100 Debtors / Cr 1200 Bank), or record a supplier paying theirs back
+    (Dr 1200 Bank / Cr 2100 Creditors); with `bank_line_id` the statement line is matched to it."""
+    try:
+        return await cr_.refund_credit(books, body, user)
+    except InvoiceError as exc:
+        raise _http(exc) from exc
+
+
+@router.delete("/credits/uses/{use_id}", response_model=CreditUse)
+async def remove_credit_use(
+    use_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> CreditUse:
+    """Take back an apply (the credit is on account again) or a refund (its entry is reversed)."""
+    try:
+        return await cr_.remove_use(books, use_id, user)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="No such use of a credit") from exc
     except InvoiceError as exc:
         raise _http(exc) from exc

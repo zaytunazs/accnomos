@@ -327,7 +327,12 @@ async def remove_payment(
     if m is None or not any(p.id == payment_id for p in m.payments):
         raise HTTPException(status_code=404, detail="No such payment on this invoice")
     try:
-        await pay_.remove_payment(books, payment_id, user)
+        if next(p for p in m.payments if p.id == payment_id).source == "credit":
+            from app.credits import remove_use
+
+            await remove_use(books, payment_id, user)
+        else:
+            await pay_.remove_payment(books, payment_id, user)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="No such payment") from exc
     except InvoiceError as exc:

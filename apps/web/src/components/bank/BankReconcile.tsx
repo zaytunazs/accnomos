@@ -52,16 +52,18 @@ export default function BankReconcile({ account, lines, onChanged, onCreateRule 
     })().catch(() => null);
   }, [reload]);
 
-  async function approve(lineId: string, kind: "exact" | "rule" | "ai", label: string) {
+  async function approve(lineId: string, kind: "exact" | "refund" | "rule" | "ai", label: string) {
     setBusy(`${lineId}:${kind}`);
     setNote(null);
     try {
       const ai = kind === "ai" ? aiByLine[lineId] ?? null : null;
       const r = await runtime.bank.reconcileApprove(account, lineId, kind, ai);
       setNote(
-        r.event_id
-          ? `Posted ${label} through Review approval.`
-          : `Matched ${label}.`,
+        kind === "refund"
+          ? `Recorded ${label} as a refund of the credit and matched the line.`
+          : r.event_id
+            ? `Posted ${label} through Review approval.`
+            : `Matched ${label}.`,
       );
       onChanged();
       await reload();
@@ -150,6 +152,24 @@ export default function BankReconcile({ account, lines, onChanged, onCreateRule 
                   >
                     {busy === `${r.line_id}:exact` ? "…" : "Approve"}
                   </button>
+                </div>
+              )}
+              {r.refund && (
+                <div data-reconcile-refund className="flex flex-wrap items-center gap-2 rounded-xl bg-teal-tint p-3">
+                  <span className="rounded-full bg-teal px-2 py-0.5 text-[12px] font-bold text-white">Refund of a credit</span>
+                  <span className="text-sm">{r.refund.reasons.join(" · ")}</span>
+                  <button
+                    type="button"
+                    disabled={busy !== null}
+                    onClick={() => void approve(r.line_id, "refund", label)}
+                    aria-label={`Approve refund of credit: ${label}`}
+                    className="h-10 rounded-xl bg-teal px-4 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-60"
+                  >
+                    {busy === `${r.line_id}:refund` ? "…" : "Approve"}
+                  </button>
+                  <span className="basis-full text-[12px] text-muted">
+                    Posts {r.refund.side === "sale" ? "Dr 1100 Debtors / Cr 1200 Bank" : "Dr 1200 Bank / Cr 2100 Creditors"} and matches this line.
+                  </span>
                 </div>
               )}
               {r.rule && (

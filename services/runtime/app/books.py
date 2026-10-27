@@ -510,10 +510,23 @@ class Books:
         }
 
     async def bank_suggestions(self, lines: list[BankLine] | None = None) -> list[Match]:
+        """Suggested matches for open lines. A line for money already recorded (a payment or refund posted from
+        Invoices or Contacts) is suggested to that entry first; documents already settled are never suggested, so the
+        same money is not counted twice (app/payments.py)."""
+        from app.contacts import load_ledger
+        from app.payments import link_suggestions, settled_documents
+
         lines = await self.stored_bank_lines() if lines is None else lines
         if all(ln.resolved for ln in lines):
             return []
-        return suggest_matches(lines, await self.live_events(), await self.card_hints())
+        ledger = await load_ledger(self)
+        ledger.bank_lines = lines
+        linked = link_suggestions(ledger, lines)
+        busy = {m.line_id for m in linked}
+        settled = settled_documents(ledger)
+        events = [e for e in await self.live_events() if e.id not in settled]
+        rest = [ln for ln in lines if ln.id not in busy]
+        return linked + suggest_matches(rest, events, await self.card_hints())
 
     async def live_events(self) -> list[LedgerEvent]:
         """Posted events that still stand: not a reversal, and not undone by one."""
@@ -560,9 +573,13 @@ class Books:
         taken = {i for ln in await self.stored_bank_lines() if ln.status == "matched" for i in ln.event_ids()}
         if clash := [i for i in ids if i in taken]:
             raise BankMatchError(f"Ledger entry {clash[0]} is already matched to another bank line")
+        from app.payments import check_match, on_line_changed
+
+        await check_match(self, line, ids)  # money already recorded is linked, not counted again
         update: dict[str, Any] = {"status": "matched", "matched_event_id": ids[0], "matched_event_ids": ids}
         await self._set_line(path, line_id, update)
         await self.audit(f"user:{user}", "bank_matched", {"line": line_id, "events": ids, "file": path})
+        await on_line_changed(self, line_id, ids, True)
         await self._sync_invoices(ids)
         await self.rebuild_safely(f"user:{user}")
         return line.model_copy(update=update)
@@ -584,6 +601,9 @@ class Books:
                 "file": path,
             },
         )
+        from app.payments import on_line_changed
+
+        await on_line_changed(self, line_id, line.event_ids(), False)
         await self._sync_invoices(line.event_ids())
         await self.rebuild_safely(f"user:{user}")
         return line.model_copy(update=update)

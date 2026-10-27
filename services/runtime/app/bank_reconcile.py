@@ -7,7 +7,12 @@ Per open line the three suggestion kinds are:
     appears in the line's reference or description;
 (b) rule: the first matching bank rule (app/bank_rules.py), evaluated by code;
 (c) AI: a coding suggested by the user's own model through the existing AI
-    config, always labelled "suggested by AI".
+    config, always labelled "suggested by AI";
+(d) refund: a credit on a contact for the same amount the line could be paying
+    back (money out to a customer with a credit, money in from a supplier who
+    owes the user a credit): approving it records the refund (app/credits.py),
+    posted Dr 1100 Debtors / Cr 1200 Bank or Dr 1200 Bank / Cr 2100 Creditors,
+    and matches the line to it.
 
 The user approves each suggestion. Approving an exact match records the match
 (the same as confirming a suggested match: matching never posts). Approving a
@@ -77,9 +82,19 @@ class AiSuggestion(StrictBody):
     by: str = Field(default=AI_LABEL, max_length=40)
 
 
+class RefundSuggestion(BaseModel):
+    kind: Literal["refund"] = "refund"
+    credit: str  # the credit's id (app/settlement.py Credit.id)
+    side: Literal["sale", "purchase"]
+    counterparty: str
+    amount_pence: int
+    reasons: list[str]
+
+
 class ReconcileRow(BaseModel):
     line_id: str
     exact: ExactSuggestion | None = None
+    refund: RefundSuggestion | None = None
     rule: RuleSuggestion | None = None
     ai: AiSuggestion | None = None  # only when asked for (GET /reconcile?ai=1): one model call per line
 
@@ -105,6 +120,10 @@ async def suggest_exact(books: Books, line: Any) -> ExactSuggestion | None:
         return None
 
     taken = {i for ln in await books.stored_bank_lines() if ln.status == "matched" for i in ln.event_ids()}
+    from app.contacts import load_ledger
+    from app.payments import settled_documents
+
+    taken |= settled_documents(await load_ledger(books))  # already paid another way: never matched again
 
     try:
         open_invoices = await inv_.list_invoices(books, "sent")
@@ -151,6 +170,39 @@ async def _proposal_invoice_number(books: Books, proposal_id: str | None) -> str
     except FileNotFoundError:
         return None
     return (p.extracted.invoice_number or "").strip() or None
+
+
+async def suggest_refund(books: Books, line: Any, ledger: Any = None) -> RefundSuggestion | None:
+    """A credit on a contact of exactly the line's amount, dated on or before it, that the line pays back: money out
+    for a customer's credit, money in for a supplier's. A credit whose contact is named in the line comes first."""
+    from accnomos_ledger.matching import tokens
+    from app.contacts import documents, load_ledger
+    from app.invoicing import money
+
+    if not line.amount_pence:
+        return None
+    ledger = ledger or await load_ledger(books)
+    side = "sale" if line.amount_pence < 0 else "purchase"
+    names = {d.event.id: d.name for d in documents(ledger)}
+    words = tokens(f"{line.description} {line.reference or ''}")
+    hits = [
+        c
+        for c in ledger.settlement().credits
+        if c.side == side and c.amount_pence == abs(line.amount_pence) and c.date <= line.date
+    ]
+    if not hits:
+        return None
+    hits.sort(key=lambda c: (not (tokens(names.get(c.doc_event_id, "")) & words), c.date))
+    c = hits[0]
+    who = names.get(c.doc_event_id, "")
+    what = "a refund of the credit on" if side == "sale" else "the refund of the credit owed by"
+    return RefundSuggestion(
+        credit=c.id,
+        side=side,
+        counterparty=who,
+        amount_pence=c.amount_pence,
+        reasons=[f"{money(c.amount_pence)} is {what} {who}"],
+    )
 
 
 async def suggest_rule(books: Books, line: Any) -> RuleSuggestion | None:
@@ -216,20 +268,25 @@ async def reconcile_lines(
     books: Books, lines: Any = None, *, with_ai: bool = False, cfg: AiConfig | None = None
 ) -> list[ReconcileRow]:
     """One row per open line with its exact and rule suggestions (and AI ones when asked)."""
+    from app.contacts import load_ledger
     from app.journal import CATEGORY_ACCOUNTS, SUNDRY
 
     stored = await books.stored_bank_lines() if lines is None else lines
     accounts = sorted(set(CATEGORY_ACCOUNTS.values()) | {SUNDRY})
     rows: list[ReconcileRow] = []
+    ledger = None
     for line in stored:
         if line.resolved:
             continue
         exact = await suggest_exact(books, line)
+        if ledger is None:
+            ledger = await load_ledger(books)
+        refund = await suggest_refund(books, line, ledger)
         rule = await suggest_rule(books, line)
         ai = await suggest_ai(line, cfg, accounts) if with_ai and cfg is not None else None
-        if exact is None and rule is None and ai is None:
+        if exact is None and refund is None and rule is None and ai is None:
             continue
-        rows.append(ReconcileRow(line_id=line.id, exact=exact, rule=rule, ai=ai))
+        rows.append(ReconcileRow(line_id=line.id, exact=exact, refund=refund, rule=rule, ai=ai))
     return rows
 
 
@@ -252,6 +309,20 @@ async def approve_line(
             raise BankMatchError("There is no exact invoice or bill match for this line")
         matched = await books.confirm_match(line_id, exact.event_ids, user)
         return {"line": matched, "proposal_id": None, "event_id": None}
+    if kind == "refund":
+        from app.credits import RefundIn, refund_credit
+        from app.invoicing import InvoiceError
+
+        refund = await suggest_refund(books, line)
+        if refund is None:
+            raise BankMatchError("There is no credit on a contact for this amount")
+        try:
+            use = await refund_credit(
+                books, RefundIn(credit=refund.credit, amount_pence=None, reference=None, bank_line_id=line_id), user
+            )
+        except InvoiceError as exc:
+            raise BankMatchError(str(exc)) from exc
+        return {"line": await books.find_bank_line(line_id), "proposal_id": None, "event_id": use.event_id}
     if kind == "rule":
         suggestion = await suggest_rule(books, line)
         if suggestion is None:

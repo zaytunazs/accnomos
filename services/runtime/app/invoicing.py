@@ -835,6 +835,10 @@ async def void_invoice(books: Books, number: str, user: str, reason: str) -> Inv
             )
         if any(inv.event_id in ln.event_ids() for ln in await books.stored_bank_lines() if ln.status == "matched"):
             raise InvoiceStateError("A bank line is matched to this invoice; unmatch it first")
+        from app.credits import uses_on
+
+        if await uses_on(books, inv.event_id):
+            raise InvoiceStateError(f"A credit has been applied to invoice {number}; remove it first")
         if issued := [c.number for c in await list_credit_notes(books, number) if c.status == "issued"]:
             raise InvoiceStateError(
                 f"Credit note {', '.join(issued)} is against invoice {number}; void it first, or keep the invoice "

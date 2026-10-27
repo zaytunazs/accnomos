@@ -41,6 +41,7 @@ export interface RtExtracted {
   supplier_vat_number: string | null;
   customer_name: string | null;
   invoice_number: string | null;
+  original_invoice_number?: string | null; // a supplier credit note: the bill it credits, if printed
   date: string;
   currency: string;
   lines: RtLine[];
@@ -360,7 +361,7 @@ export const runtime = {
   /** /contacts/* (services/runtime/app/routes_contacts.py): money is worked out from the ledger on each call. */
   contacts: (a: AccountInfo) => call<RtContactList>(a, "/contacts"),
   refreshContacts: (a: AccountInfo) => call<RtContactList>(a, "/contacts/refresh", { method: "POST" }),
-  editContact: (a: AccountInfo, id: string, edits: Partial<Record<RtContactField, string | null>>) =>
+  editContact: (a: AccountInfo, id: string, edits: RtContactEdits) =>
     call<RtContact>(a, `/contacts/${id}`, { method: "PUT", body: JSON.stringify(edits) }),
   importOutlookContacts: (a: AccountInfo, addNew: boolean) =>
     call<RtContactImport>(a, "/contacts/import-outlook", { method: "POST", body: JSON.stringify({ add_new: addNew }) },
@@ -419,7 +420,7 @@ export const runtime = {
       return call<RtBankRule>(a, `/books/bank/lines/${lineId}/rule-draft${q ? `?${q}` : ""}`);
     },
     /** Approve one suggestion: exact records the match; rule/AI posts through Review approval. */
-    reconcileApprove: (a: AccountInfo, lineId: string, kind: "exact" | "rule" | "ai", ai?: RtAiSuggestion | null) =>
+    reconcileApprove: (a: AccountInfo, lineId: string, kind: "exact" | "refund" | "rule" | "ai", ai?: RtAiSuggestion | null) =>
       call<{ line: RtBankLine; proposal_id: string | null; event_id: string | null }>(
         a, `/books/bank/lines/${lineId}/approve`, { method: "POST", body: JSON.stringify({ kind, ai: ai ?? null }) }),
   },
@@ -478,6 +479,24 @@ export const runtime = {
       mailSendScopesFor(accountKind(a))),
   voidCreditNote: (a: AccountInfo, id: string, reason: string) =>
     call<RtCreditNote>(a, `/credit-notes/${encodeURIComponent(id)}/void`, { method: "POST", body: JSON.stringify({ reason }) }),
+  /** POST /payments: a payment against bills (side "purchase": Dr 2100 Creditors / Cr 1200 Bank) or sales invoices. */
+  recordPayment: (a: AccountInfo, body: RtPaymentIn) =>
+    call<RtPaymentRecord>(a, "/payments", { method: "POST", body: JSON.stringify(body) }),
+  removePayment: (a: AccountInfo, id: string) =>
+    call<{ documents: string[] }>(a, `/payments/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  /** Post as payment: a bank line matched straight to invoices on the Bank page becomes a recorded payment. */
+  paymentFromBankLine: (a: AccountInfo, lineId: string) =>
+    call<RtPaymentRecord>(a, `/payments/from-bank-line/${encodeURIComponent(lineId)}`, { method: "POST" }),
+  /** Credits on contacts (services/runtime/app/credits.py): apply to another document (nothing posted) or refund. */
+  credits: (a: AccountInfo, side?: "sale" | "purchase") => call<RtCreditRow[]>(a, `/credits${side ? `?side=${side}` : ""}`),
+  applyCredit: (a: AccountInfo, body: { credit: string; event_id: string; amount_pence?: number; date?: string }) =>
+    call<RtCreditUse>(a, "/credits/apply", { method: "POST", body: JSON.stringify(body) }),
+  refundCredit: (
+    a: AccountInfo,
+    body: { credit: string; amount_pence?: number; date?: string; account?: "1200 Bank" | "1210 Cash"; reference?: string; bank_line_id?: string },
+  ) => call<RtCreditUse>(a, "/credits/refund", { method: "POST", body: JSON.stringify(body) }),
+  removeCreditUse: (a: AccountInfo, id: string) =>
+    call<RtCreditUse>(a, `/credits/uses/${encodeURIComponent(id)}`, { method: "DELETE" }),
   voidInvoice: (a: AccountInfo, id: string, reason: string) =>
     call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/void`, { method: "POST", body: JSON.stringify({ reason }) }),
   /** Drafting sends nothing; the user reads, edits and confirms before reminderSend. */
@@ -766,6 +785,8 @@ export const pence = (p: number) => gbp(p / 100);
 
 /** Contacts (services/runtime/app/contacts.py). Pence are signed from the user's side: + they owe you, − you owe them. */
 export type RtContactField = "name" | "kind" | "vrn" | "email" | "phone" | "address" | "default_category" | "default_vat_code" | "vat_status";
+/** PUT /contacts/{id}: the text fields, plus payment terms in days (null: the 30-day default). */
+export type RtContactEdits = Partial<Record<RtContactField, string | null>> & { terms_days?: number | null };
 /** Whether a supplier charges VAT, as the books remember it: learnt on approval, editable on Contacts. */
 export type RtVatStatus = "registered" | "not_registered" | "unknown";
 export interface RtContact {
@@ -817,8 +838,62 @@ export interface RtStatementLine {
   amount_pence: number;
   paid_pence: number;
   balance_pence: number;
-  kind?: "invoice" | "credit_note" | "payment" | "undo";
-  payment_id?: string | null;
+  kind?: "invoice" | "credit_note" | "payment" | "refund" | "undo";
+  payment_id?: string | null; // a payment: DELETE /payments/{id}; a refund: DELETE /credits/uses/{id}
+}
+/** Money left on a contact's account (an overpayment, or a credit note bigger than what was owed). */
+export interface RtCredit {
+  id: string; // "payment:<id>" or "credit_note:<event id>"
+  side: "sale" | "purchase";
+  date: string;
+  amount_pence: number; // what is left after uses
+  source: "payment" | "credit_note";
+  source_id: string;
+  doc_event_id: string; // the document it came with
+}
+export interface RtCreditRow extends RtCredit {
+  counterparty: string;
+  reference: string | null;
+}
+export interface RtCreditUse {
+  id: string;
+  kind: "apply" | "refund";
+  side: "sale" | "purchase";
+  date: string;
+  amount_pence: number;
+  applied_pence?: number; // in a statement: what it actually took
+  credit: string;
+  doc_event_id: string | null;
+  reference: string | null;
+  event_id: string | null;
+  bank_line_id: string | null;
+}
+export interface RtOpenItem {
+  event_id: string;
+  side: "sale" | "purchase";
+  date: string;
+  due_date: string;
+  reference: string | null;
+  gross_pence: number;
+  outstanding_pence: number;
+}
+export interface RtPaymentIn {
+  side: "sale" | "purchase";
+  date?: string;
+  amount_pence?: number;
+  account?: "1200 Bank" | "1210 Cash";
+  reference?: string;
+  allocations: { event_id: string; amount_pence: number }[];
+  bank_line_id?: string;
+}
+export interface RtPaymentRecord {
+  id: string;
+  side: "sale" | "purchase";
+  date: string;
+  amount_pence: number;
+  account: string;
+  event_id: string | null;
+  bank_line_id: string | null;
 }
 export interface RtStatement {
   contact: RtContact;
@@ -828,6 +903,9 @@ export interface RtStatement {
   closing_balance_pence: number;
   credit_pence?: number; // money on the contact's account (overpaid, or credited more than owed)
   lines: RtStatementLine[];
+  credits?: RtCredit[]; // that money, credit by credit
+  open_documents?: RtOpenItem[]; // invoices and bills still waiting for money
+  credit_uses?: RtCreditUse[]; // credits applied or refunded
 }
 /** "current": not due yet; the others are days past the due date (the invoice's, else terms, else 30 days). */
 export type RtAgedBucket = "current" | "0-30" | "31-60" | "61-90" | "90+";
@@ -958,7 +1036,7 @@ export interface RtInvoice {
 export type RtPaymentStatus = "open" | "part_paid" | "paid" | "overpaid";
 export interface RtInvoicePayment {
   id: string; // remove it with DELETE /invoices/{number}/payments/{id}
-  source: "recorded" | "bank_line" | "marked";
+  source: "recorded" | "bank_line" | "marked" | "credit"; // "credit": another invoice's overpayment applied here
   date: string | null;
   amount_pence: number; // the whole payment
   applied_pence: number; // the part that paid this invoice
@@ -973,7 +1051,7 @@ export interface RtInvoiceMoney {
   overpaid_pence: number;
   payment_status: RtPaymentStatus;
   payments: RtInvoicePayment[];
-  credit_notes: { number: string | null; event_id: string; applied_pence: number }[];
+  credit_notes: { number: string | null; event_id: string; applied_pence: number; use_id?: string | null }[];
 }
 export interface RtCreditNote {
   number: string;
@@ -1069,7 +1147,8 @@ export interface RtBankSuggestion {
   kind: "exact" | "suggested";
   reasons: string[];
   line: RtBankLine;
-  events: { id: string; date: string; counterparty: string | null; amount_pence: number }[];
+  // label: set when the entry is a recorded payment or refund ("Recorded payment of £405.00 on 20/09/2026 (…)")
+  events: { id: string; date: string; counterparty: string | null; amount_pence: number; label?: string | null }[];
 }
 export type RtUnmatchedAction = "create_expense_proposal" | "mark_transfer" | "ignore";
 export interface RtUnmatchedLine {
@@ -1132,9 +1211,19 @@ export interface RtAiSuggestion {
   reason: string;
   by: string; // always "suggested by AI"
 }
+/** A contact's credit of the line's amount that the line pays back (approve: records the refund and matches). */
+export interface RtRefundSuggestion {
+  kind: "refund";
+  credit: string;
+  side: "sale" | "purchase";
+  counterparty: string;
+  amount_pence: number;
+  reasons: string[];
+}
 export interface RtReconcileRow {
   line_id: string;
   exact: RtExactSuggestion | null;
+  refund?: RtRefundSuggestion | null;
   rule: RtRuleSuggestion | null;
   ai: RtAiSuggestion | null;
 }

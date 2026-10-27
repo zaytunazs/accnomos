@@ -114,7 +114,15 @@ def test_gold_suggestions_unmatched_actions_and_reconciled_to(client: TestClient
     travis = by_event["gold-bc-travis"]  # a penny out and five days apart, carried by the name
     assert (travis["line"]["amount_pence"], travis["events"]) == (
         -4501,
-        [{"id": "gold-bc-travis", "date": "2026-10-15", "counterparty": "Travis Perkins", "amount_pence": -4500}],
+        [
+            {
+                "id": "gold-bc-travis",
+                "date": "2026-10-15",
+                "counterparty": "Travis Perkins",
+                "amount_pence": -4500,
+                "label": None,  # set only for a recorded payment or refund
+            }
+        ],
     )
 
     unmatched = client.get("/books/bank/unmatched", headers=H).json()

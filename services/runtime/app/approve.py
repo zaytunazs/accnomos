@@ -117,6 +117,39 @@ def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEve
         raise ApprovalError(str(exc)) from exc
 
 
+def same_number(printed: str | None, number: str | None) -> bool:
+    """Whether a credit note's "original invoice" text names this invoice number. As printed they vary in spacing,
+    case, punctuation and a leading "Inv no." / "#": the number's letter and digit runs must end the text, or the
+    two read the same with everything but letters and digits taken out ("H77" and "H-77")."""
+    a, b = re.findall(r"[0-9a-z]+", (printed or "").lower()), re.findall(r"[0-9a-z]+", (number or "").lower())
+    if not a or not b or not any(c.isdigit() for c in "".join(b)):
+        return False
+    return a[-len(b) :] == b or "".join(a) == "".join(b)
+
+
+async def credited_bill(books: Books, doc: ExtractedDoc) -> str | None:
+    """The supplier's bill a credit note credits: a standing purchase on account (Cr 2100 Creditors) from the same
+    supplier whose invoice number is the credit note's `original_invoice_number`. None when there is no single one
+    (the credit then stays a credit on the supplier, to apply or have refunded from Contacts)."""
+    from app.autopilot import supplier_key
+    from app.journal import CREDITORS
+
+    if doc.doc_type != "credit_note" or not doc.original_invoice_number:
+        return None
+    who = supplier_key(doc.supplier_name)
+    live = {e.id: e for e in await books.live_events() if e.kind == "purchase"}
+    hits = [
+        q.event_id
+        for q in await books.list_proposals("posted")
+        if q.event_id in live
+        and q.extracted.doc_type in ("purchase_invoice", "receipt")
+        and same_number(doc.original_invoice_number, q.extracted.invoice_number)
+        and supplier_key(q.extracted.supplier_name) == who
+        and any(ln.account == CREDITORS for ln in live[q.event_id].lines)
+    ]
+    return hits[0] if len(hits) == 1 else None
+
+
 async def _open_proposal(books: Books, proposal_id: str) -> Proposal:
     p = await books.get_proposal(proposal_id)
     if p.status not in OPEN:
@@ -147,6 +180,8 @@ async def approve(
         _check_not_registered(p.extracted)
     p.journal_draft = final_journal(p)
     event = build_event(p, p.journal_draft, user)
+    if p.extracted.doc_type == "credit_note" and (bill := await credited_bill(books, p.extracted)):
+        event = event.model_copy(update={"credits": bill})
     try:
         event_path = await books.post_event(event)
     except FileExistsError as exc:
@@ -176,6 +211,7 @@ async def approve(
             "autopilot_rule": auto_rule.supplier_key if auto_rule else None,
             "job": p.job_id,
             "vehicle": p.vehicle_id,
+            "credits": event.credits,
         },
     )
     if rebuild:
@@ -296,6 +332,11 @@ async def undo(books: Books, event_id: str, user: str) -> tuple[LedgerEvent, Pro
         raise ProposalStateError("Already undone")
     if any(event_id in ln.event_ids() for ln in await books.stored_bank_lines() if ln.status == "matched"):
         raise ApprovalError("A bank line is matched to this entry; unmatch it first")
+    if original.is_credit_note:
+        from app.credits import uses_of
+
+        if await uses_of(books, "credit_note", event_id):
+            raise ApprovalError("The credit this credit note left has been applied or refunded; remove that first")
     reversal = reversal_of(original, user)
     try:
         path = await books.post_event(reversal)
