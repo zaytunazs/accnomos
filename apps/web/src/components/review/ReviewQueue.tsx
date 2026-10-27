@@ -149,11 +149,11 @@ export default function ReviewQueue<H>({
       const handle = await adapter.approve(p, { remember: always, edits });
       const sale = p.extracted.doc_type === "sales_invoice";
       const learnt = NOT_VAT_REGISTERED in merged ? ` · ${p.extracted.supplier_name} remembered as not VAT-registered` : "";
-      const done = !always
-        ? `Approved · posted to your books${learnt}`
+      const done = (!always
+        ? "Approved · posted to your books"
         : sale || p.mileage_claim
           ? `Approved · posted to your books (Autopilot rules are for ${sale ? "purchases" : "receipts"} only)`
-          : `Approved · Autopilot will do this for ${p.extracted.supplier_name} next time`;
+          : `Approved · Autopilot will do this for ${p.extracted.supplier_name} next time`) + learnt;
       setHistory((h) => [...h, { kind: "approve", ids: [p.id], what: label(p), handles: handle ? [handle] : [] }]);
       setEditing(null);
       onNote(`${done} · U to undo`);
