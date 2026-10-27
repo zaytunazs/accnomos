@@ -7,7 +7,12 @@ the client collected plus facts the relay saw itself.
 
 User access tokens come in with every request in `X-HMRC-Access-Token`. Tokens are never written to disk or logs.
 The only in-memory copies are the application-restricted token cache (until 60 s before expiry) and a 30 s cache
-of each refresh result, so two racing refreshes of the same single-use refresh token share one HMRC call.
+of each refresh result, so two racing refreshes of the same single-use refresh token share one HMRC call. The relay
+also remembers spent OAuth `state` nonces (never tokens) until they expire, so run **one worker**.
+
+Request limits match the runtime (`relay/security.py`, see `docs/SECURITY.md`): `X-HMRC-Access-Token` over 8 KB → 431,
+credentials over plain HTTP behind a proxy → 400, 256 KB bodies → 413, per-IP rate limit → 429 with `Retry-After`,
+unknown body fields → 422, unexpected errors → 500 `{detail, correlation_id}` with no stack trace.
 
 ## Environment
 
@@ -23,6 +28,7 @@ of each refresh result, so two racing refreshes of the same single-use refresh t
 | `RELAY_PUBLIC_IP` | Relay's public IP (`Gov-Vendor-Public-IP`, `Gov-Vendor-Forwarded by=`) | — |
 | `RELAY_LICENCE_HASH` | Optional. Sent as `Gov-Vendor-License-IDs` | — |
 | `RELAY_ALLOWED_REDIRECTS` | Comma-separated origins `/hmrc/callback` may redirect tokens to, e.g. `https://app.accnomos.co.uk,accnomos://hmrc`. `http://localhost` and `http://127.0.0.1` are always allowed. The same `http(s)` origins get CORS, since the PWA calls the relay straight from the browser | — |
+| `RATE_LIMIT_PER_MIN` | Requests per minute per client IP (in memory); `0` turns the limit off | `60` |
 
 The relay reads the process environment only. It never reads a `.env` file.
 
@@ -31,7 +37,7 @@ The relay reads the process environment only. It never reads a `.env` file.
 | Method & path | Notes |
 |---|---|
 | `GET /health` | `{ok, service, version, sandbox, configured, uptime_s}` |
-| `GET /hmrc/authorize?redirect_to=&code_challenge=` | → `{url, state}`. `state` is HMAC-signed and expires after 10 min |
+| `GET /hmrc/authorize?redirect_to=&code_challenge=` | → `{url, state}`. `state` is HMAC-signed, expires after 10 min, and is accepted once by the callback and once by the exchange |
 | `GET /hmrc/callback?code&state` | HMRC redirects here. 303 to `redirect_to#access_token=…&refresh_token=…&expires_in=…&scope=…&token_type=…&state=…` |
 | `POST /hmrc/exchange {code, state, code_verifier}` | PKCE only (see below) → token JSON |
 | `POST /hmrc/refresh {refresh_token}` | → token JSON. Serialised per refresh token |
