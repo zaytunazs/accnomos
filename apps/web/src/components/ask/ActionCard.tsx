@@ -51,6 +51,17 @@ const TITLES: Record<RtProposedAction["kind"], string> = {
   log_timesheet: "Timesheet",
   log_mileage: "Mileage",
 };
+
+/** Where an action's result shows up, for checking after an approval that stopped halfway. */
+const WHERE: Record<RtProposedAction["kind"], string> = {
+  create_invoice: "Invoices",
+  chase_invoice: "the invoice on Invoices",
+  log_timesheet: "the job's timesheet on Jobs",
+  log_mileage: "the mileage log on Vehicles",
+};
+
+/** The runtime's two 409s for an `approving` line with no result (docs/ACTIONS.md, "Once only"). */
+const STALLED = /already being approved|earlier approval of this action did not finish/;
 function Details({ action }: { action: RtProposedAction }) {
   if (action.kind === "create_invoice") {
     const p = action.preview as unknown as RtInvoicePreview;
@@ -210,6 +221,8 @@ export default function ActionCard({
           {state.step === "error" && (
             <p className="mt-2 rounded-xl border border-warn-border bg-warn-bg p-3 text-[14px] leading-6 text-warn-ink" role="alert">
               {state.message}
+              {STALLED.test(state.message) &&
+                ` It is never retried on its own: give it 10 minutes, check ${WHERE[action.kind]}, then press Reject and ask again if it is still needed.`}
             </p>
           )}
           <div className="mt-3 flex flex-wrap gap-2">

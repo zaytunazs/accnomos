@@ -53,7 +53,8 @@ can try again. If the runtime dies between `approving` and `executed`, the actio
 because it may have half run (an email may have gone). For 10 minutes (`APPROVING_STALE`) approving answers
 "already being approved"; after that it says the earlier approval did not finish. The user checks the timesheet,
 mileage log or invoice, then rejects the card (`POST /actions/reject` with the same card, the Reject button),
-which writes a `rejected` line with `cleared: "stale approving"`, and asks again if it is still needed. A timesheet entry's id is the first 12
+which writes a `rejected` line with `cleared: "stale approving"`, and asks again if it is still needed. The web action
+card adds that advice under either message, naming where to check (Invoices, the job's timesheet, the mileage log). A timesheet entry's id is the first 12
 characters of the action id, so it can be traced back to the audit line. A rejected action can't be approved,
 and an approved one can't be rejected.
 
