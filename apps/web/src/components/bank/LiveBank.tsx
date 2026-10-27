@@ -425,21 +425,15 @@ export default function LiveBank() {
         </p>
       )}
       {error && <RuntimeErrorNote message={error} />}
+      {/* One uploader in a fixed place: inside the empty state it remounted after the first import and lost its result. */}
+      <BankUpload account={account} onDone={() => account && refresh(account)} />
       {data.summary.total === 0 ? (
         <EmptyState
           title="No statements yet"
           body="Each payment on your statement appears here to check against your books — matching never posts anything."
-          action={
-            <span className="block text-left">
-              <BankUpload account={account} onDone={() => account && refresh(account)} />
-            </span>
-          }
         />
       ) : (
-        <>
-          <BankUpload account={account} onDone={() => account && refresh(account)} />
-          <Statements list={data.statements} />
-        </>
+        <Statements list={data.statements} />
       )}
 
       {data.summary.total > 0 && (
