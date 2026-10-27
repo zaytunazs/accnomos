@@ -12,6 +12,7 @@ export interface FolderRow {
   item: DriveItem;
   files: number; // files directly inside plus files one level down (e.g. 01 Receipts/2026-10)
   subfolders: DriveItem[];
+  directFiles: DriveItem[]; // files directly inside, so they can be previewed
 }
 
 export interface FilesTreeData {
@@ -203,7 +204,7 @@ export default function FilesTree({
       aria-label="Books folders"
       className="flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-white"
     >
-      {tree.folders.map(({ item, files, subfolders }) => {
+      {tree.folders.map(({ item, files, subfolders, directFiles }) => {
         const id = item.name;
         const open = !collapsed.has(id);
         return (
@@ -223,8 +224,8 @@ export default function FilesTree({
               undefined,
               open,
             )}
-            {open && subfolders.length > 0 && (
-              <ul aria-label={`${item.name}: subfolders`}>
+            {open && (subfolders.length > 0 || directFiles.length > 0) && (
+              <ul aria-label={`${item.name}: contents`}>
                 {subfolders.map((s) => {
                   const subId = `${item.name}/${s.name}`;
                   const subOpen = !collapsed.has(subId);
@@ -290,6 +291,16 @@ export default function FilesTree({
                     </li>
                   );
                 })}
+                {directFiles.map((f) => (
+                  <FileRow
+                    key={f.id}
+                    item={f}
+                    relPath={item.name}
+                    nav={navProps(`f:${item.name}/${f.name}`, "file", id)}
+                    selected={selection?.kind === "file" && selection.path === `${item.name}/${f.name}`}
+                    onSelect={onSelect}
+                  />
+                ))}
               </ul>
             )}
           </li>

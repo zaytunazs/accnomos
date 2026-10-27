@@ -36,8 +36,9 @@ async function loadTree(account: AccountInfo): Promise<FilesTreeData> {
       folderItems.map(async (item) => {
         const children = item.folder?.childCount ? await listChildren(account, item.name) : [];
         const subfolders = children.filter((c) => c.folder).sort((a, b) => b.name.localeCompare(a.name));
-        const files = children.filter((c) => c.file).length + subfolders.reduce((n, s) => n + (s.folder?.childCount ?? 0), 0);
-        return { item, files, subfolders };
+        const directFiles = children.filter((c) => c.file).sort((a, b) => a.name.localeCompare(b.name));
+        const files = directFiles.length + subfolders.reduce((n, s) => n + (s.folder?.childCount ?? 0), 0);
+        return { item, files, subfolders, directFiles };
       }),
     ),
     system ? listChildren(account, SYSTEM) : Promise.resolve([]),
