@@ -76,7 +76,8 @@ SYSTEM_PROMPT = (
     f"Keep answer_md under {ASK_ANSWER_MAX} characters. "
     "You are given FACTS as JSON, calculated by code from the owner's ledger. Every figure sits under the period it "
     "belongs to: this_period is the period the owner picked (what they mean by 'this quarter'), previous_period the "
-    "one before it ('last quarter'); each has its label. FACTS.question_is_about says which one the question means. Rules: "
+    "one before it ('last quarter'); each has its label."
+    " FACTS.question_is_about says which one the question means. Rules: "
     "1) Quote numbers only exactly as they appear in FACTS (you may add £ and thousands commas), and only for "
     "their own period: say which period a figure is for. "
     "Never add, subtract, average or estimate anything yourself: for changes use the `derived` values. "
@@ -392,7 +393,10 @@ def preview(facts: dict[str, Any], r: Route, model: str) -> dict[str, Any]:
 
 
 def fallback_answer(facts: dict[str, Any], model: str, reason: str, r: Route = EVERYTHING) -> AskAnswer:
-    """The facts for the asked period, quoted directly by code. Used when the model fails or a figure doesn't check out."""
+    """The facts for the asked period, quoted directly by code.
+
+    Used when the model fails or a figure doesn't check out.
+    """
     key_numbers = code_key_numbers(facts, r)
     this, prev, d = facts["this_period"], facts["previous_period"], facts["derived"]
     if r.matched and key_numbers:
@@ -414,7 +418,8 @@ def fallback_answer(facts: dict[str, Any], model: str, reason: str, r: Route = E
             f"- Net VAT (Box 5), {_uk(this['start'])} to {_uk(this['end'])}: {_gbp(this['vat']['box5'])} "
             f"({d['vat_position']})",
             f"- Previous period ({_uk(prev['start'])} to {_uk(prev['end'])}): {_gbp(prev['vat']['box5'])}",
-            f"- Sales {_gbp(this['totals']['sales']['net'])} net, purchases {_gbp(this['totals']['purchases']['net'])} net, "
+            f"- Sales {_gbp(this['totals']['sales']['net'])} net,"
+            f" purchases {_gbp(this['totals']['purchases']['net'])} net, "
             f"from {this['entries']} approved entries",
         ]
         key_numbers = _fact_key_numbers(facts)[:3]
@@ -476,7 +481,10 @@ def ground(
         return fallback_answer(
             facts,
             model,
-            f"The model quoted {tok}, a figure for {facts[period_key(p)]['label']}, in an answer about {r.label(facts)}.",
+            (
+                f"The model quoted {tok}, a figure for {facts[period_key(p)]['label']},"
+                f" in an answer about {r.label(facts)}."
+            ),
             r,
         )
 
@@ -606,7 +614,10 @@ async def stream_json_model(
     name: str,
     max_tokens: int | None = None,
 ) -> AsyncIterator[str]:
-    """The reply's text as it arrives from the user's backend, constrained to `schema`. Raises httpx errors and AiStalled."""
+    """The reply's text as it arrives from the user's backend, constrained to `schema`.
+
+    Raises httpx errors and AiStalled.
+    """
     timeout = httpx.Timeout(connect=15.0, read=None, write=30.0, pool=15.0)  # reads are timed per chunk by _lines
     async with httpx.AsyncClient(timeout=timeout) as client:
         if cfg.mode == "local":

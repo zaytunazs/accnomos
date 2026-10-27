@@ -191,7 +191,10 @@ def check_date_in_period(d: date, start: date, end: date) -> Check:
         where = "falls in the previous period"
     else:
         where = "falls in an earlier period"
-    msg = f"Dated {d.day} {MONTHS[d.month - 1]} {d.year} — {where} ({period_label(its_start, its_end)}); it will go on that return"
+    msg = (
+        f"Dated {d.day} {MONTHS[d.month - 1]} {d.year} — {where}"
+        f" ({period_label(its_start, its_end)}); it will go on that return"
+    )
     return _chk("DATE_IN_PERIOD", False, "warn", msg)
 
 

@@ -1,4 +1,5 @@
-"""One email thread -> category, one-line summary, suggested reply and to-dos. Words from the user's model, checked by code.
+"""One email thread -> category, one-line summary, suggested reply and to-dos.
+Words from the user's model, checked by code.
 
 The model sees the subject, the senders and Graph's ≤255-character previews of the newest few messages
 (never a full body), today's date and the business name, and returns strict JSON. Then code checks it:

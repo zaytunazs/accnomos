@@ -1,4 +1,6 @@
-"""Judge-facing docs stay in step with the repo: one README feature table, cited files exist, sheet list matches the code."""
+"""Judge-facing docs stay in step with the repo: one README feature table, cited files exist,
+sheet list matches the code.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +20,8 @@ DOCS = (
     "docs/REMAINING.md",
     *(f"docs/submission/{n}.md" for n in ("DESCRIPTION", "META_MODELS", "VIDEO_SCRIPT", "JUDGING", "CHECKLIST")),
 )
-# A backticked name with a code-ish extension; OneDrive paths (`_System/...`, `Books.xlsx`, `*.json`) are not repo files.
+# A backticked name with a code-ish extension;
+# OneDrive paths (`_System/...`, `Books.xlsx`, `*.json`) are not repo files.
 CITED = re.compile(r"`([A-Za-z0-9_./-]+\.(?:py|ts|tsx|dart|md|yml|yaml|mjs|png))`")
 
 

@@ -61,7 +61,10 @@ def period_id(start: date, months: int = 3) -> str:
 
 
 def period_from_id(pid: str, start_month: int, months: int = 3) -> tuple[date, date]:
-    """Inverse of `period_id`: 'yyyy-Qn' is the n-th quarter starting in year yyyy; 'yyyy-mm' a month. Raises ValueError."""
+    """Inverse of `period_id`: 'yyyy-Qn' is the n-th quarter starting in year yyyy; 'yyyy-mm' a month.
+
+    Raises ValueError.
+    """
     year_s, _, rest = pid.partition("-")
     if not (year_s.isdigit() and len(year_s) == 4):
         raise ValueError(f"period {pid!r} should look like 2026-Q4 or 2026-11")

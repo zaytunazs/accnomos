@@ -1,4 +1,6 @@
-"""Outlook intake (F10) against FakeMailProvider + FakeStorageProvider: filtering, scoring, dedupe, dry run, size limits."""
+"""Outlook intake (F10) against FakeMailProvider + FakeStorageProvider:
+filtering, scoring, dedupe, dry run, size limits.
+"""
 
 from __future__ import annotations
 

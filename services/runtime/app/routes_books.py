@@ -117,7 +117,9 @@ async def scan(
     x_autopilot: str | None = Header(default=None),
     cycle: VatCycle = Depends(vat_cycle),
 ) -> ScanResult:
-    """VAT settings (`stagger`/`start_month`/`months`, as for /books/deadlines) set the period dates are checked against."""
+    """VAT settings (`stagger`/`start_month`/`months`, as for /books/deadlines)
+    set the period dates are checked against.
+    """
     autopilot_on = (x_autopilot or "on").strip().lower() != "off"
     period = cycle.current(today())
     proposals, errors = await scan_inbox_detailed(books, cfg, limit, business, autopilot_on, period)

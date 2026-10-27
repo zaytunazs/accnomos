@@ -1,4 +1,6 @@
-"""Voice questions: ffmpeg conversion of a generated tone, the Muse Voice client on stubbed HTTP, error mapping, the route."""
+"""Voice questions: ffmpeg conversion of a generated tone, the Muse Voice client on stubbed HTTP,
+error mapping, the route.
+"""
 
 from __future__ import annotations
 

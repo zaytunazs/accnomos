@@ -90,8 +90,14 @@ def fallback_draft(facts: dict[str, Any]) -> tuple[str, str]:
     follow = "Following up on my earlier email: " if facts["reminders_already_sent"] else ""
     if facts["status"] == "overdue":
         days = facts["days_overdue"]
-        line = f"{follow}invoice {n} for {amount} was due on {due} and is now {days} day{'s' if days != 1 else ''} overdue."
-        ask = "Could you let me know when it will be paid? If it is already on its way, thank you, and please ignore this."
+        line = (
+            f"{follow}invoice {n} for {amount} was due on {due}"
+            f" and is now {days} day{'s' if days != 1 else ''} overdue."
+        )
+        ask = (
+            "Could you let me know when it will be paid?"
+            " If it is already on its way, thank you, and please ignore this."
+        )
     else:
         line = f"{follow}this is a quick reminder that invoice {n} for {amount} is due on {due}."
         ask = "Thank you in advance."

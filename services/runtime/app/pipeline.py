@@ -1,4 +1,6 @@
-"""Image in, `Proposal` out: hash -> crop -> extract -> checks -> decide -> verify (if passed) -> journal -> filename."""
+"""Image in, `Proposal` out:
+hash -> crop -> extract -> checks -> decide -> verify (if passed) -> journal -> filename.
+"""
 
 from __future__ import annotations
 

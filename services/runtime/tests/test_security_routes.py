@@ -417,7 +417,9 @@ NO_USER_NEEDED = {
     "POST /books/rebuild": "rebuilds Books.xlsx from the files already there; no new facts",
     "POST /books/ask": "answers, or proposes a signed action that only /actions/approve (X-User) runs",
     "POST /books/ask/voice": "as /books/ask",
-    "POST /mail/scan": "the intake agent copies receipts to 00 Inbox; audited as agent:intake (user: when X-User is sent)",
+    "POST /mail/scan": (
+        "the intake agent copies receipts to 00 Inbox; audited as agent:intake (user: when X-User is sent)"
+    ),
     "POST /mail/triage": "reads previews; one counts-only audit line as agent:triage (user: when X-User is sent)",
     "POST /jobs/{job_id}/invoice-lines": "proposes lines; marks nothing",
     "POST /invoices/{number}/pdf": "renders the PDF of an invoice the user already wrote; no new facts",

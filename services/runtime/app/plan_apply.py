@@ -157,7 +157,8 @@ async def apply_plan(
         )
         if clash is not None:
             raise PlanConflict(
-                f"Your calendar has changed: “{clash.subject or 'an event'}” now overlaps “{item.title}”. Plan the day again."
+                f"Your calendar has changed: “{clash.subject or 'an event'}”"
+                f" now overlaps “{item.title}”. Plan the day again."
             )
 
     created: list[CreatedEvent] = []

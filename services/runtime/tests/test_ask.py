@@ -77,7 +77,11 @@ async def facts(books: Books) -> dict:
 
 def _out(**kw: object) -> AskModelOutput:
     base: dict[str, object] = dict(
-        answer_md="Your VAT bill is **£2,081.59**, up £1,281.59 on last quarter.\n\n- Sales VAT rose to £2,500.00\n- Howdens was your biggest supplier",
+        answer_md=(
+            "Your VAT bill is **£2,081.59**, up £1,281.59 on last quarter.\n\n"
+            "- Sales VAT rose to £2,500.00\n"
+            "- Howdens was your biggest supplier"
+        ),
         key_numbers=[
             {"label": "Net VAT (Box 5)", "value": "£2,081.59", "source": "_System/Ledger/events/2026-08/"},
             {"label": "Change vs Q2", "value": "+£1,281.59", "source": "made/up/path.json"},

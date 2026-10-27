@@ -203,7 +203,8 @@ async def test_create_reply_draft_is_create_reply_then_patch_and_never_send():
     patched = json.loads(seen[1][2])["body"]
     assert patched["contentType"] == "html"
     assert patched["content"] == (
-        '<html><body dir="ltr"><div>Hi Jo,<br>Thursday works &lt;fine&gt;.</div><br><hr>On Monday Jo wrote…</body></html>'
+        '<html><body dir="ltr"><div>Hi Jo,<br>Thursday works'
+        " &lt;fine&gt;.</div><br><hr>On Monday Jo wrote…</body></html>"
     )
     assert draft.id == "draft/1" and draft.web_link == "https://outlook.live.com/owa/?ItemID=draft1"
     assert not any("send" in path.lower() for _, path, _ in seen)

@@ -22,10 +22,13 @@ STARLING = b"""Date,Counter Party,Reference,Type,Amount (GBP),Balance (GBP),Spen
 22/10/2026,Acme Kitchens Ltd,INV-0042,FASTER PAYMENT,"1,200.00","2,161.53",INCOME,
 """
 
-LLOYDS = b"""Transaction Date,Transaction Type,Sort Code,Account Number,Transaction Description,Debit Amount,Credit Amount,Balance
+LLOYDS = (
+    b"Transaction Date,Transaction Type,Sort Code,Account Number,Transaction Description,Debit Amount,Credit Amount,"
+    b"""Balance
 21/10/2026,DEB,'30-99-50,12345678,TOOLSTATION 1234 CD 1234,12.00,,988.00
 23-10-2026,FPI,'30-99-50,12345678,ACME KITCHENS INV 43,,250.50,"1,238.50"
 """
+)
 
 HSBC = """Statement for SAMPLE — FICTIONAL COMPANY LTD
 Account,12345678
@@ -230,7 +233,9 @@ def test_payments_on_terms_may_come_later_but_need_the_name() -> None:
 
 def test_monthly_same_amount_bill_takes_the_nearer_document() -> None:
     dd = _lines(
-        b"Date,Description,Amount\n12/10/2026,THORNFIELD COMMS DD REF 1,-64.20\n12/11/2026,THORNFIELD COMMS DD REF 2,-64.20\n"
+        b"Date,Description,Amount\n"
+        b"12/10/2026,THORNFIELD COMMS DD REF 1,-64.20\n"
+        b"12/11/2026,THORNFIELD COMMS DD REF 2,-64.20\n"
     )
     events = [
         _purchase(6420, date(2026, 10, 2), "Thornfield Communications", "oct"),

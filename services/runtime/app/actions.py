@@ -639,7 +639,8 @@ async def resolve_invoice(books: Books, intent: CreateInvoiceIntent, today: date
     priced = price_lines(rows)
     if intent.amount_includes_vat and intent.amount_pence and priced["total_pence"] != intent.amount_pence:
         warnings.append(
-            f"{money(intent.amount_pence)} can't be split exactly into net and VAT; the total is {money(priced['total_pence'])}."
+            f"{money(intent.amount_pence)} can't be split exactly into"
+            f" net and VAT; the total is {money(priced['total_pence'])}."
         )
     terms = intent.due_days if intent.due_days is not None else int(profile.get("terms_days") or DEFAULT_TERMS_DAYS)
     due = today + timedelta(days=terms)
@@ -809,7 +810,8 @@ async def resolve_mileage(books: Books, intent: LogMileageIntent, today: date) -
         "warnings": [],
     }
     summary = (
-        f"**Log {miles} miles** in **{_md(vehicle.name)}**, {_md(intent.from_place)} to {_md(intent.to_place)}, {uk_date(day)}"
+        f"**Log {miles} miles** in **{_md(vehicle.name)}**,"
+        f" {_md(intent.from_place)} to {_md(intent.to_place)}, {uk_date(day)}"
         + (f", for {_md(job.name)}." if job else ".")
     )
     return Draft("log_mileage", summary, preview, "Add the journey to the mileage log")
@@ -1039,7 +1041,8 @@ async def run_mileage(action: ProposedAction, ctx: Context) -> tuple[str, dict[s
     if mod is None:
         raise ActionError(UNAVAILABLE["log_mileage"], 501)
     p = action.preview
-    try:  # fields as in the vehicles & mileage contract: {id, vehicle_id, date, from, to, miles, purpose, job_id, source}
+    # Fields as in the vehicles & mileage contract: {id, vehicle_id, date, from, to, miles, purpose, job_id, source}
+    try:
         entry = mod.MileageEntry.model_validate(
             {
                 "id": action.id[:12],

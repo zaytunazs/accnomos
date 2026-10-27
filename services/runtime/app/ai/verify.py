@@ -114,7 +114,9 @@ _PUNCT = str.maketrans({c: " " for c in string.punctuation + "“”–—£"} |
 
 
 def normalise_name(s: str | None) -> str:
-    """Case-, accent-, punctuation- and whitespace-insensitive; '&' = 'and'; legal suffixes (Ltd/Limited/PLC…) dropped."""
+    """Case-, accent-, punctuation- and whitespace-insensitive; '&' = 'and';
+    legal suffixes (Ltd/Limited/PLC…) dropped.
+    """
     if not s:
         return ""
     s = s.replace("&", " and ").translate(_PUNCT)  # before ASCII folding, which would drop curly quotes

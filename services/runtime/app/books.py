@@ -5,7 +5,8 @@ Layout (relative to the books root; the folder names live in app/paths.py):
     00 Inbox/                      new documents land here
     01 Receipts/{yyyy-mm}/         filed purchases and receipts
     02 Needs a look/               anything a human should check
-    03 Sales/                      filed sales documents; invoices raised here are in 03 Sales/invoices/ (app/invoicing.py)
+    03 Sales/                      filed sales documents; invoices raised here are in
+                                   03 Sales/invoices/ (app/invoicing.py)
     04 Bank statements/            imported bank statement CSVs, "{last date}_{bank}.csv"
     05 Payroll/{yyyy-mm}.csv       pay run exports for the payroll provider
     06 VAT returns/  07 Reports/
@@ -585,7 +586,9 @@ class Books:
     # ------------------------------------------------------------------ #
 
     async def rebuild(self) -> FileRef:
-        """Regenerate Books.xlsx at the root from the events, bank lines, open proposals, contacts, jobs, vehicles and pay runs."""
+        """Regenerate Books.xlsx at the root from the events, bank lines, open proposals, contacts,
+        jobs, vehicles and pay runs.
+        """
         from app import mileage, payroll
         from app.contacts import contact_book, load_ledger
         from app.jobs import summaries

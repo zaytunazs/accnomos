@@ -359,7 +359,12 @@ async def test_voiding_a_sent_invoice_reverses_the_sale(books: Books, sender: Fa
 
 async def test_mark_paid_links_a_bank_line(books: Books, sender: FakeMailSender):
     sent = await _sent(books, sender)  # £405.00
-    csv = b"Date,Description,Amount\n03/11/2026,ACME KITCHENS INV-0001,405.00\n04/11/2026,OTHER,405.00\n02/11/2026,COFFEE,-2.50\n"
+    csv = (
+        b"Date,Description,Amount\n"
+        b"03/11/2026,ACME KITCHENS INV-0001,405.00\n"
+        b"04/11/2026,OTHER,405.00\n"
+        b"02/11/2026,COFFEE,-2.50\n"
+    )
     await books.import_bank_csv(csv, "nov.csv", USER)
     cands = await inv_.bank_candidates(books, sent)
     assert [c.description for c in cands] == ["ACME KITCHENS INV-0001", "OTHER"]

@@ -251,7 +251,8 @@ def sources_for(facts: dict[str, Any], periods: frozenset[str] | set[str]) -> li
 
 
 def pack(facts: dict[str, Any], r: Route) -> dict[str, Any]:
-    """The facts the model sees for this route: the summary, the routed sections for the asked period(s), within PACK_TOKENS.
+    """The facts the model sees for this route: the summary, the routed sections for the asked period(s),
+    within PACK_TOKENS.
 
     Each figure sits under the period it belongs to; the period not asked about keeps only its dates.
     """

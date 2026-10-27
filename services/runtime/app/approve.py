@@ -197,7 +197,8 @@ async def _vehicle_tag(books: Books, p: Proposal, vehicle_id: Any) -> str | None
         raise ApprovalError(f"No such vehicle {vehicle_id!r}")
     if v.owned_by != "business":
         raise ApprovalError(
-            f"{v.name} is a personal vehicle: the mileage allowance covers its running costs, so receipts aren't tagged to it"
+            f"{v.name} is a personal vehicle: the mileage allowance"
+            " covers its running costs, so receipts aren't tagged to it"
         )
     return v.id
 

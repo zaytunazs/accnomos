@@ -18,7 +18,8 @@ from __future__ import annotations
 from typing import Final
 
 TAX_YEAR: Final = "2026-27"
-SOURCE_URL: Final = "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027"  # figures checked against this page on 27 Oct 2026
+# Figures checked against this page on 27 Oct 2026.
+SOURCE_URL: Final = "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027"
 TAX_CODE: Final = "1257L"
 
 # Annual figures in pence. Monthly figures are these ÷ 12 (pro-rated), not HMRC's monthly tables, so estimates
@@ -41,6 +42,9 @@ NI_EMPLOYER_RATE: Final = 15  # % above ST
 ESTIMATE_LABEL: Final = "Estimate — your payroll provider calculates the actual tax and NI"
 LIMITS: Final = (
     f"Tax code {TAX_CODE} only, England and Northern Ireland rates, worked out month by month (non-cumulative).",
-    "NI category A only. Student loans, pensions, statutory pay, benefits in kind and the Employment Allowance are not included.",
+    (
+        "NI category A only. Student loans, pensions, statutory pay,"
+        " benefits in kind and the Employment Allowance are not included."
+    ),
     f"Rates for tax year {TAX_YEAR}: {SOURCE_URL}",
 )

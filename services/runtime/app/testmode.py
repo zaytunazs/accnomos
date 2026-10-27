@@ -17,9 +17,9 @@ With it on, the runtime talks to nothing outside this process:
   previous VAT quarter, the one still to file (the VAT page and Ask default to the current one, Oct-Dec);
   timestamps stay real. The `demo` seed moves its tenant to docs/DEMO.md's stage date (4 Nov 2026).
 
-`POST /__test/reset` empties the caller's tenant's storage and reseeds the mailbox (three gold receipts by email plus one message
-that is not a receipt) and the calendar. `GET /__test/gold` lists the gold receipts; `GET /__test/gold/{file}.png`
-serves one as the PNG the stub recognises.
+`POST /__test/reset` empties the caller's tenant's storage and reseeds the mailbox (three gold receipts by email
+plus one message that is not a receipt) and the calendar. `GET /__test/gold` lists the gold receipts;
+`GET /__test/gold/{file}.png` serves one as the PNG the stub recognises.
 """
 
 from __future__ import annotations
@@ -130,7 +130,9 @@ def _demo_receipt_png() -> bytes | None:
 
 @lru_cache(maxsize=1)
 def _documents() -> dict[str, dict[str, Any]]:
-    """Every document the stub reads: the gold receipts, and the demo receipt (gold 001 as printed, dated 2 Nov 2026)."""
+    """Every document the stub reads: the gold receipts, and the demo receipt
+    (gold 001 as printed, dated 2 Nov 2026).
+    """
     return {**gold_receipts(), DEMO_RECEIPT: {**gold_receipts()["001_standard.json"], "date": "2026-11-02"}}
 
 
@@ -351,7 +353,9 @@ SAMPLE_PROFILE = {
 
 
 def _bank_event(spec: dict[str, Any]) -> Any:
-    """One posted event from evals/gold/bank/expected.json (purchases paid from 1200 Bank, sales owed in 1100 Debtors)."""
+    """One posted event from evals/gold/bank/expected.json
+    (purchases paid from 1200 Bank, sales owed in 1100 Debtors).
+    """
     from accnomos_ledger import LedgerEvent, Line, VatCode
 
     gross = spec["gross_pence"]
@@ -401,7 +405,9 @@ SEEDS = {"bank": _seed_bank, "demo": _seed_demo}  # opt-in: they change the VAT 
 
 
 async def reset(seed: str | None = None) -> dict[str, Any]:
-    """This tenant only: empty storage; reseed the mailbox, address book, calendar and invoice profile; then any `seed`."""
+    """This tenant only: empty storage; reseed the mailbox, address book, calendar and invoice profile;
+    then any `seed`.
+    """
     from app.invoicing import PROFILE, InvoiceProfile
 
     if seed is not None and seed not in SEEDS:
