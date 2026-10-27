@@ -22,16 +22,19 @@ export default function DemoBanner() {
   const [signedIn, setSignedIn] = useState<boolean | null>(null);
 
   useEffect(() => {
-    try {
-      const keys: string[] = [];
-      for (let i = 0; i < window.localStorage.length; i++) {
-        const k = window.localStorage.key(i);
-        if (k) keys.push(k);
+    // Defer to avoid a synchronous setState in the effect body.
+    queueMicrotask(() => {
+      try {
+        const keys: string[] = [];
+        for (let i = 0; i < window.localStorage.length; i++) {
+          const k = window.localStorage.key(i);
+          if (k) keys.push(k);
+        }
+        setSignedIn(keys.some((k) => k.startsWith("msal.")));
+      } catch {
+        setSignedIn(false);
       }
-      setSignedIn(keys.some((k) => k.startsWith("msal.")));
-    } catch {
-      setSignedIn(false);
-    }
+    });
   }, [path]);
 
   if (!isSamplePage(path)) return null;

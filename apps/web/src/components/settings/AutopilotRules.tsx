@@ -52,9 +52,9 @@ export default function AutopilotRules({ card, heading }: { card: string; headin
   return (
     <section aria-labelledby="settings-rules" className={card}>
       <div className="flex items-center justify-between gap-3">
-        <h2 id="settings-rules" className={heading}>
+        <h3 id="settings-rules" className={heading}>
           Autopilot rules
-        </h2>
+        </h3>
         <button
           type="button"
           role="switch"

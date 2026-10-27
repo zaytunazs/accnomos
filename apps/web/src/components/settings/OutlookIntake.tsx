@@ -77,9 +77,9 @@ export default function OutlookIntake({ card, heading }: { card: string; heading
     <section aria-labelledby="settings-intake" className={card}>
       <div className="flex items-start justify-between gap-3">
         <div>
-          <h2 id="settings-intake" className={heading}>
+          <h3 id="settings-intake" className={heading}>
             Outlook intake
-          </h2>
+          </h3>
           <p className="mt-1 text-sm text-muted">
             Copies receipts and invoices attached to your emails into <span className="font-bold">00 Inbox</span>.
             Mail is only read: nothing is moved, marked or deleted.
