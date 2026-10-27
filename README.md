@@ -1,27 +1,19 @@
 # Accnomos
 
-**Accounting, intelligently done.** Your books stay in your own cloud. Meta AI does the work.
+**Accounting, intelligently done.** Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI Developer Hackathon (Indie track).
+Your books are files in your own OneDrive (no Accnomos database); Meta models read and check the paperwork; you approve; code calculates the VAT.
 
-Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI Developer Hackathon
-(26 Oct – 4 Nov 2026, Indie track, problem statement "Build for Your World").
-
-- **No user database.** Your books live in a folder you own (OneDrive first; Google Drive next).
-  Disconnect the app and every file is still there, readable without us.
-- **Meta AI on your terms.** Bring your own Meta Model API key, or run Muse Glimmer 30B on your own machine.
-- **AI proposes, you approve, code calculates.** VAT boxes are computed by deterministic code from
-  entries you approved; filing to HMRC needs an explicit tap.
-- Multi-agent with verification: Intake → Extractor → Checker (code) → Reviewer → Verifier → Human → Poster → Filer.
+- **Works today:** upload a receipt → Muse Glimmer 30B (or Muse Spark) reads it → code checks + an independent second reading → you approve → immutable ledger event → VAT nine boxes by code → HMRC **sandbox** submission (web) → `Books.xlsx`. Android: capture, review, VAT view.
+- **Not yet:** production HMRC filing, Google Drive, a live-verified HMRC sandbox run in a browser. See `docs/HONESTY.md` (everything flagged, plus the table below).
+- **Run it:** `uv sync --all-packages --all-extras && uv run pytest -q`; `cd apps/web && pnpm install && pnpm run build`; services and web dev servers in `docs/DEV.md`.
+- **Docs:** [Architecture](docs/ARCHITECTURE.md) · [Meta models and evals](docs/META_MODELS.md) · [3-minute demo](docs/DEMO.md) · [Honesty](docs/HONESTY.md)
 
 ## Layout
 
 | Path | What |
 |---|---|
-| `apps/web` | Next.js PWA (Home · Review · Ask · VAT · Jobs · Files) |
-| `apps/web` | Next.js PWA (Home · Review · Ask · Bank · Files) |
-
-| `apps/web` | Next.js PWA (Home · Review · Ask · VAT return · Contacts · Files) |
-| `apps/web` | Next.js PWA (Home · Review · Ask · VAT · Vehicles · Files) |
-| `apps/mobile` | Flutter Android app, same runtime API |
+| `apps/web` | Next.js PWA (Home · Review · Ask · Bank · VAT return · Jobs · Contacts · Vehicles · Files · Settings) |
+| `apps/mobile` | Flutter Android app (Home · Review · Ask · VAT; Files is a placeholder), same runtime API |
 | `services/runtime` | Stateless Agent Runtime (FastAPI): receives the user's cloud token + AI config per request, keeps nothing |
 | `services/hmrc-relay` | Stateless HMRC relay: holds the HMRC client secret, adds fraud-prevention headers |
 | `packages/ledger` | Append-only ledger events, projections, deterministic VAT 9-box engine, tests |
@@ -33,12 +25,13 @@ Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI De
 
 | Model | Role |
 |---|---|
-| Muse Glimmer 30B (open weights, Ollama, user's own hardware) | Receipt/invoice reading, categorising, tool calls |
-| muse-spark-1.3 (Meta Model API, user's key) | Review, anomalies, explanations; cloud-mode extraction |
-| sam-3.1 | Crop/split receipts in messy photos |
-| muse-voice-transcribe-1.0 | Voice notes and voice questions |
-| muse-wonder-1.0 | Plans multi-step commands |
-| Muse Spark Open (Baseten) | Independent verifier (optional) |
+| Muse Glimmer 30B (open weights, Ollama) | Receipt/invoice reading, categorising, local-mode Ask and Verifier |
+| muse-spark-1.3 (Meta Model API, user's key) | Cloud-mode extraction and Ask |
+| Muse Spark Open (Baseten, optional) | Independent verifier (key mode, unit-tested only) |
+| muse-voice-transcribe-1.0 | Spoken questions on Ask (key mode; not yet run live) |
+| sam-3.1 | Crop receipts in messy photos, **off by default** (code crop is the default) |
+
+Muse Image made the brand artwork at build time. Costs, fallbacks and eval numbers: `docs/META_MODELS.md`.
 
 ## What works today (verified live, updated as we go)
 
@@ -46,7 +39,7 @@ Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI De
 |---|---|
 | 26 Oct | Microsoft sign-in (MSAL v5 + redirect bridge) on a personal account; `Apps/Accnomos` tree + README created in the user's OneDrive |
 | 27 Oct | Upload → `00 Inbox` → scan → **Muse Glimmer 30B on our DGX Spark** reads the receipt (40 s, 9/9 code checks) → proposal in `_System/proposals` → **Approve** → immutable ledger event in `_System/Ledger/events` → **VAT 9 boxes computed by code** from those events (`/books/vat`) |
-| 27 Oct | Eval on 60 synthetic messy receipts (Glimmer, local): supplier 100%, VAT total 100%, gross 100%, date 98%, net 97%; proposed/needs-a-look decision 88% — `evals/REPORT_glimmer_messy_60_2026-10-27.md` |
+| 27 Oct | Eval on 60 synthetic messy receipts (Glimmer, local): supplier 100%, VAT total 100%, gross 100%, date 98%, net 97%; proposed/needs-a-look decision 80% — `evals/REPORT_glimmer_messy_60_2026-10-27.md` |
 | 27 Oct | HMRC relay: OAuth, fraud-prevention headers v3.3, VAT MTD endpoints — unit-tested against mocks; sandbox call pending credentials |
 | 27 Oct | **HMRC (sandbox) in the web app:** on `/vat`, under the live 9-box return, *Connect to HMRC (sandbox)* (OAuth with PKCE through the relay, tokens only in the tab's `sessionStorage`) → open obligations → confirm the boxes and tick the legal declaration → submit → receipt saved to `05 VAT returns/<periodKey>/` in your OneDrive. Built and type-checked; end-to-end browser run pending. See `docs/HMRC.md` |
 | 27 Oct | **Outlook intake (F10):** Settings → *Outlook intake* asks for `Mail.Read` only when switched on → *Check my inbox now* (`POST /mail/scan`) copies likely receipts/invoices from the last 14 days into `00 Inbox`, deduplicated, with a log in `_System/Intake/`. Web build passes; runtime tests written against fake mailbox/storage; live mailbox run pending |
@@ -57,10 +50,6 @@ Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI De
 | 27 Oct | **Files page (live):** signed in, lists the real books folder from Graph (00–06 with file counts, sizes, last modified, *Open* links; `_System` collapsed); signed out, the sample tree. Web build passes; not yet checked against a real OneDrive |
 | 27 Oct | **VAT deadlines (F12-lite):** `GET /books/deadlines` works out the current VAT period from the stagger (1/2/3, custom start month, or monthly), the return/payment date (1 month + 7 days after period end), days left and Box 5 so far; Home *Deadlines* uses it when signed in, sample otherwise. Stagger is set in onboarding and Settings (this device only). Date maths unit-tested; annual accounting not covered; not yet run against a real account |
 | 27 Oct | **Contacts:** `/contacts` lists customers and suppliers built from the ledger (one contact per VAT number, else per normalised name, so "Screwfix Direct Ltd." and "SCREWFIX DIRECT" are one), with open balance and net this tax year; a side panel shows the statement (running balance; card/cash receipts settle on their own line, invoices and bills on account stay open until a bank line is matched) and *Edit* (edited fields survive *Refresh from books*; a rename to another contact's name is refused). *Aged balances* tab: debtors and creditors in 0–30/31–60/61–90/90+ days from the document date. *Import from Outlook* asks for `Contacts.Read` only when tapped and fills blank emails/phones (optionally adds new contacts). Saved: names and details only, in `_System/Contacts/contacts.json`; money is always worked out from the event files. Books.xlsx gains `Customers` and `Suppliers` (name, VAT number, net and VAT this tax year, unpaid), and `Summary` counts both. Web build passes; runtime tests pass against fake storage and a fake address book (`services/runtime/tests/test_contacts.py`); not yet run against a real OneDrive or Outlook |
-
-| 27 Oct | **Books.xlsx:** rebuilt from the event files after every approve, reject and bank match, and on demand (`POST /books/rebuild`, *Rebuild Books.xlsx* on Files). Sheets `README` (says it is generated; do not edit), `Summary`, `Ledger` (with totals row), `Accounts`, `VAT`, `Suppliers`, `Bank`, `Proposals`; £ and dd/mm/yyyy formats, frozen headers. Runtime tests open the workbook with openpyxl on a synthetic ledger and check the totals on `Ledger`, `Suppliers`, `Summary` and `VAT` against the events (a reversal nets off on all four). There is no *undo approval* yet, so there is no undo path to rebuild after. Not yet opened in Excel from a real OneDrive |
-| 27 Oct | **Files page (live):** signed in, lists the real books folder from Graph (00–06 with file counts, sizes, last modified, *Open* links; `_System` collapsed); signed out, the sample tree. Web build passes; not yet checked against a real OneDrive |
-| 27 Oct | **VAT deadlines (F12-lite):** `GET /books/deadlines` works out the current VAT period from the stagger (1/2/3, custom start month, or monthly), the return/payment date (1 month + 7 days after period end), days left and Box 5 so far; Home *Deadlines* uses it when signed in, sample otherwise. Stagger is set in onboarding and Settings (this device only). Date maths unit-tested; annual accounting not covered; not yet run against a real account |
 | 27 Oct | **Jobs, staff and timesheets:** `/jobs` (summary tiles, jobs table, *Add job*) and the job page (timesheet with a quick-add row: staff, date, hours in 0.25 steps, note, billable; labour cost, materials, billable value and margin). Staff and their cost/charge rates in Settings › *Staff* (names and roles only). Review can tag a purchase to a job on Approve; its ex-VAT net counts as job materials until undone. *Create invoice from unbilled hours* proposes one line per person (hours × charge rate, at cost if none is set) and marks nothing; until sales invoicing lands, *Invoice sent: mark these hours invoiced* records the invoice number (`POST /jobs/{id}/mark-invoiced`). Files in `_System/Jobs`, `_System/Staff`, `_System/Timesheets/<yyyy-mm>.jsonl`; Books.xlsx gets a `Jobs` sheet. "Invoiced" and margin value hours at each person's *current* charge rate (not read back from an invoice), so changing a rate changes past figures. Rounding, pence maths, grouping, summaries and routes tested on fake storage (`services/runtime/tests/test_jobs.py`); web build passes; not yet run against a real OneDrive |
 | 27 Oct | **Security pass (runtime + relay):** credential headers scrubbed from logs and error bodies, capped at 8 KB and refused over plain HTTP behind a proxy; 256 KB JSON / 25 MB upload caps; per-IP rate limit (60/min, `Retry-After`); safe 500s with a correlation id; exact-origin CORS; strict POST bodies and file names that cannot leave the books folder; one-time 10-minute OAuth `state`; hardened containers and edge/static-site security headers. Details and limits in `docs/SECURITY.md` and `deploy/README.md`. Covered by runtime and relay tests (fake providers, no network) and config checks on the deploy files; **not yet deployed** to `api.accnomos.com` |
 | 27 Oct | **Sales invoices:** *Invoices* → *New invoice* (customer from your contacts or typed in; lines with qty, unit, price and VAT code; live totals by code) → draft saved as `03 Sales/invoices/INV-0001.json`, numbered from `_System/Invoicing/sequence.json` → *Save and preview* renders an A4 PDF (fpdf2: your details and logo from `_System/Invoicing/profile.json`, VAT summary by rate, bank details, VAT reg no) → *Send via Outlook* only after you tick the confirmation (`Mail.Send` asked for then) → PDF copy in `03 Sales/invoices/sent/` and the sale posted once (Dr Debtors, Cr Sales per VAT code, Cr VAT) → *Draft a reminder*: your Muse writes the chase from facts the code gives it, every figure checked, you edit and confirm → *Mark paid* (optionally matching the bank line) or *Void* (a reversal, never a delete). Business profile in Settings and onboarding. Runtime tests against fake storage and a fake mailbox in `services/runtime/tests/test_invoicing.py`; web build passes; not yet sent from a real mailbox |
