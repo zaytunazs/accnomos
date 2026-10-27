@@ -910,6 +910,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
               hintText: 'GB 123 4567 89',
               helperText: 'GB followed by 9 or 12 digits; spaces are '
                   'fine. Leave blank if they have none.',
+              helperMaxLines: 2,
               errorText: _vrnError,
               border: const OutlineInputBorder(),
               filled: true,

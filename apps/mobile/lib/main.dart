@@ -24,6 +24,9 @@ class AccnomosApp extends StatelessWidget {
     return MaterialApp(
       title: 'Accnomos',
       debugShowCheckedModeBanner: false,
+      // No dark theme: stay on the light theme even when the system is
+      // dark, so text is always readable.
+      themeMode: ThemeMode.light,
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: AccnomosColors.ground,
