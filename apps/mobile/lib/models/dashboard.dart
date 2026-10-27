@@ -7,18 +7,25 @@ class Dashboard {
     required this.cashAsOf,
     required this.owedToYouPence,
     required this.overdueInvoices,
+    required this.mostOverdueDays,
     required this.owedByYouPence,
     required this.vatLabel,
     required this.vatBox5,
     required this.vatDirection,
     required this.vatDeadline,
     required this.attentionTotal,
+    required this.attentionProposed,
+    required this.attentionNeedsALook,
+    required this.attentionUnmatchedBankLines,
   });
 
   final int? cashPence;
   final String? cashAsOf;
   final int? owedToYouPence;
   final int? overdueInvoices;
+
+  /// Age in days of the most overdue invoice, if the runtime worked it out.
+  final int? mostOverdueDays;
   final int? owedByYouPence;
   final String? vatLabel;
 
@@ -29,6 +36,15 @@ class Dashboard {
   final String? vatDirection;
   final String? vatDeadline;
   final int? attentionTotal;
+
+  /// Proposed entries waiting in Review.
+  final int? attentionProposed;
+
+  /// Entries the reader could not file on its own.
+  final int? attentionNeedsALook;
+
+  /// Open bank lines: not matched, a transfer or ignored.
+  final int? attentionUnmatchedBankLines;
 
   static Map<String, dynamic>? _map(Object? v) =>
       v is Map<String, dynamic> ? v : null;
@@ -48,12 +64,17 @@ class Dashboard {
       cashAsOf: cash?['as_of'] as String?,
       owedToYouPence: _int(owedTo?['total_pence']),
       overdueInvoices: _int(owedTo?['overdue']),
+      mostOverdueDays: _int(owedTo?['most_overdue_days']),
       owedByYouPence: _int(owedBy?['total_pence']),
       vatLabel: next?['label'] as String?,
       vatBox5: next?['box5'] as String?,
       vatDirection: next?['box5_direction'] as String?,
       vatDeadline: next?['deadline'] as String?,
       attentionTotal: _int(attention?['total']),
+      attentionProposed: _int(attention?['proposed']),
+      attentionNeedsALook: _int(attention?['needs_a_look']),
+      attentionUnmatchedBankLines:
+          _int(attention?['unmatched_bank_lines']),
     );
   }
 }
