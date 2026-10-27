@@ -315,7 +315,7 @@ async def run_pass(base: FakeStorageProvider, origin: dict[str, str], docs: list
     return [rec for _, rec in out]
 
 
-async def simulate(args: argparse.Namespace) -> Path:
+async def simulate(args: argparse.Namespace) -> list[Path]:
     if args.verifier == "off":
         os.environ["VERIFIER"] = "off"
     elif (os.environ.get("VERIFIER") or "").lower() in ("off", "0", "false", "no"):
@@ -329,16 +329,20 @@ async def simulate(args: argparse.Namespace) -> Path:
     docs = documents(plan, golds, args.passes, args.limit)
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    path = out / f"verifier_{args.verifier}.jsonl"
-    meta = {"verifier": args.verifier, "backend": (b.label() if (b := select_backend(cfg)) else None), "config": cfg.public(),
-            "today": TODAY.isoformat(), "rules": dict(Counter(origin.values())), "passes": args.passes, "limit": args.limit}
-    with path.open("w", encoding="utf-8") as sink:
-        sink.write(json.dumps({"meta": meta}) + "\n")
-        for pass_ in PASSES:
-            batch = [d for d in docs if d.pass_ == pass_]
-            if batch:
-                await run_pass(base, origin, batch, cfg, plan, sink)
-    return path
+    paths = []
+    for pass_ in PASSES:  # one file per pass, so a pass can be re-run (or run in its own process) on its own
+        batch = [d for d in docs if d.pass_ == pass_]
+        if not batch:
+            continue
+        path = out / f"verifier_{args.verifier}_{pass_}.jsonl"
+        meta = {"verifier": args.verifier, "backend": (b.label() if (b := select_backend(cfg)) else None),
+                "config": cfg.public(), "today": TODAY.isoformat(), "rules": dict(Counter(origin.values())), "pass": pass_,
+                "limit": args.limit}
+        with path.open("w", encoding="utf-8") as sink:
+            sink.write(json.dumps({"meta": meta}) + "\n")
+            await run_pass(base, origin, batch, cfg, plan, sink)
+        paths.append(path)
+    return paths
 
 
 # --------------------------------------------------------------------------- #
@@ -346,9 +350,19 @@ async def simulate(args: argparse.Namespace) -> Path:
 # --------------------------------------------------------------------------- #
 
 
-def load(path: Path) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    lines = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
-    return lines[0]["meta"], lines[1:]
+def load(out: Path, mode: str) -> tuple[dict[str, Any], list[dict[str, Any]]] | None:
+    """Every pass file for this verifier mode, in pass order; the meta of the first, with all passes listed."""
+    meta: dict[str, Any] | None = None
+    recs: list[dict[str, Any]] = []
+    for pass_ in PASSES:
+        path = out / f"verifier_{mode}_{pass_}.jsonl"
+        if not path.exists():
+            continue
+        lines = [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x.strip()]
+        meta = meta or lines[0]["meta"] | {"passes": []}
+        meta["passes"].append(pass_)
+        recs += lines[1:]
+    return (meta, recs) if meta else None
 
 
 def tally(recs: list[dict[str, Any]], history_only: bool = False) -> dict[str, Any]:
@@ -425,10 +439,8 @@ def _pct(x: float | None) -> str:
 def report(out: Path) -> Path:
     runs = {}
     for mode in ("on", "off"):
-        p = out / f"verifier_{mode}.jsonl"
-        if p.exists():
-            meta, recs = load(p)
-            runs[mode] = summarise(meta, recs)
+        if loaded := load(out, mode):
+            runs[mode] = summarise(*loaded)
     if not runs:
         raise SystemExit(f"no runs in {out}")
     (out / "summary.json").write_text(json.dumps(runs, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -551,7 +563,7 @@ def main() -> None:
     args = ap.parse_args()
     args.passes = [p for p in args.passes.split(",") if p]
     if not args.report:
-        print(f"wrote {asyncio.run(simulate(args))}")
+        print("wrote " + ", ".join(map(str, asyncio.run(simulate(args)))))
     print(f"wrote {report(Path(args.out))}")
 
 
