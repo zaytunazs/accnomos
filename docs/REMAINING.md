@@ -73,7 +73,7 @@ Severity:
 
 | Severity | Item |
 |---|---|
-| Medium | An invoice made from a job's hours marks every entry on a line when it is sent, even if the user changed that line's hours or rate; voiding the invoice does not unmark them (`invoicing.mark_hours`). |
+
 | Medium | "Invoiced" value and margin use each person's *current* charge rate; changing a rate restates past jobs. |
 | Medium | Not verified: sending from a real mailbox, the `Mail.Send` consent redirect, the PDF in a real viewer, logo upload to a real OneDrive. |
 | Medium | Payroll is an estimate (annual thresholds ÷ 12, month 1, 1257L, category A, England/NI); the 2026–27 rates were checked against GOV.UK on 27 Oct 2026 by the payrun author only (no test pins them). No RTI. |

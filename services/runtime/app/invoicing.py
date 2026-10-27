@@ -18,7 +18,8 @@ Paid posts nothing, like matching a bank line (app/books.py): it records that th
 the bank line when one is chosen.
 
 An invoice written from a job's hours keeps the job id and, per line, the timesheet entries it bills. Becoming
-`sent` marks those entries invoiced on its number (app/jobs.py), so they are never proposed again.
+`sent` marks the entries whose hours and rate still match their line invoiced on its number (app/jobs.py),
+so they are never proposed again; voiding the invoice frees its entries again.
 
 Sending and chasing need the user's explicit confirmation in the app (`confirm: true`); nothing is sent on its own.
 """
@@ -554,20 +555,38 @@ async def post_sale(books: Books, inv: Invoice, user: str) -> str:
 async def mark_hours(books: Books, inv: Invoice, user: str) -> None:
     """Mark the timesheet entries on a sent invoice's lines as invoiced on its number (jobs.mark_invoiced).
 
-    The email has already gone, so this never fails the send. send_invoice refuses, before emailing, a draft
-    whose hours are already on another invoice; entries removed or made unbillable since the draft was saved
-    (or billed elsewhere in the moment between that check and this) are skipped and listed in the audit log.
-    Marking again with the same number changes nothing, so a retried send is safe.
+    Only entries whose hours and rate still match their sent line are marked: the user may have changed a
+    line's hours or rate after the draft was priced from the job, and the freed entries stay billable for
+    the next invoice. The email has already gone, so this never fails the send. send_invoice refuses,
+    before emailing, a draft whose hours are already on another invoice; entries removed or made unbillable
+    since the draft was saved (or billed elsewhere in the moment between that check and this) are skipped
+    and listed in the audit log. Marking again with the same number changes nothing, so a retried send
+    is safe.
     """
     ids = inv.timesheet_entry_ids()
     if inv.status != "sent" or inv.timesheets_marked or not ids:
         return
     known = {e.id: e for e in await jobs.load_entries(books)}
-    ok = [
-        i
-        for i in ids
-        if (e := known.get(i)) and e.job_id == inv.job_id and e.billable and e.invoiced_in in (None, inv.number)
-    ]
+    rates = {s.id: jobs.charge_rate(s) for s in await jobs.load_staff(books)}
+    ok: list[str] = []
+    for ln in inv.lines:
+        if not ln.timesheet_entry_ids:
+            continue
+        group = [known.get(i) for i in ln.timesheet_entry_ids]
+        eligible = [
+            e
+            for e in group
+            if e is not None and e.job_id == inv.job_id and e.billable and e.invoiced_in in (None, inv.number)
+        ]
+        if len(eligible) == len(ln.timesheet_entry_ids):
+            # The line is intact: only mark it when it still prices these entries. The user may have
+            # changed its hours or rate after the draft was priced; then the entries stay billable.
+            if abs(sum(e.hours for e in eligible) - float(ln.quantity)) > 1e-9:
+                continue
+            if any(rates.get(e.staff_id) != ln.unit_price_pence for e in eligible):
+                continue
+        # Otherwise an entry vanished or changed status since the draft: mark the survivors as before.
+        ok.extend(e.id for e in eligible)
     if ok:
         try:
             await jobs.mark_invoiced(books, ok, inv.number)
@@ -755,6 +774,7 @@ async def void_invoice(books: Books, number: str, user: str, reason: str) -> Inv
         inv.reversal_event_id = reversal.id
     inv.status, inv.voided_at, inv.void_reason = "void", now(), reason.strip()
     await save_invoice(books, inv)
+    freed = [e.id for e in await jobs.unmark_invoiced(books, number)] if inv.timesheet_entry_ids() else []
     await books.audit(
         f"user:{user}",
         "invoice_voided",
@@ -762,6 +782,7 @@ async def void_invoice(books: Books, number: str, user: str, reason: str) -> Inv
             "invoice": number,
             "reason": inv.void_reason,
             "reversal": inv.reversal_event_id,
+            "timesheets_freed": freed,
         },
     )
     if inv.reversal_event_id:

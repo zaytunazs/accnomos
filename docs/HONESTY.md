@@ -72,7 +72,7 @@ in `apps/web` passes; of the Playwright suite only `review.spec.ts`, `contacts.s
 ## Invoicing, jobs, contacts
 
 - No credit notes; *Mark paid* posts nothing (the receipt is not posted to 1200 Bank); a paid invoice cannot be voided.
-- An invoice made from a job's hours marks every entry on a line when it is sent, even if the user changed that line's hours or rate; voiding the invoice does not unmark them (`invoicing.mark_hours`).
+- An invoice made from a job's hours marks only the entries whose hours and rate still match their sent line; voiding the invoice frees its entries again.
 - "Invoiced" value and margin use each person's *current* charge rate; changing a rate restates past jobs.
 - If saving the sent copy fails after the email has gone, the invoice is saved as sent but the sale is not posted until the user retries (the retry exists). `GraphMailSender.MAX_INLINE` (3 MB) checks raw bytes; base64 adds a third, so an attachment near 3 MB can just exceed Graph's 4 MB request limit. In the send dialogs the tick stays ticked if the user edits the message afterwards.
 - A matched bank line counts as full payment: part payments, overpayments and credit notes are not modelled, so a part-paid invoice drops out of *Aged balances*. Ageing counts from the document date and ignores the invoice's due date and payment terms. Customer VAT numbers are only set with *Edit*. Outlook contacts added with "also add" are always customers. `contacts.json` is rewritten whole, so two tabs editing at once means last write wins.

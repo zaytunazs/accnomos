@@ -497,6 +497,33 @@ async def test_hours_changed_after_the_draft_are_skipped_not_fatal(
     assert row["refs"]["entries"] == [a.id] and row["refs"]["skipped"] == [b.id]
 
 
+async def test_only_lines_still_matching_hours_and_rate_are_marked(books: Books, sender: FakeMailSender):
+    a, b, c = await _hours(books, (3, True), (2, True), (1.5, True))
+    lines = [
+        {"description": "First visit", "quantity": "3", "unit_price_pence": 4500, "timesheet_entry_ids": [a.id]},
+        {"description": "Second visit", "quantity": "5", "unit_price_pence": 4500, "timesheet_entry_ids": [b.id]},
+        {"description": "Third visit", "quantity": "1.5", "unit_price_pence": 5000, "timesheet_entry_ids": [c.id]},
+    ]
+    inv = await inv_.create_invoice(books, _draft(lines, job_id=JOB.id), USER)
+    sent = await inv_.send_invoice(books, sender, inv.number, USER, b"%PDF-1.4")
+    assert sent.status == "sent" and sent.timesheets_marked
+    assert (await jobs.get_entry(books, a.id)).invoiced_in == inv.number
+    assert (await jobs.get_entry(books, b.id)).invoiced_in is None  # hours changed 2 -> 5 on the line
+    assert (await jobs.get_entry(books, c.id)).invoiced_in is None  # rate changed 4500 -> 5000 on the line
+    assert {i for ln in (await _proposal(books)).lines for i in ln.entry_ids} == {b.id, c.id}
+
+
+async def test_voiding_an_invoice_frees_its_hours(books: Books, sender: FakeMailSender):
+    a, b = await _hours(books, (3, True), (1.5, True))
+    inv = await inv_.create_invoice(books, _job_draft(await _proposal(books)), USER)
+    await inv_.send_invoice(books, sender, inv.number, USER, b"%PDF-1.4")
+    assert {e.invoiced_in for e in await jobs.load_entries(books)} == {inv.number}
+    voided = await inv_.void_invoice(books, inv.number, USER, "customer cancelled")
+    assert voided.status == "void" and voided.reversal_event_id
+    assert all(e.invoiced_in is None for e in await jobs.load_entries(books))
+    assert {i for ln in (await _proposal(books)).lines for i in ln.entry_ids} == {a.id, b.id}
+
+
 async def test_a_second_draft_of_the_same_hours_is_refused_before_it_is_emailed(books: Books, sender: FakeMailSender):
     (a,) = await _hours(books, (3, True))
     first = await inv_.create_invoice(books, _job_draft(await _proposal(books)), USER)
