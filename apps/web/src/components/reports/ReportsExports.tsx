@@ -38,16 +38,18 @@ function cell(kind: RtCellKind, v: string | number | null | undefined): string {
   return String(v);
 }
 
-/** One table of a report, as the runtime laid it out: heading, subtotal and total rows bold. Scrolls sideways on a phone. */
+/** One table of a report, as the runtime laid it out: heading, subtotal and total rows bold. Scrolls sideways on a phone.
+ *  With no rows the column headings still show: an import file has its header row (the package's template) even then. */
 function SectionTable({ section, label, total }: { section: RtReportSection; label: string; total: number }) {
   const numeric = (k: RtCellKind) => k === "money" || k === "pounds" || k === "int";
   return (
     <div className="mt-4">
       <h3 className="text-[15px] font-extrabold">{section.title}</h3>
-      {section.rows.length === 0 ? (
+      {section.columns.length === 0 ? (
         <p className="mt-1 text-sm text-muted">Nothing in this period.</p>
       ) : (
-        <div role="region" aria-label={`${label}: ${section.title}`} tabIndex={0} className="mt-2 max-w-full overflow-x-auto">
+        // relative: the sr-only caption is absolutely positioned and must not widen the page (docs/reviews/ci).
+        <div role="region" aria-label={`${label}: ${section.title}`} tabIndex={0} className="relative mt-2 max-w-full overflow-x-auto">
           <table className="w-full border-collapse tabular-nums">
             <caption className="sr-only">{`${label}: ${section.title}`}</caption>
             <thead className="border-b border-border">
@@ -60,6 +62,13 @@ function SectionTable({ section, label, total }: { section: RtReportSection; lab
               </tr>
             </thead>
             <tbody>
+              {section.rows.length === 0 && (
+                <tr>
+                  <td colSpan={section.columns.length} className={`${td} text-muted`}>
+                    Nothing in this period.
+                  </td>
+                </tr>
+              )}
               {section.rows.map((r, i) => (
                 <tr
                   key={i}
@@ -541,6 +550,11 @@ export default function ReportsExports() {
 
   const usesPeriod = !report || report.params.includes("period");
   const usesAsOf = !!report?.params.includes("as_of");
+  const periodWhy = !live
+    ? "The period is fixed for the sample: sign in to choose dates from your own books."
+    : !usesPeriod
+      ? `${report?.title ?? "This report"} is worked out as at one date, not for a period.`
+      : null;
   return (
     <div className="flex min-w-0 flex-col gap-4">
       {state === "demo" && (
@@ -553,13 +567,13 @@ export default function ReportsExports() {
       <form className={`${card} flex flex-wrap items-end gap-3`} aria-label="Report period" onSubmit={(e) => e.preventDefault()}>
         <label className="flex flex-col gap-1 text-[13px] font-bold">
           From
-          <input type="date" value={query.from ?? ""} disabled={!live || !usesPeriod}
+          <input type="date" value={query.from ?? ""} disabled={!live || !usesPeriod} aria-describedby={periodWhy ? "period-why" : undefined}
             onChange={(e) => e.target.value && setQuery((q) => ({ ...q, from: e.target.value }))}
             className="h-11 rounded-xl border border-border px-3 text-[15px] font-normal" />
         </label>
         <label className="flex flex-col gap-1 text-[13px] font-bold">
           To
-          <input type="date" value={query.to ?? ""} disabled={!live || !usesPeriod}
+          <input type="date" value={query.to ?? ""} disabled={!live || !usesPeriod} aria-describedby={periodWhy ? "period-why" : undefined}
             onChange={(e) => e.target.value && setQuery((q) => ({ ...q, to: e.target.value }))}
             className="h-11 rounded-xl border border-border px-3 text-[15px] font-normal" />
         </label>
@@ -571,7 +585,7 @@ export default function ReportsExports() {
               className="h-11 rounded-xl border border-border px-3 text-[15px] font-normal" />
           </label>
         )}
-        <button type="button" className={button} disabled={!live}
+        <button type="button" className={button} disabled={!live || !usesPeriod} aria-describedby={periodWhy ? "period-why" : undefined}
           onClick={() => setQuery((q) => ({ mode: q.mode }))}>
           This VAT period
         </button>
@@ -580,6 +594,12 @@ export default function ReportsExports() {
           <input type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="e.g. VAT, aged, Xero"
             className="h-11 rounded-xl border border-border px-3 text-[15px] font-normal" />
         </label>
+        {/* A disabled control says why (the period controls are off for the sample, or for an as-at report). */}
+        {periodWhy && (
+          <p id="period-why" className="basis-full text-[13px] text-muted">
+            {periodWhy}
+          </p>
+        )}
       </form>
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
         <div className="min-w-0">
@@ -601,7 +621,8 @@ export default function ReportsExports() {
               status={status}
             />
           ) : (
-            <section className={card} aria-label="Preview">
+            // The report buttons' aria-controls names this id, so it exists before a report is chosen too.
+            <section id="report-preview" className={card} aria-label="Preview">
               <p className="text-sm text-muted">Choose a report to preview it, download it or save it to 07 Reports.</p>
             </section>
           )}
