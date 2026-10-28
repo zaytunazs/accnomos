@@ -447,6 +447,8 @@ export const runtime = {
   deadlines: (a: AccountInfo, query: string) => call<RtDeadlines>(a, `/books/deadlines?${query}`),
   /** GET /books/dashboard: the Home tiles in one call (same VAT query as deadlines, plus `today`). */
   dashboard: (a: AccountInfo, query: string) => call<RtDashboard>(a, `/books/dashboard?${query}`),
+  /** GET /books/home: Home's other cards and the checked summary (services/runtime/app/home_overview.py). */
+  home: (a: AccountInfo, query: string) => call<RtHome>(a, `/books/home?${query}`),
 
   /** GET /books/vat/periods: the current VAT period and the 8 before it, by the saved VAT settings. */
   vatPeriods: (a: AccountInfo) => call<RtVatPeriods>(a, withQuery("/books/vat/periods", vatQuery())),
@@ -3963,3 +3965,64 @@ export const importApi = {
 export const BANK_FEED_KEY = "accnomos.bankFeed";
 /** Fired on window after a bank feed fetch, with the RtFeedSync as detail, so an open Bank page reloads. */
 export const BANK_FEED_SYNCED = "accnomos:bankfeed-synced";
+
+/** GET /books/home (services/runtime/app/home_overview.py): every figure by code, in pence; null = not used. */
+export interface RtMoneyMonth {
+  label: string;
+  start: string;
+  end: string;
+  money_in_pence: number;
+  money_out_pence: number;
+  lines: number;
+}
+export interface RtAgedSide {
+  total_pence: number;
+  overdue_pence: number;
+  buckets: Record<"current" | "0-30" | "31-60" | "61-90" | "90+", number>;
+  documents: number;
+}
+export interface RtHomeDue {
+  key: "vat" | "itsa" | "self_assessment" | "cis" | "payroll";
+  title: string;
+  due: string;
+  days_left: number;
+  href: string;
+  source_url: string | null;
+}
+export interface RtHomeSummary {
+  summary_md: string;
+  model: string; // "code" when no AI is set up
+  fallback_reason: string | null;
+  facts: Record<string, unknown>;
+}
+export interface RtHome {
+  today: string;
+  kind: RtProfileKind;
+  features: string[];
+  money: { this_month: RtMoneyMonth; last_month: RtMoneyMonth } | null;
+  week: { start: string; end: string; money_in_pence: number; money_out_pence: number; approved: number; proposed: number } | null;
+  aged: { debtors: RtAgedSide; creditors: RtAgedSide } | null;
+  itsa: { tax_year: string; period_end: string; due: string; days_left: number; source_url: string } | null;
+  payroll: {
+    employees: number;
+    draft_period: string | null;
+    draft_pay_date: string | null;
+    last_confirmed_period: string | null;
+    last_pay_date: string | null;
+    next_period: string;
+  } | null;
+  cis: {
+    subcontractor: boolean;
+    contractor: boolean;
+    status_label: string;
+    rate: number;
+    tax_year: string;
+    suffered_pence: number;
+    return_due: string | null;
+    pending_readings: number;
+  } | null;
+  property: { properties: number; tax_year: string; income_pence: number; expenses_pence: number; profit_pence: number } | null;
+  deadlines: RtHomeDue[];
+  summary: RtHomeSummary;
+  unavailable: string[];
+}

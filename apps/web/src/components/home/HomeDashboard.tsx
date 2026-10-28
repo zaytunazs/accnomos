@@ -7,6 +7,18 @@ import { AttentionCard, TodayCard } from "@/components/home/Tiles";
 import { HomeData, SignedOut } from "@/components/home/HomeData";
 import InboxTriage from "@/components/home/InboxTriage";
 import MonthEndCard from "@/components/home/MonthEndCard";
+import { OverviewData } from "@/components/home/Overview";
+import {
+  AgedCard,
+  BuyingCard,
+  CisCard,
+  ComingUpCard,
+  IncomeTaxCard,
+  MoneyCard,
+  PayrollCard,
+  PropertyCard,
+  SummaryCard,
+} from "@/components/home/OverviewCards";
 import Pitch from "@/components/home/Pitch";
 import PlanToday from "@/components/home/PlanToday";
 import { HomeSampleBooks } from "@/components/home/SampleBooks";
@@ -35,24 +47,37 @@ export default function HomeDashboard() {
             </Link>
           </div>
         </SignedOut>
-        <AskBar />
-        <HomeError />
-        {/* Signed in with an empty folder: offer the sample books; once loaded, the SAMPLE banner. */}
-        <HomeSampleBooks />
-        <SetupChecklist />
-        {/* One calm grid, signed in or out: 1 column at 390 px, 2 at 768, 3 at 1280.
-            Today spans the row; the Inbox and Recent activity take two. */}
-        <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
-          <TodayCard />
-          <AttentionCard />
-          <TodosTile />
-          <InboxTriage />
-          <Deadlines />
-          <MonthEndCard />
-          <PlanToday />
-          <SpendingCard />
-          <Activity />
-        </div>
+        <OverviewData>
+          {/* The summary first: two to four sentences on the whole picture, then the detail below. */}
+          <SummaryCard />
+          <AskBar />
+          <HomeError />
+          {/* Signed in with an empty folder: offer the sample books; once loaded, the SAMPLE banner. */}
+          <HomeSampleBooks />
+          <SetupChecklist />
+          {/* One calm grid, signed in or out: 1 column at 390 px, 2 at 768, 3 at 1280. Today spans the row; then
+              money, what needs doing and deadlines; then the cards for features these books use (each hides itself
+              otherwise: GET /books/home returns null for its section); then buying, to-dos and activity. */}
+          <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
+            <TodayCard />
+            <AttentionCard />
+            <MoneyCard />
+            <ComingUpCard />
+            <Deadlines />
+            <AgedCard />
+            <IncomeTaxCard />
+            <PayrollCard />
+            <CisCard />
+            <PropertyCard />
+            <SpendingCard />
+            <BuyingCard />
+            <TodosTile />
+            <MonthEndCard />
+            <InboxTriage />
+            <PlanToday />
+            <Activity />
+          </div>
+        </OverviewData>
       </HomeData>
     </div>
   );
