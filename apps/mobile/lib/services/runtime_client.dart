@@ -335,6 +335,29 @@ class RuntimeClient {
     }
   }
 
+  /// Home's other cards and the checked summary. `GET /books/home`, as the
+  /// web's Home (services/runtime/app/home_overview.py).
+  Future<Map<String, dynamic>> home({String? today}) async {
+    _requireBooks();
+    final uri = _uri('/books/home', {'today': ?today});
+    try {
+      final response =
+          await _http.get(uri, headers: _headers).timeout(_timeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        _fail(response.statusCode, response.body.trim());
+      }
+      return json.decode(response.body) as Map<String, dynamic>;
+    } on SocketException {
+      throw RuntimeException(
+          'Could not reach the reader at ${settings.runtimeUrl}. '
+          'Is it running?');
+    } on RuntimeException {
+      rethrow;
+    } catch (e) {
+      throw RuntimeException('Could not load the summary. $e');
+    }
+  }
+
   /// The Home tiles in one call. `GET /books/dashboard`, with the saved VAT
   /// period, like the web's `vatQuery()`.
   /// [today] is `YYYY-MM-DD` on the phone, so the deadline counts from the
