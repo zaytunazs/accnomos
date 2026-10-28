@@ -49,7 +49,7 @@ export default function JudgesPage() {
         <h1 className="text-3xl font-extrabold leading-tight tracking-tight">Try Accnomos in one click</h1>
         <p className="text-[15px] leading-7">
           This sandbox is specially for testing. It opens six months of books for a fictional company, Bramblewood Joinery
-          Ltd (every document labelled <strong>SAMPLE — FICTIONAL COMPANY</strong>), with no Microsoft sign-in and no
+          Ltd (every document carries the sample label shown at the top of this page), with no Microsoft sign-in and no
           two-step verification. Each visitor gets their own copy, kept in memory on our server and reset after 2 hours, so
           nothing you change reaches anyone else.
         </p>
