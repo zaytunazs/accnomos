@@ -4,3 +4,5 @@
 *.jks binary
 *.png binary
 *.jpg binary
+# Vendor import golden files: byte for byte, CRLF line ends as the CSV writer makes them
+services/runtime/tests/fixtures/exports/*.csv -text

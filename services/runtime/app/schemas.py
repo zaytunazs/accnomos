@@ -360,6 +360,8 @@ ActionKind = Literal[
     "match_bank_line",
     "close_month",
     "add_to_shopping_list",
+    "create_quote",
+    "convert_quote_to_invoice",
 ]
 
 

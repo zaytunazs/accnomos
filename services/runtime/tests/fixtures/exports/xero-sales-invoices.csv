@@ -1,0 +1,3 @@
+*ContactName,EmailAddress,POAddressLine1,POAddressLine2,POAddressLine3,POAddressLine4,POCity,PORegion,POPostalCode,POCountry,*InvoiceNumber,Reference,*InvoiceDate,*DueDate,Total,InventoryItemCode,*Description,*Quantity,*UnitAmount,Discount,*AccountCode,*TaxType,TaxAmount,TrackingName1,TrackingOption1,TrackingName2,TrackingOption2,Currency,BrandingTheme
+Acme Kitchens Ltd,accounts@acme.example,Unit 4,Harbour Road,,,Bristol,,BS1 4RW,United Kingdom,ACC-22222222,,01/07/2026,15/07/2026,,,Sales,1,1000.00,,200,20% (VAT on Income),200.00,,,,,GBP,
+Acme Kitchens Ltd,accounts@acme.example,Unit 4,Harbour Road,,,Bristol,,BS1 4RW,United Kingdom,ACC-aaaaaaaa,,02/10/2026,16/10/2026,,,Sales,1,500.00,,200,20% (VAT on Income),100.00,,,,,GBP,

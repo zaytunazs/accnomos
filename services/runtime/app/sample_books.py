@@ -130,17 +130,12 @@ class _Run:
     owns_storage: bool
     resume_from: int  # this step may have run part-way before (-1: none)
     fresh_token: asyncio.Event = field(default_factory=asyncio.Event)
-    #: Set whenever the run stops (done, failed, or waiting for a token); cleared when a token sets it going again.
-    #: Waiting on it, not on the clock, is how anything in this process learns the run has got somewhere.
-    stopped: asyncio.Event = field(default_factory=asyncio.Event)
     task: asyncio.Task[None] | None = None
 
     def hand_token(self, token: str) -> None:
         set_token = getattr(self.storage, "set_token", None)
         if callable(set_token) and token:
             set_token(token)
-        if self.status.state == "needs_token":
-            self.stopped.clear()  # it carries on from here; it sets `stopped` again where it next stops
         self.fresh_token.set()
 
 
@@ -272,7 +267,6 @@ async def _run(run: _Run, steps: list[Any]) -> None:
                     raise
                 status.state, status.error = "needs_token", NEEDS_TOKEN
                 run.fresh_token.clear()
-                run.stopped.set()
                 try:
                     await asyncio.wait_for(run.fresh_token.wait(), TOKEN_WAIT_S)
                 except TimeoutError:
@@ -285,7 +279,6 @@ async def _run(run: _Run, steps: list[Any]) -> None:
         with contextlib.suppress(Exception):  # the token may be the problem; GET then reports the stale run
             await _save(books, status)
     finally:
-        run.stopped.set()
         if status.state == "done" and RUNS.get(run.key) is run:
             RUNS.pop(run.key, None)
         if run.owns_storage:

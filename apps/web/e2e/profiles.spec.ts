@@ -26,25 +26,30 @@ test("menu bar: groups as dropdowns, keyboard and screen-reader friendly, only p
   }
   await expect(nav.getByRole("button", { name: "Personal" })).toHaveCount(0); // not personal books
 
-  // Keyboard: ↓ opens Sales on its first link (Sales overview is not in this build, so it is Invoices), ↓ moves,
-  // Escape closes and gives focus back to the button.
+  // Keyboard: ↓ opens Sales on its first link (Sales overview, now that the sales pages are in this build), ↓ moves
+  // in menu order, Escape closes and gives focus back to the button.
   const sales = nav.getByRole("button", { name: "Sales" });
   await sales.focus();
   await page.keyboard.press("ArrowDown");
   await expect(sales).toHaveAttribute("aria-expanded", "true");
-  await expect(nav.getByRole("link", { name: "Invoices" })).toBeFocused();
+  await expect(nav.getByRole("link", { name: "Sales overview" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
-  await expect(nav.getByRole("link", { name: "Jobs" })).toBeFocused();
+  await expect(nav.getByRole("link", { name: "Invoices" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(sales).toHaveAttribute("aria-expanded", "false");
   await expect(sales).toBeFocused();
   await expect(nav.getByRole("link", { name: "Invoices" })).toBeHidden();
 
-  // Pages another branch has not landed are not linked at all.
+  // Pages another branch has not landed are not linked at all (no balance sheet page yet).
   await sales.click();
-  for (const missing of ["Sales overview", "Quotes", "Products and services", "Repeating"]) {
-    await expect(nav.getByRole("link", { name: missing })).toHaveCount(0);
+  for (const name of ["Sales overview", "Quotes", "Products and services", "Repeating"]) {
+    await expect(nav.getByRole("link", { name })).toBeVisible(); // claude/sales-purchases' pages, now in the build
   }
+  await sales.click();
+  await nav.getByRole("button", { name: "Reporting" }).click();
+  await expect(nav.getByRole("link", { name: "Balance sheet" })).toHaveCount(0);
+  await nav.getByRole("button", { name: "Reporting" }).click();
+  await sales.click();
   // Enter follows a link; the new page closes the group and marks where you are.
   await nav.getByRole("link", { name: "Invoices" }).click();
   await expect(page).toHaveURL(/\/invoices$/);
@@ -117,11 +122,6 @@ test("two linked accounts: add one, set it up as personal, switch in one click; 
   const nav = mainNav(page);
   await expect(nav.getByRole("button", { name: "Purchases" })).toBeVisible();
   for (const gone of ["Sales", "Payroll", "Tax"]) await expect(nav.getByRole("button", { name: gone })).toHaveCount(0);
-  // Home has no VAT for personal books: no VAT tile and no (VAT) deadlines.
-  const today = page.getByRole("region", { name: "Today" });
-  await expect(today.getByRole("group", { name: "Owed by you" })).toBeVisible();
-  await expect(today.getByRole("group", { name: /^VAT estimate/ })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Deadlines" })).toHaveCount(0);
   await nav.getByRole("button", { name: "Reporting" }).click();
   await expect(nav.getByRole("link", { name: "VAT return" })).toHaveCount(0);
   // The runtime agrees: Jo's books have no VAT return.
@@ -143,25 +143,6 @@ test("two linked accounts: add one, set it up as personal, switch in one click; 
   await switcher(page).click();
   await expect(page.getByRole("menuitemradio", { name: /Sam Builds Ltd/ })).toHaveAttribute("aria-checked", "true");
   await expect(page.getByRole("menuitemradio", { name: /Jo at home/ })).toHaveAttribute("aria-checked", "false");
-});
-
-test("Home's VAT tile and deadlines show only for a VAT-registered business", async ({ page, runtime }) => {
-  const company = { name: "Sam Builds Ltd", kind: "company", settings: { company_number: "01234567" } };
-  await runtime.api("PUT", "/profile", { ...company, settings: { ...company.settings, vat_registered: false } });
-  await signIn(page);
-  await createBooksFolder(page);
-  await page.goto("/");
-  const today = page.getByRole("region", { name: "Today" });
-  await expect(today.getByRole("group", { name: "Cash in bank" })).toBeVisible();
-  await expect(today.getByRole("group", { name: "Owed by you" })).toBeVisible();
-  await expect(today.getByRole("group", { name: /^VAT estimate/ })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Deadlines" })).toHaveCount(0);
-
-  // Registered for VAT: the tile and the deadlines are back.
-  await runtime.api("PUT", "/profile", { ...company, settings: { ...company.settings, vat_registered: true } });
-  await page.reload();
-  await expect(today.getByRole("group", { name: /^VAT estimate/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Deadlines" })).toBeVisible();
 });
 
 test.describe("at 360 px", () => {

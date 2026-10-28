@@ -51,6 +51,7 @@ AGENT_LABELS = {
     "files": "Files",
     "close": "Month-end",
     "cis-reader": "CIS reader",
+    "repeating": "Repeating",
 }
 
 
@@ -302,6 +303,55 @@ SUMMARIES: dict[str, Summary] = {
         f"Voided credit note {r.get('credit_note') or ''}" + (f": {r['reason']}" if r.get("reason") else "")
     ),
     "invoice_voided": lambda r, w: f"Voided invoice {_inv(r)}" + (f": {r['reason']}" if r.get("reason") else ""),
+    # Products and services, quotes, purchase orders, repeating, statements (app/items.py, quotes.py, ...)
+    "item_created": lambda r, w: f"Added product or service {r.get('item') or ''}",
+    "item_edited": lambda r, w: f"Edited product or service {r.get('item') or ''}",
+    "items_imported": lambda r, w: (
+        f"Imported products and services from CSV: {_n(r, 'created')} added, {_n(r, 'updated')} updated, "
+        f"{_n(r, 'skipped')} skipped"
+    ),
+    "quote_created": lambda r, w: f"Created quote {r.get('quote') or ''}" + _pounds(r, "total_pence"),
+    "quote_edited": lambda r, w: f"Edited quote {r.get('quote') or ''}" + _pounds(r, "total_pence"),
+    "quote_sent": lambda r, w: f"Emailed quote {r.get('quote') or ''}" + (f" to {r['to']}" if r.get("to") else ""),
+    "quote_marked_sent": lambda r, w: f"Marked quote {r.get('quote') or ''} as sent (not emailed from here)",
+    "quote_accepted": lambda r, w: f"Quote {r.get('quote') or ''} was accepted",
+    "quote_declined": lambda r, w: f"Quote {r.get('quote') or ''} was declined",
+    "quote_converted": lambda r, w: (
+        f"Made invoice draft {_inv(r)} from quote {r.get('quote') or ''}" + _pounds(r, "total_pence")
+    ),
+    "purchase_order_created": lambda r, w: f"Created purchase order {r.get('order') or ''}" + _pounds(r, "total_pence"),
+    "purchase_order_edited": lambda r, w: f"Edited purchase order {r.get('order') or ''}" + _pounds(r, "total_pence"),
+    "purchase_order_approved": lambda r, w: f"Approved purchase order {r.get('order') or ''}",
+    "purchase_order_sent": lambda r, w: (
+        f"Emailed purchase order {r.get('order') or ''}" + (f" to {r['to']}" if r.get("to") else "")
+    ),
+    "purchase_order_marked_sent": lambda r, w: f"Marked purchase order {r.get('order') or ''} as sent",
+    "purchase_order_cancelled": lambda r, w: (
+        f"Cancelled purchase order {r.get('order') or ''}" + (f": {r['reason']}" if r.get("reason") else "")
+    ),
+    "purchase_order_converted": lambda r, w: (
+        f"Wrote a bill for review from purchase order {r.get('order') or ''}" + _pounds(r, "total_pence")
+    ),
+    "purchase_order_matched": lambda r, w: f"Matched a supplier bill to purchase order {r.get('order') or ''}",
+    "purchase_order_unlinked": lambda r, w: f"Unlinked the bill from purchase order {r.get('order') or ''}",
+    "repeating_created": lambda r, w: f"Set up repeating {r.get('kind') or 'item'} {r.get('template') or ''}",
+    "repeating_edited": lambda r, w: f"Edited repeating {r.get('kind') or 'item'} {r.get('template') or ''}",
+    "repeating_paused": lambda r, w: f"Paused repeating {r.get('kind') or 'item'} {r.get('template') or ''}",
+    "repeating_resumed": lambda r, w: f"Resumed repeating {r.get('kind') or 'item'} {r.get('template') or ''}",
+    "repeating_deleted": lambda r, w: f"Stopped repeating {r.get('kind') or 'item'} {r.get('template') or ''}",
+    "repeating_generated": lambda r, w: (
+        f"Repeating {r.get('template') or ''} made {r.get('what') or 'a document'} for {r.get('date') or 'a date'}: "
+        f"{r.get('outcome') or 'drafted'}"
+    ),
+    "repeating_problem": lambda r, w: (
+        f"Repeating {r.get('template') or ''} could not finish for {r.get('date') or 'a date'}: "
+        f"{_plain(r.get('error')) or 'unknown error'}"
+    ),
+    "statement_sent": lambda r, w: (
+        f"Emailed a statement to {r.get('contact') or 'a customer'}"
+        + (f" ({r['to']})" if r.get("to") else "")
+        + _pounds(r, "closing_pence")
+    ),
     # Jobs, staff, timesheets
     "job_created": lambda r, w: "Added a job",
     "job_updated": lambda r, w: "Updated a job" + (f" ({r['status']})" if r.get("status") else ""),
@@ -444,6 +494,12 @@ SUMMARIES: dict[str, Summary] = {
     "tracking_option_added": lambda r, w: f"Added the tracking option {r.get('name', '')}".rstrip(),
     "tracking_option_edited": lambda r, w: "Changed a tracking option",
     "budget_saved": lambda r, w: f"Saved the budget from {r.get('start', 'a month')}",
+    "report_saved": lambda r, w: (
+        f"Saved {str(r.get('report') or 'a report').replace('-', ' ')} to {REPORTS}"
+        f" as {str(r.get('format') or 'a file').upper()}"
+    ),
+    "export_mapping_changed": lambda r, w: f"Changed the account mapping for {r.get('package') or 'another package'}",
+    "report_favourites_changed": lambda r, w: "Changed your starred reports",
     # Your data
     "data_exported": lambda r, w: f"Saved your full data export to {REPORTS}/Exports as a zip",
     # Load sample books (app/sample_books.py)

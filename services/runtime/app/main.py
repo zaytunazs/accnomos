@@ -264,6 +264,22 @@ app.include_router(online_payments_router)  # also /invoices/{number}/payment-li
 from app.routes_cis import router as cis_router  # noqa: E402  /cis/* (CIS and the VAT reverse charge)
 
 app.include_router(cis_router)
+
+from app.routes_items import router as items_router  # noqa: E402  /items/*
+
+app.include_router(items_router)
+from app.routes_quotes import router as quotes_router  # noqa: E402  /quotes/*
+
+app.include_router(quotes_router)
+from app.routes_overview import router as overview_router  # noqa: E402  /sales/overview, /statements/*
+
+app.include_router(overview_router)
+from app.routes_purchase_orders import router as purchase_orders_router  # noqa: E402  /purchase-orders/*
+
+app.include_router(purchase_orders_router)
+from app.routes_repeating import router as repeating_router  # noqa: E402  /repeating/*
+
+app.include_router(repeating_router)
 from app.routes_actions import router as actions_router  # noqa: E402  /actions/approve, /actions/reject
 
 app.include_router(actions_router)
@@ -290,6 +306,9 @@ app.include_router(import_router)
 from app.routes_accounting import router as accounting_router  # noqa: E402  /accounting/* (chart, journals, assets…)
 
 app.include_router(accounting_router)
+from app.routes_exports import router as exports_router  # noqa: E402  /exports/* (Reports & exports, import files)
+
+app.include_router(exports_router)
 if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI under /__test (app/testmode.py)
     from app import testmode
 

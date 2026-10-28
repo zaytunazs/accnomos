@@ -15,6 +15,8 @@ apps/mobile (Flutter) ──┼─> services/runtime ──┼─> Meta models (
   (below). Routers are the `include_router` lines in `app/main.py`: extract, books (scan, proposals, approve, undo, rules,
   rebuild), VAT and deadlines, dashboard, bank, ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
   timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports, audit, close (the month-end close
+  agent, `app/routes_close.py`). Test mode (`ACCNOMOS_TEST_MODE=1`) adds
+  timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports, exports. Test mode (`ACCNOMOS_TEST_MODE=1`) adds
   agent, `app/routes_close.py`), import (history and opening balances). Test mode (`ACCNOMOS_TEST_MODE=1`) adds
 
   rebuild), VAT and deadlines, dashboard, bank, bank feeds (TrueLayer), ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
@@ -89,6 +91,7 @@ Documents, filed by code and never deleted:
 | `Archive/<year>/<original path>`, `Archive/<year>.zip` | runtime, `POST /files/archive` (`archive.py`) | made when first used; the zip is an extra copy with `manifest.json`, the folder stays. See *Files, archive and backups* |
 | `Backups/accnomos-backup-<yyyy-mm-dd>.zip`, `….zip.sha256` | runtime, `POST /backups` (`backups.py`) | made when first used; a second backup the same day gets ` (2)` |
 | `_Trash/<yyyy-mm-dd>/<original path>` | runtime: Clean up, backup retention, an undone archive's zip, files a restore replaced | made when first used; **never emptied by the app**, the user empties it in OneDrive |
+| `07 Reports/<report>-<from>-to-<to>.<csv\|xlsx\|pdf\|zip\|json>`, `07 Reports/<report>-at-<date>.<ext>` | runtime, `POST /exports/{id}/save` (*Save to 07 Reports* on Reports & exports) | any report or import file of the registry; a second save of the same name gets ` (2)`, nothing is overwritten; audited as `report_saved`. Posts nothing |
 | `Books.xlsx` | runtime, `rebuild_safely` after each ledger-changing action and on *Rebuild* | rewritten whole; sheets `README`, `Summary`, `Ledger`, `Accounts`, `VAT`, `P&L`, `Customers`, `Suppliers`, `Bank`, `Proposals`, `Jobs`, `Vehicles`, `Payroll` (`projection.SHEETS`). A feature whose file cannot be read leaves its sheet empty; a failed rebuild is audited and never fails the user's action |
 
 **Old folder names.** Until 27 Oct 2026 the tree used other names (`paths.RENAMED`: old name → current name, e.g.
@@ -143,6 +146,8 @@ Books.xlsx still show the path as it was saved.
 | `close/<yyyy-mm>.json` | the month-end close: the last 10 runs (steps, findings, card summaries; never the signed cards) and every close record (who, when, the snapshot and its SHA-256) | updated; close records are only appended |
 | `shopping_list.json` | the shopping list (`shopping.py`): item, spec, quantity, the cheapest supplier code found in the history, ticked or not | rewritten whole; at most 300 items |
 | `item_matches.json` | the user's yes/no for "are these two item names the same product?" (`prices.py`); never the model's | rewritten whole; one row per pair |
+| `exports/mappings.json` | the user's changes to how the books' accounts map onto Xero, QuickBooks, Sage 50, Sage Accounting and FreeAgent (`app/exports/mapping.py`; defaults live in code) | rewritten |
+| `exports/favourites.json` | starred reports on Reports & exports, `{"version": 1, "ids": [...]}` | rewritten |
 | `accountant.json` | who the books are shared with (invitations, their Graph permission ids, revocations, the Accnomos-accountants consent: version, sha256 of the text, who and when), the profile the portal shows, the folder's drive id + item id (`app/accountant.py`) | rewritten; a revoked invitation is kept, marked revoked |
 | `queries/<id>.json`, `queries/audit/<yyyy-mm>.jsonl` | client queries, one thread per file (`app/queries.py`); the audit lines of a view-only accountant | updated (If-Match); append-only |
 | `Accountant/clients.json` | **in an accountant's own books**: client codes they added by hand in the portal (`app/portal.py`) | rewritten |
@@ -159,6 +164,30 @@ OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folde
 (enforced on construction), VAT code per line (S 20 %, R 5 %, Z, E, O, N), `evidence` = document hashes, `approved_by` (agents
 never approve; Autopilot is recorded as `autopilot`), `reverse_charge_vat` (VAT Act 1994 s55A: on a purchase, VAT in box 1 and box 4; on a sale, the customer's, kept off this return). Nothing is edited; **undo adds a `reversal` event** that references the
 original. The nine VAT boxes come from `compute_vat_return`, plain code, boxes 6–9 truncated to whole pounds.
+
+**Reports and exports** (`services/runtime/app/exports/`, routes `app/routes_exports.py`, web `/reports/exports`). One
+registry (`registry.py`): each `ExportSpec` has an id, a group, its formats and parameters (`period`, `as_of`, `mode`) and a
+`build(ctx)` that returns a `ReportDoc` (title, period line, basis notes, warnings and tables of typed cells: money in integer
+pence, whole pounds, dates, text). `writers.py` turns any ReportDoc into CSV, XLSX and PDF, so a report's figures are written
+once; zip and JSON outputs come from a spec's `raw(ctx)`. Groups follow Xero's *All reports* list: financial statements,
+payables and receivables, reconciliations, taxes and balances, transactions; then *For your accountant* (the Accountant pack,
+the ledger JSON) and *Export to another package*. `RESERVED` keeps ids for the reports other features build (fixed-asset
+schedules, budgets, tracking and the cash-flow forecast for accounting-tools; sales by item for sales-purchases); those
+features add their module to `OPTIONAL_PLUGINS` and register with `owner=` their name. Routes: `GET /exports` (catalogue and
+favourites), `GET /exports/{id}` (preview JSON, tables cut to `rows`), `GET /exports/{id}/file?format=` (download, reads
+only), `POST /exports/{id}/save` (to `07 Reports`, needs `X-User`), `GET|PUT /exports/mappings/{package}`, `GET|PUT
+/exports/favourites`. A period report takes balance-sheet accounts to its end and P&L accounts for the period, with earlier
+profit on one line (`3200 Profit and loss brought forward`), because the books close no year-end; the trial balance, balance
+sheet, P&L and general ledger therefore agree (`tests/test_exports.py`). Vendor import files are ReportDocs whose one table has
+the vendor's headings and pre-formatted cells; `vendors.SOURCES` names the page each template was checked against.
+
+**Ledger JSON** (`GET /exports/ledger-json/file?format=json`, also `ledger.json` in the Accountant pack): an open format,
+`{"format": "accnomos-ledger", "version": 1, "generated_at", "currency": "GBP", "amounts": "integer pence", "basis",
+"sample", "period", "schema", "accounts", "events", "totals"}`. `accounts` is `[{account, code, name, class}]`; `events` is
+every approved event oldest first, `{id, kind, date, lines: [{account, debit, credit, vat_code, memo}], net, vat,
+counterparty, evidence, approved_by, approved_at, proposal_id, reverses, credits, file}`, with Σ debit = Σ credit in each;
+`totals` is `{events, debits, credits}`. The file explains each key in its own `schema` object. A later version may add keys,
+never change one.
 
 **Audit lines** are one JSON object per line: `{"ts", "actor", "action", "refs"}`. `actor` is `user:<email>` for something a
 person did, or `agent:<name>` (`extractor`, `intake`, `autopilot`, `mileage`, `contacts`, `triage`, `folder-layout`, `backup`, `close`)

@@ -136,6 +136,14 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - **PayPal is untested against PayPal's real API, sandbox included.** Partner onboarding, the Invoicing v2 calls, `PayPal-Auth-Assertion` and the capture read for the fee have only met the fake in `app/online_fakes.py`; the first run against the PayPal sandbox may need changes. The same holds for Stripe (never called), but Stripe's shapes are better documented.
 - Payments are found only when the user opens Invoices (no webhooks: the runtime holds no token to write to OneDrive). A customer's payment is invisible to the books until then, and is posted only when the user approves it. The gross goes to the provider's clearing account (1230 Stripe clearing or 1240 PayPal clearing, not 1210, which is Cash) and the fee is a separate exempt expense out of it. The provider's payout is matched on the Bank page as **Payout from Stripe/PayPal** (Dr 1200 Bank / Cr clearing; unmatching reverses it), so the money is counted once and 1200 Bank only moves when the statement shows it. A payout larger than the clearing balance is refused. Not handled: payouts in another currency, Stripe or PayPal balances used for refunds or disputes (chargebacks), and reserves held back by the provider: those leave a clearing balance the user must journal by hand. Fees on payments approved before this change sat in 1200 Bank; nothing migrates them.
 - A link has a fixed amount. If the balance changes (a bank payment, a credit note) the old link still asks for the old amount until the user makes a new one; the list shows "Not the amount owed now". A payment that arrives on an invoice already paid another way is not proposed (paid invoices are not checked); it stays in Stripe/PayPal for the user to refund or record by hand.
+## Sales and purchases: items, quotes, orders, repeating, overviews, statements
+
+- **Products and services** (`app/items.py`, `_System/Items/items.json`) fill invoice, quote, order and repeating lines. The *income account* is stored and exported but **invoices still post every sale to 4000 Sales** (the VAT package finds sales by that name), so changing it changes nothing in the books. A bill or purchase order uses one *expense account*: a bill whose lines come from items with different expense accounts posts them all to the account with the most net, which the Review card shows and the user can change. CSV import reads our own columns and Xero's inventory export; rows it cannot read are skipped and listed; it has not been tried on a real Xero file.
+- **Quotes** (`app/quotes.py`) post nothing: an offer is not a sale. *Expired* is worked out from the expiry date each time a quote is read; nothing changes the file. *Convert to invoice* makes a draft invoice first and then records the link on the quote; if the runtime stops between the two, an orphan draft invoice with the quote's lines can exist (the quote can then be converted again, and the orphan voided).
+- **Purchase orders** (`app/purchase_orders.py`) are not commitments in the books either. *Convert to bill* writes a proposal in Review with the order's lines and totals; the user still approves it, and a bill with a failed check still shows *needs a look*. A bill the model read from a scan is **not matched to an open order automatically**: the user picks *Match a received bill*, which lists that supplier's bills with the difference from the order, and only links them. One bill per order. The same crash caveat applies between making the proposal and saving the link (the proposal id is derived from the order, so a retry finds it, it does not make a second).
+- **Repeating invoices and bills** (`app/repeating.py`) run **only when something asks**: opening Sales, Purchases or Repeating in the app, or a call to `POST /repeating/process` (for example from a Power Automate timer). There is no background server, so nothing is made while the user is away; the next visit catches up, at most 12 occurrences per schedule per call, each dated on its scheduled day. *Approve automatically* is a standing approval: an invoice is emailed to the customer from the user's Outlook and posted without another question (if it cannot be sent it stays a draft and says why, so a repeating invoice needs the mail permission on the visit that makes it); a bill is approved and posted unless a check fails. Every occurrence is in the audit log and an item made this way carries `repeating:<id>` as its approver. Not tried against a real mailbox or across a long gap in real use; month-end dates are covered by unit tests only.
+- **Sales and Purchases overviews** (`app/overview.py`) are computed from the same invoices and ledger as Contacts and the aged reports, with a 30-day window for money in/out and invoiced. Money out and the bills owed are only as complete as the payments the user has recorded or matched; a bill paid at the time counts as paid.
+- **Customer statements** (`app/statements.py`) show customer-side documents only. The list of unpaid invoices appears only for statements that run to today, because open items describe the books now. Sent statements are kept in `03 Sales/statements` and audited. Tested on fake storage and a fake mailbox; not sent through real Outlook.
 
 ## Import history and opening balances
 
@@ -348,6 +356,46 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
   the VAT tile on `vat_applies=false`. The bottom bar's VAT tab is still there for every profile (its screen answers
   with the runtime's sentence for books without VAT). `flutter analyze` and `flutter test` (279 tests) pass, on
   Flutter 3.47.8 in a Linux container; not run on a phone.
+## Reports and exports
+
+- **Nothing has been test-imported into Xero, QuickBooks Online, Sage 50, Sage Accounting or FreeAgent.** Each import file
+  follows the vendor's published template as checked on 28 Oct 2026 (golden files in `services/runtime/tests/fixtures/exports/`
+  hold the headings and first rows exactly). How each was verified:
+
+  | File | Checked against | How sure |
+  |---|---|---|
+  | Xero manual journals | Xero Central's article is behind a login; headings from Xero's template as copied by Sequence (docs.sequencehq.com) and corroborated by Business Importer and PostTrans | secondary sources only |
+  | Xero contacts | central.xero.com/0/article/Import-contacts-into-Xero (column names, rules) | official; the full heading row comes from Xero's download, which we could not fetch |
+  | Xero sales invoices, bills | central.xero.com/0/article/Import-customer-invoices-UK (DD/MM/YYYY, tax names); heading rows as copied from SalesInvoiceTemplate.csv / BillTemplate.csv (notestoself.dev, syslumelab.com, kedgework.com, gigsorted.com) | rules official, headings secondary |
+  | Xero bank statement | central.xero.com/0/article/Import-a-CSV-bank-statement | official; Xero maps columns at import |
+  | Xero chart of accounts | template as copied (accountantmaster.com); UK default codes from two independent lists | secondary |
+  | QuickBooks journal entries, invoices, bank, chart of accounts, customers, suppliers | quickbooks.intuit.com learn-support articles (US journal and bank articles, UK invoice and chart articles, global customers/suppliers article) | official; QuickBooks maps columns at import, and its sample files were not downloaded |
+  | Sage 50 audit trail, nominal records | gb-kb.sage.com 250321114601443 and 250321114606157 (21 Mar 2025), 200427112601918 | official |
+  | Sage 50 customer and supplier records | first nine columns as gb-kb.sage.com 220225121155067 and import.makingithappen.co.uk list them | partly official |
+  | Sage Accounting journals, contacts | gb-kb.sage.com 222001000100916 (13 Feb 2025) and 240701101019900 (8 Oct 2026) | official |
+  | Sage Accounting chart of accounts | ie-kb.sage.com 222001000100819 for the five headings; the UK page names the columns but not the UK tax-rate words, so "Standard / Lower / Zero / Exempt / No VAT" is our guess | headings official (Irish page), tax words unverified |
+  | FreeAgent bank statement, contacts, invoices | support.freeagent.com 115001222564, 115001222864, 36670919996050 | official; the invoice importer is for Practice Partners only, and whether a multi-line invoice repeats its invoice columns on each row is not stated (we leave them blank after the first) |
+
+- **Account mapping defaults are ours.** Xero's UK default codes come from two third-party lists that agree, Sage 50's from a
+  v26 list and Sage's control-account article, QuickBooks' Debtors/Creditors from Intuit; the QuickBooks detail types for
+  equity and overheads ("Owner's Equity", "Office/General Administrative Expenses") and the Xero tax names for zero-rated and
+  exempt income are standard names we did not see on a vendor page. The bank account always needs the user's choice
+  (quality "check"); Xero may refuse bank accounts on manual journals (not confirmed on a Xero page), so its file says to bring
+  bank lines in with the statement file.
+- **Journals carry no VAT code** so the new package does not count VAT already on Accnomos's returns. Bank files are the
+  books' 1200 Bank entries, not the bank's own statement lines. Credit notes are in no invoice file. The Sage 50 file puts the
+  single VAT control account on 2202 VAT Liability.
+- **VAT reports:** box wording is HMRC's VAT Notice 700/12 (sections 3.2–3.10, page updated 19 Dec 2025) and the digital-links
+  trail follows VAT Notice 700/22 paragraph 3.2.1 (updated 1 Apr 2022), both read on gov.uk on 28 Oct 2026. The return is the
+  same `compute_vat_return` the VAT page submits; there is no cash accounting or flat rate scheme. No EC Sales List: since
+  2021 only Northern Ireland goods sold to the EU need one, and the books record no NI/EU movements (boxes 2, 8, 9 are 0).
+- **Reports are not statutory accounts.** No year-end close, accruals, prepayments, depreciation or stock: the balance sheet
+  shows earlier profit as one brought-forward line, and fixed-asset schedules, budgets, tracking and the cash-flow forecast
+  are left to the accounting-tools feature (ids reserved). Bank reconciliation reads the Bank page's matching against 1200 Bank
+  only. Debtor and creditor days are simple ratios. The general-ledger exceptions are fixed rules (round £100s from £500,
+  weekend dates, approval over 90 days late, no account code, unexpected sign), a prompt to look, not findings.
+- Run on fake storage only (unit tests and the e2e spec); no PDF or XLSX has been opened in a real viewer other than by the
+  tests' parsers, and nothing has been saved to a real OneDrive.
 
 ## Accountant collaboration
 

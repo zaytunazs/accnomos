@@ -490,6 +490,9 @@ NO_USER_NEEDED = {
     "POST /jobs/{job_id}/invoice-lines": "proposes lines; marks nothing",
     "POST /invoices/{number}/pdf": "renders the PDF of an invoice the user already wrote; no new facts",
     "POST /credit-notes/{number}/pdf": "renders the PDF of a credit note the user already made; no new facts",
+    "POST /quotes/{number}/pdf": "renders the PDF of a quote the user already wrote, as invoices do; no new facts",
+    "POST /purchase-orders/{number}/pdf": "renders the PDF of an order the user already wrote; no new facts",
+    "POST /statements/{contact_id}/pdf": "renders a customer statement from posted entries; writes nothing",
     "POST /invoices/{number}/reminder-draft": "drafts text for the user to read; sends and writes nothing",
     "POST /plan/day": "proposes a day; writes nothing (apply needs X-User)",
     "POST /ai/warm": "pings the server's own Modal provider (one ping a minute at most); no books, writes nothing",
@@ -587,6 +590,7 @@ def test_every_audit_actor_is_user_or_agent():
 # Routes that answer without a Graph token, each with its reason. Every other route reaches the user's books, mail or
 # the server's look-up keys only through `X-Graph-Token` (get_books and its siblings) and must answer 401 without it.
 PUBLIC_ROUTES = {
+    "GET /repeating/dates": "date arithmetic for the repeating-schedule form; reads and writes no books",
     "GET /health": "liveness for the container healthcheck; no user data",
     "POST /ai/test": "Settings' Test connection, with the caller's own key or local agent (docs/SECURITY.md)",
     "POST /extract": "Android reads a receipt before sign-in; returns a proposal, touches no books",

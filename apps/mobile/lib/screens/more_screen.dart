@@ -35,7 +35,8 @@ class MoreEntry {
 /// for a VAT-registered business. Null features (not known yet, signed out,
 /// or an older runtime without `GET /profile`) show everything. Personal
 /// shows only while Settings › Personal has "Show personal finances" on.
-List<MoreEntry> moreEntries(List<String>? features, {bool showPersonal = false}) {
+List<MoreEntry> moreEntries(List<String>? features,
+    {bool showPersonal = false}) {
   final vat = features == null || features.contains('vat');
   final all = [
     const MoreEntry(Icons.folder_outlined, 'Files',
@@ -103,16 +104,15 @@ class _MoreScreenState extends State<MoreScreen> {
     AppSettings.load().then((settings) {
       if (!mounted) return;
       setState(() => _showPersonal = settings.showPersonalFinances);
+      if (widget.features == null) _loadFeatures(settings);
     });
-    if (widget.features == null) _loadFeatures();
   }
 
-  Future<void> _loadFeatures() async {
+  Future<void> _loadFeatures(AppSettings settings) async {
     try {
       final auth = AuthService();
       final account = await auth.account();
       if (account == null) return;
-      final settings = await AppSettings.load();
       final profile =
           await (await booksClient(settings, auth, account)).booksProfile();
       final features = profile['features'];
