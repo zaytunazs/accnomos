@@ -54,6 +54,8 @@ LAYOUT = [
     r"_System/Timesheets/\d{4}-\d{2}\.jsonl",
     r"_System/Vehicles/vehicles\.json",
     r"_System/Mileage/\d{4}-\d{2}\.jsonl",
+    r"_System/shopping_list\.json",
+    r"_System/item_matches\.json",
     r"Books\.xlsx",
 ]
 

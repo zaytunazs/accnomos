@@ -268,7 +268,8 @@ def extraction_json_schema() -> dict[str, Any]:
 
 ASK_ANSWER_MAX = 1200
 ASK_HISTORY_MAX = 6
-AskActionKind = Literal["open_review", "open_vat", "chase_supplier", "plan_day", "none"]  # plan_day: code only
+#: plan_day and open_spending: code only
+AskActionKind = Literal["open_review", "open_vat", "chase_supplier", "plan_day", "open_spending", "none"]
 Confidence = Literal["high", "medium", "low"]
 
 
@@ -329,7 +330,7 @@ class AskExplanation(BaseModel):
     confidence: Confidence
 
 
-ActionKind = Literal["create_invoice", "chase_invoice", "log_mileage", "log_timesheet"]
+ActionKind = Literal["create_invoice", "chase_invoice", "log_mileage", "log_timesheet", "add_to_shopping_list"]
 
 
 class ProposedAction(StrictBody):
@@ -357,6 +358,9 @@ class Clarification(BaseModel):
     question_md: str
     candidates: list[str] = []
     ref: str | None = None  # the words the user used ("Hartley"), so the app can re-ask with a candidate in their place
+    # add_to_shopping_list with nothing in the history: the specs to ask for as fields (app/shopping.py SpecField),
+    # each optionally with a "value" already said (the quantity). The app posts them to POST /shopping/propose.
+    spec_fields: list[dict[str, Any]] = []
 
 
 class AskAnswer(AskModelOutput):

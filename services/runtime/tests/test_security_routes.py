@@ -429,6 +429,9 @@ NO_USER_NEEDED = {
     "POST /credit-notes/{number}/pdf": "renders the PDF of a credit note the user already made; no new facts",
     "POST /invoices/{number}/reminder-draft": "drafts text for the user to read; sends and writes nothing",
     "POST /plan/day": "proposes a day; writes nothing (apply needs X-User)",
+    "POST /books/prices/suggest": "the model suggests item matches; nothing is stored (POST /books/prices/matches is)",
+    "POST /shopping/lookup": "reads the price history (and a live search, when on); writes nothing",
+    "POST /shopping/propose": "proposes a signed card that only /actions/approve (X-User) runs",
 }
 
 

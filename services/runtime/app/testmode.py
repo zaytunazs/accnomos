@@ -252,9 +252,19 @@ _INVOICE_WORDS = re.compile(
 )
 
 
+_SHOPPING_WORDS = re.compile(
+    r"^\s*(?:please\s+)?add\s+(?:(?P<qty>\d+)\s*(?:x|×|rolls? of|packs? of|boxes of|of)?\s+)?(?P<item>.+?)\s+"
+    r"to\s+(?:my|the)\s+shopping\s+list[.!]?\s*$",
+    re.I,
+)
+
+
 def intent_reply(question: str) -> dict[str, Any]:
-    """The words of "send a £100 invoice to JM Trading [for …]" copied into the intent; anything else is `none`."""
+    """The words of "send a £100 invoice to JM Trading [for …]" or "add [6] packing tape to my shopping list" copied
+    into the intent; anything else is `none`."""
     fields: dict[str, Any] = dict.fromkeys(actions.IntentModelOutput.model_fields)
+    if shop := _SHOPPING_WORDS.match(question):
+        return {**fields, "kind": "add_to_shopping_list", "item_text": shop["item"], "quantity_text": shop["qty"]}
     m = _INVOICE_WORDS.match(question)
     if m is None:
         return {**fields, "kind": "none"}
@@ -266,6 +276,24 @@ def intent_reply(question: str) -> dict[str, Any]:
         "description": m["description"],
         "send": bool(m["send"]),
     }
+
+
+def spending_reply(content: str) -> dict[str, Any]:
+    """A summary quoting only figures from the spending facts (app/ai/spending.py checks every one)."""
+    facts = json.loads(content.split("FACTS:\n", 1)[1])
+    t = facts["this_period"]
+    answer = f"You spent £{t['spent']} before VAT in {t['label']} across {t['purchases']} purchases."
+    if t["by_category"]:
+        answer += f" Most went on {t['by_category'][0]['name']}."
+    if facts["recurring"]:
+        answer += f" {facts['recurring'][0]['supplier']} is a regular cost."
+    return AskExplanation(answer_md=answer, confidence="high").model_dump()
+
+
+def items_reply(content: str) -> dict[str, Any]:
+    """Deterministic same-product verdicts (app/ai/items.py): every numbered pair is "same"; code's rules decide."""
+    pairs = re.findall(r"^(\d+)\. ", content, re.MULTILINE)
+    return {"verdicts": [{"pair": int(n), "same": True} for n in pairs]}
 
 
 # --------------------------------------------------------------------------- #
@@ -401,7 +429,17 @@ async def _seed_demo(s: State) -> None:
     s.contacts.contacts.append(DEMO_CUSTOMER.model_copy(deep=True))  # one per tenant: workers never share an object
 
 
-SEEDS = {"bank": _seed_bank, "demo": _seed_demo}  # opt-in: they change the VAT figures or the date other flows check
+async def _seed_purchases(s: State) -> None:
+    """A few months of approved purchases with line items (app/sample_purchases.py), for Spending, Cheaper options
+    and the shopping list."""
+    from app.books import Books
+    from app.sample_purchases import seed_purchases
+
+    await seed_purchases(Books(s.storage))
+
+
+#: Opt-in: they change the VAT figures or the date other flows check.
+SEEDS = {"bank": _seed_bank, "demo": _seed_demo, "purchases": _seed_purchases}
 
 
 async def reset(seed: str | None = None) -> dict[str, Any]:
@@ -590,6 +628,13 @@ async def ai_chat(request: Request) -> JSONResponse:
         return JSONResponse(_ollama(bank_ai_reply(messages[-1]["content"])))
     if system == dup_ai.SYSTEM_PROMPT:
         return JSONResponse(_ollama(duplicate_reply(messages[-1]["content"])))
+    from app.ai import items as items_ai
+    from app.ai import spending as spending_ai
+
+    if system == spending_ai.SYSTEM_PROMPT:
+        return JSONResponse(_ollama(spending_reply(messages[-1]["content"])))
+    if system == items_ai.SYSTEM_PROMPT:
+        return JSONResponse(_ollama(items_reply(messages[-1]["content"])))
     images = [img for m in messages for img in (m.get("images") or [])]
     if system == actions.INTENT_PROMPT:
         return JSONResponse(_ollama(intent_reply(messages[-1]["content"])))
