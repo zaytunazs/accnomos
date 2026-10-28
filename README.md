@@ -8,6 +8,15 @@ Your books are files in your own OneDrive (no Accnomos database); Meta models re
 - **Run it:** `uv sync --all-packages --all-extras && uv run pytest -q`; `cd apps/web && pnpm install && pnpm run build`; services and web dev servers in `docs/DEV.md`.
 - **Docs:** [Architecture](docs/ARCHITECTURE.md) · [Meta models and evals](docs/META_MODELS.md) · [4-minute demo](docs/DEMO.md) · [Honesty](docs/HONESTY.md) · [What remains](docs/REMAINING.md)
 
+## For judges
+
+- **What pre-existed:** only the owner's DGX Spark with Ollama. The first commit is 6 h 29 min after kickoff (26 Oct 2026, 16:00 UTC); timestamps, commits per day and how each part was built: [docs/PROVENANCE.md](docs/PROVENANCE.md).
+- **Criteria → evidence** (Impact, Use of Meta AI tooling, Technical depth and execution, Demo quality), each claim with a file path: [docs/submission/JUDGING.md](docs/submission/JUDGING.md).
+- **Meta models**, where each runs and what is measured versus unit-tested: [docs/submission/META_MODELS.md](docs/submission/META_MODELS.md). Every figure is on synthetic documents (200 clean and 200 messy; all fields right 91 / 93 % for Muse Spark Open, 85 / 80 % for Muse Glimmer 30B).
+- **Try it:** sign in at `https://accnomos.com` with a throwaway Microsoft account and press **Load sample books** for six months of a fictional company (never yet run against a real OneDrive), or run it with no accounts in test mode ([JUDGING.md, last section](docs/submission/JUDGING.md#how-to-run-it-in-10-minutes-test-mode-no-accounts)).
+- **What is not real yet:** HMRC is sandbox only and not run end to end; the Android app has not run on a real phone; most features are tested on fakes. Every gap: [docs/HONESTY.md](docs/HONESTY.md).
+- Video script and submission texts: [docs/submission/](docs/submission/).
+
 ## Layout
 
 | Path | What |
