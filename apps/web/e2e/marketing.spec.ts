@@ -31,7 +31,7 @@ test.describe("landing page at 1280 px", () => {
     await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
     await expect(page.getByRole("navigation", { name: "Sections" })).toHaveCount(0);
 
-    await expect(page.getByRole("list", { name: "Apps" }).first()).toContainText("iPhone app: coming soon");
+    await expect(page.getByRole("list", { name: "Apps" }).first()).toContainText("Available on Android");
     // "Try the demo — no sign-in" goes to /judges when that page is in the build, else to the sample books.
     await page.getByRole("main").getByRole("link", { name: "Try the demo — no sign-in" }).first().click();
     await expect(page).toHaveURL(/\/try$/);
@@ -67,9 +67,9 @@ test.describe("landing page at 1280 px", () => {
     await page.goto("/#faq");
     const q = page.getByText("Can I file my real VAT return with it today?");
     await q.click();
-    await expect(page.getByText(/HMRC filing is sandbox only, which means HMRC's test service/)).toBeVisible();
+    await expect(page.getByText(/goes to HMRC's sandbox \(its test service, with test data\)/)).toBeVisible();
     await q.click();
-    await expect(page.getByText(/HMRC filing is sandbox only, which means HMRC's test service/)).toBeHidden();
+    await expect(page.getByText(/goes to HMRC's sandbox \(its test service, with test data\)/)).toBeHidden();
     const status = page.getByRole("region", { name: "What is tested, and what is not" });
     await expect(status).toContainText("Tested on fakes");
     await expect(status).toContainText("Production HMRC filing (sandbox only)");

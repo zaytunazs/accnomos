@@ -48,7 +48,7 @@ export default defineConfig({
       },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
-      timeout: 60_000,
+      timeout: 240_000, // test mode renders the gold receipts at start-up (testmode.warm): slow on a busy machine
     },
     {
       command: "node e2e/serve.mjs",

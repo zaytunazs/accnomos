@@ -183,22 +183,20 @@ body {
   transform: scaleX(1);
   opacity: 0.35;
 }
+/* The spotlight's dimming spread only needs to cover the stage (at most ~900 px wide): a huge spread on an animated,
+   composited element makes Chromium allocate a layer that size and can crash the tab. */
 .demo-mark {
   position: absolute;
   border-radius: 10px;
   box-shadow:
     0 0 0 3px var(--color-brass),
-    0 0 0 9999px rgb(7 59 53 / 0.28);
+    0 0 0 900px rgb(7 59 53 / 0.28);
   opacity: 0;
-  transform: scale(1.04);
-  transition:
-    opacity 0.45s ease-out 0.25s,
-    transform 0.45s ease-out 0.25s;
+  transition: opacity 0.45s ease-out 0.25s;
   pointer-events: none;
 }
 .demo-mark-on {
   opacity: 1;
-  transform: none;
 }
 
 @keyframes screen-in {

@@ -19,7 +19,7 @@ function files(dir: string): string[] {
 
 test("the submission-mode build has no pre-launch words", () => {
   test.skip(process.env.NEXT_PUBLIC_SUBMISSION_MODE === "0", "pre-launch build");
-  const root = path.resolve(import.meta.dirname, "..", OUT_DIR);
+  const root = path.resolve(__dirname, "..", OUT_DIR);
   const all = files(root);
   expect(all.some((f) => f.endsWith("index.html"))).toBe(true);
   const hits: string[] = [];
