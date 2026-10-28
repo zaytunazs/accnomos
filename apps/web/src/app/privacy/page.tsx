@@ -95,6 +95,7 @@ export default function PrivacyPage() {
                 { data: "HMRC tokens", where: "This browser tab only", who: "Gone when the tab closes or you disconnect" },
                 { data: "Device ID and VAT number", where: "This device only", who: "Sent to HMRC as fraud-prevention data when you submit" },
                 { data: "Spoken questions", where: "Nowhere — converted then discarded", who: "Nobody keeps the audio" },
+                { data: "Questions typed into Ask about Accnomos (the website chat)", where: "Nowhere — answered by our own model from the team's notes, then discarded; not logged", who: "Nobody; it never sees anyone's books" },
                 { data: "Mail read during intake and triage", where: "Memory only; copies land in 00 Inbox and to-dos in _System/Todos", who: "You — full bodies and attachments are never fetched by triage" },
                 { data: "Calendar days read for planning", where: "Memory only; applied plans in _System/Planner/applied.json", who: "You — nothing written before you tap Apply" },
                 { data: "Server access logs (IP, path, time, up to 30 days)", where: "Our hosts", who: "The service operator, for security" },

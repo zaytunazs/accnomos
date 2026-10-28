@@ -55,8 +55,11 @@ function useReviewBadge(pathname: string): string | undefined {
   return count ? String(count) : undefined;
 }
 
-function withBadges(review: string | undefined): NavLink[] {
-  return links.map((l) => (l.href === "/review" ? { ...l, badge: review } : l));
+/** The Review badge, and Home: signed out, `/` is the public landing page, so Home is the sample at `/try`. */
+function withBadges(review: string | undefined, signedOut: boolean): NavLink[] {
+  return links.map((l) =>
+    l.href === "/review" ? { ...l, badge: review } : l.href === "/" && signedOut ? { ...l, href: "/try" } : l,
+  );
 }
 
 function isActive(pathname: string, href: string) {
@@ -79,7 +82,7 @@ function Badge({ count, className }: { count: string; className: string }) {
 }
 
 const sidebarGroups: { label: string; hrefs: string[] }[] = [
-  { label: "Books", hrefs: ["/", "/review", "/ask", "/files"] },
+  { label: "Books", hrefs: ["/", "/try", "/review", "/ask", "/files"] },
   { label: "Money", hrefs: ["/invoices", "/bank", "/vat", "/payroll", "/reports"] },
   { label: "Work", hrefs: ["/jobs", "/contacts", "/vehicles"] },
 ];
@@ -176,7 +179,8 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
 
 export default function AppNav({ variant = "sidebar" }: { variant?: "sidebar" | "tabs" }) {
   const pathname = usePathname();
-  const navLinks = withBadges(useReviewBadge(pathname));
+  const signedOut = useAccount() === null;
+  const navLinks = withBadges(useReviewBadge(pathname), signedOut);
 
   if (variant === "tabs") return <TabBar pathname={pathname} links={navLinks} />;
   return <SidebarNav pathname={pathname} links={navLinks} />;

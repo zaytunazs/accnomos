@@ -143,7 +143,7 @@ The runtime and the HMRC relay are stateless and store nothing about you. Reques
 scrubbed from logs, request sizes are capped, there is a per-address rate limit, cross-origin access is limited to the
 app's exact address, and the containers are hardened. HMRC tokens stay in your browser tab and the relay holds only the
 application secret. Ledger files are append-only but are not tamper-evident (no signatures or hash chain). The service
-has not been load-tested and there has been no external security audit.
+has not been load-tested.
 Keywords: security, secure, hacking, encryption, tokens, passwords, password, relay, audit, penetration, safe, protect, attack
 
 ## Contacting the team {#contact}

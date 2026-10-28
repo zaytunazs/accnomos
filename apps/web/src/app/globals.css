@@ -107,3 +107,144 @@ body {
   text-align: center;
   color: var(--color-ink);
 }
+
+/* ---- Public website (components/marketing) ------------------------------------------------------------------ */
+
+@theme {
+  --color-ledger: #0a4f47;
+  --color-ledger-deep: #073b35;
+  --color-brass: #d9b55a;
+  --color-brass-light: #e6c97c;
+  --shadow-frame: 0 1px 2px rgb(7 59 53 / 0.08), 0 18px 40px -16px rgb(7 59 53 / 0.35);
+}
+
+/* Ledger paper: faint ruled lines on the green bands. */
+.ledger-rule {
+  background-image: repeating-linear-gradient(to bottom, transparent 0 39px, rgb(244 243 238 / 0.055) 39px 40px);
+}
+
+/* On the green bands the teal focus ring would vanish: brass instead (≥ 4.5:1 on #0a4f47). */
+.on-dark :where(a, button, summary, [tabindex]):focus-visible {
+  outline-color: var(--color-brass);
+}
+
+/* Hero: the three promises in one heading, and what each means underneath. */
+.hero-promises {
+  --hero-size: clamp(2.4rem, 6.2vw, 3.75rem);
+}
+.hero-lines {
+  font-size: var(--hero-size);
+  line-height: 1.06;
+}
+.hero-notes {
+  margin-top: 1.25rem;
+  display: grid;
+  gap: 0.4rem;
+  font-size: 15px;
+  line-height: 1.4;
+  color: rgb(244 243 238 / 0.8);
+}
+.hero-notes li {
+  padding-left: 1rem;
+  border-left: 2px solid var(--color-brass);
+}
+/* The one page-load moment: the screens settle into place. */
+@keyframes hero-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.hero-laptop {
+  animation: hero-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+.hero-phone {
+  animation: hero-rise 0.7s 0.25s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Process demo: the step's progress bar and the highlight over the real screen. */
+@keyframes demo-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.demo-progress {
+  animation: demo-fill linear both;
+}
+.demo-progress-still {
+  animation: none;
+  transform: scaleX(1);
+  opacity: 0.35;
+}
+.demo-mark {
+  position: absolute;
+  border-radius: 10px;
+  box-shadow:
+    0 0 0 3px var(--color-brass),
+    0 0 0 9999px rgb(7 59 53 / 0.28);
+  opacity: 0;
+  transform: scale(1.04);
+  transition:
+    opacity 0.45s ease-out 0.25s,
+    transform 0.45s ease-out 0.25s;
+  pointer-events: none;
+}
+.demo-mark-on {
+  opacity: 1;
+  transform: none;
+}
+
+@keyframes screen-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.screen-in {
+  animation: screen-in 0.3s ease-out;
+}
+
+/* FAQ: + turns to − when open. */
+.faq[open] .faq-icon {
+  transform: rotate(45deg);
+}
+.faq-icon {
+  transition: transform 0.2s;
+}
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Chat: the "looking it up" dots. */
+@keyframes chat-dots {
+  0% {
+    content: "";
+  }
+  33% {
+    content: ".";
+  }
+  66% {
+    content: "..";
+  }
+  100% {
+    content: "...";
+  }
+}
+.chat-dots::after {
+  content: "...";
+  animation: chat-dots 1.2s steps(1) infinite;
+}
+
+/* A signed-in owner opening a public route: hide the public shell until React swaps in the app (layout.tsx). */
+html[data-signed-in] [data-public-only] {
+  visibility: hidden;
+}

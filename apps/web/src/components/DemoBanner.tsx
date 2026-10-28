@@ -24,7 +24,7 @@ export default function DemoBanner() {
           <span className="inline-flex items-center gap-2 font-normal">
             <span aria-hidden="true">·</span>
             <SignInCta
-              home={path === "/"}
+              home={path === "/" || path === "/try"}
               className="font-bold text-ground underline underline-offset-2"
             />
           </span>
