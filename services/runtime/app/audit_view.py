@@ -295,6 +295,14 @@ SUMMARIES: dict[str, Summary] = {
         f"Loaded the sample books ({r.get('business') or 'a fictional company'}): "
         f"{_plural(_n(r, 'events'), 'ledger entry', 'ledger entries')}"
     ),
+    # Personal finances (app/personal.py)
+    "personal_categories_saved": lambda r, w: "Changed your personal spending categories",
+    "personal_budgets_saved": lambda r, w: "Changed your personal monthly budgets",
+    "personal_rule_added": lambda r, w: "Added personal spending rules",
+    "personal_rule_deleted": lambda r, w: "Deleted a personal spending rule",
+    "personal_line_categorised": lambda r, w: "Put a bank line in a personal spending category",
+    "personal_goal_saved": lambda r, w: "Saved a savings goal",
+    "personal_goal_deleted": lambda r, w: "Deleted a savings goal",
     # To-dos and housekeeping
     "todo_added": lambda r, w: "Added a to-do",
     "todo_deleted": lambda r, w: "Ticked off a to-do",
