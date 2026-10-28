@@ -11,7 +11,14 @@ from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger import LedgerEvent, Line, VatCode
 from app.approve import approve
 from app.bank_reconcile import proposal_for_coding
-from app.bank_rules import BankRule, check_regex_safe, first_match, normalise_description
+from app.bank_rules import (
+    BUILTIN_RULES,
+    BankRule,
+    check_regex_safe,
+    first_match,
+    normalise_description,
+    save_bank_rules,
+)
 from app.books import BANK_LINES, Books
 
 USER = "sam@example.co.uk"
@@ -412,3 +419,190 @@ async def test_rule_order_first_match_wins_on_reconcile(client: TestClient, book
     rows = client.get("/books/bank/reconcile", headers=H).json()
     screwfix = next(r for r in rows if r["rule"] is not None)
     assert screwfix["rule"]["account"] == "5100 Tools & small equipment"  # the first rule, not the narrower second
+
+
+# Built-in Travel/Subsistence/Motor codings -------------------------------- #
+
+
+def test_ai_prompt_names_travel_subsistence_motor_without_suppliers() -> None:
+    from app.bank_reconcile import BANK_SUGGEST_PROMPT
+
+    assert "7400 Travel" in BANK_SUGGEST_PROMPT
+    assert "7410 Subsistence" in BANK_SUGGEST_PROMPT
+    assert "7300 Motor expenses" in BANK_SUGGEST_PROMPT
+    for supplier in ("PRET", "GREGGS", "RINGGO", "TRAINLINE", "SHELL", "VODAFONE"):
+        assert supplier not in BANK_SUGGEST_PROMPT.upper()  # generic words only: no teaching to the test
+
+
+def test_ai_prompt_covers_second_pass_hints() -> None:
+    from app.bank_reconcile import BANK_SUGGEST_PROMPT
+
+    upper = BANK_SUGGEST_PROMPT.upper()
+    for word in ("PARKING", "VALET", "CONGESTION", "TOLL", "BAKER", "PANTR", "DELI", "KITCHEN", "MATERIALS"):
+        assert word in upper
+
+
+def test_test_mode_stub_answers_the_current_prompt_shape() -> None:
+    """The stub AI dispatches on the prompt text, so a prompt edit must not orphan it."""
+    import json
+
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from app import bank_reconcile as rec
+    from app import testmode
+
+    app = FastAPI()
+    app.include_router(testmode.router)
+    client = TestClient(app)
+    body = {
+        "model": "accnomos-test-stub",
+        "messages": [
+            {"role": "system", "content": rec.BANK_SUGGEST_PROMPT},
+            {
+                "role": "user",
+                "content": "LINE:\n"
+                + json.dumps(
+                    {
+                        "date": "2026-10-21",
+                        "description": "TFL TRAVEL CH",
+                        "reference": None,
+                        "amount_pence": -450,
+                        "accounts": ["7400 Travel", "7999 Sundry expenses"],
+                    }
+                ),
+            },
+        ],
+        "stream": False,
+    }
+    r = client.post("/__test/ai/api/chat", json=body)
+    assert r.status_code == 200, r.text
+    coding = json.loads(r.json()["message"]["content"])
+    assert coding["account"] in ("7400 Travel", "7999 Sundry expenses")
+    assert set(coding) == {"account", "vat_code", "contact", "reason"}
+
+
+@pytest.mark.parametrize(
+    "description,want",
+    [
+        ("TFL TRAVEL CH", "7400 Travel"),
+        ("TRAINLINE TICKETS", "7400 Travel"),
+        ("TRAIN FARE", "7400 Travel"),
+        ("RAIL TICKETS", "7400 Travel"),
+        ("BUS FARE", "7400 Travel"),
+        ("TAXI RIDE", "7400 Travel"),
+        ("UBER TRIP", "7400 Travel"),
+        ("CAR PARKING FEE", "7400 Travel"),
+        ("CHESTERFIELD CAR PARKS LTD", "7400 Travel"),
+        ("NCP PARKING", "7400 Travel"),
+        ("RINGGO PARKING", "7400 Travel"),
+        ("PAYBYPHONE PARKING", "7400 Travel"),
+        ("VALET PARKING", "7400 Travel"),
+        ("VALET & DISPLAY", "7400 Travel"),
+        ("CONGESTION CHARGE", "7400 Travel"),
+        ("ULEZ CHARGE", "7400 Travel"),
+        ("TOLL PAYMENT", "7400 Travel"),
+        ("PETROL STATION", "7300 Motor expenses"),
+        ("DIESEL FILL UP", "7300 Motor expenses"),
+        ("FUEL CARD", "7300 Motor expenses"),
+        ("CAFE LUNCH", "7410 Subsistence"),
+        ("COFFEE SHOP", "7410 Subsistence"),
+        ("BAKERY LOAF", "7410 Subsistence"),
+        ("THE CRUMB & CRUST COLLECTIVE", "7410 Subsistence"),
+        ("SALTMARSH PANTRY", "7410 Subsistence"),
+        ("CITY DELI", "7410 Subsistence"),
+        ("RESTAURANT BILL", "7410 Subsistence"),
+        ("SANDWICH SHOP", "7410 Subsistence"),
+        ("SOUP KITCHEN CAFE", "7410 Subsistence"),
+    ],
+)
+def test_builtin_rules_code_travel_subsistence_motor(description: str, want: str) -> None:
+    got = first_match(BUILTIN_RULES, description=description, amount_pence=-500)
+    assert got is not None and got.action.account == want
+
+
+@pytest.mark.parametrize(
+    "description",
+    [
+        "SCREWFIX DIRECT",
+        "OUTFLANK LTD",
+        "VODAFONE MOBILE",
+        "HMRC VAT",
+        # Kitchen trade stays 5000 Materials: the deterministic hint stays silent.
+        "ACME KITCHEN FITTERS",
+        "KITCHEN UNITS DIRECT",
+        "WORKTOPS KITCHEN SUPPLIES",
+        "KITCHEN TRADE COUNTER",
+        # Builders' merchants and timber centres are Materials, never travel/subsistence.
+        "TRAVIS PERKINS BUILDERS MERCHANT",
+        "JEWSON BUILDERS MERCHANTS",
+        "TIMBER CENTRE",
+        "ALBION TIMBER & BUILDERS MERCHANTS",
+    ],
+)
+def test_builtin_rules_stay_silent_outside_their_tokens(description: str) -> None:
+    assert first_match(BUILTIN_RULES, description=description, amount_pence=-500) is None
+
+
+def test_builtin_kitchen_hint_needs_no_trade_words() -> None:
+    """Kitchen is ambiguous: food sense suggests Subsistence, trade sense stays silent."""
+    food = first_match(BUILTIN_RULES, description="COMMUNITY SOUP KITCHEN", amount_pence=-500)
+    assert food is not None and food.action.account == "7410 Subsistence"
+    for trade in (
+        "ACME KITCHEN FITTERS",
+        "KITCHEN SUPPLIER LTD",
+        "KITCHEN UNITS AND WORKTOPS",
+        "TRADE KITCHEN SUPPLIES",
+    ):
+        assert first_match(BUILTIN_RULES, description=trade, amount_pence=-500) is None
+
+
+async def test_suggest_rule_new_hints_still_yield_to_the_users_rule(books: Books) -> None:
+    """A user rule (or learned supplier coding) always beats the deterministic hints."""
+    from app.bank_reconcile import suggest_rule
+
+    await save_bank_rules(
+        books,
+        [
+            BankRule(
+                match={"op": "contains", "value": "ringgo"},
+                direction="out",
+                action={"account": "7999 Sundry expenses", "vat_code": "N"},
+            )
+        ],
+    )
+    got = await suggest_rule(books, _line("RINGGO PARKING", -450))
+    assert got is not None and got.account == "7999 Sundry expenses" and not got.rule_id.startswith("builtin-")
+
+
+@pytest.mark.parametrize("description", ["TFL TRAVEL CH", "CAR PARKING FEE", "FUEL CARD", "CAFE LUNCH"])
+def test_builtin_rules_ignore_money_in(description: str) -> None:
+    assert first_match(BUILTIN_RULES, description=description, amount_pence=500) is None
+
+
+def _line(description: str, amount_pence: int) -> object:
+    return type("Line", (), {"description": description, "reference": None, "amount_pence": amount_pence})()
+
+
+async def test_suggest_rule_falls_back_to_builtins(books: Books) -> None:
+    from app.bank_reconcile import suggest_rule
+
+    got = await suggest_rule(books, _line("TFL TRAVEL CH", -450))
+    assert got is not None and got.rule_id == "builtin-travel-rail" and got.account == "7400 Travel"
+
+
+async def test_suggest_rule_prefers_the_users_rule(books: Books) -> None:
+    from app.bank_reconcile import suggest_rule
+
+    await save_bank_rules(
+        books,
+        [
+            BankRule(
+                match={"op": "contains", "value": "tfl"},
+                direction="out",
+                action={"account": "7999 Sundry expenses", "vat_code": "N"},
+            )
+        ],
+    )
+    got = await suggest_rule(books, _line("TFL TRAVEL CH", -450))
+    assert got is not None and got.account == "7999 Sundry expenses" and not got.rule_id.startswith("builtin-")
