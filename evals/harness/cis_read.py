@@ -131,7 +131,12 @@ def load_cases() -> list[Case]:
         gold = json.loads(exp.read_text(encoding="utf-8"))
         expected = gold["expected"]
         kind = expected.get("kind")
-        fields = STATEMENT_FIELDS if kind == "cis_statement" else INVOICE_FIELDS if kind == "reverse_charge_invoice" else [("kind", KIND)]
+        if kind == "cis_statement":
+            fields = STATEMENT_FIELDS
+        elif kind == "reverse_charge_invoice":
+            fields = INVOICE_FIELDS
+        else:
+            fields = [("kind", KIND)]
         out.append(
             Case(
                 id=gold.get("id", d.name),
@@ -368,7 +373,7 @@ def summarise(rows: list[dict[str, Any]], cfg: AiConfig | None, stub: bool) -> d
         }
     misses = sorted(
         (r for r in ok if not r.get("all_exact")),
-        key=lambda r: (sum(not v for v in r["fields"].values()) + (0 if r.get("checks_exact") else 1)),
+        key=lambda r: sum(not v for v in r["fields"].values()) + (0 if r.get("checks_exact") else 1),
         reverse=True,
     )
     lat = [r["elapsed_s"] for r in rows if r.get("elapsed_s") is not None]
@@ -520,7 +525,10 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any] | None:
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
                 fh.flush()
                 mark = "ok " if row["outcome"] == "ok" and row.get("all_exact") else "MISS"
-                print(f"[{i}/{len(cases)}] {mark} {row['elapsed_s']:.1f}s {case.id} -> {row.get('outcome')}", flush=True)
+                print(
+                    f"[{i}/{len(cases)}] {mark} {row['elapsed_s']:.1f}s {case.id} -> {row.get('outcome')}",
+                    flush=True,
+                )
     finally:
         _httpx.AsyncClient = original  # type: ignore[assignment]
     wanted = {c.id for c in cases}

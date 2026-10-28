@@ -159,16 +159,13 @@ def load_cases() -> list[Case]:
         exp = json.loads((landlord / "expectations.json").read_text(encoding="utf-8"))
         names = json.loads((landlord / "names.json").read_text(encoding="utf-8"))
         bills = _bill_files(landlord / "bills")
-        for n, doc in enumerate(exp["documents"]):
+        for doc in exp["documents"]:
             prop = doc["property"]
             if doc["kind"] == "letting_statement":
                 path = landlord / "statements" / f"{doc['date'][:7]}_{prop}.txt"
             else:
                 path = bills[doc["date"]]
-            if doc["kind"] == "invoice":
-                categories = _invoice_categories(doc)
-            else:
-                categories = set(KIND_CATEGORIES[doc["kind"]])
+            categories = _invoice_categories(doc) if doc["kind"] == "invoice" else set(KIND_CATEGORIES[doc["kind"]])
             out.append(
                 Case(
                     id=f"{landlord.name}/{path.stem}",
@@ -387,7 +384,11 @@ def summarise(rows: list[dict[str, Any]], cfg: AiConfig | None, stub: bool) -> d
             "all_exact": exact,
             "accuracy_pct": pct(exact, len(sub)),  # a refusal counts as wrong: a person gets nothing
         }
-    misses = sorted((r for r in ok if not r.get("all_exact")), key=lambda r: sum(not v for v in r["fields"].values()), reverse=True)
+    misses = sorted(
+        (r for r in ok if not r.get("all_exact")),
+        key=lambda r: sum(not v for v in r["fields"].values()),
+        reverse=True,
+    )
     lat = [r["elapsed_s"] for r in rows if r.get("elapsed_s") is not None]
     return {
         "generated": datetime.now(UTC).isoformat(timespec="seconds"),
@@ -537,7 +538,10 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any] | None:
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
                 fh.flush()
                 mark = "ok " if row["outcome"] == "ok" and row.get("all_exact") else "MISS"
-                print(f"[{i}/{len(cases)}] {mark} {row['elapsed_s']:.1f}s {case.id} -> {row.get('outcome')}", flush=True)
+                print(
+                    f"[{i}/{len(cases)}] {mark} {row['elapsed_s']:.1f}s {case.id} -> {row.get('outcome')}",
+                    flush=True,
+                )
     finally:
         _httpx.AsyncClient = original  # type: ignore[assignment]
     wanted = {c.id for c in cases}
