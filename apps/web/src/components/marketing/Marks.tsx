@@ -47,6 +47,7 @@ export function Shot({
   width,
   height,
   eager = false,
+  priority = false,
   className = "",
   sizes,
   srcSet,
@@ -56,6 +57,8 @@ export function Shot({
   width: number;
   height: number;
   eager?: boolean;
+  /** The largest image of the first screen (the LCP image): fetched first. */
+  priority?: boolean;
   className?: string;
   sizes?: string;
   srcSet?: string;
@@ -71,7 +74,7 @@ export function Shot({
       width={width}
       height={height}
       loading={eager ? "eager" : "lazy"}
-      fetchPriority={eager ? "high" : undefined}
+      fetchPriority={priority ? "high" : undefined}
       decoding="async"
       className={`block h-auto w-full ${className}`}
     />

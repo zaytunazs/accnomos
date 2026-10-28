@@ -1,66 +1,118 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import Link from "next/link";
-import TryDemo from "@/components/demo/TryDemo";
 import EarlyAccessForm from "@/components/early-access/EarlyAccessForm";
 import Prelaunch from "@/components/Prelaunch";
-import { LAUNCH, NOTIFY_HREF, PRELAUNCH_IN_BUILD, SUBMISSION_MODE } from "@/lib/public-site";
+import { HONESTY_URL, LAUNCH, NOTIFY_HREF, PRELAUNCH_IN_BUILD, SUBMISSION_MODE } from "@/lib/public-site";
 import { BrowserFrame, PhoneFrame, Shot } from "./Marks";
 import AskLink from "./AskLink";
+import DemoLink from "./DemoLink";
 import ProcessDemo from "./ProcessDemo";
 import ScreenTabs from "./ScreenTabs";
 
 /*
- * The public landing page (signed out on `/`). Every claim here comes from README.md, docs/HONESTY.md and
- * docs/submission/{DESCRIPTION,JUDGING,META_MODELS}.md, and every screen is a real screenshot (sample books).
- * When a claim changes there, change it here and in services/runtime/app/public_kb.md (the chat's notes).
+ * The public landing page (signed out on `/`). The words come from docs/marketing/COPY.md (Muse Spark's copy deck,
+ * hero option B), checked line by line against the code and docs/HONESTY.md; where a line changed, the reason is in
+ * docs/reviews/site-layout/REVIEW.md. Every screen is a real screenshot (sample books). When a claim changes, change
+ * it here, in COPY.md and in services/runtime/app/public_kb.md (the chat's notes).
  */
 
-/**
- * "Try the demo": the judges' demo page when this build has one (a parallel branch adds
- * src/app/judges and POST /demo/session), otherwise the sample books on /try. Checked when the static export is
- * built, so the link never points at a page that isn't there.
- */
-const DEMO_HREF = existsSync(join(process.cwd(), "src", "app", "judges", "page.tsx")) ? "/judges" : "/try";
-
-const PROMISES = [
-  { line: "AI proposes.", note: "A Meta model reads each receipt, invoice or credit note." },
-  { line: "You approve.", note: "Nothing reaches your books until you tap Approve." },
-  { line: "Code calculates.", note: "The ledger and the nine VAT boxes are worked out by code." },
-];
-
-const FEATURES = [
+/** Who it is for (WhoFor): only what this build does for each, with what it does not do said plainly. */
+const AUDIENCES = [
   {
-    title: "Receipts straight from your email",
-    body: `Switch on Outlook intake and likely bills and receipts in your mailbox are copied to 00 Inbox for review.${
-      SUBMISSION_MODE ? "" : " Add more mailboxes: coming soon."
-    }`,
+    title: "Small businesses",
+    body: "Receipts, invoices, bank, VAT returns, reports and pay-run estimates for a limited company or a partnership.",
   },
   {
-    title: "Receipts and review",
-    body: "Upload, photograph or drop documents into 00 Inbox. Each one becomes a card to approve, edit or reject, with Undo.",
+    title: "Sole traders",
+    body: "The same books, plus the quarterly Making Tax Digital for Income Tax figures for your self-employment.",
   },
   {
-    title: "VAT return, box by box",
-    body: "The nine boxes for any period, with the entries behind each. Submission goes through HMRC's sandbox for now.",
+    title: "Landlords",
+    body: "Rent, letting-agent statements and property bills in the same approve-first books. Separate property-income (SA105) figures are not in this build.",
   },
   {
-    title: "Invoicing",
-    body: "Invoices with a PDF, sent from your own Outlook after you confirm. Part payments, credit notes and refunds.",
-  },
-  {
-    title: "Bank",
-    body: "Import a CSV statement, set rules, and match lines to invoices and bills. A match posts nothing until you confirm.",
-  },
-  {
-    title: "Contacts and reports",
-    body: "Statements and ageing per customer or supplier; profit and loss, aged balances, VAT by period and a 12-month trend.",
-  },
-  {
-    title: "An audit trail",
-    body: "Every action, by you or by an agent, with who did it and a plain sentence. Jobs, mileage and pay-run estimates too.",
+    title: "Personal finances",
+    body: "Budgets, bills and savings goals from your own bank statements: switch on Show personal finances in Settings.",
   },
 ];
+
+/** How it works, four steps (COPY.md; step 1 also names voice, which the owner's brief asks for). */
+const STEPS = [
+  {
+    title: "Send it in",
+    body: "Photograph a receipt in the Android app, upload it on the web, or let receipts arrive from your email inbox. You can also just say what you need.",
+  },
+  {
+    title: "The AI proposes",
+    body: "A Meta model reads the document and suggests supplier, category, VAT and totals. Code checks the arithmetic.",
+  },
+  {
+    title: "You approve",
+    body: "Each proposal waits in Review. Approve, edit or reject. Nothing posts on its own.",
+  },
+  {
+    title: "VAT and records, ready",
+    body: "Approved entries build your ledger, your VAT boxes and a spreadsheet copy of your books.",
+  },
+];
+
+/** The eight feature blocks of COPY.md, each with its fictional example; Landing places them by theme. */
+type Block = { title: string; body: string; example: string };
+
+const BLOCK = {
+  receipts: {
+    title: "Receipts from email and photos",
+    body: "Snap a receipt on your phone or let supplier emails be picked up from your inbox. The AI reads each one into a proposal you check.",
+    example:
+      "A £60 plus VAT invoice from a fictional supplier, Brightfix Electrical Ltd, arrives by email and waits in Review with supplier, date and totals filled in.",
+  },
+  bank: {
+    title: "Bank lines, matched and coded",
+    body: "Import a bank statement as a CSV file and see each line matched to entries already in your books. Confirm the matches and deal with the rest one by one.",
+    example: "A fictional £240 payment to Brightfix Electrical Ltd matches the bill for the same amount dated four days earlier.",
+  },
+  vat: {
+    title: "VAT boxes, worked out by code",
+    body: "Your nine VAT boxes are calculated by code from approved entries, not typed by hand. Connect to HMRC through the sandbox flow and walk through obligations, checks and a declaration.",
+    example: "A fictional quarter for Harthill Bakery Ltd shows £1,240 in Box 1 and £310 in Box 4.",
+  },
+  itsa: {
+    title: "Income Tax for the self-employed",
+    body: "If you are self-employed, quarterly Income Tax figures are worked out from your approved entries, with the ledger lines behind each box. The HMRC connection here is sandbox only.",
+    example: "A fictional sole trader, Priya Nair, sees £18,400 of turnover for the period to 5 July with each line traceable.",
+  },
+  payroll: {
+    title: "Pay runs, estimated in pence",
+    body: "Enter hours and rates to get a pay-run estimate with tax and National Insurance shown line by line. These are estimates for planning, not payroll filings.",
+    example: "A fictional employee, Tom Ellis, on 20 hours at £13.50 an hour gets a gross of £270 with deductions listed beside it.",
+  },
+  voice: {
+    title: "Voice and chat that wait",
+    body: "Ask a question in plain words, typed or spoken, and get an answer with figures checked against your books. Short instructions become cards you approve first.",
+    example:
+      "“Andy did 2 hours on the Hendon job” becomes a timesheet card for the Hendon job, and nothing is recorded until you tap Approve.",
+  },
+  monthEnd: {
+    title: "Month-end checks, listed plainly",
+    body: "Run a month-end check that lists missing statements, uncategorised costs, possible duplicates and anything dated into a closed month. Work through the list and re-close when done.",
+    example: "Fictional March books for Bramblewood Joinery Ltd flag two unmatched bank lines and one receipt still sitting in the inbox.",
+  },
+  oneDrive: {
+    title: "Your books live in OneDrive",
+    body: "Your ledger, documents and spreadsheets are files in your own OneDrive folder. Accnomos keeps no database of your books.",
+    example:
+      "Disconnect and the fictional folder for Bramblewood Joinery Ltd, with its ledger events and Books.xlsx, is still sitting in your OneDrive.",
+  },
+} satisfies Record<string, Block>;
+
+function BlockText({ block }: { block: Block }) {
+  return (
+    <>
+      <h3 className="font-extrabold">{block.title}</h3>
+      <p className="mt-1 text-[15px] leading-relaxed">{block.body}</p>
+      <p className="mt-2 text-sm leading-relaxed text-muted">Example: {block.example}</p>
+    </>
+  );
+}
 
 const MODELS: { name: string; where: string; job: string; status: string; tone: "good" | "plain" | "off" }[] = [
   {
@@ -107,40 +159,47 @@ const MODELS: { name: string; where: string; job: string; status: string; tone: 
   },
 ];
 
+/** COPY.md's ten questions; answers 1 and 10 corrected (REVIEW.md). The last two are pre-launch build only. */
 const FAQ: { q: string; a: React.ReactNode }[] = [
   {
-    q: "Can I file my real VAT return with it today?",
-    a: "Not yet. Accnomos is built for Making Tax Digital, but submitting to HMRC goes to HMRC's sandbox (its test service, with test data) and has been tested against a stand-in for HMRC, not yet run end to end against the sandbox itself. The nine VAT boxes are worked out by code from the entries you approved.",
+    q: "How much does it cost?",
+    a: "There is no published pricing: Accnomos is a hackathon build, and nothing in it asks you to pay. The demo with sample books costs nothing to try.",
   },
   {
     q: "Where are my books kept?",
-    a: "In your own Microsoft OneDrive, in an Accnomos folder: 00 Inbox to 07 Reports, Books.xlsx for your accountant, and a _System folder with the ledger. Accnomos runs no user database and keeps no copy. Disconnect and every file is still yours.",
+    a: "In your own OneDrive, as files you can open. We keep no database of your books.",
   },
   {
-    q: "Does the AI post anything without me?",
-    a: "Not by default. Every proposal waits for your Approve. Autopilot is an opt-in level that may post purchases from suppliers you have a rule for, and each post can be undone. Accnomos never sends email from your inbox on its own.",
+    q: "Does it file to HMRC?",
+    a: "The HMRC connection in the product today is sandbox only, for VAT and for self-employed Income Tax. It is there to practise the full flow, not to file a live return.",
   },
   {
-    q: "Can it pick up receipts from my email?",
-    a: `Yes, from Outlook: switch on Outlook intake and likely bills and receipts are copied to 00 Inbox, where they wait for your Approve like any other document. It has been tested on fictional emails, not yet on a real mailbox.${
-      SUBMISSION_MODE ? "" : " Adding more mailboxes is coming soon."
-    }`,
+    q: "Which banks are covered?",
+    a: "You import bank statements as CSV files. Barclays, Starling, Tide and Monzo style layouts are read, along with HSBC and Lloyds style paid-in and paid-out columns.",
   },
   {
-    q: "Which AI reads my receipts?",
-    a: "Muse Glimmer 30B, Meta's open-weight model, on our DGX Spark; or Muse Spark 1.3 through the Meta Model API with your own key. “On our machine” means the server running Accnomos, not your laptop.",
+    q: "Can I use it on my phone?",
+    a: "There is an Android app with capture, Review, Ask, VAT and reports. Everyday admin such as bank uploads and detailed settings stays on the web.",
   },
   {
-    q: "How accurate is it?",
-    a: "On 200 clean and 200 messy synthetic documents, every field was right on 85 % and 80 % of documents for Glimmer and 91 % and 93 % for Muse Spark Open. Real phone photos will score lower, which is why every reading waits on a card for you to check.",
+    q: "Can I switch from Xero or QuickBooks?",
+    a: "Export your lists and statements from your current software and bring them across as files. Your opening position is entered once, and new documents flow in from there.",
   },
   {
-    q: "What does it cost?",
-    a: "There is no published pricing. Accnomos is a hackathon build, and the sample books are free to try here without an account.",
+    q: "Does my accountant need an account?",
+    a: "You invite your accountant to see your books. They read the same ledger, spreadsheet and reports that you see.",
   },
   {
-    q: "Do I need a Microsoft account?",
-    a: "For your own books, yes: they live in your OneDrive, and you sign in with a personal or work Microsoft account. To look around first, open the sample books; no sign-in needed.",
+    q: "What can the AI get wrong?",
+    a: "It can misread a total, a date or a VAT number, most often on crumpled photos or faint print. That is why every reading is checked by code and waits for your approval before it posts.",
+  },
+  {
+    q: "How do I stop?",
+    a: "Export your files first if you wish, then disconnect. Your books are already files in your OneDrive, so nothing is locked in.",
+  },
+  {
+    q: "Is my data used to train models?",
+    a: "We do not use your documents to train models: they are read to keep your books, and nothing else. When your server uses an API key, the document goes to that model provider under its own terms.",
   },
   ...(SUBMISSION_MODE
     ? []
@@ -160,13 +219,17 @@ export default function Landing() {
   return (
     <>
       <Hero />
+      <WhoFor />
       <Process />
-      <Android />
       <Features />
+      <Mtd />
       <AskAndActions />
+      <Android />
+      <Accountants />
       <YourData />
       <Models />
       <Status />
+      <Pricing />
       <Faq />
       {/* The early-adopter sign-up: pre-launch build only (in neither the HTML nor the payload of a submission build). */}
       {PRELAUNCH_IN_BUILD && (
@@ -196,17 +259,13 @@ function CtaPair({ dark = false }: { dark?: boolean }) {
         <a href={NOTIFY_HREF} className={primary}>
           Launching {LAUNCH} — get notified
         </a>
-        <Link href={DEMO_HREF} className={secondary}>
-          Try the demo
-        </Link>
+        <DemoLink className={secondary} />
       </div>
     );
   }
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Link href={DEMO_HREF} className={primary}>
-        Try the demo
-      </Link>
+      <DemoLink className={primary} />
       <Link href="/connect?next=%2F" className={secondary}>
         Sign in with Microsoft
       </Link>
@@ -232,38 +291,23 @@ function Hero() {
     <section aria-labelledby="hero-title" className="on-dark ledger-rule relative overflow-hidden bg-ledger text-ground">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:pb-20 lg:pt-14">
         <div>
-          <p className="text-[15px] font-semibold text-ground/75">Bookkeeping and MTD VAT for UK small businesses</p>
-          <div className="hero-promises mt-4">
-            <h1 id="hero-title" className="hero-lines font-extrabold tracking-[-0.035em]">
-              {PROMISES.map((p) => (
-                <span key={p.line} className="block">
-                  {p.line}
-                </span>
-              ))}
-            </h1>
-            <ul aria-label="What that means" className="hero-notes">
-              {PROMISES.map((p) => (
-                <li key={p.line}>{p.note}</li>
-              ))}
-            </ul>
-          </div>
-          <p className="mt-6 max-w-xl text-lg leading-relaxed text-ground/85">
-            Snap a receipt on your phone, or let Accnomos pick it up from your email. It waits for your Approve on
-            the phone or on the web: both work on the same books, in your own OneDrive.
+          <p className="text-[15px] font-semibold text-ground/75">
+            Bookkeeping and Making Tax Digital for UK small businesses, sole traders, landlords and personal finances
           </p>
-          <div className="mt-4">
+          <h1 id="hero-title" className="hero-lines mt-4 font-extrabold tracking-[-0.035em]">
+            Bookkeeping you only have to check
+          </h1>
+          <p className="mt-6 max-w-xl text-lg leading-relaxed text-ground/85">
+            The AI reads each document and proposes an entry. Nothing posts until you approve it.
+          </p>
+          <div className="mt-5">
             <AppChips dark />
           </div>
           <div className="mt-7">
             <CtaPair dark />
           </div>
-          {/* A sandbox of the sample books in this browser, when the runtime runs demos (DEMO_MODE=1, app/demo.py);
-              renders nothing otherwise. */}
-          <div className="mt-3">
-            <TryDemo variant="secondary" />
-          </div>
           <p className="mt-4 text-sm text-ground/70">
-            The demo uses fictional sample books and needs no sign-in. Submitting to HMRC uses HMRC&apos;s sandbox.
+            The demo uses fictional sample books and needs no sign-in. HMRC contact is sandbox only.
           </p>
         </div>
 
@@ -272,16 +316,19 @@ function Hero() {
             <Shot
               src="/shots/hero-review-1280.webp"
               srcSet="/shots/hero-review-640.webp 640w, /shots/hero-review-1280.webp 1280w"
-              sizes="(min-width: 1024px) 600px, 92vw"
+              sizes="(min-width: 1024px) 600px, 72vw"
               width={1280}
               height={800}
               eager
+              priority
               alt="Accnomos Review page: the Novex Office Supplies receipt has been read, £51.90 with £8.65 VAT, confidence 97 %, waiting for approval."
             />
           </BrowserFrame>
           <PhoneFrame className="hero-phone absolute -bottom-12 left-0 w-[34%] max-w-[200px] sm:w-[30%]">
             <Shot
               src="/shots/hero-phone.webp"
+              srcSet="/shots/hero-phone-200.webp 200w, /shots/hero-phone.webp 390w"
+              sizes="(min-width: 640px) 200px, 34vw"
               width={390}
               height={844}
               eager
@@ -308,16 +355,46 @@ function SectionHead({ id, title, lead }: { id: string; title: string; lead?: Re
   );
 }
 
+function WhoFor() {
+  return (
+    <section id="who" aria-labelledby="who-title" className="scroll-mt-20 border-b border-border bg-white py-14">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <h2 id="who-title" className="text-2xl font-extrabold tracking-[-0.02em] sm:text-3xl">
+          One set of books, whoever you are
+        </h2>
+        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {AUDIENCES.map((a) => (
+            <li key={a.title} className="border-l-2 border-brass pl-4">
+              <h3 className="font-extrabold">{a.title}</h3>
+              <p className="mt-1 text-[15px] leading-relaxed text-muted">{a.body}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
 function Process() {
   return (
     <section id="how" aria-labelledby="how-title" className="scroll-mt-20 py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHead
           id="how-title"
-          title="From a till receipt to Box 4"
-          lead="One receipt, five steps, all on real screens from the app."
+          title="How it works"
+          lead="Four steps for every document. Below, one receipt goes through them on real screens from the app."
         />
-        <div className="mt-10">
+        <ol aria-label="The four steps" className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {STEPS.map((st, i) => (
+            <li key={st.title} className="rounded-2xl border border-border bg-white p-5">
+              <p className="text-sm font-extrabold text-teal-dark">Step {i + 1}</p>
+              <h3 className="mt-1 text-lg font-extrabold">{st.title}</h3>
+              <p className="mt-1 text-[15px] leading-relaxed text-muted">{st.body}</p>
+            </li>
+          ))}
+        </ol>
+        <h3 className="mt-12 text-xl font-extrabold">From a till receipt to Box 4</h3>
+        <div className="mt-6">
           <ProcessDemo />
         </div>
         <p className="mt-8 text-[15px]">
@@ -331,6 +408,7 @@ function Process() {
 }
 
 function Features() {
+  const blocks = [BLOCK.receipts, BLOCK.bank, BLOCK.payroll, BLOCK.monthEnd];
   return (
     <section id="features" aria-labelledby="features-title" className="scroll-mt-20 border-t border-border bg-white py-20">
       <div className="mx-auto grid max-w-6xl gap-12 px-4 sm:px-6 lg:grid-cols-2">
@@ -338,16 +416,15 @@ function Features() {
           <SectionHead
             id="features-title"
             title="The rest of the books, in the same place"
-            lead="Around the receipts sits what a VAT-registered small business keeps every month."
+            lead="Receipts, the bank, pay runs and month-end, all from the same approved entries."
           />
-          <dl className="mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2">
-            {FEATURES.map((f) => (
-              <div key={f.title} className="border-l-2 border-teal pl-4">
-                <dt className="font-extrabold">{f.title}</dt>
-                <dd className="mt-1 text-[15px] leading-relaxed text-muted">{f.body}</dd>
-              </div>
+          <ul className="mt-8 grid gap-x-8 gap-y-7 sm:grid-cols-2">
+            {blocks.map((b) => (
+              <li key={b.title} className="border-l-2 border-teal pl-4">
+                <BlockText block={b} />
+              </li>
             ))}
-          </dl>
+          </ul>
         </div>
         <div className="lg:pt-2">
           <ScreenTabs />
@@ -380,22 +457,80 @@ function AskAndActions() {
           </BrowserFrame>
         </div>
         <div>
-          <SectionHead
-            id="ask-title"
-            title="Ask your books, then approve what it suggests"
-            lead="Type or say a question in plain English. The figures are calculated by code from your ledger; the AI only writes the words."
-          />
-          <ul className="mt-6 space-y-3 text-[15px] leading-relaxed">
-            <li>Every figure in an answer is checked against your books, and each answer shows the files it used.</li>
-            <li>
-              Ask for an action, like sending an invoice: code finds the customer and prices the lines, and a card
-              waits for your Approve.
-            </li>
-            <li className="text-muted">
-              Voice questions use Muse Voice Transcribe in key mode; that path is unit-tested only.
-            </li>
-          </ul>
+          <SectionHead id="ask-title" title={BLOCK.voice.title} lead={BLOCK.voice.body} />
+          <p className="mt-4 text-[15px] leading-relaxed text-muted">Example: {BLOCK.voice.example}</p>
+          <p className="mt-4 text-sm text-muted">
+            Spoken questions use Muse Voice Transcribe when the server has a Meta API key; that path is unit-tested only.
+          </p>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function Mtd() {
+  return (
+    <section id="mtd" aria-labelledby="mtd-title" className="scroll-mt-20 py-20">
+      <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2">
+        <div>
+          <SectionHead
+            id="mtd-title"
+            title="Making Tax Digital, for VAT and Income Tax"
+            lead="Figures for HMRC come from code, never from a model."
+          />
+          <div className="mt-8 grid gap-4">
+            {[BLOCK.vat, BLOCK.itsa].map((b) => (
+              <div key={b.title} className="rounded-2xl border border-border bg-white p-5">
+                <BlockText block={b} />
+              </div>
+            ))}
+          </div>
+        </div>
+        <BrowserFrame>
+          <Shot
+            src="/shots/step-5-vat.webp"
+            width={808}
+            height={560}
+            alt="The VAT return page: Box 4, VAT reclaimed on purchases, £8.65 after the Novex receipt was approved."
+          />
+        </BrowserFrame>
+      </div>
+    </section>
+  );
+}
+
+function Accountants() {
+  return (
+    <section id="accountants" aria-labelledby="accountants-title" className="scroll-mt-20 border-y border-border bg-white py-20">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <SectionHead
+          id="accountants-title"
+          title="For accountants"
+          lead="Invite your accountant to your books. They open the same files you see: the ledger, Books.xlsx, reports and the audit trail."
+        />
+        <p className="mt-4 max-w-2xl text-[15px] leading-relaxed">
+          Queries stay simple. Anything they question can be undone with a reversing entry, never a delete, so the
+          record stays complete.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function Pricing() {
+  return (
+    <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-20 border-t border-border py-20">
+      <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto]">
+        <SectionHead
+          id="pricing-title"
+          title="Pricing"
+          lead={
+            SUBMISSION_MODE
+              ? "There is no published pricing: Accnomos is a hackathon build, and nothing in it asks you to pay. The demo needs no account and no card; your own books need only a Microsoft account."
+              : "Free while we launch. The demo needs no account and no card; your own books need only a Microsoft account."
+          }
+        />
+        <CtaPair />
       </div>
     </section>
   );
@@ -456,29 +591,14 @@ function YourData() {
     <section id="privacy" aria-labelledby="privacy-title" className="scroll-mt-20 py-20">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2">
         <div>
-          <SectionHead
-            id="privacy-title"
-            title="Your books stay in your OneDrive"
-            lead="The books are files in a folder you own. Accnomos does the work on each request and keeps nothing."
-          />
-          <ul className="mt-6 space-y-3 text-[15px] leading-relaxed">
-            <li>
-              <strong>No database of ours.</strong> The ledger is append-only event files in your OneDrive, and
-              Books.xlsx is rebuilt for your accountant.
-            </li>
-            <li>
-              <strong>Permissions when you need them.</strong> Mail, contacts and calendar are asked for only the first
-              time you use the feature that needs them.
-            </li>
-            <li>
-              <strong>Leave any time.</strong> Export everything as one zip with CSVs; delete the folder and nothing is
-              left with us.
-            </li>
-            <li>
-              <strong>Hardened, not load-tested.</strong> Logs are scrubbed of credentials, requests are capped and
-              rate-limited, and the service has not been load-tested.
-            </li>
-          </ul>
+          <SectionHead id="privacy-title" title={BLOCK.oneDrive.title} lead={BLOCK.oneDrive.body} />
+          <p className="mt-4 text-[15px] leading-relaxed text-muted">Example: {BLOCK.oneDrive.example}</p>
+          <h3 className="mt-8 text-xl font-extrabold">AI proposes, you approve</h3>
+          <p className="mt-2 text-[15px] leading-relaxed">
+            Every figure that reaches your books has passed code checks in whole pence, and a second reading checks the
+            first on key documents. There is no database of your books on our side: the files live in your OneDrive.
+            Every approve, reject, match, payment and undo is written to an audit trail you can open.
+          </p>
           <p className="mt-6 text-[15px]">
             <Link href="/privacy" className="font-bold text-teal-dark underline underline-offset-2 hover:text-teal">
               Read the privacy policy and data map
@@ -578,7 +698,7 @@ function Status() {
         "Google Drive, RTI payroll, flat-rate VAT",
         ...(SUBMISSION_MODE ? [] : ["An iPhone app"]),
       ],
-      foot: "The full list of gaps is kept in docs/HONESTY.md in the repository.",
+      foot: "The full list of gaps is kept in docs/HONESTY.md in the public repository.",
     },
   ];
   return (
@@ -602,6 +722,11 @@ function Status() {
             </div>
           ))}
         </div>
+        <p className="mt-6 text-[15px]">
+          <a href={HONESTY_URL} className="font-bold text-teal-dark underline underline-offset-2 hover:text-teal">
+            Read the full list in docs/HONESTY.md
+          </a>
+        </p>
       </div>
     </section>
   );

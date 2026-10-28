@@ -3,18 +3,21 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { openChat, SUBMISSION_MODE } from "@/lib/public-site";
+import DemoLink from "./DemoLink";
 import { LogoMark } from "./Marks";
 
+/** Sections of the landing page (Landing.tsx ids). Security & privacy, Terms and the sample books are in the footer. */
 const NAV: { href: string; label: string }[] = [
   { href: "/#features", label: "Features" },
-  { href: "/how-it-works", label: "How it works" },
-  { href: "/privacy", label: "Security & privacy" },
-  { href: "/#faq", label: "FAQ" },
+  { href: "/#how", label: "How it works" },
+  { href: "/#accountants", label: "Accountants" },
+  { href: "/#pricing", label: "Pricing & FAQ" },
 ];
 
 /**
- * The public top menu (signed out only; SiteShell.tsx swaps in the app shell, with its own signed-in header, once
- * this device is signed in). From 1024 px every item is in the bar; below that a Menu button opens the same list.
+ * The public top menu (signed out only; SiteShell.tsx swaps in the app shell, with its own signed-in menu bar, once
+ * this device is signed in). Nothing from the app is here: no profile switcher, review count or to-dos.
+ * From 1280 px every item is in the bar; below that a Menu button opens the same list.
  */
 export default function PublicHeader({ path }: { path: string }) {
   const [open, setOpen] = useState(false);
@@ -31,7 +34,7 @@ export default function PublicHeader({ path }: { path: string }) {
         button.current?.focus();
       }
     };
-    const wide = window.matchMedia("(min-width: 1024px)");
+    const wide = window.matchMedia("(min-width: 1280px)");
     const onWide = () => wide.matches && setOpen(false);
     document.addEventListener("keydown", onKey);
     wide.addEventListener("change", onWide);
@@ -55,7 +58,7 @@ export default function PublicHeader({ path }: { path: string }) {
           <span className="text-lg font-extrabold tracking-tight">Accnomos</span>
         </Link>
 
-        <nav aria-label="Site" className="ml-6 hidden lg:block">
+        <nav aria-label="Site" className="ml-6 hidden xl:block">
           <ul className="flex items-center gap-1">
             {NAV.map((item) => (
               <li key={item.href}>
@@ -98,19 +101,14 @@ export default function PublicHeader({ path }: { path: string }) {
               Sign in
             </Link>
           )}
-          <Link
-            href="/try"
-            className="hidden whitespace-nowrap rounded-lg bg-brass px-4 py-2 text-[15px] font-bold text-ink hover:bg-brass-light sm:inline-block"
-          >
-            Try the sample books
-          </Link>
+          <DemoLink className="hidden whitespace-nowrap rounded-lg bg-brass px-4 py-2 text-[15px] font-bold text-ink hover:bg-brass-light sm:inline-block" />
           <button
             ref={button}
             type="button"
             aria-expanded={open}
             aria-controls="site-menu"
             onClick={() => setOpen((o) => !o)}
-            className="flex h-11 items-center gap-2 rounded-lg border border-white/20 px-3 text-[15px] font-bold lg:hidden"
+            className="flex h-11 items-center gap-2 rounded-lg border border-white/20 px-3 text-[15px] font-bold xl:hidden"
           >
             <svg aria-hidden="true" width="18" height="18" viewBox="0 0 18 18" fill="none">
               {open ? (
@@ -128,7 +126,7 @@ export default function PublicHeader({ path }: { path: string }) {
         id="site-menu"
         ref={panel}
         hidden={!open}
-        className="border-t border-white/10 bg-ledger px-4 pb-5 pt-2 lg:hidden"
+        className="border-t border-white/10 bg-ledger px-4 pb-5 pt-2 xl:hidden"
       >
         <nav aria-label="Site menu">
           <ul className="flex flex-col">
@@ -166,13 +164,7 @@ export default function PublicHeader({ path }: { path: string }) {
             )}
           </ul>
         </nav>
-        <Link
-          href="/try"
-          onClick={() => setOpen(false)}
-          className="mt-3 block rounded-lg bg-brass px-4 py-3 text-center text-base font-bold text-ink hover:bg-brass-light"
-        >
-          Try the sample books
-        </Link>
+        <DemoLink className="mt-3 block rounded-lg bg-brass px-4 py-3 text-center text-base font-bold text-ink hover:bg-brass-light" />
       </div>
     </header>
   );
