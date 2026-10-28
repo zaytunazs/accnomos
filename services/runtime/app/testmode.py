@@ -57,7 +57,6 @@ from accnomos_connectors import (
     MailAttachment,
     MailMessage,
 )
-from accnomos_connectors.base import FileRef
 from app import actions, fake_graph, public_chat, security
 from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai

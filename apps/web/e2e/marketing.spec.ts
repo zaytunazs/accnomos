@@ -32,8 +32,9 @@ test.describe("landing page at 1280 px", () => {
     await expect(page.getByRole("navigation", { name: "Sections" })).toHaveCount(0);
 
     await expect(page.getByRole("list", { name: "Apps" }).first()).toContainText("Available on Android");
-    // "Try the demo — no sign-in" goes to /judges when that page is in the build, else to the sample books.
-    await page.getByRole("main").getByRole("link", { name: "Try the demo — no sign-in" }).first().click();
+    // "Try the demo" goes to /judges (the demo sandbox page, in this build); the menu's sample books to /try.
+    await expect(page.getByRole("main").getByRole("link", { name: "Try the demo", exact: true }).first()).toHaveAttribute("href", "/judges");
+    await page.getByRole("banner").getByRole("link", { name: "Try the sample books" }).click();
     await expect(page).toHaveURL(/\/try$/);
     await expect(page.getByRole("link", { name: "See the demo books" })).toBeVisible();
     await expect(page.getByText("SAMPLE — FICTIONAL COMPANY").first()).toBeVisible();
