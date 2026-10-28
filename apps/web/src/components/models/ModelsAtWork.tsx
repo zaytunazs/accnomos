@@ -86,7 +86,8 @@ function Calls({ calls }: { calls: AiCall[] }) {
     return <p className="mt-2 text-[15px] text-muted">No AI calls since the server last started.</p>;
   }
   return (
-    <div className="mt-3 overflow-x-auto">
+    // Focusable and named, so a keyboard user can scroll it sideways on a phone.
+    <div role="region" aria-label="Recent AI calls table" tabIndex={0} className="mt-3 overflow-x-auto">
       <table aria-label="Recent AI calls" className="w-full min-w-[520px] text-left text-[14px]">
         <thead>
           <tr className="text-[13px] text-muted">
