@@ -1,7 +1,9 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import Link from "next/link";
-import { LAUNCH, NOTIFY_HREF, SUBMISSION_MODE } from "@/lib/public-site";
+import EarlyAccessForm from "@/components/early-access/EarlyAccessForm";
+import Prelaunch from "@/components/Prelaunch";
+import { LAUNCH, NOTIFY_HREF, PRELAUNCH_IN_BUILD, SUBMISSION_MODE } from "@/lib/public-site";
 import { BrowserFrame, PhoneFrame, Shot } from "./Marks";
 import AskLink from "./AskLink";
 import ProcessDemo from "./ProcessDemo";
@@ -165,6 +167,14 @@ export default function Landing() {
       <Models />
       <Status />
       <Faq />
+      {/* The early-adopter sign-up: pre-launch build only (in neither the HTML nor the payload of a submission build). */}
+      {PRELAUNCH_IN_BUILD && (
+        <Prelaunch>
+          <div className="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+            <EarlyAccessForm source="/" />
+          </div>
+        </Prelaunch>
+      )}
       <Closing />
     </>
   );

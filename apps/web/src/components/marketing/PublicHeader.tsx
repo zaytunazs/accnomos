@@ -77,7 +77,9 @@ export default function PublicHeader({ path }: { path: string }) {
                 Ask about Accnomos
               </button>
             </li>
-            {!SUBMISSION_MODE && (
+            {/* Pre-launch build only. The test is written out (not SUBMISSION_MODE) so a submission build folds the
+                link and its words out of the client bundle; e2e/submission-mode.spec.ts and scripts/prelaunch-words.mjs. */}
+            {process.env.NEXT_PUBLIC_SUBMISSION_MODE === "0" && (
               <li>
                 <Link href={signIn} className="rounded-lg px-3 py-2 text-sm font-semibold text-ground/65 hover:text-ground">
                   Early access / testers
@@ -151,7 +153,7 @@ export default function PublicHeader({ path }: { path: string }) {
                 Ask about Accnomos
               </button>
             </li>
-            {!SUBMISSION_MODE && (
+            {process.env.NEXT_PUBLIC_SUBMISSION_MODE === "0" && (
               <li>
                 <Link
                   href={signIn}

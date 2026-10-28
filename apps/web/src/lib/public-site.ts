@@ -16,16 +16,27 @@ export const isPublicPath = (path: string) => PUBLIC_PATHS.has(path);
  */
 export const SUBMISSION_MODE = process.env.NEXT_PUBLIC_SUBMISSION_MODE !== "0";
 
+/**
+ * Whether pre-launch copy may be in this build at all: the pre-launch build, or a test build (whose specs flip the mode
+ * per page, lib/submission-mode.ts). For server components; client components write the env test out in place so
+ * the bundler folds it (components/Prelaunch.tsx).
+ */
+export const PRELAUNCH_IN_BUILD =
+  process.env.NEXT_PUBLIC_SUBMISSION_MODE === "0" || process.env.NEXT_PUBLIC_TEST_MODE === "1";
+
 export const LAUNCH = "November 2026";
 
 /** Where the chat and the footer send anything the site cannot answer (runtime: PUBLIC_CONTACT_EMAIL). */
 export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "admin@zaytunauk.co.uk";
 
 /** Fired by the menu's "Ask about Accnomos" button; the chat widget opens on it. */
-/** Pre-launch "get notified": no database, so an e-mail to the team. */
-export const NOTIFY_HREF = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Notify me at launch")}&body=${encodeURIComponent(
-  "Hello, please let me know when Accnomos launches.\n\nName:\nBusiness:\n",
-)}`;
+/** Pre-launch "get notified": no database, so an e-mail to the team. Empty in a submission build (folded away). */
+export const NOTIFY_HREF =
+  process.env.NEXT_PUBLIC_SUBMISSION_MODE === "0"
+    ? `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Notify me at launch")}&body=${encodeURIComponent(
+        "Hello, please let me know when Accnomos launches.\n\nName:\nBusiness:\n",
+      )}`
+    : "";
 
 export const OPEN_CHAT_EVENT = "accnomos:open-chat";
 

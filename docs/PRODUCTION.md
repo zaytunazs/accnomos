@@ -109,8 +109,13 @@ out, not tagged). `0` is the pre-launch site for public traffic after judging: "
 notified" (a `mailto:` to the contact address, subject "Notify me at launch"; there is no sign-up database), "Try the
 demo" second, and sign-in moved to a quiet "Early access / testers" menu link. The value is inlined at build time
 (`next.config.ts`), so switching means a rebuild and redeploy; set the runtime's `PUBLIC_SUBMISSION_MODE` to match.
-`e2e/submission-mode.spec.ts` fails the default build if "coming soon", "beta", "launching" or "early access"
-appears anywhere in the export. The e2e suite runs only the default build. When a product claim changes in `README.md`
+Pre-launch wording ("Early access / testers", "coming soon", "beta", "launch"/"launching", the early-adopter list;
+the list is in `apps/web/scripts/prelaunch-words.mjs`) is checked twice: `e2e/submission-mode.spec.ts` reads every
+page of the test build, signed out and signed in, and CI's `web` job runs `node scripts/prelaunch-words.mjs out` on
+the production export, so the words are not even in a JS chunk. Client components keep pre-launch copy behind an
+inline `process.env.NEXT_PUBLIC_SUBMISSION_MODE === "0"` test (which the bundler folds), server components behind
+`PRELAUNCH_IN_BUILD` and `<Prelaunch>` (`lib/public-site.ts`, `components/Prelaunch.tsx`). The e2e suite runs only
+the default build. When a product claim changes in `README.md`
 or `docs/HONESTY.md`, change `public_kb.md` and the landing page (`apps/web/src/components/marketing/Landing.tsx`) too.
 
 ## 4. What must NOT change

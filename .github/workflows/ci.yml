@@ -115,6 +115,8 @@ jobs:
           if grep -rlE '__test/(graph|ai)|accnomos-test\.signedIn' out/; then
             echo "::error::out/ contains test-mode code (fake sign-in or /__test URLs)"; exit 1
           fi
+      - name: The submission build holds no pre-launch wording (coming soon, beta, launching, early access)
+        run: node scripts/prelaunch-words.mjs out
 
   e2e:
     name: e2e (Playwright, test mode)
