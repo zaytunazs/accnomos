@@ -46,8 +46,11 @@ BANK_SUGGEST_PROMPT = (
     "vat_code: S (20% VAT), R (5%), Z (0%), or N (no VAT / unsure — prefer N when unsure); "
     "contact: the supplier or customer name in the description, or null; "
     "reason: one short line saying why, quoting the description. "
-    "Travel and food need care. Rail, bus, underground, taxi, flights and hotels are 7400 Travel. "
-    "Cafes, coffee, sandwiches, restaurant and takeaway meals while working away are 7410 Subsistence. "
+    "Travel and food need care. Rail, bus, underground, taxi and hired-car fares, car parks and parking, "
+    "valet parking, congestion and clean-air charges, tolls, flights and hotels are 7400 Travel. "
+    "Cafes, coffee, bakeries, pantries, delis, sandwiches, and restaurant and takeaway meals while working "
+    "away are 7410 Subsistence. A kitchen fitter, kitchen supplier or other kitchen trade firm (fitters, "
+    "units, worktops, supplies, trade in the description) is 5000 Materials, never Subsistence. "
     "Petrol, diesel and vehicle fuel are 7300 Motor expenses, never Travel."
 )
 
