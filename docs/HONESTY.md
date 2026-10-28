@@ -362,8 +362,10 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
   inside it in one click; it is a plain link to `/judges` underneath, which explains when the server runs no demos.
 - **Site layout (28 Oct 2026, `docs/reviews/site-layout/REVIEW.md`).** `/terms` and `/judges` now also use the public
   shell signed out. The landing page names landlords and personal finances because the books and the Personal page
-  serve them today; it says that separate property-income (SA105) figures and an accountant portal are not in this
-  build. **The terms of use were written from this repository's docs, not by a lawyer.** MTD dates and thresholds are
+  serve them today; it says that separate property-income (SA105) figures are not in this build. Its text comes from
+  `docs/marketing/COPY.md` (written by Muse Spark), checked line by line against the code; four lines were corrected
+  where the deck claimed more than the code does (pricing in the app, "no" to model training whatever the provider,
+  an always-independent second reading, an overtime rate on timesheet cards). **The terms of use were written from this repository's docs, not by a lawyer.** MTD dates and thresholds are
   deliberately not stated on the page: gov.uk could not be reached from the session that wrote it, so nothing there
   depends on a rule that was not checked. The "before" screenshots were taken from the `site` branch (the exact export
   Plesk serves at accnomos.com) served locally, because accnomos.com itself was blocked from that session; with no

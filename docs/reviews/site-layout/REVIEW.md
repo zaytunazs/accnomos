@@ -72,29 +72,30 @@ and again at the end. known-fixes carries `claude/marketing`, `claude/exports`, 
 
 ### The home page (`components/marketing/Landing.tsx`), top to bottom
 
+The words now come from the copy deck (§7). The layout is unchanged from the first pass:
+
 1. **Hero.**
    - Audience line: "Bookkeeping and Making Tax Digital for UK small businesses, sole traders, landlords and personal
      finances".
-   - The one promise: "AI proposes. You approve. Code calculates." Supporting line: forward a receipt, snap a photo or
-     say what you need; Accnomos proposes, you approve, VAT and Income Tax figures ready for HMRC, books in your
-     OneDrive.
+   - Headline (deck option B): "Bookkeeping you only have to check". Subline: "The AI reads each document and
+     proposes an entry. Nothing posts until you approve it."
    - Calls to action: **Try the demo** and **Sign in with Microsoft**.
    - Real app screens: the laptop and phone frames.
 2. **One set of books, whoever you are.** Small businesses, sole traders, landlords and personal finances, each with
    only what this build does. Landlords: "Separate property-income (SA105) figures are not in this build."
-3. **How it works.** Four steps (send it in by email, photo, upload or voice → AI proposes → you approve →
-   HMRC-ready), then the existing five-screen process animation.
-4. Features, with the tabbed real screens (unchanged from marketing).
-5. **Making Tax Digital, for VAT and Income Tax** (new). Two cards, each stating its status: VAT sandbox, tested
-   against a stand-in; Income Tax sandbox only, never run against HMRC. A real VAT-return screen.
-6. **Ask by voice or chat** (retitled), with the action card.
+3. **How it works.** The deck's four steps (send it in, by email, photo, upload or voice → the AI proposes → you
+   approve → VAT and records, ready), then the existing five-screen process animation.
+4. **Features:** the deck's Receipts, Bank, Pay runs and Month-end blocks, with the tabbed real screens.
+5. **Making Tax Digital, for VAT and Income Tax:** the deck's VAT and Income Tax blocks (both say sandbox) and a real
+   VAT-return screen.
+6. **Voice and chat that wait**, with the Ask and action-card screens.
 7. Android ("Made for the phone in your pocket"). The iPhone chip shows only when submission mode is off.
-8. **For accountants** (new): Books.xlsx, CSV exports, the audit trail, and sharing the folder in OneDrive. "A portal
-   for accountants is not in this build."
-9. Your data, the six Meta models, and what is tested. That last section now links to HONESTY.md.
-10. **Pricing** (new). Submission build: "No charge. There is no published pricing: Accnomos is a hackathon build…".
-    Pre-launch build only: "Free while we launch".
-11. FAQ, closing calls to action, and the product-only chat widget (unchanged from marketing).
+8. **For accountants:** the deck's paragraph (invite, the same files, queries, reversing entries).
+9. **Your books live in OneDrive**, with "AI proposes, you approve" (the deck's trust text); then the six Meta
+   models, and what is tested, which links to HONESTY.md.
+10. **Pricing.** Submission build: "There is no published pricing: Accnomos is a hackathon build, and nothing in it
+    asks you to pay…". Pre-launch build only: "Free while we launch".
+11. The deck's ten FAQs, closing calls to action, and the product-only chat widget.
 
 ### "Try the demo" (`components/marketing/DemoLink.tsx`)
 
@@ -202,14 +203,82 @@ Updated:
 2. **No MTD rule dates or thresholds on the page.** gov.uk was unreachable from this session, so the page states only
    what the app does. If the owner wants "MTD for Income Tax from April 2026 for income over £…", verify it on gov.uk
    first and cite the URL and date.
-3. **Landlords and accountants are described by what worked on this branch's base**: the same books; a shared
-   folder, Books.xlsx, exports and the audit trail. **`origin/main` has since merged `claude/accountant`**
-   (`90cddb55`: accountant portal, Settings › Your accountant, client queries). When this branch is merged with
-   main, replace "A portal for accountants is not in this build" in `Landing.tsx` `Accountants()` with the portal,
-   and point the card at `/accountant`. Do the same for landlords when `claude/landlords` merges, and update
-   `public_kb.md`, which the chat answers from.
+3. **Landlords** are described by what works today: the same books, with the line "Separate property-income (SA105)
+   figures are not in this build". Update that card and `public_kb.md`, which the chat answers from, when
+   `claude/landlords` merges. Accountants: see §7; `origin/main` is now merged, so the invite and queries exist.
 4. **"Try the demo" waits for the sandbox** (the first visitor of the day can wait while the seed runs), showing
    "Preparing the sample books…". If it fails it still goes to `/judges`, which shows the reason.
 5. Check the live site after deploy: Plesk compression, the `version.json` 404, and a real Lighthouse run on
    accnomos.com.
 6. Not run: Flutter tests, and the pre-launch build (`NEXT_PUBLIC_SUBMISSION_MODE=0`) in a browser.
+
+## 7. Homepage copy from `docs/marketing/COPY.md` (merged from `origin/muse/marketing-copy`)
+
+The deck was written by Muse Spark. Every line was checked against the code and `docs/HONESTY.md` before it went on
+the page. It went in as written, except where noted below.
+
+**`origin/main` merged first** (`claude/accountant`, `claude/import-history`). The deck's accountants block ("Invite
+your accountant…", "Queries…") and FAQ 6 ("Can I switch from Xero or QuickBooks?") describe those two features, which
+`main` has had since 28 Oct. The deploy runs from `main`, so the merge makes this branch say what the site will
+serve. Conflicts kept both sides: `main.py` routers, `testmode.py` imports, `pages.ts` (adds `/accountant`,
+`/import`), `.env.example`, README, ARCHITECTURE, the Playwright env, and Android More (adds Your accountant;
+`more_gating_test.dart` follows).
+
+**Hero: option B.** Headline "Bookkeeping you only have to check". Subline "The AI reads each document and proposes
+an entry. Nothing posts until you approve it." CTAs: Try the demo / Sign in with Microsoft.
+
+| Option | Why not chosen, or chosen |
+|--------|---------------------------|
+| A, "Your paperwork, turned into your books" | Describes the input; the promise ("you approve") only appears in the subline. |
+| **B** | Chosen. It is the one promise the whole product keeps (AI proposes, you approve), and it holds for every audience: business, sole trader, landlord or household. Every word is true in the submission build. |
+| C, "Your books, kept in your OneDrive" | A strong trust point, but it is storage, not the job done. It is used as the "Your books live in OneDrive" section instead. |
+
+The old three-line headline ("AI proposes. You approve. Code calculates.") and its notes were removed; the subline
+now says the same thing once. The audience line above the headline stays, because the owner's brief asks for small
+businesses, sole traders, landlords and personal finances. "HMRC contact is sandbox only" (the deck's footer phrase)
+replaces the hero's old sandbox sentence.
+
+**Where each part went**
+
+- **How it works:** the deck's four steps, word for word. *Added*: "You can also just say what you need." at the end
+  of step 1, because the owner's brief lists voice as an input. The process animation stays below them.
+- **Feature blocks.** All eight appear once, each with its fictional example:
+  - Receipts, Bank, Pay runs and Month-end make up Features (with the screen tabs).
+  - VAT and Income Tax make up the MTD section (with the VAT screen).
+  - Voice and chat is the Ask section (with the Ask and action-card screens).
+  - OneDrive is the "Your books" section.
+- **Accountants:** the deck's paragraph. **Trust:** a "AI proposes, you approve" subsection under "Your books live in
+  OneDrive". **FAQ:** all ten questions. **Footer microcopy** and **meta description** (on `/`): as written.
+- **Kept although not in the deck:** "One set of books, whoever you are", because the owner asked for the four
+  audiences. Also kept: Android, the six Meta models, "What is tested, and what is not" and Pricing. They come from
+  the owner's brief and HONESTY.md.
+
+**Lines changed, and why**
+
+| Deck | Page | Why |
+|------|------|-----|
+| FAQ 1 "Pricing is shown in the app before you pay for anything." | "There is no published pricing: Accnomos is a hackathon build, and nothing in it asks you to pay. The demo with sample books costs nothing to try." | Wrong. The app has no pricing and no payment step (Stripe/PayPal is only for your own invoices). |
+| FAQ 10 "No. Your documents are read to keep your books, and nothing else." | "We do not use your documents to train models: they are read to keep your books, and nothing else. When your server uses an API key, the document goes to that model provider under its own terms." | Too absolute. In key mode a document goes to Meta's Model API or Baseten, whose terms we do not control. |
+| Trust "a second independent reading checks the first" | "a second reading checks the first on key documents" | It is only independent with a Baseten key (Muse Spark Open). In local mode Glimmer checks Glimmer (HONESTY.md, "Models"). |
+| Voice example "Andy did 2 hours overtime at double time on the Hendon job" | "Andy did 2 hours on the Hendon job" | The timesheet card (`actions.py` `LogTimesheetIntent`) takes staff, job, hours, date and a note. It has no rate or multiplier, so "double time" would not be recorded as such. |
+| FAQ questions end in "." | "?" | Punctuation. |
+
+**Checked and true as written:**
+
+- Bank layouts: `packages/ledger/.../bank.py` names Barclays, Starling, Tide and Monzo, plus HSBC and Lloyds paid-in
+  and paid-out columns.
+- Month-end lists missing statements (coverage gaps), uncategorised costs, duplicates and late changes to a closed
+  month, with a re-close (`month_end.py`).
+- Income Tax shows "Entries behind" each figure (`SelfEmployment.tsx`).
+- Pay runs show estimated employee and employer NI line by line (`LivePayroll.tsx`). £270 = 20 × £13.50.
+- Android has capture, Review, Ask, VAT and reports.
+- HMRC is sandbox only for VAT and Income Tax.
+- The deck's examples are labelled fictional and are not shown as app data.
+- The deck mentions no iPhone app. The submission build shows none; the pre-launch build keeps its chip and FAQ.
+
+**Tests updated for the new words:**
+
+- `marketing.spec.ts` and `early-access.spec.ts`: the h1, and the HMRC FAQ.
+- `site-layout.spec.ts`: section headings, the four step titles, the hero region, the footer microcopy, the meta
+  description, and that "Pricing is shown in the app" is absent.
+

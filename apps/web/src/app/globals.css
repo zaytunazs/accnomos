@@ -135,25 +135,10 @@ body {
   outline-color: var(--color-brass);
 }
 
-/* Hero: the three promises in one heading, and what each means underneath. */
-.hero-promises {
-  --hero-size: clamp(2.4rem, 6.2vw, 3.75rem);
-}
+/* Hero: the one-line promise (docs/marketing/COPY.md option B). */
 .hero-lines {
-  font-size: var(--hero-size);
+  font-size: clamp(2.4rem, 6.2vw, 3.75rem);
   line-height: 1.06;
-}
-.hero-notes {
-  margin-top: 1.25rem;
-  display: grid;
-  gap: 0.4rem;
-  font-size: 15px;
-  line-height: 1.4;
-  color: rgb(244 243 238 / 0.8);
-}
-.hero-notes li {
-  padding-left: 1rem;
-  border-left: 2px solid var(--color-brass);
 }
 /* The one page-load moment: the screens settle into place. */
 @keyframes hero-rise {

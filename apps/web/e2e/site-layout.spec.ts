@@ -39,6 +39,9 @@ test.describe("signed out, / is the marketing home", () => {
 
     // The two calls to action, in the hero and again at the foot of the page.
     const hero = page.getByRole("region", { name: "Bookkeeping you only have to check" });
+    // The headline is the largest text on the page (globals.css .hero-lines), not body size.
+    const h1Size = await page.getByRole("heading", { level: 1 }).evaluate((el) => parseFloat(getComputedStyle(el).fontSize));
+    expect(h1Size).toBeGreaterThanOrEqual(38);
     await expect(hero.getByRole("link", { name: "Try the demo", exact: true })).toHaveAttribute("href", "/judges");
     await expect(hero.getByRole("link", { name: "Sign in with Microsoft" })).toHaveAttribute("href", "/connect?next=%2F");
 
