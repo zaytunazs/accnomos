@@ -1,5 +1,6 @@
 "use client";
 
+import { isDemo } from "@/lib/demo";
 import { useEffect, useId, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import {
@@ -29,7 +30,8 @@ export function useLookupStatus(): RtLookupStatus | null {
   const [status, setStatus] = useState<RtLookupStatus | null>(null);
   useEffect(() => {
     let live = true;
-    statusOnce ??= lookupStatus();
+    // The demo sandbox makes no Companies House or HMRC calls (the runtime refuses them): no look-ups offered.
+    statusOnce ??= isDemo() ? Promise.resolve({ companies_house: false, vat_check: false, sample: false }) : lookupStatus();
     void statusOnce.then((s) => live && setStatus(s));
     return () => {
       live = false;

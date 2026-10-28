@@ -1,4 +1,5 @@
 import Link from "next/link";
+import TryDemo from "@/components/demo/TryDemo";
 
 const claims = [
   {
@@ -41,6 +42,7 @@ export default function Pitch() {
             >
               Connect your OneDrive
             </Link>
+            <TryDemo variant="secondary" />
             <Link
               href="/review"
               className="text-sm font-bold text-teal-dark underline underline-offset-2 hover:text-teal"

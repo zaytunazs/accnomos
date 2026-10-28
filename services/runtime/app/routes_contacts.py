@@ -31,6 +31,11 @@ router = APIRouter(prefix="/contacts", tags=["contacts"])
 
 
 async def get_address_book(request: Request) -> AsyncIterator[ContactsProvider]:
+    from app import demo
+
+    if (sandbox := demo.from_request(request)) is not None:  # the demo's in-memory contacts: no Graph, nothing sent
+        yield sandbox.contacts
+        return
     token = request.headers.get("X-Graph-Token", "").strip().removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")

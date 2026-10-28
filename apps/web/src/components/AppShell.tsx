@@ -4,6 +4,7 @@ import AiSidebarLabel from "./AiSidebarLabel";
 import AppNav from "./AppNav";
 import DemoBanner from "./DemoBanner";
 import MonthlyBackup from "./files/MonthlyBackup";
+import DemoBar, { DemoMenu, NotInDemo } from "./demo/DemoBar";
 import { ServiceStrip, VersionStrip } from "./StatusStrips";
 
 function LogoMark() {
@@ -34,6 +35,7 @@ function LogoMark() {
 export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-1 flex-col">
+      <DemoBar />
       <DemoBanner />
       <MonthlyBackup />
       {/* Reader trouble and new-version notices: one shared strip each, pages keep what they can below. */}
@@ -64,9 +66,12 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </div>
           <AppNav variant="sidebar" />
           <div className="mt-auto flex flex-col gap-3">
-            <p className="rounded-2xl bg-ground p-4 text-sm leading-6 text-muted">
-              Your books live in OneDrive — Apps / Accnomos
-            </p>
+            <DemoMenu />
+            <NotInDemo>
+              <p className="rounded-2xl bg-ground p-4 text-sm leading-6 text-muted">
+                Your books live in OneDrive — Apps / Accnomos
+              </p>
+            </NotInDemo>
             <AiSidebarLabel />
           </div>
         </aside>
@@ -79,6 +84,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
               </Link>
               <Link href="/privacy" className="hover:text-teal-dark hover:underline underline-offset-2">
                 Privacy
+              </Link>
+              <Link href="/judges" className="hover:text-teal-dark hover:underline underline-offset-2">
+                For judges
               </Link>
               <Link href="/settings" className="hover:text-teal-dark hover:underline underline-offset-2">
                 Settings

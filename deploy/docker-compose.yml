@@ -39,6 +39,10 @@ services:
       EARLY_ACCESS_ENABLED: ${EARLY_ACCESS_ENABLED:-0}
       EARLY_ACCESS_FILE: ${EARLY_ACCESS_FILE:-/data/early-access.jsonl}
       EARLY_ACCESS_PER_MIN: ${EARLY_ACCESS_PER_MIN:-5}
+      # Demo sandbox for judges and visitors (app/demo.py, docs/PRODUCTION.md): off unless DEMO_MODE=1, which refuses
+      # to start without DEMO_SECRET (32+ characters). Set both in .env; never commit the secret.
+      DEMO_MODE: ${DEMO_MODE:-0}
+      DEMO_SECRET: ${DEMO_SECRET:-}
     # The only writable path besides /tmp: owned by uid 10001 in the image, so the named volume starts that way.
     volumes: ["runtime-data:/data"]
     # Uploads over 1 MB spool to /tmp, and ffmpeg converts voice there: 25 MB uploads need the headroom.

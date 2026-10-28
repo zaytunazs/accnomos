@@ -57,8 +57,7 @@ from accnomos_connectors import (
     MailAttachment,
     MailMessage,
 )
-from accnomos_connectors.base import FileRef
-from app import actions, security
+from app import actions, fake_graph, security
 from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai
 from app.ai import verify as verify_ai
@@ -669,123 +668,12 @@ async def ai_chat(request: Request) -> JSONResponse:
 
 # ---- Graph look-alike for the browser ------------------------------------ #
 
-GRAPH_ROOT_ID = "t-root"
-
-
-def _id(path: str) -> str:
-    return "t-" + base64.urlsafe_b64encode(path.encode()).decode().rstrip("=") if path else GRAPH_ROOT_ID
-
-
-def _path_of(item_id: str) -> str:
-    if item_id == GRAPH_ROOT_ID:
-        return ""
-    if not item_id.startswith("t-"):
-        raise ValueError(item_id)
-    raw = item_id.removeprefix("t-")
-    return base64.b64decode(raw + "=" * (-len(raw) % 4), altchars=b"-_", validate=True).decode()
-
-
-def _drive_item(ref: FileRef) -> dict[str, Any]:
-    st = current().storage
-    path = ref.path.strip("/")
-    item: dict[str, Any] = {
-        "id": _id(path),
-        "name": ref.name or "Accnomos",
-        "eTag": ref.etag,
-        "webUrl": f"{WEB_BASE}/{path}",
-        "lastModifiedDateTime": (ref.modified or datetime.now(UTC)).isoformat().replace("+00:00", "Z"),
-    }
-    if ref.is_folder:
-        prefix = f"{path}/" if path else ""
-        item["size"] = sum(len(v) for k, v in st.files.items() if k.startswith(prefix))
-        children = {k[len(prefix) :].split("/", 1)[0] for k in [*st.files, *st.folders] if k and k.startswith(prefix)}
-        item["folder"] = {"childCount": len(children)}
-    else:
-        item["size"] = ref.size
-        ext = path.rsplit(".", 1)[-1].lower() if "." in path else ""
-        item["file"] = {
-            "mimeType": {
-                "png": "image/png",
-                "jpg": "image/jpeg",
-                "jpeg": "image/jpeg",
-                "pdf": "application/pdf",
-                "json": "application/json",
-                "txt": "text/plain",
-            }.get(ext, "application/octet-stream")
-        }
-    return item
-
-
-def _not_found(path: str) -> JSONResponse:
-    return JSONResponse({"error": {"code": "itemNotFound", "message": f"Item does not exist: {path}"}}, status_code=404)
-
-
-async def _get(path: str) -> JSONResponse:
-    st = current().storage
-    if path in st.folders:
-        return JSONResponse(_drive_item(FileRef(id="", path=path, name=path.rsplit("/", 1)[-1], is_folder=True)))
-    if path in st.files:
-        return JSONResponse(_drive_item(st._ref(path)))
-    return _not_found(path)
-
-
-_ROOTS = ("me/drive/special/approot", "me/drive/root:/Accnomos")
+GRAPH_ROOT_ID = fake_graph.GRAPH_ROOT_ID
+_id = fake_graph.item_id
+_path_of = fake_graph.path_of
 
 
 @router.api_route("/graph/v1.0/{rest:path}", methods=["GET", "POST", "PUT"])
 async def graph(rest: str, request: Request) -> Response:
-    """The handful of Graph calls apps/web/src/lib/graph.ts makes, path-addressed under the books root."""
-    st = (await state()).storage
-    method = request.method
-    if rest == "me/drive/root/children" and method == "POST":  # work account: create /Accnomos
-        return JSONResponse(_drive_item(FileRef(id="", path="", name="Accnomos", is_folder=True)), status_code=201)
-    if m := re.fullmatch(r"me/drive/items/([^/]+)/children", rest):
-        if method != "POST":
-            return JSONResponse({"error": {"code": "notSupported"}}, status_code=400)
-        try:
-            parent = _path_of(m.group(1))
-        except ValueError:  # not an id this look-alike handed out (binascii.Error and UnicodeDecodeError included)
-            return _not_found(m.group(1))
-        name = (await request.json()).get("name")
-        if not isinstance(name, str) or not name.strip("/"):
-            return JSONResponse({"error": {"code": "invalidRequest", "message": "name required"}}, status_code=400)
-        if parent and parent not in st.folders:
-            return _not_found(parent)
-        path = f"{parent}/{name}".strip("/")
-        if path in st.folders or path in st.files:
-            return JSONResponse({"error": {"code": "nameAlreadyExists"}}, status_code=409)
-        ref = await st.ensure_folder(path)
-        return JSONResponse(_drive_item(ref), status_code=201)
-    root = next((r for r in _ROOTS if rest == r or rest.startswith(r + ":/") or rest.startswith(r + "/")), None)
-    if root is None:
-        return _not_found(rest)
-    tail = rest[len(root) :]
-    action = ""
-    if tail in ("/children", ":/children"):
-        rel, action = "", "children"
-    else:
-        tail = tail.removeprefix(":/").removeprefix("/")
-        for suffix in (":/children", ":/content"):
-            if tail.endswith(suffix):
-                tail, action = tail[: -len(suffix)], suffix[2:]
-        rel = tail.strip("/")
-    if action == "content" and method == "PUT":
-        ref = await st.write(rel, await request.body())
-        return JSONResponse(_drive_item(ref), status_code=201)
-    if action == "content":
-        if rel not in st.files:
-            return _not_found(rel)
-        ext = rel.rsplit(".", 1)[-1].lower()  # the Review preview reads the filed receipt
-        mime = {
-            "png": "image/png",
-            "jpg": "image/jpeg",
-            "jpeg": "image/jpeg",
-            "webp": "image/webp",
-            "pdf": "application/pdf",
-        }
-        return Response(st.files[rel], media_type=mime.get(ext, "application/octet-stream"))
-    if action == "children":
-        if rel not in st.folders:
-            return _not_found(rel)
-        return JSONResponse({"value": [_drive_item(r) for r in await st.list(rel)]})
-    return await _get(rel)
+    """The handful of Graph calls apps/web/src/lib/graph.ts makes (app/fake_graph.py), over this tenant's fakes."""
+    return await fake_graph.respond((await state()).storage, rest, request, WEB_BASE)

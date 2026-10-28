@@ -46,6 +46,11 @@ LOGO_MAX_SIDE = 4000  # pixels; a 1 MB PNG can declare 30,000 x 30,000 and take 
 
 
 async def get_sender(request: Request) -> AsyncIterator[MailSender]:
+    from app import demo
+
+    if (sandbox := demo.from_request(request)) is not None:  # the demo's in-memory sender: no Graph, nothing sent
+        yield sandbox.sender
+        return
     token = request.headers.get("X-Graph-Token", "").strip().removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")

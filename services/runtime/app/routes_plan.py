@@ -30,6 +30,11 @@ router = APIRouter(prefix="/plan", tags=["plan"])
 
 
 async def get_calendar(request: Request) -> AsyncIterator[CalendarProvider]:
+    from app import demo
+
+    if (sandbox := demo.from_request(request)) is not None:  # the demo's in-memory calendar: no Graph, nothing sent
+        yield sandbox.calendar
+        return
     token = request.headers.get("X-Graph-Token", "").strip().removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")

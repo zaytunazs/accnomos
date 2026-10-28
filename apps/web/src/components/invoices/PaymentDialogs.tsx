@@ -1,5 +1,6 @@
 "use client";
 
+import { sentNote } from "@/lib/demo";
 import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import Modal, { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
@@ -567,7 +568,7 @@ export function CreditNoteViewDialog({ account, note: cn, onClose, onDone }: {
     setNote(null);
     try {
       const sent = await runtime.sendCreditNote(account, cn.number, email);
-      onDone(sent, `${sent.number} emailed to ${sent.sent_to ?? "the customer"}.`);
+      onDone(sent, sentNote(`${sent.number} emailed to ${sent.sent_to ?? "the customer"}.`));
     } catch (e) {
       setNote(errorText(e) ?? "Microsoft asked for permission to send mail. Tap Send again when you are back.");
     } finally {

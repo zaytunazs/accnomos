@@ -1,5 +1,6 @@
 "use client";
 
+import { sentNote } from "@/lib/demo";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { PreviewSendDialog, ReminderDialog, StatusTimeline, VoidDialog } from "@/components/invoices/InvoiceDialogs";
@@ -136,11 +137,11 @@ export default function LiveInvoices() {
     replace(updated);
     const left = balanceOf(updated);
     setNote({
-      preview: `${updated.number} sent to ${updated.sent_to ?? "the customer"} and recorded in your books.`,
+      preview: sentNote(`${updated.number} sent to ${updated.sent_to ?? "the customer"} and recorded in your books.`),
       paid: left > 0
         ? `Payment recorded on ${updated.number}: ${money(left)} still owed.`
         : `${updated.number} is paid${updated.money?.overpaid_pence ? `; ${money(updated.money.overpaid_pence)} kept as a credit for ${updated.customer.name}` : ""}.`,
-      remind: `Reminder for ${updated.number} sent.`,
+      remind: sentNote(`Reminder for ${updated.number} sent.`),
       void: `${updated.number} is void.`,
       credit: "",
       payLink: `Payment link added to ${updated.number}.`,

@@ -39,6 +39,11 @@ router = APIRouter(prefix="/mail", tags=["mail"])
 
 
 async def get_mail(request: Request) -> AsyncIterator[MailProvider]:
+    from app import demo
+
+    if (sandbox := demo.from_request(request)) is not None:  # the demo's in-memory mail: no Graph, nothing sent
+        yield sandbox.mail
+        return
     token = request.headers.get("X-Graph-Token", "").strip().removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")
@@ -57,8 +62,17 @@ async def get_mail(request: Request) -> AsyncIterator[MailProvider]:
 MailFactory = Callable[[str, mb.Mailbox], MailProvider]  # (that mailbox's token, the linked mailbox)
 
 
-async def get_mail_factory() -> AsyncIterator[MailFactory]:
+async def get_mail_factory(request: Request) -> AsyncIterator[MailFactory]:
     """Opens a provider for a linked mailbox; every one opened is closed when the request ends."""
+    from app import demo
+
+    if demo.from_request(request) is not None:  # a linked mailbox's token would reach real Graph: never in a demo
+
+        def refuse(_token: str, _box: mb.Mailbox) -> MailProvider:
+            raise HTTPException(status_code=403, detail="Linked mailboxes are switched off in the demo sandbox.")
+
+        yield refuse
+        return
     if is_test_mode():
         from app import testmode
 

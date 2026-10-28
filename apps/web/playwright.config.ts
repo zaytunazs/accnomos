@@ -39,6 +39,7 @@ export default defineConfig({
       url: `${RUNTIME_URL}/health`,
       // RATE_LIMIT_PER_MIN=0: one browser on 127.0.0.1 makes well over 60 calls a minute across the suite.
       // EARLY_ACCESS_*: the early-adopter form's endpoint on, writing to a temp file (e2e/early-access.spec.ts).
+      // DEMO_MODE=1 for e2e/sandbox.spec.ts (services/runtime/app/demo.py); a throwaway secret, per-IP limits off.
       env: {
         ACCNOMOS_TEST_MODE: "1",
         PORT: String(RUNTIME_PORT),
@@ -47,16 +48,20 @@ export default defineConfig({
         EARLY_ACCESS_ENABLED: "1",
         EARLY_ACCESS_FILE,
         EARLY_ACCESS_PER_MIN: "0",
+        DEMO_MODE: "1",
+        DEMO_SECRET: "e2e-only-demo-secret-not-for-production-0000",
+        DEMO_SESSIONS_PER_IP_PER_MIN: "0",
       },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
-      timeout: 60_000,
+      // E2E_SERVER_TIMEOUT_MS: a heavily loaded machine can take minutes to render and hash the gold receipts.
+      timeout: Number(process.env.E2E_SERVER_TIMEOUT_MS ?? 60_000),
     },
     {
       command: "node e2e/serve.mjs",
       url: WEB_URL,
       reuseExistingServer: !process.env.CI,
-      timeout: 30_000,
+      timeout: Number(process.env.E2E_SERVER_TIMEOUT_MS ?? 30_000),
     },
   ],
   outputDir: "test-results",
