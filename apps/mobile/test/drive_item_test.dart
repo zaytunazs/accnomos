@@ -64,8 +64,9 @@ void main() {
 
     test('dates render in UK order', () {
       final item = DriveItem.fromJson(fileJson());
-      expect(item.dateLabel, contains('Oct 2026'));
-      expect(item.dateLabel.startsWith('20'), isTrue);
+      // 14:00Z on 20 Oct is the 20th or the 21st on the device's clock, depending on its time zone.
+      final day = DateTime.utc(2026, 10, 20, 14).toLocal().day;
+      expect(item.dateLabel, '$day Oct 2026');
     });
   });
 }
