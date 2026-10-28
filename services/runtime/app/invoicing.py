@@ -291,6 +291,7 @@ class Invoice(BaseModel):
     reminders: list[Reminder] = []
     job_id: str | None = None
     timesheets_marked: bool = False  # the lines' timesheet entries were marked invoiced on this number when sent
+    repeating: str | None = None  # "RP-0001#3": made by that occurrence of a repeating invoice (app/repeating.py)
 
     def timesheet_entry_ids(self) -> list[str]:
         return [i for ln in self.lines for i in ln.timesheet_entry_ids]
