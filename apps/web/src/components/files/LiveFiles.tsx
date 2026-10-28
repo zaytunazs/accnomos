@@ -7,6 +7,7 @@ import BooksCard from "@/components/files/BooksCard";
 import SignInCta from "@/components/SignInCta";
 import dynamic from "next/dynamic";
 import FileTree from "@/components/files/FileTree";
+import FilesManager from "@/components/files/FilesManager";
 import FilesTree, {
   OpenLink,
   SYSTEM,
@@ -333,6 +334,7 @@ export default function LiveFiles() {
               </p>
             )}
           </section>
+          <FilesManager account={account!} onTreeChanged={() => account && void refresh(account)} />
           <BooksCard account={account!} books={booksFile} onRebuilt={() => account && void refresh(account)} />
           <p className="text-[13px] font-medium text-muted">
             {plural(tree.folders.reduce((n, f) => n + f.files, tree.files.length), "file")} outside _System · {size(tree.root.size)} in

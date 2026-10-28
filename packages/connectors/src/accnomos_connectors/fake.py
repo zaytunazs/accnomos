@@ -156,10 +156,11 @@ class FakeCalendarProvider(CalendarProvider):
 
 
 class FakeStorageProvider(StorageProvider):
-    def __init__(self) -> None:
+    def __init__(self, web_base: str | None = None) -> None:
         self.files: dict[str, bytes] = {}
         self.folders: set[str] = {""}
         self._log: list[tuple[str, str]] = []
+        self.web_base = web_base  # set: each FileRef gets web_url = f"{web_base}/{path}" (test mode's look-alike)
 
     def _ref(self, path: str, is_folder: bool = False) -> FileRef:
         data = self.files.get(path, b"")
@@ -173,6 +174,7 @@ class FakeStorageProvider(StorageProvider):
             modified=datetime.now(UTC),
             is_folder=is_folder,
             content_hash=None if is_folder else f"sha256:{hashlib.sha256(data).hexdigest()}",
+            web_url=f"{self.web_base}/{path}" if self.web_base else None,
         )
 
     async def ensure_root(self) -> FileRef:

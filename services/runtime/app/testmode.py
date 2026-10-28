@@ -284,6 +284,7 @@ class State:
 
 
 TENANT_HEADER = "X-Test-Tenant"
+WEB_BASE = "https://onedrive.test.invalid/Accnomos"  # what "Open in OneDrive" links point at in test mode
 _TENANT: ContextVar[str] = ContextVar("accnomos_test_tenant", default="")
 STATE = State()  # no X-Test-Tenant header: the unit tests and a runtime started by hand
 STATES: dict[str, State] = {"": STATE}
@@ -414,7 +415,7 @@ async def reset(seed: str | None = None) -> dict[str, Any]:
         raise HTTPException(400, f"unknown seed {seed!r}; one of {sorted(SEEDS)}")
     s = current()
     s.today = None
-    s.storage = FakeStorageProvider()
+    s.storage = FakeStorageProvider(web_base=WEB_BASE)
     await s.storage.write(PROFILE, InvoiceProfile.model_validate(SAMPLE_PROFILE).model_dump_json(indent=2).encode())
     s.mail = FakeMailProvider()
     s.sender = FakeMailSender()
@@ -636,7 +637,7 @@ def _drive_item(ref: FileRef) -> dict[str, Any]:
         "id": _id(path),
         "name": ref.name or "Accnomos",
         "eTag": ref.etag,
-        "webUrl": f"https://onedrive.test.invalid/Accnomos/{path}",
+        "webUrl": f"{WEB_BASE}/{path}",
         "lastModifiedDateTime": (ref.modified or datetime.now(UTC)).isoformat().replace("+00:00", "Z"),
     }
     if ref.is_folder:
