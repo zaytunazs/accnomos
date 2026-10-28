@@ -1,5 +1,19 @@
 # Release notes — Accnomos mobile
 
+## 0.3.5 (version code 10)
+
+Play "What's new" (336 characters):
+
+Load sample books now works on the phone. On an empty folder, Home
+offers a "Load sample books" card: one tap fills it with six months
+of a fictional joinery company, with a progress bar and the step it
+is on. It keeps your sign-in fresh while it runs, then Home shows a
+SAMPLE banner. Folders that already hold books are never touched.
+
+Not yet run on a phone: the card, its polling and the fresh-token POSTs
+against a real runtime and Graph (a load takes minutes), and the card at
+360 dp on a real device, need a human check.
+
 ## 0.3.4 (version code 9)
 
 Play "What's new" (about 320 characters):
