@@ -138,6 +138,8 @@ task text only and was never merged.
 | 17 | `muse/cis-eval` | `9272c8b6` | 40744420233 | no web change |
 | 18 | `spark/cis-eval-runs` (plus the /cis label fix below) | `f3a8db81` | 40747808603 | 40749547420 ✓ |
 | 19 | `muse/property-reader` with `spark/property-eval-runs` (its Spark run), plus the payroll fix below | `21c77bd2` | 40759245206 | 40761016629 ✓ |
+| 20 | `claude/site-layout` (signed-out `/` is the marketing home with its own public menu; app chrome only inside the app) | `91e59bf1` | 40769708968 | see below |
+| 21 | `spark/property-runs-pass2` (with `muse/property-reader-2`, which it sits on) and this review | this commit | see below | no web change |
 
 The integrator wrote a review wherever a branch arrived without one: `docs/reviews/cis-eval/`, `cis-eval-runs/` and
 `property-reader/`. The Spark figures were **recounted from `results.jsonl`**, not copied from the summaries. The CIS
@@ -155,12 +157,37 @@ schedules and 0 of 6 on mortgage statements.
 | cis-eval | 2161 | 101 | 63 | 181 | 352 | 411 | 1 |
 | property-reader | 2167 | 101 | 63 | 181 | 353 | 411 | 1 |
 | + payroll fix | 2167 | 101 | 63 | 181 | 353 | 413 | 0 |
+| site-layout | 2167 | 101 | 63 | 181 | 353 | 426 | 0 |
+| property-runs-pass2 | 2171 | 101 | 63 | 181 | 354 | 424 | 2 |
 
 ruff 0.17.3 and pyright stayed clean throughout. The flaky tests were: on bank-feeds, the signed-out `/` *Speak*
 button was briefly disabled without a reason; on batch-tax, `files-manage` hit `ECONNRESET`, the PAYE RTI table was
 slow, and the signed-out `/cis` label count was wrong (that last one turned out to be real, see below). On
 cis-eval, `paye.spec.ts` (the long PAYE flow) failed once. On property-reader, and on CI for cis-eval-runs, a
 `marketing.spec.ts` test sometimes did not find the *Ask about Accnomos* dialog right after the click.
+
+### Third pass (evening of 28 Oct)
+
+- **`claude/site-layout`** last passed its gates on `2f3f95e`; `main` had since gained batch-tax, cis-eval,
+  property-reader and the payroll fix (97 commits). It merged with no textual conflict. The two in-app pages those
+  added, `/cis` and `/property`, are in the app menu (`AppNav.tsx`, `lib/nav.ts`) and in the e2e page list
+  (`e2e/pages.ts`, unioned with site-layout's `/terms`). Both are app pages, not public ones. The public menu links to
+  sections of the landing page, and the site has no sitemap, so there was nothing else to add. The production export
+  (`next build`, `NEXT_PUBLIC_SUBMISSION_MODE` default `1`) holds no test-mode code, and `scripts/prelaunch-words.mjs`
+  finds 0 pre-launch phrases (coming soon, beta, launching, early access, testers) in its 297 files. The e2e
+  `submission-mode.spec.ts` sweep of every rendered page passed too.
+- **`spark/property-runs-pass2`** conflicted only in `README.md` and `e2e/pages.ts`, because its base predates
+  `main`'s merges. In both, `main`'s side was kept, as it is a superset: the branch removes nothing on purpose. The
+  merge brings in exactly its three commits: `MISSES.md`, the per-kind reader prompt and code checks
+  (`property_read.py`, `property_readings.py`, +4 runtime and +1 evals tests), and the Spark run. **Recounted from
+  `results.jsonl`:** 97 of 108 documents are fully exact (89.8%, up from 82.4%), with 0 refusals. That is 72 of 72
+  letting statements, 6 of 6 insurance schedules (from 0 of 6), 6 of 6 mortgage statements (from 0 of 6) and 13 of 24
+  invoices. Pass 1 is kept in `evals/runs/property_docs_pass1/`.
+- The two flaky e2e tests on property-runs-pass2 passed on retry. One was the known `marketing.spec.ts` dialog timing
+  at 360 px. The other was `review.spec.ts` "U pressed while an approve is in flight", first seen here; this merge
+  changes no web code.
+- Local e2e needed the pre-installed headless Chromium (build 1243) linked under the name the pinned Playwright 1.64.1
+  expects (1248). That is a sandbox detail; CI installs its own browser.
 
 ### Fixed while integrating (second pass)
 
@@ -189,7 +216,7 @@ cis-eval, `paye.spec.ts` (the long PAYE flow) failed once. On property-reader, a
 
 ## What remains
 
-- `claude/exports` and `claude/sales-purchases`, for their authors; `muse/property-reader-2` after its Spark re-run.
+- `claude/exports` and `claude/sales-purchases`, for their authors. Property invoices are still the weak kind (13 of 24).
 - The keep-alive `ECONNRESET` flake (cause and suggested fix above).
 - The public *Ask about Accnomos* dialog sometimes opens too late for `marketing.spec.ts` (two different tests, local
   and CI). It passed on retry each time; the cause has not been looked into.
