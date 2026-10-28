@@ -33,6 +33,9 @@ services:
       COMPANIES_HOUSE_API_KEY: ${COMPANIES_HOUSE_API_KEY:-}
       # The VAT number check goes through the relay, which holds the HMRC credentials (docs/PRODUCTION.md).
       HMRC_RELAY_URL: ${HMRC_RELAY_URL:-http://relay:8787}
+      # Live price search for Cheaper options and the shopping list (app/price_search.py). Empty or `none` = off,
+      # the default; no real provider ships in this version (docs/PRODUCTION.md).
+      PRICE_SEARCH_PROVIDER: ${PRICE_SEARCH_PROVIDER:-}
     # Uploads over 1 MB spool to /tmp, and ffmpeg converts voice there: 25 MB uploads need the headroom.
     tmpfs: ["/tmp:size=256m,mode=1777"]
     extra_hosts: ["host.docker.internal:host-gateway"]

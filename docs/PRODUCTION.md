@@ -62,6 +62,25 @@ first live filing; it is copy, not behaviour.
 The key is sent as HTTP Basic (key as the username, empty password). Companies House allows 600 requests per 5 minutes
 per key; the runtime asks for at most 60 a minute per process and caches answers for 24 hours.
 
+## 3a. Live price search (runtime)
+
+Cheaper options and the shopping list compare prices from the user's own books. A live price search can add offers
+from elsewhere; it is a provider interface in `services/runtime/app/price_search.py`, chosen by one variable on the
+**runtime** service:
+
+| Variable | Value |
+|---|---|
+| `PRICE_SEARCH_PROVIDER` | empty or `none` (the default): **off**; the app says "Live price search is off" and shows history only. `fake`: the deterministic test fake, which is refused (stays off) unless `ACCNOMOS_TEST_MODE=1`. Any other name is unknown in this version: off, with a warning in the runtime log |
+
+**No real provider ships in this version.** To switch one on later: implement `PriceSearchProvider.search(query, specs)`
+returning `Offer`s (supplier, title, unit price in pence, pack, URL, `retrieved_at`, `source`), register it in
+`PROVIDERS` under a name, put any API key in the server's `.env` (never the repo), set
+`PRICE_SEARCH_PROVIDER=<name>`, and `docker compose -f deploy/docker-compose.yml --env-file .env up -d runtime`. Code
+does all the unit-price maths on the offers, keeps them apart from the history, and labels each with its source and
+time; a provider that fails or takes over 8 s only loses its offers. Check the provider's terms allow showing its
+prices this way, and add its host to whatever egress allow-list the server uses. `tests/test_prices.py` and
+`tests/test_shopping.py` cover the switch and the fake.
+
 ## 4. What must NOT change
 
 - **No production value as a default anywhere in the repo**: not in `Settings` (`services/hmrc-relay/relay/settings.py`),
