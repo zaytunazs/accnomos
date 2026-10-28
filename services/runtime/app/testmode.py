@@ -717,6 +717,8 @@ def duplicate_reply(content: str) -> dict[str, Any]:
 async def ai_down(rest: str) -> JSONResponse:
     """A provider that is down (ACCNOMOS_TEST_AI_DOWN, app/ai/providers.py): every call answers 503."""
     return JSONResponse({"error": f"stub AI: this provider is down ({rest})"}, status_code=503)
+
+
 def public_chat_reply(content: str) -> dict[str, Any]:
     """Deterministic website chat answer (app/public_chat.py): the first sentence of the first note it was given."""
     m = re.search(r"^\[([a-z0-9-]+)\] [^\n]*\n([^\n]+)", content, re.MULTILINE)
