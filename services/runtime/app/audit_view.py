@@ -306,6 +306,22 @@ SUMMARIES: dict[str, Summary] = {
     "mileage_refreshed": lambda r, w: (
         f"Updated the mileage claim: {_plural(_n(r, 'journeys'), 'journey')}" + _pounds(r, "pence")
     ),
+    # MTD Income Tax, self-employment (app/routes_itsa.py)
+    "itsa_update_submitted": lambda r, w: (
+        f"Sent the {r.get('tax_year')} self-employment update to {r.get('period_end')} to HMRC "
+        f"({'HMRC sandbox' if r.get('environment') != 'production' else 'HMRC'})"
+        + (f", {'cash basis' if r.get('basis') == 'cash' else 'traditional accounting'}" if r.get("basis") else "")
+        + ("" if r.get("matches") else "; it did not match the books when saved")
+    ),
+    "itsa_calculation_saved": lambda r, w: f"Saved HMRC's {r.get('tax_year')} tax calculation",
+    "itsa_basis_changed": lambda r, w: (
+        "Changed the self-employment accounting basis to "
+        + ("traditional accounting" if r.get("to") == "traditional" else "the cash basis")
+    ),
+    "itsa_final_declaration_submitted": lambda r, w: (
+        f"Made the {r.get('tax_year')} final declaration to "
+        f"{'HMRC sandbox' if r.get('environment') != 'production' else 'HMRC'}"
+    ),
     # Reports
     "report_exported": lambda r, w: (
         "Saved "

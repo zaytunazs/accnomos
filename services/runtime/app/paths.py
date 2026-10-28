@@ -40,6 +40,8 @@ AUDIT = f"{SYSTEM}/audit"
 EVENTS = f"{SYSTEM}/Ledger/events"
 BANK_LINES = f"{SYSTEM}/bank"
 ARCHIVE_SYSTEM = f"{SYSTEM}/archive"  # app/archive.py: runs and the redirect map for moved documents
+#: MTD Income Tax (self-employment) submission receipts and HMRC calculations, by tax year (app/routes_itsa.py).
+ITSA = f"{SYSTEM}/itsa"
 
 # Made when first used, never at setup (app/archive.py, app/backups.py, app/files.py).
 ARCHIVE = "Archive"  # Archive/{year}/ keeps the same subfolders; Archive/{year}.zip is an extra copy

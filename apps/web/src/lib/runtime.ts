@@ -706,13 +706,20 @@ export const runtime = {
   /** /reports/* (services/runtime/app/routes_reports.py): by code from the ledger; only export writes (07 Reports). */
   reports: {
     /** No span = the VAT period we are in now, by the saved VAT settings. */
-    pl: (a: AccountInfo, span?: { start: string; end: string } | null) =>
-      call<RtProfitAndLoss>(a, withQuery("/reports/pl", [vatQuery(), span ? `from=${span.start}&to=${span.end}` : ""].filter(Boolean).join("&"))),
+    /** `basis: "cash"`: income when received, costs when paid (the sole trader's cash basis); default as approved. */
+    pl: (a: AccountInfo, span?: { start: string; end: string } | null, basis: RtBasis = "traditional") =>
+      call<RtProfitAndLoss>(
+        a,
+        withQuery(
+          "/reports/pl",
+          [vatQuery(), span ? `from=${span.start}&to=${span.end}` : "", basis === "cash" ? "basis=cash" : ""].filter(Boolean).join("&"),
+        ),
+      ),
     aged: (a: AccountInfo) => call<RtAgedReport>(a, "/reports/aged"),
     vat: (a: AccountInfo, periods = 4) => call<RtVatSummary>(a, withQuery("/reports/vat", [vatQuery(), `periods=${periods}`].filter(Boolean).join("&"))),
     trend: (a: AccountInfo) => call<RtTrend>(a, "/reports/trend"),
     /** Saves 07 Reports/<yyyy-mm-dd>-<name>.xlsx in OneDrive; posts nothing. */
-    export: (a: AccountInfo, body: { report?: RtReportKind; from?: string; to?: string; periods?: number }) =>
+    export: (a: AccountInfo, body: { report?: RtReportKind; from?: string; to?: string; periods?: number; basis?: RtBasis }) =>
       call<RtReportExport>(a, withQuery("/reports/export", vatQuery()), { method: "POST", body: JSON.stringify(body) }),
   },
 };
@@ -722,11 +729,14 @@ export interface RtPlSection {
   rows: { account: string; amount_pence: number }[];
   total_pence: number;
 }
+/** Traditional accounting (as approved: invoices when raised) or the cash basis (money when it moves). */
+export type RtBasis = "cash" | "traditional";
 export interface RtProfitAndLoss {
   start: string;
   end: string;
   label: string;
-  basis: string; // "As approved: …"
+  accounting_basis: RtBasis;
+  basis: string; // "As approved: …" or "Cash basis: …"
   sales: RtPlSection;
   cost_of_sales: RtPlSection;
   gross_profit_pence: number;

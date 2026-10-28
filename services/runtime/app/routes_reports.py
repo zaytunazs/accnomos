@@ -14,6 +14,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from app import cash_basis as cash
 from app import contacts as cb
 from app import reports as rp
 from app.books import Books
@@ -43,11 +44,15 @@ async def profit_and_loss(
     start: date | None = Query(None, alias="from", description="ISO date; send with 'to'"),
     end: date | None = Query(None, alias="to", description="ISO date; send with 'from'"),
     today: date | None = TODAY,
+    basis: cash.Basis = Query("traditional", description="cash: income when received, costs when paid"),
     cycle: VatCycle = Depends(vat_cycle),
     books: Books = Depends(get_books),
 ) -> rp.ProfitAndLoss:
-    """Sales, cost of sales and overheads by account, gross and net profit, as approved. Default: this VAT period."""
+    """Sales, cost of sales and overheads by account, gross and net profit, as approved (or on the cash basis, for a
+    sole trader). Default: this VAT period."""
     s, e = _period(cycle, today or current_date(), start, end)
+    if basis == "cash":
+        return rp.profit_and_loss(cash.cash_view(await cb.load_ledger(books)).events, s, e, "cash")
     return rp.profit_and_loss(await books.list_events(s, e), s, e)
 
 
@@ -98,6 +103,7 @@ class ExportBody(StrictBody):
     end: Day | None = Field(None, alias="to")
     periods: int = Field(4, ge=1, le=9)  # VAT summary
     months: int = Field(12, ge=1, le=24)  # trend
+    basis: cash.Basis = "traditional"  # the P&L sheet: traditional (as approved) or the cash basis
 
 
 class ExportResult(BaseModel):
@@ -127,7 +133,10 @@ async def export(
     pl = aged_now = vat_now = trend_now = None
     if kind in ("pl", "all"):
         s, e = _period(cycle, day, body.start, body.end)
-        pl = rp.profit_and_loss(events, s, e)
+        if body.basis == "cash":
+            pl = rp.profit_and_loss(cash.cash_view(ledger).events, s, e, "cash")
+        else:
+            pl = rp.profit_and_loss(events, s, e)
     if kind in ("aged", "all"):
         contacts, _, _ = await cb.contact_book(books, ledger)
         aged_now = cb.aged(contacts, ledger, day)
