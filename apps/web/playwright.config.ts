@@ -41,7 +41,8 @@ export default defineConfig({
       env: { ACCNOMOS_TEST_MODE: "1", PORT: String(RUNTIME_PORT), CORS_ORIGINS: WEB_URL, RATE_LIMIT_PER_MIN: "0" },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
-      timeout: 60_000,
+      // The runtime renders every gold receipt before /health answers (~10 s, much longer on a busy shared machine).
+      timeout: Number(process.env.E2E_SERVER_TIMEOUT_MS ?? 60_000),
     },
     {
       command: "node e2e/serve.mjs",

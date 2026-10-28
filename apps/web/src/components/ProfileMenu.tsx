@@ -278,7 +278,6 @@ export function AccountMenu({ linked }: { linked: Linked }) {
   const { active } = linked;
   return (
     <MenuButton
-      label={`Account: ${active.username}`}
       menuLabel="Account"
       align="right"
       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-ground"
@@ -304,6 +303,8 @@ export function AccountMenu({ linked }: { linked: Linked }) {
       <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-full bg-teal text-sm font-bold text-white">
         {initials(active)}
       </span>
+      {/* The name is this text, not an aria-label, so it never mismatches the visible initials (axe). */}
+      <span className="sr-only">Account: {active.username}</span>
     </MenuButton>
   );
 }
