@@ -16,6 +16,7 @@ from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger import LedgerEvent, Line, VatCode
 from app import cash_basis as cb
 from app import itsa
+from app import reports as rp
 from app.books import Books
 from app.contacts import Ledger
 from app.main import app
@@ -326,6 +327,22 @@ def test_cash_view_never_changes_the_ledger() -> None:
     assert not any(ln.account == "2200 VAT control" for e in view.events for ln in e.lines)  # excluding VAT
 
 
+def test_cash_pl_uses_the_same_view() -> None:
+    ledger = Ledger(
+        events=[
+            invoice("a", date(2026, 6, 20), 1_000_00),
+            receipt("r", date(2026, 6, 21), "7500 Office supplies", 5_00),
+        ],
+        records=[paid("p1", date(2026, 7, 20), "sale", ("a", 1_000_00))],
+    )
+    view = cb.cash_view(ledger)
+    june = rp.profit_and_loss(view.events, date(2026, 6, 1), date(2026, 6, 30), basis="cash")
+    july = rp.profit_and_loss(view.events, date(2026, 7, 1), date(2026, 7, 31), basis="cash")
+    assert june.sales.total_pence == 0 and june.overheads.total_pence == 5_00 and june.accounting_basis == "cash"
+    assert july.sales.total_pence == 1_000_00 and "Cash basis" in july.basis
+    assert rp.profit_and_loss(ledger.events, date(2026, 6, 1), date(2026, 6, 30)).sales.total_pence == 1_000_00
+
+
 # --- routes: the setting, and switching it changes nothing but the presentation ----------------------------------
 
 
@@ -433,3 +450,24 @@ def test_receipt_and_report_record_the_basis(client: TestClient) -> None:
         f"/books/self-employment/reports/sa103?tax_year={TY}&period_end=2026-10-05&basis=traditional", headers=H
     ).json()
     assert trad["sections"][-1]["title"] == "Ledger lines behind each box"
+
+
+def test_pl_route_has_a_cash_basis_option(client: TestClient) -> None:
+    pay = {
+        "side": "sale",
+        "date": "2026-07-20",
+        "amount_pence": 600_00,
+        "allocations": [{"event_id": "a" * 32, "amount_pence": 600_00}],
+    }
+    assert client.post("/payments", json=pay, headers=H).status_code == 200
+    june = "/reports/pl?from=2026-06-01&to=2026-06-30"
+    july = "/reports/pl?from=2026-07-01&to=2026-07-31"
+    assert client.get(june, headers=H).json()["sales"]["total_pence"] == 1_000_00
+    assert client.get(june, headers=H).json()["accounting_basis"] == "traditional"
+    cash_june = client.get(june + "&basis=cash", headers=H).json()
+    assert cash_june["sales"]["total_pence"] == 0 and cash_june["overheads"]["total_pence"] == 9_99
+    assert client.get(july + "&basis=cash", headers=H).json()["sales"]["total_pence"] == 500_00  # half of the net
+    export = client.post(
+        "/reports/export", json={"report": "pl", "from": "2026-07-01", "to": "2026-07-31", "basis": "cash"}, headers=H
+    )
+    assert export.status_code == 200, export.text
