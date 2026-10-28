@@ -8,7 +8,6 @@ import { AccountMenu, ProfileSwitcher, useLinkedProfiles } from "./ProfileMenu";
 import { isCurrent, visibleGroups, type NavGroup, type NavItem } from "@/lib/nav";
 import { useSelfEmployed } from "@/lib/itsa";
 import { usePersonalOn } from "@/lib/personal";
-import { useSelfEmployed } from "@/lib/itsa";
 import { useLandlordOn } from "@/lib/property";
 import { currentFeatures, currentMeta } from "@/lib/profiles";
 
