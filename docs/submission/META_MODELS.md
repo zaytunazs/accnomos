@@ -21,6 +21,11 @@ Not used: `muse-wonder-1.0` is not called anywhere. There is no separate LLM "Re
 - **Why a second model:** the verifier removed one false post on clean documents and cost 16 correct posts (132 against 148). Whether L2 should require it is a product decision recorded in `docs/reviews/autopilot-eval/REVIEW.md`. With `VERIFIER=off` Autopilot can post on a single reading.
 - **Costs:** no per-call fee for Glimmer (our hardware; electricity not measured). Quotes only: SAM 3.1 about USD 2.50 per 1,000 images (`docs/DEV.md`); Muse Image USD 0.01 per image. Spark 1.3, Spark Open and Voice have no price recorded. No token counts are logged.
 - **Latency (Glimmer, DGX Spark):** extraction mean 17.7 s clean and 24.1 s messy, max 41.7 s and 111.3 s, over 200 documents each (the earlier run without repairs, re-read or Verifier: mean 22 s, max 40 s); second reading about 7.6 s; Ask median 16 s per question after the routed facts pack.
+- **Where the 27 Oct Glimmer runs were served (checked 28 Oct):** `config.base_url` in `evals/runs/glimmer_200_v2/summary.json`
+  and `glimmer_messy_200_v2/summary.json` is a Modal endpoint (`…accnomos-glimmer-serve.us-east.modal.run`), not the Spark's
+  Ollama; the earlier `glimmer_messy_200` run used `localhost:11434`. So the 17.7 s and 24.1 s means are for Glimmer 30B
+  on that Modal endpoint, and "local" in the table means local mode, not our own hardware. The owner should confirm and
+  correct the "DGX Spark" wording in `docs/META_MODELS.md` and the README, which this branch does not edit.
 - **A known gap:** in key mode with no `X-Meta-Api-Key` header the runtime falls back to the server's `META_API_KEY`, so typed and voice Ask would run on the operator's key. Leave it unset on the public demo.
 
 ## How the models are kept honest

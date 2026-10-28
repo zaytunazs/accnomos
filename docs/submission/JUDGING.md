@@ -1,82 +1,80 @@
-# Judging: how Accnomos maps to the likely criteria, and how to run it
+# Judging: every criterion mapped to evidence, and how to run it
 
-Refreshed 27 Oct 2026. The hackathon's exact rubric was not available when this was drafted, so the five headings below are the usual ones (technical depth, use of Meta models, impact, completeness, honesty). **Replace them with the official wording once you have it.** Every claim names a path in this repo.
-Status words follow `README.md`: *run live* = the maintainers' own run, no log committed; *measured* = a committed report; *tested on fakes* = automated tests against in-memory fakes or stubs (this proves our logic, not Microsoft, Meta or HMRC).
+Refreshed 28 Oct 2026 against the official criteria: **Impact, Use of Meta AI tooling, Technical depth and execution, and
+Demo quality, weighted equally.** Every claim names a path in this repo; nothing here goes beyond `docs/HONESTY.md`.
+Status words: *run live* = the maintainers' own run, no log committed; *measured* = a committed report under `evals/`;
+*tested on fakes* = automated tests against in-memory fakes or stubs (this proves our logic, not Microsoft, Meta or HMRC).
 
-## 1. Technical depth
+**Provenance.** Only the owner's DGX Spark with Ollama predates the event; the first commit is 6 h 29 min after kickoff,
+and every merge has a second-agent review. Timestamps, commits per day and how each part was built: `docs/PROVENANCE.md`.
 
-| Claim | Evidence | Strength |
+**Not on `main` on 28 Oct** (so not claimed below): the month-end close agent, company / sole-trader / personal profiles,
+the Meta models panel with Glimmer on Modal, and the no-sign-in `/judges` page. iPhone is not built.
+
+## 1. Impact
+
+| Claim | Evidence | Status |
+|---|---|---|
+| A real, compulsory job: VAT-registered UK businesses must keep digital records and file through MTD software | `README.md`, `docs/HMRC.md` | Context |
+| Target user: a UK small business or sole trader doing their own books, often from a phone | `README.md`, `docs/DEMO.md`, `apps/mobile/` | Context |
+| The owner keeps the records: no Accnomos database; the ledger and `Books.xlsx` are files in the user's own OneDrive, so disconnecting loses nothing | `docs/ARCHITECTURE.md` ("Runtime state: none"), `services/runtime/app/projection.py` | Tested on fakes; one live run on a personal account (our record) |
+| Paperwork comes in where it already is: Android camera and share target, web upload, Outlook intake (read-only `Mail.Read`) | `apps/mobile/lib/screens/capture_screen.dart`, `apps/mobile/android/app/src/main/AndroidManifest.xml` (share target), `services/runtime/app/intake.py`, `apps/web/src/components/settings/OutlookIntake.tsx`, `docs/INBOX.md` | Tested on fakes; intake measured on fixtures (`evals/runs/mail_intake/report.md`: 12/17 kept, 11/11 decoys dropped). **No real phone, no real mailbox** |
+| Nothing is posted or sent without a human tap by default: Approve, the invoice-send tick, the HMRC legal declaration; Autopilot is opt-in, rule-based and undoable; inbox mail is never sent, moved or deleted | `docs/AUTOPILOT.md`, `docs/INBOX.md`, `docs/HMRC.md`, `docs/ACTIONS.md` | Tested on fakes |
+| Low cost to try: open-weights Glimmer has no per-call API fee (hosting is the cost); judges can load six months of fictional books with one button | `docs/submission/META_MODELS.md` (Costs), `services/runtime/app/sample_books.py`, `apps/web/src/components/home/SampleBooks.tsx` | Sample books **never run against a real OneDrive** |
+
+No user research, usage numbers or time-saved measurements exist. **Do not claim a saving in hours or pounds.**
+
+## 2. Use of Meta AI tooling
+
+One table with status and evidence for each model: `docs/submission/META_MODELS.md`.
+
+| Claim | Evidence | Status |
+|---|---|---|
+| Muse Glimmer 30B (open weights) reads receipts, invoices and credit notes into strict JSON, and does Ask, triage, reminders and the planner's words | `services/runtime/app/ai/extract.py`, `services/runtime/app/ai/ask.py`, `docs/META_MODELS.md` | **Measured**: all fields right 85 % clean / 80 % messy on 200 synthetic documents each, mean 17.7 s / 24.1 s (`evals/runs/glimmer_200_v2/summary.json`, `glimmer_messy_200_v2/summary.json`) |
+| Muse Spark Open on Baseten is the key-mode second reader: a different prompt, never sees the first answer; code compares six fields | `services/runtime/app/ai/verify.py`, `services/runtime/tests/test_verify.py` | **Measured** as reader and Verifier: all fields 91 % clean / 93 % messy, about 13 s per document (`evals/runs/spark_open_200/summary.json`, `spark_open_messy_200/summary.json`) |
+| What the second reading is worth, honestly: Glimmer checking Glimmer caught 8 wrong readings in 400 with 44 false alarms; Spark Open caught 1 with 11; false alarms go to *Needs a look*, the safe direction | `docs/submission/META_MODELS.md` (extraction table), `evals/runs/*/report.md` | Measured, synthetic |
+| Glimmer in other roles: Ask figures exact 32/32 with no invented figure shown; triage category 5/5; Autopilot L2 over 467 documents | `evals/runs/ask_40/report.md`, `evals/runs/mail_intake/report.md`, `evals/runs/autopilot_l2/report.md` | Measured, synthetic |
+| Muse Spark 1.3 (Meta Model API, the user's key) does the same jobs without a GPU | `services/runtime/app/ai/extract.py` (key mode), `services/runtime/tests/` | **Unit-tested only**; never called live by us |
+| Muse Voice Transcribe for spoken Ask; SAM 3.1 crop (off by default) | `services/runtime/app/ai/voice.py`, `services/runtime/app/ai/crop.py` | **Unit-tested only; never run live**. The code crop SAM falls back to is measured (IoU 0.88 against 0.48, `evals/REPORT_crop_code_20_2026-10-27.md`) |
+| Muse Image made the brand art | `tools/brand_muse.py`, `apps/web/public/brand/` | Run at build time (12 images) |
+| Muse Code (Meta's coding assistant, `muse-spark-1.3`) wrote web and Android screens; 54 `muse/*` branches merged | `docs/PROVENANCE.md` ("How each part was built"), `git log -i --grep='Muse Code'` | In git history |
+
+Say plainly: Spark 1.3, Voice and SAM are integrated and stub-tested but have not been called for real; every number is
+on synthetic documents, and real phone photos will score lower.
+
+## 3. Technical depth and execution
+
+| Claim | Evidence | Status |
 |---|---|---|
 | A strict split: models propose, code decides. VAT boxes, ledger, invoice totals, payments, credit notes, reports, mileage and pay estimates are deterministic code; `packages/ledger` has no model imports | `packages/ledger/src`, `packages/ledger/tests/test_vat.py`, `docs/DEV.md` (Conventions), `docs/ARCHITECTURE.md` | Tested |
-| Pipeline: scan, optional code crop, model read, code repairs and checks, independent verifier, proposal, human Approve, balanced ledger event. The reviewer step is code, **not** an LLM | `docs/ARCHITECTURE.md`, `services/runtime/app/{pipeline,checks,approve}.py`, `services/runtime/tests/test_books.py`, `test_checks_journal.py`, `test_verify.py` | Tested on fakes; read, approve and VAT boxes run live (our record) |
-| Stateless runtime; books are append-only event files in the user's OneDrive, rebuilt into a 13-sheet `Books.xlsx` | `docs/ARCHITECTURE.md`, `services/runtime/app/projection.py`, `tests/test_integration.py`, `test_bank_projection.py` | Tested on fakes; one live run on a personal account |
-| Money as code: part payments, overpayments, credit notes (a reversal with the same VAT codes), credits applied or refunded, supplier bills paid, one bank movement counted once | `services/runtime/app/{settlement,payments,credit_notes,credits}.py`, `tests/test_payments.py`, `docs/reviews/part-payments/REVIEW.md`, `docs/reviews/payments-2/REVIEW.md` | Tested on fakes |
-| A second gold set built for the ledger: 40 supplier credit notes, 40 part-paid or overpaid sales invoices, 10 overlapping bank statement pairs, all SAMPLE, sums checked in code | `evals/gold/ledger2/`, `evals/tests/test_gold_ledger2.py` (92 tests), `services/runtime/tests/test_gold_ledger2_runtime.py` (90 tests), `docs/reviews/gold-ledger2/REVIEW.md` | Tested |
-| Bank rules and reconciliation: contains / equals / a safe regex subset that refuses nested quantifiers, first match wins; exact invoice match; AI coding labelled as such and posted only through Review approval; overlap-safe re-imports | `services/runtime/app/{bank_rules,bank_reconcile}.py`, `tests/test_bank_rules.py`, `apps/web/e2e/bank-rules.spec.ts` | Tested; AI coding on the test stub only |
-| Matching measured: six statements, precision 83/83, recall 83/106 (part payments were unsupported when it ran) | `evals/runs/bank_matching/report.md` | Measured, synthetic |
-| Reports and audit trail: profit and loss, ageing, VAT, 12-month trend with no model call; every audit line shown with who and a sentence; both read-only | `services/runtime/app/{reports,routes_reports,audit_view}.py`, `tests/test_reports.py`, `tests/test_audit.py`, `docs/reviews/reports/REVIEW.md`, `docs/reviews/audit-trail/REVIEW.md` | Tested on fakes |
-| Grounding guards: every figure in an Ask answer, reminder, triage reply or planner rationale is checked against code-built facts; chat and voice actions return an intent only, code finds names and prices lines in pence, a signed card waits for Approve and runs once | `services/runtime/app/ai/ask.py`, `actions.py`, `facts.py`, `tests/test_ask.py`, `test_actions.py`, `docs/ACTIONS.md` | Tested with stubbed models; Ask measured, 40 prompts (`evals/runs/ask_40/report.md`) |
-| Autopilot L2 with a measured safety eval; the eval found that re-photographed receipts were posted twice (21 of 32), a same-document rule was added, and the re-run shows 0 of 42 | `services/runtime/app/autopilot.py`, `evals/harness/autopilot_sim.py`, `evals/runs/autopilot_l2/` (report, `before_tightening/`), `docs/reviews/autopilot-eval/REVIEW.md` | Measured, Glimmer only, synthetic |
-| HMRC MTD VAT: OAuth with PKCE through a relay that holds only the client secret, fraud-prevention headers v3.3, return validation; obligations posted to the runtime so a fulfilled period cannot be submitted again | `services/hmrc-relay`, `docs/HMRC.md`, relay tests (HMRC mocked) | Tested on mocks; relay configured for the sandbox and the owner has connected once (27 Oct); **no end-to-end sandbox submission recorded** |
-| Security: log scrubbing, size caps, rate limit, exact-origin CORS, strict bodies, one-time OAuth state, safe file names, hardened containers | `docs/SECURITY.md`, `tests/test_security.py`, `test_validation.py`, `test_deploy_hardening.py` | Tested; **not load-tested** |
-| Process: 50 reviewed branches, each with a second-agent `REVIEW.md` listing what was fixed and what remains | `docs/reviews/*/REVIEW.md` (e.g. `loose-ends-1` found and fixed a double-billing bug) | Documented |
+| Pipeline: capture, code crop, model read, code repairs and checks, independent second reading, proposal, human Approve, balanced immutable ledger event. The "why" line is code, **not** an LLM reviewer | `services/runtime/app/pipeline.py`, `checks.py`, `approve.py`; `services/runtime/tests/test_books.py`, `test_verify.py` | Tested on fakes; read → approve → VAT boxes run live (our record) |
+| Grounded Ask: every figure in an answer is checked against a code-built facts pack and an invented one is replaced; chat actions return an intent only, code prices the lines and a signed card waits for Approve | `services/runtime/app/ai/ask.py`, `facts.py`, `actions.py`, `tests/test_ask.py`, `test_actions.py`, `apps/web/src/components/ask/AskThread.tsx` | Tested; Ask measured (`evals/runs/ask_40/report.md`) |
+| HMRC MTD VAT: OAuth with PKCE through a relay that holds only the client secret, fraud-prevention headers, return validation; a fulfilled period cannot be submitted twice | `services/hmrc-relay`, `docs/HMRC.md` | Tested on mocks; the owner has connected once; **no end-to-end sandbox submission recorded** |
+| Money as code: part payments, overpayments, credit notes as reversals with the same VAT codes, credits applied or refunded | `services/runtime/app/settlement.py`, `payments.py`, `credit_notes.py`, `credits.py`, `tests/test_payments.py` | Tested on fakes |
+| Bank rules and reconciliation; matching measured (precision 83/83, recall 83/106) | `services/runtime/app/bank_rules.py`, `bank_reconcile.py`, `evals/runs/bank_matching/report.md` | Measured, synthetic |
+| Autopilot L2 with a safety eval that found a real bug (21 of 32 re-photographed receipts posted twice), fixed by a same-document rule (0 of 42 after) | `services/runtime/app/autopilot.py`, `evals/runs/autopilot_l2/`, `docs/reviews/autopilot-eval/REVIEW.md` | Measured, Glimmer, synthetic |
+| Security: log scrubbing, size caps, rate limit, exact-origin CORS, one-time OAuth state, safe file names | `docs/SECURITY.md`, `services/runtime/tests/test_security.py` | Tested; **not load-tested** |
+| Two clients on one stateless runtime: a web app and an Android app (0.3.5+10) with page-by-page parity | `apps/web/src/app`, `apps/mobile/lib/screens`, `apps/mobile/PARITY.md`, `apps/mobile/RELEASE_NOTES.md` | Android **never run on a real device** |
+| Tests, 28 Oct gates (owner's figures): runtime 1260, evals 258, relay 119, Playwright 208 (36 spec files), Flutter 248 | `uv run pytest -q`, `apps/web/e2e/*.spec.ts`, `apps/mobile/test`, `docs/HONESTY.md` | Re-run before quoting; the e2e CI workflow has never run on GitHub |
+| Process: every branch reviewed by a second agent before merging, with what was fixed and what remains | `docs/reviews/*/REVIEW.md` (54 reviews), `docs/PROVENANCE.md` | Documented |
 
-Test counts, 28 Oct 2026 gates (as given by the owner): runtime 1260 passed (all Python under `check.sh`), evals 258, relay 119, Playwright 208, Flutter 248. `README.md` and `docs/HONESTY.md` quote the same figures; re-run before quoting.
-
-## 2. Use of Meta models
-
-One table, with status and evidence path for each model: `docs/submission/META_MODELS.md`.
+## 4. Demo quality
 
 | Claim | Evidence |
 |---|---|
-| Six Meta models are wired in, each at a named file with a stated status | `docs/submission/META_MODELS.md`, `docs/META_MODELS.md`, `docs/ARCHITECTURE.md` |
-| Muse Glimmer 30B (open weights, Ollama on our DGX Spark) reads receipts and does the other text tasks locally, so documents need not leave the machine; mean 17.7 s per document clean, 24.1 s messy | `services/runtime/app/ai/extract.py`, `verify.py`; `evals/runs/glimmer_200_v2/report.md`, `evals/runs/glimmer_messy_200_v2/report.md` |
-| Real evals on a synthetic gold set of 200 documents, clean and messy: Spark Open all fields 91 / 93 %, Glimmer 85 / 80 %, side 100 % for both; the Verifier's false alarms (11 Spark Open, 44 Glimmer, over 400 each) cost status accuracy but only in the safe direction | `docs/submission/META_MODELS.md` (table); `evals/runs/` | the report above; `docs/META_MODELS.md` |
-| Glimmer in other roles, measured: Ask figures exact 32/32 with no invented figure shown; inbox triage category 5/5; Autopilot L2 over 467 documents per mode | `evals/runs/ask_40/report.md`, `evals/runs/mail_intake/report.md`, `evals/runs/autopilot_l2/report.md` |
-| Two-model design: in key mode the verifier is Muse Spark Open on Baseten with a different prompt; code compares six fields. Wired 27 Oct: Baseten's `/v1/models` lists the id and one real call read a gold receipt in 7 s. On the 200 gold documents Spark Open reads all fields right on 91 % clean and 93 % messy (side 100 %) | `services/runtime/app/ai/verify.py`, `services/runtime/tests/test_verify.py`; `evals/runs/spark_open_200/report.md` |
-| What the verifier is worth, honestly: Glimmer checking Glimmer, 20 documents, 0 extra catches; in the Autopilot eval it removed one false post on clean documents and cost 16 correct posts | `evals/REPORT_verifier_glimmer_messy_20_2026-10-27.md`, `docs/reviews/autopilot-eval/REVIEW.md` |
-| Voice input via Muse Voice Transcribe feeds the same grounded Ask and actions | `services/runtime/app/ai/voice.py`, `tests/test_voice.py`. **Request shape unverified; no live mic run** |
-| Muse Image made the brand art; SAM 3.1 crop exists, off by default; the code crop it falls back to is measured (IoU 0.88 against 0.48) | `tools/brand_muse.py`, `services/runtime/app/ai/crop.py`, `evals/REPORT_crop_code_20_2026-10-27.md`. SAM **never run live** |
-
-Say plainly in the submission: every measured number is Glimmer 30B; Spark 1.3, Voice and SAM are integrated and stub-tested but have not been called for real; Spark Open has one live call and an eval still running.
-
-## 3. Impact
-
-| Claim | Evidence |
-|---|---|
-| Target user: a VAT-registered UK small business or sole trader doing its own bookkeeping | `README.md`, `docs/DEMO.md` |
-| The owner keeps the records: nothing in an Accnomos database, so disconnecting loses nothing | `docs/ARCHITECTURE.md` ("Runtime state: none") |
-| Nothing is sent or posted without a human tap by default: Approve, the invoice-send tick, the HMRC legal declaration; Autopilot is opt-in, rule-based and undoable; Accnomos never sends inbox mail, only drafts | `docs/AUTOPILOT.md`, `docs/INBOX.md`, `docs/HMRC.md` |
-| Open weights option: Glimmer keeps documents off third-party model APIs (here, on our own hardware) | `docs/submission/META_MODELS.md` |
-
-No user research, usage numbers or time-saved measurements exist in the repo. **Do not claim a saving in hours or pounds.** The honest impact statement is the design: low cost to try, data stays with the owner.
-
-## 4. Completeness
-
-| Claim | Evidence |
-|---|---|
-| Web app covers Home, Review, Ask, Invoices, Bank, VAT return, Jobs, Payroll, Reports, Contacts, Vehicles, Files, Audit trail, Settings | `apps/web/src/app`, README layout table |
-| Android app 0.3.2+5: sign-in, capture, Review, Ask with mic and action cards, Home, VAT, and More (Files, Contacts with Add from phone, Invoices, Jobs, Vehicles, Bank, Payroll, Reports, Audit trail). `flutter analyze` and `flutter test` (248 tests) run on every Android merge. The Play app-signing hash is registered in Entra (27 Oct) and in builds from 0.3.1+4; the Play production track has build 1 in review. **No real-phone sign-in is recorded** | `apps/mobile/lib/screens`, `apps/mobile/test`, `apps/mobile/RELEASE_NOTES.md`, `apps/mobile/pubspec.yaml` |
-| End-to-end suite: Playwright against a test-mode runtime with fakes, one spec per page (35 spec files), phone-width and accessibility checks, and the demo as one flow | `apps/web/e2e/*.spec.ts`, `docs/DEV.md`, `.github/workflows/e2e.yml` (**never run on GitHub** per `docs/HONESTY.md`) |
-| Seeded demo: `tools/seed_demo.py` fills a throwaway account with six months of fictional books | `tools/seed_demo.md`, `tests/test_seed_demo.py`; **not yet run against a real OneDrive** |
-| Not built: production HMRC filing, Google Drive, RTI payroll, `muse-wonder` multi-step planning; Apply credit, Refund and paying bills are web only | `README.md`, `docs/REMAINING.md` |
-
-## 5. Honesty
-
-| Claim | Evidence |
-|---|---|
-| A flat list of every known gap, plus a severity-ordered table | `docs/HONESTY.md`, `docs/REMAINING.md` |
-| Every README feature row has a "NOT verified" column | `README.md` feature table |
-| Synthetic demo data labelled "SAMPLE — FICTIONAL COMPANY" in the product, reports and exports | `apps/web/src/components/DemoBanner.tsx`, `docs/reviews/reports/REVIEW.md` |
-| Real versus faked is spelled out: only sign-in, folder setup, read to approve to ledger to VAT boxes, and the Glimmer evals ran for real, with no committed log for the live runs | `docs/HONESTY.md` ("What is real, and what is not") |
-| Evals report their failures and what they do not show: Autopilot's 17 false posts and their cause, the earlier 21 double posts, the bank matcher's 23 misses, intake's 5 misses, Ask's declined and unanswerable rows | `evals/runs/*/report.md`, `docs/reviews/autopilot-eval/REVIEW.md` |
-| AI-assisted authorship disclosed: Claude, Muse Code and a local Qwen wrote code; every merge was reviewed | `README.md` (Honesty notes), `docs/reviews/` |
+| A 3:00 script that follows one receipt from the phone to the VAT boxes and the HMRC sandbox, opening with the provenance line, with captions and a fallback for every shot not yet run live | `docs/submission/VIDEO_SCRIPT.md` |
+| A longer click-by-click walkthrough with the expected figures (Box 4 £8.65, Box 7 £43) | `docs/DEMO.md` |
+| The demo's labels are held by an end-to-end test, and every page has a phone-width check | `apps/web/e2e/demo.spec.ts`, `apps/web/e2e/phone.spec.ts` |
+| Storyboard stills from the test-mode dry run (stub AI, not proof of a live run) | `docs/submission/shots/` |
+| Sample data is fictional and labelled *SAMPLE — FICTIONAL COMPANY* in the product, reports and exports | `apps/web/src/components/DemoBanner.tsx`, `tools/seed_demo.md` |
+| Every known gap is written down, so nothing in the video is staged | `docs/HONESTY.md`, `docs/REMAINING.md` |
 
 ## How to run it in 10 minutes (test mode, no accounts)
 
-Test mode uses in-memory fakes for OneDrive, Outlook, calendar and contacts and a **stub AI** that returns the gold fields for the gold receipt images and nothing for
-any other image. It proves the plumbing, not the models, not Microsoft and not HMRC (`docs/DEV.md`, "Runtime test mode"). Needs Python 3.12, `uv`, Node, pnpm 11.
-"10 minutes" assumes a warm cache and was not timed; the first `pnpm install` and Chromium download can take longer.
+Test mode uses in-memory fakes for OneDrive, Outlook, calendar and contacts and a **stub AI** that returns the gold fields
+for the gold receipt images and nothing for any other image. It proves the plumbing, not the models, not Microsoft and not
+HMRC (`docs/DEV.md`, "Runtime test mode"). Needs Python 3.12, `uv`, Node, pnpm 11. "10 minutes" assumes a warm cache and was
+not timed.
 
 **A. The automated route (documented in `docs/DEV.md`)**
 
@@ -89,9 +87,10 @@ pnpm exec playwright install chromium
 pnpm run e2e                          # builds the test-mode export, starts both servers, runs the browser tests
 ```
 
-Playwright starts the runtime on :8781 and a static host for `out-e2e/` on :3100 itself. On Windows set `E2E_PYTHON` to the venv's `python.exe` (`docs/DEV.md`).
+Playwright starts the runtime on :8781 and a static host for `out-e2e/` on :3100 itself. On Windows set `E2E_PYTHON` to
+the venv's `python.exe` (`docs/DEV.md`).
 
-**B. Click through it yourself (composed from `apps/web/playwright.config.ts`, `e2e/build.mjs`, `e2e/serve.mjs`; DEV.md only documents route A)**
+**B. Click through it yourself (composed from `apps/web/playwright.config.ts`, `e2e/build.mjs`, `e2e/serve.mjs`)**
 
 ```bash
 # terminal 1: runtime in test mode
@@ -104,12 +103,14 @@ cd apps/web && pnpm install && pnpm run e2e:build && node e2e/serve.mjs
 Open `http://127.0.0.1:3100`, press **Sign in** (a fake account; nothing leaves your machine). Then:
 
 1. **Connect:** folder setup completes against the fake OneDrive.
-2. **Review:** the stub AI only reads gold receipts. List them at `http://127.0.0.1:8781/__test/gold`, save one from `/__test/gold/<name>.png`, then **Add a receipt** and **Scan 00 Inbox now**.
-   `apps/web/public/sample-receipt.png` will **not** be read in test mode.
-3. **Approve (post to books)**, then **VAT return**. Test "today" is pinned to 27 Oct 2026 and the gold receipts are dated Jul–Sep, so pick **Jul–Sep 2026** in the picker to see the boxes move.
-4. **Ask**, **Invoices** (create → preview → send: the fake sender only records), **Bank** (import `evals/gold/bank/barclays.csv`), **Jobs**, **Vehicles**, **Payroll**.
+2. **Review:** the stub AI only reads gold receipts. List them at `http://127.0.0.1:8781/__test/gold`, save one from
+   `/__test/gold/<name>.png`, then **Add a receipt** and **Scan 00 Inbox now**. `apps/web/public/sample-receipt.png` will
+   **not** be read in test mode.
+3. Approve it, then **VAT return**. Test "today" is pinned to 27 Oct 2026 and the gold receipts are dated Jul–Sep, so pick
+   **Jul–Sep 2026** in the picker to see the boxes move.
+4. **Ask**, **Invoices** (create → preview → send: the fake sender only records), **Bank** (import
+   `evals/gold/bank/barclays.csv`), **Jobs**, **Vehicles**, **Payroll**.
 
-In the first review pass (before this refresh) the `pytest` half of A was run (with the shared venv's `pytest` rather than `uv run`, which needed approval); everything passed. The Playwright
-half of A and all of B were **not** executed; they are checked against `docs/DEV.md` and the config files by reading. Run A once yourself before submitting.
-
-**Not reproducible without accounts:** real Microsoft sign-in, real Glimmer or Spark output, HMRC sandbox, Outlook, the Android app. For a real-model run use `docs/DEV.md` (local Ollama with `muse-glimmer:30b`, or your own Meta key) and `evals/` (`python -m harness.run_extraction --mode local --messy`).
+Route B was checked against the config files by reading, not executed in this refresh. **Not reproducible without
+accounts:** real Microsoft sign-in, real Glimmer or Spark output, the HMRC sandbox, Outlook and the Android app. For a
+real-model run see `docs/DEV.md` and `evals/` (`python -m harness.run_extraction --mode local --messy`).
