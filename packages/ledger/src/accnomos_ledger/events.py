@@ -45,6 +45,8 @@ class Recode(BaseModel):
     line: int = Field(ge=0, description="index into that event's lines")
     account: str
     vat_code: VatCode | None = None
+    amount: int = Field(ge=0, description="pence: the line's amount after the recode (a VAT recode keeps the gross)")
+    vat: int | None = Field(default=None, description="pence: the original event's VAT after a VAT recode")
 
 
 class LedgerEvent(BaseModel):

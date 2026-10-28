@@ -49,7 +49,7 @@ from app.books import SYSTEM, BankMatchError, Books, now
 from app.books import today as london_today
 from app.checks import normalise_vat_number
 from app.journal import DEBTORS, SALES, VAT_CONTROL
-from app.validation import LENIENT, Day, Pence, StrictBody
+from app.validation import LENIENT, Day, Pence, StrictBody, Tags
 
 INVOICES = paths.INVOICES
 SENT = paths.SENT
@@ -218,6 +218,7 @@ class LineIn(StrictBody):
     timesheet_entry_ids: list[Annotated[str, Field(max_length=32)]] = Field(
         default_factory=list, max_length=1000
     )  # hours this line bills (jobs)
+    tracking: Annotated[Tags | None, Field(max_length=2)] = None  # {category id: option id} (app/tracking.py)
 
 
 class InvoiceLine(LineIn):
@@ -468,11 +469,26 @@ async def _check_hours(books: Books, draft: InvoiceDraft, number: str | None = N
             raise InvoiceError(f"Timesheet entry {i} is already on invoice {e.invoiced_in}")
 
 
+async def _check_tracking(books: Books, draft: InvoiceDraft) -> None:
+    """Every line's tracking tags name a category and an active option (app/tracking.py)."""
+    if not any(ln.tracking for ln in draft.lines):
+        return
+    from app.tracking import TrackingError, check_tags, load_tracking
+
+    try:
+        cfg = await load_tracking(books)
+        for ln in draft.lines:
+            ln.tracking = check_tags(cfg, ln.tracking)
+    except TrackingError as exc:
+        raise InvoiceError(str(exc)) from exc
+
+
 async def create_invoice(books: Books, draft: InvoiceDraft, user: str) -> Invoice:
     profile = await load_profile(books)
     draft = await _fill_customer(books, draft)
     build_invoice("PENDING", draft, profile, user)  # refuse a bad draft before taking a number
     await _check_hours(books, draft)
+    await _check_tracking(books, draft)
     inv = build_invoice(await allocate_number(books), draft, profile, user)
     await save_invoice(books, inv)
     await books.audit(f"user:{user}", "invoice_created", {"invoice": inv.number, "total_pence": inv.total_pence})
@@ -485,6 +501,7 @@ async def update_draft(books: Books, number: str, draft: InvoiceDraft, user: str
         raise InvoiceStateError(f"Invoice {number} is {old.status}; only drafts can be changed")
     draft = await _fill_customer(books, draft)
     await _check_hours(books, draft, number)
+    await _check_tracking(books, draft)
     inv = build_invoice(number, draft, await load_profile(books), old.created_by)
     inv.created_at = old.created_at
     await save_invoice(books, inv)
@@ -501,13 +518,25 @@ def sale_event_id(number: str) -> str:
     return hashlib.sha256(f"invoice:{number}".encode()).hexdigest()[:32]
 
 
+def _sales_groups(inv: Invoice) -> dict[tuple[str, tuple[tuple[str, str], ...]], int]:
+    """Net per (VAT code, tracking tags), in VAT summary order: one 4000 Sales line each. Without tracking this is
+    exactly the VAT summary."""
+    order = list(RATES)
+    groups: dict[tuple[str, tuple[tuple[str, str], ...]], int] = defaultdict(int)
+    for ln in sorted(inv.lines, key=lambda ln: order.index(ln.vat_code)):
+        groups[(ln.vat_code, tuple(sorted((ln.tracking or {}).items())))] += ln.net_pence
+    return dict(groups)
+
+
 def sale_event(inv: Invoice, user: str, evidence: list[str]) -> LedgerEvent:
     """Dr 1100 Debtors gross; Cr 4000 Sales net per VAT code; Cr 2200 VAT control. Dated on the invoice date."""
     memo = f"Invoice {inv.number}"
     lines = [Line(account=DEBTORS, debit=inv.total_pence, memo=memo)]
-    for row in inv.vat_summary:  # send_problems refuses negative rows
-        if row.net_pence:
-            lines.append(Line(account=SALES, credit=row.net_pence, vat_code=VatCode(row.vat_code), memo=memo))
+    for (code, tags), net in _sales_groups(inv).items():  # send_problems refuses negative groups
+        if net:
+            lines.append(
+                Line(account=SALES, credit=net, vat_code=VatCode(code), memo=memo, tracking=dict(tags) or None)
+            )
     if inv.vat_pence:
         biggest = max(inv.vat_summary, key=lambda r: r.vat_pence)
         lines.append(Line(account=VAT_CONTROL, credit=inv.vat_pence, vat_code=VatCode(biggest.vat_code), memo=memo))
@@ -540,6 +569,8 @@ def send_problems(inv: Invoice, profile: InvoiceProfile, to: str | None) -> list
         out.append("The invoice total must be more than £0.00")
     if inv.vat_pence < 0 or any(r.net_pence < 0 for r in inv.vat_summary):
         out.append("Discounts cannot be bigger than the lines at the same VAT rate; use a credit note")
+    elif any(net < 0 for net in _sales_groups(inv).values()):
+        out.append("A discount cannot be bigger than the lines with the same VAT rate and tracking; tag it like them")
     return out
 
 
