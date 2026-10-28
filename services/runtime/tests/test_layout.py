@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 from types import SimpleNamespace
 
@@ -228,3 +229,23 @@ def test_health_carries_counts_and_no_names(monkeypatch: pytest.MonkeyPatch) -> 
     body = TestClient(app).get("/health").json()
     assert body["folder_layout"]["checks_with_conflicts"] == 1 and "Files page" in body["folder_layout"]["warning"]
     assert "VAT" not in json.dumps(body)
+
+
+async def test_two_requests_at_once_rename_once_and_both_answer() -> None:
+    """The first requests of a sign-in arrive together (Home, the menu bar's profile, the Files page): each runs
+    migrate, both list the old folder, and the second one's rename finds it already done. That one reports nothing
+    moved instead of failing (GET /books/layout answered 500 and the Files page lost its warning)."""
+
+    class Interleaving(FakeStorageProvider):
+        async def list(self, path: str):  # every listing lets the other request run, as a Graph call would
+            await asyncio.sleep(0)
+            return await super().list(path)
+
+    fake = Interleaving()
+    await _old_books(fake)
+    first, second = await asyncio.gather(layout.migrate(Books(fake)), layout.migrate(Books(fake)))
+    moved = [(m.old, m.new) for s in (first, second) for m in s.moved]
+    assert sorted(moved) == sorted(set(moved))  # each folder renamed by one of them only
+    assert ("03 Bank statements", paths.BANK) in moved
+    assert fake.files["04 Bank statements/2026-09-30_starling.csv"] == b"csv"
+    assert {(c.old, c.new) for c in first.conflicts} == {(c.old, c.new) for c in second.conflicts}
