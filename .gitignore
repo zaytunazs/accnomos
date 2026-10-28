@@ -44,6 +44,8 @@ evals/runs/*
 !evals/runs/mail_intake/
 !evals/runs/ask_40/
 !evals/runs/supplier_vat_replay/
+!evals/runs/bank_ai/
+!evals/runs/public_chat/
 !evals/runs/glimmer_messy_200/
 evals/runs/glimmer_messy_200/*
 !evals/runs/glimmer_messy_200/report.md
