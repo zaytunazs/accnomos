@@ -19,15 +19,20 @@ test("off by default; on in Settings it adds Self-employment to the menu", async
   await signIn(page);
   await createBooksFolder(page);
   await page.goto("/settings");
+  // Signed in, the main navigation is the menu bar; Self-employment is in Tax (lib/nav.ts).
   const nav = page.getByRole("navigation", { name: "Main" });
-  await expect(nav.getByRole("link", { name: "VAT return" })).toBeVisible();
-  await expect(nav.getByRole("link", { name: "Self-employment" })).toHaveCount(0);
+  const tax = nav.getByRole("button", { name: "Tax" });
+  await tax.click();
+  await expect(nav.getByRole("link", { name: "VAT returns" })).toBeVisible();
+  await expect(nav.getByRole("link", { name: /Self-employment/ })).toHaveCount(0);
+  await tax.click();
   await settingsTab(page, "Business");
   const toggle = page.getByRole("switch", { name: "I am self-employed" });
   await expect(toggle).toHaveAttribute("aria-checked", "false");
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-checked", "true");
-  await nav.getByRole("link", { name: "Self-employment" }).click();
+  await tax.click();
+  await nav.getByRole("link", { name: /Self-employment/ }).click();
   await expect(page).toHaveURL(/\/self-employment$/);
   await expect(page.getByRole("heading", { name: "Self-employment (MTD Income Tax)" })).toBeVisible();
 });

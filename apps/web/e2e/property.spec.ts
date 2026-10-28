@@ -10,12 +10,18 @@ test("landlord mode: two properties, joint shares, rent and costs, the year and 
 
   await page.goto("/property");
   await expect(page.getByText("Landlord mode is off.")).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Property" })).toHaveCount(0);
+  // Signed in, the main navigation is the menu bar; Property is in Tax (lib/nav.ts) while landlord mode is on.
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await nav.getByRole("button", { name: "Tax" }).click();
+  await expect(nav.getByRole("link", { name: /Property/ })).toHaveCount(0);
+  await nav.getByRole("button", { name: "Tax" }).click();
 
   await page.goto("/settings");
   const panel = await settingsTab(page, "Business");
   await panel.getByRole("checkbox", { name: "I let property (landlord mode)" }).check();
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Property" })).toBeVisible();
+  await nav.getByRole("button", { name: "Tax" }).click();
+  await expect(nav.getByRole("link", { name: /Property/ })).toBeVisible();
+  await nav.getByRole("button", { name: "Tax" }).click();
   await expect.poll(async () => (await runtime.api<{ landlord_mode: boolean }>("GET", "/property/settings")).landlord_mode).toBe(true);
 
   await page.goto("/property");
