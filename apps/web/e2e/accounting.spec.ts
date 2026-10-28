@@ -157,6 +157,7 @@ test.describe("signed in", () => {
   test.describe("at 360 px", () => {
     test.use({ viewport: { width: 360, height: 780 } });
     test("no page scrolls sideways and axe finds nothing serious", async ({ page }) => {
+      test.slow(); // seven pages, an axe run on each
       for (const path of TOOLS) {
         await page.goto(path);
         await expect(page.getByRole("heading", { level: 1 })).toBeVisible();

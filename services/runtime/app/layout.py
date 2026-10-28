@@ -73,7 +73,8 @@ async def migrate(books: Books) -> LayoutStatus:
         except Exception:
             # The first requests of a sign-in run this at the same time (Home loads several at once): another may
             # have renamed it a moment ago. That is not a failure of this request; anything else still is.
-            now = {f.name.casefold() for f in await books.storage.list("") if f.is_folder}
+            fresh = getattr(books.storage, "inner", books.storage)  # past the request memo, which still lists `old`
+            now = {f.name.casefold() for f in await fresh.list("") if f.is_folder}
             if old.casefold() in now or new.casefold() not in now:
                 raise
             continue
