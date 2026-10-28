@@ -68,6 +68,18 @@ def test_scrub_leaves_ordinary_text():
     assert scrub("Supplier Screwfix, total 38.47") == "Supplier Screwfix, total 38.47"
 
 
+@pytest.mark.parametrize("name", ["META_API_KEY", "MODEL_API_KEY", "BASETEN_API_KEY", "COMPANIES_HOUSE_API_KEY"])
+def test_scrub_removes_the_servers_own_keys(monkeypatch, caplog, name):
+    """A provider error quoting the operator's key bare (no header name, no Bearer) is redacted in logs and bodies."""
+    monkeypatch.setenv(name, "srv-key-0123456789")
+    assert scrub("upstream said: key srv-key-0123456789 refused") == "upstream said: key [redacted] refused"
+    with caplog.at_level(logging.WARNING, logger="accnomos.test"):
+        logging.getLogger("accnomos.test").warning("verifier failed: %s", "srv-key-0123456789 invalid")
+    assert "srv-key-0123456789" not in caplog.text
+    monkeypatch.setenv(name, "short")  # under 8 characters: too likely to be ordinary text
+    assert scrub("a short word") == "a short word"
+
+
 def test_log_records_are_scrubbed(caplog):
     logger = logging.getLogger("accnomos.test")
     with caplog.at_level(logging.INFO):
@@ -311,3 +323,29 @@ def test_known_ai_base_urls_allowed(monkeypatch):
         AiConfig.from_headers({"X-AI-Mode": "local", "X-AI-Base-Url": "http://192.168.1.176:11434"}).base_url
         == "http://192.168.1.176:11434"
     )
+
+
+def test_extract_502_never_quotes_the_callers_key(monkeypatch):
+    """A model provider's error body is passed on for diagnosis, but scrubbed: a provider echoing the key it refused
+    must not put it in the response."""
+    import io
+
+    from PIL import Image
+
+    from app import routes_extract
+    from app.ai.extract import ExtractionError
+
+    key = "mk-user-0123456789"
+
+    async def refused(*_a, **_kw):
+        raise ExtractionError(f"key backend HTTP 401: invalid key {key}")
+
+    monkeypatch.setattr(routes_extract, "process_document", refused)
+    png = io.BytesIO()
+    Image.new("RGB", (8, 8), "white").save(png, "PNG")
+    r = TestClient(app).post(
+        "/extract",
+        files={"file": ("r.png", png.getvalue(), "image/png")},
+        headers={"X-AI-Mode": "key", "X-Meta-Api-Key": key},
+    )
+    assert r.status_code == 502 and key not in r.text and "[redacted]" in r.text

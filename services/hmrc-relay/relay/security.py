@@ -19,6 +19,7 @@ from __future__ import annotations
 import json
 import logging
 import math
+import os
 import re
 import time
 import uuid
@@ -62,10 +63,16 @@ _QUERY_CODE = re.compile(r"([?&]code=)[^&\s\"']+")  # the OAuth code on /hmrc/ca
 _request_secrets: ContextVar[tuple[str, ...]] = ContextVar("request_secrets", default=())
 
 
+def _server_secrets() -> tuple[str, ...]:
+    """The relay's own client secret, read from the environment on each call, in case an error ever quotes it."""
+    v = os.getenv("HMRC_CLIENT_SECRET", "").strip()
+    return (v,) if len(v) >= 8 else ()
+
+
 def scrub(text: str) -> str:
-    """Remove this request's credentials, bearer tokens, JWTs, OAuth codes in query strings and credential
-    header/field values from free text."""
-    for secret in _request_secrets.get():
+    """Remove this request's credentials, the HMRC client secret, bearer tokens, JWTs, OAuth codes in query strings
+    and credential header/field values from free text."""
+    for secret in (*_request_secrets.get(), *_server_secrets()):
         text = text.replace(secret, REDACTED)
     text = _HEADER_VALUE.sub(lambda m: f"{m.group(1)}{m.group(2)}{REDACTED}", text)
     text = _BEARER.sub(f"Bearer {REDACTED}", text)

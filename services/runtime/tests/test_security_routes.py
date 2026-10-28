@@ -17,6 +17,7 @@ from fastapi.testclient import TestClient
 from pydantic import BaseModel, ValidationError
 
 from accnomos_connectors import FakeStorageProvider
+from app import security
 from app.books import Books
 from app.invoicing import InvoiceDraft
 from app.main import app
@@ -511,3 +512,36 @@ def test_every_audit_actor_is_user_or_agent():
             ):
                 bad.append(f"{path.name}:{node.lineno} {node.func.attr}({ast.unparse(node.args[0])})")
     assert bad == []
+
+
+# Routes that answer without a Graph token, each with its reason. Every other route reaches the user's books, mail or
+# the server's look-up keys only through `X-Graph-Token` (get_books and its siblings) and must answer 401 without it.
+PUBLIC_ROUTES = {
+    "GET /health": "liveness for the container healthcheck; no user data",
+    "POST /ai/test": "Settings' Test connection, with the caller's own key or local agent (docs/SECURITY.md)",
+    "POST /extract": "Android reads a receipt before sign-in; returns a proposal, touches no books",
+    "GET /lookup/status": "says only whether look-ups are configured",
+    "GET /books/bank/coding-options": "the fixed chart of accounts and VAT codes; nothing from the user's books",
+}
+
+
+def test_every_route_but_the_public_ones_needs_a_graph_token() -> None:
+    """No header at all, and an empty one: 401 before any body or path validation, on every non-public route. The
+    real dependencies (no overrides), so nothing reaches Graph: a request without a token never gets that far."""
+    client = TestClient(app)
+    seen: set[str] = set()
+    for r in routes():
+        for method in sorted(r.methods):
+            key = f"{method} {r.path}"
+            seen.add(key)
+            if key in PUBLIC_ROUTES:
+                continue
+            path = r.path
+            for name in r.param_convertors:
+                path = path.replace("{" + name + "}", "0" * 32)
+            if security.LIMITER:  # ~280 requests from one address: not what this test is about
+                security.LIMITER.reset()
+            for headers in ({}, {"X-Graph-Token": ""}):
+                resp = client.request(method, path, headers={**headers, "X-User": H["X-User"]}, json={})
+                assert resp.status_code == 401, (key, headers, resp.status_code, resp.text)
+    assert set(PUBLIC_ROUTES) <= seen  # the list names real routes

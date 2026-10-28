@@ -16,6 +16,7 @@ from app.formats import HEIC_MIME, MAX_BYTES, PDF_MIME, FormatError, prepare
 from app.pipeline import process_document, sha256_hex
 from app.routes_books import business_name
 from app.schemas import Proposal
+from app.security import scrub
 from app.vat_cycle import VatCycle, vat_cycle
 
 ACCEPTED_MIME = SUPPORTED_MIME | {"image/jpg", PDF_MIME, HEIC_MIME, "image/heif"}
@@ -58,7 +59,7 @@ async def extract(
             period_start=start,
             period_end=end,
         )
-    except ExtractionError as exc:
-        raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except ExtractionError as exc:  # may quote the model provider's error body: never a key
+        raise HTTPException(status_code=502, detail=scrub(str(exc))) from exc
     _SEEN_HASHES.add(proposal.doc_sha256)
     return proposal

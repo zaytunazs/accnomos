@@ -10,7 +10,8 @@ ENV ACCNOMOS_IMAGE=1
 # fonts-dejavu-core: the sample books' documents (Load sample books) are drawn in DejaVu Sans Mono, as in the evals
 RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 10001 accnomos \
- && useradd --system --uid 10001 --gid accnomos --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin accnomos
+ && useradd --system --uid 10001 --gid accnomos --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin accnomos \
+ && touch /etc/accnomos-image  # app/testmode.py IMAGE_MARKER: test mode refused even if ACCNOMOS_IMAGE is overridden
 WORKDIR /srv
 COPY packages/ledger /srv/packages/ledger
 COPY packages/connectors /srv/packages/connectors

@@ -81,6 +81,18 @@ def test_test_mode_is_refused_in_the_image(monkeypatch: pytest.MonkeyPatch) -> N
         testmode.enable()
 
 
+def test_test_mode_is_refused_where_the_image_marker_exists(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """`docker run -e ACCNOMOS_IMAGE=0 -e ACCNOMOS_TEST_MODE=1` must not get past the guard: the image has a file."""
+    dockerfile = Path(__file__).resolve().parents[3] / "deploy" / "Dockerfile.runtime"
+    assert f"touch {testmode.IMAGE_MARKER.as_posix()}" in dockerfile.read_text(encoding="utf-8")
+    marker = tmp_path / "accnomos-image"
+    marker.touch()
+    monkeypatch.delenv("ACCNOMOS_IMAGE", raising=False)
+    monkeypatch.setattr(testmode, "IMAGE_MARKER", marker)
+    with pytest.raises(RuntimeError, match="refused in the runtime image"):
+        testmode.enable()
+
+
 def test_forces_stub_ai_and_pins_today(test_env: None) -> None:
     cfg = AiConfig.resolve(mode="key", base_url="https://api.meta.ai/v1", api_key="k")
     assert (cfg.mode, cfg.base_url, cfg.model, cfg.api_key) == ("local", STUB, TEST_AI_MODEL, None)
