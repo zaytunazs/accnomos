@@ -37,7 +37,7 @@ export function StatusTimeline({ invoice }: { invoice: RtInvoice }) {
   );
 }
 
-function errorText(e: unknown): string | null {
+export function errorText(e: unknown): string | null {
   const msg = (e as Error).message;
   if (msg === "redirecting for consent") return null; // back from Microsoft, the user taps Send again
   const detail = /"detail":"([^"]+)"/.exec(msg)?.[1];
@@ -45,12 +45,12 @@ function errorText(e: unknown): string | null {
 }
 
 /** Dialog failures use the one shared strip: 401 signs in again, 5xx quotes its reference. */
-function Note({ note }: { note: string }) {
+export function Note({ note }: { note: string }) {
   if (isAuthError(note) || isServerError(note)) return <RuntimeErrorNote message={note} />;
   return <p role="alert" className="mt-3 text-sm font-bold text-warn-ink">{parseRuntimeError(note).detail || note}</p>;
 }
 
-function Confirm({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
+export function Confirm({ checked, onChange, children }: { checked: boolean; onChange: (v: boolean) => void; children: ReactNode }) {
   return (
     <label className="mt-4 flex min-h-11 cursor-pointer items-start gap-3 text-[15px] font-semibold">
       <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-1 h-5 w-5 shrink-0 accent-teal" />
@@ -59,7 +59,7 @@ function Confirm({ checked, onChange, children }: { checked: boolean; onChange: 
   );
 }
 
-function EmailFields({ email, onChange, idPrefix }: {
+export function EmailFields({ email, onChange, idPrefix }: {
   email: { to: string; subject: string; body: string };
   onChange: (e: { to: string; subject: string; body: string }) => void;
   idPrefix: string;

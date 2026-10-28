@@ -229,6 +229,9 @@ class LineIn(StrictBody):
     )  # hours this line bills (jobs)
     tracking: Annotated[Tags | None, Field(max_length=2)] = None  # {category id: option id} (app/tracking.py)
     materials: bool = False  # CIS: materials the business paid for, left out of the deduction (app/cis.py)
+    item_code: str | None = Field(
+        default=None, max_length=30
+    )  # the catalogue item that filled this line (app/items.py)
 
 
 class InvoiceLine(LineIn):
@@ -332,6 +335,7 @@ class Invoice(BaseModel):
     cis: cis_mod.CisOnInvoice | None = None  # the CIS deduction the contractor will make (app/cis.py)
     reverse_charge: bool = False
     reverse_charge_vat_pence: int = 0  # the VAT the customer accounts for; not in vat_pence or total_pence
+    repeating: str | None = None  # "RP-0001#3": made by that occurrence of a repeating invoice (app/repeating.py)
 
     def timesheet_entry_ids(self) -> list[str]:
         return [i for ln in self.lines for i in ln.timesheet_entry_ids]

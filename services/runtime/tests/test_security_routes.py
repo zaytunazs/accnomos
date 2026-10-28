@@ -490,6 +490,9 @@ NO_USER_NEEDED = {
     "POST /jobs/{job_id}/invoice-lines": "proposes lines; marks nothing",
     "POST /invoices/{number}/pdf": "renders the PDF of an invoice the user already wrote; no new facts",
     "POST /credit-notes/{number}/pdf": "renders the PDF of a credit note the user already made; no new facts",
+    "POST /quotes/{number}/pdf": "renders the PDF of a quote the user already wrote; no new facts",
+    "POST /purchase-orders/{number}/pdf": "renders the PDF of a purchase order the user already wrote; no new facts",
+    "POST /statements/{contact_id}/pdf": "renders a customer statement from the books; no new facts",
     "POST /invoices/{number}/reminder-draft": "drafts text for the user to read; sends and writes nothing",
     "POST /plan/day": "proposes a day; writes nothing (apply needs X-User)",
     "POST /ai/warm": "pings the server's own Modal provider (one ping a minute at most); no books, writes nothing",
@@ -597,6 +600,7 @@ PUBLIC_ROUTES = {
     "GET /ai/health": "the server's AI chain for the /models page; no keys, tokens, URLs or user data",
     "GET /ai/calls": "the last AI calls (provider, model, task, timing) for /models; no document or user data",
     "POST /ai/warm": "starts the server's Modal container before a demo; one ping a minute at most, writes nothing",
+    "GET /repeating/dates": "date arithmetic for a schedule the form is showing; reads nothing from the books",
     "GET /cis/reverse-charge": "fixed text from HMRC's reverse charge guidance; nothing from the user's books",
     "GET /payments/online/stripe/callback": (
         "Stripe's browser redirect; only checks the signed one-time state and hands back to Settings, touches no books"

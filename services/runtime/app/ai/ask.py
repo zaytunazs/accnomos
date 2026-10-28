@@ -46,6 +46,7 @@ from app.ask_router import (
     sources_for,
 )
 from app.facts import vat_sources
+from app.paths import QUOTES
 from app.schemas import (
     ASK_ANSWER_MAX,
     AskAnswer,
@@ -264,8 +265,32 @@ def _fact_key_numbers(facts: dict[str, Any]) -> list[KeyNumber]:
     ]
 
 
+_LEDGER_SECTIONS = frozenset({"vat", "totals", "suppliers", "customers", "transactions"})
+
+
+def _quotes_only(facts: dict[str, Any], r: Route) -> bool:
+    """A question about quotes and nothing in the ledger: its figures are not for a VAT period."""
+    return bool(r.matched and "quotes" in r.sections and facts.get("quotes") and not (_LEDGER_SECTIONS & r.sections))
+
+
+def _quote_key_numbers(facts: dict[str, Any]) -> list[KeyNumber]:
+    q, src = facts["quotes"], f"{QUOTES}/"
+    rows = [
+        ("Quotes waiting for an answer", q["waiting_for_an_answer"]),
+        ("Expiring within 7 days", q["expiring_within_7_days"]),
+        ("Accepted, not yet invoiced", q["accepted_not_yet_invoiced"]),
+    ]
+    return [
+        KeyNumber(label=f"{label} ({t['count']})", value=_gbp(t["total"]), source=src)
+        for label, t in rows
+        if t["count"]
+    ][: KEY_NUMBERS[1]]
+
+
 def code_key_numbers(facts: dict[str, Any], r: Route) -> list[KeyNumber]:
     """The figures the question is about, for the period(s) it asks about, each labelled with its period."""
+    if _quotes_only(facts, r):
+        return _quote_key_numbers(facts)
     if not r.matched:
         return _fact_key_numbers(facts)[:2]
     out: list[KeyNumber] = []
@@ -351,6 +376,8 @@ def code_key_numbers(facts: dict[str, Any], r: Route) -> list[KeyNumber]:
 
 def code_citations(facts: dict[str, Any], r: Route, key_numbers: list[KeyNumber]) -> list[str]:
     """The files behind the shown figures: single entries first, then the asked period's ledger folders."""
+    if _quotes_only(facts, r):
+        return [f"{QUOTES}/"]
     if not r.matched:
         return vat_sources(facts)
     listed = set(facts["sources"])
@@ -400,6 +427,25 @@ def fallback_answer(facts: dict[str, Any], model: str, reason: str, r: Route = E
     """
     key_numbers = code_key_numbers(facts, r)
     this, prev, d = facts["this_period"], facts["previous_period"], facts["derived"]
+    if _quotes_only(facts, r):
+        lines = [
+            "I couldn't check a written explanation against your books, so here are your quotes exactly as "
+            "calculated from your files:",
+            "",
+            *(f"- {k.label}: {k.value}" for k in key_numbers),
+        ]
+        if not key_numbers:
+            lines.append("- No quotes are waiting for an answer.")
+        return AskAnswer(
+            answer_md="\n".join(lines),
+            key_numbers=key_numbers,
+            citations=[f"{QUOTES}/"],
+            suggested_actions=[],
+            confidence="low",
+            model=model,
+            period=_period(facts),
+            fallback_reason=reason,
+        )
     if r.matched and key_numbers:
         lines = [
             f"I couldn't check a written explanation against your books, so here are the figures for {r.label(facts)} "
