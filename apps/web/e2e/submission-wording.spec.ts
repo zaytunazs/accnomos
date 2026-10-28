@@ -2,10 +2,14 @@ import { createBooksFolder, expect, signIn, test } from "./fixtures";
 
 /**
  * The submission build (NEXT_PUBLIC_SUBMISSION_MODE unset = 1, as this e2e build is) says nothing about a future
- * launch on the pages the tax batch added (claude/batch-tax): no "coming soon", "beta", "early access" or
- * "launching", signed out or signed in with books.
+ * launch on the pages the tax batch added (claude/batch-tax), nor on the sales, purchases and exports pages
+ * (claude/sales-exports-fix): no "coming soon", "beta", "early access" or "launching", signed out or signed in with
+ * books.
  */
-const NEW_PAGES = ["/self-employment", "/cis", "/property", "/payroll", "/vat", "/settings", "/contacts", "/bank"];
+const NEW_PAGES = [
+  "/self-employment", "/cis", "/property", "/payroll", "/vat", "/settings", "/contacts", "/bank",
+  "/sales", "/sales/quotes", "/sales/items", "/sales/repeating", "/purchases", "/purchases/orders", "/reports/exports",
+];
 const LAUNCH_WORDS = /coming soon|\bbeta\b|early access|launching/i;
 
 async function pageText(page: import("@playwright/test").Page, path: string): Promise<string> {
@@ -20,6 +24,7 @@ test("signed out: the batch's pages say nothing about a launch", async ({ page }
 });
 
 test("signed in with books: the batch's pages say nothing about a launch", async ({ page }) => {
+  test.slow(); // fifteen pages
   await signIn(page);
   await createBooksFolder(page);
   await page.evaluate(() => {

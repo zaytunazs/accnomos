@@ -345,3 +345,36 @@ def test_routes_dates_preview_and_validation(client: TestClient):
     assert client.post("/repeating", json={**bad, "frequency": "daily"}, headers=H).status_code == 422
     assert client.post("/repeating", json={**bad, "lines": []}, headers=H).status_code == 422
     assert client.post("/repeating", json={**bad, "account": "1200 Bank"}, headers=H).status_code == 422
+
+
+# --------------------------------------------------------------------------- #
+# Short-term cash flow (app/cashflow.py): occurrences not made yet are forecast
+# --------------------------------------------------------------------------- #
+
+
+async def test_cash_flow_forecasts_occurrences_not_made_yet(client: TestClient, books: Books):
+    # One occurrence: £250.00 + £50.00 VAT, 3 × £3.33 = £9.99 + £2.00 VAT (half up) = £311.99.
+    inv = await rp_.create_template(books, _tmpl(start_date="2026-11-01", due_days=14), USER)
+    bill = await rp_.create_template(books, _tmpl("bill", frequency="weekly", start_date="2026-10-01"), USER)
+    await rp_.create_template(books, _tmpl(start_date="2026-11-01", paused=True), USER)
+    r = client.get("/reports/cashflow?today=2026-10-10", headers=H).json()
+    rep = r["repeating"]
+    ins = [(i["due_date"], i["amount_pence"], i["event_id"]) for i in rep if i["direction"] == "in"]
+    # Monthly from 1 Nov, due 14 days on: 15 Nov, 15 Dec; 15 Jan is after 8 Jan (90 days on). The paused one: none.
+    assert ins == [("2026-11-15", 31_199, f"repeating:{inv.id}#0"), ("2026-12-15", 31_199, f"repeating:{inv.id}#1")]
+    outs = [i for i in rep if i["direction"] == "out"]
+    # Weekly from 1 Oct, nothing made yet: due 30 days after each (no supplier terms). 1 Oct's is due 31 Oct; the last
+    # due within the 90 days (to 8 Jan) is the one dated 3 Dec, due 2 Jan: 10 occurrences.
+    assert len(outs) == 10 and outs[0]["due_date"] == "2026-10-31" and outs[-1]["due_date"] == "2027-01-02"
+    assert outs[0]["event_id"] == f"repeating:{bill.id}#0" and all(i["amount_pence"] == 31_199 for i in outs)
+    # They are in the totals and in the item list.
+    assert r["points"][2]["money_in_pence"] == 2 * 31_199 and r["points"][2]["money_out_pence"] == 10 * 31_199
+    assert {i["event_id"] for i in r["items"]} >= {i["event_id"] for i in rep}
+
+
+async def test_cash_flow_counts_an_occurrence_already_due_from_today(books: Books):
+    from app import cashflow as cf
+
+    t = await rp_.create_template(books, _tmpl(start_date="2026-08-01", due_days=0, end_date="2026-08-31"), USER)
+    items = cf.repeating_items([t], date(2026, 10, 10), 30, {})
+    assert [(i.due_date, i.overdue) for i in items] == [(date(2026, 10, 10), False)]

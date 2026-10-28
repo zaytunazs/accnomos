@@ -285,3 +285,27 @@ async def test_capital_goods_marked_in_settings(books: Books, client: TestClient
     put(client, {**FLAT_RATE, "capital_purchases": ["van"]})
     hmrc = client.get(f"/books/vat?period=2026-Q3&{TODAY}", headers=H).json()["hmrc_body"]
     assert hmrc["vatReclaimedCurrPeriod"] == 1000.0 and hmrc["totalValuePurchasesExVAT"] == 5000
+
+
+async def test_the_exported_vat_return_follows_the_scheme_like_the_vat_page(books: Books, client: TestClient):
+    """Reports & exports (app/exports/vat_reports.py) gives the boxes the VAT page files, not the standard ones."""
+    await books.post_event(sale(100_000, 20_000, date(2026, 8, 3), "s1"))
+    await books.post_event(purchase(50_000, 10_000, date(2026, 8, 4), "p1"))
+    assert put(client, FLAT_RATE).status_code == 200
+    r = client.get(f"/exports/vat-return?from=2026-07-01&to=2026-09-30&{TODAY}", headers=H)
+    assert r.status_code == 200, r.text
+    doc = r.json()["doc"]
+    rows = {row["cells"]["box"]: row["cells"] for row in doc["sections"][0]["rows"]}
+    box = {str(k): v for k, v in rows.items()}
+    # Flat rate 11% of £1,200.00 VAT-inclusive turnover: box 1 £132.00, box 4 £0.00, box 6 £1,200 (as the VAT page).
+    assert box["Box 1"]["amount"] == 13_200 and box["Box 4"]["amount"] == 0 and box["Box 6"]["whole"] == 1200
+    assert "Flat Rate Scheme" in doc["basis"][0]
+    detail = client.get(f"/exports/vat-detail?from=2026-07-01&to=2026-09-30&{TODAY}", headers=H).json()["doc"]
+    assert any("Flat Rate Scheme" in w and "can differ" in w for w in detail["warnings"])
+
+
+async def test_the_exported_vat_return_is_unchanged_under_standard_accounting(books: Books, client: TestClient):
+    await books.post_event(sale(100_000, 20_000, date(2026, 8, 3), "s1"))
+    doc = client.get(f"/exports/vat-return?from=2026-07-01&to=2026-09-30&{TODAY}", headers=H).json()["doc"]
+    box = {row["cells"]["box"]: row["cells"] for row in doc["sections"][0]["rows"]}
+    assert box["Box 1"]["amount"] == 20_000 and "standard accounting" in doc["basis"][0]

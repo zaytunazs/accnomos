@@ -350,7 +350,8 @@ class AskExplanation(BaseModel):
 
 
 #: The first five come from Ask; `match_bank_line` and `close_month` come from the month-end close (app/month_end.py);
-#: `add_to_shopping_list` from Ask (app/shopping.py).
+#: `add_to_shopping_list` from Ask (app/shopping.py); `create_quote` and `convert_quote_to_invoice` from Ask
+#: (app/quotes.py).
 ActionKind = Literal[
     "create_invoice",
     "chase_invoice",
