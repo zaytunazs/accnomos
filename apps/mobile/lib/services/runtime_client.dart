@@ -1111,6 +1111,13 @@ class RuntimeClient {
   /// How the business appears on its invoices (`GET /invoices/profile`,
   /// kept in the user's OneDrive so every device prints the same).
   /// Same path the web's `InvoiceProfileForm` reads.
+  /// What these books are (`GET /profile`, services/runtime/app/profile.py):
+  /// `name`, `kind` (company | sole_trader | personal), `exists` and
+  /// `features`. One Microsoft account is one profile; the web links several,
+  /// this phone shows one at a time (Settings › Switch account).
+  Future<Map<String, dynamic>> booksProfile() =>
+      _map('GET', '/profile', what: 'load the profile');
+
   Future<Map<String, dynamic>> invoiceProfile() =>
       _map('GET', '/invoices/profile', what: 'load invoice details');
 
