@@ -1,0 +1,18 @@
+SAMPLE — FICTIONAL COMPANY
+Code,Account,Type,Debit,Credit
+0010,Van,Fixed asset,9500.00,
+1100,Debtors,Current asset,4560.00,
+1200,Bank,Bank,12450.37,
+1210,Cash,Bank,85.00,
+2100,Creditors,Current liability,,2130.50
+2200,VAT,Current liability,,1842.20
+2210,PAYE and NI,Current liability,,912.40
+2300,Director's loan,Current liability,,3000.00
+3000,Share capital,Capital,,100.00
+3200,Retained profit,Capital,,10000.00
+4000,Sales,Sales,,48200.00
+5000,Materials,Purchases,19340.00,
+7000,Wages,Overheads,12000.00,
+7100,Rent,Overheads,4800.00,
+7700,Insurance,Overheads,1150.73,
+7300,Van running costs,Overheads,2299.00,

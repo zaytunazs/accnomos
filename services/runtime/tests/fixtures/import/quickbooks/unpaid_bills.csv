@@ -1,0 +1,8 @@
+Hollybank Joinery Ltd (SAMPLE — FICTIONAL COMPANY)
+Unpaid Bills
+As of 31 March 2026
+
+Date,Transaction type,Num,Supplier,Due date,Amount,Open balance
+20/03/2026,Bill,H-5521,Howdens Joinery (sample),19/04/2026,"1,250.50","1,250.50"
+28/02/2026,Bill,SF-7781,Screwfix (sample),30/03/2026,880.00,880.00
+TOTAL,,,,,"£2,130.50","£2,130.50"

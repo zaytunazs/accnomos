@@ -58,7 +58,7 @@ class AuditLine {
     return AuditLine(
       at: at.toLocal(),
       actorLabel: (j['actor_label'] ?? '').toString(),
-      byPerson: j['actor_kind'] == 'user',
+      byPerson: j['actor_kind'] != 'agent', // you, or your accountant
       event: (j['event'] ?? '').toString(),
       summary: (j['summary'] ?? '').toString(),
     );

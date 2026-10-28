@@ -61,6 +61,9 @@ app.add_middleware(
         "X-Business-Name",
         "X-Autopilot",
         "X-Demo-Session",  # app/demo.py: a demo sandbox instead of a Graph token
+        "X-Books-Drive-Id",  # an accountant in a client's shared books (app/sharing.py)
+        "X-Books-Item-Id",
+        "X-Books-Access",
     ]
     + (["X-Test-Tenant"] if is_test_mode() else []),  # app/testmode.py: one fake OneDrive per Playwright worker
     # Content-Disposition: the page names a downloaded report file (/books/self-employment/reports/*).
@@ -165,10 +168,26 @@ app.include_router(sample_router)
 
 
 @app.exception_handler(GraphError)
-async def graph_error(_request: Request, exc: GraphError) -> JSONResponse:
-    """Expired/insufficient Graph token -> 401 so the app re-authenticates; anything else -> 502."""
+async def graph_error(request: Request, exc: GraphError) -> JSONResponse:
+    """Expired/insufficient Graph token -> 401 so the app re-authenticates; anything else -> 502. In a client's
+    shared books a 403 is the client's permission (view only), not the token: 403, so the app does not sign in again."""
+    if exc.status == 403 and request.headers.get("X-Books-Drive-Id"):
+        detail = "Your client gave you view-only access to these books, so Microsoft refused the change."
+        return JSONResponse(status_code=403, content={"detail": detail})
     status = 401 if exc.status in (401, 403) else 502
     return JSONResponse(status_code=status, content={"detail": scrub(str(exc))})
+
+
+from app.sharing import ReadOnlyBooks  # noqa: E402
+
+
+@app.exception_handler(ReadOnlyBooks)
+async def read_only_books(_request: Request, exc: ReadOnlyBooks) -> JSONResponse:
+    """A write to a client's books opened read-only (an accountant's view): refused, nothing was changed."""
+    return JSONResponse(
+        status_code=403,
+        content={"detail": "You opened these books read-only, so nothing was changed. Queries still work."},
+    )
 
 
 from app.company_lookup import LookupFailed  # noqa: E402
@@ -255,6 +274,9 @@ app.include_router(reports_router)
 from app.routes_accounting import router as accounting_router  # noqa: E402  /accounting/* (chart, journals, assets…)
 
 app.include_router(accounting_router)
+from app.routes_import import router as import_router  # noqa: E402  /import/* (history and opening balances)
+
+app.include_router(import_router)
 if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI under /__test (app/testmode.py)
     from app import testmode
 
@@ -277,6 +299,10 @@ async def demo_limit(_request: Request, exc: demo.DemoLimit) -> JSONResponse:
 from app.public_chat import router as public_chat_router  # noqa: E402  POST /public/chat (website, no sign-in)
 
 app.include_router(public_chat_router)
+from app.routes_accountant import router as accountant_router  # noqa: E402  /accountant/*, /queries/*
+
+app.include_router(accountant_router)
+
 from app.routes_todos import router as todos_router  # noqa: E402  /todos
 
 app.include_router(todos_router)

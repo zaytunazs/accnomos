@@ -13,12 +13,18 @@ from accnomos_connectors.base import (
     ConflictError,
     ContactsProvider,
     FileRef,
+    Identity,
     MailAttachment,
     MailDraft,
     MailMessage,
     MailProvider,
     MailSender,
     OutgoingMail,
+    SharedFolder,
+    SharedRoot,
+    SharePermission,
+    ShareRole,
+    SharingProvider,
     StorageProvider,
 )
 
@@ -264,3 +270,115 @@ class FakeStorageProvider(StorageProvider):
         start = int(cursor or 0)
         changed = [self._ref(p.split(" -> ")[-1]) for _, p in self._log[start:] if p.split(" -> ")[-1] in self.files]
         return changed, str(len(self._log))
+
+
+class FakeSharingWorld:
+    """Several people's OneDrives in memory, with the permissions invitations made on them.
+
+    Shapes follow Graph: an invitation makes a permission with an id and roles `read` or `write`; revoking deletes
+    it; `sharedWithMe` lists the folders someone gave the caller a permission on."""
+
+    def __init__(self) -> None:
+        self.folders: dict[tuple[str, str], tuple[str, str, FakeStorageProvider]] = {}  # root -> owner, name, storage
+        # root -> permission id -> (email, role, path inside the root; "" is the whole folder)
+        self.permissions: dict[tuple[str, str], dict[str, tuple[str, ShareRole, str]]] = {}
+        self.calls: list[tuple[str, str]] = []  # (who, what) for tests
+        self.shared_with_me_works = True  # False: the deprecated API "stops returning data" (an empty list)
+        self._n = 0
+
+    def add_folder(
+        self, owner: str, drive_id: str, item_id: str, name: str, storage: FakeStorageProvider
+    ) -> SharedRoot:
+        self.folders[(drive_id, item_id)] = (owner.lower(), name, storage)
+        return SharedRoot(drive_id=drive_id, item_id=item_id)
+
+    def role_of(self, root: SharedRoot, email: str, path: str = "") -> ShareRole | None:
+        """`write` for the owner, else the best role a permission on `path` or a folder above it gives (permissions
+        are inherited downwards, as in OneDrive), else None (no access)."""
+        key = (root.drive_id, root.item_id)
+        if key not in self.folders:
+            return None
+        if self.folders[key][0] == email.lower():
+            return "write"
+        path = path.strip("/")
+        roles = [
+            r
+            for e, r, p in self.permissions.get(key, {}).values()
+            if e == email.lower() and (not p or path == p or path.startswith(f"{p}/"))
+        ]
+        return "write" if "write" in roles else ("read" if roles else None)
+
+    def storage_for(self, root: SharedRoot, email: str) -> tuple[FakeStorageProvider, ShareRole]:
+        role = self.role_of(root, email)
+        if role is None:
+            raise FileNotFoundError(f"{root.drive_id}/{root.item_id}")  # Graph answers 404 for no access
+        return self.folders[(root.drive_id, root.item_id)][2], role
+
+
+class FakeSharingProvider(SharingProvider):
+    """One signed-in person's view of a FakeSharingWorld."""
+
+    def __init__(self, world: FakeSharingWorld, me: Identity, own: SharedRoot | None = None) -> None:
+        self.world, self.me, self.own = world, me, own
+        self.fail_invite: Exception | None = None  # set to make the next invite fail (e.g. a Graph 403)
+
+    def _log(self, what: str) -> None:
+        self.world.calls.append((self.me.email, what))
+
+    async def books_root(self, account_kind: str) -> SharedRoot:
+        self._log(f"books_root {account_kind}")
+        if self.own is None:
+            raise FileNotFoundError("Accnomos")
+        return self.own
+
+    def _owned(self, root: SharedRoot) -> tuple[str, str]:
+        key = (root.drive_id, root.item_id)
+        if key not in self.world.folders or self.world.folders[key][0] != self.me.email.lower():
+            raise PermissionError("only the owner can share or unshare this folder")
+        return key
+
+    async def invite(
+        self, root: SharedRoot, email: str, role: ShareRole, message: str, path: str = ""
+    ) -> SharePermission:
+        self._log(f"invite {email} {role} {path}".rstrip())
+        if self.fail_invite is not None:
+            exc, self.fail_invite = self.fail_invite, None
+            raise exc
+        key = self._owned(root)
+        self.world._n += 1
+        perm_id = f"perm-{self.world._n}"
+        self.world.permissions.setdefault(key, {})[perm_id] = (email.lower(), role, path.strip("/"))
+        return SharePermission(id=perm_id, roles=[role], email=email.lower())
+
+    async def revoke(self, root: SharedRoot, permission_id: str, path: str = "") -> bool:
+        self._log(f"revoke {permission_id}")
+        key = self._owned(root)
+        perm = self.world.permissions.get(key, {}).get(permission_id)
+        if perm is None or perm[2] != path.strip("/"):
+            return False
+        del self.world.permissions[key][permission_id]
+        return True
+
+    async def shared_with_me(self) -> list[SharedFolder]:
+        self._log("sharedWithMe")
+        if not self.world.shared_with_me_works:
+            return []
+        out = []
+        for (drive, item), (owner, name, _storage) in self.world.folders.items():
+            root = SharedRoot(drive_id=drive, item_id=item)
+            if owner != self.me.email.lower() and self.world.role_of(root, self.me.email):
+                out.append(SharedFolder(drive_id=drive, item_id=item, name=name, owner=owner))
+        return out
+
+    async def folder(self, root: SharedRoot) -> SharedFolder:
+        if self.world.role_of(root, self.me.email) is None:
+            raise FileNotFoundError(root.item_id)
+        owner, name, _ = self.world.folders[(root.drive_id, root.item_id)]
+        return SharedFolder(drive_id=root.drive_id, item_id=root.item_id, name=name, owner=owner)
+
+    async def child_names(self, root: SharedRoot) -> set[str]:
+        storage, _ = self.world.storage_for(root, self.me.email)
+        return {f.name for f in await storage.list("")}
+
+    async def whoami(self) -> Identity:
+        return self.me

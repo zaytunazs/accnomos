@@ -1,0 +1,6 @@
+Type,Contact,Number,Date,Due date,Total,Amount due
+invoice,Acme Kitchens Ltd (SAMPLE — FICTIONAL COMPANY),INV-0101,15/02/2026,17/03/2026,2400.00,2400.00
+invoice,Brook Lane Builders,INV-0104,05/03/2026,04/04/2026,1560.00,1560.00
+invoice,Carter & Sons,INV-0098,10/01/2026,09/02/2026,1200.00,600.00
+bill,Howdens Joinery (sample),H-5521,20/03/2026,19/04/2026,1250.50,1250.50
+bill,Screwfix (sample),SF-7781,28/02/2026,30/03/2026,880.00,880.00

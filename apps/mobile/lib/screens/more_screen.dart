@@ -4,6 +4,7 @@ import '../services/auth.dart';
 import '../services/books.dart' show booksClient;
 import '../services/settings.dart';
 import '../theme.dart';
+import 'accountant_screen.dart';
 import 'audit_screen.dart';
 import 'bank_screen.dart';
 import 'contacts_screen.dart';
@@ -67,6 +68,9 @@ List<MoreEntry> moreEntries(List<String>? features,
             ? 'Profit and loss, aged balances, VAT and trend'
             : 'Profit and loss, aged balances and trend',
         const ReportsScreen()),
+    const MoreEntry(Icons.handshake_outlined, 'Your accountant',
+        'Who can see your books, and their queries — read only',
+        AccountantScreen()),
     const MoreEntry(Icons.history_outlined, 'Audit trail',
         'Who did what in your books — read only', AuditScreen()),
   ];

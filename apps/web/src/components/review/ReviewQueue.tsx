@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import dynamic from "next/dynamic";
 import Explain from "@/components/Explain";
 import Modal from "@/components/review/Modal";
+import QueryThisLink from "@/components/accountant/QueryThisLink";
 import ProposalCard from "@/components/review/ProposalCard";
 import ReviewImage, { type ImageSource } from "@/components/review/ReviewImage";
 import { matchingRule, ruleEdits } from "@/lib/review-rules";
@@ -472,6 +473,7 @@ export default function ReviewQueue<H>({
                   </button>
                 </div>
                 {extras?.(p)}
+                <QueryThisLink kind="proposal" refId={p.id} label={label(p)} />
               </>
             }
           />

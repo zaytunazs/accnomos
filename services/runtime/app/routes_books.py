@@ -1,6 +1,7 @@
 """/books/*: proposals stored in the user's own OneDrive.
 
-Every request carries `X-Graph-Token` (and optionally `X-Account-Kind: personal|work`);
+Every request carries `X-Graph-Token` (and optionally `X-Account-Kind: personal|work`); an accountant opening a
+client's shared books adds `X-Books-Drive-Id`, `X-Books-Item-Id` and `X-Books-Access` (app/sharing.py);
 approvals, rejections and undos also need `X-User`, the signed-in user's email.
 `X-Autopilot: off` on a scan skips auto-approval (docs/AUTOPILOT.md).
 """
@@ -15,9 +16,10 @@ from typing import Any
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
+from accnomos_connectors.base import SharedRoot, StorageProvider
 from accnomos_connectors.msgraph import GraphStorageProvider
 from accnomos_ledger.events import LedgerEvent
-from app import autopilot, data_export, layout
+from app import autopilot, data_export, layout, sharing
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.approve import ApprovalError, ProposalStateError, approve, reject, submitted_spans, undo
 from app.books import Books, now
@@ -46,6 +48,10 @@ async def get_books(request: Request) -> AsyncIterator[Books]:
     kind = (request.headers.get("X-Account-Kind") or "personal").strip().lower()
     if kind not in ("personal", "work"):
         raise HTTPException(status_code=400, detail="X-Account-Kind must be 'personal' or 'work'")
+    if (root := sharing.shared_root(request)) is not None:  # an accountant opening a client (app/sharing.py)
+        async for books in _client_books(request, token, kind, root):
+            yield books
+        return
     if is_test_mode():
         from app import testmode
         from app.cache import user_cache_key
@@ -63,6 +69,47 @@ async def get_books(request: Request) -> AsyncIterator[Books]:
         yield books
     finally:
         await storage.aclose()
+
+
+NOT_SHARED = "These books are not shared with you (or no longer): ask your client to invite you again."
+
+
+async def _client_books(request: Request, token: str, kind: str, root: SharedRoot) -> AsyncIterator[Books]:
+    """A client's books shared with the caller: own cache key, read-only unless opened for editing and allowed,
+    no folder renames (app/layout.py is the owner's business), audit lines signed with the caller's identity."""
+    want = sharing.access(request)
+    me = await sharing.identity(token, request.headers.get("X-User"))
+    if is_test_mode():
+        from app import testmode
+
+        try:
+            inner, role = (await testmode.state()).world.storage_for(root, me)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=NOT_SHARED) from exc
+        books = _shared_books(inner, want == "read" or role == "read", me, token, root, testmode.tenant())
+        yield books
+        return
+    storage = GraphStorageProvider(token, kind, shared=root)  # type: ignore[arg-type]
+    try:
+        try:
+            await storage.ensure_root()  # 404 when the folder is gone or not shared with this account
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail=NOT_SHARED) from exc
+        # Graph itself refuses writes where the client gave view access; asked for `read`, we refuse them first.
+        yield _shared_books(storage, want == "read", me, token, root)
+    finally:
+        await storage.aclose()
+
+
+def _shared_books(
+    inner: StorageProvider, read_only: bool, me: str, token: str, root: SharedRoot, tenant: str = ""
+) -> Books:
+    books = Books(
+        sharing.ReadOnlyStorage(inner) if read_only else inner,
+        cache_key=sharing.client_cache_key(token, root, tenant),
+    )
+    books.accountant, books.read_only = me, read_only
+    return books
 
 
 # Settings travel as headers on every call (apps/web runtimeHeaders(), apps/mobile RuntimeClient._headers):

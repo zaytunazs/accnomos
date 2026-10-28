@@ -15,7 +15,7 @@ apps/mobile (Flutter) ──┼─> services/runtime ──┼─> Meta models (
   (below). Routers are the `include_router` lines in `app/main.py`: extract, books (scan, proposals, approve, undo, rules,
   rebuild), VAT and deadlines, dashboard, bank, ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
   timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports, audit, close (the month-end close
-  agent, `app/routes_close.py`). Test mode (`ACCNOMOS_TEST_MODE=1`) adds
+  agent, `app/routes_close.py`), import (history and opening balances). Test mode (`ACCNOMOS_TEST_MODE=1`) adds
   `/__test`. `apps/web/src/lib/runtime.ts` and `apps/mobile/lib/services/runtime_client.dart` have one call per route, except
   that the phone does not call `/reports/*` yet.
 - **`services/hmrc-relay`** (`relay`): exists only because HMRC needs the OAuth **client secret** at code exchange and
@@ -40,6 +40,7 @@ Read in one place each (`services/runtime/app/routes_books.py`, `app/ai/config.p
 | `X-User` | `require_user` / `optional_user` | the signed-in email; required for anything that writes; an audit label, not checked against the token |
 | `X-Business-Name` | `business_name` | optional; tells sales invoices from purchases |
 | `X-Autopilot` | `POST /books/scan` | `off` stops Autopilot for that scan. The web sends it at level L1/L0; the phone never sends it |
+| `X-Books-Drive-Id`, `X-Books-Item-Id`, `X-Books-Access` | `get_books` → `app/sharing.py` | an accountant opening a client's shared books folder (both ids or neither; access `read` default, or `edit`). See *Accountant collaboration* |
 | `X-HMRC-Access-Token` | relay | scrubbed from logs by the runtime's middleware too |
 | `X-Correlation-Id` | every response | also in the body of a 500 |
 
@@ -75,6 +76,7 @@ Documents, filed by code and never deleted:
 | `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
 | `07 Reports/<yyyy-mm>-month-end-draft.xlsx`, `07 Reports/<yyyy-mm>-month-end.xlsx` | runtime, the month-end close (`app/month_end.py`): the draft (About, P&L, Balance sheet) is rewritten by each run once nothing blocks the close; the closed one is written on Approve and never overwritten (a re-close saves ` (2)`) | Posts nothing |
 | `07 Reports/<yyyy-mm-dd>-<name>.xlsx` | runtime, `POST /reports/export` (*Export to OneDrive* on Reports) | `name` is `profit-and-loss`, `aged-balances`, `vat-summary`, `monthly-trend` or `reports` (all of them); a second export the same day gets ` (2)`, nothing is overwritten. Starts with `SAMPLE — FICTIONAL COMPANY` when the books are the demo seed's. Posts nothing |
+| `07 Reports/<yyyy-mm-dd>-opening-balances-reconciliation.csv` | runtime, `POST /import/post` (`import_history.py`) | the source trial balance against the Accnomos one, account by account; a second the same day gets ` (2)` |
 | `Archive/<year>/<original path>`, `Archive/<year>.zip` | runtime, `POST /files/archive` (`archive.py`) | made when first used; the zip is an extra copy with `manifest.json`, the folder stays. See *Files, archive and backups* |
 | `Backups/accnomos-backup-<yyyy-mm-dd>.zip`, `….zip.sha256` | runtime, `POST /backups` (`backups.py`) | made when first used; a second backup the same day gets ` (2)` |
 | `_Trash/<yyyy-mm-dd>/<original path>` | runtime: Clean up, backup retention, an undone archive's zip, files a restore replaced | made when first used; **never emptied by the app**, the user empties it in OneDrive |
@@ -118,6 +120,9 @@ Books.xlsx still show the path as it was saved.
 | `Todos/todos.json` | to-dos added from triage | updated |
 | `archive/map.json` | old path → new path for every document the app moved (archive, Files page move and rename) | updated; applied when proposals and bank lines are read |
 | `archive/runs/<id>.json` | one archive run: every move, its zips, and when it was undone | written, then updated once by Undo |
+| `Import/draft.json` | the import wizard's draft: uploaded files' rows, vendor, conversion date, the user's account mapping (`app/import_history.py`) | rewritten; emptied after posting |
+| `Import/sources/<sha256>-<name>` | each export uploaded to the import, as it came | written once |
+| `Import/opening.json` | the import in force: the opening entry's id, the mapping used, the open invoices and bills (read by `app/contacts.py` as documents on account), contacts added, the reconciliation file | rewritten; undo marks it undone |
 | `Settings/files.json` | `backup_keep` (default 12), `monthly_backup` (default off) | rewritten |
 | `profile.json` | what these books are: name, kind (`company`, `sole_trader`, `personal`), kind settings, other linked accounts by sign-in name (`app/profile.py`, `PUT /profile`) | rewritten whole |
 | `close/<yyyy-mm>.json` | the month-end close: the last 10 runs (steps, findings, card summaries; never the signed cards) and every close record (who, when, the snapshot and its SHA-256) | updated; close records are only appended |
@@ -128,6 +133,9 @@ Books.xlsx still show the path as it was saved.
 | `Accounting/assets.json` | fixed asset register (`fixed_assets.py`); what has been depreciated and disposed of is worked out from posted journals, not stored here | rewritten whole |
 | `Accounting/tracking.json` | up to two tracking categories and their options, by stable id (`tracking.py`) | rewritten whole; options archived, not deleted |
 | `Accounting/budgets/<yyyy-mm>.json` | one budget: twelve monthly amounts per P&L account from that month (`budgets.py`) | rewritten whole |
+| `accountant.json` | who the books are shared with (invitations, their Graph permission ids, revocations, the Accnomos-accountants consent: version, sha256 of the text, who and when), the profile the portal shows, the folder's drive id + item id (`app/accountant.py`) | rewritten; a revoked invitation is kept, marked revoked |
+| `queries/<id>.json`, `queries/audit/<yyyy-mm>.jsonl` | client queries, one thread per file (`app/queries.py`); the audit lines of a view-only accountant | updated (If-Match); append-only |
+| `Accountant/clients.json` | **in an accountant's own books**: client codes they added by hand in the portal (`app/portal.py`) | rewritten |
 
 OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folder. Money is integer pence in every file except
 `Books.xlsx`, which shows pounds.
@@ -153,6 +161,41 @@ actor; `kind` matches an event or a prefix family (`invoice` is every `invoice_*
 `Books.audit` call in `app/` writes a kind with no sentence. The web `/audit` page and the Android *Audit trail* screen read it
 through this route; the Home dashboard reads `audit/` for recent activity, and `app/actions.py` reads its own log so an
 action never runs twice.
+
+## Accountant collaboration
+
+No user database, so access is OneDrive sharing (Microsoft Learn, checked 28 Oct 2026: driveItem invite, permission
+delete, drive sharedWithMe, addressing driveItems). Routes in `app/routes_accountant.py`:
+
+* **Invite** (`POST /accountant/invitations`, Settings › Your accountant): `POST /drives/{d}/items/{books}/invite` with
+  role `read` or `write`, `requireSignIn`, `sendInvitation`; for a view-only accountant a second invite gives `write` on
+  `_System/queries` only (`:/_System/queries:/invite`), so queries work. Permission ids go into `_System/accountant.json`;
+  revoke deletes each one. `invite` needs `Files.ReadWrite`, so a personal account (books in the app folder,
+  `Files.ReadWrite.AppFolder`) is asked for it at that moment; a client can instead share in OneDrive and *record* it
+  (`method: manual`). Only the owner can call these (403 inside shared books).
+* **Accnomos accountants** (`POST`/`DELETE /accountant/team`): the same share to `ACCOUNTANT_TEAM_EMAIL`, only after an
+  explicit tick on the full consent text (`accountant.CONSENT_TEXT`), stored with its version and sha256. Empty
+  `ACCOUNTANT_TEAM_EMAIL` hides the option and the route answers 404.
+* **Portal** (`GET /accountant/portal`, web `/accountant`): Graph `sharedWithMe` (deprecated; "stops returning data"
+  after November 2026) plus client codes (`drive:item`, in the invitation email) the accountant added, kept in their own
+  `_System/Accountant/clients.json`. A folder counts only if it holds `_System`. Per client: name and kind (from the
+  client's profile), the next VAT return due (`deadlines.filing_deadline`), proposals waiting and needing a look, open
+  queries and who they wait on, last audit line (this and last month). Four clients at a time, each its own read-only `Books`.
+* **Opening a client** (web: `lib/accountant.ts` keeps the client in `sessionStorage`; `runtimeHeaders` adds the three
+  headers): the usual pages run against `/drives/{d}/items/{item}:/{path}` (`GraphStorageProvider(shared=…)`).
+  `app/sharing.py`: ids must look like Graph ids; the cache key is a hash of (token, drive, item), so no client's
+  ledger events are ever served for another or for the accountant's own books; opened `read`, every write except under
+  `_System/queries/` is refused with 403 before Graph is called; no folder renames (`layout.py` is the owner's); a Graph
+  403 there is answered 403, not 401. The browser's own Graph reads (previews, file links) follow the open client;
+  its writes refuse.
+* **Audit**: in shared books `Books.audit` writes `accountant:<email>`, the email from Graph `/me` for the token (not
+  `X-User`); a view-only accountant's lines go to `_System/queries/audit/`, which `GET /audit` also reads.
+  `actor_kind` is `accountant`. Kinds: `accountant_invited`, `accountant_removed`, `accountant_team_opted_in`,
+  `accountant_team_opted_out`, `accountant_profile_saved`, `accountant_client_added`, `accountant_client_removed`,
+  `query_opened`, `query_replied`, `query_resolved`.
+* **Queries** (`/queries`): the accountant opens a thread on a transaction, document, Review card, bank line or invoice;
+  `waiting_on` is the other side from the last message. The client sees threads waiting on them on Home › To-dos and
+  answers in Settings › Your accountant; Android (More › Your accountant) shows access and threads read-only.
 
 ## Files, archive and backups
 

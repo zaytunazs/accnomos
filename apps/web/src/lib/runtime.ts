@@ -6,6 +6,19 @@ import type { PlanVat } from "./business";
 import { vatQuery } from "./vat-period";
 import { DEMO_HEADER, demoSession } from "./demo";
 import {
+  clientHeaders,
+  CLIENT_SCOPES,
+  getClientContext,
+  PORTAL_SCOPES,
+  SHARE_SCOPES,
+  type RtAccountantSettings,
+  type RtClientProfile,
+  type RtInvitation,
+  type RtPortal,
+  type RtQuery,
+  type QuerySubjectKind,
+} from "./accountant";
+import {
   accountKind,
   CALENDAR_READ_SCOPES,
   CALENDAR_SCOPES,
@@ -166,7 +179,11 @@ export interface RtSummary {
  * Headers for every runtime call: the user's Graph token + AI config. Nothing is stored server-side.
  * `extraScopes` widens the one Graph token (e.g. Mail.Read for /mail/scan, which also writes to OneDrive).
  */
-export async function runtimeHeaders(account: AccountInfo, extraScopes: string[] = []): Promise<Record<string, string>> {
+export async function runtimeHeaders(
+  account: AccountInfo,
+  extraScopes: string[] = [],
+  opts: { own?: boolean } = {},
+): Promise<Record<string, string>> {
   const ai = loadAiConfig();
   const demo = demoSession();
   if (demo) {
@@ -179,7 +196,10 @@ export async function runtimeHeaders(account: AccountInfo, extraScopes: string[]
       ...(ai ? aiHeaders(ai) : {}),
     };
   }
-  const token = await getToken([...storageScopesFor(account), ...extraScopes]);
+  // An accountant inside a client's books (lib/accountant.ts): the token must reach another person's drive.
+  const client = opts.own ? null : getClientContext();
+  const base = client ? CLIENT_SCOPES : storageScopesFor(account);
+  const token = await getToken([...base, ...extraScopes]);
   let business = "";
   try {
     business = (JSON.parse(window.localStorage.getItem("accnomos.business") ?? "{}") as { name?: string }).name ?? "";
@@ -190,14 +210,21 @@ export async function runtimeHeaders(account: AccountInfo, extraScopes: string[]
     "X-Graph-Token": token,
     "X-Account-Kind": isPersonalAccount(account) ? "personal" : "work",
     "X-User": account.username,
-    ...(business ? { "X-Business-Name": business } : {}),
+    ...(business && !client ? { "X-Business-Name": business } : {}),
     ...(ai ? aiHeaders(ai) : {}),
+    ...clientHeaders(client),
   };
 }
 
-async function call<T>(account: AccountInfo, path: string, init: RequestInit = {}, extraScopes: string[] = []): Promise<T> {
+async function call<T>(
+  account: AccountInfo,
+  path: string,
+  init: RequestInit = {},
+  extraScopes: string[] = [],
+  opts: { own?: boolean } = {},
+): Promise<T> {
   const json = typeof init.body === "string"; // FormData sets its own multipart Content-Type
-  const headers = { ...(await runtimeHeaders(account, extraScopes)), ...(json ? { "Content-Type": "application/json" } : {}) };
+  const headers = { ...(await runtimeHeaders(account, extraScopes, opts)), ...(json ? { "Content-Type": "application/json" } : {}) };
   const res = await fetch(`${RUNTIME_URL}${path}`, { ...init, headers: { ...headers, ...(init.headers ?? {}) } });
   if (!res.ok) throw new Error(await errorDetail(res, `${init.method ?? "GET"} ${path}`));
   return (res.status === 204 ? undefined : await res.json()) as T;
@@ -1971,7 +1998,7 @@ export interface RtTodoIn {
 export interface RtAuditEntry {
   ts: string;
   actor: string; // "user:<email>" or "agent:<name>"
-  actor_kind: "user" | "agent";
+  actor_kind: "user" | "agent" | "accountant";
   actor_label: string; // "You", "Autopilot", "Intake", "Triage", "Planner", ...
   event: string; // e.g. "approved"; Ask actions are action_done / action_rejected / action_failed
   summary: string;
@@ -2660,3 +2687,196 @@ export interface RtShoppingPreview {
   job_name: string | null;
   warnings: string[];
 }
+
+/**
+ * Accountant collaboration (services/runtime/app/routes_accountant.py). Settings › Your accountant and the portal
+ * always use your own books (`own`), even while a client is open in this tab; queries follow the open client.
+ */
+const own = { own: true };
+export const accountantApi = {
+  settings: (a: AccountInfo) => call<RtAccountantSettings>(a, "/accountant", {}, [], own),
+  saveProfile: (a: AccountInfo, profile: RtClientProfile) =>
+    call<RtClientProfile>(a, "/accountant/profile", { method: "PUT", body: JSON.stringify(profile) }, [], own),
+  invite: (a: AccountInfo, body: { email: string; name: string; role: "read" | "edit"; method: "graph" | "manual"; message: string }) =>
+    call<RtInvitation>(
+      a, "/accountant/invitations", { method: "POST", body: JSON.stringify(body) },
+      body.method === "graph" && isPersonalAccount(a) ? SHARE_SCOPES : [], own,
+    ),
+  revoke: (a: AccountInfo, id: string) =>
+    call<RtInvitation>(a, `/accountant/invitations/${encodeURIComponent(id)}/revoke`, { method: "POST" },
+      isPersonalAccount(a) ? SHARE_SCOPES : [], own),
+  teamOptIn: (a: AccountInfo, body: { agree: boolean; consent_version: string; role: "read" | "edit" }) =>
+    call<RtInvitation>(a, "/accountant/team", { method: "POST", body: JSON.stringify(body) },
+      isPersonalAccount(a) ? SHARE_SCOPES : [], own),
+  teamOptOut: (a: AccountInfo) =>
+    call<RtInvitation>(a, "/accountant/team", { method: "DELETE" }, isPersonalAccount(a) ? SHARE_SCOPES : [], own),
+  portal: (a: AccountInfo) => call<RtPortal>(a, "/accountant/portal", {}, PORTAL_SCOPES, own),
+  addClient: (a: AccountInfo, code: string) =>
+    call<{ drive_id: string; item_id: string; name: string }>(
+      a, "/accountant/portal/clients", { method: "POST", body: JSON.stringify({ code }) }, PORTAL_SCOPES, own,
+    ),
+  removeClient: (a: AccountInfo, code: string) =>
+    call<{ removed: boolean }>(a, `/accountant/portal/clients/${encodeURIComponent(code)}`, { method: "DELETE" }, PORTAL_SCOPES, own),
+  queries: (a: AccountInfo, q: { status?: "open" | "resolved"; waiting_on?: "client" | "accountant" } = {}, mine = false) =>
+    call<RtQuery[]>(a, withQuery("/queries", new URLSearchParams(q as Record<string, string>).toString()), {}, [], { own: mine }),
+  openQuery: (a: AccountInfo, body: { subject: { kind: QuerySubjectKind; ref: string; label: string }; text: string }, mine = false) =>
+    call<RtQuery>(a, "/queries", { method: "POST", body: JSON.stringify(body) }, [], { own: mine }),
+  reply: (a: AccountInfo, id: string, text: string, mine = false) =>
+    call<RtQuery>(a, `/queries/${encodeURIComponent(id)}/messages`, { method: "POST", body: JSON.stringify({ text }) }, [], { own: mine }),
+  resolve: (a: AccountInfo, id: string, mine = false) =>
+    call<RtQuery>(a, `/queries/${encodeURIComponent(id)}/resolve`, { method: "POST" }, [], { own: mine }),
+};
+
+// --------------------------------------------------------------------------- //
+// /import/*: history and opening balances from another system (services/runtime/app/routes_import.py)
+// --------------------------------------------------------------------------- //
+
+export type RtImportKind = "trial_balance" | "chart_of_accounts" | "contacts" | "open_items" | "bank_balances";
+export type RtImportVendor = "xero" | "quickbooks" | "sage50" | "sage_accounting" | "freeagent" | "spreadsheet";
+
+export const IMPORT_VENDORS: { id: RtImportVendor; label: string }[] = [
+  { id: "xero", label: "Xero" },
+  { id: "quickbooks", label: "QuickBooks Online" },
+  { id: "sage50", label: "Sage 50 Accounts" },
+  { id: "sage_accounting", label: "Sage Accounting" },
+  { id: "freeagent", label: "FreeAgent" },
+  { id: "spreadsheet", label: "A spreadsheet" },
+];
+
+export const IMPORT_KINDS: { id: RtImportKind; label: string }[] = [
+  { id: "trial_balance", label: "Trial balance" },
+  { id: "chart_of_accounts", label: "Chart of accounts" },
+  { id: "contacts", label: "Contacts" },
+  { id: "open_items", label: "Open invoices and bills" },
+  { id: "bank_balances", label: "Bank balances" },
+];
+
+export interface RtImportFile {
+  id: string;
+  name: string;
+  kind: RtImportKind;
+  vendor: RtImportVendor | null;
+  rows: number;
+  skipped: string[];
+  uploaded_at: string;
+}
+
+export interface RtImportMappingRow {
+  key: string;
+  code: string | null;
+  name: string;
+  type: string | null;
+  klass: string | null;
+  balance_pence: number;
+  target: string | null;
+  how: "code" | "name" | "type" | "user" | null;
+  new: boolean;
+  suggested: string | null;
+}
+
+export interface RtImportCheck {
+  id: string;
+  severity: "error" | "warning" | "info";
+  ok: boolean;
+  message: string;
+  expected_pence: number | null;
+  actual_pence: number | null;
+}
+
+export interface RtImportOpenItem {
+  id: string;
+  side: "sale" | "purchase";
+  contact: string;
+  number: string | null;
+  date: string;
+  due_date: string | null;
+  total_pence: number;
+  due_pence: number;
+}
+
+export interface RtImportDraftView {
+  draft: {
+    vendor: RtImportVendor | null;
+    conversion_date: string | null;
+    pl_treatment: "keep" | "retained";
+    files: RtImportFile[];
+    mapping: Record<string, string>;
+  };
+  balance_date: string | null;
+  accounts: RtImportMappingRow[];
+  journal: { account: string; debit_pence: number; credit_pence: number; sources: string[] }[];
+  debits_pence: number;
+  credits_pence: number;
+  contacts: number;
+  items: RtImportOpenItem[];
+  banks: { account: string; balance_pence: number; date: string | null }[];
+  checks: RtImportCheck[];
+  can_post: boolean;
+  needs_accept: boolean;
+  chart: string[];
+}
+
+export interface RtImportRecord {
+  id: string;
+  vendor: RtImportVendor | null;
+  conversion_date: string;
+  balance_date: string;
+  event_id: string;
+  posted_at: string;
+  posted_by: string;
+  items: RtImportOpenItem[];
+  contacts_added: string[];
+  report_path: string | null;
+  undone_at: string | null;
+}
+
+export interface RtImportReconciliation {
+  balance_date: string;
+  rows: { account: string; sources: string[]; source_pence: number; accnomos_pence: number; ok: boolean }[];
+  source_debits_pence: number;
+  source_credits_pence: number;
+  accnomos_debits_pence: number;
+  accnomos_credits_pence: number;
+  checks: RtImportCheck[];
+  proved: boolean;
+  undone: boolean;
+}
+
+export interface RtImportEdit {
+  vendor?: RtImportVendor;
+  conversion_date?: string;
+  pl_treatment?: "keep" | "retained";
+  mapping?: Record<string, string | null>;
+}
+
+export const importApi = {
+  draft: (a: AccountInfo) => call<RtImportDraftView>(a, "/import"),
+  upload: (a: AccountInfo, file: File, opts: { kind?: RtImportKind; vendor?: RtImportVendor; side?: "sale" | "purchase" }) => {
+    const form = new FormData();
+    form.append("file", file, file.name);
+    if (opts.kind) form.append("kind", opts.kind);
+    if (opts.vendor) form.append("vendor", opts.vendor);
+    if (opts.side) form.append("side", opts.side);
+    return call<RtImportDraftView>(a, "/import/files", { method: "POST", body: form });
+  },
+  removeFile: (a: AccountInfo, id: string) =>
+    call<RtImportDraftView>(a, `/import/files/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  edit: (a: AccountInfo, body: RtImportEdit) => call<RtImportDraftView>(a, "/import", { method: "PUT", body: JSON.stringify(body) }),
+  discard: (a: AccountInfo) => call<RtImportDraftView>(a, "/import", { method: "DELETE" }),
+  post: (a: AccountInfo, acceptWarnings: boolean) =>
+    call<RtImportRecord>(a, "/import/post", post({ accept_warnings: acceptWarnings })),
+  opening: (a: AccountInfo) =>
+    call<{ record: RtImportRecord | null; reconciliation: RtImportReconciliation | null }>(a, "/import/opening"),
+  undo: (a: AccountInfo) => call<RtImportRecord>(a, "/import/undo", post()),
+  /** The reconciliation CSV, fetched with the user's headers (a plain link could not carry the Graph token). */
+  reportCsv: async (a: AccountInfo): Promise<Blob> => {
+    const res = await fetch(`${RUNTIME_URL}/import/opening/report.csv`, { headers: await runtimeHeaders(a) });
+    if (!res.ok) throw new Error(await errorDetail(res, "GET /import/opening/report.csv"));
+    return res.blob();
+  },
+  template: async (a: AccountInfo, kind: RtImportKind): Promise<Blob> => {
+    const res = await fetch(`${RUNTIME_URL}/import/templates/${kind}.csv`, { headers: await runtimeHeaders(a) });
+    if (!res.ok) throw new Error(await errorDetail(res, `GET /import/templates/${kind}.csv`));
+    return res.blob();
+  },
+};

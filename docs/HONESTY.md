@@ -104,6 +104,15 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - Payments are found only when the user opens Invoices (no webhooks: the runtime holds no token to write to OneDrive). A customer's payment is invisible to the books until then, and is posted only when the user approves it. The gross goes to the provider's clearing account (1230 Stripe clearing or 1240 PayPal clearing, not 1210, which is Cash) and the fee is a separate exempt expense out of it. The provider's payout is matched on the Bank page as **Payout from Stripe/PayPal** (Dr 1200 Bank / Cr clearing; unmatching reverses it), so the money is counted once and 1200 Bank only moves when the statement shows it. A payout larger than the clearing balance is refused. Not handled: payouts in another currency, Stripe or PayPal balances used for refunds or disputes (chargebacks), and reserves held back by the provider: those leave a clearing balance the user must journal by hand. Fees on payments approved before this change sat in 1200 Bank; nothing migrates them.
 - A link has a fixed amount. If the balance changes (a bank payment, a credit note) the old link still asks for the old amount until the user makes a new one; the list shows "Not the amount owed now". A payment that arrives on an invoice already paid another way is not proposed (paid invoices are not checked); it stays in Stripe/PayPal for the user to refund or record by hand.
 
+## Import history and opening balances
+
+- **No export from a real Xero, QuickBooks Online, Sage 50, Sage Accounting or FreeAgent account has been read.** The sample files in `services/runtime/tests/fixtures/import/` (one fictional company, SAMPLE — FICTIONAL COMPANY) were written by hand from what the vendors' help pages say their exports contain. Those pages (central.xero.com, quickbooks.intuit.com, help.sbc.sage.com, support.freeagent.com) could not be opened from the build machine on 28 Oct 2026; their content was taken from web search summaries, partly via third-party guides (TinyTax, QuickFile). The parser accepts many spellings of each column (`FIELDS` in `import_formats.py`), but an export whose header uses none of them is refused, and the FreeAgent Summary CSV layout (code, category, signed total) is a guess.
+- Xero's invoice export has one row per line item; open items are de-duplicated by contact and number, so an invoice is counted once, but two different invoices with the same number for the same contact would collapse into one. Credit notes and receipts in an aged list are left out (each is listed as skipped): the list must be of what is still owed per invoice.
+- Mapping suggestions are name rules and type words, not a model. A name rule can be wrong (an account called "Vehicle hire" goes to 7300 Motor expenses); every suggestion is shown and editable, and an account whose type we cannot tell blocks posting.
+- **Open items are documents, not ledger events.** They live in `_System/Import/opening.json` and appear in aged balances, statements, Books.xlsx and *Record payment*. They cannot be matched straight to a bank line on the Bank page (that needs a posted entry), and a credit note cannot yet be raised against one from Invoices; record the payment instead. Undo is refused while a payment, credit use or credit note points at one.
+- Converting part way through a year posts this year's income and costs so far as one entry on the balance date, so a P&L for a period containing that date shows them all at once ("keep"); "retained" folds them into 3200 Retained profit instead. Neither is a tax rule; the VAT treatment (opening balances are on no return) follows VAT Notice 700/12, read through a search summary only.
+- Not imported: transaction history before the conversion date, fixed-asset registers and depreciation, payroll year-to-date figures, stock, multi-currency balances, VAT already submitted (the VAT control balance comes across as one figure). Android has no import screen.
+
 ## Payroll
 
 - **Estimates only. Not payroll, not RTI.** No FPS/EPS, no payment to HMRC; your payroll provider does that.
@@ -263,6 +272,42 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
   the VAT tile on `vat_applies=false`. The bottom bar's VAT tab is still there for every profile (its screen answers
   with the runtime's sentence for books without VAT). `flutter analyze` and `flutter test` (279 tests) pass, on
   Flutter 3.47.8 in a Linux container; not run on a phone.
+
+## Accountant collaboration
+
+Branch `claude/accountant`; review in `docs/reviews/accountant/REVIEW.md` (gates on that branch, 28 Oct 2026: runtime
+1432 passed, connectors 63, e2e 255 passed / 58 skipped, `flutter test` 274). **Nothing here has called Microsoft Graph**:
+every sharing call ran against httpx mocks shaped like the Microsoft Learn examples, or the test-mode fake sharing world.
+
+- **Sharing the personal app folder is documented, not tried.** `driveItem: invite` lists `Files.ReadWrite` as the least
+  privileged scope and forbids permissions only on a personal drive's *root* item; the app folder (`Apps/Accnomos`) is not
+  the root, and the app-folder page says it "supports all the standard item operations". So the web asks a personal
+  account for `Files.ReadWrite` (the whole OneDrive) when they invite someone. If Microsoft refuses anyway, the client is
+  told to share the folder in OneDrive by hand and record it ("I shared it myself"), or to use a work account; a
+  dedicated shared folder outside the app folder is **not built**.
+- **A view-only accountant's write access to `_System/queries`** is a second permission on a subfolder of a folder shared
+  read-only. OneDrive documents path-addressed items and per-item permissions; whether a child can be given more than its
+  parent on a personal OneDrive has not been tried.
+- **`sharedWithMe` is deprecated** and "will stop returning data" after November 2026, with no documented replacement
+  (Microsoft Q&A says so). The portal also lists client codes the accountant adds by hand (from the invitation email);
+  after November it depends on them. `?allowexternal=true` (other tenants) is sent; cross-tenant and personal ↔ work
+  sharing (a personal-account client, a work-account accountant) has not been tried.
+- **Identity**: the audit names the accountant by the email Graph `/me` gives for their token (needs `User.Read`, which
+  sign-in asks for). A ledger event's `approved_by` still comes from `X-User`, as everywhere, so an accountant's approval
+  is attributed by the audit line, not by the event. In test mode the identity is `X-User`.
+- **Read-only** is enforced by the runtime for a view-only open (403 before Graph) and by the client's OneDrive permission
+  otherwise. Inside a client the browser token has `Files.ReadWrite.All` (queries are writes); the accountant's app
+  registration must allow `Files.Read.All` and `Files.ReadWrite.All`, not yet added in Entra.
+- **The portal summary is the client's own word**: name, kind and VAT stagger come from the profile the client saved in
+  Settings › Your accountant (pre-filled from that device's business details); without one the portal shows the folder
+  name and "Not set by the client". Annual VAT accounting is not worked out. **MTD for Income Tax deadlines are not
+  shown**: gov.uk could not be reached from this session (blocked by the network policy), so the dates could not be
+  checked against the official source and were left out. "Last activity" reads only this and last month's audit files.
+- The browser's previews and file links inside a client read `/drives/{d}/items/{i}:/…`; the test-mode Graph look-alike
+  does not serve that address, so client previews are untested. Upload to Inbox and onboarding refuse inside a client.
+- Revoking stops future access; copies an accountant downloaded stay with them (the consent text says so). Microsoft
+  sends the invitation email (`sendInvitation: true`); its delivery and wording are Microsoft's and were not seen.
+- Android shows who has access and the query threads, read-only (More › Your accountant); answering is on the web.
 
 ## Android
 
