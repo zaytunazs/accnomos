@@ -509,7 +509,9 @@ export default function ReportsExports() {
     setBusy(`download-${format}`);
     setStatus(null);
     try {
-      const { blob, name } = await runtime.exports.file(account, report.id, format, query);
+      const { blob, name: fromHeader } = await runtime.exports.file(account, report.id, format, query);
+      // The runtime's Content-Disposition is not exposed to a cross-origin page; the preview carries the same name.
+      const name = preview?.filenames[format] ?? fromHeader;
       download(blob, name);
       setStatus({ text: `Downloaded ${name}.`, url: null });
     } catch (e) {

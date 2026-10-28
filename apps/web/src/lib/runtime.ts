@@ -592,7 +592,7 @@ export const runtime = {
     catalogue: (a: AccountInfo) => call<RtExportCatalogue>(a, "/exports"),
     preview: (a: AccountInfo, id: string, q: RtExportQuery) =>
       call<RtExportPreview>(a, withQuery(`/exports/${encodeURIComponent(id)}`, exportQuery(q))),
-    /** The file as a Blob, with the name the runtime gave it. Reads only. */
+    /** The file as a Blob, and its name when the header is readable (a cross-origin page sees the fallback). */
     file: async (a: AccountInfo, id: string, format: string, q: RtExportQuery): Promise<{ blob: Blob; name: string }> => {
       const path = withQuery(`/exports/${encodeURIComponent(id)}/file`, [`format=${format}`, exportQuery(q)].filter(Boolean).join("&"));
       const res = await fetch(`${RUNTIME_URL}${path}`, { headers: await runtimeHeaders(a) });
