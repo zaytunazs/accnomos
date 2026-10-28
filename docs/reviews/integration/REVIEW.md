@@ -34,13 +34,13 @@ Rule: a branch whose own tests fail, or that is clearly unfinished, is listed he
 | Branch | Why |
 |---|---|
 | `claude/marketing` | First pass: its HANDOVER listed a known submission-mode failure. **Merged in the second pass** inside `claude/known-fixes`, which fixes it. |
-| `claude/exports` | Runtime green (1581), but its own page fails: `exports.spec.ts` (the Xero manual-journals preview never shows its `*Narration` column), axe **critical** `aria-valid-attr-value` on `/reports/exports` (12× signed out, 69× signed in: `aria-controls="report-preview"` names no element) and a disabled *This VAT period* button that gives no reason. Its HANDOVER says its e2e was never green. |
+| `claude/exports` | Refused in the first pass (its own `exports.spec.ts`, an axe critical on `/reports/exports`, a disabled button with no reason). **Merged in the third pass** inside the second round of `claude/known-fixes`, which fixes all three. |
 | `claude/payroll-rti` | Superseded by `claude/payroll-finish`, which reached `main` inside `claude/batch-tax`. First-pass finding, for the record: its never-run `paye.spec.ts` failed (the settings panel closed while typing; `£3000.00` vs `£3,000.00`). |
-| `claude/sales-purchases` | Runtime green (1698), but 2 of 4 tests in its own `sales-purchases.spec.ts` fail, **identically on the branch alone** (checked in a separate worktree): a purchase order converted to a bill lands in *needs a look*, not *proposed*; the statement's *Customer* picker never becomes selectable. When it lands, `profiles.spec`'s menu test needs *Sales overview* before *Invoices*. |
+| `claude/sales-purchases` | Refused in the first pass (2 of 4 of its own e2e tests). **Merged in the third pass** inside the second round of `claude/known-fixes`: a bill from an order without the supplier's VAT number rightly needs a look (over £250, VAT Notice 700 s.16), and the page now says why; the statement lists the contact book's customers. |
 | `claude/accounting-tools` | First pass: its own `accounting.spec.ts` failed (ambiguous locators; `/accounting/chart` 248 px sideways at 360 px). **Merged in the second pass** inside `claude/known-fixes`, which fixes both. |
 | `muse/property-reader-2` | Not queued, and not finished for merging: it changes the property reader's prompt and code checks *after* the Spark run its `report.md` shows, so the published numbers would not describe the code. It should merge after its own Spark re-run. Its merges of older `main` also left a duplicate import and a stray `);` in `TopBar.tsx`. |
 
-None of these branches changed on origin after it was evaluated (checked at the end).
+None of the refused branches is left unmerged; `exports` and `sales-purchases` themselves did not change on origin.
 
 ## Gates (local, Linux, Python 3.13, `uv sync --all-packages --all-extras`)
 
@@ -138,8 +138,9 @@ task text only and was never merged.
 | 17 | `muse/cis-eval` | `9272c8b6` | 40744420233 | no web change |
 | 18 | `spark/cis-eval-runs` (plus the /cis label fix below) | `f3a8db81` | 40747808603 | 40749547420 ✓ |
 | 19 | `muse/property-reader` with `spark/property-eval-runs` (its Spark run), plus the payroll fix below | `21c77bd2` | 40759245206 | 40761016629 ✓ |
-| 20 | `claude/site-layout` (signed-out `/` is the marketing home with its own public menu; app chrome only inside the app) | `91e59bf1` | 40769708968 | see below |
-| 21 | `spark/property-runs-pass2` (with `muse/property-reader-2`, which it sits on) and this review | this commit | see below | no web change |
+| 20 | `claude/site-layout` (signed-out `/` is the marketing home with its own public menu; app chrome only inside the app) | `91e59bf1` | 40769708968 | ✓ (pushed by a parallel session) |
+| 21 | `spark/property-runs-pass2` (with `muse/property-reader-2`, which it sits on) and its review | `d3d6328e` | | no web change |
+| 22 | `claude/known-fixes`, second round (brings `claude/exports` and `claude/sales-purchases`, fixed), plus the landing-copy correction for site-layout | MAIN_SHA | CI_RUN | DEPLOY |
 
 The integrator wrote a review wherever a branch arrived without one: `docs/reviews/cis-eval/`, `cis-eval-runs/` and
 `property-reader/`. The Spark figures were **recounted from `results.jsonl`**, not copied from the summaries. The CIS
@@ -159,6 +160,7 @@ schedules and 0 of 6 on mortgage statements.
 | + payroll fix | 2167 | 101 | 63 | 181 | 353 | 413 | 0 |
 | site-layout | 2167 | 101 | 63 | 181 | 353 | 426 | 0 |
 | property-runs-pass2 | 2171 | 101 | 63 | 181 | 354 | 424 | 2 |
+| known-fixes, round 2 (with site-layout and pass 2 merged) | 2336 | 101 | 63 | 181 | 354 | 467 | 0 |
 
 ruff 0.17.3 and pyright stayed clean throughout. The flaky tests were: on bank-feeds, the signed-out `/` *Speak*
 button was briefly disabled without a reason; on batch-tax, `files-manage` hit `ECONNRESET`, the PAYE RTI table was
@@ -209,6 +211,23 @@ cis-eval, `paye.spec.ts` (the long PAYE flow) failed once. On property-reader, a
   code box (and no other declaration was picked) before the update renders. A new e2e test holds the reply until the
   code is typed; it failed before the fix and passes after. The long PAYE flow passed 16 of 16 repeats, under CPU load
   too.
+- **known-fixes, round 2 (third pass).**
+  - The 23 conflicting files kept both sides. Invoice lines carry CIS `materials` *and* the catalogue's `item_code`,
+    and the exports API sits beside the CIS API. Ask's intents union `pay_overtime` with `create_quote` and
+    `convert_quote_to_invoice`. The routers for CIS, items, quotes, overview, purchase orders, repeating and exports
+    are all included.
+  - The sample-books run and its test follow what known-fixes now has (`main`'s fix).
+  - Two real faults came from the merge. Sales-purchases' `bills.py` called `final_journal` without awaiting it,
+    since batch-tax made it async; converting an order or making a repeating bill answered 500 (17 runtime tests and
+    `sales-purchases.spec`). Second, the signed-out submission sweep reads all 59 pages in one test, past its 90 s;
+    its time budget now grows with the page list, and its assertion is unchanged.
+- **Order on `main`.** A parallel integrator session pushed `claude/site-layout` (rows 20–21) to `main` before this
+  second round of known-fixes, so on `main` site-layout landed first. Its work was merged in, not overwritten.
+- **site-layout's landing copy** predated batch-tax, and two statements on the live landing page were no longer
+  true: "Separate property-income (SA105) figures are not in this build", and "flat-rate VAT" listed as not in this
+  build. Both are corrected. "RTI payroll" now reads "sending payroll (RTI) to HMRC", because the FPS and EPS files
+  are made. The production export has 0 pre-launch phrases (`scripts/prelaunch-words.mjs`, and the integrator's
+  HTML/JS scan).
 - **Signed-out `/cis` showed the sample label twice** (CI run 40745987742, and flaky locally). The sample card
   repeated the banner's "SAMPLE — FICTIONAL COMPANY" and rendered after the signed-in check, so the sweep counted 1 or
   2 depending on timing. The card no longer repeats it, so the banner is the one label, as the rule says. No test
@@ -216,7 +235,7 @@ cis-eval, `paye.spec.ts` (the long PAYE flow) failed once. On property-reader, a
 
 ## What remains
 
-- `claude/exports` and `claude/sales-purchases`, for their authors. Property invoices are still the weak kind (13 of 24).
+- Property invoices are still the property reader's weak kind (13 of 24 fully exact after pass 2).
 - The keep-alive `ECONNRESET` flake (cause and suggested fix above).
 - The public *Ask about Accnomos* dialog sometimes opens too late for `marketing.spec.ts` (two different tests, local
   and CI). It passed on retry each time; the cause has not been looked into.
