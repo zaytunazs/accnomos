@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R005",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Peak Roofing Services",
+  "supplier_vat_number": "GB 025 6517 83",
+  "invoice_number": "PEA-851",
+  "invoice_date": "2026-11-26",
+  "net": 1153.95,
+  "vat_rate": 20,
+  "reverse_charge_vat": 230.79,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 92800,
+  "materials": 22595,
+  "net": 115395,
+  "reverse_charge_vat": 23079
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

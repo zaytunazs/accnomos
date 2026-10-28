@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R014",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Shingle & Slate Roofing",
+  "supplier_vat_number": "GB 020 1098 35",
+  "invoice_number": "SHI-758",
+  "invoice_date": "2026-05-07",
+  "net": 1853.03,
+  "vat_rate": 5,
+  "reverse_charge_vat": 92.65,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 118000,
+  "materials": 67303,
+  "net": 185303,
+  "reverse_charge_vat": 9265
+ },
+ "expect_check_fail": [],
+ "rate": 5
+}

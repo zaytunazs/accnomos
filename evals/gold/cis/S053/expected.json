@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S053",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Aldermore Structures Ltd",
+  "contractor_ref": "610/RF40696",
+  "subcontractor_name": "Peak Roofing Services",
+  "subcontractor_utr": "2611491316",
+  "verification_number": null,
+  "tax_month_end": "2026-06-05",
+  "gross_amount": 6713.6,
+  "materials": 1707.91,
+  "amount_liable": 5005.69,
+  "deduction": 1001.13,
+  "net_paid": 5712.47,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 671360,
+  "materials": 170791,
+  "deduction": 100113,
+  "correct_deduction": 100113
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

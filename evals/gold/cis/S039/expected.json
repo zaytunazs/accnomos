@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S039",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Mansfield Modular Ltd",
+  "contractor_ref": "663/HR53625",
+  "subcontractor_name": "Wood & Wedge Joinery",
+  "subcontractor_utr": "7861221387",
+  "verification_number": null,
+  "tax_month_end": "2026-09-05",
+  "gross_amount": 5724.25,
+  "materials": 1577.24,
+  "amount_liable": 4147.01,
+  "deduction": 829.4,
+  "net_paid": 4894.85,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 572425,
+  "materials": 157724,
+  "deduction": 82940,
+  "correct_deduction": 82940
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

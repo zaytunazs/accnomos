@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S006",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Farnborough Fortitude Ltd",
+  "contractor_ref": "507/NS20561",
+  "subcontractor_name": "Deep Dig Groundworks",
+  "subcontractor_utr": "5075291703",
+  "verification_number": "V8594502849CD",
+  "tax_month_end": "2027-03-05",
+  "gross_amount": 4130.25,
+  "materials": 1752.83,
+  "amount_liable": 2377.42,
+  "deduction": 713.22,
+  "net_paid": 3417.03,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 413025,
+  "materials": 175283,
+  "deduction": 71322,
+  "correct_deduction": 71322
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}

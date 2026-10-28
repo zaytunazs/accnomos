@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "seed": 8,
+ "people": {
+  "landlord": "Arthur Pemberton",
+  "spouse": "Eleanor Pemberton",
+  "agent": "Oakhaven Lettings Ltd",
+  "tenant_flat": "Jasper Thorne",
+  "tenant_house": "Mila Vance",
+  "insurer": "SecureNest Property Ins.",
+  "lender": "Bridgepoint Lending",
+  "plumber": "QuickFlow Heating",
+  "gas": "G. Halloway Gas Svcs",
+  "appliances": "BrightSpark Electrics",
+  "block": "Harborview Mgmt Co"
+ },
+ "flat": {
+  "address": "Flat 3, Orchard House, 12 Station Road",
+  "town": "Elmswood",
+  "postcode": "EX4 2AB"
+ },
+ "house": {
+  "address": "27 Mill Lane",
+  "town": "Elmswood",
+  "postcode": "EX4 9CD"
+ }
+}

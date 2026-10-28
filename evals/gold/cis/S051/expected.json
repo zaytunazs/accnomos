@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S051",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Lancaster Lattice Ltd",
+  "contractor_ref": "209/SR60661",
+  "subcontractor_name": "Smooth Surface Co",
+  "subcontractor_utr": "0454409103",
+  "verification_number": null,
+  "tax_month_end": "2026-10-05",
+  "gross_amount": 3969.25,
+  "materials": 1617.37,
+  "amount_liable": 2351.88,
+  "deduction": 470.37,
+  "net_paid": 3498.88,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 396925,
+  "materials": 161737,
+  "deduction": 47037,
+  "correct_deduction": 47037
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

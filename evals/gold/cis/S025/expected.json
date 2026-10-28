@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S025",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Lancaster Lattice Ltd",
+  "contractor_ref": "774/PS81553",
+  "subcontractor_name": "Mosaic Master Tiling",
+  "subcontractor_utr": "5040008838",
+  "verification_number": "V3039081424HB",
+  "tax_month_end": "2026-09-05",
+  "gross_amount": 6954.75,
+  "materials": 1418.31,
+  "amount_liable": 5536.44,
+  "deduction": 1660.93,
+  "net_paid": 5293.82,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 695475,
+  "materials": 141831,
+  "deduction": 166093,
+  "correct_deduction": 166093
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}

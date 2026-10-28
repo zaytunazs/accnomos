@@ -219,6 +219,9 @@ app.include_router(vat_router)
 from app.routes_itsa import router as itsa_router  # noqa: E402  /books/self-employment/* (MTD Income Tax)
 
 app.include_router(itsa_router)
+from app.routes_vat_schemes import router as vat_schemes_router  # noqa: E402  GET/PUT /books/vat/schemes
+
+app.include_router(vat_schemes_router)
 from app.routes_dashboard import router as dashboard_router  # noqa: E402  GET /books/dashboard
 
 app.include_router(dashboard_router)
@@ -258,6 +261,9 @@ app.include_router(credit_notes_router)
 from app.routes_online_payments import router as online_payments_router  # noqa: E402  /payments/online/*
 
 app.include_router(online_payments_router)  # also /invoices/{number}/payment-link*
+from app.routes_cis import router as cis_router  # noqa: E402  /cis/* (CIS and the VAT reverse charge)
+
+app.include_router(cis_router)
 from app.routes_actions import router as actions_router  # noqa: E402  /actions/approve, /actions/reject
 
 app.include_router(actions_router)
@@ -267,6 +273,9 @@ app.include_router(spending_router)
 from app.routes_payroll import router as payroll_router  # noqa: E402  /payroll/runs
 
 app.include_router(payroll_router)
+from app.routes_payrun import router as payrun_router  # noqa: E402  /payroll/paye/* (PAYE, RTI files, pension)
+
+app.include_router(payrun_router)
 
 from app.routes_plan import router as plan_router  # noqa: E402  /plan/day, /plan/day/apply
 
@@ -317,6 +326,9 @@ app.include_router(audit_router)
 from app.routes_personal import router as personal_router  # noqa: E402  /personal/* (budgets, bills, goals)
 
 app.include_router(personal_router)
+from app.routes_property import router as property_router  # noqa: E402  /property/* (landlords, MTD property)
+
+app.include_router(property_router)
 from app.routes_files import backups_router  # noqa: E402  /backups, /backups/verify, /backups/restore
 from app.routes_files import router as files_router  # noqa: E402  /files/overview, index, move, archive
 

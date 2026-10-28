@@ -35,6 +35,8 @@ except ImportError:  # runtime used without packages/ledger on sys.path
 
 
 VAT_CONTROL = "2200 VAT control"
+#: Sole trader's Drawings (equity): where personal spending goes when the books belong to a sole trader.
+DRAWINGS = "3000 Drawings"
 BANK = "1200 Bank"
 CASH = "1210 Cash"
 #: Money taken through a payment link sits here until the provider pays it out to the bank (net of its fees, often
@@ -179,6 +181,51 @@ def draft_journal(doc: ExtractedDoc) -> list[JournalLine]:
 
 def is_balanced(journal: list[JournalLine]) -> bool:
     return sum(j.debit_pence for j in journal) == sum(j.credit_pence for j in journal)
+
+
+def private_account(company_number: str | None) -> str:
+    """Where personal spending goes: a company's Director's loan when its company number is set in the
+    invoice profile (the business settings the runtime already keeps), else a sole trader's Drawings."""
+    return OWNER_LOAN if (company_number or "").strip() else DRAWINGS
+
+
+def _shares(amounts: list[int], percent: int) -> list[int]:
+    """Business share of each amount at `percent` %, in whole pence. Largest remainder, so the shares
+    add up exactly to the rounded share of the total."""
+    target = (sum(amounts) * percent + 50) // 100
+    out = [(a * percent) // 100 for a in amounts]
+    short = target - sum(out)
+    order = sorted(range(len(amounts)), key=lambda i: ((amounts[i] * percent) % 100, i), reverse=True)
+    for i in order[: max(0, short)]:
+        out[i] += 1
+    return out
+
+
+def split_business_use(journal: list[JournalLine], percent: int, account: str) -> list[JournalLine]:
+    """Purchase journal with only `percent` % of the cost claimed: the business share stays on the expense
+    account (and VAT is reclaimed on that share only); the rest, private spending plus its unreclaimed VAT,
+    goes to `account` (Drawings, or the Director's loan) with no VAT code. Pence, so the parts add up
+    exactly to the totals and the draft still balances. `percent` 100 returns the journal unchanged."""
+    if not 0 <= percent <= 100:
+        raise ValueError(f"Business use is a whole percent from 0 to 100, not {percent!r}")
+    if percent == 100:
+        return journal
+    expense = [j for j in journal if j.debit_pence and j.account != VAT_CONTROL]
+    reclaim = [j for j in journal if j.debit_pence and j.account == VAT_CONTROL]
+    business_expense = _shares([j.debit_pence for j in expense], percent)
+    business_vat = _shares([j.debit_pence for j in reclaim], percent)
+    out: list[JournalLine] = []
+    for j, share in zip(expense, business_expense, strict=True):
+        if share:
+            out.append(j.model_copy(update={"debit_pence": share}))
+    for j, share in zip(reclaim, business_vat, strict=True):
+        if share:
+            out.append(j.model_copy(update={"debit_pence": share}))
+    private_pence = sum(j.debit_pence for j in journal) - sum(business_expense) - sum(business_vat)
+    if private_pence:
+        out.append(JournalLine(account=account, debit_pence=private_pence, vat_code=None))
+    out.extend(j for j in journal if j.credit_pence)
+    return out
 
 
 def with_expense_account(journal: list[JournalLine], account: str, credit_note: bool = False) -> list[JournalLine]:

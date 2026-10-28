@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S048",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Ipswich Industrial Inc Ltd",
+  "contractor_ref": "289/TR14180",
+  "subcontractor_name": "Oak & Ash Carpentry",
+  "subcontractor_utr": "0267511253",
+  "verification_number": null,
+  "tax_month_end": "2027-02-05",
+  "gross_amount": 5844.5,
+  "materials": 0.0,
+  "amount_liable": 5844.5,
+  "deduction": 1168.9,
+  "net_paid": 4675.6,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 584450,
+  "materials": 0,
+  "deduction": 116890,
+  "correct_deduction": 116890
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

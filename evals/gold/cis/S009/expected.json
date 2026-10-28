@@ -1,0 +1,29 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S009",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Ipswich Industrial Inc Ltd",
+  "contractor_ref": "126/CG90487",
+  "subcontractor_name": "Mosaic Master Tiling",
+  "subcontractor_utr": "9010928159",
+  "verification_number": null,
+  "tax_month_end": "2026-08-05",
+  "gross_amount": 3136.3,
+  "materials": 288.17,
+  "amount_liable": 2848.13,
+  "deduction": 572.62,
+  "net_paid": 2563.68,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 313630,
+  "materials": 28817,
+  "deduction": 57262,
+  "correct_deduction": 56962
+ },
+ "expect_check_fail": [
+  "RATE"
+ ],
+ "rate": 20
+}

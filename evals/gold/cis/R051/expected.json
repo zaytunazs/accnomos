@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R051",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Smooth Surface Co",
+  "supplier_vat_number": "GB 099 5902 12",
+  "invoice_number": "SMO-496",
+  "invoice_date": "2027-01-21",
+  "net": 1116.0,
+  "vat_rate": 20,
+  "reverse_charge_vat": 223.2,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 111600,
+  "materials": 0,
+  "net": 111600,
+  "reverse_charge_vat": 22320
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

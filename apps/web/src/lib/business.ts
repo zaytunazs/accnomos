@@ -86,13 +86,11 @@ export function loadBusiness(): Business | null {
   }
 }
 
-/**
- * Query string for GET /books/deadlines, or null when the runtime cannot work the deadlines out
- * (annual accounting has different rules).
- */
+/** Query string for GET /books/deadlines and the other VAT routes (`stagger=2`, `start_month=5`, `months=1`). */
 export function deadlinesQuery(b: Business | null): string | null {
   const business = b ?? DEFAULT_BUSINESS;
-  if (business.vatPeriod === "annual") return null;
+  // Annual: the quarters before and after the annual periods; the annual periods themselves come from the VAT
+  // scheme saved in the books (Settings › VAT scheme), so the runtime can work them out.
   if (business.vatPeriod === "monthly") return "months=1";
   return business.stagger === "custom" ? `start_month=${business.customStartMonth}` : `stagger=${business.stagger}`;
 }

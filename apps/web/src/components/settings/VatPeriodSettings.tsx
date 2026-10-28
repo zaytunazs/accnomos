@@ -50,7 +50,7 @@ export default function VatPeriodSettings({ card, heading }: { card: string; hea
           );
         })}
       </div>
-      {business.vatPeriod === "quarterly" && (
+      {business.vatPeriod !== "monthly" && (
         <div className="mt-3">
           <VatStaggerField
             idPrefix="settings-vat"
@@ -61,7 +61,10 @@ export default function VatPeriodSettings({ card, heading }: { card: string; hea
         </div>
       )}
       {business.vatPeriod === "annual" && (
-        <p className="mt-3 text-sm text-muted">Annual accounting deadlines are not calculated yet; Home shows sample dates.</p>
+        <p className="mt-3 text-sm text-muted">
+          Set the quarters you had before (and will have after) annual accounting above, then turn on annual accounting
+          under VAT scheme: the return, instalments and deadlines are worked out from there.
+        </p>
       )}
       {saved && (
         <p role="status" className="mt-2 text-sm font-bold text-teal-dark">

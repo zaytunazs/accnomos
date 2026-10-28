@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S011",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Kestrel Kinetic Ltd",
+  "contractor_ref": "405/CJ77947",
+  "subcontractor_name": "Aqua Flow Systems",
+  "subcontractor_utr": "2803852808",
+  "verification_number": null,
+  "tax_month_end": "2027-04-05",
+  "gross_amount": 3870.2,
+  "materials": 1814.18,
+  "amount_liable": 2056.02,
+  "deduction": 411.2,
+  "net_paid": 3459.0,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 387020,
+  "materials": 181418,
+  "deduction": 41120,
+  "correct_deduction": 41120
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

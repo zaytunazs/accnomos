@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "seed": 9,
+ "people": {
+  "landlord": "Arthur Pemberton",
+  "spouse": "Clara Pemberton",
+  "agent": "Hazel Key Lettings",
+  "tenant_flat": "Miles O'Connor",
+  "tenant_house": "Sarah Jenkins",
+  "insurer": "Oakwood Home Cover",
+  "lender": "Bramble Bay Lending",
+  "plumber": "QuickFlow Heating",
+  "gas": "Tom Gas Safe",
+  "appliances": "Bright Spark Electrics",
+  "block": "Urban Nest Mgmt"
+ },
+ "flat": {
+  "address": "Flat 3, Orchard House, 12 Station Road",
+  "town": "Farnborough",
+  "postcode": "LG4 7QT"
+ },
+ "house": {
+  "address": "27 Mill Lane",
+  "town": "Farnborough",
+  "postcode": "LG4 7QT"
+ }
+}

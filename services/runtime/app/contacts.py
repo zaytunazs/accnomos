@@ -79,6 +79,8 @@ EDITABLE = (
     "vat_status",
     "terms_days",
     "company_number",
+    "is_business",
+    "chasing_opt_out",
 )
 VAT_STATUSES = ("registered", "not_registered", "unknown")
 #: "current": not due yet; the others are days past the due date.
@@ -107,6 +109,10 @@ class Contact(BaseModel):
     terms_days: int | None = Field(default=None, ge=0, le=365)  # payment terms; ageing assumes 30 days when unset
     # Companies House number, set by the user (often after Look up on Contacts). Files saved before it load as None.
     company_number: str | None = None
+    # Business (not a consumer): only a business customer can owe statutory late-payment interest (app/chasing.py).
+    is_business: bool = True
+    # The user asked never to chase this contact: reminder steps are skipped, but interest still accrues.
+    chasing_opt_out: bool = False
     # The last HMRC Check a UK VAT number result for `vrn`, kept so the same number is not checked again on every
     # visit. Only a user's tap fills it (record_vat_check); a later VRN edit drops it.
     vat_check: VatCheck | None = None
@@ -789,6 +795,9 @@ def apply_edit(c: Contact, edits: dict[str, Any], others: Sequence[Contact], at:
             v = v or "unknown"
             if v not in VAT_STATUSES:
                 raise ContactEditError("VAT status must be registered, not_registered or unknown")
+        elif k in ("is_business", "chasing_opt_out"):
+            if v is not None and not isinstance(v, bool):
+                raise ContactEditError(f"{k} is either true or false")
         clean[k] = v
     if "name" in clean and (key := supplier_key(clean["name"])) != c.normalised_key:
         if c.normalised_key not in c.aliases:

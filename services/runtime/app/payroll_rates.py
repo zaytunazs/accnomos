@@ -2,7 +2,8 @@
 
 Source: HMRC, "Rates and thresholds for employers 2026 to 2027",
 https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027
-Check these figures against that page each April; nothing else in the code holds a rate.
+The PAYE payroll (app/payrun.py) uses the full 2026-27 tables in app/paye_rates.py; the constants here are the
+subset the timesheet estimate needs, taken from that table so the two can never disagree.
 
 Limits, stated plainly (also on every screen and file):
 - England and Northern Ireland income tax bands only (not Scottish or Welsh rates).
@@ -17,26 +18,29 @@ from __future__ import annotations
 
 from typing import Final
 
+from app import paye_rates as _R
+
 TAX_YEAR: Final = "2026-27"
 # Figures checked against this page on 27 Oct 2026.
 SOURCE_URL: Final = "https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027"
 TAX_CODE: Final = "1257L"
 
 # Annual figures in pence. Monthly figures are these ÷ 12 (pro-rated), not HMRC's monthly tables, so estimates
-# differ from the provider's: code 1257L gives £1,048.25 free pay a month in HMRC's tables (not £1,047.50), so the
-# estimated tax runs about 20p a month high; HMRC's rounded monthly NI thresholds move NI by a few pence.
-PERSONAL_ALLOWANCE: Final = 1_257_000  # £12,570
+# differ from the provider's: code 1257L gives £1,048.26 free pay a month in HMRC's Tables A and the PAYE tax table
+# routines (not £1,047.50), so the estimated tax runs about 20p a month high; HMRC's rounded monthly NI thresholds
+# move NI by a few pence.
+PERSONAL_ALLOWANCE: Final = _R.PERSONAL_ALLOWANCE_PENCE  # £12,570
 BASIC_RATE_LIMIT: Final = 5_027_000  # £50,270: basic rate band £37,700 above the allowance
 ADDITIONAL_RATE_THRESHOLD: Final = 12_514_000  # £125,140
 BASIC_RATE: Final = 20  # %
 HIGHER_RATE: Final = 40
 ADDITIONAL_RATE: Final = 45
 
-NI_PRIMARY_THRESHOLD: Final = 1_257_000  # £12,570 (PT)
-NI_UPPER_EARNINGS_LIMIT: Final = 5_027_000  # £50,270 (UEL)
+NI_PRIMARY_THRESHOLD: Final = _R.NI_LIMITS["annual"].pt  # £12,570 (PT)
+NI_UPPER_EARNINGS_LIMIT: Final = _R.NI_LIMITS["annual"].uel  # £50,270 (UEL)
 NI_EMPLOYEE_MAIN_RATE: Final = 8  # % between PT and UEL
 NI_EMPLOYEE_UPPER_RATE: Final = 2  # % above UEL
-NI_SECONDARY_THRESHOLD: Final = 500_000  # £5,000 (ST)
+NI_SECONDARY_THRESHOLD: Final = _R.NI_LIMITS["annual"].st  # £5,000 (ST)
 NI_EMPLOYER_RATE: Final = 15  # % above ST
 
 ESTIMATE_LABEL: Final = "Estimate — your payroll provider calculates the actual tax and NI"

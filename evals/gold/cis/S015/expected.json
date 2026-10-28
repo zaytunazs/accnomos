@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S015",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Brighton Bay Builders Ltd",
+  "contractor_ref": "121/AD79020",
+  "subcontractor_name": "Terra Firma Dig",
+  "subcontractor_utr": "7299752882",
+  "verification_number": null,
+  "tax_month_end": "2026-07-05",
+  "gross_amount": 761.05,
+  "materials": 0.0,
+  "amount_liable": 761.05,
+  "deduction": 152.21,
+  "net_paid": 608.84,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 76105,
+  "materials": 0,
+  "deduction": 15221,
+  "correct_deduction": 15221
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

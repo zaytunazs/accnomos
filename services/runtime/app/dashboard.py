@@ -30,6 +30,8 @@ from app.paths import upgrade
 from app.routes_vat import Deadlines, compute_deadlines
 from app.schemas import Proposal
 from app.settlement import load_records
+from app.vat_cycle import VatCycle
+from app.vat_schemes import SchemeContext, VatSchemeSettings, books_from_ledger, load_settings
 
 log = logging.getLogger(__name__)
 ACTIVITY_LIMIT = 10
@@ -371,7 +373,7 @@ async def build(
     # in flight); each is one Graph round trip per file.
     (
         (events, proposals, bank_lines, records),
-        (invoices, audit, autopilot, last_scan, books_profile),
+        (invoices, audit, autopilot, last_scan, books_profile, schemes),
     ) = await asyncio.gather(
         asyncio.gather(
             reads.run("ledger", books.list_events),
@@ -387,6 +389,7 @@ async def build(
             # Not a tile: an unreadable profile.json is the default profile (a VAT-registered company), as on the
             # gated routes (routes_books.require_feature).
             _profile_or_default(books),
+            reads.run("vat schemes", lambda: load_settings(books)),
         ),
     )
     vat_applies = "vat" in books_profile.features
@@ -398,7 +401,11 @@ async def build(
         return owed_to_you(ledger, invoices, today)
 
     async def vat() -> Deadlines:
-        return compute_deadlines(ledger.events, today, first_vat_month, vat_months, assumed=vat_assumed)
+        ctx = SchemeContext(schemes or VatSchemeSettings(), VatCycle(first_vat_month, vat_months, vat_assumed))
+        sb = books_from_ledger(ctx, ledger) if ctx.needs_ledger else None
+        return compute_deadlines(
+            ledger.events, today, first_vat_month, vat_months, assumed=vat_assumed, ctx=ctx, scheme_books=sb
+        )
 
     async def cash() -> Cash:
         return cash_position(ledger.bank_lines)

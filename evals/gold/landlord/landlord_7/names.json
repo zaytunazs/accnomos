@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "seed": 7,
+ "people": {
+  "landlord": "Arthur Penhaligon",
+  "spouse": "Eleanor Penhaligon",
+  "agent": "Hearthstone Lets Ltd",
+  "tenant_flat": "Bjorn Kettle",
+  "tenant_house": "Simone Ardent",
+  "insurer": "SafeRoof Cover Co",
+  "lender": "Granite Key Mortgages",
+  "plumber": "Pipeworks & Sons",
+  "gas": "G. H. Flame Safety",
+  "appliances": "Bolt & Spark Appliances",
+  "block": "Lantern Court Mgmt"
+ },
+ "flat": {
+  "address": "Flat 3, Willow House, 14 Elm Street",
+  "town": "Dovercourt",
+  "postcode": "CT18 2XY"
+ },
+ "house": {
+  "address": "42 Brackley Lane",
+  "town": "Dovercourt",
+  "postcode": "CT18 4PL"
+ }
+}

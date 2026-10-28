@@ -18,6 +18,7 @@ from app.books import Books
 from app.routes_dashboard import router as dashboard_router
 from app.routes_invoices import router as invoices_router
 from app.routes_payroll import router as payroll_router
+from app.routes_payrun import router as payrun_router
 from app.routes_profile import router as profile_router
 from app.routes_reports import router as reports_router
 from app.routes_vat import router as vat_router
@@ -41,6 +42,7 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
         vat_router,
         invoices_router,
         payroll_router,
+        payrun_router,
         reports_router,
         dashboard_router,
     ):
@@ -137,7 +139,7 @@ def test_a_hand_edited_file_falls_back_to_the_defaults() -> None:
 # --------------------------------------------------------------------------- #
 
 VAT_ROUTES = ["/books/vat", "/books/vat/periods", "/books/deadlines", "/reports/vat"]
-OTHER_GATED = ["/invoices", "/invoices/profile", "/payroll/runs"]
+OTHER_GATED = ["/invoices", "/invoices/profile", "/payroll/runs", "/payroll/paye/setup"]
 
 
 def test_personal_books_have_no_vat_invoices_or_payroll(client: TestClient) -> None:

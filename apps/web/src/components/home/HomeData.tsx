@@ -6,7 +6,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { deadlinesQuery, loadBusiness } from "@/lib/business";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { currentFeatures, PROFILE_EVENT } from "@/lib/profiles";
-import { runtime, type RtDashboard } from "@/lib/runtime";
+import { runtime, tileData, type RtDashboard } from "@/lib/runtime";
 import { errorText, todayIso } from "@/components/jobs/useAccount";
 
 /**
@@ -47,14 +47,16 @@ export function HomeData({ children }: { children: React.ReactNode }) {
       if (!account) return setState({ mode: "sample" });
       setState({ mode: "loading", account });
       warmServerAi(); // a cold Modal container starts now, not on the first upload
-      // null for annual returns (the runtime's VAT block is ignored). With no saved business the query is empty, so
-      // the runtime assumes calendar quarters and says so (`vat.assumed`) instead of the app sending a default.
+      // With no saved business the query is empty, so the runtime assumes calendar quarters and says so
+      // (`vat.assumed`) instead of the app sending a default. Annual returns are worked out only when annual
+      // accounting is saved in the books (Settings › VAT scheme); until then Home says they are not.
       const business = loadBusiness();
       const vat = business ? deadlinesQuery(business) : "";
       try {
         // Today in the UK, not the runtime's time zone (UTC is a day behind just after midnight BST).
         const data = await runtime.dashboard(account, `${vat ? `${vat}&` : ""}today=${todayIso()}`);
-        setState({ mode: "live", account, data, annualVat: vat === null });
+        const annualVat = business?.vatPeriod === "annual" && tileData(data.vat)?.annual !== true;
+        setState({ mode: "live", account, data, annualVat });
       } catch (e) {
         setState({ mode: "error", account, message: errorText(e) });
       }

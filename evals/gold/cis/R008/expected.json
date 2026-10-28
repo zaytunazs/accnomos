@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R008",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Colorful Canvas Decorators",
+  "supplier_vat_number": "GB 026 2456 91",
+  "invoice_number": "COL-993",
+  "invoice_date": "2026-12-21",
+  "net": 1339.51,
+  "vat_rate": 20,
+  "reverse_charge_vat": 267.9,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 76800,
+  "materials": 57151,
+  "net": 133951,
+  "reverse_charge_vat": 26790
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

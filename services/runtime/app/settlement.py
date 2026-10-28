@@ -61,11 +61,14 @@ class PaymentRecord(BaseModel):
     id: str
     side: Side
     date: date
-    amount_pence: int = Field(gt=0)
+    amount_pence: int = Field(gt=0)  # what it settles: the money plus any CIS deduction
     account: str = BANK
     reference: str | None = None
     counterparty: str
     allocations: list[Allocation] = Field(min_length=1)
+    # CIS (app/cis.py): the part of `amount_pence` the contractor deducted and paid HMRC instead (1150 CIS suffered on
+    # a sale; 2220 CIS deductions owed on a purchase). The bank saw `amount_pence - cis_deduction_pence`.
+    cis_deduction_pence: int = Field(0, ge=0)
     event_id: str | None = None  # Dr 1200 Bank / Cr 1100 Debtors (or the purchase mirror), posted by code
     bank_line_id: str | None = None  # the statement line this money came in or went out on, matched to `event_id`
     created_by: str
@@ -89,6 +92,7 @@ class Payment(BaseModel):
     counterparty: str
     allocations: list[Allocation]  # what it actually paid, after earlier payments and credit notes
     unallocated_pence: int  # left over: a credit on the contact
+    cis_deduction_pence: int = 0  # part of amount_pence deducted under CIS instead of paid (app/cis.py)
     event_id: str | None = None
     bank_line_id: str | None = None
 
@@ -281,6 +285,7 @@ def _record(s: Settlement, r: PaymentRecord, live: dict[str, Doc]) -> None:
         counterparty=r.counterparty,
         allocations=done,
         unallocated_pence=left,
+        cis_deduction_pence=r.cis_deduction_pence,
         event_id=r.event_id,
         bank_line_id=r.bank_line_id,
     )

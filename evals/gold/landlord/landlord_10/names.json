@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "seed": 10,
+ "people": {
+  "landlord": "Arthur Pumble",
+  "spouse": "Elara Pumble",
+  "agent": "Hollow Oak Lettings",
+  "tenant_flat": "Simone Fretwell",
+  "tenant_house": "Gareth Ollivane",
+  "insurer": "Brickwork Assurance",
+  "lender": "Cobalt Mortgage Co",
+  "plumber": "Thorne & Sons Plumbing",
+  "gas": "M. Vex Gas Safety",
+  "appliances": "Circuit & Socket",
+  "block": "Gablestone Management"
+ },
+ "flat": {
+  "address": "Flat 4, Willow Rise, 9 Chapel Street",
+  "town": "Dunmore",
+  "postcode": "DM4 7QZ"
+ },
+ "house": {
+  "address": "18 Ironwood Terrace",
+  "town": "Dunmore",
+  "postcode": "DM4 7QZ"
+ }
+}

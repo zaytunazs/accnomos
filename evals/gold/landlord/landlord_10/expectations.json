@@ -1,0 +1,758 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "owners": {
+  "flat": [
+   {
+    "name": "Arthur Pumble",
+    "me": true,
+    "share_bp": 10000
+   }
+  ],
+  "house": [
+   {
+    "name": "Arthur Pumble",
+    "me": true,
+    "share_bp": 5000
+   },
+   {
+    "name": "Elara Pumble",
+    "me": false,
+    "share_bp": 5000
+   }
+  ]
+ },
+ "documents": [
+  {
+   "kind": "letting_statement",
+   "date": "2026-04-28",
+   "property": "flat",
+   "title": "Landlord statement April 2026",
+   "lines": [
+    [
+     "Rent received from Simone Fretwell",
+     71000
+    ],
+    [
+     "Management fee 10%",
+     -7100
+    ],
+    [
+     "VAT on management fee at 20%",
+     -1420
+    ],
+    [
+     "Paid to landlord",
+     62480
+    ]
+   ],
+   "figures": [
+    {
+     "category": "rents",
+     "field": "periodAmount",
+     "box": "20",
+     "pence": 71000,
+     "what": "rent"
+    },
+    {
+     "category": "professional",
+     "field": "professionalFees",
+     "box": "27",
+     "pence": 8520,
+     "what": "management fee incl. VAT"
+    }
+   ]
+  },
+  {
+   "kind": "letting_statement",
+   "date": "2026-04-28",
+   "property": "house",
+   "title": "Landlord statement April 2026",
+   "lines": [
+    [
+     "Rent received from Gareth Ollivane",
+     113000
+    ],
+    [
+     "Management fee 10%",
+     -11300
+    ],
+    [
+     "VAT on management fee at 20%",
+     -2260
+    ],
+    [
+     "Paid to landlord",
+     99440
+    ]
+   ],
+   "figures": [
+    {
+     "category": "rents",
+     "field": "periodAmount",
+     "box": "20",
+     "pence": 113000,
+     "what": "rent"
+    },
+    {
+     "category": "professional",
+     "field": "professionalFees",
+     "box": "27",
+     "pence": 13560,
+     "what": "management fee incl. VAT"
+    }
+   ]
+  },
+  {
+   "kind": "letting_statement",
+   "date": "2026-05-28",
+   "property": "flat",
+   "title": "Landlord statement May 2026",
+   "lines": [
+    [
+     "Rent received from Simone Fretwell",
+     71000
+    ],
+    [
+     "Management fee 10%",
+     -7100
+    ],
+    [
+     "VAT on management fee at 20%",
+     -1420
+    ],
+    [
+     "Paid to landlord",
+     62480
+    ]
+   ],
+   "figures": [
+    {
+     "category": "rents",
+     "field": "periodAmount",
+     "box": "20",
+     "pence": 71000,
+     "what": "rent"
+    },
+    {
+     "category": "professional",
+     "field": "professionalFees",
+     "box": "27",
+     "pence": 8520,
+     "what": "management fee incl. VAT"
+    }
+   ]
+  },
+  {
+   "kind": "letting_statement",
+   "date": "2026-05-28",
+   "property": "house",
+   "title": "Landlord statement May 2026",
+   "lines": [
+    [
+     "Rent received from Gareth Ollivane",
+     113000
+    ],
+    [
+     "Management fee 10%",
+     -11300
+    ],
+    [
+     "VAT on management fee at 20%",
+     -2260
+    ],
+    [
+     "Paid to landlord",
+     99440
+    ]
+   ],
+   "figures": [
+    {
+     "category": "rents",
+     "field": "periodAmount",
+     "box": "20",
+     "pence": 113000,
+     "what": "rent"
+    },
+    {
+     "category": "professional",
+     "field": "professionalFees",
+     "box": "27",
+     "pence": 13560,
+     "what": "management fee incl. VAT"
+    }
+   ]
+  },
+  {
+   "kind": "letting_statement",
+   "date": "2026-06-28",
+   "property": "flat",
+   "title": "Landlord statement June 2026",
+   "lines": [
+    [
+     "Rent received from Simone Fretwell",
+     71000
+    ],
+    [
+     "Management fee 10%",
+     -7100
+    ],
+    [
+     "VAT on management fee at 20%",
+     -1420
+    ],
+    [
+     "Paid to landlord",
+     62480
+    ]
+   ],
+   "figures": [
+    {
+     "category": "rents",
+     "field": "periodAmount",
+     "box": "20",
+     "pence": 71000,
+     "what": "rent"
+    },
+    {
+     "category": "professional",
+     "field": "professionalFees",
+     "box": "27",
+     "pence": 8520,
+     "what": "management fee incl. VAT"
+    }
+   ]
+  },
+  {
+   "kind": "letting_statement",
+   "date": "2026-06-28",
+   "property": "house",
+   "title": "Landlord statement June 2026",
+   "lines": [
+    [
+     "Rent received from Gareth Ollivane",
+     113000
+    ],
+    [
+     "Management fee 10%",
+     -11300
+    ],
+    [
+     "VAT on management fee at 20%",
+     -2260
+    ],
+    [
+     "Paid to landlord",
+     99440
+    ]
+   ],
+   "figures": [
+    {
+     "category": "rents",
+     "field": "periodAmount",
+     "box": "20",
+     "pence": 113000,
+     "what": "rent"
+    },
+    {
+     "category": "professional",
+     "field": "professionalFees",
+     "box": "27",
+     "pence": 13560,
+     "what": "management fee incl. VAT"
+    }
+   ]
+  },
+  {
+   "kind": "letting_statement",
+   "date": "2026-07-28",
+   "property": "flat",
+   "title": "Landlord statement July 2026",
+   "lines": [
+    [
+     "Rent received from Simone Fretwell",
+     71000
+    ],
+    [
+     "Management fee 10%",
+     -7100
+    ],
+    [
+     "VAT on management fee at 20%",
+     -1420
+    ],
+    [
+     "Paid to landlord",
+     62480
+    ]
+   ],
+   "figures": [
+    {
+     "category": "rents",
+     "field": "periodAmount",
+     "box": "20",
+     "pence": 71000,
+     "what": "rent"
+    },
+    {
+     "category": "professional",
+     "field": "professionalFees",
+     "box": "27",
+     "pence": 8520,
+     "what": "management fee incl. VAT"
+    }
+   ]
+  },
+  {
+   "kind": "letting_statement",
+   "date": "2026-07-28",
+   "property": "house",
+   "title": "Landlord statement July 2026",
+   "lines": [
+    [
+     "Rent received from Gareth Ollivane",
+     113000
+    ],
+    [
+     "Management fee 10%",
+     -11300
+    ],
+    [
+     "VAT on management fee at 20%",
+     -2260
+    ],
+    [
+     "Repair paid to Thorne & Sons Plumbing: kitchen tap and waste",
+     -15499
+    ],
+    [
+     "Paid to landlord",
+     83941
+    ]
+   ],
+   "figures": [
+    {
+     "category": "rents",
+     "field": "periodAmount",
+     "box": "20",
+     "pence": 113000,
+     "what": "rent"
+    },
+    {
+     "category": "professional",
+     "field": "professionalFees",
+     "box": "27",
+     "pence": 13560,
+     "what": "management fee incl. VAT"
+    },
+    {
+     "category": "repairs",
+     "field": "repairsAndMaintenance",
+     "box": "25",
+     "pence": 15499,
+     "what": "repair paid by the agent"
+    }
+   ]
+  },
+  {
+   "kind": "letting_statement",
+   "date": "2026-08-28",
+   "property": "flat",
+   "title": "Landlord statement August 2026",
+   "lines": [
+    [
+     "Rent received from Simone Fretwell",
+     71000
+    ],
+    [
+     "Management fee 10%",
+     -7100
+    ],
+    [
+     "VAT on management fee at 20%",
+     -1420
+    ],
+    [
+     "Paid to landlord",
+     62480
+    ]
+   ],
+   "figures": [
+    {
+     "category": "rents",
+     "field": "periodAmount",
+     "box": "20",
+     "pence": 71000,
+     "what": "rent"
+    },
+    {
+     "category": "professional",
+     "field": "professionalFees",
+     "box": "27",
+     "pence": 8520,
+     "what": "management fee incl. VAT"
+    }
+   ]
+  },
+  {
+   "kind": "letting_statement",
+   "date": "2026-08-28",
+   "property": "house",
+   "title": "Landlord statement August 2026",
+   "lines": [
+    [
+     "Rent received from Gareth Ollivane",
+     113000
+    ],
+    [
+     "Management fee 10%",
+     -11300
+    ],
+    [
+     "VAT on management fee at 20%",
+     -2260
+    ],
+    [
+     "Paid to landlord",
+     99440
+    ]
+   ],
+   "figures": [
+    {
+     "category": "rents",
+     "field": "periodAmount",
+     "box": "20",
+     "pence": 113000,
+     "what": "rent"
+    },
+    {
+     "category": "professional",
+     "field": "professionalFees",
+     "box": "27",
+     "pence": 13560,
+     "what": "management fee incl. VAT"
+    }
+   ]
+  },
+  {
+   "kind": "letting_statement",
+   "date": "2026-09-28",
+   "property": "flat",
+   "title": "Landlord statement September 2026",
+   "lines": [
+    [
+     "Rent received from Simone Fretwell",
+     71000
+    ],
+    [
+     "Management fee 10%",
+     -7100
+    ],
+    [
+     "VAT on management fee at 20%",
+     -1420
+    ],
+    [
+     "Paid to landlord",
+     62480
+    ]
+   ],
+   "figures": [
+    {
+     "category": "rents",
+     "field": "periodAmount",
+     "box": "20",
+     "pence": 71000,
+     "what": "rent"
+    },
+    {
+     "category": "professional",
+     "field": "professionalFees",
+     "box": "27",
+     "pence": 8520,
+     "what": "management fee incl. VAT"
+    }
+   ]
+  },
+  {
+   "kind": "letting_statement",
+   "date": "2026-09-28",
+   "property": "house",
+   "title": "Landlord statement September 2026",
+   "lines": [
+    [
+     "Rent received from Gareth Ollivane",
+     113000
+    ],
+    [
+     "Management fee 10%",
+     -11300
+    ],
+    [
+     "VAT on management fee at 20%",
+     -2260
+    ],
+    [
+     "Paid to landlord",
+     99440
+    ]
+   ],
+   "figures": [
+    {
+     "category": "rents",
+     "field": "periodAmount",
+     "box": "20",
+     "pence": 113000,
+     "what": "rent"
+    },
+    {
+     "category": "professional",
+     "field": "professionalFees",
+     "box": "27",
+     "pence": 13560,
+     "what": "management fee incl. VAT"
+    }
+   ]
+  },
+  {
+   "kind": "insurance",
+   "date": "2026-04-20",
+   "property": "house",
+   "title": "Landlord buildings and contents insurance, 18 Ironwood Terrace",
+   "lines": [
+    [
+     "Annual premium including Insurance Premium Tax",
+     28500
+    ],
+    [
+     "of which Insurance Premium Tax",
+     3053
+    ]
+   ],
+   "figures": [
+    {
+     "category": "premises",
+     "field": "premisesRunningCosts",
+     "box": "24",
+     "pence": 28500,
+     "what": "annual landlord insurance"
+    }
+   ]
+  },
+  {
+   "kind": "mortgage_statement",
+   "date": "2026-10-05",
+   "property": "house",
+   "title": "Mortgage statement, 6 April to 5 October 2026",
+   "lines": [
+    [
+     "Monthly payments made (6)",
+     478800
+    ],
+    [
+     "of which interest",
+     284088
+    ],
+    [
+     "of which capital repaid",
+     194712
+    ]
+   ],
+   "figures": [
+    {
+     "category": "finance_res",
+     "field": "residentialFinancialCost",
+     "box": "44",
+     "pence": 284088,
+     "what": "mortgage interest only; capital repaid is not a cost"
+    }
+   ]
+  },
+  {
+   "kind": "invoice",
+   "date": "2026-05-14",
+   "property": "flat",
+   "title": "Landlord gas safety record (CP12)",
+   "lines": [
+    [
+     "Annual gas safety check and certificate",
+     6700
+    ]
+   ],
+   "figures": [
+    {
+     "category": "other",
+     "field": "other",
+     "box": "29",
+     "pence": 6700,
+     "what": "gas safety certificate"
+    }
+   ]
+  },
+  {
+   "kind": "invoice",
+   "date": "2026-08-03",
+   "property": "house",
+   "title": "Boiler repair",
+   "lines": [
+    [
+     "Replace diverter valve, labour and parts",
+     14900
+    ],
+    [
+     "VAT at 20%",
+     2980
+    ],
+    [
+     "Total",
+     17880
+    ]
+   ],
+   "figures": [
+    {
+     "category": "repairs",
+     "field": "repairsAndMaintenance",
+     "box": "25",
+     "pence": 17880,
+     "what": "repair incl. VAT (landlord not VAT registered)"
+    }
+   ]
+  },
+  {
+   "kind": "invoice",
+   "date": "2026-06-22",
+   "property": "flat",
+   "title": "Replacement washing machine (like for like)",
+   "lines": [
+    [
+     "Washing machine, 8 kg",
+     51099
+    ],
+    [
+     "Removal and disposal of the old machine",
+     2000
+    ],
+    [
+     "Trade-in allowance",
+     -2500
+    ]
+   ],
+   "figures": [
+    {
+     "category": "domestic_items",
+     "field": "costOfReplacingDomesticItems",
+     "box": "36",
+     "pence": 50599,
+     "what": "replacement relief: cost + disposal − proceeds"
+    }
+   ]
+  },
+  {
+   "kind": "invoice",
+   "date": "2026-06-24",
+   "property": "flat",
+   "title": "Ground rent and service charge, half year to 28 September 2026",
+   "lines": [
+    [
+     "Ground rent",
+     25600
+    ],
+    [
+     "Service charge",
+     103000
+    ]
+   ],
+   "figures": [
+    {
+     "category": "premises",
+     "field": "premisesRunningCosts",
+     "box": "24",
+     "pence": 128600,
+     "what": "ground rent and service charge"
+    }
+   ]
+  }
+ ],
+ "tax_year": "2026-27",
+ "period": {
+  "from": "2026-04-06",
+  "to": "2026-10-05"
+ },
+ "whole": {
+  "flat": {
+   "rents": 426000,
+   "professional": 51120,
+   "other": 6700,
+   "domestic_items": 50599,
+   "premises": 128600
+  },
+  "house": {
+   "rents": 678000,
+   "professional": 81360,
+   "repairs": 33379,
+   "premises": 28500,
+   "finance_res": 284088
+  }
+ },
+ "per_owner": {
+  "flat": {
+   "Arthur Pumble": {
+    "rents": 426000,
+    "professional": 51120,
+    "other": 6700,
+    "domestic_items": 50599,
+    "premises": 128600
+   }
+  },
+  "house": {
+   "Arthur Pumble": {
+    "rents": 339000,
+    "professional": 40680,
+    "repairs": 16690,
+    "premises": 14250,
+    "finance_res": 142044
+   },
+   "Elara Pumble": {
+    "rents": 339000,
+    "professional": 40680,
+    "repairs": 16689,
+    "premises": 14250,
+    "finance_res": 142044
+   }
+  }
+ },
+ "mine": {
+  "rents": 765000,
+  "professional": 91800,
+  "other": 6700,
+  "domestic_items": 50599,
+  "premises": 142850,
+  "repairs": 16690,
+  "finance_res": 142044
+ },
+ "mine_expenses": 258040,
+ "mine_profit": 456361,
+ "finance_credit_pence": 28408,
+ "cumulative_body": {
+  "fromDate": "2026-04-06",
+  "toDate": "2026-10-05",
+  "ukProperty": {
+   "income": {
+    "periodAmount": 7650.0
+   },
+   "expenses": {
+    "premisesRunningCosts": 1428.5,
+    "repairsAndMaintenance": 166.9,
+    "professionalFees": 918.0,
+    "other": 67.0,
+    "residentialFinancialCost": 1420.44
+   }
+  }
+ },
+ "annual_body": {
+  "ukProperty": {
+   "allowances": {
+    "costOfReplacingDomesticItems": 505.99
+   }
+  }
+ }
+}

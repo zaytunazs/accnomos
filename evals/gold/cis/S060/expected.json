@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S060",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Havering Heights Ltd",
+  "contractor_ref": "737/MT32503",
+  "subcontractor_name": "White Wall Plasters",
+  "subcontractor_utr": "7220082619",
+  "verification_number": null,
+  "tax_month_end": "2026-11-05",
+  "gross_amount": 1586.0,
+  "materials": 478.05,
+  "amount_liable": 1107.95,
+  "deduction": 221.59,
+  "net_paid": 1364.41,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 158600,
+  "materials": 47805,
+  "deduction": 22159,
+  "correct_deduction": 22159
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

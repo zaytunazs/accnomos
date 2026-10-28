@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S035",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Ipswich Industrial Inc Ltd",
+  "contractor_ref": "452/NL25847",
+  "subcontractor_name": "Smooth Surface Co",
+  "subcontractor_utr": "6020776426",
+  "verification_number": null,
+  "tax_month_end": "2027-04-05",
+  "gross_amount": 3432.75,
+  "materials": 1274.38,
+  "amount_liable": 2158.37,
+  "deduction": 431.67,
+  "net_paid": 3001.08,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 343275,
+  "materials": 127438,
+  "deduction": 43167,
+  "correct_deduction": 43167
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

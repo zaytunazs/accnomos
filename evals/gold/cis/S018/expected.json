@@ -1,0 +1,29 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S018",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Eastwick Estates Ltd",
+  "contractor_ref": "563/WA18305",
+  "subcontractor_name": "Flow State Plumbing",
+  "subcontractor_utr": "5888718033",
+  "verification_number": "V2189349776BJ",
+  "tax_month_end": "2026-07-05",
+  "gross_amount": 8514.65,
+  "materials": 2917.53,
+  "amount_liable": 5597.12,
+  "deduction": 1674.13,
+  "net_paid": 6840.52,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 851465,
+  "materials": 291753,
+  "deduction": 167413,
+  "correct_deduction": 167913
+ },
+ "expect_check_fail": [
+  "RATE"
+ ],
+ "rate": 30
+}

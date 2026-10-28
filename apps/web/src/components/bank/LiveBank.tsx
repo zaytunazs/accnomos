@@ -51,6 +51,7 @@ const ACTIONS: { action: LineAction; label: string }[] = [
   { action: "create_expense_proposal", label: "Create expense proposal" },
   { action: "payout_stripe", label: "Payout from Stripe" },
   { action: "payout_paypal", label: "Payout from PayPal" },
+  { action: "mark_private", label: "Private" },
   { action: "mark_transfer", label: "Mark as transfer" },
   { action: "ignore", label: "Ignore" },
 ];
@@ -470,6 +471,8 @@ function effectText(line: RtBankLine, action: LineAction): string {
     return `${money(line.amount_pence)} moves from ${CLEARING[action]} to 1200 Bank. The payments it pays out are already in your books, so it is not counted as income again.`;
   if (action === "create_expense_proposal")
     return `A ${money(Math.abs(line.amount_pence))} expense proposal with no VAT reclaimed will wait in Review.`;
+  if (action === "mark_private")
+    return `A ${money(Math.abs(line.amount_pence))} private-spending proposal will wait in Review. Approving posts it to Drawings (or the Director's loan), with no VAT.`;
   if (action === "mark_transfer")
     return `${line.description} will be marked as a transfer between your own accounts. Nothing will be booked.`;
   return `${line.description} will be ignored. Nothing will be booked.`;
@@ -500,6 +503,10 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
         await runtime.bank.expenseProposal(a, line.id);
         return `Expense proposal for ${line.description} is waiting on Review.`;
       }
+      if (action === "mark_private") {
+        await runtime.bank.privateProposal(a, line.id);
+        return `Private-spending proposal for ${line.description} is waiting on Review.`;
+      }
       if (action === "mark_transfer") {
         await runtime.bank.transfer(a, line.id);
         return `${line.description} marked as a transfer.`;
@@ -518,7 +525,7 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
           const posted = proposal_status === "posted";
           const menuOpen = openMenu === line.id;
           const items = ACTIONS.filter((x) =>
-            x.action === "create_expense_proposal" ? line.amount_pence < 0
+            x.action === "create_expense_proposal" || x.action === "mark_private" ? line.amount_pence < 0
             : x.action === "payout_stripe" || x.action === "payout_paypal" ? line.amount_pence > 0
             : true,
           );

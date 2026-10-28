@@ -6,6 +6,12 @@ what each payment paid).
     money in from a customer:  Dr 1200 Bank (or 1210 Cash)  /  Cr 1100 Debtors
     money out to a supplier:   Dr 2100 Creditors            /  Cr 1200 Bank (or 1210 Cash)
 
+Under CIS (app/cis.py) a contractor pays a subcontractor's invoice net of a deduction it pays HMRC instead. With
+`cis_deduction_pence` the payment settles the money plus the deduction, and the deduction is posted too:
+
+    received net of CIS:       Dr 1200 Bank (net) + Dr 1150 CIS suffered (deduction)  /  Cr 1100 Debtors
+    paid net of CIS:           Dr 2100 Creditors  /  Cr 1200 Bank (net) + Cr 2220 CIS deductions owed (deduction)
+
 as a `bank` event with no VAT (a payment is not a supply, so it never reaches the VAT return), and saves the split
 the user chose in _System/Payments/payments.json. When the money is a line on an imported bank statement, the line is
 matched to that event, so the Bank page shows it reconciled. Removing a payment appends a reversal of its event (and
@@ -34,6 +40,7 @@ from accnomos_ledger.matching import Match
 from app.approve import reversal_of
 from app.books import BankMatchError, Books, now
 from app.books import today as london_today
+from app.cis import CIS_OWED, CIS_SUFFERED
 from app.contacts import Doc, Ledger, documents, load_ledger
 from app.invoicing import Invoice, InvoiceError, InvoiceStateError, list_invoices, money, save_invoice
 from app.journal import BANK, CASH, CREDITORS, DEBTORS, PAYPAL_CLEARING, STRIPE_CLEARING
@@ -60,6 +67,8 @@ class PaymentIn(StrictBody):
     reference: str | None = Field(None, max_length=120)
     allocations: list[AllocationIn] = Field(min_length=1, max_length=50)
     bank_line_id: str | None = Field(None, pattern=r"^[0-9a-f]{16}$", max_length=16)
+    # CIS: deducted by the contractor on top of `amount_pence` (the money that moved); app/cis.py
+    cis_deduction_pence: Pence = Field(default=0, ge=0, le=MAX_PENCE)
 
 
 class PaymentError(InvoiceError):
@@ -72,16 +81,19 @@ def payment_event_id(record_id: str) -> str:
 
 def payment_event(r: PaymentRecord, user: str, refs: list[str]) -> LedgerEvent:
     memo = "Payment for " + ", ".join(refs) if refs else "Payment"
+    cut = r.cis_deduction_pence
+    money_moved = r.amount_pence - cut
     if r.side == "sale":
-        lines = [
-            Line(account=r.account, debit=r.amount_pence, memo=memo),
-            Line(account=DEBTORS, credit=r.amount_pence, memo=memo),
-        ]
+        lines = [Line(account=r.account, debit=money_moved, memo=memo)] if money_moved else []
+        if cut:
+            lines.append(Line(account=CIS_SUFFERED, debit=cut, memo=f"CIS deducted by the contractor; {memo}"))
+        lines.append(Line(account=DEBTORS, credit=r.amount_pence, memo=memo))
     else:
-        lines = [
-            Line(account=CREDITORS, debit=r.amount_pence, memo=memo),
-            Line(account=r.account, credit=r.amount_pence, memo=memo),
-        ]
+        lines = [Line(account=CREDITORS, debit=r.amount_pence, memo=memo)]
+        if money_moved:
+            lines.append(Line(account=r.account, credit=money_moved, memo=memo))
+        if cut:
+            lines.append(Line(account=CIS_OWED, credit=cut, memo=f"CIS deducted for HMRC; {memo}"))
     return LedgerEvent(
         id=payment_event_id(r.id),
         kind="bank",
@@ -156,6 +168,10 @@ async def record_payment(books: Books, body: PaymentIn, user: str, *, today: dat
             raise PaymentError("A bank statement line is money in 1200 Bank")
     if amount is None:
         raise PaymentError("Say how much was paid")
+    cut = body.cis_deduction_pence
+    if cut:
+        await _check_cis(books, body, cut)
+    amount += cut  # what the payment settles: the money and the deduction the contractor paid HMRC
     split = sum(a.amount_pence for a in body.allocations)
     if split > amount:
         raise PaymentError(f"The split adds up to {money(split)}, more than the payment of {money(amount)}")
@@ -172,6 +188,7 @@ async def record_payment(books: Books, body: PaymentIn, user: str, *, today: dat
         counterparty=chosen[0].name,
         allocations=[Allocation(event_id=a.event_id, amount_pence=a.amount_pence) for a in body.allocations],
         bank_line_id=body.bank_line_id,
+        cis_deduction_pence=cut,
         created_by=user,
         created_at=now(),
     )
@@ -193,6 +210,7 @@ async def record_payment(books: Books, body: PaymentIn, user: str, *, today: dat
             "event_path": path,
             "side": record.side,
             "amount_pence": record.amount_pence,
+            "cis_deduction_pence": cut,
             "unallocated_pence": amount - split,
             "documents": [a.event_id for a in body.allocations],
             "invoice": ledger.refs.get(body.allocations[0].event_id),
@@ -202,6 +220,28 @@ async def record_payment(books: Books, body: PaymentIn, user: str, *, today: dat
     await sync_invoices(books, {a.event_id for a in body.allocations})
     await books.rebuild_safely(f"user:{user}")
     return record
+
+
+async def _check_cis(books: Books, body: PaymentIn, cut: int) -> None:
+    """A CIS deduction on a payment received must be against CIS invoices, and no more than the higher rate (30%)
+    on their labour. A deduction on a payment made (we are the contractor) is checked by app/cis.py, which works it
+    out from the subcontractor's status."""
+    if body.side == "purchase":
+        return
+    from app import cis  # late: app.cis imports nothing from here, but keep the payment path light
+
+    by_event = {inv.event_id: inv for inv in await list_invoices(books) if inv.event_id}
+    cis_invoices = [
+        by_event[a.event_id] for a in body.allocations if a.event_id in by_event and by_event[a.event_id].cis
+    ]
+    if not cis_invoices:
+        raise PaymentError("None of these invoices shows a CIS deduction; a CIS deduction needs a CIS invoice")
+    most = sum(cis.max_deduction(inv.cis) for inv in cis_invoices if inv.cis)
+    if cut > most:
+        raise PaymentError(
+            f"A CIS deduction of {money(cut)} is more than 30% of the labour on these invoices ({money(most)}); "
+            "check the contractor's statement"
+        )
 
 
 async def remove_payment(books: Books, payment_id: str, user: str) -> list[str]:
@@ -284,6 +324,7 @@ class InvoicePayment(BaseModel):
     account: str | None = None
     reference: str | None = None
     description: str
+    cis_deduction_pence: int = 0  # part of amount_pence the contractor deducted under CIS (not in the bank)
 
 
 class AppliedCredit(BaseModel):
@@ -328,7 +369,8 @@ def invoice_money(inv: Invoice, ledger: Ledger) -> InvoiceMoney | None:
             applied_pence=_applied(p, eid),
             account=p.account,
             reference=p.reference,
-            description=p.description,
+            description=p.description + (" (net of CIS)" if p.cis_deduction_pence else ""),
+            cis_deduction_pence=p.cis_deduction_pence,
         )
         for p in pays
     ]
@@ -500,7 +542,7 @@ def money_events(ledger: Ledger) -> dict[str, MoneyEvent]:
                 id=r.id,
                 side=r.side,
                 date=r.date,
-                bank_pence=r.amount_pence if r.side == "sale" else -r.amount_pence,
+                bank_pence=(r.amount_pence - r.cis_deduction_pence) * (1 if r.side == "sale" else -1),
                 account=r.account,
                 counterparty=r.counterparty,
                 reference=r.reference,

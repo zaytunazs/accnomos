@@ -1,0 +1,22 @@
+SAMPLE — FICTIONAL COMPANY
+
+Red Brick Solutions
+77 Clay Road, Newcastle, NE1 1DD
+VAT reg no: GB 016 1333 22
+
+VAT INVOICE
+Invoice number                         RED-202
+Invoice date                        02/02/2027
+
+Bill to:
+Glasgow Gateways Ltd
+77 Clyde Street, Glasgow, G1 1GG
+VAT no: GB 010 0147 60
+
+Lay facade brickwork (24 h @ £40.50)   £972.00
+Materials supplied                   £1,449.57
+
+Net                                  £2,421.57
+VAT                                      £0.00
+Amount due                           £2,421.57
+SAMPLE — FICTIONAL COMPANY

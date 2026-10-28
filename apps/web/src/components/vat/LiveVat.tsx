@@ -9,6 +9,7 @@ import PrintButton from "@/components/PrintButton";
 import { fetchLiveVat, type RtVatBox as Box, type RtVatAdjustment, type RtVatPeriod, type RtVatView as VatView } from "@/lib/runtime";
 import { usePickedPeriod } from "@/lib/vat-period";
 import BoxExplain from "./BoxExplain";
+import SchemeNote from "./SchemeNote";
 import VatPeriodPicker from "./VatPeriodPicker";
 
 const fmt = (b: Box) => (b.box <= 5 ? `£${Number(b.amount).toLocaleString("en-GB", { minimumFractionDigits: 2 })}` : `£${Number(b.amount).toLocaleString("en-GB")}`);
@@ -230,6 +231,7 @@ export default function LiveVat() {
         </div>
       </div>
       {view.adjustments && view.adjustments.length > 0 && <Adjustments rows={view.adjustments} />}
+      {view.scheme && <SchemeNote scheme={view.scheme} />}
       {view.warnings.length > 0 && (
         <p className="mt-3 rounded-xl border border-warn-border bg-warn-bg p-3 text-sm text-warn-ink">{view.warnings.join(" · ")}</p>
       )}

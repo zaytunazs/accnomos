@@ -9,6 +9,7 @@ import { currentFeatures, PROFILE_EVENT } from "@/lib/profiles";
 import { runtime } from "@/lib/runtime";
 import { usePersonalOn } from "@/lib/personal";
 import { useSelfEmployed } from "@/lib/itsa";
+import { useLandlordOn } from "@/lib/property";
 
 type NavLink = { href: string; label: string; badge?: string; tab?: string };
 const links: NavLink[] = [
@@ -28,6 +29,7 @@ const links: NavLink[] = [
   { href: "/shopping", label: "Shopping list" },
   { href: "/contacts", label: "Contacts" },
   { href: "/vehicles", label: "Vehicles" },
+  { href: "/cis", label: "CIS" },
   { href: "/files", label: "Files", tab: "Files" },
 ];
 
@@ -79,16 +81,21 @@ export function useReviewBadge(pathname: string): string | undefined {
   return count ? String(count) : undefined;
 }
 
-/** The Review badge, Personal (Settings switch), Self-employment ("I am self-employed"), the profile's features,
- * and Home: signed out, `/` is the public landing page, so Home is the sample at `/try`. */
+/** The Review badge, Personal (Settings switch), Self-employment ("I am self-employed"), Property (landlord mode),
+ * the profile's features, and Home: signed out, `/` is the public landing page, so Home is the sample at `/try`. */
 function withBadges(
   review: string | undefined,
   features: string[] | null,
   personal: boolean,
   selfEmployed: boolean,
   signedOut: boolean,
+  landlord = false,
 ): NavLink[] {
-  const all = personal ? [...links, { href: "/personal", label: "Personal" }] : links;
+  const all = [
+    ...links,
+    ...(personal ? [{ href: "/personal", label: "Personal" }] : []),
+    ...(landlord ? [{ href: "/property", label: "Property" }] : []),
+  ];
   return all
     .filter((l) => selfEmployed || l.href !== "/self-employment")
     .filter((l) => !features || !FEATURE_OF[l.href] || features.includes(FEATURE_OF[l.href]))
@@ -120,13 +127,14 @@ const sidebarGroups: { label: string; hrefs: string[] }[] = [
   { label: "Books", hrefs: ["/", "/try", "/review", "/ask", "/files"] },
   { label: "Money", hrefs: ["/invoices", "/bank", "/vat", "/self-employment", "/month-end", "/payroll", "/reports"] },
   { label: "Buying", hrefs: ["/spending", "/prices", "/shopping"] },
-  { label: "Work", hrefs: ["/jobs", "/contacts", "/vehicles"] },
+  { label: "Work", hrefs: ["/jobs", "/contacts", "/vehicles", "/cis"] },
 ];
 
 function SidebarNav({ pathname, links }: { pathname: string; links: NavLink[] }) {
   const settingsActive = isActive(pathname, "/settings");
   const byHref = new Map(links.map((link) => [link.href, link]));
-  const groups = sidebarGroups.map((g) => (g.label === "Money" && byHref.has("/personal") ? { ...g, hrefs: [...g.hrefs, "/personal"] } : g));
+  const extra = ["/personal", "/property"].filter((href) => byHref.has(href));
+  const groups = sidebarGroups.map((g) => (g.label === "Money" && extra.length ? { ...g, hrefs: [...g.hrefs, ...extra] } : g));
 
   return (
     <nav aria-label="Main" className="hidden flex-col min-[900px]:flex">
@@ -226,7 +234,14 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
 export default function AppNav({ variant = "sidebar" }: { variant?: "sidebar" | "tabs" }) {
   const pathname = usePathname();
   const signedOut = useAccount() === null;
-  const navLinks = withBadges(useReviewBadge(pathname), useFeatures(), usePersonalOn(), useSelfEmployed(), signedOut);
+  const navLinks = withBadges(
+    useReviewBadge(pathname),
+    useFeatures(),
+    usePersonalOn(),
+    useSelfEmployed(),
+    signedOut,
+    useLandlordOn(),
+  );
 
   if (variant === "tabs") return <TabBar pathname={pathname} links={navLinks} />;
   return <SidebarNav pathname={pathname} links={navLinks} />;
