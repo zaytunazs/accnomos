@@ -332,6 +332,13 @@ async def test_feed_first_then_csv_imports_only_what_the_feed_lacks(client: Test
     ]
 
 
+def test_a_consent_withdrawn_at_the_bank_says_connect_again(client: TestClient) -> None:
+    conn = _connect(client)["connections"][0]
+    FAKES.deleted.add(conn["id"])  # the user stopped sharing in their bank's app
+    got = _ok(client.post("/books/bankfeeds/sync", headers=H))
+    assert got["new_lines"] == 0 and got["connections"][0]["error"].endswith("Connect again.")
+
+
 async def test_one_bank_down_does_not_fail_the_sync(client: TestClient) -> None:
     _connect(client)
     FAKES.fail_transactions = True

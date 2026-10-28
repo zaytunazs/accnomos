@@ -70,7 +70,7 @@ FIRST_SYNC_DAYS = 89  # how far back the first sync reads (banks give at least 9
 OVERLAP_DAYS = 7  # later syncs re-read this far back: late-posted lines are caught, seen ones dropped by id
 STATE_TTL_S = 900
 TEST_TOKEN_KEY = base64.b64encode(b"accnomos-test-mode-bankfeed-key!").decode()  # 32 bytes, test mode only
-ID_RE = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")  # connection and account ids we put in a path or a file
+ID_RE = re.compile(r"^[A-Za-z0-9_:-][A-Za-z0-9._:-]{0,127}$")  # ids put in a path or a file; never "." or ".."
 OFF_SENTENCE = "Bank feeds are not set up on this server yet. Upload a statement CSV instead."
 
 ConnectionState = Literal["ok", "reconfirm", "expired", "key_changed"]
@@ -688,8 +688,13 @@ async def sync(books: Books, user: str) -> SyncResult:
                 continue
             try:
                 lines, bad, rotated = await _fetch(api, conn, key, on)
-            except (TrueLayerError, BankFeedError) as exc:
-                row.error = f"{conn.bank}: {exc.message if isinstance(exc, TrueLayerError) else exc}"
+            except TrueLayerError as exc:
+                # A refused refresh token: the consent was withdrawn at the bank, or has lapsed there early.
+                again = " Connect again." if exc.status in (400, 401) else ""
+                row.error = f"{conn.bank}: {exc.message}.{again}"
+                continue
+            except BankFeedError as exc:
+                row.error = str(exc)
                 continue
             row.fetched = len(lines)
             fetched += lines

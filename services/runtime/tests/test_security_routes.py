@@ -294,8 +294,9 @@ def test_truelayer_calls_go_only_to_the_configured_bases():
     assert seen >= 5
     cfg = TrueLayerConfig("id", "secret", "https://x/cb")
     assert (cfg.auth_base, cfg.api_base) == (SANDBOX_AUTH, SANDBOX_API)
-    with pytest.raises(ValueError):
-        FeedAccount(id="../me", name="x")
+    for bad in ("../me", "..", "."):
+        with pytest.raises(ValueError):
+            FeedAccount(id=bad, name="x")
 
 
 def test_every_runtime_http_call_goes_to_an_allow_listed_base_and_follows_no_redirects():
