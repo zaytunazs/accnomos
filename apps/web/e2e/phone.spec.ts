@@ -162,14 +162,15 @@ test.describe("brand images at the size used, and reduced motion", () => {
     return seen;
   }
 
-  test("phone (412 px): the 800 px hero only; never hero.jpg or the Play feature graphic", async ({ page }) => {
-    expect(await brandRequests(page)).toEqual(["/brand/hero-800.jpg"]);
+  // One vector hero (2 kB) at every width: no scaled bitmap, so no resampling lines (docs/reviews/dashboard-ui).
+  test("phone (412 px): the vector hero only; never the old bitmaps or the Play feature graphic", async ({ page }) => {
+    expect(await brandRequests(page)).toEqual(["/brand/hero.svg"]);
   });
 
   test.describe("1280 px", () => {
     test.use({ viewport: { width: 1280, height: 800 } });
-    test("the full hero, still never the feature graphic", async ({ page }) => {
-      expect(await brandRequests(page)).toEqual(["/brand/hero.jpg"]);
+    test("the same vector hero, still never the feature graphic", async ({ page }) => {
+      expect(await brandRequests(page)).toEqual(["/brand/hero.svg"]);
     });
   });
 

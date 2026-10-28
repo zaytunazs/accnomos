@@ -206,11 +206,8 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
   Lines on bank and control accounts are refused.
 - **Chart names are fixed once used**: entries keep the "code name" they were posted with, so a used account can't be
   renamed (add a new one and recode). Account types must fit the code ranges the reports use; 9000–9999 is not allowed.
-- **Cash flow** includes open invoices and bills on account (overdue ones counted as due now) and the occurrences of
-  active repeating invoices and bills not made yet (since `claude/sales-exports-fix`): an invoice due its own days to pay
-  after the occurrence (else the profile's terms), a bill its supplier's terms after it (else 30 days). A repeating
-  bill's real due date is whatever the supplier's bill says; the forecast cannot know it. Pay runs, VAT payments and
-  card spending are not forecast.
+- **Cash flow** includes only open invoices and bills on account (overdue ones counted as due now). There are no repeating
+  invoices or bills in Accnomos yet, and pay runs, VAT payments and card spending are not forecast.
 - **Tracking** on bills is set on approval and applies to every cost line of the bill; credit notes, payments and recodes
   copy no tags from the user (a recode keeps the original line's tags).
 - Manual journals attach a document by its path in the books folder (no upload from the journal form).
@@ -335,6 +332,21 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - With no business settings saved, Home *Deadlines* assumes stagger 1 and now says so (`assumed: true`); the phone sends its saved stagger (or nothing, when none is saved) and shows the same note, linking to Settings. With annual accounting the tiles show "—" and "Annual VAT returns are not worked out yet". `GET /books/deadlines` returns `start_month` normalised to 1–3.
 - A provider-level read failure now marks only its tiles `{"error": ...}` (Graph 401/403 still fails the whole request, so the app signs in again); the Android app does not read that marker (not run). A failed pull-to-refresh on the phone keeps the old figures under a "Could not load your figures" line; the tiles are not marked stale.
 - The web sidebar names the saved AI choice (Glimmer on your machine, Muse Spark on your key, or the stub in test mode). Ask uses the period picked on `/vat` but has no picker of its own.
+
+- **Home dashboard and its summary (`GET /books/home`, claude/dashboard-ui) run on fakes only.** The summary has been
+  worded only by the test-mode stub AI and by code; no real model (Glimmer, Muse Spark, Modal) has written one, so how
+  often a real model's wording passes the number check, and so how often users see code's own sentences instead, is
+  unknown. The number check is Ask's `KnownNumbers` (every figure must be one of the facts, whole-pound roundings
+  allowed); it does not catch a right figure put in the wrong sentence ("£405.00 went out" when it came in).
+  Money in and out is from imported bank lines only (transfers and ignored lines left out), so a month without a
+  statement shows £0, not "unknown". The Aged card shows the Aged report's figures, which still count a sales invoice
+  marked paid by hand with no payment recorded; the Today tile does not, so the two can differ. The Income Tax card
+  uses standard update periods (5 Jul, 5 Oct, 5 Jan, 5 Apr; due the 7th of the next month), not calendar periods,
+  and shows for every sole trader and anyone with a property, whether or not their income is over the MTD threshold.
+  The deadlines were checked through gov.uk search results (gov.uk itself does not resolve from this environment).
+  Payroll's "next run" is the month after the last confirmed run; the pay date is shown only for a prepared run.
+  The cheaper-options line calls `GET /books/prices` on every Home visit. The Android app shows only the summary card
+  from this endpoint; `flutter analyze` and `flutter test` were not run for it (no Flutter SDK in that session).
 
 ## Profiles (linked accounts)
 

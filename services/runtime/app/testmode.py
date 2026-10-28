@@ -820,6 +820,15 @@ def close_reply(content: str) -> dict[str, Any]:
     return {"summary_md": text}
 
 
+def home_reply(content: str) -> dict[str, Any]:
+    """Home's summary (app/ai/home_summary.py) in words that quote only figures it was given."""
+    facts = json.loads(content.split("FACTS:\n", 1)[1])
+    cash = facts.get("cash")
+    head = f"Test stub summary: {cash['balance']} in the bank." if cash else "Test stub summary: no bank balance yet."
+    n = facts.get("needs_doing") or {}
+    return {"summary_md": f"{head} {n.get('in_review', 0)} waiting in Review."}
+
+
 def duplicate_reply(content: str) -> dict[str, Any]:
     """Deterministic duplicate judgement (app/ai/duplicates.py): same, keeping the first name listed."""
     first = re.search(r'^1\. "([^"]+)"', content, re.MULTILINE)
@@ -862,6 +871,10 @@ async def ai_chat(request: Request) -> JSONResponse:
 
     if system == close_summary.SYSTEM_PROMPT:
         return JSONResponse(_ollama(close_reply(messages[-1]["content"])))
+    from app.ai import home_summary
+
+    if system == home_summary.SYSTEM_PROMPT:
+        return JSONResponse(_ollama(home_reply(messages[-1]["content"])))
     from app.ai import items as items_ai
     from app.ai import spending as spending_ai
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 
 import '../models/dashboard.dart';
+import '../models/home_summary.dart';
 import '../models/suggestions.dart';
 import '../services/auth.dart';
 import '../services/books.dart' show booksClient;
@@ -32,6 +33,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loading = false;
   String? _error;
   Dashboard? _data;
+  HomeSummary? _summary;
   int _refresh = 0;
 
   /// Opens the screen a dashboard suggestion points at.
@@ -85,6 +87,13 @@ class _HomeScreenState extends State<HomeScreen> {
       final json = await client.dashboard(today: _today());
       if (!mounted) return;
       setState(() => _data = Dashboard.fromJson(json));
+      // The summary is extra: if it cannot load, the tiles still stand.
+      try {
+        final home = await client.home(today: _today());
+        if (mounted) setState(() => _summary = HomeSummary.fromHomeJson(home));
+      } catch (_) {
+        if (mounted) setState(() => _summary = null);
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
@@ -197,6 +206,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'only when you say so.',
             style: const TextStyle(color: AccnomosColors.muted, height: 1.4),
           ),
+          if (signedIn && _summary != null) ...[
+            const SizedBox(height: 14),
+            SummaryCard(summary: _summary!),
+          ],
           if (_error != null) ...[
             const SizedBox(height: 10),
             Text('Could not load your figures: $_error',
@@ -276,6 +289,45 @@ class _HomeScreenState extends State<HomeScreen> {
 /// "Assuming Mar/Jun/Sep/Dec quarters — set yours in Settings", shown when
 /// the runtime assumed calendar quarters (no stagger saved), worded like
 /// the web's Deadlines note. The link opens Settings.
+/// The summary at the top of Home: two to four sentences, figures by code.
+class SummaryCard extends StatelessWidget {
+  const SummaryCard({super.key, required this.summary});
+
+  final HomeSummary summary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      container: true,
+      label: 'Your summary',
+      child: Container(
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: AccnomosColors.tealTint,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Your summary',
+                style: TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: AccnomosColors.tealDark,
+                    fontSize: 16)),
+            const SizedBox(height: 6),
+            Text(summary.text,
+                style: const TextStyle(color: AccnomosColors.ink, height: 1.45)),
+            const SizedBox(height: 6),
+            Text(summary.byLine,
+                style:
+                    const TextStyle(color: AccnomosColors.muted, fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class AssumedStaggerNote extends StatelessWidget {
   const AssumedStaggerNote({super.key});
 

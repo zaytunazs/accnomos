@@ -125,9 +125,11 @@ body {
   --shadow-frame: 0 1px 2px rgb(7 59 53 / 0.08), 0 18px 40px -16px rgb(7 59 53 / 0.35);
 }
 
-/* Ledger paper: faint ruled lines on the green bands. */
+/* The green bands: a soft light from the top corner, no pattern. They used to carry faint ruled lines (a 1 px
+   repeating gradient every 40 px), which scaled screens drew as uneven stray lines across the hero (the owner's
+   "header image has lines on it"; docs/reviews/dashboard-ui/REVIEW.md). */
 .ledger-rule {
-  background-image: repeating-linear-gradient(to bottom, transparent 0 39px, rgb(244 243 238 / 0.055) 39px 40px);
+  background-image: radial-gradient(120% 90% at 85% 0%, rgb(244 243 238 / 0.07), transparent 60%);
 }
 
 /* On the green bands the teal focus ring would vanish: brass instead (≥ 4.5:1 on #0a4f47). */

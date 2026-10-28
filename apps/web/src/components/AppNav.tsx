@@ -142,7 +142,7 @@ function SidebarNav({ pathname, links }: { pathname: string; links: NavLink[] })
         <section key={group.label} aria-labelledby={`nav-group-${group.label.toLowerCase()}`}>
           <p
             id={`nav-group-${group.label.toLowerCase()}`}
-            className={`px-4 pb-1 text-[13px] font-bold text-muted ${i === 0 ? "pt-0" : "pt-4"}`}
+            className={`px-4 pb-1 text-[11px] font-bold uppercase tracking-[0.08em] text-muted ${i === 0 ? "pt-0" : "pt-4"}`}
           >
             {group.label}
           </p>

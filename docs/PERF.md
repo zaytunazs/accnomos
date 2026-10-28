@@ -66,16 +66,14 @@ never fetched.
 
 | File | Size | Where | Loaded |
 |---|---|---|---|
-| `brand/hero.jpg` | 1600 × 914, 164 kB | signed-out Home pitch, wider than 480 px | there only |
-| `brand/hero-800.jpg` | 800 × 457, 47 kB | the same band on phones (≤ 480 px; 220 px tall) | there only |
+| `brand/hero.svg` | vector, about 3 kB | signed-out Home pitch (`/try`), every width | there only |
 | `brand/feature-1024x500.png` | 524 kB | Play Store feature graphic | never by the web app |
 | `brand/icon-512.png` | 113 kB | launcher icon source | never by the web app |
 
-The hero is a CSS background chosen by a media query (`Pitch.tsx`), so a browser fetches only the matching
-file. `hero-800.jpg` was made from `hero.jpg` with Pillow (LANCZOS, JPEG quality 78, progressive). The desktop
-column is about 370 × 450 CSS px with `bg-cover`, so the 1600 px original is about right at 2× there.
-`phone.spec.ts` checks that at 412 px Home asks for `/brand/hero-800.jpg` and nothing else from `/brand/`, and
-at 1280 px only `/brand/hero.jpg`.
+The hero is one flat vector (`Pitch.tsx`, since 28 Oct 2026; it replaced `hero.jpg` and `hero-800.jpg`, whose
+hairline strokes resampled into stray lines when the bitmap was scaled: docs/reviews/dashboard-ui/REVIEW.md).
+`phone.spec.ts` checks that at 412 px and at 1280 px the sample Home asks for `/brand/hero.svg` and nothing else from
+`/brand/`.
 
 ## Motion
 
