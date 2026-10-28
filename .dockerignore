@@ -1,0 +1,13 @@
+# Build context is the repo root (deploy/docker-compose.yml). Keep secrets, personal data and local clutter out of it.
+.git
+.env
+.env.*
+**/.venv
+.v
+**/node_modules
+**/__pycache__
+# Early-adopter list and its exports: personal data, server data volume only (app/early_access.py)
+**/early-access*.jsonl
+**/early-access*.jsonl.lock
+**/early-access*.csv
+**/.early-access-*

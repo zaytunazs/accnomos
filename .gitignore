@@ -67,6 +67,12 @@ evals/runs/glimmer_messy_200_v2/*
 !evals/runs/glimmer_messy_200_v2/summary.json
 data/private/
 
+# Early-adopter list (personal data; lives on the server's data volume only) and owner exports of it
+early-access*.jsonl
+early-access*.jsonl.lock
+early-access*.csv
+.early-access-*
+
 # OS / editors
 .DS_Store
 Thumbs.db

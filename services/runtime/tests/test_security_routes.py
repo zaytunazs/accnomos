@@ -429,6 +429,7 @@ NO_USER_NEEDED = {
     "POST /credit-notes/{number}/pdf": "renders the PDF of a credit note the user already made; no new facts",
     "POST /invoices/{number}/reminder-draft": "drafts text for the user to read; sends and writes nothing",
     "POST /plan/day": "proposes a day; writes nothing (apply needs X-User)",
+    "POST /public/early-access": "public sign-up to the operator's launch list (off unless EARLY_ACCESS_ENABLED=1)",
 }
 
 

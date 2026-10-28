@@ -26,6 +26,9 @@ Each item is checked by `services/runtime/tests/test_deploy_hardening.py` unless
 - [x] Non-root: the Python images run as uid 10001 (`USER 10001:10001`); the edge uses nginx-unprivileged.
 - [x] Read-only root filesystem everywhere; writable `tmpfs` `/tmp` only (runtime 256 MB for upload spooling and
       ffmpeg, relay 16 MB, edge 64 MB for nginx buffers and its pid file).
+- [x] One persistent volume: `runtime-data` at `/data` in the runtime (uid 10001, mode 700), holding only the
+      operator's early-adopter list when `EARLY_ACCESS_ENABLED=1` (`docs/PRODUCTION.md` § Early-adopter list).
+      It survives `up --build`; `docker compose down -v` deletes it.
 - [x] `cap_drop: [ALL]`, `no-new-privileges`, `pids_limit: 256`.
 - [x] Healthchecks: runtime and relay `GET /health`; edge `GET /nginx-health`. The edge starts only once both
       services are healthy.

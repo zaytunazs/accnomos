@@ -1,6 +1,7 @@
 # Demo deployment on the DGX Spark (Ollama runs on the host; cloudflared publishes api.accnomos.com).
 #   docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
-# Nothing here stores user data; the relay holds only the HMRC client secret from .env.
+# Nothing here stores user data; the relay holds only the HMRC client secret from .env. The one exception is the
+# operator's early-adopter list (EARLY_ACCESS_ENABLED=1), kept on the `runtime-data` volume (docs/PRODUCTION.md).
 # Every container: non-root, read-only root filesystem (tmpfs /tmp), no capabilities, no privilege escalation,
 # healthcheck. See deploy/README.md.
 x-hardened: &hardened
@@ -33,6 +34,13 @@ services:
       COMPANIES_HOUSE_API_KEY: ${COMPANIES_HOUSE_API_KEY:-}
       # The VAT number check goes through the relay, which holds the HMRC credentials (docs/PRODUCTION.md).
       HMRC_RELAY_URL: ${HMRC_RELAY_URL:-http://relay:8787}
+      # Early-adopter sign-ups (POST /public/early-access, app/early_access.py): off unless 1. The list is JSON lines
+      # on the runtime-data volume below, so it survives rebuilds and redeploys; never in the image or the repo.
+      EARLY_ACCESS_ENABLED: ${EARLY_ACCESS_ENABLED:-0}
+      EARLY_ACCESS_FILE: ${EARLY_ACCESS_FILE:-/data/early-access.jsonl}
+      EARLY_ACCESS_PER_MIN: ${EARLY_ACCESS_PER_MIN:-5}
+    # The only writable path besides /tmp: owned by uid 10001 in the image, so the named volume starts that way.
+    volumes: ["runtime-data:/data"]
     # Uploads over 1 MB spool to /tmp, and ffmpeg converts voice there: 25 MB uploads need the headroom.
     tmpfs: ["/tmp:size=256m,mode=1777"]
     extra_hosts: ["host.docker.internal:host-gateway"]
@@ -71,3 +79,6 @@ services:
       timeout: 5s
       retries: 3
     ports: ["127.0.0.1:8790:8080"]
+
+volumes:
+  runtime-data: {}   # /data in the runtime: the early-adopter list. Back it up; `docker compose down -v` deletes it.

@@ -229,3 +229,6 @@ app.include_router(todos_router)
 from app.routes_audit import router as audit_router  # noqa: E402  GET /audit
 
 app.include_router(audit_router)
+from app.early_access import router as early_access_router  # noqa: E402  POST /public/early-access (off by default)
+
+app.include_router(early_access_router)
