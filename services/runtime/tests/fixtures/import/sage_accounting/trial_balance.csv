@@ -1,0 +1,20 @@
+Trial Balance - Hollybank Joinery Ltd (SAMPLE — FICTIONAL COMPANY)
+Date: 31/03/2026
+Code,Ledger Account,Debit,Credit
+0030,Motor Vehicles,9500.00,0.00
+1100,Trade Debtors,4560.00,0.00
+1200,Current,12450.37,0.00
+1210,Cash,85.00,0.00
+2100,Trade Creditors,0.00,2130.50
+2201,VAT on Sales,0.00,1842.20
+2210,PAYE,0.00,912.40
+2300,Directors Loan,0.00,3000.00
+3000,Share Capital,0.00,100.00
+3200,Retained Earnings,0.00,10000.00
+4000,Sales Type A,0.00,48200.00
+5000,Cost of sales - goods,19340.00,0.00
+7000,Gross Wages,12000.00,0.00
+7100,Rent and rates,4800.00,0.00
+7700,Insurance,1150.73,0.00
+7300,Vehicle Fuel,2299.00,0.00
+Total,,66185.10,66185.10

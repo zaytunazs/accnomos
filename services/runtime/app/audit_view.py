@@ -293,6 +293,19 @@ SUMMARIES: dict[str, Summary] = {
     "contacts_not_same": lambda r, w: "Said some contacts are not the same business",
     "contacts_merged": lambda r, w: f"Merged into one ({r.get('name', 'a contact')})",
     "contacts_merge_undone": lambda r, w: "Undid a contact merge",
+    # Import history (app/import_history.py)
+    "import_file_added": lambda r, w: (
+        f"Uploaded {str(r.get('kind') or 'a file').replace('_', ' ')} for the import"
+        + (f": {_plural(_n(r, 'rows'), 'row')}" if r.get("rows") else "")
+    ),
+    "import_discarded": lambda r, w: "Started the import again",
+    "opening_balances_posted": lambda r, w: (
+        f"Posted opening balances at {r.get('conversion_date', 'the conversion date')}: "
+        + _plural(_n(r, "accounts"), "account")
+        + (f", {_plural(_n(r, 'open_items'), 'open item')}" if _n(r, "open_items") else "")
+        + ("; reconciled to the source" if r.get("proved") else "; the reconciliation needs a look")
+    ),
+    "opening_balances_undone": lambda r, w: "Undid the opening balances; the entry was reversed",
     # Vehicles and mileage
     "vehicle_added": lambda r, w: "Added a vehicle",
     "vehicle_changed": lambda r, w: "Changed a vehicle" + _fields(r),
