@@ -159,6 +159,15 @@ async def get_journal(books: Books, journal_id: str) -> ManualJournal:
     return j
 
 
+async def journal_for_event(books: Books, event_id: str) -> ManualJournal | None:
+    """The journal that posted `event_id` (its entry, auto-reversal or void), if any."""
+    try:
+        journals = await list_journals(books)
+    except JournalError:
+        return None
+    return next((j for j in journals if event_id in (j.event_id, j.reversal_event_id, *j.void_event_ids)), None)
+
+
 async def _save(books: Books, j: ManualJournal) -> None:
     row = j.model_dump(mode="json")
 
@@ -343,6 +352,7 @@ def journal_event(
     on: date | None = None,
     mirror: bool = False,
     memo: str | None = None,
+    reverses: str | None = None,
 ) -> LedgerEvent:
     sign = -1 if mirror else 1
     return LedgerEvent(
@@ -354,6 +364,7 @@ def journal_event(
         approved_by=user,
         approved_at=now(),
         counterparty=f"Journal {j.number}",
+        reverses=reverses,  # a void names the entry it cancels (kind stays `adjustment`, so VAT counts it as signed)
         vat_box=j.vat_box,
         net=None if j.net_pence is None else sign * j.net_pence,
         vat=None if j.vat_pence is None else sign * j.vat_pence,
@@ -430,12 +441,16 @@ async def void_journal(books: Books, journal_id: str, user: str, today: date) ->
         from app.fixed_assets import check_void_allowed
 
         await check_void_allowed(books, j)
-    parts = [("", j.date, False)] + ([(":reverse", j.auto_reverse_on, True)] if j.reversal_event_id else [])
+    parts = [("", j.date, False, j.event_id)] + (
+        [(":reverse", j.auto_reverse_on, True, j.reversal_event_id)] if j.reversal_event_id else []
+    )
     posted: list[str] = []
-    for part, day, was_mirror in parts:
+    for part, day, was_mirror, cancels in parts:
         assert day is not None
         on = today if j.vat_box and await submitted_label(books, day) else day
-        ev = journal_event(j, user, part=f"{part}:void", on=on, mirror=not was_mirror, memo=f"Void of {j.number}")
+        ev = journal_event(
+            j, user, part=f"{part}:void", on=on, mirror=not was_mirror, memo=f"Void of {j.number}", reverses=cancels
+        )
         with contextlib.suppress(FileExistsError):  # a retried void: already there
             await books.post_event(ev)
         posted.append(ev.id)

@@ -33,7 +33,6 @@ from accnomos_ledger.events import LedgerEvent, Line, Recode, VatCode
 from app.approve import submitted_spans
 from app.books import Books, now
 from app.chart import CONTROL_ACCOUNTS, Account, ChartError, active_account, find, load_chart
-from app.contacts import reversed_ids
 from app.deadlines import period_label
 from app.journal import BANK, CASH, VAT_CONTROL
 from app.validation import StrictBody
@@ -139,9 +138,10 @@ async def _context(books: Books):
 
 
 def _candidates(events: Sequence[LedgerEvent]) -> list[LedgerEvent]:
-    """Entries whose lines can be found: not reversals, not undone, not recodes themselves."""
-    gone = reversed_ids(events)
-    return [e for e in events if e.kind != "reversal" and e.id not in gone and not e.recodes]
+    """Entries whose lines can be found: not reversals or mirrors (an undo, a voided journal, an unwound recode), not
+    undone or voided, not recodes themselves."""
+    gone = {e.reverses for e in events if e.reverses}
+    return [e for e in events if e.kind != "reversal" and not e.reverses and e.id not in gone and not e.recodes]
 
 
 async def search(
@@ -442,3 +442,36 @@ async def recode(books: Books, body: RecodeIn, user: str) -> RecodeResult:
     )
     await books.rebuild_safely(f"user:{user}")
     return result.model_copy(update={"posted": True})
+
+
+async def unwind_recodes(books: Books, original: LedgerEvent, user: str, on: date) -> list[str]:
+    """When an entry is undone, cancel the recodes of its lines too (each by its mirror adjustment, dated `on`), so
+    no recoded amount is left on an account once the entry itself is gone. Returns the ids posted."""
+    events = await books.list_events()
+    posted = []
+    for e in _recode_events(events):
+        if not any(r.event_id == original.id for r in e.recodes):
+            continue
+        mirror = LedgerEvent(
+            id=hashlib.sha256(f"{e.id}:unwind".encode()).hexdigest()[:32],
+            kind="adjustment",
+            date=on,
+            lines=[
+                ln.model_copy(update={"debit": ln.credit, "credit": ln.debit, "memo": f"Undo of recode {e.id[:8]}"})
+                for ln in e.lines
+            ],
+            evidence=e.evidence,
+            approved_by=user,
+            approved_at=now(),
+            counterparty=e.counterparty,
+            reverses=e.id,
+            vat_box=e.vat_box,
+            net=None if e.net is None else -e.net,
+            vat=None if e.vat is None else -e.vat,
+        )
+        try:
+            await books.post_event(mirror)
+        except FileExistsError:
+            continue
+        posted.append(mirror.id)
+    return posted

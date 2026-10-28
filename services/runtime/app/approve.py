@@ -402,6 +402,12 @@ async def undo(
         raise ApprovalError("This entry is itself an undo")
     if any(e.reverses == event_id for e in await books.list_events()):
         raise ProposalStateError("Already undone")
+    if original.recodes:
+        raise ApprovalError("This is a recode; recode the line back on Find and recode instead")
+    from app.manual_journals import journal_for_event  # manual_journals imports this module
+
+    if (j := await journal_for_event(books, event_id)) is not None:
+        raise ApprovalError(f"This entry is journal {j.number}; void it on Manual journals instead")
     if any(event_id in ln.event_ids() for ln in await books.stored_bank_lines() if ln.status == "matched"):
         raise ApprovalError("A bank line is matched to this entry; unmatch it first")
     if original.is_credit_note:
@@ -414,6 +420,9 @@ async def undo(
         path = await books.post_event(reversal)
     except FileExistsError as exc:
         raise ProposalStateError("Already undone") from exc
+    from app.recode import unwind_recodes
+
+    unwound = await unwind_recodes(books, original, user, reversal.date)
     p = await _reopen(books, original)
     if p is not None:
         await forget_from_undo(books, p, f"user:{user}")
@@ -427,6 +436,7 @@ async def undo(
             "proposal": original.proposal_id,
             "originally_approved_by": original.approved_by,
             "dated_today": reversal.date != original.date,
+            "recodes_unwound": unwound,
         },
     )
     if original.approved_by == AUTOPILOT:

@@ -615,3 +615,25 @@ def test_cash_line_is_dropped_when_it_quotes_a_figure_not_in_the_forecast():
     facts = {"bank_balance_today": "£1,200.00", "balance_in_30_days": "£800.00"}
     assert cf.check_line("Your bank is £1,200.00 today and £800.00 in 30 days.", facts)
     assert cf.check_line("You will have £950.00 in 30 days.", facts) is None
+
+
+async def test_undoing_a_recoded_entry_unwinds_its_recodes_and_journals_are_voided_not_undone(
+    client: TestClient, books: Books
+):
+    from app.approve import ApprovalError, undo
+
+    line = client.get("/accounting/recode/search?account=7500", headers=H).json()["lines"][0]
+    body = {"lines": [{"event_id": line["event_id"], "line": 0}], "account": "7510", "confirm": True}
+    client.post("/accounting/recode", json=body, headers=H)
+    await undo(books, line["event_id"], USER)
+    assert await balance(books, "7500 Office supplies") == 0
+    assert await balance(books, "7510 Software & subscriptions") == 0
+    await trial_balance_ok(books)
+    assert client.get("/accounting/recode/search?account=751", headers=H).json()["lines"] == []
+
+    j = client.post("/accounting/journals", json=_journal(), headers=H).json()
+    j = client.post(f"/accounting/journals/{j['id']}/approve", headers=H).json()
+    with pytest.raises(ApprovalError, match="void it on Manual journals"):
+        await undo(books, j["event_id"], USER)
+    client.post(f"/accounting/journals/{j['id']}/void", headers=H)
+    assert client.get("/accounting/recode/search?account=7200", headers=H).json()["lines"] == []
