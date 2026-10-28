@@ -11,6 +11,7 @@ from accnomos_connectors.base import (
     ConflictError,
     ContactsProvider,
     FileRef,
+    Identity,
     MailAttachment,
     MailDraft,
     MailMessage,
@@ -18,6 +19,10 @@ from accnomos_connectors.base import (
     MailSender,
     OutgoingAttachment,
     OutgoingMail,
+    SharedFolder,
+    SharedRoot,
+    SharePermission,
+    SharingProvider,
     StorageProvider,
 )
 from accnomos_connectors.fake import (
@@ -25,6 +30,7 @@ from accnomos_connectors.fake import (
     FakeContactsProvider,
     FakeMailProvider,
     FakeMailSender,
+    FakeSharingProvider,
     FakeStorageProvider,
 )
 from accnomos_connectors.msgraph import (
@@ -33,6 +39,7 @@ from accnomos_connectors.msgraph import (
     GraphError,
     GraphMailProvider,
     GraphMailSender,
+    GraphSharingProvider,
     GraphStorageProvider,
 )
 
@@ -50,16 +57,23 @@ __all__ = [
     "OutgoingAttachment",
     "OutgoingMail",
     "StorageProvider",
+    "SharedFolder",
+    "SharedRoot",
+    "SharePermission",
+    "SharingProvider",
+    "Identity",
     "ConflictError",
     "FakeCalendarProvider",
     "FakeContactsProvider",
     "FakeMailProvider",
     "FakeMailSender",
+    "FakeSharingProvider",
     "FakeStorageProvider",
     "GraphCalendarProvider",
     "GraphContactsProvider",
     "GraphError",
     "GraphMailProvider",
     "GraphMailSender",
+    "GraphSharingProvider",
     "GraphStorageProvider",
 ]
