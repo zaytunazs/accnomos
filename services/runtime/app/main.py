@@ -287,3 +287,7 @@ app.include_router(early_access_router)
 from app.routes_profile import router as profile_router  # noqa: E402  GET/PUT /profile (app/profile.py)
 
 app.include_router(profile_router)
+
+from app.routes_close import router as close_router  # noqa: E402  /close (the month-end close agent)
+
+app.include_router(close_router)

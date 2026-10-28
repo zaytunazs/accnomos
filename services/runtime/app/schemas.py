@@ -342,7 +342,10 @@ class AskExplanation(BaseModel):
     confidence: Confidence
 
 
-ActionKind = Literal["create_invoice", "chase_invoice", "log_mileage", "log_timesheet"]
+#: The first four come from Ask; `match_bank_line` and `close_month` come from the month-end close (app/month_end.py).
+ActionKind = Literal[
+    "create_invoice", "chase_invoice", "log_mileage", "log_timesheet", "match_bank_line", "close_month"
+]
 
 
 class ProposedAction(StrictBody):

@@ -639,6 +639,14 @@ def bank_ai_reply(content: str) -> dict[str, Any]:
     return {"account": account, "vat_code": "N", "contact": None, "reason": "Test stub coding: no real model ran."}
 
 
+def close_reply(content: str) -> dict[str, Any]:
+    """The month-end summary (app/ai/close_summary.py) in words that quote only the counts it was given."""
+    facts = json.loads(content.split("FACTS:\n", 1)[1])
+    needs, blocking = facts["needs_you"], facts["blocking"]
+    text = f"Test stub summary for {facts['month']}: {needs} to look at, {blocking} blocking the close."
+    return {"summary_md": text}
+
+
 def duplicate_reply(content: str) -> dict[str, Any]:
     """Deterministic duplicate judgement (app/ai/duplicates.py): same, keeping the first name listed."""
     first = re.search(r'^1\. "([^"]+)"', content, re.MULTILINE)
@@ -668,6 +676,10 @@ async def ai_chat(request: Request) -> JSONResponse:
         return JSONResponse(_ollama(bank_ai_reply(messages[-1]["content"])))
     if system == dup_ai.SYSTEM_PROMPT:
         return JSONResponse(_ollama(duplicate_reply(messages[-1]["content"])))
+    from app.ai import close_summary
+
+    if system == close_summary.SYSTEM_PROMPT:
+        return JSONResponse(_ollama(close_reply(messages[-1]["content"])))
     images = [img for m in messages for img in (m.get("images") or [])]
     if system == actions.INTENT_PROMPT:
         return JSONResponse(_ollama(intent_reply(messages[-1]["content"])))

@@ -49,6 +49,7 @@ AGENT_LABELS = {
     "contacts": "Contacts",
     "backup": "Backup",
     "files": "Files",
+    "close": "Month-end",
 }
 
 
@@ -367,6 +368,20 @@ SUMMARIES: dict[str, Summary] = {
     "file_settings_saved": lambda r, w: (
         f"Backup settings: keep {_n(r, 'backup_keep')}"
         + (", back up monthly" if r.get("monthly_backup") else ", no monthly backup")
+    ),
+    # The month-end close (app/month_end.py)
+    "close_run": lambda r, w: (
+        f"Ran the month-end close for {r.get('month', 'a month')}: "
+        + (
+            "ready to close"
+            if r.get("can_close")
+            else f"{_plural(_n(r, 'needs_you'), 'thing')} for you, {_n(r, 'blocking')} blocking"
+        )
+    ),
+    "month_closed": lambda r, w: f"Closed {r.get('month', 'a month')} (snapshot {str(r.get('snapshot', ''))[:12]})",
+    "month_reclosed": lambda r, w: (
+        f"Re-closed {r.get('month', 'a month')} after {_plural(_n(r, 'changes'), 'change')}"
+        f" (snapshot {str(r.get('snapshot', ''))[:12]})"
     ),
     # To-dos and housekeeping
     "todo_added": lambda r, w: "Added a to-do",

@@ -141,6 +141,33 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - Two Applies at the same moment can both create events (no lock in a stateless runtime). Planner: Europe/London only, travel times are rules of thumb by postcode district, only VAT returns count as "due", the *Visit length* input caps at 12 h in the web (runtime 24 h), *Plan a day with these jobs* sends every open job.
 - Mileage proposals from the planner appear only when active vehicles exist, use the first active vehicle, and write nothing.
 
+## Month-end close
+
+- **Run on fakes only**: unit tests on the in-memory OneDrive (`services/runtime/tests/test_month_end.py`) and the e2e
+  spec on the test runtime (`apps/web/e2e/month-end.spec.ts`), never against a real OneDrive or mailbox. How long a run
+  takes on a large real book through Graph is unmeasured; it reads the whole ledger and every bank line once.
+- **Closing does not lock anything.** Nothing stops a receipt, bank line or undo being dated into a closed month: the
+  app detects it afterwards (snapshot hash), says what changed with before/after figures and offers a re-close. The
+  snapshot and close record are plain files in the user's OneDrive: not signed, so an edit made there by hand would be
+  reported as a change, or could forge a record.
+- Bank coverage is inferred from the dates of the lines in each imported statement (statement files carry no period).
+  A run of up to 3 days without a statement at a month edge or between two statements is taken as days without
+  transactions; a longer quiet spell shows as a missing statement. Balances are compared only between consecutive
+  statements of one bank, and only when both carry running balances. Banks are told apart by the file name
+  (`<date>_<bank>.csv`), so two accounts at one bank are treated as one.
+- There is no suspense account in the chart: "uncategorised" means a balance on `7999 Sundry expenses`, where costs
+  with no better category go. Duplicates are the same counterparty, amount and day; "unusual" is over 3× the
+  supplier's median of at least three earlier purchases and £100 over it. Rules of thumb, not an audit.
+- Outlook is only read in a dry run (what intake *would* copy), and only when the app says intake is on; copying is
+  still the user's *Check now*. Documents in `00 Inbox` always block, because their dates are unknown until scanned.
+- Cards expire after 15 minutes and are not stored; reloading the page shows the last run without its cards (run again).
+  The VAT step shows the boxes for the period the month ends; filing stays on the VAT page. Corrections to a submitted
+  period follow the existing Undo rule; anything else (HMRC's error-correction rules) is not handled.
+- The balance sheet is the trial balance by account code with the profit to date in place of retained earnings; no
+  opening balances, accruals or prepayments.
+- The phone is read only (the last run, its summary and changes since the close) and its widget tests were written in
+  this branch and not run here (no Flutter SDK); the web streams the steps, the phone does not.
+
 ## Load sample books
 
 - **Never run against a real OneDrive.** *Load sample books* (`POST /books/sample`) and the seed it runs have only run on the in-memory fake OneDrive (`test_sample_books.py`, the e2e spec). **How long it takes against Graph is unmeasured.** On the fake the whole seed makes about 11,300 storage calls (most of them folder listings and reads behind each approval), and each is roughly one Graph request, so at a few tenths of a second each it could take well over half an hour, more than a token lasts; throttling (429s are retried) is untested there. (`tools/seed_demo.md` said "several hundred Graph calls"; corrected.)

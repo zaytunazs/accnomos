@@ -658,6 +658,19 @@ class RuntimeClient {
           },
           what: 'load the audit trail');
 
+  /// `GET /close`: the month that ended last (and any closed month changed
+  /// since), for Home. Reads only. [today] is `YYYY-MM-DD`.
+  Future<Map<String, dynamic>> closeOverview({String? today}) =>
+      _map('GET', '/close',
+          query: {'today': ?today}, what: 'load the month-end status');
+
+  /// `GET /close/{yyyy-mm}`: the month's status, its last run (the nine
+  /// steps), the close records and changes since. Reads only: the phone
+  /// shows the checklist; the close is run on the web.
+  Future<Map<String, dynamic>> closeMonth(String month, {String? today}) =>
+      _map('GET', '/close/${_seg(month)}',
+          query: {'today': ?today}, what: 'load the month-end checklist');
+
   /// `POST /books/export`: everything as one zip in `07 Reports/Exports`
   /// (a second run the same day is kept beside the first). Posts nothing.
   /// Same call as the web's Settings › Your data button.

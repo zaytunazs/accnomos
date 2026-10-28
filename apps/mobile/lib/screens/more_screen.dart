@@ -7,6 +7,7 @@ import 'contacts_screen.dart';
 import 'files_screen.dart';
 import 'invoices_screen.dart';
 import 'jobs_screen.dart';
+import 'month_end_screen.dart';
 import 'payroll_screen.dart';
 import 'reports_screen.dart';
 import 'vehicles_screen.dart';
@@ -72,6 +73,12 @@ class MoreScreen extends StatelessWidget {
             title: 'Payroll',
             note: 'Pay runs — estimates, read only',
             screen: PayrollScreen(),
+          ),
+          _Entry(
+            icon: Icons.event_available_outlined,
+            title: 'Month-end',
+            note: 'The close checklist — read only; run it on the web',
+            screen: MonthEndScreen(),
           ),
           _Entry(
             icon: Icons.bar_chart_outlined,

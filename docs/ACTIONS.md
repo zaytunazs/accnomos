@@ -71,6 +71,18 @@ second invoice.
 | `create_invoice` | `invoicing.create_invoice` → PDF (`app/pdf.py`) → `invoicing.send_invoice` through Graph if `send` | on `main` (`app/invoicing.py`) |
 | `chase_invoice` | `invoicing.send_reminder` with the reminder shown on the card and the sent PDF attached | on `main` |
 | `log_mileage` | `mileage.add_entry(books, MileageEntry, user)` | on `main` (`app/mileage.py`) |
+| `match_bank_line` | `Books.confirm_match(line_id, event_ids, user)`: the same as confirming a suggested match on Bank; matching posts nothing, and a line or entry that changed since is refused (409) | month-end close only |
+| `close_month` | `month_end.lock`: recomputes the month's snapshot and refuses (409) if its hash differs from the card's, then saves `07 Reports/<yyyy-mm>-month-end.xlsx`, appends a close record to `_System/close/<yyyy-mm>.json` and audits `month_closed` / `month_reclosed` | month-end close only |
+
+## Cards from the month-end close
+
+The month-end close (`app/month_end.py`, `docs/ARCHITECTURE.md` "The month-end close") makes cards with the same
+`Draft` → `new_action` → signature as Ask, so they go through the same `POST /actions/approve` and `/actions/reject`, are
+executed once and expire after 15 minutes. Ask never proposes `match_bank_line` or `close_month`; the model plays no
+part in them (the match is `Books.bank_suggestions`, code; the close figures are the snapshot). Reminder cards are
+`chase_invoice` cards built by `actions.chase_draft`, shared with Ask; with no AI set up, code writes the reminder. The
+cards are not stored: `_System/close/<yyyy-mm>.json` keeps each card's id, kind and summary, so an expired or reloaded
+card is renewed by running the close again. A rejected close card changes nothing.
 
 Feature checks are still done at runtime (`actions.invoicing()`, `actions.mileage()`); both modules are on `main`, so
 they pass. If one were missing, Ask would say plainly that it can't do that yet and never show a card it couldn't carry out.

@@ -716,7 +716,14 @@ async def resolve_chase(books: Books, intent: ChaseInvoiceIntent, cfg: AiConfig,
             candidates=[i.number for i in found[:5]],
             question_md=f"Which invoice should I chase: {', '.join(names)}?",
         )
-    inv = found[0]
+    return await chase_draft(books, found[0], cfg, today)
+
+
+async def chase_draft(books: Books, inv: Any, cfg: AiConfig | None, today: date) -> Draft | Clarification:
+    """The reminder card for one unpaid invoice: the words from the user's AI (checked by code), or from code when
+    no AI is set up. Used by Ask's "chase" and by the month-end close (app/month_end.py)."""
+    inv_mod = invoicing()
+    assert inv_mod is not None
     from app.ai import remind  # only with invoicing
 
     draft = await remind.draft_reminder(inv, await inv_mod.load_profile(books), cfg, today)
@@ -1152,11 +1159,43 @@ async def run_chase(action: ProposedAction, ctx: Context) -> tuple[str, dict[str
     )
 
 
+async def run_bank_match(action: ProposedAction, ctx: Context) -> tuple[str, dict[str, Any]]:
+    """A match the month-end close suggested (code, app/month_end.py): the same as confirming it on the Bank page.
+    Matching posts nothing; Books.confirm_match refuses a line or entry that has changed since."""
+    p = action.preview
+    line = await ctx.books.confirm_match(p["line_id"], list(p["event_ids"]), ctx.user)
+    return (
+        f"Matched the bank line of {money(line.amount_pence)} on {uk_date(line.date)}"
+        f" to {_md(p.get('to') or 'the entry')}.",
+        {"line_id": line.id, "event_ids": list(p["event_ids"])},
+    )
+
+
+async def run_close(action: ProposedAction, ctx: Context) -> tuple[str, dict[str, Any]]:
+    """Mark a month closed (app/month_end.py): refused when the month's figures differ from the ones on the card."""
+    from app import month_end  # month_end builds these cards with this module
+
+    rec = await month_end.lock(ctx.books, action.preview, ctx.user, action_id=action.id)
+    verb = "Re-closed" if rec.reclose else "Closed"
+    return (
+        f"{verb} **{_md(action.preview.get('label') or rec.month)}**. Snapshot {rec.snapshot_hash[:12]}"
+        + (f"; reports saved to {_md(rec.report_path)}." if rec.report_path else "."),
+        {
+            "month": rec.month,
+            "snapshot_hash": rec.snapshot_hash,
+            "report_path": rec.report_path,
+            "reclose": rec.reclose,
+        },
+    )
+
+
 EXECUTORS: dict[str, Executor] = {
     "create_invoice": run_invoice,
     "chase_invoice": run_chase,
     "log_mileage": run_mileage,
     "log_timesheet": run_timesheet,
+    "match_bank_line": run_bank_match,
+    "close_month": run_close,
 }
 
 

@@ -14,7 +14,8 @@ apps/mobile (Flutter) ──┼─> services/runtime ──┼─> Meta models (
 - **`services/runtime`** (`app`): the Agent Runtime. Every call carries the user's Graph token and AI settings in headers
   (below). Routers are the `include_router` lines in `app/main.py`: extract, books (scan, proposals, approve, undo, rules,
   rebuild), VAT and deadlines, dashboard, bank, ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
-  timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports. Test mode (`ACCNOMOS_TEST_MODE=1`) adds
+  timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports, audit, close (the month-end close
+  agent, `app/routes_close.py`). Test mode (`ACCNOMOS_TEST_MODE=1`) adds
   `/__test`. `apps/web/src/lib/runtime.ts` and `apps/mobile/lib/services/runtime_client.dart` have one call per route, except
   that the phone does not call `/reports/*` yet.
 - **`services/hmrc-relay`** (`relay`): exists only because HMRC needs the OAuth **client secret** at code exchange and
@@ -72,6 +73,7 @@ Documents, filed by code and never deleted:
 | `04 Bank statements/<last date>_<bank>.csv` | runtime, bank import | |
 | `05 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | |
 | `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
+| `07 Reports/<yyyy-mm>-month-end-draft.xlsx`, `07 Reports/<yyyy-mm>-month-end.xlsx` | runtime, the month-end close (`app/month_end.py`): the draft (About, P&L, Balance sheet) is rewritten by each run once nothing blocks the close; the closed one is written on Approve and never overwritten (a re-close saves ` (2)`) | Posts nothing |
 | `07 Reports/<yyyy-mm-dd>-<name>.xlsx` | runtime, `POST /reports/export` (*Export to OneDrive* on Reports) | `name` is `profit-and-loss`, `aged-balances`, `vat-summary`, `monthly-trend` or `reports` (all of them); a second export the same day gets ` (2)`, nothing is overwritten. Starts with `SAMPLE — FICTIONAL COMPANY` when the books are the demo seed's. Posts nothing |
 | `Archive/<year>/<original path>`, `Archive/<year>.zip` | runtime, `POST /files/archive` (`archive.py`) | made when first used; the zip is an extra copy with `manifest.json`, the folder stays. See *Files, archive and backups* |
 | `Backups/accnomos-backup-<yyyy-mm-dd>.zip`, `….zip.sha256` | runtime, `POST /backups` (`backups.py`) | made when first used; a second backup the same day gets ` (2)` |
@@ -118,6 +120,8 @@ Books.xlsx still show the path as it was saved.
 | `Settings/files.json` | `backup_keep` (default 12), `monthly_backup` (default off) | rewritten |
 | `profile.json` | what these books are: name, kind (`company`, `sole_trader`, `personal`), kind settings, other linked accounts by sign-in name (`app/profile.py`, `PUT /profile`) | rewritten whole |
 
+| `close/<yyyy-mm>.json` | the month-end close: the last 10 runs (steps, findings, card summaries; never the signed cards) and every close record (who, when, the snapshot and its SHA-256) | updated; close records are only appended |
+
 OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folder. Money is integer pence in every file except
 `Books.xlsx`, which shows pounds.
 
@@ -127,8 +131,8 @@ never approve; Autopilot is recorded as `autopilot`). Nothing is edited; **undo 
 original. The nine VAT boxes come from `compute_vat_return`, plain code, boxes 6–9 truncated to whole pounds.
 
 **Audit lines** are one JSON object per line: `{"ts", "actor", "action", "refs"}`. `actor` is `user:<email>` for something a
-person did, or `agent:<name>` (`extractor`, `intake`, `autopilot`, `mileage`, `contacts`, `triage`, `folder-layout`, `backup`) for
-something done for them. Applying a day plan is the user's action (`plan_applied`); there is no `agent:planner` writer yet.
+person did, or `agent:<name>` (`extractor`, `intake`, `autopilot`, `mileage`, `contacts`, `triage`, `folder-layout`, `backup`, `close`)
+for something done for them. Applying a day plan is the user's action (`plan_applied`); there is no `agent:planner` writer yet.
 Chat and voice actions write their own lines to `audit/actions/` (`{"ts", "action_id", "kind", "event", "user", …}`, `event`
 = approving · executed · failed · rejected), and Autopilot's postings are repeated with its reasons in `audit/autopilot/`.
 
@@ -292,6 +296,44 @@ from the real models, and the checks go through the real functions:
 They add about 13 s to the suites. `HYPOTHESIS_PROFILE=deep` and `-m slow` run deeper. The bugs these tests found
 are in `docs/reviews/property-tests/REVIEW.md`, and each has a plain example in
 `services/runtime/tests/test_property_regressions.py`.
+
+## The month-end close
+
+`app/month_end.py`, `app/routes_close.py`, web `/month-end` (`apps/web/src/components/month-end/MonthEnd.tsx`) and the
+Home card, Android *More › Month-end* and its Home card (read only). One button, **Close October**, runs an agent loop
+that is plain code: nine steps in order, each reported as it finishes (`POST /close/{yyyy-mm}/run?stream=1`, server-sent
+events `start`, `step` ×9, `summary`, `run`), each ending `ok`, `needs_you` or `blocked` with one plain-English reason, a
+link, what it checked and what it found. A finding is `blocking` (the month's figures are incomplete or wrong until it is
+dealt with), `needs_you` (worth doing, does not stop the close) or `note`.
+
+| # | Step | What code checks | What it proposes |
+|---|---|---|---|
+| 1 | Inbox | files in `00 Inbox` (blocking: they may be dated in the month); proposals waiting on Review dated in the month (blocking) or with no readable date; Outlook, only when the app says intake is on, as a **dry run** of `scan_mail` (nothing copied) | links to Review and Settings › Outlook |
+| 2 | Bank | per bank (from the statement file name): days of the month no imported statement covers, longer than 3 days (`GAP_DAYS`): "Bank statement missing for 12–31 Oct (starling)"; consecutive statements whose balances do not join up; lines in the month not reconciled | each suggested match (`Books.bank_suggestions`, code) as a `match_bank_line` card, at most 10 |
+| 3 | Sales | draft invoices dated in the month (blocking: not in sales); sent invoices past due with money outstanding | a `chase_invoice` card per overdue invoice (at most 5), words by the user's AI checked by code (`app/ai/remind.py`), or by code with no AI |
+| 4 | Purchases | bills on account due within 7 days or overdue (aged creditors); supplier credits not applied | links to Contacts |
+| 5 | Payroll | only if staff or pay runs exist: no pay run for the month (blocking if hours were logged), or a draft one (blocking) | link to Payroll |
+| 6 | VAT | if the month ends a VAT period (the usual `stagger` / `start_month` / `months`): the 9 boxes (`compute_vat_return`), the deadline (HMRC's obligation if posted, else 1 month 7 days), submitted or not, and the digital-links trail (each event on the return with its evidence hashes, up to 200) | link to `/vat?period=…`; **never submits** |
+| 7 | Checks | a balance on `7999 Sundry expenses` (the chart has no suspense account; Sundry is where uncategorised costs go) and accounts with no code (blocking); live sales or purchases with the same counterparty, amount and day (blocking); bank balances below zero; a purchase over 3× the supplier's median (and £100 over it); manual adjustments | links |
+| 8 | Reports | blocked while anything blocks or the month has not ended; otherwise the P&L and balance sheet (`reports.balance_sheet`) saved as `07 Reports/<yyyy-mm>-month-end-draft.xlsx` | |
+| 9 | Lock | blocked while anything blocks or the month has not ended; already closed with the same snapshot → ok | a `close_month` card |
+
+**Safety.** The agent posts nothing and sends nothing. A run writes its record (`_System/close/<yyyy-mm>.json`), one
+`close_run` audit line (`agent:close`) and, at step 8, the draft report. Everything else is a card approved through
+`POST /actions/approve` (`docs/ACTIONS.md`: signed, 15-minute expiry, executed once). A step that raises is shown as
+`blocked` with its error, never skipped; a missing input says what to upload or do. The summary is the only model
+output: `app/ai/close_summary.py` gives the model the steps' titles, statuses and reasons and the counts, and checks the
+reply with Ask's number check (`KnownNumbers`): every figure must be in the facts, no links, and a month that cannot be
+closed may not be called ready. Otherwise, or with no AI, code writes it (`fallback_reason`).
+
+**Close and after.** Approving `close_month` recomputes the month's snapshot (every ledger event and bank line dated in
+the month, the P&L by account and the month's own VAT boxes; SHA-256 over its canonical JSON) and refuses with 409 if
+it differs from the one on the card; otherwise it saves `07 Reports/<yyyy-mm>-month-end.xlsx`, appends a close record
+and audits `month_closed` (or `month_reclosed`). Closing does not stop anyone posting into the month: `GET /close`
+(Home) and `GET /close/{month}` compare the last close's snapshot with the books now and, when they differ, list each
+change in a sentence ("A purchase from Wickes for £24.00 dated 20 Oct was approved on 5 Nov") with the before/after
+P&L lines and VAT boxes, and the next run offers a re-close. When the month's VAT period was already submitted, the
+note says the changes are not on that return; Undo keeps dating corrections today (`app/approve.py`).
 
 ## Models: where each is called
 
