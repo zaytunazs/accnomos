@@ -2,4 +2,6 @@
 export const PAGES = [
   "/", "/ask", "/audit", "/bank", "/contacts", "/files", "/how-it-works", "/invoices", "/invoices/new", "/jobs", "/jobs/job", "/payroll", "/review", "/settings",
   "/vat", "/vehicles", "/reports", "/privacy", "/connect", "/connect/ai", "/connect/business", "/connect/ready",
+  "/accounting/chart", "/accounting/journals", "/accounting/assets", "/accounting/recode", "/accounting/tracking", "/reports/budgets",
+  "/reports/cashflow",
 ];
