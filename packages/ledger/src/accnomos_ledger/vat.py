@@ -3,6 +3,8 @@
 Rules follow the HMRC VAT (MTD) API 1.0 submit schema (checked 26 Oct 2026):
 - Boxes 1–5 are pounds to 2 dp; box 5 (netVatDue) is the ABSOLUTE value of box 3 − box 4.
 - Boxes 6–9 are whole pounds (we truncate pence, as HMRC VAT Notice 700/12 allows rounding down).
+- An `adjustment` counts only when it carries `vat_box` (a manual journal with VAT, a VAT recode): its signed
+  `net` and `vat` go on that side as they are.
 - No model is involved anywhere in this file.
 """
 
@@ -105,7 +107,9 @@ def compute_vat_return(events: list[LedgerEvent], period_key: str, start: date, 
     ret = VatReturn(period_key=period_key, start=start, end=end)
     sales_net = purchases_net = sales_vat = purchases_vat = 0
     for ev in events:
-        if ev.date < start or ev.date > end or ev.kind not in {"sale", "purchase", "reversal"}:
+        if ev.date < start or ev.date > end:
+            continue
+        if ev.kind not in {"sale", "purchase", "reversal"} and not (ev.kind == "adjustment" and ev.vat_box):
             continue
         if ev.net is None:
             ret.warnings.append(f"event {ev.id}: no net amount recorded; excluded")
@@ -114,7 +118,8 @@ def compute_vat_return(events: list[LedgerEvent], period_key: str, start: date, 
         if not codes & ON_RETURN:
             continue  # out of scope
         vat = ev.vat or 0
-        side, sign = vat_side(ev) or ("purchases", -1)
+        # An adjustment with VAT (a manual journal, a VAT recode) carries its side and its signed net and VAT.
+        side, sign = (ev.vat_box, 1) if ev.kind == "adjustment" and ev.vat_box else vat_side(ev) or ("purchases", -1)
         if side == "sales":
             sales_net += sign * ev.net
             sales_vat += sign * vat
