@@ -144,8 +144,12 @@ app.include_router(sample_router)
 
 
 @app.exception_handler(GraphError)
-async def graph_error(_request: Request, exc: GraphError) -> JSONResponse:
-    """Expired/insufficient Graph token -> 401 so the app re-authenticates; anything else -> 502."""
+async def graph_error(request: Request, exc: GraphError) -> JSONResponse:
+    """Expired/insufficient Graph token -> 401 so the app re-authenticates; anything else -> 502. In a client's
+    shared books a 403 is the client's permission (view only), not the token: 403, so the app does not sign in again."""
+    if exc.status == 403 and request.headers.get("X-Books-Drive-Id"):
+        detail = "Your client gave you view-only access to these books, so Microsoft refused the change."
+        return JSONResponse(status_code=403, content={"detail": detail})
     status = 401 if exc.status in (401, 403) else 502
     return JSONResponse(status_code=status, content={"detail": scrub(str(exc))})
 

@@ -471,3 +471,19 @@ async def test_read_only_storage_allows_only_the_queries_folder() -> None:
         await ro.move("_System/queries/a1b2c3d4e5f6.json", "_System/queries/b.json")
     with pytest.raises(sharing.ReadOnlyBooks):
         await ro.ensure_folder("01 Receipts")
+
+
+@pytest.mark.asyncio
+async def test_a_graph_403_inside_a_clients_books_is_403_not_sign_in_again() -> None:
+    from starlette.requests import Request
+
+    from app.main import graph_error
+
+    def request(headers: dict[str, str]) -> Request:
+        raw = [(k.lower().encode(), v.encode()) for k, v in headers.items()]
+        return Request({"type": "http", "method": "POST", "path": "/", "headers": raw})
+
+    shared = await graph_error(request(C2), GraphError(403, "accessDenied"))
+    assert shared.status_code == 403 and b"view-only" in shared.body
+    own = await graph_error(request({}), GraphError(403, "accessDenied"))
+    assert own.status_code == 401  # your own books: the token lacks a scope, sign in again
