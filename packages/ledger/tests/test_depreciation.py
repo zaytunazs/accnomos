@@ -29,7 +29,9 @@ def test_straight_line_life_monthly_rounds_cumulatively():
 
 
 def test_straight_line_rate_with_residual():
-    s = schedule(600_000, date(2026, 10, 1), Policy("straight_line", "monthly", rate_percent=Decimal(20), residual_pence=100_000))
+    s = schedule(
+        600_000, date(2026, 10, 1), Policy("straight_line", "monthly", rate_percent=Decimal(20), residual_pence=100_000)
+    )
     assert len(s) == 60
     assert charges(s)[:3] == [8333, 8334, 8333]
     assert s[-1].accumulated_pence == 500_000 and s[-1].book_value_pence == 100_000
@@ -47,7 +49,9 @@ def test_reducing_balance_monthly():
 
 
 def test_reducing_balance_stops_at_the_residual():
-    s = schedule(10_000, date(2026, 1, 1), Policy("reducing_balance", "yearly", rate_percent=Decimal(50), residual_pence=2_000))
+    s = schedule(
+        10_000, date(2026, 1, 1), Policy("reducing_balance", "yearly", rate_percent=Decimal(50), residual_pence=2_000)
+    )
     assert charges(s) == [5_000, 2_500, 500]
     assert s[-1].book_value_pence == 2_000
 

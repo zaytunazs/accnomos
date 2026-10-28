@@ -207,7 +207,10 @@ def test_vat_adjustments_count_on_their_side_with_their_signed_figures():
     plain = LedgerEvent(  # no vat_box: never on the return
         kind="adjustment",
         date=day,
-        lines=[Line(account="8000 Depreciation", debit=500), Line(account="0031 Office equipment depreciation", credit=500)],
+        lines=[
+            Line(account="8000 Depreciation", debit=500),
+            Line(account="0031 Office equipment depreciation", credit=500),
+        ],
         **APPROVED,
     )
     r = compute_vat_return([bill, recode, plain], "26Q3", date(2026, 7, 1), date(2026, 9, 30))
