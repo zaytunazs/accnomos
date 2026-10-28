@@ -31,3 +31,90 @@ Scanned every commit reachable from any ref (283 commits, 12 root snapshots):
 
 `.gitleaks.toml` now allow-lists S1–S3 by line, so `gitleaks git .` and `gitleaks dir .` report no leaks and a new
 real secret would stand out.
+
+## 2–4. Runtime, relay, web and Android
+
+### What was checked
+
+- **Auth on every route.** Walked all 145 runtime routes. Every route that touches books, mail, calendar or the
+  server's look-up keys gets the Graph token through `get_books` or a sibling dependency (`routes_contacts`,
+  `routes_invoices`, `routes_mail`, `routes_actions`, `routes_lookup`) and answers 401 without it. Five routes are
+  public, each for a reason; a new test now fails if a sixth appears. Storage is always the token's own OneDrive.
+- **SSRF.** Every outbound URL is built from a base the server knows (Graph, allow-listed AI bases, Baseten,
+  Companies House, `HMRC_RELAY_URL`). Company numbers and VRNs are normalised to `[A-Z0-9]{8}` / 9 or 12 digits
+  before they go into a path. The Graph token never follows a link off `graph.microsoft.com`. No change needed.
+- **Path traversal.** `check_name` and `_safe_path` refuse `.`/`..`, separators, drive paths and control characters;
+  Graph paths are percent-encoded. No change needed.
+- **CSV/XLSX injection.** `_safe_text` (Books.xlsx, Reports, data export) and payroll's `_text` neutralise formula
+  text; `_safe_text` missed a leading tab or CR (fixed).
+- **PDF/HTML injection.** Invoices and reminders are sent as plain text; draft replies are HTML-escaped; PDF text is
+  Latin-1 with control characters removed and fpdf's alias blocked; logos are sniffed and decoded. No change needed.
+- **CORS, rate limits, proxies.** Exact origins, no wildcard, no credentials. Per-IP bucket keyed on the last
+  `X-Forwarded-For` hop that nginx sets (a client cannot forge it); `CF-Connecting-IP` is stripped.
+- **Errors and logging.** Unhandled errors are a generic 500 with a correlation id; log records are scrubbed. The
+  server's own keys were only redacted when they appeared in a recognised shape (fixed); the `/extract` 502 quoted
+  the provider's error unscrubbed (fixed). Logs carry file paths and message ids, never tokens or bodies.
+- **Test mode in the image.** `ACCNOMOS_TEST_MODE=0` and `ACCNOMOS_IMAGE=1` in the Dockerfile, and `enable()`
+  refuses under `ACCNOMOS_IMAGE=1`. Both are environment variables a `docker run -e` can override, so the image now
+  also writes `/etc/accnomos-image` and `enable()` refuses where it exists.
+- **HMRC relay.** `state` is HMAC-signed, expires after 10 minutes and is used once per step; `redirect_to` is checked
+  when the flow starts and again at the callback; tokens go back in the fragment with `no-store`/`no-referrer`;
+  the web uses PKCE. Fraud-prevention headers take the public IP from the last forwarded hop and percent-encode
+  structured values, but the device id and browser user agent were forwarded as typed with no caps (fixed).
+- **Web.** `next.config.ts` is a static export; security headers are in `public/.htaccess`. MSAL is a public client
+  (PKCE, no secret); the client id is public by design. MSAL's cache, the AI key and HMRC tokens are in browser
+  storage (already accepted in `docs/SECURITY.md`). No `dangerouslySetInnerHTML`/`eval`; every `target="_blank"`
+  has `rel="noreferrer"` and points at a Graph `webUrl` or a fixed site. `pnpm audit`: no known vulnerabilities
+  (no upgrades made). `pip-audit` over the Python venv: none either.
+- **Android.** No secret in the APK: the Entra client id and signature hash are public values; `msal_config.json`
+  has no secret; the release runtime URL is `https://api.accnomos.com`. Permissions are camera, microphone,
+  internet and network state, each used. No network security config: cleartext is allowed app-wide for a LAN
+  runtime (recommended below). Backups were on by default (fixed).
+
+### Findings
+
+| # | Severity | Where | Finding | Status | Tests |
+|---|---|---|---|---|---|
+| 1 | Medium | `services/hmrc-relay/relay/fraud_headers.py` | Client facts had no caps; `device_id` and `browser_js_user_agent` went to HMRC unencoded with any characters (a CR/LF or non-ASCII value became a 500, a huge one an oversized header) | **Fixed**: every string and list capped; raw values printable ASCII; 422 otherwise | `test_client_facts_are_capped_and_header_safe`, `test_mobile_facts_are_capped` |
+| 2 | Medium | `services/runtime/app/security.py`, `relay/security.py` | Server-held keys (`META_API_KEY`, `BASETEN_API_KEY`, `COMPANIES_HOUSE_API_KEY`, `MODEL_API_KEY`, `ACTIONS_SIGNING_KEY`, `HMRC_CLIENT_SECRET`) were redacted only next to a header name or `Bearer`; quoted bare in an upstream error they would reach logs | **Fixed**: redacted by value | `test_scrub_removes_the_servers_own_keys`, `test_the_client_secret_is_scrubbed_wherever_it_appears` |
+| 3 | Medium | `/extract`, `/ai/test`, `app/ai/config.py` | Anonymous, and with no `X-AI-*` headers run on the server's default model (`AI_MODE=local` → the operator's Ollama; key mode → `META_API_KEY` if set). `/ai/test` in local mode lists the operator's model names | **Recommended**: require a validated Graph token (breaks pre-sign-in scanning on Android), or refuse server-default AI on public routes | — |
+| 4 | Medium | `apps/mobile` manifest, `settings.dart` | `usesCleartextTraffic="true"` app-wide; the Meta key is in shared preferences (a TODO in the code) | **Recommended**: refuse to send credentials over `http://` except to private/loopback addresses; move the key to encrypted storage | — |
+| 5 | Low | `services/runtime/app/projection.py` | Formula guard missed a leading tab or carriage return | **Fixed** | `test_books_xlsx_never_writes_text_as_a_formula`, `test_report_xlsx_writes_a_contact_name_as_text` |
+| 6 | Low | `services/runtime/app/routes_extract.py` | 502 detail quoted the model provider's error body unscrubbed | **Fixed** | `test_extract_502_never_quotes_the_callers_key` |
+| 7 | Low | `app/testmode.py`, `deploy/Dockerfile.runtime` | The image guard was an environment variable only | **Fixed**: marker file `/etc/accnomos-image` | `test_test_mode_is_refused_where_the_image_marker_exists` |
+| 8 | Low | `apps/web/public/.htaccess` | No script/connect CSP | **Fixed (report-only)**: full policy in `Content-Security-Policy-Report-Only`; enforcing it is recommended after a clean release | `test_static_site_has_a_full_csp_in_report_only_mode` |
+| 9 | Low | `AndroidManifest.xml` | `allowBackup` defaulted to true, so Auto Backup would copy settings (Meta key) to the cloud | **Fixed**: `allowBackup="false"` (settings must be re-entered after a reinstall) | `test_android_manifest_asks_for_little_and_is_not_backed_up` |
+| 10 | Low | `app/routes_lookup.py` | "Signed-in only" checks the header is non-empty, not valid | **Recommended**: check the token with Graph `/me`, cached by token hash | — |
+| 11 | Low | relay `/hmrc/vat-check`, `/vat/check/*` | Public on `api.accnomos.com`, spending the relay's application token | **Recommended**: allow only the runtime (nginx `allow`/`deny` or a shared header) | — |
+| 12 | Low | `app/routes_extract.py` `_SEEN_HASHES` | Duplicate memory shared by every caller and unbounded: another user's identical upload is flagged | **Recommended**: key by caller, or drop | — |
+| 13 | Low | `apps/mobile/android/app/build.gradle.kts` | Release builds fall back to the debug key without `key.properties` | **Recommended**: fail the release build instead | — |
+| 14 | Info | — | No test said every book route needs the token | **Fixed** | `test_every_route_but_the_public_ones_needs_a_graph_token` |
+| 15 | Info | `get_books` and siblings | `X-Graph-Token: Bearer` alone is taken as the token `Bearer` and sent to Graph, which answers 401 | Left as is | — |
+| 16 | Info | relay non-PKCE callback | Puts access and refresh tokens in the redirect fragment; the web uses PKCE, which returns only the code | **Recommended**: retire the non-PKCE path once no client uses it | — |
+| 17 | Info | `tools/seed_demo.py` | ruff 0.16.9 (installed here) flags an import order that the pinned ruff 0.17.3 (`docs/DEV.md`) accepts | Left as is (pre-existing, version difference) | — |
+
+Plus step 1: S4 fixture replaced and `.gitleaks.toml` added.
+
+### Checks run on the branch
+
+- `services/runtime`: `python -m pytest -q` → 1236 passed, 1 skipped (1226 before).
+- `services/hmrc-relay`: 130 passed (119 before); `packages/connectors` 48, `packages/ledger` 36 passed.
+- `ruff check .` and `ruff format --check .` (ruff 0.17.3, as pinned in `docs/DEV.md`): clean.
+- `pyright services/runtime/app` (1.1.414): 0 errors.
+- `apps/web`: `pnpm install --frozen-lockfile`, `pnpm exec eslint .`, `pnpm run build`: clean; `out/.htaccess`
+  carries the new header. `pnpm audit`: no known vulnerabilities.
+- `gitleaks git .` with `.gitleaks.toml`: no leaks. `gitleaks dir .` is clean too on a fresh checkout; after `pnpm run build`
+  it flags the git-ignored `apps/web/.next/` (Next writes random per-build preview keys there), which is never committed.
+- Not run: Flutter (`flutter analyze`/`test`, an APK build) — no Flutter SDK in this container; the manifest change is
+  one attribute, checked by the Python test. The Docker images were not built.
+
+### How to verify by hand
+
+- `docker build -f deploy/Dockerfile.runtime -t accnomos-runtime .`, then
+  `docker run --rm -e ACCNOMOS_IMAGE=0 -e ACCNOMOS_TEST_MODE=1 accnomos-runtime` must exit with
+  "ACCNOMOS_TEST_MODE=1 is refused in the runtime image".
+- On the deployed site, open DevTools: the response headers include `Content-Security-Policy-Report-Only`; sign in,
+  open Files and download a file; the console should show no CSP report. If it does, add the reported host to
+  `connect-src` before enforcing.
+- `curl -s -X POST https://api.accnomos.com/books/vat/obligations -H 'Content-Type: application/json' -d '{}'`
+  → 401.
