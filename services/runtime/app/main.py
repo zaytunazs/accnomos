@@ -209,6 +209,9 @@ app.include_router(invoices_router)
 from app.routes_credit_notes import router as credit_notes_router  # noqa: E402  /credit-notes/*, /payments/*
 
 app.include_router(credit_notes_router)
+from app.routes_online_payments import router as online_payments_router  # noqa: E402  /payments/online/*
+
+app.include_router(online_payments_router)  # also /invoices/{number}/payment-link*
 from app.routes_actions import router as actions_router  # noqa: E402  /actions/approve, /actions/reject
 
 app.include_router(actions_router)

@@ -13,16 +13,17 @@ import {
   balanceOf,
 } from "@/components/invoices/PaymentDialogs";
 import { ApplyCreditDialog, RefundDialog } from "@/components/invoices/CreditDialogs";
+import { OnlineFound, PaymentLinkDialog, PayOnlineLine, linkAmount } from "@/components/invoices/OnlinePayments";
 import SignInCta from "@/components/SignInCta";
 import { EmptyState, LoadingSkeleton, RuntimeErrorNote, SamplePill } from "@/components/States";
 import PrintButton from "@/components/PrintButton";
 import { csvFilename, downloadCsv, type CsvValue } from "@/lib/csv";
 import { money, SAMPLE_INVOICES, STATUS_LABEL, useMsAccount } from "@/lib/invoices";
-import { runtime, ukDate, type RtCreditNote, type RtCreditRow, type RtInvoice, type RtOpenItem } from "@/lib/runtime";
+import { runtime, ukDate, type RtCreditNote, type RtCreditRow, type RtFoundPayment, type RtInvoice, type RtOnlineCheck, type RtOpenItem } from "@/lib/runtime";
 
 type Filter = "all" | "draft" | "sent" | "overdue" | "paid" | "void";
 type Dialog =
-  | { kind: "preview" | "paid" | "remind" | "void" | "credit"; invoice: RtInvoice }
+  | { kind: "preview" | "paid" | "remind" | "void" | "credit" | "payLink"; invoice: RtInvoice }
   | { kind: "creditView"; note: RtCreditNote }
   | { kind: "applyCredit"; name: string; credits: RtCreditRow[]; documents: RtOpenItem[] }
   | { kind: "refund"; name: string; credits: RtCreditRow[] }
@@ -86,6 +87,20 @@ export default function LiveInvoices() {
   const [dialog, setDialog] = useState<Dialog>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  const [found, setFound] = useState<RtFoundPayment[]>([]); // paid through a payment link, waiting for approval
+  const [payProblems, setPayProblems] = useState<RtOnlineCheck["problems"]>([]);
+
+  // Opening Invoices asks Stripe/PayPal about invoices with a link (the runtime keeps nothing to be told by webhook).
+  const checkOnline = useCallback(async () => {
+    if (!account) return;
+    try {
+      const got = await runtime.payCheck(account);
+      setFound(got.found);
+      setPayProblems(got.problems);
+    } catch {
+      /* the list still works without it */
+    }
+  }, [account]);
 
   const load = useCallback(async () => {
     if (!account) return;
@@ -100,10 +115,12 @@ export default function LiveInvoices() {
       setCredits(notes);
       setOnAccount(onAcc);
       setError(null);
+      if (list.some((i) => i.status === "sent" && i.payment_link && i.payment_link.provider !== "paypalme")) void checkOnline();
+      else setFound([]);
     } catch (e) {
       setError((e as Error).message);
     }
-  }, [account]);
+  }, [account, checkOnline]);
 
   useEffect(() => {
     queueMicrotask(load);
@@ -126,6 +143,7 @@ export default function LiveInvoices() {
       remind: `Reminder for ${updated.number} sent.`,
       void: `${updated.number} is void.`,
       credit: "",
+      payLink: `Payment link added to ${updated.number}.`,
       creditView: "",
       applyCredit: "",
       refund: "",
@@ -253,6 +271,18 @@ export default function LiveInvoices() {
         </div>
       )}
       {note && <p role="status" className="rounded-xl bg-teal-tint px-4 py-3 text-sm font-bold text-teal-dark">{note}</p>}
+      {account && (
+        <OnlineFound
+          account={account}
+          found={found}
+          onApproved={(inv, message) => { replace(inv); setNote(message); void load(); }}
+        />
+      )}
+      {payProblems.length > 0 && (
+        <p className="rounded-xl bg-warn-bg px-4 py-3 text-sm text-warn-ink">
+          Could not check {payProblems.map((p) => `${p.invoice} (${p.message})`).join("; ")} for online payments.
+        </p>
+      )}
       {error && <RuntimeErrorNote message={error} title="Could not load invoices" />}
       {!invoices && !error && <LoadingSkeleton lines={3} label="Loading your invoices…" />}
       {invoices && invoices.length === 0 && (
@@ -309,6 +339,11 @@ export default function LiveInvoices() {
                 {i.status !== "draft" && (
                   <button type="button" className={action} onClick={() => setDialog({ kind: "preview", invoice: i })}>View PDF</button>
                 )}
+                {(i.status === "draft" || i.status === "sent") && linkAmount(i) > 0 && (
+                  <button type="button" className={action} onClick={() => setDialog({ kind: "payLink", invoice: i })}>
+                    {i.payment_link ? "New payment link" : "Add payment link"}
+                  </button>
+                )}
                 {i.status === "sent" && (
                   <>
                     <button type="button" className={action} onClick={() => setDialog({ kind: "remind", invoice: i })}>Draft a reminder</button>
@@ -336,6 +371,9 @@ export default function LiveInvoices() {
                   <button type="button" className="text-[13px] font-bold text-muted hover:underline" onClick={() => setDialog({ kind: "void", invoice: i })}>Void</button>
                 )}
               </div>
+              {i.payment_link && (
+                <PayOnlineLine account={account} invoice={i} onChanged={(inv, message) => { replace(inv); setNote(message); }} />
+              )}
               {i.status !== "draft" && (
                 <details className="mt-2">
                   <summary className={`${action} cursor-pointer`}>{i.money ? "Payments and history" : "History"}</summary>
@@ -436,6 +474,7 @@ export default function LiveInvoices() {
           case "paid": return <RecordPaymentDialog {...props} />;
           case "remind": return <ReminderDialog {...props} />;
           case "void": return <VoidDialog {...props} />;
+          case "payLink": return <PaymentLinkDialog account={account} invoice={dialog.invoice} onClose={() => setDialog(null)} onDone={(inv) => done(inv)} />;
           case "credit": return <CreditNoteDialog account={account} invoice={dialog.invoice} onClose={() => setDialog(null)} onDone={credited} />;
         }
       })()}

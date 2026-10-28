@@ -111,6 +111,12 @@ def _inv(refs: dict[str, Any]) -> str:
     return str(refs.get("invoice") or "")
 
 
+def _provider(refs: dict[str, Any]) -> str:
+    return {"stripe": "Stripe", "paypal": "PayPal", "paypalme": "PayPal.me"}.get(
+        str(refs.get("provider")), "a provider"
+    )
+
+
 def _fields(refs: dict[str, Any]) -> str:
     f = refs.get("fields")
     return f" ({', '.join(str(x).replace('_', ' ') for x in f)})" if isinstance(f, list) and f else ""
@@ -203,6 +209,21 @@ SUMMARIES: dict[str, Summary] = {
     ),
     "payment_removed": lambda r, w: "Removed a payment; its entry was reversed",
     "payment_line_not_matched": lambda r, w: "Recorded a payment but could not match its bank line",
+    # Online payments (app/online_payments.py)
+    "payment_provider_connected": lambda r, w: (
+        f"Connected {_provider(r)}" + (" (test mode)" if r.get("test") else "") + " for payment links"
+    ),
+    "payment_provider_disconnected": lambda r, w: f"Disconnected {_provider(r)}",
+    "payment_link_created": lambda r, w: (
+        f"Made a {_provider(r)} payment link" + _pounds(r, "amount_pence") + f" for invoice {_inv(r)}"
+    ),
+    "payment_link_removed": lambda r, w: f"Removed the {_provider(r)} payment link from invoice {_inv(r)}",
+    "online_payment_approved": lambda r, w: (
+        f"Posted a {_provider(r)} payment"
+        + _pounds(r, "amount_pence")
+        + f" against invoice {_inv(r)}"
+        + (f", fee £{int(r['fee_pence']) // 100}.{int(r['fee_pence']) % 100:02d}" if r.get("fee_pence") else "")
+    ),
     # Credits on contacts (app/credits.py)
     "credit_applied": lambda r, w: "Applied a credit on account to another document" + _pounds(r, "amount_pence"),
     "credit_refunded": lambda r, w: (

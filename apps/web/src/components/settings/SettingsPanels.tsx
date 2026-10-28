@@ -14,6 +14,7 @@ import VatPeriodSettings from "@/components/settings/VatPeriodSettings";
 import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
 import PersonalFinanceSetting from "@/components/settings/PersonalFinanceSetting";
 import WorkingHours from "@/components/settings/WorkingHours";
+import OnlinePayments from "@/components/settings/OnlinePayments";
 import { hasMsalSignIn } from "@/lib/signed-in";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
@@ -31,7 +32,13 @@ const GROUPS: { id: GroupId; label: string }[] = [
   { id: "data", label: "Your data" },
 ];
 
-/** Every deep link target stays working: the hash decides which tab opens. */
+/** Every deep link target stays working: the hash decides which tab opens. Back from Stripe or PayPal the hash is
+ *  `pay=stripe&code=…` (OnlinePayments reads it), which opens Business. */
+function groupOf(raw: string): GroupId | null {
+  if (raw.startsWith("pay=")) return "business";
+  return (raw && HASH_GROUP[raw]) || null;
+}
+
 const HASH_GROUP: Record<string, GroupId> = {
   "settings-connections": "connection",
   "settings-audit": "connection",
@@ -56,6 +63,7 @@ const HASH_GROUP: Record<string, GroupId> = {
   "invoice-profile-title": "business",
   "settings-staff": "business",
   "settings-personal": "business",
+  "settings-payments": "business",
   "settings-data": "data",
   "settings-data-export": "data",
   "settings-leave": "data",
@@ -98,9 +106,9 @@ export default function SettingsPanels() {
 
   function openHashTarget() {
     const raw = window.location.hash.replace(/^#/, "");
-    const g = (raw && HASH_GROUP[raw]) || null;
+    const g = groupOf(raw);
     if (!g) return;
-    pendingHash.current = raw;
+    pendingHash.current = raw.startsWith("pay=") ? "settings-payments" : raw;
     choose(g);
   }
 
@@ -134,8 +142,8 @@ export default function SettingsPanels() {
       if (rawAuto === "L0" || rawAuto === "L1" || rawAuto === "L2") setAutopilot(rawAuto);
 
       const rawHash = window.location.hash.replace(/^#/, "");
-      const hashed = (rawHash && HASH_GROUP[rawHash]) || null;
-      if (rawHash && hashed) pendingHash.current = rawHash;
+      const hashed = groupOf(rawHash);
+      if (rawHash && hashed) pendingHash.current = rawHash.startsWith("pay=") ? "settings-payments" : rawHash;
       const stored = readLocalStorage(GROUP_KEY);
       const remembered =
         stored === "connection" || stored === "ai" || stored === "automation" || stored === "business" || stored === "data"
@@ -412,6 +420,8 @@ export default function SettingsPanels() {
         <div id="settings-invoice-profile" className="scroll-mt-4">
           <InvoiceProfileForm card={card} heading={heading} />
         </div>
+
+        <OnlinePayments card={card} heading={heading} />
 
         <VatPeriodSettings card={card} heading={heading} />
 
