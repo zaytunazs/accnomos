@@ -3,6 +3,7 @@ import { Manrope } from "next/font/google";
 import "./globals.css";
 import SiteShell from "@/components/SiteShell";
 import { SIGNED_IN_PROBE } from "@/lib/public-site";
+import { builtRoutes } from "@/lib/routes.server";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -23,7 +24,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <script dangerouslySetInnerHTML={{ __html: SIGNED_IN_PROBE }} />
       </head>
       <body className="min-h-full flex flex-col">
-        <SiteShell>{children}</SiteShell>
+        {/* The pages in this build, read here at build time: SiteShell is a client component (no fs there). */}
+        <SiteShell routes={builtRoutes()}>{children}</SiteShell>
       </body>
     </html>
   );

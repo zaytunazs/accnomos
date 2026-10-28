@@ -6,7 +6,6 @@ import DemoBanner from "./DemoBanner";
 import MonthlyBackup from "./files/MonthlyBackup";
 import DemoBar, { DemoMenu, NotInDemo } from "./demo/DemoBar";
 import TopBar from "./TopBar";
-import { builtRoutes } from "@/lib/routes.server";
 import { ServiceStrip, VersionStrip } from "./StatusStrips";
 
 function LogoMark() {
@@ -34,7 +33,8 @@ function LogoMark() {
   );
 }
 
-export default function AppShell({ children }: { children: ReactNode }) {
+/** `routes`: the pages in this build (lib/routes.server.ts, read by the root layout), for the menu bar. */
+export default function AppShell({ children, routes }: { children: ReactNode; routes: string[] }) {
   return (
     <div className="group/shell flex min-h-full flex-1 flex-col">
       <DemoBar />
@@ -44,7 +44,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <ServiceStrip />
       <VersionStrip />
       {/* Signed in: the menu bar (TopBar, with data-topnav), which hides the phone header and the sidebar below. */}
-      <TopBar routes={builtRoutes()} />
+      <TopBar routes={routes} />
       {/* Signed out: on phones, the logo plus Settings, shown only while the sidebar is hidden. */}
       <header className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-border bg-white px-4 py-2.5 min-[900px]:hidden group-has-[[data-topnav]]/shell:hidden">
         <span className="flex min-w-0 items-center gap-2.5">

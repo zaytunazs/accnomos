@@ -13,9 +13,9 @@ import { useSignedIn } from "@/lib/signed-in";
  * once this device is signed in, gets the app shell (AppShell.tsx: sidebar, tab bar and the signed-in header).
  * The two never share chrome, so the signed-in header can change without touching the public site.
  */
-export default function SiteShell({ children }: { children: ReactNode }) {
+export default function SiteShell({ children, routes }: { children: ReactNode; routes: string[] }) {
   const path = usePathname() ?? "/";
   const signedIn = useSignedIn(path);
   if (isPublicPath(path) && signedIn !== true) return <MarketingShell path={path}>{children}</MarketingShell>;
-  return <AppShell>{children}</AppShell>;
+  return <AppShell routes={routes}>{children}</AppShell>;
 }
