@@ -68,6 +68,9 @@ DEFAULT_TODAY = (
     "2026-10-27"  # the gold set's quarter (Jul-Sep 2026) is the one still to file; VAT and Ask default to Oct-Dec
 )
 MAIL_GOLD = ("001_standard.json", "011_standard.json", "022_standard.json")  # emailed in by the seeded suppliers
+# Every linked mailbox (Settings › Email intake) holds the first of those again (the same file reaching two
+# mailboxes: intake must copy it once) and one receipt of its own.
+LINKED_GOLD = ("001_standard.json", "033_standard.json")
 CALENDAR = "Accnomos"
 SAMPLE = "SAMPLE — FICTIONAL COMPANY"
 DEMO_TODAY = date(2026, 11, 4)  # docs/DEMO.md's stage date: the sample receipt (2 Nov) is in the current quarter
@@ -279,8 +282,15 @@ class State:
     sender: FakeMailSender
     contacts: FakeContactsProvider
     calendar: FakeCalendarProvider
+    linked: dict[str, FakeMailProvider]  # linked mailbox address -> its fake, made on first use
     seeded = False
     today: date | None = None  # the `demo` seed's stage date; None: ACCNOMOS_TEST_TODAY
+
+    def linked_mail(self, address: str) -> FakeMailProvider:
+        """The fake behind a linked mailbox, whatever token came with it (as for the signed-in one)."""
+        if address not in self.linked:
+            self.linked[address] = _linked_mailbox(address)
+        return self.linked[address]
 
 
 TENANT_HEADER = "X-Test-Tenant"
@@ -337,6 +347,29 @@ def _sender(gold: dict[str, Any]) -> tuple[str, str]:
     name = (gold.get("supplier") or {}).get("name") or "Supplier"
     slug = re.sub(r"[^a-z0-9]+", "", name.lower().removesuffix(" ltd").removesuffix(" limited"))[:24] or "supplier"
     return name, f"accounts@{slug}.example"
+
+
+def _linked_mailbox(address: str) -> FakeMailProvider:
+    mail, golds, received = FakeMailProvider(), gold_receipts(), datetime.now(UTC)
+    for n, file in enumerate(LINKED_GOLD, start=1):
+        name, sender = _sender(golds[file])
+        png = gold_png(file)
+        mail.add(
+            MailMessage(
+                id=f"{address}-msg-{n}",
+                received_at=received - timedelta(days=n, hours=2),
+                from_address=sender,
+                from_name=name,
+                subject=f"Your receipt from {name}",
+            ),
+            (
+                MailAttachment(
+                    id=f"att-{n}", name=f"receipt-{file.split('_')[0]}.png", content_type="image/png", size=len(png)
+                ),
+                png,
+            ),
+        )
+    return mail
 
 
 # The business on its invoices, so an invoice can be sent without filling Settings in first.
@@ -417,6 +450,7 @@ async def reset(seed: str | None = None) -> dict[str, Any]:
     s.storage = FakeStorageProvider()
     await s.storage.write(PROFILE, InvoiceProfile.model_validate(SAMPLE_PROFILE).model_dump_json(indent=2).encode())
     s.mail = FakeMailProvider()
+    s.linked = {}
     s.sender = FakeMailSender()
     s.contacts = FakeContactsProvider()
     s.calendar = FakeCalendarProvider([PLAN_EVENT])  # something for "plan my Thursday" to plan around
@@ -530,6 +564,7 @@ async def state_route() -> dict[str, Any]:
     return {
         "files": sorted(s.storage.files),
         "mail_calls": s.mail.calls,
+        "linked_mail_calls": {address: m.calls for address, m in s.linked.items()},
         "sent": [
             {"to": m.to, "subject": m.subject, "attachments": [a.name for a in m.attachments]} for m in s.sender.sent
         ],

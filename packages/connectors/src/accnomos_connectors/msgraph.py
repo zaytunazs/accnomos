@@ -363,14 +363,47 @@ class GraphMailProvider(_GraphHttp, MailProvider):
 
     Reading needs `Mail.Read` and only sends GET requests. `create_reply_draft` needs `Mail.ReadWrite`,
     which the app asks for only when the user taps *Draft reply*; it saves a draft and never sends.
+
+    `mailbox` reads a shared or delegated mailbox the signed-in user can open: `/users/{address}/...` instead of
+    `/me/...`, with a delegated `Mail.Read.Shared` token (work or school accounts only). Microsoft Learn,
+    https://learn.microsoft.com/graph/outlook-share-messages-folders and
+    https://learn.microsoft.com/graph/permissions-reference#mailreadshared (checked 28 Oct 2026).
     """
 
     PAGE = 50
     TRIAGE_SELECT = "id,conversationId,subject,from,receivedDateTime,bodyPreview,isRead,webLink"
+    WELL_KNOWN = frozenset({"inbox", "archive"})  # folders intake may watch by name; Sent and Drafts never
 
-    @staticmethod
-    def _message_url(message_id: str, rest: str = "") -> str:
-        return f"{GRAPH}/me/messages/{quote(message_id, safe='')}" + rest
+    def __init__(self, token: str, *, mailbox: str | None = None, **kw: Any) -> None:
+        super().__init__(token, **kw)
+        self._base = f"{GRAPH}/users/{quote(mailbox.strip(), safe='@')}" if mailbox else f"{GRAPH}/me"
+        self._folder_ids: dict[str, str] = {}
+
+    def _message_url(self, message_id: str, rest: str = "") -> str:
+        return f"{self._base}/messages/{quote(message_id, safe='')}" + rest
+
+    async def _folder_url(self, folder: str | None, default: str | None) -> str:
+        """`{base}/messages` (every folder), `{base}/mailFolders/inbox/messages`, or a top-level folder found by
+        its display name (`$filter=displayName eq '...'`); a folder that is not there raises FileNotFoundError."""
+        want = default if folder in (None, "", "all") else folder
+        if want is None:
+            return f"{self._base}/messages"
+        if want.lower() in self.WELL_KNOWN:
+            return f"{self._base}/mailFolders/{want.lower()}/messages"
+        if want not in self._folder_ids:
+            name = want.replace("'", "''")
+            page = (
+                await self._request(
+                    "GET",
+                    f"{self._base}/mailFolders",
+                    params={"$filter": f"displayName eq '{name}'", "$select": "id,displayName"},
+                )
+            ).json()
+            hits = page.get("value") or []
+            if not hits:
+                raise FileNotFoundError(f"mail folder {want!r}")
+            self._folder_ids[want] = hits[0]["id"]
+        return f"{self._base}/mailFolders/{quote(self._folder_ids[want], safe='')}/messages"
 
     async def list_recent(self, since: datetime, max_results: int = 100) -> list[MailMessage]:
         since_utc = since.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -380,7 +413,7 @@ class GraphMailProvider(_GraphHttp, MailProvider):
             "$orderby": "receivedDateTime desc",
             "$top": str(min(self.PAGE, max(1, max_results))),
         }
-        url: str | None = f"{GRAPH}/me/mailFolders/inbox/messages"  # not Junk, Deleted, Drafts or Sent
+        url: str | None = f"{self._base}/mailFolders/inbox/messages"  # not Junk, Deleted, Drafts or Sent
         out: list[MailMessage] = []
         while url and len(out) < max_results:
             page = (await self._request("GET", url, params=params)).json()
@@ -410,7 +443,9 @@ class GraphMailProvider(_GraphHttp, MailProvider):
         patched = (await self._request("PATCH", self._message_url(draft["id"]), json={"body": body})).json()
         return MailDraft(id=draft["id"], web_link=patched.get("webLink") or draft.get("webLink"))
 
-    async def list_messages(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
+    async def list_messages(
+        self, since: datetime, max_results: int = 50, *, folder: str | None = None
+    ) -> list[MailMessage]:
         since_utc = since.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         # $orderby must use the first $filter property, or Graph rejects the query as "InefficientFilter".
         params: dict[str, str] | None = {
@@ -419,7 +454,7 @@ class GraphMailProvider(_GraphHttp, MailProvider):
             "$orderby": "receivedDateTime desc",
             "$top": str(min(self.PAGE, max(1, max_results))),
         }
-        url: str | None = f"{GRAPH}/me/messages"
+        url: str | None = await self._folder_url(folder, None)
         out: list[MailMessage] = []
         while url and len(out) < max_results:
             page = (await self._request("GET", url, params=params)).json()
@@ -440,7 +475,9 @@ class GraphMailProvider(_GraphHttp, MailProvider):
             url = page.get("@odata.nextLink")
         return out[:max_results]
 
-    async def list_without_attachments(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
+    async def list_without_attachments(
+        self, since: datetime, max_results: int = 50, *, folder: str | None = None
+    ) -> list[MailMessage]:
         since_utc = since.astimezone(UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
         params: dict[str, str] | None = {
             "$filter": f"receivedDateTime ge {since_utc} and hasAttachments eq false",
@@ -448,7 +485,8 @@ class GraphMailProvider(_GraphHttp, MailProvider):
             "$orderby": "receivedDateTime desc",
             "$top": str(min(self.PAGE, max(1, max_results))),
         }
-        url: str | None = f"{GRAPH}/me/mailFolders/inbox/messages"  # not Sent: the user's own invoices are not costs
+        # not Sent: the user's own invoices are not costs
+        url: str | None = await self._folder_url(folder, "inbox")
         out: list[MailMessage] = []
         while url and len(out) < max_results:
             page = (await self._request("GET", url, params=params)).json()

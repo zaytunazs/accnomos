@@ -135,9 +135,12 @@ Summary = Callable[[dict[str, Any], str], str]
 SUMMARIES: dict[str, Summary] = {
     # Review and the ledger
     "proposed": lambda r, w: (
-        f"Read {w} and moved it to Needs a look"
-        if r.get("status") == "needs_a_look"
-        else f"Read {w} and proposed an entry"
+        (
+            f"Read {w} and moved it to Needs a look"
+            if r.get("status") == "needs_a_look"
+            else f"Read {w} and proposed an entry"
+        )
+        + (f" (emailed to {r['mailbox']})" if r.get("mailbox") else "")
     ),
     "approved": lambda r, w: f"Posted {w} to the ledger",
     "rejected": lambda r, w: f"Rejected {w}" + (f": {r['reason']}" if r.get("reason") else ""),
@@ -154,8 +157,14 @@ SUMMARIES: dict[str, Summary] = {
     ),
     # Mail
     "mail_scanned": lambda r, w: (
-        f"Checked Outlook: {_n(r, 'saved')} saved from " + _plural(_n(r, "candidates"), "candidate")
+        "Checked Outlook"
+        + (f" ({r['mailbox']})" if r.get("mailbox") else "")
+        + f": {_n(r, 'saved')} saved from "
+        + _plural(_n(r, "candidates"), "candidate")
     ),
+    "mailbox_added": lambda r, w: f"Linked the mailbox {r.get('address') or 'a mailbox'} for receipts",
+    "mailbox_updated": lambda r, w: f"Changed which mail is read from {r.get('address') or 'a mailbox'}",
+    "mailbox_removed": lambda r, w: f"Unlinked the mailbox {r.get('address') or 'a mailbox'}",
     "mail_triaged": lambda r, w: (
         f"Sorted the inbox: {_plural(_n(r, 'threads'), 'thread')} from " + _plural(_n(r, "scanned"), "message")
     ),

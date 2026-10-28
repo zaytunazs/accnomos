@@ -32,17 +32,29 @@ class FakeMailProvider(MailProvider):
         self.bodies: dict[str, str] = {}  # message id -> plain-text body
         self.calls: list[str] = []
         self.drafts: list[dict[str, str]] = []  # {"id", "reply_to", "body"} per create_reply_draft
+        self.folders: dict[str, str] = {}  # message id -> folder ("inbox" unless `add` says otherwise)
 
-    def add(self, message: MailMessage, *files: tuple[MailAttachment, bytes], body: str = "") -> MailMessage:
+    def add(
+        self, message: MailMessage, *files: tuple[MailAttachment, bytes], body: str = "", folder: str = "inbox"
+    ) -> MailMessage:
         message.has_attachments = bool(files)
         self.messages.append(message)
+        self.folders[message.id] = folder
         self.attachments[message.id] = list(files)
         self.bodies[message.id] = body
         return message
 
-    async def list_without_attachments(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
-        self.calls.append("list_without_attachments")
-        hits = [m for m in self.messages if not m.has_attachments and m.received_at >= since]
+    def _in(self, m: MailMessage, folder: str | None, default: str | None) -> bool:
+        want = default if folder in (None, "all") else folder
+        return want is None or self.folders.get(m.id, "inbox").lower() == want.lower()
+
+    async def list_without_attachments(
+        self, since: datetime, max_results: int = 50, *, folder: str | None = None
+    ) -> list[MailMessage]:
+        self.calls.append("list_without_attachments" + (f":{folder}" if folder else ""))
+        hits = [
+            m for m in self.messages if not m.has_attachments and m.received_at >= since and self._in(m, folder, None)
+        ]
         return sorted(hits, key=lambda m: m.received_at, reverse=True)[:max_results]
 
     async def message_text(self, message_id: str) -> str:
@@ -64,9 +76,11 @@ class FakeMailProvider(MailProvider):
         self.drafts.append({"id": draft_id, "reply_to": message_id, "body": body_text})
         return MailDraft(id=draft_id, web_link=f"https://outlook.office.com/mail/drafts/id/{draft_id}")
 
-    async def list_messages(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
-        self.calls.append("list_messages")
-        hits = [m for m in self.messages if m.has_attachments and m.received_at >= since]
+    async def list_messages(
+        self, since: datetime, max_results: int = 50, *, folder: str | None = None
+    ) -> list[MailMessage]:
+        self.calls.append("list_messages" + (f":{folder}" if folder else ""))
+        hits = [m for m in self.messages if m.has_attachments and m.received_at >= since and self._in(m, folder, None)]
         return sorted(hits, key=lambda m: m.received_at, reverse=True)[:max_results]
 
     async def list_attachments(self, message_id: str) -> list[MailAttachment]:
