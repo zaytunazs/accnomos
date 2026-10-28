@@ -3,8 +3,11 @@
  * this device is not signed in, and the small shared pieces of it. Signed in, the same routes use the app shell.
  */
 
-/** Routes shown in the marketing shell to signed-out visitors. `/` is the landing page (signed in: Home). */
-export const PUBLIC_PATHS = new Set(["/", "/how-it-works", "/privacy"]);
+/**
+ * Routes shown in the marketing shell to signed-out visitors. `/` is the landing page (signed in: Home); `/judges`
+ * is the demo guide (inside a demo sandbox, which counts as signed in, it keeps the app shell and the demo bar).
+ */
+export const PUBLIC_PATHS = new Set(["/", "/how-it-works", "/privacy", "/terms", "/judges"]);
 
 export const isPublicPath = (path: string) => PUBLIC_PATHS.has(path);
 
@@ -28,6 +31,12 @@ export const LAUNCH = "November 2026";
 
 /** Where the chat and the footer send anything the site cannot answer (runtime: PUBLIC_CONTACT_EMAIL). */
 export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "admin@zaytunauk.co.uk";
+
+/** "Try the demo": the judges' sandbox guide (src/app/judges); DemoLink.tsx starts the sandbox on the way there. */
+export const DEMO_GUIDE = "/judges";
+
+/** What is not tested against real services, kept in the public repository (docs/HONESTY.md). */
+export const HONESTY_URL = "https://github.com/zaytunazs/accnomos/blob/main/docs/HONESTY.md";
 
 /** Fired by the menu's "Ask about Accnomos" button; the chat widget opens on it. */
 /** Pre-launch "get notified": no database, so an e-mail to the team. Empty in a submission build (folded away). */

@@ -32,9 +32,11 @@ test.describe("landing page at 1280 px", () => {
     await expect(page.getByRole("navigation", { name: "Sections" })).toHaveCount(0);
 
     await expect(page.getByRole("list", { name: "Apps" }).first()).toContainText("Available on Android");
-    // "Try the demo" goes to /judges (the demo sandbox page, in this build); the menu's sample books to /try.
+    // "Try the demo" goes to /judges (the demo sandbox guide; DemoLink.tsx starts the sandbox on the way); the
+    // footer's sample books to /try.
     await expect(page.getByRole("main").getByRole("link", { name: "Try the demo", exact: true }).first()).toHaveAttribute("href", "/judges");
-    await page.getByRole("banner").getByRole("link", { name: "Try the sample books" }).click();
+    await expect(page.getByRole("banner").getByRole("link", { name: "Try the demo" })).toHaveAttribute("href", "/judges");
+    await page.getByRole("contentinfo").getByRole("link", { name: "Browse the sample books" }).click();
     await expect(page).toHaveURL(/\/try$/);
     await expect(page.getByRole("link", { name: "See the demo books" })).toBeVisible();
     await expect(page.getByText("SAMPLE — FICTIONAL COMPANY").first()).toBeVisible();
@@ -42,24 +44,28 @@ test.describe("landing page at 1280 px", () => {
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Home" })).toHaveAttribute("href", "/try");
   });
 
-  test("top menu: every item lands; Security & privacy and How it works keep the public shell", async ({ page }) => {
+  test("top menu: every item lands; the footer's privacy and how-it-works pages keep the public shell", async ({ page }) => {
     await page.goto("/");
     const nav = page.getByRole("navigation", { name: "Site" });
-    for (const name of ["Features", "How it works", "Security & privacy", "FAQ"]) {
+    for (const name of ["Features", "How it works", "Accountants", "Pricing & FAQ"]) {
       await expect(nav.getByRole("link", { name })).toBeVisible();
     }
     await nav.getByRole("link", { name: "Features" }).click();
     await expect(page.getByRole("heading", { level: 2, name: "The rest of the books, in the same place" })).toBeInViewport();
-    await nav.getByRole("link", { name: "FAQ" }).click();
-    await expect(page.getByRole("heading", { level: 2, name: "Questions" })).toBeInViewport();
+    await nav.getByRole("link", { name: "How it works" }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "How it works" })).toBeInViewport();
+    await nav.getByRole("link", { name: "Accountants" }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "For accountants" })).toBeInViewport();
+    await nav.getByRole("link", { name: "Pricing & FAQ" }).click();
+    await expect(page.getByRole("heading", { level: 2, name: "Pricing" })).toBeInViewport();
 
-    await nav.getByRole("link", { name: "Security & privacy" }).click();
+    const footer = page.getByRole("contentinfo");
+    await footer.getByRole("link", { name: "Privacy policy" }).click();
     await expect(page).toHaveURL(/\/privacy$/);
     await expect(page.getByRole("heading", { level: 1, name: "Privacy policy" })).toBeVisible();
-    await expect(page.getByRole("navigation", { name: "Site" }).getByRole("link", { name: "Security & privacy" })).toHaveAttribute("aria-current", "page");
     await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
 
-    await page.getByRole("navigation", { name: "Site" }).getByRole("link", { name: "How it works" }).click();
+    await page.getByRole("contentinfo").getByRole("link", { name: "How each feature works" }).click();
     await expect(page).toHaveURL(/\/how-it-works$/);
     await expect(page.getByRole("button", { name: "Ask about Accnomos" }).first()).toBeVisible();
   });
@@ -131,7 +137,7 @@ test.describe("process animation", () => {
 test.describe("at 360 px", () => {
   test.use({ viewport: { width: 360, height: 740 } });
 
-  for (const path of ["/", "/how-it-works", "/privacy"]) {
+  for (const path of ["/", "/how-it-works", "/privacy", "/terms", "/judges"]) {
     test(`${path}: no sideways scroll`, async ({ page }) => {
       await page.goto(path);
       await page.waitForLoadState("networkidle");
@@ -147,18 +153,19 @@ test.describe("at 360 px", () => {
     await button.click();
     await expect(button).toHaveAttribute("aria-expanded", "true");
     const menu = page.getByRole("navigation", { name: "Site menu" });
-    for (const name of ["Features", "How it works", "Security & privacy", "FAQ"]) {
+    for (const name of ["Features", "How it works", "Accountants", "Pricing & FAQ"]) {
       await expect(menu.getByRole("link", { name })).toBeVisible();
     }
+    await expect(page.locator("#site-menu").getByRole("link", { name: "Try the demo" })).toBeVisible();
     await expect(menu.getByRole("button", { name: "Ask about Accnomos" })).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(menu).toBeHidden();
     await expect(button).toBeFocused();
 
     await button.click();
-    await menu.getByRole("link", { name: "FAQ" }).click();
+    await menu.getByRole("link", { name: "Pricing & FAQ" }).click();
     await expect(menu).toBeHidden();
-    await expect(page.getByRole("heading", { level: 2, name: "Questions" })).toBeInViewport();
+    await expect(page.getByRole("heading", { level: 2, name: "Pricing" })).toBeInViewport();
   });
 
   test("chat fills the phone screen without sideways scroll", async ({ page }) => {

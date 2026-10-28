@@ -17,9 +17,11 @@ test("Try the demo from the landing: review and approve a receipt, the VAT retur
   test.setTimeout(SEED_WAIT + 120_000);
   await page.clock.install({ time: TODAY });
   await page.goto("/");
-  await page.getByRole("button", { name: "Try the demo — no sign-in" }).click();
+  // One click on the landing page's "Try the demo" (DemoLink.tsx): a sandbox, opened on the judges' guide.
+  await page.getByRole("main").getByRole("link", { name: "Try the demo", exact: true }).first().click();
   await expect(bar(page)).toContainText("Demo sandbox with sample data — changes reset after 2 hours.", { timeout: SEED_WAIT });
-  await expect(page).toHaveURL(/\/$/);
+  await expect(page).toHaveURL(/\/judges$/);
+  await expect(page.getByRole("heading", { name: "Try Accnomos in one click" })).toBeVisible();
   await expect(page.getByText("SAMPLE — FICTIONAL COMPANY · demo data only")).toHaveCount(0); // live books, not the static sample
 
   // Review: six documents waiting (two need a look); approve one.

@@ -166,8 +166,17 @@ body {
     transform: none;
   }
 }
+/* The laptop screen is the page's largest image (LCP): it only slides, so it counts as painted from the first frame. */
+@keyframes hero-slide {
+  from {
+    transform: translateY(18px);
+  }
+  to {
+    transform: none;
+  }
+}
 .hero-laptop {
-  animation: hero-rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation: hero-slide 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
 }
 .hero-phone {
   animation: hero-rise 0.7s 0.25s cubic-bezier(0.2, 0.7, 0.2, 1) both;

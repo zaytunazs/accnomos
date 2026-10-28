@@ -1,12 +1,10 @@
-import { existsSync } from "node:fs";
-import { join } from "node:path";
 import Link from "next/link";
-import TryDemo from "@/components/demo/TryDemo";
 import EarlyAccessForm from "@/components/early-access/EarlyAccessForm";
 import Prelaunch from "@/components/Prelaunch";
-import { LAUNCH, NOTIFY_HREF, PRELAUNCH_IN_BUILD, SUBMISSION_MODE } from "@/lib/public-site";
+import { HONESTY_URL, LAUNCH, NOTIFY_HREF, PRELAUNCH_IN_BUILD, SUBMISSION_MODE } from "@/lib/public-site";
 import { BrowserFrame, PhoneFrame, Shot } from "./Marks";
 import AskLink from "./AskLink";
+import DemoLink from "./DemoLink";
 import ProcessDemo from "./ProcessDemo";
 import ScreenTabs from "./ScreenTabs";
 
@@ -16,17 +14,50 @@ import ScreenTabs from "./ScreenTabs";
  * When a claim changes there, change it here and in services/runtime/app/public_kb.md (the chat's notes).
  */
 
-/**
- * "Try the demo": the judges' demo page when this build has one (a parallel branch adds
- * src/app/judges and POST /demo/session), otherwise the sample books on /try. Checked when the static export is
- * built, so the link never points at a page that isn't there.
- */
-const DEMO_HREF = existsSync(join(process.cwd(), "src", "app", "judges", "page.tsx")) ? "/judges" : "/try";
-
 const PROMISES = [
   { line: "AI proposes.", note: "A Meta model reads each receipt, invoice or credit note." },
   { line: "You approve.", note: "Nothing reaches your books until you tap Approve." },
   { line: "Code calculates.", note: "The ledger and the nine VAT boxes are worked out by code." },
+];
+
+/** Who it is for (WhoFor): only what this build does for each, with what it does not do said plainly. */
+const AUDIENCES = [
+  {
+    title: "Small businesses",
+    body: "Receipts, invoices, bank, VAT returns, reports and pay-run estimates for a limited company or a partnership.",
+  },
+  {
+    title: "Sole traders",
+    body: "The same books, plus the quarterly Making Tax Digital for Income Tax figures for your self-employment.",
+  },
+  {
+    title: "Landlords",
+    body: "Rent, letting-agent statements and property bills in the same approve-first books. Separate property-income (SA105) figures are not in this build.",
+  },
+  {
+    title: "Personal finances",
+    body: "Budgets, bills and savings goals from your own bank statements: switch on Show personal finances in Settings.",
+  },
+];
+
+/** The four steps every document goes through (Process). */
+const STEPS = [
+  {
+    title: "Send it in",
+    body: "Forward it to your Outlook, snap it in the Android app, upload it, or just say what you need: “send a £100 invoice to JM Trading”.",
+  },
+  {
+    title: "AI proposes",
+    body: "A Meta model reads it and proposes the entry. Code checks the sums, the VAT and whether you have seen it before.",
+  },
+  {
+    title: "You approve",
+    body: "Approve, change or reject it on the phone or the web. Nothing reaches your books without you, and Undo is one tap.",
+  },
+  {
+    title: "HMRC-ready",
+    body: "Code works out the nine VAT boxes and your Income Tax quarterly figures, ready to submit. Direct submission runs in HMRC's sandbox.",
+  },
 ];
 
 const FEATURES = [
@@ -160,13 +191,17 @@ export default function Landing() {
   return (
     <>
       <Hero />
+      <WhoFor />
       <Process />
-      <Android />
       <Features />
+      <Mtd />
       <AskAndActions />
+      <Android />
+      <Accountants />
       <YourData />
       <Models />
       <Status />
+      <Pricing />
       <Faq />
       {/* The early-adopter sign-up: pre-launch build only (in neither the HTML nor the payload of a submission build). */}
       {PRELAUNCH_IN_BUILD && (
@@ -196,17 +231,13 @@ function CtaPair({ dark = false }: { dark?: boolean }) {
         <a href={NOTIFY_HREF} className={primary}>
           Launching {LAUNCH} — get notified
         </a>
-        <Link href={DEMO_HREF} className={secondary}>
-          Try the demo
-        </Link>
+        <DemoLink className={secondary} />
       </div>
     );
   }
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Link href={DEMO_HREF} className={primary}>
-        Try the demo
-      </Link>
+      <DemoLink className={primary} />
       <Link href="/connect?next=%2F" className={secondary}>
         Sign in with Microsoft
       </Link>
@@ -232,7 +263,9 @@ function Hero() {
     <section aria-labelledby="hero-title" className="on-dark ledger-rule relative overflow-hidden bg-ledger text-ground">
       <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 pb-16 pt-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.05fr)] lg:pb-20 lg:pt-14">
         <div>
-          <p className="text-[15px] font-semibold text-ground/75">Bookkeeping and MTD VAT for UK small businesses</p>
+          <p className="text-[15px] font-semibold text-ground/75">
+            Bookkeeping and Making Tax Digital for UK small businesses, sole traders, landlords and personal finances
+          </p>
           <div className="hero-promises mt-4">
             <h1 id="hero-title" className="hero-lines font-extrabold tracking-[-0.035em]">
               {PROMISES.map((p) => (
@@ -248,19 +281,14 @@ function Hero() {
             </ul>
           </div>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ground/85">
-            Snap a receipt on your phone, or let Accnomos pick it up from your email. It waits for your Approve on
-            the phone or on the web: both work on the same books, in your own OneDrive.
+            Send in a receipt by email, photo or voice. Accnomos proposes the entry, you approve it, and your VAT and
+            Income Tax figures are ready for HMRC, with the books kept in your own OneDrive.
           </p>
           <div className="mt-4">
             <AppChips dark />
           </div>
           <div className="mt-7">
             <CtaPair dark />
-          </div>
-          {/* A sandbox of the sample books in this browser, when the runtime runs demos (DEMO_MODE=1, app/demo.py);
-              renders nothing otherwise. */}
-          <div className="mt-3">
-            <TryDemo variant="secondary" />
           </div>
           <p className="mt-4 text-sm text-ground/70">
             The demo uses fictional sample books and needs no sign-in. Submitting to HMRC uses HMRC&apos;s sandbox.
@@ -276,6 +304,7 @@ function Hero() {
               width={1280}
               height={800}
               eager
+              priority
               alt="Accnomos Review page: the Novex Office Supplies receipt has been read, £51.90 with £8.65 VAT, confidence 97 %, waiting for approval."
             />
           </BrowserFrame>
@@ -308,16 +337,46 @@ function SectionHead({ id, title, lead }: { id: string; title: string; lead?: Re
   );
 }
 
+function WhoFor() {
+  return (
+    <section id="who" aria-labelledby="who-title" className="scroll-mt-20 border-b border-border bg-white py-14">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <h2 id="who-title" className="text-2xl font-extrabold tracking-[-0.02em] sm:text-3xl">
+          One set of books, whoever you are
+        </h2>
+        <ul className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {AUDIENCES.map((a) => (
+            <li key={a.title} className="border-l-2 border-brass pl-4">
+              <h3 className="font-extrabold">{a.title}</h3>
+              <p className="mt-1 text-[15px] leading-relaxed text-muted">{a.body}</p>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  );
+}
+
 function Process() {
   return (
     <section id="how" aria-labelledby="how-title" className="scroll-mt-20 py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHead
           id="how-title"
-          title="From a till receipt to Box 4"
-          lead="One receipt, five steps, all on real screens from the app."
+          title="How it works"
+          lead="Four steps for every document. Below, one receipt goes through them on real screens from the app."
         />
-        <div className="mt-10">
+        <ol aria-label="The four steps" className="mt-8 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {STEPS.map((st, i) => (
+            <li key={st.title} className="rounded-2xl border border-border bg-white p-5">
+              <p className="text-sm font-extrabold text-teal-dark">Step {i + 1}</p>
+              <h3 className="mt-1 text-lg font-extrabold">{st.title}</h3>
+              <p className="mt-1 text-[15px] leading-relaxed text-muted">{st.body}</p>
+            </li>
+          ))}
+        </ol>
+        <h3 className="mt-12 text-xl font-extrabold">From a till receipt to Box 4</h3>
+        <div className="mt-6">
           <ProcessDemo />
         </div>
         <p className="mt-8 text-[15px]">
@@ -382,7 +441,7 @@ function AskAndActions() {
         <div>
           <SectionHead
             id="ask-title"
-            title="Ask your books, then approve what it suggests"
+            title="Ask by voice or chat, then approve what it suggests"
             lead="Type or say a question in plain English. The figures are calculated by code from your ledger; the AI only writes the words."
           />
           <ul className="mt-6 space-y-3 text-[15px] leading-relaxed">
@@ -396,6 +455,122 @@ function AskAndActions() {
             </li>
           </ul>
         </div>
+      </div>
+    </section>
+  );
+}
+
+function Mtd() {
+  const cards = [
+    {
+      title: "MTD for VAT",
+      points: [
+        "The nine boxes for any period, worked out by code from the entries you approved, with the entries behind each box.",
+        "Check the obligations, prepare the return and confirm the declaration, all in one page.",
+      ],
+      status:
+        "Submission goes to HMRC's sandbox. It is tested against a stand-in for HMRC, not yet end to end against the sandbox itself.",
+    },
+    {
+      title: "MTD for Income Tax",
+      points: [
+        "Quarterly updates for self-employment, worked out by code from the same approved entries: income and expenses by HMRC category.",
+        "Switch it on in Settings with “I am self-employed”.",
+      ],
+      status:
+        "Sandbox only. Built and tested against HMRC's published example payloads; it has never been run against HMRC.",
+    },
+  ];
+  return (
+    <section id="mtd" aria-labelledby="mtd-title" className="scroll-mt-20 py-20">
+      <div className="mx-auto grid max-w-6xl items-center gap-12 px-4 sm:px-6 lg:grid-cols-2">
+        <div>
+          <SectionHead
+            id="mtd-title"
+            title="Making Tax Digital, for VAT and Income Tax"
+            lead="Numbers for HMRC come from code, never from a model. Accnomos prepares them; you check and send."
+          />
+          <div className="mt-8 grid gap-4">
+            {cards.map((c) => (
+              <div key={c.title} className="rounded-2xl border border-border bg-white p-5">
+                <h3 className="text-lg font-extrabold">{c.title}</h3>
+                <ul className="mt-2 list-disc space-y-1.5 pl-5 text-[15px] leading-relaxed">
+                  {c.points.map((pt) => (
+                    <li key={pt}>{pt}</li>
+                  ))}
+                </ul>
+                <p className="mt-3 text-sm text-muted">{c.status}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        <BrowserFrame>
+          <Shot
+            src="/shots/step-5-vat.webp"
+            width={808}
+            height={560}
+            alt="The VAT return page: Box 4, VAT reclaimed on purchases, £8.65 after the Novex receipt was approved."
+          />
+        </BrowserFrame>
+      </div>
+    </section>
+  );
+}
+
+function Accountants() {
+  return (
+    <section id="accountants" aria-labelledby="accountants-title" className="scroll-mt-20 py-20">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6">
+        <SectionHead
+          id="accountants-title"
+          title="For accountants"
+          lead="Your client keeps the books; you get clean, checkable records without logging in to yet another system."
+        />
+        <ul className="mt-8 grid gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-4">
+          <li className="border-l-2 border-teal pl-4">
+            <h3 className="font-extrabold">Books.xlsx</h3>
+            <p className="mt-1 text-[15px] leading-relaxed text-muted">
+              Rebuilt in your client&apos;s Accnomos folder after every change: the ledger, VAT and reports in one workbook.
+            </p>
+          </li>
+          <li className="border-l-2 border-teal pl-4">
+            <h3 className="font-extrabold">Exports</h3>
+            <p className="mt-1 text-[15px] leading-relaxed text-muted">
+              Everything as one zip of CSVs, ready for your own software.
+            </p>
+          </li>
+          <li className="border-l-2 border-teal pl-4">
+            <h3 className="font-extrabold">An audit trail</h3>
+            <p className="mt-1 text-[15px] leading-relaxed text-muted">
+              Every entry with who approved it, which document it came from, and a plain sentence.
+            </p>
+          </li>
+          <li className="border-l-2 border-teal pl-4">
+            <h3 className="font-extrabold">Shared from OneDrive</h3>
+            <p className="mt-1 text-[15px] leading-relaxed text-muted">
+              Your client shares their Accnomos folder with you in OneDrive. A portal for accountants is not in this build.
+            </p>
+          </li>
+        </ul>
+      </div>
+    </section>
+  );
+}
+
+function Pricing() {
+  return (
+    <section id="pricing" aria-labelledby="pricing-title" className="scroll-mt-20 border-t border-border py-20">
+      <div className="mx-auto grid max-w-6xl items-center gap-8 px-4 sm:px-6 md:grid-cols-[minmax(0,1fr)_auto]">
+        <SectionHead
+          id="pricing-title"
+          title="Pricing"
+          lead={
+            SUBMISSION_MODE
+              ? "No charge. There is no published pricing: Accnomos is a hackathon build. The demo needs no account and no card; your own books need only a Microsoft account."
+              : "Free while we launch. The demo needs no account and no card; your own books need only a Microsoft account."
+          }
+        />
+        <CtaPair />
       </div>
     </section>
   );
@@ -578,7 +753,7 @@ function Status() {
         "Google Drive, RTI payroll, flat-rate VAT",
         ...(SUBMISSION_MODE ? [] : ["An iPhone app"]),
       ],
-      foot: "The full list of gaps is kept in docs/HONESTY.md in the repository.",
+      foot: "The full list of gaps is kept in docs/HONESTY.md in the public repository.",
     },
   ];
   return (
@@ -602,6 +777,11 @@ function Status() {
             </div>
           ))}
         </div>
+        <p className="mt-6 text-[15px]">
+          <a href={HONESTY_URL} className="font-bold text-teal-dark underline underline-offset-2 hover:text-teal">
+            Read the full list in docs/HONESTY.md
+          </a>
+        </p>
       </div>
     </section>
   );
