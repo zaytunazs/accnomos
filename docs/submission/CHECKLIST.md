@@ -6,7 +6,7 @@ Refreshed 27 Oct 2026. `[x]` means done on 27 Oct according to the owner's statu
 ## 1. Android: Play listing and sign-in
 
 - [x] **Entra Android entry for the Play release** (done 27 Oct): the Play app-signing key's MSAL signature hash is registered under the Accnomos app's *Authentication* → *Android* platform. Build **0.3.1+4** onwards is built with that hash (`tools/build_release.ps1`; commit `d67527e`). Glance: Entra → *App registrations* → Accnomos → *Authentication* shows the Android entry.
-- [x] **`flutter analyze` and `flutter test`** now run on every Android merge: **158 tests pass** (27 Oct). `docs/HONESTY.md` still quotes 148 until its own branch lands.
+- [x] **`flutter analyze` and `flutter test`** now run on every Android merge: **248 tests pass** (28 Oct gate figure).
 - [x] **Current build:** `apps/mobile/pubspec.yaml` is **0.3.2+5** (adds *Add from phone*, the system contact picker).
 - [ ] **Play listing status.** Play Console → your app → *Release* → *Production*. On 27 Oct the owner's note is "production track has build 1 in review". Write the real status into the form on the day (in review, live, or test-track only); do not write "published" unless the console says so.
 - [ ] **Sign in on a release/Play build on a real phone** and note whether it worked. The repo has no record of a phone sign-in; until you have one, film the debug build or the 390 px PWA and say so. After a successful sign-in, set `broker_redirect_uri_registered` to `true` in `apps/mobile/assets/msal_config.json` only if you rebuild; otherwise leave the file alone.
@@ -40,7 +40,7 @@ Refreshed 27 Oct 2026. `[x]` means done on 27 Oct according to the owner's statu
 ## 5. Docs hygiene (judges will read these)
 
 - [x] ~~Remove the stale tables in `README.md`~~: done in the earlier review pass.
-- [ ] **Test counts** on `main`, 27 Oct: runtime and packages **1,176 passed** (1 skipped), evals **258**, relay **102**, Playwright **195**, Flutter **158**. `README.md`, `docs/HONESTY.md` and `docs/DEMO.md` are being changed on other branches and some still quote older figures (HONESTY.md: 970 and 191); after they merge, re-run `uv run pytest -q`, `pnpm run e2e` and `flutter test`, and make the three docs and `docs/submission/*` agree.
+- [ ] **Test counts** on `main`, 28 Oct gates: runtime **1260 passed** (all Python under `check.sh`), evals **258**, relay **119**, Playwright **208**, Flutter **248**. `README.md`, `docs/HONESTY.md`, `docs/DEMO.md` and `docs/submission/*` now quote these; before submitting, re-run `uv run pytest -q`, `pnpm run e2e` and `flutter test` and change any figure that has moved.
 - [ ] **Fill in the repo URL** on the video's end card (`VIDEO_SCRIPT.md`).
 - [ ] Read `docs/submission/DESCRIPTION.md`; paste the 150- or 400-word text, whichever the form takes. Re-count words in the form's own counter.
 - [ ] Re-read `docs/submission/JUDGING.md` against the official judging criteria once you have them and rename its headings.
