@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../theme.dart';
+import 'accountant_screen.dart';
 import 'audit_screen.dart';
 import 'bank_screen.dart';
 import 'contacts_screen.dart';
@@ -78,6 +79,12 @@ class MoreScreen extends StatelessWidget {
             title: 'Reports',
             note: 'Profit and loss, aged balances, VAT and trend',
             screen: ReportsScreen(),
+          ),
+          _Entry(
+            icon: Icons.handshake_outlined,
+            title: 'Your accountant',
+            note: 'Who can see your books, and their queries — read only',
+            screen: AccountantScreen(),
           ),
           _Entry(
             icon: Icons.history_outlined,

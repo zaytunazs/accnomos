@@ -736,6 +736,18 @@ class RuntimeClient {
   Future<List<Map<String, dynamic>>> todos() =>
       _list('GET', '/todos', what: 'load to-dos');
 
+  /// `GET /accountant`: who your books are shared with (accountants and
+  /// the Accnomos accountants opt-in), from `_System/accountant.json`.
+  /// Read-only on the phone; inviting and removing happen on the web.
+  Future<Map<String, dynamic>> accountant() =>
+      _map('GET', '/accountant', what: 'load your accountant');
+
+  /// `GET /queries`: your accountant's queries and the answers, newest
+  /// activity first (`_System/queries/`). Read-only on the phone.
+  Future<List<Map<String, dynamic>>> queries({String? status}) => _list(
+      'GET', '/queries',
+      query: {'status': ?status}, what: 'load queries');
+
   /// `POST /todos`: add one line of text. Returns the saved to-do.
   Future<Map<String, dynamic>> addTodo(String text) => _map('POST', '/todos',
       body: {'text': text}, what: 'add that to-do');
