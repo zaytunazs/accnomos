@@ -108,3 +108,13 @@ def test_compose_services_are_hardened():
             assert re.search(r":\d+\.\d+\.\d+", svc["image"]), f"{name} image not pinned"
     assert "healthcheck" in services["edge"]
 
+
+def test_android_manifest_asks_for_little_and_is_not_backed_up():
+    """The Android app (apps/mobile): only the permissions its features use, and no cloud backup of its settings."""
+    manifest = (ROOT / "apps/mobile/android/app/src/main/AndroidManifest.xml").read_text()
+    code = re.sub(r"<!--.*?-->", "", manifest, flags=re.S)
+    perms = set(re.findall(r'<uses-permission android:name="android\.permission\.([A-Z_]+)"', code))
+    assert perms == {"CAMERA", "RECORD_AUDIO", "INTERNET", "ACCESS_NETWORK_STATE"}
+    assert 'android:allowBackup="false"' in code
+    assert "android:debuggable" not in code
+    assert code.count('android:exported="true"') == 1  # the launcher activity; MSAL's own is declared by the library
