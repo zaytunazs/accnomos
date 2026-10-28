@@ -22,7 +22,7 @@ from pydantic import BaseModel, ValidationError
 from app.ai.ask import KnownNumbers, call_json_model
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError, parse_model_json
-from app.invoicing import Invoice, InvoiceProfile, money, uk_date
+from app.invoicing import Invoice, InvoiceProfile, money, pay_online_line, uk_date
 from app.schemas import strict_json_schema
 
 SUBJECT_MAX = 120
@@ -161,6 +161,8 @@ async def draft_reminder(inv: Invoice, profile: InvoiceProfile, cfg: AiConfig, t
     if isinstance(checked, str):
         reason, checked = checked, fallback_draft(facts)
     subject, body = checked
+    if pay := pay_online_line(inv):  # added by code after the checks: the model is never allowed to write a link
+        body = f"{body}\n\n{pay}"
     return ReminderDraft(
         to=inv.customer.email,
         subject=subject,

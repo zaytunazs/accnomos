@@ -275,6 +275,15 @@ def render_invoice(
                 pdf.cell(32, 5, label)
                 pdf.set_text_color(*INK)
                 pdf.cell(WIDTH - 32, 5, text(value), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    if link := inv.payment_link:  # app/online_payments.py: the customer can pay through the business's own account
+        pdf.set_text_color(*MUTED)
+        pdf.cell(32, 5, "Pay online")
+        pdf.set_text_color(*TEAL)
+        pdf.multi_cell(WIDTH - 32, 5, text(link.url), link=link.url, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        if link.test_mode:
+            pdf.set_text_color(*MUTED)
+            pdf.cell(32, 5, "")
+            pdf.cell(WIDTH - 32, 5, "TEST MODE: this link takes no real money.", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     for extra in (inv.notes, profile.footer_note):
         if extra:
             pdf.ln(3)

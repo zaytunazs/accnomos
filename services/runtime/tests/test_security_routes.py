@@ -218,6 +218,8 @@ TALKS_HTTP = {
     "ai/plan.py": "httpx errors only",
     "ai/triage.py": "httpx errors only",
     "company_lookup.py": "Companies House (CH_BASE constant) and the relay (HMRC_RELAY_URL): server env only",
+    "payment_providers.py": "Stripe and PayPal: the bases in StripeConfig/PayPalConfig, from server env only",
+    "online_fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
 }
 
 
@@ -241,6 +243,30 @@ def _modules_importing_http() -> set[str]:
 
 def test_only_known_modules_can_make_http_calls():
     assert _modules_importing_http() == set(TALKS_HTTP)
+
+
+def test_payment_provider_calls_go_only_to_the_configured_provider_bases():
+    """app/payment_providers.py: every request URL starts with a base from StripeConfig/PayPalConfig (server env or
+    the documented constants); never a URL a provider, the app or a user sent. Its one client follows no redirect."""
+    import ast
+
+    from app.payment_providers import PAYPAL_SANDBOX, PayPalConfig, StripeConfig
+
+    src = (APP / "payment_providers.py").read_text()
+    bases = {"self.cfg.connect_base", "self.cfg.api_base", "self.cfg.base"}
+    seen = 0
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.JoinedStr) and node.values and isinstance(node.values[0], ast.FormattedValue):
+            head = ast.unparse(node.values[0].value)
+            if head.startswith("self.cfg."):
+                assert head in bases, head
+                seen += 1
+        if isinstance(node, ast.Call) and ast.unparse(node.func) in ("httpx.AsyncClient", "httpx.Client"):
+            assert any(k.arg == "follow_redirects" and ast.unparse(k.value) == "False" for k in node.keywords)
+    assert seen >= 8
+    cfg = StripeConfig(secret_key="sk_test_x", client_id="ca_x", redirect_uri="https://x/cb")
+    assert (cfg.api_base, cfg.connect_base) == ("https://api.stripe.com", "https://connect.stripe.com")
+    assert PayPalConfig("a", "b", "c", "d", "https://x/cb").base == PAYPAL_SANDBOX == "https://api-m.sandbox.paypal.com"
 
 
 def test_every_runtime_http_call_goes_to_an_allow_listed_base_and_follows_no_redirects():

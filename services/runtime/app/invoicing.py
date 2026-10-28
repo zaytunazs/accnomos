@@ -252,6 +252,25 @@ class Reminder(BaseModel):
     subject: str
 
 
+class PaymentLink(BaseModel):
+    """A link the customer can pay this invoice through (app/online_payments.py makes it). Amount in pence, GBP.
+
+    `ref` is an opaque reference the provider keeps in its own metadata, so a payment can be matched to this invoice
+    without the provider holding anything about the customer. `provider_ref` is the provider's object (a Stripe
+    Payment Link `plink_…`, a PayPal invoice `INV2-…`); a PayPal.me link has none and is never matched by code."""
+
+    provider: Literal["stripe", "paypal", "paypalme"]
+    url: str = Field(max_length=2000)
+    amount_pence: int = Field(gt=0)
+    currency: Literal["GBP"] = "GBP"
+    test_mode: bool = True
+    provider_ref: str | None = Field(None, max_length=100)
+    account_ref: str | None = Field(None, max_length=100)  # the connected Stripe account or PayPal merchant id
+    ref: str = Field(max_length=64)
+    created_at: datetime = Field(default_factory=now)
+    created_by: str
+
+
 class Invoice(BaseModel):
     number: str
     status: InvoiceStatus = "draft"
@@ -288,6 +307,8 @@ class Invoice(BaseModel):
     reminders: list[Reminder] = []
     job_id: str | None = None
     timesheets_marked: bool = False  # the lines' timesheet entries were marked invoiced on this number when sent
+    payment_link: PaymentLink | None = None  # "Pay online" (app/online_payments.py)
+    online_payments: list[str] = []  # provider payment ids already recorded from the link, so none is proposed twice
 
     def timesheet_entry_ids(self) -> list[str]:
         return [i for ln in self.lines for i in ln.timesheet_entry_ids]
@@ -487,6 +508,7 @@ async def update_draft(books: Books, number: str, draft: InvoiceDraft, user: str
     await _check_hours(books, draft, number)
     inv = build_invoice(number, draft, await load_profile(books), old.created_by)
     inv.created_at = old.created_at
+    inv.payment_link = old.payment_link  # kept; send_problems refuses a link for another amount
     await save_invoice(books, inv)
     await books.audit(f"user:{user}", "invoice_edited", {"invoice": number, "total_pence": inv.total_pence})
     return inv
@@ -540,7 +562,21 @@ def send_problems(inv: Invoice, profile: InvoiceProfile, to: str | None) -> list
         out.append("The invoice total must be more than £0.00")
     if inv.vat_pence < 0 or any(r.net_pence < 0 for r in inv.vat_summary):
         out.append("Discounts cannot be bigger than the lines at the same VAT rate; use a credit note")
+    if inv.status == "draft" and inv.payment_link and inv.payment_link.amount_pence != inv.total_pence:
+        out.append(
+            f"The payment link is for {money(inv.payment_link.amount_pence)} but the invoice is "
+            f"{money(inv.total_pence)}; make a new payment link or remove it"
+        )
     return out
+
+
+def pay_online_line(inv: Invoice) -> str | None:
+    """The sentence an email gives for the invoice's payment link, or None without one."""
+    link = inv.payment_link
+    if link is None:
+        return None
+    test = " (TEST MODE: no real money is taken)" if link.test_mode else ""
+    return f"Pay {money(link.amount_pence)} online{test}: {link.url}"
 
 
 def default_email(inv: Invoice, profile: InvoiceProfile) -> tuple[str, str]:
@@ -553,6 +589,8 @@ def default_email(inv: Invoice, profile: InvoiceProfile) -> tuple[str, str]:
     ]
     if profile.bank.is_set():
         lines += ["", "Payment details are on the invoice; please use the invoice number as the reference."]
+    if pay := pay_online_line(inv):
+        lines += ["", pay]
     lines += ["", "Many thanks,", who]
     return f"Invoice {inv.number} from {who}", "\n".join(lines)
 
