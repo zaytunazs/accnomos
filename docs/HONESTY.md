@@ -396,6 +396,47 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
   sends the invitation email (`sendInvitation: true`); its delivery and wording are Microsoft's and were not seen.
 - Android shows who has access and the query threads, read-only (More › Your accountant); answering is on the web.
 
+## Reports and exports
+
+- **Nothing has been test-imported into Xero, QuickBooks Online, Sage 50, Sage Accounting or FreeAgent.** Each import file
+  follows the vendor's published template as checked on 28 Oct 2026 (golden files in `services/runtime/tests/fixtures/exports/`
+  hold the headings and first rows exactly). How each was verified:
+
+  | File | Checked against | How sure |
+  |---|---|---|
+  | Xero manual journals | Xero Central's article is behind a login; headings from Xero's template as copied by Sequence (docs.sequencehq.com) and corroborated by Business Importer and PostTrans | secondary sources only |
+  | Xero contacts | central.xero.com/0/article/Import-contacts-into-Xero (column names, rules) | official; the full heading row comes from Xero's download, which we could not fetch |
+  | Xero sales invoices, bills | central.xero.com/0/article/Import-customer-invoices-UK (DD/MM/YYYY, tax names); heading rows as copied from SalesInvoiceTemplate.csv / BillTemplate.csv (notestoself.dev, syslumelab.com, kedgework.com, gigsorted.com) | rules official, headings secondary |
+  | Xero bank statement | central.xero.com/0/article/Import-a-CSV-bank-statement | official; Xero maps columns at import |
+  | Xero chart of accounts | template as copied (accountantmaster.com); UK default codes from two independent lists | secondary |
+  | QuickBooks journal entries, invoices, bank, chart of accounts, customers, suppliers | quickbooks.intuit.com learn-support articles (US journal and bank articles, UK invoice and chart articles, global customers/suppliers article) | official; QuickBooks maps columns at import, and its sample files were not downloaded |
+  | Sage 50 audit trail, nominal records | gb-kb.sage.com 250321114601443 and 250321114606157 (21 Mar 2025), 200427112601918 | official |
+  | Sage 50 customer and supplier records | first nine columns as gb-kb.sage.com 220225121155067 and import.makingithappen.co.uk list them | partly official |
+  | Sage Accounting journals, contacts | gb-kb.sage.com 222001000100916 (13 Feb 2025) and 240701101019900 (8 Oct 2026) | official |
+  | Sage Accounting chart of accounts | ie-kb.sage.com 222001000100819 for the five headings; the UK page names the columns but not the UK tax-rate words, so "Standard / Lower / Zero / Exempt / No VAT" is our guess | headings official (Irish page), tax words unverified |
+  | FreeAgent bank statement, contacts, invoices | support.freeagent.com 115001222564, 115001222864, 36670919996050 | official; the invoice importer is for Practice Partners only, and whether a multi-line invoice repeats its invoice columns on each row is not stated (we leave them blank after the first) |
+
+- **Account mapping defaults are ours.** Xero's UK default codes come from two third-party lists that agree, Sage 50's from a
+  v26 list and Sage's control-account article, QuickBooks' Debtors/Creditors from Intuit; the QuickBooks detail types for
+  equity and overheads ("Owner's Equity", "Office/General Administrative Expenses") and the Xero tax names for zero-rated and
+  exempt income are standard names we did not see on a vendor page. The bank account always needs the user's choice
+  (quality "check"); Xero may refuse bank accounts on manual journals (not confirmed on a Xero page), so its file says to bring
+  bank lines in with the statement file.
+- **Journals carry no VAT code** so the new package does not count VAT already on Accnomos's returns. Bank files are the
+  books' 1200 Bank entries, not the bank's own statement lines. Credit notes are in no invoice file. The Sage 50 file puts the
+  single VAT control account on 2202 VAT Liability.
+- **VAT reports:** box wording is HMRC's VAT Notice 700/12 (sections 3.2–3.10, page updated 19 Dec 2025) and the digital-links
+  trail follows VAT Notice 700/22 paragraph 3.2.1 (updated 1 Apr 2022), both read on gov.uk on 28 Oct 2026. The return is the
+  same `compute_vat_return` the VAT page submits; there is no cash accounting or flat rate scheme. No EC Sales List: since
+  2021 only Northern Ireland goods sold to the EU need one, and the books record no NI/EU movements (boxes 2, 8, 9 are 0).
+- **Reports are not statutory accounts.** No year-end close, accruals, prepayments, depreciation or stock: the balance sheet
+  shows earlier profit as one brought-forward line, and fixed-asset schedules, budgets, tracking and the cash-flow forecast
+  are left to the accounting-tools feature (ids reserved). Bank reconciliation reads the Bank page's matching against 1200 Bank
+  only. Debtor and creditor days are simple ratios. The general-ledger exceptions are fixed rules (round £100s from £500,
+  weekend dates, approval over 90 days late, no account code, unexpected sign), a prompt to look, not findings.
+- Run on fake storage only (unit tests and the e2e spec); no PDF or XLSX has been opened in a real viewer other than by the
+  tests' parsers, and nothing has been saved to a real OneDrive.
+
 ## Android
 
 - `flutter analyze` is clean and `flutter test` passes (27 Oct 2026, incl. the payments sheets and Add from phone at 360 dp, now also the company look-up, VAT check, contact edit, review VAT gate and duplicates sheets at 360 dp); both now run on every Android merge; 0.3.4 adds the parity suite (bank-rule sheet, Your-data export, audit filters, web-link rows at 360 dp). Page-by-page parity: `apps/mobile/PARITY.md`. Nothing on the phone has been run on a real device.

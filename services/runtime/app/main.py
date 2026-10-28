@@ -305,6 +305,9 @@ app.include_router(import_router)
 from app.routes_accounting import router as accounting_router  # noqa: E402  /accounting/* (chart, journals, assets…)
 
 app.include_router(accounting_router)
+from app.routes_exports import router as exports_router  # noqa: E402  /exports/* (Reports & exports, import files)
+
+app.include_router(exports_router)
 if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI under /__test (app/testmode.py)
     from app import testmode
 

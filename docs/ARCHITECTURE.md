@@ -13,14 +13,12 @@ apps/mobile (Flutter) ──┼─> services/runtime ──┼─> Meta models (
 
 - **`services/runtime`** (`app`): the Agent Runtime. Every call carries the user's Graph token and AI settings in headers
   (below). Routers are the `include_router` lines in `app/main.py`: extract, books (scan, proposals, approve, undo, rules,
-  rebuild), VAT and deadlines, dashboard, bank, ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
-  timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports, audit, close (the month-end close
-  agent, `app/routes_close.py`), import (history and opening balances). Test mode (`ACCNOMOS_TEST_MODE=1`) adds
-
-  rebuild), VAT and deadlines, dashboard, bank, bank feeds (TrueLayer), ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
-  timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports. Test mode (`ACCNOMOS_TEST_MODE=1`) adds
-  `/__test`. `apps/web/src/lib/runtime.ts` and `apps/mobile/lib/services/runtime_client.dart` have one call per route, except
-  that the phone does not call `/reports/*` yet.
+  rebuild), VAT and deadlines, dashboard, bank, bank feeds (TrueLayer), ask (typed and voice), mail (intake, triage,
+  draft reply), todos, jobs / staff / timesheets, contacts, vehicles / mileage, invoices, items, quotes, purchase orders,
+  repeating invoices and bills, sales and purchases overviews and statements, actions, payroll, plan, reports, exports,
+  audit, close (the month-end close agent, `app/routes_close.py`), import (history and opening balances). Test mode
+  (`ACCNOMOS_TEST_MODE=1`) adds `/__test`. `apps/web/src/lib/runtime.ts` and `apps/mobile/lib/services/runtime_client.dart` have one
+  call per route, except that the phone does not call `/reports/*` or `/exports/*` yet.
 - **`services/hmrc-relay`** (`relay`): exists only because HMRC needs the OAuth **client secret** at code exchange and
   refresh. It holds that secret, adds the v3.3 fraud-prevention headers, validates the return (box 3 = 1 + 2, box 5 = |3 − 4|,
   whole pounds where HMRC requires) and forwards. PKCE: only the browser holds the verifier; HMRC tokens sit in the tab's
@@ -89,6 +87,7 @@ Documents, filed by code and never deleted:
 | `Archive/<year>/<original path>`, `Archive/<year>.zip` | runtime, `POST /files/archive` (`archive.py`) | made when first used; the zip is an extra copy with `manifest.json`, the folder stays. See *Files, archive and backups* |
 | `Backups/accnomos-backup-<yyyy-mm-dd>.zip`, `….zip.sha256` | runtime, `POST /backups` (`backups.py`) | made when first used; a second backup the same day gets ` (2)` |
 | `_Trash/<yyyy-mm-dd>/<original path>` | runtime: Clean up, backup retention, an undone archive's zip, files a restore replaced | made when first used; **never emptied by the app**, the user empties it in OneDrive |
+| `07 Reports/<report>-<from>-to-<to>.<csv\|xlsx\|pdf\|zip\|json>`, `07 Reports/<report>-at-<date>.<ext>` | runtime, `POST /exports/{id}/save` (*Save to 07 Reports* on Reports & exports) | any report or import file of the registry; a second save of the same name gets ` (2)`, nothing is overwritten; audited as `report_saved`. Posts nothing |
 | `Books.xlsx` | runtime, `rebuild_safely` after each ledger-changing action and on *Rebuild* | rewritten whole; sheets `README`, `Summary`, `Ledger`, `Accounts`, `VAT`, `P&L`, `Customers`, `Suppliers`, `Bank`, `Proposals`, `Jobs`, `Vehicles`, `Payroll` (`projection.SHEETS`). A feature whose file cannot be read leaves its sheet empty; a failed rebuild is audited and never fails the user's action |
 
 **Old folder names.** Until 27 Oct 2026 the tree used other names (`paths.RENAMED`: old name → current name, e.g.
@@ -151,6 +150,8 @@ Books.xlsx still show the path as it was saved.
 | `Accounting/assets.json` | fixed asset register (`fixed_assets.py`); what has been depreciated and disposed of is worked out from posted journals, not stored here | rewritten whole |
 | `Accounting/tracking.json` | up to two tracking categories and their options, by stable id (`tracking.py`) | rewritten whole; options archived, not deleted |
 | `Accounting/budgets/<yyyy-mm>.json` | one budget: twelve monthly amounts per P&L account from that month (`budgets.py`) | rewritten whole |
+| `exports/mappings.json` | the user's changes to how the books' accounts map onto Xero, QuickBooks, Sage 50, Sage Accounting and FreeAgent (`app/exports/mapping.py`; defaults live in code) | rewritten |
+| `exports/favourites.json` | starred reports on Reports & exports, `{"version": 1, "ids": [...]}` | rewritten |
 
 OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folder. Money is integer pence in every file except
 `Books.xlsx`, which shows pounds.
@@ -159,6 +160,30 @@ OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folde
 (enforced on construction), VAT code per line (S 20 %, R 5 %, Z, E, O, N), `evidence` = document hashes, `approved_by` (agents
 never approve; Autopilot is recorded as `autopilot`), `reverse_charge_vat` (VAT Act 1994 s55A: on a purchase, VAT in box 1 and box 4; on a sale, the customer's, kept off this return). Nothing is edited; **undo adds a `reversal` event** that references the
 original. The nine VAT boxes come from `compute_vat_return`, plain code, boxes 6–9 truncated to whole pounds.
+
+**Reports and exports** (`services/runtime/app/exports/`, routes `app/routes_exports.py`, web `/reports/exports`). One
+registry (`registry.py`): each `ExportSpec` has an id, a group, its formats and parameters (`period`, `as_of`, `mode`) and a
+`build(ctx)` that returns a `ReportDoc` (title, period line, basis notes, warnings and tables of typed cells: money in integer
+pence, whole pounds, dates, text). `writers.py` turns any ReportDoc into CSV, XLSX and PDF, so a report's figures are written
+once; zip and JSON outputs come from a spec's `raw(ctx)`. Groups follow Xero's *All reports* list: financial statements,
+payables and receivables, reconciliations, taxes and balances, transactions; then *For your accountant* (the Accountant pack,
+the ledger JSON) and *Export to another package*. `RESERVED` keeps ids for the reports other features build (fixed-asset
+schedules, budgets, tracking and the cash-flow forecast for accounting-tools; sales by item for sales-purchases); those
+features add their module to `OPTIONAL_PLUGINS` and register with `owner=` their name. Routes: `GET /exports` (catalogue and
+favourites), `GET /exports/{id}` (preview JSON, tables cut to `rows`), `GET /exports/{id}/file?format=` (download, reads
+only), `POST /exports/{id}/save` (to `07 Reports`, needs `X-User`), `GET|PUT /exports/mappings/{package}`, `GET|PUT
+/exports/favourites`. A period report takes balance-sheet accounts to its end and P&L accounts for the period, with earlier
+profit on one line (`3200 Profit and loss brought forward`), because the books close no year-end; the trial balance, balance
+sheet, P&L and general ledger therefore agree (`tests/test_exports.py`). Vendor import files are ReportDocs whose one table has
+the vendor's headings and pre-formatted cells; `vendors.SOURCES` names the page each template was checked against.
+
+**Ledger JSON** (`GET /exports/ledger-json/file?format=json`, also `ledger.json` in the Accountant pack): an open format,
+`{"format": "accnomos-ledger", "version": 1, "generated_at", "currency": "GBP", "amounts": "integer pence", "basis",
+"sample", "period", "schema", "accounts", "events", "totals"}`. `accounts` is `[{account, code, name, class}]`; `events` is
+every approved event oldest first, `{id, kind, date, lines: [{account, debit, credit, vat_code, memo}], net, vat,
+counterparty, evidence, approved_by, approved_at, proposal_id, reverses, credits, file}`, with Σ debit = Σ credit in each;
+`totals` is `{events, debits, credits}`. The file explains each key in its own `schema` object. A later version may add keys,
+never change one.
 
 **Audit lines** are one JSON object per line: `{"ts", "actor", "action", "refs"}`. `actor` is `user:<email>` for something a
 person did, or `agent:<name>` (`extractor`, `intake`, `autopilot`, `mileage`, `contacts`, `triage`, `folder-layout`, `backup`, `close`)

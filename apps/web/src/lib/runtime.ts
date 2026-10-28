@@ -960,6 +960,31 @@ export const runtime = {
     call<RtShoppingItem>(a, `/shopping/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ done }) }),
   removeShopping: (a: AccountInfo, id: string) =>
     call<RtShoppingItem>(a, `/shopping/${encodeURIComponent(id)}`, { method: "DELETE" }),
+  /** /exports/* (services/runtime/app/routes_exports.py): every report and import file; only save and the
+   *  mapping and favourites writes touch OneDrive, and nothing posts to the ledger. */
+  exports: {
+    catalogue: (a: AccountInfo) => call<RtExportCatalogue>(a, "/exports"),
+    preview: (a: AccountInfo, id: string, q: RtExportQuery) =>
+      call<RtExportPreview>(a, withQuery(`/exports/${encodeURIComponent(id)}`, exportQuery(q))),
+    /** The file as a Blob, and its name when the header is readable (a cross-origin page sees the fallback). */
+    file: async (a: AccountInfo, id: string, format: string, q: RtExportQuery): Promise<{ blob: Blob; name: string }> => {
+      const path = withQuery(`/exports/${encodeURIComponent(id)}/file`, [`format=${format}`, exportQuery(q)].filter(Boolean).join("&"));
+      const res = await fetch(`${RUNTIME_URL}${path}`, { headers: await runtimeHeaders(a) });
+      if (!res.ok) throw new Error(await errorDetail(res, `GET ${path}`));
+      const name = /filename="([^"]+)"/.exec(res.headers.get("content-disposition") ?? "")?.[1] ?? `${id}.${format}`;
+      return { blob: await res.blob(), name };
+    },
+    save: (a: AccountInfo, id: string, format: string, q: RtExportQuery) =>
+      call<RtExportSaved>(a, withQuery(`/exports/${encodeURIComponent(id)}/save`, vatQuery()), {
+        method: "POST",
+        body: JSON.stringify({ format, from: q.from, to: q.to, as_of: q.as_of, mode: q.mode }),
+      }),
+    mapping: (a: AccountInfo, pkg: string) => call<RtMappingView>(a, `/exports/mappings/${encodeURIComponent(pkg)}`),
+    putMapping: (a: AccountInfo, pkg: string, accounts: Record<string, { code: string; name: string } | null>) =>
+      call<RtMappingView>(a, `/exports/mappings/${encodeURIComponent(pkg)}`, { method: "PUT", body: JSON.stringify({ accounts }) }),
+    putFavourites: (a: AccountInfo, ids: string[]) =>
+      call<{ ids: string[] }>(a, "/exports/favourites", { method: "PUT", body: JSON.stringify({ ids }) }),
+  },
 };
 
 /** POST /cis/quote: the quote PDF (saved in 03 Sales/quotes by the runtime) and where it went. */
@@ -1157,6 +1182,87 @@ export interface RtCisReturn {
   source_url: string;
   owed_to_hmrc_pence: number;
   sample: boolean;
+}
+
+/** Query for /exports/*: the period, as-at date and mode a report takes, plus the saved VAT settings. */
+export interface RtExportQuery {
+  from?: string;
+  to?: string;
+  as_of?: string;
+  mode?: string;
+}
+function exportQuery(q: RtExportQuery): string {
+  const parts = [vatQuery()];
+  if (q.from && q.to) parts.push(`from=${q.from}&to=${q.to}`);
+  if (q.as_of) parts.push(`as_of=${q.as_of}`);
+  if (q.mode) parts.push(`mode=${encodeURIComponent(q.mode)}`);
+  return parts.filter(Boolean).join("&");
+}
+export interface RtExportReport {
+  id: string;
+  group: string;
+  title: string;
+  description: string;
+  formats: string[];
+  params: string[];
+  modes: { value: string; label: string }[];
+  package: string | null;
+}
+export interface RtExportCatalogue {
+  groups: { id: string; title: string }[];
+  reports: RtExportReport[];
+  favourites: string[];
+  packages: Record<string, string>;
+}
+export type RtCellKind = "text" | "money" | "pounds" | "date" | "int";
+export interface RtReportSection {
+  title: string;
+  columns: { key: string; label: string; kind: RtCellKind }[];
+  rows: { cells: Record<string, string | number | null>; style: "normal" | "heading" | "subtotal" | "total" }[];
+  note: string | null;
+}
+export interface RtReportDoc {
+  id: string;
+  title: string;
+  period: string;
+  basis: string[];
+  sections: RtReportSection[];
+  warnings: string[];
+  sample: boolean;
+  generated_at: string;
+  import_file: { package: string; template: string; header: boolean; source: string; instructions: string } | null;
+}
+export interface RtExportPreview {
+  doc: RtReportDoc;
+  total_rows: number[];
+  truncated: boolean;
+  from: string;
+  to: string;
+  as_of: string;
+  mode: string | null;
+  formats: string[];
+  filenames: Record<string, string>;
+}
+export interface RtExportSaved {
+  path: string;
+  name: string;
+  size: number;
+  web_url: string | null;
+  format: string;
+}
+export interface RtMappedAccount {
+  account: string;
+  code: string;
+  name: string;
+  quality: "user" | "default" | "suggested" | "check" | "own" | "unmapped";
+  note: string;
+}
+export interface RtMappingView {
+  package: string;
+  title: string;
+  accounts: RtMappedAccount[];
+  vat: Record<string, Record<string, string>>;
+  unmapped: number;
 }
 
 /** Reports (services/runtime/app/reports.py). Pence throughout; VAT boxes 6 and 7 whole pounds. */

@@ -1,0 +1,6 @@
+Date,Description,Amount
+15/08/2026,Sale,360.00
+20/08/2026,Purchase,-51.90
+12/09/2026,Purchase,-120.00
+13/09/2026,Reversal - undoes 77777777,120.00
+20/09/2026,Bank,-150.00
