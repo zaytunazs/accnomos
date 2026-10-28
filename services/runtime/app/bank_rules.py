@@ -136,6 +136,44 @@ class BankRule(BaseModel):
     created_by: str | None = None
 
 
+#: Built-in codings for unambiguous bank-text tokens: rail/TfL fares and car
+#: parking are travel, forecourt fuel words are motor, plain cafe/restaurant words
+#: are subsistence. Evaluated in order after the user's own rules
+#: (app/bank_reconcile.suggest_rule), so a user rule always wins. Money out only:
+#: a matching credit (a refund) is not a purchase. No supplier names: only the
+#: generic words and the two network names no other merchant collides with.
+BUILTIN_RULES: list[BankRule] = [
+    BankRule(
+        id="builtin-travel-rail",
+        name="Built-in: rail and TfL fares",
+        match=BankRuleMatch(op="regex", value=r"trainline|\btfl\b"),
+        direction="out",
+        action=BankRuleAction(account="7400 Travel"),
+    ),
+    BankRule(
+        id="builtin-travel-parking",
+        name="Built-in: car parking",
+        match=BankRuleMatch(op="contains", value="parking"),
+        direction="out",
+        action=BankRuleAction(account="7400 Travel"),
+    ),
+    BankRule(
+        id="builtin-motor-fuel",
+        name="Built-in: forecourt fuel",
+        match=BankRuleMatch(op="regex", value=r"petrol|diesel|\bfuel\b"),
+        direction="out",
+        action=BankRuleAction(account="7300 Motor expenses"),
+    ),
+    BankRule(
+        id="builtin-subsistence-food",
+        name="Built-in: cafe and restaurant meals",
+        match=BankRuleMatch(op="regex", value=r"caf[eé]|restaurant|sandwich"),
+        direction="out",
+        action=BankRuleAction(account="7410 Subsistence"),
+    ),
+]
+
+
 def normalise_description(text: str | None) -> str:
     """Lowercase with runs of whitespace collapsed, for matching and de-dup."""
     return re.sub(r"\s+", " ", (text or "").strip().lower())

@@ -29,7 +29,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from app.ai.config import AiConfig
-from app.bank_rules import MAX_ACTION_LEN, BankRule, first_match, load_bank_rules
+from app.bank_rules import BUILTIN_RULES, MAX_ACTION_LEN, BankRule, first_match, load_bank_rules
 from app.books import BankMatchError, Books
 from app.validation import StrictBody
 
@@ -215,12 +215,19 @@ async def suggest_refund(books: Books, line: Any, ledger: Any = None) -> RefundS
 
 
 async def suggest_rule(books: Books, line: Any) -> RuleSuggestion | None:
-    """The first bank rule in order that matches the line, or None."""
+    """The first bank rule in order that matches, or a built-in coding, or None.
+
+    The user's own rules come first; the built-ins (app/bank_rules.BUILTIN_RULES:
+    rail/TfL, parking, fuel, plain cafe words) only fire when nothing does.
+    """
+    description = line.description or ""
     rule = first_match(
         await load_bank_rules(books),
-        description=line.description or "",
+        description=description,
         amount_pence=line.amount_pence,
     )
+    if rule is None:
+        rule = first_match(BUILTIN_RULES, description=description, amount_pence=line.amount_pence)
     if rule is None:
         return None
     return RuleSuggestion(
