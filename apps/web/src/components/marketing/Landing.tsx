@@ -27,7 +27,7 @@ const AUDIENCES = [
   },
   {
     title: "Landlords",
-    body: "Rent, letting-agent statements and property bills in the same approve-first books. Separate property-income (SA105) figures are not in this build.",
+    body: "Rent, letting-agent statements and property bills in the same approve-first books, with the UK property income figures for each property worked out by code. The HMRC connection is sandbox only.",
   },
   {
     title: "Personal finances",
@@ -695,7 +695,7 @@ function Status() {
       title: "Not in this build",
       items: [
         "Production HMRC filing (sandbox only)",
-        "Google Drive, RTI payroll, flat-rate VAT",
+        "Google Drive, and sending payroll (RTI) to HMRC",
         ...(SUBMISSION_MODE ? [] : ["An iPhone app"]),
       ],
       foot: "The full list of gaps is kept in docs/HONESTY.md in the public repository.",
