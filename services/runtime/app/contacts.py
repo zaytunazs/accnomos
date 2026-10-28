@@ -35,18 +35,20 @@ import uuid
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
 from accnomos_connectors.base import AddressBookContact
 from accnomos_ledger.bank import BankLine
-from accnomos_ledger.events import LedgerEvent, VatCode
+from accnomos_ledger.events import LedgerEvent, Line, VatCode
 from app.autopilot import supplier_key
 from app.books import AUTOPILOT_RULES, SYSTEM, Books, now
 from app.checks import UNKNOWN_SUPPLIER, SupplierKnowledge, normalise_vat_number
 from app.company_lookup import BadQuery, VatCheck, normalise_company_number
+from app.import_history import OPENING_ITEMS, live_open_items
+from app.import_history import OpenItem as CarriedItem
 from app.journal import CREDITORS, DEBTORS, VAT_CONTROL
 from app.schemas import CATEGORIES, ExtractedDoc, Proposal, VatStatus
 from app.settlement import (
@@ -63,7 +65,7 @@ from app.settlement import (
 
 CONTACTS = f"{SYSTEM}/Contacts/contacts.json"
 ContactKind = Literal["customer", "supplier", "both"]
-ContactSource = Literal["ledger", "outlook", "phone", "manual"]
+ContactSource = Literal["ledger", "outlook", "phone", "manual", "import"]
 Side = Literal["sale", "purchase"]
 EDITABLE = (
     "name",
@@ -152,6 +154,8 @@ class Ledger:
     uses: list[CreditUse] = field(default_factory=list)  # _System/Payments/credit_uses.json (app/credits.py)
     refs: dict[str, str] = field(default_factory=dict)  # event id -> invoice or credit note number (app/invoicing.py)
     dues: dict[str, date] = field(default_factory=dict)  # event id -> the sales invoice's due date
+    # Unpaid invoices and bills carried over from the old system (app/import_history.py): documents, not events.
+    opening: list[CarriedItem] = field(default_factory=list)
     _settled: Settlement | None = field(default=None, repr=False)
 
     def settlement(self) -> Settlement:
@@ -165,9 +169,9 @@ async def load_ledger(books: Books) -> Ledger:
     from app.credit_notes import list_credit_notes  # both import this module
     from app.invoicing import list_invoices
 
-    # The seven reads are independent and go out together in one wave (the request memo caps how many are in flight).
-    (invoices, credit_notes), (events, proposals, bank_lines, records, uses) = await asyncio.gather(
-        asyncio.gather(list_invoices(books), list_credit_notes(books)),
+    # The eight reads are independent and go out together in one wave (the request memo caps how many are in flight).
+    (invoices, credit_notes, opening), (events, proposals, bank_lines, records, uses) = await asyncio.gather(
+        asyncio.gather(list_invoices(books), list_credit_notes(books), live_open_items(books)),
         asyncio.gather(
             books.list_events(),
             books.list_proposals(),
@@ -192,6 +196,7 @@ async def load_ledger(books: Books) -> Ledger:
         uses=uses,
         refs=refs,
         dues=dues,
+        opening=opening,
     )
 
 
@@ -218,6 +223,7 @@ class Doc:
     undo: bool = False
     credits: str | None = None  # a credit note: the document it reduces
     due: date | None = None  # a sales invoice's due date
+    opening: bool = False  # carried over from the old system (app/import_history.py); no ledger event of its own
 
 
 def _expense_vat_code(e: LedgerEvent) -> str | None:
@@ -229,10 +235,51 @@ def _credit_note_side(e: LedgerEvent) -> Side:
     return "sale" if any("Sales" in ln.account for ln in e.lines) else "purchase"
 
 
+def _opening_doc(item: CarriedItem) -> Doc:
+    """An open item as a document on account. Its event is never posted: the money is already in the opening entry's
+    1100 Debtors / 2100 Creditors line, so the stand-in leg is an account nothing else uses."""
+    owed = (
+        Line(account=DEBTORS, debit=item.due_pence)
+        if item.side == "sale"
+        else Line(account=CREDITORS, credit=item.due_pence)
+    )
+    other = (
+        Line(account=OPENING_ITEMS, credit=item.due_pence)
+        if item.side == "sale"
+        else Line(account=OPENING_ITEMS, debit=item.due_pence)
+    )
+    event = LedgerEvent(
+        id=item.id,
+        kind=item.side,
+        date=item.date,
+        lines=[owed, other],
+        approved_by="import",
+        approved_at=datetime.combine(item.date, datetime.min.time(), tzinfo=UTC),
+        net=0,
+        vat=0,
+        counterparty=item.contact,
+    )
+    return Doc(
+        event=event,
+        side=item.side,
+        sign=1,
+        name=item.contact.strip(),
+        key=supplier_key(item.contact),
+        vrn=None,
+        gross=item.due_pence,
+        on_account=True,
+        reference=item.number,
+        category=None,
+        vat_code=None,
+        due=item.due_date,
+        opening=True,
+    )
+
+
 def documents(ledger: Ledger) -> list[Doc]:
-    """Every sale, purchase, credit note and reversal of one, oldest first."""
+    """Every sale, purchase, credit note and reversal of one, oldest first; open items carried over come first."""
     by_id = {e.id: e for e in ledger.events}
-    out: list[Doc] = []
+    out: list[Doc] = [_opening_doc(it) for it in sorted(ledger.opening, key=lambda i: i.date)]
     for e in ledger.events:
         original = by_id.get(e.reverses) if e.kind == "reversal" and e.reverses else None
         source = original or e

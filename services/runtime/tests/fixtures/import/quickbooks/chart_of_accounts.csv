@@ -1,0 +1,20 @@
+Hollybank Joinery Ltd (SAMPLE — FICTIONAL COMPANY)
+Account List
+
+Account #,Account,Type,Detail type,Balance
+,Business current account,Bank,Current,"12,450.37"
+,Petty cash,Bank,Cash on hand,85.00
+,Accounts Receivable (A/R),Accounts receivable (A/R),Accounts Receivable (A/R),"4,560.00"
+,Motor vehicles,Fixed Assets,Vehicles,"9,500.00"
+,Accounts Payable (A/P),Accounts payable (A/P),Accounts Payable (A/P),"-2,130.50"
+,VAT Control,Other Current Liabilities,Sales Tax Payable,"-1,842.20"
+,PAYE & NI payable,Other Current Liabilities,Payroll Tax Payable,-912.40
+,Director's loan,Long Term Liabilities,Other Long Term Liabilities,"-3,000.00"
+,Share capital,Equity,Share capital,-100.00
+,Retained Earnings,Equity,Retained Earnings,"-10,000.00"
+,Sales,Income,Sales of Product Income,
+,Cost of sales,Cost of Goods Sold,Supplies & Materials - COS,
+,Wages,Expenses,Payroll Expenses,
+,Rent or lease payments,Expenses,Rent or Lease of Buildings,
+,Insurance,Expenses,Insurance,
+,Vehicle expenses,Expenses,Vehicle,

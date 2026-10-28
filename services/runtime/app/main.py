@@ -225,6 +225,9 @@ app.include_router(plan_router)
 from app.routes_reports import router as reports_router  # noqa: E402  /reports/pl, aged, vat, trend, export
 
 app.include_router(reports_router)
+from app.routes_import import router as import_router  # noqa: E402  /import/* (history and opening balances)
+
+app.include_router(import_router)
 if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI under /__test (app/testmode.py)
     from app import testmode
 
