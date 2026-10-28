@@ -400,18 +400,21 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
 
 - **Nothing has been test-imported into Xero, QuickBooks Online, Sage 50, Sage Accounting or FreeAgent.** Each import file
   follows the vendor's published template as checked on 28 Oct 2026 (golden files in `services/runtime/tests/fixtures/exports/`
-  hold the headings and first rows exactly). How each was verified:
+  hold the headings and first rows exactly). Re-checked against the vendors' own help pages on 28 Oct 2026 in
+  `claude/sales-exports-fix` (read through a page-reading service: this container cannot reach the vendors' sites, and
+  Xero Central's articles mostly render only in a browser). How each was verified:
 
   | File | Checked against | How sure |
   |---|---|---|
-  | Xero manual journals | Xero Central's article is behind a login; headings from Xero's template as copied by Sequence (docs.sequencehq.com) and corroborated by Business Importer and PostTrans | secondary sources only |
+  | Xero manual journals | central.xero.com/0/article/Add-import-and-post-manual-journals (-UK, -AU, -NZ, -US) would not render; headings as copied by Sequence (docs.sequencehq.com), clickentry.co.uk and Packt's *Efficient Accounting with Xero*; "debits positive, credits negative" also in Xero's API docs | **not confirmed by Xero**: download the template from a Xero demo company and compare before relying on it |
   | Xero contacts | central.xero.com/0/article/Import-contacts-into-Xero (column names, rules) | official; the full heading row comes from Xero's download, which we could not fetch |
-  | Xero sales invoices, bills | central.xero.com/0/article/Import-customer-invoices-UK (DD/MM/YYYY, tax names); heading rows as copied from SalesInvoiceTemplate.csv / BillTemplate.csv (notestoself.dev, syslumelab.com, kedgework.com, gigsorted.com) | rules official, headings secondary |
+  | Xero sales invoices | central.xero.com/0/article/Import-customer-invoices-UK (read 28 Oct 2026: required ContactName and InvoiceNumber, one row per line, DD/MM/YYYY, tax display names, every column we write is named there); the heading row's order as copied from SalesInvoiceTemplate.csv (notestoself.dev, syslumelab.com) | rules official, row order secondary |
+  | Xero bills | central.xero.com/0/article/Import-bills-and-credit-notes-UK (would not render; its search snippet confirms DD/MM/YYYY and one reference per bill); headings as BillTemplate.csv downloaded by kedgework.com and counted by getutilly.com (26 columns) | secondary |
   | Xero bank statement | central.xero.com/0/article/Import-a-CSV-bank-statement | official; Xero maps columns at import |
-  | Xero chart of accounts | template as copied (accountantmaster.com); UK default codes from two independent lists | secondary |
-  | QuickBooks journal entries, invoices, bank, chart of accounts, customers, suppliers | quickbooks.intuit.com learn-support articles (US journal and bank articles, UK invoice and chart articles, global customers/suppliers article) | official; QuickBooks maps columns at import, and its sample files were not downloaded |
+  | Xero chart of accounts | central.xero.com/0/article/Import-a-chart-of-accounts-UK would not render; the nine columns as a Xero training manual (ajc-vanuatu.com) and accountantmaster.com list them; UK account types and tax names from central.xero.com/0/article/Chart-of-accounts-templates-in-Xero-HQ-UK (read) | secondary headings, official tax names |
+  | QuickBooks journal entries, invoices, bank, chart of accounts, customers, suppliers | quickbooks.intuit.com learn-support articles, re-read 28 Oct 2026 (UK journal, invoice, chart and contact-fields articles; the bank article only in its US version) | official; QuickBooks maps columns at import, and its sample files were not downloaded |
   | Sage 50 audit trail, nominal records | gb-kb.sage.com 250321114601443 and 250321114606157 (21 Mar 2025), 200427112601918 | official |
-  | Sage 50 customer and supplier records | first nine columns as gb-kb.sage.com 220225121155067 and import.makingithappen.co.uk list them | partly official |
+  | Sage 50 customer and supplier records | first nine columns with the names gb-kb.sage.com 220225121155067 gives (renamed on 28 Oct 2026 from older labels; Sage maps columns at import either way); the supplier column B name is not printed there | official, except "Supplier Name" |
   | Sage Accounting journals, contacts | gb-kb.sage.com 222001000100916 (13 Feb 2025) and 240701101019900 (8 Oct 2026) | official |
   | Sage Accounting chart of accounts | ie-kb.sage.com 222001000100819 for the five headings; the UK page names the columns but not the UK tax-rate words, so "Standard / Lower / Zero / Exempt / No VAT" is our guess | headings official (Irish page), tax words unverified |
   | FreeAgent bank statement, contacts, invoices | support.freeagent.com 115001222564, 115001222864, 36670919996050 | official; the invoice importer is for Practice Partners only, and whether a multi-line invoice repeats its invoice columns on each row is not stated (we leave them blank after the first) |
@@ -427,11 +430,17 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
   single VAT control account on 2202 VAT Liability.
 - **VAT reports:** box wording is HMRC's VAT Notice 700/12 (sections 3.2–3.10, page updated 19 Dec 2025) and the digital-links
   trail follows VAT Notice 700/22 paragraph 3.2.1 (updated 1 Apr 2022), both read on gov.uk on 28 Oct 2026. The return is the
-  same `compute_vat_return` the VAT page submits; there is no cash accounting or flat rate scheme. No EC Sales List: since
+  same calculation the VAT page submits: `compute_vat_return` under standard accounting, and the VAT scheme engine
+  (`app/vat_schemes.py`) when cash accounting, the flat rate scheme or annual accounting is set (since
+  `claude/sales-exports-fix`; tested with the flat rate). VAT detail, digital links and the VAT reconciliation still list
+  entries on the invoice basis and say so under a scheme. No EC Sales List: since
   2021 only Northern Ireland goods sold to the EU need one, and the books record no NI/EU movements (boxes 2, 8, 9 are 0).
 - **Reports are not statutory accounts.** No year-end close, accruals, prepayments, depreciation or stock: the balance sheet
-  shows earlier profit as one brought-forward line, and fixed-asset schedules, budgets, tracking and the cash-flow forecast
-  are left to the accounting-tools feature (ids reserved). Bank reconciliation reads the Bank page's matching against 1200 Bank
+  shows earlier profit as one brought-forward line. Fixed-asset schedules, budgets, tracking, the cash-flow forecast,
+  sales by item and payroll reports exist on their own pages but are **not yet registered in Reports & exports**: the
+  registry's optional hooks (`app.accounting_tools.reports`, `app.sales_purchases.reports`, `app.payroll_reports`
+  registering itself, `app.income_tax.reports`) name modules those features did not create, so nothing is listed for
+  them. Bank reconciliation reads the Bank page's matching against 1200 Bank
   only. Debtor and creditor days are simple ratios. The general-ledger exceptions are fixed rules (round £100s from £500,
   weekend dates, approval over 90 days late, no account code, unexpected sign), a prompt to look, not findings.
 - Run on fake storage only (unit tests and the e2e spec); no PDF or XLSX has been opened in a real viewer other than by the
