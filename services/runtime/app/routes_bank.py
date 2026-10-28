@@ -16,6 +16,7 @@ matches can be marked as a transfer, ignored, or turned into an expense proposal
     POST /lines/{id}/transfer          mark as transfer
     POST /lines/{id}/ignore            ignore
     POST /lines/{id}/expense-proposal  create an expense proposal from the line
+    POST /lines/{id}/private-proposal   mark the line's money as private spending (Drawings / Director's loan)
     GET  /summary                      counts and the "reconciled to" date
 """
 
@@ -33,7 +34,7 @@ from accnomos_ledger.bank import BankCsvError, BankLine, BankLineStatus, reconci
 from accnomos_ledger.events import LedgerEvent
 from accnomos_ledger.matching import Match, settlement_pence
 from app.ai.config import ai_config_from_request
-from app.bank_actions import UnmatchedLine, create_expense_proposal, unmatched_lines
+from app.bank_actions import UnmatchedLine, create_expense_proposal, create_private_proposal, unmatched_lines
 from app.bank_reconcile import (
     AiSuggestion,
     ReconcileRow,
@@ -191,6 +192,17 @@ async def expense_proposal(
     user: str = Depends(require_user),
 ) -> Proposal:
     return await _line_action(lambda: create_expense_proposal(books, line_id, user))
+
+
+@router.post("/lines/{line_id}/private-proposal", response_model=Proposal)
+async def private_proposal(
+    line_id: str,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
+) -> Proposal:
+    """Mark money out as private spending: a 0 % business-use proposal approved on Review, posting to
+    Drawings (sole trader) or the Director's loan (company) with no VAT."""
+    return await _line_action(lambda: create_private_proposal(books, line_id, user))
 
 
 class BankRuleIn(StrictBody):
