@@ -244,3 +244,8 @@ from app.routes_files import router as files_router  # noqa: E402  /files/overvi
 
 app.include_router(files_router)
 app.include_router(backups_router)
+
+
+from app.early_access import router as early_access_router  # noqa: E402  POST /public/early-access (off by default)
+
+app.include_router(early_access_router)

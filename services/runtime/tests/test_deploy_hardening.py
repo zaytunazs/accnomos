@@ -118,3 +118,21 @@ def test_android_manifest_asks_for_little_and_is_not_backed_up():
     assert 'android:allowBackup="false"' in code
     assert "android:debuggable" not in code
     assert code.count('android:exported="true"') == 1  # the launcher activity; MSAL's own is declared by the library
+
+
+def test_early_access_list_lives_on_the_data_volume_only():
+    """The one thing the runtime keeps (app/early_access.py): on a named volume, off by default, never in git or
+    the image build context."""
+    yaml = pytest.importorskip("yaml")
+    compose = yaml.safe_load((DEPLOY / "docker-compose.yml").read_text())
+    runtime = compose["services"]["runtime"]
+    assert "runtime-data:/data" in runtime["volumes"] and "runtime-data" in compose["volumes"]
+    env = runtime["environment"]
+    assert env["EARLY_ACCESS_ENABLED"] == "${EARLY_ACCESS_ENABLED:-0}"
+    assert env["EARLY_ACCESS_FILE"].endswith(":-/data/early-access.jsonl}")
+    assert re.search(
+        r"^RUN mkdir -p /data && chown 10001:10001 /data", (DEPLOY / "Dockerfile.runtime").read_text(), re.M
+    )
+    root = DEPLOY.parent
+    assert "early-access*.jsonl" in (root / ".gitignore").read_text().splitlines()
+    assert "**/early-access*.jsonl" in (root / ".dockerignore").read_text().splitlines()

@@ -1,4 +1,4 @@
-# Accnomos Agent Runtime — stateless; built from the repo root:  docker build -f deploy/Dockerfile.runtime -t accnomos-runtime .
+# Accnomos Agent Runtime — stateless (bar the opt-in early-adopter list on /data); built from the repo root:  docker build -f deploy/Dockerfile.runtime -t accnomos-runtime .
 # Hardening (deploy/README.md): pinned base, non-root, no writes outside /tmp (compose mounts the root read-only).
 FROM python:3.12.7-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -26,6 +26,9 @@ COPY evals/harness/render.py /srv/evals/harness/render.py
 # build here, not at the first upload, if this platform has no wheel (app/formats.py would refuse PDFs and HEIC).
 RUN python -c "import pypdfium2, pillow_heif; pillow_heif.register_heif_opener()" \
  && python -c "from zoneinfo import ZoneInfo; ZoneInfo('Europe/London')"  # tzdata rides with the runtime install
+# /data: the runtime's data volume (compose mounts runtime-data there), holding only the operator's early-adopter list
+# when EARLY_ACCESS_ENABLED=1 (app/early_access.py). Created here so a fresh named volume is owned by uid 10001.
+RUN mkdir -p /data && chown 10001:10001 /data && chmod 700 /data
 USER 10001:10001
 EXPOSE 8780
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
