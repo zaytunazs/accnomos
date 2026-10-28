@@ -54,8 +54,8 @@ export default defineConfig({
         DEMO_SECRET: "e2e-only-demo-secret-not-for-production-0000",
         DEMO_SESSIONS_PER_IP_PER_MIN: "0",
         AI_PROVIDERS: "modal,meta,spark",
-        PUBLIC_CHAT_PER_MIN: "0",
         ACCOUNTANT_TEAM_EMAIL: "reviews@accnomos.example", // Settings › Your accountant shows the opt-in (accountant.spec.ts)
+        PUBLIC_CHAT_PER_MIN: "0",
       },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",

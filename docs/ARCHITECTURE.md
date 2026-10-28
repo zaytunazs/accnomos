@@ -16,6 +16,9 @@ apps/mobile (Flutter) ──┼─> services/runtime ──┼─> Meta models (
   rebuild), VAT and deadlines, dashboard, bank, ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
   timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports, audit, close (the month-end close
   agent, `app/routes_close.py`), import (history and opening balances). Test mode (`ACCNOMOS_TEST_MODE=1`) adds
+
+  rebuild), VAT and deadlines, dashboard, bank, bank feeds (TrueLayer), ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
+  timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports. Test mode (`ACCNOMOS_TEST_MODE=1`) adds
   `/__test`. `apps/web/src/lib/runtime.ts` and `apps/mobile/lib/services/runtime_client.dart` have one call per route, except
   that the phone does not call `/reports/*` yet.
 - **`services/hmrc-relay`** (`relay`): exists only because HMRC needs the OAuth **client secret** at code exchange and
@@ -25,7 +28,8 @@ apps/mobile (Flutter) ──┼─> services/runtime ──┼─> Meta models (
 - **`packages/ledger`**: ledger events, bank CSV parsing and matching, the VAT 9-box engine. No model code.
 - **`packages/connectors`**: `StorageProvider`, `MailProvider`, `ContactsProvider`, `CalendarProvider`; Microsoft Graph and fake implementations.
 - **Runtime state:** none, except voice audio in a temporary directory deleted after conversion, and the in-memory rate limiter
-  and (without `ACTIONS_SIGNING_KEY`) a random per-process signing key for action cards. Browsers call the runtime directly; CORS
+  and (without `ACTIONS_SIGNING_KEY`) a random per-process signing key for action cards. Bank feeds add an in-memory set of
+  spent connect states and need the server key `BANKFEEDS_TOKEN_KEY`, which seals each user's TrueLayer refresh token in their own books. Browsers call the runtime directly; CORS
   (`CORS_ORIGINS`) is its gate, because every call is useless without the caller's own Graph token. Demo deployment (`deploy/`):
   Docker on a DGX Spark behind a tunnel as `api.accnomos.com`, Ollama on the same host (not checked from this review).
 
@@ -71,7 +75,7 @@ Documents, filed by code and never deleted:
 | `03 Sales/<name>` | runtime, a scanned document the reader classes as a sales invoice | |
 | `03 Sales/invoices/INV-0001.json`, `.pdf`; `03 Sales/invoices/sent/INV-0001.pdf` | runtime, invoicing | `invoices/` and `invoices/sent/` are created at onboarding |
 | `03 Sales/credit-notes/CN-0001.json`, `.pdf`; `03 Sales/credit-notes/sent/CN-0001.pdf` | runtime, credit notes (`credit_notes.py`) | created with the first credit note |
-| `04 Bank statements/<last date>_<bank>.csv` | runtime, bank import | |
+| `04 Bank statements/<last date>_<bank>.csv` | runtime, bank import; `<last date>_feed.csv` for lines a bank feed fetched (`bank_feeds.py`) | |
 | `05 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | |
 | `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
 | `07 Reports/<yyyy-mm>-month-end-draft.xlsx`, `07 Reports/<yyyy-mm>-month-end.xlsx` | runtime, the month-end close (`app/month_end.py`): the draft (About, P&L, Balance sheet) is rewritten by each run once nothing blocks the close; the closed one is written on Approve and never overwritten (a re-close saves ` (2)`) | Posts nothing |
@@ -114,6 +118,7 @@ Books.xlsx still show the path as it was saved.
 | `Invoicing/profile.json`, `sequence.json`, `credit_sequence.json`, and the logo file | business profile, invoice and credit note numbering, logo (any file under `_System/Invoicing/`) | rewritten |
 | `Payments/payouts.json` | each bank line matched as a Stripe/PayPal payout: line, provider, amount, the Dr 1200 Bank / Cr clearing event, and its reversal if unmatched (`online_payments.match_payout`) | updated |
 | `Payments/providers.json` | the user's own Stripe account id / PayPal merchant id / PayPal.me name for payment links, when linked (`online_payments.py`); never a key or token | rewritten |
+| `bankfeeds.json` | bank feed connections (`bank_feeds.py`): bank and account names, last four digits, consent created/expiry, last synced, and the TrueLayer refresh token sealed with the server's `BANKFEEDS_TOKEN_KEY` (AES-256-GCM); never an access token | rewritten |
 | `Payments/payments.json` | recorded payments: amount, date, account, the split across invoices or bills, the posted event (`payments.py`) | rewritten whole; a removed payment is kept, marked removed |
 | `Payroll/runs/<yyyy-mm>.json` | one pay run per month | updated |
 | `Planner/applied.json` | which day plans were applied (idempotency) | updated |
@@ -128,14 +133,14 @@ Books.xlsx still show the path as it was saved.
 | `close/<yyyy-mm>.json` | the month-end close: the last 10 runs (steps, findings, card summaries; never the signed cards) and every close record (who, when, the snapshot and its SHA-256) | updated; close records are only appended |
 | `shopping_list.json` | the shopping list (`shopping.py`): item, spec, quantity, the cheapest supplier code found in the history, ticked or not | rewritten whole; at most 300 items |
 | `item_matches.json` | the user's yes/no for "are these two item names the same product?" (`prices.py`); never the model's | rewritten whole; one row per pair |
+| `accountant.json` | who the books are shared with (invitations, their Graph permission ids, revocations, the Accnomos-accountants consent: version, sha256 of the text, who and when), the profile the portal shows, the folder's drive id + item id (`app/accountant.py`) | rewritten; a revoked invitation is kept, marked revoked |
+| `queries/<id>.json`, `queries/audit/<yyyy-mm>.jsonl` | client queries, one thread per file (`app/queries.py`); the audit lines of a view-only accountant | updated (If-Match); append-only |
+| `Accountant/clients.json` | **in an accountant's own books**: client codes they added by hand in the portal (`app/portal.py`) | rewritten |
 | `Accounting/accounts.json` | the chart of accounts once the user changes it (absent: the standard UK chart in `chart.py`); codes never change, used accounts are archived, never deleted | rewritten whole |
 | `Accounting/journals.json` | manual, depreciation and disposal journals: draft → posted → voided (or discarded); the posted event ids (`manual_journals.py`) | rewritten whole; a record is never removed |
 | `Accounting/assets.json` | fixed asset register (`fixed_assets.py`); what has been depreciated and disposed of is worked out from posted journals, not stored here | rewritten whole |
 | `Accounting/tracking.json` | up to two tracking categories and their options, by stable id (`tracking.py`) | rewritten whole; options archived, not deleted |
 | `Accounting/budgets/<yyyy-mm>.json` | one budget: twelve monthly amounts per P&L account from that month (`budgets.py`) | rewritten whole |
-| `accountant.json` | who the books are shared with (invitations, their Graph permission ids, revocations, the Accnomos-accountants consent: version, sha256 of the text, who and when), the profile the portal shows, the folder's drive id + item id (`app/accountant.py`) | rewritten; a revoked invitation is kept, marked revoked |
-| `queries/<id>.json`, `queries/audit/<yyyy-mm>.jsonl` | client queries, one thread per file (`app/queries.py`); the audit lines of a view-only accountant | updated (If-Match); append-only |
-| `Accountant/clients.json` | **in an accountant's own books**: client codes they added by hand in the portal (`app/portal.py`) | rewritten |
 
 OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folder. Money is integer pence in every file except
 `Books.xlsx`, which shows pounds.

@@ -34,9 +34,8 @@ class MoreEntry {
 /// personal books have no invoices or payroll, and Reports mentions VAT only
 /// for a VAT-registered business. Null features (not known yet, signed out,
 /// or an older runtime without `GET /profile`) show everything. Personal
-/// only shows while Settings › Personal has "Show personal finances" on.
-List<MoreEntry> moreEntries(List<String>? features,
-    {bool showPersonal = false}) {
+/// shows only while Settings › Personal has "Show personal finances" on.
+List<MoreEntry> moreEntries(List<String>? features, {bool showPersonal = false}) {
   final vat = features == null || features.contains('vat');
   final all = [
     const MoreEntry(Icons.folder_outlined, 'Files',
@@ -56,8 +55,7 @@ List<MoreEntry> moreEntries(List<String>? features,
         'Pay runs — estimates, read only', PayrollScreen(),
         needs: 'payroll'),
     const MoreEntry(Icons.event_available_outlined, 'Month-end',
-        'The close checklist — read only; run it on the web',
-        MonthEndScreen()),
+        'The close checklist — read only; run it on the web', MonthEndScreen()),
     if (showPersonal)
       const MoreEntry(Icons.savings_outlined, 'Personal',
           'Budgets, bills and savings goals', PersonalScreen()),
@@ -69,8 +67,7 @@ List<MoreEntry> moreEntries(List<String>? features,
             : 'Profit and loss, aged balances and trend',
         const ReportsScreen()),
     const MoreEntry(Icons.handshake_outlined, 'Your accountant',
-        'Who can see your books, and their queries — read only',
-        AccountantScreen()),
+        'Who can see your books, and their queries — read only', AccountantScreen()),
     const MoreEntry(Icons.history_outlined, 'Audit trail',
         'Who did what in your books — read only', AuditScreen()),
   ];
@@ -83,7 +80,8 @@ List<MoreEntry> moreEntries(List<String>? features,
 
 /// "More" tab: keeps the bottom bar at five items while the new thin
 /// clients live one tap away. Signed in, it reads the books' profile
-/// (`GET /profile`) and leaves out what those books do not have.
+/// (`GET /profile`) and leaves out what those books do not have. The Personal
+/// entry only shows while Settings › Personal has "Show personal finances" on.
 class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key, this.features});
 
@@ -102,11 +100,11 @@ class _MoreScreenState extends State<MoreScreen> {
   void initState() {
     super.initState();
     _features = widget.features;
-    if (widget.features == null) _loadFeatures();
     AppSettings.load().then((settings) {
       if (!mounted) return;
       setState(() => _showPersonal = settings.showPersonalFinances);
     });
+    if (widget.features == null) _loadFeatures();
   }
 
   Future<void> _loadFeatures() async {
@@ -141,7 +139,7 @@ class _MoreScreenState extends State<MoreScreen> {
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
         children: [
           for (final e in moreEntries(_features, showPersonal: _showPersonal))
-            _Entry(entry: e)
+            _Entry(entry: e),
         ],
       ),
     );

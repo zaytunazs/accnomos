@@ -113,6 +113,31 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - Converting part way through a year posts this year's income and costs so far as one entry on the balance date, so a P&L for a period containing that date shows them all at once ("keep"); "retained" folds them into 3200 Retained profit instead. Neither is a tax rule; the VAT treatment (opening balances are on no return) follows VAT Notice 700/12, read through a search summary only.
 - Not imported: transaction history before the conversion date, fixed-asset registers and depreciation, payroll year-to-date figures, stock, multi-currency balances, VAT already submitted (the VAT control balance comes across as one figure). Android has no import screen.
 
+## Bank feeds (TrueLayer)
+
+- **Never run against TrueLayer, not even its sandbox.** No TrueLayer app or credentials were available, and this
+  session could not open docs.truelayer.com: the request and response shapes in `services/runtime/app/truelayer.py`
+  come from TrueLayer's documentation as quoted in search results (28 Oct 2026). Every call in the tests and in test mode
+  goes to the fake in `services/runtime/app/bankfeed_fakes.py`, which answers with those same assumed shapes, so a
+  wrong assumption would pass every test. Least certain: `POST /connections/extend` (request fields, the
+  `user_input_link` answer) and whether a refresh answers a new refresh token (the code keeps one if it does).
+- **Why TrueLayer and not GoCardless** (which would need no secret in the user's books): GoCardless reportedly stopped
+  taking new Bank Account Data customers in July 2025. That comes from a third-party project's docs; no GoCardless
+  notice was found. None of the four providers publishes UK prices for small volumes. `docs/research/BANK_FEEDS.md`.
+- **No 2025 FCA change to the 90-day rule was found.** The code follows PS21/19 (reconfirm with the app at least every
+  90 days, stop reading otherwise); the FCA's 2026 consultation on the long-term open banking framework was not read.
+- **The refresh token is stored**, sealed with the server key `BANKFEEDS_TOKEN_KEY` in the user's
+  `_System/bankfeeds.json`. Whoever holds both the key and a user's file can read that user's transactions until the
+  consent ends. Rotating the key makes every connection "connect again". There is no key rotation with re-sealing.
+- Duplicates between a feed and a statement CSV are found by code (same amount, dates within 2 days, same reference or a
+  word in common), tested on the gold Barclays CSV and six made-up feed lines only. Two payments of the same amount to
+  the same payee within 2 days, one only in the CSV and one only in the feed, would be taken as one. Same amount and
+  date with no word in common are kept as two (a duplicate the user can ignore is safer than a lost payment).
+- Fetched on app open at most hourly per tab, and only on a device where the Bank page has seen a feed. Two tabs
+  syncing at the same moment could both add the same new lines (no lock across requests; there is no server state).
+- Pending transactions are not read (booked only). Only GBP lines are kept; others are counted as skipped.
+- Android does not show bank feeds yet; the phone still imports CSVs through the runtime.
+
 ## Payroll
 
 - **Estimates only. Not payroll, not RTI.** No FPS/EPS, no payment to HMRC; your payroll provider does that.

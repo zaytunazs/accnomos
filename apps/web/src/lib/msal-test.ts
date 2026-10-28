@@ -92,7 +92,7 @@ function setLinked(names: string[]): void {
   window.localStorage.setItem(LINKED, JSON.stringify(names));
 }
 
-/** A linked mailbox's (fake) Microsoft account: a work account in its own tenant. */
+/** A mailbox-only (fake) Microsoft account from Email intake: a work account in its own tenant. */
 function extraAccount(username: string): AccountInfo {
   const known = Object.values(ALL).find((a) => a.account.username === username);
   if (known) return known.account;
@@ -141,8 +141,8 @@ export function createTestMsal(): IPublicClientApplication {
       await new Promise(() => {});
     },
     acquireTokenSilent: async ({ scopes, account }: { scopes: string[]; account?: AccountInfo }) => {
-      if (!signedInKeys().length) throw new Error("not signed in");
       if (account && !keyOf(account)) {
+        if (!signedInKeys().length) throw new Error("not signed in");
         if (!linked().includes(account.username)) throw new Error("interaction_required: account not in the cache");
         return { accessToken: "test-token", account, scopes } as unknown as AuthenticationResult;
       }

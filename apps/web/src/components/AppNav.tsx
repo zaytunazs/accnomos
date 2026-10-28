@@ -79,7 +79,8 @@ export function useReviewBadge(pathname: string): string | undefined {
   return count ? String(count) : undefined;
 }
 
-/** The Review badge, and Home: signed out, `/` is the public landing page, so Home is the sample at `/try`. */
+/** The Review badge, Personal (Settings switch), Self-employment ("I am self-employed"), the profile's features,
+ * and Home: signed out, `/` is the public landing page, so Home is the sample at `/try`. */
 function withBadges(
   review: string | undefined,
   features: string[] | null,
@@ -225,13 +226,7 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
 export default function AppNav({ variant = "sidebar" }: { variant?: "sidebar" | "tabs" }) {
   const pathname = usePathname();
   const signedOut = useAccount() === null;
-  const navLinks = withBadges(
-    useReviewBadge(pathname),
-    useFeatures(),
-    usePersonalOn(),
-    useSelfEmployed(),
-    signedOut,
-  );
+  const navLinks = withBadges(useReviewBadge(pathname), useFeatures(), usePersonalOn(), useSelfEmployed(), signedOut);
 
   if (variant === "tabs") return <TabBar pathname={pathname} links={navLinks} />;
   return <SidebarNav pathname={pathname} links={navLinks} />;

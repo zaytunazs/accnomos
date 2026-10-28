@@ -148,25 +148,22 @@ def done_books(_cli_books: FakeStorageProvider) -> FakeStorageProvider:
     return fake
 
 
-HANG_S = 600  # only a real hang stops _settle; how long the seed takes never decides a test
-
-
 async def _settle(client: httpx.AsyncClient, *, until: tuple[str, ...] = ("done", "failed")) -> dict[str, Any]:
-    """The status once it is in `until`, read as the page reads it. Waits on the background run itself rather than
-    a number of polls: a count of polls raced the seed, which on a loaded machine took longer than they did."""
-    deadline = asyncio.get_running_loop().time() + HANG_S
-    while True:
-        running = [run.task for run in sample_books.RUNS.values() if run.task is not None and not run.task.done()]
+    """The run's status once it has stopped in one of the `until` states. It waits on the run itself
+    (`_Run.stopped`), not on a number of polls: a fixed polling budget raced the background run, so on a loaded
+    machine the seed was still going when the budget ran out. The outer timeout only stops a hang."""
+    for _ in range(3):  # a stop that is not wanted yet (say needs_token) is reported, not waited out
         r = await client.get("/books/sample", headers=HEADERS)
         assert r.status_code == 200, r.text
         status = r.json()
         if status["state"] in until:
             return status
-        if not running:  # nothing left running in this process, so waiting cannot change the answer
-            raise AssertionError(f"still {status}")
-        assert asyncio.get_running_loop().time() < deadline, f"hung: {status}"
-        # Wakes as soon as the run ends, or to look again at a state it waits in (needs_token).
-        await asyncio.wait(running, timeout=0.05)
+        runs = list(sample_books.RUNS.values())
+        assert len(runs) == 1, f"no run in this process, and the status is {status}"
+        if runs[0].stopped.is_set():
+            break
+        await asyncio.wait_for(runs[0].stopped.wait(), SETTLE_TIMEOUT_S)
+    raise AssertionError(f"stopped at {status}, waiting for {until}")
 
 
 async def _facts(fake: FakeStorageProvider) -> dict[str, Any]:

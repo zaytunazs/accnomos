@@ -192,6 +192,16 @@ SUMMARIES: dict[str, Summary] = {
     "bank_rule_deleted": lambda r, w: "Deleted a bank rule",
     "bank_rules_reordered": lambda r, w: "Reordered the bank rules",
     "bank_reconciled": lambda r, w: f"Reconciled a bank line ({r.get('kind') or 'match'}) through Review approval",
+    "bank_feed_connected": lambda r, w: (
+        f"Connected a bank feed from {r.get('bank') or 'a bank'}" + (" (sandbox)" if r.get("sandbox") else "")
+    ),
+    "bank_feed_synced": lambda r, w: (
+        "Fetched the bank feed: "
+        + _plural(_n(r, "new"), "new line")
+        + (f", {_plural(_n(r, 'duplicates'), 'line')} already in a statement" if r.get("duplicates") else "")
+    ),
+    "bank_feed_reconfirmed": lambda r, w: f"Reconfirmed the {r.get('bank') or 'bank'} feed for another 90 days",
+    "bank_feed_disconnected": lambda r, w: f"Disconnected the {r.get('bank') or 'bank'} feed",
     # Sales invoices
     "invoice_profile_saved": lambda r, w: "Saved your invoice details",
     "invoice_created": lambda r, w: f"Created invoice {_inv(r)}" + _pounds(r, "total_pence"),

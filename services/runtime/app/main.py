@@ -225,6 +225,9 @@ app.include_router(dashboard_router)
 from app.routes_bank import router as bank_router  # noqa: E402  /books/bank/*
 
 app.include_router(bank_router)
+from app.routes_bankfeeds import router as bankfeeds_router  # noqa: E402  /books/bankfeeds/* (TrueLayer)
+
+app.include_router(bankfeeds_router)
 from app.routes_ask import router as ask_router  # noqa: E402  POST /books/ask, /books/ask/voice
 
 app.include_router(ask_router)
@@ -271,12 +274,13 @@ app.include_router(plan_router)
 from app.routes_reports import router as reports_router  # noqa: E402  /reports/pl, aged, vat, trend, export, budgets…
 
 app.include_router(reports_router)
-from app.routes_accounting import router as accounting_router  # noqa: E402  /accounting/* (chart, journals, assets…)
-
-app.include_router(accounting_router)
 from app.routes_import import router as import_router  # noqa: E402  /import/* (history and opening balances)
 
 app.include_router(import_router)
+
+from app.routes_accounting import router as accounting_router  # noqa: E402  /accounting/* (chart, journals, assets…)
+
+app.include_router(accounting_router)
 if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI under /__test (app/testmode.py)
     from app import testmode
 
@@ -296,13 +300,14 @@ async def demo_limit(_request: Request, exc: demo.DemoLimit) -> JSONResponse:
     return JSONResponse(status_code=413, content={"detail": str(exc)})
 
 
-from app.public_chat import router as public_chat_router  # noqa: E402  POST /public/chat (website, no sign-in)
-
-app.include_router(public_chat_router)
 from app.routes_accountant import router as accountant_router  # noqa: E402  /accountant/*, /queries/*
 
 app.include_router(accountant_router)
 
+
+from app.public_chat import router as public_chat_router  # noqa: E402  POST /public/chat (website, no sign-in)
+
+app.include_router(public_chat_router)
 from app.routes_todos import router as todos_router  # noqa: E402  /todos
 
 app.include_router(todos_router)

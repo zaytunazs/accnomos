@@ -24,6 +24,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from pydantic import BaseModel, Field, StrictBool
 
+from app import demo
 from app import online_payments as op
 from app import payments as pay_
 from app.books import Books
@@ -33,6 +34,8 @@ from app.routes_invoices import InvoiceRow, _row
 from app.validation import Pence, StrictBody
 
 router = APIRouter(tags=["online payments"])
+#: Connecting reaches the provider with the server's credentials: never from a demo sandbox (app/demo.py).
+NOT_IN_DEMO = [Depends(demo.refuse_external("Connecting Stripe or PayPal"))]
 
 
 def _http(exc: InvoiceError) -> HTTPException:
@@ -61,7 +64,11 @@ class StartResult(BaseModel):
     url: str
 
 
-@router.post("/payments/online/{provider}/start", response_model=StartResult)
+@router.post(
+    "/payments/online/{provider}/start",
+    response_model=StartResult,
+    dependencies=NOT_IN_DEMO,
+)
 async def start(
     provider: Literal["stripe", "paypal"],
     body: StartBody,
@@ -140,7 +147,11 @@ class PayPalConnectBody(StrictBody):
     binding: str = Field(min_length=16, max_length=200)
 
 
-@router.post("/payments/online/stripe/connect", response_model=list[op.ProviderStatus])
+@router.post(
+    "/payments/online/stripe/connect",
+    response_model=list[op.ProviderStatus],
+    dependencies=NOT_IN_DEMO,
+)
 async def stripe_connect(
     body: StripeConnectBody, books: Books = Depends(get_books), user: str = Depends(require_user)
 ) -> list[op.ProviderStatus]:
@@ -151,7 +162,11 @@ async def stripe_connect(
     return await op.status(books)
 
 
-@router.post("/payments/online/paypal/connect", response_model=list[op.ProviderStatus])
+@router.post(
+    "/payments/online/paypal/connect",
+    response_model=list[op.ProviderStatus],
+    dependencies=NOT_IN_DEMO,
+)
 async def paypal_connect(
     body: PayPalConnectBody, books: Books = Depends(get_books), user: str = Depends(require_user)
 ) -> list[op.ProviderStatus]:
