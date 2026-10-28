@@ -37,8 +37,15 @@ export default defineConfig({
     {
       command: `${python} -m uvicorn app.main:app --app-dir ../../services/runtime --host 127.0.0.1 --port ${RUNTIME_PORT} --no-access-log`,
       url: `${RUNTIME_URL}/health`,
-      // RATE_LIMIT_PER_MIN=0: one browser on 127.0.0.1 makes well over 60 calls a minute across the suite.
-      env: { ACCNOMOS_TEST_MODE: "1", PORT: String(RUNTIME_PORT), CORS_ORIGINS: WEB_URL, RATE_LIMIT_PER_MIN: "0" },
+      // RATE_LIMIT_PER_MIN=0: one browser on 127.0.0.1 makes well over 60 calls a minute across the suite; the same for
+      // the website chat's own limit (PUBLIC_CHAT_PER_MIN, tested in services/runtime/tests/test_public_chat.py).
+      env: {
+        ACCNOMOS_TEST_MODE: "1",
+        PORT: String(RUNTIME_PORT),
+        CORS_ORIGINS: WEB_URL,
+        RATE_LIMIT_PER_MIN: "0",
+        PUBLIC_CHAT_PER_MIN: "0",
+      },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
       timeout: 60_000,

@@ -149,14 +149,14 @@ test.describe("Review at 390 px", () => {
 });
 
 test.describe("brand images at the size used, and reduced motion", () => {
-  /** The /brand files the signed-out Home (the one page with the hero) asks for at this width. */
+  /** The /brand files the signed-out sample Home (/try, the one page with the hero) asks for at this width. */
   async function brandRequests(page: Page): Promise<string[]> {
     const seen: string[] = [];
     page.on("request", (r) => {
       const path = new URL(r.url()).pathname;
       if (path.startsWith("/brand/")) seen.push(path);
     });
-    await page.goto("/");
+    await page.goto("/try"); // signed out, / is the landing page (no brand art); the hero is on the sample Home
     await expect(page.getByRole("link", { name: "See the demo books" })).toBeVisible();
     await page.waitForLoadState("networkidle");
     return seen;

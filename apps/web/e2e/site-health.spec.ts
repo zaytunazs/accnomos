@@ -44,7 +44,7 @@ test("a runtime 500 shows its correlation id, with copy", async ({ page, context
 
 test("reader down: one shared strip with retry; the page keeps what it can", async ({ page }) => {
   await page.route("**/health", (route) => route.abort());
-  await page.goto("/");
+  await page.goto("/try"); // the sample Home: the landing page on / has no reader strip
 
   // Live regions take no accessible name from their contents: match on text.
   const strip = page.getByRole("alert").filter({ hasText: /isn't answering/ });
@@ -60,7 +60,7 @@ test("reader down: one shared strip with retry; the page keeps what it can", asy
 
 test("offline: the same strip says offline, then recovers", async ({ page }) => {
   await page.route("**/health", (route) => route.abort());
-  await page.goto("/");
+  await page.goto("/try");
   await expect(page.getByRole("alert").filter({ hasText: /isn't answering/ })).toBeVisible();
 
   await page.evaluate(() => window.dispatchEvent(new Event("offline")));
