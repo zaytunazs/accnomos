@@ -4,7 +4,7 @@ Five known defects, fixed where they live, and then (extra scope, below) the fou
 made to pass their own e2e specs. **This branch carries `claude/marketing`, `claude/accounting-tools`,
 `claude/exports` and `claude/sales-purchases`** (each merged from `origin`, unchanged on origin since) and is meant to
 be merged in place of them. `claude/profiles` and `claude/payment-links` are in `main`; `origin/main` is merged in
-last (`4d5df8f`, at `90cddb5`, after `claude/accountant`). One commit per fix; merge fallout has its own
+last (`9d80f78`, at `9257f42`, after `claude/accountant`, `claude/bank-feeds` and `claude/import-history`). One commit per fix; merge fallout has its own
 `integration:` commits so the fixes stay readable.
 
 | # | Defect | Commit |
@@ -145,18 +145,18 @@ shopping actions meet the quote actions. Their REVIEW and HANDOVER files moved u
 
 Not taken: `claude/payroll-rti` (not in this brief; its own spec and money formatting are left for its author).
 
-## Tests and gates, final (28 Oct 2026, after merging `origin/main` at `90cddb5`)
+## Tests and gates, final (28 Oct 2026, after merging `origin/main` at `9257f42`)
 
-All on the final tree (after merging `origin/main` at `90cddb5`), in this container (4 CPUs, Python 3.13, Node 22):
+All on the final tree (after merging `origin/main` at `9257f42`), in this container (4 CPUs, Python 3.13, Node 22):
 
-- **Runtime** `cd services/runtime && python -m pytest -q`: **1907 passed, 2 skipped** (4 min 39 s).
+- **Runtime** `cd services/runtime && python -m pytest -q`: **2000 passed, 2 skipped** (4 min 45 s).
 - **Other Python suites**: ledger 65, connectors 63, hmrc-relay 172, evals 324: all passed.
-- **ruff** 0.17.3 `check` and `format --check`: clean (493 files). **pyright** 1.1.414 (the project's scope): 0 errors.
+- **ruff** 0.17.3 `check` and `format --check`: clean (506 files). **pyright** 1.1.414 (the project's scope): 0 errors.
 - **Web**: `pnpm install --frozen-lockfile`; `eslint .` 0 errors; `tsc --noEmit` clean. Production `pnpm build`, then
-  `node scripts/prelaunch-words.mjs out`: 314 files, 0 pre-launch phrases; no test-mode code in `out/`.
-- **e2e** (`pnpm run e2e:build && pnpm run e2e:test`, `CI=1`, 3 workers, one retry allowed): **417 passed, 0 failed,
+  `node scripts/prelaunch-words.mjs out`: 320 files, 0 pre-launch phrases; no test-mode code in `out/`.
+- **e2e** (`pnpm run e2e:build && pnpm run e2e:test`, `CI=1`, 3 workers, one retry allowed): **427 passed, 0 failed,
   0 flaky**, 94 skipped. All the skips are the screenshot generators (`shots.spec`, and `main`'s `design-shots.spec`),
-  which run only when asked; none is in the four branches' specs. The run before the last commit had one flaky test,
+  which run only when asked; none is in the four branches' specs. An earlier full run had one flaky test,
   `signed-out.spec` `/try`, now fixed (`signed-out.spec` 180/180 over two repeats, retries off).
   The four branches' own specs (`exports`, `sales-purchases`, `accounting`, `submission-mode`, plus `profiles` and
   the axe sweep `a11y`) were also run alone with retries off: 118 passed.
