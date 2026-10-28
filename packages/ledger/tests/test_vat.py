@@ -2,7 +2,7 @@ from datetime import UTC, date, datetime
 
 import pytest
 
-from accnomos_ledger import LedgerEvent, Line, VatCode, compute_vat_return
+from accnomos_ledger import LedgerEvent, Line, VatCode, compute_vat_return, vat_side
 
 APPROVED = dict(approved_by="owner@example.test", approved_at=datetime(2026, 10, 21, 18, 0))
 
@@ -134,8 +134,6 @@ def _cn_event(kind: str, lines: list[Line], net: int, vat: int, **kw: object) ->
 
 
 def test_credit_notes_and_their_undo_count_on_the_right_side_with_the_right_sign():
-    from accnomos_ledger.vat import vat_side
-
     sales_cn = _cn_event(
         "reversal",
         [
@@ -185,3 +183,28 @@ def test_credit_notes_and_their_undo_count_on_the_right_side_with_the_right_sign
     assert (str(ret.vat_due_sales), str(ret.vat_reclaimed), ret.total_sales_ex_vat) == ("-18.00", "-10.00", -90)
     ret = compute_vat_return([sales_cn, undo_sales_cn, supplier_cn, undo_supplier_cn], "x", start, end)
     assert (str(ret.vat_due_sales), str(ret.vat_reclaimed)) == ("0.00", "0.00")
+
+
+def test_undoing_a_vat_only_sale_nets_off_box_1_not_box_4():
+    """Found by the property tests: a VAT-only sales invoice (net £0.00, so no Sales line is posted) was undone
+    into box 4, because the undo had no Sales line to say it was on the sales side."""
+    vat_only = LedgerEvent(
+        kind="sale",
+        date=date(2026, 9, 1),
+        net=0,
+        vat=1,
+        lines=[Line(account="1100 Debtors", debit=1), Line(account="2200 VAT control", credit=1, vat_code="S")],
+        **APPROVED,
+    )
+    undo = LedgerEvent(
+        kind="reversal",
+        date=date(2026, 9, 1),
+        net=0,
+        vat=1,
+        reverses=vat_only.id,
+        lines=[Line(account="1100 Debtors", credit=1), Line(account="2200 VAT control", debit=1, vat_code="S")],
+        **APPROVED,
+    )
+    assert vat_side(undo) == ("sales", -1)
+    ret = compute_vat_return([vat_only, undo], "x", date(2026, 7, 1), date(2026, 9, 30))
+    assert (str(ret.vat_due_sales), str(ret.vat_reclaimed), str(ret.net_vat_due)) == ("0.00", "0.00", "0.00")

@@ -377,6 +377,10 @@ async def undo(
 
         if await uses_of(books, "credit_note", event_id):
             raise ApprovalError("The credit this credit note left has been applied or refunded; remove that first")
+    from app.credits import stranded  # app.credits imports this module
+
+    if why := await stranded(books, reversing=event_id):
+        raise ApprovalError(why)
     reversal = reversal_of(original, user, on=reversal_date)
     try:
         path = await books.post_event(reversal)

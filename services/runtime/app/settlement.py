@@ -291,7 +291,7 @@ def _bank_line(s: Settlement, ln: BankLine, ids: list[str], live: dict[str, Doc]
     amount = abs(ln.amount_pence)
     owed = [(i, s.outstanding(i)) for i in ids]
     total = sum(o for _, o in owed)
-    exact = abs(amount - total) <= PENNY * len(ids)
+    exact = total > 0 and abs(amount - total) <= PENNY * len(ids)  # nothing owed: all of it is money over
     left = amount
     done: list[Allocation] = []
     for i, o in owed:

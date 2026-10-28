@@ -254,8 +254,10 @@ async def _run(run: _Run, steps: list[Any]) -> None:
                     "sample_books_loaded",
                     {"business": status.business, "events": len(await books.list_events()), "steps": status.total},
                 )
-                status.state, status.step, status.finished_at, status.error = "done", None, _now(), None
-                await _save(books, status)
+                done = status.model_copy(update={"state": "done", "step": None, "finished_at": _now(), "error": None})
+                await _save(books, done)  # the file first: a GET answers from `status` while this write is under way
+                status.state, status.step, status.finished_at, status.error = "done", None, done.finished_at, None
+                status.updated_at = done.updated_at
                 return
             except Exception as exc:
                 refused = isinstance(exc, GraphError) and exc.status in (401, 403)

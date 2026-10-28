@@ -172,6 +172,27 @@ Autopilot is off by default (level L1, propose only). At L2 a receipt posts with
 (same supplier, VAT number and treatment, total ≤ 2× the usual) **and** every code check passes with no warnings, which includes
 the verifier agreeing. Each post is audited and has **Undo**. `docs/AUTOPILOT.md`.
 
+## Money invariants (property tests)
+
+The money maths is checked by property-based tests (Hypothesis) as well as by examples. The inputs are generated
+from the real models, and the checks go through the real functions:
+
+- `packages/ledger/tests/test_properties.py`: every event balances in integer pence; the 9-box identities hold (box 3
+  = box 1 + box 2, box 5 = |box 3 − box 4|, boxes 6–9 whole pounds) and agree with the events in the period; bank
+  amounts round-trip; the matcher never uses a bank line or an event twice.
+- `services/runtime/tests/test_properties_money.py`: mixed-rate invoices sum line VAT exactly; every draft journal
+  balances and its undo zeroes every account and box; repairs round-trip within 1p; settlement never pays a document
+  beyond its total; aged debtors add up; VAT periods for all three staggers and monthly tile the calendar across leap
+  years and BST/GMT.
+- `services/runtime/tests/test_properties_books.py`: a state machine runs random sequences of approvals, payments,
+  credit notes, bank matches, refunds and undos through the real actions. After every step the trial balance
+  balances, 1100 Debtors and 2100 Creditors equal the aged balances less unused credits, 2200 VAT control equals box
+  1 less box 4, and each invoice file agrees with the ledger.
+
+They add about 13 s to the suites. `HYPOTHESIS_PROFILE=deep` and `-m slow` run deeper. The bugs these tests found
+are in `docs/reviews/property-tests/REVIEW.md`, and each has a plain example in
+`services/runtime/tests/test_property_regressions.py`.
+
 ## Models: where each is called
 
 | Model | Called from | Mode | Status |
