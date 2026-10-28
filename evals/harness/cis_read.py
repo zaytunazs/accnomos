@@ -24,8 +24,9 @@ Scoring, per document
   normalised by ``app.checks.normalise_vat_number``.
 * ``checks``: whether the set of failing code-side check codes is exactly ``expect_check_fail``
   (``RATE`` on statements whose printed deduction is not 0/20/30% of the amount liable;
-  ``RC_WORDING`` on invoices with no reverse-charge wording). The CIS settings used for the checks take
-  the payment status from the gold ``rate`` (0 -> gross, 20 -> net, 30 -> unverified).
+  ``RC_WORDING`` on invoices with no reverse-charge wording). On statements the CIS settings take the payment
+  status from the gold ``rate`` (0 -> gross, 20 -> net, 30 -> unverified); on invoices the gold ``rate`` is
+  the VAT rate and the settings stay at the default (invoice checks do not use them).
 
 Writes ``evals/runs/cis_read/{results.jsonl, summary.json, report.md}``. Resumable: ids already in
 results.jsonl are skipped (``--fresh`` starts again). One request at a time, so the production runtime on
@@ -300,7 +301,10 @@ async def run_case(case: Case, cfg: AiConfig) -> dict[str, Any]:
             checks_got=None,
         )
         return row
-    settings = cis_mod.CisSettings(status=RATE_STATUS.get(case.rate, "net"))  # type: ignore[arg-type]
+    # the gold `rate` is the CIS deduction rate on statements (0/20/30 -> status) but the VAT rate on
+    # invoices (5/20: the status does not touch invoice checks, so it stays at the default)
+    status = RATE_STATUS.get(case.rate, "net") if case.kind == "cis_statement" else "net"
+    settings = cis_mod.CisSettings(status=status)  # type: ignore[arg-type]
     code_reading, problems = from_reading(reading, case.id, settings)
     failing = sorted(c.code for c in code_reading.checks if not c.ok)
     scores = score_fields(reading, case)
@@ -449,8 +453,9 @@ def report_md(s: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         *(f"- {r['id']} ({r['kind']}): {r['error']}" for r in rows if r["outcome"] != "ok"),
         "",
         "How it is scored: names fuzzily (>= 0.8, as in `harness.run_extraction`), amounts within a penny, "
-        "UTRs digits-only, VAT numbers normalised by `app.checks.normalise_vat_number`; the CIS settings take "
-        "the payment status from the gold `rate` (0/20/30% -> gross/net/unverified).",
+        "UTRs digits-only, VAT numbers normalised by `app.checks.normalise_vat_number`; on statements the CIS "
+        "settings take the payment status from the gold `rate` (0/20/30% -> gross/net/unverified), on invoices "
+        "the gold `rate` is the VAT rate.",
     ]
     return "\n".join(out) + "\n"
 
