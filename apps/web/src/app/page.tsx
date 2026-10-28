@@ -10,6 +10,7 @@ import Pitch from "@/components/home/Pitch";
 import PlanToday from "@/components/home/PlanToday";
 import { HomeSampleBooks } from "@/components/home/SampleBooks";
 import SetupChecklist from "@/components/home/SetupChecklist";
+import SpendingCard from "@/components/home/SpendingCard";
 import TodosTile from "@/components/home/TodosTile";
 
 export const metadata = { title: "Home · Accnomos" };
@@ -45,6 +46,7 @@ export default function HomePage() {
           <InboxTriage />
           <Deadlines />
           <PlanToday />
+          <SpendingCard />
           <Activity />
         </div>
       </HomeData>

@@ -74,6 +74,7 @@ const ACTION_HREF: Record<RtSuggestedAction["kind"], string | null> = {
   chase_supplier: "/review",
   open_vat: "/vat",
   plan_day: "/", // Home opens the plan for ?plan=YYYY-MM-DD
+  open_spending: "/spending",
   none: null,
 };
 

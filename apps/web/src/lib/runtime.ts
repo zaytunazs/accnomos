@@ -585,6 +585,29 @@ export const runtime = {
     export: (a: AccountInfo, body: { report?: RtReportKind; from?: string; to?: string; periods?: number }) =>
       call<RtReportExport>(a, withQuery("/reports/export", vatQuery()), { method: "POST", body: JSON.stringify(body) }),
   },
+  /** GET /books/spending: code's figures for the period (default this month), the model's checked words. */
+  spending: (a: AccountInfo, period?: { start: string; end: string } | null) =>
+    call<RtSpending>(a, withQuery("/books/spending", period ? `start=${period.start}&end=${period.end}` : "")),
+  /** GET /books/prices: item price history and savings from the user's own receipts (code only). */
+  prices: (a: AccountInfo) => call<RtPriceReport>(a, "/books/prices"),
+  /** POST /books/prices/suggest: the same, with the AI's same-product suggestions where code's rules agree. */
+  suggestPrices: (a: AccountInfo) => call<RtPriceReport>(a, "/books/prices/suggest", { method: "POST" }),
+  /** POST /books/prices/matches: the user's yes or no for one possible match (_System/item_matches.json). */
+  decideMatch: (a: AccountInfo, body: { a: string; b: string; same: boolean }) =>
+    call<{ a: string; b: string; same: boolean }>(a, "/books/prices/matches", { method: "POST", body: JSON.stringify(body) }),
+  /** The shopping list in _System/shopping_list.json. */
+  shopping: (a: AccountInfo) => call<RtShoppingList>(a, "/shopping"),
+  shoppingLookup: (a: AccountInfo, text: string) =>
+    call<RtShoppingLookup>(a, "/shopping/lookup", { method: "POST", body: JSON.stringify({ text }) }),
+  addShopping: (a: AccountInfo, body: RtShoppingIn) =>
+    call<RtShoppingItem>(a, "/shopping", { method: "POST", body: JSON.stringify(body) }),
+  /** POST /shopping/propose: a signed Ask card from typed specs (approve with approveAction). */
+  proposeShopping: (a: AccountInfo, body: RtShoppingIn) =>
+    call<RtProposedAction>(a, "/shopping/propose", { method: "POST", body: JSON.stringify(body) }),
+  tickShopping: (a: AccountInfo, id: string, done: boolean) =>
+    call<RtShoppingItem>(a, `/shopping/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ done }) }),
+  removeShopping: (a: AccountInfo, id: string) =>
+    call<RtShoppingItem>(a, `/shopping/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
 
 /** Reports (services/runtime/app/reports.py). Pence throughout; VAT boxes 6 and 7 whole pounds. */
@@ -1566,7 +1589,7 @@ export interface RtKeyNumber {
 }
 export interface RtSuggestedAction {
   label: string;
-  kind: "open_review" | "open_vat" | "chase_supplier" | "plan_day" | "none"; // plan_day: arg = YYYY-MM-DD
+  kind: "open_review" | "open_vat" | "chase_supplier" | "plan_day" | "open_spending" | "none"; // plan_day: arg = YYYY-MM-DD
   arg: string | null;
 }
 export interface RtAskAnswer {
@@ -1582,7 +1605,7 @@ export interface RtAskAnswer {
   clarification?: RtClarification | null; // an instruction Ask needs one more detail for
 }
 /** Proposed actions (services/runtime/app/actions.py). Kept by the app only; post back unchanged to approve. */
-export type RtActionKind = "create_invoice" | "chase_invoice" | "log_mileage" | "log_timesheet";
+export type RtActionKind = "create_invoice" | "chase_invoice" | "log_mileage" | "log_timesheet" | "add_to_shopping_list";
 export interface RtProposedAction {
   id: string;
   kind: RtActionKind;
@@ -1642,6 +1665,8 @@ export interface RtClarification {
   question_md: string;
   candidates: string[];
   ref: string | null; // the user's words for the thing, replaced by the picked candidate when re-asking
+  /** add_to_shopping_list with nothing in the history: ask for these as fields, then POST /shopping/propose. */
+  spec_fields?: (RtSpecField & { value?: string })[];
 }
 export interface RtActionResult {
   action_id: string;
@@ -1812,3 +1837,179 @@ export const ukDate = (iso: string) => {
   const d = new Date(iso);
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 };
+
+/** Spending, cheaper options and the shopping list (services/runtime/app/spending.py, prices.py, shopping.py). */
+export interface RtSpendRow {
+  name: string;
+  net: string; // pounds before VAT
+  count: number;
+  change_vs_previous: string;
+  change_pct: string | null;
+}
+export interface RtSpendingFacts {
+  this_period: {
+    label: string;
+    start: string;
+    end: string;
+    spent: string;
+    vat: string;
+    purchases: number;
+    by_category: RtSpendRow[];
+    by_supplier: RtSpendRow[];
+    top_items: { item: string; net: string; quantity: string; suppliers: string[] }[];
+    with_line_items: number;
+  };
+  previous_period: { label: string; start: string; end: string; spent: string; purchases: number };
+  change: { spent_vs_previous: string; spent_change_pct: string | null };
+  recurring: { supplier: string; kind: "subscription" | "utility" | "regular"; category: string; months_seen: number; usual_month: string; this_period: string }[];
+  unusual: { date: string; supplier: string; category: string; net: string; times_usual_purchase: string; why: string; source: string }[];
+  sources: string[];
+}
+export interface RtSpending {
+  period: { start: string; end: string };
+  previous: { start: string; end: string };
+  facts: RtSpendingFacts;
+  summary_md: string;
+  summary_by: "model" | "code";
+  fallback_reason: string | null;
+  model: string;
+}
+export interface RtPaid {
+  supplier: string;
+  description: string;
+  date: string;
+  unit_price: string;
+  per_measure: string;
+  pack: number;
+  source: string;
+}
+export interface RtSaving {
+  per_month: string;
+  per_year: string;
+  monthly_volume: string;
+  monthly_items: string;
+  explanation: string;
+}
+export interface RtLiveOffer {
+  source: string;
+  retrieved_at: string;
+  supplier: string;
+  title: string;
+  url: string;
+  unit_price: string;
+  pack: number;
+  per_measure: string | null;
+  measure_word: string;
+  comparable: boolean;
+  note: string;
+}
+export interface RtPriceGroup {
+  id: string;
+  name: string;
+  measure: "m" | "kg" | "l" | "item";
+  measure_word: string;
+  keys: string[];
+  match: "same" | "equivalent";
+  joined_by: string[];
+  observations: number;
+  suppliers: string[];
+  latest: RtPaid;
+  cheapest: RtPaid;
+  by_supplier: RtPaid[];
+  saving: RtSaving | null;
+  monthly_volume: string;
+  average_paid: string;
+  live_offers: RtLiveOffer[];
+  live_saving: RtSaving | null;
+}
+export interface RtSearchStatus {
+  enabled: boolean;
+  provider: string | null;
+  note: string;
+}
+export interface RtPriceReport {
+  since: string;
+  until: string;
+  lines_read: number;
+  groups: RtPriceGroup[];
+  possible_matches: { a: string; b: string; a_name: string; b_name: string; rules_ok: boolean; rules_note: string; ai_says_same: boolean | null }[];
+  total_saving_per_year: string;
+  coverage_note: string;
+  web_search: RtSearchStatus;
+  ai_used: boolean;
+  ai_note: string | null;
+}
+export interface RtSpecField {
+  name: "width_mm" | "length_m" | "colour" | "quantity";
+  label: string;
+  kind: "number" | "choice";
+  unit: string | null;
+  options: string[];
+  required: boolean;
+}
+export interface RtSuggested {
+  supplier: string;
+  description: string;
+  unit_price: string;
+  per_measure: string;
+  measure_word: string;
+  date: string;
+  source: string;
+  basis: string;
+}
+export interface RtShoppingItem {
+  id: string;
+  text: string;
+  description: string;
+  quantity: string;
+  spec: Record<string, string | number | null>;
+  item_key: string | null;
+  suggested: RtSuggested | null;
+  live_offer: RtLiveOffer | null;
+  note: string;
+  added_at: string;
+  added_by: string;
+  done: boolean;
+  done_at: string | null;
+}
+export interface RtShoppingList {
+  items: RtShoppingItem[];
+  web_search: RtSearchStatus;
+  future_steps: Record<string, string>;
+}
+export interface RtLookupOption {
+  key: string;
+  description: string;
+  supplier: string;
+  unit_price: string;
+  per_measure: string;
+  measure_word: string;
+  date: string;
+  source: string;
+  cheapest: RtSuggested | null;
+  label: string;
+}
+export interface RtShoppingLookup {
+  text: string;
+  read_as: Record<string, string | number | null>;
+  options: RtLookupOption[];
+  fields: RtSpecField[];
+  question_md: string;
+  live_offers: RtLiveOffer[];
+  web_search: RtSearchStatus;
+}
+export interface RtShoppingIn {
+  text: string;
+  option_key?: string | null;
+  spec?: { width_mm?: string | null; length_m?: string | null; colour?: string | null } | null;
+  quantity?: string;
+  note?: string;
+}
+export interface RtShoppingPreview {
+  text: string;
+  description: string;
+  quantity: string;
+  suggested: RtSuggested | null;
+  live_offer: RtLiveOffer | null;
+  warnings: string[];
+}
