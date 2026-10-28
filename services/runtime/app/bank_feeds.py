@@ -1,6 +1,6 @@
 """Bank feeds through TrueLayer's Data API (Open Banking), into the same bank lines a statement CSV makes.
 
-Why TrueLayer, and what was compared: docs/bank-feeds/RESEARCH.md. No database (docs/ARCHITECTURE.md), so:
+Why TrueLayer, and what was compared: docs/research/BANK_FEEDS.md. No database (docs/ARCHITECTURE.md), so:
 
 * **The server holds only the platform's credentials**, from env vars that are empty by default (the feature is
   then off, with a sentence saying so): `TRUELAYER_CLIENT_ID`, `TRUELAYER_CLIENT_SECRET`, `BANKFEEDS_REDIRECT_URI`

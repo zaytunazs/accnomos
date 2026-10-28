@@ -3,7 +3,7 @@ so the fakes in app/bankfeed_fakes.py can check it field by field.
 
 Sources (searched 28 Oct 2026; this session's network could not open docs.truelayer.com itself, so the shapes below
 are from TrueLayer's documentation as quoted in search results and from the public API reference as we know it.
-**UNVERIFIED until the owner runs it against the sandbox**; docs/bank-feeds/RESEARCH.md lists what to check):
+**UNVERIFIED until the owner runs it against the sandbox**; docs/research/BANK_FEEDS.md lists what to check):
 
   * https://docs.truelayer.com/docs/general-data-api-concepts: an `access_token` lasts 1 hour; a `refresh_token` is
     only issued with the `offline_access` scope and lasts 90 days (UK), the same as the consent; `GET /data/v1/me`

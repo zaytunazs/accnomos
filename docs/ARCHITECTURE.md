@@ -13,7 +13,7 @@ apps/mobile (Flutter) ──┼─> services/runtime ──┼─> Meta models (
 
 - **`services/runtime`** (`app`): the Agent Runtime. Every call carries the user's Graph token and AI settings in headers
   (below). Routers are the `include_router` lines in `app/main.py`: extract, books (scan, proposals, approve, undo, rules,
-  rebuild), VAT and deadlines, dashboard, bank, ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
+  rebuild), VAT and deadlines, dashboard, bank, bank feeds (TrueLayer), ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
   timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports. Test mode (`ACCNOMOS_TEST_MODE=1`) adds
   `/__test`. `apps/web/src/lib/runtime.ts` and `apps/mobile/lib/services/runtime_client.dart` have one call per route, except
   that the phone does not call `/reports/*` yet.
@@ -24,7 +24,8 @@ apps/mobile (Flutter) ──┼─> services/runtime ──┼─> Meta models (
 - **`packages/ledger`**: ledger events, bank CSV parsing and matching, the VAT 9-box engine. No model code.
 - **`packages/connectors`**: `StorageProvider`, `MailProvider`, `ContactsProvider`, `CalendarProvider`; Microsoft Graph and fake implementations.
 - **Runtime state:** none, except voice audio in a temporary directory deleted after conversion, and the in-memory rate limiter
-  and (without `ACTIONS_SIGNING_KEY`) a random per-process signing key for action cards. Browsers call the runtime directly; CORS
+  and (without `ACTIONS_SIGNING_KEY`) a random per-process signing key for action cards. Bank feeds add an in-memory set of
+  spent connect states and need the server key `BANKFEEDS_TOKEN_KEY`, which seals each user's TrueLayer refresh token in their own books. Browsers call the runtime directly; CORS
   (`CORS_ORIGINS`) is its gate, because every call is useless without the caller's own Graph token. Demo deployment (`deploy/`):
   Docker on a DGX Spark behind a tunnel as `api.accnomos.com`, Ollama on the same host (not checked from this review).
 
@@ -69,7 +70,7 @@ Documents, filed by code and never deleted:
 | `03 Sales/<name>` | runtime, a scanned document the reader classes as a sales invoice | |
 | `03 Sales/invoices/INV-0001.json`, `.pdf`; `03 Sales/invoices/sent/INV-0001.pdf` | runtime, invoicing | `invoices/` and `invoices/sent/` are created at onboarding |
 | `03 Sales/credit-notes/CN-0001.json`, `.pdf`; `03 Sales/credit-notes/sent/CN-0001.pdf` | runtime, credit notes (`credit_notes.py`) | created with the first credit note |
-| `04 Bank statements/<last date>_<bank>.csv` | runtime, bank import | |
+| `04 Bank statements/<last date>_<bank>.csv` | runtime, bank import; `<last date>_feed.csv` for lines a bank feed fetched (`bank_feeds.py`) | |
 | `05 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | |
 | `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
 | `07 Reports/<yyyy-mm-dd>-<name>.xlsx` | runtime, `POST /reports/export` (*Export to OneDrive* on Reports) | `name` is `profit-and-loss`, `aged-balances`, `vat-summary`, `monthly-trend` or `reports` (all of them); a second export the same day gets ` (2)`, nothing is overwritten. Starts with `SAMPLE — FICTIONAL COMPANY` when the books are the demo seed's. Posts nothing |
@@ -109,6 +110,7 @@ Books.xlsx still show the path as it was saved.
 | `Vehicles/vehicles.json`, `Mileage/<tax-year>.jsonl` | tax year like `2026-27` | entries edited and deleted |
 | `Invoicing/profile.json`, `sequence.json`, `credit_sequence.json`, and the logo file | business profile, invoice and credit note numbering, logo (any file under `_System/Invoicing/`) | rewritten |
 | `Payments/providers.json` | the user's own Stripe account id / PayPal merchant id / PayPal.me name for payment links, when linked (`online_payments.py`); never a key or token | rewritten |
+| `bankfeeds.json` | bank feed connections (`bank_feeds.py`): bank and account names, last four digits, consent created/expiry, last synced, and the TrueLayer refresh token sealed with the server's `BANKFEEDS_TOKEN_KEY` (AES-256-GCM); never an access token | rewritten |
 | `Payments/payments.json` | recorded payments: amount, date, account, the split across invoices or bills, the posted event (`payments.py`) | rewritten whole; a removed payment is kept, marked removed |
 | `Payroll/runs/<yyyy-mm>.json` | one pay run per month | updated |
 | `Planner/applied.json` | which day plans were applied (idempotency) | updated |
