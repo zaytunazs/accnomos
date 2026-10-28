@@ -4,7 +4,8 @@
     python tools/teaser/build.py --formats 9x16 --variants social # other formats: 16x9, 1x1, 9x16
     python tools/teaser/build.py --stills-only --frames 5,12      # PNG stills into tools/teaser/.cache/stills/ only
 
-Outputs in docs/submission/teaser/: accnomos-teaser1-<format>_<social|submission>.mp4 and accnomos-teaser1-thumbnail.png.
+Outputs in docs/submission/teaser/: accnomos-teaser1-<format>_<social|submission>.mp4 and
+accnomos-teaser1-thumbnail.png.
 `social` says "Launching November 2026" and keeps the "coming soon" beats; `submission` (judges) shows only what runs
 today and ends on "Try the demo".
 
@@ -17,8 +18,8 @@ captions and motion are drawn here; the music is tools/teaser/music.py. Cuts sit
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
-import math
 import multiprocessing
 import os
 import re
@@ -85,10 +86,8 @@ def font(size: int, weight: int) -> ImageFont.FreeTypeFont:
     p = font_path()
     if p:
         f = ImageFont.truetype(str(p), size)
-        try:
+        with contextlib.suppress(Exception):
             f.set_variation_by_axes([weight])
-        except Exception:
-            pass
         return f
     name = {800: "Bold", 700: "Bold", 600: "SemiBold", 500: "Medium"}.get(weight, "Regular")
     return ImageFont.truetype(f"/usr/share/fonts/opentype/inter/InterDisplay-{name}.otf", size)
@@ -200,7 +199,7 @@ def text_block(lines_spec, max_w: int, align: str = "left") -> Image.Image:
     img = Image.new("RGBA", (max_w, H), (0, 0, 0, 0))
     d = ImageDraw.Draw(img)
     y = 0
-    for (ln, f, colour, gap, size), hh in zip(rows, heights):
+    for (ln, f, colour, _gap, _size), hh in zip(rows, heights, strict=False):
         space = f.getlength(" ")
         total = sum(f.getlength(w) for w, _ in ln) + space * (len(ln) - 1)
         x = {"left": 0, "center": (max_w - total) / 2, "right": max_w - total}[align]
@@ -254,9 +253,13 @@ def _browser_chrome(size, scale):
         rr = int(6 * scale)
         d.ellipse([cx - rr, bar // 2 - rr, cx + rr, bar // 2 + rr], fill=(214, 211, 201, 255))
     pw = int(w * 0.36)
-    d.rounded_rectangle([(w - pw) // 2, int(bar * 0.24), (w + pw) // 2, int(bar * 0.76)], int(bar * 0.26), fill=(238, 236, 229, 255))
+    d.rounded_rectangle(
+        [(w - pw) // 2, int(bar * 0.24), (w + pw) // 2, int(bar * 0.76)], int(bar * 0.26), fill=(238, 236, 229, 255)
+    )
     edge = Image.new("RGBA", (w, h), (0, 0, 0, 0))  # hairline border
-    ImageDraw.Draw(edge).rounded_rectangle([0, 0, w - 1, h - 1], r, outline=BORDER + (255,), width=max(1, int(1.5 * scale)))
+    ImageDraw.Draw(edge).rounded_rectangle(
+        [0, 0, w - 1, h - 1], r, outline=BORDER + (255,), width=max(1, int(1.5 * scale))
+    )
     return win, rounded_mask((w, h), r), edge, bar
 
 
@@ -271,7 +274,9 @@ def phone_frame(content: Image.Image, scale: float) -> Image.Image:
     body = Image.new("RGBA", (w, h), (24, 28, 32, 255))
     body.putalpha(rounded_mask((w, h), r_out))
     d = ImageDraw.Draw(ph)
-    d.rounded_rectangle([w - int(2 * scale), int(h * 0.2), w + int(3 * scale), int(h * 0.3)], int(2 * scale), fill=(40, 44, 50, 255))
+    d.rounded_rectangle(
+        [w - int(2 * scale), int(h * 0.2), w + int(3 * scale), int(h * 0.3)], int(2 * scale), fill=(40, 44, 50, 255)
+    )
     ph.alpha_composite(body)
     scr = content.convert("RGBA")
     scr.putalpha(rounded_mask((cw, ch), r_in))
@@ -311,35 +316,92 @@ def scenes(variant: str = "social") -> list[Scene]:
     social = variant == "social"
     # View: (cx, cy, zoom) start → end, cx/cy in 0–1 of the image.
     out = [
-        Scene(0, 4, [(0, "Bookkeeping that *does itself.*", None), (2, "Snap a receipt. *Done.*", None)],
-              kind="hero", views=[View(str(BRAND / "hero.jpg"), (0.5, 0.5, 1.0), (0.42, 0.48, 1.22))], tag=None),
-        Scene(4, 6, [(0, "Snap it on your *phone.*", None)],
-              kind="phone", views=[View(str(ANDROID / "review.png"), (0, 0, 1), (0, 0, 1))], inset=(30, 880, 1050, 1285)),
-        Scene(6, 8.5, [(0, "Same books on the *web.*", "Phone and web stay in sync")],
-              views=[View(S("05-proposal.png"), (0.58, 0.30, 1.4), (0.59, 0.31, 1.55))]),
-        Scene(8.5, 10.5, [(0, "You approve. *It's posted.*", None)],
-              views=[View(S("06-approve.png"), (0.6, 0.24, 1.35), (0.6, 0.24, 1.5))]),
-        Scene(10.5, 14.5, [(0, "Receipts straight from your *email.*", "Outlook intake, read-only")],
-              views=[View(S("02-files.png"), (0.56, 0.42, 1.3), (0.56, 0.38, 1.5))]),
-        Scene(14.5, 17, [(0, "Ask your books *anything.*", None)],
-              views=[View(S("ask-answer.png"), (0.6, 0.38, 1.3), (0.6, 0.52, 1.5))]),
-        Scene(17, 19.5, [(0, "Reports that *explain themselves.*", None)],
-              views=[View(S("reports-trend.png"), (0.59, 0.40, 1.25), (0.59, 0.44, 1.5))]),
-        Scene(19.5, 22, [(0, "Hands-free. *Just say it.*", "Speak, then approve")],
-              kind="phone", views=[View(str(ANDROID / "ask.png"), (0, 0, 1), (0, 0, 1))], inset=(30, 600, 1070, 1230)),
+        Scene(
+            0,
+            4,
+            [(0, "Bookkeeping that *does itself.*", None), (2, "Snap a receipt. *Done.*", None)],
+            kind="hero",
+            views=[View(str(BRAND / "hero.jpg"), (0.5, 0.5, 1.0), (0.42, 0.48, 1.22))],
+            tag=None,
+        ),
+        Scene(
+            4,
+            6,
+            [(0, "Snap it on your *phone.*", None)],
+            kind="phone",
+            views=[View(str(ANDROID / "review.png"), (0, 0, 1), (0, 0, 1))],
+            inset=(30, 880, 1050, 1285),
+        ),
+        Scene(
+            6,
+            8.5,
+            [(0, "Same books on the *web.*", "Phone and web stay in sync")],
+            views=[View(S("05-proposal.png"), (0.58, 0.30, 1.4), (0.59, 0.31, 1.55))],
+        ),
+        Scene(
+            8.5,
+            10.5,
+            [(0, "You approve. *It's posted.*", None)],
+            views=[View(S("06-approve.png"), (0.6, 0.24, 1.35), (0.6, 0.24, 1.5))],
+        ),
+        Scene(
+            10.5,
+            14.5,
+            [(0, "Receipts straight from your *email.*", "Outlook intake, read-only")],
+            views=[View(S("02-files.png"), (0.56, 0.42, 1.3), (0.56, 0.38, 1.5))],
+        ),
+        Scene(
+            14.5,
+            17,
+            [(0, "Ask your books *anything.*", None)],
+            views=[View(S("ask-answer.png"), (0.6, 0.38, 1.3), (0.6, 0.52, 1.5))],
+        ),
+        Scene(
+            17,
+            19.5,
+            [(0, "Reports that *explain themselves.*", None)],
+            views=[View(S("reports-trend.png"), (0.59, 0.40, 1.25), (0.59, 0.44, 1.5))],
+        ),
+        Scene(
+            19.5,
+            22,
+            [(0, "Hands-free. *Just say it.*", "Speak, then approve")],
+            kind="phone",
+            views=[View(str(ANDROID / "ask.png"), (0, 0, 1), (0, 0, 1))],
+            inset=(30, 600, 1070, 1230),
+        ),
     ]
     if social:
         out.append(Scene(22, 23.5, [(0, "Compare what you pay. *Save money.*", None)], kind="soon", tag=None))
     out += [
-        Scene(23.5 if social else 22, 26, [(0, "Plan your day *in one tap.*", None)],
-              views=[View(S("01-home.png"), (0.58, 0.24, 1.35), (0.58, 0.22, 1.6))], tag="Demo data · fictional account"),
-        Scene(26, 29.5, [(0, "VAT return, *worked out by code.*", "MTD-ready · HMRC sandbox")],
-              views=[View(S("vat.png"), (0.45, 0.5, 1.25), (0.45, 0.68, 1.5))]),
-        Scene(29.5, 34, [(0, "Your books stay in your *OneDrive.*", None)],
-              views=[View(S("02-files.png"), (0.5, 0.5, 1.1), (0.52, 0.56, 1.3))]),
-        Scene(34, END_START, [(0, "Android app *now.*", "iPhone app coming soon")] if social
-              else [(0, "On Android *and the web.*", "One set of books")],
-              kind="phones", phones=[str(ANDROID / "home.png"), str(ANDROID / "vat.png")]),
+        Scene(
+            23.5 if social else 22,
+            26,
+            [(0, "Plan your day *in one tap.*", None)],
+            views=[View(S("01-home.png"), (0.58, 0.24, 1.35), (0.58, 0.22, 1.6))],
+            tag="Demo data · fictional account",
+        ),
+        Scene(
+            26,
+            29.5,
+            [(0, "VAT return, *worked out by code.*", "MTD-ready · HMRC sandbox")],
+            views=[View(S("vat.png"), (0.45, 0.5, 1.25), (0.45, 0.68, 1.5))],
+        ),
+        Scene(
+            29.5,
+            34,
+            [(0, "Your books stay in your *OneDrive.*", None)],
+            views=[View(S("02-files.png"), (0.5, 0.5, 1.1), (0.52, 0.56, 1.3))],
+        ),
+        Scene(
+            34,
+            END_START,
+            [(0, "Android app *now.*", "iPhone app coming soon")]
+            if social
+            else [(0, "On Android *and the web.*", "One set of books")],
+            kind="phones",
+            phones=[str(ANDROID / "home.png"), str(ANDROID / "vat.png")],
+        ),
         Scene(END_START, DURATION, [], kind="end", tag=None),
     ]
     return out
@@ -360,16 +422,23 @@ def voice_cues(variant: str) -> list[tuple[str, float, float]]:
 
 def captions(variant: str) -> list[tuple[float, float, str]]:
     """Burned-in captions: exactly the spoken words (tools/teaser/vo/lines.json), split at the voice's pauses."""
-    c = [(0.6, 2.6, "Bookkeeping that does itself."),
-         (4.0, 5.9, "Snap a receipt on your phone."), (6.0, 8.5, "It appears on the web, ready to approve."),
-         (10.6, 14.6, "Accnomos pulls receipts and invoices straight from your email."),
-         (14.6, 16.8, "Ask for a report in plain English,"), (16.8, 18.4, "and get exact figures.")]
+    c = [
+        (0.6, 2.6, "Bookkeeping that does itself."),
+        (4.0, 5.9, "Snap a receipt on your phone."),
+        (6.0, 8.5, "It appears on the web, ready to approve."),
+        (10.6, 14.6, "Accnomos pulls receipts and invoices straight from your email."),
+        (14.6, 16.8, "Ask for a report in plain English,"),
+        (16.8, 18.4, "and get exact figures."),
+    ]
     if variant == "social":
         c += [(22.2, 23.6, "Compare what you pay,"), (23.6, 25.8, "and plan your day around your jobs.")]
     else:
         c += [(22.2, 24.3, "And plan your day around your jobs.")]
-    c += [(26.2, 29.4, "VAT returns, built for Making Tax Digital."),
-          (29.7, 31.9, "Your books stay in your own OneDrive."), (31.9, 34.0, "A.I. by Meta Muse models.")]
+    c += [
+        (26.2, 29.4, "VAT returns, built for Making Tax Digital."),
+        (29.7, 31.9, "Your books stay in your own OneDrive."),
+        (31.9, 34.0, "A.I. by Meta Muse models."),
+    ]
     if variant == "social":
         c += [(38.8, 42.2, "Accnomos. Launching November 2026.")]
     return c
@@ -446,7 +515,7 @@ class Renderer:
                 img = img.convert("RGBA")
                 cap = self.caption_img(text)
                 # landscape: centred under the device column, clear of the headline and the sample tag
-                cx = self.W * 0.67 if self.land and not self.scene_at(t).kind == "end" else self.W / 2
+                cx = self.W * 0.67 if self.land and self.scene_at(t).kind != "end" else self.W / 2
                 x = int(clamp(cx - cap.size[0] / 2, self.W * 0.02, self.W * 0.98 - cap.size[0]))
                 paste_alpha(img, cap, (x, self.H - int(self.H * 0.045) - cap.size[1]), k)
                 img = img.convert("RGB")
@@ -465,7 +534,9 @@ class Renderer:
             t = t.crop((bbox[0], 0, bbox[2], t.size[1]))
             px, py = int(size * 0.7), int(size * 0.35)
             box = Image.new("RGBA", (t.size[0] + 2 * px, t.size[1] + 2 * py), (0, 0, 0, 0))
-            ImageDraw.Draw(box).rounded_rectangle([0, 0, box.size[0] - 1, box.size[1] - 1], int(size * 0.5), fill=INK + (222,))
+            ImageDraw.Draw(box).rounded_rectangle(
+                [0, 0, box.size[0] - 1, box.size[1] - 1], int(size * 0.5), fill=INK + (222,)
+            )
             box.alpha_composite(t, (px, py))
             self._text_cache[key] = box
         return self._text_cache[key]
@@ -565,7 +636,7 @@ class Renderer:
         def one(v: View):
             t1 = v.t1 if v.t1 is not None else dur
             k = ease_in_out((lt - v.t0) / max(0.01, t1 - v.t0))
-            cx, cy, z = (lerp(a, b, k) for a, b in zip(v.a, v.b))
+            cx, cy, z = (lerp(a, b, k) for a, b in zip(v.a, v.b, strict=False))
             return crop_view(load(v.path), cx, cy, z, size)
 
         live = [v for v in sc.views if v.t0 <= lt] or sc.views[:1]
@@ -592,13 +663,22 @@ class Renderer:
         total = n * (sw + 2 * bez) + (n - 1) * gap
         drift = ease_in_out(lt / dur)
         for i, p in enumerate(paths):
-            content = load(p).resize((sw, sc_h), Image.LANCZOS) if (p, sw) not in self._frame_cache else self._frame_cache[(p, sw)]
+            content = (
+                load(p).resize((sw, sc_h), Image.LANCZOS)
+                if (p, sw) not in self._frame_cache
+                else self._frame_cache[(p, sw)]
+            )
             if (p, sw) not in self._frame_cache:
                 self._frame_cache[(p, sw)] = phone_frame(content, scale)
             ph = self._frame_cache[(p, sw)]
             e = ease_out((lt - i * 0.12) / 0.5)
             x = x0 + (bw - total) // 2 + i * (sw + 2 * bez + gap)
-            y = y0 + (bh - ph.size[1]) // 2 + (1 - e) * self.m * 0.12 - drift * self.m * 0.012 * (1 if i % 2 == 0 else -1)
+            y = (
+                y0
+                + (bh - ph.size[1]) // 2
+                + (1 - e) * self.m * 0.12
+                - drift * self.m * 0.012 * (1 if i % 2 == 0 else -1)
+            )
             sh = shadow(ph.size, int(54 * scale), int(28 * scale), 0.28)
             pad = (sh.size[0] - ph.size[0]) // 2
             paste_alpha(canvas, sh, (x - pad, y - pad + 18 * scale), e)
@@ -621,7 +701,9 @@ class Renderer:
             img = load(path).crop(region).resize((w, h), Image.LANCZOS).convert("RGBA")
             img.putalpha(rounded_mask((w, h), int(22 * scale)))
             edge = Image.new("RGBA", (w, h), (0, 0, 0, 0))
-            ImageDraw.Draw(edge).rounded_rectangle([0, 0, w - 1, h - 1], int(22 * scale), outline=TEAL + (255,), width=max(2, int(3 * scale)))
+            ImageDraw.Draw(edge).rounded_rectangle(
+                [0, 0, w - 1, h - 1], int(22 * scale), outline=TEAL + (255,), width=max(2, int(3 * scale))
+            )
             img.alpha_composite(edge)
             card = self._frame_cache[key] = img
         px0, py0, px1, py1 = phone_box
@@ -642,14 +724,18 @@ class Renderer:
         """A text-only beat for a feature that is not on main yet: headline and a "Coming soon" pill, no screen."""
         canvas = self.bg.copy()
         hs, _ = self.headline_sizes()
-        timg = text_block([(sc.texts[0][1], int(hs * 1.1), 800, None, 0)], int(self.W * (0.62 if self.land else 0.84)), "center")
+        timg = text_block(
+            [(sc.texts[0][1], int(hs * 1.1), 800, None, 0)], int(self.W * (0.62 if self.land else 0.84)), "center"
+        )
         f = font(int(self.m * 0.034), 800)
         label = "COMING SOON"
         tw = int(f.getlength(label))
         h = int(f.size * 2.0)
         pill = Image.new("RGBA", (tw + int(f.size * 2.0), h), (0, 0, 0, 0))
         d = ImageDraw.Draw(pill)
-        d.rounded_rectangle([0, 0, pill.size[0] - 1, h - 1], h // 2, fill=(255, 247, 237, 255), outline=(243, 200, 146, 255), width=3)
+        d.rounded_rectangle(
+            [0, 0, pill.size[0] - 1, h - 1], h // 2, fill=(255, 247, 237, 255), outline=(243, 200, 146, 255), width=3
+        )
         d.text((pill.size[0] / 2, h / 2), label, font=f, fill=(138, 63, 6, 255), anchor="mm")
         gap = int(self.m * 0.04)
         total = pill.size[1] + gap + timg.size[1]
@@ -675,10 +761,15 @@ class Renderer:
             icon.putalpha(ImageChops.multiply(icon.getchannel("A"), rounded_mask((icon_s, icon_s), int(icon_s * 0.22))))
             self._frame_cache[("icon", icon_s)] = icon
         k_icon = ease_out(lt / 0.5)
-        word = text_block([("Accnomos", int(m * (0.11 if self.land else 0.13)), 800, WHITE, 0)], W - 2 * self.margin, "center")
+        word = text_block(
+            [("Accnomos", int(m * (0.11 if self.land else 0.13)), 800, WHITE, 0)], W - 2 * self.margin, "center"
+        )
         url = text_block([("accnomos.com", int(m * 0.05), 700, TEAL_TINT, 0)], W - 2 * self.margin, "center")
-        small = text_block([("Built for the Meta Global AI Developer Hackathon", int(m * 0.026), 600, (190, 222, 216), 0)],
-                           W - 2 * self.margin, "center")
+        small = text_block(
+            [("Built for the Meta Global AI Developer Hackathon", int(m * 0.026), 600, (190, 222, 216), 0)],
+            W - 2 * self.margin,
+            "center",
+        )
         # pill button
         f = font(int(m * 0.042), 800)
         label = "Launching November 2026" if self.variant == "social" else "Try the demo"
@@ -693,7 +784,7 @@ class Renderer:
         total = sum(p.size[1] for p in parts) + gap * 3 + int(m * 0.01)
         y = (H - total) // 2 - int(m * 0.03)
         delays = [0, 0.15, 0.3, 0.5]
-        for p, dl in zip(parts, delays):
+        for p, dl in zip(parts, delays, strict=False):
             k = ease_out((lt - dl) / 0.45) if p is not icon else k_icon
             x = (W - p.size[0]) // 2
             if p is icon:
@@ -720,10 +811,24 @@ def _ff(*args) -> None:
 
 
 def _loudnorm_json(path: Path, target: float) -> dict:
-    p = subprocess.run([FFMPEG, "-hide_banner", "-nostats", "-i", str(path), "-af",
-                        f"loudnorm=I={target}:TP=-1.5:LRA=11:print_format=json", "-f", "null", "-"],
-                       capture_output=True, text=True, check=True)
-    return json.loads(p.stderr[p.stderr.rindex("{"):])
+    p = subprocess.run(
+        [
+            FFMPEG,
+            "-hide_banner",
+            "-nostats",
+            "-i",
+            str(path),
+            "-af",
+            f"loudnorm=I={target}:TP=-1.5:LRA=11:print_format=json",
+            "-f",
+            "null",
+            "-",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    return json.loads(p.stderr[p.stderr.rindex("{") :])
 
 
 def _read(path: Path) -> np.ndarray:
@@ -757,7 +862,7 @@ def build_audio(variant: str) -> Path:
         src = HERE / "vo" / clip
         res = CACHE / f"vo48_{clip}"
         _ff("-i", src, "-ar", music.SR, "-ac", 2, res)
-        x = _read(res)[int(trim * music.SR):]
+        x = _read(res)[int(trim * music.SR) :]
         i = int(at * music.SR)
         j = min(n, i + len(x))
         vo[i:j] += x[: j - i]
@@ -771,14 +876,16 @@ def build_audio(variant: str) -> Path:
     k = np.hanning(int(0.2 * music.SR))
     k /= k.sum()
     m = 1 << int(np.ceil(np.log2(n + len(k))))
-    g = np.fft.irfft(np.fft.rfft(target - 1, m) * np.fft.rfft(k, m), m)[len(k) // 2: len(k) // 2 + n] + 1
+    g = np.fft.irfft(np.fft.rfft(target - 1, m) * np.fft.rfft(k, m), m)[len(k) // 2 : len(k) // 2 + n] + 1
     mix = bed * g[:, None] + vo
     mixed = CACHE / f"mix_{variant}.wav"
     _write(mixed, mix / max(1.0, np.abs(mix).max() / 0.98))
     m = _loudnorm_json(mixed, -14)
     final = CACHE / f"audio_{variant}.wav"
-    af = (f"loudnorm=I=-14:TP=-1.5:LRA=11:measured_I={m['input_i']}:measured_TP={m['input_tp']}:"
-          f"measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true")
+    af = (
+        f"loudnorm=I=-14:TP=-1.5:LRA=11:measured_I={m['input_i']}:measured_TP={m['input_tp']}:"
+        f"measured_LRA={m['input_lra']}:measured_thresh={m['input_thresh']}:offset={m['target_offset']}:linear=true"
+    )
     _ff("-i", mixed, "-af", af, "-ar", music.SR, final)
     return final
 
@@ -801,13 +908,49 @@ def encode(fmt: str, variant: str, audio: Path, frames_at: list[float], workers:
     W, H = FORMATS[fmt]
     OUT.mkdir(parents=True, exist_ok=True)
     out = OUT / f"accnomos-teaser1-{fmt}_{variant}.mp4"
-    cmd = [FFMPEG, "-hide_banner", "-loglevel", "error", "-y",
-           "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-",
-           "-i", str(audio),
-           "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", "-pix_fmt", "yuv420p", "-profile:v", "high",
-           "-threads", "2", "-x264-params", "rc-lookahead=15",  # modest memory: shared build boxes OOM-kill easily
-           "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
-           "-shortest", "-movflags", "+faststart", str(out)]
+    cmd = [
+        FFMPEG,
+        "-hide_banner",
+        "-loglevel",
+        "error",
+        "-y",
+        "-f",
+        "rawvideo",
+        "-pix_fmt",
+        "rgb24",
+        "-s",
+        f"{W}x{H}",
+        "-r",
+        str(FPS),
+        "-i",
+        "-",
+        "-i",
+        str(audio),
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "20",
+        "-pix_fmt",
+        "yuv420p",
+        "-profile:v",
+        "high",
+        "-threads",
+        "2",
+        "-x264-params",
+        "rc-lookahead=15",  # modest memory: shared build boxes OOM-kill easily
+        "-c:a",
+        "aac",
+        "-b:a",
+        "192k",
+        "-ar",
+        "48000",
+        "-shortest",
+        "-movflags",
+        "+faststart",
+        str(out),
+    ]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     n = int(DURATION * FPS)
     want = {int(round(s * FPS)) for s in frames_at}
@@ -844,7 +987,9 @@ def thumbnail() -> Path:
     icon = Image.open(BRAND / "icon-512.png").convert("RGBA").resize((130, 130), Image.LANCZOS)
     icon.putalpha(ImageChops.multiply(icon.getchannel("A"), rounded_mask((130, 130), 28)))
     img.alpha_composite(icon, (r.margin, 80))
-    ImageDraw.Draw(img).text((r.margin + 158, 145), "Accnomos", font=font(76, 800), fill=TEAL_DARK + (255,), anchor="lm")
+    ImageDraw.Draw(img).text(
+        (r.margin + 158, 145), "Accnomos", font=font(76, 800), fill=TEAL_DARK + (255,), anchor="lm"
+    )
     out = OUT / "accnomos-teaser1-thumbnail.png"
     OUT.mkdir(parents=True, exist_ok=True)
     img.convert("RGB").resize((1280, 720), Image.LANCZOS).save(out, optimize=True)

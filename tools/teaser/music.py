@@ -90,9 +90,9 @@ def add(buf: np.ndarray, sig: np.ndarray, start_s: float, gain: float = 1.0, pan
     if i >= buf.shape[0]:
         return
     j = min(buf.shape[0], i + len(sig))
-    l = np.cos((pan + 1) * np.pi / 4) * gain
+    left = np.cos((pan + 1) * np.pi / 4) * gain
     r = np.sin((pan + 1) * np.pi / 4) * gain
-    buf[i:j, 0] += sig[: j - i] * l
+    buf[i:j, 0] += sig[: j - i] * left
     buf[i:j, 1] += sig[: j - i] * r
 
 
