@@ -8,6 +8,7 @@ import { useAccount } from "@/components/jobs/useAccount";
 import { currentFeatures, PROFILE_EVENT } from "@/lib/profiles";
 import { runtime } from "@/lib/runtime";
 import { usePersonalOn } from "@/lib/personal";
+import { useSelfEmployed } from "@/lib/itsa";
 
 type NavLink = { href: string; label: string; badge?: string; tab?: string };
 const links: NavLink[] = [
@@ -18,6 +19,7 @@ const links: NavLink[] = [
   { href: "/bank", label: "Bank" },
   { href: "/vat", label: "VAT return", tab: "VAT" },
   { href: "/month-end", label: "Month-end" },
+  { href: "/self-employment", label: "Self-employment" }, // only with Settings › "I am self-employed"
   { href: "/jobs", label: "Jobs" },
   { href: "/payroll", label: "Payroll" },
   { href: "/reports", label: "Reports" },
@@ -77,9 +79,15 @@ export function useReviewBadge(pathname: string): string | undefined {
   return count ? String(count) : undefined;
 }
 
-function withBadges(review: string | undefined, features: string[] | null, personal: boolean): NavLink[] {
+function withBadges(
+  review: string | undefined,
+  features: string[] | null,
+  personal: boolean,
+  selfEmployed: boolean,
+): NavLink[] {
   const all = personal ? [...links, { href: "/personal", label: "Personal" }] : links;
   return all
+    .filter((l) => selfEmployed || l.href !== "/self-employment")
     .filter((l) => !features || !FEATURE_OF[l.href] || features.includes(FEATURE_OF[l.href]))
     .map((l) => (l.href === "/review" ? { ...l, badge: review } : l));
 }
@@ -105,7 +113,7 @@ function Badge({ count, className }: { count: string; className: string }) {
 
 const sidebarGroups: { label: string; hrefs: string[] }[] = [
   { label: "Books", hrefs: ["/", "/review", "/ask", "/files"] },
-  { label: "Money", hrefs: ["/invoices", "/bank", "/vat", "/month-end", "/payroll", "/reports"] },
+  { label: "Money", hrefs: ["/invoices", "/bank", "/vat", "/self-employment", "/month-end", "/payroll", "/reports"] },
   { label: "Buying", hrefs: ["/spending", "/prices", "/shopping"] },
   { label: "Work", hrefs: ["/jobs", "/contacts", "/vehicles"] },
 ];
@@ -203,7 +211,7 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
 
 export default function AppNav({ variant = "sidebar" }: { variant?: "sidebar" | "tabs" }) {
   const pathname = usePathname();
-  const navLinks = withBadges(useReviewBadge(pathname), useFeatures(), usePersonalOn());
+  const navLinks = withBadges(useReviewBadge(pathname), useFeatures(), usePersonalOn(), useSelfEmployed());
 
   if (variant === "tabs") return <TabBar pathname={pathname} links={navLinks} />;
   return <SidebarNav pathname={pathname} links={navLinks} />;

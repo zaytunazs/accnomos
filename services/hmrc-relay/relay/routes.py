@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .fraud_headers import ClientFacts, Method, build_headers, missing, request_meta
 from .hmrc_client import HmrcClient, HmrcError
-from .oauth import OAuth
+from .oauth import ALLOWED_SCOPES, SCOPES, OAuth
 from .settings import Settings
 
 router = APIRouter()
@@ -177,12 +177,18 @@ async def _vat(r: Relay, request: Request, token: str, body: Envelope, method: s
 
 
 @router.get("/hmrc/authorize")
-async def authorize(r: Configured, redirect_to: str, code_challenge: str | None = None) -> dict:
+async def authorize(
+    r: Configured, redirect_to: str, code_challenge: str | None = None, scope: str = Query(SCOPES, max_length=200)
+) -> dict:
     """Build the HMRC consent URL. With `code_challenge` (S256) the callback hands back the code instead of
-    tokens and the client finishes via POST /hmrc/exchange with its verifier, which only it holds."""
+    tokens and the client finishes via POST /hmrc/exchange with its verifier, which only it holds. `scope` is
+    space-separated, from read:vat write:vat read:self-assessment write:self-assessment (VAT's two by default)."""
     if not r.settings.redirect_allowed(redirect_to):
         raise HTTPException(400, "redirect_to is not an allowed origin (RELAY_ALLOWED_REDIRECTS)")
-    url, state = r.oauth.authorize_url(urldefrag(redirect_to).url, code_challenge)
+    scopes = scope.split()
+    if not scopes or not set(scopes) <= ALLOWED_SCOPES:
+        raise HTTPException(400, f"scope must be from: {' '.join(sorted(ALLOWED_SCOPES))}")
+    url, state = r.oauth.authorize_url(urldefrag(redirect_to).url, code_challenge, " ".join(dict.fromkeys(scopes)))
     return {"url": url, "state": state}
 
 

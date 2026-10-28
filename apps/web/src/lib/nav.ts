@@ -138,10 +138,13 @@ export interface Who {
   kind: RtProfileKind | null;
   /** Settings › Show personal finances is on for this device. */
   personal?: boolean;
+  /** Settings › "I am self-employed" is on (lib/itsa.ts): shows Self-employment whatever the profile says. */
+  selfEmployed?: boolean;
 }
 
 function allowed(x: { feature?: string; kinds?: RtProfileKind[] }, who: Who): boolean {
-  if (x.feature && who.features && !who.features.includes(x.feature)) return false;
+  const switchedOn = x.feature === "self_employment" && who.selfEmployed;
+  if (x.feature && who.features && !who.features.includes(x.feature) && !switchedOn) return false;
   if (x.kinds && !(who.kind ? x.kinds.includes(who.kind) : !x.kinds.every((k) => k === "personal"))) return false;
   return true;
 }

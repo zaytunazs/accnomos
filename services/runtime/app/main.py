@@ -63,7 +63,8 @@ app.add_middleware(
         "X-Demo-Session",  # app/demo.py: a demo sandbox instead of a Graph token
     ]
     + (["X-Test-Tenant"] if is_test_mode() else []),  # app/testmode.py: one fake OneDrive per Playwright worker
-    expose_headers=["X-Correlation-Id", "Retry-After"],
+    # Content-Disposition: the page names a downloaded report file (/books/self-employment/reports/*).
+    expose_headers=["X-Correlation-Id", "Retry-After", "Content-Disposition"],
     max_age=600,
 )
 
@@ -196,6 +197,9 @@ async def unsafe_name(_request: Request, exc: UnsafeName) -> JSONResponse:
 from app.routes_vat import router as vat_router  # noqa: E402  GET /books/vat
 
 app.include_router(vat_router)
+from app.routes_itsa import router as itsa_router  # noqa: E402  /books/self-employment/* (MTD Income Tax)
+
+app.include_router(itsa_router)
 from app.routes_dashboard import router as dashboard_router  # noqa: E402  GET /books/dashboard
 
 app.include_router(dashboard_router)
