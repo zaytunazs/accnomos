@@ -268,6 +268,7 @@ class Reminder(BaseModel):
     sent_by: str
     to: str
     subject: str
+    step: str | None = None  # the chasing step id this send approved (app/chasing.py); None for older reminders
 
 
 class PaymentLink(BaseModel):
@@ -810,6 +811,7 @@ async def send_reminder(
     subject: str,
     body: str,
     pdf: bytes | None,
+    step: str | None = None,
 ) -> Invoice:
     """Send the reminder text the user approved (and may have edited), with the invoice attached."""
     inv = await get_invoice(books, number)
@@ -824,10 +826,12 @@ async def send_reminder(
         [OutgoingAttachment(name=f"{inv.number}.pdf", content_type="application/pdf", data=pdf)] if pdf else []
     )
     await sender.send(OutgoingMail(to=to, subject=subject.strip(), body_text=body.strip(), attachments=attachments))
-    inv.reminders.append(Reminder(sent_at=now(), sent_by=user, to=to, subject=subject.strip()))
+    inv.reminders.append(Reminder(sent_at=now(), sent_by=user, to=to, subject=subject.strip(), step=step))
     await save_invoice(books, inv)
     await books.audit(
-        f"user:{user}", "invoice_reminder_sent", {"invoice": number, "to": to, "count": len(inv.reminders)}
+        f"user:{user}",
+        "invoice_reminder_sent",
+        {"invoice": number, "to": to, "count": len(inv.reminders), **({"step": step} if step else {})},
     )
     return inv
 

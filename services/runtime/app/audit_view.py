@@ -205,6 +205,8 @@ SUMMARIES: dict[str, Summary] = {
     "invoice_paid": lambda r, w: f"Marked invoice {_inv(r)} as paid",
     "invoice_part_paid": lambda r, w: f"Recorded a part payment on invoice {_inv(r)}",
     "invoice_unmarked_paid": lambda r, w: f"Took back the Mark paid on invoice {_inv(r)}",
+    # Payment chasing (app/chasing.py)
+    "chasing_config_saved": lambda r, w: "Saved the payment-chasing reminder steps",
     # Payments (app/payments.py) and credit notes (app/credit_notes.py)
     "payment_recorded": lambda r, w: (
         ("Recorded money in" if r.get("side") == "sale" else "Recorded a payment out")
