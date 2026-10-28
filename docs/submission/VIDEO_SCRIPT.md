@@ -70,7 +70,7 @@ Keep the timings; swap the row.
 |---|---|---|---|
 | 10 | **Invoices**: open an invoice, *Record payment* for part of it (fakes-tested only: run it first, else cut) | "Invoices, part payments and credit notes are code too." | `Invoices · part payments · credit notes, by code` |
 | 11 | **Home** with Autopilot's level in Settings | "Autopilot is off by default. Measured on Glimmer: no false posts on 154 clean documents, 17 in 467 overall, all re-dated copies." | `Autopilot L2 eval: 0/154 clean · 17/467 overall · synthetic` |
-| 12 | **Connect → Choose your AI** → *Test connection* (cut the Modal words) | "Muse Glimmer, Meta's open-weights model, on our own hardware; or the Meta Model API with your key. In key mode the second reader is Muse Spark Open on Baseten." | `Muse Glimmer 30B · or Muse Spark with your key` |
+| 12 | **Connect → Choose your AI** → *Test connection* (cut the Modal words) | "Muse Glimmer, Meta's open-weights model, runs first; or the Meta Model API with your key. In key mode the second reader is Muse Spark Open on Baseten." | `Muse Glimmer 30B · or Muse Spark with your key` |
 | 16 | **Home → Try it with sample books → Load sample books** on a throwaway account, sped up (never run against a real OneDrive: run it first) | "Judges can load six months of a fictional joinery's books into their own OneDrive with one button." | `Load sample books · fictional data · sped up` |
 
 If the whole cut runs long, drop shot 8 (Outlook), then 10. Never drop shots 1, 7's sandbox caption, 13 or 17.
