@@ -13,6 +13,7 @@ supplier is a future step and is switched off (FUTURE_STEPS). Every change is an
 
 from __future__ import annotations
 
+import re
 import uuid
 from datetime import date, datetime
 from decimal import Decimal
@@ -59,6 +60,7 @@ class ShoppingSpec(StrictBody):
     volume_l: Decimal | None = Field(default=None, gt=0, le=100_000)
     colour: str | None = Field(default=None, max_length=30)
     pack: int | None = Field(default=None, ge=1, le=10_000)
+    size_in: Decimal | None = Field(default=None, gt=0, le=10_000)
 
     @field_validator("colour")
     @classmethod
@@ -73,6 +75,7 @@ class ShoppingIn(StrictBody):
     spec: ShoppingSpec | None = None  # when nothing in the history matched
     quantity: Decimal = Field(default=Decimal(1), gt=0, le=100_000)
     note: str = Field(default="", max_length=200)
+    job_id: str | None = Field(default=None, max_length=64)  # the job it is for (app/jobs.py); checked by code
 
     @field_validator("text")
     @classmethod
@@ -106,6 +109,8 @@ class ShoppingItem(BaseModel):
     suggested: Suggested | None
     live_offer: LiveOffer | None = None  # the cheapest comparable live offer when the item was added (search on)
     note: str = ""
+    job_id: str | None = None
+    job_name: str | None = None
     added_at: datetime
     added_by: str
     done: bool = False
@@ -181,6 +186,7 @@ def fits(query: ItemSpec, item: ItemSpec) -> bool:
         and _close(query.length_m, item.length_m)
         and _close(query.weight_kg, item.weight_kg)
         and _close(query.volume_l, item.volume_l)
+        and _close(query.size_in, item.size_in)
     )
 
 
@@ -296,6 +302,8 @@ def describe(text: str, spec: ShoppingSpec | None) -> str:
     """'packing tape' + 48 mm, 66 m, clear -> 'packing tape 48mm x 66m clear'."""
     if spec is None:
         return text
+    if spec.size_in and not re.search(r"\d\s*(?:-?\s*inch|in\b|\")", text, re.I):
+        text = f"{_n(spec.size_in)}-inch {text}"
     sizes = [f"{_n(spec.width_mm)}mm" if spec.width_mm else "", f"{_n(spec.length_m)}m" if spec.length_m else ""]
     parts = [text, " x ".join(s for s in sizes if s)]
     parts += [f"{_n(spec.weight_kg)}kg" if spec.weight_kg else "", f"{_n(spec.volume_l)}L" if spec.volume_l else ""]
@@ -329,6 +337,15 @@ async def resolve(books: Books, body: ShoppingIn, today: date) -> dict[str, Any]
         found = spec.key if spec.key in latest else None
         key = found
     group = by_key.get(key) if key else None
+    job_id = job_name = None
+    if body.job_id:
+        from app import jobs as jobs_
+
+        job = next((j for j in await jobs_.load_jobs(books) if j.id == body.job_id), None)
+        if job is None:
+            warnings.append("That job is no longer in your jobs, so the item is not linked to one.")
+        else:
+            job_id, job_name = job.id, job.name
     live, _search = await _live(description, spec)
     best_live = next((lo for lo in live if lo.comparable), None)
     return {
@@ -340,6 +357,8 @@ async def resolve(books: Books, body: ShoppingIn, today: date) -> dict[str, Any]
         "suggested": _suggested(group).model_dump(mode="json") if group else None,  # type: ignore[union-attr]
         "live_offer": best_live.model_dump(mode="json") if best_live else None,
         "note": body.note,
+        "job_id": job_id,
+        "job_name": job_name,
         "warnings": warnings,
     }
 
@@ -362,7 +381,9 @@ async def add_item(books: Books, body: ShoppingIn, user: str, today: date) -> Sh
         return [*rows, item.model_dump(mode="json")]
 
     await books._update_json(SHOPPING_LIST, [], change)
-    await books.audit(f"user:{user}", "shopping_added", {"item": item.id, "description": item.description})
+    await books.audit(
+        f"user:{user}", "shopping_added", {"item": item.id, "description": item.description, "job": item.job_id}
+    )
     return item
 
 

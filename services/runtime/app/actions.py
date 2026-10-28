@@ -66,7 +66,7 @@ IntentKind = Literal["create_invoice", "chase_invoice", "log_mileage", "log_time
 # Only questions that might be an instruction cost a second model call.
 _ACTION_WORDS = re.compile(
     r"\b(invoice|bill|send|chase|remind|reminder|log|record|add|book|miles?|mileage|drove|driven|hours?|timesheet|"
-    r"shopping|buy)\b",
+    r"shopping|buy|order|remember)\b",
     re.I,
 )
 _QUESTION_START = re.compile(
@@ -98,8 +98,10 @@ INTENT_PROMPT = (
     "one (S standard 20%, R reduced 5%, Z zero, E exempt, O outside scope). due_days only if the user gave "
     "payment terms in days. send: true if the user asked to send or email it. "
     "For add_to_shopping_list: item_text is the item exactly as said, with any sizes or colour but without "
-    "the quantity ('packing tape', 'tape 48mm x 66m'), "
-    "quantity_text how many as said ('6') or null. date_text: the day as said "
+    "the quantity or the job ('packing tape', 'tape 48mm x 66m', '2-inch bolts'); "
+    "'remember to order X' and 'I need X' are add_to_shopping_list too; "
+    "quantity_text how many as said ('6') or null; job_ref the job it is for, "
+    "as said ('Hendon' for 'the Hendon job'). date_text: the day as said "
     "('yesterday', 'Monday', '3 Oct') or null. description: what the invoice is for, in the user's words "
     '(e.g. "this month\'s work"); for a timesheet, any note. Leave every field that does not apply null.'
 )
@@ -188,6 +190,7 @@ class ShoppingIntent(BaseModel):
     kind: Literal["add_to_shopping_list"] = "add_to_shopping_list"
     item_text: str
     quantity: Decimal = Decimal(1)
+    job_ref: str | None = None  # "the Hendon job": found among the open jobs by code
 
 
 Intent = CreateInvoiceIntent | ChaseInvoiceIntent | LogMileageIntent | LogTimesheetIntent | ShoppingIntent
@@ -422,7 +425,7 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
         qty = figure(out.quantity_text, "add_to_shopping_list", "quantity", "How many should I add?")
         if isinstance(qty, Clarification):
             return qty
-        return ShoppingIntent(item_text=item, quantity=qty or Decimal(1))
+        return ShoppingIntent(item_text=item, quantity=qty or Decimal(1), job_ref=(out.job_ref or "").strip() or None)
     return None
 
 
@@ -857,33 +860,45 @@ async def shopping_draft(books: Books, body: Any, today: date) -> Draft:
     if live:
         where += f" Live offer: £{live['unit_price']} from {_md(live['supplier'])} (found by {_md(live['source'])})."
     preview = {**r, "option_key": r["item_key"]}
-    summary = f"**Add {r['quantity']} × {_md(r['description'])}** to your shopping list.{where}"
+    job = f" for **{_md(r['job_name'])}**" if r.get("job_name") else ""
+    summary = f"**Add {r['quantity']} × {_md(r['description'])}** to your shopping list{job}.{where}"
     return Draft("add_to_shopping_list", summary, preview, "Add it to the shopping list")
 
 
 async def resolve_shopping(books: Books, intent: ShoppingIntent, today: date) -> Draft | Clarification:
     from app import shopping
 
+    job_id = job_name = None
+    if intent.job_ref:  # "for the Hendon job": the job first, so a re-ask with a picked item keeps it
+        hit = pick(intent.job_ref, await job_options(books), "add_to_shopping_list", "job", "open job")
+        if isinstance(hit, Clarification):
+            return hit
+        job_id, job_name = hit.option.id, hit.option.name
     found = await shopping.lookup(books, intent.item_text, today)
     qty = format(intent.quantity.normalize(), "f")
     if len(found.options) == 1:
-        body = shopping.ShoppingIn(text=intent.item_text, option_key=found.options[0].key, quantity=intent.quantity)
+        body = shopping.ShoppingIn(
+            text=intent.item_text, option_key=found.options[0].key, quantity=intent.quantity, job_id=job_id
+        )
         return await shopping_draft(books, body, today)
+    for_job = f" (for {_md(job_name)})" if job_name else ""
     if found.options:
         return Clarification(
             kind="add_to_shopping_list",
             field="item",
             candidates=[o.description for o in found.options],
             ref=intent.item_text,
-            question_md=found.question_md,
+            question_md=found.question_md + for_job,
+            extra={"job_id": job_id, "job_name": job_name} if job_id else {},
         )
     fields = [f.model_dump() | ({"value": qty} if f.name == "quantity" else {}) for f in found.fields]
     return Clarification(
         kind="add_to_shopping_list",
         field="spec",
         ref=intent.item_text,
-        question_md=found.question_md,
+        question_md=found.question_md + for_job,
         spec_fields=fields,
+        extra={"job_id": job_id, "job_name": job_name} if job_id else {},
     )
 
 
@@ -1236,11 +1251,13 @@ async def run_shopping(action: ProposedAction, ctx: Context) -> tuple[str, dict[
         else shopping.ShoppingSpec(**{k: v for k, v in spec.items() if v and not (k == "pack" and v == 1)}),
         quantity=Decimal(p["quantity"]),
         note=p.get("note") or "",
+        job_id=p.get("job_id"),
     )
     item = await shopping.add_item(ctx.books, body, ctx.user, london_today())
+    job = f" for {_md(item.job_name)}" if item.job_name else ""
     return (
-        f"Added {item.quantity} × {_md(item.description)} to your shopping list.",
-        {"item_id": item.id, "description": item.description, "quantity": str(item.quantity)},
+        f"Added {item.quantity} × {_md(item.description)} to your shopping list{job}.",
+        {"item_id": item.id, "description": item.description, "quantity": str(item.quantity), "job_id": item.job_id},
     )
 
 

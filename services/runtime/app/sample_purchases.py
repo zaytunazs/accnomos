@@ -61,65 +61,79 @@ def _pence(pounds: Decimal) -> int:
 async def seed_purchases(books: Books, user: str = "sam@sambuilds.example") -> int:
     """Write every sample purchase (proposal + ledger event); returns how many."""
     for n, (day, supplier, category, rate, lines) in enumerate(PURCHASES, start=1):
-        pid = f"5a3d1e{n:06x}"
-        nets = [_pence(Decimal(str(q)) * Decimal(str(u))) for _d, q, u in lines]
-        vats = [int((Decimal(n_) * rate / 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)) for n_ in nets]
-        net, vat = sum(nets), sum(vats)
-        code = VatCode.STANDARD if rate else VatCode.ZERO
-        at = datetime(day.year, day.month, day.day, 12, 0, tzinfo=UTC)
-        doc = ExtractedDoc(
-            doc_type="receipt",
-            supplier_name=supplier,
-            supplier_vat_number=None,
-            customer_name=None,
-            invoice_number=f"S-{n:04d}",
-            date=day.isoformat(),
-            currency="GBP",
-            lines=[
-                ExtractedLine(description=d, qty=q, unit_price=u, net=nets[i] / 100, vat_rate=rate, vat=vats[i] / 100)
-                for i, (d, q, u) in enumerate(lines)
-            ],
-            net_total=net / 100,
-            vat_total=vat / 100,
-            gross_total=(net + vat) / 100,
-            payment_method="card",
-            card_last4=None,
-            category_guess=category,
-            confidence=1.0,
-        )
-        event = LedgerEvent(
-            id=f"{pid}{n:02x}".ljust(32, "0"),
-            kind="purchase",
-            date=day,
-            lines=[
-                Line(account=CATEGORY_ACCOUNTS[category], debit=net, vat_code=code, memo=SAMPLE),
-                *([Line(account=VAT_CONTROL, debit=vat)] if vat else []),
-                Line(account=CREDITORS, credit=net + vat),
-            ],
-            net=net,
-            vat=vat,
-            counterparty=supplier,
-            evidence=[f"{n:064x}"],
-            approved_by=user,
-            approved_at=at,
-            proposal_id=pid,
-        )
-        proposal = Proposal(
-            id=pid,
-            doc_sha256=f"{n:064x}",
-            extracted=doc,
-            checks=[],
-            status="posted",
-            reasons=[SAMPLE],
-            suggested_filename=f"{day.isoformat()} {supplier}.png",
-            journal_draft=[],
-            model="sample",
-            elapsed_s=0.0,
-            created_at=at,
-            decided_by=user,
-            decided_at=at,
-            event_id=event.id,
-        )
-        await books.save_proposal(proposal)
-        await books.post_event(event)
+        await add_purchase(books, n, day, supplier, category, rate, lines, user)
     return len(PURCHASES)
+
+
+async def add_purchase(
+    books: Books,
+    n: int,
+    day: date,
+    supplier: str,
+    category: str,
+    rate: int,
+    lines: list[tuple[str, float, float]],
+    user: str = "sam@sambuilds.example",
+) -> None:
+    """One approved purchase with its line items, as an approval writes it (`n` makes its ids)."""
+    pid = f"5a3d1e{n:06x}"
+    nets = [_pence(Decimal(str(q)) * Decimal(str(u))) for _d, q, u in lines]
+    vats = [int((Decimal(n_) * rate / 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP)) for n_ in nets]
+    net, vat = sum(nets), sum(vats)
+    code = VatCode.STANDARD if rate else VatCode.ZERO
+    at = datetime(day.year, day.month, day.day, 12, 0, tzinfo=UTC)
+    doc = ExtractedDoc(
+        doc_type="receipt",
+        supplier_name=supplier,
+        supplier_vat_number=None,
+        customer_name=None,
+        invoice_number=f"S-{n:04d}",
+        date=day.isoformat(),
+        currency="GBP",
+        lines=[
+            ExtractedLine(description=d, qty=q, unit_price=u, net=nets[i] / 100, vat_rate=rate, vat=vats[i] / 100)
+            for i, (d, q, u) in enumerate(lines)
+        ],
+        net_total=net / 100,
+        vat_total=vat / 100,
+        gross_total=(net + vat) / 100,
+        payment_method="card",
+        card_last4=None,
+        category_guess=category,
+        confidence=1.0,
+    )
+    event = LedgerEvent(
+        id=f"{pid}{n:02x}".ljust(32, "0"),
+        kind="purchase",
+        date=day,
+        lines=[
+            Line(account=CATEGORY_ACCOUNTS[category], debit=net, vat_code=code, memo=SAMPLE),
+            *([Line(account=VAT_CONTROL, debit=vat)] if vat else []),
+            Line(account=CREDITORS, credit=net + vat),
+        ],
+        net=net,
+        vat=vat,
+        counterparty=supplier,
+        evidence=[f"{n:064x}"],
+        approved_by=user,
+        approved_at=at,
+        proposal_id=pid,
+    )
+    proposal = Proposal(
+        id=pid,
+        doc_sha256=f"{n:064x}",
+        extracted=doc,
+        checks=[],
+        status="posted",
+        reasons=[SAMPLE],
+        suggested_filename=f"{day.isoformat()} {supplier}.png",
+        journal_draft=[],
+        model="sample",
+        elapsed_s=0.0,
+        created_at=at,
+        decided_by=user,
+        decided_at=at,
+        event_id=event.id,
+    )
+    await books.save_proposal(proposal)
+    await books.post_event(event)

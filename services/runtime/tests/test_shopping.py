@@ -251,3 +251,176 @@ def test_ask_route_card_and_spec_route(books: Books, monkeypatch: pytest.MonkeyP
     assert added.status_code == 201 and added.json()["suggested"]["supplier"] == "Boxmart Ltd"
     assert len(looked.json()["options"]) == 2
     assert gone.status_code == 200 and no_user.status_code == 400
+
+
+# --------------------------------------------------------------------------- #
+# The owner's voice example, through /books/ask/voice with the stub voice and the test-mode intent stub
+# --------------------------------------------------------------------------- #
+
+SAID = "Remember to order 2-inch bolts for the Hendon job."
+HENDON = "Loft conversion, 14 Hendon Way"
+KEY_H = {**H, "X-AI-Mode": "key", "X-Meta-Api-Key": "test-key"}
+
+
+async def _with_jobs(books: Books) -> str:
+    from app import jobs
+    from app.jobs import Job
+
+    await jobs.save_job(books, Job(id="00000000c001", name=HENDON))
+    await jobs.save_job(books, Job(id="00000000c002", name="Kitchen refit, 3 Mill Lane"))
+    return "00000000c001"
+
+
+def _voice(monkeypatch: pytest.MonkeyPatch, said: str) -> None:
+    """Muse Voice heard `said`; the intent comes from test mode's stub (app/testmode.py intent_reply)."""
+    from app import testmode
+    from app.ai import voice
+
+    async def wav(data: bytes, content_type: str | None, filename: str | None) -> bytes:
+        return b"RIFF-stub"
+
+    async def heard(audio: bytes, cfg: Any, client: Any = None) -> str:
+        return said
+
+    async def model(messages, cfg, schema, name):  # noqa: ANN001, ANN202
+        assert name == "action_intent"
+        return json.dumps(testmode.intent_reply(messages[-1]["content"]))
+
+    monkeypatch.setattr(voice, "require_ffmpeg", lambda: "ffmpeg")
+    monkeypatch.setattr(voice, "to_wav", wav)
+    monkeypatch.setattr(voice, "transcribe", heard)
+    monkeypatch.setattr(ask_ai, "call_json_model", model)
+
+
+def test_parse_the_owners_sentence():
+    from app import testmode
+
+    out = IntentModelOutput.model_validate(testmode.intent_reply(SAID))
+    got = actions.parse_intent(out, SAID, TODAY)
+    assert isinstance(got, actions.ShoppingIntent)
+    assert (got.item_text, got.quantity, got.job_ref) == ("2-inch bolts", 1, "Hendon")
+    from app.prices import normalise
+
+    spec = normalise(got.item_text)
+    assert spec.key == "bolt|in=2" and spec.measure == "item"  # the size is read, the bolt is priced per bolt
+
+
+def test_voice_bolts_for_the_hendon_job_from_history(books: Books, monkeypatch: pytest.MonkeyPatch):
+    from app.main import app
+    from app.routes_books import get_books
+    from app.sample_purchases import add_purchase
+
+    async def override():
+        yield books
+
+    async def arrange() -> str:
+        await add_purchase(
+            books,
+            90,
+            date(2026, 9, 2),
+            "Fixings Direct Ltd",
+            "Materials",
+            20,
+            [("Coach bolts 2 inch (pack of 50)", 1, 9.0)],
+        )
+        await add_purchase(
+            books,
+            91,
+            date(2026, 10, 9),
+            "Boltmart Ltd",
+            "Materials",
+            20,
+            [("Hex bolts 2in zinc (box of 100)", 1, 15.0)],
+        )
+        await add_purchase(
+            books,
+            92,
+            date(2026, 10, 10),
+            "Boltmart Ltd",
+            "Materials",
+            20,
+            [("Hex bolts 3in zinc (box of 100)", 1, 19.0)],
+        )
+        return await _with_jobs(books)
+
+    import anyio
+
+    job_id = anyio.run(arrange)
+    app.dependency_overrides[get_books] = override
+    try:
+        client = TestClient(app)
+        _voice(monkeypatch, SAID)
+        audio = {"audio": ("q.webm", b"\x1aE\xdf\xa3 stub", "audio/webm")}
+        which = client.post("/books/ask/voice", headers=KEY_H, files=audio)
+        body = which.json()
+        clar = body["clarification"]
+        assert body["transcript"] == SAID
+        assert clar["field"] == "item" and clar["ref"] == "2-inch bolts"
+        # the 2-inch bolts in the history, newest first; the 3-inch ones are not offered
+        assert clar["candidates"] == ["Hex bolts 2in zinc (box of 100)", "Coach bolts 2 inch (pack of 50)"]
+        assert clar["extra"] == {"job_id": job_id, "job_name": HENDON} and HENDON in clar["question_md"]
+
+        picked = SAID.replace("2-inch bolts", "Hex bolts 2in zinc (box of 100)")  # the app re-asks with the pick
+        _voice(monkeypatch, picked)
+        card = client.post("/books/ask/voice", headers=KEY_H, files=audio).json()["proposed_action"]
+        assert card["kind"] == "add_to_shopping_list" and card["preview"]["job_id"] == job_id
+        assert f"for **{HENDON}**" in card["summary_md"]
+        assert card["preview"]["suggested"]["supplier"] == "Boltmart Ltd"
+        assert client.get("/shopping", headers=H).json()["items"] == []  # nothing before Approve
+        ok = client.post("/actions/approve", json={"action": card}, headers=H)
+        items = client.get("/shopping", headers=H).json()["items"]
+    finally:
+        app.dependency_overrides.clear()
+    assert ok.status_code == 200, ok.text
+    assert ok.json()["summary_md"] == f"Added 1 × Hex bolts 2in zinc (box of 100) to your shopping list for {HENDON}."
+    [item] = items
+    assert (item["job_id"], item["job_name"], item["description"]) == (
+        job_id,
+        HENDON,
+        "Hex bolts 2in zinc (box of 100)",
+    )
+
+
+def test_voice_bolts_with_no_history_asks_for_specs_and_keeps_the_job(books: Books, monkeypatch: pytest.MonkeyPatch):
+    import anyio
+
+    from app.main import app
+    from app.routes_books import get_books
+
+    async def override():
+        yield books
+
+    job_id = anyio.run(_with_jobs, books)
+    _voice(monkeypatch, SAID)
+    app.dependency_overrides[get_books] = override
+    try:
+        client = TestClient(app)
+        clar = client.post(
+            "/books/ask/voice", headers=KEY_H, files={"audio": ("q.webm", b"stub", "audio/webm")}
+        ).json()["clarification"]
+        assert clar["field"] == "spec" and [f["name"] for f in clar["spec_fields"]][-1] == "quantity"
+        assert clar["extra"]["job_id"] == job_id
+        # what the app's spec form posts: the fields, plus the job code already found
+        card = client.post(
+            "/shopping/propose",
+            json={
+                "text": clar["ref"],
+                "spec": {"colour": "silver"},
+                "quantity": "20",
+                "job_id": clar["extra"]["job_id"],
+            },
+            headers=H,
+        ).json()
+        assert card["preview"]["description"] == "2-inch bolts silver" and card["preview"]["job_name"] == HENDON
+        done = client.post("/actions/approve", json={"action": card}, headers=H)
+    finally:
+        app.dependency_overrides.clear()
+    assert done.status_code == 200, done.text
+    [item] = anyio.run(shopping.list_items, books)
+    assert item.job_id == job_id and item.quantity == 20 and item.suggested is None
+
+
+async def test_an_unknown_job_asks_which(books: Books):
+    await _with_jobs(books)
+    got = await actions.resolve_shopping(books, actions.ShoppingIntent(item_text="bolts", job_ref="Wembley"), TODAY)
+    assert isinstance(got, Clarification) and got.field == "job"

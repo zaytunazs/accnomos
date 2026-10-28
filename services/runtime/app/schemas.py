@@ -361,6 +361,7 @@ class Clarification(BaseModel):
     # add_to_shopping_list with nothing in the history: the specs to ask for as fields (app/shopping.py SpecField),
     # each optionally with a "value" already said (the quantity). The app posts them to POST /shopping/propose.
     spec_fields: list[dict[str, Any]] = []
+    extra: dict[str, Any] = {}  # what code already resolved and the app sends back (the shopping item's job_id)
 
 
 class AskAnswer(AskModelOutput):

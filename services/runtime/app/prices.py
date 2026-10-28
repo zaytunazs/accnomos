@@ -66,12 +66,13 @@ COLOURS = (
 )
 _COLOUR_ALIASES = {"transparent": "clear", "gray": "grey"}
 _STOP = {"the", "of", "and", "with", "for", "a", "an", "in", "on", "x", "each", "per", "roll", "rolls", "pack"}
-_STOP |= {"pk", "pcs", "pc", "pieces", "piece", "assorted", "item", "items", "unit", "units", "size"}
+_STOP |= {"pk", "pcs", "pc", "pieces", "piece", "assorted", "length", "item", "items", "unit", "units", "size"}
 
 _NUM = r"(\d+(?:\.\d+)?)"
 _LENGTH = re.compile(rf"{_NUM}\s*(mm|cm|metres?|meters?|m)\b")
 _WEIGHT = re.compile(rf"{_NUM}\s*(kg|g)\b")
 _VOLUME = re.compile(rf"{_NUM}\s*(ml|litres?|liters?|ltr|l)\b")
+_INCH = re.compile(rf"{_NUM}(?:\s*-?\s*inch(?:es)?\b|in\b|\s*\")")  # 2-inch, 2 inch, 2in, 2" (not "2 in stock")
 _MULTI = re.compile(rf"\b(\d+)\s*x\s*(?={_NUM}\s*(?:mm|cm|m|kg|g|ml|l|ltr|litres?)\b)")
 _PACKS = (
     re.compile(r"\b(?:pack|box|bag|case|set|tub|carton) of (\d+)\b"),
@@ -114,6 +115,7 @@ class ItemSpec:
     volume_l: Decimal | None = None
     colour: str | None = None
     pack: int = 1  # items per purchased unit ("pack of 6" -> 6)
+    size_in: Decimal | None = None  # a size in inches ("2-inch bolts"); part of what the item is, not its measure
 
     @property
     def measure(self) -> Measure:
@@ -136,7 +138,8 @@ class ItemSpec:
         """The same product: the same name words, size and colour. The pack size is left out (it changes the
         price per item, not what the item is)."""
         parts = [" ".join(self.name_words)]
-        for label, v in (("w", self.width_mm), ("l", self.length_m), ("kg", self.weight_kg), ("vol", self.volume_l)):
+        sizes = (("w", self.width_mm), ("l", self.length_m), ("kg", self.weight_kg), ("vol", self.volume_l))
+        for label, v in (*sizes, ("in", self.size_in)):
             if v is not None:
                 parts.append(f"{label}={_plain(v)}")
         if self.colour:
@@ -151,6 +154,7 @@ class ItemSpec:
             "volume_l": _plain(self.volume_l),
             "colour": self.colour,
             "pack": self.pack,
+            "size_in": _plain(self.size_in),
         }
 
 
@@ -171,6 +175,10 @@ def normalise(description: str) -> ItemSpec:
         pack = 2
         rest = _PAIR.sub(" ", rest)
 
+    inches = None
+    if m := _INCH.search(rest):  # a size, not what it is sold by: 2-inch bolts are still priced per bolt
+        inches = _dec(m.group(1))
+        rest = _INCH.sub(" ", rest)
     width = length = weight = volume = None
     for m in _LENGTH.finditer(rest):
         value, unit = _dec(m.group(1)), m.group(2)
@@ -208,6 +216,7 @@ def normalise(description: str) -> ItemSpec:
         volume_l=volume.normalize() if volume is not None else None,
         colour=colour,
         pack=max(pack, 1),
+        size_in=inches.normalize() if inches is not None else None,
     )
 
 
@@ -251,6 +260,8 @@ def rules_allow(a: ItemSpec, b: ItemSpec) -> tuple[bool, str]:
     """Can two different item names be the same product? Code's rules, whatever the model said."""
     if a.measure != b.measure:
         return False, f"one is priced per {MEASURE_WORDS[a.measure]}, the other per {MEASURE_WORDS[b.measure]}"
+    if a.size_in and b.size_in and a.size_in != b.size_in:
+        return False, f"sizes differ ({_plain(a.size_in)} in and {_plain(b.size_in)} in)"
     if a.width_mm and b.width_mm:
         wide = max(a.width_mm, b.width_mm)
         if abs(a.width_mm - b.width_mm) / wide > WIDTH_TOLERANCE:

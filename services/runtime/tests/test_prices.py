@@ -299,6 +299,7 @@ def test_item_spec_dict_round_trip():
         "volume_l": None,
         "colour": "clear",
         "pack": 6,
+        "size_in": None,
     }
 
 

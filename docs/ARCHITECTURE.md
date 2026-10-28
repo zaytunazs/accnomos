@@ -164,8 +164,10 @@ dropped.
 - **Shopping list** (`/shopping`, `app/shopping.py`): a lookup matches the words against the history (every word in
   the item's name, sizes exact), offers what was bought before, or asks for width / length / colour / quantity as
   fields; then live offers when a search is on. Adding stores the cheapest supplier code finds again at that moment
-  (never taken from the client). Ask's `add_to_shopping_list` action (`app/actions.py`) asks which one, or shows the
-  fields (`POST /shopping/propose` makes the card), and adds only on Approve. Purchase orders and supplier emails are
+  (never taken from the client). Ask's `add_to_shopping_list` action (`app/actions.py`, typed or spoken through
+  `/books/ask/voice`: "Remember to order 2-inch bolts for the Hendon job") reads the item, its size and the job the
+  model quotes, finds the job among the open jobs by code (or asks which), asks which history item, or shows the fields
+  (`POST /shopping/propose` makes the card, carrying the job), and adds only on Approve, stored against the job. Purchase orders and supplier emails are
   not built (shown disabled).
 
 ## Round trips and caching

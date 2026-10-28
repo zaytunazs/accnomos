@@ -252,10 +252,19 @@ _INVOICE_WORDS = re.compile(
 )
 
 
-_SHOPPING_WORDS = re.compile(
-    r"^\s*(?:please\s+)?add\s+(?:(?P<qty>\d+)\s*(?:x|×|rolls? of|packs? of|boxes of|of)?\s+)?(?P<item>.+?)\s+"
-    r"to\s+(?:my|the)\s+shopping\s+list[.!]?\s*$",
-    re.I,
+_QTY = r"(?:(?P<qty>\d+)\s*(?:x|×|rolls? of|packs? of|boxes of|of)?\s+)?"
+_FOR_JOB = r"(?:\s+for\s+(?:the\s+)?(?P<job>.+?)\s+job)?"
+_SHOPPING_WORDS = (
+    re.compile(
+        rf"^\s*(?:please\s+)?add\s+{_QTY}(?P<item>.+?){_FOR_JOB}\s+to\s+(?:my|the)\s+shopping\s+list"
+        rf"{_FOR_JOB.replace('job>', 'job2>')}[.!]?\s*$",
+        re.I,
+    ),
+    re.compile(
+        rf"^\s*(?:please\s+)?(?:remember to|remind me to|i need to)\s+(?:order|buy|get)\s+{_QTY}(?P<item>.+?)"
+        rf"{_FOR_JOB}[.!]?\s*$",
+        re.I,
+    ),
 )
 
 
@@ -263,8 +272,16 @@ def intent_reply(question: str) -> dict[str, Any]:
     """The words of "send a £100 invoice to JM Trading [for …]" or "add [6] packing tape to my shopping list" copied
     into the intent; anything else is `none`."""
     fields: dict[str, Any] = dict.fromkeys(actions.IntentModelOutput.model_fields)
-    if shop := _SHOPPING_WORDS.match(question):
-        return {**fields, "kind": "add_to_shopping_list", "item_text": shop["item"], "quantity_text": shop["qty"]}
+    for rx in _SHOPPING_WORDS:
+        if shop := rx.match(question):
+            job = shop.groupdict().get("job") or shop.groupdict().get("job2")
+            return {
+                **fields,
+                "kind": "add_to_shopping_list",
+                "item_text": shop["item"],
+                "quantity_text": shop["qty"],
+                "job_ref": job,
+            }
     m = _INVOICE_WORDS.match(question)
     if m is None:
         return {**fields, "kind": "none"}
