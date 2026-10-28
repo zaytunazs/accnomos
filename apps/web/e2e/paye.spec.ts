@@ -67,6 +67,9 @@ test("PAYE payroll: settings → employee → pay run → approve → FPS, EPS, 
   const xml = await readFile((await fps.path())!, "utf-8");
   expect(xml).toContain("http://www.govtalk.gov.uk/taxation/PAYE/RTI/FullPaymentSubmission/26-27/1");
   expect(xml).toContain("<NINO>AB123456C</NINO>");
+  // The notice travels inside the file too.
+  expect(xml).toContain("<!-- NOT SUBMITTED TO HMRC.");
+  expect(xml).toContain("must be filed using HMRC's Basic PAYE Tools");
   await expect(page.getByRole("status")).toContainText(FILING);
   await expect(rti.getByRole("table", { name: /Full Payment Submission contents/ })).toContainText("1257L");
 
@@ -79,6 +82,9 @@ test("PAYE payroll: settings → employee → pay run → approve → FPS, EPS, 
   const [nest] = await Promise.all([page.waitForEvent("download"), pension.getByRole("button", { name: "Nest CSV" }).click()]);
   expect(nest.suggestedFilename()).toBe("pension-nest-2026-27-monthly-07.csv");
   expect(await readFile((await nest.path())!, "utf-8")).toMatch(/^H,/);
+  // Smart Pension's PAPDIS upload is for the net pay arrangement only; this scheme is relief at source.
+  await pension.getByRole("button", { name: "Smart Pension (PAPDIS) CSV" }).click();
+  await expect(page.getByText(/net pay arrangement only/).first()).toBeVisible();
 
   const [slip] = await Promise.all([page.waitForEvent("download"), run.getByRole("button", { name: "Payslip for Ann Lee" }).click()]);
   expect(slip.suggestedFilename()).toBe("payslip-2026-27-monthly-07-E001.pdf");

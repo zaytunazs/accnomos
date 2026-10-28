@@ -5,8 +5,8 @@ import type { AccountInfo } from "@azure/msal-browser";
 import SignInCta from "@/components/SignInCta";
 import { errorText, todayIso, useAccount } from "@/components/jobs/useAccount";
 import { LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
+import { money } from "@/lib/invoices";
 import {
-  gbp,
   runtime,
   ukDate,
   type RtPayFrequency,
@@ -26,7 +26,7 @@ export const FILING =
   "File with HMRC's Basic PAYE Tools or your payroll provider. Direct submission from Accnomos is currently not available.";
 export const CHECK = "Estimate — check before filing";
 
-const pounds = (pence: number) => gbp(pence / 100);
+const pounds = money; // exact pence to "£1,234.50", no floats
 const toPence = (s: string): number | null => {
   const n = Number(s.trim().replace(/^£/, "").replace(/,/g, ""));
   return s.trim() !== "" && Number.isFinite(n) && n >= 0 ? Math.round(n * 100) : null;
@@ -168,6 +168,9 @@ export default function LivePaye() {
   const [freq, setFreq] = useState<RtPayFrequency>("monthly");
   const [payDate, setPayDate] = useState(todayIso());
   const [employer, setEmployer] = useState<RtPayeEmployer | null>(null);
+  // Open on first load while the PAYE reference is missing; after that only the user opens or closes it (binding it to
+  // the reference would collapse the form as soon as one is typed).
+  const [settingsOpen, setSettingsOpen] = useState<boolean | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [bonus, setBonus] = useState<Record<string, string>>({});
@@ -309,7 +312,11 @@ export default function LivePaye() {
       {error && <RuntimeErrorNote message={error} />}
 
       {/* ---------------------------------------------------------------- Settings */}
-      <details className="rounded-2xl border border-border bg-white p-5" open={!!employer && !employer.paye_reference}>
+      <details
+        className="rounded-2xl border border-border bg-white p-5"
+        open={settingsOpen ?? (!!employer && !employer.paye_reference)}
+        onToggle={(e) => employer && setSettingsOpen(e.currentTarget.open)}
+      >
         <summary className="cursor-pointer text-[17px] font-extrabold">Payroll settings</summary>
         {employer && (
           <form
