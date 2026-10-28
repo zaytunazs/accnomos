@@ -295,12 +295,16 @@ async def delete_employee(books: Books, employee_id: str, user: str) -> None:
 
 
 class SickPay(BaseModel):
+    model_config = {"extra": "forbid"}
+
     awe_pence: int = Field(ge=0, le=10_000_000)
     qualifying_days_per_week: int = Field(ge=1, le=7)
     days: int = Field(ge=0, le=31 * 7)
 
 
 class MaternityPay(BaseModel):
+    model_config = {"extra": "forbid"}
+
     awe_pence: int = Field(ge=0, le=10_000_000)
     first_week: int = Field(ge=1, le=39)
     weeks: int = Field(ge=0, le=39)
