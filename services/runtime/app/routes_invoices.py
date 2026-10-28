@@ -12,6 +12,7 @@ import base64
 import hashlib
 import io
 from collections.abc import AsyncIterator
+from datetime import date
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from pydantic import BaseModel, Field, StrictBool
@@ -19,12 +20,15 @@ from pydantic import BaseModel, Field, StrictBool
 from accnomos_connectors.base import MailSender
 from accnomos_connectors.msgraph import GraphMailSender
 from accnomos_ledger.bank import BankLine
+from app import chasing as chase_
+from app import contacts as cb
 from app import invoicing as inv_
 from app import payments as pay_
 from app.ai import remind
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.books import Books
 from app.books import today as london_today
+from app.todos import TodoIn, add_todo
 from app.invoicing import (
     Invoice,
     InvoiceCustomer,
@@ -148,6 +152,153 @@ def _check_logo_image(data: bytes) -> None:
 async def customers(books: Books = Depends(get_books)) -> list[InvoiceCustomer]:
     """Customers from the contact book (_System/Contacts/contacts.json), for the picker."""
     return await inv_.customers(books)
+
+
+# --------------------------------------------------------------------------- #
+# Payment chasing (app/chasing.py): drafts become to-dos; nothing sends itself
+# --------------------------------------------------------------------------- #
+
+
+class ChaseStepOut(BaseModel):
+    id: str
+    title: str
+    offset_days: int
+    mention_interest: bool = False
+
+
+class OverdueRow(BaseModel):
+    number: str
+    customer_name: str
+    contact_id: str | None
+    due_date: date
+    days_overdue: int
+    balance_pence: int
+    business: bool  # a business customer: statutory interest may apply
+    chasing_opted_out: bool  # no reminder steps while true (interest still accrues)
+    step: ChaseStepOut | None  # the next reminder step due, if any
+    interest_pence: int | None  # statutory interest claimable as of the date, B2B only
+    compensation_pence: int | None  # fixed compensation per debt, B2B only
+
+
+def _contact_flags(inv: Invoice, by_id: dict[str, cb.Contact]) -> tuple[bool, bool]:
+    """(business, opted_out) for the invoice's customer. A customer typed in by hand (no contact) is not B2B."""
+    c = by_id.get(inv.customer.contact_id or "")
+    if c is None:
+        return False, False
+    return c.is_business, c.chasing_opt_out
+
+
+@router.get("/chasing/overdue", response_model=list[OverdueRow])
+async def chasing_overdue(
+    as_of: Day | None = None, books: Books = Depends(get_books)
+) -> list[OverdueRow]:
+    """Sent invoices with a reminder step due (from 3 days before the due date), oldest first.
+
+    `days_overdue`, the next reminder step, and — for business customers only — the statutory interest and
+    fixed compensation claimable as of the date (Late Payment of Commercial Debts (Interest) Act 1998).
+    """
+    day = as_of or london_today()
+    config = await chase_.load_config(books)
+    invoices = await inv_.list_invoices(books, "sent")
+    if not invoices:
+        return []
+    earliest = min(s.offset_days for s in config.steps)
+    ledger = await pay_.load_ledger(books)
+    by_id = {c.id: c for c in await cb.stored_contacts(books)}
+    rows: list[OverdueRow] = []
+    for inv in invoices:
+        days = (day - inv.due_date).days
+        if days < earliest:
+            continue
+        m = pay_.invoice_money(inv, ledger)
+        balance = m.balance_pence if m is not None else inv.total_pence
+        if balance <= 0:
+            continue  # fully covered by payments or credit notes
+        business, opted_out = _contact_flags(inv, by_id)
+        step = None if opted_out else chase_.next_step(inv, day, config)
+        interest = (
+            chase_.interest_pence(balance, inv.due_date, day, config.base_rates)
+            if business and days > 0
+            else None
+        )
+        rows.append(
+            OverdueRow(
+                number=inv.number,
+                customer_name=inv.customer.name,
+                contact_id=inv.customer.contact_id,
+                due_date=inv.due_date,
+                days_overdue=days,
+                balance_pence=balance,
+                business=business,
+                chasing_opted_out=opted_out,
+                step=ChaseStepOut(**step.model_dump()) if step else None,
+                interest_pence=interest,
+                compensation_pence=chase_.compensation_pence(inv.total_pence) if business and days > 0 else None,
+            )
+        )
+    return sorted(rows, key=lambda r: (r.due_date, r.number))
+
+
+class ChaseDraftOut(BaseModel):
+    number: str
+    to: str | None
+    subject: str
+    body: str
+    step: ChaseStepOut
+    days_overdue: int
+    todo_id: str | None = None  # set when the draft was also filed as a to-do (POST); GET files nothing
+
+
+async def _chase_context(
+    books: Books, number: str, day: date
+) -> tuple[Invoice, chase_.ChasingStep, bool, int]:
+    """(invoice, next step, business, days overdue). Raises 404/409 when there is nothing to draft."""
+    inv = await _get(books, number)
+    if inv.status != "sent":
+        raise HTTPException(
+            status_code=409, detail=f"Invoice {number} is {inv.status}; only unpaid sent invoices can be chased"
+        )
+    config = await chase_.load_config(books)
+    by_id = {c.id: c for c in await cb.stored_contacts(books)}
+    business, opted_out = _contact_flags(inv, by_id)
+    if opted_out:
+        raise HTTPException(status_code=409, detail=f"{inv.customer.name} has opted out of reminders")
+    step = chase_.next_step(inv, day, config)
+    if step is None:
+        raise HTTPException(status_code=404, detail="No reminder step is due yet")
+    return inv, step, business, (day - inv.due_date).days
+
+
+@router.get("/{number}/chase-draft", response_model=ChaseDraftOut)
+async def chase_draft(number: str, as_of: Day | None = None, books: Books = Depends(get_books)) -> ChaseDraftOut:
+    """Render the next reminder step as an editable email draft. Drafting sends nothing and files nothing."""
+    day = as_of or london_today()
+    inv, step, business, days = await _chase_context(books, number, day)
+    subject, body = chase_.render_draft(inv, await inv_.load_profile(books), step, day, business)
+    return ChaseDraftOut(
+        number=number, to=inv.customer.email, subject=subject, body=body, step=ChaseStepOut(**step.model_dump()),
+        days_overdue=days,
+    )
+
+
+@router.post("/{number}/chase-draft", response_model=ChaseDraftOut)
+async def chase_draft_todo(
+    number: str, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> ChaseDraftOut:
+    """Render the next reminder step and file it as a to-do for the user to approve and send. Sends nothing."""
+    day = london_today()
+    inv, step, business, days = await _chase_context(books, number, day)
+    subject, body = chase_.render_draft(inv, await inv_.load_profile(books), step, day, business)
+    todo, _ = await add_todo(
+        books,
+        TodoIn(text=f"Chase {number}: {step.title} ({inv_.money(inv.total_pence)} from {inv.customer.name})",
+               due=day if days > 0 else inv.due_date),
+        user,
+    )
+    return ChaseDraftOut(
+        number=number, to=inv.customer.email, subject=subject, body=body, step=ChaseStepOut(**step.model_dump()),
+        days_overdue=days, todo_id=todo.id,
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -390,6 +541,7 @@ class ReminderSendBody(StrictBody):
     to: str = Field(max_length=254)
     subject: str = Field(max_length=200)
     body: str = Field(max_length=5000)
+    step: str | None = Field(default=None, max_length=40)  # the chasing step id approved (app/chasing.py)
 
 
 @router.post("/{number}/reminder-send", response_model=InvoiceRow)
@@ -413,6 +565,7 @@ async def reminder_send(
             subject=body.subject,
             body=body.body,
             pdf=await inv_.sent_pdf(books, number),
+            step=body.step,
         )
     except InvoiceError as exc:
         raise _http(exc) from exc
