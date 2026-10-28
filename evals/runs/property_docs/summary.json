@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-28T15:47:27+00:00",
+  "generated": "2026-10-28T17:31:52+00:00",
   "model": "muse-glimmer:30b",
   "base_url": "http://localhost:11434",
   "stub": false,
@@ -8,7 +8,7 @@
   "answered": 108,
   "refusals": 0,
   "refusal_pct": 0.0,
-  "all_exact_pct": 82.4,
+  "all_exact_pct": 89.8,
   "per_field": {
     "kind": {
       "scored": 108,
@@ -22,29 +22,29 @@
     },
     "line_category": {
       "scored": 186,
-      "correct": 174,
-      "accuracy_pct": 93.5
+      "correct": 186,
+      "accuracy_pct": 100.0
     },
     "line_amount": {
       "scored": 186,
-      "correct": 167,
-      "accuracy_pct": 89.8
+      "correct": 175,
+      "accuracy_pct": 94.1
     }
   },
   "by_kind": {
     "insurance": {
       "docs": 6,
       "answered": 6,
-      "all_exact": 0,
-      "accuracy_pct": 0.0,
-      "baseline_exact": 1,
-      "baseline_pct": 16.7
+      "all_exact": 6,
+      "accuracy_pct": 100.0,
+      "baseline_exact": 0,
+      "baseline_pct": 0.0
     },
     "invoice": {
       "docs": 24,
       "answered": 24,
-      "all_exact": 17,
-      "accuracy_pct": 70.8,
+      "all_exact": 13,
+      "accuracy_pct": 54.2,
       "baseline_exact": 1,
       "baseline_pct": 4.2
     },
@@ -59,8 +59,8 @@
     "mortgage_statement": {
       "docs": 6,
       "answered": 6,
-      "all_exact": 0,
-      "accuracy_pct": 0.0,
+      "all_exact": 6,
+      "accuracy_pct": 100.0,
       "baseline_exact": 0,
       "baseline_pct": 0.0
     }
@@ -68,18 +68,18 @@
   "baseline": {
     "reader": "generic",
     "answered": 108,
-    "all_exact": 2,
-    "all_exact_pct": 1.9,
+    "all_exact": 1,
+    "all_exact_pct": 0.9,
     "per_field": {
       "category": {
         "scored": 108,
-        "correct": 28,
-        "accuracy_pct": 25.9
+        "correct": 26,
+        "accuracy_pct": 24.1
       },
       "property": {
         "scored": 108,
-        "correct": 8,
-        "accuracy_pct": 7.4
+        "correct": 7,
+        "accuracy_pct": 6.5
       },
       "amount": {
         "scored": 108,
@@ -94,209 +94,199 @@
     }
   },
   "latency_s": {
-    "mean": 37.697,
-    "p50": 40.98,
-    "p95": 47.141,
-    "max": 50.073,
-    "total": 4071.2
+    "mean": 37.113,
+    "p50": 40.678,
+    "p95": 46.32,
+    "max": 50.513,
+    "total": 4008.2
   },
   "worst": [
     {
-      "id": "landlord_10/13_insurance",
-      "kind": "insurance",
+      "id": "landlord_10/17_invoice",
+      "kind": "invoice",
       "wrong_fields": [
-        "amt:premises",
-        "cat:premises"
+        "amt:domestic_items"
       ],
       "got": {
         "figures": {
-          "premises": 0.0
+          "domestic_items": 510.99
+        },
+        "property": "flat"
+      },
+      "want": {
+        "figures": {
+          "domestic_items": 505.99
+        },
+        "property": "flat"
+      }
+    },
+    {
+      "id": "landlord_11/16_invoice",
+      "kind": "invoice",
+      "wrong_fields": [
+        "amt:repairs"
+      ],
+      "got": {
+        "figures": {
+          "repairs": 296.1
         },
         "property": "house"
       },
       "want": {
         "figures": {
-          "premises": 285.0
+          "repairs": 253.8
         },
         "property": "house"
       }
     },
     {
-      "id": "landlord_10/14_mortgage_statement",
-      "kind": "mortgage_statement",
+      "id": "landlord_11/17_invoice",
+      "kind": "invoice",
       "wrong_fields": [
-        "amt:finance_res",
-        "cat:finance_res"
+        "amt:domestic_items"
       ],
       "got": {
         "figures": {
-          "finance_res": 0.0
+          "domestic_items": 377.99
+        },
+        "property": "flat"
+      },
+      "want": {
+        "figures": {
+          "domestic_items": 372.99
+        },
+        "property": "flat"
+      }
+    },
+    {
+      "id": "landlord_12/16_invoice",
+      "kind": "invoice",
+      "wrong_fields": [
+        "amt:repairs"
+      ],
+      "got": {
+        "figures": {
+          "repairs": 423.5
         },
         "property": "house"
       },
       "want": {
         "figures": {
-          "finance_res": 2840.88
+          "repairs": 363.0
         },
         "property": "house"
       }
     },
     {
-      "id": "landlord_11/13_insurance",
-      "kind": "insurance",
+      "id": "landlord_12/17_invoice",
+      "kind": "invoice",
       "wrong_fields": [
-        "amt:premises",
-        "cat:premises"
+        "amt:domestic_items"
       ],
       "got": {
         "figures": {
-          "premises": 0.0
+          "domestic_items": 505.99
+        },
+        "property": "flat"
+      },
+      "want": {
+        "figures": {
+          "domestic_items": 525.99
+        },
+        "property": "flat"
+      }
+    },
+    {
+      "id": "landlord_7/16_invoice",
+      "kind": "invoice",
+      "wrong_fields": [
+        "amt:repairs"
+      ],
+      "got": {
+        "figures": {
+          "repairs": 268.1
         },
         "property": "house"
       },
       "want": {
         "figures": {
-          "premises": 414.5
+          "repairs": 229.8
         },
         "property": "house"
       }
     },
     {
-      "id": "landlord_11/14_mortgage_statement",
-      "kind": "mortgage_statement",
+      "id": "landlord_7/17_invoice",
+      "kind": "invoice",
       "wrong_fields": [
-        "amt:finance_res",
-        "cat:finance_res"
+        "amt:domestic_items"
       ],
       "got": {
         "figures": {
-          "finance_res": 0.0
+          "domestic_items": 387.99
+        },
+        "property": "flat"
+      },
+      "want": {
+        "figures": {
+          "domestic_items": 407.99
+        },
+        "property": "flat"
+      }
+    },
+    {
+      "id": "landlord_8/16_invoice",
+      "kind": "invoice",
+      "wrong_fields": [
+        "amt:repairs"
+      ],
+      "got": {
+        "figures": {
+          "repairs": 419.3
         },
         "property": "house"
       },
       "want": {
         "figures": {
-          "finance_res": 2851.14
+          "repairs": 359.4
         },
         "property": "house"
       }
     },
     {
-      "id": "landlord_12/13_insurance",
-      "kind": "insurance",
+      "id": "landlord_8/17_invoice",
+      "kind": "invoice",
       "wrong_fields": [
-        "amt:premises",
-        "cat:premises"
+        "amt:domestic_items"
       ],
       "got": {
         "figures": {
-          "premises": 0.0
+          "domestic_items": 544.99
         },
-        "property": "house"
+        "property": "flat"
       },
       "want": {
         "figures": {
-          "premises": 360.75
+          "domestic_items": 564.99
         },
-        "property": "house"
+        "property": "flat"
       }
     },
     {
-      "id": "landlord_12/14_mortgage_statement",
-      "kind": "mortgage_statement",
+      "id": "landlord_9/16_invoice",
+      "kind": "invoice",
       "wrong_fields": [
-        "amt:finance_res",
-        "cat:finance_res"
+        "amt:repairs"
       ],
       "got": {
         "figures": {
-          "finance_res": 0.0
+          "repairs": 503.3
         },
         "property": "house"
       },
       "want": {
         "figures": {
-          "finance_res": 2720.34
-        },
-        "property": "house"
-      }
-    },
-    {
-      "id": "landlord_7/13_insurance",
-      "kind": "insurance",
-      "wrong_fields": [
-        "amt:premises",
-        "cat:premises"
-      ],
-      "got": {
-        "figures": {
-          "premises": 0.0
-        },
-        "property": "house"
-      },
-      "want": {
-        "figures": {
-          "premises": 224.25
-        },
-        "property": "house"
-      }
-    },
-    {
-      "id": "landlord_7/14_mortgage_statement",
-      "kind": "mortgage_statement",
-      "wrong_fields": [
-        "amt:finance_res",
-        "cat:finance_res"
-      ],
-      "got": {
-        "figures": {
-          "finance_res": 0.0
-        },
-        "property": "house"
-      },
-      "want": {
-        "figures": {
-          "finance_res": 2341.92
-        },
-        "property": "house"
-      }
-    },
-    {
-      "id": "landlord_8/13_insurance",
-      "kind": "insurance",
-      "wrong_fields": [
-        "amt:premises",
-        "cat:premises"
-      ],
-      "got": {
-        "figures": {
-          "premises": 0.0
-        },
-        "property": "house"
-      },
-      "want": {
-        "figures": {
-          "premises": 355.0
-        },
-        "property": "house"
-      }
-    },
-    {
-      "id": "landlord_8/14_mortgage_statement",
-      "kind": "mortgage_statement",
-      "wrong_fields": [
-        "amt:finance_res",
-        "cat:finance_res"
-      ],
-      "got": {
-        "figures": {
-          "finance_res": 0.0
-        },
-        "property": "house"
-      },
-      "want": {
-        "figures": {
-          "finance_res": 2366.54
+          "repairs": 431.4
         },
         "property": "house"
       }
