@@ -139,8 +139,10 @@ task text only and was never merged.
 | 18 | `spark/cis-eval-runs` (plus the /cis label fix below) | `f3a8db81` | 40747808603 | 40749547420 ✓ |
 | 19 | `muse/property-reader` with `spark/property-eval-runs` (its Spark run), plus the payroll fix below | `21c77bd2` | 40759245206 | 40761016629 ✓ |
 | 20 | `claude/site-layout` (signed-out `/` is the marketing home with its own public menu; app chrome only inside the app) | `91e59bf1` | 40769708968 | ✓ (pushed by a parallel session) |
-| 21 | `spark/property-runs-pass2` (with `muse/property-reader-2`, which it sits on) and its review | `d3d6328e` | | no web change |
+| 21 | `spark/property-runs-pass2` (with `muse/property-reader-2`, which it sits on) and its review | `d3d6328e` | 40772672176 (on `integration`); red on `main` in 40774742253, the flaky `test_ask` fixed in row 23 | no web change |
 | 22 | `claude/known-fixes`, second round (brings `claude/exports` and `claude/sales-purchases`, fixed), plus the landing-copy correction for site-layout | `a56bc911` | 40778178762 | 40779614548 ✓ |
+| 23 | Fix: Ask's number check read digits in file names, so `test_ask` failed 1 run in N (below) | this pass | see row 24 | no web change |
+| 24 | `claude/sales-exports-fix` (on top of row 22, which already had both features) and *Reports & exports* in the menu | this commit | see below | ✓ on push |
 
 The integrator wrote a review wherever a branch arrived without one: `docs/reviews/cis-eval/`, `cis-eval-runs/` and
 `property-reader/`. The Spark figures were **recounted from `results.jsonl`**, not copied from the summaries. The CIS
@@ -161,6 +163,7 @@ schedules and 0 of 6 on mortgage statements.
 | site-layout | 2167 | 101 | 63 | 181 | 353 | 426 | 0 |
 | property-runs-pass2 | 2171 | 101 | 63 | 181 | 354 | 424 | 2 |
 | known-fixes, round 2 (with site-layout and pass 2 merged) | 2336 | 101 | 63 | 181 | 354 | 467 | 0 |
+| + Ask fix + sales-exports-fix | 2341 | 101 | 63 | 181 | 354 | 467 | 1 |
 
 ruff 0.17.3 and pyright stayed clean throughout. The flaky tests were: on bank-feeds, the signed-out `/` *Speak*
 button was briefly disabled without a reason; on batch-tax, `files-manage` hit `ECONNRESET`, the PAYE RTI table was
@@ -228,6 +231,33 @@ cis-eval, `paye.spec.ts` (the long PAYE flow) failed once. On property-reader, a
   build. Both are corrected. "RTI payroll" now reads "sending payroll (RTI) to HMRC", because the FPS and EPS files
   are made. The production export has 0 pre-launch phrases (`scripts/prelaunch-words.mjs`, and the integrator's
   HTML/JS scan).
+- **`test_ask` red on `main` (CI run 40774742253), a real bug and not just a flaky test.** Ask's number check
+  (`KnownNumbers` in `app/ai/ask.py`) collected every digit run in the facts pack. That included the ledger file names
+  in `sources` and in each large transaction's `source`, and those names end in the event's random hex id. When an id
+  happened to contain `800`, last quarter's £800.00 counted as a known figure with no period. The wrong-period check
+  then let "You owe £800.00 this time" through for this quarter. It was random because the ids are: the test passed
+  alone, for every `PYTHONHASHSEED`, and on `integration` at the same commit. The same hole could excuse an *invented*
+  figure in Ask, triage, reminders, the close summary, the planner and spending, which all use `KnownNumbers`. Keys
+  holding paths (`source`, `sources`) are no longer read as figures. A new test plants a file name containing `800` and
+  `777`; it fails without the fix and passes with it.
+- **`claude/sales-exports-fix` on top of known-fixes round 2.** By the time it was merged, `integration` already had
+  `claude/sales-purchases` and `claude/exports` through known-fixes, so its 12 conflicts were the same fixes made
+  twice:
+  - Kept `integration`'s code where both sides fixed the same thing: the statement picker, the quote intents, the
+    route security lists, the menu order in `profiles.spec`, and the supplier VAT number in `sales-purchases.spec`.
+  - Took the branch's *Reports & exports* wording, because its `exports.spec` asserts it. Its quote rows went inside
+    the `ACTIONS.md` table, where `integration` had left them below it. Its clean router line replaced
+    `ARCHITECTURE.md`'s garbled one, and its updated *Reports and exports* section of `HONESTY.md` replaced the older
+    copy.
+  - What it adds over row 22: the vendor templates re-checked against the vendors' pages (the Sage 50 customer and
+    supplier headings renamed), the VAT-return export under cash accounting, flat rate or annual accounting (the same
+    scheme engine as the VAT page), the report and period kept in the address across a reload, and repeating invoices
+    and bills in the 90-day cash flow.
+  - Also fixed: the supplier form's VAT-number hint said "made from this order" on the repeating-bill form too, and
+    *Reports & exports* (`/reports/exports`) was reachable only from a link on `/reports`. It is now in the Reporting
+    menu.
+  - The only flaky test, `cis.spec.ts` (the CIS registration's "Saved in your OneDrive" status not shown within 10 s),
+    passed on retry. It is first seen here, and this merge touches nothing in CIS.
 - **Signed-out `/cis` showed the sample label twice** (CI run 40745987742, and flaky locally). The sample card
   repeated the banner's "SAMPLE — FICTIONAL COMPANY" and rendered after the signed-in check, so the sweep counted 1 or
   2 depending on timing. The card no longer repeats it, so the banner is the one label, as the rule says. No test
