@@ -23,6 +23,7 @@ class AppSettings {
     this.vatStagger,
     this.vatStartMonth,
     this.autopilotLevel = 'L1',
+    this.showPersonalFinances = false,
   });
 
   /// Address of the reader service. The default is the Android emulator's
@@ -67,6 +68,10 @@ class AppSettings {
   /// (default) rules wait for review, L2 posts matching rules on its own.
   final String autopilotLevel;
 
+  /// Show the Personal entry (More tab) for household budgets, bills and
+  /// savings goals. Off by default: most users keep business books only.
+  final bool showPersonalFinances;
+
   static const _kRuntimeUrl = 'accnomos.runtimeUrl';
   static const _kAiMode = 'accnomos.aiMode';
   static const _kAiBaseUrl = 'accnomos.aiBaseUrl';
@@ -78,6 +83,7 @@ class AppSettings {
   static const _kVatStagger = 'accnomos.vatStagger';
   static const _kVatStartMonth = 'accnomos.vatStartMonth';
   static const _kAutopilot = 'accnomos.autopilot';
+  static const _kShowPersonal = 'accnomos.showPersonal';
 
   /// Load saved settings, falling back to defaults for anything missing.
   static Future<AppSettings> load() async {
@@ -94,6 +100,7 @@ class AppSettings {
       vatStagger: _clampStagger(prefs.getInt(_kVatStagger)),
       vatStartMonth: _clampMonth(prefs.getInt(_kVatStartMonth)),
       autopilotLevel: _clampLevel(prefs.getString(_kAutopilot)),
+      showPersonalFinances: prefs.getBool(_kShowPersonal) ?? false,
     );
   }
 
@@ -149,6 +156,7 @@ class AppSettings {
       await prefs.setString(_kVatNumber, vatNumber!);
     }
     await prefs.setString(_kAutopilot, autopilotLevel);
+    await prefs.setBool(_kShowPersonal, showPersonalFinances);
     if (vatStagger == null) {
       await prefs.remove(_kVatStagger);
     } else {

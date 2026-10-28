@@ -1,5 +1,20 @@
 # Release notes — Accnomos mobile
 
+## 0.3.7 (version code 12)
+
+Play "What's new" (about 320 characters):
+
+Personal finances arrive on the phone, hidden until Settings › Personal
+switches "Show personal finances" on. The More tab then shows Personal:
+the month's money in, out and left over, budgets with progress bars,
+regular bills with next due dates, and savings goals with the monthly
+amount needed. Setting a budget amount is the only edit; categories,
+rules and goals stay on the web.
+
+Not yet run on a phone: the Personal screen against a real runtime with
+imported statements, the budget save round-trip, and the screen at
+360 dp on a real device, need a human check.
+
 ## 0.3.6 (version code 11)
 
 Play "What's new" (about 250 characters):

@@ -1304,6 +1304,40 @@ class RuntimeClient {
   Future<Map<String, dynamic>> payrollRuns() =>
       _map('GET', '/payroll/runs', what: 'load pay runs');
 
+  // Personal finances (/personal/*). Money is whole pence; every figure is
+  // worked out by the runtime from the imported bank statements. Same paths
+  // and bodies as the web's `personal` in `apps/web/src/lib/runtime.ts`.
+
+  /// Month summary: money in, spend by category against budget, left over.
+  /// `GET /personal/summary?month=YYYY-MM`; [month] defaults to this month
+  /// on the runtime when omitted.
+  Future<Map<String, dynamic>> personalSummary({String? month}) => _map(
+      'GET', '/personal/summary',
+      query: {'month': ?month}, what: 'load this month');
+
+  /// Monthly budgets. `GET /personal/budgets` → `{category id: pence}`.
+  Future<Map<String, dynamic>> personalBudgets() =>
+      _map('GET', '/personal/budgets', what: 'load budgets');
+
+  /// Replace the budgets. `PUT /personal/budgets` with
+  /// `{budgets: {category id: pence}}`; 0 or absent means no budget.
+  /// The phone reads first and saves the whole map, so one category can be
+  /// changed without losing the rest.
+  Future<Map<String, dynamic>> savePersonalBudgets(
+          Map<String, int> budgets) =>
+      _map('PUT', '/personal/budgets',
+          body: {'budgets': budgets}, what: 'save that budget');
+
+  /// Recurring bills and subscriptions found in the statements (estimates).
+  /// `GET /personal/recurring` → `{items, monthly_total_pence, note}`.
+  Future<Map<String, dynamic>> personalRecurring() =>
+      _map('GET', '/personal/recurring', what: 'load recurring bills');
+
+  /// Savings goals with the monthly amount the runtime works out.
+  /// `GET /personal/goals`.
+  Future<List<Map<String, dynamic>>> personalGoals() =>
+      _list('GET', '/personal/goals', what: 'load savings goals');
+
   /// One pay run with its lines. `GET /payroll/runs/{period}`.
   Future<Map<String, dynamic>> payrollRun(String period) => _map(
       'GET', '/payroll/runs/${_seg(period)}',
