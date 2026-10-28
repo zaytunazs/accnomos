@@ -239,6 +239,9 @@ app.include_router(credit_notes_router)
 from app.routes_online_payments import router as online_payments_router  # noqa: E402  /payments/online/*
 
 app.include_router(online_payments_router)  # also /invoices/{number}/payment-link*
+from app.routes_cis import router as cis_router  # noqa: E402  /cis/* (CIS and the VAT reverse charge)
+
+app.include_router(cis_router)
 from app.routes_actions import router as actions_router  # noqa: E402  /actions/approve, /actions/reject
 
 app.include_router(actions_router)

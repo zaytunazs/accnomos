@@ -438,3 +438,46 @@ def test_annual_return_boxes_are_the_normal_ones_for_the_year():
     events = [sale(100_000, 20_000, date(2026, m, 5)) for m in range(1, 13)]
     out = compute_scheme_return(SchemeBooks(events), [], "26Y1", date(2026, 1, 1), date(2026, 12, 31))
     assert out.ret.to_hmrc()["netVatDue"] == 2400.0
+
+
+# --- domestic reverse charge (CIS trades) under a scheme ----------------------------------------------------------
+
+
+def rc_purchase(net: int, day: date) -> LedgerEvent:
+    """A building service bought under the reverse charge: the supplier charged no VAT; 20% is accounted for here."""
+    return LedgerEvent(
+        kind="purchase",
+        date=day,
+        net=net,
+        vat=0,
+        reverse_charge_vat=net // 5,
+        lines=[
+            Line(account="5000 Materials", debit=net, vat_code=VatCode.STANDARD),
+            Line(account="2100 Creditors", credit=net),
+        ],
+        **APPROVED,
+    )
+
+
+def test_reverse_charge_under_standard_spans_matches_the_standard_engine():
+    events = [sale(100_000, 20_000, date(2026, 2, 3)), rc_purchase(50_000, date(2026, 2, 10))]
+    want = compute_vat_return(events, "26A1", *Q1).to_hmrc()
+    assert want["vatDueSales"] == 300.0 and want["vatReclaimedCurrPeriod"] == 100.0
+    out, body = boxes(SchemeBooks(events), [SchemeSpan(date(2025, 1, 1), None, "standard")])
+    assert body == want
+    assert not out.warnings
+
+
+def test_reverse_charge_on_cash_accounting_counts_on_the_invoice_date_with_a_warning():
+    events = [rc_purchase(50_000, date(2026, 2, 10))]  # never paid in the period
+    out, body = boxes(SchemeBooks(events), [SchemeSpan(date(2026, 1, 1), None, "cash")])
+    assert body["vatDueSales"] == 100.0 and body["vatReclaimedCurrPeriod"] == 100.0
+    assert any("reverse charge" in w for w in out.warnings)
+
+
+def test_reverse_charge_on_the_flat_rate_goes_in_box_1_not_box_4():
+    events = [rc_purchase(50_000, date(2026, 2, 10))]
+    out, body = boxes(SchemeBooks(events, relevant_goods_accounts=("9999",)), [frs(limited_cost="no")])
+    assert body["vatDueSales"] == 100.0
+    assert body["vatReclaimedCurrPeriod"] == 0.0
+    assert any("reverse charge" in w for w in out.warnings)

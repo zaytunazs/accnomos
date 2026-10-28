@@ -50,6 +50,7 @@ AGENT_LABELS = {
     "backup": "Backup",
     "files": "Files",
     "close": "Month-end",
+    "cis-reader": "CIS reader",
 }
 
 
@@ -208,8 +209,41 @@ SUMMARIES: dict[str, Summary] = {
         ("Recorded money in" if r.get("side") == "sale" else "Recorded a payment out")
         + _pounds(r, "amount_pence")
         + (f" against invoice {_inv(r)}" if r.get("invoice") else "")
+        + (f" (CIS deduction {money(int(r['cis_deduction_pence']))})" if r.get("cis_deduction_pence") else "")
     ),
     "payment_removed": lambda r, w: "Removed a payment; its entry was reversed",
+    # CIS and the VAT reverse charge (app/cis.py, app/cis_readings.py, app/routes_cis.py)
+    "cis_settings_saved": lambda r, w: "Saved your CIS settings",
+    "cis_statement_added": lambda r, w: (
+        f"Added a CIS statement from {r.get('contractor') or 'a contractor'}" + _pounds(r, "deduction_pence")
+    ),
+    "cis_statement_removed": lambda r, w: "Removed a CIS statement",
+    "cis_document_read": lambda r, w: (
+        f"Read {posixpath.basename(str(r.get('file') or '')) or 'a document'} as "
+        + (
+            "a CIS statement"
+            if r.get("kind") == "cis_statement"
+            else "a reverse-charge invoice"
+            if r.get("kind") == "reverse_charge_invoice"
+            else "something else"
+        )
+        + "; it waits for you on the CIS page"
+    ),
+    "cis_reading_approved": lambda r, w: "Approved a CIS document the AI read",
+    "cis_reading_rejected": lambda r, w: "Rejected a CIS document the AI read",
+    "reverse_charge_bill_posted": lambda r, w: (
+        f"Posted a reverse-charge bill from {r.get('supplier') or 'a subcontractor'}"
+    ),
+    "cis_subcontractor_saved": lambda r, w: "Saved a subcontractor's CIS details",
+    "cis_payment_recorded": lambda r, w: (
+        "Recorded a payment to a subcontractor under CIS"
+        + (f", deducting {money(int(r['deduction_pence']))}" if isinstance(r.get("deduction_pence"), int) else "")
+    ),
+    "cis_payment_removed": lambda r, w: "Removed a CIS payment to a subcontractor; its entry was reversed",
+    "cis_return_prepared": lambda r, w: (
+        f"Prepared the CIS300 for the month to {r.get('tax_month_end') or '?'} (not submitted to HMRC)"
+    ),
+    "quote_saved": lambda r, w: f"Saved quote {r.get('quote') or ''}" + _pounds(r, "total_pence"),
     "payment_line_not_matched": lambda r, w: "Recorded a payment but could not match its bank line",
     # Online payments (app/online_payments.py)
     "payment_provider_connected": lambda r, w: (

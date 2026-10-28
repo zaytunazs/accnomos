@@ -237,6 +237,7 @@ class Moment:
     kind: Literal["invoice", "payment", "scheme_exit"] = "invoice"
     capital: bool = False  # flat rate: capital expenditure goods of £2,000 or more, dealt with outside the scheme
     relevant_share: Decimal = Decimal(0)  # share of the gross that is relevant goods (limited cost test)
+    rc_vat: int = 0  # domestic reverse charge VAT the business accounts for itself (purchases; vat.py, s55A)
 
     @property
     def gross(self) -> int:
@@ -268,6 +269,7 @@ class Segment:
     purchases_net: int = 0
     purchases_vat: int = 0
     payments: int = 0  # cash basis: payment moments counted here
+    rc_vat: int = 0  # domestic reverse charge VAT on purchases: box 1, and box 4 outside the flat rate
     exit_net: int = 0  # unpaid amounts brought to account on leaving a cash basis (Notice 731 §6.4, 733 §9.6)
     exit_vat: int = 0
     # flat rate only
@@ -283,11 +285,11 @@ class Segment:
 
     @property
     def box1(self) -> int:
-        return sum(c.tax_pence for c in self.calcs) if self.scheme == "flat_rate" else self.sales_vat
+        return (sum(c.tax_pence for c in self.calcs) if self.scheme == "flat_rate" else self.sales_vat) + self.rc_vat
 
     @property
     def box4(self) -> int:
-        return self.capital_vat if self.scheme == "flat_rate" else self.purchases_vat
+        return self.capital_vat if self.scheme == "flat_rate" else self.purchases_vat + self.rc_vat
 
     @property
     def box6(self) -> int:
@@ -385,6 +387,17 @@ def _relevant_share(ev: LedgerEvent, prefixes: tuple[str, ...]) -> Decimal:
 # --- tax moments --------------------------------------------------------------------------------------------------
 
 
+# Domestic reverse charge (VAT Act 1994 s55A; accnomos_ledger/vat.py) under a scheme. Standard accounting: box 1 and
+# box 4, exactly as compute_vat_return. Under cash accounting and the flat rate scheme this engine counts the reverse
+# charge VAT on the purchase's invoice date, in box 1, and in box 4 only outside the flat rate. That treatment was
+# NOT re-checked against gov.uk/guidance/vat-reverse-charge-technical-guide (unreachable from the build session that
+# merged CIS with VAT schemes, 28 Oct 2026): every such document carries this warning until it is.
+RC_SCHEME_NOTE = (
+    "reverse charge VAT under this VAT scheme is counted on the invoice date (box 1, and box 4 outside the flat "
+    "rate); check this against HMRC's VAT reverse charge technical guide before submitting"
+)
+
+
 def tax_moments(books: SchemeBooks, spans: Sequence[SchemeSpan]) -> tuple[list[Moment], list[tuple[str, str]]]:
     """Every dated share of net and VAT, under the scheme in force on each document's date; and (event id, warning)
     for documents that need a word."""
@@ -405,6 +418,8 @@ def tax_moments(books: SchemeBooks, spans: Sequence[SchemeSpan]) -> tuple[list[M
         """Sales and purchases taxed when paid (not undone; not excluded by Notice 731 §2.7)."""
         if ev.kind not in ("sale", "purchase") or ev.id in reversed_ids or ev.net is None or not on_return(ev):
             return False
+        if ev.reverse_charge_vat:
+            return False  # see the reverse charge note below: counted on its invoice date
         side: Side = "sales" if ev.kind == "sale" else "purchases"
         span = span_at(spans, ev.date)
         if not span.cash_basis_for(side):
@@ -443,7 +458,12 @@ def tax_moments(books: SchemeBooks, spans: Sequence[SchemeSpan]) -> tuple[list[M
         capital = side == "purchases" and ev.id in books.capital and (ev.net + (ev.vat or 0)) >= CAPITAL_GOODS_MIN_GROSS
         share = _relevant_share(ev, prefixes) if side == "purchases" and not capital else Decimal(0)
         if ev.id not in cash_ids:
-            moments.append(Moment(ev.date, side, sign * ev.net, sign * (ev.vat or 0), ev.id, "invoice", capital, share))
+            rc = sign * (ev.reverse_charge_vat or 0) if side == "purchases" else 0
+            moments.append(
+                Moment(ev.date, side, sign * ev.net, sign * (ev.vat or 0), ev.id, "invoice", capital, share, rc)
+            )
+            if rc and span_at(spans, ev.date).scheme != "standard":
+                warnings.append((ev.id, f"event {ev.id}: {RC_SCHEME_NOTE}"))
             continue
         net, vat = ev.net, ev.vat or 0
         for cn in folded[ev.id]:
@@ -570,6 +590,7 @@ def compute_scheme_return(
             if m.kind == "scheme_exit":
                 seg.exit_net += m.net
                 seg.exit_vat += m.vat
+            seg.rc_vat += m.rc_vat
             if m.side == "sales":
                 seg.sales_net += m.net
                 seg.sales_vat += m.vat
