@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/ask_answer.dart';
 import '../models/sample_books.dart';
+import '../models/storage.dart';
 import 'settings.dart';
 
 /// Error from the reader service. [message] is safe to show in the UI.
@@ -662,6 +663,18 @@ class RuntimeClient {
   /// Same call as the web's Settings › Your data button.
   Future<Map<String, dynamic>> booksExport() => _map('POST', '/books/export',
       what: 'export your data');
+
+  /// `GET /files/overview`: files and sizes per folder and per tax year, the
+  /// largest documents and duplicate sets. Reads only (the Files page on the
+  /// web moves, archives and cleans up; the phone shows the totals).
+  Future<StorageOverview> storageOverview() async => StorageOverview.fromJson(
+      await _map('GET', '/files/overview', what: 'add up your storage'));
+
+  /// `POST /backups`: Back up now, a dated zip of _System in Backups/ with a
+  /// manifest and a .sha256 beside it; older ones beyond the kept number go
+  /// to _Trash. Returns `{backup: {path, name, size, files, ...}, retired}`.
+  Future<Map<String, dynamic>> backUpNow() =>
+      _map('POST', '/backups', what: 'back up your books');
 
   /// `GET /books/sample`: how far loading the sample books has got (state
   /// `none` with `empty` when never started here).

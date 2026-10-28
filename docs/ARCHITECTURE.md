@@ -73,6 +73,9 @@ Documents, filed by code and never deleted:
 | `05 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | |
 | `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
 | `07 Reports/<yyyy-mm-dd>-<name>.xlsx` | runtime, `POST /reports/export` (*Export to OneDrive* on Reports) | `name` is `profit-and-loss`, `aged-balances`, `vat-summary`, `monthly-trend` or `reports` (all of them); a second export the same day gets ` (2)`, nothing is overwritten. Starts with `SAMPLE — FICTIONAL COMPANY` when the books are the demo seed's. Posts nothing |
+| `Archive/<year>/<original path>`, `Archive/<year>.zip` | runtime, `POST /files/archive` (`archive.py`) | made when first used; the zip is an extra copy with `manifest.json`, the folder stays. See *Files, archive and backups* |
+| `Backups/accnomos-backup-<yyyy-mm-dd>.zip`, `….zip.sha256` | runtime, `POST /backups` (`backups.py`) | made when first used; a second backup the same day gets ` (2)` |
+| `_Trash/<yyyy-mm-dd>/<original path>` | runtime: Clean up, backup retention, an undone archive's zip, files a restore replaced | made when first used; **never emptied by the app**, the user empties it in OneDrive |
 | `Books.xlsx` | runtime, `rebuild_safely` after each ledger-changing action and on *Rebuild* | rewritten whole; sheets `README`, `Summary`, `Ledger`, `Accounts`, `VAT`, `P&L`, `Customers`, `Suppliers`, `Bank`, `Proposals`, `Jobs`, `Vehicles`, `Payroll` (`projection.SHEETS`). A feature whose file cannot be read leaves its sheet empty; a failed rebuild is audited and never fails the user's action |
 
 **Old folder names.** Until 27 Oct 2026 the tree used other names (`paths.RENAMED`: old name → current name, e.g.
@@ -109,6 +112,9 @@ Books.xlsx still show the path as it was saved.
 | `Payroll/runs/<yyyy-mm>.json` | one pay run per month | updated |
 | `Planner/applied.json` | which day plans were applied (idempotency) | updated |
 | `Todos/todos.json` | to-dos added from triage | updated |
+| `archive/map.json` | old path → new path for every document the app moved (archive, Files page move and rename) | updated; applied when proposals and bank lines are read |
+| `archive/runs/<id>.json` | one archive run: every move, its zips, and when it was undone | written, then updated once by Undo |
+| `Settings/files.json` | `backup_keep` (default 12), `monthly_backup` (default off) | rewritten |
 
 OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folder. Money is integer pence in every file except
 `Books.xlsx`, which shows pounds.
@@ -119,7 +125,7 @@ never approve; Autopilot is recorded as `autopilot`). Nothing is edited; **undo 
 original. The nine VAT boxes come from `compute_vat_return`, plain code, boxes 6–9 truncated to whole pounds.
 
 **Audit lines** are one JSON object per line: `{"ts", "actor", "action", "refs"}`. `actor` is `user:<email>` for something a
-person did, or `agent:<name>` (`extractor`, `intake`, `autopilot`, `mileage`, `contacts`, `triage`, `folder-layout`) for
+person did, or `agent:<name>` (`extractor`, `intake`, `autopilot`, `mileage`, `contacts`, `triage`, `folder-layout`, `backup`) for
 something done for them. Applying a day plan is the user's action (`plan_applied`); there is no `agent:planner` writer yet.
 Chat and voice actions write their own lines to `audit/actions/` (`{"ts", "action_id", "kind", "event", "user", …}`, `event`
 = approving · executed · failed · rejected), and Autopilot's postings are repeated with its reasons in `audit/autopilot/`.
@@ -134,6 +140,59 @@ actor; `kind` matches an event or a prefix family (`invoice` is every `invoice_*
 `Books.audit` call in `app/` writes a kind with no sentence. The web `/audit` page and the Android *Audit trail* screen read it
 through this route; the Home dashboard reads `audit/` for recent activity, and `app/actions.py` reads its own log so an
 action never runs twice.
+
+## Files, archive and backups
+
+The Files page's tools (web; Android shows the storage totals and *Back up now*) all go through the runtime, so they are
+audited and run on `FakeStorageProvider` in tests: `services/runtime/app/routes_files.py` over `files.py`, `archive.py`
+and `backups.py`. Every write needs `X-User`; previews write nothing.
+
+* **Nothing is deleted.** What the app would otherwise delete goes to `_Trash/<date>/<original path>`: Clean up of
+  duplicates, backups beyond the kept number, the zip of an undone archive run, and the current copy of a file a
+  restore replaces. The user empties `_Trash` in OneDrive.
+* **What never moves.** `_System/` (ledger events above all), `Backups/`, and the files other modules read at a fixed
+  path: `03 Sales/invoices/**`, `03 Sales/credit-notes/**` (invoice and credit note records and PDFs),
+  `06 VAT returns/**` (read for the submitted-period lock), `Books.xlsx` and `README.txt`. Move, rename and Clean up
+  refuse them; archiving skips them.
+* **Links keep working.** Every move the app makes is written to `_System/archive/map.json` (`Books.record_moves`:
+  old → new, chains collapsed to one hop, moving back removes the entry so there is never a cycle).
+  `Books.get_proposal`, `list_proposals` and `stored_bank_lines` apply it, so a proposal's `file_path` and a bank line's
+  `source_file` lead to where the document is now without rewriting either file. Ledger events point at documents by
+  hash (`evidence`), never by path. A move made by hand in OneDrive is not in the map (as before).
+* **Overview** (`GET /files/overview`): files and bytes per top folder and per tax year, the 10 largest documents, and
+  duplicate sets. Each folder is listed once per request (the request memo); duplicates are grouped by the hash Graph
+  lists (`FileRef.content_hash`: `sha256Hash`, else `quickXorHash`, else `sha1Hash`), and only same-size files without
+  one are read and hashed (at most 200 files of 20 MB each). The copy suggested to keep is the one the books link to,
+  else a filed one over an Inbox or archived copy. **Index** (`GET /files/index`) is the same walk as a list for search:
+  each document's date (the linked document's date, else a date in its name, else in its folder, else last modified),
+  tax year, type, and, when a posted proposal links to it, the ledger entry's net + VAT from the event. A walk stops at
+  20,000 files and says so.
+* **Archive by year** (`POST /files/archive/preview`, `/files/archive`, `/files/archive/runs/<id>/undo`): years are UK tax
+  years (6 April) or financial years ending on a chosen month end; the label is `2025-26` (or `2026` when a year sits
+  inside one calendar year). Documents in `01 Receipts`, `03 Sales` (not the protected parts), `04 Bank statements`,
+  `05 Payroll` and `07 Reports` dated in a year that ends on or before the chosen one move to
+  `Archive/<year>/<same path>`; the year we are in is refused. With `zip`, `Archive/<year>.zip` holds that year's folder
+  plus `manifest.json` (path, size, sha256 per file); over 50 MB the zip is skipped with a note. Undo moves each file
+  back (a taken name gets ` (2)`), reports files the user moved since instead of hunting for them, and puts the run's
+  zips in `_Trash`.
+* **Backups** (`POST /backups`, `GET /backups`, `PUT /backups/settings`, `POST /backups/verify`,
+  `/backups/restore/preview`, `/backups/restore`, `/backups/auto`): the zip holds every file under `_System` at its
+  own path plus `manifest.json` (`format`, `created_at`, each file's path, size and sha256, and `files_sha256` over the
+  sorted list); the `.sha256` beside it is the zip's own sha256 in `sha256sum` format. At most 20,000 files and
+  100 MB (413 beyond). Retention keeps the newest `backup_keep`. Verify checks the zip against its `.sha256`, every file
+  against the manifest, and refuses any path outside `_System` or with an unsafe segment. Restore is preview first:
+  each file is *new*, *same*, *changed* or *kept* (a ledger event or audit file that differs: append-only, never
+  replaced). It writes new files, moves the current copy of each changed file to `_Trash/<date>/restore-<hhmmss>/`
+  before writing the backup's copy, never deletes a file the backup lacks, and needs `confirm: "RESTORE"` unless the
+  books are empty (no ledger events and no proposals). Then Books.xlsx is rebuilt.
+* **Monthly backup** is optional and off by default. There is no server per user, so nothing can run on a schedule:
+  `components/files/MonthlyBackup.tsx` in the web app shell calls `POST /backups/auto` once a month per device, only on
+  a device where the user switched it on (the Files page mirrors the OneDrive setting into `localStorage`), and the
+  runtime backs up only when the setting is on and no backup is dated this month. A month in which nobody opens the
+  app gets no backup. Android does not run it.
+* **Audit kinds:** `files_moved`, `file_renamed`, `files_trashed`, `files_archived`, `archive_undone`,
+  `backup_created` (actor `agent:backup` for the monthly one), `backup_verified`, `backup_restored`,
+  `file_settings_saved`, each with a sentence in `audit_view.SUMMARIES`.
 
 ## Round trips and caching
 

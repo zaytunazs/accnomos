@@ -51,6 +51,8 @@ phone, the rest behind a "Do this on the web" row) · **web-only**
 | `/payroll` prepare / edit / export / confirm / reopen | web-only | Estimates are confirmed with the provider's actuals on the web; links → `/payroll` |
 | `/reports` P&L, aged, VAT, trend + save to 07 Reports | done | `ReportsScreen` (`reportExport`) |
 | `/files` OneDrive folder view | done | `FilesScreen` (OneDrive links open externally) |
+| `/files` Storage overview, Back up now | done | `StorageCard` at the top of `FilesScreen` (`storageOverview`, `backUpNow`): totals, biggest folders, tax years, duplicate count; read-only apart from the backup |
+| `/files` Find files, move, rename, Clean up, archive by year, verify and restore backups, backup settings | web-only | each needs a preview or a long list to check before anything moves; the phone shows the counts and says Clean up is on the web |
 | `/files` rebuild Books.xlsx now | web-only | One tap on the web (`/files`); the file still rebuilds itself after every action |
 | `/settings` Connection (sign-in, reader, disconnect) | done | Settings › Connection (MSAL sign-in, reader address, disconnect) |
 | `/settings` AI choice + test | done | Settings › AI (local/key, test connection) |

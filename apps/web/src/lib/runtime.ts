@@ -1941,3 +1941,184 @@ export const ukDate = (iso: string) => {
   const d = new Date(iso);
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 };
+
+// --------------------------------------------------------------------------- //
+// Files page: overview, index, moves, archive by year, backups
+// (services/runtime/app/routes_files.py, app/files.py, app/archive.py, app/backups.py)
+// --------------------------------------------------------------------------- //
+
+export type RtFileKind = "pdf" | "image" | "spreadsheet" | "csv" | "json" | "text" | "zip" | "other";
+
+export interface RtFileLink {
+  proposal_id: string | null;
+  event_id: string | null;
+  amount_pence: number | null; // the ledger entry's net + VAT
+  counterparty: string | null;
+  doc_date: string | null;
+  bank_lines: number;
+}
+
+export interface RtIndexedFile {
+  path: string;
+  name: string;
+  folder: string;
+  kind: RtFileKind;
+  size: number;
+  modified: string | null;
+  date: string;
+  date_from: "document" | "name" | "folder" | "modified" | "today";
+  tax_year: string;
+  archived: boolean;
+  protected: boolean; // the app will not move, rename or trash it
+  web_url: string | null;
+  linked: RtFileLink | null;
+}
+
+export interface RtFileIndex {
+  files: RtIndexedFile[];
+  folders: string[]; // folders a document can be moved to
+  truncated: boolean;
+}
+
+export interface RtDuplicateFile {
+  path: string;
+  size: number;
+  modified: string | null;
+  web_url: string | null;
+  keep: boolean;
+  linked: boolean;
+  protected: boolean;
+}
+
+export interface RtStorageOverview {
+  total_files: number;
+  total_bytes: number;
+  folders: { folder: string; files: number; bytes: number }[];
+  years: { year: string; files: number; bytes: number; archived_files: number }[];
+  largest: RtIndexedFile[];
+  duplicates: { hash: string; size: number; files: RtDuplicateFile[] }[];
+  duplicate_bytes: number;
+  truncated: boolean;
+}
+
+export interface RtMoved {
+  old: string;
+  new: string;
+}
+
+export type RtYearKind = "tax" | "financial";
+
+export interface RtArchiveRequest {
+  up_to?: string | null;
+  kind: RtYearKind;
+  end_month?: number;
+  end_day?: number;
+  zip?: boolean;
+}
+
+export interface RtArchiveYear {
+  label: string;
+  start: string;
+  end: string;
+  files: number;
+  bytes: number;
+  current: boolean;
+}
+
+export interface RtArchiveMove {
+  old: string;
+  new: string;
+  year: string;
+  size: number;
+}
+
+export interface RtArchivePreview {
+  kind: RtYearKind;
+  up_to: string | null;
+  years: RtArchiveYear[];
+  moves: RtArchiveMove[];
+  bytes: number;
+}
+
+export interface RtArchiveRun {
+  id: string;
+  created_at: string;
+  by: string;
+  kind: RtYearKind;
+  up_to: string;
+  moves: RtArchiveMove[];
+  zips: { year: string; path: string | null; files: number; note: string | null }[];
+  undone_at: string | null;
+  undone_by: string | null;
+  undo_skipped: string[];
+}
+
+export interface RtBackup {
+  path: string;
+  name: string;
+  day: string;
+  size: number;
+  files: number | null;
+  sha256: string | null;
+  web_url: string | null;
+  has_checksum: boolean;
+}
+
+export interface RtFileSettings {
+  backup_keep: number;
+  monthly_backup: boolean;
+}
+
+export interface RtBackupVerification {
+  path: string;
+  ok: boolean;
+  checksum: "ok" | "mismatch" | "missing";
+  files: number;
+  problems: string[];
+}
+
+export interface RtRestorePreview {
+  path: string;
+  verification: RtBackupVerification;
+  books_empty: boolean;
+  needs_confirmation: boolean;
+  confirm_word: string;
+  counts: { new: number; same: number; changed: number; kept: number };
+  items: { path: string; status: "new" | "same" | "changed" | "kept"; size: number }[];
+  note: string;
+}
+
+export interface RtRestoreResult {
+  path: string;
+  restored: number;
+  replaced: number;
+  kept: number;
+  trash: string | null;
+}
+
+const post = (body?: unknown): RequestInit => ({ method: "POST", ...(body === undefined ? {} : { body: JSON.stringify(body) }) });
+
+export const filesApi = {
+  overview: (a: AccountInfo) => call<RtStorageOverview>(a, "/files/overview"),
+  index: (a: AccountInfo) => call<RtFileIndex>(a, "/files/index"),
+  move: (a: AccountInfo, paths: string[], to: string) => call<{ moved: RtMoved[] }>(a, "/files/move", post({ paths, to })),
+  rename: (a: AccountInfo, path: string, name: string) => call<RtMoved>(a, "/files/rename", post({ path, name })),
+  trash: (a: AccountInfo, paths: string[]) => call<{ moved: RtMoved[] }>(a, "/files/trash", post({ paths })),
+  archivePreview: (a: AccountInfo, req: RtArchiveRequest) => call<RtArchivePreview>(a, "/files/archive/preview", post(req)),
+  archive: (a: AccountInfo, req: RtArchiveRequest) => call<RtArchiveRun>(a, "/files/archive", post(req)),
+  archiveRuns: (a: AccountInfo) => call<RtArchiveRun[]>(a, "/files/archive/runs"),
+  undoArchive: (a: AccountInfo, id: string) => call<RtArchiveRun>(a, `/files/archive/runs/${encodeURIComponent(id)}/undo`, post()),
+  backups: (a: AccountInfo) => call<{ backups: RtBackup[]; settings: RtFileSettings }>(a, "/backups"),
+  backUp: (a: AccountInfo) => call<{ backup: RtBackup; retired: string[] }>(a, "/backups", post()),
+  autoBackup: (a: AccountInfo) => call<{ ran: boolean }>(a, "/backups/auto", post()),
+  saveBackupSettings: (a: AccountInfo, s: RtFileSettings) =>
+    call<RtFileSettings>(a, "/backups/settings", { method: "PUT", body: JSON.stringify(s) }),
+  verifyBackup: (a: AccountInfo, path: string) => call<RtBackupVerification>(a, "/backups/verify", post({ path })),
+  restorePreview: (a: AccountInfo, path: string) => call<RtRestorePreview>(a, "/backups/restore/preview", post({ path })),
+  restore: (a: AccountInfo, path: string, confirm: string | null) =>
+    call<RtRestoreResult>(a, "/backups/restore", post({ path, confirm })),
+};
+
+/** This device runs the monthly backup check (components/files/MonthlyBackup.tsx) only while this is "1". */
+export const MONTHLY_BACKUP_KEY = "accnomos.monthlyBackup";
+export const BACKUP_CHECKED_KEY = "accnomos.backupChecked"; // "YYYY-MM" of the last check on this device

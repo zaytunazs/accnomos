@@ -39,6 +39,12 @@ PROPOSALS = f"{SYSTEM}/proposals"
 AUDIT = f"{SYSTEM}/audit"
 EVENTS = f"{SYSTEM}/Ledger/events"
 BANK_LINES = f"{SYSTEM}/bank"
+ARCHIVE_SYSTEM = f"{SYSTEM}/archive"  # app/archive.py: runs and the redirect map for moved documents
+
+# Made when first used, never at setup (app/archive.py, app/backups.py, app/files.py).
+ARCHIVE = "Archive"  # Archive/{year}/ keeps the same subfolders; Archive/{year}.zip is an extra copy
+BACKUPS = "Backups"  # Backups/accnomos-backup-YYYY-MM-DD.zip (+ .sha256), snapshots of _System
+TRASH = "_Trash"  # what the app would otherwise delete; only the user empties it, in OneDrive
 
 TOP: tuple[Folder, ...] = (
     Folder(
@@ -100,6 +106,9 @@ def readme_text() -> str:
 This folder was created by Accnomos. Everything the app knows about your business is in here, in plain files:
 {rows}
 - Books.xlsx: a spreadsheet of your books, rebuilt from the files in {SYSTEM}. Do not edit it; it is overwritten.
+- {ARCHIVE}, {BACKUPS}, {TRASH}: made when first used. {ARCHIVE} holds older years you archived (same
+  subfolders), {BACKUPS} dated copies of {SYSTEM}, and {TRASH} anything the app would otherwise delete
+  (duplicates, old backups). Accnomos never empties {TRASH}; you can, in OneDrive.
 - {SYSTEM}: the ledger events and the audit log (never edited: a correction is a new entry that reverses
   the old one), plus rules you approved, contacts, jobs, staff, timesheets, vehicles and your mileage log.
 

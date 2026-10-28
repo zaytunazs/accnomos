@@ -74,6 +74,16 @@ def _parent(path: str) -> str:
     return path.rsplit("/", 1)[0] if "/" in path else ""
 
 
+def _hash(item: dict[str, Any]) -> str | None:
+    """The content hash Graph lists for a file. OneDrive personal gives sha1Hash and quickXorHash, business
+    quickXorHash only; sha256Hash is rare. Folders have none."""
+    hashes = (item.get("file") or {}).get("hashes") or {}
+    for key in ("sha256Hash", "quickXorHash", "sha1Hash"):
+        if isinstance(hashes.get(key), str) and hashes[key]:
+            return f"{key.removesuffix('Hash')}:{hashes[key]}"
+    return None
+
+
 def _to_ref(item: dict[str, Any], path: str) -> FileRef:
     modified = item.get("lastModifiedDateTime")
     return FileRef(
@@ -85,6 +95,7 @@ def _to_ref(item: dict[str, Any], path: str) -> FileRef:
         modified=datetime.fromisoformat(modified.replace("Z", "+00:00")) if modified else None,
         is_folder="folder" in item,
         web_url=item.get("webUrl"),
+        content_hash=_hash(item),
     )
 
 

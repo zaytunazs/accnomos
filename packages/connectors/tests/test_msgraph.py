@@ -308,3 +308,13 @@ async def test_set_token_is_used_from_the_next_request_on():
     assert seen == ["Bearer tok", "Bearer fresh"]
     with pytest.raises(ValueError):
         p.set_token("  ")
+
+
+def test_listed_content_hashes_carry_their_algorithm_and_folders_have_none():
+    from accnomos_connectors.msgraph import _to_ref
+
+    personal = {"id": "1", "name": "a.pdf", "file": {"hashes": {"sha1Hash": "AB", "quickXorHash": "qx=="}}}
+    assert _to_ref(personal, "a.pdf").content_hash == "quickXor:qx=="
+    assert _to_ref({"id": "2", "name": "b", "file": {"hashes": {"sha256Hash": "CD"}}}, "b").content_hash == "sha256:CD"
+    assert _to_ref({"id": "3", "name": "c", "file": {}}, "c").content_hash is None
+    assert _to_ref({"id": "4", "name": "d", "folder": {"childCount": 0}}, "d").content_hash is None
