@@ -1,0 +1,215 @@
+name: CI
+
+# Every push and pull request: Python tests per package, ruff, pyright, web lint + build, Playwright e2e (test mode)
+# and Flutter. One job per concern so a red check names what broke. No secrets: every test runs on fakes and stubs,
+# and the e2e suite fails any request that leaves 127.0.0.1. Run the same locally: docs/DEV.md ("CI").
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or PR cancels the run it supersedes.
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.13"
+  RUFF: ruff@0.17.3
+  PYRIGHT: pyright@1.1.414
+
+jobs:
+  pytest:
+    name: pytest (${{ matrix.suite }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { suite: runtime, path: services/runtime, timeout: 20 } # ~5 min: the sample-books runs dominate
+          - { suite: ledger, path: packages/ledger, timeout: 5 }
+          - { suite: connectors, path: packages/connectors, timeout: 5 }
+          - { suite: hmrc-relay, path: services/hmrc-relay, timeout: 5 }
+          - { suite: evals, path: evals/tests, timeout: 10 }
+    timeout-minutes: ${{ matrix.timeout }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: ffmpeg (the runtime's voice tests skip without it)
+        if: matrix.suite == 'runtime'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
+      - name: Install the workspace
+        run: uv sync --frozen --all-packages --all-extras
+      - name: pytest ${{ matrix.path }}
+        run: uv run --frozen --no-sync pytest -q -p no:cacheprovider -rs ${{ matrix.path }}
+
+  ruff:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+      - name: ruff check
+        run: uvx ${{ env.RUFF }} check --output-format github .
+      - name: ruff format --check
+        run: uvx ${{ env.RUFF }} format --check .
+
+  pyright:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      # pyright resolves imports against the runtime's installed dependencies (ledger and connectors come with it)
+      - name: Install the runtime (uv workspace)
+        run: uv sync --frozen --package accnomos-runtime
+      - name: pyright (basic; scope in pyproject.toml — services/runtime/app, ledger and connectors)
+        run: uvx ${{ env.PYRIGHT }} --pythonpath .venv/bin/python
+
+  web:
+    name: web (eslint, tsc, next build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/web/package.json # its packageManager pins the version
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: eslint
+        run: pnpm run lint
+      - name: tsc --noEmit
+        # next typegen writes the route/layout types (LayoutProps etc.) that a clean checkout lacks
+        run: pnpm exec next typegen && pnpm exec tsc --noEmit
+      - name: Cache the Next build cache
+        uses: actions/cache@v4
+        with:
+          path: apps/web/.next/cache
+          key: next-build-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}-${{ hashFiles('apps/web/src/**', 'apps/web/next.config.ts') }}
+          restore-keys: next-build-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}-
+      - name: next build (production export, as deploy-web.yml builds it)
+        run: pnpm build
+      - name: The production export holds no test-mode code
+        run: |
+          if grep -rlE '__test/(graph|ai)|accnomos-test\.signedIn' out/; then
+            echo "::error::out/ contains test-mode code (fake sign-in or /__test URLs)"; exit 1
+          fi
+
+  e2e:
+    name: e2e (Playwright, test mode)
+    runs-on: ubuntu-latest
+    # ~8 min for 224 tests on a 4-core box; the rest is headroom for a cold cache and one retry round
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: apps/web
+    env:
+      CI: "1"
+      ACCNOMOS_TEST_MODE: "1" # playwright.config.ts also sets it for the runtime it starts
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install the runtime (uv workspace)
+        run: uv sync --frozen --package accnomos-runtime
+        working-directory: .
+
+      - uses: pnpm/action-setup@v4
+        with:
+          package_json_file: apps/web/package.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+
+      - name: Playwright version (browser cache key)
+        id: pw
+        run: echo "version=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-shell
+      - name: Install Chromium for Playwright (cache miss)
+        if: steps.pw-cache.outputs.cache-hit != 'true'
+        run: pnpm exec playwright install --with-deps --only-shell chromium
+      - name: Install Chromium's system libraries (cache hit)
+        if: steps.pw-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
+
+      - name: Cache the Next build cache
+        uses: actions/cache@v4
+        with:
+          path: apps/web/.next/cache
+          key: next-e2e-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}-${{ hashFiles('apps/web/src/**', 'apps/web/next.config.ts') }}
+          restore-keys: next-e2e-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}-
+      - name: Build the test-mode export (out-e2e/)
+        run: pnpm run e2e:build
+
+      - name: Run Playwright (starts the runtime in test mode and serves out-e2e/)
+        timeout-minutes: 18
+        run: pnpm run e2e:test
+        env:
+          E2E_PYTHON: ${{ github.workspace }}/.venv/bin/python
+
+      - name: Upload traces and report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: |
+            apps/web/test-results/
+            apps/web/playwright-report/
+          retention-days: 14
+
+  flutter:
+    name: flutter (analyze, test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.8 # Dart 3.13.7, the floor pubspec.yaml sets
+          cache: true
+      - name: Cache pub packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.pub-cache
+          key: pub-${{ runner.os }}-${{ hashFiles('apps/mobile/pubspec.lock') }}
+          restore-keys: pub-${{ runner.os }}-
+      - run: flutter pub get --enforce-lockfile
+      - run: flutter analyze
+      - run: flutter test

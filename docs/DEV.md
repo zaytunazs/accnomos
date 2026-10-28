@@ -35,7 +35,7 @@ conversion cases when ffmpeg is missing. Voice works in key mode only (the user'
 
 ## Lint and type checks
 
-What `.github/workflows/lint.yml` runs (ruff and pyright scope and rules are in the root `pyproject.toml`):
+What the `ruff`, `pyright` and `web` jobs of `.github/workflows/ci.yml` run (ruff and pyright scope and rules are in the root `pyproject.toml`):
 
 ```powershell
 uvx ruff@0.17.3 check . ; uvx ruff@0.17.3 format --check . ; uvx pyright@1.1.414 --pythonpath .venv/bin/python ; cd apps/web ; pnpm run lint ; pnpm exec tsc --noEmit ; cd ../..
@@ -43,6 +43,23 @@ uvx ruff@0.17.3 check . ; uvx ruff@0.17.3 format --check . ; uvx pyright@1.1.414
 
 On Windows the pyright path is `.venv\Scripts\python.exe`. `uvx ruff@0.17.3 check --fix . ; uvx ruff@0.17.3 format .`
 fixes most findings. `noUncheckedIndexedAccess` is not on in `apps/web/tsconfig.json` (95 errors when tried, 27 Oct 2026).
+
+## CI (`.github/workflows/ci.yml`)
+
+Every push and pull request, Python 3.13, no secrets (every test runs on fakes; a newer push cancels the run it
+supersedes). One job per concern, so a red check names what broke:
+
+| Job | Runs | Locally |
+| --- | --- | --- |
+| `pytest (runtime / ledger / connectors / hmrc-relay / evals)` | one matrix job per suite | `uv run pytest -q services/runtime` (or `packages/ledger`, `packages/connectors`, `services/hmrc-relay`, `evals/tests`) |
+| `ruff` | `ruff check`, `ruff format --check` | see "Lint and type checks" |
+| `pyright` | basic mode over `services/runtime/app`, ledger and connectors | see "Lint and type checks" |
+| `web (eslint, tsc, next build)` | lint, types, the production export, and a check that it holds no test-mode code | `cd apps/web; pnpm run lint; pnpm build` |
+| `e2e (Playwright, test mode)` | the whole Playwright suite, `CI=1` (3 workers, one retry) | see "End-to-end tests" |
+| `flutter (analyze, test)` | Flutter 3.47.8 (Dart 3.13.7, the floor `pubspec.yaml` sets) | `cd apps/mobile; flutter analyze; flutter test` |
+
+The runtime job installs ffmpeg so the voice tests run rather than skip. `deploy-web.yml` (publish to `site` on
+`main`) is separate. Results and run times: `docs/reviews/ci/REVIEW.md`.
 
 ## Evals (Meta model outputs graded against the synthetic gold set)
 
@@ -88,7 +105,7 @@ dry run; Files. Phone: every page at Pixel 7 width with no horizontal scroll, an
 at 390 px with no button cut off. Tests run in parallel (`fullyParallel`): `e2e/fixtures.ts` sends `X-Test-Tenant`
 (random per worker process) from the page and from the `request` fixture, and the test-mode runtime keeps one set of
 fakes per tenant, so a worker's reset never touches another's OneDrive. The runtime renders and hashes the 200 gold
-receipts at startup (~10 s) before `/health` answers, so no test waits on that. CI: `.github/workflows/e2e.yml` (traces uploaded on failure; locally
+receipts at startup (~10 s) before `/health` answers, so no test waits on that. CI: the `e2e` job of `.github/workflows/ci.yml` (traces uploaded on failure; locally
 `pnpm exec playwright show-trace test-results/<test>/trace.zip`).
 
 **Runtime test mode** (`ACCNOMOS_TEST_MODE=1`, `services/runtime/app/testmode.py`). For tests only; the Docker image
