@@ -720,6 +720,8 @@ def public_chat_reply(content: str) -> dict[str, Any]:
         return {"answerable": False, "answer": "", "sections": []}
     first = re.split(r"(?<=[.!?])\s+", m.group(2).strip())[0]
     return {"answerable": True, "answer": f"{first} (Test stub answer: no real model ran.)", "sections": [m.group(1)]}
+
+
 @router.api_route("/ai/down/{rest:path}", methods=["GET", "POST"])
 async def ai_down(rest: str) -> JSONResponse:
     """A provider that is down (ACCNOMOS_TEST_AI_DOWN, app/ai/providers.py): every call answers 503."""
