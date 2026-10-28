@@ -820,9 +820,10 @@ export default function LivePaye() {
       <section aria-labelledby="reports" className="rounded-2xl border border-border bg-white p-5">
         <h2 id="reports" className="text-[17px] font-extrabold">Payroll reports</h2>
         <div className="mt-2 flex flex-wrap items-end gap-3">
-          <label className={label}>
+          {/* min-w-0 and full width: a select is as wide as its longest option, which overflowed a 360 px phone. */}
+          <label className={`${label} min-w-0 max-w-full`}>
             Report
-            <select className={input} value={reportKey} onChange={(e) => { setReportKey(e.target.value as RtPayeReportKey); setReport(null); }}>
+            <select className={`${input} w-full min-w-0`} value={reportKey} onChange={(e) => { setReportKey(e.target.value as RtPayeReportKey); setReport(null); }}>
               {REPORTS.map((r) => (
                 <option key={r.key} value={r.key}>{r.label}</option>
               ))}
