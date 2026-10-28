@@ -102,6 +102,22 @@ async def test_sixty_percent_splits_net_and_reclaims_vat_only_on_it(books: Books
     assert is_balanced(posted.journal_draft)
 
 
+async def test_posted_event_carries_the_split(books: Books) -> None:
+    """The ledger event itself (not only the draft): balanced, VAT £12, drawings £48."""
+    posted = await _approve_direct(books, _receipt(100.0, 20.0, 120.0), {"business_use_percent": 60})
+    assert posted.event_id
+    event = await books.get_event(posted.event_id)
+    debits = sum(ln.debit for ln in event.lines)
+    credits = sum(ln.credit for ln in event.lines)
+    assert debits == credits == 12000
+    assert event.vat == 1200
+    by_account = {ln.account: ln for ln in event.lines}
+    assert by_account["7550 Telephone & internet"].debit == 6000
+    assert by_account["3000 Drawings"].debit == 4800
+    assert by_account["1200 Bank"].credit == 12000
+    assert by_account["2200 VAT control"].debit == 1200
+
+
 async def test_no_vat_number_folds_unreclaimed_vat_into_drawings(books: Books) -> None:
     """Code N: the VAT is part of the cost, so the private share takes its slice of the gross."""
     doc = _receipt(100.0, 20.0, 120.0, supplier_vat_number=None)
@@ -177,7 +193,9 @@ def test_bank_line_expense_with_business_use(client: TestClient) -> None:
     assert r.status_code == 201, r.text
     lines = client.get("/books/bank/lines", headers=H).json()
     line = next(ln for ln in lines if ln["amount_pence"] < 0)
-    r = client.post(f"/books/bank/lines/{line['id']}/approve", headers=H, json={"kind": "rule", "business_use_percent": 60})
+    r = client.post(
+        f"/books/bank/lines/{line['id']}/approve", headers=H, json={"kind": "rule", "business_use_percent": 60}
+    )
     assert r.status_code == 200, r.text
     proposal_id = r.json()["proposal_id"]
     proposal = client.get(f"/books/proposals/{proposal_id}", headers=H).json()
@@ -191,7 +209,9 @@ def test_bank_line_exact_match_with_business_use_is_refused(client: TestClient) 
     _import(client)
     lines = client.get("/books/bank/lines", headers=H).json()
     line = next(ln for ln in lines if ln["amount_pence"] < 0)
-    r = client.post(f"/books/bank/lines/{line['id']}/approve", headers=H, json={"kind": "exact", "business_use_percent": 60})
+    r = client.post(
+        f"/books/bank/lines/{line['id']}/approve", headers=H, json={"kind": "exact", "business_use_percent": 60}
+    )
     assert r.status_code == 400, r.text
 
 
