@@ -255,6 +255,153 @@ async def test_no_property_profile_reads_nothing(fake: FakeStorageProvider, mode
     assert model.seen == []  # the model is never asked
 
 
+INSURANCE_TEXT = (
+    "SAMPLE \u2014 FICTONAL COMPANY\nSafeRoof Cover Co\n"
+    "Landlord buildings and contents insurance, 42 Brackley Lane\nDate: 20/04/2026\n"
+    "To: Arthur Penhaligon and Eleanor Penhaligon\nProperty: 42 Brackley Lane, Dovercourt CT18 4PL\n"
+    "Annual premium including Insurance Premium Tax \xa3224.25\n"
+    "of which Insurance Premium Tax \xa324.02\n"
+)
+
+MORTGAGE_FEE_TEXT = (
+    "SAMPLE \u2014 FICTONAL COMPANY\nGranite Key Mortgages\n"
+    "Mortgage statement, 6 April to 5 October 2026\n"
+    "Date: 05/10/2026\nTo: Arthur Penhaligon and Eleanor Penhaligon\nProperty: 42 Brackley Lane, Dovercourt CT18 4PL\n"
+    "Monthly payments made (6) \xa34,000.00\nof which interest \xa32,341.92\nof which capital repaid \xa31,594.08\n"
+    "Arrangement fee \xa364.00\n"
+)
+
+INVOICE_VAT_TEXT = (
+    "SAMPLE \u2014 FICTONAL COMPANY\nPipeworks & Sons\nBoiler repair\nDate: 03/08/2026\n"
+    "To: Arthur Penhaligon and Eleanor Penhaligon\nProperty: 42 Brackley Lane, Dovercourt CT18 4PL\n"
+    "Replace diverter valve, labour and parts \xa3191.50\nVAT at 20% \xa338.30\nTotal \xa3229.80\n"
+)
+
+WASHING_TEXT = (
+    "SAMPLE \u2014 FICTONAL COMPANY\nBolt & Spark Appliances\n"
+    "Replacement washing machine (like for like)\nDate: 22/06/2026\nTo: Arthur Penhaligon\n"
+    "Property: Flat 3, Willow House, 14 Elm Street, Dovercourt CT18 2XY\n"
+    "Washing machine, 8 kg \xa3387.99\nRemoval and disposal of the old machine \xa320.00\n"
+    "Trade-in allowance \xa30.00\n"
+)
+
+
+def _line(description: str, category: str, amount: float, **kw: object) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "description": description,
+        "category": category,
+        "amount": amount,
+        "vat": None,
+        "capital": False,
+        "info": False,
+        "replacement": False,
+    }
+    base.update(kw)
+    return base
+
+
+async def test_insurance_yields_one_premium_line(books: Books, fake: FakeStorageProvider, model) -> None:
+    await fake.write(f"{INBOX}/insurance.txt", INSURANCE_TEXT.encode())
+    model.replies = [
+        _ollama(
+            {
+                "kind": "insurance",
+                "date": "2026-04-20",
+                "property_text": "42 Brackley Lane, Dovercourt CT18 4PL",
+                "lines": [
+                    _line("Annual premium including Insurance Premium Tax", "premises", 224.25),
+                    _line("of which Insurance Premium Tax", "premises", 24.02, info=True),
+                ],
+                "total": 224.25,
+            }
+        )
+    ]
+    r = await prr.read_document(books, "insurance.txt", CFG, USER)
+    assert not r.problems
+    assert [c.code for c in r.checks if not c.ok] == []
+    assert r.checks and any(c.code == "INSURANCE_PREMIUM" and c.ok for c in r.checks)
+    assert [ln.amount_pence for ln in prr.expense_lines(r)] == [22425]  # IPT included, never VAT
+    done = await prr.approve(books, r.id, prr.DecideBody(), USER)
+    assert done.status == "approved" and len(done.event_ids) == 1
+
+
+async def test_mortgage_with_fees_adds_up(books: Books, fake: FakeStorageProvider, model) -> None:
+    await fake.write(f"{INBOX}/mortgage-fee.txt", MORTGAGE_FEE_TEXT.encode())
+    model.replies = [
+        _ollama(
+            {
+                "kind": "mortgage_statement",
+                "date": "2026-10-05",
+                "property_text": "42 Brackley Lane, Dovercourt CT18 4PL",
+                "lines": [
+                    _line("Monthly payments made (6)", "finance_res", 4000.0, info=True),
+                    _line("of which interest", "finance_res", 2341.92),
+                    _line("of which capital repaid", "finance_res", 1594.08, capital=True),
+                    _line("Arrangement fee", "other", 64.0),
+                ],
+                "total": 4000.0,
+            }
+        )
+    ]
+    r = await prr.read_document(books, "mortgage-fee.txt", CFG, USER)
+    assert not r.problems
+    assert all(c.ok for c in r.checks)
+    assert r.interest_pence == 234192 and r.capital_pence == 159408
+    done = await prr.approve(books, r.id, prr.DecideBody(), USER)
+    assert done.status == "approved" and len(done.event_ids) == 2  # interest and fee; capital never posts
+
+
+async def test_invoice_keeps_vat_separate_from_net(books: Books, fake: FakeStorageProvider, model) -> None:
+    await fake.write(f"{INBOX}/boiler.txt", INVOICE_VAT_TEXT.encode())
+    model.replies = [
+        _ollama(
+            {
+                "kind": "invoice",
+                "date": "2026-08-03",
+                "property_text": "42 Brackley Lane, Dovercourt CT18 4PL",
+                "lines": [
+                    _line("Replace diverter valve, labour and parts", "repairs", 191.5, vat=38.3),
+                    _line("Total", "repairs", 229.8, info=True),
+                ],
+                "total": 229.8,
+            }
+        )
+    ]
+    r = await prr.read_document(books, "boiler.txt", CFG, USER)
+    assert not r.problems
+    assert all(c.ok for c in r.checks)  # net plus VAT adds up to the printed total
+    assert [ln.amount_pence for ln in prr.expense_lines(r)] == [19150]
+    assert [ln.vat_pence for ln in prr.expense_lines(r)] == [3830]
+    done = await prr.approve(books, r.id, prr.DecideBody(), USER)
+    assert done.status == "approved" and len(done.event_ids) == 1  # the books keep the gross £229.80
+
+
+async def test_replacement_keeps_disposal_and_trade_in(books: Books, fake: FakeStorageProvider, model) -> None:
+    await fake.write(f"{INBOX}/washing.txt", WASHING_TEXT.encode())
+    model.replies = [
+        _ollama(
+            {
+                "kind": "invoice",
+                "date": "2026-06-22",
+                "property_text": "Flat 3, Willow House, 14 Elm Street, Dovercourt CT18 2XY",
+                "lines": [
+                    _line("Washing machine, 8 kg", "domestic_items", 387.99, replacement=True),
+                    _line("Removal and disposal of the old machine", "domestic_items", 20.0, replacement=True),
+                    _line("Trade-in allowance", "domestic_items", 0.0, replacement=True),
+                ],
+                "total": None,
+            }
+        )
+    ]
+    r = await prr.read_document(books, "washing.txt", CFG, USER)
+    assert r.problems == ["No headline total read"]  # none is printed: the lines still all stand
+    assert all(c.ok for c in r.checks)
+    assert len(r.lines) == 3  # every printed amount stands, including the £0.00 trade-in
+    posted = prr.expense_lines(r)  # nil lines never post
+    assert [ln.category for ln in posted] == ["domestic_items"] * 2
+    assert sum(ln.amount_pence for ln in posted) == 40799  # cost + disposal - proceeds
+
+
 async def test_invalid_json_is_asked_once_more(books: Books, fake: FakeStorageProvider, model) -> None:
     await fake.write(f"{INBOX}/april.txt", STATEMENT_TEXT.encode())
     model.replies = ["Here is the extraction: some text without JSON", _ollama(_statement_obj())]
