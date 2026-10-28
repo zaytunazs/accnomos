@@ -23,7 +23,7 @@ export class Runtime {
    * `seed: "demo"` makes today DEMO_DAY for this worker and puts JM Trading Ltd in the Outlook address book;
    * `seed: "purchases"` posts Jun–Oct 2026 purchases with line items (services/runtime/app/sample_purchases.py).
    */
-  async reset(seed?: "bank" | "demo" | "purchases"): Promise<void> {
+  async reset(seed?: "bank" | "demo" | "purchases" | "accountant"): Promise<void> {
     const r = await this.request.post(`${RUNTIME_URL}/__test/reset${seed ? `?seed=${seed}` : ""}`);
     expect(r.ok(), `POST /__test/reset -> ${r.status()}: is the runtime on ${RUNTIME_URL} in test mode?`).toBeTruthy();
   }
@@ -127,7 +127,7 @@ export async function createBooksFolder(page: Page): Promise<void> {
 }
 
 /** Settings tabs (Connection, AI, Automation, Business, Your data); open one and return its panel. */
-export async function settingsTab(page: Page, name: "Connection" | "AI" | "Automation" | "Business" | "Your data") {
+export async function settingsTab(page: Page, name: "Connection" | "AI" | "Automation" | "Business" | "Your accountant" | "Your data") {
   await page.getByRole("tablist", { name: "Settings groups" }).getByRole("tab", { name, exact: true }).click();
   const panel = page.getByRole("tabpanel", { name });
   await expect(panel).toBeVisible();

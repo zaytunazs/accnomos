@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import AiSidebarLabel from "./AiSidebarLabel";
+import ClientBanner from "./accountant/ClientBanner";
 import AppNav from "./AppNav";
 import DemoBanner from "./DemoBanner";
 import MonthlyBackup from "./files/MonthlyBackup";
@@ -39,6 +40,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
     <div className="group/shell flex min-h-full flex-1 flex-col">
       <DemoBar />
       <DemoBanner />
+      <ClientBanner />
       <MonthlyBackup />
       {/* Reader trouble and new-version notices: one shared strip each, pages keep what they can below. */}
       <ServiceStrip />

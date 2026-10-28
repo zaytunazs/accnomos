@@ -67,7 +67,7 @@ function auditRows(list: RtAuditEntry[]): CsvValue[][] {
 }
 
 function ActorChip({ entry }: { entry: RtAuditEntry }) {
-  const user = entry.actor_kind === "user";
+  const user = entry.actor_kind !== "agent"; // you, or your accountant (a person too, named in the label)
   return (
     <span className="inline-flex flex-wrap gap-1">
       <span
@@ -75,7 +75,7 @@ function ActorChip({ entry }: { entry: RtAuditEntry }) {
         className={`rounded-full px-2 py-0.5 text-[12px] font-extrabold ${user ? "bg-teal-tint text-teal-dark" : "bg-ground text-ink"}`}
       >
         {entry.actor_label}
-        <span className="sr-only">{user ? " (a person)" : " (an agent)"}</span>
+        <span className="sr-only">{entry.actor_kind === "accountant" ? " (your accountant)" : user ? " (a person)" : " (an agent)"}</span>
       </span>
       {entry.event.startsWith("plan_") && (
         <span className="rounded-full bg-ground px-2 py-0.5 text-[12px] font-extrabold text-ink">Planner</span>

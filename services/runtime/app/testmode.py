@@ -54,10 +54,13 @@ from accnomos_connectors import (
     FakeContactsProvider,
     FakeMailProvider,
     FakeMailSender,
+    FakeSharingProvider,
     FakeStorageProvider,
     MailAttachment,
     MailMessage,
 )
+from accnomos_connectors.base import Identity, SharedRoot
+from accnomos_connectors.fake import FakeSharingWorld
 from app import actions, fake_graph, security
 from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai
@@ -331,6 +334,7 @@ class State:
     contacts: FakeContactsProvider
     calendar: FakeCalendarProvider
     linked: dict[str, FakeMailProvider]  # linked mailbox address -> its fake, made on first use
+    world: FakeSharingWorld  # everyone's OneDrive as far as sharing goes; the signed-in user's books are in it
     seeded = False
     today: date | None = None  # the `demo` seed's stage date; None: ACCNOMOS_TEST_TODAY
 
@@ -342,6 +346,9 @@ class State:
 
 
 TENANT_HEADER = "X-Test-Tenant"
+#: The signed-in test user (apps/web/src/lib/msal-test.ts) owns `storage`; it is this drive and item in the world.
+OWNER = "sam@sambuilds.example"
+OWN_ROOT = SharedRoot(drive_id="t-drive", item_id="t-root")
 WEB_BASE = "https://onedrive.test.invalid/Accnomos"  # what "Open in OneDrive" links point at in test mode
 _TENANT: ContextVar[str] = ContextVar("accnomos_test_tenant", default="")
 STATE = State()  # no X-Test-Tenant header: the unit tests and a runtime started by hand
@@ -355,6 +362,21 @@ def pinned_today() -> date | None:
         return s.today
     pinned = os.getenv("ACCNOMOS_TEST_TODAY")
     return date.fromisoformat(pinned) if pinned else None
+
+
+async def sharing(user: str | None) -> FakeSharingProvider:
+    """This tenant's sharing world as `user` (X-User; the signed-in test user when absent)."""
+    s = await state()
+    me = (user or OWNER).strip().lower()
+    own = next(
+        (
+            SharedRoot(drive_id=d, item_id=i)
+            for (d, i), (o, n, _st) in s.world.folders.items()
+            if o == me and n == "Accnomos"
+        ),
+        None,
+    )
+    return FakeSharingProvider(s.world, Identity(email=me), own=own)
 
 
 def tenant() -> str:
@@ -508,8 +530,94 @@ async def _seed_purchases(s: State) -> None:
     await seed_purchases(Books(s.storage))
 
 
-#: Opt-in: they change the VAT figures or the date other flows check.
-SEEDS = {"bank": _seed_bank, "demo": _seed_demo, "purchases": _seed_purchases}
+#: The `accountant` seed: two clients who shared their books with the test user (who is their accountant here).
+CLIENTS = (
+    ("jo@harbourjoinery.example", "c1-drive", "c1-root", "Harbour Joinery Ltd", "business", "write"),
+    ("priya@patel-lettings.example", "c2-drive", "c2-root", "Patel Lettings", "landlord", "read"),
+)
+
+
+async def _seed_accountant(s: State) -> None:
+    """Two clients' books shared with OWNER (one view and edit, one view only), each with a proposal waiting in
+    Review and the client's own profile in _System/accountant.json; the second has a query waiting on the client.
+    Also a folder that is shared but is not a set of books (the portal must leave it out)."""
+    from app import accountant
+    from app.books import RECEIPTS, Books
+    from app.queries import Query, QueryMessage, QuerySubject
+
+    for n, (owner, drive, item, name, kind, role) in enumerate(CLIENTS, start=1):
+        storage = FakeStorageProvider()
+        books = Books(storage)
+        await books.ensure_tree()
+        root = s.world.add_folder(owner, drive, item, "Accnomos", storage)
+        client = FakeSharingProvider(s.world, Identity(email=owner), own=root)
+        await client.invite(root, OWNER, role, "")  # type: ignore[arg-type]
+        if role == "read":
+            await client.invite(root, OWNER, "write", "", path="_System/queries")
+        profile = accountant.ClientProfile(name=name, kind=kind, vat_registered=n == 1)  # type: ignore[arg-type]
+        when = datetime(2026, 10, 20, 9, 0, tzinfo=UTC)
+        record = accountant.AccountantFile(
+            profile=profile,
+            root=root,
+            invitations=[
+                accountant.Invitation(
+                    id=f"inv{n}",
+                    kind="own",
+                    email=OWNER,
+                    role="edit" if role == "write" else "read",
+                    method="graph",
+                    invited_at=when,
+                    invited_by=owner,
+                )  # fmt: skip
+            ],
+        )
+        await books.write_json(accountant.ACCOUNTANT, record.model_dump(mode="json"))
+        gold = extracted_from_gold(gold_receipts()[MAIL_GOLD[n - 1]])
+        await books.save_proposal(_seed_proposal(f"5eed000{n}", gold))  # proposal ids are hex
+        await books.audit(f"user:{owner}", "approved", {"proposal": f"5eed000{n}"})
+        if n == 2:
+            q = Query(
+                id="a1b2c3d4e5f6",
+                subject=QuerySubject(kind="document", ref=f"{RECEIPTS}/2026-10/rent.pdf", label="October rent receipt"),
+                created_at=when,
+                created_by=OWNER,
+                messages=[QueryMessage(ts=when, author=OWNER, role="accountant", text="Is this rent for Flat 2?")],
+            )
+            await books.write_json(f"_System/queries/{q.id}.json", q.model_dump(mode="json", exclude={"waiting_on"}))
+    other = FakeStorageProvider()
+    await other.write("Holiday/plan.txt", b"not books")
+    s.world.add_folder("jo@harbourjoinery.example", "c1-drive", "c1-photos", "Photos", other)
+    await FakeSharingProvider(s.world, Identity(email="jo@harbourjoinery.example")).invite(
+        SharedRoot(drive_id="c1-drive", item_id="c1-photos"), OWNER, "read", ""
+    )
+
+
+def _seed_proposal(pid: str, extracted: dict[str, Any]) -> Any:
+    from app.schemas import Proposal
+
+    return Proposal.model_validate(
+        {
+            "id": pid,
+            "doc_sha256": hashlib.sha256(pid.encode()).hexdigest(),
+            "extracted": extracted,
+            "checks": [],
+            "status": "proposed",
+            "reasons": [],
+            "suggested_filename": f"{pid}.png",
+            "journal_draft": [],
+            "model": "seed",
+            "elapsed_s": 0.0,
+            "created_at": datetime(2026, 10, 21, 10, 0, tzinfo=UTC).isoformat(),
+        }
+    )
+
+
+SEEDS = {
+    "bank": _seed_bank,
+    "demo": _seed_demo,
+    "purchases": _seed_purchases,
+    "accountant": _seed_accountant,
+}  # opt-in: they change the VAT figures or the date other flows check
 
 
 async def reset(seed: str | None = None) -> dict[str, Any]:
@@ -523,6 +631,8 @@ async def reset(seed: str | None = None) -> dict[str, Any]:
     s = current()
     s.today = None
     s.storage = FakeStorageProvider(web_base=WEB_BASE)
+    s.world = FakeSharingWorld()
+    s.world.add_folder(OWNER, OWN_ROOT.drive_id, OWN_ROOT.item_id, "Accnomos", s.storage)
     await s.storage.write(PROFILE, InvoiceProfile.model_validate(SAMPLE_PROFILE).model_dump_json(indent=2).encode())
     s.mail = FakeMailProvider()
     s.linked = {}

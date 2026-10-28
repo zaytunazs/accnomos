@@ -5,7 +5,9 @@ import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
 import { RuntimeErrorNote } from "@/components/States";
-import { runtime, type RtTodo } from "@/lib/runtime";
+import Link from "next/link";
+import { getClientContext, SUBJECT_LABELS, type RtQuery } from "@/lib/accountant";
+import { accountantApi, runtime, type RtTodo } from "@/lib/runtime";
 import { dueLabel, overdue, TODOS_CHANGED } from "@/lib/triage";
 
 const SHOWN = 5;
@@ -14,6 +16,7 @@ const SHOWN = 5;
 export default function TodosTile() {
   const account = useAccount();
   const [todos, setTodos] = useState<RtTodo[] | null>(null);
+  const [queries, setQueries] = useState<RtQuery[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -21,6 +24,10 @@ export default function TodosTile() {
     try {
       setTodos(await runtime.todos(account));
       setError(null);
+      // Your accountant's questions waiting on you (app/queries.py); not while you look at a client's books.
+      if (!getClientContext()) {
+        setQueries(await accountantApi.queries(account, { status: "open", waiting_on: "client" }).catch(() => []));
+      }
     } catch (e) {
       if ((e as Error).message !== "redirecting for consent") setError(errorText(e));
     }
@@ -55,12 +62,23 @@ export default function TodosTile() {
           The list lives in _System/Todos in your OneDrive.
         </ExplainMore>
       </div>
-      <p className="mt-1 min-h-9 text-3xl font-extrabold tracking-tight tabular-nums text-ink">{todos ? todos.length : "–"}</p>
+      <p className="mt-1 min-h-9 text-3xl font-extrabold tracking-tight tabular-nums text-ink">{todos ? todos.length + queries.length : "–"}</p>
       <p className={`min-h-5 text-[13px] font-semibold ${late ? "text-warn-ink" : "text-muted"}`}>
         {account === null ? "Sign in to keep a to-do list" : late ? `${late} overdue` : "Add them from your inbox"}
       </p>
       {error && <RuntimeErrorNote message={error} />}
       <div className="min-h-[7rem]">
+        {queries.length > 0 && (
+          <ul aria-label="Queries from your accountant" className="mt-3 space-y-1.5">
+            {queries.map((q) => (
+              <li key={q.id} className="text-sm">
+                <Link href="/settings#settings-accountant" className="font-semibold text-ink hover:underline">
+                  Answer your accountant: {q.subject.label || SUBJECT_LABELS[q.subject.kind]}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
         {todos && todos.length > 0 && (
           <ul className="mt-3 space-y-1.5">
             {todos.slice(0, SHOWN).map((t) => (

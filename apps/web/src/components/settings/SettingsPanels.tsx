@@ -16,11 +16,12 @@ import SelfEmployedSetting from "@/components/settings/SelfEmployedSetting";
 import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
 import PersonalFinanceSetting from "@/components/settings/PersonalFinanceSetting";
 import WorkingHours from "@/components/settings/WorkingHours";
+import YourAccountant from "@/components/settings/YourAccountant";
 import OnlinePayments from "@/components/settings/OnlinePayments";
 import { hasMsalSignIn } from "@/lib/signed-in";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
-type GroupId = "connection" | "ai" | "automation" | "business" | "data";
+type GroupId = "connection" | "ai" | "automation" | "business" | "accountant" | "data";
 
 const AUTOPILOT_KEY = "accnomos.autopilot";
 const AI_KEY = "accnomos.ai";
@@ -31,6 +32,7 @@ const GROUPS: { id: GroupId; label: string }[] = [
   { id: "ai", label: "AI" },
   { id: "automation", label: "Automation" },
   { id: "business", label: "Business" },
+  { id: "accountant", label: "Your accountant" },
   { id: "data", label: "Your data" },
 ];
 
@@ -68,6 +70,8 @@ const HASH_GROUP: Record<string, GroupId> = {
   "settings-staff": "business",
   "settings-personal": "business",
   "settings-payments": "business",
+  "settings-accountant": "accountant",
+  accountant: "accountant",
   "settings-data": "data",
   "settings-data-export": "data",
   "settings-leave": "data",
@@ -224,7 +228,7 @@ export default function SettingsPanels() {
         role="tablist"
         aria-label="Settings groups"
         onKeyDown={onTabKeys}
-        className="grid grid-cols-2 gap-2 min-[560px]:grid-cols-5"
+        className="grid grid-cols-2 gap-2 min-[560px]:grid-cols-3"
       >
         {GROUPS.map((g) => {
           const active = group === g.id;
@@ -442,6 +446,16 @@ export default function SettingsPanels() {
         <StaffEditor card={card} heading={heading} />
 
         <PersonalFinanceSetting card={card} heading={heading} />
+      </div>
+
+      <div
+        role="tabpanel"
+        id="panel-accountant"
+        aria-labelledby="tab-accountant"
+        hidden={group !== "accountant"}
+        className="mt-4 space-y-4"
+      >
+        {group === "accountant" && <YourAccountant card={card} heading={heading} />}
       </div>
 
       <div

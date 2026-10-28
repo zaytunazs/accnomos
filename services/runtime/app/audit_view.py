@@ -28,7 +28,7 @@ from pydantic import BaseModel
 
 from app.actions import ACTIONS_AUDIT
 from app.autopilot import AUTOPILOT
-from app.books import AUDIT, LONDON, Books
+from app.books import AUDIT, LONDON, QUERIES_AUDIT, Books
 from app.invoicing import money
 from app.paths import REPORTS
 
@@ -63,8 +63,8 @@ class AuditRefs(BaseModel):
 
 class AuditEntry(BaseModel):
     ts: datetime
-    actor: str  # as written: "user:<email>" or "agent:<name>"
-    actor_kind: Literal["user", "agent"]
+    actor: str  # as written: "user:<email>", "agent:<name>" or "accountant:<email>" (app/sharing.py)
+    actor_kind: Literal["user", "agent", "accountant"]
     actor_label: str  # "You", "Autopilot", "Intake", "Triage", "Planner", ...
     event: str  # the audit action, e.g. "approved"; actions log lines are action_done / action_rejected / action_failed
     summary: str
@@ -411,6 +411,19 @@ SUMMARIES: dict[str, Summary] = {
             else ""
         )
     ),
+    # Your accountant (app/accountant.py, app/queries.py, app/portal.py)
+    "accountant_invited": lambda r, w: (
+        f"Gave {r['email']} {_access(r)} to these books" + (" (shared in OneDrive by hand)" if _manual(r) else "")
+    ),
+    "accountant_removed": lambda r, w: f"Took away {r['email']}'s access to these books",
+    "accountant_team_opted_in": lambda r, w: f"Opted in to reviews by Accnomos accountants ({_access(r)})",
+    "accountant_team_opted_out": lambda r, w: "Stopped reviews by Accnomos accountants",
+    "accountant_profile_saved": lambda r, w: "Updated what your accountant sees about these books",
+    "accountant_client_added": lambda r, w: "Added a client's books to the Accountant portal",
+    "accountant_client_removed": lambda r, w: "Removed a client's books from the Accountant portal",
+    "query_opened": lambda r, w: f"Asked a query about {_about(r)}",
+    "query_replied": lambda r, w: "Answered a query",
+    "query_resolved": lambda r, w: "Marked a query as resolved",
     # Ask (chat and voice) actions, from _System/audit/actions/
     "action_done": lambda r, w: (
         f"Approved from Ask: {_plain(r.get('result_md') or r.get('summary_md')) or 'an action'}"
@@ -439,10 +452,33 @@ def summarise(event: str, refs: dict[str, Any], who: str = "a document") -> str:
 # --------------------------------------------------------------------------- #
 
 
-def actor_of(actor: str) -> tuple[Literal["user", "agent"], str]:
-    """(kind, label). A person is always "You": one OneDrive is one business."""
+def _access(r: dict[str, Any]) -> str:
+    return "view and edit access" if r.get("role") == "edit" else "view-only access"
+
+
+def _manual(r: dict[str, Any]) -> bool:
+    return r.get("method") == "manual"
+
+
+_ABOUT = {
+    "transaction": "a transaction",
+    "document": "a document",
+    "proposal": "a Review card",
+    "bank_line": "a bank line",
+    "invoice": "an invoice",
+}
+
+
+def _about(r: dict[str, Any]) -> str:
+    return _ABOUT.get(str(r.get("about")), "the books")
+
+
+def actor_of(actor: str) -> tuple[Literal["user", "agent", "accountant"], str]:
+    """(kind, label). The owner is always "You": one OneDrive is one business. Their accountant is named."""
     if actor.startswith("user:"):
         return "user", "You"
+    if actor.startswith("accountant:"):
+        return "accountant", f"Accountant ({actor.removeprefix('accountant:')})"
     name = actor.removeprefix("agent:")
     return "agent", AGENT_LABELS.get(name) or name.replace("-", " ").replace("_", " ").capitalize() or "Accnomos"
 
@@ -588,7 +624,10 @@ async def read(
     # month early: read one month more of that log.
     action_months = months_between((lo.replace(day=1) - timedelta(days=1)).date(), last)
 
-    per_month = await asyncio.gather(*(_lines(books, f"{AUDIT}/{m}.jsonl") for m in months))
+    # A view-only accountant's lines (queries) are in _System/queries/audit/, the one place they may write.
+    per_month = await asyncio.gather(
+        *(_lines(books, f"{folder}/{m}.jsonl") for m in months for folder in (AUDIT, QUERIES_AUDIT))
+    )
     books_lines = [ln for lines in per_month for ln in lines]
     named = any(isinstance(r := ln.get("refs"), dict) and r.get("proposal") for ln in books_lines)
     names = await _supplier_names(books) if named else {}

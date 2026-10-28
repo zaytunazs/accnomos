@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from datetime import date, datetime
-from typing import Protocol
+from typing import Literal, Protocol
 
 from pydantic import BaseModel
 
@@ -196,6 +196,77 @@ class CalendarProvider(ABC):
 
     async def upsert_all_day_event(self, calendar_id: str, key: str, date: str, title: str, body: str) -> str:
         raise NotImplementedError
+
+
+ShareRole = Literal["read", "write"]
+
+
+class SharedRoot(BaseModel):
+    """A folder in someone else's drive, addressed the way Graph addresses shared items:
+    `/drives/{drive_id}/items/{item_id}` (Microsoft Learn, "Address resources in a drive on OneDrive",
+    https://learn.microsoft.com/graph/onedrive-addressing-driveitems, checked 28 Oct 2026)."""
+
+    drive_id: str
+    item_id: str
+
+
+class SharePermission(BaseModel):
+    """One permission an invitation created on the books folder (Graph `permission`)."""
+
+    id: str
+    roles: list[str]
+    email: str | None = None
+
+
+class SharedFolder(BaseModel):
+    """A folder someone shared with the signed-in user (from `sharedWithMe` or a link they added)."""
+
+    drive_id: str
+    item_id: str
+    name: str
+    owner: str | None = None  # display name or email of who shared it, when Graph says
+    shared_at: datetime | None = None
+    web_url: str | None = None
+
+
+class Identity(BaseModel):
+    """Who the token belongs to, as Graph `/me` reports it."""
+
+    email: str
+    name: str = ""
+
+
+class SharingProvider(ABC):
+    """Share the books folder with a person, take it back, and find folders shared with you."""
+
+    @abstractmethod
+    async def books_root(self, account_kind: str) -> SharedRoot:
+        """The caller's own books folder as drive id + item id (created if missing)."""
+
+    @abstractmethod
+    async def invite(
+        self, root: SharedRoot, email: str, role: ShareRole, message: str, path: str = ""
+    ) -> SharePermission:
+        """Grant `role` on the folder, or on `path` inside it (a subfolder can be given more than its parent)."""
+
+    @abstractmethod
+    async def revoke(self, root: SharedRoot, permission_id: str, path: str = "") -> bool:
+        """Remove one permission; False when it was already gone."""
+
+    @abstractmethod
+    async def shared_with_me(self) -> list[SharedFolder]:
+        """Folders (not files) shared with the caller."""
+
+    @abstractmethod
+    async def folder(self, root: SharedRoot) -> SharedFolder:
+        """Name and owner of one folder the caller can open; FileNotFoundError if not (or no longer) shared."""
+
+    @abstractmethod
+    async def child_names(self, root: SharedRoot) -> set[str]:
+        """Names of the folder's direct children (to tell an Accnomos books folder from any other)."""
+
+    @abstractmethod
+    async def whoami(self) -> Identity: ...
 
 
 class ConflictError(Exception):
