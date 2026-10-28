@@ -116,3 +116,67 @@ export async function getToken(scopes: string[]): Promise<string> {
     throw e;
   }
 }
+
+/**
+ * Settings › Email intake: more mailboxes. Another Microsoft account is a second account in the same MSAL cache
+ * (its own popup sign-in, `prompt: select_account`), asked for `Mail.Read` only: never its OneDrive, never Send.
+ * A shared mailbox is read with the signed-in work account's `Mail.Read.Shared` (delegated; work or school accounts
+ * only; https://learn.microsoft.com/graph/permissions-reference#mailreadshared).
+ */
+export const LINKED_MAIL_SCOPES = ["Mail.Read"];
+export const SHARED_MAIL_SCOPES = ["Mail.Read.Shared"];
+
+/** The account the books belong to. Linked mailboxes share the cache, so never just `getAllAccounts()[0]`. */
+export function primaryAccount(msal: IPublicClientApplication): AccountInfo | null {
+  return msal.getActiveAccount() ?? msal.getAllAccounts()[0] ?? null;
+}
+
+/** The cached account signed in as `address` (a linked mailbox), if any. */
+export function linkedAccount(msal: IPublicClientApplication, address: string): AccountInfo | null {
+  const want = address.trim().toLowerCase();
+  return msal.getAllAccounts().find((a) => a.username.toLowerCase() === want) ?? null;
+}
+
+/**
+ * Sign in to one more Microsoft account in a popup and return it. The signed-in account stays the active one, so
+ * the books, and every other token, keep coming from it.
+ */
+export async function signInExtraAccount(loginHint?: string): Promise<AccountInfo> {
+  const msal = await getMsal();
+  const primary = primaryAccount(msal);
+  if (!primary) throw new Error("not signed in");
+  msal.setActiveAccount(primary);
+  try {
+    const result = await msal.loginPopup({ scopes: LINKED_MAIL_SCOPES, prompt: "select_account", ...(loginHint ? { loginHint } : {}) });
+    if (!result.account) throw new Error("Microsoft did not say which account signed in");
+    return result.account;
+  } finally {
+    msal.setActiveAccount(primary);
+  }
+}
+
+/**
+ * A linked mailbox's token without any prompt, or null when it needs the user (sign in again, or consent).
+ * Never redirects: a check of several mailboxes must not leave the page halfway.
+ */
+export async function mailboxTokenSilent(kind: "microsoft" | "shared", address: string): Promise<string | null> {
+  const msal = await getMsal();
+  const account = kind === "shared" ? primaryAccount(msal) : linkedAccount(msal, address);
+  if (!account) return null;
+  try {
+    const scopes = kind === "shared" ? SHARED_MAIL_SCOPES : LINKED_MAIL_SCOPES;
+    return (await msal.acquireTokenSilent({ scopes, account })).accessToken;
+  } catch {
+    return null;
+  }
+}
+
+/** Forget a linked account's tokens in this browser (never the signed-in one). */
+export async function forgetExtraAccount(address: string): Promise<void> {
+  const msal = await getMsal();
+  const account = linkedAccount(msal, address);
+  const primary = primaryAccount(msal);
+  if (!account || (primary && account.homeAccountId === primary.homeAccountId)) return;
+  await msal.clearCache({ account });
+  if (primary) msal.setActiveAccount(primary);
+}

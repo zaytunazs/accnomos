@@ -5,6 +5,9 @@ A HEIC photo is swapped for a JPEG in the Inbox (the HEIC is kept in `_System/Or
 A file over 25 MB is not read and stays in the Inbox, reported as an error; any other file that cannot be read
 (too many pixels or pages, damaged, password-protected) becomes a needs-a-look card that says why.
 
+A document Outlook intake copied in carries the mailbox it came from (`source_mailbox`, from intake's seen-list
+by content hash) on its proposal and its `proposed` audit line.
+
 Proposals that match an Autopilot rule and pass every check are then posted by Autopilot
 (app/autopilot.py); everything else waits in Review.
 """
@@ -27,6 +30,7 @@ from app.books import SYSTEM, Books, DocMeta, Rule, now
 from app.books import today as london_today
 from app.checks import SupplierKnowledge, decide
 from app.formats import MAX_BYTES, FormatError, guess_mime, prepare
+from app.intake import SEEN
 from app.invoicing import load_profile
 from app.journal import with_expense_account
 from app.mileage import MileageError, Vehicle, load_vehicles, prefill_vehicle
@@ -198,6 +202,12 @@ async def _autopilot_post(books: Books, p: Proposal, rule: autopilot.AutopilotRu
     return posted
 
 
+async def mailbox_sources(books: Books) -> dict[str, str]:
+    """Content hash -> the address of the mailbox Outlook intake copied it from (newest copy wins)."""
+    seen = await books.read_json(SEEN, [])
+    return {s["sha256"]: s["mailbox"] for s in seen if isinstance(s, dict) and s.get("sha256") and s.get("mailbox")}
+
+
 async def scan_inbox(
     books: Books,
     cfg: AiConfig,
@@ -232,6 +242,7 @@ async def scan_inbox_detailed(
     auto_rules = await autopilot.load_rules(books)
     vehicles = await _vehicles(books)
     vat = await vat_context(books)
+    sources: dict[str, str] | None = None  # intake's seen-list, read once and only when the Inbox has files
     earlier: list[Proposal] | None = None  # proposals already in the books, for Autopilot's same-document condition
     out: list[Proposal] = []
     errors: list[dict] = []
@@ -252,6 +263,9 @@ async def scan_inbox_detailed(
             errors.append({"path": f.path, "error": str(exc)[:300]})
             continue
         p.source_name, p.created_at = f.name, now()
+        if sources is None:
+            sources = await mailbox_sources(books)
+        p.source_mailbox = sources.get(p.doc_sha256)
         await books.file_document(p, f.path)
         if p.doc_sha256 not in known:
             await books.save_doc(
@@ -273,9 +287,10 @@ async def scan_inbox_detailed(
         await books.save_proposal(p)
         if earlier is not None:
             earlier.append(p)
-        await books.audit(
-            ACTOR, "proposed", {"proposal": p.id, "doc": p.doc_sha256, "status": p.status, "path": p.file_path}
-        )
+        refs = {"proposal": p.id, "doc": p.doc_sha256, "status": p.status, "path": p.file_path}
+        if p.source_mailbox:
+            refs["mailbox"] = p.source_mailbox
+        await books.audit(ACTOR, "proposed", refs)
         if rule is not None and p.autopilot and p.autopilot.auto_approve:
             p = await _autopilot_post(books, p, rule)
         out.append(p)

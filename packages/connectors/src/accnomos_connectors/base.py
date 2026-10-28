@@ -86,8 +86,11 @@ class MailProvider(ABC):
     The one write is `create_reply_draft`, which only saves a draft (needs `Mail.ReadWrite`)."""
 
     @abstractmethod
-    async def list_messages(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
-        """Messages with attachments received at or after `since`, newest first."""
+    async def list_messages(
+        self, since: datetime, max_results: int = 50, *, folder: str | None = None
+    ) -> list[MailMessage]:
+        """Messages with attachments received at or after `since`, newest first. `folder`: None or "all" for every
+        folder, else a well-known name ("inbox", "archive") or a top-level folder's display name."""
 
     @abstractmethod
     async def list_attachments(self, message_id: str) -> list[MailAttachment]:
@@ -96,9 +99,11 @@ class MailProvider(ABC):
     @abstractmethod
     async def download_attachment(self, message_id: str, attachment_id: str) -> bytes: ...
 
-    async def list_without_attachments(self, since: datetime, max_results: int = 50) -> list[MailMessage]:
-        """Inbox messages with no attachments received at or after `since`, newest first, with `body_preview`
-        filled in (Outlook intake looks for receipts written in the body)."""
+    async def list_without_attachments(
+        self, since: datetime, max_results: int = 50, *, folder: str | None = None
+    ) -> list[MailMessage]:
+        """Inbox messages (or `folder`'s; None or "all" means the Inbox) with no attachments received at or after
+        `since`, newest first, with `body_preview` filled in (Outlook intake looks for receipts written in the body)."""
         raise NotImplementedError
 
     async def message_text(self, message_id: str) -> str:

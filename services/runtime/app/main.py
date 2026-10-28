@@ -41,10 +41,17 @@ app.add_middleware(SecurityMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins(os.getenv("CORS_ORIGINS", "http://localhost:3000")),
-    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE"],  # PATCH: /vehicles/{id}, /mileage/{id}
+    allow_methods=[
+        "GET",
+        "POST",
+        "PUT",
+        "PATCH",
+        "DELETE",
+    ],  # PATCH: /vehicles/{id}, /mileage/{id}, /mail/mailboxes/{id}
     allow_headers=[
         "Content-Type",
         "X-Graph-Token",
+        "X-Mailbox-Token",  # a linked mailbox's own token, POST /mail/scan only (app/routes_mail.py)
         "X-Account-Kind",
         "X-User",
         "X-AI-Mode",

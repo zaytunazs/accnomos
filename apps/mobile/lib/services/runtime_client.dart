@@ -748,6 +748,20 @@ class RuntimeClient {
           what: 'save that draft');
 
   /// `POST /mail/scan`. The Graph token must carry `Mail.Read`.
+  /// `GET /mail/mailboxes`: the mailboxes Outlook intake reads, the signed-in
+  /// one first (addresses, folder, sender lists, last check; never tokens).
+  /// Linked on the web only: their sign-ins live in the browser.
+  Future<List<Map<String, dynamic>>> mailboxes() async {
+    final result =
+        await _map('GET', '/mail/mailboxes', what: 'load your mailboxes');
+    final list = result['mailboxes'];
+    if (list is! List) return [];
+    return [
+      for (final m in list)
+        if (m is Map) Map<String, dynamic>.from(m),
+    ];
+  }
+
   Future<Map<String, dynamic>> mailScan(
           {int sinceDays = 14, bool dryRun = false}) =>
       _map('POST', '/mail/scan',

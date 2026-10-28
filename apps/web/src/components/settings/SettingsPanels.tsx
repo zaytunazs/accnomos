@@ -6,6 +6,7 @@ import ChooseAi from "@/components/ChooseAi";
 import InboxTriageSetting from "@/components/settings/InboxTriageSetting";
 import YourData from "@/components/settings/YourData";
 import OutlookIntake from "@/components/settings/OutlookIntake";
+import EmailIntake from "@/components/settings/EmailIntake";
 import AutopilotRules from "@/components/settings/AutopilotRules";
 import BusinessDetails from "@/components/settings/BusinessDetails";
 import StaffEditor from "@/components/settings/StaffEditor";
@@ -43,6 +44,8 @@ const HASH_GROUP: Record<string, GroupId> = {
   "settings-autopilot": "automation",
   "settings-rules": "automation",
   "settings-intake": "automation",
+  "settings-email-intake": "automation",
+  "email-intake": "automation",
   automation: "automation", // Home's "Turn on Inbox triage in Settings"
   "settings-automation": "automation",
   "settings-business-hours": "automation",
@@ -382,6 +385,8 @@ export default function SettingsPanels() {
         <AutopilotRules card={card} heading={heading} />
 
         <OutlookIntake card={card} heading={heading} />
+
+        <EmailIntake card={card} heading={heading} />
 
         <section id="automation" aria-labelledby="settings-automation" className={card}>
           <h2 id="settings-automation" className={heading}>

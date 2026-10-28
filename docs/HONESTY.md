@@ -110,6 +110,16 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - Not run against a real mailbox, calendar or address book. Admin consent for `Contacts.Read` on work accounts is untested.
 - Outlook intake drops photos forwarded by a colleague on the user's own domain: they get no sender point and score 0.3 against the 0.4 threshold (5 of 17 documents in the fixtures). Triage keeps mail from the user's own address on another domain (a phone, say) and from a second company domain.
 - Ask on Glimmer takes about 16 s (median, slowest 50 s) with 0 timeouts in the 40-prompt eval (`evals/runs/ask_40/report.md`). On Glimmer the streamed words arrive in one piece (Ollama holds back a schema-constrained reply), so in practice the 90 s first-chunk wait is a whole-reply timeout there. Wrong-period grounding is a phrase and label match per sentence: a sentence that names the other period ("last quarter", "Apr–Jun 2026", "26A2") may quote its figures; a figure that exists in both periods cannot be told apart. The router is keywords only; a follow-up like "why?" is routed on its own words and treated as being about the current period.
+- **More mailboxes (Settings › Email intake) are untested against real mailboxes.** Linking a second Microsoft account
+  (MSAL popup, multi-account cache), reading a shared mailbox (`/users/{address}` with `Mail.Read.Shared`, work or school
+  accounts only), folder lookup by display name and the per-mailbox token header ran only on fakes, the test-mode MSAL
+  stand-in and a mocked Graph transport. Not checked live: that `loginPopup` works with our redirect bridge in every
+  browser (popup blockers), that a second account in the cache never becomes the active one (the code re-sets the
+  signed-in account after every popup, but older pages pick `getActiveAccount() ?? getAllAccounts()[0]`), whether
+  tenants need admin consent for `Mail.Read.Shared` despite Microsoft listing none, and how Graph names folders in a
+  shared mailbox the user can open only partly. Only top-level folders can be picked by name. A preview lists a receipt
+  sent to two mailboxes twice (a real check copies it once). Android lists the mailboxes and checks only the signed-in
+  one. Gmail is not built.
 - A triage draft is two Graph calls; if the second fails an empty reply stays in Drafts (we do not delete mail). Sent Items are not read, so an answered thread can still show *Reply*.
 - **First-time calendar consent loses the plan:** MSAL redirects to Microsoft and on return the plan card is gone; plan again and tap Apply again.
 - Two Applies at the same moment can both create events (no lock in a stateless runtime). Planner: Europe/London only, travel times are rules of thumb by postcode district, only VAT returns count as "due", the *Visit length* input caps at 12 h in the web (runtime 24 h), *Plan a day with these jobs* sends every open job.

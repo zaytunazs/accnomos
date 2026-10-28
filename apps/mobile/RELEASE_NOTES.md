@@ -1,5 +1,17 @@
 # Release notes — Accnomos mobile
 
+## 0.3.6 (version code 11)
+
+Play "What's new" (about 250 characters):
+
+Settings shows every mailbox Accnomos reads for receipts: your own,
+other Microsoft accounts and shared mailboxes you linked on the web,
+each with when it was last checked and how many files it brought in.
+Add or change mailboxes on the web.
+
+Not yet run on a phone: the list against a real runtime, and at 360 dp
+on a real device, need a human check.
+
 ## 0.3.5 (version code 10)
 
 Play "What's new" (336 characters):

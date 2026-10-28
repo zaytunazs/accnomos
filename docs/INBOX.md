@@ -155,3 +155,74 @@ Many receipts never come as an attachment: ride and delivery apps, online shops,
 Bodies that are not receipts are not saved and not logged; they are fetched again on the next check if still in the
 window. Tested on six fictional fixtures, `evals/gold/mail/B01.json` to `B06.json` (three receipts, three decoys), and
 the twenty attachment fixtures, whose results do not change.
+
+## More than one mailbox (Settings › Email intake)
+
+Outlook intake reads the signed-in account's mailbox, and any others the user links in **Settings › Automation › Email
+intake** (web only; Android lists them read-only). Code: `services/runtime/app/mailboxes.py`, `app/intake.py`,
+`app/routes_mail.py`; Graph in `packages/connectors/src/accnomos_connectors/msgraph.py` (`GraphMailProvider(mailbox=…)`);
+web in `apps/web/src/components/settings/EmailIntake.tsx`, `src/lib/mailboxes.ts` and `src/lib/msal.ts`.
+
+| Kind | How it is linked | Graph | Token sent with its check |
+|---|---|---|---|
+| Signed-in account | always there | `/me/…` | `X-Graph-Token` (storage + `Mail.Read`), as before |
+| Another Microsoft account (Outlook.com or Microsoft 365) | *Add Microsoft mailbox*: its own MSAL popup sign-in (`loginPopup`, `prompt: select_account`, scope `Mail.Read` only), a second account in the same MSAL cache | `/me/…` with that account's token | `X-Mailbox-Token`: that account's `Mail.Read` token (`acquireTokenSilent({account})`) |
+| Shared or delegated mailbox (work or school only) | *Add shared mailbox*: type its address; the signed-in account is asked for `Mail.Read.Shared` | `/users/{address}/…` | `X-Mailbox-Token`: the signed-in account's `Mail.Read.Shared` token |
+
+Microsoft's documentation (Microsoft Learn, read 28 Oct 2026): messages in a mailbox someone shared or delegated to you are
+read with `GET /users/{id | userPrincipalName}/mailFolders('Inbox')/messages` (and `/users/{id}/messages`) under the
+delegated permission `Mail.Read.Shared` ([Get Outlook messages in a shared or delegated
+folder](https://learn.microsoft.com/graph/outlook-share-messages-folders)). `Mail.Read.Shared` is "Read user and shared
+mail", needs no admin consent and "is only valid for work or school accounts" ([permissions
+reference](https://learn.microsoft.com/graph/permissions-reference#mailreadshared)), so *Add shared mailbox* is greyed
+out for a personal account. Well-known folder names (`inbox`, `archive`, …) work in any mailbox language ([mailFolder
+resource](https://learn.microsoft.com/graph/api/resources/mailfolder)).
+
+**One request per mailbox.** The web app calls `POST /mail/scan` once for the signed-in mailbox and once per linked
+mailbox it can get a token for **without a prompt**, one after another. A linked mailbox's token rides in its own
+`X-Mailbox-Token` header on that one request; the body names the mailbox by id (`{"mailbox": "<id>"}`). It is never put
+in a body (a 422 would echo it), never stored, and the runtime treats the header like `X-Graph-Token`: an 8 KB cap,
+HTTPS only behind a proxy, and every log line scrubbed of it (`app/security.py`). One token per request also keeps under
+the server's header-size limit, which several tokens in one request could pass. A mailbox whose sign-in has expired in
+this browser is not read and is reported ("not read: sign in to it again"); its row offers *Sign in again* (another
+popup) or, for a shared mailbox, *Allow* (consent for `Mail.Read.Shared`).
+
+**What is stored** (`_System/mail/mailboxes.json` in the user's books; **never a token or password**): `id, address,
+kind, folder, allow_senders, deny_senders, added_at, added_by, last_scan_at, last_scan_saved, last_scan_error`. The
+signed-in mailbox is listed but only written to the file once its folder or senders are changed (or another mailbox
+exists). Sign-ins for other accounts stay in this browser's MSAL cache; *Remove* deletes the entry and clears that
+account from the cache (`clearCache({account})`). Files already copied stay in the books.
+
+**Per mailbox:**
+- *Folder to watch*: All folders (default; as before, attachments from every folder and body receipts from the Inbox),
+  Inbox, Archive, or another **top-level** folder by its display name (looked up with `$filter=displayName eq '…'`; a
+  name that is not there fails that mailbox's check with "mailbox or folder not found").
+- *Only from* / *Never from*: addresses or domains (a domain covers its subdomains). *Never from* wins; an empty *Only
+  from* means anyone. Messages filtered out are counted (`filtered_senders`), not read.
+
+**The same file in two mailboxes is copied once.** Each file's SHA-256 is checked against `seen.json`, the documents
+already filed and everything in `00 Inbox`; the mailbox checked first keeps it, and the second counts it under
+"already in your books". Message ids are remembered per mailbox. A preview (dry run) writes nothing, so it previews each
+mailbox on its own and can list the same receipt twice; a real check copies it once. As for one mailbox, a duplicate
+is downloaded and hashed again on each check while it is in the 14-day window.
+
+**Where each document came from.** `seen.json` and `_System/Intake/log/<yyyy-mm>.jsonl` carry `mailbox` (the address)
+and `mailbox_id`; the `mail_scanned` audit line carries `mailbox_id, mailbox, kind, folder` and `filtered_senders`. The
+Inbox scan looks the file's hash up in `seen.json` and records the address on the proposal (`source_mailbox`) and its
+`proposed` audit line (`mailbox`). New audit actions: `mailbox_added`, `mailbox_updated`, `mailbox_removed` (address and
+id only).
+
+| Route | Body | Returns |
+|---|---|---|
+| `GET /mail/mailboxes` | | `{mailboxes: [...]}`, the signed-in one first |
+| `POST /mail/mailboxes` | `{address, kind: "microsoft" \| "shared", folder?, allow_senders?, deny_senders?}` (needs `X-User`; `shared` needs `X-Account-Kind: work`) | 201 the mailbox; 409 if already linked or it is the signed-in address; at most 10 |
+| `PATCH /mail/mailboxes/{id}` | `{folder?, allow_senders?, deny_senders?}` (needs `X-User`; `primary` works too) | the mailbox |
+| `DELETE /mail/mailboxes/{id}` | (needs `X-User`) | the removed mailbox; 400 for `primary` |
+| `POST /mail/scan` | `{since_days, dry_run, max_messages, mailbox?}`; with `mailbox`, `X-Mailbox-Token` is required | as before, plus `mailbox_id`, `mailbox`, `filtered_senders` and `mailbox` on each item; 401/403/404/502 when that mailbox cannot be read |
+
+**Gmail** is shown as "Gmail (coming soon)", disabled: reading Gmail needs a Google Cloud app (OAuth client and
+Google's verification for the restricted Gmail scopes), which Accnomos does not have. Not built.
+
+**Not tested against real mailboxes.** Everything above runs on the in-memory fakes (one fake per linked address in
+test mode, seeded with one receipt the signed-in mailbox also has and one of its own) and a mocked Graph transport; see
+`docs/HONESTY.md`.

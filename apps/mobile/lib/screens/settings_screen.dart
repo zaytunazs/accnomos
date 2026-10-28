@@ -109,6 +109,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String? _rulesNote;
   String? _removingKey;
 
+  /// Linked mailboxes from `GET /mail/mailboxes`; shown read-only (added and
+  /// edited on the web, where their sign-ins live). Null until loaded.
+  List<Map<String, dynamic>>? _mailboxes;
+
   bool _inboxBusy = false;
   String? _inboxMessage;
   bool _inboxOk = false;
@@ -215,6 +219,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
         _rulesLoading = false;
         _rulesError = e.toString();
       });
+    }
+    try {
+      final boxes = await (await _booksClient()).mailboxes();
+      if (mounted) setState(() => _mailboxes = boxes);
+    } catch (_) {
+      // An older runtime without /mail/mailboxes: the list is simply not shown.
     }
     try {
       final profile = await (await _booksClient()).invoiceProfile();
@@ -1495,7 +1505,94 @@ class _SettingsScreenState extends State<SettingsScreen> {
           const SizedBox(height: 8),
           _resultBox(ok: _inboxOk, message: _inboxMessage!),
         ],
+        if (_signedIn && (_mailboxes?.isNotEmpty ?? false)) ...[
+          const SizedBox(height: 16),
+          _mailboxesList(_mailboxes!),
+        ],
       ],
+    );
+  }
+
+  static const _mailboxKind = {
+    'primary': 'Signed-in account',
+    'microsoft': 'Microsoft account',
+    'shared': 'Shared mailbox',
+  };
+
+  static const _months = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', //
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
+  /// "Last checked 27 Oct, 14:05 · 1 file", or "Not checked yet".
+  static String _lastCheck(Map<String, dynamic> box) {
+    final at = DateTime.tryParse((box['last_scan_at'] ?? '').toString());
+    if (at == null) return 'Not checked yet';
+    final local = at.toLocal();
+    final saved = box['last_scan_saved'];
+    final n = saved is int ? saved : 0;
+    final time = '${local.hour.toString().padLeft(2, '0')}:'
+        '${local.minute.toString().padLeft(2, '0')}';
+    return 'Last checked ${local.day} ${_months[local.month - 1]}, $time'
+        ' \u00b7 $n ${n == 1 ? 'file' : 'files'}';
+  }
+
+  /// Settings › Email intake on the web, read-only: which mailboxes are read.
+  Widget _mailboxesList(List<Map<String, dynamic>> boxes) {
+    return Column(
+      key: const Key('linked-mailboxes'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Email intake',
+            style: TextStyle(
+                fontWeight: FontWeight.w700, color: AccnomosColors.ink)),
+        for (final box in boxes) _mailboxRow(box),
+        const SizedBox(height: 8),
+        const Text(
+            'Add, change or remove mailboxes in Settings on the web: their '
+            'sign-ins stay in that browser. Check my inbox now on this phone '
+            'reads your signed-in mailbox only.',
+            style: TextStyle(
+                color: AccnomosColors.muted, fontSize: 12, height: 1.4)),
+      ],
+    );
+  }
+
+  Widget _mailboxRow(Map<String, dynamic> box) {
+    final given = (box['address'] ?? '').toString();
+    final address =
+        given.isNotEmpty ? given : (_account?.username ?? 'Your mailbox');
+    final error = (box['last_scan_error'] ?? '').toString();
+    return Semantics(
+      container: true,
+      label: address,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          border: Border.all(color: const Color(0xFFE3E1D8)),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(address,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w700, color: AccnomosColors.ink)),
+            const SizedBox(height: 2),
+            Text(
+                '${_mailboxKind[box['kind']] ?? 'Mailbox'} \u00b7 '
+                '${_lastCheck(box)}',
+                style: const TextStyle(
+                    color: AccnomosColors.muted, fontSize: 12)),
+            if (error.isNotEmpty)
+              Text(error,
+                  style: const TextStyle(
+                      color: AccnomosColors.muted, fontSize: 12)),
+          ],
+        ),
+      ),
     );
   }
 

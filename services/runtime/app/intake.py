@@ -5,13 +5,20 @@ deleted); everything written goes to the user's own books folder:
 
     00 Inbox/<yyyy-mm-dd>_<sender-domain>_<original-name>   the copied attachment (a HEIC photo as a JPEG)
     00 Inbox/<yyyy-mm-dd>_<sender-domain>_<subject>.eml.txt a receipt written in the body of a mail with no attachment
-    _System/Intake/seen.json                                what we have already copied (max 5,000, newest kept)
+    _System/Intake/seen.json                                what we have already copied (max 5,000, newest kept),
+                                                            with the mailbox each file came from
+    _System/mail/mailboxes.json                             the linked mailboxes and their last check (app/mailboxes.py)
     _System/Intake/log/<yyyy-mm>.jsonl                      one line per saved file
     _System/audit/<yyyy-mm>.jsonl                           one line per scan (DEV.md convention)
 
 Body receipts (Uber, Amazon, SaaS bills): only Inbox messages without attachments are listed; the full body is
 fetched only when the subject or preview has a receipt word, and kept only when a total/VAT line carries a
 currency amount (`looks_like_receipt`). Mail from the user, and marketing mail, is never kept.
+
+One call reads one mailbox (`mailbox`, default the signed-in one): its folder and sender allow/deny lists apply.
+The same file arriving in two mailboxes is copied once (content hash against seen.json, the filed documents and
+00 Inbox); the mailbox it came from is kept in seen.json, the intake log and the audit line, and the Inbox scan
+puts it on the proposal (`source_mailbox`).
 """
 
 from __future__ import annotations
@@ -30,6 +37,7 @@ from pydantic import BaseModel
 from accnomos_connectors.base import MailAttachment, MailMessage, MailProvider
 from app.books import SYSTEM, Books, Rule, _month, _with_suffix, now
 from app.formats import MAX_BYTES, FormatError, is_heif, prepare
+from app.mailboxes import PRIMARY_ID, Mailbox, primary_mailbox, record_scan, sender_allowed
 from app.paths import INBOX
 
 log = logging.getLogger(__name__)
@@ -105,9 +113,12 @@ class IntakeItem(BaseModel):
     score: float
     message_id: str
     attachment_id: str
+    mailbox: str = ""  # the address it came from
 
 
 class IntakeResult(BaseModel):
+    mailbox_id: str = PRIMARY_ID
+    mailbox: str = ""  # address of the mailbox read
     scanned: int = 0
     candidates: int = 0
     saved: list[str] = []
@@ -115,6 +126,7 @@ class IntakeResult(BaseModel):
     dry_run: bool = False
     errors: list[dict[str, str]] = []
     items: list[IntakeItem] = []  # one per saved (or, in a dry run, would-be-saved) file
+    filtered_senders: int = 0  # messages left out by the mailbox's sender allow/deny lists
 
 
 # ---------------------------------------------------------------------- #
@@ -274,7 +286,8 @@ class _Dedupe:
 
     def __init__(self, books: Books, seen: list[dict[str, Any]]) -> None:
         self.books = books
-        self.seen_ids = {(s.get("message_id"), s.get("attachment_id")) for s in seen}
+        # Message ids are per mailbox; entries from before linked mailboxes are the signed-in one's.
+        self.seen_ids = {(s.get("mailbox_id", PRIMARY_ID), s.get("message_id"), s.get("attachment_id")) for s in seen}
         self.hashes = {s["sha256"] for s in seen if s.get("sha256")}
         self._loaded = False
 
@@ -299,10 +312,22 @@ async def scan_mail(
     user: str | None = None,
     max_messages: int = 50,
     bodies: bool = True,
+    mailbox: Mailbox | None = None,
 ) -> IntakeResult:
     """Copy likely receipts from the last `since_days` into 00 Inbox: attachments of up to `max_messages` mails with
-    attachments, and (`bodies`) receipts written in up to `max_messages` mails without."""
-    result = IntakeResult(dry_run=dry_run)
+    attachments, and (`bodies`) receipts written in up to `max_messages` mails without. `mail` reads `mailbox`
+    (default: the signed-in one, `user`)."""
+    box = mailbox or primary_mailbox(user)
+    folder = None if box.folder == "all" else box.folder
+    result = IntakeResult(dry_run=dry_run, mailbox_id=box.id, mailbox=box.address)
+
+    def wanted(m: MailMessage) -> bool:
+        """Through the mailbox's sender lists."""
+        if not sender_allowed(m.from_address, box.allow_senders, box.deny_senders):
+            result.filtered_senders += 1
+            return False
+        return True
+
     seen: list[dict[str, Any]] = await books.read_json(SEEN, [])
     rules = await books.load_rules()
     dedupe = _Dedupe(books, seen)
@@ -313,15 +338,24 @@ async def scan_mail(
 
     def keep(m: MailMessage, attachment_id: str, name: str, sha: str, sc: float) -> None:
         dedupe.hashes.add(sha)
-        dedupe.seen_ids.add((m.id, attachment_id))
+        dedupe.seen_ids.add((box.id, m.id, attachment_id))
         at = now().isoformat()
         saved_as = f"{INBOX}/{name}"
         new_seen.append(
-            {"sha256": sha, "message_id": m.id, "attachment_id": attachment_id, "saved_as": saved_as, "at": at}
+            {
+                "sha256": sha,
+                "message_id": m.id,
+                "attachment_id": attachment_id,
+                "saved_as": saved_as,
+                "at": at,
+                "mailbox_id": box.id,
+                "mailbox": box.address,
+            }
         )
         log_lines.append(
             {
                 "at": at,
+                "mailbox": box.address,
                 "message_id": m.id,
                 "from": m.from_address,
                 "subject": m.subject[:200],
@@ -339,6 +373,7 @@ async def scan_mail(
                 score=sc,
                 message_id=m.id,
                 attachment_id=attachment_id,
+                mailbox=box.address,
             )
         )
 
@@ -349,9 +384,11 @@ async def scan_mail(
         )
 
     since = started - timedelta(days=since_days)
-    messages = await mail.list_messages(since, max_messages)
+    messages = await mail.list_messages(since, max_messages, folder=folder)
     result.scanned = len(messages)
     for m in messages:
+        if not wanted(m):
+            continue
         try:
             attachments = await mail.list_attachments(m.id)
         except FileNotFoundError:
@@ -367,7 +404,7 @@ async def scan_mail(
             if sc < THRESHOLD:
                 continue
             result.candidates += 1
-            if (m.id, a.id) in dedupe.seen_ids:
+            if (box.id, m.id, a.id) in dedupe.seen_ids:
                 result.skipped_duplicates += 1
                 continue
             try:
@@ -389,16 +426,16 @@ async def scan_mail(
 
     if bodies:  # receipts written in the body of mail without attachments, saved as .eml.txt
         try:
-            plain = await mail.list_without_attachments(since, max_messages)
+            plain = await mail.list_without_attachments(since, max_messages, folder=folder)
         except Exception as exc:  # noqa: BLE001  the attachments already copied still count
             log.warning("listing mail without attachments failed: %s", exc)
             result.errors.append({"message": "mail without attachments", "error": f"{type(exc).__name__}: {exc}"[:200]})
             plain = []
         result.scanned += len(plain)
         for m in plain:
-            if not body_worth_reading(m, user):
+            if not wanted(m) or not body_worth_reading(m, user):
                 continue
-            if (m.id, BODY_ID) in dedupe.seen_ids:
+            if (box.id, m.id, BODY_ID) in dedupe.seen_ids:
                 result.candidates += 1
                 result.skipped_duplicates += 1
                 continue
@@ -427,12 +464,17 @@ async def scan_mail(
             keep(m, BODY_ID, name, sha, 1.0)
 
     if not dry_run:
-        await _record(books, new_seen, log_lines, result, since_days)
+        await _record(books, new_seen, log_lines, result, since_days, box)
     return result
 
 
 async def _record(
-    books: Books, new_seen: list[dict[str, Any]], log_lines: list[dict[str, Any]], result: IntakeResult, since_days: int
+    books: Books,
+    new_seen: list[dict[str, Any]],
+    log_lines: list[dict[str, Any]],
+    result: IntakeResult,
+    since_days: int,
+    box: Mailbox,
 ) -> None:
     if new_seen:
         await books._update_json(SEEN, [], lambda old: [*old, *new_seen][-SEEN_MAX:])
@@ -448,11 +490,17 @@ async def _record(
         ACTOR,
         "mail_scanned",
         {
+            "mailbox_id": box.id,
+            "mailbox": box.address,
+            "kind": box.kind,
+            "folder": box.folder,
             "since_days": since_days,
             "scanned": result.scanned,
             "candidates": result.candidates,
             "saved": len(result.saved),
             "skipped_duplicates": result.skipped_duplicates,
             "errors": len(result.errors),
+            "filtered_senders": result.filtered_senders,
         },
     )
+    await record_scan(books, box, len(result.saved), None)

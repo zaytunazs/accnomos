@@ -79,6 +79,7 @@ export interface RtProposal {
   /** Where the document is filed now, relative to the books folder (read through Graph for the preview). */
   file_path?: string | null;
   source_name?: string | null;
+  source_mailbox?: string | null; // the mailbox Outlook intake copied it from
   decided_by?: string | null;
   decided_at?: string | null;
   event_id?: string | null;
@@ -311,8 +312,27 @@ export const runtime = {
       method: "POST",
       body: JSON.stringify({ action, reason: reason ?? null }),
     }),
+  /** POST /mail/scan for the signed-in mailbox (its Mail.Read rides on the one Graph token). */
   mailScan: (a: AccountInfo, body: { since_days?: number; dry_run?: boolean }) =>
     call<RtMailScan>(a, "/mail/scan", { method: "POST", body: JSON.stringify(body) }, mailScopesFor(accountKind(a))),
+  /**
+   * POST /mail/scan for one linked mailbox: its own token goes in X-Mailbox-Token, for this request only (one
+   * mailbox per request; the runtime keeps no token). The Graph token still writes the books.
+   */
+  mailScanLinked: (a: AccountInfo, mailboxId: string, mailboxToken: string, body: { since_days?: number; dry_run?: boolean }) =>
+    call<RtMailScan>(a, "/mail/scan", {
+      method: "POST",
+      body: JSON.stringify({ ...body, mailbox: mailboxId }),
+      headers: { "X-Mailbox-Token": mailboxToken },
+    }),
+  /** _System/mail/mailboxes.json (services/runtime/app/mailboxes.py): addresses and settings, never tokens. */
+  mailboxes: (a: AccountInfo) => call<{ mailboxes: RtMailbox[] }>(a, "/mail/mailboxes").then((r) => r.mailboxes),
+  addMailbox: (a: AccountInfo, box: { address: string; kind: "microsoft" | "shared" }) =>
+    call<RtMailbox>(a, "/mail/mailboxes", { method: "POST", body: JSON.stringify(box) }),
+  updateMailbox: (a: AccountInfo, id: string, change: { folder?: string; allow_senders?: string[]; deny_senders?: string[] }) =>
+    call<RtMailbox>(a, `/mail/mailboxes/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(change) }),
+  removeMailbox: (a: AccountInfo, id: string) =>
+    call<RtMailbox>(a, `/mail/mailboxes/${encodeURIComponent(id)}`, { method: "DELETE" }),
   /** POST /mail/triage: reads Inbox previews (Mail.Read) and changes nothing in the mailbox. */
   mailTriage: (a: AccountInfo, body: { since_days?: number; max_threads?: number } = {}) =>
     call<RtTriage>(a, "/mail/triage", { method: "POST", body: JSON.stringify(body) }, mailScopesFor(accountKind(a))),
@@ -1685,7 +1705,25 @@ export interface RtMailScan {
   skipped_duplicates: number;
   dry_run: boolean;
   errors: { message?: string; attachment?: string; error: string }[];
-  items: { name: string; subject: string; from_address: string; score: number }[];
+  items: { name: string; subject: string; from_address: string; score: number; mailbox?: string }[];
+  mailbox_id?: string;
+  mailbox?: string; // the address read
+  filtered_senders?: number;
+}
+
+/** A mailbox Outlook intake reads (services/runtime/app/mailboxes.py). */
+export type RtMailboxKind = "primary" | "microsoft" | "shared";
+export interface RtMailbox {
+  id: string; // "primary" for the signed-in account's own
+  address: string;
+  kind: RtMailboxKind;
+  folder: string; // "all", "inbox", "archive" or a top-level folder's name
+  allow_senders: string[];
+  deny_senders: string[];
+  added_at?: string | null;
+  last_scan_at?: string | null;
+  last_scan_saved?: number | null;
+  last_scan_error?: string | null;
 }
 
 /** POST /mail/triage (services/runtime/app/triage.py). */
