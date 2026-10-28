@@ -152,7 +152,7 @@ export default function AutopilotRules({ card, heading }: { card: string; headin
               </li>
             ))}
           </ul>
-          <div className="mt-3 hidden overflow-x-auto sm:block">
+          <div className="relative mt-3 hidden overflow-x-auto sm:block">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="text-xs font-bold text-muted">
