@@ -156,7 +156,7 @@ async def make_bill_proposal(
         account_override=account,
         created_at=now(),
     )
-    p.journal_draft = final_journal(p)
+    p.journal_draft = await final_journal(books, p)
     await books.save_proposal(p)
     return p
 

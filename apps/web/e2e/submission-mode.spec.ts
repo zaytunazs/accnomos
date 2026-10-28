@@ -32,7 +32,8 @@ async function sweep(page: Page, route: string) {
 
 test.describe("submission mode: no pre-launch wording", () => {
   test.skip(process.env.NEXT_PUBLIC_SUBMISSION_MODE === "0", "pre-launch build");
-  test.describe.configure({ timeout: 90_000 });
+  // One test reads every page in turn (about 1.5 s each, waiting for the network to settle): the budget grows with the list.
+  test.describe.configure({ timeout: Math.max(90_000, PAGES.length * 4_000) });
 
   test("every page, signed out", async ({ page }) => {
     for (const route of PAGES) await sweep(page, route);
