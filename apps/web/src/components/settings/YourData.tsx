@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
@@ -49,6 +50,22 @@ export default function YourData({ card, heading }: { card: string; heading: str
 
   return (
     <>
+      <section aria-labelledby="settings-data-import" className={card}>
+        <h2 id="settings-data-import" className={heading}>
+          Switching from another system
+        </h2>
+        <p className="mt-1 text-sm text-muted">
+          Bring your opening balances, customers, suppliers and unpaid invoices and bills over from Xero, QuickBooks
+          Online, Sage 50, Sage Accounting, FreeAgent or a spreadsheet. You check the account mapping and the opening
+          entry before anything is posted, and a reconciliation report proves the books match the old trial balance.
+        </p>
+        <Link
+          href="/import"
+          className="mt-3 inline-flex h-11 items-center rounded-xl border border-border px-4 text-[15px] font-bold text-teal-dark hover:bg-ground"
+        >
+          Import history
+        </Link>
+      </section>
       <section aria-labelledby="settings-data-export" className={card}>
         <h2 id="settings-data-export" className={heading}>
           Export your data

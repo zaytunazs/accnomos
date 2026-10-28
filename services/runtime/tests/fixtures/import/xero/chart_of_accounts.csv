@@ -1,0 +1,17 @@
+*Code,*Name,*Type,*Tax Code,Description,Dashboard,Expense Claims,Enable Payments,Balance
+090,Business Bank Account,Bank,No VAT,SAMPLE — FICTIONAL COMPANY,Yes,No,No,12450.37
+091,Petty Cash,Bank,No VAT,,No,No,No,85.00
+610,Accounts Receivable,Current Asset,No VAT,,No,No,No,4560.00
+710,Motor Vehicles,Fixed Asset,20% (VAT on Expenses),,No,No,No,9500.00
+800,Accounts Payable,Current Liability,No VAT,,No,No,No,-2130.50
+820,VAT,Current Liability,No VAT,,No,No,No,-1842.20
+825,PAYE Payable,Current Liability,No VAT,,No,No,No,-912.40
+835,Directors' Loan Account,Current Liability,No VAT,,No,No,No,-3000.00
+970,Owner A Share Capital,Equity,No VAT,,No,No,No,-100.00
+960,Retained Earnings,Equity,No VAT,,No,No,No,-10000.00
+200,Sales,Revenue,20% (VAT on Income),,No,No,No,-48200.00
+310,Cost of Goods Sold,Direct Costs,20% (VAT on Expenses),,No,No,No,19340.00
+477,Salaries,Expense,No VAT,,No,No,No,12000.00
+469,Rent,Overhead,Exempt Expenses,,No,No,No,4800.00
+433,Insurance,Expense,Exempt Expenses,,No,No,No,1150.73
+449,Motor Vehicle Expenses,Expense,20% (VAT on Expenses),,No,Yes,No,2299.00

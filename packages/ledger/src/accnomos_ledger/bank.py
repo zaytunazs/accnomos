@@ -76,6 +76,7 @@ class BankLine(BaseModel):
     matched_event_ids: list[str] = []  # all of them, when one payment covers several events
     status: BankLineStatus = "unmatched"
     proposal_id: str | None = None  # an expense proposal made from this line ("create expense proposal")
+    feed_id: str | None = None  # the bank feed's own transaction id, for lines fetched through a bank feed
 
     @property
     def resolved(self) -> bool:
@@ -126,6 +127,91 @@ def suggest_action(line: BankLine) -> ActionHint:
         action="ignore",
         reason="Money in with no sale in the books: post the sales invoice, or ignore it if it isn't income",
     )
+
+
+#: Words that say nothing about who was paid, left out when two descriptions are compared.
+_FILLER = frozenset(
+    [
+        "the",
+        "and",
+        "ltd",
+        "limited",
+        "plc",
+        "payment",
+        "payments",
+        "card",
+        "debit",
+        "credit",
+        "purchase",
+        "direct",
+        "bgc",
+        "clp",
+        "ref",
+        "fpi",
+        "fpo",
+        "dd",
+        "so",
+        "tfr",
+        "bank",
+        "faster",
+        "pos",
+        "visa",
+        "contactless",
+        "gbp",
+        "inv",
+        "from",
+        "transfer",
+    ]
+)
+#: A feed's date and a statement's date for the same payment can differ by a day or two (transaction date
+#: against posting date), so a pair is looked for within this many days either way.
+DUPLICATE_DAYS = 2
+
+
+def _words(text: str | None) -> set[str]:
+    return {w for w in re.findall(r"[a-z0-9&]{3,}", (text or "").lower()) if w not in _FILLER and not w.isdigit()}
+
+
+def _norm_ref(text: str | None) -> str:
+    return re.sub(r"[^a-z0-9]", "", (text or "").lower())
+
+
+def same_payment(a: BankLine, b: BankLine) -> bool:
+    """True when two lines, one from a bank feed and one from a statement CSV, look like one payment.
+
+    Same amount to the penny, dates at most DUPLICATE_DAYS apart, and either the same reference or at least one
+    telling word in common ("SCREWFIX DIRECT" and "SCREWFIX DIRECT ON 30 SEP CLP"). Same amount and date with
+    nothing in common are kept as two payments: wrongly dropping a real payment is worse than a duplicate the
+    user can mark as ignored.
+    """
+    if a.amount_pence != b.amount_pence or abs((a.date - b.date).days) > DUPLICATE_DAYS:
+        return False
+    ra, rb = _norm_ref(a.reference), _norm_ref(b.reference)
+    if ra and ra == rb:
+        return True
+    wa = _words(f"{a.description} {a.reference or ''}")
+    wb = _words(f"{b.description} {b.reference or ''}")
+    return bool(wa & wb)
+
+
+def pair_duplicates(new: Sequence[BankLine], existing: Sequence[BankLine]) -> dict[str, str]:
+    """{new line id: existing line id} for each new line that is already in `existing`, one to one.
+
+    Two identical coffees on one day are two payments: each existing line pairs with at most one new line. The
+    closest date wins when several could pair.
+    """
+    taken: set[str] = set()
+    out: dict[str, str] = {}
+    for ln in sorted(new, key=lambda x: (x.date, x.id)):
+        best = min(
+            (e for e in existing if e.id not in taken and same_payment(ln, e)),
+            key=lambda e: (abs((e.date - ln.date).days), e.date, e.id),
+            default=None,
+        )
+        if best is not None:
+            taken.add(best.id)
+            out[ln.id] = best.id
+    return out
 
 
 def line_id(when: date, amount_pence: int, description: str, balance_pence: int | None) -> str:

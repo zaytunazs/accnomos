@@ -73,6 +73,7 @@ const HASH_GROUP: Record<string, GroupId> = {
   "settings-accountant": "accountant",
   accountant: "accountant",
   "settings-data": "data",
+  "settings-data-import": "data",
   "settings-data-export": "data",
   "settings-leave": "data",
 };

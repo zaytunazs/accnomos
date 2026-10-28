@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import BankReconcile, { type RulePrefillFrom } from "@/components/bank/BankReconcile";
 import BankRules from "@/components/bank/BankRules";
+import BankFeeds from "@/components/bank/BankFeeds";
 import BankUpload from "@/components/bank/BankUpload";
 import SignInCta from "@/components/SignInCta";
 import { EmptyState, LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError } from "@/components/States";
@@ -759,6 +760,10 @@ export default function LiveBank() {
     })();
   }, [refresh]);
 
+  const reload = useCallback(() => {
+    if (account) void refresh(account);
+  }, [account, refresh]);
+
   const act: Act = (key, run) => {
     if (!account) return;
     setBusy(key);
@@ -852,7 +857,8 @@ export default function LiveBank() {
       )}
       {error && <RuntimeErrorNote message={error} />}
       {/* One uploader in a fixed place: inside the empty state it remounted after the first import and lost its result. */}
-      <BankUpload account={account} onDone={() => account && refresh(account)} />
+      <BankFeeds account={account} onSynced={reload} />
+      <BankUpload account={account} onDone={reload} />
       {data.summary.total === 0 ? (
         <EmptyState
           title="No statements yet"

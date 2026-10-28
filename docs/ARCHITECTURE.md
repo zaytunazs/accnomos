@@ -17,6 +17,10 @@ apps/mobile (Flutter) ──┼─> services/runtime ──┼─> Meta models (
   timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports, audit, close (the month-end close
   agent, `app/routes_close.py`). Test mode (`ACCNOMOS_TEST_MODE=1`) adds
   timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports, exports. Test mode (`ACCNOMOS_TEST_MODE=1`) adds
+  agent, `app/routes_close.py`), import (history and opening balances). Test mode (`ACCNOMOS_TEST_MODE=1`) adds
+
+  rebuild), VAT and deadlines, dashboard, bank, bank feeds (TrueLayer), ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
+  timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports. Test mode (`ACCNOMOS_TEST_MODE=1`) adds
   `/__test`. `apps/web/src/lib/runtime.ts` and `apps/mobile/lib/services/runtime_client.dart` have one call per route, except
   that the phone does not call `/reports/*` yet.
 - **`services/hmrc-relay`** (`relay`): exists only because HMRC needs the OAuth **client secret** at code exchange and
@@ -26,7 +30,8 @@ apps/mobile (Flutter) ──┼─> services/runtime ──┼─> Meta models (
 - **`packages/ledger`**: ledger events, bank CSV parsing and matching, the VAT 9-box engine. No model code.
 - **`packages/connectors`**: `StorageProvider`, `MailProvider`, `ContactsProvider`, `CalendarProvider`; Microsoft Graph and fake implementations.
 - **Runtime state:** none, except voice audio in a temporary directory deleted after conversion, and the in-memory rate limiter
-  and (without `ACTIONS_SIGNING_KEY`) a random per-process signing key for action cards. Browsers call the runtime directly; CORS
+  and (without `ACTIONS_SIGNING_KEY`) a random per-process signing key for action cards. Bank feeds add an in-memory set of
+  spent connect states and need the server key `BANKFEEDS_TOKEN_KEY`, which seals each user's TrueLayer refresh token in their own books. Browsers call the runtime directly; CORS
   (`CORS_ORIGINS`) is its gate, because every call is useless without the caller's own Graph token. Demo deployment (`deploy/`):
   Docker on a DGX Spark behind a tunnel as `api.accnomos.com`, Ollama on the same host (not checked from this review).
 
@@ -72,11 +77,12 @@ Documents, filed by code and never deleted:
 | `03 Sales/<name>` | runtime, a scanned document the reader classes as a sales invoice | |
 | `03 Sales/invoices/INV-0001.json`, `.pdf`; `03 Sales/invoices/sent/INV-0001.pdf` | runtime, invoicing | `invoices/` and `invoices/sent/` are created at onboarding |
 | `03 Sales/credit-notes/CN-0001.json`, `.pdf`; `03 Sales/credit-notes/sent/CN-0001.pdf` | runtime, credit notes (`credit_notes.py`) | created with the first credit note |
-| `04 Bank statements/<last date>_<bank>.csv` | runtime, bank import | |
+| `04 Bank statements/<last date>_<bank>.csv` | runtime, bank import; `<last date>_feed.csv` for lines a bank feed fetched (`bank_feeds.py`) | |
 | `05 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | |
 | `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
 | `07 Reports/<yyyy-mm>-month-end-draft.xlsx`, `07 Reports/<yyyy-mm>-month-end.xlsx` | runtime, the month-end close (`app/month_end.py`): the draft (About, P&L, Balance sheet) is rewritten by each run once nothing blocks the close; the closed one is written on Approve and never overwritten (a re-close saves ` (2)`) | Posts nothing |
 | `07 Reports/<yyyy-mm-dd>-<name>.xlsx` | runtime, `POST /reports/export` (*Export to OneDrive* on Reports) | `name` is `profit-and-loss`, `aged-balances`, `vat-summary`, `monthly-trend` or `reports` (all of them); a second export the same day gets ` (2)`, nothing is overwritten. Starts with `SAMPLE — FICTIONAL COMPANY` when the books are the demo seed's. Posts nothing |
+| `07 Reports/<yyyy-mm-dd>-opening-balances-reconciliation.csv` | runtime, `POST /import/post` (`import_history.py`) | the source trial balance against the Accnomos one, account by account; a second the same day gets ` (2)` |
 | `Archive/<year>/<original path>`, `Archive/<year>.zip` | runtime, `POST /files/archive` (`archive.py`) | made when first used; the zip is an extra copy with `manifest.json`, the folder stays. See *Files, archive and backups* |
 | `Backups/accnomos-backup-<yyyy-mm-dd>.zip`, `….zip.sha256` | runtime, `POST /backups` (`backups.py`) | made when first used; a second backup the same day gets ` (2)` |
 | `_Trash/<yyyy-mm-dd>/<original path>` | runtime: Clean up, backup retention, an undone archive's zip, files a restore replaced | made when first used; **never emptied by the app**, the user empties it in OneDrive |
@@ -115,12 +121,16 @@ Books.xlsx still show the path as it was saved.
 | `Invoicing/profile.json`, `sequence.json`, `credit_sequence.json`, and the logo file | business profile, invoice and credit note numbering, logo (any file under `_System/Invoicing/`) | rewritten |
 | `Payments/payouts.json` | each bank line matched as a Stripe/PayPal payout: line, provider, amount, the Dr 1200 Bank / Cr clearing event, and its reversal if unmatched (`online_payments.match_payout`) | updated |
 | `Payments/providers.json` | the user's own Stripe account id / PayPal merchant id / PayPal.me name for payment links, when linked (`online_payments.py`); never a key or token | rewritten |
+| `bankfeeds.json` | bank feed connections (`bank_feeds.py`): bank and account names, last four digits, consent created/expiry, last synced, and the TrueLayer refresh token sealed with the server's `BANKFEEDS_TOKEN_KEY` (AES-256-GCM); never an access token | rewritten |
 | `Payments/payments.json` | recorded payments: amount, date, account, the split across invoices or bills, the posted event (`payments.py`) | rewritten whole; a removed payment is kept, marked removed |
 | `Payroll/runs/<yyyy-mm>.json` | one pay run per month | updated |
 | `Planner/applied.json` | which day plans were applied (idempotency) | updated |
 | `Todos/todos.json` | to-dos added from triage | updated |
 | `archive/map.json` | old path → new path for every document the app moved (archive, Files page move and rename) | updated; applied when proposals and bank lines are read |
 | `archive/runs/<id>.json` | one archive run: every move, its zips, and when it was undone | written, then updated once by Undo |
+| `Import/draft.json` | the import wizard's draft: uploaded files' rows, vendor, conversion date, the user's account mapping (`app/import_history.py`) | rewritten; emptied after posting |
+| `Import/sources/<sha256>-<name>` | each export uploaded to the import, as it came | written once |
+| `Import/opening.json` | the import in force: the opening entry's id, the mapping used, the open invoices and bills (read by `app/contacts.py` as documents on account), contacts added, the reconciliation file | rewritten; undo marks it undone |
 | `Settings/files.json` | `backup_keep` (default 12), `monthly_backup` (default off) | rewritten |
 | `profile.json` | what these books are: name, kind (`company`, `sole_trader`, `personal`), kind settings, other linked accounts by sign-in name (`app/profile.py`, `PUT /profile`) | rewritten whole |
 | `Accounting/accounts.json` | the chart of accounts once the user changes it (absent: the standard UK chart in `chart.py`); codes never change, used accounts are archived, never deleted | rewritten whole |

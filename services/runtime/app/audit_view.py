@@ -193,6 +193,16 @@ SUMMARIES: dict[str, Summary] = {
     "bank_rule_deleted": lambda r, w: "Deleted a bank rule",
     "bank_rules_reordered": lambda r, w: "Reordered the bank rules",
     "bank_reconciled": lambda r, w: f"Reconciled a bank line ({r.get('kind') or 'match'}) through Review approval",
+    "bank_feed_connected": lambda r, w: (
+        f"Connected a bank feed from {r.get('bank') or 'a bank'}" + (" (sandbox)" if r.get("sandbox") else "")
+    ),
+    "bank_feed_synced": lambda r, w: (
+        "Fetched the bank feed: "
+        + _plural(_n(r, "new"), "new line")
+        + (f", {_plural(_n(r, 'duplicates'), 'line')} already in a statement" if r.get("duplicates") else "")
+    ),
+    "bank_feed_reconfirmed": lambda r, w: f"Reconfirmed the {r.get('bank') or 'bank'} feed for another 90 days",
+    "bank_feed_disconnected": lambda r, w: f"Disconnected the {r.get('bank') or 'bank'} feed",
     # Sales invoices
     "invoice_profile_saved": lambda r, w: "Saved your invoice details",
     "invoice_created": lambda r, w: f"Created invoice {_inv(r)}" + _pounds(r, "total_pence"),
@@ -349,6 +359,19 @@ SUMMARIES: dict[str, Summary] = {
     "contacts_not_same": lambda r, w: "Said some contacts are not the same business",
     "contacts_merged": lambda r, w: f"Merged into one ({r.get('name', 'a contact')})",
     "contacts_merge_undone": lambda r, w: "Undid a contact merge",
+    # Import history (app/import_history.py)
+    "import_file_added": lambda r, w: (
+        f"Uploaded {str(r.get('kind') or 'a file').replace('_', ' ')} for the import"
+        + (f": {_plural(_n(r, 'rows'), 'row')}" if r.get("rows") else "")
+    ),
+    "import_discarded": lambda r, w: "Started the import again",
+    "opening_balances_posted": lambda r, w: (
+        f"Posted opening balances at {r.get('conversion_date', 'the conversion date')}: "
+        + _plural(_n(r, "accounts"), "account")
+        + (f", {_plural(_n(r, 'open_items'), 'open item')}" if _n(r, "open_items") else "")
+        + ("; reconciled to the source" if r.get("proved") else "; the reconciliation needs a look")
+    ),
+    "opening_balances_undone": lambda r, w: "Undid the opening balances; the entry was reversed",
     # Vehicles and mileage
     "vehicle_added": lambda r, w: "Added a vehicle",
     "vehicle_changed": lambda r, w: "Changed a vehicle" + _fields(r),

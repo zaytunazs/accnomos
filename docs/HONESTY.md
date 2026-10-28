@@ -112,6 +112,40 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - **Sales and Purchases overviews** (`app/overview.py`) are computed from the same invoices and ledger as Contacts and the aged reports, with a 30-day window for money in/out and invoiced. Money out and the bills owed are only as complete as the payments the user has recorded or matched; a bill paid at the time counts as paid.
 - **Customer statements** (`app/statements.py`) show customer-side documents only. The list of unpaid invoices appears only for statements that run to today, because open items describe the books now. Sent statements are kept in `03 Sales/statements` and audited. Tested on fake storage and a fake mailbox; not sent through real Outlook.
 
+## Import history and opening balances
+
+- **No export from a real Xero, QuickBooks Online, Sage 50, Sage Accounting or FreeAgent account has been read.** The sample files in `services/runtime/tests/fixtures/import/` (one fictional company, SAMPLE — FICTIONAL COMPANY) were written by hand from what the vendors' help pages say their exports contain. Those pages (central.xero.com, quickbooks.intuit.com, help.sbc.sage.com, support.freeagent.com) could not be opened from the build machine on 28 Oct 2026; their content was taken from web search summaries, partly via third-party guides (TinyTax, QuickFile). The parser accepts many spellings of each column (`FIELDS` in `import_formats.py`), but an export whose header uses none of them is refused, and the FreeAgent Summary CSV layout (code, category, signed total) is a guess.
+- Xero's invoice export has one row per line item; open items are de-duplicated by contact and number, so an invoice is counted once, but two different invoices with the same number for the same contact would collapse into one. Credit notes and receipts in an aged list are left out (each is listed as skipped): the list must be of what is still owed per invoice.
+- Mapping suggestions are name rules and type words, not a model. A name rule can be wrong (an account called "Vehicle hire" goes to 7300 Motor expenses); every suggestion is shown and editable, and an account whose type we cannot tell blocks posting.
+- **Open items are documents, not ledger events.** They live in `_System/Import/opening.json` and appear in aged balances, statements, Books.xlsx and *Record payment*. They cannot be matched straight to a bank line on the Bank page (that needs a posted entry), and a credit note cannot yet be raised against one from Invoices; record the payment instead. Undo is refused while a payment, credit use or credit note points at one.
+- Converting part way through a year posts this year's income and costs so far as one entry on the balance date, so a P&L for a period containing that date shows them all at once ("keep"); "retained" folds them into 3200 Retained profit instead. Neither is a tax rule; the VAT treatment (opening balances are on no return) follows VAT Notice 700/12, read through a search summary only.
+- Not imported: transaction history before the conversion date, fixed-asset registers and depreciation, payroll year-to-date figures, stock, multi-currency balances, VAT already submitted (the VAT control balance comes across as one figure). Android has no import screen.
+
+## Bank feeds (TrueLayer)
+
+- **Never run against TrueLayer, not even its sandbox.** No TrueLayer app or credentials were available, and this
+  session could not open docs.truelayer.com: the request and response shapes in `services/runtime/app/truelayer.py`
+  come from TrueLayer's documentation as quoted in search results (28 Oct 2026). Every call in the tests and in test mode
+  goes to the fake in `services/runtime/app/bankfeed_fakes.py`, which answers with those same assumed shapes, so a
+  wrong assumption would pass every test. Least certain: `POST /connections/extend` (request fields, the
+  `user_input_link` answer) and whether a refresh answers a new refresh token (the code keeps one if it does).
+- **Why TrueLayer and not GoCardless** (which would need no secret in the user's books): GoCardless reportedly stopped
+  taking new Bank Account Data customers in July 2025. That comes from a third-party project's docs; no GoCardless
+  notice was found. None of the four providers publishes UK prices for small volumes. `docs/research/BANK_FEEDS.md`.
+- **No 2025 FCA change to the 90-day rule was found.** The code follows PS21/19 (reconfirm with the app at least every
+  90 days, stop reading otherwise); the FCA's 2026 consultation on the long-term open banking framework was not read.
+- **The refresh token is stored**, sealed with the server key `BANKFEEDS_TOKEN_KEY` in the user's
+  `_System/bankfeeds.json`. Whoever holds both the key and a user's file can read that user's transactions until the
+  consent ends. Rotating the key makes every connection "connect again". There is no key rotation with re-sealing.
+- Duplicates between a feed and a statement CSV are found by code (same amount, dates within 2 days, same reference or a
+  word in common), tested on the gold Barclays CSV and six made-up feed lines only. Two payments of the same amount to
+  the same payee within 2 days, one only in the CSV and one only in the feed, would be taken as one. Same amount and
+  date with no word in common are kept as two (a duplicate the user can ignore is safer than a lost payment).
+- Fetched on app open at most hourly per tab, and only on a device where the Bank page has seen a feed. Two tabs
+  syncing at the same moment could both add the same new lines (no lock across requests; there is no server state).
+- Pending transactions are not read (booked only). Only GBP lines are kept; others are counted as skipped.
+- Android does not show bank feeds yet; the phone still imports CSVs through the runtime.
+
 ## Payroll
 
 - **Estimates only. Not payroll, not RTI.** No FPS/EPS, no payment to HMRC; your payroll provider does that.

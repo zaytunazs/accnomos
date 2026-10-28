@@ -1,0 +1,5 @@
+ContactName,EmailAddress,InvoiceNumber,Reference,InvoiceDate,DueDate,Total,TaxTotal,InvoiceAmountPaid,InvoiceAmountDue,Description,Quantity,UnitAmount,Type
+Acme Kitchens Ltd (SAMPLE — FICTIONAL COMPANY),accounts@acme-kitchens.example,INV-0101,Kitchen fit,15/02/2026,17/03/2026,2400.00,400.00,0.00,2400.00,Labour,1,1500.00,Sales invoice
+Acme Kitchens Ltd (SAMPLE — FICTIONAL COMPANY),accounts@acme-kitchens.example,INV-0101,Kitchen fit,15/02/2026,17/03/2026,2400.00,400.00,0.00,2400.00,Worktops,1,500.00,Sales invoice
+Brook Lane Builders,office@brooklane.example,INV-0104,,05/03/2026,04/04/2026,1560.00,260.00,0.00,1560.00,Doors,1,1300.00,Sales invoice
+Carter & Sons,,INV-0098,,10/01/2026,09/02/2026,1200.00,200.00,600.00,600.00,Stairs,1,1000.00,Sales invoice

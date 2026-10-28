@@ -1,0 +1,22 @@
+Trial Balance
+Hollybank Joinery Ltd (SAMPLE — FICTIONAL COMPANY)
+As at 31 March 2026
+
+Account Code,Account,Account Type,Debit,Credit,YTD Debit,YTD Credit
+090,Business Bank Account,Bank,"1,020.00",,"12,450.37",
+091,Petty Cash,Bank,,,85.00,
+610,Accounts Receivable,Current Asset,"2,160.00",,"4,560.00",
+710,Motor Vehicles,Fixed Asset,,,"9,500.00",
+800,Accounts Payable,Current Liability,,"1,250.50",,"2,130.50"
+820,VAT,Current Liability,,410.00,,"1,842.20"
+825,PAYE Payable,Current Liability,,304.10,,912.40
+835,Directors' Loan Account,Current Liability,,,,"3,000.00"
+970,Owner A Share Capital,Equity,,,,100.00
+960,Retained Earnings,Equity,,,,"10,000.00"
+200,Sales,Revenue,,"4,300.00",,"48,200.00"
+310,Cost of Goods Sold,Direct Costs,"1,700.00",,"19,340.00",
+477,Salaries,Expense,"1,000.00",,"12,000.00",
+469,Rent,Overhead,400.00,,"4,800.00",
+433,Insurance,Expense,,,"1,150.73",
+449,Motor Vehicle Expenses,Expense,"184.60",,"2,299.00",
+Total,,,"6,464.60","6,264.60","66,185.10","66,185.10"

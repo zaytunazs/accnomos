@@ -378,3 +378,21 @@ async def test_require_without_a_header_is_401(demo_env: None) -> None:
     with pytest.raises(HTTPException) as exc:
         demo.require(_Req({}))  # type: ignore[arg-type]
     assert exc.value.status_code == 401
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/payments/online/stripe/start",
+        "/payments/online/stripe/connect",
+        "/payments/online/paypal/connect",
+        "/books/bankfeeds/start",
+        "/books/bankfeeds/connect",
+    ],
+)
+def test_connecting_an_outside_provider_is_refused_in_a_demo(path: str) -> None:
+    """Stripe, PayPal and bank feeds are reached with the server's own credentials: a demo never connects one."""
+    from app.main import app
+
+    r = TestClient(app).post(path, json={}, headers={demo.HEADER: "any", "X-Graph-Token": "t", "X-User": "u"})
+    assert r.status_code == 403 and "demo sandbox" in r.json()["detail"]

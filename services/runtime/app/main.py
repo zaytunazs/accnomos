@@ -225,6 +225,9 @@ app.include_router(dashboard_router)
 from app.routes_bank import router as bank_router  # noqa: E402  /books/bank/*
 
 app.include_router(bank_router)
+from app.routes_bankfeeds import router as bankfeeds_router  # noqa: E402  /books/bankfeeds/* (TrueLayer)
+
+app.include_router(bankfeeds_router)
 from app.routes_ask import router as ask_router  # noqa: E402  POST /books/ask, /books/ask/voice
 
 app.include_router(ask_router)
@@ -292,6 +295,9 @@ app.include_router(accounting_router)
 from app.routes_exports import router as exports_router  # noqa: E402  /exports/* (Reports & exports, import files)
 
 app.include_router(exports_router)
+from app.routes_import import router as import_router  # noqa: E402  /import/* (history and opening balances)
+
+app.include_router(import_router)
 if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI under /__test (app/testmode.py)
     from app import testmode
 
