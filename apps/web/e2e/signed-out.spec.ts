@@ -94,15 +94,33 @@ async function checkPage(page: Page, route: string) {
 
   // Every enabled button does something observable (navigation, dialog,
   // download, print or a changed page); every disabled one names its reason.
-  const buttons = page.getByRole("button");
-  const count = await buttons.count();
-  for (let i = 0; i < count; i++) {
+  // Each button is found again by its name and which one of that name it is, after a fresh load: a click can change
+  // what the next load shows (an opened or dismissed panel is remembered), so positions shift, and some buttons
+  // arrive after the first paint (Try the demo, once the runtime says demos are on). Name, state and reason are read
+  // in one go, so they always belong to the same button.
+  const describe = (els: Element[]) =>
+    els.map((el) => ({
+      name: el.getAttribute("aria-label") ?? (el as HTMLElement).innerText.trim().slice(0, 40),
+      disabled: (el as HTMLButtonElement).disabled || el.getAttribute("aria-disabled") === "true",
+      reason: el.getAttribute("title") ?? el.getAttribute("aria-describedby") ?? "",
+    }));
+  await page.waitForLoadState("networkidle");
+  const seen = new Map<string, number>();
+  const wanted = (await page.getByRole("button").evaluateAll(describe)).map((b) => {
+    const k = seen.get(b.name) ?? 0;
+    seen.set(b.name, k + 1);
+    return { name: b.name, k };
+  });
+  for (const { name: wantedName, k } of wanted) {
     await page.goto(route);
-    const btn = page.getByRole("button").nth(i);
-    const name = (await btn.getAttribute("aria-label")) ?? ((await btn.innerText()).trim().slice(0, 40));
-    if (!(await btn.isEnabled())) {
-      const reason = (await btn.getAttribute("title")) ?? (await btn.getAttribute("aria-describedby"));
-      expect(reason?.trim() || "", `${route}: disabled button "${name}" names its reason`).not.toBe("");
+    await page.waitForLoadState("networkidle");
+    const all = await page.getByRole("button").evaluateAll(describe);
+    const at = all.map((b, i) => (b.name === wantedName ? i : -1)).filter((i) => i >= 0)[k];
+    if (at === undefined) continue; // gone after an earlier click changed the page (that click did something)
+    const btn = page.getByRole("button").nth(at);
+    const { name, disabled, reason } = all[at];
+    if (disabled) {
+      expect(reason.trim(), `${route}: disabled button "${name}" names its reason`).not.toBe("");
       continue;
     }
     const before = await page.evaluate(() => ({
