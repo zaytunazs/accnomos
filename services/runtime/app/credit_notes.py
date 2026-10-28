@@ -262,6 +262,11 @@ async def create_credit_note(
     inv = await get_invoice(books, invoice_number)
     if inv.status not in ("sent", "paid") or not inv.event_id:
         raise InvoiceStateError(f"Invoice {inv.number} is {inv.status}; only a sent invoice can be credited")
+    if inv.reverse_charge:  # a credit note would need its own reverse-charge wording and posting (not built)
+        raise InvoiceError(
+            f"Invoice {inv.number} is under the VAT reverse charge; credit notes for those are not built yet. "
+            "Void it (when nothing is paid) and raise a new invoice, or ask your accountant"
+        )
     issue = draft.issue_date or today or london_today()
     if issue < inv.issue_date:
         raise InvoiceError("The credit note is dated before the invoice")

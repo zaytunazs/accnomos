@@ -212,6 +212,7 @@ TALKS_HTTP = {
     "ai/ask.py": "cfg.base_url",
     "ai/extract.py": "cfg.base_url",
     "ai/duplicates.py": "cfg.base_url",
+    "ai/cis_read.py": "cfg.base_url",
     "ai/crop.py": "cfg.base_url (SAM, key mode)",
     "ai/voice.py": "cfg.base_url",
     "ai/verify.py": "cfg.base_url or BASETEN_BASE",
@@ -552,6 +553,7 @@ PUBLIC_ROUTES = {
     "GET /lookup/status": "says only whether look-ups are configured",
     "GET /books/bank/coding-options": "the fixed chart of accounts and VAT codes; nothing from the user's books",
     "POST /public/early-access": "the operator's launch list sign-up, before anyone has an account",
+    "GET /cis/reverse-charge": "fixed text from HMRC's reverse charge guidance; nothing from the user's books",
     "GET /payments/online/stripe/callback": (
         "Stripe's browser redirect; only checks the signed one-time state and hands back to Settings, touches no books"
     ),
