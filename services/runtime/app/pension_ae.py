@@ -43,7 +43,7 @@ from app.paye_rates import Frequency
 Category = Literal["eligible_jobholder", "non_eligible_jobholder", "entitled_worker", "not_a_worker"]
 Basis = Literal["qualifying", "full_pay"]
 Arrangement = Literal["net_pay", "relief_at_source", "salary_sacrifice"]
-Provider = Literal["generic", "nest", "peoples_pension", "now_pensions"]
+Provider = Literal["generic", "nest", "peoples_pension", "smart_pension", "now_pensions"]
 
 CATEGORY_LABELS: dict[str, str] = {
     "eligible_jobholder": "Eligible jobholder (enrol automatically)",
@@ -190,7 +190,7 @@ class ScheduleRow:
     postcode: str = ""
     email: str = ""
     salary_sacrifice: bool = False
-    reason_code: str = ""
+    reason_code: str = ""  # overrides the provider's derived missing/partial contribution code
 
 
 @dataclass(frozen=True)
@@ -203,6 +203,23 @@ class ScheduleHeader:
     payment_source: str = ""  # Nest payment source name
     pay_code: str = ""  # NOW: Pensions pay code
     due_date: date | None = None
+    arrangement: Arrangement = "net_pay"
+    period_number: int = 0  # tax week or month of the pay date (Smart Pension field 10)
+
+
+class PensionFileError(ValueError):
+    pass
+
+
+def _status(h: ScheduleHeader, r: ScheduleRow) -> Literal["left", "opted_out", "no_earnings", ""]:
+    """Why a row may have no or partial contributions, in the order the providers' codes rank them."""
+    if r.left_on is not None and r.left_on <= h.period_end:
+        return "left"
+    if r.opted_out_on is not None and r.opted_out_on <= h.period_end:
+        return "opted_out"
+    if r.pensionable_pence <= 0:
+        return "no_earnings"
+    return ""
 
 
 def _money(p: int) -> str:
@@ -239,13 +256,25 @@ def generic_csv(h: ScheduleHeader, rows: list[ScheduleRow]) -> str:
 
 
 NEST_FREQ = {"weekly": "Weekly", "fortnightly": "Fortnightly", "four_weekly": "Four Weekly", "monthly": "Monthly"}
+#: Detail field 9, "Reason for partial or non-payment" (guide section 3.2.2): 1 no further contributions (left),
+#: 9 member has opted out, 5 member has insufficient earnings.
+NEST_REASON = {"left": "1", "opted_out": "9", "no_earnings": "5", "": ""}
+NEST_FILE_VERSION = "4"  # trailer field 3, "Please enter 4"
 
 
 def nest_csv(h: ScheduleHeader, rows: list[ScheduleRow]) -> str:
-    """Nest contribution schedule ("CS"), from Nest's "Employer payroll guide" V13 (08/2019), section 3.2:
-    header H (11 fields), one D record per worker (21 fields), trailer T. RAS: member contribution net of 20 %.
-    https://www.nestpensions.org.uk/schemeweb/dam/nestlibrary/helpcentre-documents/Helpful-resources-Employer/employer-payroll-guide.pdf
-    Nest's online template may have changed since V13: check a file against Nest's current template first."""
+    """Nest contribution schedule ("CS"), from Nest's "Employer payroll guide" (the edition on Nest's site, read 28 Oct
+    2026; it asks for file version 4 in the trailer), section 3.2:
+    https://www.nestpensions.org.uk/schemeweb/dam/nestlibrary/employer-payroll-guide.pdf
+    Header H (11 fields: employer reference, CS, earnings period end date, payment source, payment due date,
+    frequency, two exception-schedule fields left blank, earnings period start date, bulk update), one D record per
+    worker (21 fields: surname, NI number or else the alternative unique identifier, pensionable earnings, a blank
+    family-leave field, employer and member contributions, reason code, then fields 10-21 for group, payment source,
+    opt-out notice and second-enrolment changes, all blank here) and trailer T (count of D records, file version 4).
+    Dates YYYY-MM-DD. Member contributions are what was deducted (relief at source: net of 20 %).
+    Frequency must match the schedule's frequency in Nest exactly; Nest also offers "Tax Weekly" and "Tax Monthly",
+    which this file does not write. Reason 9 (opted out) is for opt-outs the employer was told about; Nest's paper
+    opt-out notice fields 17 and 18 are left blank."""
     buf = io.StringIO()
     w = csv.writer(buf, lineterminator="\r\n")
     w.writerow(
@@ -256,37 +285,138 @@ def nest_csv(h: ScheduleHeader, rows: list[ScheduleRow]) -> str:
         ]
     )  # fmt: skip
     for r in rows:
+        reason = r.reason_code or NEST_REASON[_status(h, r)]
         w.writerow(
             [
                 "D", _safe(r.surname[:30]), r.nino, _safe(r.payroll_id[:30]) if not r.nino else "",
-                _money(r.pensionable_pence), "", _money(r.employer_pence), _money(r.employee_pence), r.reason_code,
+                _money(r.pensionable_pence), "", _money(r.employer_pence), _money(r.employee_pence), reason,
                 *([""] * 12),
             ]
         )  # fmt: skip
-    w.writerow(["T", str(len(rows)), ""])
+    w.writerow(["T", str(len(rows)), NEST_FILE_VERSION])
     return buf.getvalue()
 
 
+#: Detail field F2, "Missing/partial pension code": 1 left the company, 4 chosen to stop contributions,
+#: 5 earnings below the threshold or no pension-related earnings.
+TPP_REASON = {"left": "1", "opted_out": "4", "no_earnings": "5", "": ""}
+TPP_DETAIL_HEADINGS = [
+    "Record Type", "Date of Birth", "Unique Identifier", "Employer Pension Contribution",
+    "Employee Pension Contribution", "Missing/partial pension code", "EAC/ELC premium", "Pensionable earnings per PRP",
+]  # fmt: skip
+#: Characters The People's Pension refuses anywhere in the file (data requirements v9, "Essential requirements").
+_TPP_FORBIDDEN = str.maketrans("", "", "=!\u2018\u2019'[]\u201c\u201d\"\\")
+
+
+def _tpp_text(s: str) -> str:
+    return s.translate(_TPP_FORBIDDEN).replace(",", " ").strip()[:50]
+
+
 def peoples_pension_csv(h: ScheduleHeader, rows: list[ScheduleRow]) -> str:
-    """The People's Pension contributions file, from "Contributions file data requirements" version 9 (effect from
-    August 2020, ref BR ESU 0008.0622): H record (admin account, pay period start and end, file type CO), one D record
-    per employee (date of birth, unique identifier, employer and employee contributions, missing/partial code,
-    EAC/ELC premium, pensionable earnings), T record with the contributions total.
-    https://thepeoplespension.co.uk/wp-content/uploads/2019/02/contributions-file-data-requirements-from-6-April-2019.pdf
-    """
+    """The People's Pension contributions file, "Contributions file data requirements" version 9 (with effect from
+    August 2020; still the version The People's Pension links to, read 28 Oct 2026):
+    https://uvlznp.files.cmp.optimizely.com/download/assets/contributions-file-data-requirements.pdf/15821c5c27ad11f1b359f6bb85ab62d3
+    Header H (admin account, pay period start and end, file type CO); then column headings, which the guide requires
+    "for the details record section of the file only"; one D record per employee (date of birth, unique identifier,
+    employer and employee contributions, missing/partial code, EAC/ELC premium, pensionable earnings per pay
+    reference period); trailer T with the employer plus employee total. The characters = ! ' [ ] " \\ are not
+    allowed anywhere, so they are removed from text rather than quoted. Employee contributions are as deducted."""
     buf = io.StringIO()
-    w = csv.writer(buf, lineterminator="\r\n")
-    w.writerow(["H", h.provider_ref, h.period_start.strftime("%d/%m/%Y"), h.period_end.strftime("%d/%m/%Y"), "CO"])
+    w = csv.writer(buf, lineterminator="\r\n", quoting=csv.QUOTE_NONE, escapechar=None)
+    w.writerow(
+        ["H", _tpp_text(h.provider_ref), h.period_start.strftime("%d/%m/%Y"), h.period_end.strftime("%d/%m/%Y"), "CO"]
+    )
+    w.writerow(TPP_DETAIL_HEADINGS)
     total = 0
     for r in rows:
         total += r.employer_pence + r.employee_pence
         w.writerow(
             [
-                "D", r.dob.strftime("%d/%m/%Y") if r.dob else "", _safe(r.payroll_id), _money(r.employer_pence),
-                _money(r.employee_pence), r.reason_code, "", _money(r.pensionable_pence),
+                "D", r.dob.strftime("%d/%m/%Y") if r.dob else "", _tpp_text(r.payroll_id),
+                _money(r.employer_pence), _money(r.employee_pence), r.reason_code or TPP_REASON[_status(h, r)], "",
+                _money(r.pensionable_pence),
             ]
         )  # fmt: skip
     w.writerow(["T", _money(total)])
+    return buf.getvalue()
+
+
+SMART_PAPDIS_HEADINGS = [
+    "PAPDIS Version", "Pension Provider ID", "Employer ID", "Group", "Sub Group", "Pay Period Start Date",
+    "Pay Period End Date", "Contribution Deduction Date", "Frequency Code", "Tax Period", "Title", "Forename 1",
+    "Forename 2", "Surname", "Employee ID", "Birth Date", "Gender", "National Insurance Number", "Address 1",
+    "Address 2", "Address 3", "Address 4", "Postcode", "Country", "Email Address", "Employment Start Date",
+    "Exit Date", "Exit Reason Code", "Assessment Code", "Event Code", "Event Date", "Deferral Date",
+    "AE Opt-Out Date", "AE Opt-Out Reference", "Enrolment Communications Issued Date",
+    "Employer Contributions Amount", "Employee Contributions Amount", "Additional Voluntary Contributions Amount",
+    "Additional Voluntary Contributions Percent", "Pensionable Earnings Amount", "Employer Contributions Percent",
+    "Employee Contributions Percent", "Salary Sacrifice Indicator",
+]  # fmt: skip
+SMART_TITLES = frozenset(["Mr", "Mrs", "Ms", "Miss", "Dr", "Lord", "Lady", "Sir", "Prof", "Rev", "Captain", "Bursar"])
+#: Field 29, Assessment Code.
+SMART_ASSESSMENT = {
+    "not_a_worker": "0",
+    "eligible_jobholder": "1",
+    "non_eligible_jobholder": "2",
+    "entitled_worker": "3",
+}
+#: Field 30, Event Code when the member was enrolled in this pay period: 1 automatic enrolment, 2 opt-in,
+#: 3 voluntary joiner.
+SMART_EVENT = {"eligible_jobholder": "1", "non_eligible_jobholder": "2", "entitled_worker": "3", "not_a_worker": "3"}
+
+
+def _pct(part: int, base: int) -> str:
+    """A contribution as a percentage of pensionable earnings: up to 3 decimal places, no % sign."""
+    if base <= 0:
+        return "0"
+    thousandths = half_up(Fraction(part * 100_000, base))
+    whole, frac = divmod(thousandths, 1000)
+    return f"{whole}.{frac:03d}".rstrip("0").rstrip(".")
+
+
+def smart_pension_csv(h: ScheduleHeader, rows: list[ScheduleRow]) -> str:
+    """Smart Pension contribution upload in PAPDIS 1.0 ("PAP01"), the 43 fields of Smart Pension's "CSV
+    Specification - PAPDIS 1.0 - PAP01" (read 28 Oct 2026):
+    https://uploads-ssl.webflow.com/5de10f93d41c9b7a31b7c9ca/5f461a5a33c1194026afe6e8_smart-pension-csv-data-interface-specification-papdis-1.0.pdf
+    and its help centre "How do I use a PAPDIS file to upload pre-assessed pension contributions?".
+    One row per employee after a row of field names (the specification does not say whether a heading row is
+    expected; payroll packages' PAPDIS exports carry one). Dates YYYY-MM-DD, money in pounds and pence with no
+    symbol or commas. Smart processes this file only for the net pay arrangement; relief at source is refused.
+    Salary sacrifice: the whole contribution is the employer's and the employee amount is 0.00. Pensionable earnings
+    are the earnings the contributions were worked out on (qualifying earnings: the band amount, as the spec asks)."""
+    if h.arrangement == "relief_at_source":
+        raise PensionFileError(
+            "Smart Pension's PAPDIS upload is for the net pay arrangement only: contributions under relief at source "
+            "are not processed through it (Smart Pension, CSV Specification PAPDIS 1.0). Ask Smart Pension for "
+            "their relief at source template, or use the generic CSV."
+        )
+    buf = io.StringIO()
+    w = csv.writer(buf, lineterminator="\r\n")
+    w.writerow(SMART_PAPDIS_HEADINGS)
+
+    def d(x: date | None) -> str:
+        return x.isoformat() if x else ""
+
+    for r in rows:
+        first, *rest = (r.forename or "").split(" ", 1) or [""]
+        addr = [_safe(a[:35]) for a in r.address[:4]] + [""] * (4 - len(r.address[:4]))
+        status = _status(h, r)
+        enrolled_now = r.enrolled_on is not None and h.period_start <= r.enrolled_on <= h.period_end
+        event = SMART_EVENT[r.category] if enrolled_now else "0"
+        employee = 0 if r.salary_sacrifice else r.employee_pence
+        w.writerow(
+            [
+                "PAP01", "Smart Pension", _safe(h.provider_ref), "", "", d(h.period_start), d(h.period_end),
+                d(h.pay_date), R.RTI_PAY_FREQ[h.frequency], f"{h.period_number:02d}",
+                r.title if r.title in SMART_TITLES else "", _safe(first[:35]), _safe((rest[0] if rest else "")[:35]),
+                _safe(r.surname[:35]), _safe(r.payroll_id[:35]), d(r.dob), r.gender, r.nino, *addr, r.postcode, "",
+                r.email, d(r.start_date), d(r.left_on) if status == "left" else "", "1" if status == "left" else "",
+                SMART_ASSESSMENT[r.category], event, d(r.enrolled_on) if event != "0" else "", "",
+                d(r.opted_out_on) if status == "opted_out" else "", "", "", _money(r.employer_pence),
+                _money(employee), "0.00", "", _money(r.pensionable_pence), _pct(r.employer_pence, r.pensionable_pence),
+                _pct(employee, r.pensionable_pence), "Y" if r.salary_sacrifice else "N",
+            ]
+        )  # fmt: skip
     return buf.getvalue()
 
 

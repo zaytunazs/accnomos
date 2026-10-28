@@ -40,6 +40,7 @@ const PROVIDERS: Record<RtPensionProvider, string> = {
   generic: "Generic CSV",
   nest: "Nest",
   peoples_pension: "The People's Pension",
+  smart_pension: "Smart Pension (PAPDIS)",
   now_pensions: "NOW: Pensions",
 };
 const REPORTS: { key: RtPayeReportKey; label: string; needs: "run" | "employee" | "none" }[] = [
@@ -378,6 +379,12 @@ export default function LivePaye() {
               Provider reference
               <input className={input} maxLength={40} value={employer.pension.provider_ref} onChange={(e) => setEmployer({ ...employer, pension: { ...employer.pension, provider_ref: e.target.value } })} />
             </label>
+            {employer.pension.provider === "nest" && (
+              <label className={label}>
+                Nest payment source
+                <input className={input} maxLength={40} value={employer.pension.payment_source} onChange={(e) => setEmployer({ ...employer, pension: { ...employer.pension, payment_source: e.target.value } })} />
+              </label>
+            )}
             <div className="flex items-center gap-3 sm:col-span-3">
               <button type="submit" disabled={busy !== null} className={button}>{busy === "employer" ? "Saving…" : "Save settings"}</button>
               <label className="flex items-center gap-2 text-[14px] text-muted" title={setup?.submission.reason}>
@@ -783,8 +790,9 @@ export default function LivePaye() {
       <section aria-labelledby="pension" className="rounded-2xl border border-border bg-white p-5">
         <h2 id="pension" className="text-[17px] font-extrabold">Pension contribution schedule</h2>
         <p className="mt-1 text-[14px] text-muted">
-          For your pension provider. Nest, The People&apos;s Pension and NOW: Pensions layouts follow their published guides (dates in each
-          file&apos;s note); check one upload against the provider&apos;s current template first.
+          For your pension provider. Nest, The People&apos;s Pension, Smart Pension (PAPDIS 1.0, net pay arrangement only) and NOW: Pensions
+          layouts follow their published guides (sources in each file&apos;s note); check one upload against the provider&apos;s current
+          template first.
         </p>
         <div className="mt-2 flex flex-wrap gap-3">
           {(Object.keys(PROVIDERS) as RtPensionProvider[]).map((p) => (

@@ -412,7 +412,7 @@ async def schedule(books: Books, run: PR.PayRun) -> tuple[AE.ScheduleHeader, lis
     due = P.payment_due(first, P.tax_month(run.pay_date))
     h = AE.ScheduleHeader(
         run.period_start, run.period_end, run.pay_date, run.frequency, ps.provider_ref, ps.payment_source, ps.pay_code,
-        due,
+        due, ps.arrangement, run.period,
     )  # fmt: skip
     rows = []
     for ln in run.lines:
@@ -437,10 +437,12 @@ async def schedule(books: Books, run: PR.PayRun) -> tuple[AE.ScheduleHeader, lis
 
 PROVIDER_NOTES = {
     "generic": "Accnomos layout: map the columns in your provider's upload screen.",
-    "nest": "Nest contribution schedule layout from Nest's Employer payroll guide V13 (08/2019). Check one file "
-    "against Nest's current template before relying on it.",
-    "peoples_pension": "The People's Pension contributions file, from its data requirements v9 (August 2020). "
-    "Check against the provider's current guide.",
+    "nest": "Nest contribution schedule (CS) from Nest's Employer payroll guide (the edition on Nest's site "
+    "on 28 Oct 2026, file version 4). The frequency and payment source must match your schedule in Nest exactly.",
+    "peoples_pension": "The People's Pension contributions file (CO), from its Contributions file data requirements "
+    "v9, the version it publishes today.",
+    "smart_pension": "Smart Pension PAPDIS 1.0 (PAP01) file, from Smart Pension's CSV specification. For the net pay "
+    "arrangement only. Upload under Contributions and payroll > Pre-assessed contributions.",
     "now_pensions": "NOW: Pensions pension data file (36 items), from its online guide (undated, read 28 Oct 2026).",
 }
 
@@ -456,6 +458,11 @@ async def pension_file(rid: str, provider: AE.Provider, books: Books = Depends(g
         text = AE.nest_csv(h, rows)
     elif provider == "peoples_pension":
         text = AE.peoples_pension_csv(h, rows)
+    elif provider == "smart_pension":
+        try:
+            text = AE.smart_pension_csv(h, rows)
+        except AE.PensionFileError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
     elif provider == "now_pensions":
         text = AE.now_pensions_csv(h, rows, run.period)
     else:

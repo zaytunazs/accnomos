@@ -10,6 +10,7 @@ The Pensions Regulator "Earnings thresholds". Re-check every source each spring 
 from __future__ import annotations
 
 from app import paye_rates as r
+from app.paye import loan_threshold
 
 
 def p(pounds: float) -> int:
@@ -125,3 +126,17 @@ def test_auto_enrolment() -> None:
 def test_periods() -> None:
     assert r.PERIODS_IN_YEAR == {"weekly": 52, "fortnightly": 26, "four_weekly": 13, "monthly": 12}
     assert r.RTI_PAY_FREQ == {"weekly": "W1", "fortnightly": "W2", "four_weekly": "W4", "monthly": "M1"}
+
+
+def test_loan_thresholds_per_period_match_the_rates_page() -> None:
+    """The per-month and per-week thresholds printed on "Rates and thresholds for employers 2026 to 2027" (student
+    loan and postgraduate loan recovery; re-read 28 Oct 2026) are the annual figure divided and rounded down."""
+    printed = {  # annual: (per month, per week) in pence
+        r.STUDENT_LOAN_THRESHOLDS_PENCE["1"]: (224_166, 51_730),
+        r.STUDENT_LOAN_THRESHOLDS_PENCE["2"]: (244_875, 56_509),
+        r.STUDENT_LOAN_THRESHOLDS_PENCE["4"]: (281_625, 64_990),
+        r.STUDENT_LOAN_THRESHOLDS_PENCE["5"]: (208_333, 48_076),
+        r.POSTGRAD_THRESHOLD_PENCE: (175_000, 40_384),
+    }
+    for annual, (month, week) in printed.items():
+        assert (loan_threshold(annual, "monthly"), loan_threshold(annual, "weekly")) == (month, week)

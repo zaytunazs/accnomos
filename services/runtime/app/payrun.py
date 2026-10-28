@@ -93,7 +93,9 @@ class PensionSettings(BaseModel):
     arrangement: AE.Arrangement = "relief_at_source"
     employer_bp: int = Field(default=300, ge=0, le=10_000)
     employee_bp: int = Field(default=500, ge=0, le=10_000)
-    provider_ref: str = Field(default="", max_length=40)  # Nest EMPnnnnnnnnn / People's Pension account / NOW ER code
+    provider_ref: str = Field(
+        default="", max_length=40
+    )  # Nest EMPnnnnnnnnn / People's Pension account / Smart employer ID / NOW ER code
     payment_source: str = Field(default="", max_length=40)  # Nest
     pay_code: str = Field(default="", max_length=4)  # NOW: Pensions
     duties_start: date | None = None  # the employer's duties start date (first day auto-enrolment applies)

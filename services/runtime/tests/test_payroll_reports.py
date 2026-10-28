@@ -165,6 +165,8 @@ def test_routes_end_to_end(client: tuple[object, FakeStorageProvider], tmp_path:
     assert base64.b64decode(e["file"]["base64"]).startswith(b"<?xml")
     for provider in ("generic", "nest", "peoples_pension", "now_pensions"):
         assert c.get(f"/payroll/paye/payruns/{rid}/pension/{provider}").status_code == 200
+    smart = c.get(f"/payroll/paye/payruns/{rid}/pension/smart_pension")  # this scheme is relief at source
+    assert smart.status_code == 400 and "net pay arrangement only" in smart.json()["detail"]
     for key, q in (
         ("payroll_summary", f"run={rid}"),
         ("p32", ""),

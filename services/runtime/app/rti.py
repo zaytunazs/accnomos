@@ -85,9 +85,22 @@ def _check_refs(s: EmployerSettings) -> None:
         raise RtiError("Add your HMRC office number, PAYE reference and Accounts Office reference in Payroll settings")
 
 
+#: Written as an XML comment at the top of every FPS and EPS file, so the notice travels with the file.
+FILE_NOTICE = (
+    "NOT SUBMITTED TO HMRC. This RTI-format file was produced by Accnomos for checking. It must be filed using HMRC's "
+    "Basic PAYE Tools (enter these figures there) or by your payroll provider's HMRC-recognised software. Direct "
+    "submission from Accnomos is not available. Estimate: check before filing."
+)
+
+
 def _serialise(root: ET.Element) -> bytes:
     ET.indent(root)
-    return b'<?xml version="1.0" encoding="UTF-8"?>\n' + ET.tostring(root, encoding="utf-8")
+    return (
+        b'<?xml version="1.0" encoding="UTF-8"?>\n<!-- '
+        + FILE_NOTICE.encode("utf-8")
+        + b" -->\n"
+        + ET.tostring(root, encoding="utf-8")
+    )
 
 
 # --------------------------------------------------------------------------- #

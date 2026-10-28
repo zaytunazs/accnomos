@@ -701,7 +701,7 @@ export interface RtReportExport {
 
 /** PAYE payroll (services/runtime/app/payrun.py). Pence throughout. */
 export type RtPayFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly";
-export type RtPensionProvider = "generic" | "nest" | "peoples_pension" | "now_pensions";
+export type RtPensionProvider = "generic" | "nest" | "peoples_pension" | "smart_pension" | "now_pensions";
 export type RtPayeReportKey = "payroll_summary" | "p11" | "p32" | "pension" | "fps" | "journal" | "p45" | "p60";
 export interface RtPayeEmployer {
   name: string;

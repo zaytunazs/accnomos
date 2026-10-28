@@ -84,6 +84,13 @@ async def test_fps_validates_and_carries_the_figures(books: Books, tmp_path: Pat
     assert ni.findtext("f:TotalEmpNICInPd", namespaces=NS) == rti.money(line.er_ni_pence)
     assert ni.findtext("f:EmpeeContribnsInPd", namespaces=NS) == rti.money(line.ee_ni_pence)
     assert a.findtext("f:Employment/f:Payment/f:TaxDeductedOrRefunded", namespaces=NS) == rti.money(line.tax_pence)
+    # The filing notice travels inside the file as a comment, and the file still validates with it.
+    head = xml.split(b"\n", 2)[1].decode()
+    assert head.startswith("<!-- NOT SUBMITTED TO HMRC.") and head.endswith(" -->")
+    assert (
+        "must be filed using HMRC's Basic PAYE Tools" in head
+        and "Direct submission from Accnomos is not available" in head
+    )
 
 
 async def test_fps_for_a_leaver_and_final_submission(books: Books, tmp_path: Path) -> None:
@@ -131,6 +138,7 @@ async def test_employer_payment_record_and_eps(books: Books, tmp_path: Path) -> 
     assert m7.due_pence == m7.tax_pence + m7.gross_ni_pence - 249_228 - 22_430 - m7.employment_allowance_pence
     eps = rti.build_eps(months, 7, await PR.load_employer(books), claim_employment_allowance=True)
     validate(eps, EPS_XSD, tmp_path)
+    assert rti.FILE_NOTICE.encode() in eps.split(b"\n", 2)[1]
     root = DET.fromstring(eps)
     ns = {"e": rti.EPS_NS}
     assert root.findtext(".//e:EmpAllceInd", namespaces=ns) == "yes"
