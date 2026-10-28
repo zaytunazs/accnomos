@@ -53,7 +53,7 @@ export function pickPeriod(p: PickedPeriod | null) {
   listeners.forEach((l) => l());
 }
 
-const PERIOD_RE = /^\d{4}-(Q[1-4]|[01]\d)$/; // "2026-Q4" quarterly, "2026-11" monthly
+const PERIOD_RE = /^\d{4}-(Q[1-4]|[01]\d|Y[01]\d)$/; // "2026-Q4" quarterly, "2026-11" monthly, "2026-Y01" annual
 
 /** `?period=` from the address bar, when it names a period — so a period can be linked. */
 export function periodFromUrl(): string | null {

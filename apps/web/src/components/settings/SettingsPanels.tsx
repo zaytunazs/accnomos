@@ -13,6 +13,7 @@ import ProfileDetails from "@/components/settings/ProfileDetails";
 import StaffEditor from "@/components/settings/StaffEditor";
 import VatPeriodSettings from "@/components/settings/VatPeriodSettings";
 import SelfEmployedSetting from "@/components/settings/SelfEmployedSetting";
+import VatSchemeSettings from "@/components/settings/VatSchemeSettings";
 import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
 import PersonalFinanceSetting from "@/components/settings/PersonalFinanceSetting";
 import WorkingHours from "@/components/settings/WorkingHours";
@@ -62,6 +63,7 @@ const HASH_GROUP: Record<string, GroupId> = {
   profile: "business", // the profile menu's "Profile details"
   "settings-vat-periods": "business",
   "settings-self-employed": "business",
+  "settings-vat-scheme": "business",
   "settings-invoice-profile": "business",
   "invoice-profile": "business",
   "invoice-profile-title": "business",
@@ -438,6 +440,7 @@ export default function SettingsPanels() {
         <VatPeriodSettings card={card} heading={heading} />
 
         <SelfEmployedSetting card={card} heading={heading} />
+        <VatSchemeSettings card={card} heading={heading} />
 
         <StaffEditor card={card} heading={heading} />
 

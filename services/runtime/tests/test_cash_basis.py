@@ -471,3 +471,33 @@ def test_pl_route_has_a_cash_basis_option(client: TestClient) -> None:
         "/reports/export", json={"report": "pl", "from": "2026-07-01", "to": "2026-07-31", "basis": "cash"}, headers=H
     )
     assert export.status_code == 200, export.text
+
+
+def test_document_money_is_money_only_and_dated_when_it_moved() -> None:
+    """VAT cash accounting reads the same money (app/vat_schemes.py books_from_ledger): a credit note's credit applied
+    moves no money, and an overpayment applied counts on the day it was received."""
+    ledger = Ledger(
+        events=[
+            invoice("a", date(2026, 5, 1), 1_000_00),
+            credit_note("c", date(2026, 5, 5), "a", 200_00),
+            invoice("b", date(2026, 9, 1), 50_00),
+        ],
+        records=[paid("p1", date(2026, 6, 1), "sale", ("a", 800_00), amount=830_00)],
+    )
+    ledger.uses = [
+        CreditUse(
+            id="u1",
+            kind="apply",
+            side="sale",
+            date=date(2026, 9, 2),
+            amount_pence=30_00,
+            credit="payment:p1",
+            doc_event_id="b" * 32,
+            created_by="sam",
+            created_at=AT,
+        )
+    ]
+    assert sorted(cb.document_money(ledger.settlement())) == [
+        ("a" * 32, date(2026, 6, 1), 800_00),
+        ("b" * 32, date(2026, 6, 1), 30_00),
+    ]

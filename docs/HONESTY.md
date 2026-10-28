@@ -35,7 +35,24 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - **Tax and NI shown on the page are HMRC's, copied from its calculation response, never Accnomos's.** If HMRC leaves a figure out the page shows a dash. The calculation summary picks fields from Individual Calculations 8.0 by name; a version change could move them.
 - Final declaration: built (HMRC's declaration text word for word, checked in relay, runtime and web by a test) but only exercised against a fake. The page does not check that every quarterly update and the annual submission are in before offering it; HMRC does.
 - `GET /books/vat` accepts `?today=`, so a client can move "current" and with it `can_submit`; the web gate is advisory and HMRC decides what can be filed.
-- No flat-rate scheme, no annual accounting scheme, no fuel scale-charge calculation.
+- **VAT schemes (flat rate, cash accounting, annual accounting) are worked out by code and tested only on fakes and HMRC's
+  own worked examples** (`claude/vat-schemes`, rules read on gov.uk 28 Oct 2026; `docs/reviews/vat-schemes/REVIEW.md`).
+  No return under a scheme has been filed, even in HMRC's sandbox, and no accountant has checked a real set of books
+  under one. What is not done: the flat rate's retailer's turnover method, stock adjustments on leaving the flat rate
+  (Notice 733 §12.8-12.9), flat rate bad debt relief (§14), capital goods sold later (§15.9), reverse charge and import
+  VAT outside the flat rate (§6.4-6.5), and partial exemption. The 30-day "forward look" test for leaving the flat
+  rate cannot be checked from past books and is shown as a reminder. Cash accounting: documents are taxed on the
+  payments the app knows about (recorded payments, matched bank lines, credits applied); cheques, card vouchers and
+  part exchange dates (Notice 731 §4.4, §5.9) are not told apart, a refund of an overpayment does not undo VAT
+  already accounted for, and an undone (reversed) invoice that was partly paid in an earlier, already submitted
+  period is dropped from the scheme rather than corrected. Capital goods for the flat rate are only those the user
+  ticks in Settings; "relevant goods" for the limited cost test are guessed from account codes (5000 Materials,
+  7200 Utilities, 7500 Office supplies) unless the business lists its own. Annual accounting instalments are
+  worked out from the figure the user copies from HMRC's letter (rounded down to £5, HMRC internal manual
+  VATAAS4100); HMRC's letter is what counts. The annual period's start must be a start of the saved VAT quarters,
+  and the quarters after leaving must line up with the saved stagger. The eligibility tests use the last 12 months
+  of sales in the books unless the user gives an estimate; capital asset sales are not told apart.
+- No fuel scale-charge calculation.
 - The runtime's "today" is the **London date** (`books.today()`, Europe/London via `zoneinfo` + `tzdata`): `GET /audit` `from`/`to` filter by London day too. Both clients send `today` to the dashboard, so this mostly affects direct API callers and chat actions.
 
 ## Receipts, review and the ledger

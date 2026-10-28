@@ -419,6 +419,11 @@ export const runtime = {
 
   /** GET /books/vat/periods: the current VAT period and the 8 before it, by the saved VAT settings. */
   vatPeriods: (a: AccountInfo) => call<RtVatPeriods>(a, withQuery("/books/vat/periods", vatQuery())),
+  /** GET /books/vat/schemes: the VAT schemes saved in the books, the one in use today and the eligibility tests. */
+  vatSchemes: (a: AccountInfo) => call<RtVatSchemes>(a, withQuery("/books/vat/schemes", vatQuery())),
+  /** PUT /books/vat/schemes: save the whole timeline (400 names the HMRC rule a change breaks). */
+  saveVatSchemes: (a: AccountInfo, body: RtVatSchemeSettings) =>
+    call<RtVatSchemes>(a, withQuery("/books/vat/schemes", vatQuery()), { method: "PUT", body: JSON.stringify(body) }),
   /** POST /books/vat/obligations: store HMRC's obligations (fetched through the relay) so filed-elsewhere shows as submitted. */
   postVatObligations: (a: AccountInfo, obligations: RtHmrcObligation[]) =>
     call<{ stored: number }>(a, "/books/vat/obligations", { method: "POST", body: JSON.stringify({ obligations }) }),
@@ -1687,6 +1692,9 @@ export interface RtDeadlines {
   due: RtPeriodDeadline | null;
   /** True when no stagger was sent (none saved in Settings), so calendar quarters (stagger 1) were assumed. */
   assumed?: boolean;
+  /** The current period is an annual accounting one (saved in Settings › VAT scheme). */
+  annual?: boolean;
+  instalments?: RtInstalment[];
   rule: string;
 }
 
@@ -1976,7 +1984,7 @@ export interface RtVatView {
   period_key: string;
   start: string;
   end: string;
-  period: string; // "2026-Q4" (quarterly) or "2026-11" (monthly)
+  period: string; // "2026-Q4" (quarterly), "2026-11" (monthly) or "2026-Y01" (annual accounting)
   label: string; // "Oct–Dec 2026"
   current: boolean;
   submitted: boolean; // HMRC says fulfilled, or a relay submission receipt is saved in 06 VAT returns
@@ -1989,6 +1997,119 @@ export interface RtVatView {
   events_in_period: number;
   undone_in_period: number; // reversing events among them
   hmrc_body: Record<string, unknown>;
+  /** Set when a VAT scheme (flat rate, cash or annual accounting) is saved in Settings: how the boxes were worked out. */
+  scheme?: RtSchemeView | null;
+}
+
+/** VAT schemes (services/runtime/app/vat_schemes.py). Money is pounds as strings. */
+export type RtSchemeName = "standard" | "cash" | "flat_rate";
+export interface RtFlatCalc {
+  start: string;
+  end: string;
+  percent: string;
+  turnover: string;
+  tax: string;
+  first_year: boolean;
+}
+export interface RtSchemeSegment {
+  start: string;
+  end: string;
+  scheme: RtSchemeName;
+  label: string;
+  cash_basis: boolean;
+  payments: number;
+  unpaid_brought_in_vat: string;
+  turnover?: string | null;
+  relevant_goods?: string | null;
+  limited_cost_cap?: string | null;
+  limited_cost?: boolean | null;
+  limited_cost_source?: "auto" | "yes" | "no" | null;
+  capital_vat?: string | null;
+  calcs: RtFlatCalc[];
+}
+export interface RtInstalment {
+  number: number;
+  due: string;
+  amount: string;
+}
+export interface RtAnnualView {
+  start: string;
+  end: string;
+  return_due: string;
+  instalments: RtInstalment[];
+  instalments_total: string;
+  basis_known: boolean;
+  balancing: string;
+  balancing_direction: "pay" | "refund" | "nil";
+}
+export interface RtSchemeView {
+  summary: string;
+  segments: RtSchemeSegment[];
+  annual?: RtAnnualView | null;
+  sources: Record<string, string>;
+  checked: string;
+}
+export interface RtSchemeEntry {
+  from: string;
+  scheme: RtSchemeName;
+  flat_rate?: { sector: string; turnover_method: "basic" | "cash"; limited_cost: "auto" | "yes" | "no" } | null;
+  cash_exit?: "immediate" | "six_months";
+}
+export interface RtVatSchemeSettings {
+  registered_on?: string | null;
+  schemes: RtSchemeEntry[];
+  annual?: {
+    start: string;
+    first_year_end?: string | null;
+    instalments: "monthly" | "quarterly";
+    basis_pence?: number | null;
+    end?: string | null;
+  } | null;
+  capital_purchases: string[];
+  relevant_goods_accounts?: string[] | null;
+  estimates?: { taxable_turnover_pence?: number | null; total_income_pence?: number | null };
+  updated_at?: string | null;
+  updated_by?: string | null;
+}
+export interface RtSchemeCheck {
+  scheme: "flat_rate" | "cash" | "annual";
+  status: "ok" | "warn" | "stop";
+  message: string;
+  figure?: string | null;
+  limit?: string | null;
+  basis?: "estimate" | "books" | null;
+  source: string;
+}
+export interface RtCapitalCandidate {
+  event_id: string;
+  date: string;
+  counterparty: string | null;
+  gross: string;
+  vat: string;
+  marked: boolean;
+}
+/** GET/PUT /books/vat/schemes (services/runtime/app/routes_vat_schemes.py). */
+export interface RtVatSchemes {
+  settings: RtVatSchemeSettings;
+  current: {
+    scheme: RtSchemeName;
+    label: string;
+    since: string | null;
+    cash_basis: boolean;
+    flat_rate_percent?: string | null;
+    first_year_until?: string | null;
+    limited_cost_rate: string;
+    annual: boolean;
+    annual_period?: [string, string] | null;
+  };
+  checks: RtSchemeCheck[];
+  warnings: string[];
+  sectors: { name: string; percent: string }[];
+  capital_candidates: RtCapitalCandidate[];
+  relevant_goods_default: string[];
+  path: string;
+  sources: Record<string, string>;
+  checked: string;
 }
 
 /** POST /books/vat/obligations (services/runtime/app/routes_vat.py): one HMRC obligation, as the relay returns it. */
@@ -2015,6 +2136,7 @@ export interface RtVatPeriod {
   received?: string | null; // when HMRC received the return (ISO date), when it says fulfilled
   entries: number;
   can_submit: boolean;
+  annual?: boolean; // an annual accounting period
 }
 export interface RtVatPeriods {
   today: string;

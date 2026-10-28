@@ -200,6 +200,9 @@ app.include_router(vat_router)
 from app.routes_itsa import router as itsa_router  # noqa: E402  /books/self-employment/* (MTD Income Tax)
 
 app.include_router(itsa_router)
+from app.routes_vat_schemes import router as vat_schemes_router  # noqa: E402  GET/PUT /books/vat/schemes
+
+app.include_router(vat_schemes_router)
 from app.routes_dashboard import router as dashboard_router  # noqa: E402  GET /books/dashboard
 
 app.include_router(dashboard_router)

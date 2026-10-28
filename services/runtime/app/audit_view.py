@@ -194,6 +194,7 @@ SUMMARIES: dict[str, Summary] = {
     "bank_reconciled": lambda r, w: f"Reconciled a bank line ({r.get('kind') or 'match'}) through Review approval",
     # Sales invoices
     "invoice_profile_saved": lambda r, w: "Saved your invoice details",
+    "vat_schemes_saved": lambda r, w: "Saved your VAT scheme",
     "invoice_created": lambda r, w: f"Created invoice {_inv(r)}" + _pounds(r, "total_pence"),
     "invoice_edited": lambda r, w: f"Edited invoice {_inv(r)}" + _pounds(r, "total_pence"),
     "invoice_posted": lambda r, w: f"Posted invoice {_inv(r)} to the ledger",

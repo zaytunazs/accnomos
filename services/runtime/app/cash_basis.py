@@ -320,5 +320,13 @@ def _money_for(s: Settlement, doc_id: str) -> list[tuple[date, int, _Money]]:
     return sorted(out, key=lambda t: t[0])
 
 
+def document_money(s: Settlement) -> list[tuple[str, date, int]]:
+    """(document event id, day, pence) for every amount of money that settled a document on account: the same
+    payments, matched bank lines and applied overpayments the cash basis counts, dated when the money moved. VAT
+    cash accounting (app/vat_schemes.py) reads this too, so both count the same money on the same day; a credit
+    note's credit applied moves no money and is not in it (the scheme engine folds credit notes into the document)."""
+    return [(doc_id, day, amount) for doc_id in s.gross for day, amount, _ in _money_for(s, doc_id)]
+
+
 def _money(p: Payment) -> _Money:
     return _Money("bank_line" if p.source == "bank_line" else "payment", p.description, p.id, p.account)

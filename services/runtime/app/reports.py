@@ -36,7 +36,7 @@ from openpyxl.styles import Font
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import BaseModel
 
-from accnomos_ledger import LedgerEvent, compute_vat_return
+from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return
 from app.contacts import BUCKETS, AgedBalances, AgedTable
 from app.deadlines import add_months, period_id
 from app.deadlines import period_label as vat_period_label
@@ -251,16 +251,27 @@ class VatSummary(BaseModel):
     periods: list[VatSummaryPeriod]  # oldest first
     total_net_vat_pence: int
     sample: bool = False
+    scheme: str | None = None  # the VAT scheme the boxes were worked out under, when it is not standard accounting
 
 
-def vat_summary(events: Sequence[LedgerEvent], spans: Sequence[tuple[date, date]], months: int = 3) -> VatSummary:
-    """compute_vat_return for each (start, end) in `spans`, oldest first."""
+def vat_summary(
+    events: Sequence[LedgerEvent],
+    spans: Sequence[tuple[date, date]],
+    months: int = 3,
+    *,
+    returns: Callable[[date, date], VatReturn] | None = None,
+    ids: Callable[[date, date], str] | None = None,
+    scheme: str | None = None,
+) -> VatSummary:
+    """The boxes for each (start, end) in `spans`, oldest first: compute_vat_return, or `returns` when the business
+    uses a VAT scheme (app/vat_schemes.py), with `ids` naming its periods (annual ones too)."""
     rows: list[VatSummaryPeriod] = []
     for start, end in sorted(spans):
-        ret = compute_vat_return(list(events), period_id(start, months), start, end)
+        pid = ids(start, end) if ids else period_id(start, months)
+        ret = returns(start, end) if returns else compute_vat_return(list(events), pid, start, end)
         rows.append(
             VatSummaryPeriod(
-                period=period_id(start, months),
+                period=pid,
                 start=start,
                 end=end,
                 label=vat_period_label(start, end),
@@ -273,7 +284,9 @@ def vat_summary(events: Sequence[LedgerEvent], spans: Sequence[tuple[date, date]
                 warnings=ret.warnings,
             )
         )
-    return VatSummary(periods=rows, total_net_vat_pence=sum(r.net_vat_pence for r in rows), sample=is_sample(events))
+    return VatSummary(
+        periods=rows, total_net_vat_pence=sum(r.net_vat_pence for r in rows), sample=is_sample(events), scheme=scheme
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -484,6 +497,9 @@ def _vat_sheet(ws: Worksheet, summary: VatSummary) -> None:
     for row in ws.iter_rows(min_row=2, min_col=7, max_col=8):
         for cell in row:
             cell.number_format = WHOLE_GBP
+    if summary.scheme:
+        ws.append([])
+        ws.append([f"Worked out under: {summary.scheme} (on the Flat Rate Scheme, box 6 is turnover including VAT)"])
 
 
 def _trend_sheet(ws: Worksheet, trend: Trend) -> None:
