@@ -555,7 +555,7 @@ export default function ConnectHmrc() {
               <div className="mb-3">
                 <StepStrip step={step} />
               </div>
-              <h3 className="text-[17px] font-extrabold">
+              <h3 className="text-[17px] font-extrabold [overflow-wrap:anywhere]">
                 Confirm VAT return · {uk(obligation.start)} – {uk(obligation.end)} · key {obligation.periodKey}
               </h3>
               {(obligation.start !== live.start || obligation.end !== live.end) && (
@@ -564,7 +564,8 @@ export default function ConnectHmrc() {
                   That&apos;s expected with sandbox test data; for a real return the dates must match.
                 </p>
               )}
-              <table className="mt-3 w-full text-[15px]">
+              <div className="mt-3 overflow-x-auto">
+              <table className="w-full text-[15px]">
                 <tbody>
                   {BOXES.map((b) => (
                     <tr key={b.box} className={`border-t border-border ${b.box === 3 || b.box === 5 ? "bg-ground" : ""}`}>
@@ -575,6 +576,7 @@ export default function ConnectHmrc() {
                   ))}
                 </tbody>
               </table>
+              </div>
               <p className="mt-2 text-sm text-muted">Calculated by code, not AI, from the {live.events_in_period} entries you approved.</p>
               <p className="mt-3 rounded-xl bg-ground p-3 text-[13px] leading-6 text-muted">{FRAUD_NOTICE}</p>
               <p className="mt-4 text-[15px] leading-7">{DECLARATION}</p>

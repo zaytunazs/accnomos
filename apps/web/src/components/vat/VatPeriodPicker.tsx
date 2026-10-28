@@ -123,11 +123,11 @@ export default function VatPeriodPicker({ account, onPeriods }: { account: Accou
                 selected ? "border-teal bg-teal-tint" : "border-border bg-white hover:bg-ground"
               }`}
             >
-              <span className="font-extrabold">{p.label}</span>
+              <span className="min-w-0 font-extrabold [overflow-wrap:anywhere]">{p.label}</span>
               <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${chip.className}`}>
                 {chip.text}
               </span>
-              <span className="text-[13px] font-medium text-muted">{detail(p)}</span>
+              <span className="min-w-0 text-[13px] font-medium text-muted [overflow-wrap:anywhere]">{detail(p)}</span>
             </button>
           );
         })}

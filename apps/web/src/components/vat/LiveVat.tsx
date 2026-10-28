@@ -103,7 +103,7 @@ export default function LiveVat() {
         </span>
       </div>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="live-vat" className="text-lg font-extrabold">
+        <h2 id="live-vat" className="min-w-0 text-lg font-extrabold [overflow-wrap:anywhere]">
           Your return · {view.label}
           {view.current ? " (current period)" : ""} · {uk(view.start)} – {uk(view.end)}
         </h2>
