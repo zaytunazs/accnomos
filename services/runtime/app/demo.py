@@ -69,6 +69,18 @@ from app.paths import INBOX
 log = logging.getLogger("accnomos.demo")
 
 HEADER = "X-Demo-Session"
+
+
+def refuse_external(what: str) -> Callable[[Request], None]:
+    """A route dependency: 403 for a demo session on a route that would reach an outside provider (`what`)."""
+
+    def refuse(request: Request) -> None:
+        if request.headers.get(HEADER) is not None:
+            raise HTTPException(status_code=403, detail=f"{what} is switched off in the demo sandbox.")
+
+    return refuse
+
+
 LABEL = "SAMPLE — FICTIONAL COMPANY"
 USER = "demo@accnomos.example"  # the X-User the web app sends in a demo
 PRE_READ = 4  # inbox documents already read into Review (plus the two that need a look)

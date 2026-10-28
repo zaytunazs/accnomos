@@ -3,6 +3,7 @@ import Link from "next/link";
 import AiSidebarLabel from "./AiSidebarLabel";
 import ClientBanner from "./accountant/ClientBanner";
 import AppNav from "./AppNav";
+import BankFeedOnOpen from "./bank/BankFeedOnOpen";
 import DemoBanner from "./DemoBanner";
 import MonthlyBackup from "./files/MonthlyBackup";
 import DemoBar, { DemoMenu, NotInDemo } from "./demo/DemoBar";
@@ -42,6 +43,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <DemoBanner />
       <ClientBanner />
       <MonthlyBackup />
+      <BankFeedOnOpen />
       {/* Reader trouble and new-version notices: one shared strip each, pages keep what they can below. */}
       <ServiceStrip />
       <VersionStrip />

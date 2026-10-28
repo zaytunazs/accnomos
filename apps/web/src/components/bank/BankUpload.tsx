@@ -21,10 +21,12 @@ export default function BankUpload({ account, onDone }: { account: AccountInfo |
   const sendOne = useCallback(
     async (acct: AccountInfo, f: File): Promise<string> => {
       const r = await runtime.bank.upload(acct, f);
+      const fromFeed = r.from_feed ?? 0;
+      if (r.duplicate_file && fromFeed > 0) return `${f.name}: every new line is already in from your bank feed — nothing changed.`;
       return r.duplicate_file
         ? `${f.name}: already imported — nothing changed.`
         : `${f.name}: ${r.new_lines} new line${r.new_lines === 1 ? "" : "s"}` +
-            (r.new_lines < r.lines ? ` (${r.lines - r.new_lines} already imported)` : "") +
+            (r.new_lines < r.lines ? ` (${r.lines - r.new_lines} already imported${fromFeed ? `, ${fromFeed} from your bank feed` : ""})` : "") +
             ` · saved as ${r.filed_path}`;
     },
     [],

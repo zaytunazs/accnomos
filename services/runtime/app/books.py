@@ -42,7 +42,7 @@ from zoneinfo import ZoneInfo
 from pydantic import BaseModel, Field
 
 from accnomos_connectors.base import ConflictError, FileRef, StorageProvider
-from accnomos_ledger.bank import BankLine, BankLineStatus, BankName, detect_bank, parse_bank_csv
+from accnomos_ledger.bank import BankLine, BankLineStatus, BankName, detect_bank, pair_duplicates, parse_bank_csv
 from accnomos_ledger.events import LedgerEvent
 from accnomos_ledger.matching import Match, suggest_matches
 from app.ai.config import is_test_mode
@@ -178,6 +178,7 @@ class BankImport(BaseModel):
     new_lines: int
     duplicate_file: bool = False
     bank: BankName = "bank"
+    from_feed: int = 0  # lines a bank feed had already brought in, left out
 
 
 class BankStatement(BaseModel):
@@ -538,18 +539,25 @@ class Books:
             return BankImport(
                 sha256=sha, filed_path=None, lines=len(lines), new_lines=0, duplicate_file=True, bank=bank
             )
-        known = {
-            (ln.date, ln.amount_pence, normalise_description(ln.description), ln.balance_pence)
-            for ln in await self.stored_bank_lines()
-        }
+        stored = await self.stored_bank_lines()
+        known = {(ln.date, ln.amount_pence, normalise_description(ln.description), ln.balance_pence) for ln in stored}
         fresh = [
             ln
             for ln in lines
             if (ln.date, ln.amount_pence, normalise_description(ln.description), ln.balance_pence) not in known
         ]
+        # Lines a bank feed already brought in (app/bank_feeds.py) are the same payments, worded by another system.
+        from_feed = pair_duplicates(fresh, [ln for ln in stored if ln.feed_id])
+        fresh = [ln for ln in fresh if ln.id not in from_feed]
         if not fresh:
             return BankImport(
-                sha256=sha, filed_path=None, lines=len(lines), new_lines=0, duplicate_file=True, bank=bank
+                sha256=sha,
+                filed_path=None,
+                lines=len(lines),
+                new_lines=0,
+                duplicate_file=True,
+                bank=bank,
+                from_feed=len(from_feed),
             )
         last = max((ln.date for ln in lines), default=today())
         filed = await self.free_path(BANK, f"{last.isoformat()}_{bank}.csv")
@@ -567,9 +575,12 @@ class Books:
                 "bank": bank,
                 "lines": len(lines),
                 "new": len(fresh),
+                **({"from_feed": len(from_feed)} if from_feed else {}),
             },
         )
-        return BankImport(sha256=sha, filed_path=filed, lines=len(lines), new_lines=len(fresh), bank=bank)
+        return BankImport(
+            sha256=sha, filed_path=filed, lines=len(lines), new_lines=len(fresh), bank=bank, from_feed=len(from_feed)
+        )
 
     async def bank_statements(self) -> list[BankStatement]:
         """Imported statements, newest last date first, summarised from their stored lines."""

@@ -511,6 +511,26 @@ export const runtime = {
   /** POST /contacts/merge/{id}/undo: restores the exact previous entries and references. */
   undoContactMerge: (a: AccountInfo, mergeId: string) =>
     call<RtContactList>(a, `/contacts/merge/${encodeURIComponent(mergeId)}/undo`, { method: "POST" }),
+  /** /books/bankfeeds/* (services/runtime/app/routes_bankfeeds.py): TrueLayer bank feeds, sandbox by default. */
+  bankFeeds: {
+    status: (a: AccountInfo) => call<RtFeedStatus>(a, "/books/bankfeeds"),
+    start: (a: AccountInfo, body: { redirect_to: string; binding_hash: string }) =>
+      call<{ url: string }>(a, "/books/bankfeeds/start", { method: "POST", body: JSON.stringify(body) }),
+    connect: (a: AccountInfo, body: { code: string; state: string; binding: string }) =>
+      call<RtFeedStatus>(a, "/books/bankfeeds/connect", { method: "POST", body: JSON.stringify(body) }),
+    /** Fetch new transactions into the bank lines (made when the app opens). */
+    sync: (a: AccountInfo) => call<RtFeedSync>(a, "/books/bankfeeds/sync", { method: "POST" }),
+    reconfirm: (a: AccountInfo, id: string) =>
+      call<RtFeedReconfirm>(a, `/books/bankfeeds/${encodeURIComponent(id)}/reconfirm`, {
+        method: "POST",
+        body: JSON.stringify({ confirm: true }),
+      }),
+    disconnect: (a: AccountInfo, id: string) =>
+      call<{ status: RtFeedStatus; warning: string | null }>(a, `/books/bankfeeds/${encodeURIComponent(id)}/disconnect`, {
+        method: "POST",
+        body: JSON.stringify({ confirm: true }),
+      }),
+  },
   /** /books/bank/* (services/runtime/app/routes_bank.py): statements, matches and unmatched lines. */
   bank: {
     /** POST /books/bank/import: multipart upload; the same file twice is a no-op (sha256). */
@@ -1521,6 +1541,8 @@ export interface RtBankLine {
   matched_event_ids: string[];
   status: RtBankLineStatus;
   proposal_id: string | null;
+  /** The bank feed's transaction id, for lines fetched through a bank feed. */
+  feed_id?: string | null;
 }
 export interface RtBankImport {
   sha256: string;
@@ -1529,6 +1551,44 @@ export interface RtBankImport {
   new_lines: number;
   duplicate_file: boolean;
   bank: string;
+  /** Lines a bank feed had already brought in, left out. */
+  from_feed?: number;
+}
+/** A bank feed connection (services/runtime/app/bank_feeds.py ConnectionView). Never carries a token. */
+export interface RtFeedConnection {
+  id: string;
+  bank: string;
+  sandbox: boolean;
+  accounts: { id: string; name: string; type: string | null; last4: string | null; currency: string }[];
+  consent_expires_at: string;
+  reconfirm_by: string;
+  days_left: number;
+  state: "ok" | "reconfirm" | "expired" | "key_changed";
+  message: string;
+  connected_at: string;
+  last_synced_at: string | null;
+  synced_to: string | null;
+}
+export interface RtFeedStatus {
+  available: boolean;
+  reason: string | null;
+  provider: string;
+  sandbox: boolean;
+  reconfirm_days: number;
+  connections: RtFeedConnection[];
+}
+export interface RtFeedSync {
+  new_lines: number;
+  already_imported: number;
+  already_fetched: number;
+  skipped: number;
+  filed_path: string | null;
+  connections: { id: string; bank: string; fetched: number; error: string | null }[];
+}
+export interface RtFeedReconfirm {
+  connection: RtFeedConnection | null;
+  reauthorise: boolean;
+  message: string;
 }
 export interface RtBankStatement {
   path: string;
@@ -2861,3 +2921,8 @@ export const importApi = {
     return res.blob();
   },
 };
+
+/** "1" on a device whose books have a bank feed (set by the Bank page): the app fetches it when opened. */
+export const BANK_FEED_KEY = "accnomos.bankFeed";
+/** Fired on window after a bank feed fetch, with the RtFeedSync as detail, so an open Bank page reloads. */
+export const BANK_FEED_SYNCED = "accnomos:bankfeed-synced";
