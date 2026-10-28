@@ -21,10 +21,7 @@ from app.schemas import ExtractedDoc, ExtractedLine, JournalLine, Proposal
 USER = "sam@example.co.uk"
 H = {"X-Graph-Token": "tok", "X-User": USER}
 
-CSV = (
-    "Date,Description,Reference,Amount (GBP),Balance (GBP)\n"
-    "2026-10-21,02 Mobile,phone bill,-120.00,1000.00\n"
-)
+CSV = "Date,Description,Reference,Amount (GBP),Balance (GBP)\n2026-10-21,02 Mobile,phone bill,-120.00,1000.00\n"
 
 
 @pytest.fixture

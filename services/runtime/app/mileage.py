@@ -87,6 +87,7 @@ def rates_for(tax_year: str) -> dict[str, Rate]:
     start = tax_year_bounds(tax_year)[0].year
     return RATES_BY_TAX_YEAR["2026-27" if start >= 2026 else "2025-26"]
 
+
 FUEL_SCALE_NOTE = (
     "Business vehicles: Accnomos keeps the VAT code printed on each fuel receipt. If a business vehicle is also used "
     "privately, HMRC may expect a fuel scale charge on your VAT return, or less VAT reclaimed on fuel. Accnomos does "

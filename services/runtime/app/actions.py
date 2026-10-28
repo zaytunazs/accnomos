@@ -199,7 +199,6 @@ class PayOvertimeIntent(BaseModel):
     week_start: dt.date  # a Monday
 
 
-
 _MULTIPLIER_WORDS: tuple[tuple[re.Pattern[str], Decimal], ...] = (
     (re.compile(r"\b(double|twice|2x|x2|two times)\b"), Decimal(2)),
     (re.compile(r"\b(triple|treble|3x|x3|three times)\b"), Decimal(3)),
@@ -229,6 +228,8 @@ def parse_week(text: str | None, today: date) -> date | None:
         return monday
     d = parse_day(text, today) if t else None
     return None if d is None else d - timedelta(days=d.weekday())
+
+
 class ShoppingIntent(BaseModel):
     kind: Literal["add_to_shopping_list"] = "add_to_shopping_list"
     item_text: str
@@ -237,7 +238,12 @@ class ShoppingIntent(BaseModel):
 
 
 Intent = (
-    CreateInvoiceIntent | ChaseInvoiceIntent | LogMileageIntent | LogTimesheetIntent | PayOvertimeIntent | ShoppingIntent
+    CreateInvoiceIntent
+    | ChaseInvoiceIntent
+    | LogMileageIntent
+    | LogTimesheetIntent
+    | PayOvertimeIntent
+    | ShoppingIntent
 )
 
 
