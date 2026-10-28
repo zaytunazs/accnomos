@@ -142,12 +142,12 @@ The words now come from the copy deck (§7). The layout is unchanged from the fi
 
 | Gate | Result |
 |------|--------|
-| `cd services/runtime && python -m pytest -q` | **1711 passed, 2 skipped** (306 s) |
-| `ruff check .` / `ruff format --check .` | clean (448 files; one merge-formatting fix in `testmode.py`) |
+| `cd services/runtime && python -m pytest -q` | **1806 passed, 2 skipped** (312 s, after merging `origin/main`; 1711 before that merge) |
+| `ruff check .` / `ruff format --check .` | clean (464 files after the main merge; one merge-formatting fix in `testmode.py`) |
 | `pyright services/runtime/app` | 0 errors, 0 warnings |
 | `pnpm install --frozen-lockfile`, `pnpm exec eslint .`, `tsc --noEmit` | clean |
-| `pnpm run e2e:build` + `pnpm run e2e:test` (`CI=1`, 3 workers) | **379 passed, 0 failed, 0 flaky, 94 skipped** (14.6 min; the skips are `shots.spec.ts` and `design-shots.spec.ts`, which run only with `SHOTS=1`) |
-| `pnpm build` (production) + `prelaunch-words.mjs out` | built; 270 files, 0 pre-launch phrases |
+| `pnpm run e2e:build` + `pnpm run e2e:test` (`CI=1`, 3 workers) | Before the copy deck: **379 passed, 0 failed**, 94 skipped. After the main merge and the copy: **395 passed, 1 failed**, 94 skipped (490 tests). The failure was the new headline-size check, which found the one-line h1 had lost its display size (16 px; fixed in `globals.css`). After the fix, the specs that touch the landing page and every page sweep (site-layout, marketing, early-access, submission-mode, a11y, phone, signed-out) ran again: **265 passed, 0 failed**. The skips are `shots.spec.ts` and `design-shots.spec.ts`, which run only with `SHOTS=1`. |
+| `pnpm build` (production) + `prelaunch-words.mjs out` | built; 282 files, 0 pre-launch phrases (with the copy deck) |
 | Flutter | `flutter` is not installed in this container: `more_screen.dart` (merge) and `more_gating_test.dart` were not run here |
 
 New in **`e2e/site-layout.spec.ts`** (6 tests):
@@ -171,7 +171,7 @@ Updated:
 - `signed-out.spec.ts`: `/terms` and `/judges` are public, so they have no SAMPLE strip and their CTA is "Sign in".
 - `pages.ts`: adds `/terms`, which puts it in the axe, phone, signed-out and submission-mode sweeps.
 
-**Lighthouse 12.8.2**, local, `/`:
+**Lighthouse 12.8.2**, local, `/` (measured before the copy deck; the layout and images are unchanged since):
 
 | Build | Performance | Accessibility | Best practices | SEO | LCP | CLS | TBT |
 |-------|-------------|---------------|----------------|-----|-----|-----|-----|
