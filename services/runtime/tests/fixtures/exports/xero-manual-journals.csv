@@ -1,0 +1,6 @@
+*Narration,*Date,Description,*AccountCode,*TaxRate,*Amount,TrackingName1,TrackingOption1,TrackingName2,TrackingOption2
+Sale - Acme Kitchens Ltd (Accnomos 22222222),01/07/2026,1100 Debtors,610,No VAT,1200.00,,,,
+Sale - Acme Kitchens Ltd (Accnomos 22222222),01/07/2026,4000 Sales,200,No VAT,-1000.00,,,,
+Sale - Acme Kitchens Ltd (Accnomos 22222222),01/07/2026,2200 VAT control,820,No VAT,-200.00,,,,
+Purchase - Howdens Joinery (Accnomos 33333333),10/07/2026,5000 Materials,310,No VAT,250.00,,,,
+Purchase - Howdens Joinery (Accnomos 33333333),10/07/2026,2200 VAT control,820,No VAT,50.00,,,,

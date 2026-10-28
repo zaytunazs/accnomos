@@ -1,0 +1,6 @@
+*Date,*Amount,Payee,Description,Reference,Cheque Number
+15/08/2026,360.00,,Sale,44444444,
+20/08/2026,-51.90,,Purchase,55555555,
+12/09/2026,-120.00,,Purchase,77777777,
+13/09/2026,120.00,,Reversal - undoes 77777777,88888888,
+20/09/2026,-150.00,,Bank,cccccccc,

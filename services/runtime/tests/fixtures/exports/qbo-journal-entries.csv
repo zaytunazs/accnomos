@@ -1,0 +1,6 @@
+Journal No.,Journal Date,Account Name,Debits,Credits,Description,Name
+ACC-22222222,01/07/2026,Debtors,1200.00,,Sale - Acme Kitchens Ltd (Accnomos 22222222),Acme Kitchens Ltd
+ACC-22222222,01/07/2026,Sales,,1000.00,Sale - Acme Kitchens Ltd (Accnomos 22222222),
+ACC-22222222,01/07/2026,VAT control,,200.00,Sale - Acme Kitchens Ltd (Accnomos 22222222),
+ACC-33333333,10/07/2026,Materials,250.00,,Purchase - Howdens Joinery (Accnomos 33333333),
+ACC-33333333,10/07/2026,VAT control,50.00,,Purchase - Howdens Joinery (Accnomos 33333333),

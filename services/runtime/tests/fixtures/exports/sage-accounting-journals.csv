@@ -1,0 +1,6 @@
+Reference,Date,Description,Nominal Code,Details,Include on VAT/Tax Return?,Debit,Credit,Analysis Type 1,Analysis Type 2,Analysis Type 3,Exchange Rate
+ACC-22222222,01/07/2026,Sale - Acme Kitchens Ltd (Accnomos 22222222),1100,1100 Debtors,No,1200.00,0.00,,,,
+ACC-22222222,01/07/2026,Sale - Acme Kitchens Ltd (Accnomos 22222222),4000,4000 Sales,No,0.00,1000.00,,,,
+ACC-22222222,01/07/2026,Sale - Acme Kitchens Ltd (Accnomos 22222222),2202,2200 VAT control,No,0.00,200.00,,,,
+ACC-33333333,10/07/2026,Purchase - Howdens Joinery (Accnomos 33333333),5000,5000 Materials,No,250.00,0.00,,,,
+ACC-33333333,10/07/2026,Purchase - Howdens Joinery (Accnomos 33333333),2202,2200 VAT control,No,50.00,0.00,,,,

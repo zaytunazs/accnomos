@@ -1,0 +1,6 @@
+Account Number,Account Name,Type,Detail Type
+1200,Bank,Cash at bank and in hand,Current
+1210,Cash,Cash at bank and in hand,Cash on hand
+2200,VAT control,Current Liabilities,Current Tax Liability
+2210,Payroll liabilities,Current Liabilities,Tax and National Insurance
+3000,Capital,Equity,Owner's Equity
