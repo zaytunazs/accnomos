@@ -177,7 +177,11 @@ class Employee(BaseModel):
     pay_type: Literal["salary", "hourly"] = "salary"
     annual_salary_pence: int = Field(default=0, ge=0)
     hourly_rate_pence: int = Field(default=0, ge=0)
-    usual_hours: float = Field(default=0, ge=0, le=744)  # per pay period, for hourly pay
+    usual_hours: float = Field(default=0, ge=0, le=744)  # per pay period, for hourly pay without timesheets
+    #: Overtime rule for hourly pay from timesheets: hours over this many in a week (Monday to Sunday) are paid at
+    #: `overtime_multiplier`. None: no automatic overtime (entries can still carry their own multiplier).
+    overtime_after_hours_week: float | None = Field(default=None, gt=0, le=168)
+    overtime_multiplier: float = Field(default=1.5, ge=1.0, le=3.0)
     hours_band: Literal["A", "B", "C", "D", "E"] = "D"  # RTI data item 54: normal weekly hours band
     pension_exempt: bool = False  # e.g. a director with no contract of employment (not a worker)
     enrolled_on: date | None = None
@@ -385,6 +389,69 @@ class PensionLine(BaseModel):
         return self.employer_pence + self.employee_deducted_pence
 
 
+class PayItem(BaseModel):
+    """One line of pay on the payslip: basic hours, overtime at a multiplier, salary."""
+
+    label: str
+    hours: float | None = None
+    rate_pence: int | None = None
+    multiplier: float = 1.0
+    pence: int
+    entry_ids: list[str] = Field(default_factory=list)
+
+
+HOLIDAY_PAY_NOTE = (
+    "Regular overtime can count towards holiday pay (the 'normal remuneration' rules): Accnomos does not average "
+    "holiday pay. Check with your adviser."
+)
+
+
+def _mult_label(m: float) -> str:
+    return {1.5: "time and a half", 2.0: "double time", 3.0: "triple time"}.get(m, f"{m:g}x")
+
+
+def timesheet_items(
+    entries: list[Any], rate_pence: int, after_hours_week: float | None, ot_multiplier: float
+) -> list[PayItem]:
+    """Pay from timesheet entries (app/jobs.TimesheetEntry): hours x rate x the entry's multiplier. With a weekly rule,
+    normal-rate hours beyond `after_hours_week` in a Monday-Sunday week (counting every hour worked that week in
+    these entries, oldest first) are paid at `ot_multiplier`. Quarter hours; pence rounded half up per item."""
+    from app.jobs import quarters
+
+    buckets: dict[float, list[int]] = defaultdict(lambda: [0, 0])  # multiplier -> [quarters, unused]
+    ids: dict[float, list[str]] = defaultdict(list)
+    week_q: dict[tuple[int, int], int] = defaultdict(int)
+    limit_q = None if after_hours_week is None else round(after_hours_week * 4)
+    for e in sorted(entries, key=lambda x: (x.date, x.id)):
+        q = quarters(e.hours)
+        wk = tuple(e.date.isocalendar()[:2])
+        m = float(e.rate_multiplier)
+        if m == 1.0 and limit_q is not None:
+            normal = max(0, min(q, limit_q - week_q[wk]))
+            extra = q - normal
+            if normal:
+                buckets[1.0][0] += normal
+                ids[1.0].append(e.id)
+            if extra:
+                buckets[float(ot_multiplier)][0] += extra
+                ids[float(ot_multiplier)].append(e.id)
+        else:
+            buckets[m][0] += q
+            ids[m].append(e.id)
+        week_q[wk] += q
+    items = []
+    for m in sorted(buckets):
+        q = buckets[m][0]
+        if not q:
+            continue
+        pence = P.half_up(Fraction(q * rate_pence) * Fraction(m).limit_denominator(100) / 4)
+        label = "Basic hours" if m == 1.0 else f"Overtime at {_mult_label(m)}"
+        items.append(
+            PayItem(label=label, hours=q / 4, rate_pence=rate_pence, multiplier=m, pence=pence, entry_ids=ids[m])
+        )
+    return items
+
+
 class PayLine(BaseModel):
     employee_id: str
     payroll_id: str
@@ -392,6 +459,8 @@ class PayLine(BaseModel):
     inputs: LineInputs
     basic_pence: int
     bonus_pence: int
+    overtime_pence: int = 0
+    pay_items: list[PayItem] = Field(default_factory=list)
     ssp_pence: int
     smp_pence: int
     gross_pence: int  # before salary sacrifice
@@ -555,9 +624,11 @@ def calculate_line(
     scheme: PensionSettings,
     earlier: list[PayLine],
     tax_year_first: date,
+    timesheet: list[Any] | None = None,
 ) -> PayLine:
     """Every figure for one employee in one pay run. `earlier` are this employee's posted lines in the tax year so
-    far, oldest first (their YTD carries forward)."""
+    far, oldest first (their YTD carries forward). `timesheet`: their timesheet entries dated in the pay period
+    (hourly pay is worked out from them when there are any and no hours were typed in)."""
     freq, pay_date = run.frequency, run.pay_date
     if emp.frequency != freq:
         raise PayrunError(f"{emp.name} is paid {emp.frequency.replace('_', '-')}, not {freq.replace('_', '-')}")
@@ -565,13 +636,26 @@ def calculate_line(
     before = _ytd_before(emp, earlier)
 
     # Pay
+    items: list[PayItem] = []
+    overtime = 0
     if inputs.basic_pence is not None:
         basic = inputs.basic_pence
+        items = [PayItem(label="Basic pay (typed in)", pence=basic)]
     elif emp.pay_type == "salary":
         basic = P.half_up(Fraction(emp.annual_salary_pence, R.PERIODS_IN_YEAR[freq]))
+        items = [PayItem(label="Salary", pence=basic)]
+    elif inputs.hours is None and timesheet:
+        items = timesheet_items(
+            timesheet, emp.hourly_rate_pence, emp.overtime_after_hours_week, emp.overtime_multiplier
+        )
+        basic = sum(i.pence for i in items if i.multiplier == 1.0)
+        overtime = sum(i.pence for i in items if i.multiplier != 1.0)
+        if overtime:
+            warnings.append(HOLIDAY_PAY_NOTE)
     else:
         hours = emp.usual_hours if inputs.hours is None else inputs.hours
         basic = P.half_up(Fraction(round(hours * 4)) * emp.hourly_rate_pence / 4)
+        items = [PayItem(label="Hours", hours=round(hours * 4) / 4, rate_pence=emp.hourly_rate_pence, pence=basic)]
     ssp = (
         P.ssp_amount(inputs.sick.awe_pence, inputs.sick.qualifying_days_per_week, inputs.sick.days)
         if inputs.sick
@@ -582,7 +666,7 @@ def calculate_line(
         if inputs.maternity
         else 0
     )
-    gross = basic + inputs.bonus_pence + ssp + smp
+    gross = basic + overtime + inputs.bonus_pence + ssp + smp
     leaver = emp.leaving_date is not None and run.period_start <= emp.leaving_date <= run.period_end
     after_leaving = emp.leaving_date is not None and pay_date > emp.leaving_date and not leaver
     starter = not earlier and emp.brought_forward is None and emp.start_date >= tax_year_first
@@ -710,6 +794,8 @@ def calculate_line(
         inputs=inputs,
         basic_pence=basic,
         bonus_pence=inputs.bonus_pence,
+        overtime_pence=overtime,
+        pay_items=items,
         ssp_pence=ssp,
         smp_pence=smp,
         gross_pence=gross,
@@ -794,6 +880,19 @@ async def _save(books: Books, run: PayRun) -> PayRun:
 # --------------------------------------------------------------------------- #
 
 
+async def _timesheets_in(books: Books, run: PayRun) -> dict[str, list[Any]]:
+    """Timesheet entries dated in the run's pay period, by staff id (app/jobs.py)."""
+    from app.jobs import load_entries
+
+    months = sorted({f"{run.period_start:%Y-%m}", f"{run.period_end:%Y-%m}"})
+    out: dict[str, list[Any]] = defaultdict(list)
+    for m in months:
+        for e in await load_entries(books, m):
+            if run.period_start <= e.date <= run.period_end:
+                out[e.staff_id].append(e)
+    return out
+
+
 async def _calculate(books: Books, run: PayRun, inputs: list[LineInputs]) -> PayRun:
     settings = await load_employer(books)
     employees = {e.id: e for e in await load_employees(books)}
@@ -812,6 +911,7 @@ async def _calculate(books: Books, run: PayRun, inputs: list[LineInputs]) -> Pay
     for r in posted:
         for ln in r.lines:
             by_emp[ln.employee_id].append(ln)
+    sheets = await _timesheets_in(books, run)
     lines: list[PayLine] = []
     seen: set[str] = set()
     for inp in inputs:
@@ -822,7 +922,8 @@ async def _calculate(books: Books, run: PayRun, inputs: list[LineInputs]) -> Pay
             raise PayrunError("Each employee can be on a pay run once")
         seen.add(emp.id)
         try:
-            lines.append(calculate_line(emp, inp, run, settings.pension, by_emp[emp.id], first))
+            sheet = sheets.get(emp.staff_id or "", []) if emp.pay_type == "hourly" else []
+            lines.append(calculate_line(emp, inp, run, settings.pension, by_emp[emp.id], first, sheet))
         except P.PayeError as exc:
             raise PayrunError(f"{emp.name}: {exc}") from exc
     lines.sort(key=lambda ln: (ln.name.lower(), ln.payroll_id))

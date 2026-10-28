@@ -61,11 +61,12 @@ CLEAR_LEAD = 0.1  # several reach MATCH_AT: the best is picked only this far ahe
 DEFAULT_TERMS_DAYS = 30
 RATES: dict[str, int] = {"S": 20, "R": 5, "Z": 0, "E": 0, "O": 0}  # same table as app/invoicing.py
 VatCode = Literal["S", "R", "Z", "E", "O"]
-IntentKind = Literal["create_invoice", "chase_invoice", "log_mileage", "log_timesheet", "none"]
+IntentKind = Literal["create_invoice", "chase_invoice", "log_mileage", "log_timesheet", "pay_overtime", "none"]
 
 # Only questions that might be an instruction cost a second model call.
 _ACTION_WORDS = re.compile(
-    r"\b(invoice|bill|send|chase|remind|reminder|log|record|add|book|miles?|mileage|drove|driven|hours?|timesheet)\b",
+    r"\b(invoice|bill|send|chase|remind|reminder|log|record|add|book|miles?|mileage|drove|driven|hours?|timesheet"
+    r"|pay|overtime|double)\b",
     re.I,
 )
 _QUESTION_START = re.compile(
@@ -88,7 +89,9 @@ class ActionError(ValueError):
 INTENT_PROMPT = (
     "You turn a UK small business owner's instruction into JSON for their bookkeeping app. You never do maths "
     "and never invent anything. kind: create_invoice (bill a customer), chase_invoice (remind a customer about an "
-    "unpaid invoice), log_mileage (a business journey), log_timesheet (hours someone worked on a job), or none "
+    "unpaid invoice), log_mileage (a business journey), log_timesheet (hours someone worked on a job), "
+    "pay_overtime (pay someone at a higher rate, e.g. double or time and a half, for hours already on their "
+    "timesheet; copy the rate words exactly into multiplier_text, e.g. 'double', 'time and a half', '1.5x'), or none "
     "(a question about the books, or anything else). Copy names exactly as the user said them into customer_ref, "
     "invoice_ref, job_ref, staff_ref and vehicle_ref. Copy figures exactly as said, as text: amount_text ('£100', "
     "'1,250.50'), hours_text ('7.5'), miles_text ('42'), and in lines quantity_text and unit_price_text. "
@@ -127,6 +130,7 @@ class IntentModelOutput(BaseModel):
     staff_ref: str | None
     hours_text: str | None
     date_text: str | None
+    multiplier_text: str | None = None  # pay_overtime: the rate words as said ("double", "time and a half")
 
 
 # --------------------------------------------------------------------------- #
@@ -177,7 +181,45 @@ class LogTimesheetIntent(BaseModel):
     note: str = ""
 
 
-Intent = CreateInvoiceIntent | ChaseInvoiceIntent | LogMileageIntent | LogTimesheetIntent
+class PayOvertimeIntent(BaseModel):
+    kind: Literal["pay_overtime"] = "pay_overtime"
+    staff_ref: str
+    job_ref: str | None = None
+    multiplier: Decimal
+    week_start: dt.date  # a Monday
+
+
+Intent = CreateInvoiceIntent | ChaseInvoiceIntent | LogMileageIntent | LogTimesheetIntent | PayOvertimeIntent
+
+_MULTIPLIER_WORDS: tuple[tuple[re.Pattern[str], Decimal], ...] = (
+    (re.compile(r"\b(double|twice|2x|x2|two times)\b"), Decimal(2)),
+    (re.compile(r"\b(triple|treble|3x|x3|three times)\b"), Decimal(3)),
+    (re.compile(r"\b(time and a half|one and a half|1\.5x|x1\.5)\b"), Decimal("1.5")),
+    (re.compile(r"\b(time and a quarter|1\.25x|x1\.25)\b"), Decimal("1.25")),
+)
+
+
+def multiplier_in(text: str | None, said: set[Decimal]) -> Decimal | None:
+    """'double' -> 2, 'time and a half' -> 1.5, '1.5' (only if the user said it). Code reads the words; the model
+    only copies them."""
+    t = (text or "").lower()
+    for pattern, value in _MULTIPLIER_WORDS:
+        if pattern.search(t):
+            return value
+    n = number_in(t)
+    return n if n is not None and n in said and Decimal(1) < n <= 3 else None
+
+
+def parse_week(text: str | None, today: date) -> date | None:
+    """The Monday of the week meant: 'last week', 'this week', or the week containing a day parse_day reads."""
+    t = (text or "").strip().lower()
+    monday = today - timedelta(days=today.weekday())
+    if re.search(r"\blast week\b|\bprevious week\b", t):
+        return monday - timedelta(days=7)
+    if re.search(r"\bthis week\b", t):
+        return monday
+    d = parse_day(text, today) if t else None
+    return None if d is None else d - timedelta(days=d.weekday())
 
 
 @dataclass
@@ -379,6 +421,27 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
             job_ref=out.job_ref,
             vehicle_ref=out.vehicle_ref,
             date=d,
+        )
+    if out.kind == "pay_overtime":
+        if not (out.staff_ref or "").strip():
+            return Clarification(kind="pay_overtime", field="staff", question_md="Who should be paid the overtime?")
+        mult = multiplier_in(out.multiplier_text, said)
+        if mult is None:
+            return Clarification(
+                kind="pay_overtime",
+                field="amount",
+                question_md="At what rate? Say “double”, “time and a half” or a multiplier like “1.5”.",
+            )
+        week = parse_week(out.date_text, today)
+        if week is None:
+            return Clarification(
+                kind="pay_overtime", field="date", question_md="Which week were the hours? e.g. “last week”."
+            )
+        return PayOvertimeIntent(
+            staff_ref=(out.staff_ref or "").strip(),
+            job_ref=(out.job_ref or "").strip() or None,
+            multiplier=mult,
+            week_start=week,
         )
     if out.kind == "log_timesheet":
         hours = figure(out.hours_text, "log_timesheet", "hours", "How many hours?")
@@ -773,6 +836,101 @@ async def resolve_timesheet(books: Books, intent: LogTimesheetIntent, today: dat
     return Draft("log_timesheet", summary, preview, "Add the hours to the timesheet")
 
 
+async def resolve_overtime(books: Books, intent: PayOvertimeIntent, today: date) -> Draft | Clarification:
+    """Find the timesheet hours (code, from the files), price them at the multiplier (code), and show the card."""
+    from app import payrun as payrun_
+
+    staff = pick(intent.staff_ref, await staff_options(books), "pay_overtime", "staff", "staff member")
+    if isinstance(staff, Clarification):
+        return staff
+    job_name = None
+    job_id = None
+    if intent.job_ref:
+        all_jobs = [Option(j.id, j.name, (), j) for j in await jobs_.load_jobs(books)]
+        job = pick(intent.job_ref, all_jobs, "pay_overtime", "job", "job")
+        if isinstance(job, Clarification):
+            return job
+        job_id, job_name = job.option.id, job.option.name
+    emp = next(
+        (e for e in await payrun_.load_employees(books) if e.staff_id == staff.option.id and e.pay_type == "hourly"),
+        None,
+    )
+    if emp is None:
+        return Clarification(
+            kind="pay_overtime",
+            field="staff",
+            question_md=f"{_md(staff.option.name)} isn't on the payroll as an hourly employee linked to their "
+            "timesheet. Link them on the Payroll page first.",
+        )
+    start, end = intent.week_start, intent.week_start + timedelta(days=6)
+    months = sorted({f"{start:%Y-%m}", f"{end:%Y-%m}"})
+    entries = [
+        e
+        for m in months
+        for e in await jobs_.load_entries(books, m)
+        if e.staff_id == staff.option.id and start <= e.date <= end and (job_id is None or e.job_id == job_id)
+    ]
+    where = f" on **{_md(job_name)}**" if job_name else ""
+    if not entries:
+        return Clarification(
+            kind="pay_overtime",
+            field="hours",
+            question_md=f"There are no hours for {_md(staff.option.name)}{where} from {uk_date(start)} to "
+            f"{uk_date(end)}. Log them first, then ask again.",
+        )
+    paid = {i for r in await payrun_.list_runs(books) if r.status == "posted" for ln in r.lines for it in ln.pay_items
+            for i in it.entry_ids}  # fmt: skip
+    if paid & {e.id for e in entries}:
+        return Clarification(
+            kind="pay_overtime",
+            field="hours",
+            question_md="Some of those hours are already in an approved pay run. Undo that pay run first, or pay "
+            "the difference as a bonus on the next one.",
+        )
+    q = sum(jobs_.quarters(e.hours) for e in entries)
+    rate = emp.hourly_rate_pence
+    m = intent.multiplier
+
+    def price(quarters_: int, mult: Decimal) -> int:
+        return int((Decimal(quarters_ * rate) * mult / 4).quantize(Decimal(1), rounding=ROUND_HALF_UP))
+
+    pay = price(q, m)
+    before = sum(price(jobs_.quarters(e.hours), Decimal(str(e.rate_multiplier))) for e in entries)
+    warnings = [payrun_.HOLIDAY_PAY_NOTE, "Paid in the next pay run that covers these dates; nothing is posted now."]
+    if emp.overtime_after_hours_week is not None:
+        warnings.insert(
+            0,
+            f"{_md(emp.name)} has an overtime rule (over {emp.overtime_after_hours_week:g} hours a week): these "
+            f"entries will be paid at {m}x instead.",
+        )
+    preview = {
+        "staff_id": staff.option.id,
+        "staff_name": staff.option.name,
+        "employee_id": emp.id,
+        "job_id": job_id,
+        "job_name": job_name,
+        "week_start": start.isoformat(),
+        "week_end": end.isoformat(),
+        "multiplier": str(m),
+        "entries": [
+            {"id": e.id, "date": e.date.isoformat(), "hours": str(e.hours), "multiplier": str(e.rate_multiplier)}
+            for e in entries
+        ],
+        "hours": str(Decimal(q) / 4),
+        "rate_pence": rate,
+        "pay_pence": pay,
+        "extra_pence": pay - before,
+        "warnings": warnings,
+    }
+    label = {Decimal(2): "double time", Decimal("1.5"): "time and a half", Decimal(3): "triple time"}.get(m, f"{m}x")
+    summary = (
+        f"**Pay {_md(staff.option.name)} {label}** for all **{Decimal(q) / 4} hours** logged{where} from "
+        f"{uk_date(start)} to {uk_date(end)}: **{money(pay)}** at {money(rate)} an hour × {m} "
+        f"({money(pay - before)} more than now)."
+    )
+    return Draft("pay_overtime", summary, preview, "Set these hours to the overtime rate")
+
+
 async def resolve_mileage(books: Books, intent: LogMileageIntent, today: date) -> Draft | Clarification:
     vehicles = await vehicle_options(books)
     if intent.vehicle_ref:
@@ -921,6 +1079,8 @@ async def propose(
         draft = await resolve_chase(books, intent, cfg, today)
     elif isinstance(intent, LogTimesheetIntent):
         draft = await resolve_timesheet(books, intent, today)
+    elif isinstance(intent, PayOvertimeIntent):
+        draft = await resolve_overtime(books, intent, today)
     else:
         draft = await resolve_mileage(books, intent, today)
     if isinstance(draft, Clarification):
@@ -1034,6 +1194,35 @@ async def run_timesheet(action: ProposedAction, ctx: Context) -> tuple[str, dict
     return (
         f"Logged {p['hours']} hours for {_md(p['staff_name'])} on {_md(p['job_name'])}.",
         {"entry_id": entry.id, "hours": p["hours"], "date": p["date"]},
+    )
+
+
+async def run_overtime(action: ProposedAction, ctx: Context) -> tuple[str, dict[str, Any]]:
+    """Set the multiplier on exactly the entries the card showed, if they are unchanged and not yet paid."""
+    from app import payrun as payrun_
+
+    p = action.preview
+    shown = {e["id"]: e for e in p["entries"]}
+    start = date.fromisoformat(p["week_start"])
+    end = date.fromisoformat(p["week_end"])
+    months = sorted({f"{start:%Y-%m}", f"{end:%Y-%m}"})
+    now_entries = {e.id: e for m in months for e in await jobs_.load_entries(ctx.books, m) if e.id in shown}
+    if set(now_entries) != set(shown) or any(str(now_entries[i].hours) != shown[i]["hours"] for i in shown):
+        raise ActionError("Those timesheet hours have changed since the card was made: ask again.", 409)
+    paid = {i for r in await payrun_.list_runs(ctx.books) if r.status == "posted" for ln in r.lines
+            for it in ln.pay_items for i in it.entry_ids}  # fmt: skip
+    if paid & set(shown):
+        raise ActionError("Some of those hours are already in an approved pay run.", 409)
+    changed = await jobs_.set_rate_multiplier(ctx.books, list(shown), float(Decimal(p["multiplier"])))
+    await ctx.books.audit(
+        f"user:{ctx.user}",
+        "timesheet_overtime_set",
+        {"entries": [e.id for e in changed], "multiplier": p["multiplier"], "action": action.id},
+    )
+    return (
+        f"{p['hours']} hours for {_md(p['staff_name'])} set to {p['multiplier']}x: {money(p['pay_pence'])} in the next "
+        "pay run that covers them.",
+        {"entries": [e.id for e in changed], "multiplier": p["multiplier"], "pay_pence": p["pay_pence"]},
     )
 
 
@@ -1157,6 +1346,7 @@ EXECUTORS: dict[str, Executor] = {
     "chase_invoice": run_chase,
     "log_mileage": run_mileage,
     "log_timesheet": run_timesheet,
+    "pay_overtime": run_overtime,
 }
 
 

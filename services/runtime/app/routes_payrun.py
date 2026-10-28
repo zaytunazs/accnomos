@@ -268,7 +268,15 @@ async def discard(rid: str, books: Books = Depends(get_books), user: str = Depen
 
 def payslip_pdf(run: PR.PayRun, ln: PR.PayLine, emp: PR.Employee | None, employer: str) -> bytes:
     g = P.gbp
-    payments = [("Basic pay", g(ln.basic_pence))]
+    payments = [
+        (
+            f"{i.label} ({i.hours:g} h x {g(i.rate_pence)}{f' x {i.multiplier:g}' if i.multiplier != 1 else ''})"
+            if i.hours is not None and i.rate_pence is not None
+            else i.label,
+            g(i.pence),
+        )
+        for i in ln.pay_items
+    ] or [("Basic pay", g(ln.basic_pence))]
     if ln.bonus_pence:
         payments.append(("Bonus / overtime", g(ln.bonus_pence)))
     if ln.ssp_pence:

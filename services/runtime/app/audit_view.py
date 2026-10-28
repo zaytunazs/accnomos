@@ -225,6 +225,10 @@ SUMMARIES: dict[str, Summary] = {
     "timesheet_added": lambda r, w: "Logged time" + (f": {_qty(r['hours'])} hours" if r.get("hours") else ""),
     "timesheet_updated": lambda r, w: "Changed a timesheet entry" + _fields(r),
     "timesheet_deleted": lambda r, w: "Deleted a timesheet entry",
+    "timesheet_overtime_set": lambda r, w: (
+        f"Set {_plural(len(r.get('entries') or []), 'timesheet entry', 'timesheet entries')} to "
+        f"{r.get('multiplier', '')}x pay (overtime)"
+    ),
     "timesheets_invoiced": lambda r, w: (
         f"Marked {_plural(_n(r, 'entries'), 'timesheet entry', 'timesheet entries')} as billed on invoice {_inv(r)}"
     ),
