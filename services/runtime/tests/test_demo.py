@@ -13,8 +13,7 @@ from fastapi.responses import JSONResponse
 from fastapi.testclient import TestClient
 
 from accnomos_connectors import FakeStorageProvider
-from app import demo, security, testmode
-from app import routes_books, routes_contacts, routes_invoices, routes_mail, routes_plan
+from app import demo, routes_books, routes_contacts, routes_invoices, routes_mail, routes_plan, security, testmode
 from app.ai.config import is_test_mode
 from app.books import INBOX
 from app.routes_actions import _mail_sender, graph_token
@@ -28,12 +27,12 @@ from app.routes_plan import get_calendar
 
 SECRET = "s" * 40
 G = "/demo/graph/v1.0/me/drive/special/approot"
-BUILDS: list[date] = []
+built: list[date] = []  # days the stand-in seed ran for
 
 
 async def small_build(day: date) -> demo.Snapshot:
     """A stand-in for the full seed: a few files, one in 00 Inbox."""
-    BUILDS.append(day)
+    built.append(day)
     st = FakeStorageProvider()
     await st.write("README.txt", b"SAMPLE - FICTIONAL COMPANY")
     await st.write(f"{INBOX}/SAMPLE 01.png", b"\x89PNG sample")
@@ -48,7 +47,7 @@ def demo_env(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("ACCNOMOS_TEST_MODE", raising=False)
     monkeypatch.setattr(demo, "BUILD", small_build)
     monkeypatch.setattr(demo, "CREATE_LIMITER", None)
-    BUILDS.clear()
+    built.clear()
     demo.reset_for_tests()
     yield
     demo.reset_for_tests()
@@ -106,7 +105,7 @@ def test_refused_without_a_demo_secret(monkeypatch: pytest.MonkeyPatch, secret: 
     before = security.UNLIMITED_PREFIXES
     with pytest.raises(RuntimeError, match="DEMO_SECRET"):
         demo.enable()
-    assert security.UNLIMITED_PREFIXES == before  # nothing was switched on
+    assert before == security.UNLIMITED_PREFIXES  # nothing was switched on
 
 
 def test_a_demo_header_never_falls_back_to_graph_when_demo_mode_is_off(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -170,7 +169,7 @@ def test_two_sessions_never_see_each_others_writes(client: TestClient) -> None:
     assert not any(f.startswith("Books") for f in _names(client, b, ""))
     c = _start(client)
     assert _names(client, c) == {"SAMPLE 01.png"}
-    assert BUILDS == [BUILDS[0]]  # seeded once; every session is a copy
+    assert built == [built[0]]  # seeded once; every session is a copy
 
 
 def test_reset_drops_the_old_session_and_starts_a_fresh_one(client: TestClient) -> None:
@@ -267,7 +266,7 @@ def test_session_starts_are_rate_limited_per_ip(client: TestClient, monkeypatch:
     assert r.status_code == 429 and int(r.headers["retry-after"]) >= 1
 
 
-def test_graph_lookalike_calls_are_rate_limited_per_session(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_graph_calls_are_rate_limited_per_session(client: TestClient, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(demo, "GRAPH_LIMITER", security.TokenBucket(1))
     a, b = _start(client), _start(client)
     assert client.get(f"{G}/children", headers=a).status_code == 200
@@ -289,7 +288,7 @@ def test_a_failed_seed_is_a_503_and_retried(client: TestClient, monkeypatch: pyt
 async def test_waiters_share_one_build(demo_env: None) -> None:
     day = date(2026, 10, 27)
     snaps = await asyncio.gather(*(demo.snapshot(day) for _ in range(5)))
-    assert BUILDS == [day] and all(s is snaps[0] for s in snaps)
+    assert built == [day] and all(s is snaps[0] for s in snaps)
 
 
 # --------------------------------------------------------------------------- #

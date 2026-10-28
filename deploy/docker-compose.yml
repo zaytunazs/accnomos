@@ -33,6 +33,10 @@ services:
       COMPANIES_HOUSE_API_KEY: ${COMPANIES_HOUSE_API_KEY:-}
       # The VAT number check goes through the relay, which holds the HMRC credentials (docs/PRODUCTION.md).
       HMRC_RELAY_URL: ${HMRC_RELAY_URL:-http://relay:8787}
+      # Demo sandbox for judges and visitors (app/demo.py, docs/PRODUCTION.md): off unless DEMO_MODE=1, which refuses
+      # to start without DEMO_SECRET (32+ characters). Set both in .env; never commit the secret.
+      DEMO_MODE: ${DEMO_MODE:-0}
+      DEMO_SECRET: ${DEMO_SECRET:-}
     # Uploads over 1 MB spool to /tmp, and ffmpeg converts voice there: 25 MB uploads need the headroom.
     tmpfs: ["/tmp:size=256m,mode=1777"]
     extra_hosts: ["host.docker.internal:host-gateway"]

@@ -6,7 +6,8 @@ One pure-ASGI middleware, inside CORS so its error responses still carry CORS he
     8 KB -> 431,
     and over plain HTTP -> 400 whenever a proxy says so in X-Forwarded-Proto;
   * a per-IP token bucket (RATE_LIMIT_PER_MIN, default 60) -> 429 with Retry-After;
-  * body caps: 25 MB on the document upload routes, 2 MB on the invoice logo, 256 KB everywhere else -> 413;
+  * body caps: 25 MB on the document upload routes, 11 MB on the demo's Graph look-alike, 2 MB on the invoice logo,
+    256 KB everywhere else -> 413;
   * any unhandled exception -> 500 `{"detail", "correlation_id"}`, never a stack trace.
 
 `install_log_scrubbing()` makes every log record (any logger, including exception text) pass through `scrub`.
@@ -42,6 +43,9 @@ UPLOAD_LIMIT = 25 * 1024 * 1024
 JSON_LIMIT = 256 * 1024
 # Small uploads: the file itself is checked by its route (a 1 MB logo), the cap leaves room for the multipart wrapping.
 SMALL_UPLOADS = {"/invoices/profile/logo": 2 * 1024 * 1024}
+# Upload routes by prefix: the demo sandbox's Graph look-alike (app/demo.py), where a demo's "Add a receipt" PUTs the
+# file (signed in, the browser uploads to Microsoft instead). DemoStorage refuses a file over DEMO_MAX_FILE_BYTES.
+PREFIX_UPLOADS = {"/demo/graph/": 11 * 1024 * 1024}
 UNLIMITED_PATHS = frozenset({"/health"})  # no rate limit (container healthcheck, uptime probes)
 UNLIMITED_PREFIXES: tuple[str, ...] = ()  # test mode adds "/__test/": stand-ins for Graph and the AI, not this server
 MAX_BUCKETS = 10_000
@@ -179,7 +183,10 @@ class BodyTooLarge(HTTPException):
 
 
 def body_limit(path: str) -> int:
-    return UPLOAD_LIMIT if path in UPLOAD_PATHS else SMALL_UPLOADS.get(path, JSON_LIMIT)
+    if path in UPLOAD_PATHS:
+        return UPLOAD_LIMIT
+    prefixed = next((cap for prefix, cap in PREFIX_UPLOADS.items() if path.startswith(prefix)), None)
+    return prefixed or SMALL_UPLOADS.get(path, JSON_LIMIT)
 
 
 _RATE = int(os.getenv("RATE_LIMIT_PER_MIN", "60"))

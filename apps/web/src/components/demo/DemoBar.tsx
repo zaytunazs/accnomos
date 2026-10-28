@@ -61,7 +61,11 @@ export default function DemoBar() {
         {ended ? (
           <span className="font-bold">This demo has ended (demos reset after 2 hours). Start a new one to carry on.</span>
         ) : (
-          <span className="font-bold">Demo sandbox with sample data — changes reset after 2 hours.</span>
+          <span>
+            <span className="font-extrabold">SAMPLE — FICTIONAL COMPANY</span>
+            <span aria-hidden="true"> · </span>
+            <span className="font-bold">Demo sandbox with sample data — changes reset after 2 hours.</span>
+          </span>
         )}
         <button type="button" onClick={() => void leaveDemo("/connect")} className={linkBtn}>
           Set up your own books →

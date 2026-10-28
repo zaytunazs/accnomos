@@ -47,10 +47,11 @@ def _nginx_cap(conf: str, path: str) -> int:
 
 def test_edge_nginx_lets_every_upload_route_through_at_the_runtimes_cap():
     """A route the runtime takes more than 256 KB on needs its own nginx location, or uploads die at the edge."""
-    from app.security import JSON_LIMIT, SMALL_UPLOADS, UPLOAD_PATHS, body_limit
+    from app.security import JSON_LIMIT, PREFIX_UPLOADS, SMALL_UPLOADS, UPLOAD_PATHS, body_limit
 
     conf = (DEPLOY / "nginx.conf").read_text()
-    for path in (*UPLOAD_PATHS, *SMALL_UPLOADS):
+    prefixed = [f"{p}v1.0/me/drive/special/approot:/00 Inbox/r.jpg:/content" for p in PREFIX_UPLOADS]
+    for path in (*UPLOAD_PATHS, *SMALL_UPLOADS, *prefixed):
         assert _nginx_cap(conf, path) >= body_limit(path) > JSON_LIMIT, path
     assert _nginx_cap(conf, "/invoices/INV-0001/send") == JSON_LIMIT  # and nothing else gets more
 
