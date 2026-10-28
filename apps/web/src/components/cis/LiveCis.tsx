@@ -819,7 +819,6 @@ function SignedOut() {
       </p>
       <section aria-labelledby="cis-sample" className={card}>
         <h2 id="cis-sample" className="text-lg font-extrabold">A CIS invoice, worked out by code</h2>
-        <p className="mt-1 text-sm font-bold text-warn-ink">SAMPLE — FICTIONAL COMPANY</p>
         <dl className="mt-3 grid max-w-md grid-cols-[1fr_auto] gap-x-6 gap-y-1 text-[15px] tabular-nums">
           <dt>Labour</dt><dd className="text-right">£1,000.00</dd>
           <dt>Materials (no deduction)</dt><dd className="text-right">£200.00</dd>
