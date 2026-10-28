@@ -354,4 +354,4 @@ or touch structure, so the first three **low-risk** changes (★) are the ones t
   block is `flex-1`), so Dismiss keeps its place.
 
 After screenshots: `design-shots/*-after.png` (same pages, same sizes). The existing e2e suite is unchanged and
-passes; see the commit message for the run.
+passes: 226 passed, 0 failed, 94 skipped (the gated screenshot specs), 9.6 min with CI=1 on 3 workers; eslint and tsc are clean.

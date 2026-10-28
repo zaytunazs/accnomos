@@ -46,12 +46,21 @@ for (const vp of VIEWPORTS) {
       });
     }
 
+    test("home, today figures", async ({ page }) => {
+      await page.goto("/");
+      const today = page.getByRole("region", { name: "Today", exact: true });
+      await expect(today.getByRole("group", { name: "Cash in bank" })).toContainText("£");
+      await today.scrollIntoViewIfNeeded();
+      await shoot(page, "home-figures", vp.name);
+    });
+
     test("home signed in, demo books", async ({ page, runtime }) => {
       await runtime.reset("demo");
       await signIn(page, DEMO_DAY);
       await createBooksFolder(page);
       await page.goto("/");
       await expect(page.getByRole("heading", { level: 1, name: "Good morning, Sam" })).toBeVisible();
+      await page.waitForLoadState("networkidle");
       await shoot(page, "home-signed-in", vp.name);
     });
   });
