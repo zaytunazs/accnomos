@@ -63,6 +63,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Reporting",
     items: [
       { label: "All reports", href: "/reports" },
+      { label: "Reports & exports", href: "/reports/exports" },
       { label: "VAT return", href: "/vat", feature: "vat" },
       { label: "Profit and loss", href: "/reports#pl-heading", kinds: BUSINESS },
       { label: "Balance sheet", href: "/reports/balance-sheet", kinds: BUSINESS },
