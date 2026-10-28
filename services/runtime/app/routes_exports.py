@@ -17,7 +17,7 @@ journals of every entry or of the balances), and `today` for previews and tests.
 from __future__ import annotations
 
 from datetime import date
-from typing import Any
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
@@ -126,8 +126,13 @@ async def get_mapping(package: str, books: Books = Depends(get_books)) -> Mappin
     return await _view(books, _package(package))
 
 
+class TargetBody(StrictBody):
+    code: str = Field("", max_length=40)
+    name: str = Field("", max_length=200)
+
+
 class MappingBody(StrictBody):
-    accounts: dict[str, Target | None] = Field(max_length=500)
+    accounts: dict[str, TargetBody | None] = Field(max_length=500)
 
 
 @router.put("/mappings/{package}", response_model=MappingView)
@@ -135,10 +140,10 @@ async def put_mapping(
     package: str, body: MappingBody, books: Books = Depends(get_books), user: str = Depends(require_user)
 ) -> MappingView:
     _package(package)
-    for account, target in body.accounts.items():
-        if len(account) > 200 or (target and (len(target.code) > 40 or len(target.name) > 200)):
-            raise HTTPException(status_code=422, detail="account, code or name too long")
-    await save_mappings(books, package, body.accounts)
+    if any(len(account) > 200 for account in body.accounts):
+        raise HTTPException(status_code=422, detail="an account name is too long")
+    changes = {a: Target(code=t.code.strip(), name=t.name.strip()) if t else None for a, t in body.accounts.items()}
+    await save_mappings(books, package, changes)
     await books.audit(f"user:{user}", "export_mapping_changed", {"package": package, "accounts": sorted(body.accounts)})
     return await _view(books, package)
 
@@ -148,7 +153,7 @@ class Favourites(BaseModel):
 
 
 class FavouritesBody(StrictBody):
-    ids: list[str] = Field(max_length=200)
+    ids: list[Annotated[str, Field(max_length=80)]] = Field(max_length=200)
 
 
 @router.get("/favourites", response_model=Favourites)
@@ -296,11 +301,11 @@ async def download(
 
 
 class SaveBody(StrictBody):
-    format: str
+    format: reg.Format
     start: Day | None = Field(None, alias="from")
     end: Day | None = Field(None, alias="to")
     as_of: Day | None = None
-    mode: str | None = None
+    mode: str | None = Field(None, max_length=40)
 
 
 class Saved(BaseModel):
