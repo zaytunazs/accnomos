@@ -3,6 +3,7 @@ no request here reaches Modal, Meta or a Spark."""
 
 from __future__ import annotations
 
+import asyncio
 import json
 from collections.abc import Callable
 from typing import Any
@@ -384,10 +385,17 @@ def test_warm_pings_modal_once_a_minute(monkeypatch: pytest.MonkeyPatch) -> None
     async def fake_ping(c: AiConfig) -> None:
         pinged.append(c.provider)
 
+    async def warmed() -> None:  # the ping runs in the background: wait for it, not for the clock
+        await asyncio.gather(*routes_ai._warming)
+
     monkeypatch.setattr(routes_ai, "_ping", fake_ping)
     client = _client()
-    first = client.post("/ai/warm").json()
-    second = client.post("/ai/warm").json()
+    # One event loop for every request: without it each request's loop ends with the response, and the background
+    # ping might never run (it did not, on CI).
+    with client:
+        first = client.post("/ai/warm").json()
+        second = client.post("/ai/warm").json()
+        client.portal.call(warmed)  # type: ignore[union-attr]
     assert first["warming"] and second["warming"] and pinged == ["modal"]
     routes_ai.reset()
     chain.BREAKER.success("modal")
