@@ -97,6 +97,12 @@ signature logo, M20 unsupported zip with no invoice.
   `expectations.json` (normalised unit prices, cheapest supplier, "cheaper elsewhere" hints).
 - `personal/` (`gen_personal.py`): six-month household bank statements with recurring-bill and category-total
   expectations.
+- `landlord/` (`gen_gold_landlord.py`): a fictional landlord with two lets (a flat owned alone, a house owned with a
+  spouse, taxed 50:50): six months of letting agent statements (rent, 10 % fee plus VAT, a repair deducted) and the
+  property bills (insurance, a mortgage statement split into capital and interest, gas safety, a boiler repair, a
+  like-for-like washing machine, ground rent and service charge), with expectations by HMRC property category, per
+  owner, and the Property Business API 6.0 bodies `app/property.py` should produce. Not generated yet: run
+  `python evals/gold/gen_gold_landlord.py` on the Spark; `evals/tests/test_gen_gold_landlord.py` runs it on the stub.
 
 Qwen only names things; code sets every figure. See `evals/README.md` for the commands and `spark_gen.py` for the label
 guard (every generated file must contain the exact label with the em dash, U+2014).
