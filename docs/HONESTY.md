@@ -333,6 +333,21 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - A provider-level read failure now marks only its tiles `{"error": ...}` (Graph 401/403 still fails the whole request, so the app signs in again); the Android app does not read that marker (not run). A failed pull-to-refresh on the phone keeps the old figures under a "Could not load your figures" line; the tiles are not marked stale.
 - The web sidebar names the saved AI choice (Glimmer on your machine, Muse Spark on your key, or the stub in test mode). Ask uses the period picked on `/vat` but has no picker of its own.
 
+- **Home dashboard and its summary (`GET /books/home`, claude/dashboard-ui) run on fakes only.** The summary has been
+  worded only by the test-mode stub AI and by code; no real model (Glimmer, Muse Spark, Modal) has written one, so how
+  often a real model's wording passes the number check, and so how often users see code's own sentences instead, is
+  unknown. The number check is Ask's `KnownNumbers` (every figure must be one of the facts, whole-pound roundings
+  allowed); it does not catch a right figure put in the wrong sentence ("£405.00 went out" when it came in).
+  Money in and out is from imported bank lines only (transfers and ignored lines left out), so a month without a
+  statement shows £0, not "unknown". The Aged card shows the Aged report's figures, which still count a sales invoice
+  marked paid by hand with no payment recorded; the Today tile does not, so the two can differ. The Income Tax card
+  uses standard update periods (5 Jul, 5 Oct, 5 Jan, 5 Apr; due the 7th of the next month), not calendar periods,
+  and shows for every sole trader and anyone with a property, whether or not their income is over the MTD threshold.
+  The deadlines were checked through gov.uk search results (gov.uk itself does not resolve from this environment).
+  Payroll's "next run" is the month after the last confirmed run; the pay date is shown only for a prepared run.
+  The cheaper-options line calls `GET /books/prices` on every Home visit. The Android app shows only the summary card
+  from this endpoint; `flutter analyze` and `flutter test` were not run for it (no Flutter SDK in that session).
+
 ## Profiles (linked accounts)
 
 - **Never run with real Microsoft accounts.** Linking several accounts, switching and *Sign out of this one* have run
