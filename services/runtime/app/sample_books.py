@@ -163,8 +163,9 @@ def _kind(request: Request) -> str:
 async def folder_key(books: Books, kind: str) -> str:
     """Who this is, without keeping anything about them: the folder's drive item id (the fakes share one id, so
     there the storage object tells them apart)."""
-    root = await books.storage.ensure_root()
-    extra = "" if isinstance(books.storage, GraphStorageProvider) else f":{id(books.storage)}"
+    storage = _bare(books.storage)
+    root = await storage.ensure_root()
+    extra = "" if isinstance(storage, GraphStorageProvider) else f":{id(storage)}"
     return hashlib.sha256(f"{kind}:{root.id}{extra}".encode()).hexdigest()[:32]
 
 
@@ -284,9 +285,16 @@ async def _run(run: _Run, steps: list[Any]) -> None:
 
 def _own_storage(books: Books, token: str, kind: str) -> tuple[StorageProvider, bool]:
     """The background run's storage: its own Graph client (the request's closes when the request ends)."""
-    if isinstance(books.storage, GraphStorageProvider):
+    storage = _bare(books.storage)
+    if isinstance(storage, GraphStorageProvider):
         return GraphStorageProvider(token, kind), True  # type: ignore[arg-type]
-    return books.storage, False  # test mode's fakes: the same object the requests see
+    return storage, False  # test mode's fakes: the same object the requests see (never the request's memo)
+
+
+def _bare(storage: StorageProvider) -> StorageProvider:
+    """The storage under the request memo (app/cache.py): the memo lives for one request, the run for many, and the
+    folder key must be the same for every request."""
+    return getattr(storage, "inner", storage)
 
 
 def _stagger(cycle: VatCycle) -> int:

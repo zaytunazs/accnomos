@@ -242,8 +242,15 @@ class RequestMemoStorage(StorageProvider):
             drop_cached(self.user_key, key)
 
     def _forget_list(self, folder: str) -> None:
+        """Forget the folder's listing and every ancestor's: a write can create the folder itself (the first event
+        of a month creates `events/<month>`), which changes the parent's listing too."""
         self._changed()
-        self.lists.pop(_norm(folder), None)
+        key = _norm(folder)
+        while True:
+            self.lists.pop(key, None)
+            if not key:
+                return
+            key = self._parent(key)
 
     def forget(self, path: str) -> None:
         """Drop the memo for one file and its folder listing, so the next stat and read reach storage.

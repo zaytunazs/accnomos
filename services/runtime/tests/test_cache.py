@@ -256,3 +256,14 @@ async def test_a_read_that_lands_after_a_write_is_not_memoised() -> None:
     gate.set()
     assert await slow == ["old"]
     assert await books.read_json("_System/notes.json", None) == ["new"]
+
+
+async def test_a_new_subfolder_shows_in_the_parent_listing_in_the_same_request() -> None:
+    """The first event of a month creates `events/<month>`: a request that listed `events` before must see it after."""
+    inner = FakeStorageProvider()
+    books = Books(inner, cache_key="u1")
+    await books.storage.write("_System/Ledger/events/2026-09/a.json", b"{}")
+    assert [f.name for f in await books.storage.list("_System/Ledger/events") if f.is_folder] == ["2026-09"]
+    await books.storage.write("_System/Ledger/events/2026-10/b.json", b"{}")
+    months = sorted(f.name for f in await books.storage.list("_System/Ledger/events") if f.is_folder)
+    assert months == ["2026-09", "2026-10"]

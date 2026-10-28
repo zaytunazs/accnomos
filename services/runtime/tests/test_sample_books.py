@@ -496,3 +496,14 @@ def test_the_runtime_image_carries_the_seed() -> None:
     ):
         assert f"COPY {src} {dest}" in docker
     assert "COPY services/runtime /srv/services/runtime" in docker
+
+
+async def test_the_run_and_its_key_never_use_the_request_memo() -> None:
+    """get_books wraps storage in the per-request memo (app/cache.py). The background run outlives the request, and
+    every request for one folder must find the same run, so both look under the memo."""
+    fake = FakeStorageProvider()
+    first, second = Books(fake, cache_key="a"), Books(fake, cache_key="b")
+    assert first.storage is not fake  # the memo is really there
+    assert await sample_books.folder_key(first, "personal") == await sample_books.folder_key(second, "personal")
+    storage, owns = sample_books._own_storage(first, "token", "personal")
+    assert storage is fake and not owns
