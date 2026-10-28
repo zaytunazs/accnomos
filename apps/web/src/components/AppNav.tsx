@@ -7,6 +7,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { useAccount } from "@/components/jobs/useAccount";
 import { runtime } from "@/lib/runtime";
 import { PERSONAL_CHANGED, personalOn } from "@/lib/personal";
+import { LANDLORD_CHANGED, landlordOn } from "@/lib/property";
 
 type NavLink = { href: string; label: string; badge?: string; tab?: string };
 const links: NavLink[] = [
@@ -58,22 +59,35 @@ function useReviewBadge(pathname: string): string | undefined {
 
 /** The Personal page is in the menu only while Settings › Show personal finances is on (this device). */
 function usePersonalOn(): boolean {
+  return useDeviceFlag(personalOn, PERSONAL_CHANGED);
+}
+
+/** The Property page likewise, while Settings › I let property (landlord mode) is on. */
+function useLandlordOn(): boolean {
+  return useDeviceFlag(landlordOn, LANDLORD_CHANGED);
+}
+
+function useDeviceFlag(read: () => boolean, changed: string): boolean {
   const [on, setOn] = useState(false);
   useEffect(() => {
-    const read = () => setOn(personalOn());
-    queueMicrotask(read);
-    window.addEventListener(PERSONAL_CHANGED, read);
-    window.addEventListener("storage", read);
+    const update = () => setOn(read());
+    queueMicrotask(update);
+    window.addEventListener(changed, update);
+    window.addEventListener("storage", update);
     return () => {
-      window.removeEventListener(PERSONAL_CHANGED, read);
-      window.removeEventListener("storage", read);
+      window.removeEventListener(changed, update);
+      window.removeEventListener("storage", update);
     };
-  }, []);
+  }, [read, changed]);
   return on;
 }
 
-function withBadges(review: string | undefined, personal: boolean): NavLink[] {
-  const all = personal ? [...links, { href: "/personal", label: "Personal" }] : links;
+function withBadges(review: string | undefined, personal: boolean, landlord = false): NavLink[] {
+  const all = [
+    ...links,
+    ...(personal ? [{ href: "/personal", label: "Personal" }] : []),
+    ...(landlord ? [{ href: "/property", label: "Property" }] : []),
+  ];
   return all.map((l) => (l.href === "/review" ? { ...l, badge: review } : l));
 }
 
@@ -105,7 +119,8 @@ const sidebarGroups: { label: string; hrefs: string[] }[] = [
 function SidebarNav({ pathname, links }: { pathname: string; links: NavLink[] }) {
   const settingsActive = isActive(pathname, "/settings");
   const byHref = new Map(links.map((link) => [link.href, link]));
-  const groups = sidebarGroups.map((g) => (g.label === "Money" && byHref.has("/personal") ? { ...g, hrefs: [...g.hrefs, "/personal"] } : g));
+  const extra = ["/personal", "/property"].filter((href) => byHref.has(href));
+  const groups = sidebarGroups.map((g) => (g.label === "Money" && extra.length ? { ...g, hrefs: [...g.hrefs, ...extra] } : g));
 
   return (
     <nav aria-label="Main" className="hidden flex-col min-[900px]:flex">
@@ -195,7 +210,7 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
 
 export default function AppNav({ variant = "sidebar" }: { variant?: "sidebar" | "tabs" }) {
   const pathname = usePathname();
-  const navLinks = withBadges(useReviewBadge(pathname), usePersonalOn());
+  const navLinks = withBadges(useReviewBadge(pathname), usePersonalOn(), useLandlordOn());
 
   if (variant === "tabs") return <TabBar pathname={pathname} links={navLinks} />;
   return <SidebarNav pathname={pathname} links={navLinks} />;
