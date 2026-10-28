@@ -206,8 +206,11 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
   Lines on bank and control accounts are refused.
 - **Chart names are fixed once used**: entries keep the "code name" they were posted with, so a used account can't be
   renamed (add a new one and recode). Account types must fit the code ranges the reports use; 9000–9999 is not allowed.
-- **Cash flow** includes only open invoices and bills on account (overdue ones counted as due now). There are no repeating
-  invoices or bills in Accnomos yet, and pay runs, VAT payments and card spending are not forecast.
+- **Cash flow** includes open invoices and bills on account (overdue ones counted as due now) and the occurrences of
+  active repeating invoices and bills not made yet (since `claude/sales-exports-fix`): an invoice due its own days to pay
+  after the occurrence (else the profile's terms), a bill its supplier's terms after it (else 30 days). A repeating
+  bill's real due date is whatever the supplier's bill says; the forecast cannot know it. Pay runs, VAT payments and
+  card spending are not forecast.
 - **Tracking** on bills is set on approval and applies to every cost line of the bill; credit notes, payments and recodes
   copy no tags from the user (a recode keeps the original line's tags).
 - Manual journals attach a document by its path in the books folder (no upload from the journal form).

@@ -26,25 +26,24 @@ test("menu bar: groups as dropdowns, keyboard and screen-reader friendly, only p
   }
   await expect(nav.getByRole("button", { name: "Personal" })).toHaveCount(0); // not personal books
 
-  // Keyboard: ↓ opens Sales on its first link (Sales overview is not in this build, so it is Invoices), ↓ moves,
-  // Escape closes and gives focus back to the button.
+  // Keyboard: ↓ opens Sales on its first link (Sales overview), ↓ moves to Invoices, Escape closes and gives focus
+  // back to the button.
   const sales = nav.getByRole("button", { name: "Sales" });
   await sales.focus();
   await page.keyboard.press("ArrowDown");
   await expect(sales).toHaveAttribute("aria-expanded", "true");
-  await expect(nav.getByRole("link", { name: "Invoices" })).toBeFocused();
+  await expect(nav.getByRole("link", { name: "Sales overview" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
-  await expect(nav.getByRole("link", { name: "Jobs" })).toBeFocused();
+  await expect(nav.getByRole("link", { name: "Invoices" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(sales).toHaveAttribute("aria-expanded", "false");
   await expect(sales).toBeFocused();
   await expect(nav.getByRole("link", { name: "Invoices" })).toBeHidden();
 
-  // Pages another branch has not landed are not linked at all.
+  // The sales pages (claude/sales-purchases) are in this build, in this order.
   await sales.click();
-  for (const missing of ["Sales overview", "Quotes", "Products and services", "Repeating"]) {
-    await expect(nav.getByRole("link", { name: missing })).toHaveCount(0);
-  }
+  const salesLinks = (await nav.getByRole("link").allInnerTexts()).filter((t) => t !== "Home");
+  expect(salesLinks.slice(0, 5)).toEqual(["Sales overview", "Invoices", "Quotes", "Products and services", "Repeating"]);
   // Enter follows a link; the new page closes the group and marks where you are.
   await nav.getByRole("link", { name: "Invoices" }).click();
   await expect(page).toHaveURL(/\/invoices$/);

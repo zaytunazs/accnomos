@@ -12,7 +12,7 @@ export default function Page() {
           <p className="mt-1 text-[15px] leading-7 text-muted">Write a quote, send it from your own Outlook, and turn it into an invoice when the customer says yes. Nothing is emailed until you confirm.</p>
         </div>
         <ExplainMore title="How this page works" anchor="invoices">
-          Totals and VAT are worked out by code per line. A sent quote that passes its valid-until date shows as expired. Convert to invoice makes a draft invoice with exactly the quote's lines and totals; you still check and send it on the Invoices page.
+          Totals and VAT are worked out by code per line. A sent quote that passes its valid-until date shows as expired. Convert to invoice makes a draft invoice with exactly the quote&apos;s lines and totals; you still check and send it on the Invoices page.
         </ExplainMore>
       </div>
       <LiveQuotes />

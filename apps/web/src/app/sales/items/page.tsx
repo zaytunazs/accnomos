@@ -12,7 +12,7 @@ export default function Page() {
           <p className="mt-1 text-[15px] leading-7 text-muted">What you sell and buy, once. Pick an item on an invoice, quote or purchase order to fill the line.</p>
         </div>
         <ExplainMore title="How this page works" anchor="invoices">
-          Prices are in pounds and pence ex VAT. Invoices still post sales to 4000 Sales whatever an item's income account says. Archiving hides an item from the pickers; documents already written keep their lines.
+          Prices are in pounds and pence ex VAT. Invoices still post sales to 4000 Sales whatever an item&apos;s income account says. Archiving hides an item from the pickers; documents already written keep their lines.
         </ExplainMore>
       </div>
       <LiveItems />

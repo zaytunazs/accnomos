@@ -245,7 +245,14 @@ async def _cashflow(books: Books, today: date) -> cf.CashFlow:
         raise _bad(exc) from exc
     contacts, ledger, _ = await cb.contact_book(books)
     opening, banks = cf.bank_balance(ledger.events, chart, today)
-    return cf.forecast(cb.aged(contacts, ledger, today), opening, banks, today)
+    from app import repeating as rp_
+    from app.invoicing import load_profile
+
+    terms = {c.id: c.terms_days for c in contacts if c.terms_days is not None}
+    repeating = cf.repeating_items(
+        await rp_.list_templates(books), today, (await load_profile(books)).terms_days, terms
+    )
+    return cf.forecast(cb.aged(contacts, ledger, today), opening, banks, today, repeating)
 
 
 @router.get("/cashflow", response_model=cf.CashFlow)

@@ -62,6 +62,9 @@ test("a purchase order is approved, sent, and converted to a bill that waits in 
   const form = page.getByRole("dialog", { name: "New purchase order" });
   await form.getByLabel("Name", { exact: true }).fill("Travis Perkins Ltd");
   await form.getByLabel("Email (the order is sent here)").fill("orders@tp.example");
+  // A £431.52 bill needs the supplier's VAT number to reclaim its VAT (a full VAT invoice over £250); without one it
+  // would wait as "needs a look" (VAT_NUMBER_REQUIRED, tested in test_purchase_orders.py).
+  await form.getByLabel("Their VAT number (optional)").fill("GB232555112");
   await form.getByLabel("Description").fill("Plasterboard 12.5mm");
   await form.getByLabel("Qty").fill("40");
   await form.getByLabel("Unit price (£, ex VAT)").fill("8.99");

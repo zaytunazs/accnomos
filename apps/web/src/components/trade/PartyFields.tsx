@@ -51,7 +51,15 @@ export default function PartyFields({
         </div>
         <div>
           <label className={fieldLabel} htmlFor={`${idPrefix}-vrn`}>Their VAT number (optional)</label>
-          <input id={`${idPrefix}-vrn`} className={fieldInput} value={party.vrn ?? ""} onChange={(e) => patch({ vrn: e.target.value })} />
+          <input
+            id={`${idPrefix}-vrn`} className={fieldInput} value={party.vrn ?? ""} onChange={(e) => patch({ vrn: e.target.value })}
+            aria-describedby={noun === "supplier" ? `${idPrefix}-vrn-why` : undefined}
+          />
+          {noun === "supplier" && (
+            <p id={`${idPrefix}-vrn-why`} className="mt-1 text-[13px] text-muted">
+              Without it, a bill over £250 made from this order waits in Review as &ldquo;needs a look&rdquo;: VAT can&apos;t be reclaimed without the supplier&apos;s VAT number.
+            </p>
+          )}
         </div>
       </div>
     </div>

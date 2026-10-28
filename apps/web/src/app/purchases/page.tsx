@@ -12,7 +12,7 @@ export default function Page() {
           <p className="mt-1 text-[15px] leading-7 text-muted">What you owe, what is overdue and what went out, plus bills and orders waiting for you. Every figure is worked out by code from your own files.</p>
         </div>
         <ExplainMore title="How this page works" anchor="invoices">
-          Bills count as owed once you approve them in Review. A bill is due on its supplier's payment terms (30 days if none are set). Repeating bills that have come due are made when this page opens.
+          Bills count as owed once you approve them in Review. A bill is due on its supplier&apos;s payment terms (30 days if none are set). Repeating bills that have come due are made when this page opens.
         </ExplainMore>
       </div>
       <PurchasesOverview />
