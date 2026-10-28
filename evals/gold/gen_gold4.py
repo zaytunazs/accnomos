@@ -151,7 +151,7 @@ Return ONLY JSON: {"products":[{"key":str,"name":str,"alt_name":str}]} with one 
 
 LISTING_PROMPT = """You are the product catalogue clerk at '%s', a %s. Write how this supplier prints each product on
 invoices: "print_name" (at most 40 characters, in this supplier's house style: capitals, abbreviations or full words
-as you like, but keep the size or grade figures and the brand), and "sku" (4-10 characters, letters, digits, dashes).
+as you like, but keep the size or grade figures and the brand), and "sku" (4-14 characters, letters, digits, dashes).
 Products (key: name; words or figures that must stay in print_name):
 %s
 Return ONLY JSON: {"listings":[{"key":str,"print_name":str,"sku":str}]} with one entry per key."""
@@ -206,8 +206,8 @@ def check_listings(keys: list[str], names: dict[str, str]):
             seen.add(pn.lower())
             if not has_all(pn, BY_KEY[p["key"]]["must"]) or is_real(pn):
                 return f"{p['key']}.print_name {pn!r} lacks {BY_KEY[p['key']]['must']} or is a real name"
-            if not isinstance(sku, str) or not re.fullmatch(r"[A-Za-z0-9-]{4,10}", sku):
-                return f"{p['key']}.sku {sku!r} is not 4-10 letters, digits or dashes"
+            if not isinstance(sku, str) or not re.fullmatch(r"[A-Za-z0-9-]{4,14}", sku):
+                return f"{p['key']}.sku {sku!r} is not 4-14 letters, digits or dashes"
         return None
 
     return check
