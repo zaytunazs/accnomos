@@ -1667,6 +1667,8 @@ export interface RtClarification {
   ref: string | null; // the user's words for the thing, replaced by the picked candidate when re-asking
   /** add_to_shopping_list with nothing in the history: ask for these as fields, then POST /shopping/propose. */
   spec_fields?: (RtSpecField & { value?: string })[];
+  /** What code already resolved, sent back with the specs (the shopping item's job). */
+  extra?: { job_id?: string | null; job_name?: string | null };
 }
 export interface RtActionResult {
   action_id: string;
@@ -1967,6 +1969,8 @@ export interface RtShoppingItem {
   suggested: RtSuggested | null;
   live_offer: RtLiveOffer | null;
   note: string;
+  job_id: string | null;
+  job_name: string | null;
   added_at: string;
   added_by: string;
   done: boolean;
@@ -2004,6 +2008,7 @@ export interface RtShoppingIn {
   spec?: { width_mm?: string | null; length_m?: string | null; colour?: string | null } | null;
   quantity?: string;
   note?: string;
+  job_id?: string | null;
 }
 export interface RtShoppingPreview {
   text: string;
@@ -2011,5 +2016,6 @@ export interface RtShoppingPreview {
   quantity: string;
   suggested: RtSuggested | null;
   live_offer: RtLiveOffer | null;
+  job_name: string | null;
   warnings: string[];
 }

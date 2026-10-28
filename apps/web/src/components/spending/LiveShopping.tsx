@@ -251,6 +251,7 @@ export default function LiveShopping() {
                     <strong>
                       {i.quantity} × {i.description}
                     </strong>
+                    {i.job_name && <span className="block text-[13px] font-semibold">For {i.job_name}</span>}
                     <span className="block text-muted">
                       {i.suggested
                         ? `${i.suggested.supplier}, ${money(i.suggested.unit_price)} (${i.suggested.basis})`

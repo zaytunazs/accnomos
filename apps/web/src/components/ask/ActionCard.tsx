@@ -137,6 +137,7 @@ function Details({ action }: { action: RtProposedAction }) {
         <Row label="Item">
           <strong>{p.description}</strong>
         </Row>
+        {p.job_name && <Row label="Job">{p.job_name}</Row>}
         <Row label="How many">
           <strong className="tabular-nums">{p.quantity}</strong>
         </Row>
@@ -321,7 +322,8 @@ function SpecForm({ clarification, account }: { clarification: RtClarification; 
         setBusy(true);
         setError(null);
         try {
-          setCard(await runtime.proposeShopping(account, specBody(clarification.ref ?? "item", values)));
+          const body = { ...specBody(clarification.ref ?? "item", values), job_id: clarification.extra?.job_id ?? null };
+          setCard(await runtime.proposeShopping(account, body));
         } catch (err) {
           setError(reason(err));
         } finally {
