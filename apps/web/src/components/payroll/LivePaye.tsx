@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import SignInCta from "@/components/SignInCta";
 import { errorText, todayIso, useAccount } from "@/components/jobs/useAccount";
@@ -172,6 +172,8 @@ export default function LivePaye() {
   // the reference would collapse the form as soon as one is typed).
   const [settingsOpen, setSettingsOpen] = useState<boolean | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
+  const codeTyped = useRef(0); // input events in the tax code box, so a late starter-code suggestion never overwrites one
+  const declNow = useRef<Draft["starter_declaration"] | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [bonus, setBonus] = useState<Record<string, string>>({});
   const [epsMonth, setEpsMonth] = useState(7);
@@ -282,9 +284,17 @@ export default function LivePaye() {
 
   async function suggestCode(decl: Draft["starter_declaration"]) {
     if (!account || !draft) return;
+    // The declaration shows at once; the suggestion lands later, and only if nothing was typed into the
+    // tax code (or another declaration picked) while it was on its way.
+    const typed = codeTyped.current;
+    declNow.current = decl;
+    setDraft((d) => d && { ...d, starter_declaration: decl });
     try {
       const s = await runtime.paye.starterCode(account, decl || "none");
-      setDraft({ ...draft, starter_declaration: decl, tax_code: s.tax_code, week1_month1: s.week1_month1 });
+      const untouched = () => codeTyped.current === typed && declNow.current === decl;
+      if (!untouched()) return;
+      // Checked again as the update renders: typing can land between this reply and that render.
+      setDraft((d) => (d && untouched() ? { ...d, tax_code: s.tax_code, week1_month1: s.week1_month1 } : d));
       setNote(`Suggested tax code ${s.tax_code}${s.week1_month1 ? " (week 1/month 1)" : ""}. ${s.note}`);
     } catch (e) {
       fail(e);
@@ -463,7 +473,7 @@ export default function LivePaye() {
                 <option value="C">C: another job or pension</option>
               </select>
             </label>
-            <label className={label}>Tax code<input required className={input} value={draft.tax_code} onChange={(e) => set({ tax_code: e.target.value })} /></label>
+            <label className={label}>Tax code<input required className={input} value={draft.tax_code} onInput={() => (codeTyped.current += 1)} onChange={(e) => set({ tax_code: e.target.value })} /></label>
             <label className="flex items-center gap-2 text-[14px]">
               <input type="checkbox" checked={draft.week1_month1} onChange={(e) => set({ week1_month1: e.target.checked })} />
               Week 1 / month 1 basis

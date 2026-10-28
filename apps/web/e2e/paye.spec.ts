@@ -96,3 +96,27 @@ test("PAYE payroll: settings → employee → pay run → approve → FPS, EPS, 
   const [xlsx] = await Promise.all([page.waitForEvent("download"), reports.getByRole("button", { name: "XLSX" }).click()]);
   expect(xlsx.suggestedFilename()).toBe("p32.xlsx");
 });
+
+test("a starter-code suggestion that arrives late never overwrites the tax code typed meanwhile", async ({ page }) => {
+  await signIn(page);
+  await createBooksFolder(page);
+  await page.goto("/payroll");
+  // Hold the suggestion until the tax code has been typed (the race the long flow above used to lose on slow runners).
+  let release!: () => void;
+  const typed = new Promise<void>((r) => (release = r));
+  await page.route("**/payroll/paye/starter-code*", async (route) => {
+    await typed;
+    await route.continue();
+  });
+  const reply = page.waitForResponse("**/payroll/paye/starter-code*");
+
+  await page.getByRole("button", { name: "Add employee" }).click();
+  const form = page.getByRole("form", { name: "New employee" });
+  await form.getByLabel("Starter declaration").selectOption("");
+  await expect(form.getByLabel("Starter declaration")).toHaveValue("");
+  await form.getByLabel("Tax code").fill("1257L");
+  release();
+  await reply;
+  await expect(form.getByLabel("Tax code")).toHaveValue("1257L");
+  await expect(form.getByLabel("Starter declaration")).toHaveValue("");
+});

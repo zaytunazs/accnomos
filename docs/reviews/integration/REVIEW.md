@@ -173,6 +173,14 @@ cis-eval, `paye.spec.ts` (the long PAYE flow) failed once. On property-reader, a
     (adjustments with a box) count under every scheme, including cash accounting (two new ledger tests).
   - Approving keeps `tracking`, and a payroll run is never Autopilot's.
   - At 360 px, `/payroll` scrolled 8 px sideways on CI's fonts (the report picker); it now fits.
+- **Payroll: a late starter-code suggestion overwrote the tax code the user had typed** (CI run 40753828607, and
+  the "PAYE RTI table timing" and `paye.spec.ts` flakes above). Picking a starter declaration fetches a suggested
+  code. The reply then wrote back a copy of the form taken *before* the request, so a code typed meanwhile (`1257L`)
+  became `0T W1/M1`, and the employee was taxed £600 instead of £0. The picked declaration also did not show until the
+  reply came. Now the declaration shows at once, and the suggestion is applied only if nothing was typed in the tax
+  code box (and no other declaration was picked) before the update renders. A new e2e test holds the reply until the
+  code is typed; it failed before the fix and passes after. The long PAYE flow passed 16 of 16 repeats, under CPU load
+  too.
 - **Signed-out `/cis` showed the sample label twice** (CI run 40745987742, and flaky locally). The sample card
   repeated the banner's "SAMPLE — FICTIONAL COMPANY" and rendered after the signed-in check, so the sweep counted 1 or
   2 depending on timing. The card no longer repeats it, so the banner is the one label, as the rule says. No test
