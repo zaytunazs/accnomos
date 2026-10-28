@@ -1,5 +1,8 @@
 # Accnomos
 
+[![CI](https://github.com/zaytunazs/accnomos/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/zaytunazs/accnomos/actions/workflows/ci.yml?query=branch%3Amain)
+[![Deploy web](https://github.com/zaytunazs/accnomos/actions/workflows/deploy-web.yml/badge.svg?branch=main)](https://github.com/zaytunazs/accnomos/actions/workflows/deploy-web.yml)
+
 **Accounting, intelligently done.** Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI Developer Hackathon (Indie track).
 Your books are files in your own OneDrive (no Accnomos database); Meta models read and check the paperwork; you approve; code calculates the VAT.
 
