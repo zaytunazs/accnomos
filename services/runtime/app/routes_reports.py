@@ -144,3 +144,112 @@ async def export(
     return ExportResult(
         path=path, name=path.rsplit("/", 1)[1], size=ref.size, web_url=ref.web_url, sample=sample, sheets=sheets
     )
+
+
+# --------------------------------------------------------------------------- #
+# Budgets, short-term cash flow and Tracking Summary (app/budgets.py, app/cashflow.py, app/tracking.py)
+# --------------------------------------------------------------------------- #
+
+from app import budgets as bg  # noqa: E402
+from app import cashflow as cf  # noqa: E402
+from app import tracking as tr  # noqa: E402
+from app.ai.config import AiConfig, ai_config_from_request  # noqa: E402
+from app.chart import ChartError, load_chart  # noqa: E402
+
+
+def _bad(exc: Exception) -> HTTPException:
+    return HTTPException(status_code=404 if isinstance(exc, FileNotFoundError) else 400, detail=str(exc))
+
+
+class BudgetList(BaseModel):
+    budgets: list[bg.Budget]
+
+
+@router.get("/budgets", response_model=BudgetList)
+async def budgets(books: Books = Depends(get_books)) -> BudgetList:
+    try:
+        return BudgetList(budgets=await bg.list_budgets(books))
+    except bg.BudgetError as exc:
+        raise _bad(exc) from exc
+
+
+async def _budget(books: Books, start: str) -> bg.Budget:
+    try:
+        b = await bg.get_budget(books, start)
+    except bg.BudgetError as exc:
+        raise _bad(exc) from exc
+    if b is None:
+        raise HTTPException(status_code=404, detail=f"No budget starting {start}")
+    return b
+
+
+@router.put("/budgets/{start}", response_model=bg.Budget)
+async def save_budget(
+    start: str, body: bg.BudgetIn, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> bg.Budget:
+    """Twelve monthly amounts per P&L account from `start` (YYYY-MM), replacing what was there. Posts nothing."""
+    try:
+        return await bg.save_budget(books, start, body, user)
+    except bg.BudgetError as exc:
+        raise _bad(exc) from exc
+
+
+@router.get("/budgets/{start}/summary", response_model=bg.BudgetSummary)
+async def budget_summary(start: str, books: Books = Depends(get_books)) -> bg.BudgetSummary:
+    return bg.summary(await _budget(books, start))
+
+
+@router.get("/budgets/{start}/variance", response_model=bg.BudgetVariance)
+async def budget_variance(
+    start: str,
+    through: str | None = Query(None, max_length=7, description="YYYY-MM: the last month compared; default all 12"),
+    books: Books = Depends(get_books),
+) -> bg.BudgetVariance:
+    """Actual (the P&L, as approved) against budget, by account, for the budget's months up to `through`."""
+    b = await _budget(books, start)
+    try:
+        first = b.month_starts()[0]
+        return bg.variance(b, await books.list_events(first, bg.add_months(first, 12)), through)
+    except bg.BudgetError as exc:
+        raise _bad(exc) from exc
+
+
+async def _cashflow(books: Books, today: date) -> cf.CashFlow:
+    try:
+        chart, _ = await load_chart(books)
+    except ChartError as exc:
+        raise _bad(exc) from exc
+    contacts, ledger, _ = await cb.contact_book(books)
+    opening, banks = cf.bank_balance(ledger.events, chart, today)
+    return cf.forecast(cb.aged(contacts, ledger, today), opening, banks, today)
+
+
+@router.get("/cashflow", response_model=cf.CashFlow)
+async def cashflow(today: date | None = TODAY, books: Books = Depends(get_books)) -> cf.CashFlow:
+    """The bank balance today and open invoices and bills by due date, over 30, 60 and 90 days. Code only."""
+    return await _cashflow(books, today or current_date())
+
+
+@router.get("/cashflow/explain", response_model=cf.CashLine)
+async def cashflow_explain(
+    today: date | None = TODAY, books: Books = Depends(get_books), cfg: AiConfig = Depends(ai_config_from_request)
+) -> cf.CashLine:
+    """One plain-English line from your AI about the forecast; dropped unless every figure in it is in the forecast."""
+    return await cf.explain(await _cashflow(books, today or current_date()), cfg)
+
+
+@router.get("/tracking", response_model=tr.TrackingSummary)
+async def tracking_summary(
+    category: str = Query(max_length=32),
+    start: date | None = Query(None, alias="from"),
+    end: date | None = Query(None, alias="to"),
+    today: date | None = TODAY,
+    cycle: VatCycle = Depends(vat_cycle),
+    books: Books = Depends(get_books),
+) -> tr.TrackingSummary:
+    """Profit and loss by option of one tracking category; default period: this VAT period."""
+    s, e = _period(cycle, today or current_date(), start, end)
+    try:
+        return tr.tracking_summary(await books.list_events(s, e), await tr.load_tracking(books), category, s, e)
+    except (tr.TrackingError, FileNotFoundError) as exc:
+        raise _bad(exc) from exc
