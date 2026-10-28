@@ -422,7 +422,9 @@ def test_the_first_warm_up_pings_on_a_host_that_has_just_started(monkeypatch: py
         await asyncio.gather(*routes_ai._warming)
 
     monkeypatch.setattr(routes_ai, "_ping", fake_ping)
-    monkeypatch.setattr(routes_ai, "time", SimpleNamespace(monotonic=lambda: 12.0, perf_counter=time.perf_counter, time=time.time))
+    monkeypatch.setattr(
+        routes_ai, "time", SimpleNamespace(monotonic=lambda: 12.0, perf_counter=time.perf_counter, time=time.time)
+    )
     with _client() as client:
         first = client.post("/ai/warm").json()
         client.portal.call(warmed)  # type: ignore[union-attr]
