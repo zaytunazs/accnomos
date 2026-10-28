@@ -229,3 +229,6 @@ app.include_router(todos_router)
 from app.routes_audit import router as audit_router  # noqa: E402  GET /audit
 
 app.include_router(audit_router)
+from app.routes_close import router as close_router  # noqa: E402  /close (the month-end close agent)
+
+app.include_router(close_router)

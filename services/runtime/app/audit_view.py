@@ -47,6 +47,7 @@ AGENT_LABELS = {
     "mileage": "Mileage",
     "folder-layout": "Folder tidy",
     "contacts": "Contacts",
+    "close": "Month-end",
 }
 
 
@@ -294,6 +295,20 @@ SUMMARIES: dict[str, Summary] = {
     "sample_books_loaded": lambda r, w: (
         f"Loaded the sample books ({r.get('business') or 'a fictional company'}): "
         f"{_plural(_n(r, 'events'), 'ledger entry', 'ledger entries')}"
+    ),
+    # The month-end close (app/month_end.py)
+    "close_run": lambda r, w: (
+        f"Ran the month-end close for {r.get('month', 'a month')}: "
+        + (
+            "ready to close"
+            if r.get("can_close")
+            else f"{_plural(_n(r, 'needs_you'), 'thing')} for you, {_n(r, 'blocking')} blocking"
+        )
+    ),
+    "month_closed": lambda r, w: f"Closed {r.get('month', 'a month')} (snapshot {str(r.get('snapshot', ''))[:12]})",
+    "month_reclosed": lambda r, w: (
+        f"Re-closed {r.get('month', 'a month')} after {_plural(_n(r, 'changes'), 'change')}"
+        f" (snapshot {str(r.get('snapshot', ''))[:12]})"
     ),
     # To-dos and housekeeping
     "todo_added": lambda r, w: "Added a to-do",

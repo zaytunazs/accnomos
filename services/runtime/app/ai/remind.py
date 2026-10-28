@@ -141,23 +141,27 @@ async def _call_model(messages: list[dict[str, str]], cfg: AiConfig) -> str:
     return await call_json_model(messages, cfg, strict_json_schema(ReminderModelOutput), "payment_reminder")
 
 
-async def draft_reminder(inv: Invoice, profile: InvoiceProfile, cfg: AiConfig, today: date) -> ReminderDraft:
-    """Never raises for model trouble: the code-written draft stands in, with the reason."""
+async def draft_reminder(inv: Invoice, profile: InvoiceProfile, cfg: AiConfig | None, today: date) -> ReminderDraft:
+    """Never raises for model trouble: the code-written draft stands in, with the reason. With no AI set up
+    (`cfg` None, as the month-end close can be run), code writes it straight away."""
     facts = reminder_facts(inv, profile, today)
     messages = [
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"FACTS:\n{json.dumps(facts, ensure_ascii=False)}"},
     ]
     reason: str | None = None
-    try:
-        out = ReminderModelOutput.model_validate(parse_model_json(await _call_model(messages, cfg)))
-        checked = ground(out, facts)
-    except httpx.HTTPStatusError as exc:
-        checked = f"Your AI ({cfg.mode}) returned HTTP {exc.response.status_code}."
-    except httpx.HTTPError:
-        checked = f"Your AI ({cfg.mode}) could not be reached at {cfg.base_url}."
-    except (ExtractionError, ValidationError):
-        checked = "The model's reply was not in the expected format."
+    if cfg is None:
+        checked: tuple[str, str] | str = "No AI is set up, so code wrote the reminder."
+    else:
+        try:
+            out = ReminderModelOutput.model_validate(parse_model_json(await _call_model(messages, cfg)))
+            checked = ground(out, facts)
+        except httpx.HTTPStatusError as exc:
+            checked = f"Your AI ({cfg.mode}) returned HTTP {exc.response.status_code}."
+        except httpx.HTTPError:
+            checked = f"Your AI ({cfg.mode}) could not be reached at {cfg.base_url}."
+        except (ExtractionError, ValidationError):
+            checked = "The model's reply was not in the expected format."
     if isinstance(checked, str):
         reason, checked = checked, fallback_draft(facts)
     subject, body = checked
@@ -166,6 +170,6 @@ async def draft_reminder(inv: Invoice, profile: InvoiceProfile, cfg: AiConfig, t
         subject=subject,
         body=body,
         days_overdue=facts["days_overdue"],
-        model=cfg.model,
+        model=cfg.model if cfg else "code",
         fallback_reason=reason,
     )
