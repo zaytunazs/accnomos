@@ -39,6 +39,8 @@ PROPOSALS = f"{SYSTEM}/proposals"
 AUDIT = f"{SYSTEM}/audit"
 EVENTS = f"{SYSTEM}/Ledger/events"
 BANK_LINES = f"{SYSTEM}/bank"
+#: MTD Income Tax (self-employment) submission receipts and HMRC calculations, by tax year (app/routes_itsa.py).
+ITSA = f"{SYSTEM}/itsa"
 
 TOP: tuple[Folder, ...] = (
     Folder(

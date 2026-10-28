@@ -169,6 +169,9 @@ async def unsafe_name(_request: Request, exc: UnsafeName) -> JSONResponse:
 from app.routes_vat import router as vat_router  # noqa: E402  GET /books/vat
 
 app.include_router(vat_router)
+from app.routes_itsa import router as itsa_router  # noqa: E402  /books/self-employment/* (MTD Income Tax)
+
+app.include_router(itsa_router)
 from app.routes_dashboard import router as dashboard_router  # noqa: E402  GET /books/dashboard
 
 app.include_router(dashboard_router)
