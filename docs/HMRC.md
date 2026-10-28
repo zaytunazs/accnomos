@@ -131,7 +131,8 @@ for new 2026–27 quarterly update products, as the market window for these prod
    for the tax year (6 April to 5 April; HMRC allows at most 366 days). From 2025-26 every obligation starts on 6 April:
    updates are cumulative. The first open one is picked.
 4. **Figures.** `GET {RUNTIME}/books/self-employment/summary?tax_year=2026-27&period_end=<obligation end>`: code adds
-   up the approved ledger lines from 6 April to the period end into the API's fields, with the SA103F box for each and
+   up the approved ledger lines from 6 April to the period end (on the cash basis by default: dated when the money
+   moved, see *Accounting basis* below) into the API's fields, with the SA103F box for each and
    the ledger lines behind it (drill-down on the page). Mapping (`app/itsa.py`): 4000-4899 turnover, 4900-4999 other
    income, 5xxx cost of goods, 6xxx advertising, 7000-7099 staff, 7100-7299 and 7700-7799 premises (rent, utilities,
    insurance), 7300-7499 car/van/travel, 7500-7599 admin, 7600-7699 professional fees, 7800-7899 repairs, 7900-7909
@@ -159,6 +160,64 @@ for new 2026–27 quarterly update products, as the market window for these prod
 8. **Final declaration** (after the tax year). `intent-to-finalise` calculation as above, HMRC's declaration shown word for
    word with a tick-box, then `POST …/{calculationId}/final-declaration {declaration, confirmed: true}` → `POST
    …/{calculationId}/final-declaration` (204). The relay and the runtime refuse any other declaration text.
+
+## Accounting basis: cash (default) or traditional
+
+**Sources (checked 28 Oct 2026).** gov.uk and HMRC's developer site cannot be reached from the build machine's network
+(the proxy refuses them), so the pages below were read through the Exa fetcher; the quotes are verbatim from what it
+returned.
+
+| What | Found | URL |
+|---|---|---|
+| Cash basis is the default | "From 6 April 2024, cash basis became the default method of accounting." "With cash basis you only record income or expenses when you receive money or pay a bill." Traditional: "you record income and expenses by the date you invoiced or were billed." | https://www.gov.uk/simpler-income-tax-cash-basis (and `/print`) |
+| When income counts | "Only record income you actually receive." Example: invoiced 15 March 2024, paid 30 April 2024 → "Record this income as received on 30 April 2024." "Only count the expenses you've actually paid." | same |
+| Equipment | allowable: "things you use in your business - for example, machinery, computers and vans (there are different rules for cars)"; "you claim the cost of other equipment you buy to keep and use in your business as a normal allowable business expense rather than as a capital allowance"; a car: "claim the purchase as a capital allowance" | same |
+| VAT | "You can record your business income and expenses either excluding or including VAT. However, you must treat income and expenses the same way." | same |
+| Capital not allowed on the cash basis | no deduction for capital spent on buying a business, education or training, a non-depreciating asset, an asset not for continuing use, a car, land, a non-qualifying intangible, a financial asset (s33A ITTOIA 2005) | https://www.legislation.gov.uk/ukpga/2005/5/section/33A, https://www.gov.uk/hmrc-internal-manuals/business-income-manual/bim70035 |
+| SA103F (2026) notes | box 29 depreciation: "Only use this box if you use traditional accounting"; "If you use cash basis, you can only claim capital allowances for the cost of buying cars" | https://assets.publishing.service.gov.uk/media/69c26565cfa346b9d4704b35/SA103F_Notes_2026.pdf |
+| HMRC holds the method per business | end-to-end service guide, *Capture and Change Accounting Method*: show what HMRC holds with **Retrieve Accounting Type**, change it with **Update Accounting Type** (Business Details API 2.0, `GET`/`PUT /individuals/business/details/{nino}/{businessId}/{taxYear}/accounting-type`, `read:`/`write:self-assessment`); users confirm it at the end of the tax year; it rolls over. The cumulative period summary has no basis field. | https://developer.service.hmrc.gov.uk/guides/income-tax-mtd-end-to-end-service-guide/documentation/make-updates-at-tax-year-end.html, https://developer.service.hmrc.gov.uk/api-documentation/docs/api/service/business-details-api/2.0/oas/resolved |
+
+**Setting.** Settings › Business › I am self-employed › **Accounting basis**: cash (default) or traditional (accruals).
+Saved in the books, `_System/itsa/settings.json` (`GET`/`PUT /books/self-employment/settings`, `PUT` needs `X-User`),
+so every device and every update uses the same basis; a change writes an audit line (`itsa_basis_changed`). One basis
+per set of books (one business per books today); HMRC allows a different method per business.
+
+**How the cash figures are made** (`services/runtime/app/cash_basis.py`, pure, writes nothing). The ledger is read as
+it is; `cash_view` derives entries dated when the money moved, using the same payment allocation as Contacts and
+Invoices (`app/settlement.py`):
+
+- a sales invoice or bill on account (Dr 1100 Debtors / Cr 2100 Creditors) counts when paid: each payment (recorded,
+  *Mark paid*, or a bank line matched to it) counts on its date as its share of each income or expense line. Shares are
+  rounded on the running total paid, so the payments of a fully paid document add up to it exactly;
+- a receipt paid when bought, a cash sale, an expense posted from a bank line, a credit note settled in cash: on its
+  own date, as posted;
+- a credit note against an invoice moves no money: it counts through what is then paid (£1,000 invoice, £200 credit
+  note, £800 paid → £800). When a credit is **refunded**, the refund counts on its date as that share of the credit note;
+- an overpayment is listed as not counted while it sits on the contact; applied to an invoice later, it counts on the
+  day the money came in;
+- journals that move debtors or creditors with a P&L line (a bad debt written off) and depreciation are not counted and
+  are listed with the reason;
+- capital (an asset account, code 0xxx): equipment counts in **box 30 (otherExpenses)** when paid; an asset named as a
+  car, land, building, property, freehold/leasehold, goodwill, patent, trade mark, copyright, investment, shares,
+  education or training is left out (s33A), with "claim capital allowances" for a car. The box is Accnomos's choice:
+  neither the notes nor the API name one for cash-basis equipment;
+- VAT is excluded (only income, expense and asset lines are carried), as traditional figures are.
+
+`GET /books/self-employment/summary` and `GET …/reports/sa103` use the saved basis, or `?basis=cash|traditional` for a
+look without changing it. The summary carries `accounting_basis`, `basis_label`, and for every line on the cash basis
+the payment behind it (`paid_how`, `payment_id`, `document_ref`, `money_pence` of `document_gross_pence`) plus a
+`left_out` list. The SA103 report's notes start "Accounting basis: …", its last sections are *Payments behind each
+box* and *Not counted on the cash basis*. A cumulative receipt records the basis it was checked on (`basis` in the
+request, else Settings) as `accounting_basis`, and the quarterly report shows it. Receipts saved before this change
+have none and were traditional.
+
+**P&L.** `GET /reports/pl?basis=cash` (and `basis` in `POST /reports/export`) reads the same cash view; the Reports page
+offers *As approved / Cash basis* when *I am self-employed* is on. Assets bought (0xxx) are not P&L accounts, so the
+cash P&L leaves equipment out while the self-employment summary claims it.
+
+**Not built.** Telling HMRC the method (Business Details 2.0 Retrieve/Update Accounting Type) is not in the relay; the
+user must make HMRC's record match Settings at the end of the year. No transitional adjustments when switching
+between bases, no "including VAT" option, no capital allowances (cars, or anything on traditional accounting).
 
 ## Reports
 
