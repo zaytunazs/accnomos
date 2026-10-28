@@ -1,7 +1,8 @@
 import ExplainMore from "@/components/ExplainMore";
+import LivePaye from "@/components/payroll/LivePaye";
 import LivePayroll from "@/components/payroll/LivePayroll";
 
-export const metadata = { title: "Payroll pay run · Accnomos" };
+export const metadata = { title: "Payroll · Accnomos" };
 
 export default function PayrollPage() {
   return (
@@ -10,15 +11,28 @@ export default function PayrollPage() {
         <div className="min-w-0">
           <h1 className="text-3xl font-extrabold tracking-tight">Payroll</h1>
           <p className="mt-1 text-[15px] leading-7 text-muted">
-            Prepare each month&apos;s pay run from your timesheets, export it for your payroll provider, then confirm what
-            was actually paid so your staff costs are in the books. Tax and NI shown here are estimates.
+            Add your employees, calculate each pay run (PAYE, NI, student loans, pensions), approve it into your books, and
+            download payslips, RTI files, pension schedules and payroll reports. File with HMRC&apos;s Basic PAYE Tools or your
+            payroll provider: direct submission from Accnomos is currently not available.
           </p>
         </div>
-        <ExplainMore title="Why pay figures are estimates" anchor="payroll">
-          Tax and NI are a rough guide (monthly pay, 1257L month-1, England/NI, category A). Your provider works out the real amounts; Confirm posts the actuals you type in. Accnomos never files RTI.
+        <ExplainMore title="What Accnomos does and does not do for payroll" anchor="payroll">
+          Code calculates every figure with HMRC&apos;s 2026-27 rates and specifications. You approve each pay run before it
+          posts. FPS and EPS files are built to HMRC&apos;s 2026-27 schema for checking; Accnomos is not HMRC-recognised and never
+          submits them.
         </ExplainMore>
       </div>
-      <LivePayroll />
+      <LivePaye />
+      <section aria-labelledby="timesheet-estimate" className="flex flex-col gap-4 border-t border-border pt-5">
+        <div>
+          <h2 id="timesheet-estimate" className="text-[20px] font-extrabold">Quick estimate from timesheets</h2>
+          <p className="mt-1 text-[15px] leading-7 text-muted">
+            For a payroll provider who runs your payroll: add up the month&apos;s timesheet hours, export them, then record what
+            the provider actually paid.
+          </p>
+        </div>
+        <LivePayroll />
+      </section>
     </div>
   );
 }

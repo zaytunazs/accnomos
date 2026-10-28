@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S042",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Calder Valley Constructions Ltd",
+  "contractor_ref": "329/EE78467",
+  "subcontractor_name": "Volt Edge Electricals",
+  "subcontractor_utr": "9701687731",
+  "verification_number": null,
+  "tax_month_end": "2026-05-05",
+  "gross_amount": 822.6,
+  "materials": 310.16,
+  "amount_liable": 512.44,
+  "deduction": 102.48,
+  "net_paid": 720.12,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 82260,
+  "materials": 31016,
+  "deduction": 10248,
+  "correct_deduction": 10248
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

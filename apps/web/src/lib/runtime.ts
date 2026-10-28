@@ -89,6 +89,8 @@ export interface RtProposal {
   autopilot?: { auto_approve: boolean; reasons: string[]; supplier_key: string | null } | null;
   /** Business vehicle this cost is tagged to (pre-filled when there is exactly one). */
   vehicle_id?: string | null;
+  /** Business-use percent of a purchase (0-100; absent means 100): only that share is claimed. */
+  business_use_percent?: number | null;
   /** Set on mileage allowance claims, which code builds: approve them as they are. */
   mileage_claim?: { tax_year: string; period: string; covers_to: string; entry_ids: string[]; miles: number } | null;
 }
@@ -419,6 +421,11 @@ export const runtime = {
 
   /** GET /books/vat/periods: the current VAT period and the 8 before it, by the saved VAT settings. */
   vatPeriods: (a: AccountInfo) => call<RtVatPeriods>(a, withQuery("/books/vat/periods", vatQuery())),
+  /** GET /books/vat/schemes: the VAT schemes saved in the books, the one in use today and the eligibility tests. */
+  vatSchemes: (a: AccountInfo) => call<RtVatSchemes>(a, withQuery("/books/vat/schemes", vatQuery())),
+  /** PUT /books/vat/schemes: save the whole timeline (400 names the HMRC rule a change breaks). */
+  saveVatSchemes: (a: AccountInfo, body: RtVatSchemeSettings) =>
+    call<RtVatSchemes>(a, withQuery("/books/vat/schemes", vatQuery()), { method: "PUT", body: JSON.stringify(body) }),
   /** POST /books/vat/obligations: store HMRC's obligations (fetched through the relay) so filed-elsewhere shows as submitted. */
   postVatObligations: (a: AccountInfo, obligations: RtHmrcObligation[]) =>
     call<{ stored: number }>(a, "/books/vat/obligations", { method: "POST", body: JSON.stringify({ obligations }) }),
@@ -506,6 +513,9 @@ export const runtime = {
     ignore: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/ignore`, { method: "POST" }),
     expenseProposal: (a: AccountInfo, lineId: string) =>
       call<RtProposal>(a, `/books/bank/lines/${lineId}/expense-proposal`, { method: "POST" }),
+    /** Mark money out as private spending: a 0% business-use proposal approved on Review. */
+    privateProposal: (a: AccountInfo, lineId: string) =>
+      call<RtProposal>(a, `/books/bank/lines/${lineId}/private-proposal`, { method: "POST" }),
     /** Bank rules (services/runtime/app/bank_rules.py): first match wins, in order. */
     rules: (a: AccountInfo) => call<RtBankRule[]>(a, "/books/bank/rules"),
     createRule: (a: AccountInfo, rule: RtBankRuleIn) =>
@@ -532,10 +542,10 @@ export const runtime = {
       }).toString();
       return call<RtBankRule>(a, `/books/bank/lines/${lineId}/rule-draft${q ? `?${q}` : ""}`);
     },
-    /** Approve one suggestion: exact records the match; rule/AI posts through Review approval. */
-    reconcileApprove: (a: AccountInfo, lineId: string, kind: "exact" | "refund" | "rule" | "ai", ai?: RtAiSuggestion | null) =>
+    /** Approve one suggestion: exact records the match; rule/AI posts through Review approval (with the business-use percent when given). */
+    reconcileApprove: (a: AccountInfo, lineId: string, kind: "exact" | "refund" | "rule" | "ai", ai?: RtAiSuggestion | null, businessUsePercent?: number | null) =>
       call<{ line: RtBankLine; proposal_id: string | null; event_id: string | null }>(
-        a, `/books/bank/lines/${lineId}/approve`, { method: "POST", body: JSON.stringify({ kind, ai: ai ?? null }) }),
+        a, `/books/bank/lines/${lineId}/approve`, { method: "POST", body: JSON.stringify({ kind, ai: ai ?? null, business_use_percent: businessUsePercent ?? null }) }),
   },
   /** /personal/* (services/runtime/app/routes_personal.py). Pence in, pence out; every figure is worked out by the runtime. */
   personal: {
@@ -596,7 +606,14 @@ export const runtime = {
   recordInvoicePayment: (
     a: AccountInfo,
     id: string,
-    body: { amount_pence?: number; paid_on?: string; account?: "1200 Bank" | "1210 Cash"; payment_ref?: string; bank_line_id?: string | null },
+    body: {
+      amount_pence?: number;
+      paid_on?: string;
+      account?: "1200 Bank" | "1210 Cash";
+      payment_ref?: string;
+      bank_line_id?: string | null;
+      cis_deduction_pence?: number; // CIS: deducted by the contractor; amount_pence is then what reached the bank
+    },
   ) => call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/payments`, { method: "POST", body: JSON.stringify(body) }),
   removeInvoicePayment: (a: AccountInfo, id: string, paymentId: string) =>
     call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/payments/${encodeURIComponent(paymentId)}`, { method: "DELETE" }),
@@ -703,17 +720,95 @@ export const runtime = {
     }),
   reopenPayRun: (a: AccountInfo, period: string) => call<RtPayRun>(a, `/payroll/runs/${period}/reopen`, { method: "POST" }),
 
+  /** /payroll/paye/* (services/runtime/app/routes_payrun.py): PAYE payroll calculated by code; RTI files are
+   *  generated for checking and never submitted. Approving a run posts its journal (as Review does). */
+  paye: {
+    setup: (a: AccountInfo) => call<RtPayeSetup>(a, "/payroll/paye/setup"),
+    saveEmployer: (a: AccountInfo, employer: RtPayeEmployer) =>
+      call<RtPayeEmployer>(a, "/payroll/paye/employer", { method: "PUT", body: JSON.stringify(employer) }),
+    addEmployee: (a: AccountInfo, e: Partial<RtPayeEmployee>) =>
+      call<RtPayeEmployee>(a, "/payroll/paye/employees", { method: "POST", body: JSON.stringify(e) }),
+    editEmployee: (a: AccountInfo, id: string, e: Partial<RtPayeEmployee>) =>
+      call<RtPayeEmployee>(a, `/payroll/paye/employees/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(e) }),
+    starterCode: (a: AccountInfo, declaration: "A" | "B" | "C" | "none") =>
+      call<{ tax_code: string; week1_month1: boolean; note: string; verified: boolean }>(a, `/payroll/paye/starter-code?declaration=${declaration}`),
+    runs: (a: AccountInfo) => call<{ runs: RtPayeRun[]; filing_note: string }>(a, "/payroll/paye/payruns"),
+    prepare: (a: AccountInfo, frequency: RtPayFrequency, payDate: string) =>
+      call<RtPayeRun>(a, "/payroll/paye/payruns/prepare", { method: "POST", body: JSON.stringify({ frequency, pay_date: payDate }) }),
+    edit: (a: AccountInfo, id: string, inputs: RtPayeInputs[]) =>
+      call<RtPayeRun>(a, `/payroll/paye/payruns/${id}`, { method: "PUT", body: JSON.stringify({ inputs }) }),
+    propose: (a: AccountInfo, id: string) =>
+      call<{ run: RtPayeRun; proposal_id: string }>(a, `/payroll/paye/payruns/${id}/propose`, { method: "POST" }),
+    approve: (a: AccountInfo, id: string) => call<RtPayeRun>(a, `/payroll/paye/payruns/${id}/approve`, { method: "POST" }),
+    toDraft: (a: AccountInfo, id: string) => call<RtPayeRun>(a, `/payroll/paye/payruns/${id}/draft`, { method: "POST" }),
+    discard: (a: AccountInfo, id: string) => call<{ moved_to: string }>(a, `/payroll/paye/payruns/${id}/discard`, { method: "POST" }),
+    payslip: (a: AccountInfo, id: string, employeeId: string) =>
+      call<RtPayeFile>(a, `/payroll/paye/payruns/${id}/payslips/${encodeURIComponent(employeeId)}`),
+    fps: (a: AccountInfo, id: string, final = false) =>
+      call<{ file: RtPayeFile; contents: RtPayeTable; schema: string }>(a, `/payroll/paye/payruns/${id}/fps${final ? "?final=true" : ""}`),
+    eps: (a: AccountInfo, taxMonth: number, opts: { employmentAllowance: boolean; final: boolean }) =>
+      call<{ file: RtPayeFile; contents: { item: string; value: string }[]; schema: string }>(
+        a,
+        `/payroll/paye/eps/${taxMonth}?employment_allowance=${opts.employmentAllowance}&final=${opts.final}`,
+      ),
+    pensionFile: (a: AccountInfo, id: string, provider: RtPensionProvider) =>
+      call<RtPayeFile>(a, `/payroll/paye/payruns/${id}/pension/${provider}`),
+    report: (a: AccountInfo, key: RtPayeReportKey, q: { run?: string; employee?: string }) =>
+      call<RtPayeTable>(a, withQuery(`/payroll/paye/reports/${key}`, [q.run ? `run=${q.run}` : "", q.employee ? `employee=${q.employee}` : ""].filter(Boolean).join("&"))),
+    reportFile: (a: AccountInfo, key: RtPayeReportKey, format: "csv" | "xlsx" | "pdf", q: { run?: string; employee?: string }) =>
+      call<RtPayeFile>(
+        a,
+        withQuery(`/payroll/paye/reports/${key}`, [`format=${format}`, q.run ? `run=${q.run}` : "", q.employee ? `employee=${q.employee}` : ""].filter(Boolean).join("&")),
+      ),
+  },
+
   /** /reports/* (services/runtime/app/routes_reports.py): by code from the ledger; only export writes (07 Reports). */
   reports: {
     /** No span = the VAT period we are in now, by the saved VAT settings. */
-    pl: (a: AccountInfo, span?: { start: string; end: string } | null) =>
-      call<RtProfitAndLoss>(a, withQuery("/reports/pl", [vatQuery(), span ? `from=${span.start}&to=${span.end}` : ""].filter(Boolean).join("&"))),
+    /** `basis: "cash"`: income when received, costs when paid (the sole trader's cash basis); default as approved. */
+    pl: (a: AccountInfo, span?: { start: string; end: string } | null, basis: RtBasis = "traditional") =>
+      call<RtProfitAndLoss>(
+        a,
+        withQuery(
+          "/reports/pl",
+          [vatQuery(), span ? `from=${span.start}&to=${span.end}` : "", basis === "cash" ? "basis=cash" : ""].filter(Boolean).join("&"),
+        ),
+      ),
     aged: (a: AccountInfo) => call<RtAgedReport>(a, "/reports/aged"),
     vat: (a: AccountInfo, periods = 4) => call<RtVatSummary>(a, withQuery("/reports/vat", [vatQuery(), `periods=${periods}`].filter(Boolean).join("&"))),
     trend: (a: AccountInfo) => call<RtTrend>(a, "/reports/trend"),
     /** Saves 07 Reports/<yyyy-mm-dd>-<name>.xlsx in OneDrive; posts nothing. */
-    export: (a: AccountInfo, body: { report?: RtReportKind; from?: string; to?: string; periods?: number }) =>
+    export: (a: AccountInfo, body: { report?: RtReportKind; from?: string; to?: string; periods?: number; basis?: RtBasis }) =>
       call<RtReportExport>(a, withQuery("/reports/export", vatQuery()), { method: "POST", body: JSON.stringify(body) }),
+  },
+  /** CIS and the VAT domestic reverse charge (services/runtime/app/routes_cis.py). Nothing here files with HMRC. */
+  cis: {
+    overview: (a: AccountInfo) => call<RtCisOverview>(a, "/cis"),
+    saveSettings: (a: AccountInfo, s: RtCisSettings) => call<RtCisSettings>(a, "/cis/settings", { method: "PUT", body: JSON.stringify(s) }),
+    statements: (a: AccountInfo) => call<RtCisStatementView[]>(a, "/cis/statements"),
+    addStatement: (a: AccountInfo, s: RtCisStatementIn) => call<RtCisStatement>(a, "/cis/statements", { method: "POST", body: JSON.stringify(s) }),
+    removeStatement: (a: AccountInfo, id: string) => call<{ ok: boolean }>(a, `/cis/statements/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    /** Your AI reads a file in 00 Inbox; the result waits on the CIS page for Approve. */
+    read: (a: AccountInfo, name: string) => call<RtCisReading>(a, "/cis/read", { method: "POST", body: JSON.stringify({ name }) }),
+    readings: (a: AccountInfo, status?: "pending" | "approved" | "rejected") =>
+      call<RtCisReading[]>(a, withQuery("/cis/readings", status ? `status=${status}` : "")),
+    approveReading: (a: AccountInfo, id: string, body: { statement?: RtCisStatementIn | null; bill?: RtCisBillIn | null } = {}) =>
+      call<RtCisReading>(a, `/cis/readings/${encodeURIComponent(id)}/approve`, { method: "POST", body: JSON.stringify(body) }),
+    rejectReading: (a: AccountInfo, id: string) =>
+      call<RtCisReading>(a, `/cis/readings/${encodeURIComponent(id)}/reject`, { method: "POST" }),
+    addBill: (a: AccountInfo, b: RtCisBillIn) =>
+      call<{ event_id: string; reverse_charge_vat_pence: number }>(a, "/cis/reverse-charge/bills", { method: "POST", body: JSON.stringify(b) }),
+    guide: (a: AccountInfo) => call<RtReverseChargeGuide>(a, "/cis/reverse-charge"),
+    year: (a: AccountInfo, taxYear?: string) => call<RtCisYear>(a, withQuery("/cis/year", taxYear ? `tax_year=${taxYear}` : "")),
+    subcontractors: (a: AccountInfo) => call<RtSubcontractor[]>(a, "/cis/subcontractors"),
+    addSubcontractor: (a: AccountInfo, s: RtSubcontractorIn) =>
+      call<RtSubcontractor>(a, "/cis/subcontractors", { method: "POST", body: JSON.stringify(s) }),
+    payments: (a: AccountInfo) => call<RtCisPayment[]>(a, "/cis/payments"),
+    recordPayment: (a: AccountInfo, p: RtCisPaymentIn) => call<RtCisPayment>(a, "/cis/payments", { method: "POST", body: JSON.stringify(p) }),
+    removePayment: (a: AccountInfo, id: string) => call<RtCisPayment>(a, `/cis/payments/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    monthlyReturn: (a: AccountInfo, end: string) => call<RtCisReturn>(a, `/cis/returns/${end}`),
+    exportReturn: (a: AccountInfo, end: string) =>
+      call<{ paths: string[]; csv: string }>(a, `/cis/returns/${end}/export`, { method: "POST" }),
   },
   /** GET /books/spending: code's figures for the period (default this month), the model's checked words. */
   spending: (a: AccountInfo, period?: { start: string; end: string } | null) =>
@@ -740,16 +835,216 @@ export const runtime = {
     call<RtShoppingItem>(a, `/shopping/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
 
+/** POST /cis/quote: the quote PDF (saved in 03 Sales/quotes by the runtime) and where it went. */
+export async function cisQuote(account: AccountInfo, draft: RtInvoiceDraft, validDays = 30): Promise<{ pdf: Blob; path: string }> {
+  const headers = { ...(await runtimeHeaders(account)), "Content-Type": "application/json" };
+  const res = await fetch(`${RUNTIME_URL}/cis/quote`, { method: "POST", headers, body: JSON.stringify({ draft, valid_days: validDays }) });
+  if (!res.ok) throw new Error(await errorDetail(res, "POST /cis/quote"));
+  return { pdf: await res.blob(), path: res.headers.get("X-Quote-Path") ?? "03 Sales/quotes" };
+}
+
+/** CIS (services/runtime/app/cis.py). Pence throughout; dates YYYY-MM-DD. */
+export type RtCisStatus = "gross" | "net" | "unverified";
+export type RtCisEntity = "sole_trader" | "partnership" | "company";
+export interface RtCisSettings {
+  subcontractor: boolean;
+  status: RtCisStatus;
+  utr: string | null;
+  entity: RtCisEntity;
+  contractor: boolean;
+  contractor_utr: string | null;
+  accounts_office_ref: string | null;
+  employer_ref: string | null;
+  reverse_charge_default: boolean;
+}
+export interface RtCisDeadline {
+  tax_month_start: string;
+  tax_month_end: string;
+  statements_due: string;
+  return_due: string;
+  payment_due: string;
+}
+export interface RtCisOverview {
+  settings: RtCisSettings;
+  rate: number;
+  status_label: string;
+  rates: Record<RtCisStatus, number>;
+  tax_month: RtCisDeadline;
+  last_tax_month: RtCisDeadline;
+  tax_year: string;
+  pending_readings: number;
+  source_url: string;
+  checked: string;
+  not_submitted: string;
+}
+export interface RtCisCheck {
+  code: string;
+  ok: boolean;
+  message: string;
+}
+export interface RtCisStatementIn {
+  contractor_name: string;
+  contractor_ref?: string | null;
+  tax_month_end: string;
+  gross_pence: number;
+  materials_pence: number;
+  deduction_pence: number;
+  subcontractor_utr?: string | null;
+  verification_number?: string | null;
+  document?: string | null;
+}
+export interface RtCisStatement extends RtCisStatementIn {
+  id: string;
+  source: "typed" | "read";
+  approved_by: string;
+  approved_at: string;
+}
+export interface RtCisStatementView {
+  statement: RtCisStatement;
+  liable_pence: number;
+  net_paid_pence: number;
+  checks: RtCisCheck[];
+  recorded_pence: number;
+  difference_pence: number;
+}
+export interface RtCisBillIn {
+  supplier_name: string;
+  supplier_vat_number?: string | null;
+  invoice_number?: string | null;
+  invoice_date: string;
+  net_pence: number;
+  vat_rate: 20 | 5;
+  account?: "5300 Subcontractors" | "5000 Materials";
+  document?: string | null;
+}
+export interface RtCisReading {
+  id: string;
+  path: string;
+  kind: "cis_statement" | "reverse_charge_invoice" | "other";
+  statement: RtCisStatementIn | null;
+  bill: RtCisBillIn | null;
+  problems: string[];
+  checks: RtCisCheck[];
+  confidence: number;
+  model: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+  statement_id: string | null;
+  event_id: string | null;
+}
+export interface RtCisYear {
+  tax_year: string;
+  start: string;
+  end: string;
+  entity: RtCisEntity;
+  status: RtCisStatus;
+  gross_pence: number;
+  materials_pence: number;
+  deduction_pence: number;
+  recorded_pence: number;
+  difference_pence: number;
+  by_contractor: { contractor_name: string; statements: number; gross_pence: number; materials_pence: number; deduction_pence: number }[];
+  months_missing: string[];
+  where_it_goes: string[];
+  paid_to_subcontractors_pence: number;
+  deducted_from_subcontractors_pence: number;
+  source_urls: string[];
+}
+export interface RtReverseChargeGuide {
+  applies_when: string[];
+  not_when: string[];
+  end_user_wording: string;
+  invoice_wording: string;
+  boxes_supplier: string;
+  boxes_customer: string;
+  schemes: string[];
+  source_urls: string[];
+  checked: string;
+}
+export interface RtSubcontractorIn {
+  name: string;
+  trading_name?: string | null;
+  kind: RtCisEntity;
+  utr: string;
+  status: RtCisStatus;
+  verification_number?: string | null;
+  verified_on?: string | null;
+  vat_registered: boolean;
+}
+export interface RtSubcontractor extends RtSubcontractorIn {
+  id: string;
+}
+export interface RtCisPaymentIn {
+  subcontractor_id: string;
+  date: string;
+  gross_pence: number;
+  materials_pence: number;
+  vat_treatment: "reverse_charge" | "standard" | "none";
+  vat_rate?: 20 | 5;
+  account?: "1200 Bank" | "1210 Cash";
+  bill_event_id?: string | null;
+  reference?: string | null;
+}
+export interface RtCisPayment {
+  id: string;
+  subcontractor_id: string;
+  subcontractor_name: string;
+  utr: string;
+  status: RtCisStatus;
+  date: string;
+  gross_pence: number;
+  materials_pence: number;
+  rate: number;
+  deduction_pence: number;
+  vat_treatment: "reverse_charge" | "standard" | "none";
+  vat_pence: number;
+  paid_pence: number;
+  reference: string | null;
+  removed_at: string | null;
+}
+export interface RtCisReturnLine {
+  subcontractor_name: string;
+  utr: string;
+  verification_number: string | null;
+  total_payments_pence: number;
+  materials_pence: number;
+  deduction_pence: number;
+  rate: number;
+}
+export interface RtCisReturn {
+  tax_month_start: string;
+  tax_month_end: string;
+  return_due: string;
+  payment_due: string;
+  contractor_utr: string | null;
+  accounts_office_ref: string | null;
+  employer_ref: string | null;
+  nil_return: boolean;
+  lines: RtCisReturnLine[];
+  total_payments_pence: number;
+  total_materials_pence: number;
+  total_deductions_pence: number;
+  declaration: string;
+  not_submitted: string;
+  problems: string[];
+  source_url: string;
+  owed_to_hmrc_pence: number;
+  sample: boolean;
+}
+
 /** Reports (services/runtime/app/reports.py). Pence throughout; VAT boxes 6 and 7 whole pounds. */
 export interface RtPlSection {
   rows: { account: string; amount_pence: number }[];
   total_pence: number;
 }
+/** Traditional accounting (as approved: invoices when raised) or the cash basis (money when it moves). */
+export type RtBasis = "cash" | "traditional";
 export interface RtProfitAndLoss {
   start: string;
   end: string;
   label: string;
-  basis: string; // "As approved: …"
+  accounting_basis: RtBasis;
+  basis: string; // "As approved: …" or "Cash basis: …"
   sales: RtPlSection;
   cost_of_sales: RtPlSection;
   gross_profit_pence: number;
@@ -808,6 +1103,153 @@ export interface RtReportExport {
   web_url: string | null;
   sample: boolean;
   sheets: string[];
+}
+
+/** PAYE payroll (services/runtime/app/payrun.py). Pence throughout. */
+export type RtPayFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly";
+export type RtPensionProvider = "generic" | "nest" | "peoples_pension" | "smart_pension" | "now_pensions";
+export type RtPayeReportKey = "payroll_summary" | "p11" | "p32" | "pension" | "fps" | "journal" | "p45" | "p60";
+export interface RtPayeEmployer {
+  name: string;
+  paye_office: string;
+  paye_reference: string;
+  accounts_office_ref: string;
+  cotax_ref: string;
+  claim_employment_allowance: boolean;
+  small_employer_relief: boolean;
+  pension: {
+    provider: RtPensionProvider;
+    basis: "qualifying" | "full_pay";
+    arrangement: "net_pay" | "relief_at_source" | "salary_sacrifice";
+    employer_bp: number;
+    employee_bp: number;
+    provider_ref: string;
+    payment_source: string;
+    pay_code: string;
+    duties_start: string | null;
+  };
+  rti_test_submission_enabled: false;
+}
+export interface RtPayeEmployee {
+  id: string;
+  payroll_id: string;
+  title: string;
+  forenames: string;
+  surname: string;
+  nino: string | null;
+  dob: string;
+  gender: "M" | "F";
+  address: string[];
+  postcode: string;
+  email: string;
+  start_date: string;
+  starter_declaration: "A" | "B" | "C" | null;
+  p45_previous_pay_pence: number | null;
+  p45_previous_tax_pence: number | null;
+  tax_code: string;
+  week1_month1: boolean;
+  ni_category: string;
+  director: boolean;
+  director_appointed_on: string | null;
+  student_loan_plan: "1" | "2" | "4" | "5" | null;
+  postgrad_loan: boolean;
+  frequency: RtPayFrequency;
+  pay_type: "salary" | "hourly";
+  annual_salary_pence: number;
+  hourly_rate_pence: number;
+  usual_hours: number;
+  hours_band: "A" | "B" | "C" | "D" | "E";
+  pension_exempt: boolean;
+  staff_id: string | null;
+  overtime_after_hours_week: number | null;
+  overtime_multiplier: number;
+  enrolled_on: string | null;
+  opted_out_on: string | null;
+  leaving_date: string | null;
+}
+export interface RtPayeSetup {
+  employer: RtPayeEmployer;
+  employees: RtPayeEmployee[];
+  tax_year: string;
+  verified_on: string;
+  sources: { label: string; url: string }[];
+  limits: string[];
+  filing_note: string;
+  estimate_note: string;
+  ni_categories: Record<string, string>;
+  submission: { available: false; test_switch: boolean; reason: string };
+}
+export interface RtPayeInputs {
+  employee_id: string;
+  basic_pence?: number | null;
+  hours?: number | null;
+  bonus_pence?: number;
+  deductions_after_tax_pence?: number;
+  notes?: string;
+}
+export interface RtPayeLine {
+  employee_id: string;
+  payroll_id: string;
+  name: string;
+  inputs: RtPayeInputs;
+  basic_pence: number;
+  bonus_pence: number;
+  overtime_pence: number;
+  pay_items: { label: string; hours: number | null; rate_pence: number | null; multiplier: number; pence: number }[];
+  ssp_pence: number;
+  smp_pence: number;
+  gross_pence: number;
+  salary_sacrifice_pence: number;
+  ni_earnings_pence: number;
+  taxable_pay_pence: number;
+  tax_code: string;
+  tax_pence: number;
+  ni_category: string;
+  ee_ni_pence: number;
+  er_ni_pence: number;
+  student_loan_pence: number;
+  postgrad_loan_pence: number;
+  ee_pension_net_pay_pence: number;
+  ee_pension_from_net_pence: number;
+  deductions_after_tax_pence: number;
+  net_pay_pence: number;
+  pension: { category: string; member: boolean; employer_pence: number; employee_deducted_pence: number; opt_out_ends: string | null; notes: string[] };
+  starter: boolean;
+  leaver: boolean;
+  warnings: string[];
+}
+export interface RtPayeRun {
+  id: string;
+  tax_year: string;
+  frequency: RtPayFrequency;
+  period: number;
+  period_start: string;
+  period_end: string;
+  pay_date: string;
+  status: "draft" | "proposed" | "posted";
+  lines: RtPayeLine[];
+  proposal_id: string | null;
+  employment_allowance_pence: number;
+  hmrc_due_pence: number;
+  journal: { account: string; debit_pence: number; credit_pence: number }[];
+  warnings: string[];
+  label: string;
+}
+export interface RtPayeFile {
+  name: string;
+  media_type: string;
+  base64: string;
+  saved_to: string | null;
+  note: string;
+}
+export interface RtPayeTable {
+  key: string;
+  title: string;
+  subtitle: string;
+  columns: { key: string; label: string; kind: "text" | "money" | "int" | "date" }[];
+  rows: Record<string, string | number>[];
+  totals: Record<string, string | number> | null;
+  notes: string[];
 }
 
 /** Pay runs (services/runtime/app/payroll.py). Pence throughout; every est_* figure is an estimate. */
@@ -1316,6 +1758,7 @@ export interface RtInvoiceLineIn {
   unit_price_pence: number;
   vat_code: RtSalesVatCode;
   timesheet_entry_ids?: string[]; // the job hours this line bills; marked invoiced when the invoice is sent
+  materials?: boolean; // CIS: materials, left out of the deduction
 }
 export interface RtInvoiceLine extends RtInvoiceLineIn {
   vat_rate: number;
@@ -1330,6 +1773,17 @@ export interface RtInvoiceDraft {
   reference: string | null;
   notes: string | null;
   job_id?: string | null;
+  cis?: boolean; // show the CIS deduction on labour (Settings › CIS)
+  reverse_charge?: boolean; // VAT domestic reverse charge (VAT Act 1994 s55A)
+}
+/** The CIS part of an invoice or quote, by code (services/runtime/app/cis.py). */
+export interface RtCisOnInvoice {
+  status: RtCisStatus;
+  rate: number;
+  labour_pence: number;
+  materials_pence: number;
+  deduction_pence: number;
+  payable_pence: number;
 }
 export interface RtInvoice {
   number: string;
@@ -1363,6 +1817,9 @@ export interface RtInvoice {
   timesheets_marked: boolean;
   payment_link?: RtPaymentLink | null; // "Pay online" (services/runtime/app/online_payments.py)
   online_payments?: string[]; // provider payment ids already in the books
+  cis?: RtCisOnInvoice | null;
+  reverse_charge?: boolean;
+  reverse_charge_vat_pence?: number; // the VAT the customer accounts for; not in vat_pence or total_pence
 }
 /** Online payments: the user's own Stripe / PayPal account (services/runtime/app/online_payments.py). */
 export type RtPayProvider = "stripe" | "paypal" | "paypalme";
@@ -1417,6 +1874,7 @@ export interface RtInvoicePayment {
   account: string | null;
   reference: string | null;
   description: string;
+  cis_deduction_pence?: number; // part of amount_pence the contractor deducted under CIS
 }
 export interface RtInvoiceMoney {
   paid_pence: number;
@@ -1524,7 +1982,7 @@ export interface RtBankSuggestion {
   // label: set when the entry is a recorded payment or refund ("Recorded payment of £405.00 on 20/09/2026 (…)")
   events: { id: string; date: string; counterparty: string | null; amount_pence: number; label?: string | null }[];
 }
-export type RtUnmatchedAction = "create_expense_proposal" | "mark_transfer" | "ignore";
+export type RtUnmatchedAction = "create_expense_proposal" | "mark_private" | "mark_transfer" | "ignore";
 export interface RtUnmatchedLine {
   line: RtBankLine;
   suggested: { action: RtUnmatchedAction; reason: string };
@@ -1700,6 +2158,9 @@ export interface RtDeadlines {
   due: RtPeriodDeadline | null;
   /** True when no stagger was sent (none saved in Settings), so calendar quarters (stagger 1) were assumed. */
   assumed?: boolean;
+  /** The current period is an annual accounting one (saved in Settings › VAT scheme). */
+  annual?: boolean;
+  instalments?: RtInstalment[];
   rule: string;
 }
 
@@ -1786,6 +2247,7 @@ export type RtActionKind =
   | "chase_invoice"
   | "log_mileage"
   | "log_timesheet"
+  | "pay_overtime"
   | "match_bank_line" // proposed by the month-end close
   | "close_month" // proposed by the month-end close
   | "add_to_shopping_list";
@@ -1856,6 +2318,20 @@ export interface RtTimesheetPreview {
   date: string;
   hours: string;
   note: string;
+  warnings: string[];
+}
+/** pay_overtime: the timesheet entries code found, priced by code at the multiplier. */
+export interface RtOvertimePreview {
+  staff_name: string;
+  job_name: string | null;
+  week_start: string;
+  week_end: string;
+  multiplier: string;
+  entries: { id: string; date: string; hours: string; multiplier: string }[];
+  hours: string;
+  rate_pence: number;
+  pay_pence: number;
+  extra_pence: number;
   warnings: string[];
 }
 export interface RtMileagePreview {
@@ -1994,7 +2470,7 @@ export interface RtVatView {
   period_key: string;
   start: string;
   end: string;
-  period: string; // "2026-Q4" (quarterly) or "2026-11" (monthly)
+  period: string; // "2026-Q4" (quarterly), "2026-11" (monthly) or "2026-Y01" (annual accounting)
   label: string; // "Oct–Dec 2026"
   current: boolean;
   submitted: boolean; // HMRC says fulfilled, or a relay submission receipt is saved in 06 VAT returns
@@ -2007,6 +2483,119 @@ export interface RtVatView {
   events_in_period: number;
   undone_in_period: number; // reversing events among them
   hmrc_body: Record<string, unknown>;
+  /** Set when a VAT scheme (flat rate, cash or annual accounting) is saved in Settings: how the boxes were worked out. */
+  scheme?: RtSchemeView | null;
+}
+
+/** VAT schemes (services/runtime/app/vat_schemes.py). Money is pounds as strings. */
+export type RtSchemeName = "standard" | "cash" | "flat_rate";
+export interface RtFlatCalc {
+  start: string;
+  end: string;
+  percent: string;
+  turnover: string;
+  tax: string;
+  first_year: boolean;
+}
+export interface RtSchemeSegment {
+  start: string;
+  end: string;
+  scheme: RtSchemeName;
+  label: string;
+  cash_basis: boolean;
+  payments: number;
+  unpaid_brought_in_vat: string;
+  turnover?: string | null;
+  relevant_goods?: string | null;
+  limited_cost_cap?: string | null;
+  limited_cost?: boolean | null;
+  limited_cost_source?: "auto" | "yes" | "no" | null;
+  capital_vat?: string | null;
+  calcs: RtFlatCalc[];
+}
+export interface RtInstalment {
+  number: number;
+  due: string;
+  amount: string;
+}
+export interface RtAnnualView {
+  start: string;
+  end: string;
+  return_due: string;
+  instalments: RtInstalment[];
+  instalments_total: string;
+  basis_known: boolean;
+  balancing: string;
+  balancing_direction: "pay" | "refund" | "nil";
+}
+export interface RtSchemeView {
+  summary: string;
+  segments: RtSchemeSegment[];
+  annual?: RtAnnualView | null;
+  sources: Record<string, string>;
+  checked: string;
+}
+export interface RtSchemeEntry {
+  from: string;
+  scheme: RtSchemeName;
+  flat_rate?: { sector: string; turnover_method: "basic" | "cash"; limited_cost: "auto" | "yes" | "no" } | null;
+  cash_exit?: "immediate" | "six_months";
+}
+export interface RtVatSchemeSettings {
+  registered_on?: string | null;
+  schemes: RtSchemeEntry[];
+  annual?: {
+    start: string;
+    first_year_end?: string | null;
+    instalments: "monthly" | "quarterly";
+    basis_pence?: number | null;
+    end?: string | null;
+  } | null;
+  capital_purchases: string[];
+  relevant_goods_accounts?: string[] | null;
+  estimates?: { taxable_turnover_pence?: number | null; total_income_pence?: number | null };
+  updated_at?: string | null;
+  updated_by?: string | null;
+}
+export interface RtSchemeCheck {
+  scheme: "flat_rate" | "cash" | "annual";
+  status: "ok" | "warn" | "stop";
+  message: string;
+  figure?: string | null;
+  limit?: string | null;
+  basis?: "estimate" | "books" | null;
+  source: string;
+}
+export interface RtCapitalCandidate {
+  event_id: string;
+  date: string;
+  counterparty: string | null;
+  gross: string;
+  vat: string;
+  marked: boolean;
+}
+/** GET/PUT /books/vat/schemes (services/runtime/app/routes_vat_schemes.py). */
+export interface RtVatSchemes {
+  settings: RtVatSchemeSettings;
+  current: {
+    scheme: RtSchemeName;
+    label: string;
+    since: string | null;
+    cash_basis: boolean;
+    flat_rate_percent?: string | null;
+    first_year_until?: string | null;
+    limited_cost_rate: string;
+    annual: boolean;
+    annual_period?: [string, string] | null;
+  };
+  checks: RtSchemeCheck[];
+  warnings: string[];
+  sectors: { name: string; percent: string }[];
+  capital_candidates: RtCapitalCandidate[];
+  relevant_goods_default: string[];
+  path: string;
+  sources: Record<string, string>;
+  checked: string;
 }
 
 /** POST /books/vat/obligations (services/runtime/app/routes_vat.py): one HMRC obligation, as the relay returns it. */
@@ -2033,6 +2622,7 @@ export interface RtVatPeriod {
   received?: string | null; // when HMRC received the return (ISO date), when it says fulfilled
   entries: number;
   can_submit: boolean;
+  annual?: boolean; // an annual accounting period
 }
 export interface RtVatPeriods {
   today: string;

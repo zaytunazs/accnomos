@@ -345,7 +345,10 @@ def _envelope(**kw) -> dict:
 def test_summary_route(client: TestClient) -> None:
     r = client.get("/books/self-employment/summary?tax_year=2026-27&period_end=2026-10-05", headers=H)
     assert r.status_code == 200, r.text
-    assert r.json()["income_pence"] == 1_525_50
+    assert r.json()["accounting_basis"] == "cash"  # HMRC's default: the two invoices are not paid yet
+    assert r.json()["income_pence"] == 25_00
+    r = client.get("/books/self-employment/summary?tax_year=2026-27&period_end=2026-10-05&basis=traditional", headers=H)
+    assert r.json()["income_pence"] == 1_525_50 and r.json()["accounting_basis"] == "traditional"
     assert client.get("/books/self-employment/summary?tax_year=2026-28", headers=H).status_code == 422
     assert (
         client.get("/books/self-employment/summary?tax_year=2026-27&period_end=2027-05-01", headers=H).status_code

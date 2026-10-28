@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S020",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Glasgow Gateways Ltd",
+  "contractor_ref": "833/ME43175",
+  "subcontractor_name": "Red Brick Solutions",
+  "subcontractor_utr": "7513613412",
+  "verification_number": null,
+  "tax_month_end": "2026-12-05",
+  "gross_amount": 5860.9,
+  "materials": 0.0,
+  "amount_liable": 5860.9,
+  "deduction": 1172.18,
+  "net_paid": 4688.72,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 586090,
+  "materials": 0,
+  "deduction": 117218,
+  "correct_deduction": 117218
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

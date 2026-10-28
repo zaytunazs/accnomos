@@ -212,6 +212,7 @@ TALKS_HTTP = {
     "ai/ask.py": "cfg.base_url",
     "ai/extract.py": "cfg.base_url",
     "ai/duplicates.py": "cfg.base_url, or a chain provider's c.base_url (server env, ai/providers.py)",
+    "ai/cis_read.py": "cfg.base_url",
     "ai/crop.py": "cfg.base_url (SAM, key mode)",
     "ai/voice.py": "cfg.base_url",
     "ai/verify.py": "cfg.base_url or BASETEN_BASE",
@@ -563,6 +564,7 @@ PUBLIC_ROUTES = {
     "GET /ai/health": "the server's AI chain for the /models page; no keys, tokens, URLs or user data",
     "GET /ai/calls": "the last AI calls (provider, model, task, timing) for /models; no document or user data",
     "POST /ai/warm": "starts the server's Modal container before a demo; one ping a minute at most, writes nothing",
+    "GET /cis/reverse-charge": "fixed text from HMRC's reverse charge guidance; nothing from the user's books",
     "GET /payments/online/stripe/callback": (
         "Stripe's browser redirect; only checks the signed one-time state and hands back to Settings, touches no books"
     ),

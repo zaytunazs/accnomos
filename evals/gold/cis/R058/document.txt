@@ -1,0 +1,23 @@
+SAMPLE — FICTIONAL COMPANY
+
+Volt Edge Electricals
+8 Current Close, Birmingham, B1 1JJ
+VAT reg no: GB 057 7196 39
+
+VAT INVOICE
+Invoice number                         VOL-756
+Invoice date                        18/05/2026
+
+Bill to:
+Farnborough Fortitude Ltd
+12 Runway Road, Farnborough, GU14 1FF
+VAT no: GB 011 4593 11
+
+Wire emergency lighting (8 h @ £31.00) £248.00
+
+Net                                    £248.00
+VAT at 20% to be accounted for by the c £49.60
+Amount due (no VAT charged)            £248.00
+
+Reverse charge: VAT Act 1994 Section 55A applies. Customer to pay the VAT to HMRC.
+SAMPLE — FICTIONAL COMPANY

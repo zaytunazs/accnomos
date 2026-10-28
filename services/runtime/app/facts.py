@@ -14,12 +14,15 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from accnomos_ledger import LedgerEvent, compute_vat_return, vat_side
+from accnomos_ledger import LedgerEvent, SchemeBooks, compute_vat_return, vat_side
 from app.books import EVENTS, PROPOSALS, WORKBOOK, Books
 from app.paths import VAT_RETURNS
 from app.routes_vat import box_amounts, period_key_for
 from app.schemas import AskPeriod
 from app.vat_cycle import VatCycle
+from app.vat_schemes import SchemeContext, scheme_books, scheme_context, scheme_return, scheme_view
+
+Schemes = tuple[SchemeContext, SchemeBooks]
 
 FACTS_MAX_BYTES = 6 * 1024
 TOP_N = 8
@@ -77,9 +80,42 @@ def vat_code(ev: LedgerEvent) -> str:
     return max(coded, key=lambda ln: ln.debit + ln.credit).vat_code.value  # type: ignore[union-attr]
 
 
-def _boxes(events: list[LedgerEvent], p: AskPeriod) -> dict[str, str]:
-    ret = compute_vat_return(events, period_key_for(p.start), p.start, p.end)
+def _boxes(events: list[LedgerEvent], p: AskPeriod, schemes: Schemes | None = None) -> dict[str, str]:
+    if schemes is not None:
+        ret = scheme_return(schemes[1], schemes[0], period_key_for(p.start), p.start, p.end).ret
+    else:
+        ret = compute_vat_return(events, period_key_for(p.start), p.start, p.end)
     return {f"box{i}": v for i, v in box_amounts(ret).items()}
+
+
+def _scheme_facts(ctx: SchemeContext, sb: SchemeBooks, p: AskPeriod) -> dict[str, Any]:
+    """How this period's boxes were worked out under the business's VAT scheme(s), for questions like "what flat rate
+    am I on?" or "when is my next instalment?". Every figure is code's."""
+    out = scheme_return(sb, ctx, period_key_for(p.start), p.start, p.end)
+    view = scheme_view(ctx, out, p.start, p.end)
+    parts = []
+    for seg in view.segments:
+        part: dict[str, Any] = {"from": seg.start.isoformat(), "to": seg.end.isoformat(), "scheme": seg.label}
+        if seg.scheme == "flat_rate":
+            part |= {
+                "flat_rate_turnover_incl_vat": seg.turnover,
+                "rates_used": [{"from": c.start.isoformat(), "percent": c.percent, "tax": c.tax} for c in seg.calcs],
+                "limited_cost_business": seg.limited_cost,
+                "relevant_goods": seg.relevant_goods,
+                "capital_goods_vat_claimed": seg.capital_vat,
+            }
+        if seg.cash_basis:
+            part |= {"payments_counted": seg.payments, "vat_on_unpaid_brought_in": seg.unpaid_brought_in_vat}
+        parts.append(part)
+    facts: dict[str, Any] = {"summary": view.summary, "parts": parts}
+    if view.annual is not None:
+        facts["annual_accounting"] = {
+            "return_due": view.annual.return_due.isoformat(),
+            "instalments": [{"due": i.due.isoformat(), "amount": i.amount} for i in view.annual.instalments],
+            "balancing_payment": view.annual.balancing,
+            "balancing_direction": view.annual.balancing_direction,
+        }
+    return facts
 
 
 def _totals(events: list[LedgerEvent]) -> dict[str, Any]:
@@ -188,10 +224,19 @@ def _trim(facts: dict[str, Any]) -> None:
                 )
 
 
-async def build_facts(books: Books, period: AskPeriod, business_name: str | None = None) -> dict[str, Any]:
-    """Everything an answer may quote about `period` and the period before it."""
+async def build_facts(
+    books: Books, period: AskPeriod, business_name: str | None = None, cycle: VatCycle | None = None
+) -> dict[str, Any]:
+    """Everything an answer may quote about `period` and the period before it (VAT boxes under the saved schemes)."""
     prev = previous_period(period)
     entries = await books.list_event_entries(prev.start, period.end)
+    ctx = await scheme_context(books, cycle or VatCycle())
+    schemes: Schemes | None = None
+    if ctx.settings.in_use:
+        sb = await scheme_books(books, ctx, prev.start, period.end)
+        if not ctx.needs_ledger:
+            sb.events = [e for _p, e in entries]
+        schemes = (ctx, sb)
     this_entries = [(p, e) for p, e in entries if period.start <= e.date <= period.end]
     prev_entries = [(p, e) for p, e in entries if prev.start <= e.date <= prev.end]
 
@@ -203,7 +248,7 @@ async def build_facts(books: Books, period: AskPeriod, business_name: str | None
             "period_key": period_key_for(p.start),
             "label": period_label(p),
             "entries": len(evs),
-            "vat": _boxes(evs, p),
+            "vat": _boxes(evs, p, schemes),
             "totals": _totals(evs),
         }
 
@@ -229,6 +274,7 @@ async def build_facts(books: Books, period: AskPeriod, business_name: str | None
         "top_customers": _top([e for _p, e in this_entries], "sales"),
         "largest_transactions": largest,
         "pending_proposals": pending,
+        **({"vat_scheme": _scheme_facts(*schemes, period)} if schemes else {}),
         "sources": list(dict.fromkeys(sources)) or [f"{EVENTS}/"],
     }
     _trim(facts)

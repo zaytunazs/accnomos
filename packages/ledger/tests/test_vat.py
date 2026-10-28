@@ -208,3 +208,82 @@ def test_undoing_a_vat_only_sale_nets_off_box_1_not_box_4():
     assert vat_side(undo) == ("sales", -1)
     ret = compute_vat_return([vat_only, undo], "x", date(2026, 7, 1), date(2026, 9, 30))
     assert (str(ret.vat_due_sales), str(ret.vat_reclaimed), str(ret.net_vat_due)) == ("0.00", "0.00", "0.00")
+
+
+# Domestic reverse charge (VAT Act 1994 s55A), HMRC "VAT domestic reverse charge technical guide"
+# (https://www.gov.uk/guidance/vat-reverse-charge-technical-guide, checked 28 Oct 2026).
+
+
+def rc_purchase(net: int, rc_vat: int, day: date) -> LedgerEvent:
+    """A subcontractor's reverse-charge invoice: no VAT paid to them, the customer accounts for it."""
+    return LedgerEvent(
+        kind="purchase",
+        date=day,
+        net=net,
+        vat=0,
+        reverse_charge_vat=rc_vat,
+        lines=[
+            Line(account="5300 Subcontractors", debit=net, vat_code=VatCode.STANDARD),
+            Line(account="2100 Creditors", credit=net),
+        ],
+        **APPROVED,
+    )
+
+
+def rc_sale(net: int, rc_vat: int, day: date) -> LedgerEvent:
+    return LedgerEvent(
+        kind="sale",
+        date=day,
+        net=net,
+        vat=0,
+        reverse_charge_vat=rc_vat,
+        lines=[
+            Line(account="1100 Debtors", debit=net),
+            Line(account="4000 Sales", credit=net, vat_code=VatCode.STANDARD),
+        ],
+        **APPROVED,
+    )
+
+
+def test_reverse_charge_sale_puts_net_in_box_6_and_nothing_in_box_1():
+    ret = compute_vat_return(
+        [rc_sale(100_000, 20_000, date(2026, 11, 3))], "26A4", date(2026, 10, 1), date(2026, 12, 31)
+    )
+    assert ret.vat_due_sales == 0
+    assert ret.total_sales_ex_vat == 1000
+    assert ret.vat_reclaimed == 0 and ret.net_vat_due == 0
+
+
+def test_reverse_charge_purchase_goes_in_boxes_1_4_and_7_not_6():
+    ret = compute_vat_return(
+        [rc_purchase(250_000, 50_000, date(2026, 11, 3))], "26A4", date(2026, 10, 1), date(2026, 12, 31)
+    )
+    assert str(ret.vat_due_sales) == "500.00"  # box 1
+    assert str(ret.vat_reclaimed) == "500.00"  # box 4
+    assert ret.total_purchases_ex_vat == 2500  # box 7
+    assert ret.total_sales_ex_vat == 0  # box 6: never entered as a sale
+    assert ret.net_vat_due == 0  # box 5: the two cancel for a fully taxable business
+
+
+def test_reverse_charge_purchase_reversal_nets_to_nothing():
+    original = rc_purchase(250_000, 50_000, date(2026, 11, 3))
+    undo = LedgerEvent(
+        kind="reversal",
+        date=original.date,
+        reverses=original.id,
+        net=original.net,
+        vat=0,
+        reverse_charge_vat=50_000,
+        lines=[
+            Line(account=ln.account, debit=ln.credit, credit=ln.debit, vat_code=ln.vat_code) for ln in original.lines
+        ],
+        **APPROVED,
+    )
+    assert vat_side(undo) == ("purchases", -1)
+    ret = compute_vat_return([original, undo], "26A4", date(2026, 10, 1), date(2026, 12, 31))
+    assert ret.vat_due_sales == 0 and ret.vat_reclaimed == 0 and ret.total_purchases_ex_vat == 0
+
+
+def test_reverse_charge_vat_cannot_be_negative():
+    with pytest.raises(ValueError):
+        rc_purchase(100, -20, date(2026, 11, 3))

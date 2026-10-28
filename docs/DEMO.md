@@ -92,7 +92,7 @@ against a real OneDrive**, so load it once on a throwaway account and open each 
 | **Contacts** | Aged debtors £17,949.78; Thornfield Interiors' *Credit on account* £41.00 (Apply / Refund); Oakfield Hardware Supplies' statement: bill, its linked credit note, the payment made from *Bills to pay* |
 | **Bank** | Apr–Jun reconciled; *Reconciled to 3 Jul 2026*; 16 Jul–Sep suggestions to confirm; **Rules** tab: account fee and insurance rules, which coded 8 lines |
 | **Jobs** | Kitchen fit-out closed and invoiced (INV-0001); Office partitions open with 85.5 h unbilled, ready to invoice |
-| **Vehicles** | Director's car, 13 journeys, 181.7 miles; Jul–Sep allowance £23.99 claimed |
+| **Vehicles** | Director's car, 13 journeys, 181.7 miles; Jul–Sep allowance £29.32 claimed |
 | **Payroll** | Draft estimate for September 2026 from the timesheets (£426.00 gross), not confirmed |
 | **Reports** | P&L, aged balances, VAT by period, trend; `07 Reports/<day>-reports.xlsx` already saved |
 | **Audit trail** | Lines from *You*, *Autopilot* (posted six energy bills by its rules) and *Intake* (two receipts emailed in) |

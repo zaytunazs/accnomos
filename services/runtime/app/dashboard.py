@@ -29,6 +29,8 @@ from app.paths import upgrade
 from app.routes_vat import Deadlines, compute_deadlines
 from app.schemas import Proposal
 from app.settlement import load_records
+from app.vat_cycle import VatCycle
+from app.vat_schemes import SchemeContext, VatSchemeSettings, books_from_ledger, load_settings
 
 log = logging.getLogger(__name__)
 ACTIVITY_LIMIT = 10
@@ -351,7 +353,7 @@ async def build(
     # The ledger's parts are read on their own, so one hand-edited file only blanks the tiles that need it.
     # Every read is independent of the others, so they all go out in one wave (the request memo caps how many are
     # in flight); each is one Graph round trip per file.
-    (events, proposals, bank_lines, records), (invoices, audit, autopilot, last_scan) = await asyncio.gather(
+    (events, proposals, bank_lines, records), (invoices, audit, autopilot, last_scan, schemes) = await asyncio.gather(
         asyncio.gather(
             reads.run("ledger", books.list_events),
             reads.run("proposals", load_proposals),
@@ -363,6 +365,7 @@ async def build(
             reads.run("audit", lambda: read_audit(books, AUDIT)),
             reads.run("autopilot audit", lambda: read_audit(books, AUTOPILOT_AUDIT)),
             reads.run("last scan", books.last_scan),
+            reads.run("vat schemes", lambda: load_settings(books)),
         ),
     )
     ledger = cb.Ledger(
@@ -373,7 +376,11 @@ async def build(
         return owed_to_you(ledger, invoices, today)
 
     async def vat() -> Deadlines:
-        return compute_deadlines(ledger.events, today, first_vat_month, vat_months, assumed=vat_assumed)
+        ctx = SchemeContext(schemes or VatSchemeSettings(), VatCycle(first_vat_month, vat_months, vat_assumed))
+        sb = books_from_ledger(ctx, ledger) if ctx.needs_ledger else None
+        return compute_deadlines(
+            ledger.events, today, first_vat_month, vat_months, assumed=vat_assumed, ctx=ctx, scheme_books=sb
+        )
 
     async def cash() -> Cash:
         return cash_position(ledger.bank_lines)

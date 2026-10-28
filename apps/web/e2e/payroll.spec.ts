@@ -7,7 +7,7 @@ test("prepare a pay run from timesheets → export CSV → confirm and post", as
   await runtime.addHours(6, "2026-10-20"); // Alex Carter, £25/h cost: £150 gross for October
 
   await page.goto("/payroll");
-  await expect(page.getByLabel("Month")).toHaveValue("2026-10");
+  await expect(page.getByLabel("Month", { exact: true })).toHaveValue("2026-10");
   await expect(page.getByRole("heading", { name: "No pay run for October 2026 yet" })).toBeVisible();
   await page.getByRole("button", { name: "Prepare October 2026 pay run" }).click();
   await expect(page.getByRole("status")).toHaveText("Pay run for October 2026 prepared from timesheets.");

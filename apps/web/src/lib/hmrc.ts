@@ -13,13 +13,19 @@ import { isDemo } from "./demo";
  * Two HMRC sessions side by side: VAT (`read:vat write:vat`, on /vat) and Income Tax (`read:self-assessment
  * write:self-assessment`, on /self-employment). Each keeps its own tokens, so connecting one never drops the other.
  */
-export type HmrcSession = "vat" | "itsa";
-const TOKENS_KEYS: Record<HmrcSession, string> = { vat: "accnomos.hmrc", itsa: "accnomos.hmrc.itsa" };
+export type HmrcSession = "vat" | "itsa" | "property";
+// The UK property page (/property) uses the same Income Tax scopes, so it shares the Income Tax tokens.
+const TOKENS_KEYS: Record<HmrcSession, string> = { vat: "accnomos.hmrc", itsa: "accnomos.hmrc.itsa", property: "accnomos.hmrc.itsa" };
 // {verifier, state} between /hmrc/authorize and the redirect back
-const PENDING_KEYS: Record<HmrcSession, string> = { vat: "accnomos.hmrc.pending", itsa: "accnomos.hmrc.itsa.pending" };
+const PENDING_KEYS: Record<HmrcSession, string> = {
+  vat: "accnomos.hmrc.pending",
+  itsa: "accnomos.hmrc.itsa.pending",
+  property: "accnomos.hmrc.property.pending",
+};
 const SESSION_SETUP: Record<HmrcSession, { path: string; scope: string }> = {
   vat: { path: "/vat", scope: "read:vat write:vat" },
   itsa: { path: "/self-employment", scope: "read:self-assessment write:self-assessment" },
+  property: { path: "/property", scope: "read:self-assessment write:self-assessment" },
 };
 const DEVICE_KEY = "accnomos.device_id";
 export const VRN_KEY = "accnomos.business.vrn";

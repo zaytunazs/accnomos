@@ -77,9 +77,10 @@ def _band(amount: Fraction, low: Fraction, high: Fraction | None) -> Fraction:
 
 
 def _ni_round(x: Fraction) -> int:
-    """HMRC's NI rounding: to the nearest penny, half a penny rounds down."""
-    whole, rest = divmod(x, 1)
-    return int(whole) + (1 if rest > Fraction(1, 2) else 0)
+    """HMRC's NI rounding (app/paye.ni_round): only the third decimal place of the pounds counts."""
+    from app.paye import ni_round
+
+    return ni_round(x)
 
 
 def estimate(gross_pence: int) -> Estimate:

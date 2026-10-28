@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S017",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Dunstable Dome Developments Ltd",
+  "contractor_ref": "723/AE32589",
+  "subcontractor_name": "Spark & Switch Electrics",
+  "subcontractor_utr": "6828288072",
+  "verification_number": null,
+  "tax_month_end": "2027-04-05",
+  "gross_amount": 6405.2,
+  "materials": 2709.31,
+  "amount_liable": 3695.89,
+  "deduction": 739.17,
+  "net_paid": 5666.03,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 640520,
+  "materials": 270931,
+  "deduction": 73917,
+  "correct_deduction": 73917
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

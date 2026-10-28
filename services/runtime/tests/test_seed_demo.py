@@ -311,7 +311,7 @@ async def test_vat_boxes_for_each_quarter(seeded: tuple) -> None:
     keys = ("vatDueSales", "vatReclaimedCurrPeriod", "netVatDue", "totalValueSalesExVAT", "totalValuePurchasesExVAT")
     assert [tuple(b[k] for k in keys) for b in boxes] == [
         (1053.0, 452.5, 600.5, 5265, 4357),  # Apr-Jun: + the Oakfield bill (VAT £182), insurance and a fee
-        (3857.63, 50.3, 3807.33, 19288, 1692),  # Jul-Sep: + 3 gold invoices, - CN-0001 and Oakfield's credit note
+        (3857.63, 50.3, 3807.33, 19288, 1698),  # Jul-Sep: + 3 gold invoices, - CN-0001 and Oakfield's credit note
     ]
     current = compute_vat_return(events, "X", *plan.current).to_hmrc(finalised=False)
     assert current["vatDueSales"] == current["vatReclaimedCurrPeriod"] == 0  # the live demo's period is empty

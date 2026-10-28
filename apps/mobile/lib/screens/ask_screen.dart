@@ -860,6 +860,7 @@ class _AskScreenState extends State<AskScreen> {
     'chase_invoice': 'Payment reminder',
     'log_timesheet': 'Timesheet',
     'log_mileage': 'Mileage',
+    'pay_overtime': 'Overtime pay',
   };
 
   /// One label/value row, like the web's action details.
@@ -1033,6 +1034,22 @@ class _AskScreenState extends State<AskScreen> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(str(p['body'])),
+          ),
+        ),
+      ];
+    }
+    if (a.kind == 'pay_overtime') {
+      return [
+        _detailRow('Who', Text(str(p['staff_name']))),
+        if (str(p['job_name']).isNotEmpty)
+          _detailRow('Job', Text(str(p['job_name']))),
+        _detailRow('Week',
+            Text('${_longDate(str(p['week_start']))} – ${_longDate(str(p['week_end']))}')),
+        _detailRow(
+          'Hours',
+          Text(
+            '${str(p['hours'])} × ${str(p['multiplier'])}',
+            style: const TextStyle(fontWeight: FontWeight.w800),
           ),
         ),
       ];

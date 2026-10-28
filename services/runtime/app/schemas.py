@@ -204,9 +204,14 @@ class Proposal(BaseModel):
     source_mailbox: str | None = None  # the mailbox Outlook intake copied it from (address), if it came by email
     file_path: str | None = None  # where the document is filed now
     account_override: str | None = None  # expense account chosen by a rule or the user
+    #: Business-use percent of a purchase (0-100; None means 100): only this share stays on the expense
+    #: account, VAT reclaimed on it alone; the rest is personal spending to Drawings (sole trader) or the
+    #: Director's loan (company). A bank line marked Private is a proposal with 0 here.
+    business_use_percent: int | None = Field(default=None, ge=0, le=100)
     job_id: str | None = None  # job this purchase is a cost of (_System/Jobs/jobs.json), tagged on approval
     vehicle_id: str | None = None  # business vehicle this cost belongs to (_System/Vehicles/vehicles.json)
     mileage_claim: MileageClaim | None = None  # set on mileage allowance proposals, which code builds
+    payroll_run: str | None = None  # set on pay run proposals (app/payrun.py), which code builds: the run's id
     created_at: datetime | None = None
     decided_by: str | None = None
     decided_at: datetime | None = None
@@ -343,13 +348,14 @@ class AskExplanation(BaseModel):
     confidence: Confidence
 
 
-#: The first four come from Ask; `match_bank_line` and `close_month` come from the month-end close (app/month_end.py);
+#: The first five come from Ask; `match_bank_line` and `close_month` come from the month-end close (app/month_end.py);
 #: `add_to_shopping_list` from Ask (app/shopping.py).
 ActionKind = Literal[
     "create_invoice",
     "chase_invoice",
     "log_mileage",
     "log_timesheet",
+    "pay_overtime",
     "match_bank_line",
     "close_month",
     "add_to_shopping_list",

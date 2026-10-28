@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S052",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Mansfield Modular Ltd",
+  "contractor_ref": "870/FH63445",
+  "subcontractor_name": "Red Brick Solutions",
+  "subcontractor_utr": "7204293557",
+  "verification_number": "V9929300864DG",
+  "tax_month_end": "2026-09-05",
+  "gross_amount": 6868.05,
+  "materials": 0.0,
+  "amount_liable": 6868.05,
+  "deduction": 2060.41,
+  "net_paid": 4807.64,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 686805,
+  "materials": 0,
+  "deduction": 206041,
+  "correct_deduction": 206041
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}

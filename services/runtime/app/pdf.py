@@ -17,7 +17,7 @@ from fpdf import FPDF
 from fpdf.enums import XPos, YPos
 from fpdf.fonts import FontFace
 
-from app.invoicing import VAT_LABELS, Invoice, InvoiceProfile, money, uk_date
+from app.invoicing import CIS_WORDING, REVERSE_CHARGE_WORDING, VAT_LABELS, Invoice, InvoiceProfile, money, uk_date
 
 log = logging.getLogger(__name__)
 
@@ -83,13 +83,16 @@ def render_invoice(
     *,
     credit_for: str | None = None,
     paid_on: date | None = None,
+    quote: bool = False,
 ) -> bytes:
     """The invoice; with `credit_for` (the invoice number), the same layout as a credit note against it
     (app/credit_notes.CreditNote.as_invoice): no due date or payment terms, "Total credit". With `paid_on`,
-    a PAID stamp with the date under the title."""
+    a PAID stamp with the date under the title. With `quote`, a quote (app/routes_cis.py): "valid until" instead
+    of the due date, and no payment details. A reverse-charge invoice carries HMRC's wording and the VAT the
+    customer accounts for; a CIS invoice shows the deduction on labour and what is payable after it."""
     credit = credit_for is not None
     pdf = _InvoicePdf(_footer_text(profile))
-    pdf.set_title(text(f"{'Credit note' if credit else 'Invoice'} {inv.number}"))
+    pdf.set_title(text(f"{'Credit note' if credit else 'Quote' if quote else 'Invoice'} {inv.number}"))
     pdf.set_author(text(profile.name))
     pdf.set_creator("Accnomos")
     pdf.add_page()
@@ -118,7 +121,8 @@ def render_invoice(
     pdf.set_xy(120, top)
     pdf.set_font("Helvetica", "B", 22)
     pdf.set_text_color(*TEAL)
-    pdf.cell(RIGHT - 120, 10, "CREDIT NOTE" if credit else "INVOICE", align="R", new_x=XPos.LEFT, new_y=YPos.NEXT)
+    title = "CREDIT NOTE" if credit else "QUOTE" if quote else "INVOICE"
+    pdf.cell(RIGHT - 120, 10, title, align="R", new_x=XPos.LEFT, new_y=YPos.NEXT)
     pdf.set_font("Helvetica", "", 9.5)
     if credit:
         meta = [
@@ -127,6 +131,12 @@ def render_invoice(
         ]
         if credit_for:
             meta.append(("Credits invoice", credit_for))
+    elif quote:
+        meta = [
+            ("Quote number", inv.number),
+            ("Quote date", uk_date(inv.issue_date)),
+            ("Valid until", uk_date(inv.due_date)),
+        ]
     else:
         meta = [
             ("Invoice number", inv.number),
@@ -184,7 +194,7 @@ def render_invoice(
             head.cell(h)
         for ln in inv.lines:
             row = table.row()
-            row.cell(text(ln.description))
+            row.cell(text(ln.description + (" (materials)" if inv.cis and ln.materials else "")))
             row.cell(text(f"{_qty(ln.quantity)}{f' {ln.unit}' if ln.unit else ''}"))
             row.cell(text(money(ln.unit_price_pence)))
             row.cell(f"{ln.vat_rate}%" if ln.vat_code in ("S", "R", "Z") else ln.vat_code)
@@ -205,13 +215,17 @@ def render_invoice(
         pdf.set_text_color(*MUTED)
         pdf.cell(25, 5, text(f"net {money(r.net_pence)}"), align="R")
         pdf.cell(25, 5, text(f"VAT {money(r.vat_pence)}"), align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    if inv.reverse_charge:
+        pdf.set_text_color(*INK)
+        pdf.cell(70, 5, text("VAT the customer accounts for (reverse charge)"))
+        pdf.cell(25, 5, text(money(inv.reverse_charge_vat_pence)), align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     vat_bottom = pdf.get_y()
 
     pdf.set_xy(125, y)
     for label, value, bold in (
         ("Subtotal (net)", inv.net_pence, False),
         ("VAT", inv.vat_pence, False),
-        ("Total credit" if credit else "Total due", inv.total_pence, True),
+        ("Total credit" if credit else "Total" if quote else "Total due", inv.total_pence, True),
     ):
         pdf.set_x(125)
         pdf.set_font("Helvetica", "B" if bold else "", 11 if bold else 9.5)
@@ -221,6 +235,30 @@ def render_invoice(
         pdf.cell(RIGHT - 160, 6.5, text(money(value)), align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     pdf.set_draw_color(*TEAL)
     pdf.line(125, pdf.get_y() + 0.5, RIGHT, pdf.get_y() + 0.5)
+    if (c := inv.cis) and not credit:
+        pdf.ln(2)
+        for label, value, bold in (
+            ("CIS labour", c.labour_pence, False),
+            ("CIS materials", c.materials_pence, False),
+            (f"Less CIS deduction {c.rate}%", -c.deduction_pence, False),
+            ("Payable after CIS", c.payable_pence, True),
+        ):
+            pdf.set_x(125)
+            pdf.set_font("Helvetica", "B" if bold else "", 10 if bold else 9)
+            pdf.set_text_color(*(INK if bold else MUTED))
+            pdf.cell(35, 5.5, text(label))
+            pdf.set_text_color(*INK)
+            pdf.cell(RIGHT - 160, 5.5, text(money(value)), align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    words = [REVERSE_CHARGE_WORDING] if inv.reverse_charge else []
+    if inv.cis and not credit:
+        words.append(CIS_WORDING)
+    if words:
+        pdf.set_y(max(vat_bottom, pdf.get_y()) + 4)
+        pdf.set_font("Helvetica", "B", 9)
+        pdf.set_text_color(*INK)
+        for w in words:
+            pdf.multi_cell(WIDTH, 5, text(w), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        vat_bottom = pdf.get_y()
 
     if credit:
         pdf.set_y(max(vat_bottom, pdf.get_y()) + 8)
@@ -235,6 +273,24 @@ def render_invoice(
             WIDTH,
             5,
             text(credit_words),
+            new_x=XPos.LMARGIN,
+            new_y=YPos.NEXT,
+        )
+        for extra in (inv.notes, profile.footer_note):
+            if extra:
+                pdf.ln(3)
+                pdf.set_text_color(*MUTED)
+                pdf.multi_cell(WIDTH, 4.5, text(extra), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        return bytes(pdf.output())
+
+    if quote:
+        pdf.set_y(max(vat_bottom, pdf.get_y()) + 8)
+        pdf.set_font("Helvetica", "", 9)
+        pdf.set_text_color(*INK)
+        pdf.multi_cell(
+            WIDTH,
+            5,
+            text(f"This is a quote, not a VAT invoice. It is valid until {uk_date(inv.due_date)}."),
             new_x=XPos.LMARGIN,
             new_y=YPos.NEXT,
         )
@@ -289,4 +345,161 @@ def render_invoice(
             pdf.ln(3)
             pdf.set_text_color(*MUTED)
             pdf.multi_cell(WIDTH, 4.5, text(extra), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    return bytes(pdf.output())
+
+
+# --------------------------------------------------------------------------- #
+# Payroll: report tables and payslips (app/payroll_reports.py, app/routes_payrun.py)
+# --------------------------------------------------------------------------- #
+
+
+class _DocPdf(_InvoicePdf):
+    def __init__(self, footer_text: str, landscape: bool = False) -> None:
+        FPDF.__init__(self, orientation="L" if landscape else "P", unit="mm", format="A4")
+        self._footer_text = footer_text
+        self._right = 282.0 if landscape else RIGHT
+        self.set_margins(LEFT, 15, (297.0 if landscape else 210.0) - self._right)
+        self.set_auto_page_break(auto=True, margin=22)
+        self.alias_nb_pages(PAGES_ALIAS)
+
+    def footer(self) -> None:
+        width = self._right - LEFT
+        self.set_y(-15)
+        self.set_draw_color(*RULE)
+        self.line(LEFT, self.get_y() - 2, self._right, self.get_y() - 2)
+        self.set_font("Helvetica", "", 8)
+        self.set_text_color(*MUTED)
+        self.cell(width * 0.8, 5, text(self._footer_text))
+        self.cell(width * 0.2, 5, f"Page {self.page_no()} of {PAGES_ALIAS}", align="R")
+
+
+def render_table(
+    title: str,
+    subtitle: str,
+    headers: list[str],
+    rows: list[list[str]],
+    totals: list[str] | None,
+    numeric: list[bool],
+    notes: list[str],
+    *,
+    landscape: bool = True,
+    employer: str = "",
+    weights: list[float] | None = None,
+) -> bytes:
+    """A report as an A4 table: title, subtitle, header row, rows, a totals row and the notes underneath."""
+    pdf = _DocPdf(text(" · ".join(p for p in (employer, "Prepared with Accnomos") if p)), landscape)
+    pdf.set_title(text(title))
+    pdf.set_creator("Accnomos")
+    pdf.add_page()
+    width = pdf._right - LEFT
+    pdf.set_text_color(*INK)
+    pdf.set_font("Helvetica", "B", 14)
+    pdf.multi_cell(width, 7, text(title), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("Helvetica", "", 9)
+    pdf.set_text_color(*MUTED)
+    pdf.multi_cell(width, 5, text(subtitle), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(2)
+    n = max(1, len(headers))
+    size = 7 if n > 12 else 8 if n > 7 else 9
+    pdf.set_font("Helvetica", "", size)
+    pdf.set_text_color(*INK)
+    # Wider columns for text, narrower for numbers.
+    weights = weights or [1.0 if num else 1.6 for num in numeric] or [1.0]
+    total_w = sum(weights)
+    widths = tuple(width * w / total_w for w in weights)
+    align = tuple("RIGHT" if num else "LEFT" for num in numeric)
+    head = FontFace(emphasis="BOLD", fill_color=(237, 242, 240))
+    with pdf.table(
+        col_widths=widths,
+        text_align=align,  # type: ignore[arg-type]
+        headings_style=head,
+        line_height=size * 0.55,
+        borders_layout="HORIZONTAL_LINES",
+        width=width,
+    ) as table:
+        r = table.row()
+        for h in headers:
+            r.cell(text(h))
+        for row in rows:
+            r = table.row()
+            for v in row:
+                r.cell(text(v))
+        if totals:
+            r = table.row()
+            for v in totals:
+                r.cell(text(v), style=FontFace(emphasis="BOLD"))
+    pdf.ln(3)
+    pdf.set_font("Helvetica", "", 8)
+    pdf.set_text_color(*MUTED)
+    for note in notes:
+        pdf.multi_cell(width, 4, text(note), align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    return bytes(pdf.output())
+
+
+def render_payslip(
+    employer: str,
+    employee: str,
+    meta: list[tuple[str, str]],
+    payments: list[tuple[str, str]],
+    deductions: list[tuple[str, str]],
+    net: str,
+    year_to_date: list[tuple[str, str]],
+    employer_costs: list[tuple[str, str]],
+    notes: list[str],
+) -> bytes:
+    """A one-page payslip: who and when, payments, deductions, net pay, year to date, the employer's costs."""
+    pdf = _DocPdf(text(" · ".join(p for p in (employer, "Payslip prepared with Accnomos") if p)))
+    pdf.set_title(text(f"Payslip {employee}"))
+    pdf.set_creator("Accnomos")
+    pdf.add_page()
+    pdf.set_text_color(*INK)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(110, 6, text(employer or "Employer"))
+    pdf.set_font("Helvetica", "B", 20)
+    pdf.set_text_color(*TEAL)
+    pdf.cell(RIGHT - LEFT - 110, 8, "PAYSLIP", align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_text_color(*INK)
+    pdf.set_font("Helvetica", "B", 11)
+    pdf.cell(WIDTH, 6, text(employee), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.set_font("Helvetica", "", 9)
+    for label, value in meta:
+        pdf.set_text_color(*MUTED)
+        pdf.cell(45, 4.8, text(label))
+        pdf.set_text_color(*INK)
+        pdf.cell(WIDTH - 45, 4.8, text(value), new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(3)
+
+    def block(title: str, items: list[tuple[str, str]], x: float, w: float, y: float) -> float:
+        pdf.set_xy(x, y)
+        pdf.set_font("Helvetica", "B", 8)
+        pdf.set_text_color(*MUTED)
+        pdf.cell(w, 5, title.upper(), new_x=XPos.LEFT, new_y=YPos.NEXT)
+        pdf.set_draw_color(*RULE)
+        pdf.line(x, pdf.get_y(), x + w, pdf.get_y())
+        pdf.set_font("Helvetica", "", 9.5)
+        pdf.set_text_color(*INK)
+        for label, value in items:
+            pdf.set_x(x)
+            pdf.cell(w * 0.65, 5.5, text(label))
+            pdf.cell(w * 0.35, 5.5, text(value), align="R", new_x=XPos.LEFT, new_y=YPos.NEXT)
+        return pdf.get_y()
+
+    top = pdf.get_y()
+    half = (WIDTH - 8) / 2
+    a = block("Payments", payments, LEFT, half, top)
+    b = block("Deductions", deductions, LEFT + half + 8, half, top)
+    pdf.set_y(max(a, b) + 3)
+    pdf.set_fill_color(237, 242, 240)
+    pdf.set_font("Helvetica", "B", 12)
+    pdf.cell(WIDTH * 0.65, 9, "  Net pay", fill=True)
+    pdf.cell(WIDTH * 0.35, 9, text(net) + "  ", align="R", fill=True, new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+    pdf.ln(4)
+    top = pdf.get_y()
+    a = block("This tax year", year_to_date, LEFT, half, top)
+    b = block("Paid by your employer", employer_costs, LEFT + half + 8, half, top)
+    pdf.set_y(max(a, b) + 4)
+    pdf.set_font("Helvetica", "", 8)
+    pdf.set_text_color(*MUTED)
+    for note in notes:
+        pdf.multi_cell(WIDTH, 4, text(note), align="L", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
     return bytes(pdf.output())

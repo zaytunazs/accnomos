@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R054",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Deep Dig Groundworks",
+  "supplier_vat_number": "GB 081 8513 63",
+  "invoice_number": "DEE-588",
+  "invoice_date": "2026-07-20",
+  "net": 1939.12,
+  "vat_rate": 20,
+  "reverse_charge_vat": 387.82,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 68400,
+  "materials": 125512,
+  "net": 193912,
+  "reverse_charge_vat": 38782
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

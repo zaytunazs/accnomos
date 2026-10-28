@@ -1,0 +1,24 @@
+SAMPLE — FICTIONAL COMPANY
+
+Red Brick Solutions
+77 Clay Road, Newcastle, NE1 1DD
+VAT reg no: GB 078 7200 54
+
+VAT INVOICE
+Invoice number                         RED-898
+Invoice date                        29/01/2027
+
+Bill to:
+Dunstable Dome Developments Ltd
+90 Quarry Road, Milton Keynes, MK1 1DD
+VAT no: GB 097 7379 03
+
+Lay facade brickwork (16 h @ £55.00)   £880.00
+Materials supplied                   £1,013.24
+
+Net                                  £1,893.24
+VAT at 20% to be accounted for by the  £378.65
+Amount due (no VAT charged)          £1,893.24
+
+Reverse charge: VAT Act 1994 Section 55A applies. Customer to pay the VAT to HMRC.
+SAMPLE — FICTIONAL COMPANY

@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S010",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Jubilee Joint Ventures Ltd",
+  "contractor_ref": "419/CE23393",
+  "subcontractor_name": "Volt Edge Electricals",
+  "subcontractor_utr": "5957117777",
+  "verification_number": null,
+  "tax_month_end": "2026-11-05",
+  "gross_amount": 8715.3,
+  "materials": 0.0,
+  "amount_liable": 8715.3,
+  "deduction": 1743.06,
+  "net_paid": 6972.24,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 871530,
+  "materials": 0,
+  "deduction": 174306,
+  "correct_deduction": 174306
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

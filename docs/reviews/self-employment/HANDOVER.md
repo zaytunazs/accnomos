@@ -7,7 +7,7 @@ against HMRC. Branch not pushed (the force push was refused by the permission ch
 
 **Left**: a full green run of the runtime and e2e suites on a quiet machine (this one was overloaded: OOM kills,
 web-server start over 60 s). Check `test_sample_books.py::test_a_second_press_while_running_or_after_is_the_same_run`
-(failed under load; looks timing-only). Not built: cash-basis view, annual submission, consolidated expenses.
+(failed under load; looks timing-only). Not built: annual submission, consolidated expenses. Cash basis: built on `claude/cash-basis` (docs/reviews/cash-basis/REVIEW.md).
 Reports are ready to register in the `claude/exports` registry.
 
 **Test**: `cd services/runtime && python -m pytest -q tests/test_itsa.py tests/test_security_routes.py`;

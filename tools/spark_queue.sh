@@ -9,7 +9,8 @@
 #   tools/spark_queue.sh --no-check      do not probe vLLM / Ollama first
 #
 # Steps, in order: gen_gold4 (Qwen), gen_personal (Qwen), bank_ai (Glimmer), then the extraction eval (Glimmer) on every
-# evals/gold/ledger{2,3,4}/receipts folder that exists (ledger2 has none: its documents use another schema).
+# evals/gold/ledger{2,3,4}/receipts folder that exists (ledger2 has none: its documents use another schema),
+# then cis_read and property_docs (both Glimmer).
 #
 # Run it from a shell on the Spark, e.g. `nohup tools/spark_queue.sh >/dev/null 2>&1 &`; it logs to
 # ~/spark/accnomos/jobs/spark_queue.log. Resumable: a finished step leaves a marker in <jobs>/state/ and is skipped next
@@ -75,6 +76,8 @@ for d in ledger2 ledger3 ledger4; do
   add_step "extraction_$d" evals ollama "$PY" -m harness.run_extraction --mode local --messy \
     --gold-dir "gold/$d/receipts" --business-name "$BIZ" --out "runs/extraction_$d"
 done
+add_step cis_read evals ollama "$PY" -m harness.cis_read
+add_step property_docs evals ollama "$PY" -m harness.property_docs
 
 wanted() { [ -z "$ONLY" ] && return 0; case ",$ONLY," in *",$1,"*) return 0 ;; *) return 1 ;; esac; }
 done_marker() { echo "$STATE/$1.done"; }

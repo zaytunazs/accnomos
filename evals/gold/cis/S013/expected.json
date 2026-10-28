@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S013",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Mansfield Modular Ltd",
+  "contractor_ref": "301/LG73262",
+  "subcontractor_name": "Solid Stone Masonry",
+  "subcontractor_utr": "9575513137",
+  "verification_number": null,
+  "tax_month_end": "2026-05-05",
+  "gross_amount": 6589.7,
+  "materials": 0.0,
+  "amount_liable": 6589.7,
+  "deduction": 1317.94,
+  "net_paid": 5271.76,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 658970,
+  "materials": 0,
+  "deduction": 131794,
+  "correct_deduction": 131794
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

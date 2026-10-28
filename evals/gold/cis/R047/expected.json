@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R047",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Terra Firma Dig",
+  "supplier_vat_number": "GB 076 8117 48",
+  "invoice_number": "TER-800",
+  "invoice_date": "2026-04-13",
+  "net": 2819.59,
+  "vat_rate": 20,
+  "reverse_charge_vat": 563.92,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 236250,
+  "materials": 45709,
+  "net": 281959,
+  "reverse_charge_vat": 56392
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

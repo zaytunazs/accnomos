@@ -21,14 +21,14 @@ test("vehicle + journey → the quarter's mileage allowance is proposed in Revie
   await expect(page.getByRole("status")).toHaveText("Logged 100 miles");
   await expect(log.getByRole("row").filter({ hasText: "Bristol → Bath" })).toContainText("Ford Transit");
 
-  // 100 business miles at 45p (under 10,000 this tax year) = £45.00, worked out by code
+  // 100 business miles at 55p (2026-27, under 10,000 this tax year; app/mileage.py) = £55.00, worked out by code
   await page.getByRole("button", { name: "Claim this quarter's mileage" }).click();
-  await expect(page.getByRole("status")).toContainText("mileage claim for £45.00 is waiting in Review for you to approve.");
+  await expect(page.getByRole("status")).toContainText("mileage claim for £55.00 is waiting in Review for you to approve.");
   await expect(page.getByRole("region", { name: "Quarters" }).getByRole("link", { name: "Waiting in Review" })).toBeVisible();
 
   await page.getByRole("status").getByRole("link", { name: "Open Review" }).click();
   await expect(page).toHaveURL(/\/review$/);
-  await expect(page.getByRole("region", { name: /£45\.00/ })).toBeVisible();
+  await expect(page.getByRole("region", { name: /£55\.00/ })).toBeVisible();
 });
 
 test("edit a journey, rename a vehicle, delete refuses while journeys reference it", async ({ page }) => {
@@ -49,7 +49,7 @@ test("edit a journey, rename a vehicle, delete refuses while journeys reference 
   await log.getByRole("button", { name: "Add journey" }).click();
   await expect(page.getByRole("status")).toHaveText("Logged 100 miles");
 
-  // Edit the journey: 120 miles at 45p is £54.00 in the quarter totals
+  // Edit the journey: 120 miles at 55p is £66.00 in the quarter totals
   await log.getByRole("button", { name: /^Edit the journey/ }).click();
   const edit = page.getByRole("form", { name: "Edit journey" });
   await edit.getByLabel("Miles").fill("120");

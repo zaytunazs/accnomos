@@ -56,16 +56,37 @@ class Rate:
     threshold_miles: int | None  # None: one flat rate
 
 
-# HMRC approved mileage allowance payments (AMAP), the one table of rates in the code:
+# HMRC approved mileage allowance payments (AMAP) by tax year (6 April to 5 April).
+# Base table (unchanged since 2011-12):
 # https://www.gov.uk/government/publications/rates-and-allowances-travel-mileage-and-fuel-allowances/travel-mileage-and-fuel-rates-and-allowances
-# (unchanged since 2011-12). The 10,000-mile threshold is shared by all cars and vans in the tax year.
-RATES: dict[str, Rate] = {
-    "car": Rate(45, 25, 10_000),
-    "van": Rate(45, 25, 10_000),
-    "motorcycle": Rate(24, 24, None),
-    "bicycle": Rate(20, 20, None),
+# Cars and vans from 2026-27: 55p per mile for the first 10,000 business miles, 25p beyond, per
+# https://www.accaglobal.com/gb/en/technical-activities/uk-tech/in-practice-ezine-archive/In-Practice-archive-2026/july-august/Increase-to-Approved-Mileage-Allowance-Payments.html
+# (checked 28 Oct 2026). That page states no motorcycle rate (TODO: motorcycle rate) and no
+# bicycle rate (TODO: bicycle rate), so those keep their old values.
+# The 10,000-mile threshold is shared by all cars and vans in the tax year.
+RATES_BY_TAX_YEAR: dict[str, dict[str, Rate]] = {
+    "2025-26": {
+        "car": Rate(45, 25, 10_000),
+        "van": Rate(45, 25, 10_000),
+        "motorcycle": Rate(24, 24, None),
+        "bicycle": Rate(20, 20, None),
+    },
+    "2026-27": {
+        "car": Rate(55, 25, 10_000),
+        "van": Rate(55, 25, 10_000),
+        "motorcycle": Rate(24, 24, None),  # TODO: motorcycle rate (not stated on the ACCA page)
+        "bicycle": Rate(20, 20, None),  # TODO: bicycle rate (not stated on the ACCA page)
+    },
 }
 THRESHOLD_MILES = 10_000
+
+
+def rates_for(tax_year: str) -> dict[str, Rate]:
+    """The rates table for a tax year like '2026-27': 2025-26 and earlier at the old rates,
+    2026-27 onwards at the new ones."""
+    start = tax_year_bounds(tax_year)[0].year
+    return RATES_BY_TAX_YEAR["2026-27" if start >= 2026 else "2025-26"]
+
 
 FUEL_SCALE_NOTE = (
     "Business vehicles: Accnomos keeps the VAT code printed on each fuel receipt. If a business vehicle is also used "
@@ -277,18 +298,19 @@ def allowances(
     added later never moves an earlier claim across the threshold. Business (or unknown) vehicles earn 0.
     """
     by_id = {v.id: v for v in vehicles}
-    used = 0  # tenths of a mile, all thresholded vehicles together
+    used: dict[str, int] = {}  # tenths of a mile per tax year, all thresholded vehicles together
     out: list[JourneyAllowance] = []
     for e in sorted(entries, key=lambda e: (e.date, e.id not in claimed, e.id)):
         v = by_id.get(e.vehicle_id)
         if v is None or v.owned_by != "personal":
             out.append(JourneyAllowance(e, 0, 0, 0))
             continue
-        rate = RATES[v.kind]
+        tax_year = tax_year_of(e.date)
+        rate = rates_for(tax_year)[v.kind]
         first = e.tenths
         if rate.threshold_miles is not None:
-            first = min(e.tenths, max(0, rate.threshold_miles * 10 - used))
-            used += e.tenths
+            first = min(e.tenths, max(0, rate.threshold_miles * 10 - used.get(tax_year, 0)))
+            used[tax_year] = used.get(tax_year, 0) + e.tenths
         after = e.tenths - first
         tenth_pence = first * rate.first_pence + after * rate.after_pence
         out.append(JourneyAllowance(e, (tenth_pence + 5) // 10, first, after))
@@ -345,14 +367,14 @@ def _miles(tenths: int) -> str:
     return f"{tenths / 10:,.1f}"
 
 
-def _line(v: Vehicle | None, rows: list[JourneyAllowance]) -> ExtractedLine:
+def _line(v: Vehicle | None, rows: list[JourneyAllowance], tax_year: str) -> ExtractedLine:
     pence = sum(a.pence for a in rows)
     first, after = sum(a.first_tenths for a in rows), sum(a.after_tenths for a in rows)
     if v is None:  # unreachable: only personal vehicles earn an allowance
         return ExtractedLine(
             description="Mileage", qty=1, unit_price=pence / 100, net=pence / 100, vat_rate=None, vat=0
         )
-    rate = RATES[v.kind]
+    rate = rates_for(tax_year)[v.kind]
     parts = [f"{_miles(first)} mi at {rate.first_pence}p"] + (
         [f"{_miles(after)} mi at {rate.after_pence}p"] if after else []
     )
@@ -380,7 +402,7 @@ def claim_proposal(
     groups: dict[str, list[JourneyAllowance]] = {}
     for a in rows:
         groups.setdefault(a.entry.vehicle_id, []).append(a)
-    lines = [_line(by_id.get(vid), g) for vid, g in groups.items()]
+    lines = [_line(by_id.get(vid), g, tax_year) for vid, g in groups.items()]
     pence = sum(a.pence for a in rows)
     tenths = sum(a.entry.tenths for a in rows)
     doc = ExtractedDoc(
@@ -771,10 +793,11 @@ async def summary(books: Books, tax_year: str) -> MileageSummary:
                 waiting_claim_id=next((c.id for c in mine_claims if c.status in OPEN), None),
             )
         )
+    rates = rates_for(tax_year)
     thresholded = [
         a
         for a in rows
-        if (v := by_id.get(a.entry.vehicle_id)) and v.owned_by == "personal" and RATES[v.kind].threshold_miles
+        if (v := by_id.get(a.entry.vehicle_id)) and v.owned_by == "personal" and rates[v.kind].threshold_miles
     ]
     return MileageSummary(
         tax_year=tax_year,
@@ -790,7 +813,7 @@ async def summary(books: Books, tax_year: str) -> MileageSummary:
         locked_until=locked_until(claims),
         rates=[
             RateRow(kind=k, first_pence=r.first_pence, after_pence=r.after_pence, threshold_miles=r.threshold_miles)  # type: ignore[arg-type]
-            for k, r in RATES.items()
+            for k, r in rates.items()
         ],
         notes=[ALLOWANCE_NOTE, FUEL_SCALE_NOTE],
     )

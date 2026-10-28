@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S021",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Havering Heights Ltd",
+  "contractor_ref": "839/MA54299",
+  "subcontractor_name": "Peak Roofing Services",
+  "subcontractor_utr": "6723268656",
+  "verification_number": "V6135684246FB",
+  "tax_month_end": "2026-07-05",
+  "gross_amount": 3278.15,
+  "materials": 246.74,
+  "amount_liable": 3031.41,
+  "deduction": 909.42,
+  "net_paid": 2368.73,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 327815,
+  "materials": 24674,
+  "deduction": 90942,
+  "correct_deduction": 90942
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}

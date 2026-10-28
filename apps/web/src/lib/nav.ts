@@ -19,6 +19,8 @@ export interface NavItem {
   kinds?: RtProfileKind[];
   /** Shows the Review count. */
   badge?: "review";
+  /** Only while this device switch is on: Settings › I am self-employed (lib/itsa.ts) or I let property (lib/property.ts). */
+  deviceSwitch?: "selfEmployed" | "landlord";
 }
 
 export interface NavGroup {
@@ -92,7 +94,10 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Tax",
     items: [
       { label: "VAT returns", href: "/vat", feature: "vat" },
-      { label: "Self-employment (MTD Income Tax)", href: "/self-employment", feature: "self_employment" },
+      // Sole traders (feature self_employment), or anyone who ticked Settings › I am self-employed (TopBar `who`).
+      { label: "Self-employment (MTD Income Tax)", href: "/self-employment", deviceSwitch: "selfEmployed" },
+      { label: "Property (landlords)", href: "/property", deviceSwitch: "landlord" },
+      { label: "CIS (construction)", href: "/cis", kinds: BUSINESS },
       { label: "Tax settings", href: "/settings#settings-vat-periods", feature: "vat" },
     ],
   },
@@ -138,11 +143,13 @@ export interface Who {
   kind: RtProfileKind | null;
   /** Settings › Show personal finances is on for this device. */
   personal?: boolean;
-  /** Settings › "I am self-employed" is on (lib/itsa.ts): shows Self-employment whatever the profile says. */
+  /** Settings › I am self-employed, and › I let property, on this device. */
   selfEmployed?: boolean;
+  landlord?: boolean;
 }
 
-function allowed(x: { feature?: string; kinds?: RtProfileKind[] }, who: Who): boolean {
+function allowed(x: { feature?: string; kinds?: RtProfileKind[]; deviceSwitch?: NavItem["deviceSwitch"] }, who: Who): boolean {
+  if (x.deviceSwitch && !who[x.deviceSwitch]) return false;
   if (x.feature === "self_employment") {
     // Off by default (Settings › "I am self-employed"); a known profile with the feature also shows it.
     if (!who.selfEmployed && !who.features?.includes(x.feature)) return false;

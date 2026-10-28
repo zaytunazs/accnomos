@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S056",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Dunstable Dome Developments Ltd",
+  "contractor_ref": "366/AD93552",
+  "subcontractor_name": "Colorful Canvas Decorators",
+  "subcontractor_utr": "3993158279",
+  "verification_number": null,
+  "tax_month_end": "2026-05-05",
+  "gross_amount": 3452.55,
+  "materials": 0.0,
+  "amount_liable": 3452.55,
+  "deduction": 690.51,
+  "net_paid": 2762.04,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 345255,
+  "materials": 0,
+  "deduction": 69051,
+  "correct_deduction": 69051
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

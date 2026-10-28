@@ -20,7 +20,7 @@ from app.autopilot import AUTOPILOT, rule_from_proposal, save_rule
 from app.books import Books, Rule, RuleMatch, now
 from app.checks import decide, normalise_vat_number
 from app.contacts import forget_from_undo, learn_from_approval
-from app.journal import VAT_CONTROL, draft_journal, with_expense_account
+from app.journal import VAT_CONTROL, draft_journal, private_account, split_business_use, with_expense_account
 from app.mileage import load_vehicles
 from app.paths import NEEDS_A_LOOK, VAT_RETURNS, upgrade
 from app.schemas import CATEGORIES, ExtractedDoc, JournalLine, Proposal
@@ -31,6 +31,9 @@ log = logging.getLogger(__name__)
 DOC_EDITS = {"category", "net_total", "vat_total", "gross_total", "date", "supplier_name", "doc_type", "payment_method"}
 #: The card's "<supplier> isn't VAT-registered" tick: approving with it records the supplier as not registered.
 NOT_VAT_REGISTERED = "supplier_not_vat_registered"
+#: Approve edits that are not document fields: the expense account, tags, the not-registered tick, and the
+#: business-use percent (a purchase only).
+EXTRA_EDITS = {"account", "job_id", "vehicle_id", NOT_VAT_REGISTERED, "business_use_percent"}
 OPEN = ("proposed", "needs_a_look")
 
 
@@ -45,13 +48,20 @@ class ProposalStateError(ApprovalError):
 def apply_edits(p: Proposal, edits: dict[str, Any]) -> None:
     """Apply the user's corrections to the document and the expense account, then redraw the journal.
     (`job_id` and `vehicle_id` are checked against their files and applied by approve().)"""
-    unknown = set(edits) - DOC_EDITS - {"account", "job_id", "vehicle_id", NOT_VAT_REGISTERED}
+    unknown = set(edits) - DOC_EDITS - EXTRA_EDITS
     if unknown:
         raise ApprovalError(f"Can't edit {', '.join(sorted(unknown))}")
     if p.mileage_claim and edits:
         raise ApprovalError("A mileage claim is calculated by code: change the mileage log on Vehicles instead")
+    if p.payroll_run and edits:
+        raise ApprovalError("A pay run is calculated by code: change it on the Payroll page instead")
     if NOT_VAT_REGISTERED in edits and not isinstance(edits[NOT_VAT_REGISTERED], bool):
         raise ApprovalError(f"{NOT_VAT_REGISTERED} is true or false")
+    if "business_use_percent" in edits:
+        percent = edits["business_use_percent"]
+        if isinstance(percent, bool) or not isinstance(percent, int) or not 0 <= percent <= 100:
+            raise ApprovalError("Business use is a whole percent from 0 to 100")
+        p.business_use_percent = percent
     if "category" in edits and edits["category"] not in CATEGORIES:
         raise ApprovalError(f"Unknown category {edits['category']!r}")
     updates = {("category_guess" if k == "category" else k): v for k, v in edits.items() if k in DOC_EDITS}
@@ -64,12 +74,26 @@ def apply_edits(p: Proposal, edits: dict[str, Any]) -> None:
         p.account_override = str(edits["account"]).strip()
 
 
-def final_journal(p: Proposal) -> list[JournalLine]:
-    """Journal rebuilt from the (possibly edited) document, with any account override applied."""
+async def final_journal(books: Books, p: Proposal) -> list[JournalLine]:
+    """Journal rebuilt from the (possibly edited) document, with any account override and business-use
+    split applied. Below 100 % business use, only that share stays on the expense account (VAT reclaimed
+    on it alone); the rest is personal spending to Drawings, or the Director's loan when the invoice
+    profile names the business a company. A pay run's journal is code's own (app/payrun.py) and is posted as
+    drafted."""
+    if p.payroll_run:
+        return p.journal_draft
     journal = draft_journal(p.extracted)
-    if not p.account_override:
+    if p.account_override:
+        journal = with_expense_account(journal, p.account_override, p.extracted.doc_type == "credit_note")
+    percent = p.business_use_percent if p.business_use_percent is not None else 100
+    if percent == 100:
         return journal
-    return with_expense_account(journal, p.account_override, p.extracted.doc_type == "credit_note")
+    if p.extracted.doc_type not in ("receipt", "purchase_invoice"):
+        raise ApprovalError("Business use only applies to purchases")
+    from app.invoicing import load_profile  # local: invoicing imports this module
+
+    profile = await load_profile(books)
+    return split_business_use(journal, percent, private_account(profile.company_number))
 
 
 def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEvent:
@@ -93,6 +117,7 @@ def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEve
     ]
     if len(lines) < 2:
         raise ApprovalError("Nothing to post: enter the amounts first")
+    payroll = p.payroll_run is not None
     sale = doc.doc_type == "sales_invoice"
     credit_note = doc.doc_type == "credit_note"  # a supplier's: the purchase journal turned round (app/journal.py)
     vat = sum((j.credit_pence if sale or credit_note else j.debit_pence) for j in journal if j.account == VAT_CONTROL)
@@ -103,15 +128,15 @@ def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEve
     try:
         return LedgerEvent(
             id=event_id,
-            kind="sale" if sale else "reversal" if credit_note else "purchase",
+            kind="adjustment" if payroll else "sale" if sale else "reversal" if credit_note else "purchase",
             date=when,
             lines=lines,
             evidence=[p.doc_sha256],
             approved_by=user,
             approved_at=now(),
             proposal_id=p.id,
-            net=gross - vat,
-            vat=vat,
+            net=None if payroll else gross - vat,
+            vat=None if payroll else vat,
             counterparty=(doc.customer_name if sale else None) or doc.supplier_name,
         )
     except ValueError as exc:  # e.g. unbalanced; draft_journal should make this impossible
@@ -175,11 +200,11 @@ async def approve(
         p.job_id = await _job_tag(books, p, (edits or {})["job_id"])
     if "vehicle_id" in (edits or {}):
         p.vehicle_id = await _vehicle_tag(books, p, (edits or {})["vehicle_id"])
-    always = always and p.mileage_claim is None  # Autopilot never posts a mileage claim
+    always = always and p.mileage_claim is None and p.payroll_run is None  # Autopilot never posts these
     not_registered = bool((edits or {}).get(NOT_VAT_REGISTERED))
     if not_registered:
         _check_not_registered(p.extracted)
-    p.journal_draft = final_journal(p)
+    p.journal_draft = await final_journal(books, p)
     event = build_event(p, p.journal_draft, user)
     if p.extracted.doc_type == "credit_note" and (bill := await credited_bill(books, p.extracted)):
         event = event.model_copy(update={"credits": bill})
@@ -191,10 +216,15 @@ async def approve(
         await books.file_document(p, p.file_path, books.filing_folder(p.extracted))
     p.status, p.event_id, p.decided_by, p.decided_at = "posted", event.id, user, now()
     await books.save_proposal(p)
-    try:
-        await learn_from_approval(books, p, _actor(user), not_registered)
-    except ValueError:  # a hand-broken contacts.json: the posting stands, the supplier is just not remembered
-        log.warning("contacts file unreadable; supplier VAT status not recorded for %s", p.id)
+    if p.payroll_run:
+        from app.payrun import on_posted
+
+        await on_posted(books, p, event.id, user)
+    else:
+        try:
+            await learn_from_approval(books, p, _actor(user), not_registered)
+        except ValueError:  # a hand-broken contacts.json: the posting stands, the supplier is just not remembered
+            log.warning("contacts file unreadable; supplier VAT status not recorded for %s", p.id)
     rule = await _remember(books, p, user) if always else None
     auto_rule = rule_from_proposal(p, user) if always else None
     if auto_rule:
@@ -291,6 +321,10 @@ async def reject(books: Books, proposal_id: str, user: str, reason: str) -> Prop
         await books.file_document(p, p.file_path, NEEDS_A_LOOK)
     p.status, p.reject_reason, p.decided_by, p.decided_at = "rejected", reason, user, now()
     await books.save_proposal(p)
+    if p.payroll_run:
+        from app.payrun import on_rejected
+
+        await on_rejected(books, p)
     await books.audit(
         f"user:{user}", "rejected", {"proposal": p.id, "doc": p.doc_sha256, "reason": reason, "path": p.file_path}
     )
@@ -352,6 +386,7 @@ def reversal_of(event: LedgerEvent, user: str, on: date | None = None) -> Ledger
         reverses=event.id,
         net=event.net,
         vat=event.vat,
+        reverse_charge_vat=event.reverse_charge_vat,
         counterparty=event.counterparty,
     )
 
@@ -387,7 +422,11 @@ async def undo(
     except FileExistsError as exc:
         raise ProposalStateError("Already undone") from exc
     p = await _reopen(books, original)
-    if p is not None:
+    if p is not None and p.payroll_run:
+        from app.payrun import on_undone
+
+        await on_undone(books, p)
+    elif p is not None:
         await forget_from_undo(books, p, f"user:{user}")
     await books.audit(
         f"user:{user}",

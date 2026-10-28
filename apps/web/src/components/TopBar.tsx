@@ -8,6 +8,8 @@ import { AccountMenu, ProfileSwitcher, useLinkedProfiles } from "./ProfileMenu";
 import { isCurrent, visibleGroups, type NavGroup, type NavItem } from "@/lib/nav";
 import { useSelfEmployed } from "@/lib/itsa";
 import { usePersonalOn } from "@/lib/personal";
+import { useSelfEmployed } from "@/lib/itsa";
+import { useLandlordOn } from "@/lib/property";
 import { currentFeatures, currentMeta } from "@/lib/profiles";
 
 /**
@@ -30,10 +32,13 @@ export default function TopBar({ routes }: { routes: string[] }) {
   const featureKey = JSON.stringify(features);
   const kind = meta?.exists ? meta.kind : null;
   const personal = usePersonalOn();
-  const selfEmployed = useSelfEmployed();
+  const selfEmployed = useSelfEmployed() || Boolean(features?.includes("self_employment"));
+  const landlord = useLandlordOn();
   const groups = useMemo(
-    () => visibleGroups(routes, { features: JSON.parse(featureKey) as string[] | null, kind, personal, selfEmployed }),
-    [routes, featureKey, kind, personal, selfEmployed],
+    () =>
+      visibleGroups(routes, { features: JSON.parse(featureKey) as string[] | null, kind, personal, selfEmployed, landlord }),
+    [routes, featureKey, kind, personal, selfEmployed, landlord],
+  );
   );
   if (!linked) return null;
 

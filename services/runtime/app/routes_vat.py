@@ -8,23 +8,28 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return, reverses_sale
+from accnomos_ledger import LedgerEvent, SchemeBooks, VatReturn, compute_vat_return, reverses_sale
 from app.approve import submitted_spans
 from app.books import Books
 from app.books import today as current_date  # `today` is a query parameter below
 from app.deadlines import (
-    filing_deadline,
-    period_containing,
-    period_from_id,
-    period_id,
     period_label,
-    previous_period,
-    recent_periods,
     stagger_of,
 )
 from app.paths import SYSTEM, VAT_RETURNS
 from app.routes_books import get_books, require_feature, require_user
 from app.vat_cycle import VatCycle, vat_cycle
+from app.vat_schemes import (
+    InstalmentView,
+    SchemeContext,
+    SchemeView,
+    annual_view,
+    books_from_events,
+    scheme_books,
+    scheme_context,
+    scheme_return,
+    scheme_view,
+)
 
 #: HMRC obligations the web app fetched through the relay and posted back, so a return
 #: filed elsewhere still shows as submitted. The runtime holds no HMRC token; this file
@@ -84,6 +89,7 @@ class VatReturnView(BaseModel):
     hmrc_body: dict
     events_in_period: int
     undone_in_period: int  # reversing events among them (each nets off the entry it reverses)
+    scheme: SchemeView | None = None  # flat rate, cash or annual accounting in use: how the boxes were worked out
 
 
 LABELS = {
@@ -145,7 +151,7 @@ async def read_obligations(books: Books) -> list[HmrcObligation]:
 
 
 def _resolve(
-    cycle: VatCycle,
+    ctx: SchemeContext,
     today: date,
     period: str | None,
     period_start: date | None,
@@ -161,16 +167,16 @@ def _resolve(
         return period_start, period_end
     if period is not None:
         try:
-            return period_from_id(period, cycle.start_month, cycle.months)
+            return ctx.period_from_id(period)
         except ValueError as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
-    return cycle.current(today)
+    return ctx.current(today)
 
 
-def can_submit(start: date, cycle: VatCycle, today: date, submitted: bool) -> bool:
+def can_submit(start: date, ctx: SchemeContext, today: date, submitted: bool) -> bool:
     """Only the current period or the one just before it, and only while it hasn't been submitted."""
-    cur_start, _ = cycle.current(today)
-    return not submitted and start in (cur_start, previous_period(cur_start, cycle.months)[0])
+    cur_start, _ = ctx.current(today)
+    return not submitted and start in (cur_start, ctx.previous(cur_start)[0])
 
 
 @router.get("/vat", response_model=VatReturnView, dependencies=[require_feature("vat")])
@@ -178,7 +184,9 @@ async def vat_return(
     period_start: date | None = Query(None, description="ISO date; send with period_end"),
     period_end: date | None = Query(None, description="ISO date; send with period_start"),
     period: str | None = Query(
-        None, pattern=r"^\d{4}-(Q[1-4]|\d{2})$", description="2026-Q4 (quarterly) or 2026-11 (monthly)"
+        None,
+        pattern=r"^\d{4}-(Q[1-4]|\d{2}|Y\d{2})$",
+        description="2026-Q4 (quarterly), 2026-11 (monthly) or 2026-Y01 (an annual period starting January 2026)",
     ),
     start: date | None = Query(None, include_in_schema=False),  # older clients: same as period_start
     end: date | None = Query(None, include_in_schema=False),
@@ -189,19 +197,30 @@ async def vat_return(
 ) -> VatReturnView:
     """The 9 boxes for one period. Default: the period we are in now, by the saved VAT settings."""
     today = today or current_date()
-    start, end = _resolve(cycle, today, period, period_start or start, period_end or end)
+    ctx = await scheme_context(books, cycle)
+    start, end = _resolve(ctx, today, period, period_start or start, period_end or end)
     period_key = period_key or period_key_for(start)
-    events = await books.list_events(start, end)
-    ret = compute_vat_return(events, period_key, start, end)
+    scheme: SchemeView | None = None
+    if ctx.settings.in_use:
+        sb = await scheme_books(books, ctx, start, end)
+        events = [e for e in sb.events if start <= e.date <= end]
+        out = scheme_return(sb, ctx, period_key, start, end)
+        ret, scheme = out.ret, scheme_view(ctx, out, start, end)
+        ret.warnings = ret.warnings + out.warnings
+        counted = {e.id: e for e in sb.events if e.id in set(ret.event_ids)}.values()
+    else:
+        events = await books.list_events(start, end)
+        ret = compute_vat_return(events, period_key, start, end)
+        counted = events
     # A reversal counts against the box it reverses (same predicate as the amounts above).
-    sales = [e for e in events if e.kind == "sale" or reverses_sale(e)]
-    purchases = [e for e in events if e.kind == "purchase" or (e.kind == "reversal" and not reverses_sale(e))]
+    sales = [e for e in counted if e.kind == "sale" or reverses_sale(e)]
+    purchases = [e for e in counted if e.kind == "purchase" or (e.kind == "reversal" and not reverses_sale(e))]
     counts = {
         1: len(sales),
         2: 0,
         3: len(sales),
         4: len(purchases),
-        5: len(events),
+        5: len(sales) + len(purchases),
         6: len(sales),
         7: len(purchases),
         8: 0,
@@ -222,24 +241,25 @@ async def vat_return(
         period_key=period_key,
         start=start,
         end=end,
-        period=period_id(start, cycle.months),
+        period=ctx.period_id(start, end),
         label=period_label(start, end),
-        current=(start, end) == cycle.current(today),
+        current=(start, end) == ctx.current(today),
         submitted=submitted,
         submitted_source=source,
         received=received,
-        can_submit=can_submit(start, cycle, today, submitted),
+        can_submit=can_submit(start, ctx, today, submitted),
         boxes=[VatBox(box=i, label=LABELS[i], amount=amounts[i], entries=counts[i]) for i in range(1, 10)],
         event_ids=ret.event_ids,
         warnings=ret.warnings,
         hmrc_body=ret.to_hmrc(finalised=False),
         events_in_period=len(events),
         undone_in_period=sum(1 for e in events if e.kind == "reversal"),
+        scheme=scheme,
     )
 
 
 class VatPeriod(BaseModel):
-    period: str  # "2026-Q4" or "2026-11"; pass back as ?period=
+    period: str  # "2026-Q4", "2026-11" or "2026-Y01" (annual); pass back as ?period=
     start: date
     end: date
     label: str  # "Oct–Dec 2026"
@@ -251,6 +271,7 @@ class VatPeriod(BaseModel):
     received: date | None = None  # when HMRC received the return, when it says fulfilled
     entries: int  # approved entries dated in the period
     can_submit: bool
+    annual: bool = False  # an annual accounting period (one return a year)
 
 
 class VatPeriods(BaseModel):
@@ -273,7 +294,8 @@ async def vat_periods(
 ) -> VatPeriods:
     """The current VAT period and the 8 before it, with status, so the picker is built by code."""
     today = today or current_date()
-    spans = recent_periods(today, cycle.start_month, cycle.months)
+    ctx = await scheme_context(books, cycle)
+    spans = ctx.recent(today)
     events = await books.list_events(spans[-1][0], spans[0][1])
     submitted = await submitted_periods(books)
     obligations = {(o.start, o.end): o for o in await read_obligations(books)}
@@ -294,18 +316,19 @@ async def vat_periods(
         status: Literal["open", "submitted", "none"] = "submitted" if key else "open" if (i == 0 or entries) else "none"
         periods.append(
             VatPeriod(
-                period=period_id(s, cycle.months),
+                period=ctx.period_id(s, e),
                 start=s,
                 end=e,
                 label=period_label(s, e),
                 current=i == 0,
-                deadline=fulfilled.due if fulfilled else filing_deadline(e),
+                deadline=fulfilled.due if fulfilled else ctx.deadline(s, e),
                 status=status,
                 hmrc_period_key=key,
                 submitted_source=source,
                 received=fulfilled.received if fulfilled else None,
                 entries=entries,
-                can_submit=can_submit(s, cycle, today, key is not None),
+                can_submit=can_submit(s, ctx, today, key is not None),
+                annual=ctx.is_annual(s, e),
             )
         )
     return VatPeriods(
@@ -350,23 +373,27 @@ class Deadlines(BaseModel):
     current: PeriodDeadline  # the period we are in now: Box 5 is an estimate so far
     due: PeriodDeadline | None  # the period that has ended but whose return is not yet due, if any
     assumed: bool = False  # no stagger was sent (none saved in Settings): calendar quarters (stagger 1) were assumed
+    annual: bool = False  # the current period is an annual accounting period
+    instalments: list[InstalmentView] = []  # annual accounting: the interim payments for the current period
     rule: str = "Return and payment due 1 calendar month and 7 days after the period ends (VAT Notice 700/12)."
 
 
-def _period_deadline(events: list[LedgerEvent], start: date, end: date, months: int, today: date) -> PeriodDeadline:
-    calendar_quarter = months == 3 and start.month in (1, 4, 7, 10)
-    key = period_key_for(start) if calendar_quarter else None
-    ret = compute_vat_return(events, key or "", start, end)
+ANNUAL_RULE = (
+    "Annual accounting: one return a year, due with the balancing payment 2 months after the period ends (1 month for "
+    "a period under 4 months); interim payments at the end of months 4-12, or 4, 7 and 10 (VAT Notice 732)."
+)
+
+
+def _period_deadline(ret: VatReturn, start: date, end: date, key: str | None, due: date, today: date) -> PeriodDeadline:
     diff = ret.total_vat_due - ret.vat_reclaimed
-    deadline = filing_deadline(end)
     return PeriodDeadline(
         start=start,
         end=end,
         label=period_label(start, end),
         period_key=key,
-        deadline=deadline,
+        deadline=due,
         days_to_end=(end - today).days,
-        days_remaining=(deadline - today).days,
+        days_remaining=(due - today).days,
         box5=f"{ret.net_vat_due:.2f}",
         box5_direction="pay" if diff > 0 else "reclaim" if diff < 0 else "nil",
         entries=len(ret.event_ids),
@@ -380,30 +407,60 @@ async def deadlines(
     books: Books = Depends(get_books),
 ) -> Deadlines:
     """Current VAT period, the return that is due next, days remaining and the Box 5 estimate (code, not a model)."""
-    first, months, today = cycle.start_month, cycle.months, today or current_date()
-    window = deadline_window(today, first, months)
-    return compute_deadlines(await books.list_events(*window), today, first, months, assumed=cycle.assumed)
+    today = today or current_date()
+    ctx = await scheme_context(books, cycle)
+    window = deadline_window(today, ctx)
+    sb = await scheme_books(books, ctx, *window) if ctx.settings.in_use else None
+    events = list(sb.events) if sb is not None else await books.list_events(*window)
+    return compute_deadlines(
+        events, today, cycle.start_month, cycle.months, assumed=cycle.assumed, ctx=ctx, scheme_books=sb
+    )
 
 
-def deadline_window(today: date, first: int, months: int) -> tuple[date, date]:
+def deadline_window(today: date, ctx: SchemeContext) -> tuple[date, date]:
     """(start of the previous period, end of the current one): the events `compute_deadlines` needs."""
-    cur_start, cur_end = period_containing(today, first, months)
-    return previous_period(cur_start, months)[0], cur_end
+    cur_start, cur_end = ctx.current(today)
+    return ctx.previous(cur_start)[0], cur_end
 
 
 def compute_deadlines(
-    events: list[LedgerEvent], today: date, first: int, months: int, *, assumed: bool = False
+    events: list[LedgerEvent],
+    today: date,
+    first: int,
+    months: int,
+    *,
+    assumed: bool = False,
+    ctx: SchemeContext | None = None,
+    scheme_books: SchemeBooks | None = None,
 ) -> Deadlines:
-    cur_start, cur_end = period_containing(today, first, months)
-    prev_start, prev_end = previous_period(cur_start, months)
+    """Box 5 so far for the current period and the one before it, under the saved VAT schemes when `ctx` has any."""
+    ctx = ctx or SchemeContext(cycle=VatCycle(first, months, assumed))
+    cur_start, cur_end = ctx.current(today)
+    prev_start, prev_end = ctx.previous(cur_start)
+    in_use = ctx.settings.in_use
     events = [e for e in events if prev_start <= e.date <= cur_end]
-    due = _period_deadline(events, prev_start, prev_end, months, today) if filing_deadline(prev_end) >= today else None
+    sb = (scheme_books or books_from_events(ctx, events)) if in_use else None
+
+    def one(start: date, end: date) -> PeriodDeadline:
+        calendar_quarter = months == 3 and start.month in (1, 4, 7, 10) and not ctx.is_annual(start, end)
+        key = period_key_for(start) if calendar_quarter else None
+        if sb is not None:
+            ret = scheme_return(sb, ctx, key or "", start, end).ret
+        else:
+            ret = compute_vat_return(events, key or "", start, end)
+        return _period_deadline(ret, start, end, key, ctx.deadline(start, end), today)
+
+    annual = ctx.is_annual(cur_start, cur_end)
+    plan = annual_view(ctx, cur_start, cur_end, 0) if annual else None
     return Deadlines(
         today=today,
         months=months,
         start_month=stagger_of(first) if months == 3 else 1,
         stagger=stagger_of(first) if months == 3 else None,
-        current=_period_deadline(events, cur_start, cur_end, months, today),
-        due=due,
+        current=one(cur_start, cur_end),
+        due=one(prev_start, prev_end) if ctx.deadline(prev_start, prev_end) >= today else None,
         assumed=assumed,
+        annual=annual,
+        instalments=plan.instalments if plan else [],
+        **({"rule": ANNUAL_RULE} if annual else {}),
     )
