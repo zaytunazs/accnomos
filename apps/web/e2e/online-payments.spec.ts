@@ -59,9 +59,10 @@ test("Invoice: add a Stripe payment link, the customer pays, approve it with the
   await row.getByRole("button", { name: "Add payment link" }).click();
   const dialog = page.getByRole("dialog", { name: "Payment link for INV-0001" });
   await expect(dialog).toContainText("£372.00");
-  await expect(dialog.getByRole("radio", { name: /Stripe/ })).toBeChecked();
+  const stripe = dialog.getByRole("radio", { name: /Stripe/ });
+  await expect(stripe).toBeChecked({ timeout: 30_000 }); // the only connected account is picked for you
   await dialog.getByRole("button", { name: "Make payment link" }).click();
-  const url = await dialog.getByLabel("Payment link").inputValue();
+  const url = await dialog.getByRole("textbox", { name: "Payment link" }).inputValue();
   expect(url).toMatch(/\/__test\/stripe\/pay\/plink_/);
   await expect(dialog.getByRole("button", { name: "Copy payment link for INV-0001" })).toBeVisible();
   await dialog.getByRole("button", { name: "Done" }).click();

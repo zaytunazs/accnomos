@@ -111,7 +111,21 @@ Nothing in this branch has called Stripe or PayPal: every provider call in tests
   fake consent pages, saves a PayPal.me name, disconnects; an invoice gets a Stripe link with Copy and TEST MODE, the
   customer pays on the fake page, Invoices shows "Paid online" with fee and journal, Approve records it and the
   invoice is Paid.
-- Gate results are in the hand-off message of this branch.
+- **Gate results (28 Oct 2026, on a shared machine at load 40+ on 2 CPUs with OOM kills):**
+  - `ruff check .` and `ruff format --check .`: clean. `pyright services/runtime/app`: 0 errors.
+  - `pytest`: the whole suite could not finish in one process (the run was OOM-killed twice around
+    `test_sample_books.py`/`test_seed_demo.py`), so it was run in parts: everything up to `test_security_routes.py`
+    (956 tests) and the rest (301 passed, 1 skipped) passed; `test_online_payments.py` 31/31. One failure,
+    `test_sample_books.py::test_a_second_press_while_running_or_after_is_the_same_run`, also fails on the base
+    commit before this branch (a timing race under load), not caused by this change.
+  - `eslint .`: OOM-killed twice; the changed web files lint clean (`eslint` on each). `tsc` shows only the existing
+    `LayoutProps` error in `src/app/layout.tsx`. `e2e:build` succeeded on ports 3190/8808.
+  - e2e on ports 3190/8808/8807 (`CI=1`): `settings.spec`, `invoices.spec`, `invoice-payments.spec` and the online
+    Settings test passed (10 passed in one run; the Settings test passed again on retry later). The invoice
+    payment-link test got as far as making the link before a locator error (fixed since); its later runs died with
+    "Page crashed" / folder set-up timeouts from memory pressure. **It has not passed end to end yet; re-run it on a
+    quiet machine.** The runtime's test-mode start-up took 109 s here, over the config's 60 s, so these runs used an
+    uncommitted local config with longer waits; the full e2e suite was not run.
 
 ## Risks and open points
 
