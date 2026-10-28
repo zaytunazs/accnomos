@@ -39,6 +39,7 @@ Read in one place each (`services/runtime/app/routes_books.py`, `app/ai/config.p
 | `X-User` | `require_user` / `optional_user` | the signed-in email; required for anything that writes; an audit label, not checked against the token |
 | `X-Business-Name` | `business_name` | optional; tells sales invoices from purchases |
 | `X-Autopilot` | `POST /books/scan` | `off` stops Autopilot for that scan. The web sends it at level L1/L0; the phone never sends it |
+| `X-Books-Drive-Id`, `X-Books-Item-Id`, `X-Books-Access` | `get_books` → `app/sharing.py` | an accountant opening a client's shared books folder (both ids or neither; access `read` default, or `edit`). See *Accountant collaboration* |
 | `X-HMRC-Access-Token` | relay | scrubbed from logs by the runtime's middleware too |
 | `X-Correlation-Id` | every response | also in the body of a 500 |
 
@@ -116,6 +117,9 @@ Books.xlsx still show the path as it was saved.
 | `archive/map.json` | old path → new path for every document the app moved (archive, Files page move and rename) | updated; applied when proposals and bank lines are read |
 | `archive/runs/<id>.json` | one archive run: every move, its zips, and when it was undone | written, then updated once by Undo |
 | `Settings/files.json` | `backup_keep` (default 12), `monthly_backup` (default off) | rewritten |
+| `accountant.json` | who the books are shared with (invitations, their Graph permission ids, revocations, the Accnomos-accountants consent: version, sha256 of the text, who and when), the profile the portal shows, the folder's drive id + item id (`app/accountant.py`) | rewritten; a revoked invitation is kept, marked revoked |
+| `queries/<id>.json`, `queries/audit/<yyyy-mm>.jsonl` | client queries, one thread per file (`app/queries.py`); the audit lines of a view-only accountant | updated (If-Match); append-only |
+| `Accountant/clients.json` | **in an accountant's own books**: client codes they added by hand in the portal (`app/portal.py`) | rewritten |
 
 OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folder. Money is integer pence in every file except
 `Books.xlsx`, which shows pounds.
@@ -141,6 +145,41 @@ actor; `kind` matches an event or a prefix family (`invoice` is every `invoice_*
 `Books.audit` call in `app/` writes a kind with no sentence. The web `/audit` page and the Android *Audit trail* screen read it
 through this route; the Home dashboard reads `audit/` for recent activity, and `app/actions.py` reads its own log so an
 action never runs twice.
+
+## Accountant collaboration
+
+No user database, so access is OneDrive sharing (Microsoft Learn, checked 28 Oct 2026: driveItem invite, permission
+delete, drive sharedWithMe, addressing driveItems). Routes in `app/routes_accountant.py`:
+
+* **Invite** (`POST /accountant/invitations`, Settings › Your accountant): `POST /drives/{d}/items/{books}/invite` with
+  role `read` or `write`, `requireSignIn`, `sendInvitation`; for a view-only accountant a second invite gives `write` on
+  `_System/queries` only (`:/_System/queries:/invite`), so queries work. Permission ids go into `_System/accountant.json`;
+  revoke deletes each one. `invite` needs `Files.ReadWrite`, so a personal account (books in the app folder,
+  `Files.ReadWrite.AppFolder`) is asked for it at that moment; a client can instead share in OneDrive and *record* it
+  (`method: manual`). Only the owner can call these (403 inside shared books).
+* **Accnomos accountants** (`POST`/`DELETE /accountant/team`): the same share to `ACCOUNTANT_TEAM_EMAIL`, only after an
+  explicit tick on the full consent text (`accountant.CONSENT_TEXT`), stored with its version and sha256. Empty
+  `ACCOUNTANT_TEAM_EMAIL` hides the option and the route answers 404.
+* **Portal** (`GET /accountant/portal`, web `/accountant`): Graph `sharedWithMe` (deprecated; "stops returning data"
+  after November 2026) plus client codes (`drive:item`, in the invitation email) the accountant added, kept in their own
+  `_System/Accountant/clients.json`. A folder counts only if it holds `_System`. Per client: name and kind (from the
+  client's profile), the next VAT return due (`deadlines.filing_deadline`), proposals waiting and needing a look, open
+  queries and who they wait on, last audit line (this and last month). Four clients at a time, each its own read-only `Books`.
+* **Opening a client** (web: `lib/accountant.ts` keeps the client in `sessionStorage`; `runtimeHeaders` adds the three
+  headers): the usual pages run against `/drives/{d}/items/{item}:/{path}` (`GraphStorageProvider(shared=…)`).
+  `app/sharing.py`: ids must look like Graph ids; the cache key is a hash of (token, drive, item), so no client's
+  ledger events are ever served for another or for the accountant's own books; opened `read`, every write except under
+  `_System/queries/` is refused with 403 before Graph is called; no folder renames (`layout.py` is the owner's); a Graph
+  403 there is answered 403, not 401. The browser's own Graph reads (previews, file links) follow the open client;
+  its writes refuse.
+* **Audit**: in shared books `Books.audit` writes `accountant:<email>`, the email from Graph `/me` for the token (not
+  `X-User`); a view-only accountant's lines go to `_System/queries/audit/`, which `GET /audit` also reads.
+  `actor_kind` is `accountant`. Kinds: `accountant_invited`, `accountant_removed`, `accountant_team_opted_in`,
+  `accountant_team_opted_out`, `accountant_profile_saved`, `accountant_client_added`, `accountant_client_removed`,
+  `query_opened`, `query_replied`, `query_resolved`.
+* **Queries** (`/queries`): the accountant opens a thread on a transaction, document, Review card, bank line or invoice;
+  `waiting_on` is the other side from the last message. The client sees threads waiting on them on Home › To-dos and
+  answers in Settings › Your accountant; Android (More › Your accountant) shows access and threads read-only.
 
 ## Files, archive and backups
 

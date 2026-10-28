@@ -33,6 +33,13 @@ Debian/Ubuntu: `apt install ffmpeg` (the runtime Docker image includes it). The 
 ffmpeg it logs a warning, `/health` reports `"voice": false` and `/books/ask/voice` answers 503. Its tests skip the
 conversion cases when ffmpeg is missing. Voice works in key mode only (the user's Meta API key); local mode gets a 400.
 
+**Accountant collaboration** (`docs/ARCHITECTURE.md`): `ACCOUNTANT_TEAM_EMAIL` (empty by default) shows the
+"Reviews by Accnomos accountants" opt-in; the Playwright runtime sets `reviews@accnomos.example`. In test mode,
+`POST /__test/reset?seed=accountant` makes the signed-in test user the accountant of two fake clients (Harbour Joinery
+Ltd, view and edit; Patel Lettings, view only) whose books are shared in a fake sharing world. An accountant's Microsoft
+token needs `Files.Read.All` for the portal and `Files.ReadWrite.All` inside a client; the app registration must allow
+both as delegated permissions.
+
 ## Lint and type checks
 
 What the `ruff`, `pyright` and `web` jobs of `.github/workflows/ci.yml` run (ruff and pyright scope and rules are in the root `pyproject.toml`):
