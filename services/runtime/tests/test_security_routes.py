@@ -218,6 +218,7 @@ TALKS_HTTP = {
     "ai/remind.py": "httpx errors only",
     "ai/plan.py": "httpx errors only",
     "ai/triage.py": "httpx errors only",
+    "public_chat.py": "httpx errors only (the call is ai/ask.py's, to the server's own config)",
     "company_lookup.py": "Companies House (CH_BASE constant) and the relay (HMRC_RELAY_URL): server env only",
     "payment_providers.py": "Stripe and PayPal: the bases in StripeConfig/PayPalConfig, from server env only",
     "online_fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
@@ -459,6 +460,7 @@ NO_USER_NEEDED = {
     "POST /files/archive/preview": "lists what archiving would move; writes nothing (archive needs X-User)",
     "POST /backups/restore/preview": "compares a backup with the books; writes nothing (restore needs X-User)",
     "POST /public/early-access": "public sign-up to the operator's launch list (off unless EARLY_ACCESS_ENABLED=1)",
+    "POST /public/chat": "the website's Accnomos-only chat: no sign-in, reads no user data, writes nothing",
 }
 
 

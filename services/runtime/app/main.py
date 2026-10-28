@@ -246,6 +246,9 @@ async def demo_limit(_request: Request, exc: demo.DemoLimit) -> JSONResponse:
     return JSONResponse(status_code=413, content={"detail": str(exc)})
 
 
+from app.public_chat import router as public_chat_router  # noqa: E402  POST /public/chat (website, no sign-in)
+
+app.include_router(public_chat_router)
 from app.routes_todos import router as todos_router  # noqa: E402  /todos
 
 app.include_router(todos_router)

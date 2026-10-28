@@ -57,7 +57,8 @@ from accnomos_connectors import (
     MailAttachment,
     MailMessage,
 )
-from app import actions, fake_graph, security
+from accnomos_connectors.base import FileRef
+from app import actions, fake_graph, public_chat, security
 from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai
 from app.ai import verify as verify_ai
@@ -633,6 +634,15 @@ def duplicate_reply(content: str) -> dict[str, Any]:
     }
 
 
+def public_chat_reply(content: str) -> dict[str, Any]:
+    """Deterministic website chat answer (app/public_chat.py): the first sentence of the first note it was given."""
+    m = re.search(r"^\[([a-z0-9-]+)\] [^\n]*\n([^\n]+)", content, re.MULTILINE)
+    if not m:
+        return {"answerable": False, "answer": "", "sections": []}
+    first = re.split(r"(?<=[.!?])\s+", m.group(2).strip())[0]
+    return {"answerable": True, "answer": f"{first} (Test stub answer: no real model ran.)", "sections": [m.group(1)]}
+
+
 @router.post("/ai/api/chat")
 async def ai_chat(request: Request) -> JSONResponse:
     body = await request.json()
@@ -645,6 +655,8 @@ async def ai_chat(request: Request) -> JSONResponse:
         return JSONResponse(_ollama(bank_ai_reply(messages[-1]["content"])))
     if system == dup_ai.SYSTEM_PROMPT:
         return JSONResponse(_ollama(duplicate_reply(messages[-1]["content"])))
+    if system == public_chat.SYSTEM_PROMPT:
+        return JSONResponse(_ollama(public_chat_reply(messages[-1]["content"])))
     images = [img for m in messages for img in (m.get("images") or [])]
     if system == actions.INTENT_PROMPT:
         return JSONResponse(_ollama(intent_reply(messages[-1]["content"])))

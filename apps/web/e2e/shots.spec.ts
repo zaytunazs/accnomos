@@ -53,7 +53,7 @@ for (const vp of VIEWPORTS) {
     test.use({ ...vp.use, colorScheme: "light" });
 
     test("home", async ({ page }) => {
-      await page.goto("/");
+      await page.goto("/try"); // the sample Home (signed out, / is the landing page)
       await expect(page.getByRole("link", { name: "See the demo books" })).toBeVisible();
       await shoot(page, "home", vp.suffix);
     });

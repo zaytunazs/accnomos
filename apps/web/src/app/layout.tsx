@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
-import AppShell from "@/components/AppShell";
+import SiteShell from "@/components/SiteShell";
+import { SIGNED_IN_PROBE } from "@/lib/public-site";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -16,9 +17,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${manrope.variable} h-full antialiased`}>
+    // suppressHydrationWarning: SIGNED_IN_PROBE may add data-signed-in to <html> before React hydrates.
+    <html lang="en-GB" className={`${manrope.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: SIGNED_IN_PROBE }} />
+      </head>
       <body className="min-h-full flex flex-col">
-        <AppShell>{children}</AppShell>
+        <SiteShell>{children}</SiteShell>
       </body>
     </html>
   );
