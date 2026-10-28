@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import AccountingBasisSetting from "@/components/settings/AccountingBasisSetting";
 import { setSelfEmployed, useSelfEmployed } from "@/lib/itsa";
 
 /** Settings › Business › "I am self-employed": shows Self-employment (MTD Income Tax) in the menu. Off by default. */
@@ -28,6 +29,7 @@ export default function SelfEmployedSetting({ card, heading }: { card: string; h
           <span className={`absolute top-0.5 h-6 w-6 rounded-full bg-white shadow transition-all ${on ? "left-[22px]" : "left-0.5"}`} />
         </button>
       </div>
+      {on && <AccountingBasisSetting />}
     </section>
   );
 }

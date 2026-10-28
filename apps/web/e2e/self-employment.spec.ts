@@ -32,6 +32,33 @@ test("off by default; on in Settings it adds Self-employment to the menu", async
   await expect(page.getByRole("heading", { name: "Self-employment (MTD Income Tax)" })).toBeVisible();
 });
 
+test("accounting basis: cash by default, traditional kept in the books, and a cash-basis profit and loss", async ({ page }) => {
+  await signIn(page);
+  await createBooksFolder(page);
+  await page.goto("/settings");
+  await settingsTab(page, "Business");
+  await expect(page.getByRole("radiogroup", { name: "Accounting basis" })).toHaveCount(0); // only for the self-employed
+  await page.getByRole("switch", { name: "I am self-employed" }).click();
+  const basis = page.getByRole("radiogroup", { name: "Accounting basis" });
+  await expect(basis.getByRole("radio", { name: /Cash basis \(default\)/ })).toHaveAttribute("aria-checked", "true");
+  await basis.getByRole("radio", { name: /Traditional \(accruals\)/ }).click();
+  await expect(page.getByText("Saved. Your self-employment figures now use this basis.")).toBeVisible();
+
+  await page.reload(); // kept in the books, not in this browser
+  await settingsTab(page, "Business");
+  await expect(
+    page.getByRole("radiogroup", { name: "Accounting basis" }).getByRole("radio", { name: /Traditional \(accruals\)/ }),
+  ).toHaveAttribute("aria-checked", "true");
+
+  await page.goto("/reports");
+  const plBasis = page.getByRole("radiogroup", { name: "Profit and loss basis" });
+  await expect(plBasis.getByRole("radio", { name: "As approved" })).toHaveAttribute("aria-checked", "true");
+  await expect(page.getByRole("heading", { name: /^Profit and loss · / })).toBeVisible();
+  await plBasis.getByRole("radio", { name: "Cash basis" }).click();
+  await expect(page.getByRole("heading", { name: /^Profit and loss \(cash basis\) · / })).toBeVisible();
+  await expect(page.getByText(/^Cash basis: income counts when the customer's money is received/)).toBeVisible();
+});
+
 test("connects, lists obligations, shows the figures, submits with confirmation and shows HMRC's calculation", async ({ page }) => {
   test.setTimeout(60_000); // HMRC asks for 5 s between triggering and reading a calculation
   const calls: string[] = [];
@@ -101,7 +128,8 @@ test("connects, lists obligations, shows the figures, submits with confirmation 
 
   const figures = page.getByRole("region", { name: /Your figures, 6 Apr 2026 to 5 Oct 2026/ });
   await expect(figures.getByRole("table", { name: "Self-employment figures" })).toContainText("Turnover: takings, fees, sales");
-  await expect(figures).toContainText("Not cash basis.");
+  await expect(figures.getByLabel("Accounting basis")).toHaveText("Cash basis"); // HMRC's default for sole traders
+  await expect(figures).toContainText("Cash basis: income counts when the customer's money is received");
   const submit = figures.getByRole("button", { name: "Submit update to HMRC" });
   await expect(submit).toBeDisabled(); // nothing goes until the user confirms
   await figures.getByRole("checkbox", { name: /I have checked these figures/ }).check();

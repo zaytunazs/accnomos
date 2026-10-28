@@ -4,7 +4,7 @@ import { useSyncExternalStore } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { RUNTIME_URL } from "./ai-config";
 import { accessToken, relay, type ClientFacts, type RelayResult } from "./hmrc";
-import { runtimeHeaders } from "./runtime";
+import { runtimeHeaders, type RtBasis } from "./runtime";
 
 /**
  * Making Tax Digital for Income Tax (self-employment), HMRC sandbox only. HMRC is reached through the relay
@@ -143,6 +143,21 @@ export interface RtSeContribution {
   memo: string | null;
   pence: number;
   disallowable: boolean;
+  /** Cash basis only: the money behind the line. */
+  source?: "payment" | "bank_line" | "applied_credit" | "refund" | "on_its_date" | null;
+  paid_how?: string | null;
+  money_pence?: number | null;
+  document_event_id?: string | null;
+  document_ref?: string | null;
+  document_gross_pence?: number | null;
+  payment_id?: string | null;
+}
+export interface RtSeLeftOut {
+  date: string;
+  event_id: string | null;
+  description: string;
+  pence: number;
+  reason: string;
 }
 export interface RtSeFigure {
   key: string;
@@ -158,6 +173,8 @@ export interface RtSeSummary {
   tax_year: string;
   period_start: string;
   period_end: string;
+  accounting_basis: RtBasis;
+  basis_label: string;
   basis: string;
   income_pence: number;
   expenses_pence: number;
@@ -167,6 +184,7 @@ export interface RtSeSummary {
   figures: RtSeFigure[];
   event_ids: string[];
   unmapped_accounts: string[];
+  left_out: RtSeLeftOut[];
   warnings: string[];
   can_submit: boolean;
   blockers: string[];
@@ -181,6 +199,7 @@ export interface RtItsaReceipt {
   calculation_id: string | null;
   correlation_id: string | null;
   matches_books: boolean | null;
+  accounting_basis?: RtBasis | null;
   environment: string;
 }
 export interface RtItsaReceiptIn {
@@ -194,6 +213,14 @@ export interface RtItsaReceiptIn {
   hmrc: RelayResult<unknown>;
   confirmed_at?: string;
   declaration?: string;
+  basis?: RtBasis;
+}
+/** Settings › Business › Accounting basis (GET/PUT /books/self-employment/settings). */
+export interface RtSeSettings {
+  accounting_basis: RtBasis;
+  label: string;
+  default: RtBasis;
+  saved: boolean;
 }
 export type ReportKind = "sa103" | "quarterly" | "calculation";
 /** A report as rows (services/runtime/app/itsa_reports.py `Report`); the files are the same rows. */
@@ -225,6 +252,11 @@ async function rt<T>(account: AccountInfo, path: string, init: RequestInit = {})
 }
 
 export const itsaBooks = {
+  settings: (a: AccountInfo) => rt<RtSeSettings>(a, "/books/self-employment/settings"),
+  /** Changes how the figures are worked out; the ledger and saved receipts stay as they are. Audited. */
+  saveSettings: (a: AccountInfo, basis: RtBasis) =>
+    rt<RtSeSettings>(a, "/books/self-employment/settings", { method: "PUT", body: JSON.stringify({ accounting_basis: basis }) }),
+  /** On the basis in Settings. */
   summary: (a: AccountInfo, taxYear: string, periodEnd: string) =>
     rt<RtSeSummary>(a, `/books/self-employment/summary?tax_year=${taxYear}&period_end=${periodEnd}`),
   receipts: (a: AccountInfo, taxYear: string) =>
