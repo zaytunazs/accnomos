@@ -229,3 +229,6 @@ app.include_router(todos_router)
 from app.routes_audit import router as audit_router  # noqa: E402  GET /audit
 
 app.include_router(audit_router)
+from app.routes_profile import router as profile_router  # noqa: E402  GET/PUT /profile (app/profile.py)
+
+app.include_router(profile_router)

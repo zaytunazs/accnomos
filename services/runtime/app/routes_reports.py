@@ -20,7 +20,7 @@ from app.books import Books
 from app.books import today as current_date  # `today` is a query parameter below
 from app.deadlines import recent_periods
 from app.paths import REPORTS
-from app.routes_books import get_books, require_user
+from app.routes_books import get_books, require_feature, require_user
 from app.validation import Day, StrictBody
 from app.vat_cycle import VatCycle, vat_cycle
 
@@ -67,7 +67,7 @@ def _spans(cycle: VatCycle, today: date, periods: int) -> list[tuple[date, date]
     return recent_periods(today, cycle.start_month, cycle.months, previous=periods - 1)
 
 
-@router.get("/vat", response_model=rp.VatSummary)
+@router.get("/vat", response_model=rp.VatSummary, dependencies=[require_feature("vat")])
 async def vat(
     periods: int = Query(4, ge=1, le=9, description="the current VAT period and the ones before it"),
     today: date | None = TODAY,
