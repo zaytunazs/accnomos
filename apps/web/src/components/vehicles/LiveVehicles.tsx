@@ -233,7 +233,7 @@ export default function LiveVehicles() {
           <h2 id="quarters" className="text-[17px] font-extrabold">
             Quarters
           </h2>
-          <div className="mt-3 overflow-x-auto">
+          <div className="relative mt-3 overflow-x-auto">
             <table className="w-full text-left text-[15px]">
               <thead>
                 <tr className="border-b border-border text-[13px] font-bold text-muted">
@@ -380,7 +380,7 @@ export default function LiveVehicles() {
           </form>
         )}
         {entries.length > 0 && (
-          <div className="mt-4 overflow-x-auto">
+          <div className="relative mt-4 overflow-x-auto">
             <table className="w-full text-left text-[15px]">
               <thead>
                 <tr className="border-b border-border text-[13px] font-bold text-muted">
@@ -447,7 +447,7 @@ export default function LiveVehicles() {
           repair receipts to them in Review and the actual costs count instead.
         </p>
         {summary && summary.vehicles.length > 0 && (
-          <div className="mt-3 overflow-x-auto">
+          <div className="relative mt-3 overflow-x-auto">
             <table className="w-full text-left text-[15px]">
               <thead>
                 <tr className="border-b border-border text-[13px] font-bold text-muted">

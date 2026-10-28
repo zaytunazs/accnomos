@@ -62,12 +62,57 @@ on synthetic documents, and real phone photos will score lower.
 
 | Claim | Evidence |
 |---|---|
+<<<<<<< HEAD
 | A 3:00 script that follows one receipt from the phone to the VAT boxes and the HMRC sandbox, opening with the provenance line, with captions and a fallback for every shot not yet run live | `docs/submission/VIDEO_SCRIPT.md` |
 | A longer click-by-click walkthrough with the expected figures (Box 4 £8.65, Box 7 £43) | `docs/DEMO.md` |
 | The demo's labels are held by an end-to-end test, and every page has a phone-width check | `apps/web/e2e/demo.spec.ts`, `apps/web/e2e/phone.spec.ts` |
 | Storyboard stills from the test-mode dry run (stub AI, not proof of a live run) | `docs/submission/shots/` |
 | Sample data is fictional and labelled *SAMPLE — FICTIONAL COMPANY* in the product, reports and exports | `apps/web/src/components/DemoBanner.tsx`, `tools/seed_demo.md` |
 | Every known gap is written down, so nothing in the video is staged | `docs/HONESTY.md`, `docs/REMAINING.md` |
+=======
+| Six Meta models are wired in, each at a named file with a stated status | `docs/submission/META_MODELS.md`, `docs/META_MODELS.md`, `docs/ARCHITECTURE.md` |
+| Muse Glimmer 30B (open weights, Ollama on our DGX Spark) reads receipts and does the other text tasks locally, so documents need not leave the machine; mean 17.7 s per document clean, 24.1 s messy | `services/runtime/app/ai/extract.py`, `verify.py`; `evals/runs/glimmer_200_v2/report.md`, `evals/runs/glimmer_messy_200_v2/report.md` |
+| Real evals on a synthetic gold set of 200 documents, clean and messy: Spark Open all fields 91 / 93 %, Glimmer 85 / 80 %, side 100 % for both; the Verifier's false alarms (11 Spark Open, 44 Glimmer, over 400 each) cost status accuracy but only in the safe direction | `docs/submission/META_MODELS.md` (table); `evals/runs/` | the report above; `docs/META_MODELS.md` |
+| Glimmer in other roles, measured: Ask figures exact 32/32 with no invented figure shown; inbox triage category 5/5; Autopilot L2 over 467 documents per mode | `evals/runs/ask_40/report.md`, `evals/runs/mail_intake/report.md`, `evals/runs/autopilot_l2/report.md` |
+| Two-model design: in key mode the verifier is Muse Spark Open on Baseten with a different prompt; code compares six fields. Wired 27 Oct: Baseten's `/v1/models` lists the id and one real call read a gold receipt in 7 s. On the 200 gold documents Spark Open reads all fields right on 91 % clean and 93 % messy (side 100 %) | `services/runtime/app/ai/verify.py`, `services/runtime/tests/test_verify.py`; `evals/runs/spark_open_200/report.md` |
+| What the verifier is worth, honestly: Glimmer checking Glimmer, 20 documents, 0 extra catches; in the Autopilot eval it removed one false post on clean documents and cost 16 correct posts | `evals/REPORT_verifier_glimmer_messy_20_2026-10-27.md`, `docs/reviews/autopilot-eval/REVIEW.md` |
+| Voice input via Muse Voice Transcribe feeds the same grounded Ask and actions | `services/runtime/app/ai/voice.py`, `tests/test_voice.py`. **Request shape unverified; no live mic run** |
+| Muse Image made the brand art; SAM 3.1 crop exists, off by default; the code crop it falls back to is measured (IoU 0.88 against 0.48) | `tools/brand_muse.py`, `services/runtime/app/ai/crop.py`, `evals/REPORT_crop_code_20_2026-10-27.md`. SAM **never run live** |
+
+Say plainly in the submission: every measured number is Glimmer 30B; Spark 1.3, Voice and SAM are integrated and stub-tested but have not been called for real; Spark Open has one live call and an eval still running.
+
+## 3. Impact
+
+| Claim | Evidence |
+|---|---|
+| Target user: a VAT-registered UK small business or sole trader doing its own bookkeeping | `README.md`, `docs/DEMO.md` |
+| The owner keeps the records: nothing in an Accnomos database, so disconnecting loses nothing | `docs/ARCHITECTURE.md` ("Runtime state: none") |
+| Nothing is sent or posted without a human tap by default: Approve, the invoice-send tick, the HMRC legal declaration; Autopilot is opt-in, rule-based and undoable; Accnomos never sends inbox mail, only drafts | `docs/AUTOPILOT.md`, `docs/INBOX.md`, `docs/HMRC.md` |
+| Open weights option: Glimmer keeps documents off third-party model APIs (here, on our own hardware) | `docs/submission/META_MODELS.md` |
+
+No user research, usage numbers or time-saved measurements exist in the repo. **Do not claim a saving in hours or pounds.** The honest impact statement is the design: low cost to try, data stays with the owner.
+
+## 4. Completeness
+
+| Claim | Evidence |
+|---|---|
+| Web app covers Home, Review, Ask, Invoices, Bank, VAT return, Jobs, Payroll, Reports, Contacts, Vehicles, Files, Audit trail, Settings | `apps/web/src/app`, README layout table |
+| Android app 0.3.2+5: sign-in, capture, Review, Ask with mic and action cards, Home, VAT, and More (Files, Contacts with Add from phone, Invoices, Jobs, Vehicles, Bank, Payroll, Reports, Audit trail). `flutter analyze` and `flutter test` (248 tests) run on every Android merge. The Play app-signing hash is registered in Entra (27 Oct) and in builds from 0.3.1+4; the Play production track has build 1 in review. **No real-phone sign-in is recorded** | `apps/mobile/lib/screens`, `apps/mobile/test`, `apps/mobile/RELEASE_NOTES.md`, `apps/mobile/pubspec.yaml` |
+| End-to-end suite: Playwright against a test-mode runtime with fakes, one spec per page (35 spec files), phone-width and accessibility checks, and the demo as one flow | `apps/web/e2e/*.spec.ts`, `docs/DEV.md`, `.github/workflows/ci.yml` (job `e2e`, run on every push and PR; `docs/reviews/ci/REVIEW.md`) |
+| Seeded demo: `tools/seed_demo.py` fills a throwaway account with six months of fictional books | `tools/seed_demo.md`, `tests/test_seed_demo.py`; **not yet run against a real OneDrive** |
+| Not built: production HMRC filing, Google Drive, RTI payroll, `muse-wonder` multi-step planning; Apply credit, Refund and paying bills are web only | `README.md`, `docs/REMAINING.md` |
+
+## 5. Honesty
+
+| Claim | Evidence |
+|---|---|
+| A flat list of every known gap, plus a severity-ordered table | `docs/HONESTY.md`, `docs/REMAINING.md` |
+| Every README feature row has a "NOT verified" column | `README.md` feature table |
+| Synthetic demo data labelled "SAMPLE — FICTIONAL COMPANY" in the product, reports and exports | `apps/web/src/components/DemoBanner.tsx`, `docs/reviews/reports/REVIEW.md` |
+| Real versus faked is spelled out: only sign-in, folder setup, read to approve to ledger to VAT boxes, and the Glimmer evals ran for real, with no committed log for the live runs | `docs/HONESTY.md` ("What is real, and what is not") |
+| Evals report their failures and what they do not show: Autopilot's 17 false posts and their cause, the earlier 21 double posts, the bank matcher's 23 misses, intake's 5 misses, Ask's declined and unanswerable rows | `evals/runs/*/report.md`, `docs/reviews/autopilot-eval/REVIEW.md` |
+| AI-assisted authorship disclosed: Claude, Muse Code and a local Qwen wrote code; every merge was reviewed | `README.md` (Honesty notes), `docs/reviews/` |
+>>>>>>> origin/claude/ci
 
 ## How to run it in 10 minutes (test mode, no accounts)
 

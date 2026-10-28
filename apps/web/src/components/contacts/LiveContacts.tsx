@@ -201,7 +201,7 @@ function ContactList({ rows, agedById, showKind, selected, onSelect, onEdit, can
         ))}
       </ul>
       {/* Wider screens: the table. */}
-      <div className={`${card} hidden overflow-x-auto md:block`}>
+      <div className={`${card} relative hidden overflow-x-auto md:block`}>
         <table className="w-full min-w-[720px] border-collapse">
           <thead className="border-b border-border">
             <tr>

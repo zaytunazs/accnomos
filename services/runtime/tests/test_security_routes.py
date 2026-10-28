@@ -363,11 +363,11 @@ def test_cors_allows_every_method_a_route_uses_and_no_other():
 
 def test_the_test_mode_web_build_is_never_published():
     root = APP.parents[2] / ".github/workflows"
-    deploy, e2e = (root / "deploy-web.yml").read_text(), (root / "e2e.yml").read_text()
+    deploy, e2e = (root / "deploy-web.yml").read_text(), (root / "ci.yml").read_text()
     assert 'NEXT_PUBLIC_TEST_MODE: ""' in deploy and "publish_dir: apps/web/out\n" in deploy
     guard, publish = deploy.index("Refuse to publish a test-mode build"), deploy.index("publish_dir:")
     assert guard < publish and "__test/(graph|ai)" in deploy[guard:publish]
-    assert "permissions:\n  contents: read" in e2e
+    assert "permissions:\n  contents: read" in e2e and "pnpm run e2e:build" in e2e
     assert not any(word in e2e for word in ("secrets.", "gh-pages", "publish_dir", "contents: write", "docker push"))
     build = (APP.parents[2] / "apps/web/e2e/build.mjs").read_text()
     assert "out-e2e" in build and 'NEXT_PUBLIC_TEST_MODE: "1"' in build

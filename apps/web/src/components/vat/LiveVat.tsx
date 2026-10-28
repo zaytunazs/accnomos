@@ -159,7 +159,7 @@ export default function LiveVat() {
             </li>
           ))}
         </ul>
-        <div className="mt-3 hidden overflow-x-auto sm:block">
+        <div className="relative mt-3 hidden overflow-x-auto sm:block">
           <table className="w-full text-[15px]">
             <thead>
               <tr className="border-b border-border text-left text-[13px] font-bold text-muted">

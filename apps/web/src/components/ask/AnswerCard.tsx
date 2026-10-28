@@ -163,7 +163,7 @@ export default function AnswerCard({
       )}
 
       {answer.key_numbers.length > 0 && (
-        <div className="mt-4 overflow-x-auto">
+        <div className="relative mt-4 overflow-x-auto">
           <table className="w-full border-collapse text-[13px] leading-6">
             <caption className="sr-only">Key numbers</caption>
             <tbody>

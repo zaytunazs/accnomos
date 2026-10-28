@@ -137,7 +137,7 @@ export default function VatPage() {
                   </li>
                 ))}
               </ul>
-              <div className="hidden overflow-x-auto sm:block">
+              <div className="relative hidden overflow-x-auto sm:block">
                 <table className="w-full text-left text-[15px]">
                   <thead>
                     <tr className="border-b border-border text-[13px] font-bold text-muted">
