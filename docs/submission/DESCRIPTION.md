@@ -20,7 +20,7 @@ Meta models read the paperwork: Muse Glimmer 30B on our own hardware, or Muse Sp
 
 Autopilot is off by default. Measured on Glimmer over 467 synthetic documents, verifier on: no false posts on 154 clean ones, but 17 overall, all re-dated copies of posted receipts.
 
-Honestly: only sign-in, receipt-to-VAT-boxes and the Glimmer evals ran for real; the rest is tested on fakes. HMRC is sandbox only and not yet run end to end.
+Honestly: only sign-in, receipt-to-VAT-boxes and the model evals ran for real; the rest is tested on fakes. HMRC is sandbox only and not yet run end to end.
 ---
 
 ## 400-word version
