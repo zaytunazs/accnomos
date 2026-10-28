@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S050",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Kestrel Kinetic Ltd",
+  "contractor_ref": "363/GC89379",
+  "subcontractor_name": "Flow State Plumbing",
+  "subcontractor_utr": "3557063606",
+  "verification_number": "V5444665754BA",
+  "tax_month_end": "2027-04-05",
+  "gross_amount": 2965.25,
+  "materials": 1170.07,
+  "amount_liable": 1795.18,
+  "deduction": 538.55,
+  "net_paid": 2426.7,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 296525,
+  "materials": 117007,
+  "deduction": 53855,
+  "correct_deduction": 53855
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}

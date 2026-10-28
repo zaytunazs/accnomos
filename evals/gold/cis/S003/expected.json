@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S003",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Calder Valley Constructions Ltd",
+  "contractor_ref": "608/WP51175",
+  "subcontractor_name": "Smooth Surface Co",
+  "subcontractor_utr": "9351819093",
+  "verification_number": null,
+  "tax_month_end": "2026-09-05",
+  "gross_amount": 2768.8,
+  "materials": 0.0,
+  "amount_liable": 2768.8,
+  "deduction": 0.0,
+  "net_paid": 2768.8,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 276880,
+  "materials": 0,
+  "deduction": 0,
+  "correct_deduction": 0
+ },
+ "expect_check_fail": [],
+ "rate": 0
+}

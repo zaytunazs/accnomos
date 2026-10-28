@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S016",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Calder Valley Constructions Ltd",
+  "contractor_ref": "657/PE17982",
+  "subcontractor_name": "Oak & Ash Carpentry",
+  "subcontractor_utr": "3043483954",
+  "verification_number": null,
+  "tax_month_end": "2027-04-05",
+  "gross_amount": 6086.0,
+  "materials": 1021.34,
+  "amount_liable": 5064.66,
+  "deduction": 1012.93,
+  "net_paid": 5073.07,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 608600,
+  "materials": 102134,
+  "deduction": 101293,
+  "correct_deduction": 101293
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

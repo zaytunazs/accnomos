@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S044",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Eastwick Estates Ltd",
+  "contractor_ref": "408/RJ51465",
+  "subcontractor_name": "White Wall Plasters",
+  "subcontractor_utr": "8936439008",
+  "verification_number": null,
+  "tax_month_end": "2026-11-05",
+  "gross_amount": 1703.4,
+  "materials": 0.0,
+  "amount_liable": 1703.4,
+  "deduction": 340.68,
+  "net_paid": 1362.72,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 170340,
+  "materials": 0,
+  "deduction": 34068,
+  "correct_deduction": 34068
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

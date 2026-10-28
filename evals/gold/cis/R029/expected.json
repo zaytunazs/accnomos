@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R029",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Solid Stone Masonry",
+  "supplier_vat_number": "GB 070 2496 80",
+  "invoice_number": "SOL-966",
+  "invoice_date": "2026-10-27",
+  "net": 2401.5,
+  "vat_rate": 20,
+  "reverse_charge_vat": 480.3,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 157500,
+  "materials": 82650,
+  "net": 240150,
+  "reverse_charge_vat": 48030
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

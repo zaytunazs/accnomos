@@ -1,0 +1,752 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "seed": 7,
+ "names_by": "qwen3.8-27b",
+ "figures_by": "code (gen_gold_cis.py)",
+ "documents": [
+  {
+   "id": "S001",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S002",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S003",
+   "kind": "cis_statement",
+   "rate": 0,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S004",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S005",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S006",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S007",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S008",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S009",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": [
+    "RATE"
+   ]
+  },
+  {
+   "id": "S010",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S011",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S012",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S013",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S014",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S015",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S016",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S017",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S018",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": [
+    "RATE"
+   ]
+  },
+  {
+   "id": "S019",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S020",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S021",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S022",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S023",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S024",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S025",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S026",
+   "kind": "cis_statement",
+   "rate": 0,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S027",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": [
+    "RATE"
+   ]
+  },
+  {
+   "id": "S028",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S029",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S030",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S031",
+   "kind": "cis_statement",
+   "rate": 0,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S032",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S033",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S034",
+   "kind": "cis_statement",
+   "rate": 0,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S035",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S036",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": [
+    "RATE"
+   ]
+  },
+  {
+   "id": "S037",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S038",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S039",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S040",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S041",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S042",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S043",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S044",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S045",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": [
+    "RATE"
+   ]
+  },
+  {
+   "id": "S046",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S047",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S048",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S049",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S050",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S051",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S052",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S053",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S054",
+   "kind": "cis_statement",
+   "rate": 30,
+   "expect_check_fail": [
+    "RATE"
+   ]
+  },
+  {
+   "id": "S055",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S056",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S057",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S058",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S059",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "S060",
+   "kind": "cis_statement",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R001",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R002",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R003",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R004",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R005",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R006",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R007",
+   "kind": "reverse_charge_invoice",
+   "rate": 5,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R008",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R009",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R010",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": [
+    "RC_WORDING"
+   ]
+  },
+  {
+   "id": "R011",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R012",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R013",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R014",
+   "kind": "reverse_charge_invoice",
+   "rate": 5,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R015",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R016",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R017",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R018",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R019",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R020",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": [
+    "RC_WORDING"
+   ]
+  },
+  {
+   "id": "R021",
+   "kind": "reverse_charge_invoice",
+   "rate": 5,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R022",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R023",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R024",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R025",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R026",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R027",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R028",
+   "kind": "reverse_charge_invoice",
+   "rate": 5,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R029",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R030",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": [
+    "RC_WORDING"
+   ]
+  },
+  {
+   "id": "R031",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R032",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R033",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R034",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R035",
+   "kind": "reverse_charge_invoice",
+   "rate": 5,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R036",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R037",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R038",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R039",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R040",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": [
+    "RC_WORDING"
+   ]
+  },
+  {
+   "id": "R041",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R042",
+   "kind": "reverse_charge_invoice",
+   "rate": 5,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R043",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R044",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R045",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R046",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R047",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R048",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R049",
+   "kind": "reverse_charge_invoice",
+   "rate": 5,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R050",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": [
+    "RC_WORDING"
+   ]
+  },
+  {
+   "id": "R051",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R052",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R053",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R054",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R055",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R056",
+   "kind": "reverse_charge_invoice",
+   "rate": 5,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R057",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R058",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R059",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": []
+  },
+  {
+   "id": "R060",
+   "kind": "reverse_charge_invoice",
+   "rate": 20,
+   "expect_check_fail": [
+    "RC_WORDING"
+   ]
+  }
+ ]
+}

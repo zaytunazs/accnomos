@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S026",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Mansfield Modular Ltd",
+  "contractor_ref": "541/FB21073",
+  "subcontractor_name": "Volt Edge Electricals",
+  "subcontractor_utr": "5326502014",
+  "verification_number": null,
+  "tax_month_end": "2026-11-05",
+  "gross_amount": 4434.15,
+  "materials": 601.79,
+  "amount_liable": 3832.36,
+  "deduction": 0.0,
+  "net_paid": 4434.15,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 443415,
+  "materials": 60179,
+  "deduction": 0,
+  "correct_deduction": 0
+ },
+ "expect_check_fail": [],
+ "rate": 0
+}

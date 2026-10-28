@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S055",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Calder Valley Constructions Ltd",
+  "contractor_ref": "586/HR59004",
+  "subcontractor_name": "Wood & Wedge Joinery",
+  "subcontractor_utr": "4388317010",
+  "verification_number": null,
+  "tax_month_end": "2027-02-05",
+  "gross_amount": 4677.35,
+  "materials": 0.0,
+  "amount_liable": 4677.35,
+  "deduction": 935.47,
+  "net_paid": 3741.88,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 467735,
+  "materials": 0,
+  "deduction": 93547,
+  "correct_deduction": 93547
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

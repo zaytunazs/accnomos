@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S059",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Glasgow Gateways Ltd",
+  "contractor_ref": "308/AP30521",
+  "subcontractor_name": "Aqua Flow Systems",
+  "subcontractor_utr": "4956605366",
+  "verification_number": null,
+  "tax_month_end": "2026-11-05",
+  "gross_amount": 4431.7,
+  "materials": 134.63,
+  "amount_liable": 4297.07,
+  "deduction": 859.41,
+  "net_paid": 3572.29,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 443170,
+  "materials": 13463,
+  "deduction": 85941,
+  "correct_deduction": 85941
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

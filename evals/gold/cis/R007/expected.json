@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R007",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Wood & Wedge Joinery",
+  "supplier_vat_number": "GB 025 9472 64",
+  "invoice_number": "WOO-730",
+  "invoice_date": "2026-07-28",
+  "net": 1111.18,
+  "vat_rate": 5,
+  "reverse_charge_vat": 55.56,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 40000,
+  "materials": 71118,
+  "net": 111118,
+  "reverse_charge_vat": 5556
+ },
+ "expect_check_fail": [],
+ "rate": 5
+}

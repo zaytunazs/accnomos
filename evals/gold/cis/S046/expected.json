@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S046",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Glasgow Gateways Ltd",
+  "contractor_ref": "884/GH70963",
+  "subcontractor_name": "Shingle & Slate Roofing",
+  "subcontractor_utr": "6304813734",
+  "verification_number": null,
+  "tax_month_end": "2026-12-05",
+  "gross_amount": 4830.9,
+  "materials": 949.79,
+  "amount_liable": 3881.11,
+  "deduction": 776.22,
+  "net_paid": 4054.68,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 483090,
+  "materials": 94979,
+  "deduction": 77622,
+  "correct_deduction": 77622
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

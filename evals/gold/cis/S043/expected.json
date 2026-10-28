@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S043",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Dunstable Dome Developments Ltd",
+  "contractor_ref": "741/JT93399",
+  "subcontractor_name": "Aqua Flow Systems",
+  "subcontractor_utr": "1800239042",
+  "verification_number": null,
+  "tax_month_end": "2027-03-05",
+  "gross_amount": 8884.9,
+  "materials": 2397.7,
+  "amount_liable": 6487.2,
+  "deduction": 1297.44,
+  "net_paid": 7587.46,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 888490,
+  "materials": 239770,
+  "deduction": 129744,
+  "correct_deduction": 129744
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

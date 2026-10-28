@@ -1,0 +1,29 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S054",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Brighton Bay Builders Ltd",
+  "contractor_ref": "351/HE46877",
+  "subcontractor_name": "Deep Dig Groundworks",
+  "subcontractor_utr": "8144494544",
+  "verification_number": "V6150482230DC",
+  "tax_month_end": "2026-07-05",
+  "gross_amount": 6441.4,
+  "materials": 1231.72,
+  "amount_liable": 5209.68,
+  "deduction": 1572.9,
+  "net_paid": 4868.5,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 644140,
+  "materials": 123172,
+  "deduction": 157290,
+  "correct_deduction": 156290
+ },
+ "expect_check_fail": [
+  "RATE"
+ ],
+ "rate": 30
+}

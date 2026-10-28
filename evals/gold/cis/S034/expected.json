@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S034",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Havering Heights Ltd",
+  "contractor_ref": "717/TJ24768",
+  "subcontractor_name": "Flow State Plumbing",
+  "subcontractor_utr": "3319128452",
+  "verification_number": null,
+  "tax_month_end": "2026-06-05",
+  "gross_amount": 6291.0,
+  "materials": 2028.19,
+  "amount_liable": 4262.81,
+  "deduction": 0.0,
+  "net_paid": 6291.0,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 629100,
+  "materials": 202819,
+  "deduction": 0,
+  "correct_deduction": 0
+ },
+ "expect_check_fail": [],
+ "rate": 0
+}

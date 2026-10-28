@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S028",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Brighton Bay Builders Ltd",
+  "contractor_ref": "411/HC86753",
+  "subcontractor_name": "White Wall Plasters",
+  "subcontractor_utr": "3380141269",
+  "verification_number": "V5473925505AE",
+  "tax_month_end": "2026-10-05",
+  "gross_amount": 1499.55,
+  "materials": 658.98,
+  "amount_liable": 840.57,
+  "deduction": 252.17,
+  "net_paid": 1247.38,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 149955,
+  "materials": 65898,
+  "deduction": 25217,
+  "correct_deduction": 25217
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}

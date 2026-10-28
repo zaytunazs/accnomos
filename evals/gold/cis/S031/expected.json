@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S031",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Eastwick Estates Ltd",
+  "contractor_ref": "605/NC72784",
+  "subcontractor_name": "Terra Firma Dig",
+  "subcontractor_utr": "8174143337",
+  "verification_number": null,
+  "tax_month_end": "2026-06-05",
+  "gross_amount": 7414.95,
+  "materials": 0.0,
+  "amount_liable": 7414.95,
+  "deduction": 0.0,
+  "net_paid": 7414.95,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 741495,
+  "materials": 0,
+  "deduction": 0,
+  "correct_deduction": 0
+ },
+ "expect_check_fail": [],
+ "rate": 0
+}

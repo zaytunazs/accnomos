@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S023",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Jubilee Joint Ventures Ltd",
+  "contractor_ref": "185/HC44662",
+  "subcontractor_name": "Wood & Wedge Joinery",
+  "subcontractor_utr": "9751402614",
+  "verification_number": "V5030181318BE",
+  "tax_month_end": "2026-09-05",
+  "gross_amount": 2357.75,
+  "materials": 674.73,
+  "amount_liable": 1683.02,
+  "deduction": 504.9,
+  "net_paid": 1852.85,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 235775,
+  "materials": 67473,
+  "deduction": 50490,
+  "correct_deduction": 50490
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}

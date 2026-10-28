@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S014",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Aldermore Structures Ltd",
+  "contractor_ref": "574/NC30821",
+  "subcontractor_name": "Shingle & Slate Roofing",
+  "subcontractor_utr": "1163726516",
+  "verification_number": null,
+  "tax_month_end": "2027-02-05",
+  "gross_amount": 6684.55,
+  "materials": 1803.58,
+  "amount_liable": 4880.97,
+  "deduction": 976.19,
+  "net_paid": 5708.36,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 668455,
+  "materials": 180358,
+  "deduction": 97619,
+  "correct_deduction": 97619
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

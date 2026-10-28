@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S005",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Eastwick Estates Ltd",
+  "contractor_ref": "813/CB50580",
+  "subcontractor_name": "Peak Roofing Services",
+  "subcontractor_utr": "5597971147",
+  "verification_number": null,
+  "tax_month_end": "2026-11-05",
+  "gross_amount": 1417.35,
+  "materials": 411.23,
+  "amount_liable": 1006.12,
+  "deduction": 201.22,
+  "net_paid": 1216.13,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 141735,
+  "materials": 41123,
+  "deduction": 20122,
+  "correct_deduction": 20122
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

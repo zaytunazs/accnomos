@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S040",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Aldermore Structures Ltd",
+  "contractor_ref": "523/TG59396",
+  "subcontractor_name": "Colorful Canvas Decorators",
+  "subcontractor_utr": "1258153549",
+  "verification_number": "V9676184959GG",
+  "tax_month_end": "2026-12-05",
+  "gross_amount": 2229.7,
+  "materials": 319.92,
+  "amount_liable": 1909.78,
+  "deduction": 572.93,
+  "net_paid": 1656.77,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 222970,
+  "materials": 31992,
+  "deduction": 57293,
+  "correct_deduction": 57293
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}

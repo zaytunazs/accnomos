@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S001",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Aldermore Structures Ltd",
+  "contractor_ref": "528/CH21889",
+  "subcontractor_name": "Spark & Switch Electrics",
+  "subcontractor_utr": "8159083016",
+  "verification_number": null,
+  "tax_month_end": "2026-10-05",
+  "gross_amount": 5575.0,
+  "materials": 379.77,
+  "amount_liable": 5195.23,
+  "deduction": 1039.04,
+  "net_paid": 4535.96,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 557500,
+  "materials": 37977,
+  "deduction": 103904,
+  "correct_deduction": 103904
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

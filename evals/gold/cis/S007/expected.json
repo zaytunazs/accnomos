@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S007",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Glasgow Gateways Ltd",
+  "contractor_ref": "596/FJ46953",
+  "subcontractor_name": "Wood & Wedge Joinery",
+  "subcontractor_utr": "6846563212",
+  "verification_number": "V1649821629DA",
+  "tax_month_end": "2026-07-05",
+  "gross_amount": 5664.4,
+  "materials": 717.88,
+  "amount_liable": 4946.52,
+  "deduction": 1483.95,
+  "net_paid": 4180.45,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 566440,
+  "materials": 71788,
+  "deduction": 148395,
+  "correct_deduction": 148395
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}
