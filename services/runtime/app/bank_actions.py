@@ -15,12 +15,14 @@ import contextlib
 import hashlib
 import re
 import uuid
+from typing import Literal
 
 from pydantic import BaseModel
 
 from accnomos_ledger.bank import FEE_WORDS, ActionHint, BankLine, suggest_action
 from app.books import BankMatchError, Books, now
 from app.journal import draft_journal
+from app.online_payments import payout_provider
 from app.schemas import Check, ExtractedDoc, PaymentMethod, Proposal, ProposalStatus
 
 MODEL = "bank-line"  # in place of the extraction model's name: no model read anything
@@ -40,6 +42,8 @@ class UnmatchedLine(BaseModel):
     # Status of the expense proposal made from this line (line.proposal_id); None when there is none.
     # After "rejected" the user may create a fresh one.
     proposal_status: ProposalStatus | None = None
+    # Money in whose words name Stripe or PayPal: likely a payout, matched with POST /lines/{id}/payout.
+    payout: Literal["stripe", "paypal"] | None = None
 
 
 def _payment_method(text: str) -> PaymentMethod:
@@ -127,5 +131,6 @@ async def unmatched_lines(books: Books) -> list[UnmatchedLine]:
         if ln.proposal_id:
             with contextlib.suppress(FileNotFoundError):
                 status = (await books.get_proposal(ln.proposal_id)).status
-        out.append(UnmatchedLine(line=ln, suggested=suggest_action(ln), proposal_status=status))
+        payout = payout_provider(f"{ln.description} {ln.reference or ''}") if ln.amount_pence > 0 else None
+        out.append(UnmatchedLine(line=ln, suggested=suggest_action(ln), proposal_status=status, payout=payout))
     return out

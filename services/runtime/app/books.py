@@ -682,9 +682,11 @@ class Books:
                 "file": path,
             },
         )
+        from app.online_payments import on_unmatched
         from app.payments import on_line_changed
 
         await on_line_changed(self, line_id, line.event_ids(), False)
+        await on_unmatched(self, line_id, line.event_ids(), user)  # a payout's transfer is reversed
         await self._sync_invoices(line.event_ids())
         await self.rebuild_safely(f"user:{user}")
         return line.model_copy(update=update)

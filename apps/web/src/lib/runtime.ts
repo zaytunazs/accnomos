@@ -488,6 +488,9 @@ export const runtime = {
     /** Reopen a matched, transfer or ignored line. */
     reopen: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/unmatch`, { method: "POST" }),
     transfer: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/transfer`, { method: "POST" }),
+    /** A payout from Stripe or PayPal: Dr 1200 Bank / Cr its clearing account (services/runtime/app/online_payments.py). */
+    payout: (a: AccountInfo, lineId: string, provider: "stripe" | "paypal") =>
+      call<RtBankLine>(a, `/books/bank/lines/${lineId}/payout`, { method: "POST", body: JSON.stringify({ provider }) }),
     ignore: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/ignore`, { method: "POST" }),
     expenseProposal: (a: AccountInfo, lineId: string) =>
       call<RtProposal>(a, `/books/bank/lines/${lineId}/expense-proposal`, { method: "POST" }),
@@ -1492,6 +1495,8 @@ export interface RtUnmatchedLine {
   suggested: { action: RtUnmatchedAction; reason: string };
   /** Status of the expense proposal made from this line, if any; after "rejected" a new one may be made. */
   proposal_status: "proposed" | "needs_a_look" | "posted" | "rejected" | null;
+  /** Money in whose words name Stripe or PayPal: likely that provider's payout. */
+  payout?: "stripe" | "paypal" | null;
 }
 export interface RtBankSummary {
   total: number;

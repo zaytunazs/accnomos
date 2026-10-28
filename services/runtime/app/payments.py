@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import contextlib
 import hashlib
+import typing
 import uuid
 from collections.abc import Iterable
 from datetime import date
@@ -35,13 +36,15 @@ from app.books import BankMatchError, Books, now
 from app.books import today as london_today
 from app.contacts import Doc, Ledger, documents, load_ledger
 from app.invoicing import Invoice, InvoiceError, InvoiceStateError, list_invoices, money, save_invoice
-from app.journal import BANK, CASH, CREDITORS, DEBTORS
+from app.journal import BANK, CASH, CREDITORS, DEBTORS, PAYPAL_CLEARING, STRIPE_CLEARING
 from app.settlement import PAYMENTS, Allocation, Payment, PaymentRecord, PaymentStatus, Side
 from app.validation import Day, Pence, StrictBody
 
-PaymentAccount = Literal["1200 Bank", "1210 Cash"]
+# The clearing accounts take payments found through a Stripe or PayPal link (app/online_payments.py).
+PaymentAccount = Literal["1200 Bank", "1210 Cash", "1230 Stripe clearing", "1240 PayPal clearing"]
 MAX_PENCE = 10_000_000_000  # £100m: anything bigger is a typing slip
-assert BANK == "1200 Bank" and CASH == "1210 Cash"  # PaymentAccount spells them out for the API schema
+# PaymentAccount spells them out for the API schema.
+assert typing.get_args(PaymentAccount) == (BANK, CASH, STRIPE_CLEARING, PAYPAL_CLEARING)
 
 
 class AllocationIn(StrictBody):
@@ -576,6 +579,11 @@ async def check_match(books: Books, line: BankLine, ids: list[str]) -> None:
             raise BankMatchError("Match a recorded payment or refund to its bank line on its own")
         m = linked[0]
         if m.account != BANK:
+            if m.account in (STRIPE_CLEARING, PAYPAL_CLEARING):
+                raise BankMatchError(
+                    f"That payment went into {m.account}; the bank line is the payout. "
+                    "Match the line as a payout from the provider instead"
+                )
             raise BankMatchError("That payment was recorded as cash (1210 Cash), not through the bank")
         if m.bank_pence != line.amount_pence:
             raise BankMatchError(

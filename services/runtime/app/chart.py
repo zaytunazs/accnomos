@@ -29,7 +29,19 @@ from pydantic import BaseModel, Field, ValidationError, computed_field
 
 from accnomos_ledger.events import LedgerEvent
 from app.books import SYSTEM, Books, now
-from app.journal import BANK, CASH, CATEGORY_ACCOUNTS, CREDITORS, DEBTORS, OWNER_LOAN, SALES, SUNDRY, VAT_CONTROL
+from app.journal import (
+    BANK,
+    CASH,
+    CATEGORY_ACCOUNTS,
+    CREDITORS,
+    DEBTORS,
+    OWNER_LOAN,
+    PAYPAL_CLEARING,
+    SALES,
+    STRIPE_CLEARING,
+    SUNDRY,
+    VAT_CONTROL,
+)
 from app.validation import LENIENT, StrictBody
 
 ACCOUNTING = f"{SYSTEM}/Accounting"
@@ -71,6 +83,8 @@ SYSTEM_ACCOUNTS = frozenset(
     {
         BANK,
         CASH,
+        STRIPE_CLEARING,
+        PAYPAL_CLEARING,
         DEBTORS,
         CREDITORS,
         VAT_CONTROL,
@@ -138,6 +152,8 @@ def default_chart() -> list[Account]:
         _a(DEBTORS, "current_asset", None, "Customers who owe you (sales invoices)"),
         _a(BANK, "bank"),
         _a(CASH, "bank"),
+        _a(STRIPE_CLEARING, "current_asset", None, "Card payments taken through Stripe links, until Stripe pays out"),
+        _a(PAYPAL_CLEARING, "current_asset", None, "Payments taken through PayPal links, until PayPal pays out"),
         _a("1300 Prepayments", "current_asset"),
         _a(CREDITORS, "current_liability", None, "Suppliers you owe (bills)"),
         _a(VAT_CONTROL, "current_liability", None, "VAT charged less VAT reclaimed"),

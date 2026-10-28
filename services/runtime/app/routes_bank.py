@@ -14,6 +14,7 @@ matches can be marked as a transfer, ignored, or turned into an expense proposal
                                        payment's entry instead, so it is counted once (app/payments.py)
     POST /lines/{id}/unmatch           reopen a matched, transfer or ignored line
     POST /lines/{id}/transfer          mark as transfer
+    POST /lines/{id}/payout            a payout from Stripe or PayPal: Dr 1200 Bank / Cr its clearing account
     POST /lines/{id}/ignore            ignore
     POST /lines/{id}/expense-proposal  create an expense proposal from the line
     GET  /summary                      counts and the "reconciled to" date
@@ -172,6 +173,20 @@ async def match(
 @router.post("/lines/{line_id}/unmatch", response_model=BankLine)
 async def unmatch(line_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)) -> BankLine:
     return await _line_action(lambda: books.unmatch(line_id, user))
+
+
+class PayoutBody(StrictBody):
+    provider: Literal["stripe", "paypal"]
+
+
+@router.post("/lines/{line_id}/payout", response_model=BankLine)
+async def payout(
+    line_id: str, body: PayoutBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> BankLine:
+    """The line is the provider paying out what it holds (app/online_payments.match_payout)."""
+    from app.online_payments import match_payout
+
+    return await _line_action(lambda: match_payout(books, line_id, body.provider, user))
 
 
 @router.post("/lines/{line_id}/transfer", response_model=BankLine)

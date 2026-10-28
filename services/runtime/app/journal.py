@@ -37,6 +37,11 @@ except ImportError:  # runtime used without packages/ledger on sys.path
 VAT_CONTROL = "2200 VAT control"
 BANK = "1200 Bank"
 CASH = "1210 Cash"
+#: Money taken through a payment link sits here until the provider pays it out to the bank (net of its fees, often
+#: several payments at once). 1210 is Cash, so the two clearing accounts are 1230 and 1240.
+STRIPE_CLEARING = "1230 Stripe clearing"
+PAYPAL_CLEARING = "1240 PayPal clearing"
+CLEARING: dict[str, str] = {"stripe": STRIPE_CLEARING, "paypal": PAYPAL_CLEARING}
 CREDITORS = "2100 Creditors"
 DEBTORS = "1100 Debtors"
 SALES = "4000 Sales"
