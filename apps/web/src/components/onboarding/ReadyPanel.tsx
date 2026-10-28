@@ -9,6 +9,7 @@ import { getRoot, putSmallFile } from "@/lib/graph";
 import { getMsal, isPersonalAccount, msalConfigured } from "@/lib/msal";
 import { useNextParam, withNext } from "@/components/connect/ConnectSteps";
 import { markReceiptTried } from "@/components/home/SetupChecklist";
+import SampleBooks from "@/components/home/SampleBooks";
 
 const NEXT_STEPS = [
   "Drop receipts into 00 Inbox or snap them in the app",
@@ -144,6 +145,9 @@ export default function ReadyPanel() {
           </button>
         </div>
       )}
+
+      {/* An empty folder: or start from the sample books (they never go into a folder that has books). */}
+      {account && !folderMissing && <SampleBooks account={account} place="connect" />}
 
       <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
         <Link

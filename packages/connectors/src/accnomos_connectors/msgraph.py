@@ -103,6 +103,13 @@ class _GraphHttp:
         self._auth = {"Authorization": f"Bearer {token}"}
         self._sleep = sleep
 
+    def set_token(self, token: str) -> None:
+        """Use a fresh token from the next request on (a long job outlives the hour a Graph token lasts; the
+        signed-in app hands it a new one, see services/runtime/app/sample_books.py)."""
+        if not token.strip():
+            raise ValueError("empty token")
+        self._auth = {"Authorization": f"Bearer {token.strip()}"}
+
     async def aclose(self) -> None:
         if self._owns_client:
             await self._client.aclose()

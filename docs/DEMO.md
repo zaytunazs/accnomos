@@ -38,9 +38,13 @@ Test mode differs from the stage in three visible ways: the model is called `acc
 5. On **Home**, press **Dismiss** on *Get set up*, so the dashboard tiles are on screen at the end.
 6. Download the sample receipt to the laptop. Have `docs/META_MODELS.md`, `pytest -q` in `services/hmrc-relay` (119 pass, HMRC mocked) and a screen recording ready as the last resorts below.
 
-For judges who want to click through six months of books rather than one receipt, `tools/seed_demo.md` fills a
-**separate** throwaway account; don't seed the account used for this script (it leaves 25 documents in `00 Inbox`).
-What that account shows is in [the table at the end](#what-the-judge-account-shows).
+For judges who want to click through six months of books rather than one receipt: **judges can use their own Microsoft
+account and press Load sample books.** Signed in on accnomos.com with an empty Accnomos folder, Home (and Connect's last
+step) shows *Try it with sample books*; the button fills that folder with the Bramblewood books below, every document
+labelled *SAMPLE — FICTIONAL COMPANY*, with a progress bar, and reloads into Home when done. It only ever goes into an empty
+folder, and deleting the Accnomos folder in OneDrive removes it. (`tools/seed_demo.md` does the same from the command line
+for a throwaway account.) Don't load it into the account used for this script (it leaves 25 documents in `00 Inbox`).
+What those books show is in [the table at the end](#what-the-judge-account-shows).
 
 ## Script
 
@@ -73,11 +77,11 @@ Step numbers are the `test.step` names in `apps/web/e2e/demo.spec.ts`; the still
 
 ## What the judge account shows
 
-The **second** throwaway account, filled by `tools/seed_demo.py` (not the one used for the script above, and never the
-account in the video). Fictional *Bramblewood Joinery Ltd*, Apr–Sep 2026, VAT quarterly on stagger 1; every document,
+A judge's own account after **Load sample books**, or the **second** throwaway account filled by `tools/seed_demo.py`
+(the same books either way; not the account used for the script above, and never the account in the video). Fictional *Bramblewood Joinery Ltd*, Apr–Sep 2026, VAT quarterly on stagger 1; every document,
 invoice and statement says *SAMPLE — FICTIONAL COMPANY*. Figures are for a seed run in Oct–Dec 2026, from the fake-OneDrive
-run in `services/runtime/tests/test_seed_demo.py`; the seed has **not yet been run against a real OneDrive**, so open each
-page once before judges arrive. Full detail: `tools/seed_demo.md` §3.
+run in `services/runtime/tests/test_seed_demo.py` (and `test_sample_books.py` for the button); neither has **yet been run
+against a real OneDrive**, so load it once on a throwaway account and open each page before judges arrive. Full detail: `tools/seed_demo.md` §3.
 
 | Page | What to look at |
 |---|---|

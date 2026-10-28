@@ -67,7 +67,18 @@ def test_docker_image_pins_it_off() -> None:
     dockerfile = Path(__file__).resolve().parents[3] / "deploy" / "Dockerfile.runtime"
     lines = dockerfile.read_text(encoding="utf-8").splitlines()
     assert "ENV ACCNOMOS_TEST_MODE=0" in lines
-    assert not any("ACCNOMOS_TEST_MODE=1" in ln or "evals" in ln for ln in lines if not ln.lstrip().startswith("#"))
+    assert "ENV ACCNOMOS_IMAGE=1" in lines  # enable() refuses test mode there
+    # The only evals in the image: the gold documents and their renderer, for Load sample books (app/sample_books.py).
+    sample = {"COPY evals/gold /srv/evals/gold", "COPY evals/harness/render.py /srv/evals/harness/render.py"}
+    code = [ln for ln in lines if not ln.lstrip().startswith("#")]
+    assert not any("ACCNOMOS_TEST_MODE=1" in ln for ln in code)
+    assert {ln for ln in code if "evals" in ln} == sample
+
+
+def test_test_mode_is_refused_in_the_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ACCNOMOS_IMAGE", "1")
+    with pytest.raises(RuntimeError, match="refused in the runtime image"):
+        testmode.enable()
 
 
 def test_forces_stub_ai_and_pins_today(test_env: None) -> None:

@@ -4,8 +4,11 @@ FROM python:3.12.7-slim-bookworm
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1
 # Test mode (fake storage/mail, stub AI; docs/DEV.md) is for the e2e tests only: never on in this image.
 ENV ACCNOMOS_TEST_MODE=0
+# ...and refused outright here (app/testmode.py enable()): the image carries evals/gold for Load sample books.
+ENV ACCNOMOS_IMAGE=1
 # ffmpeg: converts voice questions (webm/ogg/m4a) to WAV mono 16 kHz for Muse Voice; /books/ask/voice answers 503 without it
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/* \
+# fonts-dejavu-core: the sample books' documents (Load sample books) are drawn in DejaVu Sans Mono, as in the evals
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg fonts-dejavu-core && rm -rf /var/lib/apt/lists/* \
  && groupadd --system --gid 10001 accnomos \
  && useradd --system --uid 10001 --gid accnomos --no-create-home --home-dir /nonexistent --shell /usr/sbin/nologin accnomos
 WORKDIR /srv
@@ -13,6 +16,11 @@ COPY packages/ledger /srv/packages/ledger
 COPY packages/connectors /srv/packages/connectors
 COPY services/runtime /srv/services/runtime
 RUN pip install /srv/packages/ledger /srv/packages/connectors /srv/services/runtime
+# Load sample books (app/sample_books.py) runs tools/seed_demo.py's plan: it needs the script, the gold documents it
+# re-dates and the renderer that draws them. Fictional data only, all labelled SAMPLE.
+COPY tools/seed_demo.py /srv/tools/seed_demo.py
+COPY evals/gold /srv/evals/gold
+COPY evals/harness/render.py /srv/evals/harness/render.py
 # PDFs (pypdfium2) and HEIC photos (pillow-heif) come as wheels with PDFium/libheif inside: no apt packages. Fail the
 # build here, not at the first upload, if this platform has no wheel (app/formats.py would refuse PDFs and HEIC).
 RUN python -c "import pypdfium2, pillow_heif; pillow_heif.register_heif_opener()" \

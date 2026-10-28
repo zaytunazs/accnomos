@@ -29,6 +29,14 @@ The documents were not read by a model. Their proposals carry the gold set's fie
 whichever AI the account is set up with, when someone presses *Scan*. The gold has only Oakfield's credit note, so its bill
 is the credit note's lines at twice the quantity (half the goods came back).
 
+## 0. Or press the button
+
+The web app does the same without a token: signed in with an **empty** Accnomos folder, Home and Connect's last step
+offer **Load sample books**, which runs these steps (`seed_steps`) in the runtime, in the background, and resumes from the
+step it reached if the token expires or the runtime restarts (`services/runtime/app/sample_books.py`). The books are the
+same, approved by `demo-seed` as here, so this tool sees a finished button run as "already seeded". Use the command
+line below for a work account or when the web app is not deployed.
+
 ## 1. A throwaway account and a token
 
 Use a Microsoft account made for the demo, never one with real data. Sign in once on onedrive.com so the drive exists.
@@ -60,7 +68,7 @@ python tools/seed_demo.py --business "Bramblewood Joinery Ltd"               # a
 ```
 
 The token is read from a hidden prompt or from `ACCNOMOS_GRAPH_TOKEN`. It is never accepted as an argument, so it stays out of
-shell history, and it is kept in memory only. Expect a few minutes: the seed makes several hundred Graph calls.
+shell history, and it is kept in memory only. How long it takes is unmeasured: on the fake OneDrive the seed makes about 11,300 storage calls, each roughly one Graph request, so it may take longer than the hour a token lasts (the web app's **Load sample books** hands over fresh tokens; this tool does not).
 
 * A wrong or expired token stops the seed with a message, not a traceback. If it expires part-way (the run takes a few
   minutes; tokens last about an hour), the folder is part-filled: copy a fresh token and run again with `--wipe`.

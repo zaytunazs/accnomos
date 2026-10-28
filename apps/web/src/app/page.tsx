@@ -8,6 +8,7 @@ import { HomeData, SignedOut } from "@/components/home/HomeData";
 import InboxTriage from "@/components/home/InboxTriage";
 import Pitch from "@/components/home/Pitch";
 import PlanToday from "@/components/home/PlanToday";
+import { HomeSampleBooks } from "@/components/home/SampleBooks";
 import SetupChecklist from "@/components/home/SetupChecklist";
 import TodosTile from "@/components/home/TodosTile";
 
@@ -32,6 +33,8 @@ export default function HomePage() {
         </SignedOut>
         <AskBar />
         <HomeError />
+        {/* Signed in with an empty folder: offer the sample books; once loaded, the SAMPLE banner. */}
+        <HomeSampleBooks />
         <SetupChecklist />
         {/* One calm grid, signed in or out: 1 column at 390 px, 2 at 768, 3 at 1280.
             Today spans the row; the Inbox and Recent activity take two. */}
