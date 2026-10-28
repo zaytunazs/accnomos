@@ -140,7 +140,7 @@ export default function LivePayroll() {
   return (
     <div className="flex flex-col gap-6">
       <p role="note" className="rounded-2xl border border-warn-border bg-warn-bg px-4 py-3 text-[15px] font-semibold leading-6 text-warn-ink">
-        {ESTIMATE}. Accnomos prepares the numbers; it does not run payroll or file RTI with HMRC.
+        {ESTIMATE}. This estimate is for a payroll provider who runs your payroll; Accnomos does not file RTI with HMRC.
       </p>
 
       <div className="flex flex-wrap items-end gap-3 print:hidden">

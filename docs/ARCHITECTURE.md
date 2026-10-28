@@ -53,7 +53,7 @@ Personal accounts: `Apps/Accnomos` (the OneDrive app folder, `Files.ReadWrite.Ap
 `packages/connectors/folders.json`, `apps/web/src/lib/folders.ts` and a marked block in
 `apps/mobile/lib/services/graph.dart`, and `tests/test_paths.py` fails if any copy differs or if a numbered name is
 spelt as a literal anywhere else in Python. The `_System/` paths come from the constants in `app/books.py`,
-`invoicing.py`, `payroll.py`, `jobs.py`, `mileage.py`, `contacts.py`, `intake.py`, `todos.py`, `plan_apply.py`.
+`invoicing.py`, `payroll.py`, `payrun.py`, `jobs.py`, `mileage.py`, `contacts.py`, `intake.py`, `todos.py`, `plan_apply.py`.
 `services/runtime/tests/test_integration.py` holds what the runtime writes during its scenario to a `LAYOUT` list kept by
 hand in step with the first table; it does **not** exercise invoicing, payroll, the planner, to-dos or action audit, so those
 paths are listed here from the code only.
@@ -71,6 +71,8 @@ Documents, filed by code and never deleted:
 | `03 Sales/credit-notes/CN-0001.json`, `.pdf`; `03 Sales/credit-notes/sent/CN-0001.pdf` | runtime, credit notes (`credit_notes.py`) | created with the first credit note |
 | `04 Bank statements/<last date>_<bank>.csv` | runtime, bank import | |
 | `05 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | |
+| `05 Payroll/<tax year>/RTI/FPS-<run>.xml`, `EPS-<tax year>-month-<nn>.xml` | runtime, PAYE payroll (`routes_payrun.py`) on download | generated for checking, never submitted |
+| `05 Payroll/<tax year>/payslips/payslip-<run>-<payroll id>.pdf`, `Pension/pension-<provider>-<run>.csv` | runtime, on download of an approved run | |
 | `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
 | `07 Reports/<yyyy-mm-dd>-<name>.xlsx` | runtime, `POST /reports/export` (*Export to OneDrive* on Reports) | `name` is `profit-and-loss`, `aged-balances`, `vat-summary`, `monthly-trend` or `reports` (all of them); a second export the same day gets ` (2)`, nothing is overwritten. Starts with `SAMPLE — FICTIONAL COMPANY` when the books are the demo seed's. Posts nothing |
 | `Books.xlsx` | runtime, `rebuild_safely` after each ledger-changing action and on *Rebuild* | rewritten whole; sheets `README`, `Summary`, `Ledger`, `Accounts`, `VAT`, `P&L`, `Customers`, `Suppliers`, `Bank`, `Proposals`, `Jobs`, `Vehicles`, `Payroll` (`projection.SHEETS`). A feature whose file cannot be read leaves its sheet empty; a failed rebuild is audited and never fails the user's action |
@@ -107,6 +109,8 @@ Books.xlsx still show the path as it was saved.
 | `Invoicing/profile.json`, `sequence.json`, `credit_sequence.json`, and the logo file | business profile, invoice and credit note numbering, logo (any file under `_System/Invoicing/`) | rewritten |
 | `Payments/payments.json` | recorded payments: amount, date, account, the split across invoices or bills, the posted event (`payments.py`) | rewritten whole; a removed payment is kept, marked removed |
 | `Payroll/runs/<yyyy-mm>.json` | one pay run per month | updated |
+| `Payroll/employer.json`, `Payroll/employees.json` | PAYE references, Employment Allowance, pension scheme; employees' payroll records (NI number, date of birth, address) | rewritten whole |
+| `Payroll/payruns/<tax year>-<frequency>-<nn>.json`, `payruns/discarded/` | one PAYE pay run: inputs, every calculated figure and year to date (`payrun.py`) | updated until posted; a discarded draft is moved, not deleted |
 | `Planner/applied.json` | which day plans were applied (idempotency) | updated |
 | `Todos/todos.json` | to-dos added from triage | updated |
 
