@@ -120,6 +120,8 @@ Books.xlsx still show the path as it was saved.
 | `Settings/files.json` | `backup_keep` (default 12), `monthly_backup` (default off) | rewritten |
 | `profile.json` | what these books are: name, kind (`company`, `sole_trader`, `personal`), kind settings, other linked accounts by sign-in name (`app/profile.py`, `PUT /profile`) | rewritten whole |
 | `close/<yyyy-mm>.json` | the month-end close: the last 10 runs (steps, findings, card summaries; never the signed cards) and every close record (who, when, the snapshot and its SHA-256) | updated; close records are only appended |
+| `shopping_list.json` | the shopping list (`shopping.py`): item, spec, quantity, the cheapest supplier code found in the history, ticked or not | rewritten whole; at most 300 items |
+| `item_matches.json` | the user's yes/no for "are these two item names the same product?" (`prices.py`); never the model's | rewritten whole; one row per pair |
 
 OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folder. Money is integer pence in every file except
 `Books.xlsx`, which shows pounds.
@@ -198,6 +200,39 @@ and `backups.py`. Every write needs `X-User`; previews write nothing.
 * **Audit kinds:** `files_moved`, `file_renamed`, `files_trashed`, `files_archived`, `archive_undone`,
   `backup_created` (actor `agent:backup` for the monthly one), `backup_verified`, `backup_restored`,
   `file_settings_saved`, each with a sentence in `audit_view.SUMMARIES`.
+
+## Spending, cheaper options and the shopping list
+
+All three read the same purchase history (`app/purchases.py`): approved ledger events on the purchases side (the VAT
+return's sign rule, so a supplier credit note or an undo counts against spend), each with the line items of the
+proposal it was approved from. An entry posted by hand or by a bank rule has no lines; an undone purchase's lines are
+dropped.
+
+- **Spending** (`GET /books/spending`, `app/spending.py`): code computes spend by category (the cost account), by
+  supplier and by item, the change on the previous period of the same length, recurring costs (a supplier in 3+
+  months, or 2+ for subscriptions, utilities, rent, insurance) and unusual one-offs (≥ £100 and ≥ 3× the median
+  purchase of the 6 months before, from a supplier that is not a regular cost). `app/ai/spending.py` sends those facts
+  to the user's model for a short summary, then runs Ask's checks on it (`KnownNumbers`, `wrong_period` in
+  `app/ai/ask.py`); a figure that fails, or any model trouble, and code's own summary is shown with the reason.
+  "Summarise my spending" in Ask answers the same way for the Ask period.
+- **Cheaper options** (`GET /books/prices`, `app/prices.py`): code normalises each line (name words, width, length,
+  weight, volume, colour, pack), prices it per metre / kg / litre / item, and groups lines with the same name and size.
+  Different names are joined only by the user (`POST /books/prices/matches`) or, on `POST /books/prices/suggest`, by the
+  model (`app/ai/items.py`, names only, no prices) where code's rules agree (same measure, widths within 10 %, half the
+  name words shared); the model's view is never stored. The saving is (volume-weighted average paid − lowest paid) ×
+  the usual monthly volume, half up to the penny.
+- **Live price search** (`app/price_search.py`): a `PriceSearchProvider` chosen by `PRICE_SEARCH_PROVIDER` (off by
+  default; `fake` in test mode only; docs/PRODUCTION.md). Offers (supplier, title, unit price, pack, URL,
+  `retrieved_at`) are read with the same `normalise()`, priced by code, kept apart from the history and labelled with
+  their source and time; a failing or slow provider (8 s) costs only its offers.
+- **Shopping list** (`/shopping`, `app/shopping.py`): a lookup matches the words against the history (every word in
+  the item's name, sizes exact), offers what was bought before, or asks for width / length / colour / quantity as
+  fields; then live offers when a search is on. Adding stores the cheapest supplier code finds again at that moment
+  (never taken from the client). Ask's `add_to_shopping_list` action (`app/actions.py`, typed or spoken through
+  `/books/ask/voice`: "Remember to order 2-inch bolts for the Hendon job") reads the item, its size and the job the
+  model quotes, finds the job among the open jobs by code (or asks which), asks which history item, or shows the fields
+  (`POST /shopping/propose` makes the card, carrying the job), and adds only on Approve, stored against the job. Purchase orders and supplier emails are
+  not built (shown disabled).
 
 ## Round trips and caching
 
@@ -338,7 +373,7 @@ note says the changes are not on that return; Undo keeps dating corrections toda
 
 | Model | Called from | Mode | Status |
 |---|---|---|---|
-| **Muse Glimmer 30B** (`muse-glimmer:30b`, Ollama `/api/chat`) | `ai/extract.py` (extraction); `ai/verify.py` (verifier); `ai/ask.py` `call_json_model` (Ask, and through it `actions.py` intents, `ai/triage.py`, `ai/remind.py`, `ai/plan.py` rationale) | local | Run by hand on our DGX Spark for extraction and verifier (`evals/`); the other tasks tested with a stub |
+| **Muse Glimmer 30B** (`muse-glimmer:30b`, Ollama `/api/chat`) | `ai/extract.py` (extraction); `ai/verify.py` (verifier); `ai/ask.py` `call_json_model` (Ask, and through it `actions.py` intents, `ai/triage.py`, `ai/remind.py`, `ai/plan.py` rationale, `ai/spending.py` summaries, `ai/items.py` same-product suggestions) | local | Run by hand on our DGX Spark for extraction and verifier (`evals/`); the other tasks tested with a stub |
 | **Muse Spark** (`muse-spark-1.3`, Meta Model API `/chat/completions`, the user's key) | the same call sites in key mode; `ai/verify.py` when no Baseten key is set | key | **Unverified**: unit-tested against stubs; no key in our eval environment |
 | **Muse Spark Open** (Baseten, `inference.baseten.co`) | `ai/verify.py`, only in key mode when the **server owner** sets `BASETEN_API_KEY` | key | Wired on the demo server (key set 27 Oct 2026); id `meta-models/muse-spark-open` as Baseten lists it; one real call checked; eval on 200 gold documents: all fields 91 % clean, 93 % messy (`evals/runs/spark_open_200`, `spark_open_messy_200`) |
 | **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) | `ai/voice.py` `transcribe()`, from `POST /books/ask/voice` (web and Android mic) after ffmpeg converts to WAV 16 kHz mono | key only | **Unverified**: request format from research notes, never checked against dev.meta.ai; no live mic run |

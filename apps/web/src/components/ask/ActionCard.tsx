@@ -13,8 +13,10 @@ import {
   type RtInvoicePreview,
   type RtMileagePreview,
   type RtProposedAction,
+  type RtShoppingPreview,
   type RtTimesheetPreview,
 } from "@/lib/runtime";
+import { SpecFields, specBody, type SpecValues } from "@/components/spending/LiveShopping";
 import { Markdown } from "./AnswerCard";
 
 const gbp = (pence: number) =>
@@ -55,6 +57,7 @@ const TITLES: Record<RtProposedAction["kind"], string> = {
   log_mileage: "Mileage",
   match_bank_line: "Bank match",
   close_month: "Close the month",
+  add_to_shopping_list: "Shopping list",
 };
 
 /** Where an action's result shows up, for checking after an approval that stopped halfway. */
@@ -65,6 +68,7 @@ const WHERE: Record<RtProposedAction["kind"], string> = {
   log_mileage: "the mileage log on Vehicles",
   match_bank_line: "the line on Bank",
   close_month: "Month-end",
+  add_to_shopping_list: "the Shopping list page",
 };
 
 /**
@@ -175,6 +179,31 @@ function Details({ action }: { action: RtProposedAction }) {
         <Row label="Snapshot">
           <code className="text-[13px]">{p.snapshot_hash.slice(0, 12)}</code>
         </Row>
+  if (action.kind === "add_to_shopping_list") {
+    const p = action.preview as unknown as RtShoppingPreview;
+    return (
+      <dl className="divide-y divide-border">
+        <Row label="Item">
+          <strong>{p.description}</strong>
+        </Row>
+        {p.job_name && <Row label="Job">{p.job_name}</Row>}
+        <Row label="How many">
+          <strong className="tabular-nums">{p.quantity}</strong>
+        </Row>
+        <Row label="Supplier">
+          {p.suggested ? (
+            <>
+              {p.suggested.supplier} · £{p.suggested.unit_price} <span className="text-muted">({p.suggested.basis})</span>
+            </>
+          ) : (
+            <span className="text-muted">None in your books yet</span>
+          )}
+        </Row>
+        {p.live_offer && (
+          <Row label="Live offer">
+            {p.live_offer.supplier} · £{p.live_offer.unit_price} <span className="text-muted">(found by {p.live_offer.source})</span>
+          </Row>
+        )}
       </dl>
     );
   }
@@ -328,11 +357,67 @@ export default function ActionCard({
   );
 }
 
+/** A shopping item Ask found nothing for: the specs as fields, then a card from POST /shopping/propose. */
+function SpecForm({ clarification, account }: { clarification: RtClarification; account: AccountInfo }) {
+  const fields = clarification.spec_fields ?? [];
+  const [values, setValues] = useState<SpecValues>(() =>
+    Object.fromEntries(fields.filter((f) => f.value).map((f) => [f.name, f.value as string])),
+  );
+  const [card, setCard] = useState<RtProposedAction | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  if (card) return <ActionCard action={card} account={account} onChange={() => setCard(null)} />;
+  return (
+    <form
+      aria-label="Item details"
+      className="mt-3 flex flex-col gap-3"
+      onSubmit={async (e) => {
+        e.preventDefault();
+        setBusy(true);
+        setError(null);
+        try {
+          const body = { ...specBody(clarification.ref ?? "item", values), job_id: clarification.extra?.job_id ?? null };
+          setCard(await runtime.proposeShopping(account, body));
+        } catch (err) {
+          setError(reason(err));
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <SpecFields fields={fields} values={values} onChange={setValues} />
+      {error && (
+        <p role="alert" className="rounded-xl border border-warn-border bg-warn-bg p-3 text-[14px] text-warn-ink">
+          {error}
+        </p>
+      )}
+      <button
+        type="submit"
+        disabled={busy}
+        className="flex h-10 w-fit items-center rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-50"
+      >
+        {busy ? "Working…" : "Continue"}
+      </button>
+    </form>
+  );
+}
+
 /** "Which customer did you mean?" with the candidates as buttons that re-ask with the name filled in. */
-export function ClarifyCard({ clarification, onPick }: { clarification: RtClarification; onPick: (name: string) => void }) {
+export function ClarifyCard({
+  clarification,
+  onPick,
+  account,
+}: {
+  clarification: RtClarification;
+  onPick: (name: string) => void;
+  account?: AccountInfo | null;
+}) {
   return (
     <article className="rounded-2xl border border-border bg-white p-5">
       <Markdown md={unescape(clarification.question_md)} />
+      {clarification.spec_fields && clarification.spec_fields.length > 0 && account && (
+        <SpecForm clarification={clarification} account={account} />
+      )}
       {clarification.candidates.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {clarification.candidates.map((c) => (

@@ -281,7 +281,8 @@ def extraction_json_schema() -> dict[str, Any]:
 
 ASK_ANSWER_MAX = 1200
 ASK_HISTORY_MAX = 6
-AskActionKind = Literal["open_review", "open_vat", "chase_supplier", "plan_day", "none"]  # plan_day: code only
+#: plan_day and open_spending: code only
+AskActionKind = Literal["open_review", "open_vat", "chase_supplier", "plan_day", "open_spending", "none"]
 Confidence = Literal["high", "medium", "low"]
 
 
@@ -342,9 +343,16 @@ class AskExplanation(BaseModel):
     confidence: Confidence
 
 
-#: The first four come from Ask; `match_bank_line` and `close_month` come from the month-end close (app/month_end.py).
+#: The first four come from Ask; `match_bank_line` and `close_month` come from the month-end close (app/month_end.py);
+#: `add_to_shopping_list` from Ask (app/shopping.py).
 ActionKind = Literal[
-    "create_invoice", "chase_invoice", "log_mileage", "log_timesheet", "match_bank_line", "close_month"
+    "create_invoice",
+    "chase_invoice",
+    "log_mileage",
+    "log_timesheet",
+    "match_bank_line",
+    "close_month",
+    "add_to_shopping_list",
 ]
 
 
@@ -373,6 +381,10 @@ class Clarification(BaseModel):
     question_md: str
     candidates: list[str] = []
     ref: str | None = None  # the words the user used ("Hartley"), so the app can re-ask with a candidate in their place
+    # add_to_shopping_list with nothing in the history: the specs to ask for as fields (app/shopping.py SpecField),
+    # each optionally with a "value" already said (the quantity). The app posts them to POST /shopping/propose.
+    spec_fields: list[dict[str, Any]] = []
+    extra: dict[str, Any] = {}  # what code already resolved and the app sends back (the shopping item's job_id)
 
 
 class AskAnswer(AskModelOutput):

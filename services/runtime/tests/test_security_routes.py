@@ -464,6 +464,9 @@ NO_USER_NEEDED = {
     "POST /files/archive/preview": "lists what archiving would move; writes nothing (archive needs X-User)",
     "POST /backups/restore/preview": "compares a backup with the books; writes nothing (restore needs X-User)",
     "POST /public/early-access": "public sign-up to the operator's launch list (off unless EARLY_ACCESS_ENABLED=1)",
+    "POST /books/prices/suggest": "the model suggests item matches; nothing is stored (POST /books/prices/matches is)",
+    "POST /shopping/lookup": "reads the price history (and a live search, when on); writes nothing",
+    "POST /shopping/propose": "proposes a signed card that only /actions/approve (X-User) runs",
 }
 
 
