@@ -1,0 +1,289 @@
+{
+  "generated": "2026-10-28T13:46:14+00:00",
+  "model": "muse-glimmer:30b",
+  "base_url": "http://localhost:11434",
+  "stub": false,
+  "reader": "generic",
+  "docs": 108,
+  "answered": 108,
+  "refusals": 0,
+  "refusal_pct": 0.0,
+  "all_exact_pct": 1.9,
+  "per_field": {
+    "category": {
+      "scored": 108,
+      "correct": 26,
+      "accuracy_pct": 24.1
+    },
+    "property": {
+      "scored": 108,
+      "correct": 8,
+      "accuracy_pct": 7.4
+    },
+    "amount": {
+      "scored": 108,
+      "correct": 34,
+      "accuracy_pct": 31.5
+    },
+    "date": {
+      "scored": 108,
+      "correct": 108,
+      "accuracy_pct": 100.0
+    }
+  },
+  "by_kind": {
+    "insurance": {
+      "docs": 6,
+      "answered": 6,
+      "all_exact": 1,
+      "accuracy_pct": 16.7
+    },
+    "invoice": {
+      "docs": 24,
+      "answered": 24,
+      "all_exact": 1,
+      "accuracy_pct": 4.2
+    },
+    "letting_statement": {
+      "docs": 72,
+      "answered": 72,
+      "all_exact": 0,
+      "accuracy_pct": 0.0
+    },
+    "mortgage_statement": {
+      "docs": 6,
+      "answered": 6,
+      "all_exact": 0,
+      "accuracy_pct": 0.0
+    }
+  },
+  "latency_s": {
+    "mean": 19.676,
+    "p50": 21.134,
+    "p95": 24.518,
+    "max": 27.191,
+    "total": 2125.0
+  },
+  "worst": [
+    {
+      "id": "landlord_10/2026-04_flat",
+      "kind": "letting_statement",
+      "wrong_fields": [
+        "amount",
+        "category",
+        "property"
+      ],
+      "got": {
+        "category": "Sundry",
+        "amount": 1250.6,
+        "date": "2026-04-28"
+      },
+      "want": {
+        "category": [
+          "Sales"
+        ],
+        "amount": 624.8,
+        "date": "2026-04-28",
+        "property": "flat"
+      }
+    },
+    {
+      "id": "landlord_10/2026-04_house",
+      "kind": "letting_statement",
+      "wrong_fields": [
+        "amount",
+        "category",
+        "property"
+      ],
+      "got": {
+        "category": "Sundry",
+        "amount": 2988.8,
+        "date": "2026-04-28"
+      },
+      "want": {
+        "category": [
+          "Sales"
+        ],
+        "amount": 994.4,
+        "date": "2026-04-28",
+        "property": "house"
+      }
+    },
+    {
+      "id": "landlord_10/2026-05_flat",
+      "kind": "letting_statement",
+      "wrong_fields": [
+        "amount",
+        "category",
+        "property"
+      ],
+      "got": {
+        "category": "Sundry",
+        "amount": 1249.6,
+        "date": "2026-05-28"
+      },
+      "want": {
+        "category": [
+          "Sales"
+        ],
+        "amount": 624.8,
+        "date": "2026-05-28",
+        "property": "flat"
+      }
+    },
+    {
+      "id": "landlord_10/2026-05_house",
+      "kind": "letting_statement",
+      "wrong_fields": [
+        "amount",
+        "category",
+        "property"
+      ],
+      "got": {
+        "category": "Sundry",
+        "amount": 2988.8,
+        "date": "2026-05-28"
+      },
+      "want": {
+        "category": [
+          "Sales"
+        ],
+        "amount": 994.4,
+        "date": "2026-05-28",
+        "property": "house"
+      }
+    },
+    {
+      "id": "landlord_10/2026-06_flat",
+      "kind": "letting_statement",
+      "wrong_fields": [
+        "amount",
+        "category",
+        "property"
+      ],
+      "got": {
+        "category": "Sundry",
+        "amount": 1249.6,
+        "date": "2026-06-28"
+      },
+      "want": {
+        "category": [
+          "Sales"
+        ],
+        "amount": 624.8,
+        "date": "2026-06-28",
+        "property": "flat"
+      }
+    },
+    {
+      "id": "landlord_10/2026-06_house",
+      "kind": "letting_statement",
+      "wrong_fields": [
+        "amount",
+        "category",
+        "property"
+      ],
+      "got": {
+        "category": "Sundry",
+        "amount": 2988.8,
+        "date": "2026-06-28"
+      },
+      "want": {
+        "category": [
+          "Sales"
+        ],
+        "amount": 994.4,
+        "date": "2026-06-28",
+        "property": "house"
+      }
+    },
+    {
+      "id": "landlord_10/2026-07_flat",
+      "kind": "letting_statement",
+      "wrong_fields": [
+        "amount",
+        "category",
+        "property"
+      ],
+      "got": {
+        "category": "Sundry",
+        "amount": 1249.6,
+        "date": "2026-07-28"
+      },
+      "want": {
+        "category": [
+          "Sales"
+        ],
+        "amount": 624.8,
+        "date": "2026-07-28",
+        "property": "flat"
+      }
+    },
+    {
+      "id": "landlord_10/2026-07_house",
+      "kind": "letting_statement",
+      "wrong_fields": [
+        "amount",
+        "category",
+        "property"
+      ],
+      "got": {
+        "category": "Sundry",
+        "amount": 1678.82,
+        "date": "2026-07-28"
+      },
+      "want": {
+        "category": [
+          "Sales"
+        ],
+        "amount": 839.41,
+        "date": "2026-07-28",
+        "property": "house"
+      }
+    },
+    {
+      "id": "landlord_10/2026-08_flat",
+      "kind": "letting_statement",
+      "wrong_fields": [
+        "amount",
+        "category",
+        "property"
+      ],
+      "got": {
+        "category": "Sundry",
+        "amount": 1249.6,
+        "date": "2026-08-28"
+      },
+      "want": {
+        "category": [
+          "Sales"
+        ],
+        "amount": 624.8,
+        "date": "2026-08-28",
+        "property": "flat"
+      }
+    },
+    {
+      "id": "landlord_10/2026-08_house",
+      "kind": "letting_statement",
+      "wrong_fields": [
+        "amount",
+        "category",
+        "property"
+      ],
+      "got": {
+        "category": "Sundry",
+        "amount": 2988.8,
+        "date": "2026-08-28"
+      },
+      "want": {
+        "category": [
+          "Sales"
+        ],
+        "amount": 994.4,
+        "date": "2026-08-28",
+        "property": "house"
+      }
+    }
+  ]
+}
