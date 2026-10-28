@@ -243,3 +243,32 @@ async def test_fake_world_shares_revokes_and_lists():
     assert await ana.shared_with_me() == []
     with pytest.raises(FileNotFoundError):
         await ana.folder(root)
+
+
+async def test_invite_and_revoke_on_a_subfolder_are_path_addressed():
+    seen: list[tuple[str, str]] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append((req.method, req.url.raw_path.decode()))
+        return httpx.Response(204) if req.method == "DELETE" else httpx.Response(200, json=INVITE_RESPONSE)
+
+    s = _sharing(handler)
+    await s.invite(ROOT, "robin@contoso.com", "write", "", path="_System/queries")
+    await s.revoke(ROOT, "p1", path="_System/queries")
+    assert seen == [
+        ("POST", "/v1.0/drives/1991210caf/items/1991210caf!192:/_System/queries:/invite"),
+        ("DELETE", "/v1.0/drives/1991210caf/items/1991210caf!192:/_System/queries:/permissions/p1"),
+    ]
+    with pytest.raises(ValueError):
+        await s.invite(ROOT, "a@b.example", "write", "", path="../other")
+
+
+async def test_fake_world_inherits_permissions_downwards_only():
+    world = FakeSharingWorld()
+    root = world.add_folder("sam@x.example", "D", "D!1", "Accnomos", FakeStorageProvider())
+    sam = FakeSharingProvider(world, Identity(email="sam@x.example"), own=root)
+    await sam.invite(root, "ana@f.example", "read", "")
+    await sam.invite(root, "ana@f.example", "write", "", path="_System/queries")
+    assert world.role_of(root, "ana@f.example") == "read"
+    assert world.role_of(root, "ana@f.example", "_System/queries/q1.json") == "write"
+    assert world.role_of(root, "ana@f.example", "_System/queriesX") == "read"

@@ -244,10 +244,13 @@ class SharingProvider(ABC):
         """The caller's own books folder as drive id + item id (created if missing)."""
 
     @abstractmethod
-    async def invite(self, root: SharedRoot, email: str, role: ShareRole, message: str) -> SharePermission: ...
+    async def invite(
+        self, root: SharedRoot, email: str, role: ShareRole, message: str, path: str = ""
+    ) -> SharePermission:
+        """Grant `role` on the folder, or on `path` inside it (a subfolder can be given more than its parent)."""
 
     @abstractmethod
-    async def revoke(self, root: SharedRoot, permission_id: str) -> bool:
+    async def revoke(self, root: SharedRoot, permission_id: str, path: str = "") -> bool:
         """Remove one permission; False when it was already gone."""
 
     @abstractmethod

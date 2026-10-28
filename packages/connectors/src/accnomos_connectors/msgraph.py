@@ -425,10 +425,17 @@ class GraphSharingProvider(_GraphHttp, SharingProvider):
         return SharedRoot(drive_id=_safe_id(drive, "drive id"), item_id=_safe_id(item["id"], "item id"))
 
     @staticmethod
-    def _item(root: SharedRoot, rest: str = "") -> str:
-        return f"{GRAPH}/drives/{_safe_id(root.drive_id, 'drive id')}/items/{_safe_id(root.item_id, 'item id')}{rest}"
+    def _item(root: SharedRoot, rest: str = "", path: str = "") -> str:
+        """The item, or `path` inside it path-addressed (`.../items/{id}:/{path}:/invite`)."""
+        base = f"{GRAPH}/drives/{_safe_id(root.drive_id, 'drive id')}/items/{_safe_id(root.item_id, 'item id')}"
+        path = _safe_path(path.strip("/"))
+        if path:
+            return f"{base}:/{quote(path, safe='/')}:{rest}"
+        return base + rest
 
-    async def invite(self, root: SharedRoot, email: str, role: ShareRole, message: str) -> SharePermission:
+    async def invite(
+        self, root: SharedRoot, email: str, role: ShareRole, message: str, path: str = ""
+    ) -> SharePermission:
         if role not in ("read", "write"):
             raise ValueError(f"role must be 'read' or 'write', not {role!r}")
         body = {
@@ -438,7 +445,7 @@ class GraphSharingProvider(_GraphHttp, SharingProvider):
             "sendInvitation": True,
             "message": message[:2000],
         }
-        page = (await self._request("POST", self._item(root, "/invite"), json=body)).json()
+        page = (await self._request("POST", self._item(root, "/invite", path), json=body)).json()
         perms = page.get("value") or []
         if not perms:
             raise GraphError(200, "invite answered with no permission")
@@ -448,9 +455,9 @@ class GraphSharingProvider(_GraphHttp, SharingProvider):
         invited = (perm.get("invitation") or {}).get("email") or email
         return SharePermission(id=str(perm["id"]), roles=list(perm.get("roles") or [role]), email=invited)
 
-    async def revoke(self, root: SharedRoot, permission_id: str) -> bool:
+    async def revoke(self, root: SharedRoot, permission_id: str, path: str = "") -> bool:
         resp = await self._request(
-            "DELETE", self._item(root, f"/permissions/{quote(permission_id, safe='')}"), ok404=True
+            "DELETE", self._item(root, f"/permissions/{quote(permission_id, safe='')}", path), ok404=True
         )
         return resp.status_code != 404
 

@@ -280,7 +280,8 @@ class FakeSharingWorld:
 
     def __init__(self) -> None:
         self.folders: dict[tuple[str, str], tuple[str, str, FakeStorageProvider]] = {}  # root -> owner, name, storage
-        self.permissions: dict[tuple[str, str], dict[str, tuple[str, ShareRole]]] = {}  # root -> id -> email, role
+        # root -> permission id -> (email, role, path inside the root; "" is the whole folder)
+        self.permissions: dict[tuple[str, str], dict[str, tuple[str, ShareRole, str]]] = {}
         self.calls: list[tuple[str, str]] = []  # (who, what) for tests
         self.shared_with_me_works = True  # False: the deprecated API "stops returning data" (an empty list)
         self._n = 0
@@ -291,14 +292,20 @@ class FakeSharingWorld:
         self.folders[(drive_id, item_id)] = (owner.lower(), name, storage)
         return SharedRoot(drive_id=drive_id, item_id=item_id)
 
-    def role_of(self, root: SharedRoot, email: str) -> ShareRole | None:
-        """`write` for the owner, the role a permission gave, else None (no access)."""
+    def role_of(self, root: SharedRoot, email: str, path: str = "") -> ShareRole | None:
+        """`write` for the owner, else the best role a permission on `path` or a folder above it gives (permissions
+        are inherited downwards, as in OneDrive), else None (no access)."""
         key = (root.drive_id, root.item_id)
         if key not in self.folders:
             return None
         if self.folders[key][0] == email.lower():
             return "write"
-        roles = [r for e, r in self.permissions.get(key, {}).values() if e == email.lower()]
+        path = path.strip("/")
+        roles = [
+            r
+            for e, r, p in self.permissions.get(key, {}).values()
+            if e == email.lower() and (not p or path == p or path.startswith(f"{p}/"))
+        ]
         return "write" if "write" in roles else ("read" if roles else None)
 
     def storage_for(self, root: SharedRoot, email: str) -> tuple[FakeStorageProvider, ShareRole]:
@@ -330,21 +337,27 @@ class FakeSharingProvider(SharingProvider):
             raise PermissionError("only the owner can share or unshare this folder")
         return key
 
-    async def invite(self, root: SharedRoot, email: str, role: ShareRole, message: str) -> SharePermission:
-        self._log(f"invite {email} {role}")
+    async def invite(
+        self, root: SharedRoot, email: str, role: ShareRole, message: str, path: str = ""
+    ) -> SharePermission:
+        self._log(f"invite {email} {role} {path}".rstrip())
         if self.fail_invite is not None:
             exc, self.fail_invite = self.fail_invite, None
             raise exc
         key = self._owned(root)
         self.world._n += 1
         perm_id = f"perm-{self.world._n}"
-        self.world.permissions.setdefault(key, {})[perm_id] = (email.lower(), role)
+        self.world.permissions.setdefault(key, {})[perm_id] = (email.lower(), role, path.strip("/"))
         return SharePermission(id=perm_id, roles=[role], email=email.lower())
 
-    async def revoke(self, root: SharedRoot, permission_id: str) -> bool:
+    async def revoke(self, root: SharedRoot, permission_id: str, path: str = "") -> bool:
         self._log(f"revoke {permission_id}")
         key = self._owned(root)
-        return self.world.permissions.get(key, {}).pop(permission_id, None) is not None
+        perm = self.world.permissions.get(key, {}).get(permission_id)
+        if perm is None or perm[2] != path.strip("/"):
+            return False
+        del self.world.permissions[key][permission_id]
+        return True
 
     async def shared_with_me(self) -> list[SharedFolder]:
         self._log("sharedWithMe")
