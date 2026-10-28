@@ -6,7 +6,8 @@ and how to report a problem. Deployment hardening is in [`deploy/README.md`](../
 ## Threat model
 
 - Public API on `api.accnomos.com`: front proxy (TLS) → tunnel → edge nginx → two stateless services.
-- **No server state and no accounts.** Every request carries the caller's own credentials in headers:
+- **No server state and no accounts** (one opt-in exception: the operator's early-adopter list, below).
+  Every request carries the caller's own credentials in headers:
   `X-Graph-Token` (Microsoft Graph, the user's OneDrive/Outlook), `X-Meta-Api-Key` (bring-your-own AI key),
   `X-HMRC-Access-Token` (HMRC MTD). The books live in the user's own cloud folder.
 - The **relay** is the one component with a secret (the HMRC client secret, from the environment).
@@ -39,6 +40,26 @@ and how to report a problem. Deployment hardening is in [`deploy/README.md`](../
 | Redirects (relay) | `redirect_to` must be an exact allowed origin (plus plain-http localhost for development); userinfo, backslashes, whitespace/control characters, other ports, scheme downgrades and look-alike hosts are refused | `relay/settings.py` | `test_redirect_bypass_attempts_refused` |
 | Containers | Pinned bases, non-root, read-only root filesystem, no capabilities, healthchecks, loopback-only ports | `deploy/` | `test_deploy_hardening.py` |
 | Correlation | Every response carries `X-Correlation-Id`; the same id is in the error body and the server log line | middleware | `test_every_response_has_a_correlation_id` |
+| Early-adopter list | `POST /public/early-access` (no sign-in) answers 503 and creates no file unless `EARLY_ACCESS_ENABLED=1`; email shape-checked and lower-cased, every field length-capped, unknown fields refused; consent must be `true` with the exact stored wording; honeypot field answers success and keeps nothing; its own per-IP bucket (`EARLY_ACCESS_PER_MIN`, 5) on top of the global one; same answer for new and repeat addresses (no enumeration); file `0600` on the `runtime-data` volume, never in git or the image; CSV export defuses formula cells | `app/early_access.py`, `deploy/` | `test_early_access.py`, `test_early_access_list_lives_on_the_data_volume_only` |
+
+## Early-adopter list (personal data the operator keeps)
+
+People who sign up before the public launch (November 2026) get 3 months free and one email at launch. This is
+marketing data held by the operator, separate from anyone's books, and handled under UK GDPR and PECR:
+
+- **Controller:** Zaytuna Business Services Ltd (admin@zaytunauk.co.uk). No DPO is required at this size.
+- **Collected:** email; optional name; business type (company / sole trader / personal / accountant); optional "how
+  did you hear about us"; the consent flag and its exact wording (*"Email me once Accnomos launches, with my 3 months
+  free. I can unsubscribe any time."*); the source page; the UTC time. No IP address is stored.
+- **Why:** one launch email with the offer, and a count by business type. Nothing else, no sharing, no sale.
+- **Lawful basis:** consent (UK GDPR Art. 6(1)(a)), by an unticked checkbox, separate from anything else. PECR
+  reg. 22 needs consent for marketing email to individuals and to sole traders and non-limited partnerships; the
+  same consent covers limited-company addresses, where PECR does not require it.
+- **Retention:** deleted 12 months after launch (end of November 2027) unless the person became a customer.
+- **Unsubscribe / erasure:** reply to the email or write to admin@zaytunauk.co.uk; the owner runs
+  `python -m app.early_access delete --email …` (`docs/PRODUCTION.md` § 6), which removes every line for that address.
+- **Where:** one JSON-lines file on the server's `runtime-data` volume, owner-only permissions; no web admin.
+  The privacy page (`/privacy#early-access`) says all of the above, including the right to complain to the ICO.
 
 ## Out of scope for the hackathon
 
