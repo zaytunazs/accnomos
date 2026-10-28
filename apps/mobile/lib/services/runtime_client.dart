@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:http/http.dart' as http;
 
 import '../models/ask_answer.dart';
+import '../models/sample_books.dart';
 import 'settings.dart';
 
 /// Error from the reader service. [message] is safe to show in the UI.
@@ -661,6 +662,62 @@ class RuntimeClient {
   /// Same call as the web's Settings › Your data button.
   Future<Map<String, dynamic>> booksExport() => _map('POST', '/books/export',
       what: 'export your data');
+
+  /// `GET /books/sample`: how far loading the sample books has got (state
+  /// `none` with `empty` when never started here).
+  Future<SampleStatus> sampleBooksStatus() => _sample('GET', '/books/sample');
+
+  /// `POST /books/sample` starts loading the sample books into an empty
+  /// folder; with [carryOn] it is `POST /books/sample/continue`, which hands
+  /// the running job this request's fresh Graph token. A 409/429/503 with
+  /// the runtime's sentence throws [SampleNote].
+  Future<SampleStatus> loadSampleBooks({bool carryOn = false}) =>
+      _sample('POST', carryOn ? '/books/sample/continue' : '/books/sample');
+
+  Future<SampleStatus> _sample(String method, String path) async {
+    _requireBooks();
+    final request = http.Request(method, Uri.parse('${settings.runtimeUrl}$path'))
+      ..headers.addAll(_headers);
+    try {
+      final streamed = await _http.send(request).timeout(_timeout);
+      final text = await streamed.stream.bytesToString();
+      final code = streamed.statusCode;
+      if (code == 409 || code == 429 || code == 503) {
+        final sentence = _detail(text);
+        if (sentence != null) throw SampleNote(sentence);
+      }
+      if (code < 200 || code >= 300) _fail(code, text.trim());
+      final decoded = text.isEmpty ? null : json.decode(text);
+      return SampleStatus.fromJson(
+          decoded is Map ? Map<String, dynamic>.from(decoded) : {});
+    } on TimeoutException {
+      throw RuntimeException(
+          'Could not load sample books: the reader took too long. Try again.');
+    } on SocketException {
+      throw RuntimeException(
+          'Could not reach the reader at ${settings.runtimeUrl}. '
+          'Is it running?');
+    } on SampleNote {
+      rethrow;
+    } on RuntimeException {
+      rethrow;
+    } catch (e) {
+      throw RuntimeException('Could not load sample books. $e');
+    }
+  }
+
+  /// FastAPI's `{"detail": "sentence"}`; null when there is no sentence.
+  static String? _detail(String body) {
+    try {
+      final decoded = json.decode(body);
+      final detail = decoded is Map ? decoded['detail'] : null;
+      return detail is String && detail.trim().isNotEmpty
+          ? detail.trim()
+          : null;
+    } catch (_) {
+      return null;
+    }
+  }
 
   /// To-dos in `_System/Todos/todos.json`. `GET /todos`, soonest first.
   Future<List<Map<String, dynamic>>> todos() =>
