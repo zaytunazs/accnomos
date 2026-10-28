@@ -167,6 +167,19 @@ BUILTIN_RULES: list[BankRule] = [
         action=BankRuleAction(account="7400 Travel"),
     ),
     BankRule(
+        id="builtin-subsistence-kitchen",
+        name="Built-in: kitchen meals, not kitchen trade",
+        match=BankRuleMatch(
+            op="regex",
+            # "Kitchen" is ambiguous: a kitchen fitter or supplier (trade words
+            # anywhere in the line) is 5000 Materials, so this hint stays
+            # silent there and leaves the coding to the model or a user rule.
+            value=r"^(?!.*\b(fitters?|units?|worktops?|suppl\w*|trade)\b).*\bkitchen\b",
+        ),
+        direction="out",
+        action=BankRuleAction(account="7410 Subsistence"),
+    ),
+    BankRule(
         id="builtin-motor-fuel",
         name="Built-in: forecourt fuel",
         match=BankRuleMatch(op="regex", value=r"petrol|diesel|\bfuel\b"),
