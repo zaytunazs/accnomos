@@ -128,10 +128,16 @@ def _is_plain_small(token: str) -> bool:
     return re.fullmatch(r"\d{1,2}", token) is not None
 
 
+#: Keys whose values are file paths, not figures: an event's file name ends in its random hex id, whose digit runs
+#: ("…-runtime-a800b7…") would otherwise count as known figures and excuse an invented or wrong-period one.
+_PATH_KEYS = frozenset({"source", "sources"})
+
+
 def _walk(node: Any) -> Iterable[Any]:
     if isinstance(node, dict):
-        for v in node.values():
-            yield from _walk(v)
+        for k, v in node.items():
+            if k not in _PATH_KEYS:
+                yield from _walk(v)
     elif isinstance(node, list):
         for v in node:
             yield from _walk(v)
@@ -163,6 +169,8 @@ class KnownNumbers:
         for d in _values(said):
             where[abs(d)].add(ANY)
         for key, node in facts.items():
+            if key in _PATH_KEYS:
+                continue
             for d in _values(node):
                 where[abs(d)].add(_PERIOD_OF.get(key, ANY))
         self._where = dict(where)
