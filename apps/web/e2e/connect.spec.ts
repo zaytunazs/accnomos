@@ -5,7 +5,7 @@ test("connect: sign in, create the books folder, test the AI", async ({ page, ru
   await page.getByRole("button", { name: "Sign in with Microsoft" }).click();
 
   await expect(page.getByText("Signed in as")).toBeVisible();
-  await expect(page.getByText(USER)).toBeVisible();
+  await expect(page.getByText(USER, { exact: true })).toBeVisible(); // the Connect page's line, not the menu bar's "Account: …"
   await expect(page.getByText("Personal account · folder will be OneDrive › Apps › Accnomos")).toBeVisible();
 
   await page.getByRole("button", { name: "Create my Accnomos folder" }).click();
