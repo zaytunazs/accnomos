@@ -57,7 +57,8 @@ def match_property(properties: list[pr.Property], text: str | None) -> pr.Proper
         hits = [p for p in properties if p.postcode and _GAP.sub("", p.postcode.lower()) in squashed]
         if len(hits) == 1:
             return hits[0]
-    scored = sorted(((len(_tokens(text) & _tokens(f"{p.address or ''} {p.postcode or ''}"))), p) for p in properties)
+    scored = [((len(_tokens(text) & _tokens(f"{p.address or ''} {p.postcode or ''}"))), p) for p in properties]
+    scored.sort(key=lambda t: t[0])
     if len(scored) >= 1 and scored[-1][0] >= 2 and (len(scored) == 1 or scored[-1][0] > scored[-2][0]):
         return scored[-1][1]
     return None
