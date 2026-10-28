@@ -85,6 +85,7 @@ def sa103_report(s: SeSummary, business: str | None = None) -> Report:
         ["Allowable expenses", _gbp(s.allowable_pence)],
         ["Net profit before tax adjustments", _gbp(s.net_profit_pence)],
     ]
+    cash = s.accounting_basis == "cash"
     lines = [
         [
             f.box,
@@ -96,17 +97,29 @@ def sa103_report(s: SeSummary, business: str | None = None) -> Report:
             _gbp(c.pence),
             "yes" if c.disallowable else "",
             c.event_id,
+            *(
+                [
+                    c.paid_how or "",
+                    c.document_ref or "",
+                    _gbp(c.money_pence) if c.money_pence is not None else None,
+                    _gbp(c.document_gross_pence) if c.document_gross_pence is not None else None,
+                ]
+                if cash
+                else []
+            ),
         ]
         for f in s.figures
         for c in f.lines
     ]
+    left_out = [[x.date.isoformat(), x.description, _gbp(x.pence), x.reason, x.event_id or ""] for x in s.left_out]
     return Report(
         kind="sa103",
         title="Self-employment summary (SA103-style)",
         subtitle=f"{business + ' · ' if business else ''}Tax year {s.tax_year}, "
         f"{_d(s.period_start)} to {_d(s.period_end)}",
-        source="Accnomos, worked out by code from your approved entries",
-        notes=[s.basis, *s.warnings, *s.blockers],
+        source="Accnomos, worked out by code from your approved entries"
+        + (" and the payments recorded against them" if cash else ""),
+        notes=[f"Accounting basis: {s.basis_label}.", s.basis, *s.warnings, *s.blockers],
         sections=[
             Section(
                 title="Boxes",
@@ -124,20 +137,33 @@ def sa103_report(s: SeSummary, business: str | None = None) -> Report:
             ),
             Section(title="Totals", columns=["", "£"], money=[1], rows=totals),
             Section(
-                title="Ledger lines behind each box",
+                title="Payments behind each box" if cash else "Ledger lines behind each box",
                 columns=[
                     "Box",
                     "HMRC field",
-                    "Date",
+                    "Paid on" if cash else "Date",
                     "Kind",
                     "Counterparty",
                     "Account",
                     "£",
                     "Disallowable",
                     "Entry ID",
+                    *(["Money", "Document", "Money £", "Document £"] if cash else []),
                 ],
-                money=[6],
+                money=[6, 11, 12] if cash else [6],
                 rows=lines,
+            ),
+            *(
+                [
+                    Section(
+                        title="Not counted on the cash basis",
+                        columns=["Date", "What", "£", "Why", "Entry ID"],
+                        money=[2],
+                        rows=left_out,
+                    )
+                ]
+                if cash
+                else []
             ),
         ],
         filename=f"self-employment-{s.tax_year}-to-{s.period_end.isoformat()}",
@@ -165,6 +191,12 @@ def quarterly_report(receipt: dict) -> Report:
         ["Receipt timestamp", hmrc.get("receipt_timestamp")],
         ["Business ID", receipt.get("business_id")],
         ["Matches the books when saved", "yes" if receipt.get("matches_books") else "no"],
+        [
+            "Accounting basis",
+            {"cash": "Cash basis", "traditional": "Traditional accounting (accruals)"}.get(
+                str(receipt.get("accounting_basis")), "Traditional accounting (accruals)"
+            ),
+        ],
         ["Fraud-prevention headers missing", ", ".join(hmrc.get("fraud_headers_missing") or []) or "none"],
         ["Environment", receipt.get("environment") or "sandbox"],
     ]

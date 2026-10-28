@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S038",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Lancaster Lattice Ltd",
+  "contractor_ref": "524/LK49029",
+  "subcontractor_name": "Deep Dig Groundworks",
+  "subcontractor_utr": "7924708227",
+  "verification_number": null,
+  "tax_month_end": "2026-08-05",
+  "gross_amount": 1048.45,
+  "materials": 269.27,
+  "amount_liable": 779.18,
+  "deduction": 155.83,
+  "net_paid": 892.62,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 104845,
+  "materials": 26927,
+  "deduction": 15583,
+  "correct_deduction": 15583
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

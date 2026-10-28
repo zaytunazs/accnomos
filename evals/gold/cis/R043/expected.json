@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R043",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Aqua Flow Systems",
+  "supplier_vat_number": "GB 042 9106 93",
+  "invoice_number": "AQU-407",
+  "invoice_date": "2026-06-05",
+  "net": 960.0,
+  "vat_rate": 20,
+  "reverse_charge_vat": 192.0,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 96000,
+  "materials": 0,
+  "net": 96000,
+  "reverse_charge_vat": 19200
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

@@ -17,6 +17,7 @@ from app import cache, profile, testmode
 from app.books import Books
 from app.routes_invoices import router as invoices_router
 from app.routes_payroll import router as payroll_router
+from app.routes_payrun import router as payrun_router
 from app.routes_profile import router as profile_router
 from app.routes_reports import router as reports_router
 from app.routes_vat import router as vat_router
@@ -34,7 +35,15 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("ACCNOMOS_TEST_TODAY", testmode.DEFAULT_TODAY)
     monkeypatch.delenv("ACCNOMOS_TEST_AI_BASE", raising=False)
     app = FastAPI()
-    for r in (testmode.router, profile_router, vat_router, invoices_router, payroll_router, reports_router):
+    for r in (
+        testmode.router,
+        profile_router,
+        vat_router,
+        invoices_router,
+        payroll_router,
+        payrun_router,
+        reports_router,
+    ):
         app.include_router(r)
     app.add_middleware(testmode.TenantMiddleware)
     c = TestClient(app, headers={testmode.TENANT_HEADER: "profiles"})
@@ -128,7 +137,7 @@ def test_a_hand_edited_file_falls_back_to_the_defaults() -> None:
 # --------------------------------------------------------------------------- #
 
 VAT_ROUTES = ["/books/vat", "/books/vat/periods", "/books/deadlines", "/reports/vat"]
-OTHER_GATED = ["/invoices", "/invoices/profile", "/payroll/runs"]
+OTHER_GATED = ["/invoices", "/invoices/profile", "/payroll/runs", "/payroll/paye/setup"]
 
 
 def test_personal_books_have_no_vat_invoices_or_payroll(client: TestClient) -> None:

@@ -4,8 +4,10 @@ Every figure is worked out from the approved ledger events on each request; no m
 stored. Reports never post anything: the only file they write is the spreadsheet `POST /reports/export` saves in
 07 Reports (app/routes_reports.py).
 
-Profit and loss is **as approved**: every approved event counts on its own date (an invoice when it was raised, a
-receipt when it was bought), and an undo counts against the period of the reversal. There is no cash-basis view.
+Profit and loss is **as approved** by default (traditional accounting): every approved event counts on its own date
+(an invoice when it was raised, a receipt when it was bought), and an undo counts against the period of the reversal.
+`basis="cash"` reads the derived events of app/cash_basis.py instead (income when received, costs when paid, a part
+payment as its share), for sole traders on the cash basis; the ledger is the same either way.
 Accounts are placed by their four-digit code, the chart in app/journal.py:
 
     4000-4999  Sales                      credit − debit
@@ -34,7 +36,7 @@ from openpyxl.styles import Font
 from openpyxl.worksheet.worksheet import Worksheet
 from pydantic import BaseModel
 
-from accnomos_ledger import LedgerEvent, compute_vat_return
+from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return
 from app.contacts import BUCKETS, AgedBalances, AgedTable
 from app.deadlines import add_months, period_id
 from app.deadlines import period_label as vat_period_label
@@ -46,6 +48,10 @@ Section = Literal["sales", "cost_of_sales", "overheads"]
 BASIS = (
     "As approved: each entry counts on its own date (invoices when raised, receipts when bought); "
     "an undo counts on the date it was made. Not a cash-basis view."
+)
+CASH_BASIS = (
+    "Cash basis: income counts when the customer's money is received and costs when they are paid (a part payment "
+    "as its share of the invoice or bill); receipts paid when bought count on their date. Excludes VAT."
 )
 #: Whoever approves the demo books' entries (tools/seed_demo.py USER). Books with any entry approved by it are the
 #: sample, and an exported report says so.
@@ -105,6 +111,7 @@ class ProfitAndLoss(BaseModel):
     start: date
     end: date
     label: str  # "Jul–Sep 2026"
+    accounting_basis: Literal["cash", "traditional"] = "traditional"
     basis: str = BASIS
     sales: PlSection
     cost_of_sales: PlSection
@@ -137,8 +144,11 @@ def _section(amounts: dict[str, int], which: Section) -> PlSection:
     return PlSection(rows=rows, total_pence=sum(r.amount_pence for r in rows))
 
 
-def profit_and_loss(events: Sequence[LedgerEvent], start: date, end: date) -> ProfitAndLoss:
-    """The P&L for [start, end] from the events dated in it. Accounts that net to nothing are left out."""
+def profit_and_loss(
+    events: Sequence[LedgerEvent], start: date, end: date, basis: Literal["cash", "traditional"] = "traditional"
+) -> ProfitAndLoss:
+    """The P&L for [start, end] from the events dated in it. Accounts that net to nothing are left out. For the cash
+    basis, `events` is app/cash_basis.py's `cash_view(ledger).events`."""
     inside = [e for e in events if start <= e.date <= end]
     amounts = _amounts(inside)
     sales, cos, over = (_section(amounts, s) for s in ("sales", "cost_of_sales", "overheads"))
@@ -147,6 +157,8 @@ def profit_and_loss(events: Sequence[LedgerEvent], start: date, end: date) -> Pr
         start=start,
         end=end,
         label=period_label(AskPeriod(start=start, end=end)),
+        accounting_basis=basis,
+        basis=CASH_BASIS if basis == "cash" else BASIS,
         sales=sales,
         cost_of_sales=cos,
         gross_profit_pence=gross,
@@ -239,16 +251,27 @@ class VatSummary(BaseModel):
     periods: list[VatSummaryPeriod]  # oldest first
     total_net_vat_pence: int
     sample: bool = False
+    scheme: str | None = None  # the VAT scheme the boxes were worked out under, when it is not standard accounting
 
 
-def vat_summary(events: Sequence[LedgerEvent], spans: Sequence[tuple[date, date]], months: int = 3) -> VatSummary:
-    """compute_vat_return for each (start, end) in `spans`, oldest first."""
+def vat_summary(
+    events: Sequence[LedgerEvent],
+    spans: Sequence[tuple[date, date]],
+    months: int = 3,
+    *,
+    returns: Callable[[date, date], VatReturn] | None = None,
+    ids: Callable[[date, date], str] | None = None,
+    scheme: str | None = None,
+) -> VatSummary:
+    """The boxes for each (start, end) in `spans`, oldest first: compute_vat_return, or `returns` when the business
+    uses a VAT scheme (app/vat_schemes.py), with `ids` naming its periods (annual ones too)."""
     rows: list[VatSummaryPeriod] = []
     for start, end in sorted(spans):
-        ret = compute_vat_return(list(events), period_id(start, months), start, end)
+        pid = ids(start, end) if ids else period_id(start, months)
+        ret = returns(start, end) if returns else compute_vat_return(list(events), pid, start, end)
         rows.append(
             VatSummaryPeriod(
-                period=period_id(start, months),
+                period=pid,
                 start=start,
                 end=end,
                 label=vat_period_label(start, end),
@@ -261,7 +284,9 @@ def vat_summary(events: Sequence[LedgerEvent], spans: Sequence[tuple[date, date]
                 warnings=ret.warnings,
             )
         )
-    return VatSummary(periods=rows, total_net_vat_pence=sum(r.net_vat_pence for r in rows), sample=is_sample(events))
+    return VatSummary(
+        periods=rows, total_net_vat_pence=sum(r.net_vat_pence for r in rows), sample=is_sample(events), scheme=scheme
+    )
 
 
 # --------------------------------------------------------------------------- #
@@ -339,7 +364,8 @@ def pl_sheet(ws: Worksheet, pl: ProfitAndLoss) -> None:
         add(f"  {r.account}", r.amount_pence)
     add("Total overheads", pl.overheads.total_pence, True)
     add("Net profit" if pl.net_profit_pence >= 0 else "Net loss", pl.net_profit_pence, True)
-    header = (f"Profit and loss · {pl.label} ({pl.start:%d/%m/%Y}–{pl.end:%d/%m/%Y})", "£")
+    cash = " · cash basis" if pl.accounting_basis == "cash" else ""
+    header = (f"Profit and loss{cash} · {pl.label} ({pl.start:%d/%m/%Y}–{pl.end:%d/%m/%Y})", "£")
     _table(ws, header, rows, money=(2,), widths=(48, 16))
     for i in bold:
         ws.cell(row=i + 2, column=1).font = Font(bold=True)
@@ -471,6 +497,9 @@ def _vat_sheet(ws: Worksheet, summary: VatSummary) -> None:
     for row in ws.iter_rows(min_row=2, min_col=7, max_col=8):
         for cell in row:
             cell.number_format = WHOLE_GBP
+    if summary.scheme:
+        ws.append([])
+        ws.append([f"Worked out under: {summary.scheme} (on the Flat Rate Scheme, box 6 is turnover including VAT)"])
 
 
 def _trend_sheet(ws: Worksheet, trend: Trend) -> None:

@@ -53,6 +53,16 @@ class LedgerEvent(BaseModel):
     )
     net: int | None = Field(default=None, description="pence; the VAT-able net for sales/purchases")
     vat: int | None = Field(default=None, description="pence")
+    reverse_charge_vat: int | None = Field(
+        default=None,
+        ge=0,
+        description=(
+            "pence; VAT Act 1994 s55A domestic reverse charge (building and construction services). On a purchase: "
+            "the VAT the business accounts for itself (box 1) and reclaims (box 4); `vat` stays 0 because the "
+            "supplier charged none. On a sale: the VAT the customer accounts for, shown on the invoice and kept "
+            "off this business's return (net in box 6 only)."
+        ),
+    )
     counterparty: str | None = None
 
     @property

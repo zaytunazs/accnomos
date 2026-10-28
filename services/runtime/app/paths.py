@@ -40,13 +40,15 @@ AUDIT = f"{SYSTEM}/audit"
 EVENTS = f"{SYSTEM}/Ledger/events"
 BANK_LINES = f"{SYSTEM}/bank"
 ARCHIVE_SYSTEM = f"{SYSTEM}/archive"  # app/archive.py: runs and the redirect map for moved documents
+#: MTD Income Tax (self-employment) submission receipts and HMRC calculations, by tax year (app/routes_itsa.py).
+ITSA = f"{SYSTEM}/itsa"
+PROPERTY = f"{SYSTEM}/Property"  # app/property.py: let properties, tags, landlord settings, MTD submissions
 
 # Made when first used, never at setup (app/archive.py, app/backups.py, app/files.py).
 ARCHIVE = "Archive"  # Archive/{year}/ keeps the same subfolders; Archive/{year}.zip is an extra copy
 BACKUPS = "Backups"  # Backups/accnomos-backup-YYYY-MM-DD.zip (+ .sha256), snapshots of _System
 TRASH = "_Trash"  # what the app would otherwise delete; only the user empties it, in OneDrive
-#: MTD Income Tax (self-employment) submission receipts and HMRC calculations, by tax year (app/routes_itsa.py).
-ITSA = f"{SYSTEM}/itsa"
+
 
 TOP: tuple[Folder, ...] = (
     Folder(

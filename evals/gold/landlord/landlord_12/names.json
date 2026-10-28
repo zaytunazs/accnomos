@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "seed": 12,
+ "people": {
+  "landlord": "Arthur Penhaligon",
+  "spouse": "Bella Penhaligon",
+  "agent": "Willow & Oak Lettings",
+  "tenant_flat": "Chloe Vane",
+  "tenant_house": "Dexter Mott",
+  "insurer": "Harbor Shield Insurance",
+  "lender": "Stonebridge Mortgages",
+  "plumber": "Riverside Heating & Flow",
+  "gas": "Gary Swift Gas Services",
+  "appliances": "Bright Home Electrics",
+  "block": "Crown Court Management"
+ },
+ "flat": {
+  "address": "Flat 2, Elmwood Court, 5 Willow Way",
+  "town": "Hartwell",
+  "postcode": "HW1 4QZ"
+ },
+ "house": {
+  "address": "18 Poplar Terrace",
+  "town": "Hartwell",
+  "postcode": "HW2 7AB"
+ }
+}

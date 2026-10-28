@@ -65,7 +65,7 @@ def test_rates_table_cites_its_source_and_says_estimate() -> None:
 
 def test_typical_month_worked_example() -> None:
     # £2,000 a month: tax 20% of (2,000 − 12,570 ÷ 12, rounded down to £952) = £190.40, employee NI £76.20;
-    # employer NI 15% above £5,000 ÷ 12. (HMRC's own 1257L tables give £1,048.25 free pay, so £190.20 tax:
+    # employer NI 15% above £5,000 ÷ 12. (HMRC's own 1257L tables give £1,048.26 free pay, so £190.20 tax:
     # the estimate is 20p high, which is why it is only ever an estimate.)
     e = pr.estimate(200_000)
     assert (e.paye_pence, e.ee_ni_pence, e.er_ni_pence, e.net_pence) == (19_040, 7_620, 23_750, 173_340)

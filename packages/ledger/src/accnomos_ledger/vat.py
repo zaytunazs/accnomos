@@ -4,6 +4,13 @@ Rules follow the HMRC VAT (MTD) API 1.0 submit schema (checked 26 Oct 2026):
 - Boxes 1–5 are pounds to 2 dp; box 5 (netVatDue) is the ABSOLUTE value of box 3 − box 4.
 - Boxes 6–9 are whole pounds (we truncate pence, as HMRC VAT Notice 700/12 allows rounding down).
 - No model is involved anywhere in this file.
+
+Domestic reverse charge for building and construction services (VAT Act 1994 s55A; HMRC "VAT domestic reverse
+charge technical guide", https://www.gov.uk/guidance/vat-reverse-charge-technical-guide, last updated 18 Sep 2024,
+checked 28 Oct 2026): "Suppliers must not enter any output tax on sales under the reverse charge. The supplier only
+needs to enter the net value of the sale" (box 6, nothing in box 1); a customer "must add the VAT charged to the
+output tax total" (box 1) and "may reclaim the input tax" (box 4), and must not enter the net as a sale (it goes
+in box 7 like any purchase). An event's `reverse_charge_vat` carries that VAT.
 """
 
 from __future__ import annotations
@@ -119,12 +126,14 @@ def compute_vat_return(events: list[LedgerEvent], period_key: str, start: date, 
             continue  # out of scope
         vat = ev.vat or 0
         side, sign = vat_side(ev) or ("purchases", -1)
-        if side == "sales":
+        if side == "sales":  # a reverse-charge sale's VAT is the customer's to account for: net only
             sales_net += sign * ev.net
             sales_vat += sign * vat
         else:
+            rc = ev.reverse_charge_vat or 0  # accounted for and reclaimed on the same return
             purchases_net += sign * ev.net
-            purchases_vat += sign * vat
+            purchases_vat += sign * (vat + rc)
+            sales_vat += sign * rc
         ret.event_ids.append(ev.id)
     ret.vat_due_sales = _pounds(sales_vat)
     ret.vat_reclaimed = _pounds(purchases_vat)

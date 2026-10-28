@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S022",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Ipswich Industrial Inc Ltd",
+  "contractor_ref": "376/EP98601",
+  "subcontractor_name": "Deep Dig Groundworks",
+  "subcontractor_utr": "5894811311",
+  "verification_number": "V6435557159AC",
+  "tax_month_end": "2027-01-05",
+  "gross_amount": 6173.15,
+  "materials": 2015.07,
+  "amount_liable": 4158.08,
+  "deduction": 1247.42,
+  "net_paid": 4925.73,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 617315,
+  "materials": 201507,
+  "deduction": 124742,
+  "correct_deduction": 124742
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}

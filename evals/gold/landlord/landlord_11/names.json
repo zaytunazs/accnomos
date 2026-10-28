@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "seed": 11,
+ "people": {
+  "landlord": "Arthur Penhaligon",
+  "spouse": "Eleanor Penhaligon",
+  "agent": "Hearthside Lettings",
+  "tenant_flat": "Julian Voss",
+  "tenant_house": "Mara Kint",
+  "insurer": "Stonebridge Cover",
+  "lender": "Ironwood Mortgages",
+  "plumber": "Copper & Co Heating",
+  "gas": "Silas Green Gas",
+  "appliances": "Volt Home Depot",
+  "block": "Northgate Block Mgmt"
+ },
+ "flat": {
+  "address": "Flat 3, Orchard House, 12 Station Road",
+  "town": "Bramwell",
+  "postcode": "BR6 4ZX"
+ },
+ "house": {
+  "address": "27 Mill Lane",
+  "town": "Bramwell",
+  "postcode": "BR6 4ZX"
+ }
+}

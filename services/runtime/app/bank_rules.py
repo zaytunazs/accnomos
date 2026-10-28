@@ -136,26 +136,48 @@ class BankRule(BaseModel):
     created_by: str | None = None
 
 
-#: Built-in codings for unambiguous bank-text tokens: rail/TfL fares and car
-#: parking are travel, forecourt fuel words are motor, plain cafe/restaurant words
-#: are subsistence. Evaluated in order after the user's own rules
-#: (app/bank_reconcile.suggest_rule), so a user rule always wins. Money out only:
-#: a matching credit (a refund) is not a purchase. No supplier names: only the
-#: generic words and the two network names no other merchant collides with.
+#: Built-in codings for unambiguous bank-text tokens: rail/bus/taxi fares, car
+#: parks, parking apps, valet parking, congestion/clean-air charges and tolls
+#: are travel; forecourt fuel words are motor; plain cafe/coffee/bakery/pantry/
+#: deli/sandwich words are subsistence. Evaluated in order after the user's own
+#: rules (app/bank_reconcile.suggest_rule), so a user rule always wins, and a
+#: learned supplier mapping (an exact contact coding the user approved before)
+#: is consulted before these. Money out only: a matching credit (a refund) is
+#: not a purchase. Supplier names appear only where no other merchant collides
+#: with the token (the two parking/fare networks); everything else is generic.
 BUILTIN_RULES: list[BankRule] = [
     BankRule(
         id="builtin-travel-rail",
-        name="Built-in: rail and TfL fares",
-        match=BankRuleMatch(op="regex", value=r"trainline|\btfl\b"),
+        name="Built-in: rail, bus and taxi fares",
+        match=BankRuleMatch(
+            op="regex",
+            value=r"trainline|\btrain\b|\brail\b|\btfl\b|\bunderground\b|\bbus\b|\bcoach\b|\btaxi\b|\buber\b",
+        ),
         direction="out",
         action=BankRuleAction(account="7400 Travel"),
     ),
     BankRule(
-        id="builtin-travel-parking",
-        name="Built-in: car parking",
-        match=BankRuleMatch(op="contains", value="parking"),
+        id="builtin-travel-road",
+        name="Built-in: car parks, parking and road charges",
+        match=BankRuleMatch(
+            op="regex",
+            value=r"car\s*parks?|\bparking\b|\bncp\b|ringgo|paybyphone|\bvalet\b|congestion|\bulez\b|\btoll\b",
+        ),
         direction="out",
         action=BankRuleAction(account="7400 Travel"),
+    ),
+    BankRule(
+        id="builtin-subsistence-kitchen",
+        name="Built-in: kitchen meals, not kitchen trade",
+        match=BankRuleMatch(
+            op="regex",
+            # "Kitchen" is ambiguous: a kitchen fitter or supplier (trade words
+            # anywhere in the line) is 5000 Materials, so this hint stays
+            # silent there and leaves the coding to the model or a user rule.
+            value=r"^(?!.*\b(fitters?|units?|worktops?|suppl\w*|trade)\b).*\bkitchen\b",
+        ),
+        direction="out",
+        action=BankRuleAction(account="7410 Subsistence"),
     ),
     BankRule(
         id="builtin-motor-fuel",
@@ -167,7 +189,10 @@ BUILTIN_RULES: list[BankRule] = [
     BankRule(
         id="builtin-subsistence-food",
         name="Built-in: cafe and restaurant meals",
-        match=BankRuleMatch(op="regex", value=r"caf[eé]|restaurant|sandwich"),
+        match=BankRuleMatch(
+            op="regex",
+            value=r"caf[eé]|coffee|baker(y|ies|s)?|\bcrumbs?\b|\bcrusts?\b|\bpantr(y|ies)\b|\bdeli\b|sandwich|restaurant|takeaway",
+        ),
         direction="out",
         action=BankRuleAction(account="7410 Subsistence"),
     ),

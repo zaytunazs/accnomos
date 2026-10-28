@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S033",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Glasgow Gateways Ltd",
+  "contractor_ref": "584/AK70158",
+  "subcontractor_name": "Spark & Switch Electrics",
+  "subcontractor_utr": "8477718341",
+  "verification_number": null,
+  "tax_month_end": "2026-09-05",
+  "gross_amount": 3253.35,
+  "materials": 762.46,
+  "amount_liable": 2490.89,
+  "deduction": 498.17,
+  "net_paid": 2755.18,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 325335,
+  "materials": 76246,
+  "deduction": 49817,
+  "correct_deduction": 49817
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

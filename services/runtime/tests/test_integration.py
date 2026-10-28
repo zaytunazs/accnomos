@@ -153,7 +153,8 @@ def test_every_feature_writes_inside_the_layout_and_books_xlsx_has_every_sheet(
             json={"vehicle_id": car["id"], "date": date.today().isoformat(), "miles": 100, "purpose": "Site visit"},
         )
     )
-    assert ok(client.get(f"/mileage/summary?tax_year={ty}", headers=H))["allowance_pence"] == 4500
+    expected = 100 * mileage.rates_for(ty)["car"].first_pence
+    assert ok(client.get(f"/mileage/summary?tax_year={ty}", headers=H))["allowance_pence"] == expected
     claim = ok(
         client.post(f"/mileage/propose-allowance?tax_year={ty}&period={mileage.quarter_of(date.today())}", headers=H)
     )["proposal"]

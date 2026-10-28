@@ -20,6 +20,8 @@ has been made by this code yet**.
 | Job | Model | What it produces | Offline try-out |
 |---|---|---|---|
 | `harness/bank_ai.py` | Glimmer | accuracy, refusals, invalid JSON and latency of the bank-rule AI coding (`suggest_ai`) over every gold bank line | `--dry-run`, `--stub` |
+| `harness/cis_read.py` | Glimmer | per-field accuracy, check codes, latency and misses of the CIS reader (`read_cis_document` + code checks) over every gold CIS statement and reverse-charge invoice | `--dry-run`, `--stub` |
+| `harness/property_docs.py` | Glimmer | category, property, amount and date accuracy of the generic extraction reader over the gold landlord statements and bills (no property-specific reader exists yet) | `--dry-run`, `--stub` |
 | `gold/gen_gold4.py` | Qwen | `gold/ledger4/`: about 120 price-history receipts, five suppliers, six months, `expectations.json` | `--dry-run`, `--stub` |
 | `gold/gen_personal.py` | Qwen | `gold/personal/NN_name/`: six months of a household's bank statement and `expectations.json` | `--dry-run`, `--stub` |
 | `harness/public_chat_eval.py` | the chat route's model | pass rates for `POST /public/chat`: product facts, refusals, injections | `--dry-run`, `--stub` |
@@ -98,11 +100,12 @@ tools/spark_queue.sh --only bank_ai     # one step;  --force runs a done step ag
 ```
 
 Order: `gen_gold4`, `gen_personal`, `bank_ai`, then `run_extraction` (Glimmer, messy) on each
-`gold/ledger{2,3,4}/receipts` folder that exists. `ledger2` has none (its credit notes and part-paid invoices use another
-schema that `run_extraction` does not score) and `ledger3` is not in this repository, so both are skipped with a note;
-`ledger4` is picked up once `gen_gold4` has run. Log: `~/spark/accnomos/jobs/spark_queue.log`; markers in
-`~/spark/accnomos/jobs/state/` (delete one to re-run that step). Everything runs under `nice -n 19` and `ionice -c3`,
-one job at a time, and a step whose model server does not answer is skipped (and tried again next run). The script never
-runs git, installs nothing, and writes only under `evals/` and the jobs folder. Set `SPARK_PYTHON` to the environment's
-interpreter if `.venv/bin/python` in the checkout is not the one to use. The GPU is shared with the production runtime:
+`gold/ledger{2,3,4}/receipts` folder that exists, then `cis_read` and `property_docs` (both Glimmer).
+`ledger2` has none (its credit notes and part-paid invoices use another schema that `run_extraction` does not score)
+and `ledger3` is not in this repository, so both are skipped with a note; `ledger4` is picked up once `gen_gold4`
+has run. Log: `~/spark/accnomos/jobs/spark_queue.log`; markers in `~/spark/accnomos/jobs/state/` (delete one to
+re-run that step). Everything runs under `nice -n 19` and `ionice -c3`, one job at a time, and a step whose model
+server does not answer is skipped (and tried again next run). The script never runs git, installs nothing, and writes
+only under `evals/` (gold and runs) and the jobs folder. Set `SPARK_PYTHON` to the environment's interpreter if
+`.venv/bin/python` in the checkout is not the one to use. The GPU is shared with the production runtime:
 `nice` does not stop a long Qwen or Glimmer request from slowing a live user, so start it when the site is quiet.

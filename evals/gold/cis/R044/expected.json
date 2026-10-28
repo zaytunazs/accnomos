@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R044",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "White Wall Plasters",
+  "supplier_vat_number": "GB 079 0889 17",
+  "invoice_number": "WHI-140",
+  "invoice_date": "2026-05-31",
+  "net": 244.0,
+  "vat_rate": 20,
+  "reverse_charge_vat": 48.8,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 24400,
+  "materials": 0,
+  "net": 24400,
+  "reverse_charge_vat": 4880
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

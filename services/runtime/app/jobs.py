@@ -139,6 +139,16 @@ class TimesheetEntry(BaseModel):
     note: str = Field(default="", max_length=500)
     billable: bool = True
     invoiced_in: str | None = None
+    #: Pay-rate multiplier for payroll (1 = normal hours; 1.5 = time and a half; 2 = double time). It changes what
+    #: the employee is paid in a PAYE pay run (app/payrun.py), never what the customer is charged.
+    rate_multiplier: float = Field(default=1.0, ge=1.0, le=3.0)
+
+    @field_validator("rate_multiplier")
+    @classmethod
+    def _multiplier_steps(cls, v: float) -> float:
+        if v * 4 != round(v * 4):
+            raise ValueError("Use a pay multiplier in quarter steps, like 1.5 or 2")
+        return float(v)
 
     @field_validator("hours", mode="before")
     @classmethod
@@ -283,6 +293,24 @@ async def update_entry(books: Books, entry_id: str, changes: dict[str, Any]) -> 
         await books._update(_sheet_path(_month(new.date)), lambda raw: (raw or b"") + _dump_jsonl([row]))
         await _remove_line(books, _month(old.date), entry_id)
     return new
+
+
+async def set_rate_multiplier(books: Books, entry_ids: Sequence[str], multiplier: float) -> list[TimesheetEntry]:
+    """Set the payroll pay-rate multiplier on these entries (overtime). Only that field changes, so an entry already
+    billed to a customer can still be paid at overtime rates: the invoice is untouched."""
+    wanted = set(entry_ids)
+    found = [e for e in await load_entries(books) if e.id in wanted]
+    if {e.id for e in found} != wanted:
+        raise NotFound("No such timesheet entry")
+    TimesheetEntry.model_validate({**found[0].model_dump(), "rate_multiplier": multiplier})  # checks the steps
+    for month in {_month(e.date) for e in found}:
+        await books._update(
+            _sheet_path(month),
+            lambda raw: _dump_jsonl(
+                {**r, "rate_multiplier": multiplier} if r.get("id") in wanted else r for r in _parse_jsonl(raw)
+            ),
+        )
+    return [e.model_copy(update={"rate_multiplier": multiplier}) for e in found]
 
 
 async def delete_entry(books: Books, entry_id: str) -> TimesheetEntry:

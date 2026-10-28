@@ -20,6 +20,14 @@ if a payment is removed. Its file keeps a copy of `paid_pence`, `balance_pence` 
 (open | part_paid | paid | overpaid); the figures shown are always worked out again from the ledger. An invoice
 with payments or credit notes against it cannot be voided until they are removed.
 
+CIS and the VAT domestic reverse charge (app/cis.py has the sources). A CIS invoice (`cis`) shows the deduction the
+contractor will make: the business's CIS rate on the labour lines' net (lines ticked `materials` are left out, and
+VAT never counts), and what is payable after it. A reverse-charge invoice (`reverse_charge`, VAT Act 1994 s55A)
+charges no VAT: its standard- and reduced-rate lines show the VAT the customer must account for
+(`reverse_charge_vat_pence`), the PDF carries the wording HMRC asks for, and the sale posts its net only (box 6).
+The customer must be VAT-registered (its VAT number is on the invoice) and, per HMRC, CIS-registered and not an
+end user or intermediary who told you so in writing; the user ticks the box, code checks the VAT numbers.
+
 An invoice written from a job's hours keeps the job id and, per line, the timesheet entries it bills. Becoming
 `sent` marks the entries whose hours and rate still match their line invoiced on its number (app/jobs.py),
 so they are never proposed again; voiding the invoice frees its entries again.
@@ -43,6 +51,7 @@ from pydantic import BaseModel, Field, field_validator
 from accnomos_connectors.base import MailSender, OutgoingAttachment, OutgoingMail
 from accnomos_ledger.bank import BankLine
 from accnomos_ledger.events import LedgerEvent, Line, VatCode
+from app import cis as cis_mod
 from app import jobs, paths
 from app.approve import reversal_of
 from app.books import SYSTEM, BankMatchError, Books, now
@@ -218,6 +227,7 @@ class LineIn(StrictBody):
     timesheet_entry_ids: list[Annotated[str, Field(max_length=32)]] = Field(
         default_factory=list, max_length=1000
     )  # hours this line bills (jobs)
+    materials: bool = False  # CIS: materials the business paid for, left out of the deduction (app/cis.py)
 
 
 class InvoiceLine(LineIn):
@@ -243,6 +253,14 @@ class InvoiceDraft(StrictBody):
     reference: str | None = Field(None, max_length=60)  # the customer's PO or job number
     notes: str | None = Field(None, max_length=1000)
     job_id: str | None = Field(None, max_length=12)  # set when the lines came from a job's hours
+    cis: bool = False  # show the CIS deduction (needs Settings › CIS: "We work for contractors")
+    reverse_charge: bool = False  # VAT domestic reverse charge for building and construction services
+
+
+#: The wording on a reverse-charge invoice: HMRC's own examples ("VAT Act 1994 Section 55A applies", "Customer to pay
+#: the VAT to HMRC"), https://www.gov.uk/guidance/vat-reverse-charge-technical-guide#invoices (checked 28 Oct 2026).
+REVERSE_CHARGE_WORDING = "Reverse charge: VAT Act 1994 Section 55A applies. Customer to pay the VAT to HMRC."
+CIS_WORDING = "CIS: the contractor deducts tax from the labour only and pays it to HMRC on our behalf."
 
 
 class Reminder(BaseModel):
@@ -250,6 +268,7 @@ class Reminder(BaseModel):
     sent_by: str
     to: str
     subject: str
+    step: str | None = None  # the chasing step id this send approved (app/chasing.py); None for older reminders
 
 
 class PaymentLink(BaseModel):
@@ -309,6 +328,9 @@ class Invoice(BaseModel):
     timesheets_marked: bool = False  # the lines' timesheet entries were marked invoiced on this number when sent
     payment_link: PaymentLink | None = None  # "Pay online" (app/online_payments.py)
     online_payments: list[str] = []  # provider payment ids already recorded from the link, so none is proposed twice
+    cis: cis_mod.CisOnInvoice | None = None  # the CIS deduction the contractor will make (app/cis.py)
+    reverse_charge: bool = False
+    reverse_charge_vat_pence: int = 0  # the VAT the customer accounts for; not in vat_pence or total_pence
 
     def timesheet_entry_ids(self) -> list[str]:
         return [i for ln in self.lines for i in ln.timesheet_entry_ids]
@@ -337,14 +359,44 @@ def price_lines(lines: list[LineIn]) -> tuple[list[InvoiceLine], list[VatSummary
     return out, summary, sum(ln.net_pence for ln in out), sum(ln.vat_pence for ln in out)
 
 
+def reverse_charged(
+    lines: list[InvoiceLine], summary: list[VatSummaryRow]
+) -> tuple[list[InvoiceLine], list[VatSummaryRow], int]:
+    """The same lines with their VAT moved to the customer: (lines, summary, VAT the customer accounts for)."""
+    if not any(ln.vat_code in ("S", "R") for ln in lines):
+        raise InvoiceError("The reverse charge applies to standard- or reduced-rate work; no line is at 20% or 5%")
+    rc = sum(ln.vat_pence for ln in lines)
+    return (
+        [ln.model_copy(update={"vat_pence": 0}) for ln in lines],
+        [r.model_copy(update={"vat_pence": 0}) for r in summary],
+        rc,
+    )
+
+
 def build_invoice(
-    number: str, draft: InvoiceDraft, profile: InvoiceProfile, user: str, today: date | None = None
+    number: str,
+    draft: InvoiceDraft,
+    profile: InvoiceProfile,
+    user: str,
+    today: date | None = None,
+    cis_status: cis_mod.Status | None = None,
 ) -> Invoice:
     issue = draft.issue_date or today or london_today()
     due = draft.due_date or issue + timedelta(days=profile.terms_days)
     if due < issue:
         raise InvoiceError("The due date is before the invoice date")
     lines, summary, net, vat = price_lines(draft.lines)
+    rc = 0
+    if draft.reverse_charge:
+        lines, summary, rc = reverse_charged(lines, summary)
+        vat = 0
+    cis = None
+    if draft.cis:
+        if cis_status is None:
+            raise InvoiceError("Turn on CIS in Settings › CIS (we work for contractors) to show a CIS deduction")
+        cis = cis_mod.cis_on_invoice([(ln.net_pence, ln.materials) for ln in lines], net + vat, cis_status)
+    elif any(ln.materials for ln in lines):
+        raise InvoiceError("Lines are marked as materials but the invoice is not a CIS invoice")
     return Invoice(
         number=number,
         customer=draft.customer,
@@ -359,6 +411,9 @@ def build_invoice(
         notes=(draft.notes or "").strip() or None,
         created_by=user,
         job_id=draft.job_id,
+        cis=cis,
+        reverse_charge=draft.reverse_charge,
+        reverse_charge_vat_pence=rc,
     )
 
 
@@ -489,12 +544,21 @@ async def _check_hours(books: Books, draft: InvoiceDraft, number: str | None = N
             raise InvoiceError(f"Timesheet entry {i} is already on invoice {e.invoiced_in}")
 
 
+async def cis_status_for(books: Books, draft: InvoiceDraft) -> cis_mod.Status | None:
+    """The business's CIS payment status when the draft is a CIS invoice and CIS is switched on; None otherwise."""
+    if not draft.cis:
+        return None
+    settings = await cis_mod.load_settings(books)
+    return settings.status if settings.subcontractor else None
+
+
 async def create_invoice(books: Books, draft: InvoiceDraft, user: str) -> Invoice:
     profile = await load_profile(books)
     draft = await _fill_customer(books, draft)
-    build_invoice("PENDING", draft, profile, user)  # refuse a bad draft before taking a number
+    status = await cis_status_for(books, draft)
+    build_invoice("PENDING", draft, profile, user, cis_status=status)  # refuse a bad draft before taking a number
     await _check_hours(books, draft)
-    inv = build_invoice(await allocate_number(books), draft, profile, user)
+    inv = build_invoice(await allocate_number(books), draft, profile, user, cis_status=status)
     await save_invoice(books, inv)
     await books.audit(f"user:{user}", "invoice_created", {"invoice": inv.number, "total_pence": inv.total_pence})
     return inv
@@ -506,7 +570,9 @@ async def update_draft(books: Books, number: str, draft: InvoiceDraft, user: str
         raise InvoiceStateError(f"Invoice {number} is {old.status}; only drafts can be changed")
     draft = await _fill_customer(books, draft)
     await _check_hours(books, draft, number)
-    inv = build_invoice(number, draft, await load_profile(books), old.created_by)
+    inv = build_invoice(
+        number, draft, await load_profile(books), old.created_by, cis_status=await cis_status_for(books, draft)
+    )
     inv.created_at = old.created_at
     inv.payment_link = old.payment_link  # kept; send_problems refuses a link for another amount
     await save_invoice(books, inv)
@@ -543,6 +609,7 @@ def sale_event(inv: Invoice, user: str, evidence: list[str]) -> LedgerEvent:
         approved_at=now(),
         net=sum(r.net_pence for r in inv.vat_summary if r.vat_code in ON_RETURN),
         vat=inv.vat_pence,
+        reverse_charge_vat=inv.reverse_charge_vat_pence if inv.reverse_charge else None,
         counterparty=inv.customer.name,
     )
 
@@ -558,6 +625,13 @@ def send_problems(inv: Invoice, profile: InvoiceProfile, to: str | None) -> list
         out.append("Add your business name and address in the invoice profile")
     if inv.vat_pence and not profile.vrn:
         out.append("Add your VAT registration number to the invoice profile before charging VAT")
+    if inv.reverse_charge and not profile.vrn:
+        out.append("The reverse charge is only for VAT-registered businesses: add your VAT registration number")
+    if inv.reverse_charge and not inv.customer.vrn:
+        out.append(
+            "Add the customer's VAT number: the reverse charge applies only to VAT- and CIS-registered customers; "
+            "for anyone else, charge VAT as normal"
+        )
     if inv.total_pence <= 0:
         out.append("The invoice total must be more than £0.00")
     if inv.vat_pence < 0 or any(r.net_pence < 0 for r in inv.vat_summary):
@@ -587,6 +661,13 @@ def default_email(inv: Invoice, profile: InvoiceProfile) -> tuple[str, str]:
         "",
         f"Please find attached invoice {inv.number} for {money(inv.total_pence)}, due on {uk_date(inv.due_date)}.",
     ]
+    if inv.cis and inv.cis.deduction_pence:
+        lines.append(
+            f"Under CIS, please deduct {money(inv.cis.deduction_pence)} ({inv.cis.rate}% of the labour) and pay "
+            f"{money(inv.cis.payable_pence)}; we would be grateful for your payment and deduction statement."
+        )
+    if inv.reverse_charge:
+        lines.append(f"This invoice is under the VAT domestic reverse charge: {REVERSE_CHARGE_WORDING}")
     if profile.bank.is_set():
         lines += ["", "Payment details are on the invoice; please use the invoice number as the reference."]
     if pay := pay_online_line(inv):
@@ -730,6 +811,7 @@ async def send_reminder(
     subject: str,
     body: str,
     pdf: bytes | None,
+    step: str | None = None,
 ) -> Invoice:
     """Send the reminder text the user approved (and may have edited), with the invoice attached."""
     inv = await get_invoice(books, number)
@@ -744,10 +826,12 @@ async def send_reminder(
         [OutgoingAttachment(name=f"{inv.number}.pdf", content_type="application/pdf", data=pdf)] if pdf else []
     )
     await sender.send(OutgoingMail(to=to, subject=subject.strip(), body_text=body.strip(), attachments=attachments))
-    inv.reminders.append(Reminder(sent_at=now(), sent_by=user, to=to, subject=subject.strip()))
+    inv.reminders.append(Reminder(sent_at=now(), sent_by=user, to=to, subject=subject.strip(), step=step))
     await save_invoice(books, inv)
     await books.audit(
-        f"user:{user}", "invoice_reminder_sent", {"invoice": number, "to": to, "count": len(inv.reminders)}
+        f"user:{user}",
+        "invoice_reminder_sent",
+        {"invoice": number, "to": to, "count": len(inv.reminders), **({"step": step} if step else {})},
     )
     return inv
 
@@ -788,10 +872,13 @@ async def mark_paid(
     bank_line_id: str | None = None,
     amount_pence: int | None = None,
     account: str = "1200 Bank",
+    cis_deduction_pence: int = 0,
 ) -> Invoice:
     """Record a payment against this invoice (app/payments.py): the balance unless `amount_pence` says otherwise,
     or the bank line's amount. Posts Dr 1200 Bank (or 1210 Cash) / Cr 1100 Debtors; more than the balance is left
-    as a credit on the customer."""
+    as a credit on the customer. With `cis_deduction_pence` the money is what reached the bank and the deduction
+    the contractor made settles the rest (Dr 1150 CIS suffered); without an amount, the money is the balance less
+    the deduction."""
     from app import payments  # app.payments imports this module
 
     inv = await get_invoice(books, number)
@@ -810,17 +897,21 @@ async def mark_paid(
             raise InvoiceError("No such bank line") from exc
         amount_pence = amount_pence or abs(line.amount_pence)
         payment_ref = payment_ref or line.reference or line.description
-    amount = amount_pence or owed
-    if bank_line_id is None and amount > owed and owed < inv.total_pence:
-        amount = owed  # part-paid: Mark paid finishes the balance; a stale total never overpays
+    cut = cis_deduction_pence
+    if cut >= owed:
+        raise InvoiceError("The CIS deduction is as much as the balance; check the contractor's statement")
+    amount = amount_pence or owed - cut
+    if bank_line_id is None and amount + cut > owed and owed < inv.total_pence:
+        amount = owed - cut  # part-paid: Mark paid finishes the balance; a stale total never overpays
     body = payments.PaymentIn(
         side="sale",
         date=paid_on,
         amount_pence=amount,
         account=account,  # type: ignore[arg-type]
         reference=(payment_ref or "").strip()[:120] or None,
-        allocations=[payments.AllocationIn(event_id=inv.event_id, amount_pence=min(amount, owed))],
+        allocations=[payments.AllocationIn(event_id=inv.event_id, amount_pence=min(amount + cut, owed))],
         bank_line_id=bank_line_id,
+        cis_deduction_pence=cut,
     )
     try:
         record = await payments.record_payment(books, body, user)

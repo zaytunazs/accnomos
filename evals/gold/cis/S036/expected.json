@@ -1,0 +1,29 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S036",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Jubilee Joint Ventures Ltd",
+  "contractor_ref": "178/MP46065",
+  "subcontractor_name": "Red Brick Solutions",
+  "subcontractor_utr": "1304451669",
+  "verification_number": null,
+  "tax_month_end": "2026-10-05",
+  "gross_amount": 4653.9,
+  "materials": 2199.67,
+  "amount_liable": 2454.23,
+  "deduction": 493.84,
+  "net_paid": 4160.06,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 465390,
+  "materials": 219967,
+  "deduction": 49384,
+  "correct_deduction": 49084
+ },
+ "expect_check_fail": [
+  "RATE"
+ ],
+ "rate": 20
+}

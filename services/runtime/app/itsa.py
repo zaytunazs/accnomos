@@ -18,9 +18,15 @@ repairs). Balance-sheet accounts (1xxx-3xxx: bank, debtors, VAT control, owner's
 VAT-registered business the figures are net of VAT. Disallowable: business entertainment and depreciation in full,
 plus any account whose name says "disallowable", "private" or "personal" (Accnomos has no private-use split yet).
 
-Basis: as approved, like the P&L in app/reports.py (an invoice counts when raised, a receipt when bought). From
-6 April 2024 the cash basis is HMRC's default for sole traders (gov.uk/simpler-income-tax-cash-basis), so the
-summary says which basis it used and warns; it never converts one into the other.
+Basis: the user's choice in Settings (app/routes_itsa.py, `_System/itsa/settings.json`), cash by default because
+from 6 April 2024 the cash basis is HMRC's default for sole traders (gov.uk/simpler-income-tax-cash-basis, checked 28
+Oct 2026). Traditional (accruals) reads the ledger as posted: an invoice counts when raised, a bill when received.
+Cash reads the derived events of app/cash_basis.py, dated when the money moved, with the payment behind every line.
+Under the cash basis, s33A ITTOIA 2005 (BIM70035) makes equipment bought to keep and use an ordinary expense, except
+cars, land and buildings, non-depreciating assets, non-qualifying intangibles, financial assets and education or
+training: an asset account (code 0xxx) is counted in box 30 unless its name says it is one of those, and
+depreciation is never counted (there is none on the cash basis; SA103F notes: box 29 "Only use this box if you use
+traditional accounting").
 """
 
 from __future__ import annotations
@@ -35,18 +41,42 @@ from typing import Literal
 from pydantic import BaseModel
 
 from accnomos_ledger import LedgerEvent
+from app.cash_basis import BASIS_LABEL, Basis, CashRef, LeftOut
 
 Group = Literal["income", "expenses"]
 
 TAX_YEAR = re.compile(r"^(20\d{2})-(\d{2})$")
 #: The cumulative endpoint's first tax year (Self-Employment Business API 5.0, path parameter `taxYearFrom2025`).
 FIRST_CUMULATIVE_TAX_YEAR = "2025-26"
-BASIS = "As approved: an invoice counts on the day it was raised, a receipt on the day it was bought. Not cash basis."
-CASH_BASIS_WARNING = (
-    "Since 6 April 2024 HMRC treats sole traders as using the cash basis unless they opt out. These figures are "
-    "as approved (invoice and receipt dates), not money in and out of the bank. If you use the cash basis, check "
-    "them before you submit."
+BASIS = (
+    "Traditional accounting (accruals): an invoice counts on the day it was raised, a bill or receipt on the day it "
+    "was bought."
 )
+CASH_BASIS = (
+    "Cash basis: income counts when the customer's money is received and expenses when they are paid (a part "
+    "payment counts as its share of the invoice or bill); receipts paid when bought count on their date."
+)
+BASIS_TEXT: dict[Basis, str] = {"cash": CASH_BASIS, "traditional": BASIS}
+TRADITIONAL_WARNING = (
+    "Since 6 April 2024 HMRC treats sole traders as using the cash basis unless they choose traditional accounting. "
+    "These figures use traditional accounting, as set in Settings: HMRC must hold the same accounting method for "
+    "this business (you confirm it at the end of the tax year)."
+)
+#: Kept for callers of the first version: the traditional-basis warning.
+CASH_BASIS_WARNING = TRADITIONAL_WARNING
+#: s33A(2)-(4) ITTOIA 2005 (legislation.gov.uk/ukpga/2005/5/section/33A; BIM70035, checked 28 Oct 2026): no cash-basis
+#: deduction for capital spent on a car, land or buildings, a non-depreciating asset, a non-qualifying intangible,
+#: a financial asset, education or training, or buying a business. Matched on the asset account's name.
+CAPITAL_EXCLUDED = re.compile(
+    r"\bcars?\b|motor ?car|\bland\b|building|freehold|leasehold|\bproperty\b|goodwill|patent|trade ?marks?\b|"
+    r"copyright|investment|\bshares\b|education|training",
+    re.I,
+)
+CAPITAL_EXCLUDED_REASON = (
+    "Capital spent on a car, land, buildings, goodwill or other intangibles, investments, or education is not an "
+    "expense under the cash basis (s33A ITTOIA 2005). For a car, claim capital allowances in the annual submission."
+)
+DEPRECIATION_REASON = "Depreciation is not money paid: under the cash basis the cost counts when the asset is paid for."
 
 
 @dataclass(frozen=True)
@@ -141,12 +171,17 @@ def tax_year_bounds(tax_year: str) -> tuple[date, date]:
     return date(start, 4, 6), date(start + 1, 4, 5)
 
 
-def field_for(account: str) -> str | None:
-    """The API field an account feeds, or None for a balance-sheet account (or one without a code)."""
+def field_for(account: str, basis: Basis = "traditional") -> str | None:
+    """The API field an account feeds, or None for a balance-sheet account (or one without a code). Under the cash
+    basis an asset account (0xxx) is equipment paid for: box 30, unless `capital_excluded` says otherwise."""
     m = _CODE.match(account)
     if not m:
         return None
     code = int(m.group(1))
+    if basis == "cash" and code < 1000:
+        if re.search(r"depreciat", account, re.I):  # accumulated depreciation: the other side of a journal
+            return "depreciation"
+        return None if CAPITAL_EXCLUDED.search(account) else "otherExpenses"
     if not 4000 <= code <= 8999:
         return None
     if code >= 5000:  # a name rule never turns an expense into income, or income into an expense
@@ -154,6 +189,12 @@ def field_for(account: str) -> str | None:
             if pattern.search(account):
                 return key
     return next(key for lo, hi, key in RANGES if lo <= code <= hi)
+
+
+def capital_excluded(account: str) -> bool:
+    """An asset account the cash basis gives no deduction for (a car, land, a building, ...)."""
+    m = _CODE.match(account)
+    return bool(m) and int(m.group(1)) < 1000 and bool(CAPITAL_EXCLUDED.search(account))
 
 
 def is_disallowable(account: str, key: str) -> bool:
@@ -171,6 +212,14 @@ class Contribution(BaseModel):
     memo: str | None
     pence: int  # signed: what this line adds to the figure (a reversal or credit note subtracts)
     disallowable: bool
+    # Cash basis only: the money behind the line (the entry above is derived, dated when the money moved)
+    source: str | None = None  # payment / bank_line / applied_credit / refund / on_its_date
+    paid_how: str | None = None  # "Payment received", "Bank: FASTER PAYMENT ACME", "Paid when bought"
+    money_pence: int | None = None  # the money that moved for the document
+    document_event_id: str | None = None  # the invoice, bill or credit note it settled
+    document_ref: str | None = None
+    document_gross_pence: int | None = None
+    payment_id: str | None = None
 
 
 class SeFigure(BaseModel):
@@ -188,7 +237,9 @@ class SeSummary(BaseModel):
     tax_year: str
     period_start: date  # always 6 April: the API is cumulative
     period_end: date
-    basis: str = BASIS
+    accounting_basis: Basis = "traditional"
+    basis_label: str = BASIS_LABEL["traditional"]
+    basis: str = BASIS  # how the figures were worked out, in words
     income_pence: int
     expenses_pence: int  # total expenses, allowable and disallowable
     disallowable_pence: int
@@ -197,6 +248,7 @@ class SeSummary(BaseModel):
     figures: list[SeFigure]
     event_ids: list[str]
     unmapped_accounts: list[str]  # P&L-looking names without a code: left out, listed so nothing goes missing quietly
+    left_out: list[LeftOut] = []  # cash basis: entries and amounts not counted, with the reason
     warnings: list[str]
     can_submit: bool
     blockers: list[str]  # why can_submit is false
@@ -208,8 +260,18 @@ def pounds(pence: int) -> float:
     return float(Decimal(pence) / 100)
 
 
-def se_summary(events: list[LedgerEvent], tax_year: str, period_end: date) -> SeSummary:
-    """The cumulative figures from 6 April of `tax_year` to `period_end`, with the lines behind each one."""
+def se_summary(
+    events: list[LedgerEvent],
+    tax_year: str,
+    period_end: date,
+    basis: Basis = "traditional",
+    refs: dict[str, CashRef] | None = None,
+    left_out: list[LeftOut] | None = None,
+) -> SeSummary:
+    """The cumulative figures from 6 April of `tax_year` to `period_end`, with the lines behind each one.
+
+    Traditional: `events` is the ledger. Cash: `events`, `refs` and `left_out` are app/cash_basis.py's `cash_view`
+    (derived events dated when the money moved, what each came from, and what it does not count)."""
     start, year_end = tax_year_bounds(tax_year)
     if not start <= period_end <= year_end:
         raise ValueError(f"period end {period_end} is outside the {tax_year} tax year ({start} to {year_end})")
@@ -219,11 +281,25 @@ def se_summary(events: list[LedgerEvent], tax_year: str, period_end: date) -> Se
     lines: dict[str, list[Contribution]] = defaultdict(list)
     unmapped: set[str] = set()
     used: set[str] = set()
+    refs = refs or {}
+    skipped = [x for x in left_out or [] if start <= x.date <= period_end]
     for event in sorted(events, key=lambda e: (e.date, e.id)):
         if not start <= event.date <= period_end:
             continue
+        ref = refs.get(event.id)
         for line in event.lines:
-            key = field_for(line.account)
+            key = field_for(line.account, basis)
+            if basis == "cash" and (key == "depreciation" or capital_excluded(line.account)):
+                skipped.append(
+                    LeftOut(
+                        date=event.date,
+                        event_id=(ref.document_event_id if ref else None) or event.id,
+                        description=line.account,
+                        pence=line.debit - line.credit,
+                        reason=DEPRECIATION_REASON if key == "depreciation" else CAPITAL_EXCLUDED_REASON,
+                    )
+                )
+                continue
             if key is None:
                 if not _CODE.match(line.account) and not re.search(
                     r"bank|cash|vat|debtor|creditor|loan", line.account, re.I
@@ -238,7 +314,7 @@ def se_summary(events: list[LedgerEvent], tax_year: str, period_end: date) -> Se
                 disallowed[key] += pence
             lines[key].append(
                 Contribution(
-                    event_id=event.id,
+                    event_id=(ref.document_event_id if ref else None) or event.id,
                     date=event.date,
                     kind=event.kind,
                     counterparty=event.counterparty,
@@ -246,9 +322,22 @@ def se_summary(events: list[LedgerEvent], tax_year: str, period_end: date) -> Se
                     memo=line.memo,
                     pence=pence,
                     disallowable=dis,
+                    **(
+                        {
+                            "source": ref.source,
+                            "paid_how": ref.description,
+                            "money_pence": ref.money_pence,
+                            "document_event_id": ref.document_event_id,
+                            "document_ref": ref.document_ref,
+                            "document_gross_pence": ref.document_gross_pence,
+                            "payment_id": ref.payment_id,
+                        }
+                        if ref
+                        else {}
+                    ),
                 )
             )
-            used.add(event.id)
+            used.add((ref.document_event_id if ref else None) or event.id)
 
     figures = [
         SeFigure(
@@ -267,7 +356,17 @@ def se_summary(events: list[LedgerEvent], tax_year: str, period_end: date) -> Se
     expenses = sum(totals[f.key] for f in FIELDS if f.group == "expenses")
     disallowable = sum(disallowed.values())
 
-    warnings = [CASH_BASIS_WARNING]
+    warnings = [TRADITIONAL_WARNING] if basis == "traditional" else []
+    if skipped:
+        warnings.append(
+            f"{len(skipped)} {'entry or amount is' if len(skipped) == 1 else 'entries or amounts are'} not counted "
+            "under the cash basis; each is listed with the reason."
+        )
+    if basis == "cash" and any(c.account[:1] == "0" for f in FIELDS for c in lines[f.key] if _CODE.match(c.account)):
+        warnings.append(
+            "Equipment bought (asset accounts) is counted in box 30 as an expense, as the cash basis allows. Check "
+            "none of it is a car: a car needs capital allowances instead."
+        )
     if unmapped:
         warnings.append(
             "Some accounts have no four-digit code, so they are left out: " + ", ".join(sorted(unmapped)) + "."
@@ -291,6 +390,9 @@ def se_summary(events: list[LedgerEvent], tax_year: str, period_end: date) -> Se
         tax_year=tax_year,
         period_start=start,
         period_end=period_end,
+        accounting_basis=basis,
+        basis_label=BASIS_LABEL[basis],
+        basis=BASIS_TEXT[basis],
         income_pence=income,
         expenses_pence=expenses,
         disallowable_pence=disallowable,
@@ -299,6 +401,7 @@ def se_summary(events: list[LedgerEvent], tax_year: str, period_end: date) -> Se
         figures=figures,
         event_ids=sorted(used),
         unmapped_accounts=sorted(unmapped),
+        left_out=sorted(skipped, key=lambda x: (x.date, x.description)),
         warnings=warnings,
         can_submit=not blockers,
         blockers=blockers,

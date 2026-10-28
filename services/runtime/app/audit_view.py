@@ -50,6 +50,7 @@ AGENT_LABELS = {
     "backup": "Backup",
     "files": "Files",
     "close": "Month-end",
+    "cis-reader": "CIS reader",
 }
 
 
@@ -187,6 +188,7 @@ SUMMARIES: dict[str, Summary] = {
     "bank_transfer": lambda r, w: "Marked a bank line as a transfer between your own accounts",
     "bank_ignored": lambda r, w: "Marked a bank line as nothing to book",
     "bank_expense_proposed": lambda r, w: "Proposed an expense from a bank line",
+    "bank_private_proposed": lambda r, w: "Marked a bank line as private spending",
     "bank_rule_created": lambda r, w: "Added a bank rule",
     "bank_rule_updated": lambda r, w: "Edited a bank rule",
     "bank_rule_deleted": lambda r, w: "Deleted a bank rule",
@@ -194,6 +196,7 @@ SUMMARIES: dict[str, Summary] = {
     "bank_reconciled": lambda r, w: f"Reconciled a bank line ({r.get('kind') or 'match'}) through Review approval",
     # Sales invoices
     "invoice_profile_saved": lambda r, w: "Saved your invoice details",
+    "vat_schemes_saved": lambda r, w: "Saved your VAT scheme",
     "invoice_created": lambda r, w: f"Created invoice {_inv(r)}" + _pounds(r, "total_pence"),
     "invoice_edited": lambda r, w: f"Edited invoice {_inv(r)}" + _pounds(r, "total_pence"),
     "invoice_posted": lambda r, w: f"Posted invoice {_inv(r)} to the ledger",
@@ -202,13 +205,48 @@ SUMMARIES: dict[str, Summary] = {
     "invoice_paid": lambda r, w: f"Marked invoice {_inv(r)} as paid",
     "invoice_part_paid": lambda r, w: f"Recorded a part payment on invoice {_inv(r)}",
     "invoice_unmarked_paid": lambda r, w: f"Took back the Mark paid on invoice {_inv(r)}",
+    # Payment chasing (app/chasing.py)
+    "chasing_config_saved": lambda r, w: "Saved the payment-chasing reminder steps",
     # Payments (app/payments.py) and credit notes (app/credit_notes.py)
     "payment_recorded": lambda r, w: (
         ("Recorded money in" if r.get("side") == "sale" else "Recorded a payment out")
         + _pounds(r, "amount_pence")
         + (f" against invoice {_inv(r)}" if r.get("invoice") else "")
+        + (f" (CIS deduction {money(int(r['cis_deduction_pence']))})" if r.get("cis_deduction_pence") else "")
     ),
     "payment_removed": lambda r, w: "Removed a payment; its entry was reversed",
+    # CIS and the VAT reverse charge (app/cis.py, app/cis_readings.py, app/routes_cis.py)
+    "cis_settings_saved": lambda r, w: "Saved your CIS settings",
+    "cis_statement_added": lambda r, w: (
+        f"Added a CIS statement from {r.get('contractor') or 'a contractor'}" + _pounds(r, "deduction_pence")
+    ),
+    "cis_statement_removed": lambda r, w: "Removed a CIS statement",
+    "cis_document_read": lambda r, w: (
+        f"Read {posixpath.basename(str(r.get('file') or '')) or 'a document'} as "
+        + (
+            "a CIS statement"
+            if r.get("kind") == "cis_statement"
+            else "a reverse-charge invoice"
+            if r.get("kind") == "reverse_charge_invoice"
+            else "something else"
+        )
+        + "; it waits for you on the CIS page"
+    ),
+    "cis_reading_approved": lambda r, w: "Approved a CIS document the AI read",
+    "cis_reading_rejected": lambda r, w: "Rejected a CIS document the AI read",
+    "reverse_charge_bill_posted": lambda r, w: (
+        f"Posted a reverse-charge bill from {r.get('supplier') or 'a subcontractor'}"
+    ),
+    "cis_subcontractor_saved": lambda r, w: "Saved a subcontractor's CIS details",
+    "cis_payment_recorded": lambda r, w: (
+        "Recorded a payment to a subcontractor under CIS"
+        + (f", deducting {money(int(r['deduction_pence']))}" if isinstance(r.get("deduction_pence"), int) else "")
+    ),
+    "cis_payment_removed": lambda r, w: "Removed a CIS payment to a subcontractor; its entry was reversed",
+    "cis_return_prepared": lambda r, w: (
+        f"Prepared the CIS300 for the month to {r.get('tax_month_end') or '?'} (not submitted to HMRC)"
+    ),
+    "quote_saved": lambda r, w: f"Saved quote {r.get('quote') or ''}" + _pounds(r, "total_pence"),
     "payment_line_not_matched": lambda r, w: "Recorded a payment but could not match its bank line",
     # Online payments (app/online_payments.py)
     "payment_provider_connected": lambda r, w: (
@@ -258,6 +296,10 @@ SUMMARIES: dict[str, Summary] = {
     "timesheet_added": lambda r, w: "Logged time" + (f": {_qty(r['hours'])} hours" if r.get("hours") else ""),
     "timesheet_updated": lambda r, w: "Changed a timesheet entry" + _fields(r),
     "timesheet_deleted": lambda r, w: "Deleted a timesheet entry",
+    "timesheet_overtime_set": lambda r, w: (
+        f"Set {_plural(len(r.get('entries') or []), 'timesheet entry', 'timesheet entries')} to "
+        f"{r.get('multiplier', '')}x pay (overtime)"
+    ),
     "timesheets_invoiced": lambda r, w: (
         f"Marked {_plural(_n(r, 'entries'), 'timesheet entry', 'timesheet entries')} as billed on invoice {_inv(r)}"
     ),
@@ -273,6 +315,22 @@ SUMMARIES: dict[str, Summary] = {
         f"Posted payroll for {r.get('period', 'a period')} to the ledger" + _pounds(r, "gross_pence")
     ),
     "payroll_reopened": lambda r, w: f"Reopened payroll for {r.get('period', 'a period')}; its entries were undone",
+    # PAYE payroll (app/payrun.py, app/routes_payrun.py)
+    "payroll_employer_saved": lambda r, w: "Saved the payroll settings (PAYE references, pension scheme)",
+    "payroll_employee_saved": lambda r, w: "Saved an employee's payroll record",
+    "payroll_employee_deleted": lambda r, w: "Removed an employee who was never paid",
+    "payrun_prepared": lambda r, w: f"Prepared pay run {r.get('run', '')}".rstrip(),
+    "payrun_edited": lambda r, w: f"Edited pay run {r.get('run', '')}".rstrip(),
+    "payrun_discarded": lambda r, w: f"Set aside the draft pay run {r.get('run', '')}".rstrip(),
+    "payrun_proposed": lambda r, w: f"Sent pay run {r.get('run', '')} to Review".replace("  ", " "),
+    "payrun_back_to_draft": lambda r, w: f"Took pay run {r.get('run', '')} back to draft".replace("  ", " "),
+    "payrun_posted": lambda r, w: f"Posted pay run {r.get('run', '')} to the ledger".replace("  ", " "),
+    "rti_fps_generated": lambda r, w: (
+        f"Generated the FPS file for pay run {r.get('run', '')} (not sent to HMRC)".replace("  ", " ")
+    ),
+    "rti_eps_generated": lambda r, w: (
+        f"Generated the EPS file for tax month {r.get('tax_month', '')} (not sent to HMRC)"
+    ),
     # Contacts
     "contacts_refreshed": lambda r, w: f"Refreshed contacts from the ledger: {_plural(_n(r, 'contacts'), 'contact')}",
     "contact_edited": lambda r, w: "Edited a contact" + _fields(r),
@@ -323,9 +381,14 @@ SUMMARIES: dict[str, Summary] = {
     "itsa_update_submitted": lambda r, w: (
         f"Sent the {r.get('tax_year')} self-employment update to {r.get('period_end')} to HMRC "
         f"({'HMRC sandbox' if r.get('environment') != 'production' else 'HMRC'})"
+        + (f", {'cash basis' if r.get('basis') == 'cash' else 'traditional accounting'}" if r.get("basis") else "")
         + ("" if r.get("matches") else "; it did not match the books when saved")
     ),
     "itsa_calculation_saved": lambda r, w: f"Saved HMRC's {r.get('tax_year')} tax calculation",
+    "itsa_basis_changed": lambda r, w: (
+        "Changed the self-employment accounting basis to "
+        + ("traditional accounting" if r.get("to") == "traditional" else "the cash basis")
+    ),
     "itsa_final_declaration_submitted": lambda r, w: (
         f"Made the {r.get('tax_year')} final declaration to "
         f"{'HMRC sandbox' if r.get('environment') != 'production' else 'HMRC'}"
@@ -360,6 +423,39 @@ SUMMARIES: dict[str, Summary] = {
     "personal_line_categorised": lambda r, w: "Put a bank line in a personal spending category",
     "personal_goal_saved": lambda r, w: "Saved a savings goal",
     "personal_goal_deleted": lambda r, w: "Deleted a savings goal",
+    # Landlords (app/property.py, app/routes_property.py)
+    "property_added": lambda r, w: f"Added a let property: {r.get('name') or 'a property'}",
+    "property_updated": lambda r, w: f"Changed the details of {r.get('name') or 'a let property'}",
+    "property_settings_saved": lambda r, w: (
+        "Changed your landlord settings" + (" (landlord mode on)" if r.get("landlord_mode") else "")
+    ),
+    "property_tagged": lambda r, w: "Put a ledger entry on a let property",
+    "property_untagged": lambda r, w: "Took a ledger entry off a let property",
+    "property_entry": lambda r, w: f"Recorded an entry{_pounds(r, 'pence')} on a let property",
+    "property_document_read": lambda r, w: (
+        f"Read {posixpath.basename(str(r.get('file') or '')) or 'a document'} as "
+        + (
+            "a letting statement"
+            if r.get("kind") == "letting_statement"
+            else "a mortgage statement"
+            if r.get("kind") == "mortgage_statement"
+            else "an insurance schedule"
+            if r.get("kind") == "insurance"
+            else "a property bill"
+            if r.get("kind") == "invoice"
+            else "something else"
+        )
+        + "; it waits for you on the Property page"
+    ),
+    "property_reading_approved": lambda r, w: "Approved a property document the AI read",
+    "property_reading_rejected": lambda r, w: "Rejected a property document the AI read",
+    "property_mtd_exported": lambda r, w: (
+        f"Saved the UK property update for {r.get('tax_year') or 'a tax year'} as a file ready to submit"
+    ),
+    "property_mtd_submitted": lambda r, w: (
+        f"Sent a UK property {r.get('kind') or 'update'} for {r.get('tax_year') or 'a tax year'} to HMRC's sandbox"
+        + (f" (HMRC answered {r['status']})" if r.get("status") else "")
+    ),
     # Files page, archive and backups (app/files.py, app/archive.py, app/backups.py)
     "files_moved": lambda r, w: f"Moved {_plural(_n(r, 'moved'), 'file')} to {r.get('to') or 'another folder'}",
     "file_renamed": lambda r, w: (

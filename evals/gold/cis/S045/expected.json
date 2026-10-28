@@ -1,0 +1,29 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S045",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Farnborough Fortitude Ltd",
+  "contractor_ref": "333/PM39725",
+  "subcontractor_name": "Solid Stone Masonry",
+  "subcontractor_utr": "0640037614",
+  "verification_number": null,
+  "tax_month_end": "2027-03-05",
+  "gross_amount": 6629.9,
+  "materials": 2867.86,
+  "amount_liable": 3762.04,
+  "deduction": 747.4,
+  "net_paid": 5882.5,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 662990,
+  "materials": 286786,
+  "deduction": 74740,
+  "correct_deduction": 75240
+ },
+ "expect_check_fail": [
+  "RATE"
+ ],
+ "rate": 20
+}

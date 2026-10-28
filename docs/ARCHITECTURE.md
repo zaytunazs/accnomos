@@ -55,7 +55,7 @@ Personal accounts: `Apps/Accnomos` (the OneDrive app folder, `Files.ReadWrite.Ap
 `packages/connectors/folders.json`, `apps/web/src/lib/folders.ts` and a marked block in
 `apps/mobile/lib/services/graph.dart`, and `tests/test_paths.py` fails if any copy differs or if a numbered name is
 spelt as a literal anywhere else in Python. The `_System/` paths come from the constants in `app/books.py`,
-`invoicing.py`, `payroll.py`, `jobs.py`, `mileage.py`, `contacts.py`, `intake.py`, `todos.py`, `plan_apply.py`.
+`invoicing.py`, `payroll.py`, `payrun.py`, `jobs.py`, `mileage.py`, `contacts.py`, `intake.py`, `todos.py`, `plan_apply.py`.
 `services/runtime/tests/test_integration.py` holds what the runtime writes during its scenario to a `LAYOUT` list kept by
 hand in step with the first table; it does **not** exercise invoicing, payroll, the planner, to-dos or action audit, so those
 paths are listed here from the code only.
@@ -71,12 +71,17 @@ Documents, filed by code and never deleted:
 | `03 Sales/<name>` | runtime, a scanned document the reader classes as a sales invoice | |
 | `03 Sales/invoices/INV-0001.json`, `.pdf`; `03 Sales/invoices/sent/INV-0001.pdf` | runtime, invoicing | `invoices/` and `invoices/sent/` are created at onboarding |
 | `03 Sales/credit-notes/CN-0001.json`, `.pdf`; `03 Sales/credit-notes/sent/CN-0001.pdf` | runtime, credit notes (`credit_notes.py`) | created with the first credit note |
+| `03 Sales/quotes/Q-<yyyymmdd>-<xxxx>.pdf` | runtime, `POST /cis/quote` (`routes_cis.py`) | a quote priced like an invoice (CIS deduction, reverse charge wording); posts nothing, takes no invoice number |
 | `04 Bank statements/<last date>_<bank>.csv` | runtime, bank import | |
 | `05 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | |
+| `05 Payroll/<tax year>/RTI/FPS-<run>.xml`, `EPS-<tax year>-month-<nn>.xml` | runtime, PAYE payroll (`routes_payrun.py`) on download | generated for checking, never submitted |
+| `05 Payroll/<tax year>/payslips/payslip-<run>-<payroll id>.pdf`, `Pension/pension-<provider>-<run>.csv` | runtime, on download of an approved run | |
 | `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
 | `07 Reports/<yyyy-mm>-month-end-draft.xlsx`, `07 Reports/<yyyy-mm>-month-end.xlsx` | runtime, the month-end close (`app/month_end.py`): the draft (About, P&L, Balance sheet) is rewritten by each run once nothing blocks the close; the closed one is written on Approve and never overwritten (a re-close saves ` (2)`) | Posts nothing |
+| `07 Reports/<yyyy-mm-dd>-uk-property-<tax year>-to-<period end>.json` | runtime, `POST /property/mtd/{taxYear}/export` | the Property Business API 6.0 bodies, ready to submit with other software; posts nothing |
 | `07 Reports/<yyyy-mm-dd>-<name>.xlsx` | runtime, `POST /reports/export` (*Export to OneDrive* on Reports) | `name` is `profit-and-loss`, `aged-balances`, `vat-summary`, `monthly-trend` or `reports` (all of them); a second export the same day gets ` (2)`, nothing is overwritten. Starts with `SAMPLE — FICTIONAL COMPANY` when the books are the demo seed's. Posts nothing |
 | `07 Reports/<yyyy-mm-dd>-opening-balances-reconciliation.csv` | runtime, `POST /import/post` (`import_history.py`) | the source trial balance against the Accnomos one, account by account; a second the same day gets ` (2)` |
+| `07 Reports/CIS/CIS300 <yyyy-mm-dd>.csv`, `.json` | runtime, `POST /cis/returns/{tax month end}/export` (`cis.py`) | the CIS300 figures for filing elsewhere; a second save for the same month replaces them; never submitted. Starts with `SAMPLE — FICTIONAL COMPANY` on the demo books |
 | `Archive/<year>/<original path>`, `Archive/<year>.zip` | runtime, `POST /files/archive` (`archive.py`) | made when first used; the zip is an extra copy with `manifest.json`, the folder stays. See *Files, archive and backups* |
 | `Backups/accnomos-backup-<yyyy-mm-dd>.zip`, `….zip.sha256` | runtime, `POST /backups` (`backups.py`) | made when first used; a second backup the same day gets ` (2)` |
 | `_Trash/<yyyy-mm-dd>/<original path>` | runtime: Clean up, backup retention, an undone archive's zip, files a restore replaced | made when first used; **never emptied by the app**, the user empties it in OneDrive |
@@ -115,6 +120,10 @@ Books.xlsx still show the path as it was saved.
 | `Payments/providers.json` | the user's own Stripe account id / PayPal merchant id / PayPal.me name for payment links, when linked (`online_payments.py`); never a key or token | rewritten |
 | `Payments/payments.json` | recorded payments: amount, date, account, the split across invoices or bills, the posted event (`payments.py`) | rewritten whole; a removed payment is kept, marked removed |
 | `Payroll/runs/<yyyy-mm>.json` | one pay run per month | updated |
+| `CIS/settings.json`, `CIS/statements.json`, `CIS/subcontractors.json`, `CIS/payments.json` | CIS registration; contractors' payment and deduction statements (approved); the contractor's subcontractors and payments to them (`cis.py`) | rewritten; a removed payment is kept, marked removed |
+| `CIS/readings/<id>.json` | a CIS statement or reverse-charge bill your AI read, waiting for Approve or Reject (`cis_readings.py`) | updated once by the decision |
+| `Payroll/employer.json`, `Payroll/employees.json` | PAYE references, Employment Allowance, pension scheme; employees' payroll records (NI number, date of birth, address) | rewritten whole |
+| `Payroll/payruns/<tax year>-<frequency>-<nn>.json`, `payruns/discarded/` | one PAYE pay run: inputs, every calculated figure and year to date (`payrun.py`) | updated until posted; a discarded draft is moved, not deleted |
 | `Planner/applied.json` | which day plans were applied (idempotency) | updated |
 | `Todos/todos.json` | to-dos added from triage | updated |
 | `archive/map.json` | old path → new path for every document the app moved (archive, Files page move and rename) | updated; applied when proposals and bank lines are read |
@@ -122,6 +131,7 @@ Books.xlsx still show the path as it was saved.
 | `Import/draft.json` | the import wizard's draft: uploaded files' rows, vendor, conversion date, the user's account mapping (`app/import_history.py`) | rewritten; emptied after posting |
 | `Import/sources/<sha256>-<name>` | each export uploaded to the import, as it came | written once |
 | `Import/opening.json` | the import in force: the opening entry's id, the mapping used, the open invoices and bills (read by `app/contacts.py` as documents on account), contacts added, the reconciliation file | rewritten; undo marks it undone |
+| `Property/properties.json`, `tags.json`, `settings.json`, `submissions.json` | let properties and owners' shares; event id → property (and category); landlord mode, quarters, finance costs brought forward, HMRC business id; UK property updates sent to the sandbox (`app/property.py`, `app/routes_property.py`) | rewritten (tags updated per entry; submissions keep the last 200) |
 | `Settings/files.json` | `backup_keep` (default 12), `monthly_backup` (default off) | rewritten |
 | `profile.json` | what these books are: name, kind (`company`, `sole_trader`, `personal`), kind settings, other linked accounts by sign-in name (`app/profile.py`, `PUT /profile`) | rewritten whole |
 | `close/<yyyy-mm>.json` | the month-end close: the last 10 runs (steps, findings, card summaries; never the signed cards) and every close record (who, when, the snapshot and its SHA-256) | updated; close records are only appended |
@@ -136,7 +146,7 @@ OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folde
 
 **Ledger events** (`packages/ledger`): `kind` = purchase · sale · bank · adjustment · reversal, ≥ 2 lines, Σ debit = Σ credit
 (enforced on construction), VAT code per line (S 20 %, R 5 %, Z, E, O, N), `evidence` = document hashes, `approved_by` (agents
-never approve; Autopilot is recorded as `autopilot`). Nothing is edited; **undo adds a `reversal` event** that references the
+never approve; Autopilot is recorded as `autopilot`), `reverse_charge_vat` (VAT Act 1994 s55A: on a purchase, VAT in box 1 and box 4; on a sale, the customer's, kept off this return). Nothing is edited; **undo adds a `reversal` event** that references the
 original. The nine VAT boxes come from `compute_vat_return`, plain code, boxes 6–9 truncated to whole pounds.
 
 **Audit lines** are one JSON object per line: `{"ts", "actor", "action", "refs"}`. `actor` is `user:<email>` for something a

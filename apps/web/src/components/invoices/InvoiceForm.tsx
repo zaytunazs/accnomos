@@ -28,11 +28,12 @@ interface LineForm {
   price: string; // pounds as typed
   vat_code: RtSalesVatCode;
   entry_ids: string[]; // job hours this line bills; marked invoiced when the invoice is sent
+  materials: boolean; // CIS: left out of the deduction
 }
 
 const EMPTY_CUSTOMER: RtInvoiceCustomer = { contact_id: null, name: "", email: null, address: null, vrn: null };
 let nextKey = 1;
-const blankLine = (): LineForm => ({ key: nextKey++, description: "", quantity: "1", unit: "", price: "", vat_code: "S", entry_ids: [] });
+const blankLine = (): LineForm => ({ key: nextKey++, description: "", quantity: "1", unit: "", price: "", vat_code: "S", entry_ids: [], materials: false });
 
 /** The lines and customer a job's "Invoice these hours" left in sessionStorage, or null. */
 function readJobDraft(): JobInvoiceDraft | null {
@@ -73,6 +74,10 @@ export default function InvoiceForm() {
   const [dirty, setDirty] = useState(false);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pdfNote, setPdfNote] = useState<string | null>(null);
+  // CIS and the reverse charge (services/runtime/app/cis.py): available once Settings on the CIS page say so.
+  const [cisRate, setCisRate] = useState<number | null>(null); // null: CIS is not switched on (not a subcontractor)
+  const [cisOn, setCisOn] = useState(false);
+  const [reverseCharge, setReverseCharge] = useState(false);
 
   useEffect(() => {
     if (!fromJob) return;
@@ -85,7 +90,7 @@ export default function InvoiceForm() {
       setCustomer({ ...EMPTY_CUSTOMER, contact_id: d.proposal.customer_id, name: d.customer_name ?? "" });
       setLines(d.proposal.lines.map((l) => ({
         key: nextKey++, description: l.description, quantity: String(l.qty), unit: l.unit === "hour" ? "hours" : l.unit,
-        price: poundsInput(l.unit_price_pence), vat_code: l.vat_code as RtSalesVatCode, entry_ids: l.entry_ids,
+        price: poundsInput(l.unit_price_pence), vat_code: l.vat_code as RtSalesVatCode, entry_ids: l.entry_ids, materials: false,
       })));
     });
   }, [fromJob]);
@@ -103,6 +108,13 @@ export default function InvoiceForm() {
       });
     }).catch(() => setCustomers([]));
     runtime.invoiceProfile(account).then((p) => setTerms(p.terms_days)).catch(() => setTerms(null));
+    runtime.cis.overview(account).then((o) => {
+      setCisRate(o.settings.subcontractor ? o.rate : null);
+      if (!editId) {
+        setCisOn(o.settings.subcontractor);
+        setReverseCharge(o.settings.reverse_charge_default);
+      }
+    }).catch(() => setCisRate(null));
     if (!editId) return;
     runtime.invoice(account, editId).then((inv) => {
       if (inv.status !== "draft") return setLocked(`${inv.number} is ${inv.status}; only drafts can be changed.`);
@@ -113,9 +125,11 @@ export default function InvoiceForm() {
       setReference(inv.reference ?? "");
       setNotes(inv.notes ?? "");
       setJobId(inv.job_id);
+      setCisOn(Boolean(inv.cis));
+      setReverseCharge(Boolean(inv.reverse_charge));
       setLines(inv.lines.map((l) => ({
         key: nextKey++, description: l.description, quantity: String(l.quantity), unit: l.unit ?? "",
-        price: poundsInput(l.unit_price_pence), vat_code: l.vat_code, entry_ids: l.timesheet_entry_ids ?? [],
+        price: poundsInput(l.unit_price_pence), vat_code: l.vat_code, entry_ids: l.timesheet_entry_ids ?? [], materials: Boolean(l.materials),
       })));
       setDirty(false);
     }).catch((e) => setError((e as Error).message));
@@ -237,12 +251,24 @@ export default function InvoiceForm() {
 
   // Totals are the runtime's figures once saved; while typing they are a greyed preview.
   const showSaved = saved !== null && !dirty;
+  // Reverse charge: the VAT is the customer's to account for, so the invoice charges none (preview of the runtime's sums).
+  const previewTotals: LiveTotals = reverseCharge
+    ? { byCode: totals.byCode.map((g) => ({ ...g, vat: 0 })), net: totals.net, vat: 0, total: totals.net }
+    : totals;
   const shownTotals: LiveTotals = showSaved
     ? {
       byCode: saved!.vat_summary.map((g) => ({ code: g.vat_code, rate: g.vat_rate, net: g.net_pence, vat: g.vat_pence })),
       net: saved!.net_pence, vat: saved!.vat_pence, total: saved!.total_pence,
     }
-    : totals;
+    : previewTotals;
+  const rcVat = showSaved ? saved!.reverse_charge_vat_pence ?? 0 : reverseCharge ? totals.vat : 0;
+  const labour = lines.reduce((sum, l, n) => (l.materials ? sum : sum + (linePence(priced[n])?.net ?? 0)), 0);
+  const cisPreview = showSaved
+    ? saved!.cis ?? null
+    : cisOn && cisRate !== null
+      ? { rate: cisRate, deduction_pence: Math.floor(Math.max(labour, 0) * cisRate / 100), payable_pence: 0, labour_pence: labour }
+      : null;
+  const cisPayable = cisPreview ? (showSaved ? cisPreview.payable_pence : shownTotals.total - cisPreview.deduction_pence) : 0;
 
   function toDraft(): RtInvoiceDraft | string {
     if (!customer.name.trim()) return "Add the customer's name.";
@@ -255,7 +281,7 @@ export default function InvoiceForm() {
       if (p === null) return `Line ${n + 1}: unit price must be pounds and pence, e.g. 45.00.`;
       out.push({
         description: l.description.trim(), quantity: l.quantity.trim(), unit: l.unit.trim() || null, unit_price_pence: p, vat_code: l.vat_code,
-        timesheet_entry_ids: l.entry_ids,
+        timesheet_entry_ids: l.entry_ids, ...(cisOn && l.materials ? { materials: true } : {}),
       });
     }
     if (!out.length) return "Add at least one line.";
@@ -263,7 +289,7 @@ export default function InvoiceForm() {
     return {
       customer: { ...customer, name: customer.name.trim(), email: clean(customer.email), address: clean(customer.address), vrn: clean(customer.vrn) },
       issue_date: issueDate || null, due_date: dueDate || null, lines: out, reference: clean(reference), notes: clean(notes),
-      job_id: jobId,
+      job_id: jobId, cis: cisOn, reverse_charge: reverseCharge,
     };
   }
 
@@ -430,6 +456,31 @@ export default function InvoiceForm() {
         </div>
       </section>
 
+      <section className={card} aria-labelledby="inv-cis">
+        <h2 id="inv-cis" className="text-[17px] font-extrabold">CIS and VAT reverse charge</h2>
+        <div className="mt-2 space-y-2 text-[15px]">
+          {cisRate !== null ? (
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={cisOn} onChange={(e) => touch(() => setCisOn(e.target.checked))} />
+              CIS invoice: show the {cisRate}% deduction on labour (tick the materials lines below)
+            </label>
+          ) : (
+            <p className="text-sm text-muted">
+              Working for contractors under CIS? Switch it on on the <Link href="/cis" className="font-bold text-teal-dark">CIS page</Link> to show the deduction.
+            </p>
+          )}
+          <label className="flex items-center gap-2">
+            <input type="checkbox" checked={reverseCharge} onChange={(e) => touch(() => setReverseCharge(e.target.checked))} />
+            VAT reverse charge (building and construction services, s55A): no VAT charged, the customer accounts for it
+          </label>
+          {reverseCharge && (
+            <p className="text-xs text-muted">
+              Only for customers who are VAT- and CIS-registered and have not told you in writing that they are an end user; add their VAT number above.
+            </p>
+          )}
+        </div>
+      </section>
+
       <section className={card} aria-labelledby="inv-lines">
         <h2 id="inv-lines" className="text-[17px] font-extrabold">Lines</h2>
         {jobId && lines.some((l) => l.entry_ids.length > 0) && (
@@ -487,6 +538,12 @@ export default function InvoiceForm() {
                     </select>
                   </div>
                 </div>
+                {cisOn && (
+                  <label className="mt-2 flex items-center gap-2 text-sm">
+                    <input type="checkbox" checked={l.materials} onChange={(e) => setLine(l.key, { materials: e.target.checked })} />
+                    Materials (no CIS deduction)<span className="sr-only"> on line {n + 1}</span>
+                  </label>
+                )}
                 <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
                   {n > 0 && (
                     <button type="button" onClick={() => moveLine(l.key, -1)} aria-label={`Move line ${n + 1} up`} className="text-[13px] font-bold text-muted hover:underline">
@@ -522,6 +579,15 @@ export default function InvoiceForm() {
           <div className="flex justify-between pt-1"><dt className="font-bold">Net</dt><dd className="tabular-nums">{money(shownTotals.net)}</dd></div>
           <div className="flex justify-between"><dt className="font-bold">VAT</dt><dd className="tabular-nums">{money(shownTotals.vat)}</dd></div>
           <div className="flex justify-between text-[17px]"><dt className="font-extrabold">Total</dt><dd className="font-extrabold tabular-nums">{money(shownTotals.total)}</dd></div>
+          {rcVat > 0 && (
+            <div className="flex justify-between text-muted"><dt>VAT the customer accounts for (reverse charge)</dt><dd className="tabular-nums">{money(rcVat)}</dd></div>
+          )}
+          {cisPreview && (
+            <>
+              <div className="flex justify-between text-muted"><dt>Less CIS deduction {cisPreview.rate}% of labour</dt><dd className="tabular-nums">−{money(cisPreview.deduction_pence)}</dd></div>
+              <div className="flex justify-between font-bold"><dt>Payable after CIS</dt><dd className="tabular-nums">{money(cisPayable)}</dd></div>
+            </>
+          )}
         </dl>
         {showSaved ? (
           <p className="mt-2 text-xs text-muted">Totals from your last save. Edit the lines to re-price them.</p>

@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S019",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Farnborough Fortitude Ltd",
+  "contractor_ref": "997/JW36553",
+  "subcontractor_name": "Smooth Surface Co",
+  "subcontractor_utr": "8347887838",
+  "verification_number": null,
+  "tax_month_end": "2026-12-05",
+  "gross_amount": 8428.5,
+  "materials": 3177.9,
+  "amount_liable": 5250.6,
+  "deduction": 1050.12,
+  "net_paid": 7378.38,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 842850,
+  "materials": 317790,
+  "deduction": 105012,
+  "correct_deduction": 105012
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

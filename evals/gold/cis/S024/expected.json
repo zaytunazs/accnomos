@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S024",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Kestrel Kinetic Ltd",
+  "contractor_ref": "743/KT36983",
+  "subcontractor_name": "Colorful Canvas Decorators",
+  "subcontractor_utr": "6492083124",
+  "verification_number": "V1216379241DE",
+  "tax_month_end": "2026-06-05",
+  "gross_amount": 551.3,
+  "materials": 181.22,
+  "amount_liable": 370.08,
+  "deduction": 111.02,
+  "net_paid": 440.28,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 55130,
+  "materials": 18122,
+  "deduction": 11102,
+  "correct_deduction": 11102
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}

@@ -90,30 +90,48 @@ def test_quarters_of_the_tax_year() -> None:
 # --------------------------------------------------------------------------- #
 
 
-def test_one_rates_table_with_hmrc_rates() -> None:
-    assert {k: (r.first_pence, r.after_pence, r.threshold_miles) for k, r in m.RATES.items()} == {
+def test_rates_by_tax_year_with_hmrc_rates() -> None:
+    def table(tax_year: str) -> dict[str, tuple[int, int, int | None]]:
+        return {k: (r.first_pence, r.after_pence, r.threshold_miles) for k, r in m.rates_for(tax_year).items()}
+
+    assert table("2025-26") == {
         "car": (45, 25, 10_000),
         "van": (45, 25, 10_000),
         "motorcycle": (24, 24, None),
         "bicycle": (20, 20, None),
     }
+    assert table("2024-25") == table("2025-26")  # 2025-26 and earlier at the old rates
+    assert table("2026-27") == {
+        "car": (55, 25, 10_000),
+        "van": (55, 25, 10_000),
+        "motorcycle": (24, 24, None),
+        "bicycle": (20, 20, None),
+    }
+    assert table("2027-28") == table("2026-27")  # 2026-27 onwards at the new ones
+
+
+def test_rate_follows_the_journey_date_across_5_april() -> None:
+    golf = car()
+    old, new = m.allowances([trip(golf, "2026-04-05", 100.0), trip(golf, "2026-04-06", 100.0)], [golf])
+    assert old.pence == 4_500  # 100 × 45p in 2025-26
+    assert new.pence == 5_500  # 100 × 55p in 2026-27
 
 
 def test_journey_crossing_10000_miles_is_split() -> None:
     golf = car()
     *before, crossing = m.allowances([*trips(golf, "2026-05-01", 9990.0), trip(golf, "2026-06-01", 20.5)], [golf])
-    assert sum(a.pence for a in before) == 449_550  # 9,990 × 45p
+    assert sum(a.pence for a in before) == 549_450  # 9,990 × 55p
     assert (crossing.first_tenths, crossing.after_tenths) == (100, 105)
-    assert crossing.pence == 713  # 10 × 45p + 10.5 × 25p = 712.5p, rounded half up
+    assert crossing.pence == 813  # 10 × 55p + 10.5 × 25p = 812.5p, rounded half up
     assert m.threshold_crossed_on([*before, crossing]) == date(2026, 6, 1)
 
 
-def test_exactly_10000_miles_is_all_at_45p_and_the_next_mile_at_25p() -> None:
+def test_exactly_10000_miles_is_all_at_55p_and_the_next_mile_at_25p() -> None:
     golf = car()
     rows = m.allowances(
         [trip(golf, "2026-05-01", 1000.0, id=f"{i:032x}") for i in range(10)] + [trip(golf, "2026-05-02", 1.0)], [golf]
     )
-    assert sum(a.pence for a in rows[:10]) == 450_000
+    assert sum(a.pence for a in rows[:10]) == 550_000
     assert m.threshold_crossed_on(rows[:10]) is None
     assert rows[10].pence == 25 and m.threshold_crossed_on(rows) == date(2026, 5, 2)
 
@@ -134,16 +152,16 @@ def test_threshold_is_shared_by_cars_and_vans_only() -> None:
     def total(v: m.Vehicle, attr: str = "pence") -> int:
         return sum(getattr(a, attr) for a in rows if a.entry.vehicle_id == v.id)
 
-    assert total(golf) == 270_000
+    assert total(golf) == 330_000
     assert (total(van, "first_tenths"), total(van, "after_tenths")) == (40_000, 10_000)
-    assert total(van) == 4000 * 45 + 1000 * 25
+    assert total(van) == 4000 * 55 + 1000 * 25
     assert total(bike) == 2000 and total(moto) == 2400
     assert total(works) == 0  # business vehicle: actual costs instead
 
 
 def test_tenth_of_a_mile_rounds_half_up() -> None:
     golf = car()
-    assert m.allowances([trip(golf, "2026-05-01", 0.1)], [golf])[0].pence == 5  # 4.5p
+    assert m.allowances([trip(golf, "2026-05-01", 0.1)], [golf])[0].pence == 6  # 5.5p
 
 
 def test_miles_go_in_tenths() -> None:
@@ -508,9 +526,9 @@ async def test_books_xlsx_vehicles_sheet(books: Books, fake: FakeStorageProvider
     ws = load_workbook(io.BytesIO(fake.files["Books.xlsx"]))["Vehicles"]
     assert ws["F1"].value == f"Business miles {ty}" and ws.freeze_panes == "A2"
     rows = {r[0]: r for r in ws.iter_rows(min_row=2, max_row=4, values_only=True)}
-    assert rows["Golf"][1:8] == ("AB12 CDE", "car", "personal", "yes", 100, 1, 45)
+    assert rows["Golf"][1:8] == ("AB12 CDE", "car", "personal", "yes", 100, 1, m.rates_for(ty)["car"].first_pence)
     assert rows["Transit"][7] is None and rows["Transit"][8] == 0
-    assert rows["Total"][5:8] == (140, 2, 45)
+    assert rows["Total"][5:8] == (140, 2, m.rates_for(ty)["car"].first_pence)
     assert any("ask your accountant" in (r[0] or "") for r in ws.iter_rows(min_row=5, values_only=True))
 
     fake.files[m.VEHICLES] = b'[{"name": ""}]'  # hand-edited and broken: the sheet is empty, the rest still builds

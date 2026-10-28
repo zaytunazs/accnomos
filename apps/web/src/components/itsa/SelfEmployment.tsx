@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import Explain from "@/components/Explain";
 import { getMsal, msalConfigured } from "@/lib/msal";
@@ -241,7 +242,7 @@ export default function SelfEmployment() {
       try {
         const saved = await itsaBooks.saveReceipt(account, {
           kind: "cumulative", tax_year: taxYear, nino: n, business_id: businessId, period_end: summary.period_end,
-          sent: summary.hmrc_body, hmrc: env, confirmed_at: confirmedAt,
+          sent: summary.hmrc_body, hmrc: env, confirmed_at: confirmedAt, basis: summary.accounting_basis,
         });
         setSubmitted({ env, path: saved.path, matches: saved.matches_books });
       } catch (e) {
@@ -291,6 +292,7 @@ export default function SelfEmployment() {
     return <p className="text-[15px] text-muted">Sign in with Microsoft to connect your books, then connect HMRC here.</p>;
 
   const obligation = obligations?.find((o) => o.periodEndDate === periodEnd) ?? null;
+  const cash = summary?.accounting_basis === "cash";
   const yearEnded = todayIso() > `${Number(taxYear.slice(0, 4)) + 1}-04-05`;
 
   return (
@@ -432,10 +434,20 @@ export default function SelfEmployment() {
 
       {account && summary && (
         <section aria-labelledby="itsa-figures" className={card}>
-          <h2 id="itsa-figures" className="text-lg font-extrabold">
-            Your figures, {day(summary.period_start)} to {day(summary.period_end)}
-          </h2>
-          <p className="mt-1 text-sm text-muted">Worked out by code from the entries you approved. {summary.basis}</p>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 id="itsa-figures" className="text-lg font-extrabold">
+              Your figures, {day(summary.period_start)} to {day(summary.period_end)}
+            </h2>
+            <span className="flex items-center gap-2 text-[13px]">
+              <span aria-label="Accounting basis" className="rounded-full border border-teal bg-teal-tint px-3 py-1 font-bold text-teal-dark">
+                {summary.basis_label}
+              </span>
+              <Link href="/settings#settings-self-employed" className="font-bold text-teal-dark underline underline-offset-2">Change</Link>
+            </span>
+          </div>
+          <p className="mt-1 text-sm text-muted">
+            Worked out by code from the entries you approved{cash ? " and the payments recorded against them" : ""}. {summary.basis}
+          </p>
           <table aria-label="Self-employment figures" className="mt-3 w-full text-sm">
             <thead>
               <tr className="text-left text-muted">
@@ -449,11 +461,24 @@ export default function SelfEmployment() {
                   <td className="py-2">
                     {f.lines.length ? (
                       <details>
-                        <summary className="cursor-pointer">{f.label} <span className="text-muted">({f.lines.length} {f.lines.length === 1 ? "entry" : "entries"})</span></summary>
-                        <ul aria-label={`Entries behind ${f.label}`} className="mt-1 flex flex-col gap-1 text-[13px] text-muted">
+                        <summary className="cursor-pointer">
+                          {f.label}{" "}
+                          <span className="text-muted">
+                            ({f.lines.length} {cash ? (f.lines.length === 1 ? "payment" : "payments") : f.lines.length === 1 ? "entry" : "entries"})
+                          </span>
+                        </summary>
+                        <ul
+                          aria-label={`${cash ? "Payments" : "Entries"} behind ${f.label}`}
+                          className="mt-1 flex flex-col gap-1 text-[13px] text-muted"
+                        >
                           {f.lines.map((c, i) => (
                             <li key={`${c.event_id}-${i}`}>
-                              {day(c.date)} · {c.counterparty ?? c.kind} · {c.account} · {gbp(c.pence)}{c.disallowable ? " · disallowable" : ""}
+                              {day(c.date)} · {cash && c.paid_how ? `${c.paid_how}${c.document_ref ? ` for ${c.document_ref}` : ""} · ` : ""}
+                              {c.counterparty ?? c.kind} · {c.account} · {gbp(c.pence)}
+                              {cash && c.money_pence != null && c.document_gross_pence != null && c.money_pence !== c.document_gross_pence
+                                ? ` (${gbp(c.money_pence)} of ${gbp(c.document_gross_pence)} paid)`
+                                : ""}
+                              {c.disallowable ? " · disallowable" : ""}
                             </li>
                           ))}
                         </ul>
@@ -476,6 +501,18 @@ export default function SelfEmployment() {
           {summary.warnings.map((w) => (
             <p key={w} className="mt-2 text-[13px] text-muted">{w}</p>
           ))}
+          {summary.left_out.length > 0 && (
+            <details className="mt-2 text-[13px]">
+              <summary className="cursor-pointer font-semibold text-muted">Not counted on the cash basis ({summary.left_out.length})</summary>
+              <ul aria-label="Not counted on the cash basis" className="mt-1 flex flex-col gap-1 text-muted">
+                {summary.left_out.map((x, i) => (
+                  <li key={`${x.event_id ?? x.description}-${i}`}>
+                    {day(x.date)} · {x.description} · {gbp(x.pence)}: {x.reason}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           <div className="mt-3">
             <Downloads account={account} kind="sa103" query={{ tax_year: summary.tax_year, period_end: summary.period_end }} label="this summary" />
           </div>
@@ -488,8 +525,8 @@ export default function SelfEmployment() {
               <label className="flex items-start gap-2 text-[15px]">
                 <input type="checkbox" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} className="mt-1" />
                 <span>
-                  I have checked these figures. Send them to HMRC (sandbox) as my update for {day(summary.period_start)} to{" "}
-                  {day(summary.period_end)}.
+                  I have checked these figures ({summary.basis_label.toLowerCase()}). Send them to HMRC (sandbox) as my update
+                  for {day(summary.period_start)} to {day(summary.period_end)}.
                 </span>
               </label>
               <button type="button" onClick={submit} disabled={!confirmed || !summary.can_submit || !!busy} className={`${primary} mt-3`}>
@@ -573,6 +610,7 @@ export default function SelfEmployment() {
                 <span>
                   {r.kind === "cumulative" ? `Update to ${day(r.period_end ?? "")}` : r.kind === "calculation" ? "HMRC calculation" : "Final declaration"}
                   {" · "}saved {new Date(r.saved_at).toLocaleString("en-GB")}
+                  {r.accounting_basis ? ` · ${r.accounting_basis === "cash" ? "cash basis" : "traditional accounting"}` : ""}
                   {r.matches_books === false ? " · differed from the books" : ""}
                 </span>
                 {r.kind === "cumulative" && <Downloads account={account} kind="quarterly" query={{ tax_year: taxYear, path: r.path }} label="update" />}
