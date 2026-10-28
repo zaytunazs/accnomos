@@ -70,6 +70,8 @@ export interface RtProposal {
   journal_draft: RtJournalLine[];
   model: string;
   elapsed_s: number;
+  /** Which provider of the server's chain read it (services/runtime/app/ai/chain.py). */
+  served_by?: RtServedBy | null;
   /** How the photo was cropped before extraction; "none" = original used. Chip: crop.note. */
   crop?: { method: "sam" | "code" | "none"; box: [number, number, number, number] | null; note: string } | null;
   verification?: RtVerification | null;
@@ -135,7 +137,16 @@ export interface RtFieldAgreement {
   verifier: string | number | null;
   agree: boolean;
 }
+/** Who served an AI result: provider (modal | meta | spark | baseten | local | key | test), model, time. */
+export interface RtServedBy {
+  provider: string;
+  model: string;
+  latency_ms: number;
+  fell_back_from: string[];
+}
+
 export interface RtVerification {
+  served_by?: RtServedBy | null;
   fields: Record<string, RtFieldAgreement>;
   agree_all: boolean;
   model: string;
@@ -1578,6 +1589,7 @@ export interface RtAskAnswer {
   model: string;
   period: RtAskPeriod;
   fallback_reason: string | null; // the model's words were replaced by the facts, quoted by code
+  served_by?: RtServedBy | null; // the provider that wrote the words (none when code did)
   proposed_action?: RtProposedAction | null; // an instruction: show the card; nothing happens until Approve
   clarification?: RtClarification | null; // an instruction Ask needs one more detail for
 }

@@ -1,5 +1,6 @@
 /** Runtime proposal → the Review card's display model: plain English only, never a raw check code. */
 import { gbp, ukDate, type RtProposal } from "./runtime";
+import { metaModelName, servedLine } from "./meta-models";
 import type { Proposal as UiProposal } from "./sample-review";
 
 const codeMeaning: Record<string, string> = {
@@ -91,7 +92,13 @@ export function toUi(p: RtProposal): UiProposal {
     supplier: x.supplier_name,
     total: gbp(x.gross_total),
     confidence: `Confidence ${Math.round(x.confidence * 100)}%`,
-    source: p.mileage_claim ? "Calculated by code from your mileage log" : local ? "Read by Glimmer 30B on your machine" : "Read by Muse Spark",
+    source: p.mileage_claim
+      ? "Calculated by code from your mileage log"
+      : p.served_by && ["modal", "meta", "spark"].includes(p.served_by.provider)
+        ? `Read by ${metaModelName(p.served_by.model)}` // the server's chain: the card's line says where
+        : local
+          ? "Read by Glimmer 30B on your machine"
+          : "Read by Muse Spark",
     date: ukDate(x.date),
     vatNumber: x.supplier_vat_number ? `${x.supplier_vat_number} ✓` : "none shown",
     net: gbp(x.net_total),
@@ -100,6 +107,7 @@ export function toUi(p: RtProposal): UiProposal {
     lines,
     reviewerNote: why,
     failedChecks,
+    servedLine: servedLine(p),
     ...withCrop(verifierView(p), `checks by code: ${verified.filter((c) => c.ok).length} of ${verified.length} passed · ${p.model} · ${p.elapsed_s.toFixed(1)} s${cropped}`),
   };
 }

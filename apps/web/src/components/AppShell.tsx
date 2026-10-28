@@ -81,6 +81,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
               <Link href="/settings" className="hover:text-teal-dark hover:underline underline-offset-2">
                 Settings
               </Link>
+              <Link href="/models" className="hover:text-teal-dark hover:underline underline-offset-2">
+                Meta models at work
+              </Link>
             </nav>
           </footer>
         </main>

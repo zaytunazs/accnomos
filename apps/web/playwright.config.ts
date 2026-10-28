@@ -38,7 +38,14 @@ export default defineConfig({
       command: `${python} -m uvicorn app.main:app --app-dir ../../services/runtime --host 127.0.0.1 --port ${RUNTIME_PORT} --no-access-log`,
       url: `${RUNTIME_URL}/health`,
       // RATE_LIMIT_PER_MIN=0: one browser on 127.0.0.1 makes well over 60 calls a minute across the suite.
-      env: { ACCNOMOS_TEST_MODE: "1", PORT: String(RUNTIME_PORT), CORS_ORIGINS: WEB_URL, RATE_LIMIT_PER_MIN: "0" },
+      // AI_PROVIDERS: requests without an AI choice take the chain; in test mode every provider is the stub AI.
+      env: {
+        ACCNOMOS_TEST_MODE: "1",
+        PORT: String(RUNTIME_PORT),
+        CORS_ORIGINS: WEB_URL,
+        RATE_LIMIT_PER_MIN: "0",
+        AI_PROVIDERS: "modal,meta,spark",
+      },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
       timeout: 60_000,

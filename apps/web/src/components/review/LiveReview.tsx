@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { warmServerAi } from "@/lib/meta-models";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import ReviewQueue, { type ReviewAdapter } from "@/components/review/ReviewQueue";
@@ -124,6 +125,7 @@ export default function LiveReview() {
         const acct = msal.getActiveAccount() ?? msal.getAllAccounts()[0] ?? null;
         if (!acct) return setMode("demo");
         setAccount(acct);
+        warmServerAi(); // a cold Modal container starts now, not on the first upload
         await load(acct);
         setMode("live");
       } catch (e) {
