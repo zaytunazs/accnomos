@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/settings.dart';
 import '../theme.dart';
 import 'audit_screen.dart';
 import 'bank_screen.dart';
@@ -8,13 +9,31 @@ import 'files_screen.dart';
 import 'invoices_screen.dart';
 import 'jobs_screen.dart';
 import 'payroll_screen.dart';
+import 'personal_screen.dart';
 import 'reports_screen.dart';
 import 'vehicles_screen.dart';
 
 /// "More" tab: keeps the bottom bar at five items while the new thin
-/// clients live one tap away.
-class MoreScreen extends StatelessWidget {
+/// clients live one tap away. The Personal entry only shows while
+/// Settings › Personal has "Show personal finances" on.
+class MoreScreen extends StatefulWidget {
   const MoreScreen({super.key});
+
+  @override
+  State<MoreScreen> createState() => _MoreScreenState();
+}
+
+class _MoreScreenState extends State<MoreScreen> {
+  bool _showPersonal = false;
+
+  @override
+  void initState() {
+    super.initState();
+    AppSettings.load().then((settings) {
+      if (!mounted) return;
+      setState(() => _showPersonal = settings.showPersonalFinances);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,56 +49,63 @@ class MoreScreen extends StatelessWidget {
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-        children: const [
-          _Entry(
+        children: [
+          const _Entry(
             icon: Icons.folder_outlined,
             title: 'Files',
             note: 'Your Accnomos folder in OneDrive',
             screen: FilesScreen(),
           ),
-          _Entry(
+          const _Entry(
             icon: Icons.people_outline,
             title: 'Contacts',
             note: 'Balances and statements',
             screen: ContactsScreen(),
           ),
-          _Entry(
+          const _Entry(
             icon: Icons.description_outlined,
             title: 'Invoices',
             note: 'Raise, preview and send',
             screen: InvoicesScreen(),
           ),
-          _Entry(
+          const _Entry(
             icon: Icons.work_outline,
             title: 'Jobs',
             note: 'Jobs and timesheets',
             screen: JobsScreen(),
           ),
-          _Entry(
+          const _Entry(
             icon: Icons.directions_car_outlined,
             title: 'Vehicles',
             note: 'Mileage and allowance',
             screen: VehiclesScreen(),
           ),
-          _Entry(
+          const _Entry(
             icon: Icons.account_balance_outlined,
             title: 'Bank',
             note: 'Statements, unmatched lines and rules',
             screen: BankScreen(),
           ),
-          _Entry(
+          const _Entry(
             icon: Icons.payments_outlined,
             title: 'Payroll',
             note: 'Pay runs — estimates, read only',
             screen: PayrollScreen(),
           ),
-          _Entry(
+          if (_showPersonal)
+            const _Entry(
+              icon: Icons.savings_outlined,
+              title: 'Personal',
+              note: 'Budgets, bills and savings goals',
+              screen: PersonalScreen(),
+            ),
+          const _Entry(
             icon: Icons.bar_chart_outlined,
             title: 'Reports',
             note: 'Profit and loss, aged balances, VAT and trend',
             screen: ReportsScreen(),
           ),
-          _Entry(
+          const _Entry(
             icon: Icons.history_outlined,
             title: 'Audit trail',
             note: 'Who did what in your books — read only',
