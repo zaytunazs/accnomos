@@ -6,8 +6,10 @@ twice in one request pay twice. Two layers cut that:
 1. Per-request memoisation. Each ``Books`` built with a ``cache_key`` wraps its
    storage in ``RequestMemoStorage`` (see ``Books.__init__``): repeated ``list``/``read``
    of the same path within one request hits the memo, and writes/moves drop
-   only the paths they change. A ``Books`` lives for one request, so nothing
-   mutable is ever shared between requests here.
+   only the paths they change. A miss is memoised too (a file or folder that is
+   not there costs one round trip per request, not one per look); any write,
+   move or new folder forgets every remembered miss. A ``Books`` lives for one
+   request, so nothing mutable is ever shared between requests here.
 2. Per-user immutable cache. Posted ledger events
    (``_System/Ledger/events/...``) are append-only: a file, once written, never
    changes. Their bytes are kept in a small in-process LRU keyed by
@@ -18,7 +20,7 @@ twice in one request pay twice. Two layers cut that:
 
 Caching rules (also in ``docs/ARCHITECTURE.md``):
 
-* per request: memoise every repeated read; list each folder once;
+* per request: memoise every repeated read, misses included; list each folder once;
 * across requests: only immutable event files, only for the same user;
 * never cache across users; never cache mutable files beyond one request.
 """
@@ -28,6 +30,8 @@ from __future__ import annotations
 import asyncio
 import hashlib
 from collections import OrderedDict
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 from accnomos_connectors.base import FileRef, StorageProvider
 
@@ -125,7 +129,15 @@ class RequestMemoStorage(StorageProvider):
         self.user_key = user_key
         self.lists: dict[str, list[FileRef]] = {}
         self.reads: dict[str, bytes] = {}
+        # Paths a read or list found missing in this request. Any write, move or ensure_folder clears both sets:
+        # it may have created the file or a folder above it, and being conservative costs one round trip at most.
+        self.missing_reads: set[str] = set()
+        self.missing_lists: set[str] = set()
         self._gate = asyncio.Semaphore(MAX_IN_FLIGHT)
+        # Round trips in flight, by (kind, path): concurrent looks at the same path share one. `_epoch` counts the
+        # changes made through this view; a result that lands after one is handed back but not memoised.
+        self._flights: dict[tuple[str, str], asyncio.Future[Any]] = {}
+        self._epoch = 0
 
     @staticmethod
     def _parent(path: str) -> str:
@@ -138,14 +150,48 @@ class RequestMemoStorage(StorageProvider):
         return await self.inner.ensure_root()
 
     async def ensure_folder(self, path: str) -> FileRef:
+        self._forget_misses()
         return await self.inner.ensure_folder(path)
+
+    async def _shared[T](self, kind: str, key: str, fetch: Callable[[], Awaitable[T]]) -> T:
+        """`fetch()` once for every concurrent look at (kind, key). A caller that is cancelled does not cancel the
+        round trip the others are waiting for."""
+        flight = self._flights.get((kind, key))
+        if flight is None:
+
+            async def run() -> T:
+                try:
+                    async with self._gate:
+                        return await fetch()
+                finally:
+                    if self._flights.get((kind, key)) is flight:
+                        del self._flights[(kind, key)]
+
+            flight = asyncio.ensure_future(run())
+            self._flights[(kind, key)] = flight
+            flight.add_done_callback(lambda f: f.cancelled() or f.exception())  # never "exception not retrieved"
+        return await asyncio.shield(flight)
 
     async def list(self, path: str) -> list[FileRef]:
         key = _norm(path)
-        if key not in self.lists:
-            async with self._gate:
-                self.lists[key] = await self.inner.list(path)
-        return list(self.lists[key])
+        if key in self.missing_lists:
+            raise FileNotFoundError(path)
+        if key in self.lists:
+            return list(self.lists[key])
+        epoch = self._epoch
+
+        async def fetch() -> list[FileRef]:
+            try:
+                got = await self.inner.list(path)
+            except FileNotFoundError:
+                if self._epoch == epoch:
+                    self.missing_lists.add(key)
+                raise
+            if self._epoch == epoch:
+                self.lists[key] = got
+            return got
+
+        return list(await self._shared("list", key, fetch))
 
     async def read(self, path: str) -> bytes:
         key = _norm(path)
@@ -154,33 +200,63 @@ class RequestMemoStorage(StorageProvider):
             hit = get_cached(self.user_key, key)
             if hit is not None:
                 self.reads[key] = hit
-        if hit is None:
-            async with self._gate:
-                hit = await self.inner.read(path)
-            self.reads[key] = hit
+        if hit is not None:
+            return hit
+        if key in self.missing_reads:
+            raise FileNotFoundError(path)
+        epoch = self._epoch
+
+        async def fetch() -> bytes:
+            try:
+                got = await self.inner.read(path)
+            except FileNotFoundError:
+                if self._epoch == epoch:
+                    self.missing_reads.add(key)
+                raise
+            if self._epoch == epoch:
+                self.reads[key] = got
             if self.user_key is not None and is_immutable(key):
-                put_cached(self.user_key, key, hit)
-        return hit
+                put_cached(self.user_key, key, got)  # immutable: safe to keep whatever changed meanwhile
+            return got
+
+        return await self._shared("read", key, fetch)
 
     # -- writes: forget what they change --------------------------------- #
 
+    def _changed(self) -> None:
+        """Something changed through this view: results still in flight are not memoised, new looks go out afresh."""
+        self._epoch += 1
+        self._flights.clear()
+
+    def _forget_misses(self) -> None:
+        self._changed()
+        self.missing_reads.clear()
+        self.missing_lists.clear()
+
     def _forget_read(self, path: str) -> None:
+        self._changed()
         key = _norm(path)
         self.reads.pop(key, None)
+        self.missing_reads.discard(key)
         if self.user_key is not None:
             drop_cached(self.user_key, key)
 
     def _forget_list(self, folder: str) -> None:
+        self._changed()
         self.lists.pop(_norm(folder), None)
 
     def forget(self, path: str) -> None:
         """Drop the memo for one file and its folder listing, so the next stat and read reach storage.
         Books._update calls this before a read-modify-write: the bytes it changes and the etag it sends
         must be what storage holds now, or another device's write could be lost."""
+        self._changed()
         self.reads.pop(_norm(path), None)
+        self.missing_reads.discard(_norm(path))
         self._forget_list(self._parent(path))
+        self.missing_lists.discard(self._parent(path))
 
     async def write(self, path: str, data: bytes, *, if_match: str | None = None, create_only: bool = False) -> FileRef:
+        self._forget_misses()  # first, whatever happens: a refused create-only write means the file is there now
         try:
             ref = await self.inner.write(path, data, if_match=if_match, create_only=create_only)
         except BaseException:
@@ -199,6 +275,7 @@ class RequestMemoStorage(StorageProvider):
         return ref
 
     async def move(self, path: str, new_path: str) -> FileRef:
+        self._forget_misses()
         ref = await self.inner.move(path, new_path)
         self._forget_read(path)
         self._forget_read(new_path)

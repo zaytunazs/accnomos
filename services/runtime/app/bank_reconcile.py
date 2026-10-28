@@ -279,20 +279,24 @@ async def reconcile_lines(
 
     stored = await books.stored_bank_lines() if lines is None else lines
     accounts = sorted(set(CATEGORY_ACCOUNTS.values()) | {SUNDRY})
-    rows: list[ReconcileRow] = []
-    ledger = None
-    for line in stored:
-        if line.resolved:
-            continue
-        if ledger is None:
-            ledger = await load_ledger(books)
-        # The three code suggestions are independent; the model one stays last (it is the only one with side effects
-        # on latency, one model call per line when asked).
-        exact, refund, rule = await asyncio.gather(
+    open_lines = [line for line in stored if not line.resolved]
+    if not open_lines:
+        return []
+    ledger = await load_ledger(books)
+
+    async def code_suggestions(line: Any) -> tuple[Any, Any, Any]:
+        # The three code suggestions are independent, and so is each line: they read the same files, which the
+        # request memo serves after the first look, so all lines go out together.
+        return await asyncio.gather(
             suggest_exact(books, line),
             suggest_refund(books, line, ledger),
             suggest_rule(books, line),
         )
+
+    per_line = await asyncio.gather(*(code_suggestions(line) for line in open_lines))
+    rows: list[ReconcileRow] = []
+    for line, (exact, refund, rule) in zip(open_lines, per_line, strict=True):
+        # The model one stays last and one line at a time (one model call per line, only when asked).
         ai = await suggest_ai(line, cfg, accounts) if with_ai and cfg is not None else None
         if exact is None and refund is None and rule is None and ai is None:
             continue

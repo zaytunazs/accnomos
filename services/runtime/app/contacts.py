@@ -165,15 +165,16 @@ async def load_ledger(books: Books) -> Ledger:
     from app.credit_notes import list_credit_notes  # both import this module
     from app.invoicing import list_invoices
 
-    # The seven reads are independent and go out together, in two waves: invoices and credit notes (for refs),
-    # then events, proposals, bank lines, payments and credit uses.
-    invoices, credit_notes = await asyncio.gather(list_invoices(books), list_credit_notes(books))
-    events, proposals, bank_lines, records, uses = await asyncio.gather(
-        books.list_events(),
-        books.list_proposals(),
-        books.stored_bank_lines(),
-        load_records(books),
-        load_uses(books),
+    # The seven reads are independent and go out together in one wave (the request memo caps how many are in flight).
+    (invoices, credit_notes), (events, proposals, bank_lines, records, uses) = await asyncio.gather(
+        asyncio.gather(list_invoices(books), list_credit_notes(books)),
+        asyncio.gather(
+            books.list_events(),
+            books.list_proposals(),
+            books.stored_bank_lines(),
+            load_records(books),
+            load_uses(books),
+        ),
     )
     refs: dict[str, str] = {}
     dues: dict[str, date] = {}

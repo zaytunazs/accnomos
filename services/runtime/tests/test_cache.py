@@ -195,3 +195,64 @@ async def test_a_second_request_by_the_same_user_reads_no_event_file_twice() -> 
     third = Books(raw, cache_key=cache.user_cache_key("token-b"))  # another user pays for their own reads
     assert len(await third.list_events()) == 6
     assert len([p for p in raw.read_paths if cache.is_immutable(p)]) == 12
+
+
+async def test_a_missing_file_costs_one_round_trip_per_request() -> None:
+    raw = CountingStorage()
+    books = Books(raw, cache_key="user-a")
+    for _ in range(3):
+        assert await books.read_json("_System/Payments/credit_uses.json", []) == []
+        assert await books.list_files("03 Sales/credit-notes") == []
+    assert (raw.reads, raw.lists) == (1, 1)
+    assert await Books(raw, cache_key="user-a").read_json("_System/Payments/credit_uses.json", []) == []
+    assert raw.reads == 2  # misses are per request: the next request looks again
+
+
+async def test_a_write_forgets_remembered_misses() -> None:
+    raw = CountingStorage()
+    books = Books(raw, cache_key="user-a")
+    assert await books.read_json("_System/Payments/credit_uses.json", None) is None
+    assert await books.list_files("_System/Payments") == []
+    await books.write_json("_System/Payments/payments.json", [])  # creates the folder: the listing miss is stale
+    assert [f.name for f in await books.list_files("_System/Payments")] == ["payments.json"]
+    await raw.write("_System/Payments/credit_uses.json", b"[1]")  # another device, behind the memo's back
+    await books.write_json("_System/notes.json", [])  # any write: misses are forgotten, conservatively
+    assert await books.read_json("_System/Payments/credit_uses.json", None) == [1]
+
+
+async def test_concurrent_looks_at_one_path_share_a_round_trip() -> None:
+    import asyncio
+
+    raw = CountingStorage()
+    await raw.write("_System/Contacts/contacts.json", b"[]")
+    raw.reads = 0
+    books = Books(raw, cache_key="user-a")
+    got = await asyncio.gather(*(books.read_json("_System/Contacts/contacts.json", None) for _ in range(5)))
+    listed = await asyncio.gather(*(books.list_files("_System/Contacts") for _ in range(5)))
+    missing = await asyncio.gather(*(books.read_json("_System/nope.json", "x") for _ in range(5)))
+    assert got == [[]] * 5 and missing == ["x"] * 5 and all(len(x) == 1 for x in listed)
+    assert (raw.reads, raw.lists) == (2, 1)
+
+
+async def test_a_read_that_lands_after_a_write_is_not_memoised() -> None:
+    """A read in flight while this request writes the same file returns what it read, but the memo keeps the write."""
+    import asyncio
+
+    gate, started = asyncio.Event(), asyncio.Event()
+
+    class Slow(FakeStorageProvider):
+        async def read(self, path: str) -> bytes:
+            data = await super().read(path)
+            started.set()
+            await gate.wait()
+            return data
+
+    raw = Slow()
+    await raw.write("_System/notes.json", b'["old"]')
+    books = Books(raw, cache_key="user-a")
+    slow = asyncio.ensure_future(books.read_json("_System/notes.json", None))
+    await started.wait()
+    await books.write_json("_System/notes.json", ["new"])
+    gate.set()
+    assert await slow == ["old"]
+    assert await books.read_json("_System/notes.json", None) == ["new"]
