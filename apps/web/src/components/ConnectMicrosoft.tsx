@@ -5,9 +5,10 @@ import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, isPersonalAccount, msalConfigured, SIGN_IN_SCOPES } from "@/lib/msal";
 import { setupBooksFolder, type DriveItem, type SetupProgress } from "@/lib/graph";
+import { addingFrom } from "@/lib/profiles";
 import { useNextParam, withNext } from "@/components/connect/ConnectSteps";
 
-type Phase = "loading" | "signed-out" | "signed-in" | "creating" | "ready" | "error";
+type Phase = "loading" | "signed-out" | "adding" | "signed-in" | "creating" | "ready" | "error";
 
 /** Never a raw error on screen: one sentence the user can act on. */
 function friendlySignInError(e: unknown): string {
@@ -53,7 +54,9 @@ export default function ConnectMicrosoft() {
       const acct = result?.account ?? msal.getActiveAccount() ?? msal.getAllAccounts()[0] ?? null;
       if (acct) msal.setActiveAccount(acct);
       setAccount(acct);
-      setPhase(acct ? "signed-in" : "signed-out");
+      // "Add another account / business" (lib/profiles.ts) lands here still signed in to the one it started from.
+      const adding = acct && new URLSearchParams(window.location.search).get("add") === "1" && addingFrom() === acct.homeAccountId;
+      setPhase(adding ? "adding" : acct ? "signed-in" : "signed-out");
     })();
   }, []);
 
@@ -115,7 +118,24 @@ export default function ConnectMicrosoft() {
         </button>
       )}
 
-      {account && phase !== "signed-out" && (
+      {phase === "adding" && account && (
+        <div className="rounded-2xl border border-[#E3E1D8] bg-white p-4">
+          <h2 className="text-[15px] font-extrabold text-[#1B1F24]">Add another account or business</h2>
+          <p className="mt-1 text-sm leading-relaxed text-[#4B5159]">
+            Each company, sole-trader business or set of personal finances has its own Microsoft account, so its books
+            are in its own OneDrive. Sign in with the other account; {account.username} stays signed in, and you can
+            switch between them from the menu at the top.
+          </p>
+          <button onClick={signIn} className={`${primary} mt-3`}>
+            Sign in with another Microsoft account
+          </button>
+          <Link href="/" className="mt-2 inline-flex min-h-11 items-center text-sm font-bold text-[#0A4F47]">
+            Cancel
+          </Link>
+        </div>
+      )}
+
+      {account && phase !== "signed-out" && phase !== "adding" && (
         <div className="rounded-2xl border border-[#E3E1D8] bg-white p-4">
           <div className="text-sm text-[#4B5159]">Signed in as</div>
           <div className="font-bold text-[#1B1F24]">{account.username}</div>
@@ -153,6 +173,13 @@ export default function ConnectMicrosoft() {
           <div className="font-extrabold text-[#0A4F47]">Your folder is ready.</div>
           <p className="mt-1 text-sm text-[#1B1F24]">
             These are your books. You can open them without the app, and they stay yours if you disconnect.
+          </p>
+          <p className="mt-2 text-sm text-[#1B1F24]">
+            A company, a sole-trader business or your personal finances?{" "}
+            <Link href="/settings#profile" className="font-bold text-[#0A4F47] underline underline-offset-2">
+              Set up this profile
+            </Link>
+            .
           </p>
           <div className="mt-3 flex flex-col gap-2">
             <Link

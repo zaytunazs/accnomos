@@ -27,6 +27,12 @@ export class Runtime {
     expect(r.ok(), `POST /__test/reset -> ${r.status()}: is the runtime on ${RUNTIME_URL} in test mode?`).toBeTruthy();
   }
 
+  /** Empty another test account's fake OneDrive (a token "test-token.<account>", app/testmode.py). */
+  async resetAccount(token: string): Promise<void> {
+    const r = await this.request.post(`${RUNTIME_URL}/__test/reset`, { headers: { "X-Graph-Token": token } });
+    expect(r.ok(), `POST /__test/reset as ${token} -> ${r.status()}`).toBeTruthy();
+  }
+
   async goldPng(file = GOLD): Promise<Buffer> {
     const r = await this.request.get(`${RUNTIME_URL}/__test/gold/${file}.png`);
     expect(r.ok()).toBeTruthy();

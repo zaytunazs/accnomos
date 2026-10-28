@@ -88,8 +88,10 @@ test("keyboard only: Home → Review → approve → Settings tab → Ask", asyn
   await expect(page.getByRole("heading", { level: 1, name: "Good morning, Sam" })).toBeVisible();
   await page.waitForLoadState("networkidle");
 
-  // Home → Review, from the sidebar.
-  await tabTo(page, inMain("/review"), "Review in the sidebar");
+  // Home → Review, from the menu bar: Enter opens Purchases, Tab reaches Bills (Review).
+  await tabTo(page, (s) => s.nav === "Main" && s.name.startsWith("Purchases"), "Purchases in the menu bar");
+  await page.keyboard.press("Enter");
+  await tabTo(page, inMain("/review"), "Bills (Review) under Purchases");
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/review$/);
 
@@ -108,7 +110,7 @@ test("keyboard only: Home → Review → approve → Settings tab → Ask", asyn
   await expect(page.getByRole("heading", { level: 2, name: /^Nothing waiting/ })).toBeFocused(); // focus moved on, not lost
 
   // Settings: Tab reaches the selected tab (one stop for the tab list), the arrow keys change it.
-  await tabTo(page, inMain("/settings"), "Settings in the sidebar");
+  await tabTo(page, (s) => s.href === "/settings" && s.nav === "About", "Settings in the footer");
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/settings$/);
   await tabTo(page, (s) => s.role === "tab", "the Settings tab list");
@@ -118,8 +120,8 @@ test("keyboard only: Home → Review → approve → Settings tab → Ask", asyn
   await expect(page.getByRole("tab", { name: "AI", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.getByRole("tabpanel", { name: "AI" })).toBeVisible();
 
-  // Ask: back up the page to the sidebar with Shift+Tab, open the explainer and close it, then ask.
-  await tabTo(page, inMain("/ask"), "Ask in the sidebar", { back: true });
+  // Ask: back up the page to the menu bar with Shift+Tab, open the explainer and close it, then ask.
+  await tabTo(page, (s) => s.href === "/ask" && s.name === "Ask", "Ask in the menu bar", { back: true });
   await page.keyboard.press("Enter");
   await expect(page).toHaveURL(/\/ask$/);
   await expect(page.getByRole("heading", { name: "No questions yet" })).toBeVisible(); // live, not the sample

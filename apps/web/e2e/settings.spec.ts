@@ -89,13 +89,18 @@ test("Business: 'VAT-registered' is saved to the invoice profile; a VAT number a
   await expect(registered).toBeDisabled();
 });
 
-test("the sidebar names the AI chosen in Settings", async ({ page }) => {
-  const sidebar = page.locator("aside");
-  await expect(sidebar).toContainText("stub answers (test mode)");
+test("the account menu names the AI chosen in Settings", async ({ page }) => {
+  // Signed in, the menu bar replaces the sidebar; the AI line is in the account menu (src/components/ProfileMenu.tsx).
+  const account = page.getByRole("button", { name: /^Account: / });
+  const menu = page.getByRole("menu", { name: "Account" });
+  await account.click();
+  await expect(menu).toContainText("stub answers (test mode)");
+  await page.keyboard.press("Escape");
 
   await page.goto("/settings");
   const ai = await settingsTab(page, "AI");
   await ai.getByRole("button", { name: "My own Meta API key" }).click();
   await ai.getByRole("button", { name: /Save.*Continue/ }).click();
-  await expect(sidebar).toContainText("Muse Spark key (muse-spark-1.3)");
+  await account.click();
+  await expect(menu).toContainText("Muse Spark key (muse-spark-1.3)");
 });
