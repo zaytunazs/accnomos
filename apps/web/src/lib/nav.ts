@@ -143,8 +143,10 @@ export interface Who {
 }
 
 function allowed(x: { feature?: string; kinds?: RtProfileKind[] }, who: Who): boolean {
-  const switchedOn = x.feature === "self_employment" && who.selfEmployed;
-  if (x.feature && who.features && !who.features.includes(x.feature) && !switchedOn) return false;
+  if (x.feature === "self_employment") {
+    // Off by default (Settings › "I am self-employed"); a known profile with the feature also shows it.
+    if (!who.selfEmployed && !who.features?.includes(x.feature)) return false;
+  } else if (x.feature && who.features && !who.features.includes(x.feature)) return false;
   if (x.kinds && !(who.kind ? x.kinds.includes(who.kind) : !x.kinds.every((k) => k === "personal"))) return false;
   return true;
 }
