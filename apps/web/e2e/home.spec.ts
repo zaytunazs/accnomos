@@ -88,7 +88,7 @@ test("Review badge counts the proposals waiting", async ({ page, runtime }) => {
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Main" });
   await expect(page.getByRole("link", { name: "Notifications: 1 item to review" })).toBeVisible();
-  await nav.getByRole("button", { name: "Purchases, 1 to review" }).click();
+  await nav.getByRole("button", { name: /^Purchases\s*, 1 to review$/ }).click();
   await expect(nav.getByRole("link", { name: "Bills (Review) 1 item to review" })).toBeVisible();
 });
 
