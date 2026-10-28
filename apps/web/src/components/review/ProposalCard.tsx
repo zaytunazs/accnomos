@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { ReactNode, Ref } from "react";
 import ByWhom from "@/components/ByWhom";
 import type { Proposal } from "@/lib/sample-review";
@@ -161,6 +162,14 @@ export default function ProposalCard({ proposal, remember, onRememberChange, med
       </div>
 
       <ByWhom className="mt-3" code="Checked by code" ai="read by AI" />
+      {proposal.servedLine && (
+        <p data-testid="served-by" className="mt-2 break-words text-[13px] font-semibold text-muted">
+          {proposal.servedLine} ·{" "}
+          <Link href="/models" className="text-teal-dark underline underline-offset-2 hover:text-teal">
+            Meta models at work
+          </Link>
+        </p>
+      )}
 
       {onRememberChange && (
         <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-[15px] font-semibold">

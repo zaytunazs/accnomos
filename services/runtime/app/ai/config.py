@@ -3,9 +3,14 @@
 The UI chooses the backend per request via headers; the server falls back to
 environment variables so the harness and CLI can run without a browser.
 
-Headers: X-AI-Mode (local|key), X-AI-Base-Url, X-AI-Model, X-Meta-Api-Key.
+Headers: X-AI-Mode (local|key|auto), X-AI-Base-Url, X-AI-Model, X-Meta-Api-Key.
 Env:     AI_MODE, OLLAMA_BASE, OLLAMA_MODEL, MODEL_API_BASE, MODEL_API_MODEL, META_API_KEY,
-         AI_ALLOWED_BASE_URLS (extra base URLs a client may pick with X-AI-Base-Url).
+         AI_ALLOWED_BASE_URLS (extra base URLs a client may pick with X-AI-Base-Url),
+         AI_PROVIDERS (the server's ordered provider chain, e.g. `modal,meta,spark`: app/ai/providers.py).
+
+A request that names no backend (no X-AI-* headers, or X-AI-Mode: auto) gets the server's chain when AI_PROVIDERS
+is set: each call tries the providers in order and falls over to the next on an outage (app/ai/chain.py). A request
+that names a backend (the user's own local agent, or their own Meta key) gets exactly that one, as before.
 """
 
 from __future__ import annotations
@@ -14,7 +19,8 @@ import os
 from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Literal
 
-from pydantic import BaseModel
+import httpx
+from pydantic import BaseModel, Field
 
 if TYPE_CHECKING:
     from starlette.requests import Request
@@ -67,6 +73,40 @@ class AiConfig(BaseModel):
     base_url: str
     model: str
     api_key: str | None = None
+    # Who serves it: modal | meta | spark (the server's chain), local | key (a backend the user chose), test.
+    provider: str = ""
+    # Extra auth headers (Modal proxy auth: Modal-Key / Modal-Secret). Never logged or serialised.
+    extra_headers: dict[str, str] = Field(default_factory=dict, repr=False, exclude=True)
+    # Timeouts (s). None keeps each caller's own default, as before the chain existed.
+    connect_s: float = 15.0
+    first_token_s: float | None = None  # longest wait for a reply to start (a Modal cold start is 60-120 s)
+    request_s: float | None = None  # longest one attempt may take in all
+    vision: bool = True  # reads images
+    voice: bool = False  # Muse Voice Transcribe (Meta Model API only)
+    in_chain: bool = False  # one of the server's AI_PROVIDERS: failover and the circuit breaker apply
+    fallbacks: list[AiConfig] = Field(default_factory=list, repr=False)
+
+    def chain(self) -> list[AiConfig]:
+        """This provider, then its fallbacks, in order."""
+        return [self.model_copy(update={"fallbacks": []}), *self.fallbacks]
+
+    def auth_headers(self) -> dict[str, str]:
+        """Headers every request to this backend carries (key: bearer token; Modal: its proxy-auth token)."""
+        h = dict(self.extra_headers)
+        if self.mode == "key" and self.api_key:
+            h["Authorization"] = f"Bearer {self.api_key}"
+        return h
+
+    def http_timeout(self, default_s: float) -> httpx.Timeout:
+        """A caller's httpx timeout: its own `default_s` for a backend the user chose (unchanged), or this provider's
+        connect and first-byte limits in the chain (a non-streamed reply's first byte is the whole reply)."""
+        if self.first_token_s is None:
+            return httpx.Timeout(default_s)
+        return httpx.Timeout(connect=self.connect_s, read=self.first_token_s, write=30.0, pool=self.connect_s)
+
+    def with_capability(self, what: Literal["vision", "voice"]) -> AiConfig | None:
+        """The first provider in the chain that can do `what`, or None."""
+        return next((c for c in self.chain() if getattr(c, what)), None)
 
     @classmethod
     def resolve(
@@ -76,10 +116,19 @@ class AiConfig(BaseModel):
         model: str | None = None,
         api_key: str | None = None,
     ) -> AiConfig:
-        """Build a config from explicit values, falling back to the environment. Test mode ignores both."""
+        """Build a config from explicit values, falling back to the environment. Test mode ignores both.
+
+        No explicit choice (or mode "auto") and AI_PROVIDERS set: the server's provider chain."""
+        from app.ai import providers  # late: providers builds AiConfigs
+
+        wants_chain = (mode is None or mode.strip().lower() == "auto") and not (base_url or model or api_key)
+        if wants_chain and providers.chain_names():
+            return providers.chain_config()
         if is_test_mode():  # whatever the browser sent, no request may reach a real model
-            return cls(mode="local", base_url=stub_ai_base().rstrip("/"), model=TEST_AI_MODEL)
+            return cls(mode="local", base_url=stub_ai_base().rstrip("/"), model=TEST_AI_MODEL, provider="test")
         m = (mode or os.getenv("AI_MODE") or "local").strip().lower()
+        if m == "auto":  # asked for the chain, but the server has none: its single default, as before
+            m = (os.getenv("AI_MODE") or "local").strip().lower()
         if m not in ("local", "key"):
             raise ValueError(f"Unknown AI mode {m!r}; expected 'local' or 'key'")
         if m == "local":
@@ -92,7 +141,14 @@ class AiConfig(BaseModel):
             key = api_key or os.getenv("META_API_KEY")
             if not key:
                 raise ValueError("Mode 'key' needs X-Meta-Api-Key (or META_API_KEY)")
-        return cls(mode=m, base_url=base.rstrip("/"), model=mdl, api_key=key)  # type: ignore[arg-type]
+        return cls(
+            mode=m,  # type: ignore[arg-type]
+            base_url=base.rstrip("/"),
+            model=mdl,
+            api_key=key,
+            provider=m,
+            voice=m == "key",
+        )
 
     @classmethod
     def from_headers(cls, headers: Mapping[str, str]) -> AiConfig:
@@ -113,8 +169,8 @@ class AiConfig(BaseModel):
         )
 
     def public(self) -> dict[str, str]:
-        """Loggable view (never includes the key)."""
-        return {"mode": self.mode, "base_url": self.base_url, "model": self.model}
+        """Loggable view (never includes the key or auth headers)."""
+        return {"mode": self.mode, "base_url": self.base_url, "model": self.model, "provider": self.provider}
 
 
 def ai_config_from_request(request: Request) -> AiConfig:

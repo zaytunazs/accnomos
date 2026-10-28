@@ -19,6 +19,7 @@ from typing import Any
 import httpx
 from pydantic import BaseModel, ValidationError
 
+from app.ai import chain
 from app.ai.ask import KnownNumbers, call_json_model
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError, parse_model_json
@@ -153,9 +154,9 @@ async def draft_reminder(inv: Invoice, profile: InvoiceProfile, cfg: AiConfig, t
         out = ReminderModelOutput.model_validate(parse_model_json(await _call_model(messages, cfg)))
         checked = ground(out, facts)
     except httpx.HTTPStatusError as exc:
-        checked = f"Your AI ({cfg.mode}) returned HTTP {exc.response.status_code}."
+        checked = chain.trouble(cfg, f"returned HTTP {exc.response.status_code}")
     except httpx.HTTPError:
-        checked = f"Your AI ({cfg.mode}) could not be reached at {cfg.base_url}."
+        checked = chain.trouble(cfg, f"could not be reached at {cfg.base_url}")
     except (ExtractionError, ValidationError):
         checked = "The model's reply was not in the expected format."
     if isinstance(checked, str):

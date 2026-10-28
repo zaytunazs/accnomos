@@ -252,6 +252,34 @@ async def test_model_trouble_keeps_the_thread_with_a_code_summary(
     assert reason in (t.fallback_reason or "")
 
 
+async def test_triage_records_which_provider_read_each_thread(
+    books: Books, mail: FakeMailProvider, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The server's chain: the first provider is down, the second reads the thread, and the thread says so."""
+    for k, v in {
+        "AI_PROVIDERS": "modal,spark",
+        "MODAL_GLIMMER_URL": "https://m.invalid",
+        "OLLAMA_BASE": "http://s.invalid",
+    }.items():
+        monkeypatch.setenv(k, v)
+    monkeypatch.delenv("ACCNOMOS_TEST_MODE", raising=False)
+    mail.add(_msg("a1", "jo@client.co.uk", name="Jo Bloggs", subject="Kitchen quote"))
+    real = httpx._client.AsyncClient
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.url.host == "m.invalid":
+            return httpx.Response(503)
+        return httpx.Response(200, json={"message": {"content": _answer()}, "done": True})
+
+    monkeypatch.setattr(httpx, "AsyncClient", lambda **kw: real(transport=httpx.MockTransport(handler), **kw))
+    from app.ai import chain
+
+    chain.BREAKER.reset()
+    (t,) = (await triage_mail(books, mail, AiConfig.from_headers({}), user=USER, today=TODAY)).threads
+    assert t.fallback_reason is None and t.served_by is not None
+    assert (t.served_by.provider, t.served_by.fell_back_from) == ("spark", ["modal"])
+
+
 async def test_without_ai_no_model_is_called(books: Books, mail: FakeMailProvider, monkeypatch) -> None:
     mail.add(_msg("a1", "jo@client.co.uk"))
 

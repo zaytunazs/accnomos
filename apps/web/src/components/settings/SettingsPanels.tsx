@@ -341,6 +341,12 @@ export default function SettingsPanels() {
             leaves this device.
           </p>
           <ChooseAi />
+          <p className="mt-3 text-sm text-muted">
+            Without a choice here, the server&apos;s own Meta models answer, trying each in turn if one is down.{" "}
+            <Link href="/models" className="font-bold text-teal-dark underline underline-offset-2 hover:text-teal">
+              See the Meta models at work
+            </Link>
+          </p>
         </section>
 
         <section aria-labelledby="settings-verifier" className={card}>

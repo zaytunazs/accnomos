@@ -633,6 +633,12 @@ def duplicate_reply(content: str) -> dict[str, Any]:
     }
 
 
+@router.api_route("/ai/down/{rest:path}", methods=["GET", "POST"])
+async def ai_down(rest: str) -> JSONResponse:
+    """A provider that is down (ACCNOMOS_TEST_AI_DOWN, app/ai/providers.py): every call answers 503."""
+    return JSONResponse({"error": f"stub AI: this provider is down ({rest})"}, status_code=503)
+
+
 @router.post("/ai/api/chat")
 async def ai_chat(request: Request) -> JSONResponse:
     body = await request.json()

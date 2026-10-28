@@ -172,7 +172,8 @@ async def ask_voice(
 
     Optional form fields `period` and `history` are JSON shaped as in AskRequest. Key mode only.
     """
-    if cfg.mode != "key":
+    voice_cfg = cfg.with_capability("voice") if cfg.in_chain else cfg  # the chain: its Meta Model API provider
+    if voice_cfg is None or voice_cfg.mode != "key":
         raise HTTPException(400, "voice needs a Meta API key")
     try:
         when = AskPeriod.model_validate_json(period) if period else None
@@ -183,7 +184,7 @@ async def ask_voice(
         voice.require_ffmpeg()
         data = await audio.read(voice.MAX_UPLOAD_BYTES + 1)
         wav = await voice.to_wav(data, audio.content_type, audio.filename)
-        transcript = await voice.transcribe(wav, cfg)
+        transcript = await voice.transcribe(wav, voice_cfg)
     except voice.VoiceError as exc:
         raise HTTPException(exc.status, str(exc)) from exc
     try:

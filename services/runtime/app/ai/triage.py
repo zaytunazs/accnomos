@@ -21,6 +21,7 @@ from typing import Any
 import httpx
 from pydantic import BaseModel, ValidationError
 
+from app.ai import chain
 from app.ai.ask import KnownNumbers, call_json_model
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError, parse_model_json
@@ -159,16 +160,22 @@ async def triage_thread(
         {"role": "system", "content": SYSTEM_PROMPT},
         {"role": "user", "content": f"THREAD:\n{json.dumps(facts, ensure_ascii=False)}"},
     ]
+    chain.clear_served()
     try:
         out = TriageModelOutput.model_validate(parse_model_json(await _call_model(messages, cfg)))
     except httpx.HTTPStatusError as exc:
         return base.model_copy(
-            update={"fallback_reason": f"Your AI ({cfg.mode}) returned HTTP {exc.response.status_code}."}
+            update={"fallback_reason": chain.trouble(cfg, f"returned HTTP {exc.response.status_code}")}
         )
     except httpx.HTTPError:
         return base.model_copy(
-            update={"fallback_reason": f"Your AI ({cfg.mode}) could not be reached at {cfg.base_url}."}
+            update={"fallback_reason": chain.trouble(cfg, f"could not be reached at {cfg.base_url}")}
         )
     except (ExtractionError, ValidationError):
-        return base.model_copy(update={"fallback_reason": "The model's reply was not in the expected format."})
-    return ground(out, base, facts, today)
+        return base.model_copy(
+            update={
+                "fallback_reason": "The model's reply was not in the expected format.",
+                "served_by": chain.take_served(),
+            }
+        )
+    return ground(out, base, facts, today).model_copy(update={"served_by": chain.take_served()})

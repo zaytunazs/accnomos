@@ -29,6 +29,7 @@ from typing import Any
 import httpx
 from pydantic import BaseModel, ValidationError
 
+from app.ai import chain
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError, parse_model_json
 from app.ask_router import (
@@ -581,10 +582,11 @@ class AnswerText:
         return text
 
 
-async def _lines(response: httpx.Response) -> AsyncIterator[str]:
-    """The response's lines, with FIRST_CHUNK_S to wait for the first and TOKEN_GAP_S between the rest."""
+async def _lines(response: httpx.Response, first_s: float | None = None) -> AsyncIterator[str]:
+    """The response's lines, with FIRST_CHUNK_S (or the provider's `first_s`) to wait for the first and TOKEN_GAP_S
+    between the rest."""
     it = response.aiter_lines().__aiter__()
-    wait = FIRST_CHUNK_S
+    wait = first_s or FIRST_CHUNK_S
     while True:
         try:
             line = await asyncio.wait_for(it.__anext__(), wait)
@@ -614,11 +616,27 @@ async def stream_json_model(
     name: str,
     max_tokens: int | None = None,
 ) -> AsyncIterator[str]:
-    """The reply's text as it arrives from the user's backend, constrained to `schema`.
+    """The reply's text as it arrives from the user's backend (or the first provider in the server's chain that
+    starts replying: app/ai/chain.py), constrained to `schema`.
 
     Raises httpx errors and AiStalled.
     """
-    timeout = httpx.Timeout(connect=15.0, read=None, write=30.0, pool=15.0)  # reads are timed per chunk by _lines
+    async for text in chain.stream(cfg, name, lambda c: _stream_one(messages, c, schema, name, max_tokens)):
+        yield text
+
+
+async def _stream_one(
+    messages: list[dict[str, str]],
+    cfg: AiConfig,
+    schema: dict[str, Any],
+    name: str,
+    max_tokens: int | None = None,
+) -> AsyncIterator[str]:
+    """One backend's streamed reply."""
+    if cfg.first_token_s is None:
+        timeout = httpx.Timeout(connect=15.0, read=None, write=30.0, pool=15.0)  # reads are timed per chunk by _lines
+    else:  # the chain: the wait for the reply's headers is bounded too (a cold Modal container holds them)
+        timeout = httpx.Timeout(connect=cfg.connect_s, read=cfg.first_token_s, write=30.0, pool=cfg.connect_s)
     async with httpx.AsyncClient(timeout=timeout) as client:
         if cfg.mode == "local":
             options: dict[str, Any] = {"temperature": 0} | ({"num_predict": max_tokens} if max_tokens else {})
@@ -631,11 +649,11 @@ async def stream_json_model(
                 "options": options,
                 "keep_alive": "24h",
             }
-            async with client.stream("POST", f"{cfg.base_url}/api/chat", json=body) as r:
+            async with client.stream("POST", f"{cfg.base_url}/api/chat", json=body, headers=cfg.auth_headers()) as r:
                 if r.is_error:
                     await r.aread()
                     r.raise_for_status()
-                async for line in _lines(r):
+                async for line in _lines(r, cfg.first_token_s):
                     if not line.strip():
                         continue
                     chunk = _json_line(line)
@@ -654,12 +672,12 @@ async def stream_json_model(
             "reasoning_effort": "low",
             **({"max_tokens": max_tokens} if max_tokens else {}),
         }
-        headers = {"Authorization": f"Bearer {cfg.api_key}"}
+        headers = cfg.auth_headers()
         async with client.stream("POST", f"{cfg.base_url}/chat/completions", json=body, headers=headers) as r:
             if r.is_error:
                 await r.aread()
                 r.raise_for_status()
-            async for line in _lines(r):
+            async for line in _lines(r, cfg.first_token_s):
                 if not line.startswith("data:"):
                     continue
                 data = line.removeprefix("data:").strip()
@@ -697,8 +715,19 @@ async def _stream_model(messages: list[dict[str, str]], cfg: AiConfig) -> AsyncI
 
 
 async def call_json_model(messages: list[dict[str, str]], cfg: AiConfig, schema: dict[str, Any], name: str) -> str:
-    """Raw JSON text from the user's backend, constrained to `schema` (also used by app/ai/remind.py)."""
-    async with httpx.AsyncClient(timeout=httpx.Timeout(TIMEOUT_S)) as client:
+    """Raw JSON text from the user's backend (or the server's chain, with failover), constrained to `schema` (also
+    used by app/ai/remind.py, app/ai/triage.py, chat actions and bank suggestions). `chain.take_served()` then says
+    which provider answered."""
+
+    async def attempt(c: AiConfig) -> str:
+        return await _call_json_one(messages, c, schema, name)
+
+    text, _ = await chain.run(cfg, name, attempt)
+    return text
+
+
+async def _call_json_one(messages: list[dict[str, str]], cfg: AiConfig, schema: dict[str, Any], name: str) -> str:
+    async with httpx.AsyncClient(timeout=cfg.http_timeout(TIMEOUT_S)) as client:
         if cfg.mode == "local":
             body: dict[str, Any] = {
                 "model": cfg.model,
@@ -709,7 +738,7 @@ async def call_json_model(messages: list[dict[str, str]], cfg: AiConfig, schema:
                 "options": {"temperature": 0},
                 "keep_alive": "24h",
             }
-            r = await client.post(f"{cfg.base_url}/api/chat", json=body)
+            r = await client.post(f"{cfg.base_url}/api/chat", json=body, headers=cfg.auth_headers())
             r.raise_for_status()
             return r.json().get("message", {}).get("content", "")
         body = {
@@ -718,9 +747,7 @@ async def call_json_model(messages: list[dict[str, str]], cfg: AiConfig, schema:
             "response_format": {"type": "json_schema", "json_schema": {"name": name, "strict": True, "schema": schema}},
             "reasoning_effort": "low",
         }
-        r = await client.post(
-            f"{cfg.base_url}/chat/completions", json=body, headers={"Authorization": f"Bearer {cfg.api_key}"}
-        )
+        r = await client.post(f"{cfg.base_url}/chat/completions", json=body, headers=cfg.auth_headers())
         r.raise_for_status()
         content = r.json()["choices"][0]["message"].get("content") or ""
         if isinstance(content, list):
@@ -738,6 +765,8 @@ def _messages(question: str, facts: dict[str, Any], history: list[AskTurn]) -> l
 
 
 def _trouble(exc: Exception, cfg: AiConfig) -> str:
+    if cfg.in_chain:
+        return chain.trouble(cfg, "")
     if isinstance(exc, AiStalled):
         return f"Your AI ({cfg.mode}) stopped replying for {exc.seconds:.0f} s."
     if isinstance(exc, httpx.HTTPStatusError):
@@ -766,11 +795,20 @@ def _checked(text: str, facts: dict[str, Any], cfg: AiConfig, question: str, r: 
 async def answer(question: str, facts: dict[str, Any], history: list[AskTurn], cfg: AiConfig) -> AskAnswer:
     """Ask the model, then check its answer against the facts. Never raises for model trouble."""
     r = route(question, facts)
+    chain.clear_served()
     try:
         text = await _call_model(_messages(question, pack(facts, r), history), cfg)
-    except (httpx.HTTPError, AiStalled) as exc:
+    except (httpx.HTTPError, AiStalled, TimeoutError) as exc:
         return fallback_answer(facts, cfg.model, _trouble(exc, cfg), r)
-    return _checked(text, facts, cfg, question, r)
+    return _served(_checked(text, facts, cfg, question, r))
+
+
+def _served(out: AskAnswer) -> AskAnswer:
+    """The answer with the provider that wrote it (and that provider's model, which may be a fallback's)."""
+    served = chain.take_served()
+    if served is None:
+        return out
+    return out.model_copy(update={"served_by": served, "model": served.model})
 
 
 async def answer_stream(
@@ -781,11 +819,12 @@ async def answer_stream(
     r = route(question, facts)
     yield "start", preview(facts, r, cfg.model)
     reader = AnswerText()
+    chain.clear_served()
     try:
         async for chunk in _stream_model(_messages(question, pack(facts, r), history), cfg):
             if text := reader.feed(chunk):
                 yield "token", text
-    except (httpx.HTTPError, AiStalled) as exc:
+    except (httpx.HTTPError, AiStalled, TimeoutError) as exc:
         yield "answer", fallback_answer(facts, cfg.model, _trouble(exc, cfg), r)
         return
-    yield "answer", _checked(reader.raw, facts, cfg, question, r)
+    yield "answer", _served(_checked(reader.raw, facts, cfg, question, r))

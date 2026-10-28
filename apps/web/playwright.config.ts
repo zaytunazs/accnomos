@@ -40,6 +40,7 @@ export default defineConfig({
       // RATE_LIMIT_PER_MIN=0: one browser on 127.0.0.1 makes well over 60 calls a minute across the suite.
       // EARLY_ACCESS_*: the early-adopter form's endpoint on, writing to a temp file (e2e/early-access.spec.ts).
       // DEMO_MODE=1 for e2e/sandbox.spec.ts (services/runtime/app/demo.py); a throwaway secret, per-IP limits off.
+      // AI_PROVIDERS: requests without an AI choice take the chain; in test mode every provider is the stub AI.
       env: {
         ACCNOMOS_TEST_MODE: "1",
         PORT: String(RUNTIME_PORT),
@@ -51,6 +52,7 @@ export default defineConfig({
         DEMO_MODE: "1",
         DEMO_SECRET: "e2e-only-demo-secret-not-for-production-0000",
         DEMO_SESSIONS_PER_IP_PER_MIN: "0",
+        AI_PROVIDERS: "modal,meta,spark",
       },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
