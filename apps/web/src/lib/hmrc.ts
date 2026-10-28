@@ -1,6 +1,7 @@
 "use client";
 
 import { RELAY_URL } from "./ai-config";
+import { isDemo } from "./demo";
 
 /**
  * HMRC MTD VAT (sandbox) through the stateless relay (services/hmrc-relay). OAuth is PKCE: only this
@@ -130,6 +131,8 @@ function errorMessage(body: unknown, fallback: string): string {
 }
 
 async function relay<T>(path: string, init: RequestInit & { token?: string } = {}): Promise<T> {
+  // The demo sandbox never contacts HMRC (not even the sandbox): everything below is simulated (demoHmrc).
+  if (isDemo()) throw new RelayError("The demo sandbox doesn't contact HMRC.", 0);
   const { token, ...rest } = init;
   const headers: Record<string, string> = {};
   if (rest.body) headers["Content-Type"] = "application/json";
@@ -189,6 +192,11 @@ async function accessToken(): Promise<string> {
 
 /** Start the HMRC consent flow; the relay callback sends the browser back to `/vat#code=…&state=…`. */
 export async function startConnect(): Promise<void> {
+  if (isDemo()) {
+    // Demo: no HMRC sign-in. A stand-in token marks this tab "connected" for the simulated flow.
+    saveTokens({ access_token: DEMO_TOKEN, refresh_token: DEMO_TOKEN, expires_in: 2 * 3600, token_type: "demo" });
+    return;
+  }
   const verifier = b64url(crypto.getRandomValues(new Uint8Array(48))); // 64 chars
   const challenge = b64url(await sha256(verifier));
   const redirectTo = `${window.location.origin}/vat`;
@@ -272,11 +280,49 @@ async function vat<T>(path: string, facts: ClientFacts, extra: Record<string, un
   return relay<RelayResult<T>>(path, { method: "POST", body: JSON.stringify(body), token: await accessToken() });
 }
 
+// --- the demo sandbox: HMRC simulated, never contacted ----------------------------------------------------------
+
+const DEMO_TOKEN = "demo-simulated";
+/** Shown on the receipt and saved in it, so a simulated submission can never pass for a real one. */
+export const DEMO_SUBMISSION = "Demo — submission simulated";
+
+const isoDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+/** Calendar-quarter obligations (stagger 1, as the sample books use) for the year to `to`: the latest finished
+ *  quarter and the current one open, the earlier ones fulfilled. */
+export function demoObligations(to: Date): Obligation[] {
+  const out: Obligation[] = [];
+  const q = Math.floor(to.getMonth() / 3);
+  for (let back = 4; back >= 0; back--) {
+    const start = new Date(to.getFullYear(), (q - back) * 3, 1);
+    const end = new Date(start.getFullYear(), start.getMonth() + 3, 0);
+    const due = new Date(end.getFullYear(), end.getMonth() + 2, 7);
+    const key = `${String(start.getFullYear()).slice(2)}A${Math.floor(start.getMonth() / 3) + 1}`;
+    const open = back <= 1;
+    out.push({ periodKey: key, start: isoDate(start), end: isoDate(end), due: isoDate(due), status: open ? "O" : "F", ...(open ? {} : { received: isoDate(due) }) });
+  }
+  return out;
+}
+
+function demoResult<T>(hmrcBody: T): RelayResult<T> {
+  return { hmrc: hmrcBody, sent_headers: {}, fraud_headers_missing: [], correlation_id: null, receipt_id: null, receipt_timestamp: null };
+}
+
+const demoHmrc = {
+  obligations: async (to: string) => demoResult({ obligations: demoObligations(new Date(`${to}T12:00:00`)) }),
+  submit: async (ret: VatReturnBody): Promise<RelayResult<SubmitReceipt>> =>
+    demoResult({
+      processingDate: new Date().toISOString(),
+      formBundleNumber: "DEMO-000000000000",
+      paymentIndicator: ret.netVatDue > 0 ? "DEMO (nothing to pay)" : undefined,
+    }),
+};
+
 export const hmrc = {
   obligations: (vrn: string, facts: ClientFacts, range: { from: string; to: string; status?: "O" | "F" }, scenario?: string) =>
-    vat<{ obligations: Obligation[] }>(`/vat/${vrn}/obligations`, facts, range, scenario),
+    isDemo() ? demoHmrc.obligations(range.to) : vat<{ obligations: Obligation[] }>(`/vat/${vrn}/obligations`, facts, range, scenario),
   submit: (vrn: string, facts: ClientFacts, ret: VatReturnBody, scenario?: string) =>
-    vat<SubmitReceipt>(`/vat/${vrn}/returns`, facts, { return: ret }, scenario),
+    isDemo() ? demoHmrc.submit(ret) : vat<SubmitReceipt>(`/vat/${vrn}/returns`, facts, { return: ret }, scenario),
   view: (vrn: string, facts: ClientFacts, periodKey: string, scenario?: string) =>
     vat<VatReturnBody>(`/vat/${vrn}/returns/${encodeURIComponent(periodKey)}/view`, facts, {}, scenario),
   refresh: (refreshToken: string) =>

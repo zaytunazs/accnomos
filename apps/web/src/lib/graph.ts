@@ -4,10 +4,14 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { RUNTIME_URL } from "./ai-config";
 import { FOLDERS, README_TEXT, RENAMED } from "./folders";
 import { getToken, isPersonalAccount, storageScopesFor } from "./msal";
+import { graphAuthHeaders, isDemo } from "./demo";
 
 /** Test-mode builds talk to the runtime's Graph look-alike over its fake storage (services/runtime/app/testmode.py). */
-const GRAPH =
+const MS_GRAPH =
   process.env.NEXT_PUBLIC_TEST_MODE === "1" ? `${RUNTIME_URL}/__test/graph/v1.0` : "https://graph.microsoft.com/v1.0";
+/** In a demo sandbox (lib/demo.ts), the runtime's look-alike over that session's books: never Microsoft. */
+const DEMO_GRAPH = `${RUNTIME_URL}/demo/graph/v1.0`;
+const graphBase = () => (isDemo() ? DEMO_GRAPH : MS_GRAPH);
 
 export interface DriveItem {
   id: string;
@@ -21,9 +25,9 @@ export interface DriveItem {
 }
 
 async function graph<T>(token: string, path: string, init: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${GRAPH}${path}`, {
+  const res = await fetch(`${graphBase()}${path}`, {
     ...init,
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", ...(init.headers ?? {}) },
+    headers: { ...graphAuthHeaders(token), "Content-Type": "application/json", ...(init.headers ?? {}) },
   });
   if (!res.ok) {
     const body = await res.text();
@@ -73,7 +77,7 @@ export async function listChildren(account: AccountInfo, relPath = ""): Promise<
     const page: { value: DriveItem[]; "@odata.nextLink"?: string } = await graph(token, path);
     items.push(...page.value);
     const next = page["@odata.nextLink"];
-    path = next ? next.replace(GRAPH, "") : null;
+    path = next ? next.replace(graphBase(), "") : null;
   }
   return items;
 }
@@ -114,9 +118,9 @@ export async function ensureFolder(account: AccountInfo, relPath: string): Promi
 
 export async function putSmallFile(account: AccountInfo, relPath: string, content: string | Blob, contentType = "text/plain"): Promise<DriveItem> {
   const token = await getToken(storageScopesFor(account));
-  const res = await fetch(`${GRAPH}${itemPath(account, relPath)}:/content`, {
+  const res = await fetch(`${graphBase()}${itemPath(account, relPath)}:/content`, {
     method: "PUT",
-    headers: { Authorization: `Bearer ${token}`, "Content-Type": contentType },
+    headers: { ...graphAuthHeaders(token), "Content-Type": contentType },
     body: content,
   });
   if (!res.ok) throw new Error(`upload ${relPath} -> ${res.status}: ${(await res.text()).slice(0, 300)}`);
@@ -126,7 +130,7 @@ export async function putSmallFile(account: AccountInfo, relPath: string, conten
 /** A file in the books folder as a Blob (the Review preview). Read-only; straight from the user's OneDrive. */
 export async function getFileBlob(account: AccountInfo, relPath: string): Promise<Blob> {
   const token = await getToken(storageScopesFor(account));
-  const res = await fetch(`${GRAPH}${itemPath(account, relPath)}:/content`, { headers: { Authorization: `Bearer ${token}` } });
+  const res = await fetch(`${graphBase()}${itemPath(account, relPath)}:/content`, { headers: graphAuthHeaders(token) });
   if (!res.ok) throw new Error(`read ${relPath} -> ${res.status}`);
   return res.blob();
 }

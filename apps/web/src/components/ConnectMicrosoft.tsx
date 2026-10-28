@@ -6,8 +6,9 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, isPersonalAccount, msalConfigured, SIGN_IN_SCOPES } from "@/lib/msal";
 import { setupBooksFolder, type DriveItem, type SetupProgress } from "@/lib/graph";
 import { useNextParam, withNext } from "@/components/connect/ConnectSteps";
+import { isDemo, leaveDemo } from "@/lib/demo";
 
-type Phase = "loading" | "signed-out" | "signed-in" | "creating" | "ready" | "error";
+type Phase = "loading" | "signed-out" | "signed-in" | "creating" | "ready" | "error" | "demo";
 
 /** Never a raw error on screen: one sentence the user can act on. */
 function friendlySignInError(e: unknown): string {
@@ -38,6 +39,7 @@ export default function ConnectMicrosoft() {
 
   useEffect(() => {
     (async () => {
+      if (isDemo()) return setPhase("demo"); // the demo's stand-in account is not a sign-in to set up
       if (!msalConfigured()) {
         setError("Microsoft sign-in is not configured on this site yet — try again later.");
         setErrorKind("setup");
@@ -97,6 +99,19 @@ export default function ConnectMicrosoft() {
   return (
     <div className="mt-6 space-y-4">
       {phase === "loading" && <p className="text-sm text-[#4B5159]">Checking your sign-in…</p>}
+
+      {phase === "demo" && (
+        <div className="rounded-2xl border border-[#E3E1D8] bg-white p-4">
+          <h2 className="text-[15px] font-extrabold text-[#1B1F24]">You&apos;re in the demo sandbox</h2>
+          <p className="mt-1 text-sm leading-relaxed text-[#4B5159]">
+            The demo runs on sample books kept in memory for 2 hours. To set up your own books in your OneDrive, leave the
+            demo and sign in with Microsoft.
+          </p>
+          <button onClick={() => void leaveDemo("/connect")} className={`${primary} mt-3`}>
+            Leave the demo and sign in
+          </button>
+        </div>
+      )}
 
       {(phase === "signed-out" || (phase === "error" && !account)) && (
         <div className="rounded-2xl border border-[#E3E1D8] bg-white p-4">

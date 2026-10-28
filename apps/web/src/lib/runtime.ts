@@ -4,6 +4,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { aiHeaders, loadAiConfig, RUNTIME_URL, type AiConfig } from "./ai-config";
 import type { PlanVat } from "./business";
 import { vatQuery } from "./vat-period";
+import { DEMO_HEADER, demoSession } from "./demo";
 import {
   accountKind,
   CALENDAR_READ_SCOPES,
@@ -154,8 +155,19 @@ export interface RtSummary {
  * `extraScopes` widens the one Graph token (e.g. Mail.Read for /mail/scan, which also writes to OneDrive).
  */
 export async function runtimeHeaders(account: AccountInfo, extraScopes: string[] = []): Promise<Record<string, string>> {
-  const token = await getToken([...storageScopesFor(account), ...extraScopes]);
   const ai = loadAiConfig();
+  const demo = demoSession();
+  if (demo) {
+    // The demo sandbox (lib/demo.ts): the session id instead of a Graph token; the runtime answers from memory.
+    return {
+      [DEMO_HEADER]: demo.session,
+      "X-Account-Kind": "personal",
+      "X-User": demo.user,
+      "X-Business-Name": demo.business,
+      ...(ai ? aiHeaders(ai) : {}),
+    };
+  }
+  const token = await getToken([...storageScopesFor(account), ...extraScopes]);
   let business = "";
   try {
     business = (JSON.parse(window.localStorage.getItem("accnomos.business") ?? "{}") as { name?: string }).name ?? "";
@@ -258,10 +270,10 @@ export async function runtimeAiTest(cfg: AiConfig): Promise<RtAiTest> {
 }
 
 /** GET /health: no sign-in needed. Null when the runtime does not answer. */
-export async function runtimeHealth(): Promise<{ ok: boolean; voice?: boolean } | null> {
+export async function runtimeHealth(): Promise<{ ok: boolean; voice?: boolean; demo?: { enabled: boolean; ready: boolean } } | null> {
   try {
     const res = await fetch(`${RUNTIME_URL}/health`);
-    return res.ok ? ((await res.json()) as { ok: boolean; voice?: boolean }) : null;
+    return res.ok ? ((await res.json()) as { ok: boolean; voice?: boolean; demo?: { enabled: boolean; ready: boolean } }) : null;
   } catch {
     return null;
   }

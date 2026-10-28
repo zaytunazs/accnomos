@@ -8,8 +8,10 @@ import { fetchLiveVat, runtime, type RtVatView } from "@/lib/runtime";
 import { usePickedPeriod } from "@/lib/vat-period";
 import { FOLDER } from "@/lib/folders";
 import { ensureFolder, listChildren, putSmallFile } from "@/lib/graph";
+import { isDemo } from "@/lib/demo";
 import {
   clientFacts,
+  DEMO_SUBMISSION,
   disconnect,
   finishConnect,
   hmrc,
@@ -36,6 +38,7 @@ const FRAUD_NOTICE =
   "Submitting sends HMRC's fraud-prevention data with the return: a random ID for this device, your screen and window size, time zone, browser, a hashed ID for your Microsoft account, and your IP address. Nothing is sent until you press Submit.";
 
 const STEPS = ["Declaration", "Submit", "Receipt"] as const;
+const DEMO_VRN = "123456789"; // the sample books' fictional VAT number (lib/demo.ts: HMRC is simulated)
 
 /** Where the submission is: 0 = choose the period and declare, 1 = sending, 2 = receipt. */
 function stepIndex(step: Step): number {
@@ -116,6 +119,7 @@ export default function ConnectHmrc() {
   const [receipts, setReceipts] = useState<{ period: string; saved: boolean }[] | null>(null);
   const [receiptsKey, setReceiptsKey] = useState(0);
   const picked = usePickedPeriod();
+  const [demo, setDemo] = useState(false);
 
   // Previous submissions, from the receipt files saved in OneDrive (`06 VAT returns/`).
   useEffect(() => {
@@ -156,7 +160,9 @@ export default function ConnectHmrc() {
         const acct: AccountInfo | undefined = msal.getActiveAccount() ?? msal.getAllAccounts()[0];
         if (!acct) return setPhase("hidden");
         setAccount(acct);
-        setVrn(savedVrn());
+        const inDemo = isDemo();
+        setDemo(inDemo);
+        setVrn(inDemo ? DEMO_VRN : savedVrn());
         if (cb && "error" in cb) {
           disconnect();
           setError(`HMRC sign-in didn't finish: ${cb.description || cb.error}`);
@@ -207,6 +213,7 @@ export default function ConnectHmrc() {
     setPhase("connecting");
     try {
       await startConnect();
+      if (demo) setPhase("connected"); // simulated: no HMRC sign-in page to go to
     } catch (e) {
       setError((e as Error).message);
       setPhase("disconnected");
@@ -241,7 +248,7 @@ export default function ConnectHmrc() {
     setStep("list");
     setResult(null);
     try {
-      rememberVrn(v);
+      if (!demo) rememberVrn(v);
       const to = new Date();
       const from = new Date(to.getTime() - 365 * 86_400_000);
       const res = await hmrc.obligations(v, await clientFacts(account.homeAccountId), { from: isoDay(from), to: isoDay(to) }, scenario);
@@ -251,7 +258,7 @@ export default function ConnectHmrc() {
       // fulfilled periods submitted even when filed elsewhere. A failed store never
       // replaces the card error — HMRC's own list above still stands.
       try {
-        await runtime.postVatObligations(account, list);
+        if (!demo) await runtime.postVatObligations(account, list); // a demo's list is made up: never "HMRC says"
       } catch {
         /* the picker just won't know about HMRC's list yet */
       }
@@ -280,7 +287,7 @@ export default function ConnectHmrc() {
         const next = obligations?.map((o) => (o.periodKey === obligation.periodKey ? { ...o, status: "F" as const } : o)) ?? null;
         setObligations(next);
         try {
-          if (next) await runtime.postVatObligations(account, next);
+          if (next && !demo) await runtime.postVatObligations(account, next);
         } catch {
           /* the receipt below is the record that matters */
         }
@@ -305,7 +312,7 @@ export default function ConnectHmrc() {
               warnings: live.warnings,
               declaration: DECLARATION,
               declared_at: submittedAt,
-              environment: "HMRC sandbox",
+              environment: demo ? DEMO_SUBMISSION : "HMRC sandbox",
             },
             null,
             2,
@@ -320,7 +327,7 @@ export default function ConnectHmrc() {
               vrn: v,
               periodKey: obligation.periodKey,
               submitted_at: submittedAt,
-              environment: "HMRC sandbox",
+              environment: demo ? `${DEMO_SUBMISSION}: HMRC was not contacted` : "HMRC sandbox",
               hmrc: res.hmrc,
               correlation_id: res.correlation_id,
               receipt_id: res.receipt_id,
@@ -354,7 +361,7 @@ export default function ConnectHmrc() {
         </h2>
         <span className="flex items-center gap-2">
           <span className="rounded-full border border-warn-border bg-warn-bg px-3 py-1 text-[13px] font-bold text-warn-ink">
-            Sandbox · test data only
+            {demo ? "Demo · HMRC simulated" : "Sandbox · test data only"}
           </span>
           <Explain title="What sandbox means">
             <p>
@@ -384,9 +391,17 @@ export default function ConnectHmrc() {
 
       {(phase === "disconnected" || phase === "connecting") && (
         <div className="mt-3">
-          <p className="text-[15px] leading-7">
-            Sign in with your HMRC (sandbox) Government Gateway test user to see your VAT obligations and submit the return above.
-          </p>
+          {demo ? (
+            <p className="rounded-xl border border-warn-border bg-warn-bg p-3 text-[15px] leading-7 text-warn-ink">
+              This is the demo sandbox: HMRC is not contacted, not even its test service. Connecting, the obligations and the
+              receipt below are simulated so you can see the whole flow. Sign in with Microsoft to connect to HMRC&apos;s sandbox
+              for real.
+            </p>
+          ) : (
+            <p className="text-[15px] leading-7">
+              Sign in with your HMRC (sandbox) Government Gateway test user to see your VAT obligations and submit the return above.
+            </p>
+          )}
           <ul className="mt-2 list-disc pl-5 text-sm leading-6 text-muted">
             <li>You sign in on HMRC&apos;s own site. We never see your HMRC password.</li>
             <li>The access token stays in this browser tab only and is gone when you close it. Nothing is stored on our servers.</li>
@@ -396,7 +411,7 @@ export default function ConnectHmrc() {
             </li>
           </ul>
           <button type="button" onClick={connect} disabled={phase === "connecting"} className={`${primary} mt-4`}>
-            {phase === "connecting" ? "Connecting…" : "Connect to HMRC (sandbox)"}
+            {phase === "connecting" ? "Connecting…" : demo ? "Connect to HMRC (simulated)" : "Connect to HMRC (sandbox)"}
           </button>
         </div>
       )}
@@ -586,7 +601,7 @@ export default function ConnectHmrc() {
               </label>
               <div className="mt-3 flex flex-col gap-3 sm:flex-row">
                 <button type="button" onClick={submit} disabled={!declared || step === "submitting"} className={primary}>
-                  {step === "submitting" ? "Submitting…" : "Submit to HMRC (sandbox)"}
+                  {step === "submitting" ? "Submitting…" : demo ? "Submit (demo — simulated)" : "Submit to HMRC (sandbox)"}
                 </button>
                 <button type="button" onClick={() => setStep("list")} disabled={step === "submitting"} className={secondary}>
                   Back
@@ -600,7 +615,15 @@ export default function ConnectHmrc() {
               <div className="mb-3">
                 <StepStrip step={step} />
               </div>
-              <h3 className="text-[17px] font-extrabold text-teal-dark">Submitted to HMRC (sandbox) · key {obligation.periodKey}</h3>
+              <h3 className="text-[17px] font-extrabold text-teal-dark">
+                {demo ? DEMO_SUBMISSION : "Submitted to HMRC (sandbox)"} · key {obligation.periodKey}
+              </h3>
+              {demo && (
+                <p className="mt-2 rounded-xl border border-warn-border bg-warn-bg p-3 text-sm text-warn-ink">
+                  HMRC was not contacted: this receipt was made up by the demo sandbox, and nothing was filed anywhere. With
+                  your own books, the same steps submit to HMRC&apos;s sandbox and show HMRC&apos;s own receipt.
+                </p>
+              )}
               <dl className="mt-3 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-[15px]">
                 <dt className="text-muted">Processing date</dt>
                 <dd className="font-bold">{result.hmrc.processingDate}</dd>
@@ -642,7 +665,7 @@ export default function ConnectHmrc() {
                 {saved === "saving"
                   ? "Saving to your OneDrive…"
                   : saved === "saved"
-                    ? `Saved to your OneDrive: ${FOLDER.vat_returns}/${obligation.periodKey}/receipt.json and return.json.`
+                    ? `Saved to ${demo ? "the demo's books" : "your OneDrive"}: ${FOLDER.vat_returns}/${obligation.periodKey}/receipt.json and return.json.`
                     : saved}
               </p>
             </div>

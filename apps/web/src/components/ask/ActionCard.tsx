@@ -1,5 +1,6 @@
 "use client";
 
+import { sentNote } from "@/lib/demo";
 import { useEffect, useState, type ReactNode } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import {
@@ -78,7 +79,7 @@ function Details({ action }: { action: RtProposedAction }) {
       <dl className="divide-y divide-border">
         <Row label="To">
           <strong>{p.customer.name}</strong>
-          {p.send && p.send_to ? <span className="text-muted"> · emailed to {p.send_to}</span> : <span className="text-muted"> · saved as a draft, not sent</span>}
+          {p.send && p.send_to ? <span className="text-muted"> · {sentNote(`emailed to ${p.send_to}`)}</span> : <span className="text-muted"> · saved as a draft, not sent</span>}
         </Row>
         <Row label="For">
           <ul>

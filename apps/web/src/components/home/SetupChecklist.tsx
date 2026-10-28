@@ -1,5 +1,6 @@
 "use client";
 
+import { isDemo } from "@/lib/demo";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { aiTested, loadAiConfig } from "@/lib/ai-config";
@@ -106,7 +107,7 @@ export default function SetupChecklist() {
     }
   }, [account]);
 
-  if (!account || dismissed || local === null) return null;
+  if (!account || dismissed || local === null || isDemo()) return null; // a demo's books are already set up
 
   const steps: Step[] = [
     {

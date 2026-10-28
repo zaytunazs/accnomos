@@ -1,5 +1,7 @@
 import ConnectMicrosoft from "@/components/ConnectMicrosoft";
 import ConnectSteps from "@/components/connect/ConnectSteps";
+import Link from "next/link";
+import TryDemo, { IfDemoAvailable } from "@/components/demo/TryDemo";
 
 export const metadata = { title: "Connect your cloud · Accnomos" };
 
@@ -13,6 +15,20 @@ export default function ConnectPage() {
         with Microsoft, and we create the folder in your account.
       </p>
       <ConnectMicrosoft />
+      <IfDemoAvailable>
+      <section aria-labelledby="try-demo" className="mt-8 rounded-2xl border border-[#E3E1D8] bg-white p-4">
+        <h2 id="try-demo" className="text-[15px] font-extrabold text-[#1B1F24]">
+          Just looking? Try the demo first
+        </h2>
+        <p className="mt-1 text-sm leading-relaxed text-[#4B5159]">
+          A sandbox with a fictional business&apos;s books (labelled SAMPLE), no sign-in needed. It resets after 2 hours and
+          sends nothing anywhere. <Link href="/judges" className="font-bold text-[#0A4F47] underline underline-offset-2">Judging? Start here</Link>.
+        </p>
+        <div className="mt-3">
+          <TryDemo />
+        </div>
+      </section>
+      </IfDemoAvailable>
     </div>
   );
 }

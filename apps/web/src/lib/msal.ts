@@ -20,13 +20,26 @@ const authority = process.env.NEXT_PUBLIC_MS_AUTHORITY ?? "https://login.microso
 
 let instancePromise: Promise<IPublicClientApplication> | null = null;
 
+/** lib/demo.ts's session key, read here directly so this module does not import demo.ts eagerly. */
+function isDemo(): boolean {
+  try {
+    return typeof window !== "undefined" && !!window.localStorage.getItem("msal.accnomos-demo.session");
+  } catch {
+    return false;
+  }
+}
+
 // `process.env.NEXT_PUBLIC_TEST_MODE === "1"` is written out at each use (not shared as a constant) so the
 // bundler folds it: only a `NEXT_PUBLIC_TEST_MODE=1` build (e2e/build.mjs) contains the fake sign-in, msal-test.ts.
 export function msalConfigured(): boolean {
-  return process.env.NEXT_PUBLIC_TEST_MODE === "1" || clientId.length > 0;
+  return process.env.NEXT_PUBLIC_TEST_MODE === "1" || clientId.length > 0 || isDemo();
 }
 
 export function getMsal(): Promise<IPublicClientApplication> {
+  // A demo sandbox (lib/demo.ts) on this device: its fake stands in for MSAL, in every build.
+  if (!instancePromise && isDemo()) {
+    instancePromise = import("./demo").then((m) => m.createDemoMsal());
+  }
   if (process.env.NEXT_PUBLIC_TEST_MODE === "1" && !instancePromise) {
     instancePromise = import("./msal-test").then((m) => m.createTestMsal());
   }
