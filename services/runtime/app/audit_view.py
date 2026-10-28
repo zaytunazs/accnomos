@@ -372,6 +372,14 @@ SUMMARIES: dict[str, Summary] = {
     "todo_added": lambda r, w: "Added a to-do",
     "todo_deleted": lambda r, w: "Ticked off a to-do",
     "folders_renamed": lambda r, w: f"Renamed old folders: {_moved(r)}",
+    "profile_saved": lambda r, w: (
+        f"Saved the profile ({str(r.get('kind', '')).replace('_', ' ')})"
+        + (
+            f", was {str(r['kind_was']).replace('_', ' ')}"
+            if r.get("kind_was") and r.get("kind_was") != r.get("kind")
+            else ""
+        )
+    ),
     # Ask (chat and voice) actions, from _System/audit/actions/
     "action_done": lambda r, w: (
         f"Approved from Ask: {_plain(r.get('result_md') or r.get('summary_md')) or 'an action'}"

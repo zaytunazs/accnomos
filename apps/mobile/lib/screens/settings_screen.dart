@@ -118,6 +118,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool _inboxOk = false;
 
   Map<String, dynamic>? _profile;
+
+  /// `GET /profile`: which books these are (one Microsoft account each).
+  Map<String, dynamic>? _booksProfile;
   bool _profileLoading = false;
   String? _profileError;
   String? _profileSaveError;
@@ -225,6 +228,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) setState(() => _mailboxes = boxes);
     } catch (_) {
       // An older runtime without /mail/mailboxes: the list is simply not shown.
+    }
+    try {
+      final books = await (await _booksClient()).booksProfile();
+      if (mounted) setState(() => _booksProfile = books);
+    } catch (_) {
+      // An older reader without /profile: the account line is enough.
     }
     try {
       final profile = await (await _booksClient()).invoiceProfile();
@@ -397,6 +406,46 @@ class _SettingsScreenState extends State<SettingsScreen> {
       if (mounted) setState(() => _authBusy = false);
     }
   }
+
+  /// Switch account: one profile at a time on the phone (MSAL here is in
+  /// single-account mode), so sign this one out and sign in with another.
+  /// The business details kept on this phone belong to the old books and are
+  /// forgotten; nothing in either OneDrive changes.
+  Future<void> _switchAccount() async {
+    if (_authBusy) return;
+    setState(() {
+      _authBusy = true;
+      _authError = null;
+    });
+    try {
+      await _auth.signOut();
+      await AppSettings.clearBusiness();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _authError = friendlySignInMessage(e);
+        _authBusy = false;
+      });
+      return;
+    }
+    if (!mounted) return;
+    setState(() {
+      _account = null;
+      _booksProfile = null;
+      _businessName.text = '';
+      _vrn.text = '';
+      _startMonth.text = '';
+      _stagger = 1;
+      _authBusy = false;
+    });
+    await _signIn();
+  }
+
+  static String _kindLabel(Object? kind) => switch (kind) {
+        'sole_trader' => 'Sole trader',
+        'personal' => 'Personal',
+        _ => 'Company',
+      };
 
   /// Disconnect, like the web: sign out and remove this device's sign-in
   /// and settings. Files stay in the user's OneDrive.
@@ -1271,6 +1320,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           style: const TextStyle(
               color: AccnomosColors.muted, fontSize: 12, height: 1.4),
         ),
+        if (account != null && _booksProfile?['exists'] == true) ...[
+          const SizedBox(height: 4),
+          Text(
+            'Profile: ${_booksProfile!['name']} \u00b7 ${_kindLabel(_booksProfile!['kind'])}',
+            style: const TextStyle(
+                color: AccnomosColors.ink,
+                fontWeight: FontWeight.w600,
+                height: 1.4),
+          ),
+        ],
         if (_authError != null) ...[
           const SizedBox(height: 8),
           Text(_authError!,
@@ -1309,6 +1368,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: const Text('Sign out'),
                 ),
         ),
+        if (account != null) ...[
+          const SizedBox(height: 8),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                  minimumSize: const Size.fromHeight(48)),
+              onPressed: _authBusy ? null : _switchAccount,
+              child: const Text('Switch account'),
+            ),
+          ),
+          const Text(
+            'Each company, sole-trader business or personal finances is its '
+            'own Microsoft account. The phone shows one at a time; the web '
+            'keeps several signed in.',
+            style: TextStyle(
+                color: AccnomosColors.muted, fontSize: 12, height: 1.4),
+          ),
+        ],
       ],
     );
   }

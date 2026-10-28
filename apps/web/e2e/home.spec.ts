@@ -29,7 +29,10 @@ test("Home dashboard: tiles, deadlines and activity from the books, no signed-ou
   // Signed in: no "Not connected yet?" banner or pitch, and no made-up count on the Review link.
   await expect(page.getByText("Not connected yet?")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "See the demo books" })).toHaveCount(0);
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Review", exact: true })).toBeVisible();
+  // The menu bar (src/components/TopBar.tsx): Review is Purchases › Bills (Review).
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await nav.getByRole("button", { name: "Purchases", exact: true }).click();
+  await expect(nav.getByRole("link", { name: "Bills (Review)", exact: true })).toBeVisible();
 });
 
 test("setup checklist: signed in and incomplete, each row resumes its connect step; Dismiss is remembered", async ({ page }) => {
@@ -83,7 +86,10 @@ test("Review badge counts the proposals waiting", async ({ page, runtime }) => {
   await expect(page.getByRole("status")).toHaveText("1 new proposal");
 
   await page.goto("/");
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Review 1 item to review" })).toBeVisible();
+  const nav = page.getByRole("navigation", { name: "Main" });
+  await expect(page.getByRole("link", { name: "Notifications: 1 item to review" })).toBeVisible();
+  await nav.getByRole("button", { name: /^Purchases\s*, 1 to review$/ }).click();
+  await expect(nav.getByRole("link", { name: "Bills (Review) 1 item to review" })).toBeVisible();
 });
 
 test("signed out: the pitch, the connect banner and the sample books (on /try; / is the landing page)", async ({ page }) => {

@@ -14,10 +14,10 @@ from app import payroll_rates as R
 from app.approve import ApprovalError
 from app.books import Books
 from app.payroll import LineEdit, PayrollConflict, PayrollError, PayRun
-from app.routes_books import get_books, require_user
+from app.routes_books import get_books, require_feature, require_user
 from app.validation import Day, Pence
 
-router = APIRouter(tags=["payroll"])
+router = APIRouter(tags=["payroll"], dependencies=[require_feature("payroll")])
 
 
 class PrepareBody(BaseModel):

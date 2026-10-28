@@ -23,7 +23,7 @@ from app.contacts import documents as cb_documents
 from app.credit_notes import CreditLineIn, CreditNote, CreditNoteDraft, StandaloneCreditNoteDraft
 from app.invoicing import InvoiceCustomer, InvoiceError, InvoiceStateError, LineIn
 from app.pdf import render_invoice
-from app.routes_books import get_books, require_user
+from app.routes_books import get_books, require_feature, require_user
 from app.routes_invoices import EmailDraft, SendBody, VoidBody, get_sender
 from app.settlement import Credit, CreditUse, Payment, PaymentRecord, Side
 from app.validation import Day, StrictBody
@@ -54,7 +54,7 @@ class CreditNoteCreate(StrictBody):
     reason: str = Field(min_length=1, max_length=300)
 
 
-@router.post("/invoices/{number}/credit-notes", response_model=CreditNote)
+@router.post("/invoices/{number}/credit-notes", response_model=CreditNote, dependencies=[require_feature("invoices")])
 async def create(
     number: str, body: CreditNoteCreate, books: Books = Depends(get_books), user: str = Depends(require_user)
 ) -> CreditNote:
@@ -80,7 +80,7 @@ class StandaloneCreditNoteCreate(StrictBody):
     reason: str = Field(min_length=1, max_length=300)
 
 
-@router.post("/credit-notes", response_model=CreditNote)
+@router.post("/credit-notes", response_model=CreditNote, dependencies=[require_feature("invoices")])
 async def create_standalone(
     body: StandaloneCreditNoteCreate, books: Books = Depends(get_books), user: str = Depends(require_user)
 ) -> CreditNote:
@@ -103,7 +103,7 @@ async def list_credit_notes(
     return await cn_.list_credit_notes(books, invoice)
 
 
-@router.get("/credit-notes/{number}", response_model=CreditNote)
+@router.get("/credit-notes/{number}", response_model=CreditNote, dependencies=[require_feature("invoices")])
 async def get(number: str, books: Books = Depends(get_books)) -> CreditNote:
     return await _get(books, number)
 
@@ -122,7 +122,7 @@ async def _render(books: Books, cn: CreditNote) -> bytes:
     return render_invoice(cn.as_invoice(), profile, await inv_.load_logo(books, profile), credit_for=cn.invoice or "")
 
 
-@router.post("/credit-notes/{number}/pdf", response_model=CreditNotePdf)
+@router.post("/credit-notes/{number}/pdf", response_model=CreditNotePdf, dependencies=[require_feature("invoices")])
 async def pdf(number: str, books: Books = Depends(get_books)) -> CreditNotePdf:
     """Render (or, once emailed, return the emailed copy) and save it in 03 Sales/credit-notes."""
     cn = await _get(books, number)
@@ -141,7 +141,7 @@ async def pdf(number: str, books: Books = Depends(get_books)) -> CreditNotePdf:
     )
 
 
-@router.post("/credit-notes/{number}/send", response_model=CreditNote)
+@router.post("/credit-notes/{number}/send", response_model=CreditNote, dependencies=[require_feature("invoices")])
 async def send(
     number: str,
     body: SendBody,
@@ -162,7 +162,7 @@ async def send(
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
-@router.post("/credit-notes/{number}/void", response_model=CreditNote)
+@router.post("/credit-notes/{number}/void", response_model=CreditNote, dependencies=[require_feature("invoices")])
 async def void(
     number: str, body: VoidBody, books: Books = Depends(get_books), user: str = Depends(require_user)
 ) -> CreditNote:

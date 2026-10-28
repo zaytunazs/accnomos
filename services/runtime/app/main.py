@@ -268,3 +268,6 @@ app.include_router(backups_router)
 from app.early_access import router as early_access_router  # noqa: E402  POST /public/early-access (off by default)
 
 app.include_router(early_access_router)
+from app.routes_profile import router as profile_router  # noqa: E402  GET/PUT /profile (app/profile.py)
+
+app.include_router(profile_router)
