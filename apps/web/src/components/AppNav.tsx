@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import type { AccountInfo } from "@azure/msal-browser";
 import { useAccount } from "@/components/jobs/useAccount";
 import { runtime } from "@/lib/runtime";
+import { PERSONAL_CHANGED, personalOn } from "@/lib/personal";
 
 type NavLink = { href: string; label: string; badge?: string; tab?: string };
 const links: NavLink[] = [
@@ -55,8 +56,25 @@ function useReviewBadge(pathname: string): string | undefined {
   return count ? String(count) : undefined;
 }
 
-function withBadges(review: string | undefined): NavLink[] {
-  return links.map((l) => (l.href === "/review" ? { ...l, badge: review } : l));
+/** The Personal page is in the menu only while Settings › Show personal finances is on (this device). */
+function usePersonalOn(): boolean {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const read = () => setOn(personalOn());
+    queueMicrotask(read);
+    window.addEventListener(PERSONAL_CHANGED, read);
+    window.addEventListener("storage", read);
+    return () => {
+      window.removeEventListener(PERSONAL_CHANGED, read);
+      window.removeEventListener("storage", read);
+    };
+  }, []);
+  return on;
+}
+
+function withBadges(review: string | undefined, personal: boolean): NavLink[] {
+  const all = personal ? [...links, { href: "/personal", label: "Personal" }] : links;
+  return all.map((l) => (l.href === "/review" ? { ...l, badge: review } : l));
 }
 
 function isActive(pathname: string, href: string) {
@@ -87,10 +105,11 @@ const sidebarGroups: { label: string; hrefs: string[] }[] = [
 function SidebarNav({ pathname, links }: { pathname: string; links: NavLink[] }) {
   const settingsActive = isActive(pathname, "/settings");
   const byHref = new Map(links.map((link) => [link.href, link]));
+  const groups = sidebarGroups.map((g) => (g.label === "Money" && byHref.has("/personal") ? { ...g, hrefs: [...g.hrefs, "/personal"] } : g));
 
   return (
     <nav aria-label="Main" className="hidden flex-col min-[900px]:flex">
-      {sidebarGroups.map((group, i) => (
+      {groups.map((group, i) => (
         <section key={group.label} aria-labelledby={`nav-group-${group.label.toLowerCase()}`}>
           <p
             id={`nav-group-${group.label.toLowerCase()}`}
@@ -176,7 +195,7 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
 
 export default function AppNav({ variant = "sidebar" }: { variant?: "sidebar" | "tabs" }) {
   const pathname = usePathname();
-  const navLinks = withBadges(useReviewBadge(pathname));
+  const navLinks = withBadges(useReviewBadge(pathname), usePersonalOn());
 
   if (variant === "tabs") return <TabBar pathname={pathname} links={navLinks} />;
   return <SidebarNav pathname={pathname} links={navLinks} />;

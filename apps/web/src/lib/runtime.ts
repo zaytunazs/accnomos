@@ -457,6 +457,28 @@ export const runtime = {
       call<{ line: RtBankLine; proposal_id: string | null; event_id: string | null }>(
         a, `/books/bank/lines/${lineId}/approve`, { method: "POST", body: JSON.stringify({ kind, ai: ai ?? null }) }),
   },
+  /** /personal/* (services/runtime/app/routes_personal.py). Pence in, pence out; every figure is worked out by the runtime. */
+  personal: {
+    categories: (a: AccountInfo) => call<RtPersonalCategory[]>(a, "/personal/categories"),
+    budgets: (a: AccountInfo) => call<Record<string, number>>(a, "/personal/budgets"),
+    saveBudgets: (a: AccountInfo, budgets: Record<string, number>) =>
+      call<Record<string, number>>(a, "/personal/budgets", { method: "PUT", body: JSON.stringify({ budgets }) }),
+    summary: (a: AccountInfo, month: string) => call<RtPersonalSummary>(a, `/personal/summary?month=${month}`),
+    recurring: (a: AccountInfo) => call<RtPersonalRecurring>(a, "/personal/recurring"),
+    rules: (a: AccountInfo) => call<RtPersonalRule[]>(a, "/personal/rules"),
+    addRule: (a: AccountInfo, value: string, categoryId: string) =>
+      call<RtPersonalRule>(a, "/personal/rules", {
+        method: "POST",
+        body: JSON.stringify({ match: { op: "contains", value }, category_id: categoryId }),
+      }),
+    deleteRule: (a: AccountInfo, id: string) => call<void>(a, `/personal/rules/${id}`, { method: "DELETE" }),
+    addStarterRules: (a: AccountInfo) => call<RtPersonalRule[]>(a, "/personal/rules/starter", { method: "POST" }),
+    goals: (a: AccountInfo) => call<RtGoalPlan[]>(a, "/personal/goals"),
+    addGoal: (a: AccountInfo, g: RtGoalIn) => call<RtGoalPlan>(a, "/personal/goals", { method: "POST", body: JSON.stringify(g) }),
+    updateGoal: (a: AccountInfo, id: string, patch: Partial<RtGoalIn>) =>
+      call<RtGoalPlan>(a, `/personal/goals/${id}`, { method: "PATCH", body: JSON.stringify(patch) }),
+    deleteGoal: (a: AccountInfo, id: string) => call<void>(a, `/personal/goals/${id}`, { method: "DELETE" }),
+  },
   vehicles: (a: AccountInfo) => call<RtVehicle[]>(a, "/vehicles"),
   addVehicle: (a: AccountInfo, v: Omit<RtVehicle, "id">) =>
     call<RtVehicle>(a, "/vehicles", { method: "POST", body: JSON.stringify(v) }),
@@ -1805,6 +1827,75 @@ export function fetchLiveVat(account: AccountInfo, period: string | null = null)
     liveVat = { key, promise };
   }
   return liveVat.promise;
+}
+
+/** Personal finances (services/runtime/app/personal.py). Money in whole pence. */
+export interface RtPersonalCategory {
+  id: string;
+  name: string;
+}
+export interface RtCategorySpend {
+  id: string;
+  name: string;
+  spent_pence: number;
+  budget_pence: number | null;
+  remaining_pence: number | null;
+  percent: number | null;
+  state: "none" | "ok" | "near" | "over";
+}
+export interface RtPersonalSummary {
+  month: string;
+  lines: number;
+  income_pence: number;
+  spent_pence: number;
+  left_pence: number;
+  budget_total_pence: number;
+  categories: RtCategorySpend[];
+  uncategorised_count: number;
+  uncategorised_pence: number;
+  notes: string[];
+}
+export interface RtRecurringItem {
+  key: string;
+  label: string;
+  category_name: string;
+  cadence: "weekly" | "fortnightly" | "monthly" | "quarterly" | "annually";
+  amount_pence: number;
+  amount_varies: boolean;
+  occurrences: number;
+  last_date: string;
+  next_due: string;
+  days_until: number;
+  status: "upcoming" | "overdue" | "stopped";
+  monthly_equivalent_pence: number;
+}
+export interface RtPersonalRecurring {
+  items: RtRecurringItem[];
+  monthly_total_pence: number;
+  note: string;
+}
+export interface RtPersonalRule {
+  id: string;
+  name: string;
+  match: { op: "contains" | "equals" | "regex"; value: string };
+  category_id: string;
+}
+export interface RtGoalIn {
+  name: string;
+  target_pence: number;
+  target_date: string;
+  saved_pence?: number;
+  planned_monthly_pence?: number | null;
+}
+export interface RtGoalPlan {
+  goal: RtGoalIn & { id: string; saved_pence: number };
+  remaining_pence: number;
+  percent: number;
+  months_left: number;
+  monthly_needed_pence: number;
+  status: "reached" | "on_track" | "behind" | "plan_needed" | "date_passed";
+  projected_date: string | null;
+  estimate: boolean;
 }
 
 export const gbp = (n: number) => `£${n.toFixed(2)}`;
