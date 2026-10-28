@@ -5,6 +5,8 @@ Each `## Title {#id}` heading is one section; code picks the sections that match
 the model. Every statement here comes from `README.md`, `docs/HONESTY.md`, `docs/submission/DESCRIPTION.md`,
 `docs/submission/JUDGING.md`, `docs/submission/META_MODELS.md` and the privacy page. Keep it that way: when a claim
 changes there, change it here. Keywords after "Keywords:" help retrieval and are not shown to visitors.
+Lines starting `[prelaunch] ` are used only on the pre-launch site (PUBLIC_SUBMISSION_MODE=0) and lines starting
+`[submission] ` only on the judged build (the default), which never mentions a launch date or "coming soon".
 
 ## What Accnomos is {#what-it-is}
 
@@ -18,15 +20,18 @@ Keywords: about, overview, product, purpose, company, built, made, maker, behind
 
 ## Receipts, review and the ledger {#receipts-review}
 
-You add a receipt by uploading it on the web, taking a photo in the Android app, dropping it into the 00 Inbox folder
-in your OneDrive, or (optionally) letting Outlook intake copy likely bills from your mailbox. Press Scan and the AI
+You add a receipt by taking a photo in the Android app, uploading it on the web, dropping it into the 00 Inbox folder
+in your OneDrive, or letting Outlook intake copy likely bills and receipts from your mailbox (switched on in
+Settings; tested on fictional emails, not yet on a real mailbox). The phone and the web app work on the same files,
+so a receipt snapped on the phone waits on Review on the web too.
+[prelaunch] Adding more mailboxes is coming soon. Press Scan and the AI
 reads the document into structured fields: supplier, date, VAT number, net, VAT and total, lines and how it was paid.
 Code then checks the arithmetic and repairs common reading mistakes, an independent second reading (the Verifier) can
 check the first, and a review card shows the proposed entry with the reason in plain English. You approve, edit or
 reject it. Approving writes a balanced, append-only ledger event to your OneDrive and updates Books.xlsx, a spreadsheet
 for your accountant. Corrections are new reversing entries, and there is an undo. PDFs and phone HEIC photos are
 accepted; a multi-page PDF is read from page 1 only.
-Keywords: receipt, receipts, scan, photo, upload, invoice, bill, expense, review, approve, approval, card, ledger, entry, post, books, xlsx, spreadsheet, accountant, verifier, inbox, undo, pdf, heic
+Keywords: receipt, receipts, scan, photo, upload, email, emails, mail, outlook, mailbox, mailboxes, intake, sync, invoice, bill, expense, review, approve, approval, card, ledger, entry, post, books, xlsx, spreadsheet, accountant, verifier, inbox, undo, pdf, heic
 
 ## VAT return and HMRC {#vat-hmrc}
 
@@ -69,7 +74,9 @@ action cards, Home, the VAT return and a More menu with Files, Contacts (includi
 Invoices, Jobs, Vehicles, Bank, Payroll, Reports and the audit trail. Some tasks, such as bank CSV upload, reconcile
 and HMRC filing, stay on the web. The app has 248 automated tests, but nothing on the phone has been run on a real
 device yet and a real-phone sign-in is not recorded. A build has been submitted to the Google Play production track
-for review. There is no iPhone app.
+for review. The web app works in an iPhone's browser.
+[submission] There is no iPhone app.
+[prelaunch] An iPhone app is coming soon.
 Keywords: android, phone, mobile, app, play store, google play, camera, iphone, ios, apple, tablet
 
 ## Your data stays in your OneDrive {#your-data}
@@ -83,6 +90,15 @@ Accnomos folder and remove Accnomos from your Microsoft account's apps. Settings
 zip with CSVs. Server access logs (IP address, path, time) are kept for up to 30 days for security. No data is sold,
 and there are no advertising or analytics SDKs. Google Drive and Dropbox are not supported.
 Keywords: data, privacy, private, onedrive, microsoft, storage, stored, store, where, keep, database, delete, export, leave, cancel, gdpr, permissions, security, secure, safe, google drive, dropbox, cloud, logs
+
+## When you can use it {#availability}
+
+[submission] You can use it now: try the demo with the fictional sample books without signing in, or sign in with a
+[submission] Microsoft account to keep your own books in your OneDrive. Submitting VAT returns goes to HMRC's sandbox.
+[prelaunch] The public launch is November 2026, when the app will be fully ready; you can try the demo with the
+[prelaunch] fictional sample books now, without signing in. To hear when it launches, email the team at the contact
+[prelaunch] address shown under the chat.
+Keywords: when, launch, launched, release, released, available, availability, ready, use it, start using, open, date, notify, waitlist, wait list
 
 ## Signing in and getting started {#getting-started}
 

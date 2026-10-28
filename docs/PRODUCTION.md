@@ -62,6 +62,35 @@ first live filing; it is copy, not behaviour.
 The key is sent as HTTP Basic (key as the username, empty password). Companies House allows 600 requests per 5 minutes
 per key; the runtime asks for at most 60 a minute per process and caches answers for 24 hours.
 
+## 3a. Website chat "Ask about Accnomos" (runtime)
+
+The public pages' chat calls `POST /public/chat` on the runtime (`services/runtime/app/public_chat.py`). It needs no
+sign-in and answers only from `services/runtime/app/public_kb.md`. All variables are optional; the defaults are safe.
+
+| Variable | Default | What it does |
+|---|---|---|
+| `PUBLIC_CONTACT_EMAIL` | `admin@zaytunauk.co.uk` | Where off-topic or unanswerable questions are referred (also returned to the page). An invalid value falls back to the default |
+| `PUBLIC_CHAT_PER_MIN` | `6` | Questions per minute per visitor IP, on top of `RATE_LIMIT_PER_MIN`. `0` turns this limit off (the e2e suite does) |
+| `PUBLIC_CHAT` | `on` | `off` makes the route answer 503 with the contact address |
+| `PUBLIC_CHAT_AI_MODE` | `local` | The chat's model: the server's own Ollama (`OLLAMA_BASE`, `OLLAMA_MODEL`, Glimmer on the Spark). `key` spends the operator's `META_API_KEY`, so set it only on purpose. Visitors' `X-AI-*` headers are always ignored |
+| `PUBLIC_CHAT_MODEL` | (`OLLAMA_MODEL`) | A different model name for the chat only |
+| `PUBLIC_SITE_HOSTS` | `accnomos.com` | Hosts an answer may link to (comma-separated, subdomains included); any other link is removed |
+| `PUBLIC_SUBMISSION_MODE` | `1` | Which notes the chat uses: `1` the judged build (no launch date, nothing "coming soon"); `0` the pre-launch notes (public launch November 2026, iPhone app and more mailboxes coming soon). Keep it equal to the web build's `NEXT_PUBLIC_SUBMISSION_MODE` |
+
+Web build: `NEXT_PUBLIC_CONTACT_EMAIL` (default `admin@zaytunauk.co.uk`) is the address shown under the chat and in the
+footer before any answer arrives, and where the pre-launch "get notified" e-mail goes; keep it equal to
+`PUBLIC_CONTACT_EMAIL`.
+
+**`NEXT_PUBLIC_SUBMISSION_MODE`** (web build, default `1`). `1` is the build the hackathon judges see: hero calls to
+action "Try the demo" and "Sign in with Microsoft", no launch date, nothing "coming soon" (unbuilt features are left
+out, not tagged). `0` is the pre-launch site for public traffic after judging: "Launching November 2026 — get
+notified" (a `mailto:` to the contact address, subject "Notify me at launch"; there is no sign-up database), "Try the
+demo" second, and sign-in moved to a quiet "Early access / testers" menu link. The value is inlined at build time
+(`next.config.ts`), so switching means a rebuild and redeploy; set the runtime's `PUBLIC_SUBMISSION_MODE` to match.
+`e2e/submission-mode.spec.ts` fails the default build if "coming soon", "beta", "launching" or "early access"
+appears anywhere in the export. The e2e suite runs only the default build. When a product claim changes in `README.md`
+or `docs/HONESTY.md`, change `public_kb.md` and the landing page (`apps/web/src/components/marketing/Landing.tsx`) too.
+
 ## 4. What must NOT change
 
 - **No production value as a default anywhere in the repo**: not in `Settings` (`services/hmrc-relay/relay/settings.py`),

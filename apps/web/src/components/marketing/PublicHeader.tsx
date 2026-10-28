@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { openChat } from "@/lib/public-site";
+import { openChat, SUBMISSION_MODE } from "@/lib/public-site";
 import { LogoMark } from "./Marks";
 
 const NAV: { href: string; label: string }[] = [
@@ -77,16 +77,25 @@ export default function PublicHeader({ path }: { path: string }) {
                 Ask about Accnomos
               </button>
             </li>
+            {!SUBMISSION_MODE && (
+              <li>
+                <Link href={signIn} className="rounded-lg px-3 py-2 text-sm font-semibold text-ground/65 hover:text-ground">
+                  Early access / testers
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
-          <Link
-            href={signIn}
-            className="whitespace-nowrap rounded-lg px-3 py-2 text-[15px] font-bold text-ground hover:bg-white/10"
-          >
-            Sign in
-          </Link>
+          {SUBMISSION_MODE && (
+            <Link
+              href={signIn}
+              className="whitespace-nowrap rounded-lg px-3 py-2 text-[15px] font-bold text-ground hover:bg-white/10"
+            >
+              Sign in
+            </Link>
+          )}
           <Link
             href="/try"
             className="hidden whitespace-nowrap rounded-lg bg-brass px-4 py-2 text-[15px] font-bold text-ink hover:bg-brass-light sm:inline-block"
@@ -142,6 +151,17 @@ export default function PublicHeader({ path }: { path: string }) {
                 Ask about Accnomos
               </button>
             </li>
+            {!SUBMISSION_MODE && (
+              <li>
+                <Link
+                  href={signIn}
+                  onClick={() => setOpen(false)}
+                  className="block rounded-lg px-3 py-3 text-sm font-semibold text-ground/70 hover:bg-white/10"
+                >
+                  Early access / testers
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
         <Link

@@ -160,7 +160,20 @@ def terms(text: str) -> list[str]:
     return [_stem(t) for t in _TOKEN.findall(text.lower()) if t not in _STOP and len(t) > 1]
 
 
-def parse_kb(text: str) -> list[Section]:
+def submission_mode() -> bool:
+    """PUBLIC_SUBMISSION_MODE (default 1), as the web build's NEXT_PUBLIC_SUBMISSION_MODE: the judged site has no
+    launch date or "coming soon"; 0 is the pre-launch site. KB lines starting `[prelaunch] ` are used only when it is
+    0, lines starting `[submission] ` only when it is 1."""
+    return os.getenv("PUBLIC_SUBMISSION_MODE", "1") != "0"
+
+
+def _for_mode(lines: list[str], submission: bool) -> list[str]:
+    keep = "[submission] " if submission else "[prelaunch] "
+    drop = "[prelaunch] " if submission else "[submission] "
+    return [ln.removeprefix(keep) for ln in lines if not ln.startswith(drop)]
+
+
+def parse_kb(text: str, submission: bool = True) -> list[Section]:
     sections: list[Section] = []
     for chunk in re.split(r"(?m)^## ", text)[1:]:
         head, _, rest = chunk.partition("\n")
@@ -168,9 +181,11 @@ def parse_kb(text: str) -> list[Section]:
         if not m:
             raise ValueError(f"public_kb.md: section heading without an {{#id}}: {head!r}")
         title, sid = m.group(1).strip(), m.group(2)
-        lines = rest.strip().splitlines()
+        lines = _for_mode(rest.strip().splitlines(), submission)
         kw_lines = [ln for ln in lines if ln.startswith("Keywords:")]
         body = " ".join(ln.strip() for ln in lines if not ln.startswith("Keywords:")).strip()
+        if not body:
+            continue  # a section for the other mode only
         keywords = tuple(
             k.strip().lower() for ln in kw_lines for k in ln.removeprefix("Keywords:").split(",") if k.strip()
         )
@@ -181,9 +196,13 @@ def parse_kb(text: str) -> list[Section]:
     return sections
 
 
-@lru_cache(maxsize=1)
 def knowledge() -> tuple[Section, ...]:
-    return tuple(parse_kb(KB_PATH.read_text(encoding="utf-8")))
+    return _knowledge(submission_mode())
+
+
+@lru_cache(maxsize=2)
+def _knowledge(submission: bool) -> tuple[Section, ...]:
+    return tuple(parse_kb(KB_PATH.read_text(encoding="utf-8"), submission))
 
 
 def score(section: Section, question: str) -> tuple[int, int]:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from collections.abc import Iterator
 from typing import Any
 
@@ -329,3 +330,29 @@ def test_the_test_mode_stub_answers_from_the_first_note():
     reply = public_chat_reply(content)
     assert reply["answerable"] is True and reply["sections"] == [sections[0].id]
     assert reply["answer"].startswith(sections[0].body.split(". ")[0])
+
+
+# --------------------------------------------------------------------------- #
+# Submission build (default) and pre-launch build
+# --------------------------------------------------------------------------- #
+
+PRELAUNCH_WORDS = ("coming soon", "launching", "early access", "november 2026")
+
+
+def test_submission_mode_notes_never_mention_a_launch_or_coming_soon(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.delenv("PUBLIC_SUBMISSION_MODE", raising=False)
+    text = " ".join(s.body for s in pc.knowledge()).lower()
+    for word in PRELAUNCH_WORDS:
+        assert word not in text, word
+    assert re.search(r"\bbeta\b", text) is None
+    availability = next(s for s in pc.knowledge() if s.id == "availability")
+    assert "try the demo" in availability.body and "sign in" in availability.body
+
+
+def test_prelaunch_notes_give_the_launch_date_and_the_demo(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setenv("PUBLIC_SUBMISSION_MODE", "0")
+    assert "availability" in [s.id for s in pc.retrieve("When can I use it?")]
+    availability = next(s for s in pc.knowledge() if s.id == "availability")
+    assert "The public launch is November 2026" in availability.body
+    assert "try the demo" in availability.body
+    assert "[prelaunch]" not in " ".join(s.body for s in pc.knowledge())

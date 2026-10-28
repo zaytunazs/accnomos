@@ -1,4 +1,7 @@
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import Link from "next/link";
+import { LAUNCH, NOTIFY_HREF, SUBMISSION_MODE } from "@/lib/public-site";
 import { BrowserFrame, PhoneFrame, Shot } from "./Marks";
 import AskLink from "./AskLink";
 import ProcessDemo from "./ProcessDemo";
@@ -10,6 +13,13 @@ import ScreenTabs from "./ScreenTabs";
  * When a claim changes there, change it here and in services/runtime/app/public_kb.md (the chat's notes).
  */
 
+/**
+ * "Try the demo": the judges' demo page when this build has one (a parallel branch adds
+ * src/app/judges and POST /demo/session), otherwise the sample books on /try. Checked when the static export is
+ * built, so the link never points at a page that isn't there.
+ */
+const DEMO_HREF = existsSync(join(process.cwd(), "src", "app", "judges", "page.tsx")) ? "/judges" : "/try";
+
 const PROMISES = [
   { line: "AI proposes.", note: "A Meta model reads each receipt, invoice or credit note." },
   { line: "You approve.", note: "Nothing reaches your books until you tap Approve." },
@@ -17,6 +27,12 @@ const PROMISES = [
 ];
 
 const FEATURES = [
+  {
+    title: "Receipts straight from your email",
+    body: `Switch on Outlook intake and likely bills and receipts in your mailbox are copied to 00 Inbox for review.${
+      SUBMISSION_MODE ? "" : " Add more mailboxes: coming soon."
+    }`,
+  },
   {
     title: "Receipts and review",
     body: "Upload, photograph or drop documents into 00 Inbox. Each one becomes a card to approve, edit or reject, with Undo.",
@@ -91,7 +107,7 @@ const MODELS: { name: string; where: string; job: string; status: string; tone: 
 const FAQ: { q: string; a: React.ReactNode }[] = [
   {
     q: "Can I file my real VAT return with it today?",
-    a: "No. HMRC filing is sandbox only, which means HMRC's test service with test data, and the full browser flow has not yet been run end to end against it. The VAT boxes themselves are worked out by code from the entries you approved.",
+    a: "Not yet. Accnomos is built for Making Tax Digital, but submitting to HMRC goes to HMRC's sandbox (its test service, with test data) and has been tested against a stand-in for HMRC, not yet run end to end against the sandbox itself. The nine VAT boxes are worked out by code from the entries you approved.",
   },
   {
     q: "Where are my books kept?",
@@ -100,6 +116,12 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
   {
     q: "Does the AI post anything without me?",
     a: "Not by default. Every proposal waits for your Approve. Autopilot is an opt-in level that may post purchases from suppliers you have a rule for, and each post can be undone. Accnomos never sends email from your inbox on its own.",
+  },
+  {
+    q: "Can it pick up receipts from my email?",
+    a: `Yes, from Outlook: switch on Outlook intake and likely bills and receipts are copied to 00 Inbox, where they wait for your Approve like any other document. It has been tested on fictional emails, not yet on a real mailbox.${
+      SUBMISSION_MODE ? "" : " Adding more mailboxes is coming soon."
+    }`,
   },
   {
     q: "Which AI reads my receipts?",
@@ -117,10 +139,18 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     q: "Do I need a Microsoft account?",
     a: "For your own books, yes: they live in your OneDrive, and you sign in with a personal or work Microsoft account. To look around first, open the sample books; no sign-in needed.",
   },
-  {
-    q: "Is there an iPhone app?",
-    a: "No. There is an Android app, and the web app works in a phone's browser.",
-  },
+  ...(SUBMISSION_MODE
+    ? []
+    : [
+        {
+          q: "When can I use it for my own business?",
+          a: `The public launch is ${LAUNCH}. You can try the demo with the sample books now.`,
+        },
+        {
+          q: "Is there an iPhone app?",
+          a: "Not yet: the iPhone app is coming soon. There is an Android app today, and the web app works in an iPhone's browser.",
+        },
+      ]),
 ];
 
 export default function Landing() {
@@ -128,9 +158,9 @@ export default function Landing() {
     <>
       <Hero />
       <Process />
+      <Android />
       <Features />
       <AskAndActions />
-      <Android />
       <YourData />
       <Models />
       <Status />
@@ -140,24 +170,49 @@ export default function Landing() {
   );
 }
 
+/**
+ * The two calls to action. Submission build: "Try the demo" and "Sign in with Microsoft". Pre-launch build: "get
+ * notified" by e-mail first, the demo second (sign-in moves to the menu's "Early access / testers").
+ */
 function CtaPair({ dark = false }: { dark?: boolean }) {
+  const primary = "rounded-xl bg-brass px-5 py-3 text-base font-extrabold text-ink hover:bg-brass-light";
+  const secondary = `rounded-xl border-2 px-5 py-[10px] text-base font-extrabold ${
+    dark ? "border-ground/40 text-ground hover:border-ground" : "border-teal-dark text-teal-dark hover:bg-teal-tint"
+  }`;
+  if (!SUBMISSION_MODE) {
+    return (
+      <div className="flex flex-wrap items-center gap-3">
+        <a href={NOTIFY_HREF} className={primary}>
+          Launching {LAUNCH} — get notified
+        </a>
+        <Link href={DEMO_HREF} className={secondary}>
+          Try the demo
+        </Link>
+      </div>
+    );
+  }
   return (
     <div className="flex flex-wrap items-center gap-3">
-      <Link
-        href="/try"
-        className="rounded-xl bg-brass px-5 py-3 text-base font-extrabold text-ink hover:bg-brass-light"
-      >
-        Try the sample books
+      <Link href={DEMO_HREF} className={primary}>
+        Try the demo
       </Link>
-      <Link
-        href="/connect?next=%2F"
-        className={`rounded-xl border-2 px-5 py-[10px] text-base font-extrabold ${
-          dark ? "border-ground/40 text-ground hover:border-ground" : "border-teal-dark text-teal-dark hover:bg-teal-tint"
-        }`}
-      >
+      <Link href="/connect?next=%2F" className={secondary}>
         Sign in with Microsoft
       </Link>
     </div>
+  );
+}
+
+/** Which apps exist. Submission build: only what is there; pre-launch build: the iPhone app as coming soon. */
+function AppChips({ dark }: { dark: boolean }) {
+  const solid = dark ? "bg-white/10 text-ground" : "bg-ink text-ground";
+  const quiet = dark ? "border border-white/25 text-ground/80" : "border border-ink/25 text-muted";
+  return (
+    <ul aria-label="Apps" className="flex flex-wrap gap-2 text-sm font-bold">
+      <li className={`rounded-full px-3 py-1 ${solid}`}>Available on Android</li>
+      {!SUBMISSION_MODE && <li className={`rounded-full px-3 py-1 ${quiet}`}>iPhone app: coming soon</li>}
+      <li className={`rounded-full px-3 py-1 ${quiet}`}>Web, in any browser</li>
+    </ul>
   );
 }
 
@@ -182,18 +237,21 @@ function Hero() {
             </ul>
           </div>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ground/85">
-            Your receipts, ledger and VAT returns are files in your own OneDrive. Accnomos keeps no database, and a
-            figure only reaches your books when you say so.
+            Snap a receipt on your phone, or let Accnomos pick it up from your email. It waits for your Approve on
+            the phone or on the web: both work on the same books, in your own OneDrive.
           </p>
+          <div className="mt-4">
+            <AppChips dark />
+          </div>
           <div className="mt-7">
             <CtaPair dark />
           </div>
           <p className="mt-4 text-sm text-ground/70">
-            The sample books need no account. HMRC filing is sandbox only during the hackathon.
+            The demo uses fictional sample books and needs no sign-in. Submitting to HMRC uses HMRC&apos;s sandbox.
           </p>
         </div>
 
-        <div className="hero-devices relative mx-auto w-full max-w-[640px] lg:max-w-none">
+        <div className="hero-devices relative mx-auto w-full max-w-[640px] pl-[28%] sm:pl-[24%] lg:max-w-none">
           <BrowserFrame className="hero-laptop">
             <Shot
               src="/shots/hero-review-1280.webp"
@@ -205,17 +263,17 @@ function Hero() {
               alt="Accnomos Review page: the Novex Office Supplies receipt has been read, £51.90 with £8.65 VAT, confidence 97 %, waiting for approval."
             />
           </BrowserFrame>
-          <PhoneFrame className="hero-phone absolute -bottom-10 -right-2 hidden w-[150px] sm:block lg:-right-6 lg:w-[170px]">
+          <PhoneFrame className="hero-phone absolute -bottom-12 left-0 w-[34%] max-w-[200px] sm:w-[30%]">
             <Shot
               src="/shots/hero-phone.webp"
               width={390}
               height={844}
               eager
-              alt="The same proposal at phone width, with the proposed entry: office supplies £43.25, VAT to reclaim £8.65."
+              alt="The same Novex proposal on a phone, with the proposed entry: office supplies £43.25, VAT to reclaim £8.65."
             />
           </PhoneFrame>
-          <p className="mt-4 max-w-[70%] text-[13px] text-ground/65 sm:mt-6">
-            The real app, with the fictional sample books.
+          <p className="mt-16 text-right text-[13px] text-ground/65">
+            One receipt on the phone and on the web: the real app, with the fictional sample books.
           </p>
         </div>
       </div>
@@ -334,9 +392,12 @@ function Android() {
         <div>
           <SectionHead
             id="android-title"
-            title="Snap receipts on Android"
-            lead="Capture with the camera, review and approve, ask with the microphone, and check the VAT return, on the same books in your OneDrive."
+            title="Made for the phone in your pocket"
+            lead="Snap a receipt with the camera and it lands in your OneDrive inbox; review it, approve it, ask with the microphone and check the VAT return. The web app shows the same books, because both read the same files."
           />
+          <div className="mt-5">
+            <AppChips dark={false} />
+          </div>
           <ul className="mt-6 space-y-3 text-[15px] leading-relaxed">
             <li>Home, Review, Ask, VAT, and a More tab with files, contacts, invoices, bank, reports and the audit trail.</li>
             <li>Bank CSV upload, reconciling and HMRC filing stay on the web.</li>
@@ -495,11 +556,11 @@ function Status() {
       foot: "This proves our logic, not Microsoft, Meta or HMRC.",
     },
     {
-      title: "Not built yet",
+      title: "Not in this build",
       items: [
         "Production HMRC filing (sandbox only)",
         "Google Drive, RTI payroll, flat-rate VAT",
-        "An iPhone app",
+        ...(SUBMISSION_MODE ? [] : ["An iPhone app"]),
       ],
       foot: "The full list of gaps is kept in docs/HONESTY.md in the repository.",
     },

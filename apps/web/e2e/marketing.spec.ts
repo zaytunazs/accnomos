@@ -31,7 +31,9 @@ test.describe("landing page at 1280 px", () => {
     await expect(page.getByRole("navigation", { name: "Main" })).toHaveCount(0);
     await expect(page.getByRole("navigation", { name: "Sections" })).toHaveCount(0);
 
-    await page.getByRole("main").getByRole("link", { name: "Try the sample books" }).first().click();
+    await expect(page.getByRole("list", { name: "Apps" }).first()).toContainText("iPhone app: coming soon");
+    // "Try the demo — no sign-in" goes to /judges when that page is in the build, else to the sample books.
+    await page.getByRole("main").getByRole("link", { name: "Try the demo — no sign-in" }).first().click();
     await expect(page).toHaveURL(/\/try$/);
     await expect(page.getByRole("link", { name: "See the demo books" })).toBeVisible();
     await expect(page.getByText("SAMPLE — FICTIONAL COMPANY").first()).toBeVisible();
@@ -100,7 +102,7 @@ test.describe("process animation", () => {
     await page.clock.install();
     await page.goto("/");
     await page.locator("#how").scrollIntoViewIfNeeded();
-    await expect(current(page)).toContainText("The receipt arrives");
+    await expect(current(page)).toContainText("Snap it on your phone");
     await expect(stage(page).getByRole("img")).toHaveAttribute("alt", /Novex Office Supplies Ltd/);
     await page.clock.runFor(5000);
     await expect(current(page)).toContainText("A Meta model reads it");
@@ -112,7 +114,7 @@ test.describe("process animation", () => {
     await expect(current(page)).toContainText("The VAT box fills");
     await page.getByRole("button", { name: "Play the steps" }).click();
     await page.clock.runFor(5000);
-    await expect(current(page)).toContainText("The receipt arrives");
+    await expect(current(page)).toContainText("Snap it on your phone");
   });
 
   test("reduced motion: never moves on by itself", async ({ page }) => {
@@ -121,7 +123,7 @@ test.describe("process animation", () => {
     await page.goto("/");
     await page.locator("#how").scrollIntoViewIfNeeded();
     await page.clock.runFor(20_000);
-    await expect(current(page)).toContainText("The receipt arrives");
+    await expect(current(page)).toContainText("Snap it on your phone");
   });
 });
 

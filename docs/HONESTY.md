@@ -134,6 +134,41 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - Mic on Ask records WAV and calls `/books/ask/voice`; no run on a device is recorded.
 - *Add from phone* (0.3.2) opens the system contact picker and reads name, emails, phones and postal address from each returned contact URI only: no `READ_CONTACTS` in the manifest, nothing written back to the phone. Covered by widget tests with a mocked picker and by runtime tests for `POST /contacts/import-phone`; the picker grant, repeated picks and the sheet have not been run on a real phone.
 
+## Public website and "Ask about Accnomos"
+
+- **Signed out, `/` is now the landing page** and the sample Home moved to `/try` ("Try the sample books"); signed in,
+  `/` is Home as before. `/`, `/how-it-works` and `/privacy` use the public shell (top menu, footer, chat) until the
+  device holds a Microsoft sign-in (the same `localStorage` test as `useSignedIn`, also run before first paint so an
+  owner does not see the landing page flash). Every screenshot on the landing page is a crop or resize of a real one
+  (`docs/submission/shots/`, `apps/mobile/screenshots/`; `apps/web/scripts/marketing-images.py`), from test mode with the
+  fictional sample books: some show `accnomos-test-stub` as the model, and the captions say test mode. The Android
+  screenshots are from an emulator, signed out, showing the app's labelled samples.
+- **The chat (`POST /public/chat`) has run only against the test-mode stub and a fake model in unit tests; it has never
+  been called against Glimmer on the live Spark.** Its answer quality, its latency there (Ask takes ~16 s median on
+  Glimmer) and whether Glimmer honours the strict JSON schema for it are unmeasured. Load on the Spark is capped at two
+  concurrent chat calls per runtime process, with a 60 s timeout; past that the visitor gets the matching note quoted as
+  written.
+- **Guards are code, but retrieval is keyword overlap**, not embeddings: `public_kb.md` sections carry a `Keywords:`
+  line, and a question matching no keyword or title word gets the fixed reply (with `PUBLIC_CONTACT_EMAIL`) without a
+  model call. A real question phrased in words the notes don't use is refused too; the remedy is adding keywords. The
+  role-change filter is a regular expression over common phrasings ("ignore previous instructions", "you are now",
+  "act as a", "system prompt" and similar); a novel phrasing reaches the model, which sees only the retrieved notes and a
+  strict prompt, and an answer that mentions its instructions is dropped. Links and e-mail addresses other than
+  `PUBLIC_SITE_HOSTS` and the contact address are stripped; answers are cut to 700 characters at a sentence.
+- The chat logs nothing about questions (the module has no logger; the security middleware logs only the path of an
+  unhandled error), but web-server access logs still record IP, path and time as for every request. Its rate limit
+  (`PUBLIC_CHAT_PER_MIN`, default 6) is per process like the global one. One question at a time: no conversation
+  history is sent, so follow-ups like "and on Android?" are answered on their own words.
+- `public_kb.md` is curated by hand from the docs; nothing checks that it stays in step with `README.md` and this file.
+- **Two builds of the public site** (`NEXT_PUBLIC_SUBMISSION_MODE`, default `1`, and the runtime's
+  `PUBLIC_SUBMISSION_MODE` for the chat's notes). The judged build leaves out what is not built (iPhone app, more
+  mailboxes) instead of tagging it "coming soon", and shows no launch date; the pre-launch build (`0`) says "Launching
+  November 2026 — get notified" (a `mailto:`, no sign-up list) and tucks sign-in away. Only the default build is
+  tested end to end; the `0` build has been type-checked, not run. "Available on Android" on the landing page means the
+  app exists and builds; per `docs/submission/JUDGING.md` the Play production listing was still in review on 27 Oct
+  and no real-phone sign-in is recorded. "Try the demo" links to `/judges` when that page is in the build (a parallel
+  branch), otherwise to the sample books on `/try`.
+
 ## Security and deployment
 
 - Single-worker limits: the **rate limit is per process** (in-memory buckets, cleared on restart; several replicas would each allow the full rate) and the relay's spent-state set is per process, hence one relay worker (`deploy/Dockerfile.relay`).

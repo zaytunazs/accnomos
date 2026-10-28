@@ -8,10 +8,25 @@ export const PUBLIC_PATHS = new Set(["/", "/how-it-works", "/privacy"]);
 
 export const isPublicPath = (path: string) => PUBLIC_PATHS.has(path);
 
+/**
+ * The build the hackathon judges see (NEXT_PUBLIC_SUBMISSION_MODE, default "1"): "Try the demo" and "Sign in with
+ * Microsoft", no launch date and no "coming soon". "0" is the pre-launch site for public traffic: "Launching
+ * November 2026 — get notified" by e-mail, the demo, and sign-in tucked away as "Early access / testers".
+ * e2e/submission-mode.spec.ts checks the default build has none of the pre-launch words.
+ */
+export const SUBMISSION_MODE = process.env.NEXT_PUBLIC_SUBMISSION_MODE !== "0";
+
+export const LAUNCH = "November 2026";
+
 /** Where the chat and the footer send anything the site cannot answer (runtime: PUBLIC_CONTACT_EMAIL). */
 export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL || "admin@zaytunauk.co.uk";
 
 /** Fired by the menu's "Ask about Accnomos" button; the chat widget opens on it. */
+/** Pre-launch "get notified": no database, so an e-mail to the team. */
+export const NOTIFY_HREF = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Notify me at launch")}&body=${encodeURIComponent(
+  "Hello, please let me know when Accnomos launches.\n\nName:\nBusiness:\n",
+)}`;
+
 export const OPEN_CHAT_EVENT = "accnomos:open-chat";
 
 export function openChat(question?: string): void {

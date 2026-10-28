@@ -21,8 +21,8 @@ type Step = {
  */
 const STEPS: Step[] = [
   {
-    title: "The receipt arrives",
-    body: "Upload it, take a photo in the Android app, or drop it into 00 Inbox in your OneDrive.",
+    title: "Snap it on your phone",
+    body: "Take a photo in the Android app. It lands in 00 Inbox in your OneDrive; email intake, web upload and dropping the file in work too.",
     src: "/shots/step-1-receipt.webp",
     width: 750,
     height: 640,
@@ -48,8 +48,8 @@ const STEPS: Step[] = [
     mark: { left: 4, top: 53, width: 92, height: 32 },
   },
   {
-    title: "You approve",
-    body: "Nothing is posted until you tap Approve. Then one balanced entry is written to your books, and Undo is one key away.",
+    title: "You approve, on phone or web",
+    body: "The same card waits on the phone and on the web. Nothing is posted until you tap Approve; then one balanced entry is written, and Undo is one tap away.",
     src: "/shots/step-4-approved.webp",
     width: 816,
     height: 510,
