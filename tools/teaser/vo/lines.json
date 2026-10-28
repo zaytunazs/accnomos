@@ -1,0 +1,72 @@
+[
+ {
+  "file": "t1_01.wav",
+  "voice": "bm_george",
+  "text": "Bookkeeping that does itself."
+ },
+ {
+  "file": "t1_02.wav",
+  "voice": "bm_george",
+  "text": "Snap a receipt on your phone. It appears on the web, ready to approve."
+ },
+ {
+  "file": "t1_03.wav",
+  "voice": "bm_george",
+  "text": "Accnomos pulls receipts and invoices straight from your email."
+ },
+ {
+  "file": "t1_04.wav",
+  "voice": "bm_george",
+  "text": "Ask for a report in plain English, and get exact figures."
+ },
+ {
+  "file": "t1_05.wav",
+  "voice": "bm_george",
+  "text": "Compare what you pay, and plan your day around your jobs."
+ },
+ {
+  "file": "t1_06.wav",
+  "voice": "bm_george",
+  "text": "VAT returns, built for Making Tax Digital."
+ },
+ {
+  "file": "t1_07.wav",
+  "voice": "bm_george",
+  "text": "Your books stay in your own OneDrive. A.I. by Meta Muse models."
+ },
+ {
+  "file": "t1_08.wav",
+  "voice": "bm_george",
+  "text": "Accnomos. Launching November twenty twenty-six."
+ },
+ {
+  "file": "t2_01.wav",
+  "voice": "bm_lewis",
+  "text": "Remember to order two-inch bolts for the Hendon job."
+ },
+ {
+  "file": "t2_02.wav",
+  "voice": "bm_lewis",
+  "text": "Andy worked two hours on this job, and he's on the next one for the rest of the day."
+ },
+ {
+  "file": "t2_03.wav",
+  "voice": "bm_lewis",
+  "text": "Last week Andy did overtime on the Croydon job. Pay him double."
+ },
+ {
+  "file": "t2_04.wav",
+  "voice": "bm_lewis",
+  "text": "Any outstanding quotes?"
+ },
+ {
+  "file": "t2_05.wav",
+  "voice": "bf_emma",
+  "text": "Some by voice, some by chat. You approve. Accnomos does the books."
+ },
+ {
+  "file": "t2_06.wav",
+  "voice": "bf_emma",
+  "text": "Accnomos. Launching November twenty twenty-six."
+ }
+]
