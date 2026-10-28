@@ -21,7 +21,8 @@ test.describe("signed out, / is the marketing home", () => {
       "How it works",
       "The rest of the books, in the same place",
       "Making Tax Digital, for VAT and Income Tax",
-      "Ask by voice or chat, then approve what it suggests",
+      "Voice and chat that wait",
+      "Your books live in OneDrive",
       "Made for the phone in your pocket",
       "For accountants",
       "Pricing",
@@ -31,13 +32,13 @@ test.describe("signed out, / is the marketing home", () => {
     }
     await expect(page.getByRole("list", { name: "The four steps" }).getByRole("listitem")).toHaveText([
       /Send it in/,
-      /AI proposes/,
+      /The AI proposes/,
       /You approve/,
-      /HMRC-ready/,
+      /VAT and records, ready/,
     ]);
 
     // The two calls to action, in the hero and again at the foot of the page.
-    const hero = page.getByRole("region", { name: /AI proposes/ });
+    const hero = page.getByRole("region", { name: "Bookkeeping you only have to check" });
     await expect(hero.getByRole("link", { name: "Try the demo", exact: true })).toHaveAttribute("href", "/judges");
     await expect(hero.getByRole("link", { name: "Sign in with Microsoft" })).toHaveAttribute("href", "/connect?next=%2F");
 
@@ -50,6 +51,10 @@ test.describe("signed out, / is the marketing home", () => {
     await expect(page.getByRole("navigation", { name: "Sections" })).toHaveCount(0);
     await expect(page.getByRole("button", { name: /switch books|profile/i })).toHaveCount(0);
     await expect(page.getByText(/to review|To-dos|Good (morning|afternoon|evening)|SAMPLE — FICTIONAL COMPANY/)).toHaveCount(0);
+    // The copy deck's text (docs/marketing/COPY.md), with its corrections: no pricing "shown in the app".
+    await expect(page.getByRole("contentinfo")).toContainText("Accounting, intelligently done.");
+    await expect(main).not.toContainText("Pricing is shown in the app");
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /^Bookkeeping for UK small firms: AI reads the paperwork/);
 
     // The footer: privacy, terms, contact and the honest list of what is untested.
     const footer = page.getByRole("contentinfo");

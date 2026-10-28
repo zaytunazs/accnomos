@@ -44,10 +44,13 @@ function SiteFooter() {
             <LogoMark className="bg-ground" stroke="#0A4F47" />
             <span className="text-lg font-extrabold tracking-tight">Accnomos</span>
           </div>
+          {/* Footer microcopy from docs/marketing/COPY.md. */}
           <p className="mt-3 max-w-sm text-sm leading-relaxed">
-            Bookkeeping, MTD VAT and Income Tax for UK small businesses, sole traders, landlords and households, built
-            for the Meta Global AI Developer Hackathon by
-            Zaytuna Business Services Ltd. HMRC filing is sandbox only.
+            Accounting, intelligently done. Your books stay in your OneDrive. Sample figures on this page are fictional.
+            HMRC contact is sandbox only.
+          </p>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed">
+            Built for the Meta Global AI Developer Hackathon by Zaytuna Business Services Ltd.
           </p>
           <p className="mt-3 text-sm">
             Questions:{" "}

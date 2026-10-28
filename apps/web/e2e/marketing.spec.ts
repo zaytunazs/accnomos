@@ -22,7 +22,7 @@ test.describe("landing page at 1280 px", () => {
 
   test("hero: the promise, both calls to action, and the working app one click away", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("AI proposes.You approve.Code calculates.");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Bookkeeping you only have to check");
     await expect(page.getByText("SAMPLE — FICTIONAL COMPANY")).toHaveCount(0);
     const signIn = page.getByRole("link", { name: "Sign in with Microsoft" }).first();
     await expect(signIn).toHaveAttribute("href", "/connect?next=%2F");
@@ -72,11 +72,11 @@ test.describe("landing page at 1280 px", () => {
 
   test("FAQ answers open and close; the honest status is on the page", async ({ page }) => {
     await page.goto("/#faq");
-    const q = page.getByText("Can I file my real VAT return with it today?");
+    const q = page.getByText("Does it file to HMRC?");
     await q.click();
-    await expect(page.getByText(/goes to HMRC's sandbox \(its test service, with test data\)/)).toBeVisible();
+    await expect(page.getByText(/sandbox only, for VAT and for self-employed Income Tax/)).toBeVisible();
     await q.click();
-    await expect(page.getByText(/goes to HMRC's sandbox \(its test service, with test data\)/)).toBeHidden();
+    await expect(page.getByText(/sandbox only, for VAT and for self-employed Income Tax/)).toBeHidden();
     const status = page.getByRole("region", { name: "What is tested, and what is not" });
     await expect(status).toContainText("Tested on fakes");
     await expect(status).toContainText("Production HMRC filing (sandbox only)");

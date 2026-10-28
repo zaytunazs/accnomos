@@ -5,8 +5,9 @@ import Landing from "@/components/marketing/Landing";
 
 export const metadata: Metadata = {
   title: "Accnomos · AI bookkeeping and MTD VAT for UK small businesses",
+  // docs/marketing/COPY.md, "Meta description".
   description:
-    "AI proposes, you approve, code calculates. Meta models read your receipts, you approve every entry, code works out the nine VAT boxes, and your books stay in your own OneDrive.",
+    "Bookkeeping for UK small firms: AI reads the paperwork, you approve, code does the VAT. Books kept in your OneDrive.",
 };
 
 /** Signed out: the public landing page. Signed in: Home, the owner's dashboard. */
