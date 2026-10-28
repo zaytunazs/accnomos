@@ -109,6 +109,7 @@ Books.xlsx still show the path as it was saved.
 | `Payroll/runs/<yyyy-mm>.json` | one pay run per month | updated |
 | `Planner/applied.json` | which day plans were applied (idempotency) | updated |
 | `Todos/todos.json` | to-dos added from triage | updated |
+| `profile.json` | what these books are: name, kind (`company`, `sole_trader`, `personal`), kind settings, other linked accounts by sign-in name (`app/profile.py`, `PUT /profile`) | rewritten whole |
 
 OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folder. Money is integer pence in every file except
 `Books.xlsx`, which shows pounds.
@@ -151,6 +152,45 @@ Every read of the books is a Graph call, so the runtime avoids repeating them (`
   mode). Never cached across users; never cached mutable files beyond one request. The key holds a hash, not the token.
 
 Speed on a real-sized seeded book, measured on fakes with simulated latency: `evals/runs/bench_runtime/report.md`.
+
+**Linked accounts never share a cache entry.** Each profile is its own Microsoft account (next section), so every
+request carries that account's own token, and both cache layers are keyed by a hash of it
+(`services/runtime/tests/test_profile.py` checks that two tokens get two keys and that one account's cached event is
+never served to the other).
+
+## Profiles (linked accounts)
+
+One Microsoft account is one profile: a company, a sole-trader business or personal finances, with its books in that
+account's own OneDrive. A user with several links several accounts; there is still no user database.
+
+* **Which accounts are linked** lives in the browser. The web keeps every account signed in with MSAL's multi-account
+  cache (`getAllAccounts()`, `setActiveAccount`, `loginRedirect` with `prompt: "select_account"` to add one) and
+  `localStorage` `accnomos.profiles` (`apps/web/src/lib/profiles.ts`): the account whose settings are live, and each
+  account's last-read name, kind and features for the menu. Switching sets MSAL's active account, so `getToken` (and
+  every runtime and Graph call after it) uses the other account's token, then reloads.
+* **Per-business settings this browser keeps** (`accnomos.business`, VAT period, Autopilot level, Ask history, intake
+  and triage state, setup checklist, invoice draft: `PROFILE_KEYS`) are stashed under the old account and the new
+  account's copy restored on every switch. The HMRC connection (sessionStorage) is dropped on a switch, never carried:
+  the user connects HMRC again for that business. The AI settings and device id are the person's and stay.
+* **What the books are** is in each account's `_System/profile.json` (`GET`/`PUT /profile`, `app/profile.py`). Without
+  the file the books are a VAT-registered company, so nothing changed for existing users. `linked` may list the other
+  accounts by sign-in name (never a token or an id the app could sign in with) so a new browser can offer to add them
+  (Settings › Business › Profile).
+* **Kind gates features.** `features` in `GET /profile`: personal books have no `vat`, `invoices` or `payroll`; `vat`
+  needs `vat_registered`; `self_employment` is for sole traders. The runtime answers 404 with a sentence on the gated
+  routes (`routes_books.require_feature`: `/books/vat*`, `/books/deadlines`, `/reports/vat`, `/invoices/*`,
+  `/credit-notes*`, `/payroll/*`), costing one read of `profile.json` on those routes only. The web hides what the kind
+  lacks.
+* **Menu bar** (`apps/web/src/components/TopBar.tsx`, `apps/web/src/lib/nav.ts`), signed in only: the profile switcher
+  at the far left, the groups Home, Sales, Purchases, Reporting, Accounting, Tax, Payroll, Contacts and (personal books)
+  Personal as disclosure dropdowns, then Search (find a page), Ask, Help, Notifications (the Review count) and the
+  account menu (email, *Sign out of this one*). Under 900 px the groups are in a modal drawer. A link shows only when its
+  page is in the build (`apps/web/src/lib/routes.server.ts` lists `src/app` when the static export is made) and the
+  profile has its feature, so the menu never links to a 404. Signed out, the old sidebar and phone header stay.
+* **Android** is single-account (`msal_config.json` `account_mode: SINGLE`): Settings shows the profile's name and
+  kind and *Switch account* signs out, forgets the phone's business details, and signs in again.
+* **Test mode:** a token `test-token.<account>` is another account with fakes of its own (`app/testmode.py`
+  `TEST_ACCOUNT_TOKEN`); the web's test sign-in adds Jo (`test-token.jo`) when you sign in while signed in.
 
 ## The agent pipeline
 

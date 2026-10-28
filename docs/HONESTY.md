@@ -122,6 +122,25 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - A provider-level read failure now marks only its tiles `{"error": ...}` (Graph 401/403 still fails the whole request, so the app signs in again); the Android app does not read that marker (not run). A failed pull-to-refresh on the phone keeps the old figures under a "Could not load your figures" line; the tiles are not marked stale.
 - The web sidebar names the saved AI choice (Glimmer on your machine, Muse Spark on your key, or the stub in test mode). Ask uses the period picked on `/vat` but has no picker of its own.
 
+## Profiles (linked accounts)
+
+- **Never run with real Microsoft accounts.** Linking several accounts, switching and *Sign out of this one* have run
+  only against the test sign-in (`apps/web/src/lib/msal-test.ts`) and the runtime's per-token fakes
+  (`apps/web/e2e/profiles.spec.ts`, `services/runtime/tests/test_profile.py`). Real MSAL's multi-account cache, a
+  personal and a work account side by side, `logoutRedirect({account})` with another account still signed in (it may
+  end the Microsoft web session for the other too), and consent prompts per account are untested.
+- Two real OneDrives with a profile each have not been tried; `_System/profile.json` has only been written to fakes.
+- The business details this browser keeps are swapped per account in `localStorage`; a second tab open on the other
+  profile during a switch is not handled (it keeps the old copy until it reloads). HMRC must be connected again after
+  every switch, by design.
+- The Home dashboard still shows its VAT tile for personal books and for books that are not VAT-registered (the menu
+  hides VAT; the dashboard route is not gated). Customers and Suppliers in the menu open the same Contacts page (it has
+  no filter yet).
+- Several menu pages are being built elsewhere (`/sales`, `/purchases`, `/accounting/*`, `/self-employment`, `/personal`
+  and others); the menu shows each only once its page is in the build, so today those groups are shorter.
+- Android has one account at a time (*Switch account*); its More screen does not hide VAT, invoices or payroll for
+  personal books yet, and the Flutter changes have not been run here (widget tests added, `flutter test` not run).
+
 ## Android
 
 - `flutter analyze` is clean and `flutter test` passes (27 Oct 2026, incl. the payments sheets and Add from phone at 360 dp, now also the company look-up, VAT check, contact edit, review VAT gate and duplicates sheets at 360 dp); both now run on every Android merge; 0.3.4 adds the parity suite (bank-rule sheet, Your-data export, audit filters, web-link rows at 360 dp). Page-by-page parity: `apps/mobile/PARITY.md`. Nothing on the phone has been run on a real device.
