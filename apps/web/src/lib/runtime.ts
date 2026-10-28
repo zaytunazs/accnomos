@@ -86,6 +86,8 @@ export interface RtProposal {
   autopilot?: { auto_approve: boolean; reasons: string[]; supplier_key: string | null } | null;
   /** Business vehicle this cost is tagged to (pre-filled when there is exactly one). */
   vehicle_id?: string | null;
+  /** Business-use percent of a purchase (0-100; absent means 100): only that share is claimed. */
+  business_use_percent?: number | null;
   /** Set on mileage allowance claims, which code builds: approve them as they are. */
   mileage_claim?: { tax_year: string; period: string; covers_to: string; entry_ids: string[]; miles: number } | null;
 }
@@ -446,6 +448,9 @@ export const runtime = {
     ignore: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/ignore`, { method: "POST" }),
     expenseProposal: (a: AccountInfo, lineId: string) =>
       call<RtProposal>(a, `/books/bank/lines/${lineId}/expense-proposal`, { method: "POST" }),
+    /** Mark money out as private spending: a 0% business-use proposal approved on Review. */
+    privateProposal: (a: AccountInfo, lineId: string) =>
+      call<RtProposal>(a, `/books/bank/lines/${lineId}/private-proposal`, { method: "POST" }),
     /** Bank rules (services/runtime/app/bank_rules.py): first match wins, in order. */
     rules: (a: AccountInfo) => call<RtBankRule[]>(a, "/books/bank/rules"),
     createRule: (a: AccountInfo, rule: RtBankRuleIn) =>
@@ -472,10 +477,10 @@ export const runtime = {
       }).toString();
       return call<RtBankRule>(a, `/books/bank/lines/${lineId}/rule-draft${q ? `?${q}` : ""}`);
     },
-    /** Approve one suggestion: exact records the match; rule/AI posts through Review approval. */
-    reconcileApprove: (a: AccountInfo, lineId: string, kind: "exact" | "refund" | "rule" | "ai", ai?: RtAiSuggestion | null) =>
+    /** Approve one suggestion: exact records the match; rule/AI posts through Review approval (with the business-use percent when given). */
+    reconcileApprove: (a: AccountInfo, lineId: string, kind: "exact" | "refund" | "rule" | "ai", ai?: RtAiSuggestion | null, businessUsePercent?: number | null) =>
       call<{ line: RtBankLine; proposal_id: string | null; event_id: string | null }>(
-        a, `/books/bank/lines/${lineId}/approve`, { method: "POST", body: JSON.stringify({ kind, ai: ai ?? null }) }),
+        a, `/books/bank/lines/${lineId}/approve`, { method: "POST", body: JSON.stringify({ kind, ai: ai ?? null, business_use_percent: businessUsePercent ?? null }) }),
   },
   /** /personal/* (services/runtime/app/routes_personal.py). Pence in, pence out; every figure is worked out by the runtime. */
   personal: {
@@ -1441,7 +1446,7 @@ export interface RtBankSuggestion {
   // label: set when the entry is a recorded payment or refund ("Recorded payment of £405.00 on 20/09/2026 (…)")
   events: { id: string; date: string; counterparty: string | null; amount_pence: number; label?: string | null }[];
 }
-export type RtUnmatchedAction = "create_expense_proposal" | "mark_transfer" | "ignore";
+export type RtUnmatchedAction = "create_expense_proposal" | "mark_private" | "mark_transfer" | "ignore";
 export interface RtUnmatchedLine {
   line: RtBankLine;
   suggested: { action: RtUnmatchedAction; reason: string };
