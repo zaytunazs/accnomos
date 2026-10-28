@@ -150,6 +150,18 @@ async def graph_error(_request: Request, exc: GraphError) -> JSONResponse:
     return JSONResponse(status_code=status, content={"detail": scrub(str(exc))})
 
 
+from app.sharing import ReadOnlyBooks  # noqa: E402
+
+
+@app.exception_handler(ReadOnlyBooks)
+async def read_only_books(_request: Request, exc: ReadOnlyBooks) -> JSONResponse:
+    """A write to a client's books opened read-only (an accountant's view): refused, nothing was changed."""
+    return JSONResponse(
+        status_code=403,
+        content={"detail": "You opened these books read-only, so nothing was changed. Queries still work."},
+    )
+
+
 from app.company_lookup import LookupFailed  # noqa: E402
 from app.routes_lookup import router as lookup_router  # noqa: E402  /lookup/* (Companies House, VAT check)
 
@@ -232,6 +244,10 @@ if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI und
     testmode.warm()
     app.add_middleware(testmode.TenantMiddleware)  # added last, so outermost: X-Test-Tenant picks the fakes
     app.include_router(testmode.router)
+
+from app.routes_accountant import router as accountant_router  # noqa: E402  /accountant/*, /queries/*
+
+app.include_router(accountant_router)
 
 from app.routes_todos import router as todos_router  # noqa: E402  /todos
 

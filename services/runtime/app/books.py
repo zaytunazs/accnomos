@@ -73,6 +73,10 @@ AUTOPILOT_RULES = f"{SYSTEM}/Rules/rules.json"
 # OneDrive paths are case-insensitive, so this is the same folder as "_System/Audit/autopilot".
 AUTOPILOT_AUDIT = f"{AUDIT}/autopilot"
 CURSORS = f"{SYSTEM}/cursors.json"
+# Client queries between the user and their accountant (app/queries.py), one file per thread. A view-only
+# accountant may write here and nowhere else (app/sharing.py); their audit lines go to QUERIES_AUDIT for that reason.
+QUERIES = f"{SYSTEM}/queries"
+QUERIES_AUDIT = f"{QUERIES}/audit"
 # Old path -> where the app moved the document (archive, Files page moves and renames). Applied whenever a stored
 # path is read back (proposals' file_path, bank lines' source_file), so links keep working without rewriting them.
 MOVED_MAP = f"{ARCHIVE_SYSTEM}/map.json"
@@ -210,6 +214,10 @@ class Books:
             elif storage.user_key is None:
                 storage.user_key = cache_key
         self.storage = storage
+        # Set by routes_books.get_books when an accountant opens a client's shared books (app/sharing.py): their
+        # email, from Graph /me, and whether the folder was opened read-only.
+        self.accountant: str | None = None
+        self.read_only = False
 
     # ------------------------------------------------------------------ #
     # Low-level helpers
@@ -370,8 +378,14 @@ class Books:
     async def audit(self, actor: str, action: str, refs: dict[str, Any], folder: str = AUDIT) -> None:
         """Append one line {"ts", "actor", "action", "refs"} to {folder}/{yyyy-mm}.jsonl (_System/audit by default).
 
-        `actor` is "user:{email}" for something a person did, or "agent:{name}" for something done for them.
+        `actor` is "user:{email}" for something a person did, or "agent:{name}" for something done for them. In a
+        client's books opened by their accountant, "user:…" becomes "accountant:{verified email}"; opened read-only,
+        the line goes to _System/queries/audit/ (the only place a view-only accountant may write).
         """
+        if self.accountant and actor.startswith("user:"):
+            actor = f"accountant:{self.accountant}"
+            if self.read_only and folder == AUDIT:
+                folder = QUERIES_AUDIT
         ts = now()
         line = json.dumps({"ts": ts.isoformat(), "actor": actor, "action": action, "refs": refs}, ensure_ascii=False)
         await self._update(f"{folder}/{_month(ts)}.jsonl", lambda old: (old or b"") + line.encode() + b"\n")
