@@ -210,9 +210,11 @@ async def remove_payment(books: Books, payment_id: str, user: str) -> list[str]:
         return await _unmatch_line(books, payment_id, user)
     if r.removed_at:
         raise InvoiceStateError("This payment has already been removed")
-    from app.credits import refuse_while_used, uses_of
+    from app.credits import refuse_while_used, stranded, uses_of
 
     refuse_while_used(await uses_of(books, "payment", r.id), "this payment")
+    if why := await stranded(books, removing=r.id):
+        raise InvoiceStateError(why)
     if r.event_id:
         stored = await books.stored_bank_lines()
         lines = [ln for ln in stored if ln.status == "matched" and r.event_id in ln.event_ids()]
@@ -388,12 +390,13 @@ def invoice_money(inv: Invoice, ledger: Ledger) -> InvoiceMoney | None:
 
 async def sync_invoices(books: Books, event_ids: Iterable[str]) -> None:
     """Refresh the payment copy on the sales invoices behind `event_ids`: paid when nothing is left to pay, sent
-    otherwise. Never fails the action that called it (a payment, a credit note, a bank match)."""
+    otherwise. Other sent invoices with money against them are refreshed too, because a credit applied to one invoice
+    can come from another's payment. Never fails the action that called it (a payment, a credit note, a bank match)."""
     wanted = set(event_ids)
     if not wanted:
         return
     try:
-        invoices = [i for i in await list_invoices(books) if i.event_id in wanted and i.status in ("sent", "paid")]
+        invoices = [i for i in await list_invoices(books) if i.event_id and i.status in ("sent", "paid")]
         if not invoices:
             return
         ledger = await load_ledger(books)
@@ -401,6 +404,8 @@ async def sync_invoices(books: Books, event_ids: Iterable[str]) -> None:
             m = invoice_money(inv, ledger)
             if m is None or (is_marked_paid(inv) and m.payments and m.payments[-1].source == "marked"):
                 continue
+            if inv.event_id not in wanted and inv.paid_pence is None and not m.paid_pence + m.credited_pence:
+                continue  # untouched and never paid: no copy to keep
             status = "paid" if m.balance_pence == 0 and (m.paid_pence + m.credited_pence) > 0 else "sent"
             last = max((p.date for p in m.payments if p.date), default=None)
             new = {

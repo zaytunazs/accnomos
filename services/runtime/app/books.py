@@ -612,6 +612,11 @@ class Books:
         if not line.resolved:
             raise BankMatchError("This bank line is still open; there is nothing to undo")
         update: dict[str, Any] = {"status": "unmatched", "matched_event_id": None, "matched_event_ids": []}
+        if line.status == "matched":
+            from app.credits import stranded  # app.credits imports this module
+
+            if why := await stranded(self, unmatched=line.model_copy(update=update)):
+                raise BankMatchError(why)
         await self._set_line(path, line_id, update)
         await self.audit(
             f"user:{user}",

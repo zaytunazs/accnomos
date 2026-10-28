@@ -29,15 +29,16 @@ from datetime import date
 
 from pydantic import Field
 
+from accnomos_ledger.bank import BankLine
 from accnomos_ledger.events import LedgerEvent, Line
 from app.approve import reversal_of
 from app.books import BankMatchError, Books, now
 from app.books import today as london_today
-from app.contacts import Doc, Ledger, documents, load_ledger
+from app.contacts import Doc, Ledger, documents, load_ledger, reversed_ids
 from app.invoicing import InvoiceError, InvoiceStateError, money
 from app.journal import BANK, CREDITORS, DEBTORS
 from app.payments import PaymentAccount, sync_invoices
-from app.settlement import CREDIT_USES, Credit, CreditUse
+from app.settlement import CREDIT_USES, Credit, CreditUse, settle
 from app.validation import Day, Pence, StrictBody
 
 MAX_PENCE = 10_000_000_000
@@ -288,6 +289,27 @@ async def uses_on(books: Books, event_id: str) -> list[CreditUse]:
     from app.settlement import load_uses
 
     return [u for u in await load_uses(books) if u.doc_event_id == event_id and u.removed_at is None]
+
+
+async def stranded(
+    books: Books, *, unmatched: BankLine | None = None, reversing: str | None = None, removing: str | None = None
+) -> str | None:
+    """Why unmatching a bank line (`unmatched`, as it would be), reversing an event (`reversing`) or removing a recorded
+    payment (`removing`) must wait: it would take back credit already applied or refunded. That credit need not be
+    its own: a match, a credit note or a payment dated before a recorded payment leaves that payment's money over as
+    a credit. None when nothing would be lost."""
+    ledger = await load_ledger(books)
+    lines = [unmatched if unmatched and ln.id == unmatched.id else ln for ln in ledger.bank_lines]
+    gone = reversed_ids(ledger.events) | ({reversing} if reversing else set())
+    records = [r for r in ledger.records if r.id != removing]
+    took = {u.id: u.applied_pence for u in settle(documents(ledger), lines, records, gone, ledger.uses).uses}
+    if lost := [u for u in ledger.settlement().uses if took.get(u.id, 0) < u.applied_pence]:
+        kinds = sorted({"applied to another document" if u.kind == "apply" else "refunded" for u in lost})
+        return (
+            f"The credit this would take back has been {' and '.join(kinds)}; "
+            "remove that first (Contacts → the contact → Credit on account)"
+        )
+    return None
 
 
 def refuse_while_used(uses: list[CreditUse], what: str) -> None:
