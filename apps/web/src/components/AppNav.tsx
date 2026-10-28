@@ -5,8 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { AccountInfo } from "@azure/msal-browser";
 import { useAccount } from "@/components/jobs/useAccount";
+import { currentFeatures, PROFILE_EVENT } from "@/lib/profiles";
 import { runtime } from "@/lib/runtime";
-import { PERSONAL_CHANGED, personalOn } from "@/lib/personal";
+import { usePersonalOn } from "@/lib/personal";
 
 type NavLink = { href: string; label: string; badge?: string; tab?: string };
 const links: NavLink[] = [
@@ -23,6 +24,22 @@ const links: NavLink[] = [
   { href: "/vehicles", label: "Vehicles" },
   { href: "/files", label: "Files", tab: "Files" },
 ];
+
+/** Pages a profile's kind may lack (services/runtime/app/profile.py features): personal books have no VAT,
+ *  invoices or payroll; VAT shows only for a VAT-registered business. */
+const FEATURE_OF: Record<string, string> = { "/invoices": "invoices", "/vat": "vat", "/payroll": "payroll" };
+
+/** The current profile's features (lib/profiles.ts); null until known, and then nothing is hidden. */
+function useFeatures(): string[] | null {
+  const [features, setFeatures] = useState<string[] | null>(null);
+  useEffect(() => {
+    const read = () => setFeatures(currentFeatures());
+    queueMicrotask(read);
+    window.addEventListener(PROFILE_EVENT, read);
+    return () => window.removeEventListener(PROFILE_EVENT, read);
+  }, []);
+  return features;
+}
 
 const SAMPLE_WAITING = 1; // signed out, Review shows the one sample proposal
 
@@ -41,7 +58,7 @@ function countWaiting(account: AccountInfo, path: string): Promise<number | null
 }
 
 /** The Review badge: proposals waiting for the user (refreshed on every page change), or the sample's one. */
-function useReviewBadge(pathname: string): string | undefined {
+export function useReviewBadge(pathname: string): string | undefined {
   const account = useAccount();
   const [count, setCount] = useState<number | null>(null);
   useEffect(() => {
@@ -56,25 +73,11 @@ function useReviewBadge(pathname: string): string | undefined {
   return count ? String(count) : undefined;
 }
 
-/** The Personal page is in the menu only while Settings › Show personal finances is on (this device). */
-function usePersonalOn(): boolean {
-  const [on, setOn] = useState(false);
-  useEffect(() => {
-    const read = () => setOn(personalOn());
-    queueMicrotask(read);
-    window.addEventListener(PERSONAL_CHANGED, read);
-    window.addEventListener("storage", read);
-    return () => {
-      window.removeEventListener(PERSONAL_CHANGED, read);
-      window.removeEventListener("storage", read);
-    };
-  }, []);
-  return on;
-}
-
-function withBadges(review: string | undefined, personal: boolean): NavLink[] {
+function withBadges(review: string | undefined, features: string[] | null, personal: boolean): NavLink[] {
   const all = personal ? [...links, { href: "/personal", label: "Personal" }] : links;
-  return all.map((l) => (l.href === "/review" ? { ...l, badge: review } : l));
+  return all
+    .filter((l) => !features || !FEATURE_OF[l.href] || features.includes(FEATURE_OF[l.href]))
+    .map((l) => (l.href === "/review" ? { ...l, badge: review } : l));
 }
 
 function isActive(pathname: string, href: string) {
@@ -165,7 +168,7 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
       aria-label="Sections"
       className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-white pb-[env(safe-area-inset-bottom)] min-[900px]:hidden"
     >
-      <div className="grid grid-cols-5">
+      <div className={links.filter((l) => l.tab).length === 5 ? "grid grid-cols-5" : "grid grid-cols-4"}>
         {links.filter((l) => l.tab).map((link) => {
           const active = isActive(pathname, link.href);
           return (
@@ -195,7 +198,7 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
 
 export default function AppNav({ variant = "sidebar" }: { variant?: "sidebar" | "tabs" }) {
   const pathname = usePathname();
-  const navLinks = withBadges(useReviewBadge(pathname), usePersonalOn());
+  const navLinks = withBadges(useReviewBadge(pathname), useFeatures(), usePersonalOn());
 
   if (variant === "tabs") return <TabBar pathname={pathname} links={navLinks} />;
   return <SidebarNav pathname={pathname} links={navLinks} />;

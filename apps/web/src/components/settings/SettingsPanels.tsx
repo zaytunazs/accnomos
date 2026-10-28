@@ -9,6 +9,7 @@ import OutlookIntake from "@/components/settings/OutlookIntake";
 import EmailIntake from "@/components/settings/EmailIntake";
 import AutopilotRules from "@/components/settings/AutopilotRules";
 import BusinessDetails from "@/components/settings/BusinessDetails";
+import ProfileDetails from "@/components/settings/ProfileDetails";
 import StaffEditor from "@/components/settings/StaffEditor";
 import VatPeriodSettings from "@/components/settings/VatPeriodSettings";
 import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
@@ -57,6 +58,7 @@ const HASH_GROUP: Record<string, GroupId> = {
   "settings-automation": "automation",
   "settings-business-hours": "automation",
   "settings-business": "business",
+  profile: "business", // the profile menu's "Profile details"
   "settings-vat-periods": "business",
   "settings-invoice-profile": "business",
   "invoice-profile": "business",
@@ -421,6 +423,8 @@ export default function SettingsPanels() {
         hidden={group !== "business"}
         className="mt-4 space-y-4"
       >
+        <ProfileDetails card={card} heading={heading} />
+
         <BusinessDetails card={card} heading={heading} />
 
         <div id="settings-invoice-profile" className="scroll-mt-4">

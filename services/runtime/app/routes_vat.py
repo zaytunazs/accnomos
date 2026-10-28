@@ -23,7 +23,7 @@ from app.deadlines import (
     stagger_of,
 )
 from app.paths import SYSTEM, VAT_RETURNS
-from app.routes_books import get_books, require_user
+from app.routes_books import get_books, require_feature, require_user
 from app.vat_cycle import VatCycle, vat_cycle
 
 #: HMRC obligations the web app fetched through the relay and posted back, so a return
@@ -173,7 +173,7 @@ def can_submit(start: date, cycle: VatCycle, today: date, submitted: bool) -> bo
     return not submitted and start in (cur_start, previous_period(cur_start, cycle.months)[0])
 
 
-@router.get("/vat", response_model=VatReturnView)
+@router.get("/vat", response_model=VatReturnView, dependencies=[require_feature("vat")])
 async def vat_return(
     period_start: date | None = Query(None, description="ISO date; send with period_end"),
     period_end: date | None = Query(None, description="ISO date; send with period_start"),
@@ -265,7 +265,7 @@ class VatPeriods(BaseModel):
     )
 
 
-@router.get("/vat/periods", response_model=VatPeriods)
+@router.get("/vat/periods", response_model=VatPeriods, dependencies=[require_feature("vat")])
 async def vat_periods(
     today: date | None = Query(None, description="for previews and tests; defaults to today"),
     cycle: VatCycle = Depends(vat_cycle),
@@ -313,7 +313,7 @@ async def vat_periods(
     )
 
 
-@router.post("/vat/obligations", status_code=201)
+@router.post("/vat/obligations", status_code=201, dependencies=[require_feature("vat")])
 async def post_obligations(
     body: ObligationsBody, books: Books = Depends(get_books), user: str = Depends(require_user)
 ) -> dict:
@@ -373,7 +373,7 @@ def _period_deadline(events: list[LedgerEvent], start: date, end: date, months: 
     )
 
 
-@router.get("/deadlines", response_model=Deadlines)
+@router.get("/deadlines", response_model=Deadlines, dependencies=[require_feature("vat")])
 async def deadlines(
     today: date | None = Query(None, description="for previews and tests; defaults to today"),
     cycle: VatCycle = Depends(vat_cycle),

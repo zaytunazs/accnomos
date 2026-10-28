@@ -97,6 +97,21 @@ class AppSettings {
     );
   }
 
+  /// Forget the business details kept on this phone (name, VAT number and
+  /// VAT quarters). Switching to another Microsoft account switches to
+  /// another set of books, whose details are not these.
+  static Future<void> clearBusiness() async {
+    final prefs = await SharedPreferences.getInstance();
+    for (final key in [
+      _kBusinessName,
+      _kVatNumber,
+      _kVatStagger,
+      _kVatStartMonth,
+    ]) {
+      await prefs.remove(key);
+    }
+  }
+
   static int? _clampStagger(int? value) =>
       value == null || value < 1 || value > 3 ? null : value;
 

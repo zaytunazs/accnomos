@@ -19,12 +19,17 @@ test("off by default; Settings switch adds Personal; budgets, bills and goals wo
 
   await page.goto("/personal");
   await expect(page.getByText("Personal finances are off.")).toBeVisible();
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Personal" })).toHaveCount(0);
+  // Signed in, the main navigation is the menu bar, where Personal is a group (lib/nav.ts).
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Personal" })).toHaveCount(0);
 
   await page.goto("/settings");
   const panel = await settingsTab(page, "Business");
   await panel.getByRole("checkbox", { name: "Show personal finances" }).check();
-  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Personal" })).toBeVisible();
+  const personalMenu = page.getByRole("navigation", { name: "Main" }).getByRole("button", { name: "Personal" });
+  await expect(personalMenu).toBeVisible();
+  await personalMenu.click();
+  await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Personal overview" })).toBeVisible();
+  await personalMenu.click();
 
   await page.goto("/bank");
   await page.locator('input[type="file"]').setInputFiles({ name: "personal.csv", mimeType: "text/csv", buffer: Buffer.from(STATEMENT) });

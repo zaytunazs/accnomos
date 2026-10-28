@@ -291,7 +291,40 @@ export async function runtimeHealth(): Promise<{ ok: boolean; voice?: boolean; d
   }
 }
 
+/** GET/PUT /profile (services/runtime/app/profile.py): what these books are, from `_System/profile.json`. */
+export type RtProfileKind = "company" | "sole_trader" | "personal";
+export interface RtProfileSettings {
+  company_number?: string | null;
+  vat_number?: string | null;
+  vat_registered?: boolean;
+  utr?: string | null;
+  accounting_period_start?: string;
+}
+export interface RtLinkedAccount {
+  username: string;
+  name?: string;
+  kind?: RtProfileKind | null;
+}
+export interface RtProfile {
+  name: string;
+  kind: RtProfileKind;
+  settings: RtProfileSettings;
+  linked: RtLinkedAccount[];
+  updated_at: string | null;
+  /** False: no profile.json yet; these are the defaults (a VAT-registered company). */
+  exists: boolean;
+  /** What these books have; the nav hides the rest (personal: no vat, invoices, payroll). */
+  features: string[];
+}
+
 export const runtime = {
+  /** GET /profile: this account's profile (its own books). */
+  profile: (a: AccountInfo) => call<RtProfile>(a, "/profile"),
+  /** PUT /profile: save it whole; `linked` left out keeps the saved list. */
+  saveProfile: (
+    a: AccountInfo,
+    body: { name: string; kind: RtProfileKind; settings?: RtProfileSettings; linked?: RtLinkedAccount[] },
+  ) => call<RtProfile>(a, "/profile", { method: "PUT", body: JSON.stringify(body) }),
   scan: (a: AccountInfo) =>
     // The saved VAT settings set the period that scanned dates are checked against (DATE_IN_PERIOD warning).
     call<{ proposals: RtProposal[]; errors: { path: string; error: string }[] }>(a, withQuery("/books/scan", vatQuery()), {

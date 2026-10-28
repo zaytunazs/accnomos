@@ -35,10 +35,10 @@ from app.invoicing import (
     InvoiceStatus,
 )
 from app.pdf import render_invoice
-from app.routes_books import get_books, require_user
+from app.routes_books import get_books, require_feature, require_user
 from app.validation import Day, Pence, StrictBody
 
-router = APIRouter(prefix="/invoices", tags=["invoices"])
+router = APIRouter(prefix="/invoices", tags=["invoices"], dependencies=[require_feature("invoices")])
 LOGO_MAX = 1024 * 1024
 LOGO_TYPES = {"image/png": "png", "image/jpeg": "jpg"}
 LOGO_MAGIC = {b"\x89PNG\r\n\x1a\n": "image/png", b"\xff\xd8\xff": "image/jpeg"}

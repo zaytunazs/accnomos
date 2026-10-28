@@ -70,6 +70,20 @@ async def get_books(request: Request) -> AsyncIterator[Books]:
 # X-User (require_user / optional_user), X-Business-Name (business_name). Read them only through these.
 
 
+def require_feature(feature: str) -> Any:
+    """A route dependency: 404 with a sentence when these books' profile (app/profile.py, `_System/profile.json`)
+    has no `feature`: personal books have no VAT, invoices or payroll, and VAT needs a VAT-registered business.
+    Costs one read of profile.json, on the gated routes only."""
+    from app import profile as profile_mod
+
+    async def check(books: Books = Depends(get_books)) -> None:
+        p = await profile_mod.load(books)
+        if feature not in p.features:
+            raise profile_mod.missing_feature(p, feature)
+
+    return Depends(check)
+
+
 def require_user(x_user: str | None = Header(default=None)) -> str:
     if not x_user or not x_user.strip():
         raise HTTPException(status_code=400, detail="X-User header required")

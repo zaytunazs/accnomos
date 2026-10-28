@@ -4,11 +4,17 @@ import type { AccountInfo, AuthenticationResult, IPublicClientApplication } from
 
 /**
  * Test-mode sign-in (NEXT_PUBLIC_TEST_MODE=1 builds only; see msal.ts). No network: "signing in" sets a flag in
- * localStorage and reloads, as the real redirect would; every token is the literal "test-token". A runtime started
- * with ACCNOMOS_TEST_MODE=1 uses its fakes and never forwards it; any other runtime would pass it to Microsoft,
- * which rejects it.
+ * localStorage and reloads, as the real redirect would. A runtime started with ACCNOMOS_TEST_MODE=1 uses its fakes
+ * and never forwards a token; any other runtime would pass it to Microsoft, which rejects it.
+ *
+ * Several accounts, like MSAL's multi-account cache (linked profiles, lib/profiles.ts): the first is Sam (token
+ * "test-token"); signing in again while signed in adds Jo, a second Microsoft account whose token
+ * "test-token.jo" the runtime gives a OneDrive of its own (services/runtime/app/testmode.py TEST_ACCOUNT_TOKEN).
+ * A linked mailbox (Settings › Email intake, `loginPopup`) is one more account in the same cache, Mail.Read only.
  */
 const SIGNED_IN = "msal.accnomos-test.signedIn"; // "msal." like the real cache: Settings shows it, Disconnect clears it
+const ACCOUNTS = "msal.accnomos-test.accounts"; // JSON list of signed-in test account keys, in sign-in order
+const ACTIVE = "msal.accnomos-test.active";
 /** Extra accounts signed in through `loginPopup` (Settings › Email intake), as usernames. */
 const LINKED = "msal.accnomos-test.linked";
 /** Who the next popup signs in as; a spec may set it first. */
@@ -24,12 +30,54 @@ export const TEST_ACCOUNT: AccountInfo = {
   name: "Sam Builder (test)",
 };
 
-function signedIn(): boolean {
+export const TEST_ACCOUNT_2: AccountInfo = {
+  homeAccountId: "test-home-jo.9188040d-6c67-4c5b-b112-36a304b66dad",
+  environment: "login.test.invalid",
+  tenantId: "9188040d-6c67-4c5b-b112-36a304b66dad",
+  username: "jo@personal.example",
+  localAccountId: "test-local-jo",
+  name: "Jo Builder (test)",
+};
+
+const ALL: Record<string, { account: AccountInfo; token: string }> = {
+  sam: { account: TEST_ACCOUNT, token: "test-token" },
+  jo: { account: TEST_ACCOUNT_2, token: "test-token.jo" },
+};
+
+function read(key: string): string | null {
   try {
-    return window.localStorage.getItem(SIGNED_IN) === "1";
+    return window.localStorage.getItem(key);
   } catch {
-    return false;
+    return null;
   }
+}
+
+/** Signed-in keys; the old single flag (e2e/fixtures.ts signIn) means Sam alone. */
+function signedInKeys(): string[] {
+  if (read(SIGNED_IN) !== "1") return [];
+  try {
+    const keys = JSON.parse(read(ACCOUNTS) ?? '["sam"]') as unknown;
+    const ok = Array.isArray(keys) ? keys.filter((k): k is string => typeof k === "string" && k in ALL) : [];
+    return ok.length ? ok : ["sam"];
+  } catch {
+    return ["sam"];
+  }
+}
+
+function keyOf(account: AccountInfo | null | undefined): string | undefined {
+  return Object.keys(ALL).find((k) => ALL[k].account.homeAccountId === account?.homeAccountId);
+}
+
+function save(keys: string[], active: string | undefined): void {
+  if (!keys.length) {
+    window.localStorage.removeItem(SIGNED_IN);
+    window.localStorage.removeItem(ACCOUNTS);
+    window.localStorage.removeItem(ACTIVE);
+    return;
+  }
+  window.localStorage.setItem(SIGNED_IN, "1");
+  window.localStorage.setItem(ACCOUNTS, JSON.stringify(keys));
+  if (active) window.localStorage.setItem(ACTIVE, active);
 }
 
 function linked(): string[] {
@@ -44,8 +92,10 @@ function setLinked(names: string[]): void {
   window.localStorage.setItem(LINKED, JSON.stringify(names));
 }
 
-/** A second (fake) Microsoft account: a work account in its own tenant. */
+/** A linked mailbox's (fake) Microsoft account: a work account in its own tenant. */
 function extraAccount(username: string): AccountInfo {
+  const known = Object.values(ALL).find((a) => a.account.username === username);
+  if (known) return known.account;
   return {
     homeAccountId: `test-home-${username}.test-tenant`,
     environment: "login.test.invalid",
@@ -56,40 +106,55 @@ function extraAccount(username: string): AccountInfo {
   };
 }
 
-function token(scopes: string[], account: AccountInfo = TEST_ACCOUNT): AuthenticationResult {
-  return { accessToken: "test-token", account, scopes } as unknown as AuthenticationResult;
+function active(): AccountInfo | null {
+  const keys = signedInKeys();
+  const key = read(ACTIVE);
+  return key && keys.includes(key) ? ALL[key].account : null;
 }
 
 /** Just the IPublicClientApplication members the app calls. */
 export function createTestMsal(): IPublicClientApplication {
   const fake = {
     handleRedirectPromise: async () => null,
-    getActiveAccount: () => (signedIn() ? TEST_ACCOUNT : null),
-    getAllAccounts: () => (signedIn() ? [TEST_ACCOUNT, ...linked().map(extraAccount)] : []),
-    setActiveAccount: () => {},
+    getActiveAccount: () => active(),
+    getAllAccounts: () => {
+      const accounts = signedInKeys().map((k) => ALL[k].account);
+      const extra = accounts.length ? linked().map(extraAccount) : [];
+      return [...accounts, ...extra.filter((a) => !accounts.some((b) => b.homeAccountId === a.homeAccountId))];
+    },
+    setActiveAccount: (account: AccountInfo | null) => {
+      const key = keyOf(account);
+      if (key && signedInKeys().includes(key)) window.localStorage.setItem(ACTIVE, key);
+    },
     loginRedirect: async () => {
-      window.localStorage.setItem(SIGNED_IN, "1");
+      const keys = signedInKeys();
+      const next = Object.keys(ALL).find((k) => !keys.includes(k)) ?? keys[0] ?? "sam"; // "select_account": the next one
+      save(keys.includes(next) ? keys : [...keys, next], next);
       window.location.reload();
       await new Promise(() => {}); // like a real redirect, never resolves
     },
-    logoutRedirect: async () => {
-      window.localStorage.removeItem(SIGNED_IN);
+    logoutRedirect: async (request?: { account?: AccountInfo | null }) => {
+      const gone = keyOf(request?.account);
+      const keys = gone ? signedInKeys().filter((k) => k !== gone) : [];
+      save(keys, keys[0]);
       window.location.assign(window.location.origin);
       await new Promise(() => {});
     },
     acquireTokenSilent: async ({ scopes, account }: { scopes: string[]; account?: AccountInfo }) => {
-      if (!signedIn()) throw new Error("not signed in");
-      if (account && account.homeAccountId !== TEST_ACCOUNT.homeAccountId) {
+      if (!signedInKeys().length) throw new Error("not signed in");
+      if (account && !keyOf(account)) {
         if (!linked().includes(account.username)) throw new Error("interaction_required: account not in the cache");
-        return token(scopes, account);
+        return { accessToken: "test-token", account, scopes } as unknown as AuthenticationResult;
       }
-      return token(scopes);
+      const key = keyOf(account) ?? read(ACTIVE) ?? signedInKeys()[0];
+      if (!key || !signedInKeys().includes(key)) throw new Error("not signed in");
+      return { accessToken: ALL[key].token, account: ALL[key].account, scopes } as unknown as AuthenticationResult;
     },
     loginPopup: async () => {
-      if (!signedIn()) throw new Error("not signed in");
+      if (!signedInKeys().length) throw new Error("not signed in");
       const username = window.localStorage.getItem(POPUP_ACCOUNT) || DEFAULT_POPUP_ACCOUNT;
       if (!linked().includes(username)) setLinked([...linked(), username]);
-      return token(["Mail.Read"], username === TEST_ACCOUNT.username ? TEST_ACCOUNT : extraAccount(username));
+      return { accessToken: "test-token", account: extraAccount(username), scopes: ["Mail.Read"] } as unknown as AuthenticationResult;
     },
     clearCache: async ({ account }: { account?: AccountInfo } = {}) => {
       if (account) setLinked(linked().filter((u) => u !== account.username));

@@ -144,6 +144,27 @@ export function primaryAccount(msal: IPublicClientApplication): AccountInfo | nu
   return msal.getActiveAccount() ?? msal.getAllAccounts()[0] ?? null;
 }
 
+/** Accounts (homeAccountId) signed in here only to read a linked mailbox: not sets of books, so not profiles. */
+const MAILBOX_ACCOUNTS = "accnomos.mailbox-accounts";
+
+export function mailboxOnlyAccounts(): string[] {
+  try {
+    const ids = JSON.parse(window.localStorage.getItem(MAILBOX_ACCOUNTS) ?? "[]") as unknown;
+    return Array.isArray(ids) ? ids.filter((x): x is string => typeof x === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function markMailboxAccount(id: string, on: boolean): void {
+  const ids = mailboxOnlyAccounts().filter((x) => x !== id);
+  try {
+    window.localStorage.setItem(MAILBOX_ACCOUNTS, JSON.stringify(on ? [...ids, id] : ids));
+  } catch {
+    /* storage unavailable: the profile menu may list the mailbox's account */
+  }
+}
+
 /** The cached account signed in as `address` (a linked mailbox), if any. */
 export function linkedAccount(msal: IPublicClientApplication, address: string): AccountInfo | null {
   const want = address.trim().toLowerCase();
@@ -162,6 +183,7 @@ export async function signInExtraAccount(loginHint?: string): Promise<AccountInf
   try {
     const result = await msal.loginPopup({ scopes: LINKED_MAIL_SCOPES, prompt: "select_account", ...(loginHint ? { loginHint } : {}) });
     if (!result.account) throw new Error("Microsoft did not say which account signed in");
+    if (result.account.homeAccountId !== primary.homeAccountId) markMailboxAccount(result.account.homeAccountId, true);
     return result.account;
   } finally {
     msal.setActiveAccount(primary);
@@ -191,5 +213,6 @@ export async function forgetExtraAccount(address: string): Promise<void> {
   const primary = primaryAccount(msal);
   if (!account || (primary && account.homeAccountId === primary.homeAccountId)) return;
   await msal.clearCache({ account });
+  markMailboxAccount(account.homeAccountId, false);
   if (primary) msal.setActiveAccount(primary);
 }

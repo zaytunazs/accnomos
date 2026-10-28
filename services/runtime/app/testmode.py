@@ -3,8 +3,9 @@
 With it on, the runtime talks to nothing outside this process:
 
 * Storage, mail (read and send), the address book and the calendar are in-memory fakes
-  (accnomos_connectors.fake), one set per `X-Test-Tenant` header whatever token the request carries, so the
-  browser and the runtime see one OneDrive per Playwright worker (no header: the default set). Sent mail is
+  (accnomos_connectors.fake), one set per `X-Test-Tenant` header, so the browser and the runtime see one OneDrive
+  per Playwright worker (no header: the default set). A token "test-token.<account>" is another Microsoft account
+  of that tenant, with fakes of its own (TEST_ACCOUNT_TOKEN: linked profiles, docs/ARCHITECTURE.md). Sent mail is
   only recorded (`GET /__test/state` lists it); day plans read and write the fake calendar.
 * The browser's own Graph calls (folder setup, Files, "Add a receipt") go to a small Graph look-alike at
   `/__test/graph/v1.0`, backed by the same fake storage (the test-mode web build points `lib/graph.ts` there).
@@ -329,6 +330,20 @@ async def state() -> State:
     return s
 
 
+#: A second (third…) test account's token: "test-token.<account>". It gets a OneDrive, mailbox and calendar of its
+#: own, as another Microsoft account would (the web's test sign-in mints it, apps/web/src/lib/msal-test.ts; the
+#: profile switcher's e2e test uses it). Plain "test-token", or any other token, is the tenant's first account.
+TEST_ACCOUNT_TOKEN = re.compile(r"test-token\.([a-z0-9-]{1,32})")
+
+
+def account_suffix(headers: dict[bytes, bytes]) -> str:
+    """'~<account>' for a second test account's token (X-Graph-Token, or the Graph look-alike's Authorization)."""
+    raw = headers.get(b"x-graph-token") or headers.get(b"authorization") or b""
+    token = raw.decode("latin-1").strip().removeprefix("Bearer ").strip()
+    m = TEST_ACCOUNT_TOKEN.fullmatch(token)
+    return f"~{m.group(1)}" if m else ""
+
+
 class TenantMiddleware:
     """Pure ASGI, outermost: sets the tenant for everything the request runs (routes, dependencies, threadpool)."""
 
@@ -338,8 +353,10 @@ class TenantMiddleware:
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
             return await self.app(scope, receive, send)
-        raw = dict(scope["headers"]).get(TENANT_HEADER.lower().encode(), b"")
-        token = _TENANT.set(re.sub(r"[^A-Za-z0-9_.-]", "", raw.decode("latin-1"))[:64])
+        headers = dict(scope["headers"])
+        raw = headers.get(TENANT_HEADER.lower().encode(), b"")
+        tenant = re.sub(r"[^A-Za-z0-9_.-]", "", raw.decode("latin-1"))[:64]
+        token = _TENANT.set(tenant + account_suffix(headers))
         try:
             await self.app(scope, receive, send)
         finally:
