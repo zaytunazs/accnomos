@@ -7,6 +7,53 @@ const NARROW: [string, string][] = [
   ["/", "Ask"], ["/review", "Scan 00 Inbox now"], ["/ask", "Ask"], ["/vat", "Add to calendar"], ["/settings", "Business"],
 ];
 
+/** Every page in the app nav (AppNav.tsx links plus Settings), checked at the narrowest common phone width. */
+const NAV_PAGES = ["/", "/review", "/ask", "/invoices", "/bank", "/vat", "/jobs", "/payroll", "/reports", "/contacts", "/vehicles", "/files", "/settings"];
+
+test.describe("360 px wide (small Android), every nav page", () => {
+  test.use({ viewport: { width: 360, height: 740 } });
+
+  test.beforeEach(async ({ page, runtime }) => {
+    await signIn(page);
+    await createBooksFolder(page);
+    await runtime.postGold();
+  });
+
+  for (const path of NAV_PAGES) {
+    test(`${path}: no horizontal scroll once loaded`, async ({ page }) => {
+      await page.goto(path);
+      await page.waitForLoadState("networkidle");
+      await expect(page.getByRole("main").first()).toBeVisible();
+      // Data has finished loading: no skeleton, busy region, "Loading…" text or pulsing placeholder, and layout has been stable for two frames.
+      await page.waitForFunction(
+        () =>
+          !document.querySelector("[aria-busy=true], .animate-pulse") &&
+          ![...document.querySelectorAll("main *")].some((el) => el.children.length === 0 && /^Loading\b/.test(el.textContent ?? "")),
+        undefined,
+        { timeout: 15_000 },
+      );
+      await page.evaluate(() => new Promise<void>((done) => requestAnimationFrame(() => requestAnimationFrame(() => done()))));
+      const { scroll, client, widest } = await page.evaluate(() => {
+        const root = document.documentElement;
+        let widest = "";
+        let max = root.clientWidth;
+        for (const el of document.querySelectorAll("body *")) {
+          if (!el.checkVisibility()) continue;
+          const r = el.getBoundingClientRect();
+          if (r.width > 0 && r.right > max) {
+            max = r.right;
+            const cls = typeof el.className === "string" ? el.className.trim().split(/\s+/).slice(0, 4).join(".") : "";
+            widest = `<${el.tagName.toLowerCase()}${cls ? "." + cls : ""}> right edge ${Math.round(r.right)}px: "${(el.textContent ?? "").trim().slice(0, 50)}"`;
+          }
+        }
+        return { scroll: root.scrollWidth, client: root.clientWidth, widest };
+      });
+      expect(client).toBe(360);
+      expect(scroll, `${path}: page is ${scroll}px wide in a ${client}px viewport. Widest element: ${widest || "none past the edge"}`).toBeLessThanOrEqual(client);
+    });
+  }
+});
+
 test.describe("390 px wide (iPhone 12–15)", () => {
   test.use({ viewport: { width: 390, height: 844 } });
 
