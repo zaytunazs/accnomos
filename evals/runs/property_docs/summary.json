@@ -1,287 +1,303 @@
 {
-  "generated": "2026-10-28T13:46:14+00:00",
+  "generated": "2026-10-28T15:47:27+00:00",
   "model": "muse-glimmer:30b",
   "base_url": "http://localhost:11434",
   "stub": false,
-  "reader": "generic",
+  "reader": "property",
   "docs": 108,
   "answered": 108,
   "refusals": 0,
   "refusal_pct": 0.0,
-  "all_exact_pct": 1.9,
+  "all_exact_pct": 82.4,
   "per_field": {
-    "category": {
-      "scored": 108,
-      "correct": 26,
-      "accuracy_pct": 24.1
-    },
-    "property": {
-      "scored": 108,
-      "correct": 8,
-      "accuracy_pct": 7.4
-    },
-    "amount": {
-      "scored": 108,
-      "correct": 34,
-      "accuracy_pct": 31.5
-    },
-    "date": {
+    "kind": {
       "scored": 108,
       "correct": 108,
       "accuracy_pct": 100.0
+    },
+    "property": {
+      "scored": 108,
+      "correct": 108,
+      "accuracy_pct": 100.0
+    },
+    "line_category": {
+      "scored": 186,
+      "correct": 174,
+      "accuracy_pct": 93.5
+    },
+    "line_amount": {
+      "scored": 186,
+      "correct": 167,
+      "accuracy_pct": 89.8
     }
   },
   "by_kind": {
     "insurance": {
       "docs": 6,
       "answered": 6,
-      "all_exact": 1,
-      "accuracy_pct": 16.7
+      "all_exact": 0,
+      "accuracy_pct": 0.0,
+      "baseline_exact": 1,
+      "baseline_pct": 16.7
     },
     "invoice": {
       "docs": 24,
       "answered": 24,
-      "all_exact": 1,
-      "accuracy_pct": 4.2
+      "all_exact": 17,
+      "accuracy_pct": 70.8,
+      "baseline_exact": 1,
+      "baseline_pct": 4.2
     },
     "letting_statement": {
       "docs": 72,
       "answered": 72,
-      "all_exact": 0,
-      "accuracy_pct": 0.0
+      "all_exact": 72,
+      "accuracy_pct": 100.0,
+      "baseline_exact": 0,
+      "baseline_pct": 0.0
     },
     "mortgage_statement": {
       "docs": 6,
       "answered": 6,
       "all_exact": 0,
-      "accuracy_pct": 0.0
+      "accuracy_pct": 0.0,
+      "baseline_exact": 0,
+      "baseline_pct": 0.0
+    }
+  },
+  "baseline": {
+    "reader": "generic",
+    "answered": 108,
+    "all_exact": 2,
+    "all_exact_pct": 1.9,
+    "per_field": {
+      "category": {
+        "scored": 108,
+        "correct": 28,
+        "accuracy_pct": 25.9
+      },
+      "property": {
+        "scored": 108,
+        "correct": 8,
+        "accuracy_pct": 7.4
+      },
+      "amount": {
+        "scored": 108,
+        "correct": 34,
+        "accuracy_pct": 31.5
+      },
+      "date": {
+        "scored": 108,
+        "correct": 108,
+        "accuracy_pct": 100.0
+      }
     }
   },
   "latency_s": {
-    "mean": 19.676,
-    "p50": 21.134,
-    "p95": 24.518,
-    "max": 27.191,
-    "total": 2125.0
+    "mean": 37.697,
+    "p50": 40.98,
+    "p95": 47.141,
+    "max": 50.073,
+    "total": 4071.2
   },
   "worst": [
     {
-      "id": "landlord_10/2026-04_flat",
-      "kind": "letting_statement",
+      "id": "landlord_10/13_insurance",
+      "kind": "insurance",
       "wrong_fields": [
-        "amount",
-        "category",
-        "property"
+        "amt:premises",
+        "cat:premises"
       ],
       "got": {
-        "category": "Sundry",
-        "amount": 1250.6,
-        "date": "2026-04-28"
+        "figures": {
+          "premises": 0.0
+        },
+        "property": "house"
       },
       "want": {
-        "category": [
-          "Sales"
-        ],
-        "amount": 624.8,
-        "date": "2026-04-28",
-        "property": "flat"
-      }
-    },
-    {
-      "id": "landlord_10/2026-04_house",
-      "kind": "letting_statement",
-      "wrong_fields": [
-        "amount",
-        "category",
-        "property"
-      ],
-      "got": {
-        "category": "Sundry",
-        "amount": 2988.8,
-        "date": "2026-04-28"
-      },
-      "want": {
-        "category": [
-          "Sales"
-        ],
-        "amount": 994.4,
-        "date": "2026-04-28",
+        "figures": {
+          "premises": 285.0
+        },
         "property": "house"
       }
     },
     {
-      "id": "landlord_10/2026-05_flat",
-      "kind": "letting_statement",
+      "id": "landlord_10/14_mortgage_statement",
+      "kind": "mortgage_statement",
       "wrong_fields": [
-        "amount",
-        "category",
-        "property"
+        "amt:finance_res",
+        "cat:finance_res"
       ],
       "got": {
-        "category": "Sundry",
-        "amount": 1249.6,
-        "date": "2026-05-28"
+        "figures": {
+          "finance_res": 0.0
+        },
+        "property": "house"
       },
       "want": {
-        "category": [
-          "Sales"
-        ],
-        "amount": 624.8,
-        "date": "2026-05-28",
-        "property": "flat"
-      }
-    },
-    {
-      "id": "landlord_10/2026-05_house",
-      "kind": "letting_statement",
-      "wrong_fields": [
-        "amount",
-        "category",
-        "property"
-      ],
-      "got": {
-        "category": "Sundry",
-        "amount": 2988.8,
-        "date": "2026-05-28"
-      },
-      "want": {
-        "category": [
-          "Sales"
-        ],
-        "amount": 994.4,
-        "date": "2026-05-28",
+        "figures": {
+          "finance_res": 2840.88
+        },
         "property": "house"
       }
     },
     {
-      "id": "landlord_10/2026-06_flat",
-      "kind": "letting_statement",
+      "id": "landlord_11/13_insurance",
+      "kind": "insurance",
       "wrong_fields": [
-        "amount",
-        "category",
-        "property"
+        "amt:premises",
+        "cat:premises"
       ],
       "got": {
-        "category": "Sundry",
-        "amount": 1249.6,
-        "date": "2026-06-28"
+        "figures": {
+          "premises": 0.0
+        },
+        "property": "house"
       },
       "want": {
-        "category": [
-          "Sales"
-        ],
-        "amount": 624.8,
-        "date": "2026-06-28",
-        "property": "flat"
-      }
-    },
-    {
-      "id": "landlord_10/2026-06_house",
-      "kind": "letting_statement",
-      "wrong_fields": [
-        "amount",
-        "category",
-        "property"
-      ],
-      "got": {
-        "category": "Sundry",
-        "amount": 2988.8,
-        "date": "2026-06-28"
-      },
-      "want": {
-        "category": [
-          "Sales"
-        ],
-        "amount": 994.4,
-        "date": "2026-06-28",
+        "figures": {
+          "premises": 414.5
+        },
         "property": "house"
       }
     },
     {
-      "id": "landlord_10/2026-07_flat",
-      "kind": "letting_statement",
+      "id": "landlord_11/14_mortgage_statement",
+      "kind": "mortgage_statement",
       "wrong_fields": [
-        "amount",
-        "category",
-        "property"
+        "amt:finance_res",
+        "cat:finance_res"
       ],
       "got": {
-        "category": "Sundry",
-        "amount": 1249.6,
-        "date": "2026-07-28"
+        "figures": {
+          "finance_res": 0.0
+        },
+        "property": "house"
       },
       "want": {
-        "category": [
-          "Sales"
-        ],
-        "amount": 624.8,
-        "date": "2026-07-28",
-        "property": "flat"
-      }
-    },
-    {
-      "id": "landlord_10/2026-07_house",
-      "kind": "letting_statement",
-      "wrong_fields": [
-        "amount",
-        "category",
-        "property"
-      ],
-      "got": {
-        "category": "Sundry",
-        "amount": 1678.82,
-        "date": "2026-07-28"
-      },
-      "want": {
-        "category": [
-          "Sales"
-        ],
-        "amount": 839.41,
-        "date": "2026-07-28",
+        "figures": {
+          "finance_res": 2851.14
+        },
         "property": "house"
       }
     },
     {
-      "id": "landlord_10/2026-08_flat",
-      "kind": "letting_statement",
+      "id": "landlord_12/13_insurance",
+      "kind": "insurance",
       "wrong_fields": [
-        "amount",
-        "category",
-        "property"
+        "amt:premises",
+        "cat:premises"
       ],
       "got": {
-        "category": "Sundry",
-        "amount": 1249.6,
-        "date": "2026-08-28"
+        "figures": {
+          "premises": 0.0
+        },
+        "property": "house"
       },
       "want": {
-        "category": [
-          "Sales"
-        ],
-        "amount": 624.8,
-        "date": "2026-08-28",
-        "property": "flat"
+        "figures": {
+          "premises": 360.75
+        },
+        "property": "house"
       }
     },
     {
-      "id": "landlord_10/2026-08_house",
-      "kind": "letting_statement",
+      "id": "landlord_12/14_mortgage_statement",
+      "kind": "mortgage_statement",
       "wrong_fields": [
-        "amount",
-        "category",
-        "property"
+        "amt:finance_res",
+        "cat:finance_res"
       ],
       "got": {
-        "category": "Sundry",
-        "amount": 2988.8,
-        "date": "2026-08-28"
+        "figures": {
+          "finance_res": 0.0
+        },
+        "property": "house"
       },
       "want": {
-        "category": [
-          "Sales"
-        ],
-        "amount": 994.4,
-        "date": "2026-08-28",
+        "figures": {
+          "finance_res": 2720.34
+        },
+        "property": "house"
+      }
+    },
+    {
+      "id": "landlord_7/13_insurance",
+      "kind": "insurance",
+      "wrong_fields": [
+        "amt:premises",
+        "cat:premises"
+      ],
+      "got": {
+        "figures": {
+          "premises": 0.0
+        },
+        "property": "house"
+      },
+      "want": {
+        "figures": {
+          "premises": 224.25
+        },
+        "property": "house"
+      }
+    },
+    {
+      "id": "landlord_7/14_mortgage_statement",
+      "kind": "mortgage_statement",
+      "wrong_fields": [
+        "amt:finance_res",
+        "cat:finance_res"
+      ],
+      "got": {
+        "figures": {
+          "finance_res": 0.0
+        },
+        "property": "house"
+      },
+      "want": {
+        "figures": {
+          "finance_res": 2341.92
+        },
+        "property": "house"
+      }
+    },
+    {
+      "id": "landlord_8/13_insurance",
+      "kind": "insurance",
+      "wrong_fields": [
+        "amt:premises",
+        "cat:premises"
+      ],
+      "got": {
+        "figures": {
+          "premises": 0.0
+        },
+        "property": "house"
+      },
+      "want": {
+        "figures": {
+          "premises": 355.0
+        },
+        "property": "house"
+      }
+    },
+    {
+      "id": "landlord_8/14_mortgage_statement",
+      "kind": "mortgage_statement",
+      "wrong_fields": [
+        "amt:finance_res",
+        "cat:finance_res"
+      ],
+      "got": {
+        "figures": {
+          "finance_res": 0.0
+        },
+        "property": "house"
+      },
+      "want": {
+        "figures": {
+          "finance_res": 2366.54
+        },
         "property": "house"
       }
     }

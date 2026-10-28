@@ -471,6 +471,23 @@ SUMMARIES: dict[str, Summary] = {
     "property_tagged": lambda r, w: "Put a ledger entry on a let property",
     "property_untagged": lambda r, w: "Took a ledger entry off a let property",
     "property_entry": lambda r, w: f"Recorded an entry{_pounds(r, 'pence')} on a let property",
+    "property_document_read": lambda r, w: (
+        f"Read {posixpath.basename(str(r.get('file') or '')) or 'a document'} as "
+        + (
+            "a letting statement"
+            if r.get("kind") == "letting_statement"
+            else "a mortgage statement"
+            if r.get("kind") == "mortgage_statement"
+            else "an insurance schedule"
+            if r.get("kind") == "insurance"
+            else "a property bill"
+            if r.get("kind") == "invoice"
+            else "something else"
+        )
+        + "; it waits for you on the Property page"
+    ),
+    "property_reading_approved": lambda r, w: "Approved a property document the AI read",
+    "property_reading_rejected": lambda r, w: "Rejected a property document the AI read",
     "property_mtd_exported": lambda r, w: (
         f"Saved the UK property update for {r.get('tax_year') or 'a tax year'} as a file ready to submit"
     ),

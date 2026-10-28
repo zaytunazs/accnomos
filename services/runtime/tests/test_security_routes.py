@@ -213,6 +213,7 @@ TALKS_HTTP = {
     "ai/extract.py": "cfg.base_url",
     "ai/duplicates.py": "cfg.base_url, or a chain provider's c.base_url (server env, ai/providers.py)",
     "ai/cis_read.py": "cfg.base_url",
+    "ai/property_read.py": "cfg.base_url",
     "ai/crop.py": "cfg.base_url (SAM, key mode)",
     "ai/voice.py": "cfg.base_url",
     "ai/verify.py": "cfg.base_url or BASETEN_BASE",

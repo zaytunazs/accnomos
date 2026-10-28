@@ -21,16 +21,20 @@ import json
 from datetime import date
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel, Field
 
 from app import property as pr
+from app import property_readings as prr
+from app.ai.config import ai_config_from_request
+from app.ai.extract import ExtractionError
 from app.books import Books, now
 from app.books import today as current_date
-from app.paths import REPORTS
+from app.formats import FormatError
+from app.paths import INBOX, REPORTS
 from app.projection import SAMPLE_LABEL
 from app.routes_books import get_books, require_user
-from app.validation import Day, StrictBody
+from app.validation import Day, StrictBody, UnsafeName
 
 router = APIRouter(prefix="/property", tags=["property"])
 
@@ -325,6 +329,58 @@ async def export(
     ref = await books.storage.write(path, json.dumps(doc, indent=2, ensure_ascii=False).encode())
     await books.audit(f"user:{user}", "property_mtd_exported", {"path": path, "tax_year": out.tax_year})
     return ExportOut(path=path, name=path.rsplit("/", 1)[1], web_url=ref.web_url)
+
+
+class ReadBody(StrictBody):
+    name: str = Field(min_length=1, max_length=200)  # a file in 00 Inbox
+
+
+@router.post("/read", response_model=prr.Reading)
+async def read_document(
+    body: ReadBody, request: Request, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> prr.Reading:
+    """Read a letting statement or a property bill in 00 Inbox with the user's AI; the result waits for them.
+
+    Only for a business with a property profile (landlord mode on, or properties on the register): anything
+    else goes through the generic reader on the Review page, as before.
+    """
+    try:
+        return await prr.read_document(books, body.name, ai_config_from_request(request), user)
+    except (UnsafeName, FileNotFoundError) as exc:
+        raise HTTPException(status_code=404, detail=f"No such file in {INBOX}") from exc
+    except FormatError as exc:
+        raise HTTPException(status_code=415, detail=str(exc)) from exc
+    except ExtractionError as exc:
+        raise HTTPException(status_code=502, detail=f"Your AI could not read it: {exc}") from exc
+    except pr.PropertyError as exc:
+        raise _refused(exc) from exc
+
+
+@router.get("/readings", response_model=list[prr.Reading])
+async def list_readings(
+    status: prr.ReadingStatus | None = Query(None), books: Books = Depends(get_books)
+) -> list[prr.Reading]:
+    return await prr.list_readings(books, status)
+
+
+@router.post("/readings/{reading_id}/approve", response_model=prr.Reading)
+async def approve_reading(
+    reading_id: str, body: prr.DecideBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> prr.Reading:
+    try:
+        return await prr.approve(books, reading_id, body, user)
+    except (FileNotFoundError, pr.PropertyError) as exc:
+        raise _refused(exc) from exc
+
+
+@router.post("/readings/{reading_id}/reject", response_model=prr.Reading)
+async def reject_reading(
+    reading_id: str, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> prr.Reading:
+    try:
+        return await prr.reject(books, reading_id, user)
+    except (FileNotFoundError, pr.PropertyError) as exc:
+        raise _refused(exc) from exc
 
 
 class SubmissionIn(StrictBody):
