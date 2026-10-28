@@ -242,6 +242,9 @@ app.include_router(audit_router)
 from app.routes_personal import router as personal_router  # noqa: E402  /personal/* (budgets, bills, goals)
 
 app.include_router(personal_router)
+from app.routes_property import router as property_router  # noqa: E402  /property/* (landlords, MTD property)
+
+app.include_router(property_router)
 from app.routes_files import backups_router  # noqa: E402  /backups, /backups/verify, /backups/restore
 from app.routes_files import router as files_router  # noqa: E402  /files/overview, index, move, archive
 

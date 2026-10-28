@@ -335,6 +335,22 @@ SUMMARIES: dict[str, Summary] = {
     "personal_line_categorised": lambda r, w: "Put a bank line in a personal spending category",
     "personal_goal_saved": lambda r, w: "Saved a savings goal",
     "personal_goal_deleted": lambda r, w: "Deleted a savings goal",
+    # Landlords (app/property.py, app/routes_property.py)
+    "property_added": lambda r, w: f"Added a let property: {r.get('name') or 'a property'}",
+    "property_updated": lambda r, w: f"Changed the details of {r.get('name') or 'a let property'}",
+    "property_settings_saved": lambda r, w: (
+        "Changed your landlord settings" + (" (landlord mode on)" if r.get("landlord_mode") else "")
+    ),
+    "property_tagged": lambda r, w: "Put a ledger entry on a let property",
+    "property_untagged": lambda r, w: "Took a ledger entry off a let property",
+    "property_entry": lambda r, w: f"Recorded an entry{_pounds(r, 'pence')} on a let property",
+    "property_mtd_exported": lambda r, w: (
+        f"Saved the UK property update for {r.get('tax_year') or 'a tax year'} as a file ready to submit"
+    ),
+    "property_mtd_submitted": lambda r, w: (
+        f"Sent a UK property {r.get('kind') or 'update'} for {r.get('tax_year') or 'a tax year'} to HMRC's sandbox"
+        + (f" (HMRC answered {r['status']})" if r.get("status") else "")
+    ),
     # Files page, archive and backups (app/files.py, app/archive.py, app/backups.py)
     "files_moved": lambda r, w: f"Moved {_plural(_n(r, 'moved'), 'file')} to {r.get('to') or 'another folder'}",
     "file_renamed": lambda r, w: (
