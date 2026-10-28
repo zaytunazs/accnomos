@@ -322,7 +322,10 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any]:
         raise SystemExit("--verify given but VERIFIER=off is set in the environment")
     out = Path(args.out) if args.out else REPO / "evals" / "runs" / datetime.now().strftime("%Y%m%d-%H%M%S")
     out.mkdir(parents=True, exist_ok=True)
-    golds = sorted(GOLD_DIR.glob("*.json"))
+    gold_dir = Path(args.gold_dir) if args.gold_dir else GOLD_DIR
+    golds = sorted(gold_dir.glob("*.json"))
+    if not golds:
+        raise SystemExit(f"no gold *.json files in {gold_dir}")
     if args.case:
         golds = [g for g in golds if json.loads(g.read_text(encoding="utf-8")).get("gold_case") in args.case]
     golds = golds[: args.limit] if args.limit else golds
@@ -358,6 +361,11 @@ def main() -> None:
         "--business-name",
         default=None,
         help="books owner, enables sale/purchase orientation (e.g. 'Bramblewood Joinery Ltd')",
+    )
+    ap.add_argument(
+        "--gold-dir",
+        default=None,
+        help="folder of receipt-schema gold JSON (default evals/gold/receipts), e.g. evals/gold/ledger4/receipts",
     )
     ap.add_argument("--concurrency", type=int, default=1, help="keep 1 for local (single GPU)")
     ap.add_argument("--out", default=None, help="default evals/runs/<timestamp>/")
