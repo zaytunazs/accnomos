@@ -93,6 +93,21 @@ class TileError(BaseModel):
 
 TILE_ERROR = "Couldn't load this just now"
 
+#: The order `unavailable` names sections in, whichever read finished first.
+SECTIONS = (
+    "ledger",
+    "proposals",
+    "bank",
+    "payments",
+    "invoices",
+    "owed",
+    "audit",
+    "autopilot audit",
+    "last scan",
+    "cash",
+    "vat",
+)
+
 
 class Dashboard(BaseModel):
     today: date
@@ -330,20 +345,29 @@ async def build(
     async def load_proposals() -> dict[str, Proposal]:
         return {p.id: p for p in await books.list_proposals()}
 
-    # The ledger's three parts are read on their own, so one hand-edited file only blanks the tiles that need it.
-    # The independent reads go out together: each is one Graph round trip per file.
-    events, proposals, bank_lines, records = await asyncio.gather(
-        reads.run("ledger", books.list_events),
-        reads.run("proposals", load_proposals),
-        reads.run("bank", books.stored_bank_lines),
-        reads.run("payments", lambda: load_records(books)),
+    async def load_invoices() -> list[invoicing.Invoice]:
+        return await invoicing.list_invoices(books)
+
+    # The ledger's parts are read on their own, so one hand-edited file only blanks the tiles that need it.
+    # Every read is independent of the others, so they all go out in one wave (the request memo caps how many are
+    # in flight); each is one Graph round trip per file.
+    (events, proposals, bank_lines, records), (invoices, audit, autopilot, last_scan) = await asyncio.gather(
+        asyncio.gather(
+            reads.run("ledger", books.list_events),
+            reads.run("proposals", load_proposals),
+            reads.run("bank", books.stored_bank_lines),
+            reads.run("payments", lambda: load_records(books)),
+        ),
+        asyncio.gather(
+            reads.run("invoices", load_invoices),
+            reads.run("audit", lambda: read_audit(books, AUDIT)),
+            reads.run("autopilot audit", lambda: read_audit(books, AUTOPILOT_AUDIT)),
+            reads.run("last scan", books.last_scan),
+        ),
     )
     ledger = cb.Ledger(
         events=events or [], proposals=proposals or {}, bank_lines=bank_lines or [], records=records or []
     )
-
-    async def load_invoices() -> list[invoicing.Invoice]:
-        return await invoicing.list_invoices(books)
 
     async def money() -> tuple[OwedToYou, Owed]:
         return owed_to_you(ledger, invoices, today)
@@ -354,15 +378,9 @@ async def build(
     async def cash() -> Cash:
         return cash_position(ledger.bank_lines)
 
-    invoices = await reads.run("invoices", load_invoices)
     # Owed needs the events and the bank lines (payments); proposals only add labels.
     owed_pair = await reads.run("owed", money) if events is not None and bank_lines is not None else None
     overdue = owed_pair[0].overdue if owed_pair else None
-    audit, autopilot, last_scan = await asyncio.gather(
-        reads.run("audit", lambda: read_audit(books, AUDIT)),
-        reads.run("autopilot audit", lambda: read_audit(books, AUTOPILOT_AUDIT)),
-        reads.run("last scan", books.last_scan),
-    )
     audit = audit or []
     autopilot = autopilot or []
     cash_tile = await reads.run("cash", cash) if bank_lines is not None else None
@@ -381,5 +399,5 @@ async def build(
         ),
         activity=recent_activity(audit, ledger),
         runs=last_runs(audit, autopilot, last_scan),
-        unavailable=reads.missing,
+        unavailable=sorted(reads.missing, key=SECTIONS.index),
     )

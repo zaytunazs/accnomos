@@ -140,8 +140,12 @@ action never runs twice.
 Every read of the books is a Graph call, so the runtime avoids repeating them (`services/runtime/app/cache.py`):
 
 * Per request: a `Books` built with a `cache_key` memoises repeated `list`/`read` calls (each folder is listed
-  once) and reads independent files together with `asyncio.gather`. A write or move forgets exactly the paths it
-  changed, so a request always reads its own writes.
+  once) and reads independent files together with `asyncio.gather` (at most 8 round trips in flight). A miss is
+  memoised too, so a file that is not there costs one round trip per request, not one per look; concurrent looks at
+  one path share a single round trip. A write or move forgets exactly the paths it changed (and every remembered
+  miss), so a request always reads its own writes; a read still in flight when the request writes is not memoised.
+  `Books._update` forgets the file and its folder listing before a read-modify-write, so the If-Match retry reads
+  storage, not the memo.
 * Across requests: only posted ledger events (`_System/Ledger/events/…`, immutable once written) are kept, in a
   small in-process LRU (1,000 files / 8 MB) keyed by a hash of the caller's token (plus the test tenant in test
   mode). Never cached across users; never cached mutable files beyond one request. The key holds a hash, not the token.

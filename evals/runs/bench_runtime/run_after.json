@@ -14,7 +14,8 @@
         "ensure": 0
       },
       "round_trips": 130,
-      "seconds": 3.12
+      "event_reads": 59,
+      "seconds": 2.2
     },
     "review list": {
       "calls": {
@@ -25,6 +26,7 @@
         "ensure": 0
       },
       "round_trips": 48,
+      "event_reads": 0,
       "seconds": 0.87
     },
     "VAT return": {
@@ -36,7 +38,8 @@
         "ensure": 0
       },
       "round_trips": 3,
-      "seconds": 0.36
+      "event_reads": 0,
+      "seconds": 0.37
     },
     "VAT periods": {
       "calls": {
@@ -47,7 +50,8 @@
         "ensure": 0
       },
       "round_trips": 68,
-      "seconds": 2.22
+      "event_reads": 59,
+      "seconds": 1.57
     },
     "report P&L": {
       "calls": {
@@ -58,7 +62,8 @@
         "ensure": 0
       },
       "round_trips": 1,
-      "seconds": 0.12
+      "event_reads": 0,
+      "seconds": 0.13
     },
     "report aged": {
       "calls": {
@@ -69,7 +74,8 @@
         "ensure": 0
       },
       "round_trips": 129,
-      "seconds": 3.01
+      "event_reads": 59,
+      "seconds": 2.24
     },
     "report VAT": {
       "calls": {
@@ -80,7 +86,8 @@
         "ensure": 0
       },
       "round_trips": 66,
-      "seconds": 1.91
+      "event_reads": 59,
+      "seconds": 1.25
     },
     "report trend": {
       "calls": {
@@ -91,7 +98,8 @@
         "ensure": 0
       },
       "round_trips": 66,
-      "seconds": 1.85
+      "event_reads": 59,
+      "seconds": 1.27
     },
     "contacts list": {
       "calls": {
@@ -102,7 +110,8 @@
         "ensure": 0
       },
       "round_trips": 129,
-      "seconds": 2.98
+      "event_reads": 59,
+      "seconds": 2.26
     },
     "contact statement": {
       "calls": {
@@ -113,7 +122,8 @@
         "ensure": 0
       },
       "round_trips": 129,
-      "seconds": 3.33
+      "event_reads": 59,
+      "seconds": 2.24
     },
     "bank lines": {
       "calls": {
@@ -124,18 +134,20 @@
         "ensure": 0
       },
       "round_trips": 128,
-      "seconds": 3.22
+      "event_reads": 59,
+      "seconds": 2.19
     },
     "bank reconcile": {
       "calls": {
         "list": 11,
-        "read": 135,
+        "read": 118,
         "write": 0,
         "move": 0,
         "ensure": 0
       },
-      "round_trips": 146,
-      "seconds": 5.67
+      "round_trips": 129,
+      "event_reads": 59,
+      "seconds": 2.71
     },
     "invoices list": {
       "calls": {
@@ -146,7 +158,8 @@
         "ensure": 0
       },
       "round_trips": 128,
-      "seconds": 3.22
+      "event_reads": 59,
+      "seconds": 2.19
     },
     "audit day": {
       "calls": {
@@ -157,18 +170,20 @@
         "ensure": 0
       },
       "round_trips": 51,
+      "event_reads": 0,
       "seconds": 1.11
     },
     "dashboard-revisit (warm)": {
       "calls": {
         "list": 12,
-        "read": 118,
+        "read": 59,
         "write": 0,
         "move": 0,
         "ensure": 0
       },
-      "round_trips": 130,
-      "seconds": 3.23
+      "round_trips": 71,
+      "event_reads": 0,
+      "seconds": 1.12
     }
   }
 }

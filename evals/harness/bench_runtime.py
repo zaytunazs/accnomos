@@ -63,10 +63,12 @@ class CountedStorage(StorageProvider):
         self.inner = inner
         self.latency_s = latency_s
         self.calls: dict[str, int] = {"list": 0, "read": 0, "write": 0, "move": 0, "ensure": 0}
+        self.event_reads = 0  # reads of immutable ledger event files: what the per-user cache should absorb
 
     def reset(self) -> None:
         for k in self.calls:
             self.calls[k] = 0
+        self.event_reads = 0
 
     def total_reads(self) -> int:
         return self.calls["list"] + self.calls["read"]
@@ -90,6 +92,8 @@ class CountedStorage(StorageProvider):
 
     async def read(self, path: str) -> bytes:
         self.calls["read"] += 1
+        if path.strip("/").startswith("_System/Ledger/events/"):
+            self.event_reads += 1
         await self._wait()
         return await self.inner.read(path)
 
@@ -251,10 +255,11 @@ async def main() -> int:
     storage = CountedStorage(raw, args.latency_ms / 1000)
     build_routes.storage = storage  # type: ignore[attr-defined]
     routes = await build_routes(seed_demo, plan)
+    by_name = dict(routes)
     if args.routes:
         wanted = set(args.routes)
         routes = [(n, r) for n, r in routes if n in wanted]
-        if not routes:
+        if not routes and "dashboard-revisit" not in wanted:
             print(f"no routes match {sorted(wanted)}")
             return 1
 
@@ -267,13 +272,21 @@ async def main() -> int:
         out = await run()
         seconds = time.perf_counter() - t0
         calls = dict(storage.calls)
-        results[name] = {"calls": calls, "round_trips": calls["list"] + calls["read"], "seconds": round(seconds, 2)}
+        results[name] = {
+            "calls": calls,
+            "round_trips": calls["list"] + calls["read"],
+            "event_reads": storage.event_reads,
+            "seconds": round(seconds, 2),
+        }
         size = len(out) if hasattr(out, "__len__") else 1
         print(f"{name:18s} {results[name]['round_trips']:5d} round trips  {seconds:7.2f}s  (rows {size})", flush=True)
 
-    # Same user opens the dashboard again: the process cache stays warm for this one row.
-    if args.routes is None or "dashboard-revisit" in (args.routes or []):
-        by_name = dict(routes)
+    # Same user opens the dashboard again: the process cache stays warm for this one row. It is primed by a
+    # dashboard run of its own first: the loop above clears the cache before every row, so by now it holds only
+    # what the last row read (the audit day reads no events), and a revisit straight after it was cold.
+    if args.routes is None or "dashboard-revisit" in args.routes:
+        clear_process_cache()
+        await by_name["dashboard"]()
         storage.reset()
         t0 = time.perf_counter()
         await by_name["dashboard"]()
@@ -282,6 +295,7 @@ async def main() -> int:
         results["dashboard-revisit (warm)"] = {
             "calls": calls,
             "round_trips": calls["list"] + calls["read"],
+            "event_reads": storage.event_reads,
             "seconds": round(seconds, 2),
         }
         print(
@@ -320,7 +334,8 @@ def write_report() -> None:
         f" {before['latency_ms']} ms, standing in for a Graph round trip.",
         "Each row is one request (its own `Books`); the process cache is cleared",
         "between rows, except `dashboard-revisit (warm)`, which is the same user",
-        "opening the dashboard again.",
+        "opening the dashboard again straight after a first view (only the immutable",
+        "ledger event files carry over; everything else is read again).",
         "**These numbers are on fakes with simulated latency, not on OneDrive**",
         "(`docs/HONESTY.md`). They compare code paths, not the network.",
         "VAT return and report P&L default to the current period, which holds no posted events",

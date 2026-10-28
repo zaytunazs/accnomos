@@ -358,15 +358,17 @@ class Books:
         if end:
             months = [m for m in months if m <= end.strftime("%Y-%m")]
 
+        async def read_one(path: str) -> tuple[str, LedgerEvent]:
+            return path, LedgerEvent.model_validate_json(await self.storage.read(path))
+
         async def read_month(m: str) -> list[tuple[str, LedgerEvent]]:
-            out: list[tuple[str, LedgerEvent]] = []
-            for f in await self.list_files(f"{EVENTS}/{m}"):
-                if not f.name.endswith(".json"):
-                    continue
-                ev = LedgerEvent.model_validate_json(await self.storage.read(f.path))
-                if (start is None or ev.date >= start) and (end is None or ev.date <= end):
-                    out.append((f.path, ev))
-            return out
+            # A month's files are independent reads: they go out together (the request memo caps how many at once).
+            paths = [f.path for f in await self.list_files(f"{EVENTS}/{m}") if f.name.endswith(".json")]
+            return [
+                (path, ev)
+                for path, ev in await asyncio.gather(*(read_one(p) for p in paths))
+                if (start is None or ev.date >= start) and (end is None or ev.date <= end)
+            ]
 
         per_month = await asyncio.gather(*(read_month(m) for m in sorted(months)))
         entries = [pe for month_entries in per_month for pe in month_entries]
