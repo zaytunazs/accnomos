@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { VersionStrip } from "@/components/StatusStrips";
-import { CONTACT_EMAIL } from "@/lib/public-site";
+import { CONTACT_EMAIL, DEMO_GUIDE, HONESTY_URL } from "@/lib/public-site";
 import { LogoMark } from "./Marks";
 import PublicHeader from "./PublicHeader";
 
@@ -38,15 +38,19 @@ export default function MarketingShell({ path, children }: { path: string; child
 function SiteFooter() {
   return (
     <footer className="on-dark bg-ledger-deep text-ground/80">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr]">
+      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <div className="flex items-center gap-2.5 text-ground">
             <LogoMark className="bg-ground" stroke="#0A4F47" />
             <span className="text-lg font-extrabold tracking-tight">Accnomos</span>
           </div>
+          {/* Footer microcopy from docs/marketing/COPY.md. */}
           <p className="mt-3 max-w-sm text-sm leading-relaxed">
-            Bookkeeping and MTD VAT for UK small businesses, built for the Meta Global AI Developer Hackathon by
-            Zaytuna Business Services Ltd. HMRC filing is sandbox only.
+            Accounting, intelligently done. Your books stay in your OneDrive. Sample figures on this page are fictional.
+            HMRC contact is sandbox only.
+          </p>
+          <p className="mt-3 max-w-sm text-sm leading-relaxed">
+            Built for the Meta Global AI Developer Hackathon by Zaytuna Business Services Ltd.
           </p>
           <p className="mt-3 text-sm">
             Questions:{" "}
@@ -55,47 +59,59 @@ function SiteFooter() {
             </a>
           </p>
         </div>
-        <nav aria-label="Product">
-          <p className="text-sm font-bold text-ground">Product</p>
-          <ul className="mt-3 space-y-2 text-sm">
-            <li>
-              <Link href="/#features" className="hover:text-ground hover:underline">
-                Features
-              </Link>
-            </li>
-            <li>
-              <Link href="/how-it-works" className="hover:text-ground hover:underline">
-                How it works
-              </Link>
-            </li>
-            <li>
-              <Link href="/try" className="hover:text-ground hover:underline">
-                Try the sample books
-              </Link>
-            </li>
-          </ul>
-        </nav>
-        <nav aria-label="Trust">
-          <p className="text-sm font-bold text-ground">Trust</p>
-          <ul className="mt-3 space-y-2 text-sm">
-            <li>
-              <Link href="/privacy" className="hover:text-ground hover:underline">
-                Security & privacy
-              </Link>
-            </li>
-            <li>
-              <Link href="/#status" className="hover:text-ground hover:underline">
-                What is tested
-              </Link>
-            </li>
-            <li>
-              <Link href="/#faq" className="hover:text-ground hover:underline">
-                FAQ
-              </Link>
-            </li>
-          </ul>
-        </nav>
+        <FooterLinks
+          label="Product"
+          links={[
+            { href: "/#features", text: "Features" },
+            { href: "/#how", text: "How it works" },
+            { href: "/#accountants", text: "For accountants" },
+            { href: "/#pricing", text: "Pricing" },
+            { href: DEMO_GUIDE, text: "Try the demo" },
+            { href: "/try", text: "Browse the sample books" },
+          ]}
+        />
+        <FooterLinks
+          label="Trust"
+          links={[
+            { href: "/privacy", text: "Privacy policy" },
+            { href: "/terms", text: "Terms of use" },
+            { href: "/#status", text: "What is tested" },
+            { href: HONESTY_URL, text: "What is not tested (HONESTY.md)" },
+          ]}
+        />
+        <FooterLinks
+          label="Help"
+          links={[
+            { href: "/#faq", text: "FAQ" },
+            { href: "/how-it-works", text: "How each feature works" },
+            { href: `mailto:${CONTACT_EMAIL}`, text: "Contact us" },
+          ]}
+        />
       </div>
     </footer>
+  );
+}
+
+function FooterLinks({ label, links }: { label: string; links: { href: string; text: string }[] }) {
+  const cls = "hover:text-ground hover:underline";
+  return (
+    <nav aria-label={label}>
+      <p className="text-sm font-bold text-ground">{label}</p>
+      <ul className="mt-3 space-y-2 text-sm">
+        {links.map((l) => (
+          <li key={l.href}>
+            {l.href.startsWith("/") ? (
+              <Link href={l.href} className={cls}>
+                {l.text}
+              </Link>
+            ) : (
+              <a href={l.href} className={cls}>
+                {l.text}
+              </a>
+            )}
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }

@@ -482,8 +482,20 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
   production export (`scripts/prelaunch-words.mjs`). In the submission build the privacy page leaves out the
   early-adopter list, since that build cannot collect sign-ups. "Available on Android" on the landing page means the
   app exists and builds; per `docs/submission/JUDGING.md` the Play production listing was still in review on 27 Oct
-  and no real-phone sign-in is recorded. "Try the demo" links to `/judges` when that page is in the build (a parallel
-  branch), otherwise to the sample books on `/try`.
+  and no real-phone sign-in is recorded. "Try the demo" (`DemoLink.tsx`) starts a demo sandbox and opens `/judges`
+  inside it in one click; it is a plain link to `/judges` underneath, which explains when the server runs no demos.
+- **Site layout (28 Oct 2026, `docs/reviews/site-layout/REVIEW.md`).** `/terms` and `/judges` now also use the public
+  shell signed out. The landing page names landlords and personal finances because the books and the Personal page
+  serve them today; it says that separate property-income (SA105) figures are not in this build. Its text comes from
+  `docs/marketing/COPY.md` (written by Muse Spark), checked line by line against the code; four lines were corrected
+  where the deck claimed more than the code does (pricing in the app, "no" to model training whatever the provider,
+  an always-independent second reading, an overtime rate on timesheet cards). **The terms of use were written from this repository's docs, not by a lawyer.** MTD dates and thresholds are
+  deliberately not stated on the page: gov.uk could not be reached from the session that wrote it, so nothing there
+  depends on a rule that was not checked. The "before" screenshots were taken from the `site` branch (the exact export
+  Plesk serves at accnomos.com) served locally, because accnomos.com itself was blocked from that session; with no
+  runtime reachable they also show the "reader isn't answering" strip, which the live site would not. Lighthouse was
+  run on a local production export behind a local gzip server (mobile 96 performance, 100 accessibility; desktop 100,
+  100), not against accnomos.com behind Plesk.
 
 ## Security and deployment
 

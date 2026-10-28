@@ -15,10 +15,10 @@ const KNOWN = new Set(PAGES);
 // Microsoft sign-in, which never runs in the static export.
 const CONNECT_PAGES = new Set(["/connect", "/connect/ai", "/connect/business", "/connect/ready"]);
 
-// The public website (lib/public-site.ts: /, /how-it-works, /privacy) has no SAMPLE banner (the landing page shows no
+// The public website (lib/public-site.ts: /, /how-it-works, /privacy, /terms, /judges) has no SAMPLE banner (the landing page shows no
 // sample data, only captioned screenshots) and its CTAs all start with "Sign in" ("Sign in", "Sign in with Microsoft",
 // "Sign in to see your books"). The sample Home on /try keeps "Connect your OneDrive".
-const PUBLIC = new Set(["/", "/how-it-works", "/privacy"]);
+const PUBLIC = new Set(["/", "/how-it-works", "/privacy", "/terms", "/judges"]);
 const ctaName = (route: string) =>
   PUBLIC.has(route) ? "Sign in" : route === "/try" ? "Connect your OneDrive" : "Sign in to see your books";
 
