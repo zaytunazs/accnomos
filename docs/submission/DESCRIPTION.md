@@ -1,9 +1,9 @@
 # Project description (draft for the Meta Global AI Developer Hackathon, Indie track)
 
 Refreshed 27 Oct 2026. Every claim below comes from `README.md`, `docs/HONESTY.md`, `docs/submission/META_MODELS.md` and the reports named there. Owner: Zohaib Sharif, Zaytuna Business Services Ltd (solo).
-The 150-word text is 149 words and the 400-word text 399 (whitespace-separated words between the rules); the form's counter may differ, so trim a sentence if it objects.
-Rules for editing: the "ran live" runs are the maintainers' own with no committed log (`docs/HONESTY.md`), so say "our record", not "verified". Quote the 200-document extraction run (88 %), not a mix with the older 60-document one. The Autopilot figures are for Glimmer 30B on synthetic documents and are quoted with their caveat; do not shorten them to "0 false posts".
-**Not yet in the text:** numbers for Muse Spark Open. When `evals/runs/spark_open_200` finishes, add one sentence with its measured figures and the same caveat (synthetic, 200 receipts); until then the text says "one live call".
+The 150-word text is 149 words and the 400-word text 398 (whitespace-separated words between the rules); the form's counter may differ, so trim a sentence if it objects.
+Rules for editing: the "ran live" runs are the maintainers' own with no committed log (`docs/HONESTY.md`), so say "our record", not "verified". Quote the 27 Oct 200-document extraction runs with repairs, re-read and Verifier on (Glimmer 85 % clean / 80 % messy, Spark Open 91 % / 93 %), not a mix with the earlier 88 % Glimmer run (no repairs, re-read or Verifier) or the 60-document one. The Autopilot figures are for Glimmer 30B on synthetic documents and are quoted with their caveat; do not shorten them to "0 false posts".
+Muse Spark Open's figures are in the 400-word text with the same caveat (synthetic documents, 200 clean and 200 messy).
 
 ## Tagline
 
@@ -34,9 +34,9 @@ Honestly: only sign-in, receipt-to-VAT-boxes and the Glimmer evals ran for real;
 
 **What is built.** Receipt scan, review and an independent second reading; contacts with statements and ageing; invoicing with PDF, Outlook send, part payments and credit notes; bank import with rules and reconciliation; reports; an audit trail of every action; the VAT return by period with an HMRC sandbox flow; jobs, mileage and pay-run estimates; Outlook intake; Ask, plus chat and voice actions that show a card and wait for Approve; a web app and an Android app.
 
-**The Meta models.** Muse Glimmer 30B (open weights, our DGX Spark) reads locally. Muse Spark 1.3 does the same with your key. Muse Spark Open on Baseten is the key-mode verifier: wired, with one live call, 27 October, reading a gold receipt in 7 s. Muse Voice Transcribe takes spoken questions. SAM 3.1 crops photos, off by default. Muse Image made the brand art.
+**The Meta models.** Muse Glimmer 30B (open weights, our DGX Spark) reads locally. Muse Spark 1.3 does the same with your key. Muse Spark Open on Baseten is the key-mode verifier. Muse Voice Transcribe takes spoken questions. SAM 3.1 crops photos, off by default. Muse Image made the brand art.
 
-**Measured, and its limits.** On 200 synthetic messy documents Glimmer got every field right on 88 %. Autopilot (posting without a tap, only for suppliers you have a rule for) was tested on 467 documents with the verifier on: no false posts on 154 clean ones, but 17 overall (3.6 %), all re-dated copies of receipts already posted.
+**Measured, and its limits.** On 200 synthetic documents, clean and messy, every field was right on 85 % and 80 % (Glimmer) and 91 % and 93 % (Spark Open). Autopilot (posting without a tap, only for suppliers you have a rule for) was tested on 467 documents with the verifier on: no false posts on 154 clean ones, but 17 overall (3.6 %), all re-dated copies of receipts already posted.
 
 **Honest status.** Sign-in and receipt-to-VAT-boxes ran live on a personal account (our record). The rest is tested on fakes. HMRC is sandbox only and not yet run end to end; Spark 1.3, Voice and SAM have never been called live; no real-phone Android sign-in is recorded. Demo data is synthetic. `docs/HONESTY.md` lists every gap.
 ---
