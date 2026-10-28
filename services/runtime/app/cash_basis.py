@@ -194,7 +194,7 @@ def cash_view(ledger: Ledger) -> CashView:
         view.refs[e.id] = CashRef(
             source="on_its_date",
             description=_on_its_date(e),
-            money_pence=sum(ln.debit for ln in counting),
+            money_pence=sum(ln.debit for ln in e.lines),  # the entry's total, VAT included
         )
 
     # 2. Invoices and bills on account: each payment, as its share of the document.
