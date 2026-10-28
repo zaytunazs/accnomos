@@ -6,7 +6,22 @@ import type { AccountInfo } from "@azure/msal-browser";
 import Explain from "@/components/Explain";
 import { accountKind, getMsal, getToken, mailScopesFor, msalConfigured, storageScopesFor } from "@/lib/msal";
 import { intakeOn, recordInboxCheck, setIntakeOn } from "@/lib/intake";
-import { runtime, type RtMailScan } from "@/lib/runtime";
+import { checkAllMailboxes, type MailboxCheck } from "@/lib/mailboxes";
+import type { RtMailScan } from "@/lib/runtime";
+
+/** Several mailboxes' results as one: what the summary line and the file chips show. */
+function combine(checks: MailboxCheck[]): RtMailScan {
+  const done = checks.flatMap((c) => (c.result ? [c.result] : []));
+  return {
+    scanned: done.reduce((n, r) => n + r.scanned, 0),
+    candidates: done.reduce((n, r) => n + r.candidates, 0),
+    saved: done.flatMap((r) => r.saved),
+    skipped_duplicates: done.reduce((n, r) => n + r.skipped_duplicates, 0),
+    dry_run: done[0]?.dry_run ?? false,
+    errors: done.flatMap((r) => r.errors),
+    items: done.flatMap((r) => r.items),
+  };
+}
 
 /** Settings card: copy receipts/invoices from Outlook into 00 Inbox. Reads mail only; never moves or deletes. */
 export default function OutlookIntake({ card, heading }: { card: string; heading: string }) {
@@ -14,6 +29,7 @@ export default function OutlookIntake({ card, heading }: { card: string; heading
   const [on, setOn] = useState(false);
   const [busy, setBusy] = useState<"consent" | "scan" | "preview" | null>(null);
   const [result, setResult] = useState<RtMailScan | null>(null);
+  const [checks, setChecks] = useState<MailboxCheck[]>([]);
   const [note, setNote] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,7 +78,9 @@ export default function OutlookIntake({ card, heading }: { card: string; heading
     setBusy(dryRun ? "preview" : "scan");
     setNote(null);
     try {
-      const r = await runtime.mailScan(account, { since_days: 14, dry_run: dryRun });
+      const all = await checkAllMailboxes(account, { since_days: 14, dry_run: dryRun });
+      const r = combine(all);
+      setChecks(all);
       setResult(r);
       if (!dryRun) recordInboxCheck(r.saved.length);
     } catch (e) {
@@ -161,7 +179,7 @@ export default function OutlookIntake({ card, heading }: { card: string; heading
           {n > 0 && (
             <ul className="mt-2 flex flex-wrap gap-2">
               {result.items.map((it) => (
-                <li key={it.name}>
+                <li key={`${it.mailbox ?? ""}/${it.name}`}>
                   {result.dry_run ? (
                     <span title={it.subject} className="inline-block rounded-full border border-border bg-white px-3 py-1 text-[13px] font-semibold text-muted">
                       {it.name}
@@ -178,6 +196,27 @@ export default function OutlookIntake({ card, heading }: { card: string; heading
           {!result.dry_run && n > 0 && (
             <p className="mt-2 text-muted">
               Next: <Link href="/review" className="font-bold text-teal-dark">scan 00 Inbox on Review</Link> to read them.
+            </p>
+          )}
+          {checks.length > 1 && (
+            <div className="mt-2 space-y-0.5 text-muted" data-testid="intake-by-mailbox">
+              {checks.map((c) => (
+                <p key={c.mailbox}>
+                  <span className="font-semibold text-ink">{c.mailbox}</span>
+                  {": "}
+                  {c.result
+                    ? `${c.result.saved.length} file${c.result.saved.length === 1 ? "" : "s"}` +
+                      (c.result.skipped_duplicates ? `, ${c.result.skipped_duplicates} already in your books` : "")
+                    : c.needsSignIn
+                      ? "not read: sign in to it again under Email intake"
+                      : `not read (${c.error})`}
+                </p>
+              ))}
+            </div>
+          )}
+          {result.dry_run && checks.length > 1 && (
+            <p className="mt-2 text-muted">
+              Each mailbox is previewed on its own: a receipt sent to two of them is listed twice here but copied once.
             </p>
           )}
           {result.errors.length > 0 && (
