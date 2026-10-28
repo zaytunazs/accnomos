@@ -460,6 +460,18 @@ async def test_ground_flags_last_quarters_figure_quoted_for_this_quarter(facts: 
     assert got.fallback_reason and "Apr–Jun 2026" in got.fallback_reason and "£2,081.59" in got.answer_md
 
 
+async def test_ground_ignores_digits_in_file_names(facts: dict):
+    """Event ids are random hex and end up in `sources` and each transaction's `source`, so a run of digits in one
+    (here 800 and 777) came and went with the run (CI run 40774742253). A file name is not a figure: it must neither
+    excuse a wrong-period figure nor an invented one."""
+    name = f"{EVENTS}/2026-08/20260804T120000Z-runtime-a800b777c{'0' * 23}.json"
+    facts["sources"].append(name)
+    facts["largest_transactions"][0]["source"] = name
+    q = "How much VAT do I owe this quarter?"
+    assert ask_ai.ground(_out(answer_md="You owe £800.00 this time."), facts, "m", q).fallback_reason
+    assert ask_ai.ground(_out(answer_md="You owe £777.00 this time."), facts, "m", q).fallback_reason
+
+
 # --------------------------------------------------------------------------- #
 # Streaming
 # --------------------------------------------------------------------------- #
