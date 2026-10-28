@@ -20,9 +20,10 @@ export class Runtime {
 
   /**
    * Empty the fake OneDrive and reseed; `seed: "bank"` also posts the entries evals/gold/bank/barclays.csv pays for;
-   * `seed: "demo"` makes today DEMO_DAY for this worker and puts JM Trading Ltd in the Outlook address book.
+   * `seed: "demo"` makes today DEMO_DAY for this worker and puts JM Trading Ltd in the Outlook address book;
+   * `seed: "purchases"` posts Jun–Oct 2026 purchases with line items (services/runtime/app/sample_purchases.py).
    */
-  async reset(seed?: "bank" | "demo"): Promise<void> {
+  async reset(seed?: "bank" | "demo" | "purchases"): Promise<void> {
     const r = await this.request.post(`${RUNTIME_URL}/__test/reset${seed ? `?seed=${seed}` : ""}`);
     expect(r.ok(), `POST /__test/reset -> ${r.status()}: is the runtime on ${RUNTIME_URL} in test mode?`).toBeTruthy();
   }

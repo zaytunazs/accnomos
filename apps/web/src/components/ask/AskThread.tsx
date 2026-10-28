@@ -383,6 +383,7 @@ export default function AskThread() {
               ) : t.answer?.clarification ? (
                 <ClarifyCard
                   clarification={t.answer.clarification}
+                  account={account}
                   onPick={(name) => {
                     if (account && !busy) void ask(withPicked(t.question, t.answer!.clarification!, name), account, turns);
                   }}

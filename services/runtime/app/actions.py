@@ -61,12 +61,14 @@ CLEAR_LEAD = 0.1  # several reach MATCH_AT: the best is picked only this far ahe
 DEFAULT_TERMS_DAYS = 30
 RATES: dict[str, int] = {"S": 20, "R": 5, "Z": 0, "E": 0, "O": 0}  # same table as app/invoicing.py
 VatCode = Literal["S", "R", "Z", "E", "O"]
-IntentKind = Literal["create_invoice", "chase_invoice", "log_mileage", "log_timesheet", "pay_overtime", "none"]
+IntentKind = Literal[
+    "create_invoice", "chase_invoice", "log_mileage", "log_timesheet", "pay_overtime", "add_to_shopping_list", "none"
+]
 
 # Only questions that might be an instruction cost a second model call.
 _ACTION_WORDS = re.compile(
     r"\b(invoice|bill|send|chase|remind|reminder|log|record|add|book|miles?|mileage|drove|driven|hours?|timesheet"
-    r"|pay|overtime|double)\b",
+    r"|pay|overtime|double|shopping|buy|order|remember)\b",
     re.I,
 )
 _QUESTION_START = re.compile(
@@ -91,13 +93,19 @@ INTENT_PROMPT = (
     "and never invent anything. kind: create_invoice (bill a customer), chase_invoice (remind a customer about an "
     "unpaid invoice), log_mileage (a business journey), log_timesheet (hours someone worked on a job), "
     "pay_overtime (pay someone at a higher rate, e.g. double or time and a half, for hours already on their "
-    "timesheet; copy the rate words exactly into multiplier_text, e.g. 'double', 'time and a half', '1.5x'), or none "
+    "timesheet; copy the rate words exactly into multiplier_text, e.g. 'double', 'time and a half', '1.5x'), "
+    "add_to_shopping_list (put something on their shopping list to buy), or none "
     "(a question about the books, or anything else). Copy names exactly as the user said them into customer_ref, "
     "invoice_ref, job_ref, staff_ref and vehicle_ref. Copy figures exactly as said, as text: amount_text ('£100', "
     "'1,250.50'), hours_text ('7.5'), miles_text ('42'), and in lines quantity_text and unit_price_text. "
     "amount_includes_vat: true only if the user said the amount includes VAT. vat_code only if the user named "
     "one (S standard 20%, R reduced 5%, Z zero, E exempt, O outside scope). due_days only if the user gave "
-    "payment terms in days. send: true if the user asked to send or email it. date_text: the day as said "
+    "payment terms in days. send: true if the user asked to send or email it. "
+    "For add_to_shopping_list: item_text is the item exactly as said, with any sizes or colour but without "
+    "the quantity or the job ('packing tape', 'tape 48mm x 66m', '2-inch bolts'); "
+    "'remember to order X' and 'I need X' are add_to_shopping_list too; "
+    "quantity_text how many as said ('6') or null; job_ref the job it is for, "
+    "as said ('Hendon' for 'the Hendon job'). date_text: the day as said "
     "('yesterday', 'Monday', '3 Oct') or null. description: what the invoice is for, in the user's words "
     '(e.g. "this month\'s work"); for a timesheet, any note. Leave every field that does not apply null.'
 )
@@ -130,6 +138,8 @@ class IntentModelOutput(BaseModel):
     staff_ref: str | None
     hours_text: str | None
     date_text: str | None
+    item_text: str | None
+    quantity_text: str | None
     multiplier_text: str | None = None  # pay_overtime: the rate words as said ("double", "time and a half")
 
 
@@ -189,7 +199,6 @@ class PayOvertimeIntent(BaseModel):
     week_start: dt.date  # a Monday
 
 
-Intent = CreateInvoiceIntent | ChaseInvoiceIntent | LogMileageIntent | LogTimesheetIntent | PayOvertimeIntent
 
 _MULTIPLIER_WORDS: tuple[tuple[re.Pattern[str], Decimal], ...] = (
     (re.compile(r"\b(double|twice|2x|x2|two times)\b"), Decimal(2)),
@@ -220,6 +229,16 @@ def parse_week(text: str | None, today: date) -> date | None:
         return monday
     d = parse_day(text, today) if t else None
     return None if d is None else d - timedelta(days=d.weekday())
+class ShoppingIntent(BaseModel):
+    kind: Literal["add_to_shopping_list"] = "add_to_shopping_list"
+    item_text: str
+    quantity: Decimal = Decimal(1)
+    job_ref: str | None = None  # "the Hendon job": found among the open jobs by code
+
+
+Intent = (
+    CreateInvoiceIntent | ChaseInvoiceIntent | LogMileageIntent | LogTimesheetIntent | PayOvertimeIntent | ShoppingIntent
+)
 
 
 @dataclass
@@ -463,6 +482,16 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
             date=d,
             note=(out.description or "").strip()[:500],
         )
+    if out.kind == "add_to_shopping_list":
+        item = " ".join((out.item_text or "").split())[:120]
+        if not item:
+            return Clarification(
+                kind="add_to_shopping_list", field="item", question_md="What should I add to your shopping list?"
+            )
+        qty = figure(out.quantity_text, "add_to_shopping_list", "quantity", "How many should I add?")
+        if isinstance(qty, Clarification):
+            return qty
+        return ShoppingIntent(item_text=item, quantity=qty or Decimal(1), job_ref=(out.job_ref or "").strip() or None)
     return None
 
 
@@ -983,6 +1012,64 @@ async def resolve_mileage(books: Books, intent: LogMileageIntent, today: date) -
     return Draft("log_mileage", summary, preview, "Add the journey to the mileage log")
 
 
+async def shopping_draft(books: Books, body: Any, today: date) -> Draft:
+    """The card for adding one item (a shopping.ShoppingIn): code picks the cheapest supplier in the history."""
+    from app import shopping
+
+    r = await shopping.resolve(books, body, today)
+    s = r["suggested"]
+    where = (
+        f" Cheapest in your books: £{s['unit_price']} from {_md(s['supplier'])}"
+        f" ({uk_date(date.fromisoformat(s['date']))})."
+        if s
+        else " Nothing like it in your receipts yet, so no supplier is suggested."
+    )
+    live = r["live_offer"]
+    if live:
+        where += f" Live offer: £{live['unit_price']} from {_md(live['supplier'])} (found by {_md(live['source'])})."
+    preview = {**r, "option_key": r["item_key"]}
+    job = f" for **{_md(r['job_name'])}**" if r.get("job_name") else ""
+    summary = f"**Add {r['quantity']} × {_md(r['description'])}** to your shopping list{job}.{where}"
+    return Draft("add_to_shopping_list", summary, preview, "Add it to the shopping list")
+
+
+async def resolve_shopping(books: Books, intent: ShoppingIntent, today: date) -> Draft | Clarification:
+    from app import shopping
+
+    job_id = job_name = None
+    if intent.job_ref:  # "for the Hendon job": the job first, so a re-ask with a picked item keeps it
+        hit = pick(intent.job_ref, await job_options(books), "add_to_shopping_list", "job", "open job")
+        if isinstance(hit, Clarification):
+            return hit
+        job_id, job_name = hit.option.id, hit.option.name
+    found = await shopping.lookup(books, intent.item_text, today)
+    qty = format(intent.quantity.normalize(), "f")
+    if len(found.options) == 1:
+        body = shopping.ShoppingIn(
+            text=intent.item_text, option_key=found.options[0].key, quantity=intent.quantity, job_id=job_id
+        )
+        return await shopping_draft(books, body, today)
+    for_job = f" (for {_md(job_name)})" if job_name else ""
+    if found.options:
+        return Clarification(
+            kind="add_to_shopping_list",
+            field="item",
+            candidates=[o.description for o in found.options],
+            ref=intent.item_text,
+            question_md=found.question_md + for_job,
+            extra={"job_id": job_id, "job_name": job_name} if job_id else {},
+        )
+    fields = [f.model_dump() | ({"value": qty} if f.name == "quantity" else {}) for f in found.fields]
+    return Clarification(
+        kind="add_to_shopping_list",
+        field="spec",
+        ref=intent.item_text,
+        question_md=found.question_md + for_job,
+        spec_fields=fields,
+        extra={"job_id": job_id, "job_name": job_name} if job_id else {},
+    )
+
+
 # --------------------------------------------------------------------------- #
 # Signing (no server state: the client keeps the proposal)
 # --------------------------------------------------------------------------- #
@@ -1088,6 +1175,8 @@ async def propose(
         draft = await resolve_timesheet(books, intent, today)
     elif isinstance(intent, PayOvertimeIntent):
         draft = await resolve_overtime(books, intent, today)
+    elif isinstance(intent, ShoppingIntent):
+        draft = await resolve_shopping(books, intent, today)
     else:
         draft = await resolve_mileage(books, intent, today)
     if isinstance(draft, Clarification):
@@ -1378,6 +1467,29 @@ async def run_close(action: ProposedAction, ctx: Context) -> tuple[str, dict[str
     )
 
 
+async def run_shopping(action: ProposedAction, ctx: Context) -> tuple[str, dict[str, Any]]:
+    from app import shopping
+
+    p = action.preview
+    spec = p.get("spec") or {}
+    body = shopping.ShoppingIn(
+        text=p["text"],
+        option_key=p.get("option_key"),
+        spec=None
+        if p.get("option_key")
+        else shopping.ShoppingSpec(**{k: v for k, v in spec.items() if v and not (k == "pack" and v == 1)}),
+        quantity=Decimal(p["quantity"]),
+        note=p.get("note") or "",
+        job_id=p.get("job_id"),
+    )
+    item = await shopping.add_item(ctx.books, body, ctx.user, london_today())
+    job = f" for {_md(item.job_name)}" if item.job_name else ""
+    return (
+        f"Added {item.quantity} × {_md(item.description)} to your shopping list{job}.",
+        {"item_id": item.id, "description": item.description, "quantity": str(item.quantity), "job_id": item.job_id},
+    )
+
+
 EXECUTORS: dict[str, Executor] = {
     "create_invoice": run_invoice,
     "chase_invoice": run_chase,
@@ -1386,6 +1498,7 @@ EXECUTORS: dict[str, Executor] = {
     "match_bank_line": run_bank_match,
     "close_month": run_close,
     "pay_overtime": run_overtime,
+    "add_to_shopping_list": run_shopping,
 }
 
 

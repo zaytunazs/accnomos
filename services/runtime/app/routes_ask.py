@@ -19,17 +19,19 @@ from __future__ import annotations
 import json
 from collections.abc import AsyncIterator
 from datetime import date
+from decimal import Decimal
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from app import actions
+from app import actions, spending
 from app.ai import ask as ask_ai
+from app.ai import spending as spending_ai
 from app.ai import voice
 from app.ai.config import AiConfig, ai_config_from_request
-from app.books import Books, today
+from app.books import EVENTS, Books, today
 from app.facts import build_facts
 from app.planner import TZ, plan_intent, uk_day
 from app.routes_actions import graph_token
@@ -41,6 +43,7 @@ from app.schemas import (
     AskTurn,
     AskVoiceAnswer,
     Clarification,
+    KeyNumber,
     ProposedAction,
     SuggestedAction,
 )
@@ -84,6 +87,27 @@ def plan_answer(day: date, period: AskPeriod) -> AskAnswer:
     )
 
 
+async def spending_answer(books: Books, period: AskPeriod, cfg: AiConfig, business: str | None) -> AskAnswer:
+    """ "Summarise my spending": the Spending page's summary for the Ask period (code's figures, checked words)."""
+    facts = await spending.build(books, period, business)
+    text, by, why = await spending_ai.summarise(facts, cfg)
+    t = facts["this_period"]
+    src = (t["sources"] if "sources" in t else facts["sources"]) or [f"{EVENTS}/"]
+    return AskAnswer(
+        answer_md=text,
+        key_numbers=[
+            KeyNumber(label=f"Spent before VAT, {t['label']}", value=f"£{Decimal(t['spent']):,.2f}", source=src[0]),
+            KeyNumber(label=f"Purchases, {t['label']}", value=str(t["purchases"]), source=src[0]),
+        ],
+        citations=src,
+        suggested_actions=[SuggestedAction(label="Open Spending", kind="open_spending", arg=None)],
+        confidence="high" if by == "model" else "medium",
+        model=cfg.model if by == "model" else "code",
+        period=period,
+        fallback_reason=why,
+    )
+
+
 async def _prepare(
     req: AskRequest,
     books: Books,
@@ -101,6 +125,8 @@ async def _prepare(
         period = AskPeriod(start=start, end=end)
     if (day := plan_intent(req.question, today(TZ))) is not None:
         return plan_answer(day, period)
+    if spending.asks_for_summary(req.question):
+        return await spending_answer(books, period, cfg, business)
     found = await actions.propose(req.question, books, cfg, token, today(TZ))  # the same day as the plan and VAT period
     if found is not None:
         return _action_answer(found, cfg, period)

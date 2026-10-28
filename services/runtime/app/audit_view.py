@@ -475,6 +475,11 @@ SUMMARIES: dict[str, Summary] = {
     ),
     # To-dos and housekeeping
     "todo_added": lambda r, w: "Added a to-do",
+    "shopping_added": lambda r, w: f"Added {r.get('description') or 'an item'} to the shopping list",
+    "shopping_ticked": lambda r, w: "Ticked off a shopping list item",
+    "shopping_unticked": lambda r, w: "Put a shopping list item back on the list",
+    "shopping_removed": lambda r, w: "Removed a shopping list item",
+    "item_match": lambda r, w: "Said two items are the same product" if r.get("same") else "Said two items differ",
     "todo_deleted": lambda r, w: "Ticked off a to-do",
     "folders_renamed": lambda r, w: f"Renamed old folders: {_moved(r)}",
     "profile_saved": lambda r, w: (

@@ -245,6 +245,9 @@ app.include_router(cis_router)
 from app.routes_actions import router as actions_router  # noqa: E402  /actions/approve, /actions/reject
 
 app.include_router(actions_router)
+from app.routes_spending import router as spending_router  # noqa: E402  /books/spending, /books/prices, /shopping
+
+app.include_router(spending_router)
 from app.routes_payroll import router as payroll_router  # noqa: E402  /payroll/runs
 
 app.include_router(payroll_router)

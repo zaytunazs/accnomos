@@ -50,6 +50,9 @@ services:
       # to start without DEMO_SECRET (32+ characters). Set both in .env; never commit the secret.
       DEMO_MODE: ${DEMO_MODE:-0}
       DEMO_SECRET: ${DEMO_SECRET:-}
+      # Live price search for Cheaper options and the shopping list (app/price_search.py). Empty or `none` = off,
+      # the default; no real provider ships in this version (docs/PRODUCTION.md).
+      PRICE_SEARCH_PROVIDER: ${PRICE_SEARCH_PROVIDER:-}
     # The only writable path besides /tmp: owned by uid 10001 in the image, so the named volume starts that way.
     volumes: ["runtime-data:/data"]
     # Uploads over 1 MB spool to /tmp, and ffmpeg converts voice there: 25 MB uploads need the headroom.
