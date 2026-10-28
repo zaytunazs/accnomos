@@ -55,7 +55,7 @@ on synthetic documents, and real phone photos will score lower.
 | Autopilot L2 with a safety eval that found a real bug (21 of 32 re-photographed receipts posted twice), fixed by a same-document rule (0 of 42 after) | `services/runtime/app/autopilot.py`, `evals/runs/autopilot_l2/`, `docs/reviews/autopilot-eval/REVIEW.md` | Measured, Glimmer, synthetic |
 | Security: log scrubbing, size caps, rate limit, exact-origin CORS, one-time OAuth state, safe file names | `docs/SECURITY.md`, `services/runtime/tests/test_security.py` | Tested; **not load-tested** |
 | Two clients on one stateless runtime: a web app and an Android app (0.3.5+10) with page-by-page parity | `apps/web/src/app`, `apps/mobile/lib/screens`, `apps/mobile/PARITY.md`, `apps/mobile/RELEASE_NOTES.md` | Android **never run on a real device** |
-| Tests, 28 Oct gates (owner's figures): runtime 1260, evals 258, relay 119, Playwright 208 (36 spec files), Flutter 248 | `check.sh`, `apps/web/e2e/*.spec.ts`, `apps/mobile/test`, `docs/HONESTY.md` | Re-run before quoting; the e2e CI workflow has never run on GitHub |
+| Tests, 28 Oct gates (owner's figures): runtime 1260, evals 258, relay 119, Playwright 208 (36 spec files), Flutter 248 | `uv run pytest -q`, `apps/web/e2e/*.spec.ts`, `apps/mobile/test`, `docs/HONESTY.md` | Re-run before quoting; the e2e CI workflow has never run on GitHub |
 | Process: every branch reviewed by a second agent before merging, with what was fixed and what remains | `docs/reviews/*/REVIEW.md` (54 reviews), `docs/PROVENANCE.md` | Documented |
 
 ## 4. Demo quality
