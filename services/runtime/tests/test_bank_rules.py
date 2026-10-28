@@ -434,6 +434,14 @@ def test_ai_prompt_names_travel_subsistence_motor_without_suppliers() -> None:
         assert supplier not in BANK_SUGGEST_PROMPT.upper()  # generic words only: no teaching to the test
 
 
+def test_ai_prompt_covers_second_pass_hints() -> None:
+    from app.bank_reconcile import BANK_SUGGEST_PROMPT
+
+    upper = BANK_SUGGEST_PROMPT.upper()
+    for word in ("PARKING", "VALET", "CONGESTION", "TOLL", "BAKER", "PANTR", "DELI", "KITCHEN", "MATERIALS"):
+        assert word in upper
+
+
 def test_test_mode_stub_answers_the_current_prompt_shape() -> None:
     """The stub AI dispatches on the prompt text, so a prompt edit must not orphan it."""
     import json
@@ -479,13 +487,33 @@ def test_test_mode_stub_answers_the_current_prompt_shape() -> None:
     [
         ("TFL TRAVEL CH", "7400 Travel"),
         ("TRAINLINE TICKETS", "7400 Travel"),
+        ("TRAIN FARE", "7400 Travel"),
+        ("RAIL TICKETS", "7400 Travel"),
+        ("BUS FARE", "7400 Travel"),
+        ("TAXI RIDE", "7400 Travel"),
+        ("UBER TRIP", "7400 Travel"),
         ("CAR PARKING FEE", "7400 Travel"),
+        ("CHESTERFIELD CAR PARKS LTD", "7400 Travel"),
+        ("NCP PARKING", "7400 Travel"),
+        ("RINGGO PARKING", "7400 Travel"),
+        ("PAYBYPHONE PARKING", "7400 Travel"),
+        ("VALET PARKING", "7400 Travel"),
+        ("VALET & DISPLAY", "7400 Travel"),
+        ("CONGESTION CHARGE", "7400 Travel"),
+        ("ULEZ CHARGE", "7400 Travel"),
+        ("TOLL PAYMENT", "7400 Travel"),
         ("PETROL STATION", "7300 Motor expenses"),
         ("DIESEL FILL UP", "7300 Motor expenses"),
         ("FUEL CARD", "7300 Motor expenses"),
         ("CAFE LUNCH", "7410 Subsistence"),
+        ("COFFEE SHOP", "7410 Subsistence"),
+        ("BAKERY LOAF", "7410 Subsistence"),
+        ("THE CRUMB & CRUST COLLECTIVE", "7410 Subsistence"),
+        ("SALTMARSH PANTRY", "7410 Subsistence"),
+        ("CITY DELI", "7410 Subsistence"),
         ("RESTAURANT BILL", "7410 Subsistence"),
         ("SANDWICH SHOP", "7410 Subsistence"),
+        ("SOUP KITCHEN CAFE", "7410 Subsistence"),
     ],
 )
 def test_builtin_rules_code_travel_subsistence_motor(description: str, want: str) -> None:
@@ -493,9 +521,58 @@ def test_builtin_rules_code_travel_subsistence_motor(description: str, want: str
     assert got is not None and got.action.account == want
 
 
-@pytest.mark.parametrize("description", ["SCREWFIX DIRECT", "OUTFLANK LTD", "VODAFONE MOBILE", "HMRC VAT"])
+@pytest.mark.parametrize(
+    "description",
+    [
+        "SCREWFIX DIRECT",
+        "OUTFLANK LTD",
+        "VODAFONE MOBILE",
+        "HMRC VAT",
+        # Kitchen trade stays 5000 Materials: the deterministic hint stays silent.
+        "ACME KITCHEN FITTERS",
+        "KITCHEN UNITS DIRECT",
+        "WORKTOPS KITCHEN SUPPLIES",
+        "KITCHEN TRADE COUNTER",
+        # Builders' merchants and timber centres are Materials, never travel/subsistence.
+        "TRAVIS PERKINS BUILDERS MERCHANT",
+        "JEWSON BUILDERS MERCHANTS",
+        "TIMBER CENTRE",
+        "ALBION TIMBER & BUILDERS MERCHANTS",
+    ],
+)
 def test_builtin_rules_stay_silent_outside_their_tokens(description: str) -> None:
     assert first_match(BUILTIN_RULES, description=description, amount_pence=-500) is None
+
+
+def test_builtin_kitchen_hint_needs_no_trade_words() -> None:
+    """Kitchen is ambiguous: food sense suggests Subsistence, trade sense stays silent."""
+    food = first_match(BUILTIN_RULES, description="COMMUNITY SOUP KITCHEN", amount_pence=-500)
+    assert food is not None and food.action.account == "7410 Subsistence"
+    for trade in (
+        "ACME KITCHEN FITTERS",
+        "KITCHEN SUPPLIER LTD",
+        "KITCHEN UNITS AND WORKTOPS",
+        "TRADE KITCHEN SUPPLIES",
+    ):
+        assert first_match(BUILTIN_RULES, description=trade, amount_pence=-500) is None
+
+
+async def test_suggest_rule_new_hints_still_yield_to_the_users_rule(books: Books) -> None:
+    """A user rule (or learned supplier coding) always beats the deterministic hints."""
+    from app.bank_reconcile import suggest_rule
+
+    await save_bank_rules(
+        books,
+        [
+            BankRule(
+                match={"op": "contains", "value": "ringgo"},
+                direction="out",
+                action={"account": "7999 Sundry expenses", "vat_code": "N"},
+            )
+        ],
+    )
+    got = await suggest_rule(books, _line("RINGGO PARKING", -450))
+    assert got is not None and got.account == "7999 Sundry expenses" and not got.rule_id.startswith("builtin-")
 
 
 @pytest.mark.parametrize("description", ["TFL TRAVEL CH", "CAR PARKING FEE", "FUEL CARD", "CAFE LUNCH"])
