@@ -92,7 +92,8 @@ function Star({ report, on, disabled, onToggle }: { report: RtExportReport; on: 
       type="button"
       aria-pressed={on}
       aria-label={`Star ${report.title}`}
-      title={on ? "Starred" : "Star this report"}
+      title={disabled ? "Sign in to star reports" : on ? "Starred" : "Star this report"}
+      aria-describedby={disabled ? "period-why" : undefined}
       disabled={disabled}
       onClick={onToggle}
       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl hover:bg-ground disabled:opacity-50"
@@ -346,7 +347,8 @@ function Preview({
       )}
       <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Download">
         {report.formats.map((f) => (
-          <button key={f} type="button" disabled={!live || !!busy} onClick={() => onDownload(f)} className={button} aria-label={`Download ${FORMAT_LABEL[f] ?? f}`}>
+          <button key={f} type="button" disabled={!live || !!busy} onClick={() => onDownload(f)} className={button} aria-label={`Download ${FORMAT_LABEL[f] ?? f}`}
+            aria-describedby={!live ? "preview-why" : undefined}>
             {busy === `download-${f}` ? "Preparing…" : FORMAT_LABEL[f] ?? f}
           </button>
         ))}
@@ -364,12 +366,13 @@ function Preview({
             </select>
           </label>
         )}
-        <button type="button" disabled={!live || !!busy} onClick={() => onSave(saveFormat)} className={primary}>
+        <button type="button" disabled={!live || !!busy} onClick={() => onSave(saveFormat)} className={primary}
+          aria-describedby={!live ? "preview-why" : undefined}>
           {busy === "save" ? "Saving…" : "Save to 07 Reports"}
         </button>
       </div>
       {!live && (
-        <p className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-muted">
+        <p id="preview-why" className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-muted">
           Sign in to download or save reports from your own books. <SignInCta />
         </p>
       )}
@@ -433,6 +436,24 @@ export default function ReportsExports() {
   const [filter, setFilter] = useState("");
   const live = state === "live" && !!account;
 
+  // The report and period live in the address (?report=&from=&to=&as_of=&mode=), so a reload or a shared link opens
+  // the same preview: read once the catalogue is in (fromAddress), written back as they change (below).
+  function fromAddress() {
+    const p = new URLSearchParams(window.location.search);
+    const day = (k: string) => (/^\d{4}-\d{2}-\d{2}$/.test(p.get(k) ?? "") ? p.get(k)! : undefined);
+    const from = day("from"), to = day("to");
+    setQuery({ ...(from && to ? { from, to } : {}), as_of: day("as_of"), mode: p.get("mode") || undefined });
+    if (p.get("report")) setSelected(p.get("report"));
+  }
+  useEffect(() => {
+    if (state === "checking") return;
+    const p = new URLSearchParams();
+    if (selected) p.set("report", selected);
+    for (const k of ["from", "to", "as_of", "mode"] as const) if (query[k]) p.set(k, query[k]!);
+    const q = p.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}${window.location.hash}`);
+  }, [state, selected, query]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -445,12 +466,14 @@ export default function ReportsExports() {
         const acct = msal.getActiveAccount() ?? msal.getAllAccounts()[0] ?? null;
         if (!acct) {
           setCatalogue(sampleCatalogue);
+          fromAddress();
           return setState("demo");
         }
         setAccount(acct);
         const c = await runtime.exports.catalogue(acct);
         setCatalogue(c);
         setFavourites(c.favourites);
+        fromAddress();
         setState("live");
       } catch (e) {
         setError((e as Error).message);
@@ -541,6 +564,12 @@ export default function ReportsExports() {
 
   const usesPeriod = !report || report.params.includes("period");
   const usesAsOf = !!report?.params.includes("as_of");
+  // A disabled control says why (WCAG 3.3.2): signed out it is a fixed sample; some reports are at one date only.
+  const periodWhy = !live
+    ? "This is a fixed sample, so the period can't be changed and reports can't be starred. Sign in to choose a period or use this VAT period."
+    : !usesPeriod
+      ? "This report is at one date, not for a period: set As at instead."
+      : null;
   return (
     <div className="flex min-w-0 flex-col gap-4">
       {state === "demo" && (
@@ -553,13 +582,13 @@ export default function ReportsExports() {
       <form className={`${card} flex flex-wrap items-end gap-3`} aria-label="Report period" onSubmit={(e) => e.preventDefault()}>
         <label className="flex flex-col gap-1 text-[13px] font-bold">
           From
-          <input type="date" value={query.from ?? ""} disabled={!live || !usesPeriod}
+          <input type="date" value={query.from ?? ""} disabled={!live || !usesPeriod} aria-describedby={periodWhy ? "period-why" : undefined}
             onChange={(e) => e.target.value && setQuery((q) => ({ ...q, from: e.target.value }))}
             className="h-11 rounded-xl border border-border px-3 text-[15px] font-normal" />
         </label>
         <label className="flex flex-col gap-1 text-[13px] font-bold">
           To
-          <input type="date" value={query.to ?? ""} disabled={!live || !usesPeriod}
+          <input type="date" value={query.to ?? ""} disabled={!live || !usesPeriod} aria-describedby={periodWhy ? "period-why" : undefined}
             onChange={(e) => e.target.value && setQuery((q) => ({ ...q, to: e.target.value }))}
             className="h-11 rounded-xl border border-border px-3 text-[15px] font-normal" />
         </label>
@@ -571,7 +600,7 @@ export default function ReportsExports() {
               className="h-11 rounded-xl border border-border px-3 text-[15px] font-normal" />
           </label>
         )}
-        <button type="button" className={button} disabled={!live}
+        <button type="button" className={button} disabled={!live} aria-describedby={periodWhy ? "period-why" : undefined}
           onClick={() => setQuery((q) => ({ mode: q.mode }))}>
           This VAT period
         </button>
@@ -580,6 +609,11 @@ export default function ReportsExports() {
           <input type="search" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="e.g. VAT, aged, Xero"
             className="h-11 rounded-xl border border-border px-3 text-[15px] font-normal" />
         </label>
+        {periodWhy && (
+          <p id="period-why" className="basis-full text-[13px] text-muted">
+            {periodWhy}
+          </p>
+        )}
       </form>
       <div className="grid min-w-0 gap-4 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)]">
         <div className="min-w-0">
@@ -601,7 +635,7 @@ export default function ReportsExports() {
               status={status}
             />
           ) : (
-            <section className={card} aria-label="Preview">
+            <section id="report-preview" className={card} aria-label="Preview">
               <p className="text-sm text-muted">Choose a report to preview it, download it or save it to 07 Reports.</p>
             </section>
           )}
