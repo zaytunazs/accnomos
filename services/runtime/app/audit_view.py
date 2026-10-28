@@ -240,6 +240,22 @@ SUMMARIES: dict[str, Summary] = {
         f"Posted payroll for {r.get('period', 'a period')} to the ledger" + _pounds(r, "gross_pence")
     ),
     "payroll_reopened": lambda r, w: f"Reopened payroll for {r.get('period', 'a period')}; its entries were undone",
+    # PAYE payroll (app/payrun.py, app/routes_payrun.py)
+    "payroll_employer_saved": lambda r, w: "Saved the payroll settings (PAYE references, pension scheme)",
+    "payroll_employee_saved": lambda r, w: "Saved an employee's payroll record",
+    "payroll_employee_deleted": lambda r, w: "Removed an employee who was never paid",
+    "payrun_prepared": lambda r, w: f"Prepared pay run {r.get('run', '')}".rstrip(),
+    "payrun_edited": lambda r, w: f"Edited pay run {r.get('run', '')}".rstrip(),
+    "payrun_discarded": lambda r, w: f"Set aside the draft pay run {r.get('run', '')}".rstrip(),
+    "payrun_proposed": lambda r, w: f"Sent pay run {r.get('run', '')} to Review".replace("  ", " "),
+    "payrun_back_to_draft": lambda r, w: f"Took pay run {r.get('run', '')} back to draft".replace("  ", " "),
+    "payrun_posted": lambda r, w: f"Posted pay run {r.get('run', '')} to the ledger".replace("  ", " "),
+    "rti_fps_generated": lambda r, w: (
+        f"Generated the FPS file for pay run {r.get('run', '')} (not sent to HMRC)".replace("  ", " ")
+    ),
+    "rti_eps_generated": lambda r, w: (
+        f"Generated the EPS file for tax month {r.get('tax_month', '')} (not sent to HMRC)"
+    ),
     # Contacts
     "contacts_refreshed": lambda r, w: f"Refreshed contacts from the ledger: {_plural(_n(r, 'contacts'), 'contact')}",
     "contact_edited": lambda r, w: "Edited a contact" + _fields(r),

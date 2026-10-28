@@ -194,6 +194,7 @@ class Proposal(BaseModel):
     job_id: str | None = None  # job this purchase is a cost of (_System/Jobs/jobs.json), tagged on approval
     vehicle_id: str | None = None  # business vehicle this cost belongs to (_System/Vehicles/vehicles.json)
     mileage_claim: MileageClaim | None = None  # set on mileage allowance proposals, which code builds
+    payroll_run: str | None = None  # set on pay run proposals (app/payrun.py), which code builds: the run's id
     created_at: datetime | None = None
     decided_by: str | None = None
     decided_at: datetime | None = None
