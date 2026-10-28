@@ -3,14 +3,18 @@ import 'package:msal_auth/msal_auth.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../services/auth.dart';
+import '../services/books.dart' show booksClient;
 import '../services/graph.dart';
+import '../services/settings.dart';
 import '../theme.dart';
+import 'storage_card.dart';
 
 /// A live view of the Accnomos books folder in the user's own cloud.
 ///
 /// Signed in: top-level folders with counts and last modified; tapping a
 /// folder lists its files with size and date, each with an "Open" button
-/// that launches the OneDrive link. Signed out: a sign-in prompt.
+/// that launches the OneDrive link. At the top level a [StorageCard] shows
+/// the storage totals and a "Back up now" button. Signed out: a sign-in prompt.
 class FilesScreen extends StatefulWidget {
   const FilesScreen({super.key});
 
@@ -23,6 +27,7 @@ class _FilesScreenState extends State<FilesScreen> {
   final GraphService _graph = GraphService();
 
   Account? _account;
+  AppSettings? _settings;
   bool _authChecked = false;
   bool _loading = false;
   String? _error;
@@ -53,9 +58,11 @@ class _FilesScreenState extends State<FilesScreen> {
     } on MsalException {
       account = null;
     }
+    final settings = account == null ? null : await AppSettings.load();
     if (!mounted) return;
     setState(() {
       _account = account;
+      _settings = settings;
       _authChecked = true;
     });
     if (account != null) await _refresh();
@@ -233,19 +240,31 @@ class _FilesScreenState extends State<FilesScreen> {
         ),
       );
     }
+    final settings = _settings;
+    final card = _trail.isEmpty && settings != null;
     return RefreshIndicator(
       onRefresh: _refresh,
       child: ListView.separated(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.symmetric(vertical: 8),
-        itemCount: _items.length,
-        separatorBuilder: (_, _) => const Divider(
-          height: 1,
-          indent: 72,
-          color: Color(0xFFE3E1D8),
-        ),
+        itemCount: _items.length + (card ? 1 : 0),
+        separatorBuilder: (_, i) => card && i == 0
+            ? const SizedBox(height: 8)
+            : const Divider(
+                height: 1,
+                indent: 72,
+                color: Color(0xFFE3E1D8),
+              ),
         itemBuilder: (context, i) {
-          final item = _items[i];
+          if (card && i == 0) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: StorageCard(
+                clientFor: () => booksClient(settings, _auth, _account),
+              ),
+            );
+          }
+          final item = _items[card ? i - 1 : i];
           return item.isFolder ? _folderRow(item) : _fileRow(item);
         },
       ),
