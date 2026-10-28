@@ -12,6 +12,9 @@ Backend choice (`select_backend`), keeping the user's own choice of where their 
 * key mode   -> (1) Muse Spark Open on Baseten when the owner set `BASETEN_API_KEY` on the server
   (OpenAI-compatible; model from `VERIFIER_MODEL`, else `BASETEN_MODEL`, else the default slug);
   (2) otherwise the Meta Model API with the user's own key (`X-Meta-Api-Key`).
+* the server's chain (AI_PROVIDERS, app/ai/providers.py) -> Muse Spark Open on Baseten first when the owner set
+  `BASETEN_API_KEY` (a different model from the Extractor's), then the chain's providers in order, with the same
+  failover and circuit breaker as every other call (app/ai/chain.py).
 
 `VERIFIER=off` on the server disables the verifier entirely.
 """
@@ -31,6 +34,7 @@ from typing import Any, Literal
 import httpx
 from pydantic import BaseModel, Field, ValidationError
 
+from app.ai import chain
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError, image_mime, parse_model_json, user_message
 from app.checks import p
@@ -48,16 +52,60 @@ class VerifierBackend(BaseModel):
     base_url: str
     model: str
     api_key: str | None = None
+    src: AiConfig | None = Field(default=None, exclude=True, repr=False)  # timeouts and auth headers, in the chain
 
     def label(self) -> str:
         return f"{self.kind}:{self.model}"
 
 
-def select_backend(cfg: AiConfig, env: Mapping[str, str] | None = None) -> VerifierBackend | None:
-    """Pick the verifier backend for this request; None when the owner switched it off."""
+def _baseten(env: Mapping[str, str], in_chain: bool) -> AiConfig | None:
+    key = (env.get("BASETEN_API_KEY") or "").strip()
+    if not key:
+        return None
+    model = env.get("VERIFIER_MODEL") or env.get("BASETEN_MODEL") or DEFAULT_BASETEN_MODEL
+    return AiConfig(
+        mode="key",
+        base_url=BASETEN_BASE,
+        model=model,
+        api_key=key,
+        provider="baseten",
+        in_chain=in_chain,
+        connect_s=10.0 if in_chain else 15.0,
+        first_token_s=90.0 if in_chain else None,
+        request_s=120.0 if in_chain else None,
+    )
+
+
+def backend_for(c: AiConfig) -> VerifierBackend:
+    """The verifier backend that one provider config stands for."""
+    kind: BackendKind = "ollama" if c.mode == "local" else "baseten" if c.provider == "baseten" else "meta"
+    return VerifierBackend(kind=kind, base_url=c.base_url, model=c.model, api_key=c.api_key, src=c)
+
+
+def verifier_chain(cfg: AiConfig, env: Mapping[str, str] | None = None) -> AiConfig | None:
+    """The verifier's providers as one config (first, then fallbacks); None when the owner switched it off."""
     env = os.environ if env is None else env
     if (env.get("VERIFIER") or "").strip().lower() in ("off", "0", "false", "no"):
         return None
+    if cfg.in_chain:
+        providers = cfg.chain()
+        if (baseten := _baseten(env, in_chain=True)) is not None:
+            providers = [baseten, *providers]
+        head, *rest = providers
+        return head.model_copy(update={"fallbacks": rest})
+    if cfg.mode == "local":
+        return cfg
+    return _baseten(env, in_chain=False) or cfg
+
+
+def select_backend(cfg: AiConfig, env: Mapping[str, str] | None = None) -> VerifierBackend | None:
+    """Pick the (first) verifier backend for this request; None when the owner switched it off."""
+    env = os.environ if env is None else env
+    if (env.get("VERIFIER") or "").strip().lower() in ("off", "0", "false", "no"):
+        return None
+    if cfg.in_chain:
+        vc = verifier_chain(cfg, env)
+        return backend_for(vc) if vc is not None else None
     if cfg.mode == "local":
         return VerifierBackend(kind="ollama", base_url=cfg.base_url, model=cfg.model)
     baseten_key = (env.get("BASETEN_API_KEY") or "").strip()
@@ -197,7 +245,7 @@ async def _call_ollama(
         "options": {"temperature": 0},
         "keep_alive": "24h",
     }
-    r = await client.post(f"{be.base_url}/api/chat", json=body)
+    r = await client.post(f"{be.base_url}/api/chat", json=body, headers=be.src.auth_headers() if be.src else {})
     r.raise_for_status()
     return r.json().get("message", {}).get("content", "")
 
@@ -226,9 +274,8 @@ async def _call_openai_compatible(
         body["reasoning_effort"] = "low"
     else:
         body["temperature"] = 0
-    r = await client.post(
-        f"{be.base_url}/chat/completions", json=body, headers={"Authorization": f"Bearer {be.api_key}"}
-    )
+    headers = {**(be.src.extra_headers if be.src else {}), "Authorization": f"Bearer {be.api_key}"}
+    r = await client.post(f"{be.base_url}/chat/completions", json=body, headers=headers)
     r.raise_for_status()
     content = r.json()["choices"][0]["message"].get("content") or ""
     if isinstance(content, list):
@@ -247,8 +294,9 @@ async def read_independently(
         mime = image_mime(mime)
         b64 = base64.b64encode(image_bytes).decode("ascii")
     schema = strict_json_schema(VerifierReading)
+    timeout = be.src.http_timeout(TIMEOUT_S) if be.src else httpx.Timeout(TIMEOUT_S)
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(TIMEOUT_S)) as client:
+        async with httpx.AsyncClient(timeout=timeout) as client:
             if be.kind == "ollama":
                 answer = await _call_ollama(client, b64, be, schema, text)
             else:
@@ -279,15 +327,31 @@ async def verify(
     Never raises for model/network trouble: returns a `Verification` with `error` set and
     `agree_all=False`, so the UI never claims agreement it did not see.
     """
-    be = select_backend(cfg, env)
-    if be is None:
+    vcfg = verifier_chain(cfg, env)
+    if vcfg is None:
         return None
+
+    async def attempt(c: AiConfig) -> VerifierReading:
+        be = backend_for(c)
+        try:
+            if text is None:
+                return await read_independently(image_bytes, mime, be)
+            return await read_independently(image_bytes, mime, be, text=text)
+        except ExtractionError as exc:
+            if exc.__cause__ is not None and chain.fails_over(exc.__cause__):
+                raise chain.ProviderDown(str(exc)) from exc.__cause__  # the next provider may answer
+            raise
+
     t0 = time.perf_counter()
     try:
-        if text is None:
-            reading = await read_independently(image_bytes, mime, be)
-        else:
-            reading = await read_independently(image_bytes, mime, be, text=text)
-    except ExtractionError as exc:
-        return Verification(fields={}, agree_all=False, model=be.label(), error=str(exc)[:500])
-    return compare(extracted, reading, be.label(), elapsed_s=round(time.perf_counter() - t0, 3))
+        reading, served = await chain.run(vcfg, "verify", attempt, vision=image_bytes is not None)
+    except (ExtractionError, chain.ProviderDown, TimeoutError) as exc:
+        label = backend_for(vcfg).label()
+        return Verification(fields={}, agree_all=False, model=label, error=(str(exc) or "timed out")[:500])
+    label = f"{backend_for(_served_cfg(vcfg, served.provider)).kind}:{served.model}"
+    v = compare(extracted, reading, label, elapsed_s=round(time.perf_counter() - t0, 3))
+    return v.model_copy(update={"served_by": served})
+
+
+def _served_cfg(vcfg: AiConfig, provider: str) -> AiConfig:
+    return next((c for c in vcfg.chain() if (c.provider or c.mode) == provider), vcfg)

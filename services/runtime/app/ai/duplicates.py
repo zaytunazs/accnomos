@@ -13,6 +13,7 @@ from typing import Any
 
 import httpx
 
+from app.ai import chain
 from app.ai.config import AiConfig
 from app.ai.extract import TIMEOUT_S, ExtractionError, parse_model_json
 
@@ -66,13 +67,14 @@ async def judge_duplicate(contacts: list[dict[str, Any]], evidence: list[str], c
 
     prompt = judgement_prompt(contacts, evidence)
     schema = judgement_json_schema()
-    try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(TIMEOUT_S)) as client:
-            if cfg.mode == "local":
+
+    async def attempt(c: AiConfig) -> str:
+        async with httpx.AsyncClient(timeout=c.http_timeout(TIMEOUT_S)) as client:
+            if c.mode == "local":
                 r = await client.post(
-                    f"{cfg.base_url}/api/chat",
+                    f"{c.base_url}/api/chat",
                     json={
-                        "model": cfg.model,
+                        "model": c.model,
                         "messages": [
                             {"role": "system", "content": SYSTEM_PROMPT},
                             {"role": "user", "content": prompt},
@@ -83,14 +85,15 @@ async def judge_duplicate(contacts: list[dict[str, Any]], evidence: list[str], c
                         "options": {"temperature": 0},
                         "keep_alive": "24h",
                     },
+                    headers=c.auth_headers(),
                 )
                 r.raise_for_status()
-                text = r.json().get("message", {}).get("content", "")
+                return r.json().get("message", {}).get("content", "")
             else:
                 r = await client.post(
-                    f"{cfg.base_url}/chat/completions",
+                    f"{c.base_url}/chat/completions",
                     json={
-                        "model": cfg.model,
+                        "model": c.model,
                         "messages": [
                             {"role": "system", "content": SYSTEM_PROMPT},
                             {"role": "user", "content": prompt},
@@ -101,13 +104,17 @@ async def judge_duplicate(contacts: list[dict[str, Any]], evidence: list[str], c
                         },
                         "reasoning_effort": "low",
                     },
-                    headers={"Authorization": f"Bearer {cfg.api_key}"},
+                    headers=c.auth_headers(),
                 )
                 r.raise_for_status()
                 data = r.json()
                 text = data["choices"][0]["message"].get("content") or ""
                 if isinstance(text, list):
                     text = "".join(p.get("text", "") for p in text if isinstance(p, dict))
+                return text
+
+    try:
+        text, _ = await chain.run(cfg, "duplicate", attempt)
     except httpx.HTTPError as exc:
         raise JudgementError(f"{cfg.mode} backend unreachable: {exc!r}") from exc
     try:

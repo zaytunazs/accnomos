@@ -22,6 +22,7 @@ from typing import Any
 import httpx
 from pydantic import ValidationError
 
+from app.ai import chain
 from app.ai.config import AiConfig
 from app.schemas import CATEGORIES, CODE_CATEGORIES, ExtractedDoc, extraction_json_schema
 
@@ -112,7 +113,7 @@ async def _call_ollama(
         "options": {"temperature": 0},
         "keep_alive": "24h",
     }
-    r = await client.post(f"{cfg.base_url}/api/chat", json=body)
+    r = await client.post(f"{cfg.base_url}/api/chat", json=body, headers=cfg.auth_headers())
     r.raise_for_status()
     data = r.json()
     usage = {
@@ -143,8 +144,7 @@ async def _call_meta(
         },
         "reasoning_effort": "low",  # temperature deliberately omitted (not in verified API facts)
     }
-    headers = {"Authorization": f"Bearer {cfg.api_key}"}
-    r = await client.post(f"{cfg.base_url}/chat/completions", json=body, headers=headers)
+    r = await client.post(f"{cfg.base_url}/chat/completions", json=body, headers=cfg.auth_headers())
     r.raise_for_status()
     data = r.json()
     content = data["choices"][0]["message"].get("content") or ""
@@ -178,8 +178,8 @@ async def extract_document(
 ) -> tuple[ExtractedDoc, dict[str, Any]]:
     """Run the configured model on the image, its text, or both; return the validated doc and call metadata.
 
-    Metadata keys: backend, model, elapsed_s, usage, raw (model text).
-    Raises `ExtractionError` on unsupported type, HTTP failure or bad output.
+    Metadata keys: backend, model, elapsed_s, usage, raw (model text), served (app.schemas.ServedBy).
+    Raises `ExtractionError` on unsupported type, HTTP failure (of every provider, in the server's chain) or bad output.
     """
     if image_bytes is None and not text:
         raise ExtractionError("Nothing to read: no image and no text")
@@ -189,17 +189,22 @@ async def extract_document(
         b64 = base64.b64encode(image_bytes).decode("ascii")
     schema = extraction_json_schema()
     t0 = time.perf_counter()
+
+    async def attempt(c: AiConfig) -> tuple[str, dict[str, Any]]:
+        async with httpx.AsyncClient(timeout=c.http_timeout(TIMEOUT_S)) as client:
+            if c.mode == "local":
+                return await _call_ollama(client, b64, c, schema, text)
+            return await _call_meta(client, b64, mime, c, schema, text)
+
     try:
-        async with httpx.AsyncClient(timeout=httpx.Timeout(TIMEOUT_S)) as client:
-            if cfg.mode == "local":
-                text_out, usage = await _call_ollama(client, b64, cfg, schema, text)
-            else:
-                text_out, usage = await _call_meta(client, b64, mime, cfg, schema, text)
+        (text_out, usage), served = await chain.run(cfg, "extract", attempt, vision=b64 is not None)
     except httpx.HTTPStatusError as exc:
         detail = exc.response.text[:500]
         raise ExtractionError(f"{cfg.mode} backend HTTP {exc.response.status_code}: {detail}") from exc
     except httpx.HTTPError as exc:
         raise ExtractionError(f"{cfg.mode} backend unreachable: {exc!r}") from exc
+    except TimeoutError as exc:
+        raise ExtractionError(f"{cfg.mode} backend timed out") from exc
     elapsed = time.perf_counter() - t0
 
     obj = parse_model_json(text_out)
@@ -212,8 +217,9 @@ async def extract_document(
         raise ExtractionError(f"Model JSON failed validation: {exc}", raw=text_out) from exc
 
     meta = {
-        "backend": cfg.mode,
-        "model": cfg.model,
+        "backend": served.provider if cfg.in_chain else cfg.mode,
+        "model": served.model,
+        "served": served,
         "elapsed_s": round(elapsed, 3),
         "usage": usage,
         "raw": text_out,

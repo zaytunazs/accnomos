@@ -143,6 +143,16 @@ class AutopilotDecision(BaseModel):
     supplier_key: str | None = None
 
 
+class ServedBy(BaseModel):
+    """Which of the server's providers (app/ai/providers.py) served an AI result, and how long it took. Every AI
+    result carries one: proposal cards, Verifier readings, Ask answers, inbox triage."""
+
+    provider: str  # modal | meta | spark (the server's chain); local | key (a backend the user chose); test
+    model: str
+    latency_ms: int
+    fell_back_from: list[str] = []  # providers tried first that were down, in order
+
+
 class FieldAgreement(BaseModel):
     """One field as read by the Extractor and, independently, by the Verifier. Code decides `agree`."""
 
@@ -159,6 +169,7 @@ class Verification(BaseModel):
     model: str  # "<backend>:<model>", e.g. "baseten:meta-models/muse-spark-open"
     elapsed_s: float | None = None
     error: str | None = None  # set when the verifier could not run; `fields` is then empty
+    served_by: ServedBy | None = None
 
 
 class MileageClaim(BaseModel):
@@ -182,6 +193,7 @@ class Proposal(BaseModel):
     journal_draft: list[JournalLine]
     model: str
     elapsed_s: float
+    served_by: ServedBy | None = None  # the provider that read it (the last reading kept, after any re-read)
     # How the photo was cropped before extraction: {"method": "sam"|"code"|"none", "box": [x0,y0,x1,y1]|None, "note"}
     crop: dict[str, Any] | None = None
     verification: Verification | None = None  # only when the first reading passed every check
@@ -365,6 +377,7 @@ class AskAnswer(AskModelOutput):
     model: str
     period: AskPeriod
     fallback_reason: str | None = None  # set when the model's words were replaced by the facts themselves
+    served_by: ServedBy | None = None  # None when no model answered (code wrote it, or every provider was down)
     proposed_action: ProposedAction | None = None  # approve with POST /actions/approve; nothing happens before
     clarification: Clarification | None = None
 
