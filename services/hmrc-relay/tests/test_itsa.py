@@ -400,3 +400,14 @@ async def test_authorize_asks_for_income_tax_scopes(client_for):
     assert parse_qs(urlsplit(default.json()["url"]).query)["scope"] == ["read:vat write:vat"]
     bad = await c.get("/hmrc/authorize", params={"redirect_to": "http://localhost:3000/x", "scope": "read:everything"})
     assert bad.status_code == 400
+
+
+def test_declaration_text_is_the_same_everywhere():
+    """HMRC's final declaration lives in three places (relay, runtime, web); they must not drift apart."""
+    root = Path(__file__).resolve().parents[3]
+
+    def flat(s: str) -> str:
+        return " ".join(s.replace('" +', " ").replace('"', " ").split())
+
+    for f in ("services/runtime/app/itsa.py", "apps/web/src/lib/itsa.ts"):
+        assert flat(FINAL_DECLARATION) in flat((root / f).read_text()), f

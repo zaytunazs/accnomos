@@ -55,7 +55,8 @@ app.add_middleware(
         "X-Autopilot",
     ]
     + (["X-Test-Tenant"] if is_test_mode() else []),  # app/testmode.py: one fake OneDrive per Playwright worker
-    expose_headers=["X-Correlation-Id", "Retry-After"],
+    # Content-Disposition: the page names a downloaded report file (/books/self-employment/reports/*).
+    expose_headers=["X-Correlation-Id", "Retry-After", "Content-Disposition"],
     max_age=600,
 )
 

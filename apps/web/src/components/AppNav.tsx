@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import type { AccountInfo } from "@azure/msal-browser";
 import { useAccount } from "@/components/jobs/useAccount";
 import { runtime } from "@/lib/runtime";
+import { useSelfEmployed } from "@/lib/itsa";
 
 type NavLink = { href: string; label: string; badge?: string; tab?: string };
 const links: NavLink[] = [
@@ -15,6 +16,7 @@ const links: NavLink[] = [
   { href: "/invoices", label: "Invoices" },
   { href: "/bank", label: "Bank" },
   { href: "/vat", label: "VAT return", tab: "VAT" },
+  { href: "/self-employment", label: "Self-employment" }, // only with Settings › "I am self-employed"
   { href: "/jobs", label: "Jobs" },
   { href: "/payroll", label: "Payroll" },
   { href: "/reports", label: "Reports" },
@@ -55,8 +57,10 @@ function useReviewBadge(pathname: string): string | undefined {
   return count ? String(count) : undefined;
 }
 
-function withBadges(review: string | undefined): NavLink[] {
-  return links.map((l) => (l.href === "/review" ? { ...l, badge: review } : l));
+function withBadges(review: string | undefined, selfEmployed: boolean): NavLink[] {
+  return links
+    .filter((l) => selfEmployed || l.href !== "/self-employment")
+    .map((l) => (l.href === "/review" ? { ...l, badge: review } : l));
 }
 
 function isActive(pathname: string, href: string) {
@@ -80,7 +84,7 @@ function Badge({ count, className }: { count: string; className: string }) {
 
 const sidebarGroups: { label: string; hrefs: string[] }[] = [
   { label: "Books", hrefs: ["/", "/review", "/ask", "/files"] },
-  { label: "Money", hrefs: ["/invoices", "/bank", "/vat", "/payroll", "/reports"] },
+  { label: "Money", hrefs: ["/invoices", "/bank", "/vat", "/self-employment", "/payroll", "/reports"] },
   { label: "Work", hrefs: ["/jobs", "/contacts", "/vehicles"] },
 ];
 
@@ -176,7 +180,7 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
 
 export default function AppNav({ variant = "sidebar" }: { variant?: "sidebar" | "tabs" }) {
   const pathname = usePathname();
-  const navLinks = withBadges(useReviewBadge(pathname));
+  const navLinks = withBadges(useReviewBadge(pathname), useSelfEmployed());
 
   if (variant === "tabs") return <TabBar pathname={pathname} links={navLinks} />;
   return <SidebarNav pathname={pathname} links={navLinks} />;

@@ -10,6 +10,7 @@ import AutopilotRules from "@/components/settings/AutopilotRules";
 import BusinessDetails from "@/components/settings/BusinessDetails";
 import StaffEditor from "@/components/settings/StaffEditor";
 import VatPeriodSettings from "@/components/settings/VatPeriodSettings";
+import SelfEmployedSetting from "@/components/settings/SelfEmployedSetting";
 import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
 import WorkingHours from "@/components/settings/WorkingHours";
 import { hasMsalSignIn } from "@/lib/signed-in";
@@ -47,6 +48,7 @@ const HASH_GROUP: Record<string, GroupId> = {
   "settings-business-hours": "automation",
   "settings-business": "business",
   "settings-vat-periods": "business",
+  "settings-self-employed": "business",
   "settings-invoice-profile": "business",
   "invoice-profile": "business",
   "invoice-profile-title": "business",
@@ -407,6 +409,8 @@ export default function SettingsPanels() {
         </div>
 
         <VatPeriodSettings card={card} heading={heading} />
+
+        <SelfEmployedSetting card={card} heading={heading} />
 
         <StaffEditor card={card} heading={heading} />
       </div>
