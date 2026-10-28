@@ -38,7 +38,7 @@ export class Runtime {
   }
 
   /** A runtime call as the signed-in user; fails the test unless it answers 2xx. */
-  async api<T = unknown>(method: "GET" | "POST" | "PUT", path: string, data?: unknown): Promise<T> {
+  async api<T = unknown>(method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE", path: string, data?: unknown): Promise<T> {
     const r = await this.request.fetch(`${RUNTIME_URL}${path}`, { method, headers: RUNTIME_HEADERS, data });
     expect(r.ok(), `${method} ${path} -> ${r.status()}: ${await r.text()}`).toBeTruthy();
     return r.json();

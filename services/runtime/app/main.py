@@ -229,3 +229,6 @@ app.include_router(todos_router)
 from app.routes_audit import router as audit_router  # noqa: E402  GET /audit
 
 app.include_router(audit_router)
+from app.routes_personal import router as personal_router  # noqa: E402  /personal/* (budgets, bills, goals)
+
+app.include_router(personal_router)

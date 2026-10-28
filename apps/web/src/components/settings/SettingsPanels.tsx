@@ -11,6 +11,7 @@ import BusinessDetails from "@/components/settings/BusinessDetails";
 import StaffEditor from "@/components/settings/StaffEditor";
 import VatPeriodSettings from "@/components/settings/VatPeriodSettings";
 import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
+import PersonalFinanceSetting from "@/components/settings/PersonalFinanceSetting";
 import WorkingHours from "@/components/settings/WorkingHours";
 import { hasMsalSignIn } from "@/lib/signed-in";
 
@@ -51,6 +52,7 @@ const HASH_GROUP: Record<string, GroupId> = {
   "invoice-profile": "business",
   "invoice-profile-title": "business",
   "settings-staff": "business",
+  "settings-personal": "business",
   "settings-data": "data",
   "settings-data-export": "data",
   "settings-leave": "data",
@@ -409,6 +411,8 @@ export default function SettingsPanels() {
         <VatPeriodSettings card={card} heading={heading} />
 
         <StaffEditor card={card} heading={heading} />
+
+        <PersonalFinanceSetting card={card} heading={heading} />
       </div>
 
       <div
