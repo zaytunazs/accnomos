@@ -11,6 +11,7 @@ import 'bank_screen.dart';
 import 'home_cards.dart';
 import 'invoices_screen.dart';
 import 'review_screen.dart';
+import 'sample_books_card.dart';
 import 'settings_screen.dart';
 import 'vat_screen.dart';
 
@@ -209,6 +210,13 @@ class _HomeScreenState extends State<HomeScreen> {
             children: _tiles(),
           ),
           const SizedBox(height: 12),
+          if (signedIn && _settings != null) ...[
+            SampleBooksCard(
+              clientFor: () => booksClient(_settings!, _auth, _account),
+              onLoaded: _load,
+            ),
+            const SizedBox(height: 12),
+          ],
           if (_data?.vatAssumed == true) const AssumedStaggerNote(),
           if (_data?.vatAssumed == true) const SizedBox(height: 12),
           TodosCard(

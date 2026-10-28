@@ -22,6 +22,7 @@ phone, the rest behind a "Do this on the web" row) · **web-only**
 | `/` Inbox triage (summaries, draft replies) | done | Home inbox card (`mailTriage`, `draftReply`) |
 | `/` Plan a day / apply to calendar | done | Home plan card (`planDay`, `applyPlan`) |
 | `/` To-dos add / tick off | done | Home to-dos (`todos`, `addTodo`, `deleteTodo`) |
+| `/` Load sample books card (empty folder) | done | `SampleBooksCard` on Home (`sampleBooksStatus`, `loadSampleBooks`): progress, 3 s poll, fresh token every 4 min and on `needs_token`, SAMPLE banner when done |
 | `/review` approve / edit / reject proposals | done | `ReviewScreen` + edit sheet |
 | `/review` bulk approve rule matches + undo | done | `ReviewScreen` (approve-all, undo) |
 | `/ask` ask + voice ask + action cards | done | `AskScreen` (voice via `askVoice`) |
