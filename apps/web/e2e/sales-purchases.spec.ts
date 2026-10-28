@@ -62,6 +62,8 @@ test("a purchase order is approved, sent, and converted to a bill that waits in 
   const form = page.getByRole("dialog", { name: "New purchase order" });
   await form.getByLabel("Name", { exact: true }).fill("Travis Perkins Ltd");
   await form.getByLabel("Email (the order is sent here)").fill("orders@tp.example");
+  // Over £250 the bill needs the supplier's VAT number to reclaim its VAT (HMRC VAT Notice 700 s.16, app/checks.py).
+  await form.getByLabel("Their VAT number (optional)").fill("GB123456789");
   await form.getByLabel("Description").fill("Plasterboard 12.5mm");
   await form.getByLabel("Qty").fill("40");
   await form.getByLabel("Unit price (£, ex VAT)").fill("8.99");

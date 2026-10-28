@@ -166,7 +166,13 @@ export default function LivePurchaseOrders() {
     try {
       const r = await runtime.convertPurchaseOrder(account, o.number);
       replace(r.order);
-      setNote(`A bill for ${o.number} is waiting in Review with the same lines and totals. Nothing is posted until you approve it there.`);
+      // The bill goes through the same checks as a scanned one (app/checks.py): say when it needs a look, and why.
+      const why = r.proposal.reasons.map((x) => x.replace(/^[A-Z_]+: /, "")).join("; ");
+      setNote(
+        r.proposal.status === "needs_a_look"
+          ? `A bill for ${o.number} is waiting in Review and needs a look: ${why}. Nothing is posted until you approve it there.`
+          : `A bill for ${o.number} is waiting in Review with the same lines and totals. Nothing is posted until you approve it there.`,
+      );
     } catch (e) {
       setError(errorText(e) ?? "Something went wrong.");
     } finally {

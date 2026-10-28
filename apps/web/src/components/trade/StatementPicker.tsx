@@ -3,14 +3,26 @@
 import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { fieldInput, fieldLabel } from "@/components/invoices/Modal";
-import { runtime, type RtInvoiceCustomer, type RtSalesOverview } from "@/lib/runtime";
+import { runtime, type RtSalesOverview } from "@/lib/runtime";
 
-/** Choose a customer to open their statement. */
+/** Choose a customer to open their statement. The list is the contact book's customers (GET /contacts), which
+ *  includes customers known only from the ledger: the statement route takes those ids, and an invoice's customer
+ *  often has no saved contact id (the picker used to list only those that did, so it never showed). */
 export default function StatementPicker({ account, onOpen }: { account: AccountInfo; owed: RtSalesOverview; onOpen: (c: { id: string; name: string }) => void }) {
-  const [customers, setCustomers] = useState<RtInvoiceCustomer[]>([]);
+  const [customers, setCustomers] = useState<{ id: string; name: string }[]>([]);
   const [pick, setPick] = useState("");
   useEffect(() => {
-    runtime.invoiceCustomers(account).then((c) => setCustomers(c.filter((x) => x.contact_id))).catch(() => setCustomers([]));
+    runtime
+      .contacts(account)
+      .then((list) =>
+        setCustomers(
+          list.contacts
+            .filter((c) => c.kind !== "supplier")
+            .map((c) => ({ id: c.id, name: c.name }))
+            .sort((a, b) => a.name.localeCompare(b.name)),
+        ),
+      )
+      .catch(() => setCustomers([]));
   }, [account]);
   if (customers.length === 0) return null;
   return (
@@ -22,10 +34,10 @@ export default function StatementPicker({ account, onOpen }: { account: AccountI
           <label className={fieldLabel} htmlFor="st-customer">Customer</label>
           <select id="st-customer" className={fieldInput} value={pick} onChange={(e) => setPick(e.target.value)}>
             <option value="">Choose a customer</option>
-            {customers.map((c) => <option key={c.contact_id!} value={c.contact_id!}>{c.name}</option>)}
+            {customers.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
           </select>
         </div>
-        <button type="button" disabled={!pick} onClick={() => { const c = customers.find((x) => x.contact_id === pick)!; onOpen({ id: pick, name: c.name }); }}
+        <button type="button" disabled={!pick} onClick={() => { const c = customers.find((x) => x.id === pick)!; onOpen({ id: pick, name: c.name }); }}
           className="h-11 rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60">Open statement</button>
       </div>
     </section>

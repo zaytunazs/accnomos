@@ -726,7 +726,7 @@ export const runtime = {
   cancelPurchaseOrder: (a: AccountInfo, n: string, reason: string) =>
     call<RtPurchaseOrder>(a, `/purchase-orders/${encodeURIComponent(n)}/cancel`, { method: "POST", body: JSON.stringify({ reason }) }),
   convertPurchaseOrder: (a: AccountInfo, n: string) =>
-    call<{ order: RtPurchaseOrder; proposal: { id: string } }>(a, `/purchase-orders/${encodeURIComponent(n)}/convert-to-bill`, { method: "POST", body: "{}" }),
+    call<{ order: RtPurchaseOrder; proposal: { id: string; status: string; reasons: string[] } }>(a, `/purchase-orders/${encodeURIComponent(n)}/convert-to-bill`, { method: "POST", body: "{}" }),
   poBillCandidates: (a: AccountInfo, n: string) =>
     call<RtBillCandidate[]>(a, `/purchase-orders/${encodeURIComponent(n)}/bill-candidates`),
   matchPurchaseOrderBill: (a: AccountInfo, n: string, proposalId: string) =>
