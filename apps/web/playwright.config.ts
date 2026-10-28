@@ -47,6 +47,7 @@ export default defineConfig({
         EARLY_ACCESS_ENABLED: "1",
         EARLY_ACCESS_FILE,
         EARLY_ACCESS_PER_MIN: "0",
+        ACCOUNTANT_TEAM_EMAIL: "reviews@accnomos.example", // Settings › Your accountant shows the opt-in (accountant.spec.ts)
       },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",

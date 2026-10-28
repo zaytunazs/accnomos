@@ -146,6 +146,15 @@ function SidebarNav({ pathname, links }: { pathname: string; links: NavLink[] })
       ))}
       <div className="mt-4 border-t border-border pt-3">
         <Link
+          href="/accountant"
+          aria-current={isActive(pathname, "/accountant") ? "page" : undefined}
+          className={`flex h-11 items-center whitespace-nowrap rounded-xl px-4 text-[15px] font-semibold ${
+            isActive(pathname, "/accountant") ? "bg-teal-tint text-teal-dark" : "text-ink hover:bg-ground"
+          }`}
+        >
+          <span>Accountant portal</span>
+        </Link>
+        <Link
           href="/settings"
           aria-current={settingsActive ? "page" : undefined}
           className={`flex h-11 items-center whitespace-nowrap rounded-xl px-4 text-[15px] font-semibold ${

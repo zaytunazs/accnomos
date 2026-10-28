@@ -4,6 +4,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { RUNTIME_URL } from "./ai-config";
 import { FOLDERS, README_TEXT, RENAMED } from "./folders";
 import { getToken, isPersonalAccount, storageScopesFor } from "./msal";
+import { getClientContext, PORTAL_SCOPES } from "./accountant";
 
 /** Test-mode builds talk to the runtime's Graph look-alike over its fake storage (services/runtime/app/testmode.py). */
 const GRAPH =
@@ -40,22 +41,37 @@ async function graph<T>(token: string, path: string, init: RequestInit = {}): Pr
  */
 export function itemPath(account: AccountInfo, relPath = ""): string {
   const enc = relPath.split("/").map(encodeURIComponent).join("/");
+  const client = getClientContext(); // an accountant reading a client's shared folder (lib/accountant.ts)
+  if (client) {
+    const base = `/drives/${encodeURIComponent(client.driveId)}/items/${encodeURIComponent(client.itemId)}`;
+    return relPath ? `${base}:/${enc}` : base;
+  }
   if (isPersonalAccount(account)) {
     return relPath ? `/me/drive/special/approot:/${enc}` : "/me/drive/special/approot";
   }
   return relPath ? `/me/drive/root:/Accnomos/${enc}` : "/me/drive/root:/Accnomos";
 }
 
+/** Scopes for reading the books: your own, or (a client open) another person's drive, which needs Files.Read.All. */
+function readScopes(account: AccountInfo): string[] {
+  return getClientContext() ? PORTAL_SCOPES : storageScopesFor(account);
+}
+
+/** Browser writes go to your own books only; inside a client's books they go through the runtime (audited). */
+function ownBooksOnly(): void {
+  if (getClientContext()) throw new Error("Not available while you are in a client's books: go back to your clients first.");
+}
+
 /** The books root itself (for its webUrl and total size). Read-only: never creates the folder. */
 export async function getRoot(account: AccountInfo): Promise<DriveItem> {
-  const token = await getToken(storageScopesFor(account));
+  const token = await getToken(readScopes(account));
   return graph<DriveItem>(token, `${itemPath(account)}?$select=id,name,webUrl,size,lastModifiedDateTime,folder`);
 }
 
 /** OneDrive web URL of one file or folder in the books tree, for opening a cited file. Null when it cannot be read. */
 export async function getFileWebUrl(account: AccountInfo, relPath: string): Promise<string | null> {
   try {
-    const token = await getToken(storageScopesFor(account));
+    const token = await getToken(readScopes(account));
     const item = await graph<DriveItem>(token, `${itemPath(account, relPath)}?$select=webUrl`);
     return item.webUrl ?? null;
   } catch {
@@ -65,7 +81,7 @@ export async function getFileWebUrl(account: AccountInfo, relPath: string): Prom
 
 /** Direct children of a folder in the books tree ("" = the root), following Graph's paging. Read-only. */
 export async function listChildren(account: AccountInfo, relPath = ""): Promise<DriveItem[]> {
-  const token = await getToken(storageScopesFor(account));
+  const token = await getToken(readScopes(account));
   const select = "$select=id,name,webUrl,size,lastModifiedDateTime,folder,file&$top=200";
   let path: string | null = `${itemPath(account, relPath)}${relPath ? ":" : ""}/children?${select}`;
   const items: DriveItem[] = [];
@@ -79,6 +95,7 @@ export async function listChildren(account: AccountInfo, relPath = ""): Promise<
 }
 
 export async function ensureRoot(account: AccountInfo): Promise<DriveItem> {
+  ownBooksOnly();
   const token = await getToken(storageScopesFor(account));
   if (isPersonalAccount(account)) {
     return graph<DriveItem>(token, "/me/drive/special/approot"); // created on first call, named after the app
@@ -98,6 +115,7 @@ export async function ensureRoot(account: AccountInfo): Promise<DriveItem> {
  * (POST /me/drive/items/{parentId}/children) because POST on the `special/approot` alias returns 400.
  */
 export async function ensureFolder(account: AccountInfo, relPath: string): Promise<DriveItem> {
+  ownBooksOnly();
   const token = await getToken(storageScopesFor(account));
   try {
     return await graph<DriveItem>(token, itemPath(account, relPath));
@@ -113,6 +131,7 @@ export async function ensureFolder(account: AccountInfo, relPath: string): Promi
 }
 
 export async function putSmallFile(account: AccountInfo, relPath: string, content: string | Blob, contentType = "text/plain"): Promise<DriveItem> {
+  ownBooksOnly();
   const token = await getToken(storageScopesFor(account));
   const res = await fetch(`${GRAPH}${itemPath(account, relPath)}:/content`, {
     method: "PUT",
@@ -125,7 +144,7 @@ export async function putSmallFile(account: AccountInfo, relPath: string, conten
 
 /** A file in the books folder as a Blob (the Review preview). Read-only; straight from the user's OneDrive. */
 export async function getFileBlob(account: AccountInfo, relPath: string): Promise<Blob> {
-  const token = await getToken(storageScopesFor(account));
+  const token = await getToken(readScopes(account));
   const res = await fetch(`${GRAPH}${itemPath(account, relPath)}:/content`, { headers: { Authorization: `Bearer ${token}` } });
   if (!res.ok) throw new Error(`read ${relPath} -> ${res.status}`);
   return res.blob();
