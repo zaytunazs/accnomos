@@ -19,6 +19,7 @@ import {
   type RtAgedBucket,
   type RtAgedRow,
   type RtAgedTable,
+  type RtBasis,
   type RtPlSection,
   type RtProfitAndLoss,
   type RtTrend,
@@ -26,6 +27,7 @@ import {
 } from "@/lib/runtime";
 import { sampleAged, samplePl, samplePlPrev, samplePlYear, sampleTrend, sampleVat } from "@/lib/sample-reports";
 import { usePickedPeriod } from "@/lib/vat-period";
+import { useSelfEmployed } from "@/lib/itsa";
 import TrendBars from "./TrendBars";
 
 const BUCKETS: RtAgedBucket[] = AGED_BUCKETS;
@@ -208,10 +210,10 @@ function ProfitAndLoss({ pl, prev, year }: { pl: RtProfitAndLoss; prev: RtProfit
   const loss = pl.net_profit_pence < 0;
   return (
     <section aria-labelledby="pl-heading" className={card}>
-      <PrintHeader title="Profit and loss" period={`${pl.label} · ${ukDate(pl.start)} – ${ukDate(pl.end)}`} />
+      <PrintHeader title={pl.accounting_basis === "cash" ? "Profit and loss (cash basis)" : "Profit and loss"} period={`${pl.label} · ${ukDate(pl.start)} – ${ukDate(pl.end)}`} />
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="pl-heading" className="text-lg font-extrabold">
-          Profit and loss · {pl.label} · {ukDate(pl.start)} – {ukDate(pl.end)}
+          Profit and loss{pl.accounting_basis === "cash" ? " (cash basis)" : ""} · {pl.label} · {ukDate(pl.start)} – {ukDate(pl.end)}
         </h2>
         <span className="text-sm text-muted">
           {pl.entries} approved {pl.entries === 1 ? "entry" : "entries"} · calculated by code
@@ -457,9 +459,12 @@ export default function LiveReports() {
   const [exporting, setExporting] = useState(false);
   const [saved, setSaved] = useState<{ text: string; url: string | null } | null>(null);
   const picked = usePickedPeriod();
+  const selfEmployed = useSelfEmployed();
+  const [chosenBasis, setBasis] = useState<RtBasis>("traditional");
+  const basis: RtBasis = selfEmployed ? chosenBasis : "traditional"; // the cash basis is for sole traders
   const span = picked ? { start: picked.start, end: picked.end } : null;
-  const period = picked?.period ?? null;
-  const pl = loaded && loaded.period === period ? loaded.pl : null; // null while the picked period loads
+  const period = picked ? `${picked.period}:${basis}` : `:${basis}`;
+  const pl = loaded && loaded.period === period ? loaded.pl : null; // null while the picked period (or basis) loads
 
   useEffect(() => {
     (async () => {
@@ -485,7 +490,7 @@ export default function LiveReports() {
   useEffect(() => {
     if (!account) return;
     let stale = false;
-    runtime.reports.pl(account, span).then(
+    runtime.reports.pl(account, span, basis).then(
       (r) => !stale && setLoaded({ period, pl: r }),
       (e: Error) => {
         if (stale) return;
@@ -505,7 +510,7 @@ export default function LiveReports() {
     if (!account || !pl) return; // the table gates on compare.period, so a stale compare never shows
     let stale = false;
     const [ps, ys] = [prevSpan(pl.start, pl.end), yearSpan(pl.start, pl.end)];
-    Promise.all([runtime.reports.pl(account, ps), runtime.reports.pl(account, ys)]).then(
+    Promise.all([runtime.reports.pl(account, ps, basis), runtime.reports.pl(account, ys, basis)]).then(
       ([p, y]) => {
         if (!stale) setCompare({ period, prev: p, year: y });
       },
@@ -524,7 +529,7 @@ export default function LiveReports() {
     setExporting(true);
     setSaved(null);
     try {
-      const r = await runtime.reports.export(account, { report: "all", ...(span ? { from: span.start, to: span.end } : {}) });
+      const r = await runtime.reports.export(account, { report: "all", basis, ...(span ? { from: span.start, to: span.end } : {}) });
       setSaved({ text: `Saved to ${r.path} in your OneDrive (${r.sheets.filter((s) => s !== "About").join(", ")}).`, url: r.web_url });
     } catch (e) {
       setSaved({ text: `Could not save the report: ${parseRuntimeError((e as Error).message).detail || "try again."}`, url: null });
@@ -557,7 +562,33 @@ export default function LiveReports() {
     <div className="flex flex-col gap-6">
       {account && (
         <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
-          <VatPeriodPicker account={account} />
+          <div className="flex flex-col gap-3">
+            <VatPeriodPicker account={account} />
+            {selfEmployed && (
+              <div role="radiogroup" aria-label="Profit and loss basis" className="flex flex-wrap items-center gap-2 text-sm">
+                <span className="font-semibold text-muted">Profit and loss:</span>
+                {(
+                  [
+                    ["traditional", "As approved"],
+                    ["cash", "Cash basis"],
+                  ] as const
+                ).map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="radio"
+                    aria-checked={basis === value}
+                    onClick={() => setBasis(value)}
+                    className={`h-9 rounded-xl border px-3 font-bold ${
+                      basis === value ? "border-2 border-teal bg-teal-tint text-teal-dark" : "border-border text-ink"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <div className="flex flex-col items-end gap-2">
             <span className="flex flex-wrap items-center gap-2">
               <button

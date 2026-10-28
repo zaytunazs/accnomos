@@ -9,6 +9,7 @@ export const samplePl: RtProfitAndLoss = {
   start: "2026-07-01",
   end: "2026-09-30",
   label: "Jul–Sep 2026",
+  accounting_basis: "traditional",
   basis:
     "As approved: each entry counts on its own date (invoices when raised, receipts when bought); an undo counts on the date it was made. Not a cash-basis view.",
   sales: { rows: [{ account: "4000 Sales", amount_pence: 3_190_000 }], total_pence: 3_190_000 },
@@ -71,6 +72,7 @@ export const samplePlPrev: RtProfitAndLoss = {
   start: "2026-04-01",
   end: "2026-06-30",
   label: "Apr–Jun 2026",
+  accounting_basis: "traditional",
   basis: samplePl.basis,
   sales: { rows: [{ account: "4000 Sales", amount_pence: 2_770_000 }], total_pence: 2_770_000 },
   cost_of_sales: {
@@ -102,6 +104,7 @@ export const samplePlYear: RtProfitAndLoss = {
   start: "2025-07-01",
   end: "2025-09-30",
   label: "Jul–Sep 2025",
+  accounting_basis: "traditional",
   basis: samplePl.basis,
   sales: { rows: [{ account: "4000 Sales", amount_pence: 2_940_000 }], total_pence: 2_940_000 },
   cost_of_sales: {
