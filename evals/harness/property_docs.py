@@ -417,7 +417,7 @@ def score_figures(
     want: dict[str, Any] = {}
     for category, pence in figures:
         posted = [ln for ln in code_reading.lines if ln.category == category and not ln.info and not ln.capital]
-        total = sum(ln.amount_pence for ln in posted)
+        total = sum(ln.amount_pence for ln in posted) + sum(ln.vat_pence or 0 for ln in posted)
         fields[f"cat:{category}"] = bool(posted)
         fields[f"amt:{category}"] = abs(abs(total) - pence) <= 1
         got[category] = round(total / 100, 2)

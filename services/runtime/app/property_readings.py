@@ -155,7 +155,7 @@ def from_reading(read: PropertyReading, properties: list[pr.Property], path: str
         problems.append("No property address read; choose the property when approving")
     checks: list[cis.Check] = []
     if total is not None and lines:
-        s = sum(ln.amount_pence for ln in lines if not ln.info)
+        s = sum(ln.amount_pence for ln in lines if not ln.info) + sum(ln.vat_pence or 0 for ln in lines if not ln.info)
         checks.append(
             cis.Check(
                 code="LINES_SUM",
@@ -167,16 +167,29 @@ def from_reading(read: PropertyReading, properties: list[pr.Property], path: str
         )
     interest = sum(ln.amount_pence for ln in lines if ln.category == "finance_res" and not ln.capital and not ln.info)
     capital = sum(ln.amount_pence for ln in lines if ln.capital)
+    fees = sum(ln.amount_pence for ln in lines if not ln.info and not ln.capital and ln.category != "finance_res")
     if read.kind == "mortgage_statement" and total is not None and lines:
-        ok = interest > 0 and capital >= 0 and abs(interest + capital - total) <= 1
+        ok = interest > 0 and capital >= 0 and abs(interest + capital + fees - total) <= 1
         checks.append(
             cis.Check(
                 code="MORTGAGE_SPLIT",
                 ok=ok,
                 message=f"Interest of {cis.money(interest)} is the finance cost; capital of {cis.money(capital)} "
-                "repaid is not an expense"
+                f"repaid is not an expense{'' if fees == 0 else f'; fees of {cis.money(fees)}'}"
                 if ok
-                else "The interest and capital split does not add up to the payments made",
+                else "The interest, capital and fees split does not add up to the payments made",
+            )
+        )
+    if read.kind == "insurance" and total is not None and lines:
+        posted = [ln for ln in lines if ln.category == "premises" and not ln.info and not ln.capital]
+        ok = len(posted) == 1 and abs(posted[0].amount_pence - total) <= 1
+        checks.append(
+            cis.Check(
+                code="INSURANCE_PREMIUM",
+                ok=ok,
+                message=f"One insurance line of {cis.money(posted[0].amount_pence)} for the policy period"
+                if ok
+                else "Expected one insurance line matching the premium including Insurance Premium Tax",
             )
         )
     reading = Reading(
@@ -284,7 +297,9 @@ def _entry_bodies(reading: Reading, property_id: str, prop: pr.Property) -> list
                 property_id=property_id,
                 date=reading.date,
                 category=cat.key,  # type: ignore[arg-type]
-                amount_pence=abs(ln.amount_pence),
+                # VAT shown separately is part of the cost (a landlord cannot reclaim it),
+                # so approval posts net plus VAT: the books keep the gross figure.
+                amount_pence=abs(ln.amount_pence) + abs(ln.vat_pence or 0),
                 description=ln.description or cat.label,
                 replacing_existing_item=bool(ln.replacement),
             )

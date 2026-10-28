@@ -77,6 +77,28 @@ def test_register_matches_by_address_tokens() -> None:
     assert property_docs.prop_read_mod.match_property(props, "99 Unknown Road, Nowhere XX1 1QQ") is None
 
 
+def test_score_figures_counts_vat_with_net() -> None:
+    """A VAT-separate invoice line (net in amount, VAT in vat) scores against the gross gold figure."""
+    from datetime import datetime
+
+    mod = property_docs.prop_read_mod
+    reading = mod.Reading(
+        id="vat-case",
+        path="bills/16_invoice.txt",
+        sha256="",
+        kind="invoice",
+        lines=[
+            mod.ReadLine(description="net", category="repairs", amount_pence=14900, vat_pence=2980),
+            mod.ReadLine(description="Total", category="repairs", amount_pence=17880, info=True),
+        ],
+        total_pence=17880,
+        created_at=datetime(2026, 8, 3),
+    )
+    fields, got, _ = property_docs.score_figures(reading, [("repairs", 17880)])
+    assert fields == {"cat:repairs": True, "amt:repairs": True}
+    assert got == {"repairs": 178.8}
+
+
 def test_dry_run_calls_nothing_and_writes_nothing(tmp_path: Path, capsys) -> None:  # noqa: ANN001
     out = tmp_path / "o"
     assert asyncio.run(property_docs.main_async(_args(out, dry_run=True, show=3))) is None
