@@ -33,7 +33,7 @@ WARM_EVERY_S = 60.0
 MODAL_WARM_FOR_S = 300
 
 _cache: tuple[float, dict[str, Any]] | None = None
-_last_warm = 0.0
+_last_warm: float | None = None  # monotonic time of the last ping; None: none yet (the clock may start near 0)
 _warming: set[asyncio.Task[None]] = set()
 
 
@@ -174,7 +174,7 @@ async def ai_warm() -> WarmResult:
     if ago is not None and ago < MODAL_WARM_FOR_S - 60:
         return WarmResult(ok=True, warming=False, detail=f"Already warm (served {ago} s ago).")
     now = time.monotonic()
-    if now - _last_warm < WARM_EVERY_S:
+    if _last_warm is not None and now - _last_warm < WARM_EVERY_S:
         return WarmResult(ok=True, warming=True, detail="A warm-up is already on its way.")
     _last_warm = now
     task = asyncio.create_task(_ping(modal))
@@ -186,6 +186,6 @@ async def ai_warm() -> WarmResult:
 def reset() -> None:
     """Tests: forget the cache, the warm-up clock and the breaker."""
     global _cache, _last_warm
-    _cache, _last_warm = None, 0.0
+    _cache, _last_warm = None, None
     chain.BREAKER.reset()
     chain.RECENT.clear()

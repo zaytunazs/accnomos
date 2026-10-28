@@ -5,7 +5,9 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 from collections.abc import Callable
+from types import SimpleNamespace
 from typing import Any
 
 import httpx
@@ -390,8 +392,7 @@ def test_warm_pings_modal_once_a_minute(monkeypatch: pytest.MonkeyPatch) -> None
 
     monkeypatch.setattr(routes_ai, "_ping", fake_ping)
     client = _client()
-    # One event loop for every request: without it each request's loop ends with the response, and the background
-    # ping might never run (it did not, on CI).
+    # One event loop for every request, so the background ping runs on a loop that outlives the response.
     with client:
         first = client.post("/ai/warm").json()
         second = client.post("/ai/warm").json()
@@ -407,6 +408,25 @@ def test_warm_pings_modal_once_a_minute(monkeypatch: pytest.MonkeyPatch) -> None
         "warming": False,
         "detail": "No Modal provider in this server's chain.",
     }
+
+
+def test_the_first_warm_up_pings_on_a_host_that_has_just_started(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The once-a-minute gate must not count from a monotonic clock of 0: a fresh host or CI runner can read under
+    60 s (CI did), and the first warm-up was refused as "already on its way"."""
+    pinged: list[str] = []
+
+    async def fake_ping(c: AiConfig) -> None:
+        pinged.append(c.provider)
+
+    async def warmed() -> None:
+        await asyncio.gather(*routes_ai._warming)
+
+    monkeypatch.setattr(routes_ai, "_ping", fake_ping)
+    monkeypatch.setattr(routes_ai, "time", SimpleNamespace(monotonic=lambda: 12.0, perf_counter=time.perf_counter, time=time.time))
+    with _client() as client:
+        first = client.post("/ai/warm").json()
+        client.portal.call(warmed)  # type: ignore[union-attr]
+    assert first["detail"].startswith("Warming") and pinged == ["modal"]
 
 
 async def test_warm_ping_sends_proxy_auth_and_marks_modal_warm(monkeypatch: pytest.MonkeyPatch) -> None:
