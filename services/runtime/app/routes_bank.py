@@ -307,6 +307,7 @@ async def reorder_bank_rules(
 class ApproveBody(StrictBody):
     kind: Literal["exact", "refund", "rule", "ai"]
     ai: AiSuggestion | None = None  # the AI suggestion shown, for kind "ai" (they expire server-side)
+    business_use_percent: int | None = Field(default=None, ge=0, le=100)  # rule/AI coding only: the business share
 
 
 class ApproveResult(BaseModel):
@@ -361,14 +362,22 @@ async def rule_draft(
     return rule_draft_from_line(line, account=account, vat_code=vat_code, contact=contact, job_id=job_id)
 
 
+def _checked_percent(body: ApproveBody) -> int | None:
+    """The business-use percent for a rule/AI coding: 100 % (or absent) needs no split."""
+    percent = body.business_use_percent if body.business_use_percent is not None else 100
+    if body.kind in ("exact", "refund") and percent != 100:
+        raise HTTPException(status_code=400, detail="Business use only applies to a rule or AI coding")
+    return body.business_use_percent
+
+
 @router.post("/lines/{line_id}/approve", response_model=ApproveResult)
 async def reconcile_approve(
     line_id: str, body: ApproveBody, books: Books = Depends(get_books), user: str = Depends(require_user)
 ) -> ApproveResult:
     """Approve one suggestion: exact records the match; refund records the refund of a contact's credit and matches
-    the line to it; rule/AI posts through Review approval."""
+    the line to it; rule/AI posts through Review approval (with the business-use percent when given)."""
     try:
-        out = await approve_line(books, line_id, body.kind, user, body.ai)
+        out = await approve_line(books, line_id, body.kind, user, body.ai, _checked_percent(body))
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="No such bank line") from exc
     except BankMatchError as exc:
