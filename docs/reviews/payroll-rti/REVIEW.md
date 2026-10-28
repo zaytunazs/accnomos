@@ -43,9 +43,9 @@ Overtime: an hourly employee linked to a timesheet name is paid from their entri
 
 ## Tests
 
-- Runtime: `cd services/runtime && python -m pytest -q` — RESULT_PYTEST. New: `test_paye.py` 87, `test_paye_rates.py` 9, `test_pension_ae.py` 18, `test_payrun.py` 25, `test_rti.py` 7 (FPS/EPS validated against the vendored XSDs with xmllint), `test_payroll_reports.py` 7 (every report in CSV/XLSX/PDF, routes end to end), `test_overtime.py` 12 (multipliers, weekly rule, pay run from timesheets, payslip/P11 overtime, the chat action proposing, approving, refusing changed or paid hours).
+- Runtime: `cd services/runtime && python -m pytest -q` — see docs/reviews/payroll-finish/REVIEW.md for the full run. New: `test_paye.py` 87, `test_paye_rates.py` 9, `test_pension_ae.py` 18, `test_payrun.py` 25, `test_rti.py` 7 (FPS/EPS validated against the vendored XSDs with xmllint), `test_payroll_reports.py` 7 (every report in CSV/XLSX/PDF, routes end to end), `test_overtime.py` 12 (multipliers, weekly rule, pay run from timesheets, payslip/P11 overtime, the chat action proposing, approving, refusing changed or paid hours).
 - `ruff check . && ruff format --check .` clean; `pyright services/runtime/app` 0 errors.
-- Web: `pnpm exec eslint .` RESULT_ESLINT; e2e (ports 3130/8793/8801, CI=1) RESULT_E2E, including new `e2e/paye.spec.ts` (settings → employee → pay run figures → Review → approve → FPS/EPS/Nest CSV/payslip/P32 XLSX downloads; the filing sentence beside RTI; the RTI switch disabled).
+- Web: eslint and e2e were first run on claude/payroll-finish (see its REVIEW.md); including new `e2e/paye.spec.ts` (settings → employee → pay run figures → Review → approve → FPS/EPS/Nest CSV/payslip/P32 XLSX downloads; the filing sentence beside RTI; the RTI switch disabled).
 
 ## Risks
 

@@ -4,7 +4,8 @@ The one table the payroll engine (app/paye.py, app/pension_ae.py, app/rti.py) re
 each figure a second time against the published source. Money is integer pence, rates are basis points
 (1 bp = 0.01 %, so 1.85 % is 185). Re-check every source each spring before 6 April and bump TAX_YEAR.
 
-Sources, all read on 28 Oct 2026:
+Sources, all read on 28 Oct 2026 and re-read independently the same day on branch claude/payroll-finish (every
+figure below matched, including the final Scottish bands that v24.0 of the routines spec had as provisional):
 
 * HMRC, "Rates and thresholds for employers 2026 to 2027" (published 30 Jan 2026, updated 1 Sep 2026)
   https://www.gov.uk/guidance/rates-and-thresholds-for-employers-2026-to-2027
@@ -28,6 +29,9 @@ Sources, all read on 28 Oct 2026:
   https://www.gov.uk/workplace-pensions/what-you-your-employer-and-the-government-pay
 * Acas, "Statutory sick pay changes 2026" (8 Apr 2026): SSP from the first day of sickness, no lower earnings limit,
   lower of 80 % of average weekly earnings or the weekly rate. https://www.acas.org.uk/statutory-sick-pay-changes-2026
+* GOV.UK, "Statutory Sick Pay (SSP): employer guide", Eligibility and Entitlement pages (read 28 Oct 2026): paid
+  from the first full day of sickness, £123.25 or 80 % of average weekly earnings, whichever is lower.
+  https://www.gov.uk/employers-sick-pay/entitlement
 * Pensions Act 2014 explanatory notes, Part 6 (state pension age 66 to 67 for those born 6 Apr 1960 to 5 Mar 1961)
   https://www.legislation.gov.uk/ukpga/2014/19/notes/division/6/3/data.pdf
 """
