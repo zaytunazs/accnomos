@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
 import LiveReports from "@/components/reports/LiveReports";
@@ -28,6 +29,12 @@ export default function ReportsPage() {
           </Explain>
         }
       />
+      <p className="text-[15px] print:hidden">
+        <Link href="/reports/exports" className="font-bold text-teal-dark underline underline-offset-2 hover:text-teal">
+          Reports &amp; exports
+        </Link>
+        <span className="text-muted"> · trial balance, ledger, balance sheet, HMRC VAT return, the Accountant pack and files for Xero, QuickBooks, Sage and FreeAgent</span>
+      </p>
       <LiveReports />
     </div>
   );

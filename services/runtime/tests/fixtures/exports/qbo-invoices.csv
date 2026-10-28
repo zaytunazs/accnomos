@@ -1,0 +1,3 @@
+*InvoiceNo,*Customer,*InvoiceDate,*DueDate,Terms,Memo,Item(Product/Service),ItemDescription,ItemQuantity,ItemRate,*ItemAmount,*ItemTaxCode,ItemTaxAmount,Currency
+ACC-22222222,Acme Kitchens Ltd,01/07/2026,15/07/2026,,,Sales,Sales,1,1000.00,1000.00,20.0% S,200.00,GBP
+ACC-aaaaaaaa,Acme Kitchens Ltd,02/10/2026,16/10/2026,,,Sales,Sales,1,500.00,500.00,20.0% S,100.00,GBP

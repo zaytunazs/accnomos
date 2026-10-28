@@ -358,6 +358,12 @@ SUMMARIES: dict[str, Summary] = {
     "tracking_option_added": lambda r, w: f"Added the tracking option {r.get('name', '')}".rstrip(),
     "tracking_option_edited": lambda r, w: "Changed a tracking option",
     "budget_saved": lambda r, w: f"Saved the budget from {r.get('start', 'a month')}",
+    "report_saved": lambda r, w: (
+        f"Saved {str(r.get('report') or 'a report').replace('-', ' ')} to {REPORTS}"
+        f" as {str(r.get('format') or 'a file').upper()}"
+    ),
+    "export_mapping_changed": lambda r, w: f"Changed the account mapping for {r.get('package') or 'another package'}",
+    "report_favourites_changed": lambda r, w: "Changed your starred reports",
     # Your data
     "data_exported": lambda r, w: f"Saved your full data export to {REPORTS}/Exports as a zip",
     # Load sample books (app/sample_books.py)
