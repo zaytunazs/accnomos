@@ -140,7 +140,7 @@ task text only and was never merged.
 | 19 | `muse/property-reader` with `spark/property-eval-runs` (its Spark run), plus the payroll fix below | `21c77bd2` | 40759245206 | 40761016629 ✓ |
 | 20 | `claude/site-layout` (signed-out `/` is the marketing home with its own public menu; app chrome only inside the app) | `91e59bf1` | 40769708968 | ✓ (pushed by a parallel session) |
 | 21 | `spark/property-runs-pass2` (with `muse/property-reader-2`, which it sits on) and its review | `d3d6328e` | | no web change |
-| 22 | `claude/known-fixes`, second round (brings `claude/exports` and `claude/sales-purchases`, fixed), plus the landing-copy correction for site-layout | MAIN_SHA | CI_RUN | DEPLOY |
+| 22 | `claude/known-fixes`, second round (brings `claude/exports` and `claude/sales-purchases`, fixed), plus the landing-copy correction for site-layout | `a56bc911` | 40778178762 | 40779614548 ✓ |
 
 The integrator wrote a review wherever a branch arrived without one: `docs/reviews/cis-eval/`, `cis-eval-runs/` and
 `property-reader/`. The Spark figures were **recounted from `results.jsonl`**, not copied from the summaries. The CIS
