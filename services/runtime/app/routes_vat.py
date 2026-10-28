@@ -8,7 +8,7 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return, reverses_sale
+from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return
 from app.approve import submitted_spans
 from app.books import Books
 from app.books import today as current_date  # `today` is a query parameter below
@@ -67,6 +67,18 @@ class ObligationsBody(BaseModel):
     obligations: list[HmrcObligation]
 
 
+class VatAdjustment(BaseModel):
+    """A manual journal with VAT, its auto-reversal or void, or a VAT recode, counted in this return."""
+
+    event_id: str
+    date: date
+    name: str  # "Journal MJ-0001", or what the entry names
+    note: str | None  # the narration (the memo on its first line)
+    side: Literal["sales", "purchases"]  # boxes 1 and 6, or boxes 4 and 7
+    net_pence: int  # signed, as it counts in box 6 or 7
+    vat_pence: int  # signed, as it counts in box 1 or 4
+
+
 class VatReturnView(BaseModel):
     period_key: str
     start: date
@@ -84,6 +96,7 @@ class VatReturnView(BaseModel):
     hmrc_body: dict
     events_in_period: int
     undone_in_period: int  # reversing events among them (each nets off the entry it reverses)
+    adjustments: list[VatAdjustment] = []  # journals and recodes in the boxes, listed on the VAT page
 
 
 LABELS = {
@@ -193,20 +206,24 @@ async def vat_return(
     period_key = period_key or period_key_for(start)
     events = await books.list_events(start, end)
     ret = compute_vat_return(events, period_key, start, end)
-    # A reversal counts against the box it reverses (same predicate as the amounts above).
-    sales = [e for e in events if e.kind == "sale" or reverses_sale(e)]
-    purchases = [e for e in events if e.kind == "purchase" or (e.kind == "reversal" and not reverses_sale(e))]
-    counts = {
-        1: len(sales),
-        2: 0,
-        3: len(sales),
-        4: len(purchases),
-        5: len(events),
-        6: len(sales),
-        7: len(purchases),
-        8: 0,
-        9: 0,
-    }
+    # The entries behind each box are the ones the boxes were summed from (accnomos_ledger.vat_side): sales,
+    # purchases, reversals and credit notes on the side they net off, and journals and recodes with VAT on theirs.
+    sales, purchases = len(ret.sales_event_ids), len(ret.purchase_event_ids)
+    counts = {1: sales, 2: 0, 3: sales, 4: purchases, 5: len(ret.event_ids), 6: sales, 7: purchases, 8: 0, 9: 0}
+    counted = set(ret.event_ids)
+    adjustments = [
+        VatAdjustment(
+            event_id=e.id,
+            date=e.date,
+            name=e.counterparty or "Adjustment",
+            note=next((ln.memo for ln in e.lines if ln.memo), None),
+            side=e.vat_box,
+            net_pence=e.net or 0,
+            vat_pence=e.vat or 0,
+        )
+        for e in events
+        if e.kind == "adjustment" and e.vat_box and e.id in counted
+    ]
     amounts = box_amounts(ret)
     receipt_key = (await submitted_periods(books)).get((start, end))
     fulfilled = next(
@@ -235,6 +252,7 @@ async def vat_return(
         hmrc_body=ret.to_hmrc(finalised=False),
         events_in_period=len(events),
         undone_in_period=sum(1 for e in events if e.kind == "reversal"),
+        adjustments=sorted(adjustments, key=lambda a: (a.date, a.name)),
     )
 
 

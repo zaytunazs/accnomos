@@ -33,6 +33,8 @@ class VatReturn:
     goods_supplied_ni_eu: int = 0  # box 8
     acquisitions_ni_eu: int = 0  # box 9
     event_ids: list[str] = field(default_factory=list)
+    sales_event_ids: list[str] = field(default_factory=list)  # behind boxes 1 and 6
+    purchase_event_ids: list[str] = field(default_factory=list)  # behind boxes 4 and 7
     warnings: list[str] = field(default_factory=list)
 
     @property
@@ -82,8 +84,10 @@ def _restores_cost(account: str, debit: int) -> bool:
 def vat_side(ev: LedgerEvent) -> tuple[Literal["sales", "purchases"], int] | None:
     """("sales"|"purchases", sign) for an event that can reach the VAT return; None otherwise.
 
-    Worked out from the lines alone, so it needs no other event:
+    Worked out from the event alone, so it needs no other event:
     - a sale or purchase counts +1;
+    - an adjustment with `vat_box` (a manual journal with VAT, its auto-reversal or void, a VAT recode) is on that
+      side, +1: its `net` and `vat` are already signed;
     - a reversal touching Sales is on the sales side: -1 when it debits Sales (an undo of a sale, or a credit note
       to a customer), +1 when it credits Sales (the undo of such a credit note); one with no Sales line (a VAT-only
       sale) is on the sales side when it touches 1100 Debtors: -1 when it credits Debtors, +1 when it debits it;
@@ -95,6 +99,8 @@ def vat_side(ev: LedgerEvent) -> tuple[Literal["sales", "purchases"], int] | Non
         return "sales", 1
     if ev.kind == "purchase":
         return "purchases", 1
+    if ev.kind == "adjustment":
+        return (ev.vat_box, 1) if ev.vat_box else None
     if ev.kind != "reversal" or not any(ln.vat_code is not None for ln in ev.lines):
         return None
     sales = [ln for ln in ev.lines if "Sales" in ln.account]
@@ -122,14 +128,15 @@ def compute_vat_return(events: list[LedgerEvent], period_key: str, start: date, 
         if not codes & ON_RETURN:
             continue  # out of scope
         vat = ev.vat or 0
-        # An adjustment with VAT (a manual journal, a VAT recode) carries its side and its signed net and VAT.
-        side, sign = (ev.vat_box, 1) if ev.kind == "adjustment" and ev.vat_box else vat_side(ev) or ("purchases", -1)
+        side, sign = vat_side(ev) or ("purchases", -1)
         if side == "sales":
             sales_net += sign * ev.net
             sales_vat += sign * vat
+            ret.sales_event_ids.append(ev.id)
         else:
             purchases_net += sign * ev.net
             purchases_vat += sign * vat
+            ret.purchase_event_ids.append(ev.id)
         ret.event_ids.append(ev.id)
     ret.vat_due_sales = _pounds(sales_vat)
     ret.vat_reclaimed = _pounds(purchases_vat)

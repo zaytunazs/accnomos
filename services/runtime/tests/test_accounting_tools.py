@@ -275,6 +275,91 @@ async def test_journal_with_vat_reaches_the_return_and_the_document_is_evidence(
     assert odd["warnings"] and "£7.00" in odd["warnings"][0]
 
 
+async def test_journals_with_vat_show_on_the_vat_page_in_their_boxes(client: TestClient, books: Books):
+    """The VAT page (GET /books/vat) and the HMRC body count a journal on the side it names: a sales journal in
+    boxes 1 and 6, a purchases journal in boxes 4 and 7, each listed as an adjustment with its entries counted.
+    A void nets it off; an automatic reversal in the next period counts there, with the opposite sign."""
+    q4 = {"period_start": "2026-10-01", "period_end": "2026-12-31", "today": "2026-11-10"}
+    before = client.get("/books/vat", params=q4, headers=H).json()
+    assert [b["entries"] for b in before["boxes"]] == [0] * 9
+
+    def post(body: dict) -> dict:
+        j = client.post("/accounting/journals", json=body, headers=H).json()
+        r = client.post(f"/accounting/journals/{j['id']}/approve", headers=H)
+        assert r.status_code == 200, r.text
+        return r.json()
+
+    sale = post(
+        _journal(
+            date="2026-10-05",
+            narration="Cash sale not invoiced",
+            vat_box="sales",
+            lines=[
+                {"account": "1200 Bank", "debit_pence": 12_000},
+                {"account": "4000", "credit_pence": 10_000, "vat_code": "S"},
+                {"account": "2200", "credit_pence": 2_000},
+            ],
+        )
+    )
+    fuel = post(
+        _journal(
+            date="2026-10-06",
+            narration="Missed fuel receipt",
+            vat_box="purchases",
+            auto_reverse_on="2027-01-04",  # into Jan–Mar 2027: counted there, the other way
+            lines=[
+                {"account": "7300", "debit_pence": 5_000, "vat_code": "S"},
+                {"account": "2200 VAT control", "debit_pence": 1_000},
+                {"account": "1200 Bank", "credit_pence": 6_000},
+            ],
+        )
+    )
+    v = client.get("/books/vat", params=q4, headers=H).json()
+    boxes = {b["box"]: (b["amount"], b["entries"]) for b in v["boxes"]}
+    assert boxes[1] == ("20.00", 1) and boxes[6] == ("100", 1)  # the sales journal
+    assert boxes[4] == ("10.00", 1) and boxes[7] == ("50", 1)  # the purchases journal
+    assert boxes[3] == ("20.00", 1) and boxes[5] == ("10.00", 2)
+    assert (v["hmrc_body"]["vatDueSales"], v["hmrc_body"]["vatReclaimedCurrPeriod"]) == (20.0, 10.0)
+    assert (v["hmrc_body"]["totalValueSalesExVAT"], v["hmrc_body"]["totalValuePurchasesExVAT"]) == (100, 50)
+    assert [(a["name"], a["side"], a["net_pence"], a["vat_pence"], a["note"]) for a in v["adjustments"]] == [
+        (f"Journal {sale['number']}", "sales", 10_000, 2_000, "Cash sale not invoiced"),
+        (f"Journal {fuel['number']}", "purchases", 5_000, 1_000, "Missed fuel receipt"),
+    ]
+    next_q = {"period_start": "2027-01-01", "period_end": "2027-03-31", "today": "2027-01-10"}
+    n = client.get("/books/vat", params=next_q, headers=H).json()
+    nboxes = {b["box"]: (b["amount"], b["entries"]) for b in n["boxes"]}
+    assert (nboxes[4], nboxes[5]) == (("-10.00", 1), ("10.00", 1))  # box 5 is absolute; see REVIEW (negative box 4)
+    assert [(a["side"], a["net_pence"], a["vat_pence"]) for a in n["adjustments"]] == [("purchases", -5_000, -1_000)]
+    assert n["hmrc_body"]["vatReclaimedCurrPeriod"] == -10.0
+
+    # Void the sales journal: its mirror is dated like it (the period is open), so Q4 nets back to nothing on sales.
+    client.post(f"/accounting/journals/{sale['id']}/void", headers=H)
+    v = client.get("/books/vat", params=q4, headers=H).json()
+    boxes = {b["box"]: (b["amount"], b["entries"]) for b in v["boxes"]}
+    assert boxes[1] == ("0.00", 2) and boxes[6] == ("0", 2)  # the journal and its void, both shown
+    assert [a["net_pence"] for a in v["adjustments"] if a["side"] == "sales"] == [10_000, -10_000]
+    await trial_balance_ok(books)
+
+
+async def test_ask_counts_journals_with_vat_on_their_side(client: TestClient, books: Books):
+    """Ask's facts (app/facts.py) total each side with the same rule as the boxes, journals included."""
+    from app import facts
+
+    body = _journal(
+        date="2026-10-05",
+        vat_box="sales",
+        lines=[
+            {"account": "1200 Bank", "debit_pence": 12_000},
+            {"account": "4000", "credit_pence": 10_000, "vat_code": "S"},
+            {"account": "2200", "credit_pence": 2_000},
+        ],
+    )
+    j = client.post("/accounting/journals", json=body, headers=H).json()
+    j = client.post(f"/accounting/journals/{j['id']}/approve", headers=H).json()
+    event = next(e for e in await books.list_events() if e.id == j["event_id"])
+    assert facts.side(event) == ("sales", 1)
+
+
 async def test_journal_with_vat_refused_in_a_submitted_period(client: TestClient, books: Books, fake):
     await submit_q3(fake)
     body = _journal(

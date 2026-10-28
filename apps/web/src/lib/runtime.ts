@@ -1934,6 +1934,18 @@ export interface RtVatView {
   events_in_period: number;
   undone_in_period: number; // reversing events among them
   hmrc_body: Record<string, unknown>;
+  /** Manual journals with VAT (and their reversals or voids) and VAT recodes counted in the boxes. */
+  adjustments?: RtVatAdjustment[];
+}
+
+export interface RtVatAdjustment {
+  event_id: string;
+  date: string;
+  name: string; // "Journal MJ-0001"
+  note: string | null;
+  side: "sales" | "purchases"; // boxes 1 and 6, or boxes 4 and 7
+  net_pence: number; // signed, as counted
+  vat_pence: number; // signed, as counted
 }
 
 /** POST /books/vat/obligations (services/runtime/app/routes_vat.py): one HMRC obligation, as the relay returns it. */

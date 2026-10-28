@@ -6,7 +6,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, msalConfigured } from "@/lib/msal";
 import { loadBusiness } from "@/lib/business";
 import PrintButton from "@/components/PrintButton";
-import { fetchLiveVat, type RtVatBox as Box, type RtVatPeriod, type RtVatView as VatView } from "@/lib/runtime";
+import { fetchLiveVat, type RtVatBox as Box, type RtVatAdjustment, type RtVatPeriod, type RtVatView as VatView } from "@/lib/runtime";
 import { usePickedPeriod } from "@/lib/vat-period";
 import BoxExplain from "./BoxExplain";
 import VatPeriodPicker from "./VatPeriodPicker";
@@ -19,6 +19,41 @@ const shortUk = (iso: string) => {
 };
 
 const DAY_MS = 86_400_000;
+
+const signedPounds = (pence: number) =>
+  `${pence < 0 ? "−" : ""}£${(Math.abs(pence) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2 })}`;
+
+/** Journals and recodes with VAT in this return: which boxes each one moved, and by how much (signed). */
+function Adjustments({ rows }: { rows: RtVatAdjustment[] }) {
+  return (
+    <section aria-labelledby="vat-adjustments" className="mt-4 rounded-xl border border-border p-3">
+      <h3 id="vat-adjustments" className="text-[15px] font-extrabold">
+        Journals and adjustments in this return
+      </h3>
+      <ul className="mt-2 flex flex-col gap-2">
+        {rows.map((a) => (
+          <li key={a.event_id} className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-[14px]">
+            <span className="min-w-0 [overflow-wrap:anywhere]">
+              <strong>{a.name}</strong> · {shortUk(a.date)}
+              {a.note ? ` · ${a.note}` : ""}
+            </span>
+            <span className="shrink-0 tabular-nums text-muted">
+              {a.side === "sales"
+                ? `Box 1 ${signedPounds(a.vat_pence)} · Box 6 ${signedPounds(a.net_pence)}`
+                : `Box 4 ${signedPounds(a.vat_pence)} · Box 7 ${signedPounds(a.net_pence)}`}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 text-[13px] text-muted">
+        <Link href="/accounting/journals" className="font-bold text-teal underline underline-offset-2">
+          Manual journals
+        </Link>{" "}
+        lists each one in full; a void or an automatic reversal shows here with the opposite sign.
+      </p>
+    </section>
+  );
+}
 
 /** Whole days from today (UTC) to an ISO date: positive = left, zero = today, negative = late. */
 function daysUntil(iso: string): number {
@@ -194,6 +229,7 @@ export default function LiveVat() {
           </table>
         </div>
       </div>
+      {view.adjustments && view.adjustments.length > 0 && <Adjustments rows={view.adjustments} />}
       {view.warnings.length > 0 && (
         <p className="mt-3 rounded-xl border border-warn-border bg-warn-bg p-3 text-sm text-warn-ink">{view.warnings.join(" · ")}</p>
       )}
