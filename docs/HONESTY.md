@@ -144,5 +144,5 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 
 ## Testing and process
 
-- The web has no unit tests; pages are checked by `pnpm run build` and the Playwright suite. The e2e CI job `.github/workflows/e2e.yml` has never run on GitHub; its fake calendar is seeded but no e2e flow uses it. The suite does not prove real MSAL, Graph, HMRC relay or model accuracy.
+- The web has no unit tests; pages are checked by `pnpm run build` and the Playwright suite. The e2e suite runs on GitHub as the `e2e` job of `.github/workflows/ci.yml` on every push and PR (first green run 28 Oct 2026, `docs/reviews/ci/REVIEW.md`); its fake calendar is seeded but no e2e flow uses it. The suite does not prove real MSAL, Graph, HMRC relay or model accuracy.
 - The SAM response fixture `services/runtime/tests/fixtures/sam_response.json` is marked ILLUSTRATIVE and must be replaced with a captured real response before turning on `SAM_CROP`.
