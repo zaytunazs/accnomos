@@ -5,6 +5,7 @@ import { warmServerAi } from "@/lib/meta-models";
 import type { AccountInfo } from "@azure/msal-browser";
 import { deadlinesQuery, loadBusiness } from "@/lib/business";
 import { getMsal, msalConfigured } from "@/lib/msal";
+import { currentFeatures, PROFILE_EVENT } from "@/lib/profiles";
 import { runtime, type RtDashboard } from "@/lib/runtime";
 import { errorText, todayIso } from "@/components/jobs/useAccount";
 
@@ -61,6 +62,28 @@ export function HomeData({ children }: { children: React.ReactNode }) {
   }, []);
 
   return <HomeContext.Provider value={state}>{children}</HomeContext.Provider>;
+}
+
+/**
+ * Whether Home shows VAT (the tile and the deadlines): only for a VAT-registered business (services/runtime/app/
+ * profile.py). The dashboard says so once loaded; before that, the profile last read on this device (lib/profiles.ts),
+ * so a personal profile never flashes a VAT skeleton. Signed out, the sample is a VAT-registered company.
+ */
+export function useVatApplies(): boolean {
+  const home = useHome();
+  const [known, setKnown] = useState<boolean | null>(null);
+  useEffect(() => {
+    const read = () => {
+      const features = currentFeatures();
+      setKnown(features ? features.includes("vat") : null);
+    };
+    queueMicrotask(read);
+    window.addEventListener(PROFILE_EVENT, read);
+    return () => window.removeEventListener(PROFILE_EVENT, read);
+  }, []);
+  if (home.mode === "live") return home.data.vat_applies !== false;
+  if (home.mode === "loading" || home.mode === "error") return known ?? true;
+  return true;
 }
 
 /** Only for visitors who are not signed in (and in the static HTML, before MSAL has answered). */

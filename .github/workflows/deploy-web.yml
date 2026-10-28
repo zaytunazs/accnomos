@@ -19,6 +19,8 @@ jobs:
       NEXT_PUBLIC_RUNTIME_URL: https://api.accnomos.com
       NEXT_PUBLIC_RELAY_URL: https://api.accnomos.com
       NEXT_PUBLIC_TEST_MODE: "" # the fake sign-in (src/lib/msal-test.ts) is for e2e builds only
+      # 1 = the judged site (no launch date or "coming soon"); set the repo variable SUBMISSION_MODE=0 after judging.
+      NEXT_PUBLIC_SUBMISSION_MODE: ${{ vars.SUBMISSION_MODE || '1' }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4

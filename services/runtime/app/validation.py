@@ -13,7 +13,7 @@ import re
 from datetime import date, datetime
 from typing import Annotated, Any, Literal, TypedDict
 
-from pydantic import BaseModel, BeforeValidator, ConfigDict
+from pydantic import BaseModel, BeforeValidator, ConfigDict, Field
 
 _CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 _ISO_DAY = re.compile(r"\d{4}-\d{2}-\d{2}")
@@ -38,6 +38,10 @@ def _pence(v: Any) -> Any:
 Day = Annotated[date, BeforeValidator(_day)]
 #: Money in a request body: a whole number of pence as an integer (not 12.0, "12" or true).
 Pence = Annotated[int, BeforeValidator(_pence)]
+
+
+#: Tracking tags on a line in a request body: {category id: option id} (app/tracking.py checks them).
+Tags = dict[Annotated[str, Field(max_length=32)], Annotated[str, Field(max_length=32)]]
 
 
 class StrictBody(BaseModel):

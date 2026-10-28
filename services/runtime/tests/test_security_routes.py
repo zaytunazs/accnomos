@@ -218,6 +218,7 @@ TALKS_HTTP = {
     "ai/remind.py": "httpx errors only",
     "ai/plan.py": "httpx errors only",
     "ai/triage.py": "httpx errors only",
+    "public_chat.py": "httpx errors only (the call is ai/ask.py's, to the server's own config)",
     "company_lookup.py": "Companies House (CH_BASE constant) and the relay (HMRC_RELAY_URL): server env only",
     "payment_providers.py": "Stripe and PayPal: the bases in StripeConfig/PayPalConfig, from server env only",
     "online_fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
@@ -496,6 +497,7 @@ NO_USER_NEEDED = {
     "POST /books/prices/suggest": "the model suggests item matches; nothing is stored (POST /books/prices/matches is)",
     "POST /shopping/lookup": "reads the price history (and a live search, when on); writes nothing",
     "POST /shopping/propose": "proposes a signed card that only /actions/approve (X-User) runs",
+    "POST /public/chat": "the website's Accnomos-only chat: no sign-in, reads no user data, writes nothing",
 }
 
 

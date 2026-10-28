@@ -63,7 +63,7 @@ from accnomos_connectors import (
 )
 from accnomos_connectors.base import Identity, SharedRoot
 from accnomos_connectors.fake import FakeSharingWorld
-from app import actions, fake_graph, security
+from app import actions, fake_graph, public_chat, security
 from app.ai import ask as ask_ai
 from app.ai import extract as extract_ai
 from app.ai import verify as verify_ai
@@ -837,6 +837,15 @@ async def ai_down(rest: str) -> JSONResponse:
     return JSONResponse({"error": f"stub AI: this provider is down ({rest})"}, status_code=503)
 
 
+def public_chat_reply(content: str) -> dict[str, Any]:
+    """Deterministic website chat answer (app/public_chat.py): the first sentence of the first note it was given."""
+    m = re.search(r"^\[([a-z0-9-]+)\] [^\n]*\n([^\n]+)", content, re.MULTILINE)
+    if not m:
+        return {"answerable": False, "answer": "", "sections": []}
+    first = re.split(r"(?<=[.!?])\s+", m.group(2).strip())[0]
+    return {"answerable": True, "answer": f"{first} (Test stub answer: no real model ran.)", "sections": [m.group(1)]}
+
+
 @router.post("/ai/api/chat")
 async def ai_chat(request: Request) -> JSONResponse:
     body = await request.json()
@@ -860,6 +869,14 @@ async def ai_chat(request: Request) -> JSONResponse:
         return JSONResponse(_ollama(spending_reply(messages[-1]["content"])))
     if system == items_ai.SYSTEM_PROMPT:
         return JSONResponse(_ollama(items_reply(messages[-1]["content"])))
+    if system == public_chat.SYSTEM_PROMPT:
+        return JSONResponse(_ollama(public_chat_reply(messages[-1]["content"])))
+    from app import cashflow
+
+    if system == cashflow.SYSTEM_PROMPT:  # one line quoting two of the forecast's own figures
+        facts = json.loads(messages[-1]["content"].split("FACTS:\n", 1)[1])
+        line = f"Your bank is {facts['bank_balance_today']} today and {facts['balance_in_90_days']} in 90 days."
+        return JSONResponse(_ollama({"line": line}))
     images = [img for m in messages for img in (m.get("images") or [])]
     if system == actions.INTENT_PROMPT:
         return JSONResponse(_ollama(intent_reply(messages[-1]["content"])))

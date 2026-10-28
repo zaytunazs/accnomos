@@ -152,13 +152,15 @@ class _HomeScreenState extends State<HomeScreen> {
                 : 'You owe ${poundsFromPence(owedBy)}',
         amber: overdue > 0,
       ),
-      HomeTile(
-        label: 'VAT estimate',
-        value: vat,
-        note: d.vatDeadline == null
-            ? 'Calculated by code'
-            : '$vatVerb by ${shortDate(d.vatDeadline)}',
-      ),
+      // Only for a VAT-registered business (the profile's features).
+      if (d.vatApplies)
+        HomeTile(
+          label: 'VAT estimate',
+          value: vat,
+          note: d.vatDeadline == null
+              ? 'Calculated by code'
+              : '$vatVerb by ${shortDate(d.vatDeadline)}',
+        ),
       HomeTile(
         label: 'Needs attention',
         value: attention?.toString() ?? '—',

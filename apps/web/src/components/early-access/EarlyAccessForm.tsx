@@ -23,6 +23,13 @@ const input =
  * stored with the sign-up; the short notice under it is the point-of-collection privacy information (/privacy).
  */
 export default function EarlyAccessForm({ source }: { source: "/" | "/judges" }) {
+  // Written out so the bundler folds it: a submission build that is not a test build never ships the form or its
+  // pre-launch words (scripts/prelaunch-words.mjs). Test builds keep it so a spec can flip the mode per page.
+  if (process.env.NEXT_PUBLIC_SUBMISSION_MODE !== "0" && process.env.NEXT_PUBLIC_TEST_MODE !== "1") return null;
+  return <SignUp source={source} />;
+}
+
+function SignUp({ source }: { source: "/" | "/judges" }) {
   const submission = useSubmissionMode();
   const id = useId();
   const [form, setForm] = useState<Form>({ name: "", email: "", business_type: "", heard: "", consent: false, website: "" });

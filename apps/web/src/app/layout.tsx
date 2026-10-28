@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
-import AppShell from "@/components/AppShell";
+import SiteShell from "@/components/SiteShell";
+import { SIGNED_IN_PROBE } from "@/lib/public-site";
+import { builtRoutes } from "@/lib/routes.server";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -16,9 +18,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${manrope.variable} h-full antialiased`}>
+    // suppressHydrationWarning: SIGNED_IN_PROBE may add data-signed-in to <html> before React hydrates.
+    <html lang="en-GB" className={`${manrope.variable} h-full antialiased`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: SIGNED_IN_PROBE }} />
+      </head>
       <body className="min-h-full flex flex-col">
-        <AppShell>{children}</AppShell>
+        {/* The pages in this build, read here at build time: SiteShell is a client component (no fs there). */}
+        <SiteShell routes={builtRoutes()}>{children}</SiteShell>
       </body>
     </html>
   );

@@ -116,6 +116,7 @@ Books.xlsx still show the path as it was saved.
 | `Jobs/jobs.json`, `Staff/staff.json`, `Timesheets/<yyyy-mm>.jsonl` | jobs, staff and rates, timesheet entries | entries edited and deleted |
 | `Vehicles/vehicles.json`, `Mileage/<tax-year>.jsonl` | tax year like `2026-27` | entries edited and deleted |
 | `Invoicing/profile.json`, `sequence.json`, `credit_sequence.json`, and the logo file | business profile, invoice and credit note numbering, logo (any file under `_System/Invoicing/`) | rewritten |
+| `Payments/payouts.json` | each bank line matched as a Stripe/PayPal payout: line, provider, amount, the Dr 1200 Bank / Cr clearing event, and its reversal if unmatched (`online_payments.match_payout`) | updated |
 | `Payments/providers.json` | the user's own Stripe account id / PayPal merchant id / PayPal.me name for payment links, when linked (`online_payments.py`); never a key or token | rewritten |
 | `bankfeeds.json` | bank feed connections (`bank_feeds.py`): bank and account names, last four digits, consent created/expiry, last synced, and the TrueLayer refresh token sealed with the server's `BANKFEEDS_TOKEN_KEY` (AES-256-GCM); never an access token | rewritten |
 | `Payments/payments.json` | recorded payments: amount, date, account, the split across invoices or bills, the posted event (`payments.py`) | rewritten whole; a removed payment is kept, marked removed |
@@ -135,6 +136,11 @@ Books.xlsx still show the path as it was saved.
 | `accountant.json` | who the books are shared with (invitations, their Graph permission ids, revocations, the Accnomos-accountants consent: version, sha256 of the text, who and when), the profile the portal shows, the folder's drive id + item id (`app/accountant.py`) | rewritten; a revoked invitation is kept, marked revoked |
 | `queries/<id>.json`, `queries/audit/<yyyy-mm>.jsonl` | client queries, one thread per file (`app/queries.py`); the audit lines of a view-only accountant | updated (If-Match); append-only |
 | `Accountant/clients.json` | **in an accountant's own books**: client codes they added by hand in the portal (`app/portal.py`) | rewritten |
+| `Accounting/accounts.json` | the chart of accounts once the user changes it (absent: the standard UK chart in `chart.py`); codes never change, used accounts are archived, never deleted | rewritten whole |
+| `Accounting/journals.json` | manual, depreciation and disposal journals: draft → posted → voided (or discarded); the posted event ids (`manual_journals.py`) | rewritten whole; a record is never removed |
+| `Accounting/assets.json` | fixed asset register (`fixed_assets.py`); what has been depreciated and disposed of is worked out from posted journals, not stored here | rewritten whole |
+| `Accounting/tracking.json` | up to two tracking categories and their options, by stable id (`tracking.py`) | rewritten whole; options archived, not deleted |
+| `Accounting/budgets/<yyyy-mm>.json` | one budget: twelve monthly amounts per P&L account from that month (`budgets.py`) | rewritten whole |
 
 OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folder. Money is integer pence in every file except
 `Books.xlsx`, which shows pounds.
@@ -248,6 +254,29 @@ and `backups.py`. Every write needs `X-User`; previews write nothing.
 * **Audit kinds:** `files_moved`, `file_renamed`, `files_trashed`, `files_archived`, `archive_undone`,
   `backup_created` (actor `agent:backup` for the monthly one), `backup_verified`, `backup_restored`,
   `file_settings_saved`, each with a sentence in `audit_view.SUMMARIES`.
+## Accounting tools
+
+`app/routes_accounting.py` (`/accounting/*`) and the new reports in `app/routes_reports.py` (`/reports/budgets…`,
+`/reports/cashflow`, `/reports/tracking`). Code calculates every figure; nothing here involves a model except the optional
+one-line cash flow sentence, whose figures must all be in the forecast (`KnownNumbers`, as Ask) or it is dropped.
+
+- **Ledger additions** (`packages/ledger`): a line may carry `tracking` ({category id: option id}); an `adjustment` may
+  carry `vat_box` (sales | purchases) and then its signed `net`/`vat` count on that side of the return as they are
+  (`compute_vat_return`); an adjustment's `recodes` lists the earlier lines it recodes. Depreciation maths is
+  `accnomos_ledger/depreciation.py` (straight line by life or rate, reducing balance by rate, monthly or yearly,
+  cumulative rounding so the charges add up exactly). All new fields are optional, so every older event file still reads.
+- **What posts:** approving a manual journal (`adjustment`, id from the journal's; an auto-reversal is a second event dated
+  its reversal day, posted in the same approval), voiding one (its mirror; dated today if it has VAT in a submitted
+  period), and a recode sent with `confirm: true` (one `adjustment` per original entry, dated like it). Depreciation runs
+  and disposals are journal drafts the user approves. Chart, register, tracking and budget changes post nothing.
+- **Refusals** are plain sentences: unbalanced journals, control accounts (debtors, creditors, VAT control without a VAT
+  side, payroll liabilities) on journals, recodes of bank/control lines, recodes of entries in a submitted VAT period
+  and VAT journals dated in one (submitted periods from `approve.submitted_spans`).
+- **Cash flow** is the ledger balance of bank-type accounts plus `contacts.aged` documents by due date. **Budget variance**
+  and the **Tracking Summary** use the P&L's own account placement and signs (`reports.py`).
+
+Routes (for the menu): `/accounting/chart`, `/accounting/journals`, `/accounting/assets`, `/accounting/recode`,
+`/accounting/tracking`, `/reports/budgets`, `/reports/cashflow` in the web app (`apps/web/src/components/accounting/`).
 
 ## Spending, cheaper options and the shopping list
 

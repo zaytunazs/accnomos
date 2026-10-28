@@ -72,7 +72,7 @@ test("setup checklist: signed in and incomplete, each row resumes its connect st
 });
 
 test("setup checklist: never shown signed out", async ({ page }) => {
-  await page.goto("/");
+  await page.goto("/try");
   await expect(page.getByRole("link", { name: "See the demo books" })).toBeVisible();
   await expect(page.getByRole("region", { name: "Get set up" })).toHaveCount(0);
 });
@@ -92,8 +92,8 @@ test("Review badge counts the proposals waiting", async ({ page, runtime }) => {
   await expect(nav.getByRole("link", { name: "Bills (Review) 1 item to review" })).toBeVisible();
 });
 
-test("signed out: the pitch, the connect banner and the sample books", async ({ page }) => {
-  await page.goto("/");
+test("signed out: the pitch, the connect banner and the sample books (on /try; / is the landing page)", async ({ page }) => {
+  await page.goto("/try");
   await expect(page.getByRole("link", { name: "See the demo books" })).toBeVisible();
   await expect(page.getByText("Not connected yet?")).toBeVisible();
 });

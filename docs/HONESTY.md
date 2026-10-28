@@ -100,7 +100,8 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - Stripe is connected with Connect OAuth (Standard accounts). Stripe says OAuth "isn't recommended for new Connect platforms" but is still the way for an application that needs access to an *existing* account; Accounts v2 onboarding would create a new account controlled by the platform instead of linking the user's own. Revisit before going live.
 - PayPal partner onboarding and `PayPal-Auth-Assertion` need PayPal to approve the platform as a partner; not applied for. That a PayPal invoice payment's `payment_id` can be read with `GET /v2/payments/captures/{id}` (for the fee) is unverified: when it fails the user types the fee.
 - PayPal.me links (`paypal.me/<name>/<amount>GBP`) are only checked by a redirect on 28 Oct 2026 (the decimal form kept its path); PayPal documents whole amounts in its example. Those payments are never found by code.
-- Payments are found only when the user opens Invoices (no webhooks: the runtime holds no token to write to OneDrive). A customer's payment is invisible to the books until then, and is posted only when the user approves it. The gross is posted to 1200 Bank and the fee as a separate exempt expense, so the provider's later payout to the bank is the *same* money: mark that bank line as a transfer, or it would be counted again. There is no clearing account for the Stripe/PayPal balance.
+- **PayPal is untested against PayPal's real API, sandbox included.** Partner onboarding, the Invoicing v2 calls, `PayPal-Auth-Assertion` and the capture read for the fee have only met the fake in `app/online_fakes.py`; the first run against the PayPal sandbox may need changes. The same holds for Stripe (never called), but Stripe's shapes are better documented.
+- Payments are found only when the user opens Invoices (no webhooks: the runtime holds no token to write to OneDrive). A customer's payment is invisible to the books until then, and is posted only when the user approves it. The gross goes to the provider's clearing account (1230 Stripe clearing or 1240 PayPal clearing, not 1210, which is Cash) and the fee is a separate exempt expense out of it. The provider's payout is matched on the Bank page as **Payout from Stripe/PayPal** (Dr 1200 Bank / Cr clearing; unmatching reverses it), so the money is counted once and 1200 Bank only moves when the statement shows it. A payout larger than the clearing balance is refused. Not handled: payouts in another currency, Stripe or PayPal balances used for refunds or disputes (chargebacks), and reserves held back by the provider: those leave a clearing balance the user must journal by hand. Fees on payments approved before this change sat in 1200 Bank; nothing migrates them.
 - A link has a fixed amount. If the balance changes (a bank payment, a credit note) the old link still asks for the old amount until the user makes a new one; the list shows "Not the amount owed now". A payment that arrives on an invoice already paid another way is not proposed (paid invoices are not checked); it stays in Stripe/PayPal for the user to refund or record by hand.
 
 ## Import history and opening balances
@@ -143,6 +144,33 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - The estimate divides annual thresholds by 12 (tax about 20p a month high, NI a few pence off HMRC's tables), monthly pay only, tax code 1257L on a month-1 basis, England/NI rates, NI category A. No student loans, pensions, statutory pay, benefits, salary sacrifice or Employment Allowance; no salaried staff (gross is hours × rate).
 - The 2026–27 rates in `payroll_rates.py` were checked against GOV.UK on 27 Oct 2026 by the payrun branch's author (a code comment and commit message, no other record); `tests/test_payroll_rates.py` now pins every constant to the GOV.UK figures (re-read 27 Oct 2026, all matched). Re-check each April.
 - Undoing a payroll ledger entry from outside the Payroll page leaves the run "confirmed" until it is reopened.
+
+## Accounting tools (chart, journals, fixed assets, recode, tracking, budgets, cash flow)
+
+- **Tested on fakes only** (runtime unit and route tests, Playwright against the test-mode runtime); never run on a real
+  OneDrive or reviewed by an accountant.
+- **No multi-currency.** Dropped by the owner (28 Oct 2026): a non-GBP receipt still cannot be posted, there are no
+  currency fields, no exchange rates and no FX gains or losses.
+- **Fixed assets are book depreciation only.** Capital allowances (AIA, writing-down allowances) are not calculated; the
+  page and the API say so. Disposals take catch-up depreciation for whole periods only (no part-month), proceeds go to a
+  bank-type account, and output VAT on the sale is whatever the user types. Registering an asset posts nothing: if the
+  purchase was coded to an expense it must be moved with Find and recode.
+- **Find and recode** changes a VAT code only for a sale or purchase whose VAT is on one line, keeping the gross; mixed-rate
+  entries must be undone and posted again. Credit notes, payments and journals can be recoded by account but not VAT.
+  Lines on bank and control accounts are refused.
+- **Chart names are fixed once used**: entries keep the "code name" they were posted with, so a used account can't be
+  renamed (add a new one and recode). Account types must fit the code ranges the reports use; 9000–9999 is not allowed.
+- **Cash flow** includes only open invoices and bills on account (overdue ones counted as due now). There are no repeating
+  invoices or bills in Accnomos yet, and pay runs, VAT payments and card spending are not forecast.
+- **Tracking** on bills is set on approval and applies to every cost line of the bill; credit notes, payments and recodes
+  copy no tags from the user (a recode keeps the original line's tags).
+- Manual journals attach a document by its path in the books folder (no upload from the journal form).
+- A journal with VAT (and its void, automatic reversal or a VAT recode) counts on the side it names: boxes 1 and 6 for
+  sales, 4 and 7 for purchases, with its signed figures; the VAT page lists each one with the boxes it moved, and Ask's
+  totals use the same rule. Boxes 2, 8 and 9 (NI/EU) cannot be reached by a journal. A reversal into a later period can
+  make box 4 (or box 1) negative there; that HMRC's MTD VAT API accepts negative box values was **not re-checked**
+  against HMRC's specification on 28 Oct 2026 (developer.service.gov.uk is not reachable from the session that made
+  this change); the ledger allowed negative boxes before it.
 
 ## Bank statements
 
@@ -211,6 +239,8 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 
 - **Never run against a real OneDrive.** *Load sample books* (`POST /books/sample`) and the seed it runs have only run on the in-memory fake OneDrive (`test_sample_books.py`, the e2e spec). **How long it takes against Graph is unmeasured.** On the fake the whole seed makes about 11,300 storage calls (most of them folder listings and reads behind each approval), and each is roughly one Graph request, so at a few tenths of a second each it could take well over half an hour, more than a token lasts; throttling (429s are retried) is untested there. (`tools/seed_demo.md` said "several hundred Graph calls"; corrected.)
 - The Graph token expires after about an hour and the runtime cannot refresh it. The page hands the runtime a fresh token every four minutes and whenever the run says it needs one; if the page is closed, the run waits ten minutes, then stops, and the next press (or visit to Home) carries on from the recorded step. Resuming was checked on the fake by refusing the token at, and right after, every one of the 710 writes of a run (1,420 runs, each compared with the books the CLI writes): the first pass found 11 failures in 6 kinds of two-write action, all now repaired and each kept as a named test (an approval posted but not saved, a filed document not yet recorded, an emailed receipt copied but not recorded, a sent invoice's PDF, a filed statement whose lines were not stored, a payment's entry without its record or its record without its line match, a rule coding posted but not saved). A refusal at a read or listing between writes, and a second stop in the same step, were not swept.
+- `test_sample_books.py` waits for the background run to stop (an event the run sets), not for a fixed number of
+  polls; the old polling budget lost the race on loaded machines (`docs/reviews/known-fixes/REVIEW.md`).
 - The background run lives in the runtime process. Progress is in the user's own `_System/sample_seed.json` (the runtime still stores nothing); with more than one runtime process, a run that went quiet is taken over after three minutes without progress.
 - The documents are drawn by the evals' renderer (`evals/harness/render.py`, DejaVu Sans Mono in the image); the Inbox documents are read for real by the account's AI only when someone presses *Scan*. The business name in Connect is not set for the user: set it to *Bramblewood Joinery Ltd* before scanning, or sales may be read as purchases.
 - The runtime image now carries `tools/seed_demo.py`, `evals/gold` and the renderer (fictional data only). The Docker test used to keep `evals` out of the image so that test mode's stub AI could never read receipts there; instead `ACCNOMOS_IMAGE=1` is set in the image and test mode refuses to start under it. The image was not rebuilt in the session that changed it.
@@ -255,13 +285,18 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - The business details this browser keeps are swapped per account in `localStorage`; a second tab open on the other
   profile during a switch is not handled (it keeps the old copy until it reloads). HMRC must be connected again after
   every switch, by design.
-- The Home dashboard still shows its VAT tile for personal books and for books that are not VAT-registered (the menu
-  hides VAT; the dashboard route is not gated). Customers and Suppliers in the menu open the same Contacts page (it has
-  no filter yet).
+- Home shows the VAT tile and the (all-VAT) Deadlines card only for a VAT-registered business: `GET /books/dashboard`
+  reads `_System/profile.json` and answers `vat_applies` (an unreadable profile counts as the default, a VAT-registered
+  company, so VAT shows). Before the dashboard answers, the web uses the profile it last read on this device. Customers
+  and Suppliers in the menu open the same Contacts page (it has no filter yet).
 - Several menu pages are being built elsewhere (`/sales`, `/purchases`, `/accounting/*`, `/self-employment`, `/personal`
   and others); the menu shows each only once its page is in the build, so today those groups are shorter.
-- Android has one account at a time (*Switch account*); its More screen does not hide VAT, invoices or payroll for
-  personal books yet, and the Flutter changes have not been run here (widget tests added, `flutter test` not run).
+- Android has one account at a time (*Switch account*). Its More screen leaves out Invoices and Payroll for personal
+  books and mentions VAT under Reports only when the books have it (`GET /profile` features, read when the tab first
+  opens: after *Switch account* it follows the new books once the app restarts, or the tab is rebuilt), and Home drops
+  the VAT tile on `vat_applies=false`. The bottom bar's VAT tab is still there for every profile (its screen answers
+  with the runtime's sentence for books without VAT). `flutter analyze` and `flutter test` (279 tests) pass, on
+  Flutter 3.47.8 in a Linux container; not run on a phone.
 
 ## Accountant collaboration
 
@@ -310,6 +345,46 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
 - On the phone, Payroll is read-only and Bank only confirms matches the runtime is sure about. Reports (More → Reports: P&L, aged, VAT, trend, *Save to 07 Reports*) is a thin client over `GET /reports/*` with no offline copy. No HMRC filing on the phone (the VAT check only reads, on a tap).
 - Mic on Ask records WAV and calls `/books/ask/voice`; no run on a device is recorded.
 - *Add from phone* (0.3.2) opens the system contact picker and reads name, emails, phones and postal address from each returned contact URI only: no `READ_CONTACTS` in the manifest, nothing written back to the phone. Covered by widget tests with a mocked picker and by runtime tests for `POST /contacts/import-phone`; the picker grant, repeated picks and the sheet have not been run on a real phone.
+
+## Public website and "Ask about Accnomos"
+
+- **Signed out, `/` is now the landing page** and the sample Home moved to `/try` ("Try the sample books"); signed in,
+  `/` is Home as before. `/`, `/how-it-works` and `/privacy` use the public shell (top menu, footer, chat) until the
+  device holds a Microsoft sign-in (the same `localStorage` test as `useSignedIn`, also run before first paint so an
+  owner does not see the landing page flash). Every screenshot on the landing page is a crop or resize of a real one
+  (`docs/submission/shots/`, `apps/mobile/screenshots/`; `apps/web/scripts/marketing-images.py`), from test mode with the
+  fictional sample books: some show `accnomos-test-stub` as the model, and the captions say test mode. The Android
+  screenshots are from an emulator, signed out, showing the app's labelled samples.
+- **The chat (`POST /public/chat`) has run only against the test-mode stub and a fake model in unit tests; it has never
+  been called against Glimmer on the live Spark.** Its answer quality, its latency there (Ask takes ~16 s median on
+  Glimmer) and whether Glimmer honours the strict JSON schema for it are unmeasured. Load on the Spark is capped at two
+  concurrent chat calls per runtime process, with a 60 s timeout; past that the visitor gets the matching note quoted as
+  written.
+- **Guards are code, but retrieval is keyword overlap**, not embeddings: `public_kb.md` sections carry a `Keywords:`
+  line, and a question matching no keyword or title word gets the fixed reply (with `PUBLIC_CONTACT_EMAIL`) without a
+  model call. A real question phrased in words the notes don't use is refused too; the remedy is adding keywords. The
+  role-change filter is a regular expression over common phrasings ("ignore previous instructions", "you are now",
+  "act as a", "system prompt" and similar); a novel phrasing reaches the model, which sees only the retrieved notes and a
+  strict prompt, and an answer that mentions its instructions is dropped. Links and e-mail addresses other than
+  `PUBLIC_SITE_HOSTS` and the contact address are stripped; answers are cut to 700 characters at a sentence.
+- The chat logs nothing about questions (the module has no logger; the security middleware logs only the path of an
+  unhandled error), but web-server access logs still record IP, path and time as for every request. Its rate limit
+  (`PUBLIC_CHAT_PER_MIN`, default 6) is per process like the global one. One question at a time: no conversation
+  history is sent, so follow-ups like "and on Android?" are answered on their own words.
+- `public_kb.md` is curated by hand from the docs; nothing checks that it stays in step with `README.md` and this file.
+- **Two builds of the public site** (`NEXT_PUBLIC_SUBMISSION_MODE`, default `1`, and the runtime's
+  `PUBLIC_SUBMISSION_MODE` for the chat's notes). The judged build leaves out what is not built (iPhone app, more
+  mailboxes) instead of tagging it "coming soon", and shows no launch date; the pre-launch build (`0`) says "Launching
+  November 2026 — get notified" (a `mailto:`, no sign-up list) and tucks sign-in away. Only the default build is
+  tested end to end; the `0` build has been built and its files scanned (the pre-launch words are there), not run in a browser.
+  The submission build is checked twice for pre-launch wording ("Early access / testers", "coming soon", "beta",
+  "launch"/"launching", the early-adopter list): `e2e/submission-mode.spec.ts` reads every page's DOM text, title,
+  description and labels, signed out and in (not the pixels of screenshots), and CI scans every file of the
+  production export (`scripts/prelaunch-words.mjs`). In the submission build the privacy page leaves out the
+  early-adopter list, since that build cannot collect sign-ups. "Available on Android" on the landing page means the
+  app exists and builds; per `docs/submission/JUDGING.md` the Play production listing was still in review on 27 Oct
+  and no real-phone sign-in is recorded. "Try the demo" links to `/judges` when that page is in the build (a parallel
+  branch), otherwise to the sample books on `/try`.
 
 ## Security and deployment
 

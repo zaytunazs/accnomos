@@ -6,7 +6,7 @@ import ExplainMore from "@/components/ExplainMore";
 import { isTileError, type RtDashboard } from "@/lib/runtime";
 import { tiles as sampleTiles, type Tile } from "@/lib/sample-home";
 import Greeting from "./Greeting";
-import { pounds, SampleTag, shortDate, Skeleton, UNKNOWN, useHome } from "./HomeData";
+import { pounds, SampleTag, shortDate, Skeleton, UNKNOWN, useHome, useVatApplies } from "./HomeData";
 
 const COULDNT_LOAD = "Couldn't load this just now";
 
@@ -68,15 +68,17 @@ function attentionTile(a: RtDashboard["attention"]): Tile {
   return { label, value: String(a.total), sub: `${parts.join(" · ")} →`, tone: "warn", href };
 }
 
-function liveTiles(d: RtDashboard, annualVat: boolean): Tile[] {
-  return [cashTile(d.cash), owedToYouTile(d.owed_to_you), owedByYouTile(d.owed_by_you), vatTile(d.vat, annualVat),
-    attentionTile(d.attention)];
+/** The key figures; VAT only when the profile has it (personal books and non-VAT businesses have no VAT tile). */
+function liveTiles(d: RtDashboard, annualVat: boolean, vat: boolean): Tile[] {
+  return [cashTile(d.cash), owedToYouTile(d.owed_to_you), owedByYouTile(d.owed_by_you),
+    ...(vat ? [vatTile(d.vat, annualVat)] : [])];
 }
 
 const NUMBER_LABELS = ["Cash in bank", "Owed to you", "Owed by you", "VAT estimate"];
+const numberLabels = (vat: boolean) => (vat ? NUMBER_LABELS : NUMBER_LABELS.filter((l) => l !== "VAT estimate"));
 
-function errorTiles(): Tile[] {
-  return NUMBER_LABELS.map((label) => ({ label, value: UNKNOWN, sub: "Could not reach your books" }));
+function errorTiles(vat: boolean): Tile[] {
+  return numberLabels(vat).map((label) => ({ label, value: UNKNOWN, sub: "Could not reach your books" }));
 }
 
 /** One figure without card chrome (the Today card is the card): label, value, then its link. */
@@ -106,11 +108,12 @@ function NumberBlock({ tile }: { tile: Tile }) {
  */
 export function TodayCard() {
   const home = useHome();
+  const vat = useVatApplies();
   const sample = home.mode === "sample";
   const tiles: Tile[] | null =
     sample ? sampleTiles.slice(0, 4)
-    : home.mode === "live" ? liveTiles(home.data, home.annualVat).slice(0, 4)
-    : home.mode === "error" ? errorTiles()
+    : home.mode === "live" ? liveTiles(home.data, home.annualVat, vat)
+    : home.mode === "error" ? errorTiles(vat)
     : null;
 
   return (
@@ -120,13 +123,13 @@ export function TodayCard() {
           <Greeting />
         </div>
         <ExplainMore title="Where these figures come from" anchor="books">
-          Cash, what you are owed, what you owe and the VAT so far are worked out by code from your books — the sample
+          Cash, what you are owed, what you owe{vat ? " and the VAT so far" : ""} are worked out by code from your books — the sample
           Bramblewood figures when signed out. No model writes these numbers.
         </ExplainMore>
       </div>
       {tiles === null ? (
         <div aria-busy="true" className="mt-4 grid grid-cols-2 gap-3 xl:grid-cols-4">
-          {NUMBER_LABELS.map((label) => (
+          {numberLabels(vat).map((label) => (
             <div key={label}>
               <p className="text-sm font-semibold text-muted">{label}</p>
               <Skeleton className="mt-2 h-8 w-24" />

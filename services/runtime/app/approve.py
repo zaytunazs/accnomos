@@ -45,7 +45,7 @@ class ProposalStateError(ApprovalError):
 def apply_edits(p: Proposal, edits: dict[str, Any]) -> None:
     """Apply the user's corrections to the document and the expense account, then redraw the journal.
     (`job_id` and `vehicle_id` are checked against their files and applied by approve().)"""
-    unknown = set(edits) - DOC_EDITS - {"account", "job_id", "vehicle_id", NOT_VAT_REGISTERED}
+    unknown = set(edits) - DOC_EDITS - {"account", "job_id", "vehicle_id", "tracking", NOT_VAT_REGISTERED}
     if unknown:
         raise ApprovalError(f"Can't edit {', '.join(sorted(unknown))}")
     if p.mileage_claim and edits:
@@ -175,12 +175,16 @@ async def approve(
         p.job_id = await _job_tag(books, p, (edits or {})["job_id"])
     if "vehicle_id" in (edits or {}):
         p.vehicle_id = await _vehicle_tag(books, p, (edits or {})["vehicle_id"])
+    if "tracking" in (edits or {}):
+        p.tracking = await _tracking_tags(books, (edits or {})["tracking"])
     always = always and p.mileage_claim is None  # Autopilot never posts a mileage claim
     not_registered = bool((edits or {}).get(NOT_VAT_REGISTERED))
     if not_registered:
         _check_not_registered(p.extracted)
     p.journal_draft = final_journal(p)
     event = build_event(p, p.journal_draft, user)
+    if p.tracking:
+        event = with_tracking(event, p.tracking)
     if p.extracted.doc_type == "credit_note" and (bill := await credited_bill(books, p.extracted)):
         event = event.model_copy(update={"credits": bill})
     try:
@@ -211,6 +215,7 @@ async def approve(
             "rule": rule.match.supplier_regex if rule else None,
             "autopilot_rule": auto_rule.supplier_key if auto_rule else None,
             "job": p.job_id,
+            "tracking": p.tracking,
             "vehicle": p.vehicle_id,
             "credits": event.credits,
         },
@@ -218,6 +223,33 @@ async def approve(
     if rebuild:
         await books.rebuild_safely(_actor(user))
     return p
+
+
+def with_tracking(event: LedgerEvent, tags: dict[str, str]) -> LedgerEvent:
+    """The event with tracking tags on its cost or income lines (the VAT-coded lines that are not VAT control)."""
+    lines = [
+        ln.model_copy(update={"tracking": dict(tags)}) if ln.vat_code is not None and ln.account != VAT_CONTROL else ln
+        for ln in event.lines
+    ]
+    return event.model_copy(update={"lines": lines})
+
+
+async def _tracking_tags(books: Books, raw: Any) -> dict[str, str] | None:
+    """A bill's tracking edit: {category id: option id}, checked against the categories (app/tracking.py)."""
+    if raw in (None, {}):
+        return None
+    if (
+        not isinstance(raw, dict)
+        or len(raw) > 2
+        or not all(isinstance(k, str) and isinstance(v, str) and len(k) <= 32 and len(v) <= 32 for k, v in raw.items())
+    ):
+        raise ApprovalError("tracking is {category id: option id}, at most two")
+    from app.tracking import TrackingError, check_tags, load_tracking
+
+    try:
+        return check_tags(await load_tracking(books), raw)
+    except TrackingError as exc:
+        raise ApprovalError(str(exc)) from exc
 
 
 async def _job_tag(books: Books, p: Proposal, job_id: Any) -> str | None:
@@ -370,6 +402,12 @@ async def undo(
         raise ApprovalError("This entry is itself an undo")
     if any(e.reverses == event_id for e in await books.list_events()):
         raise ProposalStateError("Already undone")
+    if original.recodes:
+        raise ApprovalError("This is a recode; recode the line back on Find and recode instead")
+    from app.manual_journals import journal_for_event  # manual_journals imports this module
+
+    if (j := await journal_for_event(books, event_id)) is not None:
+        raise ApprovalError(f"This entry is journal {j.number}; void it on Manual journals instead")
     if any(event_id in ln.event_ids() for ln in await books.stored_bank_lines() if ln.status == "matched"):
         raise ApprovalError("A bank line is matched to this entry; unmatch it first")
     if original.is_credit_note:
@@ -386,6 +424,9 @@ async def undo(
         path = await books.post_event(reversal)
     except FileExistsError as exc:
         raise ProposalStateError("Already undone") from exc
+    from app.recode import unwind_recodes
+
+    unwound = await unwind_recodes(books, original, user, reversal.date)
     p = await _reopen(books, original)
     if p is not None:
         await forget_from_undo(books, p, f"user:{user}")
@@ -399,6 +440,7 @@ async def undo(
             "proposal": original.proposal_id,
             "originally_approved_by": original.approved_by,
             "dated_today": reversal.date != original.date,
+            "recodes_unwound": unwound,
         },
     )
     if original.approved_by == AUTOPILOT:

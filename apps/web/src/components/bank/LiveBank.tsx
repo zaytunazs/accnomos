@@ -44,11 +44,18 @@ export function money(pence: number): string {
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 
-const ACTIONS: { action: RtUnmatchedAction; label: string }[] = [
+/** The runtime's three actions, plus a payout from Stripe or PayPal for money in (POST /books/bank/lines/{id}/payout). */
+type LineAction = RtUnmatchedAction | "payout_stripe" | "payout_paypal";
+
+const ACTIONS: { action: LineAction; label: string }[] = [
   { action: "create_expense_proposal", label: "Create expense proposal" },
+  { action: "payout_stripe", label: "Payout from Stripe" },
+  { action: "payout_paypal", label: "Payout from PayPal" },
   { action: "mark_transfer", label: "Mark as transfer" },
   { action: "ignore", label: "Ignore" },
 ];
+
+const CLEARING = { payout_stripe: "1230 Stripe clearing", payout_paypal: "1240 PayPal clearing" } as const;
 const DONE_LABEL: Record<string, string> = { matched: "Matched", transfer: "Transfer", ignored: "Ignored" };
 const STATUS_LABEL: Record<RtBankLine["status"], string> = {
   matched: "Matched",
@@ -458,7 +465,9 @@ function Matches({ rows, busy, act }: { rows: RtBankSuggestion[]; busy: string |
 }
 
 /** What the confirm sheet tells the user before an unmatched action runs. Nothing here posts to the ledger. */
-function effectText(line: RtBankLine, action: RtUnmatchedAction): string {
+function effectText(line: RtBankLine, action: LineAction): string {
+  if (action === "payout_stripe" || action === "payout_paypal")
+    return `${money(line.amount_pence)} moves from ${CLEARING[action]} to 1200 Bank. The payments it pays out are already in your books, so it is not counted as income again.`;
   if (action === "create_expense_proposal")
     return `A ${money(Math.abs(line.amount_pence))} expense proposal with no VAT reclaimed will wait in Review.`;
   if (action === "mark_transfer")
@@ -468,7 +477,7 @@ function effectText(line: RtBankLine, action: RtUnmatchedAction): string {
 
 function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string | null; act: Act }) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<{ line: RtBankLine; action: RtUnmatchedAction } | null>(null);
+  const [sheet, setSheet] = useState<{ line: RtBankLine; action: LineAction } | null>(null);
   useEffect(() => {
     if (!sheet) return;
     const close = (e: KeyboardEvent) => {
@@ -478,10 +487,15 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
     return () => window.removeEventListener("keydown", close);
   }, [sheet]);
   if (rows.length === 0) return <Empty text="No unmatched bank lines. Upload a statement and anything new appears here for you to settle." />;
-  function run(line: RtBankLine, action: RtUnmatchedAction) {
+  function run(line: RtBankLine, action: LineAction) {
     setSheet(null);
     setOpenMenu(null);
     act(`${line.id}:${action}`, async (a) => {
+      if (action === "payout_stripe" || action === "payout_paypal") {
+        const provider = action === "payout_stripe" ? "stripe" : "paypal";
+        await runtime.bank.payout(a, line.id, provider);
+        return `${line.description} matched as a ${provider === "stripe" ? "Stripe" : "PayPal"} payout.`;
+      }
       if (action === "create_expense_proposal") {
         await runtime.bank.expenseProposal(a, line.id);
         return `Expense proposal for ${line.description} is waiting on Review.`;
@@ -498,12 +512,18 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
   return (
     <>
       <ul className="flex flex-col">
-        {rows.map(({ line, suggested, proposal_status }) => {
+        {rows.map(({ line, suggested, proposal_status, payout }) => {
           // A rejected proposal no longer counts: the user may make a fresh one.
           const pending = proposal_status === "proposed" || proposal_status === "needs_a_look";
           const posted = proposal_status === "posted";
           const menuOpen = openMenu === line.id;
-          const items = ACTIONS.filter((x) => !(x.action === "create_expense_proposal" && line.amount_pence >= 0));
+          const items = ACTIONS.filter((x) =>
+            x.action === "create_expense_proposal" ? line.amount_pence < 0
+            : x.action === "payout_stripe" || x.action === "payout_paypal" ? line.amount_pence > 0
+            : true,
+          );
+          // Money in naming Stripe or PayPal is most likely that provider paying out.
+          const hinted: LineAction = payout ? (payout === "stripe" ? "payout_stripe" : "payout_paypal") : suggested.action;
           return (
           <li key={line.id} className="flex flex-col gap-2 border-t border-border py-3 first:border-t-0">
             <div className="flex flex-wrap items-baseline gap-x-3">
@@ -523,7 +543,7 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
               ) : posted ? (
                 <>The expense from this line is posted but its amount or date no longer matches the line. Check it on Review.</>
               ) : (
-                <>Suggested: {suggested.reason}</>
+                <>Suggested: {payout ? `Looks like a payout from ${payout === "stripe" ? "Stripe" : "PayPal"}` : suggested.reason}</>
               )}
             </p>
             <div className="relative self-start">
@@ -545,7 +565,7 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
                   className="absolute left-0 z-10 mt-1 w-64 rounded-xl border border-border bg-white py-1 shadow-lg"
                 >
                   {items.map((x) => {
-                    const primary = x.action === suggested.action && !posted;
+                    const primary = x.action === hinted && !posted;
                     const waiting = x.action === "create_expense_proposal" && posted;
                     return (
                       <li key={x.action} role="none">

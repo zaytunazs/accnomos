@@ -6,7 +6,7 @@ import ExplainMore from "@/components/ExplainMore";
 import VatDeadlineStrip from "@/components/vat/VatDeadlineStrip";
 import { isTileError, tileData, type RtPeriodDeadline } from "@/lib/runtime";
 import { deadlines as sampleDeadlines, type Deadline } from "@/lib/sample-home";
-import { SampleTag, Skeleton, UNKNOWN, useHome } from "./HomeData";
+import { SampleTag, Skeleton, UNKNOWN, useHome, useVatApplies } from "./HomeData";
 
 const MONTHS = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
 
@@ -69,6 +69,7 @@ function TileSkeleton() {
  */
 export default function Deadlines() {
   const home = useHome();
+  const vatApplies = useVatApplies();
   const sample = home.mode === "sample";
   const vat = home.mode === "live" && !home.annualVat ? tileData(home.data.vat) : null;
   const vatFailed = home.mode === "live" && !home.annualVat && isTileError(home.data.vat);
@@ -80,6 +81,9 @@ export default function Deadlines() {
     : vatFailed ? unknownTiles("Couldn't load this just now")
     : home.mode === "live" || home.mode === "error" ? unknownTiles("Could not work out your VAT period")
     : null;
+
+  // Every date here is a VAT one: personal books and businesses that are not VAT-registered have none.
+  if (!vatApplies) return null;
 
   return (
     <section aria-labelledby="deadlines-heading" aria-busy={tiles === null} className="flex flex-col gap-3">
