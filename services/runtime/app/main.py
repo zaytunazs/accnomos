@@ -208,6 +208,9 @@ app.include_router(items_router)
 from app.routes_quotes import router as quotes_router  # noqa: E402  /quotes/*
 
 app.include_router(quotes_router)
+from app.routes_overview import router as overview_router  # noqa: E402  /sales/overview, /statements/*
+
+app.include_router(overview_router)
 from app.routes_purchase_orders import router as purchase_orders_router  # noqa: E402  /purchase-orders/*
 
 app.include_router(purchase_orders_router)
