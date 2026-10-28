@@ -91,16 +91,20 @@ async def save_config(books: Books, config: ChasingConfig, user: str) -> Chasing
 
 
 def next_step(inv: Invoice, today: date, config: ChasingConfig) -> ChasingStep | None:
-    """The next reminder step whose day has come and which has not been sent yet.
+    """The next reminder step: the earliest step whose day has come and which has not been sent yet.
 
-    Steps fall due in order; `len(inv.reminders)` counts how many have gone (each approved send appends one).
+    Steps fall due in order and are chased in order. A send records its step id (app/invoicing.py
+    `send_reminder`); sends from before step ids existed (`step` None) count as the earliest steps in order.
     Returns None when it is too early for the first step or every due step has been sent.
     """
     days = inv.overdue_days(today)
     if days is None:
         return None  # not awaiting payment (draft, paid or void)
     due = [s for s in config.steps if s.offset_days <= days]
-    return due[len(inv.reminders)] if len(inv.reminders) < len(due) else None
+    sent_ids = {r.step for r in inv.reminders if r.step}
+    unknown = sum(1 for r in inv.reminders if not r.step)
+    candidates = [s for s in due[unknown:] if s.id not in sent_ids]
+    return candidates[0] if candidates else None
 
 
 def render_draft(
@@ -192,8 +196,8 @@ def interest_pence(gross_pence: int, due: date, as_of: date, rates: list[BaseRat
     total = 0
     start = due
     while start < as_of:
-        # End of the half-year holding `start`: 1 Jan after a December start, else 1 July.
-        boundary = date(start.year + 1, 1, 1) if start.month <= 6 else date(start.year, 7, 1)
+        # End of the half-year holding `start`: 1 July after a January-June start, else 1 January next year.
+        boundary = date(start.year, 7, 1) if start.month <= 6 else date(start.year + 1, 1, 1)
         end = min(boundary, as_of)
         days = (end - start).days
         annual_bps = base_bps_for(start, rates) + STATUTORY_UPLIFT_BPS
