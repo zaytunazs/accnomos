@@ -188,6 +188,7 @@ SUMMARIES: dict[str, Summary] = {
     "bank_transfer": lambda r, w: "Marked a bank line as a transfer between your own accounts",
     "bank_ignored": lambda r, w: "Marked a bank line as nothing to book",
     "bank_expense_proposed": lambda r, w: "Proposed an expense from a bank line",
+    "bank_private_proposed": lambda r, w: "Marked a bank line as private spending",
     "bank_rule_created": lambda r, w: "Added a bank rule",
     "bank_rule_updated": lambda r, w: "Edited a bank rule",
     "bank_rule_deleted": lambda r, w: "Deleted a bank rule",

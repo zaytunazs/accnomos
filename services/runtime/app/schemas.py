@@ -204,6 +204,10 @@ class Proposal(BaseModel):
     source_mailbox: str | None = None  # the mailbox Outlook intake copied it from (address), if it came by email
     file_path: str | None = None  # where the document is filed now
     account_override: str | None = None  # expense account chosen by a rule or the user
+    #: Business-use percent of a purchase (0-100; None means 100): only this share stays on the expense
+    #: account, VAT reclaimed on it alone; the rest is personal spending to Drawings (sole trader) or the
+    #: Director's loan (company). A bank line marked Private is a proposal with 0 here.
+    business_use_percent: int | None = Field(default=None, ge=0, le=100)
     job_id: str | None = None  # job this purchase is a cost of (_System/Jobs/jobs.json), tagged on approval
     vehicle_id: str | None = None  # business vehicle this cost belongs to (_System/Vehicles/vehicles.json)
     mileage_claim: MileageClaim | None = None  # set on mileage allowance proposals, which code builds

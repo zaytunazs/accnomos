@@ -1,8 +1,10 @@
-"""Unmatched bank lines: the three things a person can do with one (F7).
+"""Unmatched bank lines: what a person can do with one (F7).
 
 - create expense proposal: an open proposal (needs a look) built from the line, so the payment can be
   booked even without a receipt. It is approved on /review like any other; once posted, its 1200 Bank
   leg matches the line through the normal suggestions.
+- mark as private: personal spending (a sole trader's Drawings, a company's Director's loan), also an
+  open proposal approved on /review. It posts nothing to expenses and never touches VAT.
 - mark as transfer: money between the user's own accounts; nothing to book.
 - ignore: nothing to book (zero lines, reversals, money in that isn't income).
 
@@ -98,23 +100,64 @@ def proposal_from_line(line: BankLine) -> Proposal:
     )
 
 
-async def create_expense_proposal(books: Books, line_id: str, user: str) -> Proposal:
-    """Raises FileNotFoundError / BankMatchError. Asking twice returns the first proposal, unless the
-    user rejected it on /review: then a fresh one is made."""
+async def _open_proposal(books: Books, line_id: str) -> Proposal | None:
+    """The line's live proposal, if it still has one (a rejection frees the line for a fresh one)."""
     line = await books.find_bank_line(line_id)
     if line.resolved:
         raise BankMatchError("This bank line is already settled; undo that first")
-    if line.proposal_id:
-        try:
-            earlier = await books.get_proposal(line.proposal_id)
-            if earlier.status != "rejected":
-                return earlier
-        except FileNotFoundError:
-            pass  # the proposal file was removed by hand: make a new one
-    p = proposal_from_line(line)
+    if not line.proposal_id:
+        return None
+    try:
+        earlier = await books.get_proposal(line.proposal_id)
+    except FileNotFoundError:
+        return None  # the proposal file was removed by hand: make a new one
+    return earlier if earlier.status != "rejected" else None
+
+
+async def create_expense_proposal(books: Books, line_id: str, user: str) -> Proposal:
+    """Raises FileNotFoundError / BankMatchError. Asking twice returns the first proposal, unless the
+    user rejected it on /review: then a fresh one is made."""
+    if (earlier := await _open_proposal(books, line_id)) is not None:
+        return earlier
+    p = proposal_from_line(await books.find_bank_line(line_id))
     await books.save_proposal(p)
     await books.link_proposal(line_id, p.id)
     await books.audit(f"user:{user}", "bank_expense_proposed", {"line": line_id, "proposal": p.id})
+    await books.rebuild_safely(f"user:{user}")
+    return p
+
+
+async def create_private_proposal(books: Books, line_id: str, user: str) -> Proposal:
+    """Mark the line's money as personal spending through the proposal/approve flow: an open proposal
+    with 0 % business use, approved on /review like any other. Approving posts Dr Drawings (sole trader)
+    or Dr Director's loan (company, read from the invoice profile) against Cr 1200 Bank: nothing to
+    expenses, never any VAT. Raises FileNotFoundError / BankMatchError; asking twice returns the first."""
+    from app.invoicing import load_profile  # local: invoicing imports approve, not this module
+    from app.journal import private_account, split_business_use
+
+    if (earlier := await _open_proposal(books, line_id)) is not None:
+        return earlier
+    line = await books.find_bank_line(line_id)
+    if line.amount_pence >= 0:
+        raise BankMatchError("Only money out can be marked private")
+    profile = await load_profile(books)
+    account = private_account(profile.company_number)
+    p = proposal_from_line(line)
+    p.business_use_percent = 0
+    p.checks = [
+        Check(
+            code="bank_line",
+            ok=False,
+            severity="fail",
+            message=f"Marked as private spending, not a business cost ({line.source_file}). Approving posts it "
+            f"to {account}, with no VAT; reject it to code it as a business expense instead.",
+        )
+    ]
+    p.reasons = [f"{p.checks[0].code}: {p.checks[0].message}"]
+    p.journal_draft = split_business_use(p.journal_draft, 0, account)
+    await books.save_proposal(p)
+    await books.link_proposal(line_id, p.id)
+    await books.audit(f"user:{user}", "bank_private_proposed", {"line": line_id, "proposal": p.id})
     await books.rebuild_safely(f"user:{user}")
     return p
 

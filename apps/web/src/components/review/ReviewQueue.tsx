@@ -122,6 +122,8 @@ export default function ReviewQueue<H>({
   const [bulk, setBulk] = useState(false);
   const [remember, setRemember] = useState<Record<string, boolean>>({});
   const [notRegistered, setNotRegistered] = useState<Record<string, boolean>>({});
+  /** Business-use percent typed under each purchase card; the proposal's own value first, else 100. */
+  const [businessUse, setBusinessUse] = useState<Record<string, string>>({});
   const [history, setHistory] = useState<Decision<H>[]>([]);
   const [focusNext, setFocusNext] = useState<string | null>(null);
   const cards = useRef(new Map<string, HTMLElement>());
@@ -193,12 +195,27 @@ export default function ReviewQueue<H>({
     }
   }
 
+  /** The card's business-use percent edit: none on sales and mileage, {} at 100 %. */
+  function businessUseEdit(p: RtProposal): { ok: true; edit: Record<string, unknown> } | { ok: false } {
+    if (p.extracted.doc_type === "sales_invoice" || p.mileage_claim) return { ok: true, edit: {} };
+    const raw = (businessUse[p.id] ?? String(p.business_use_percent ?? 100)).trim();
+    if (!/^\d{1,3}$/.test(raw)) return { ok: false };
+    const percent = Number(raw);
+    if (percent < 0 || percent > 100) return { ok: false };
+    return { ok: true, edit: percent === 100 ? {} : { business_use_percent: percent } };
+  }
+
   function approve(p: RtProposal, sheetEdits?: Record<string, unknown>) {
     const next = neighbour([p.id]);
     return run(p.id, async () => {
       const always = rememberable && (remember[p.id] ?? false);
       const tick = asksVatStatus(p) && notRegistered[p.id] ? { [NOT_VAT_REGISTERED]: true } : {};
-      const merged = { ...(approveEdits?.(p) ?? {}), ...tick, ...(sheetEdits ?? {}) };
+      const use = businessUseEdit(p);
+      if (!use.ok) {
+        onError("Business use is a whole percent from 0 to 100.");
+        return;
+      }
+      const merged = { ...(approveEdits?.(p) ?? {}), ...tick, ...use.edit, ...(sheetEdits ?? {}) };
       const edits = Object.keys(merged).length ? merged : undefined;
       const handle = await adapter.approve(p, { remember: always, edits });
       const sale = p.extracted.doc_type === "sales_invoice";
@@ -431,6 +448,23 @@ export default function ReviewQueue<H>({
                     </label>
                     <VatQuestionExplain supplier={p.extracted.supplier_name} />
                   </div>
+                )}
+                {!p.mileage_claim && p.extracted.doc_type !== "sales_invoice" && (
+                  <label className="flex min-h-11 flex-wrap items-center gap-x-2 gap-y-1 text-[15px] font-semibold">
+                    <span>Business use %</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={1}
+                      inputMode="numeric"
+                      value={businessUse[p.id] ?? String(p.business_use_percent ?? 100)}
+                      onChange={(e) => setBusinessUse((b) => ({ ...b, [p.id]: e.target.value }))}
+                      aria-label={`Business use percent for ${label(p)}`}
+                      className="h-11 w-24 rounded-xl border border-border bg-white px-3 font-bold tabular-nums"
+                    />
+                    <span className="text-[13px] font-medium text-muted">Only this share is claimed; the rest is personal.</span>
+                  </label>
                 )}
                 {/* Never wraps: three short buttons fit a 390 px phone. */}
                 <div className="flex flex-nowrap gap-2">

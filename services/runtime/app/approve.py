@@ -20,7 +20,7 @@ from app.autopilot import AUTOPILOT, rule_from_proposal, save_rule
 from app.books import Books, Rule, RuleMatch, now
 from app.checks import decide, normalise_vat_number
 from app.contacts import forget_from_undo, learn_from_approval
-from app.journal import VAT_CONTROL, draft_journal, with_expense_account
+from app.journal import VAT_CONTROL, draft_journal, private_account, split_business_use, with_expense_account
 from app.mileage import load_vehicles
 from app.paths import NEEDS_A_LOOK, VAT_RETURNS, upgrade
 from app.schemas import CATEGORIES, ExtractedDoc, JournalLine, Proposal
@@ -31,6 +31,9 @@ log = logging.getLogger(__name__)
 DOC_EDITS = {"category", "net_total", "vat_total", "gross_total", "date", "supplier_name", "doc_type", "payment_method"}
 #: The card's "<supplier> isn't VAT-registered" tick: approving with it records the supplier as not registered.
 NOT_VAT_REGISTERED = "supplier_not_vat_registered"
+#: Approve edits that are not document fields: the expense account, tags, the not-registered tick, and the
+#: business-use percent (a purchase only).
+EXTRA_EDITS = {"account", "job_id", "vehicle_id", NOT_VAT_REGISTERED, "business_use_percent"}
 OPEN = ("proposed", "needs_a_look")
 
 
@@ -45,7 +48,7 @@ class ProposalStateError(ApprovalError):
 def apply_edits(p: Proposal, edits: dict[str, Any]) -> None:
     """Apply the user's corrections to the document and the expense account, then redraw the journal.
     (`job_id` and `vehicle_id` are checked against their files and applied by approve().)"""
-    unknown = set(edits) - DOC_EDITS - {"account", "job_id", "vehicle_id", NOT_VAT_REGISTERED}
+    unknown = set(edits) - DOC_EDITS - EXTRA_EDITS
     if unknown:
         raise ApprovalError(f"Can't edit {', '.join(sorted(unknown))}")
     if p.mileage_claim and edits:
@@ -54,6 +57,11 @@ def apply_edits(p: Proposal, edits: dict[str, Any]) -> None:
         raise ApprovalError("A pay run is calculated by code: change it on the Payroll page instead")
     if NOT_VAT_REGISTERED in edits and not isinstance(edits[NOT_VAT_REGISTERED], bool):
         raise ApprovalError(f"{NOT_VAT_REGISTERED} is true or false")
+    if "business_use_percent" in edits:
+        percent = edits["business_use_percent"]
+        if isinstance(percent, bool) or not isinstance(percent, int) or not 0 <= percent <= 100:
+            raise ApprovalError("Business use is a whole percent from 0 to 100")
+        p.business_use_percent = percent
     if "category" in edits and edits["category"] not in CATEGORIES:
         raise ApprovalError(f"Unknown category {edits['category']!r}")
     updates = {("category_guess" if k == "category" else k): v for k, v in edits.items() if k in DOC_EDITS}
@@ -66,15 +74,26 @@ def apply_edits(p: Proposal, edits: dict[str, Any]) -> None:
         p.account_override = str(edits["account"]).strip()
 
 
-def final_journal(p: Proposal) -> list[JournalLine]:
-    """Journal rebuilt from the (possibly edited) document, with any account override applied. A pay run's journal
-    is code's own (app/payrun.py) and is posted as drafted."""
+async def final_journal(books: Books, p: Proposal) -> list[JournalLine]:
+    """Journal rebuilt from the (possibly edited) document, with any account override and business-use
+    split applied. Below 100 % business use, only that share stays on the expense account (VAT reclaimed
+    on it alone); the rest is personal spending to Drawings, or the Director's loan when the invoice
+    profile names the business a company. A pay run's journal is code's own (app/payrun.py) and is posted as
+    drafted."""
     if p.payroll_run:
         return p.journal_draft
     journal = draft_journal(p.extracted)
-    if not p.account_override:
+    if p.account_override:
+        journal = with_expense_account(journal, p.account_override, p.extracted.doc_type == "credit_note")
+    percent = p.business_use_percent if p.business_use_percent is not None else 100
+    if percent == 100:
         return journal
-    return with_expense_account(journal, p.account_override, p.extracted.doc_type == "credit_note")
+    if p.extracted.doc_type not in ("receipt", "purchase_invoice"):
+        raise ApprovalError("Business use only applies to purchases")
+    from app.invoicing import load_profile  # local: invoicing imports this module
+
+    profile = await load_profile(books)
+    return split_business_use(journal, percent, private_account(profile.company_number))
 
 
 def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEvent:
@@ -185,7 +204,7 @@ async def approve(
     not_registered = bool((edits or {}).get(NOT_VAT_REGISTERED))
     if not_registered:
         _check_not_registered(p.extracted)
-    p.journal_draft = final_journal(p)
+    p.journal_draft = await final_journal(books, p)
     event = build_event(p, p.journal_draft, user)
     if p.extracted.doc_type == "credit_note" and (bill := await credited_bill(books, p.extracted)):
         event = event.model_copy(update={"credits": bill})

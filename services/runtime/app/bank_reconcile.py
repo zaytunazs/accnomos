@@ -305,10 +305,17 @@ async def reconcile_lines(
 
 
 async def approve_line(
-    books: Books, line_id: str, kind: str, user: str, ai: AiSuggestion | None = None
+    books: Books,
+    line_id: str,
+    kind: str,
+    user: str,
+    ai: AiSuggestion | None = None,
+    business_use_percent: int | None = None,
 ) -> dict[str, Any]:
     """Approve one suggestion on a line. Exact records the match; rule/AI posts through approve().
 
+    With a business-use percent, the rule/AI coding claims only that share (VAT on it alone); the rest
+    is personal spending to Drawings (or the Director's loan). Money in has no business use.
     Returns {"line", "proposal_id", "event_id"}; event_id is None for exact matches
     (matching never posts). Raises FileNotFoundError / BankMatchError.
     """
@@ -353,7 +360,14 @@ async def approve_line(
         account, vat_code, contact, job_id = ai.account, ai.vat_code, ai.contact, None
     else:
         raise BankMatchError(f"Unknown suggestion kind {kind!r}")
-    proposal = proposal_for_coding(line, account=account, vat_code=vat_code, contact=contact)
+    percent = business_use_percent if business_use_percent is not None else 100
+    if line.amount_pence >= 0 and percent != 100:
+        raise BankMatchError("Business use only applies to money out")
+    if not 0 <= percent <= 100:
+        raise BankMatchError("Business use is a whole percent from 0 to 100")
+    proposal = proposal_for_coding(
+        line, account=account, vat_code=vat_code, contact=contact, business_use_percent=percent
+    )
     await books.save_proposal(proposal)
     await books.link_proposal(line_id, proposal.id)
     edits: dict[str, Any] = {}
@@ -361,6 +375,8 @@ async def approve_line(
         edits["account"] = account
     if job_id:
         edits["job_id"] = job_id
+    if percent != 100:
+        edits["business_use_percent"] = percent
     posted = await approve_mod.approve(books, proposal.id, user, edits or None)
     # The entry was made from this line, so the line is settled by it: match them now, as the Reconcile
     # card promises, instead of leaving the line open with a suggestion pointing at its own entry.
@@ -385,13 +401,16 @@ def _split_gross(gross_pence: int, vat_code: str | None) -> tuple[float, float]:
     return round(gross - vat, 2), vat
 
 
-def proposal_for_coding(line: Any, *, account: str, vat_code: str | None, contact: str | None) -> Any:
+def proposal_for_coding(
+    line: Any, *, account: str, vat_code: str | None, contact: str | None, business_use_percent: int = 100
+) -> Any:
     """A Review proposal for the line coded as the suggestion says.
 
     Money out becomes a receipt, money in a sales invoice; the gross is the line
     amount and VAT is taken as included in it. No VAT number is known from a bank
     line, so without one the journal keeps the VAT in the cost (code N), exactly
     as for a bank-line expense proposal until a VAT receipt is attached.
+    A business-use percent below 100 claims only that share on approval (VAT on it alone).
     """
     import hashlib
     import uuid
@@ -466,6 +485,7 @@ def proposal_for_coding(line: Any, *, account: str, vat_code: str | None, contac
         created_at=now(),
     )
     proposal.account_override = account or None
+    proposal.business_use_percent = business_use_percent if business_use_percent != 100 else None
     return proposal
 
 

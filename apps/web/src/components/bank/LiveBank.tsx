@@ -45,6 +45,7 @@ const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
 
 const ACTIONS: { action: RtUnmatchedAction; label: string }[] = [
   { action: "create_expense_proposal", label: "Create expense proposal" },
+  { action: "mark_private", label: "Private" },
   { action: "mark_transfer", label: "Mark as transfer" },
   { action: "ignore", label: "Ignore" },
 ];
@@ -460,6 +461,8 @@ function Matches({ rows, busy, act }: { rows: RtBankSuggestion[]; busy: string |
 function effectText(line: RtBankLine, action: RtUnmatchedAction): string {
   if (action === "create_expense_proposal")
     return `A ${money(Math.abs(line.amount_pence))} expense proposal with no VAT reclaimed will wait in Review.`;
+  if (action === "mark_private")
+    return `A ${money(Math.abs(line.amount_pence))} private-spending proposal will wait in Review. Approving posts it to Drawings (or the Director's loan), with no VAT.`;
   if (action === "mark_transfer")
     return `${line.description} will be marked as a transfer between your own accounts. Nothing will be booked.`;
   return `${line.description} will be ignored. Nothing will be booked.`;
@@ -485,6 +488,10 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
         await runtime.bank.expenseProposal(a, line.id);
         return `Expense proposal for ${line.description} is waiting on Review.`;
       }
+      if (action === "mark_private") {
+        await runtime.bank.privateProposal(a, line.id);
+        return `Private-spending proposal for ${line.description} is waiting on Review.`;
+      }
       if (action === "mark_transfer") {
         await runtime.bank.transfer(a, line.id);
         return `${line.description} marked as a transfer.`;
@@ -502,7 +509,9 @@ function Unmatched({ rows, busy, act }: { rows: RtUnmatchedLine[]; busy: string 
           const pending = proposal_status === "proposed" || proposal_status === "needs_a_look";
           const posted = proposal_status === "posted";
           const menuOpen = openMenu === line.id;
-          const items = ACTIONS.filter((x) => !(x.action === "create_expense_proposal" && line.amount_pence >= 0));
+          const items = ACTIONS.filter(
+            (x) => line.amount_pence < 0 || (x.action !== "create_expense_proposal" && x.action !== "mark_private"),
+          );
           return (
           <li key={line.id} className="flex flex-col gap-2 border-t border-border py-3 first:border-t-0">
             <div className="flex flex-wrap items-baseline gap-x-3">
