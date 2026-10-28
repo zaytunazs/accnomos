@@ -33,11 +33,12 @@ Rule: a branch whose own tests fail, or that is clearly unfinished, is listed he
 
 | Branch | Why |
 |---|---|
-| `claude/marketing` | Its HANDOVER lists a known failure (`e2e/submission-mode.spec.ts`: the client bundle still contains "Early access / testers") and fixes never re-run; not attempted. |
+| `claude/marketing` | First pass: its HANDOVER listed a known submission-mode failure. **Merged in the second pass** inside `claude/known-fixes`, which fixes it. |
 | `claude/exports` | Runtime green (1581), but its own page fails: `exports.spec.ts` (the Xero manual-journals preview never shows its `*Narration` column), axe **critical** `aria-valid-attr-value` on `/reports/exports` (12× signed out, 69× signed in: `aria-controls="report-preview"` names no element) and a disabled *This VAT period* button that gives no reason. Its HANDOVER says its e2e was never green. |
-| `claude/payroll-rti` | Runtime green (1730), but its own never-run `paye.spec.ts` fails. First, the Payroll settings panel (`LivePaye.tsx`, `<details open={!employer.paye_reference}>`) is keyed on the form's draft, so it closes as soon as a PAYE reference is typed (a one-line fix was tried). Then the spec expects `£3,000.00` where the page's `gbp()` prints `£3000.00`, and nothing after that step has ever run. Payroll figures are money: left for its author. |
+| `claude/payroll-rti` | Superseded by `claude/payroll-finish`, which reached `main` inside `claude/batch-tax`. First-pass finding, for the record: its never-run `paye.spec.ts` failed (the settings panel closed while typing; `£3000.00` vs `£3,000.00`). |
 | `claude/sales-purchases` | Runtime green (1698), but 2 of 4 tests in its own `sales-purchases.spec.ts` fail, **identically on the branch alone** (checked in a separate worktree): a purchase order converted to a bill lands in *needs a look*, not *proposed*; the statement's *Customer* picker never becomes selectable. When it lands, `profiles.spec`'s menu test needs *Sales overview* before *Invoices*. |
-| `claude/accounting-tools` | Python green (runtime 1633, ledger 64), but 4 tests in its own never-run `accounting.spec.ts` fail, **identically on the branch alone**: ambiguous locators (two *Sign in* links, three alerts, two *Search* buttons) and a real phone bug, `/accounting/chart` scrolls 248 px sideways at 360 px. |
+| `claude/accounting-tools` | First pass: its own `accounting.spec.ts` failed (ambiguous locators; `/accounting/chart` 248 px sideways at 360 px). **Merged in the second pass** inside `claude/known-fixes`, which fixes both. |
+| `muse/property-reader-2` | Not queued, and not finished for merging: it changes the property reader's prompt and code checks *after* the Spark run its `report.md` shows, so the published numbers would not describe the code. It should merge after its own Spark re-run. Its merges of older `main` also left a duplicate import and a stray `);` in `TopBar.tsx`. |
 
 None of these branches changed on origin after it was evaluated (checked at the end).
 
@@ -119,10 +120,70 @@ My own slips, caught before `main`: three merges dropped a closing line where bo
 the next commit each time); one e2e run tested a stale build after the web build failed (the gate script now skips
 e2e when the build fails); one commit went in with a ruff format issue, which CI caught and the next push fixed.
 
+## Second pass (afternoon of 28 Oct)
+
+The same rules applied: merge one branch at a time, run every gate, and push `main` only when CI was green on the same
+commit. Before each merge that changes a page visible to the submission, the built site was searched with
+`NEXT_PUBLIC_SUBMISSION_MODE=1` (its default) for "coming soon", "beta", "early access" and "launching". After
+`known-fixes` that search finds 0 hits in HTML and 0 in JS, and it stayed at 0/0 for every later merge. `briefs` holds
+task text only and was never merged.
+
+| # | Branch | `main` after | CI run | Site deploy |
+|---|---|---|---|---|
+| 12 | `claude/accountant` | `90cddb55` | 40710331980 | 40711658296 ✓ |
+| 13 | `claude/import-history` | `dbe7ec6f` | 40715387956 | 40717096113 ✓ |
+| 14 | `claude/bank-feeds` | `9257f42f` | 40721540777 | 40722991866 ✓ |
+| 15 | `claude/known-fixes` (brings `claude/marketing` and `claude/accounting-tools`, which it fixes) | `2f3f95eb` | 40727214647 | 40728969165 ✓ |
+| 16 | `claude/batch-tax`, as one branch (cash-basis, vat-schemes, cis, spark/cis-gold, landlords, spark/landlord-gold, payroll-finish in place of payroll-rti, muse/mileage-rate, muse/private-split, muse/payment-chasing, muse/bank-ai-travel-2) | `43f6e10d` | green after one fix (below) | 40740211764 ✓ |
+| 17 | `muse/cis-eval` | `9272c8b6` | 40744420233 | no web change |
+| 18 | `spark/cis-eval-runs` (plus the /cis label fix below) | `f3a8db81` | 40747808603 | 40749547420 ✓ |
+| 19 | `muse/property-reader` with `spark/property-eval-runs` (its Spark run) | see the last row of the gates table | | no web change |
+
+The integrator wrote a review wherever a branch arrived without one: `docs/reviews/cis-eval/`, `cis-eval-runs/` and
+`property-reader/`. The Spark figures were **recounted from `results.jsonl`**, not copied from the summaries. The CIS
+reader is fully exact on 111 of 120 documents (92.5%), with 0 refusals; checks are exactly right on 112 of 120. The
+property reader is fully exact on 89 of 108 (82.4%) against a 1.9% generic baseline, but scores 0 of 6 on insurance
+schedules and 0 of 6 on mortgage statements.
+
+| After | runtime | ledger | connectors | relay | evals | e2e passed | flaky (passed on retry) |
+|---|---|---|---|---|---|---|---|
+| accountant | 1664 | 49 | 63 | 172 | 324 | 308 | 0 |
+| import-history | 1728 | 49 | 63 | 172 | 324 | 315 | 0 |
+| bank-feeds | 1757 | 49 | 63 | 172 | 324 | 317 | 1 |
+| known-fixes | 1835 | 65 | 63 | 172 | 324 | 386 | 0 |
+| batch-tax | 2161 | 101 | 63 | 181 | 338 | 409 | 3 |
+| cis-eval | 2161 | 101 | 63 | 181 | 352 | 411 | 1 |
+| property-reader | 2167 | 101 | 63 | 181 | 353 | 411 | 1 |
+
+ruff 0.17.3 and pyright stayed clean throughout. The flaky tests were: on bank-feeds, the signed-out `/` *Speak*
+button was briefly disabled without a reason; on batch-tax, `files-manage` hit `ECONNRESET`, the PAYE RTI table was
+slow, and the signed-out `/cis` label count was wrong (that last one turned out to be real, see below). On
+cis-eval, `paye.spec.ts` (the long PAYE flow) failed once. On property-reader, and on CI for cis-eval-runs, a
+`marketing.spec.ts` test sometimes did not find the *Ask about Accnomos* dialog right after the click.
+
+### Fixed while integrating (second pass)
+
+- **Demo sandbox vs new outside providers.** The new `demo.refuse_external(what)` dependency answers 403 when
+  `X-Demo-Session` is present. It covers Stripe/PayPal connect, online-payment start and bank-feed start/connect
+  (parametrised test). Sharing with an accountant is also refused in a demo, and `runtimeHeaders` sends the demo
+  headers before any client context.
+- **The known-fixes merge** dropped `POST /public/chat` from the public-route allow-list; it is back.
+- **batch-tax:**
+  - The VAT return is now one code path for both schemes. Reverse-charge VAT counts on both sides, and VAT journals
+    (adjustments with a box) count under every scheme, including cash accounting (two new ledger tests).
+  - Approving keeps `tracking`, and a payroll run is never Autopilot's.
+  - At 360 px, `/payroll` scrolled 8 px sideways on CI's fonts (the report picker); it now fits.
+- **Signed-out `/cis` showed the sample label twice** (CI run 40745987742, and flaky locally). The sample card
+  repeated the banner's "SAMPLE — FICTIONAL COMPANY" and rendered after the signed-in check, so the sweep counted 1 or
+  2 depending on timing. The card no longer repeats it, so the banner is the one label, as the rule says. No test
+  changed.
+
 ## What remains
 
-- The five branches above, for their authors.
+- `claude/exports` and `claude/sales-purchases`, for their authors; `muse/property-reader-2` after its Spark re-run.
 - The keep-alive `ECONNRESET` flake (cause and suggested fix above).
+- The public *Ask about Accnomos* dialog sometimes opens too late for `marketing.spec.ts` (two different tests, local
+  and CI). It passed on retry each time; the cause has not been looked into.
 - `submission-3` has no `docs/reviews/` folder.
 - The counts quoted in `docs/HONESTY.md` and `docs/submission/JUDGING.md` (runtime 1260, Playwright 208…) predate this
   pass; the table above has the current figures.
