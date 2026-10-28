@@ -225,3 +225,37 @@ def test_dry_run_writes_nothing(tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
     g4.main()
     assert not (tmp_path / "o").exists()
     assert "dry run: nothing written" in capsys.readouterr().out
+
+
+def test_gold4_works_with_the_extraction_harness(built: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A perfect reading of every ledger4 receipt scores all-true in run_extraction.score, and --gold-dir is wired."""
+    import argparse
+    import asyncio
+
+    from harness import run_extraction as rx
+
+    monkeypatch.setenv("VERIFIER", "off")  # main_async sets it; the monkeypatch restores the environment
+
+    for g in _receipts(built):
+        proposal = {
+            "extracted": {
+                "supplier_name": g["supplier"]["name"],
+                "supplier_vat_number": g["supplier"]["vat_number"],
+                "date": g["date"],
+                "net_total": g["net_total"],
+                "vat_total": g["vat_total"],
+                "gross_total": g["gross_total"],
+                "lines": g["lines"],
+                "doc_type": "receipt" if g["doc_type"] == "receipt" else "purchase_invoice",
+            },
+            "status": rx.expected_status(g),
+        }
+        assert all(rx.score(g, proposal).values()), g["invoice_number"]
+    empty = tmp_path / "empty"
+    empty.mkdir()
+    args = argparse.Namespace(
+        mode="local", model=None, verify=False, out=str(tmp_path / "o"), gold_dir=str(empty), case=None,
+        limit=0, concurrency=1, messy=False, business_name=None,
+    )  # fmt: skip
+    with pytest.raises(SystemExit, match="no gold"):
+        asyncio.run(rx.main_async(args))

@@ -89,3 +89,14 @@ Microsoft Graph shapes (`id`, `receivedDateTime`, `from.emailAddress`, `hasAttac
 M01-M09 one document each (PNG photo or image-only PDF), M10-M12 two documents, M13-M14 the same file twice (duplicate),
 M15 newsletter (inline images, tracking pixel), M16 marketing PDF, M17 calendar invite, M18 signature images, M19 invoice plus
 signature logo, M20 unsupported zip with no invoice.
+
+## Spark-generated sets (made on the DGX Spark, not committed until generated)
+
+- `ledger2/`: credit notes, part-paid invoices and overlapping bank pairs (`gen_gold2.py`).
+- `ledger4/` (`gen_gold4.py`): about 120 price-history receipts from five fictional suppliers over six months, with
+  `expectations.json` (normalised unit prices, cheapest supplier, "cheaper elsewhere" hints).
+- `personal/` (`gen_personal.py`): six-month household bank statements with recurring-bill and category-total
+  expectations.
+
+Qwen only names things; code sets every figure. See `evals/README.md` for the commands and `spark_gen.py` for the label
+guard (every generated file must contain the exact label with the em dash, U+2014).
