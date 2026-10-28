@@ -298,6 +298,27 @@ async def test_undo_skips_a_file_the_user_has_moved_since(books: Books) -> None:
     assert RECEIPT in _fake(books).files
 
 
+async def test_an_archive_that_fails_part_way_records_what_it_moved(books: Books) -> None:
+    fake = _fake(books)
+    real_move, moves = fake.move, []
+
+    async def flaky(path: str, new_path: str) -> FileRef:
+        if len(moves) == 1:  # the second move fails
+            raise RuntimeError("Graph 503")
+        moves.append(path)
+        return await real_move(path, new_path)
+
+    fake.move = flaky  # type: ignore[method-assign]
+    with pytest.raises(RuntimeError):
+        await archive.run(books, "2024-25", USER)
+    [run] = await archive.list_runs(books)
+    assert [m.old for m in run.moves] == moves and len(moves) == 1
+    assert follow(await books.moved_paths(), moves[0]) == run.moves[0].new
+    fake.move = real_move  # type: ignore[method-assign]
+    await archive.undo(books, run.id, USER)
+    assert moves[0] in fake.files
+
+
 async def test_the_year_zip_holds_every_file_and_a_manifest_with_hashes(books: Books) -> None:
     r = await archive.run(books, "2024-25", USER, make_zip=True)
     raw = _fake(books).files[r.zips[0].path or ""]

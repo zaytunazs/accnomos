@@ -259,5 +259,9 @@ async def restore(
         return await backups.restore(books, body.path, user, body.confirm)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="No such backup") from exc
+    except FileExistsError as exc:
+        raise HTTPException(
+            status_code=409, detail="A file changed while restoring; check the preview again and restore once more"
+        ) from exc
     except backups.BackupError as exc:
         raise _refused(exc) from exc

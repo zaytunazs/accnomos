@@ -156,14 +156,6 @@ async def run(
     plan = await preview(books, up_to, kind, end_month, end_day)
     if not plan.moves:
         raise ArchiveError(f"There is nothing up to {up_to} left to archive")
-    done: list[PlannedMove] = []
-    for m in plan.moves:
-        folder = posixpath.dirname(m.new)
-        await books.storage.ensure_folder(folder)
-        dest = await books.free_path(folder, posixpath.basename(m.new))
-        await books.storage.move(m.old, dest)
-        done.append(m.model_copy(update={"new": dest}))
-    await books.record_moves([(m.old, m.new) for m in done])
     r = Run(
         id=secrets.token_hex(8),
         created_at=now(),
@@ -172,12 +164,24 @@ async def run(
         up_to=up_to,
         end_month=end_month,
         end_day=end_day,
-        moves=done,
+        moves=[],
     )
+    try:
+        for m in plan.moves:
+            folder = posixpath.dirname(m.new)
+            await books.storage.ensure_folder(folder)
+            dest = await books.free_path(folder, posixpath.basename(m.new))
+            await books.storage.move(m.old, dest)
+            r.moves.append(m.model_copy(update={"new": dest}))
+    finally:  # a run that fails part way still records what it moved, so links follow and Undo can put it back
+        if r.moves:
+            await books.record_moves([(m.old, m.new) for m in r.moves])
+            await books.write_json(f"{RUNS}/{r.id}.json", r.model_dump(mode="json"))
+    done = r.moves
     if make_zip:
         for year in sorted({m.year for m in done}):
             r.zips.append(await zip_year(books, year))
-    await books.write_json(f"{RUNS}/{r.id}.json", r.model_dump(mode="json"))
+        await books.write_json(f"{RUNS}/{r.id}.json", r.model_dump(mode="json"))
     await books.audit(
         f"user:{user}",
         "files_archived",

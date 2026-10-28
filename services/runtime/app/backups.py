@@ -21,6 +21,7 @@ Settings live in _System/Settings/files.json.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import io
 import json
@@ -129,9 +130,10 @@ async def back_up(books: Books, actor: str, day: date | None = None) -> BackupRe
     created = now()
     stamp = (created.year, created.month, created.day, created.hour, created.minute, created.second)
     buf = io.BytesIO()
+    ordered = sorted(w.files, key=lambda f: f.path)
+    contents = await asyncio.gather(*(books.storage.read(f.path) for f in ordered))  # the memo caps how many at once
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
-        for f in sorted(w.files, key=lambda f: f.path):
-            data = await books.storage.read(f.path)
+        for f, data in zip(ordered, contents, strict=True):
             z.writestr(zipfile.ZipInfo(f.path, date_time=stamp), data, zipfile.ZIP_DEFLATED)
             entries.append({"path": f.path, "size": len(data), "sha256": hashlib.sha256(data).hexdigest()})
         man = {

@@ -504,13 +504,15 @@ async def move_files(books: Books, paths: list[str], to: str, user: str) -> list
         await _existing(books, p)
     await books.storage.ensure_folder(to)
     done: list[Moved] = []
-    for p in paths:
-        if posixpath.dirname(p) == to:
-            continue
-        dest = await books.free_path(to, posixpath.basename(p))
-        await books.storage.move(p, dest)
-        done.append(Moved(old=p, new=dest))
-    await books.record_moves([(m.old, m.new) for m in done])
+    try:
+        for p in paths:
+            if posixpath.dirname(p) == to:
+                continue
+            dest = await books.free_path(to, posixpath.basename(p))
+            await books.storage.move(p, dest)
+            done.append(Moved(old=p, new=dest))
+    finally:  # what moved before a failure is still recorded, so its links follow
+        await books.record_moves([(m.old, m.new) for m in done])
     await books.audit(f"user:{user}", "files_moved", {"to": to, "moved": [m.model_dump() for m in done]})
     return done
 
