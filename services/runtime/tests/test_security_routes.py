@@ -217,6 +217,7 @@ TALKS_HTTP = {
     "ai/remind.py": "httpx errors only",
     "ai/plan.py": "httpx errors only",
     "ai/triage.py": "httpx errors only",
+    "public_chat.py": "httpx errors only (the call is ai/ask.py's, to the server's own config)",
     "company_lookup.py": "Companies House (CH_BASE constant) and the relay (HMRC_RELAY_URL): server env only",
 }
 
@@ -429,6 +430,7 @@ NO_USER_NEEDED = {
     "POST /credit-notes/{number}/pdf": "renders the PDF of a credit note the user already made; no new facts",
     "POST /invoices/{number}/reminder-draft": "drafts text for the user to read; sends and writes nothing",
     "POST /plan/day": "proposes a day; writes nothing (apply needs X-User)",
+    "POST /public/chat": "the website's Accnomos-only chat: no sign-in, reads no user data, writes nothing",
 }
 
 

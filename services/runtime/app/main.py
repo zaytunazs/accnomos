@@ -223,6 +223,9 @@ if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI und
     app.add_middleware(testmode.TenantMiddleware)  # added last, so outermost: X-Test-Tenant picks the fakes
     app.include_router(testmode.router)
 
+from app.public_chat import router as public_chat_router  # noqa: E402  POST /public/chat (website, no sign-in)
+
+app.include_router(public_chat_router)
 from app.routes_todos import router as todos_router  # noqa: E402  /todos
 
 app.include_router(todos_router)

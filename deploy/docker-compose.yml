@@ -33,6 +33,11 @@ services:
       COMPANIES_HOUSE_API_KEY: ${COMPANIES_HOUSE_API_KEY:-}
       # The VAT number check goes through the relay, which holds the HMRC credentials (docs/PRODUCTION.md).
       HMRC_RELAY_URL: ${HMRC_RELAY_URL:-http://relay:8787}
+      # Website chat "Ask about Accnomos" (POST /public/chat, app/public_chat.py): Accnomos-only answers from
+      # app/public_kb.md on the server's own model (local Glimmer by default, never a visitor's key).
+      PUBLIC_CONTACT_EMAIL: ${PUBLIC_CONTACT_EMAIL:-admin@zaytunauk.co.uk}
+      PUBLIC_CHAT_PER_MIN: ${PUBLIC_CHAT_PER_MIN:-6}
+      PUBLIC_CHAT: ${PUBLIC_CHAT:-on}
     # Uploads over 1 MB spool to /tmp, and ffmpeg converts voice there: 25 MB uploads need the headroom.
     tmpfs: ["/tmp:size=256m,mode=1777"]
     extra_hosts: ["host.docker.internal:host-gateway"]
