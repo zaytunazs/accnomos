@@ -18,6 +18,7 @@ class FakeSettingsClient extends RuntimeClient {
     Map<String, dynamic>? profileData,
     this.mailData,
     this.mailError,
+    this.mailboxesData = const [],
   })  : rulesData = rulesData ?? [],
         profileData =
             profileData ?? Map<String, dynamic>.from(defaultProfile),
@@ -48,6 +49,7 @@ class FakeSettingsClient extends RuntimeClient {
   Map<String, dynamic>? profileData;
   final Map<String, dynamic>? mailData;
   final String? mailError;
+  final List<Map<String, dynamic>> mailboxesData;
 
   Map<String, dynamic>? savedProfileBody;
   final removedKeys = <String>[];
@@ -83,6 +85,10 @@ class FakeSettingsClient extends RuntimeClient {
   }
 
   @override
+  Future<List<Map<String, dynamic>>> mailboxes() async =>
+      [for (final m in mailboxesData) Map<String, dynamic>.from(m)];
+
+  @override
   Future<Map<String, dynamic>> mailScan(
       {int sinceDays = 14, bool dryRun = false}) async {
     if (mailError != null) throw RuntimeException(mailError!);
@@ -100,6 +106,43 @@ class FakeSettingsClient extends RuntimeClient {
 
 final testAccount =
     Account(id: '1', username: 'user@example.com', name: 'Test User');
+
+/// What `GET /mail/mailboxes` answers once a second account and a shared
+/// mailbox are linked on the web (app/mailboxes.py).
+const _mailboxes = [
+  {
+    'id': 'primary',
+    'address': 'user@example.com',
+    'kind': 'primary',
+    'folder': 'all',
+    'allow_senders': <String>[],
+    'deny_senders': <String>[],
+    'last_scan_at': null,
+    'last_scan_saved': null,
+  },
+  {
+    'id': 'a1b2c3d4e5f6',
+    'address':
+        'receipts.and.invoices.for.the.business@a-rather-long-domain.example',
+    'kind': 'microsoft',
+    'folder': 'archive',
+    'allow_senders': ['screwfix.com'],
+    'deny_senders': <String>[],
+    'last_scan_at': '2026-10-27T09:30:00+00:00',
+    'last_scan_saved': 2,
+  },
+  {
+    'id': 'f6e5d4c3b2a1',
+    'address': 'accounts@example.com',
+    'kind': 'shared',
+    'folder': 'inbox',
+    'allow_senders': <String>[],
+    'deny_senders': <String>[],
+    'last_scan_at': '2026-10-26T16:05:00+00:00',
+    'last_scan_saved': 1,
+    'last_scan_error': 'no access (sign in again, or ask for access)',
+  },
+];
 
 Map<String, dynamic> _rule() => {
       'supplier_key': 'acme',
@@ -356,13 +399,61 @@ void main() {
         findsOneWidget);
   });
 
+  testWidgets('linked mailboxes are listed read-only, as on the web',
+      (tester) async {
+    await pumpSignedIn(tester, FakeSettingsClient(mailboxesData: _mailboxes));
+
+    final list = find.byKey(const Key('linked-mailboxes'));
+    await scrollTo(tester, list);
+    expect(find.descendant(of: list, matching: find.text('Email intake')),
+        findsOneWidget);
+    expect(find.text('user@example.com'), findsOneWidget);
+    expect(find.text('Signed-in account \u00b7 Not checked yet'),
+        findsOneWidget);
+    expect(
+        find.textContaining('Microsoft account \u00b7 Last checked 27 Oct'),
+        findsOneWidget);
+    expect(find.textContaining('\u00b7 2 files'), findsOneWidget);
+    expect(find.textContaining('Shared mailbox \u00b7 Last checked 26 Oct'),
+        findsOneWidget);
+    expect(find.textContaining('\u00b7 1 file'), findsOneWidget);
+    expect(find.text('no access (sign in again, or ask for access)'),
+        findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp(r'^accounts@example\.com')),
+        findsOneWidget);
+    expect(
+        find.textContaining(
+            'Add, change or remove mailboxes in Settings on the web'),
+        findsOneWidget);
+    // Read-only: nothing to add, edit or remove here.
+    for (final label in [
+      'Add Microsoft mailbox',
+      'Add shared mailbox',
+      'Remove',
+      'Save',
+    ]) {
+      expect(find.descendant(of: list, matching: find.text(label)),
+          findsNothing);
+    }
+    expect(find.descendant(of: list, matching: find.byType(TextField)),
+        findsNothing);
+  });
+
+  testWidgets('no mailboxes list when the runtime has none to show',
+      (tester) async {
+    await pumpSignedIn(tester, FakeSettingsClient());
+    await scrollTo(tester, find.text('Check my inbox now'));
+    expect(find.byKey(const Key('linked-mailboxes')), findsNothing);
+  });
+
   testWidgets('nothing overflows at 360 dp', (tester) async {
     tester.view.physicalSize = const Size(360, 740);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    await pumpSignedIn(tester, FakeSettingsClient(rulesData: [_rule()]));
+    await pumpSignedIn(tester,
+        FakeSettingsClient(rulesData: [_rule()], mailboxesData: _mailboxes));
     final page = find.byType(SingleChildScrollView);
     for (var i = 0; i < 8; i++) {
       await tester.drag(page, const Offset(0, -400));

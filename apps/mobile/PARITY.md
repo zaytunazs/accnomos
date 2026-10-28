@@ -54,7 +54,7 @@ phone, the rest behind a "Do this on the web" row) · **web-only**
 | `/files` rebuild Books.xlsx now | web-only | One tap on the web (`/files`); the file still rebuilds itself after every action |
 | `/settings` Connection (sign-in, reader, disconnect) | done | Settings › Connection (MSAL sign-in, reader address, disconnect) |
 | `/settings` AI choice + test | done | Settings › AI (local/key, test connection) |
-| `/settings` Automation (level, rules, inbox, intake, triage, working hours) | partial | Level (L1/L2), Autopilot rules remove, inbox check; triage defaults, intake toggle and working hours stay on the web → `/settings#automation` |
+| `/settings` Automation (level, rules, inbox, intake, triage, working hours) | partial | Level (L1/L2), Autopilot rules remove, inbox check (signed-in mailbox), linked mailboxes listed read-only (`mailboxes`); adding/editing mailboxes, triage defaults, intake toggle and working hours stay on the web → `/settings#automation` |
 | `/settings` Business (details, VAT periods, invoice profile, staff) | partial | Name, VAT number, stagger, invoice basics; staff list stays on the web → `/settings#settings-staff` |
 | `/settings` Your data: export, where-stored, leave | done | Settings › Your data (`booksExport` → zip in 07 Reports/Exports; disconnect clears the phone) |
 | `/audit` trail list | done | `AuditScreen` (last 31 days, newest first) |
