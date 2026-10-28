@@ -281,8 +281,8 @@ function Hero() {
             </ul>
           </div>
           <p className="mt-6 max-w-xl text-lg leading-relaxed text-ground/85">
-            Send in a receipt by email, photo or voice. Accnomos proposes the entry, you approve it, and your VAT and
-            Income Tax figures are ready for HMRC, with the books kept in your own OneDrive.
+            Forward a receipt, snap a photo or just say what you need. Accnomos proposes the entry, you approve it,
+            and your VAT and Income Tax figures are ready for HMRC, with the books kept in your own OneDrive.
           </p>
           <div className="mt-4">
             <AppChips dark />
@@ -300,7 +300,7 @@ function Hero() {
             <Shot
               src="/shots/hero-review-1280.webp"
               srcSet="/shots/hero-review-640.webp 640w, /shots/hero-review-1280.webp 1280w"
-              sizes="(min-width: 1024px) 600px, 92vw"
+              sizes="(min-width: 1024px) 600px, 72vw"
               width={1280}
               height={800}
               eager
@@ -311,6 +311,8 @@ function Hero() {
           <PhoneFrame className="hero-phone absolute -bottom-12 left-0 w-[34%] max-w-[200px] sm:w-[30%]">
             <Shot
               src="/shots/hero-phone.webp"
+              srcSet="/shots/hero-phone-200.webp 200w, /shots/hero-phone.webp 390w"
+              sizes="(min-width: 640px) 200px, 34vw"
               width={390}
               height={844}
               eager
