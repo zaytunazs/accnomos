@@ -9,6 +9,7 @@ import { currentFeatures, PROFILE_EVENT } from "@/lib/profiles";
 import { runtime } from "@/lib/runtime";
 import { usePersonalOn } from "@/lib/personal";
 import { useSelfEmployed } from "@/lib/itsa";
+import { useLandlordOn } from "@/lib/property";
 
 type NavLink = { href: string; label: string; badge?: string; tab?: string };
 const links: NavLink[] = [
@@ -82,8 +83,13 @@ function withBadges(
   features: string[] | null,
   personal: boolean,
   selfEmployed: boolean,
+  landlord = false,
 ): NavLink[] {
-  const all = personal ? [...links, { href: "/personal", label: "Personal" }] : links;
+  const all = [
+    ...links,
+    ...(personal ? [{ href: "/personal", label: "Personal" }] : []),
+    ...(landlord ? [{ href: "/property", label: "Property" }] : []),
+  ];
   return all
     .filter((l) => !features || !FEATURE_OF[l.href] || features.includes(FEATURE_OF[l.href]))
     .filter((l) => selfEmployed || l.href !== "/self-employment")
@@ -118,7 +124,8 @@ const sidebarGroups: { label: string; hrefs: string[] }[] = [
 function SidebarNav({ pathname, links }: { pathname: string; links: NavLink[] }) {
   const settingsActive = isActive(pathname, "/settings");
   const byHref = new Map(links.map((link) => [link.href, link]));
-  const groups = sidebarGroups.map((g) => (g.label === "Money" && byHref.has("/personal") ? { ...g, hrefs: [...g.hrefs, "/personal"] } : g));
+  const extra = ["/personal", "/property"].filter((href) => byHref.has(href));
+  const groups = sidebarGroups.map((g) => (g.label === "Money" && extra.length ? { ...g, hrefs: [...g.hrefs, ...extra] } : g));
 
   return (
     <nav aria-label="Main" className="hidden flex-col min-[900px]:flex">
@@ -208,7 +215,7 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
 
 export default function AppNav({ variant = "sidebar" }: { variant?: "sidebar" | "tabs" }) {
   const pathname = usePathname();
-  const navLinks = withBadges(useReviewBadge(pathname), useFeatures(), usePersonalOn(), useSelfEmployed());
+  const navLinks = withBadges(useReviewBadge(pathname), useFeatures(), usePersonalOn(), useSelfEmployed(), useLandlordOn());
 
   if (variant === "tabs") return <TabBar pathname={pathname} links={navLinks} />;
   return <SidebarNav pathname={pathname} links={navLinks} />;

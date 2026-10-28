@@ -16,6 +16,7 @@ import SelfEmployedSetting from "@/components/settings/SelfEmployedSetting";
 import VatSchemeSettings from "@/components/settings/VatSchemeSettings";
 import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
 import PersonalFinanceSetting from "@/components/settings/PersonalFinanceSetting";
+import LandlordSetting from "@/components/settings/LandlordSetting";
 import WorkingHours from "@/components/settings/WorkingHours";
 import OnlinePayments from "@/components/settings/OnlinePayments";
 import { hasMsalSignIn } from "@/lib/signed-in";
@@ -445,6 +446,8 @@ export default function SettingsPanels() {
         <StaffEditor card={card} heading={heading} />
 
         <PersonalFinanceSetting card={card} heading={heading} />
+
+        <LandlordSetting card={card} heading={heading} />
       </div>
 
       <div

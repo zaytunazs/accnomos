@@ -75,6 +75,7 @@ Documents, filed by code and never deleted:
 | `05 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | |
 | `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
 | `07 Reports/<yyyy-mm>-month-end-draft.xlsx`, `07 Reports/<yyyy-mm>-month-end.xlsx` | runtime, the month-end close (`app/month_end.py`): the draft (About, P&L, Balance sheet) is rewritten by each run once nothing blocks the close; the closed one is written on Approve and never overwritten (a re-close saves ` (2)`) | Posts nothing |
+| `07 Reports/<yyyy-mm-dd>-uk-property-<tax year>-to-<period end>.json` | runtime, `POST /property/mtd/{taxYear}/export` | the Property Business API 6.0 bodies, ready to submit with other software; posts nothing |
 | `07 Reports/<yyyy-mm-dd>-<name>.xlsx` | runtime, `POST /reports/export` (*Export to OneDrive* on Reports) | `name` is `profit-and-loss`, `aged-balances`, `vat-summary`, `monthly-trend` or `reports` (all of them); a second export the same day gets ` (2)`, nothing is overwritten. Starts with `SAMPLE — FICTIONAL COMPANY` when the books are the demo seed's. Posts nothing |
 | `07 Reports/CIS/CIS300 <yyyy-mm-dd>.csv`, `.json` | runtime, `POST /cis/returns/{tax month end}/export` (`cis.py`) | the CIS300 figures for filing elsewhere; a second save for the same month replaces them; never submitted. Starts with `SAMPLE — FICTIONAL COMPANY` on the demo books |
 | `Archive/<year>/<original path>`, `Archive/<year>.zip` | runtime, `POST /files/archive` (`archive.py`) | made when first used; the zip is an extra copy with `manifest.json`, the folder stays. See *Files, archive and backups* |
@@ -121,6 +122,7 @@ Books.xlsx still show the path as it was saved.
 | `Todos/todos.json` | to-dos added from triage | updated |
 | `archive/map.json` | old path → new path for every document the app moved (archive, Files page move and rename) | updated; applied when proposals and bank lines are read |
 | `archive/runs/<id>.json` | one archive run: every move, its zips, and when it was undone | written, then updated once by Undo |
+| `Property/properties.json`, `tags.json`, `settings.json`, `submissions.json` | let properties and owners' shares; event id → property (and category); landlord mode, quarters, finance costs brought forward, HMRC business id; UK property updates sent to the sandbox (`app/property.py`, `app/routes_property.py`) | rewritten (tags updated per entry; submissions keep the last 200) |
 | `Settings/files.json` | `backup_keep` (default 12), `monthly_backup` (default off) | rewritten |
 | `profile.json` | what these books are: name, kind (`company`, `sole_trader`, `personal`), kind settings, other linked accounts by sign-in name (`app/profile.py`, `PUT /profile`) | rewritten whole |
 
