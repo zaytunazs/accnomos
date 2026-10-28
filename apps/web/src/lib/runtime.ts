@@ -715,6 +715,48 @@ export const runtime = {
     }),
   reopenPayRun: (a: AccountInfo, period: string) => call<RtPayRun>(a, `/payroll/runs/${period}/reopen`, { method: "POST" }),
 
+  /** /payroll/paye/* (services/runtime/app/routes_payrun.py): PAYE payroll calculated by code; RTI files are
+   *  generated for checking and never submitted. Approving a run posts its journal (as Review does). */
+  paye: {
+    setup: (a: AccountInfo) => call<RtPayeSetup>(a, "/payroll/paye/setup"),
+    saveEmployer: (a: AccountInfo, employer: RtPayeEmployer) =>
+      call<RtPayeEmployer>(a, "/payroll/paye/employer", { method: "PUT", body: JSON.stringify(employer) }),
+    addEmployee: (a: AccountInfo, e: Partial<RtPayeEmployee>) =>
+      call<RtPayeEmployee>(a, "/payroll/paye/employees", { method: "POST", body: JSON.stringify(e) }),
+    editEmployee: (a: AccountInfo, id: string, e: Partial<RtPayeEmployee>) =>
+      call<RtPayeEmployee>(a, `/payroll/paye/employees/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(e) }),
+    starterCode: (a: AccountInfo, declaration: "A" | "B" | "C" | "none") =>
+      call<{ tax_code: string; week1_month1: boolean; note: string; verified: boolean }>(a, `/payroll/paye/starter-code?declaration=${declaration}`),
+    runs: (a: AccountInfo) => call<{ runs: RtPayeRun[]; filing_note: string }>(a, "/payroll/paye/payruns"),
+    prepare: (a: AccountInfo, frequency: RtPayFrequency, payDate: string) =>
+      call<RtPayeRun>(a, "/payroll/paye/payruns/prepare", { method: "POST", body: JSON.stringify({ frequency, pay_date: payDate }) }),
+    edit: (a: AccountInfo, id: string, inputs: RtPayeInputs[]) =>
+      call<RtPayeRun>(a, `/payroll/paye/payruns/${id}`, { method: "PUT", body: JSON.stringify({ inputs }) }),
+    propose: (a: AccountInfo, id: string) =>
+      call<{ run: RtPayeRun; proposal_id: string }>(a, `/payroll/paye/payruns/${id}/propose`, { method: "POST" }),
+    approve: (a: AccountInfo, id: string) => call<RtPayeRun>(a, `/payroll/paye/payruns/${id}/approve`, { method: "POST" }),
+    toDraft: (a: AccountInfo, id: string) => call<RtPayeRun>(a, `/payroll/paye/payruns/${id}/draft`, { method: "POST" }),
+    discard: (a: AccountInfo, id: string) => call<{ moved_to: string }>(a, `/payroll/paye/payruns/${id}/discard`, { method: "POST" }),
+    payslip: (a: AccountInfo, id: string, employeeId: string) =>
+      call<RtPayeFile>(a, `/payroll/paye/payruns/${id}/payslips/${encodeURIComponent(employeeId)}`),
+    fps: (a: AccountInfo, id: string, final = false) =>
+      call<{ file: RtPayeFile; contents: RtPayeTable; schema: string }>(a, `/payroll/paye/payruns/${id}/fps${final ? "?final=true" : ""}`),
+    eps: (a: AccountInfo, taxMonth: number, opts: { employmentAllowance: boolean; final: boolean }) =>
+      call<{ file: RtPayeFile; contents: { item: string; value: string }[]; schema: string }>(
+        a,
+        `/payroll/paye/eps/${taxMonth}?employment_allowance=${opts.employmentAllowance}&final=${opts.final}`,
+      ),
+    pensionFile: (a: AccountInfo, id: string, provider: RtPensionProvider) =>
+      call<RtPayeFile>(a, `/payroll/paye/payruns/${id}/pension/${provider}`),
+    report: (a: AccountInfo, key: RtPayeReportKey, q: { run?: string; employee?: string }) =>
+      call<RtPayeTable>(a, withQuery(`/payroll/paye/reports/${key}`, [q.run ? `run=${q.run}` : "", q.employee ? `employee=${q.employee}` : ""].filter(Boolean).join("&"))),
+    reportFile: (a: AccountInfo, key: RtPayeReportKey, format: "csv" | "xlsx" | "pdf", q: { run?: string; employee?: string }) =>
+      call<RtPayeFile>(
+        a,
+        withQuery(`/payroll/paye/reports/${key}`, [`format=${format}`, q.run ? `run=${q.run}` : "", q.employee ? `employee=${q.employee}` : ""].filter(Boolean).join("&")),
+      ),
+  },
+
   /** /reports/* (services/runtime/app/routes_reports.py): by code from the ledger; only export writes (07 Reports). */
   reports: {
     /** No span = the VAT period we are in now, by the saved VAT settings. */
@@ -1033,6 +1075,153 @@ export interface RtReportExport {
   web_url: string | null;
   sample: boolean;
   sheets: string[];
+}
+
+/** PAYE payroll (services/runtime/app/payrun.py). Pence throughout. */
+export type RtPayFrequency = "weekly" | "fortnightly" | "four_weekly" | "monthly";
+export type RtPensionProvider = "generic" | "nest" | "peoples_pension" | "smart_pension" | "now_pensions";
+export type RtPayeReportKey = "payroll_summary" | "p11" | "p32" | "pension" | "fps" | "journal" | "p45" | "p60";
+export interface RtPayeEmployer {
+  name: string;
+  paye_office: string;
+  paye_reference: string;
+  accounts_office_ref: string;
+  cotax_ref: string;
+  claim_employment_allowance: boolean;
+  small_employer_relief: boolean;
+  pension: {
+    provider: RtPensionProvider;
+    basis: "qualifying" | "full_pay";
+    arrangement: "net_pay" | "relief_at_source" | "salary_sacrifice";
+    employer_bp: number;
+    employee_bp: number;
+    provider_ref: string;
+    payment_source: string;
+    pay_code: string;
+    duties_start: string | null;
+  };
+  rti_test_submission_enabled: false;
+}
+export interface RtPayeEmployee {
+  id: string;
+  payroll_id: string;
+  title: string;
+  forenames: string;
+  surname: string;
+  nino: string | null;
+  dob: string;
+  gender: "M" | "F";
+  address: string[];
+  postcode: string;
+  email: string;
+  start_date: string;
+  starter_declaration: "A" | "B" | "C" | null;
+  p45_previous_pay_pence: number | null;
+  p45_previous_tax_pence: number | null;
+  tax_code: string;
+  week1_month1: boolean;
+  ni_category: string;
+  director: boolean;
+  director_appointed_on: string | null;
+  student_loan_plan: "1" | "2" | "4" | "5" | null;
+  postgrad_loan: boolean;
+  frequency: RtPayFrequency;
+  pay_type: "salary" | "hourly";
+  annual_salary_pence: number;
+  hourly_rate_pence: number;
+  usual_hours: number;
+  hours_band: "A" | "B" | "C" | "D" | "E";
+  pension_exempt: boolean;
+  staff_id: string | null;
+  overtime_after_hours_week: number | null;
+  overtime_multiplier: number;
+  enrolled_on: string | null;
+  opted_out_on: string | null;
+  leaving_date: string | null;
+}
+export interface RtPayeSetup {
+  employer: RtPayeEmployer;
+  employees: RtPayeEmployee[];
+  tax_year: string;
+  verified_on: string;
+  sources: { label: string; url: string }[];
+  limits: string[];
+  filing_note: string;
+  estimate_note: string;
+  ni_categories: Record<string, string>;
+  submission: { available: false; test_switch: boolean; reason: string };
+}
+export interface RtPayeInputs {
+  employee_id: string;
+  basic_pence?: number | null;
+  hours?: number | null;
+  bonus_pence?: number;
+  deductions_after_tax_pence?: number;
+  notes?: string;
+}
+export interface RtPayeLine {
+  employee_id: string;
+  payroll_id: string;
+  name: string;
+  inputs: RtPayeInputs;
+  basic_pence: number;
+  bonus_pence: number;
+  overtime_pence: number;
+  pay_items: { label: string; hours: number | null; rate_pence: number | null; multiplier: number; pence: number }[];
+  ssp_pence: number;
+  smp_pence: number;
+  gross_pence: number;
+  salary_sacrifice_pence: number;
+  ni_earnings_pence: number;
+  taxable_pay_pence: number;
+  tax_code: string;
+  tax_pence: number;
+  ni_category: string;
+  ee_ni_pence: number;
+  er_ni_pence: number;
+  student_loan_pence: number;
+  postgrad_loan_pence: number;
+  ee_pension_net_pay_pence: number;
+  ee_pension_from_net_pence: number;
+  deductions_after_tax_pence: number;
+  net_pay_pence: number;
+  pension: { category: string; member: boolean; employer_pence: number; employee_deducted_pence: number; opt_out_ends: string | null; notes: string[] };
+  starter: boolean;
+  leaver: boolean;
+  warnings: string[];
+}
+export interface RtPayeRun {
+  id: string;
+  tax_year: string;
+  frequency: RtPayFrequency;
+  period: number;
+  period_start: string;
+  period_end: string;
+  pay_date: string;
+  status: "draft" | "proposed" | "posted";
+  lines: RtPayeLine[];
+  proposal_id: string | null;
+  employment_allowance_pence: number;
+  hmrc_due_pence: number;
+  journal: { account: string; debit_pence: number; credit_pence: number }[];
+  warnings: string[];
+  label: string;
+}
+export interface RtPayeFile {
+  name: string;
+  media_type: string;
+  base64: string;
+  saved_to: string | null;
+  note: string;
+}
+export interface RtPayeTable {
+  key: string;
+  title: string;
+  subtitle: string;
+  columns: { key: string; label: string; kind: "text" | "money" | "int" | "date" }[];
+  rows: Record<string, string | number>[];
+  totals: Record<string, string | number> | null;
+  notes: string[];
 }
 
 /** Pay runs (services/runtime/app/payroll.py). Pence throughout; every est_* figure is an estimate. */
@@ -2030,6 +2219,7 @@ export type RtActionKind =
   | "chase_invoice"
   | "log_mileage"
   | "log_timesheet"
+  | "pay_overtime"
   | "match_bank_line" // proposed by the month-end close
   | "close_month"; // proposed by the month-end close
 export interface RtProposedAction {
@@ -2099,6 +2289,20 @@ export interface RtTimesheetPreview {
   date: string;
   hours: string;
   note: string;
+  warnings: string[];
+}
+/** pay_overtime: the timesheet entries code found, priced by code at the multiplier. */
+export interface RtOvertimePreview {
+  staff_name: string;
+  job_name: string | null;
+  week_start: string;
+  week_end: string;
+  multiplier: string;
+  entries: { id: string; date: string; hours: string; multiplier: string }[];
+  hours: string;
+  rate_pence: number;
+  pay_pence: number;
+  extra_pence: number;
   warnings: string[];
 }
 export interface RtMileagePreview {

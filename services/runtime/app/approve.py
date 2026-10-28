@@ -50,6 +50,8 @@ def apply_edits(p: Proposal, edits: dict[str, Any]) -> None:
         raise ApprovalError(f"Can't edit {', '.join(sorted(unknown))}")
     if p.mileage_claim and edits:
         raise ApprovalError("A mileage claim is calculated by code: change the mileage log on Vehicles instead")
+    if p.payroll_run and edits:
+        raise ApprovalError("A pay run is calculated by code: change it on the Payroll page instead")
     if NOT_VAT_REGISTERED in edits and not isinstance(edits[NOT_VAT_REGISTERED], bool):
         raise ApprovalError(f"{NOT_VAT_REGISTERED} is true or false")
     if "category" in edits and edits["category"] not in CATEGORIES:
@@ -65,7 +67,10 @@ def apply_edits(p: Proposal, edits: dict[str, Any]) -> None:
 
 
 def final_journal(p: Proposal) -> list[JournalLine]:
-    """Journal rebuilt from the (possibly edited) document, with any account override applied."""
+    """Journal rebuilt from the (possibly edited) document, with any account override applied. A pay run's journal
+    is code's own (app/payrun.py) and is posted as drafted."""
+    if p.payroll_run:
+        return p.journal_draft
     journal = draft_journal(p.extracted)
     if not p.account_override:
         return journal
@@ -93,6 +98,7 @@ def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEve
     ]
     if len(lines) < 2:
         raise ApprovalError("Nothing to post: enter the amounts first")
+    payroll = p.payroll_run is not None
     sale = doc.doc_type == "sales_invoice"
     credit_note = doc.doc_type == "credit_note"  # a supplier's: the purchase journal turned round (app/journal.py)
     vat = sum((j.credit_pence if sale or credit_note else j.debit_pence) for j in journal if j.account == VAT_CONTROL)
@@ -103,15 +109,15 @@ def build_event(p: Proposal, journal: list[JournalLine], user: str) -> LedgerEve
     try:
         return LedgerEvent(
             id=event_id,
-            kind="sale" if sale else "reversal" if credit_note else "purchase",
+            kind="adjustment" if payroll else "sale" if sale else "reversal" if credit_note else "purchase",
             date=when,
             lines=lines,
             evidence=[p.doc_sha256],
             approved_by=user,
             approved_at=now(),
             proposal_id=p.id,
-            net=gross - vat,
-            vat=vat,
+            net=None if payroll else gross - vat,
+            vat=None if payroll else vat,
             counterparty=(doc.customer_name if sale else None) or doc.supplier_name,
         )
     except ValueError as exc:  # e.g. unbalanced; draft_journal should make this impossible
@@ -175,7 +181,7 @@ async def approve(
         p.job_id = await _job_tag(books, p, (edits or {})["job_id"])
     if "vehicle_id" in (edits or {}):
         p.vehicle_id = await _vehicle_tag(books, p, (edits or {})["vehicle_id"])
-    always = always and p.mileage_claim is None  # Autopilot never posts a mileage claim
+    always = always and p.mileage_claim is None and p.payroll_run is None  # Autopilot never posts these
     not_registered = bool((edits or {}).get(NOT_VAT_REGISTERED))
     if not_registered:
         _check_not_registered(p.extracted)
@@ -191,10 +197,15 @@ async def approve(
         await books.file_document(p, p.file_path, books.filing_folder(p.extracted))
     p.status, p.event_id, p.decided_by, p.decided_at = "posted", event.id, user, now()
     await books.save_proposal(p)
-    try:
-        await learn_from_approval(books, p, _actor(user), not_registered)
-    except ValueError:  # a hand-broken contacts.json: the posting stands, the supplier is just not remembered
-        log.warning("contacts file unreadable; supplier VAT status not recorded for %s", p.id)
+    if p.payroll_run:
+        from app.payrun import on_posted
+
+        await on_posted(books, p, event.id, user)
+    else:
+        try:
+            await learn_from_approval(books, p, _actor(user), not_registered)
+        except ValueError:  # a hand-broken contacts.json: the posting stands, the supplier is just not remembered
+            log.warning("contacts file unreadable; supplier VAT status not recorded for %s", p.id)
     rule = await _remember(books, p, user) if always else None
     auto_rule = rule_from_proposal(p, user) if always else None
     if auto_rule:
@@ -291,6 +302,10 @@ async def reject(books: Books, proposal_id: str, user: str, reason: str) -> Prop
         await books.file_document(p, p.file_path, NEEDS_A_LOOK)
     p.status, p.reject_reason, p.decided_by, p.decided_at = "rejected", reason, user, now()
     await books.save_proposal(p)
+    if p.payroll_run:
+        from app.payrun import on_rejected
+
+        await on_rejected(books, p)
     await books.audit(
         f"user:{user}", "rejected", {"proposal": p.id, "doc": p.doc_sha256, "reason": reason, "path": p.file_path}
     )
@@ -388,7 +403,11 @@ async def undo(
     except FileExistsError as exc:
         raise ProposalStateError("Already undone") from exc
     p = await _reopen(books, original)
-    if p is not None:
+    if p is not None and p.payroll_run:
+        from app.payrun import on_undone
+
+        await on_undone(books, p)
+    elif p is not None:
         await forget_from_undo(books, p, f"user:{user}")
     await books.audit(
         f"user:{user}",

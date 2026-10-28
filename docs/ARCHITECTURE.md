@@ -54,7 +54,7 @@ Personal accounts: `Apps/Accnomos` (the OneDrive app folder, `Files.ReadWrite.Ap
 `packages/connectors/folders.json`, `apps/web/src/lib/folders.ts` and a marked block in
 `apps/mobile/lib/services/graph.dart`, and `tests/test_paths.py` fails if any copy differs or if a numbered name is
 spelt as a literal anywhere else in Python. The `_System/` paths come from the constants in `app/books.py`,
-`invoicing.py`, `payroll.py`, `jobs.py`, `mileage.py`, `contacts.py`, `intake.py`, `todos.py`, `plan_apply.py`.
+`invoicing.py`, `payroll.py`, `payrun.py`, `jobs.py`, `mileage.py`, `contacts.py`, `intake.py`, `todos.py`, `plan_apply.py`.
 `services/runtime/tests/test_integration.py` holds what the runtime writes during its scenario to a `LAYOUT` list kept by
 hand in step with the first table; it does **not** exercise invoicing, payroll, the planner, to-dos or action audit, so those
 paths are listed here from the code only.
@@ -73,6 +73,8 @@ Documents, filed by code and never deleted:
 | `03 Sales/quotes/Q-<yyyymmdd>-<xxxx>.pdf` | runtime, `POST /cis/quote` (`routes_cis.py`) | a quote priced like an invoice (CIS deduction, reverse charge wording); posts nothing, takes no invoice number |
 | `04 Bank statements/<last date>_<bank>.csv` | runtime, bank import | |
 | `05 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | |
+| `05 Payroll/<tax year>/RTI/FPS-<run>.xml`, `EPS-<tax year>-month-<nn>.xml` | runtime, PAYE payroll (`routes_payrun.py`) on download | generated for checking, never submitted |
+| `05 Payroll/<tax year>/payslips/payslip-<run>-<payroll id>.pdf`, `Pension/pension-<provider>-<run>.csv` | runtime, on download of an approved run | |
 | `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
 | `07 Reports/<yyyy-mm>-month-end-draft.xlsx`, `07 Reports/<yyyy-mm>-month-end.xlsx` | runtime, the month-end close (`app/month_end.py`): the draft (About, P&L, Balance sheet) is rewritten by each run once nothing blocks the close; the closed one is written on Approve and never overwritten (a re-close saves ` (2)`) | Posts nothing |
 | `07 Reports/<yyyy-mm-dd>-uk-property-<tax year>-to-<period end>.json` | runtime, `POST /property/mtd/{taxYear}/export` | the Property Business API 6.0 bodies, ready to submit with other software; posts nothing |
@@ -118,6 +120,8 @@ Books.xlsx still show the path as it was saved.
 | `Payroll/runs/<yyyy-mm>.json` | one pay run per month | updated |
 | `CIS/settings.json`, `CIS/statements.json`, `CIS/subcontractors.json`, `CIS/payments.json` | CIS registration; contractors' payment and deduction statements (approved); the contractor's subcontractors and payments to them (`cis.py`) | rewritten; a removed payment is kept, marked removed |
 | `CIS/readings/<id>.json` | a CIS statement or reverse-charge bill your AI read, waiting for Approve or Reject (`cis_readings.py`) | updated once by the decision |
+| `Payroll/employer.json`, `Payroll/employees.json` | PAYE references, Employment Allowance, pension scheme; employees' payroll records (NI number, date of birth, address) | rewritten whole |
+| `Payroll/payruns/<tax year>-<frequency>-<nn>.json`, `payruns/discarded/` | one PAYE pay run: inputs, every calculated figure and year to date (`payrun.py`) | updated until posted; a discarded draft is moved, not deleted |
 | `Planner/applied.json` | which day plans were applied (idempotency) | updated |
 | `Todos/todos.json` | to-dos added from triage | updated |
 | `archive/map.json` | old path → new path for every document the app moved (archive, Files page move and rename) | updated; applied when proposals and bank lines are read |

@@ -13,6 +13,7 @@ import {
   type RtInvoicePreview,
   type RtMileagePreview,
   type RtProposedAction,
+  type RtOvertimePreview,
   type RtTimesheetPreview,
 } from "@/lib/runtime";
 import { Markdown } from "./AnswerCard";
@@ -55,6 +56,7 @@ const TITLES: Record<RtProposedAction["kind"], string> = {
   log_mileage: "Mileage",
   match_bank_line: "Bank match",
   close_month: "Close the month",
+  pay_overtime: "Overtime pay",
 };
 
 /** Where an action's result shows up, for checking after an approval that stopped halfway. */
@@ -65,6 +67,7 @@ const WHERE: Record<RtProposedAction["kind"], string> = {
   log_mileage: "the mileage log on Vehicles",
   match_bank_line: "the line on Bank",
   close_month: "Month-end",
+  pay_overtime: "the timesheet on Jobs and the next pay run on Payroll",
 };
 
 /**
@@ -174,6 +177,24 @@ function Details({ action }: { action: RtProposedAction }) {
         )}
         <Row label="Snapshot">
           <code className="text-[13px]">{p.snapshot_hash.slice(0, 12)}</code>
+        </Row>
+      </dl>
+    );
+  }
+  if (action.kind === "pay_overtime") {
+    const p = action.preview as unknown as RtOvertimePreview;
+    return (
+      <dl className="divide-y divide-border">
+        <Row label="Who">{p.staff_name}</Row>
+        {p.job_name && <Row label="Job">{p.job_name}</Row>}
+        <Row label="Week">
+          {ukDate(p.week_start)} – {ukDate(p.week_end)}
+        </Row>
+        <Row label="Hours">
+          <strong className="tabular-nums">{p.hours}</strong> at {gbp(p.rate_pence)} × {p.multiplier}
+        </Row>
+        <Row label="Pay">
+          <strong className="tabular-nums">{gbp(p.pay_pence)}</strong> ({gbp(p.extra_pence)} more), in the next pay run
         </Row>
       </dl>
     );

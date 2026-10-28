@@ -11,7 +11,7 @@ mobile `apps/mobile/lib/screens/ask_screen.dart`.
 
 | Step | Decided by | How |
 |---|---|---|
-| Is this an instruction at all? | code, then the model | Code only asks the model if the message has an action word (invoice, send, chase, log, miles, hours…) and doesn't start like a question ("how", "what", "did"…). The model then returns `kind`: `create_invoice`, `chase_invoice`, `log_mileage`, `log_timesheet` or `none`. `none`, or a reply in the wrong shape, means an ordinary Ask answer. |
+| Is this an instruction at all? | code, then the model | Code only asks the model if the message has an action word (invoice, send, chase, log, miles, hours…) and doesn't start like a question ("how", "what", "did"…). The model then returns `kind`: `create_invoice`, `chase_invoice`, `log_mileage`, `log_timesheet`, `pay_overtime` or `none`. `none`, or a reply in the wrong shape, means an ordinary Ask answer. |
 | Names (customer, job, staff, vehicle, invoice) | the model **quotes**, code **finds** | The model copies the words the user used ("JM Trading"). Code matches them against the user's own lists: contacts (customers only), open jobs, active staff, active vehicles, unpaid invoices. It uses `difflib` ≥ 0.8 on normalised names ("J.M. Trading Ltd" = "JM Trading"), also against runs of whole words, so "Alex" finds Alex Green and "Oak Lane" finds "Bathroom, 4 Oak Lane". If two names match about equally, or none does, Ask asks which one and lists the candidates. The lists never go to the model. |
 | Amounts, hours, miles | the model **quotes**, code **parses** | The model returns the text as said (`"£1,250.50"`, `"7.5"`). Code parses it, and **refuses any figure that isn't in the user's message**, so a made-up amount becomes a "How much?" question. Hours round to the nearest quarter (as on timesheets), miles to 0.1. |
 | Dates | the model **quotes**, code **parses** | "yesterday", "Monday", "3 Oct", "3/10" → a date (a day with no year is the latest one not after today). Future dates are refused. |
@@ -68,6 +68,7 @@ second invoice.
 | Kind | Runs | Available |
 |---|---|---|
 | `log_timesheet` | `jobs.add_entry` (job must be open, staff must exist) | now |
+| `pay_overtime` | `jobs.set_rate_multiplier` on exactly the entries the card listed (refused if their hours changed or an approved pay run already paid them). The model only copies the rate words ("double", "time and a half") and the week ("last week"); code reads them, finds the person's entries for that week (and job, if named) and prices them from the payroll hourly rate. The next pay run pays them; the card notes that regular overtime can affect holiday pay (check with your adviser) | now |
 | `create_invoice` | `invoicing.create_invoice` → PDF (`app/pdf.py`) → `invoicing.send_invoice` through Graph if `send` | on `main` (`app/invoicing.py`) |
 | `chase_invoice` | `invoicing.send_reminder` with the reminder shown on the card and the sent PDF attached | on `main` |
 | `log_mileage` | `mileage.add_entry(books, MileageEntry, user)` | on `main` (`app/mileage.py`) |
