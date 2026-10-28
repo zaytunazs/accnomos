@@ -101,7 +101,8 @@ function Star({ report, on, disabled, onToggle }: { report: RtExportReport; on: 
       type="button"
       aria-pressed={on}
       aria-label={`Star ${report.title}`}
-      title={on ? "Starred" : "Star this report"}
+      title={disabled ? "Sign in to star reports" : on ? "Starred" : "Star this report"}
+      aria-describedby={disabled ? "period-why" : undefined}
       disabled={disabled}
       onClick={onToggle}
       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl hover:bg-ground disabled:opacity-50"
@@ -355,7 +356,8 @@ function Preview({
       )}
       <div className="mt-3 flex flex-wrap items-center gap-2" role="group" aria-label="Download">
         {report.formats.map((f) => (
-          <button key={f} type="button" disabled={!live || !!busy} onClick={() => onDownload(f)} className={button} aria-label={`Download ${FORMAT_LABEL[f] ?? f}`}>
+          <button key={f} type="button" disabled={!live || !!busy} onClick={() => onDownload(f)} className={button} aria-label={`Download ${FORMAT_LABEL[f] ?? f}`}
+            aria-describedby={!live ? "preview-why" : undefined}>
             {busy === `download-${f}` ? "Preparing…" : FORMAT_LABEL[f] ?? f}
           </button>
         ))}
@@ -373,12 +375,13 @@ function Preview({
             </select>
           </label>
         )}
-        <button type="button" disabled={!live || !!busy} onClick={() => onSave(saveFormat)} className={primary}>
+        <button type="button" disabled={!live || !!busy} onClick={() => onSave(saveFormat)} className={primary}
+          aria-describedby={!live ? "preview-why" : undefined}>
           {busy === "save" ? "Saving…" : "Save to 07 Reports"}
         </button>
       </div>
       {!live && (
-        <p className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-muted">
+        <p id="preview-why" className="mt-2 flex flex-wrap items-center gap-2 text-[13px] text-muted">
           Sign in to download or save reports from your own books. <SignInCta />
         </p>
       )}
@@ -442,6 +445,24 @@ export default function ReportsExports() {
   const [filter, setFilter] = useState("");
   const live = state === "live" && !!account;
 
+  // The report and period live in the address (?report=&from=&to=&as_of=&mode=), so a reload or a shared link opens
+  // the same preview: read once the catalogue is in (fromAddress), written back as they change (below).
+  function fromAddress() {
+    const p = new URLSearchParams(window.location.search);
+    const day = (k: string) => (/^\d{4}-\d{2}-\d{2}$/.test(p.get(k) ?? "") ? p.get(k)! : undefined);
+    const from = day("from"), to = day("to");
+    setQuery({ ...(from && to ? { from, to } : {}), as_of: day("as_of"), mode: p.get("mode") || undefined });
+    if (p.get("report")) setSelected(p.get("report"));
+  }
+  useEffect(() => {
+    if (state === "checking") return;
+    const p = new URLSearchParams();
+    if (selected) p.set("report", selected);
+    for (const k of ["from", "to", "as_of", "mode"] as const) if (query[k]) p.set(k, query[k]!);
+    const q = p.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${q ? `?${q}` : ""}${window.location.hash}`);
+  }, [state, selected, query]);
+
   useEffect(() => {
     (async () => {
       try {
@@ -454,12 +475,14 @@ export default function ReportsExports() {
         const acct = msal.getActiveAccount() ?? msal.getAllAccounts()[0] ?? null;
         if (!acct) {
           setCatalogue(sampleCatalogue);
+          fromAddress();
           return setState("demo");
         }
         setAccount(acct);
         const c = await runtime.exports.catalogue(acct);
         setCatalogue(c);
         setFavourites(c.favourites);
+        fromAddress();
         setState("live");
       } catch (e) {
         setError((e as Error).message);
@@ -550,10 +573,11 @@ export default function ReportsExports() {
 
   const usesPeriod = !report || report.params.includes("period");
   const usesAsOf = !!report?.params.includes("as_of");
+  // A disabled control says why (WCAG 3.3.2): signed out it is a fixed sample; some reports are at one date only.
   const periodWhy = !live
-    ? "The period is fixed for the sample: sign in to choose dates from your own books."
+    ? "This is a fixed sample, so the period can't be changed and reports can't be starred. Sign in to choose a period or use this VAT period."
     : !usesPeriod
-      ? `${report?.title ?? "This report"} is worked out as at one date, not for a period.`
+      ? "This report is at one date, not for a period: set As at instead."
       : null;
   return (
     <div className="flex min-w-0 flex-col gap-4">

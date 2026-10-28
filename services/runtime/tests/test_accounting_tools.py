@@ -692,7 +692,7 @@ async def test_cash_flow_by_due_date(client: TestClient, books: Books):
     assert next30["money_in_pence"] == 60_000 and next30["start"] == "2026-10-10" and next30["end"] == "2026-11-09"
     p30 = r["points"][0]
     assert (p30["date"], p30["balance_pence"]) == ("2026-11-09", -18_000 + 180_000 - 60_000)
-    assert r["repeating"] == [] and "Repeating" in r["not_included"]
+    assert r["repeating"] == [] and "repeating invoices and bills not made yet" in r["not_included"]
     assert r["lowest_balance_pence"] == -18_000 - 60_000 and r["lowest_on"] == "2026-10-10"
 
 

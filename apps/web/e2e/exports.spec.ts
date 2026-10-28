@@ -12,6 +12,17 @@ test("signed out: the labelled sample, grouped, with downloads switched off", as
   await expect(page.locator("#report-preview").getByText("SAMPLE — FICTIONAL COMPANY")).toBeVisible();
   await expect(page.getByRole("button", { name: "Download CSV" })).toBeDisabled();
   await expect(page.getByRole("button", { name: "Save to 07 Reports" })).toBeDisabled();
+  // Every disabled control says why, and every report button controls an element that exists.
+  await expect(page.getByRole("button", { name: "This VAT period" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "This VAT period" })).toHaveAccessibleDescription(/fixed sample.*Sign in to choose a period/);
+  await expect(page.getByRole("button", { name: "Save to 07 Reports" })).toHaveAccessibleDescription(/Sign in to download or save/);
+  await expect(page.locator("#report-preview")).toHaveCount(1);
+});
+
+test("signed out, before choosing a report: report buttons point at the preview panel", async ({ page }) => {
+  await page.goto("/reports/exports");
+  await expect(page.getByRole("button", { name: /^Trial balance Debit and credit/ })).toHaveAttribute("aria-controls", "report-preview");
+  await expect(page.locator("#report-preview")).toHaveCount(1);
 });
 
 test("signed out at 360 px: no sideways scroll, the preview's tables scroll on their own", async ({ page }) => {
@@ -63,6 +74,9 @@ test("signed in: preview, download and save a report, the HMRC return, a Xero fi
   await expect(page.getByRole("heading", { name: "Starred", level: 2 })).toBeVisible();
   await page.reload();
   await expect(page.getByRole("heading", { name: "Starred", level: 2 })).toBeVisible();
+  // The reload keeps the report and the period (they live in the address).
+  await expect(page).toHaveURL(/\?report=vat-return&from=2026-07-01&to=2026-09-30/);
+  await expect(page.getByLabel("From")).toHaveValue("2026-07-01");
 
   await page.getByRole("button", { name: /^Xero: manual journals/ }).click();
   await expect(page.getByRole("columnheader", { name: "*Narration" })).toBeVisible();

@@ -5,8 +5,12 @@
 - **Money in**: what is still owed on each open sales invoice, on its due date (app/contacts.py `aged`, the same
   figures as Contacts and the Aged report). **Money out**: what is still owed on each bill on account.
 - **Overdue** items are counted as due now, in the first 30 days, and shown separately.
-- **Repeating items**: Accnomos has no repeating invoices or bills yet, so none are included (`repeating` is empty).
-  Payroll, VAT payments and card spending are not forecast either; the page says so.
+- **Repeating items** (app/repeating.py): every occurrence of an active repeating invoice or bill that has not been made
+  yet and falls in the 90 days, at one occurrence's total. An invoice is due its own days to pay after the occurrence
+  (else the invoice profile's terms); a bill the supplier's terms after it (else 30 days), as the aged report dates
+  bills. An occurrence already due is made when Sales, Purchases or Repeating next opens; until then it counts from
+  today. Listed in `repeating` and also in `items`, with ids "repeating:<template id>#<occurrence>".
+  Payroll, VAT payments and card spending are not forecast; the page says so.
 
 The model may add one plain-English line (`explain`); every figure in it must be one of these (the Ask number
 check, app/ai/ask.py `KnownNumbers`) or the line is dropped.
@@ -27,9 +31,10 @@ from app.contacts import AgedBalances
 from app.invoicing import money
 
 HORIZONS = (30, 60, 90)
+DEFAULT_BILL_TERMS_DAYS = 30  # app/contacts.py DEFAULT_TERMS_DAYS: a bill with no terms is due 30 days after its date
 NOT_INCLUDED = (
-    "Repeating invoices and bills (Accnomos has none yet), pay runs, VAT payments and card spending are not "
-    "included: only open invoices and bills on account."
+    "Pay runs, VAT payments and card spending are not included: only open invoices, bills on account, and repeating "
+    "invoices and bills not made yet."
 )
 
 
@@ -81,8 +86,53 @@ def bank_balance(events: Iterable[LedgerEvent], chart: Sequence[Account], as_of:
     return total, sorted(banks)
 
 
-def forecast(aged: AgedBalances, opening: int, banks: list[str], as_of: date) -> CashFlow:
-    items: list[CashItem] = []
+def repeating_items(
+    templates: Iterable[Any], as_of: date, invoice_terms_days: int, supplier_terms: dict[str, int]
+) -> list[CashItem]:
+    """Occurrences of active repeating invoices and bills not made yet, due within 90 days of `as_of`.
+
+    `templates` are app.repeating.Template; `supplier_terms` maps a contact id to its terms in days."""
+    from app.invoicing import price_lines
+    from app.repeating import occurrence
+
+    end90 = as_of + timedelta(days=90)
+    out: list[CashItem] = []
+    for t in templates:
+        if t.paused or t.deleted_at is not None:
+            continue
+        _, _, net, vat = price_lines(t.lines)
+        if net + vat <= 0:
+            continue
+        if t.kind == "invoice":
+            terms = t.due_days if t.due_days is not None else invoice_terms_days
+        else:
+            terms = supplier_terms.get(t.party.contact_id or "", DEFAULT_BILL_TERMS_DAYS)
+        n = t.pending.index if t.pending else t.next_index
+        while n < t.next_index + 400:  # weekly for 90 days is 13; the bound only stops a runaway loop
+            when = occurrence(t.start_date, t.frequency, t.every, n)
+            if (t.end_date is not None and when > t.end_date) or when > end90:
+                break
+            due = max(when + timedelta(days=terms), as_of)
+            if due <= end90:
+                out.append(
+                    CashItem(
+                        direction="in" if t.kind == "invoice" else "out",
+                        contact=t.party.name,
+                        reference=f"Repeating {t.id}",
+                        due_date=due,
+                        amount_pence=net + vat,
+                        overdue=False,
+                        event_id=f"repeating:{t.id}#{n}",
+                    )
+                )
+            n += 1
+    return out
+
+
+def forecast(
+    aged: AgedBalances, opening: int, banks: list[str], as_of: date, repeating: Sequence[CashItem] = ()
+) -> CashFlow:
+    items: list[CashItem] = list(repeating)
     for direction, table in (("in", aged.debtors), ("out", aged.creditors)):
         for row in table.rows:
             for d in row.documents:
@@ -143,6 +193,7 @@ def forecast(aged: AgedBalances, opening: int, banks: list[str], as_of: date) ->
         items=[i for i in items if i.due_date <= end90],
         later_in_pence=sum(i.amount_pence for i in items if i.direction == "in" and i.due_date > end90),
         later_out_pence=sum(i.amount_pence for i in items if i.direction == "out" and i.due_date > end90),
+        repeating=sorted(repeating, key=lambda i: (i.due_date, i.direction, i.contact)),
         lowest_balance_pence=lowest,
         lowest_on=lowest_on,
     )

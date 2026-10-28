@@ -205,17 +205,20 @@ SAGE50_AUDIT = [
     "Extra Reference",
     "User Name",
 ]
-SAGE50_CONTACTS = [
-    "Account Reference",
-    "Account Name",
-    "Street1",
-    "Street2",
-    "Town",
-    "County",
-    "Post Code",
-    "Contact Name",
-    "Telephone",
+# Columns A-I as Sage's current Customer Record template names them (gb-kb 220225121155067, read 28 Oct 2026). The
+# supplier page does not print its column B name; "Supplier Name" mirrors the customer one. Sage maps columns at
+# import ("First row contains headings"), so the older labels would import too.
+_SAGE50_ADDRESS = [
+    "Main Address Line 1",
+    "Main Address Line 2",
+    "Main Address Town",
+    "Main Address County",
+    "Main Address Post Code",
+    "Main Contact Name",
+    "Main Contact Phone",
 ]
+SAGE50_CUSTOMERS = ["Reference", "Customer Name", *_SAGE50_ADDRESS]
+SAGE50_SUPPLIERS = ["Reference", "Supplier Name", *_SAGE50_ADDRESS]
 SAGE50_NOMINALS = ["N/C", "Name"]
 
 SAGE_ACC_JOURNAL = [
@@ -303,22 +306,26 @@ FREEAGENT_INVOICES = [
 
 _XC = "https://central.xero.com/0/article/"
 SOURCES: dict[str, str] = {
-    "xero-manual-journals": "Xero Central's manual journal article is behind a login; headings as Xero's template, "
-    "copied in docs.sequencehq.com/revenue-recognition/journal-report and corroborated by Business Importer and "
-    f"PostTrans (debits positive, credits negative), {CHECKED}. Secondary sources: check before relying on it.",
+    "xero-manual-journals": "NOT CONFIRMED BY XERO: central.xero.com/0/article/Add-import-and-post-manual-journals "
+    "(-UK) would not render outside a browser (re-tried 28 Oct 2026). Headings as copied by docs.sequencehq.com, "
+    "clickentry.co.uk and Packt's Efficient Accounting with Xero (asterisked required fields, Narration and Date on "
+    "the first row, up to 300 lines); debits positive, credits negative as Xero's API docs say. Download the "
+    f"template from a Xero demo company and compare before relying on it; {CHECKED}.",
     "xero-contacts": f"{_XC}Import-contacts-into-Xero ({CHECKED}): column names and rules; the full heading row is "
     "in the template Xero downloads, which this file follows for the columns it uses.",
     "xero-sales-invoices": f"{_XC}Import-customer-invoices-UK ({CHECKED}): DD/MM/YYYY, tax rate display names, one "
     "row per line. Heading row as Xero's SalesInvoiceTemplate.csv, copied in notestoself.dev (2020) and "
     "syslumelab.com (2026).",
-    "xero-bills": f"Heading row as Xero's BillTemplate.csv (kedgework.com, 12 Oct 2026; gigsorted.com example), "
-    f"{CHECKED}. Rules as {_XC}Import-customer-invoices-UK.",
+    "xero-bills": f"{_XC}Import-bills-and-credit-notes-UK is Xero's page (it would not render here; its search "
+    "snippet: same reference only for lines of one bill, DD/MM/YYYY). Heading row as Xero's BillTemplate.csv "
+    "downloaded by kedgework.com (12 Oct 2026) and counted by getutilly.com (26 columns, no Reference or Discount), "
+    f"{CHECKED}. Not confirmed on a Xero page.",
     "xero-bank-statement": f"{_XC}Import-a-CSV-bank-statement ({CHECKED}): one signed Amount column (money out "
     "negative), DD/MM/YYYY; Xero maps the columns at import, and the template's headings vary by browser language.",
     "xero-chart-of-accounts": "Heading row as Xero's chart of accounts template (ChartOfAccounts.csv, copied at "
     f"accountantmaster.com and in Xero training material), {CHECKED}; UK codes and tax names from the default chart.",
-    "qbo-journal-entries": "quickbooks.intuit.com/learn-support/en-us/help-article/import-export-data-files/"
-    f"import-journal-entries-quickbooks-online/L4tQBwbs7_US_en_US ({CHECKED}): Journal No., Journal Date, Account "
+    "qbo-journal-entries": "quickbooks.intuit.com/learn-support/en-uk/help-article/import-export-files/"
+    f"import-journal-entries-quickbooks-online/L4tQBwbs7_GB_en_GB ({CHECKED}): Journal No., Journal Date, Account "
     "Name, Debits, Credits, description and Name; QuickBooks maps the columns at import. Turn off account numbers "
     "before importing, as the article says.",
     "qbo-customers": "quickbooks.intuit.com/learn-support/en-global/help-article/import-export-files/import-data-"
@@ -337,10 +344,10 @@ SOURCES: dict[str, str] = {
     "sage50-audit-trail": "gb-kb.sage.com 'Audit trail transactions data fields you can import' (solution "
     f"250321114601443, 21 Mar 2025) and 'Import journals' (200427112601918), {CHECKED}: JD/JC lines, nominal code, "
     "DD/MM/YYYY, tax code T9 and tax 0.00 on journals.",
-    "sage50-customers": "Sage 50 Customer Record template, first nine columns (A-I), as gb-kb.sage.com solution "
-    f"220225121155067 and import.makingithappen.co.uk list them, {CHECKED}. Account references are 8 characters.",
-    "sage50-suppliers": "Sage 50 Supplier Record template, first nine columns (A-I), as gb-kb.sage.com solution "
-    f"220225121155067 lists them, {CHECKED}.",
+    "sage50-customers": "Sage 50 Customer Record template, first nine columns (A-I) with the names gb-kb.sage.com "
+    f"solution 220225121155067 gives them, {CHECKED}. References are at most 8 characters.",
+    "sage50-suppliers": "Sage 50 Supplier Record template, first nine columns (A-I) as gb-kb.sage.com solution "
+    f"220225121155067 gives them; column B's name is not printed there, {CHECKED}.",
     "sage50-nominals": f"gb-kb.sage.com 'Nominal record data fields you can import' (250321114606157), {CHECKED}.",
     "sage-accounting-journals": "gb-kb.sage.com 'Import journal entries' (222001000100916, modified 13 Feb 2025), "
     f"{CHECKED}: columns A-L, day/month/year dates, one reference per journal.",
@@ -1300,7 +1307,7 @@ TEMPLATES: tuple[tuple[Template, object], ...] = (
             "sage50",
             "Sage 50: customers",
             "Customer Record template",
-            SAGE50_CONTACTS,
+            SAGE50_CUSTOMERS,
             "File › Import › Customer Records.",
         ),
         sage50_customers,
@@ -1311,7 +1318,7 @@ TEMPLATES: tuple[tuple[Template, object], ...] = (
             "sage50",
             "Sage 50: suppliers",
             "Supplier Record template",
-            SAGE50_CONTACTS,
+            SAGE50_SUPPLIERS,
             "File › Import › Supplier Records.",
         ),
         sage50_suppliers,

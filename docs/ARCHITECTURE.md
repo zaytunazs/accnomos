@@ -13,16 +13,12 @@ apps/mobile (Flutter) ──┼─> services/runtime ──┼─> Meta models (
 
 - **`services/runtime`** (`app`): the Agent Runtime. Every call carries the user's Graph token and AI settings in headers
   (below). Routers are the `include_router` lines in `app/main.py`: extract, books (scan, proposals, approve, undo, rules,
-  rebuild), VAT and deadlines, dashboard, bank, ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
-  timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports, audit, close (the month-end close
-  agent, `app/routes_close.py`). Test mode (`ACCNOMOS_TEST_MODE=1`) adds
-  timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports, exports. Test mode (`ACCNOMOS_TEST_MODE=1`) adds
-  agent, `app/routes_close.py`), import (history and opening balances). Test mode (`ACCNOMOS_TEST_MODE=1`) adds
-
-  rebuild), VAT and deadlines, dashboard, bank, bank feeds (TrueLayer), ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
-  timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports. Test mode (`ACCNOMOS_TEST_MODE=1`) adds
-  `/__test`. `apps/web/src/lib/runtime.ts` and `apps/mobile/lib/services/runtime_client.dart` have one call per route, except
-  that the phone does not call `/reports/*` yet.
+  rebuild), VAT and deadlines, dashboard, bank, bank feeds (TrueLayer), ask (typed and voice), mail (intake, triage,
+  draft reply), todos, jobs / staff / timesheets, contacts, vehicles / mileage, invoices, items, quotes, purchase orders,
+  repeating invoices and bills, sales and purchases overviews and statements, actions, payroll, plan, reports, exports,
+  audit, close (the month-end close agent, `app/routes_close.py`), import (history and opening balances). Test mode
+  (`ACCNOMOS_TEST_MODE=1`) adds `/__test`. `apps/web/src/lib/runtime.ts` and `apps/mobile/lib/services/runtime_client.dart` have one
+  call per route, except that the phone does not call `/reports/*` or `/exports/*` yet.
 - **`services/hmrc-relay`** (`relay`): exists only because HMRC needs the OAuth **client secret** at code exchange and
   refresh. It holds that secret, adds the v3.3 fraud-prevention headers, validates the return (box 3 = 1 + 2, box 5 = |3 − 4|,
   whole pounds where HMRC requires) and forwards. PKCE: only the browser holds the verifier; HMRC tokens sit in the tab's
@@ -156,6 +152,8 @@ Books.xlsx still show the path as it was saved.
 | `Accounting/assets.json` | fixed asset register (`fixed_assets.py`); what has been depreciated and disposed of is worked out from posted journals, not stored here | rewritten whole |
 | `Accounting/tracking.json` | up to two tracking categories and their options, by stable id (`tracking.py`) | rewritten whole; options archived, not deleted |
 | `Accounting/budgets/<yyyy-mm>.json` | one budget: twelve monthly amounts per P&L account from that month (`budgets.py`) | rewritten whole |
+| `exports/mappings.json` | the user's changes to how the books' accounts map onto Xero, QuickBooks, Sage 50, Sage Accounting and FreeAgent (`app/exports/mapping.py`; defaults live in code) | rewritten |
+| `exports/favourites.json` | starred reports on Reports & exports, `{"version": 1, "ids": [...]}` | rewritten |
 
 OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folder. Money is integer pence in every file except
 `Books.xlsx`, which shows pounds.

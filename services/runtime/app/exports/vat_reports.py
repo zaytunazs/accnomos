@@ -17,6 +17,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from datetime import date
+from typing import Any
 
 from accnomos_ledger import LedgerEvent, VatReturn, compute_vat_return, vat_side
 from accnomos_ledger.vat import ON_RETURN
@@ -68,8 +69,11 @@ def _pence(d: object) -> int:
     return int(d * 100)
 
 
-def vat_return_section(events: Sequence[LedgerEvent], start: date, end: date, months: int) -> tuple[Section, VatReturn]:
-    ret = compute_vat_return(list(events), period_id(start, months), start, end)
+def vat_return_section(
+    events: Sequence[LedgerEvent], start: date, end: date, months: int, ret: VatReturn | None = None
+) -> tuple[Section, VatReturn]:
+    """The 9 boxes; `ret` when the caller already worked them out (a VAT scheme, app/vat_schemes.py)."""
+    ret = ret or compute_vat_return(list(events), period_id(start, months), start, end)
     values: dict[int, tuple[int | None, int | None]] = {
         1: (_pence(ret.vat_due_sales), None),
         2: (_pence(ret.vat_due_acquisitions), None),
@@ -336,20 +340,57 @@ def vat_reconciliation(events: Sequence[LedgerEvent], spans: Sequence[tuple[date
 # --------------------------------------------------------------------------- #
 
 BASIS = (
-    "As approved: invoices count when raised, receipts when bought (Accnomos has no VAT cash accounting scheme or "
-    "flat rate scheme); undos count in the period they were made."
+    "As approved, standard accounting: invoices count when raised, receipts when bought; undos count in the period "
+    "they were made."
 )
+SCHEME_BASIS = (
+    "Worked out under your VAT scheme ({label}), by the same code as the VAT page (app/vat_schemes.py), so the boxes "
+    "are the ones you file."
+)
+SCHEME_NOTE = (
+    "Your VAT scheme ({label}) is on. This report lists entries as on the standard (invoice) basis; the UK VAT return "
+    "report and the VAT page give the boxes your scheme files, which can differ."
+)
+
+
+async def _scheme(ctx: ExportContext) -> Any:
+    """The VAT scheme context when a scheme other than standard accounting is set, else None."""
+    from app.vat_schemes import scheme_context
+
+    sc = await scheme_context(ctx.books, ctx.cycle)
+    return sc if sc.settings.in_use else None
+
+
+def _scheme_label(sc: Any) -> str:
+    from app.vat_schemes import NAMES
+
+    s = sc.settings
+    names = list(
+        dict.fromkeys(NAMES[e.scheme] for e in sorted(s.schemes, key=lambda e: e.start) if e.scheme != "standard")
+    )
+    if s.annual is not None:
+        names.append("Annual Accounting Scheme")
+    return ", ".join(names) or "a VAT scheme"
 
 
 async def build_return(ctx: ExportContext) -> ReportDoc:
     events = await ctx.events()
-    section, ret = vat_return_section(events, ctx.start, ctx.end, ctx.cycle.months)
+    basis, ret = BASIS, None
+    if sc := await _scheme(ctx):
+        from app.vat_schemes import scheme_books, scheme_return
+
+        sb = await scheme_books(ctx.books, sc, ctx.start, ctx.end)
+        out = scheme_return(sb, sc, period_id(ctx.start, ctx.cycle.months), ctx.start, ctx.end)
+        ret = out.ret
+        ret.warnings = ret.warnings + out.warnings
+        basis = SCHEME_BASIS.format(label=_scheme_label(sc))
+    section, ret = vat_return_section(events, ctx.start, ctx.end, ctx.cycle.months, ret)
     return doc_from(
         "vat-return",
         "UK VAT return",
         span_label(ctx.start, ctx.end),
         [section],
-        basis=[BASIS],
+        basis=[basis],
         warnings=ret.warnings,
         sample=rp.is_sample(events),
     )
@@ -358,8 +399,15 @@ async def build_return(ctx: ExportContext) -> ReportDoc:
 async def build_detail(ctx: ExportContext) -> ReportDoc:
     events = await ctx.events()
     sections = vat_detail(events, ctx.start, ctx.end, ctx.cycle.months, (await ctx.ledger()).refs)
+    sc = await _scheme(ctx)
     return doc_from(
-        "vat-detail", "VAT detail", span_label(ctx.start, ctx.end), sections, basis=[BASIS], sample=rp.is_sample(events)
+        "vat-detail",
+        "VAT detail",
+        span_label(ctx.start, ctx.end),
+        sections,
+        basis=[BASIS],
+        warnings=[SCHEME_NOTE.format(label=_scheme_label(sc))] if sc else [],
+        sample=rp.is_sample(events),
     )
 
 
@@ -379,6 +427,7 @@ async def build_links(ctx: ExportContext) -> ReportDoc:
         "MTD digital links",
         span_label(ctx.start, ctx.end),
         [section],
+        warnings=[SCHEME_NOTE.format(label=_scheme_label(sc))] if (sc := await _scheme(ctx)) else [],
         sample=rp.is_sample(ledger.events),
     )
 
@@ -391,6 +440,7 @@ async def build_reconciliation(ctx: ExportContext) -> ReportDoc:
         "VAT reconciliation",
         f"four VAT periods to {uk_day(ctx.end)}",
         [vat_reconciliation(events, spans, ctx.cycle.months)],
+        warnings=[SCHEME_NOTE.format(label=_scheme_label(sc))] if (sc := await _scheme(ctx)) else [],
         sample=rp.is_sample(events),
     )
 

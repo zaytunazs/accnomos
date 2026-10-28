@@ -74,6 +74,10 @@ second invoice.
 | `log_mileage` | `mileage.add_entry(books, MileageEntry, user)` | on `main` (`app/mileage.py`) |
 | `match_bank_line` | `Books.confirm_match(line_id, event_ids, user)`: the same as confirming a suggested match on Bank; matching posts nothing, and a line or entry that changed since is refused (409) | month-end close only |
 | `close_month` | `month_end.lock`: recomputes the month's snapshot and refuses (409) if its hash differs from the card's, then saves `07 Reports/<yyyy-mm>-month-end.xlsx`, appends a close record to `_System/close/<yyyy-mm>.json` and audits `month_closed` / `month_reclosed` | month-end close only |
+| `create_quote` | `quotes.create_quote`: priced like an invoice by the same code, saved as a **draft**; never emailed from Ask (sending is the Quotes page, with its own tick). "Valid for 14 days" is the only figure it reads beyond the amount. | now |
+| `convert_quote_to_invoice` | `quotes.convert_to_invoice`: a draft invoice with the quote's lines and totals exactly. The quote is found by number ("QU-0003", "quote 3") or by customer; several open quotes for a customer means a question (an accepted one wins if only one is). Refused at Approve if the quote changed or was already converted. | now |
+
+Questions about quotes ("any outstanding quotes?") are not actions: they are answered from the quote facts in the Ask pack (`quotes` in `app/facts.py`: waiting for an answer, expiring within 7 days, expired, accepted and not yet invoiced, drafts), worked out by `quotes.quote_facts` and checked by the same number check as every other answer.
 
 ## Cards from the month-end close
 
@@ -84,10 +88,6 @@ part in them (the match is `Books.bank_suggestions`, code; the close figures are
 `chase_invoice` cards built by `actions.chase_draft`, shared with Ask; with no AI set up, code writes the reminder. The
 cards are not stored: `_System/close/<yyyy-mm>.json` keeps each card's id, kind and summary, so an expired or reloaded
 card is renewed by running the close again. A rejected close card changes nothing.
-| `create_quote` | `quotes.create_quote`: priced like an invoice by the same code, saved as a **draft**; never emailed from Ask (sending is the Quotes page, with its own tick). "Valid for 14 days" is the only figure it reads beyond the amount. | now |
-| `convert_quote_to_invoice` | `quotes.convert_to_invoice`: a draft invoice with the quote's lines and totals exactly. The quote is found by number ("QU-0003", "quote 3") or by customer; several open quotes for a customer means a question (an accepted one wins if only one is). Refused at Approve if the quote changed or was already converted. | now |
-
-Questions about quotes ("any outstanding quotes?") are not actions: they are answered from the quote facts in the Ask pack (`quotes` in `app/facts.py`: waiting for an answer, expiring within 7 days, expired, accepted and not yet invoiced, drafts), worked out by `quotes.quote_facts` and checked by the same number check as every other answer.
 
 Feature checks are still done at runtime (`actions.invoicing()`, `actions.mileage()`); both modules are on `main`, so
 they pass. If one were missing, Ask would say plainly that it can't do that yet and never show a card it couldn't carry out.
