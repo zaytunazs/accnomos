@@ -119,7 +119,41 @@ No sleep was added; the whole module passes (27 tests).
 
 ## Tests and gates (28 Oct 2026, this container: 4 CPUs, Python 3.13, Node 22, Flutter 3.47.8)
 
-GATES_PLACEHOLDER
+- **Runtime** `cd services/runtime && python -m pytest -q`: **1525 passed, 2 skipped** (4 min 22 s), after every fix
+  (the run before the last two integration fixes found 3 failures, all mine: invalid compose YAML from the marketing
+  merge and two payout audit sentences, fixed in `e7ced4d`). `tests/test_layout.py` 13 passed after the last commit.
+- **Other Python suites**: ledger 65, connectors 49, hmrc-relay 130, evals 324, all passed.
+- **ruff** 0.17.3 `check` and `format --check`: clean. **pyright** 1.1.414 on `services/runtime/app`: 0 errors.
+- **Web**: `pnpm install --frozen-lockfile`, `eslint .` (0 errors), `tsc --noEmit` clean. Production `pnpm build`
+  and `node scripts/prelaunch-words.mjs out`: 228 files, 0 pre-launch phrases; no test-mode code in `out/`.
+- **e2e** (`pnpm run e2e:build && pnpm run e2e:test`, `CI=1`, 3 workers, one retry): **320 passed, 0 failed,
+  58 skipped (deliberate), 3 flaky** (passed on retry). Of the three, `files.spec` was the layout race below
+  (fixed in `9a3b5d4`), the accounting 360 px sweep ran out of its 30 s (now `test.slow()`), and
+  `signed-out.spec` `/try` at 1280 px passed on retry with no saved trace. After those commits, `files`,
+  `accounting` and `signed-out` ran twice over with retries off: **152 passed**.
+  Browser: this container has Chromium 1243 while `@playwright/test` 1.64.1 expects 1248, so the run used a local,
+  git-excluded config pointing at the preinstalled headless shell (`/opt/pw-browsers/chromium_headless_shell-1243`).
+  With the full Chromium build instead, three invoice specs saw `chrome-extension://…/pdf_embedder.css` requests
+  (its PDF viewer) and `keyboard.spec`'s Tab sweep wrapped focus on `/vat`; neither happens with the headless shell
+  CI uses.
+- **Flutter** 3.47.8 (installed for this run): `flutter analyze` no issues; `flutter test` **279 passed** (includes the
+  profiles branch's untested `profile_switch_test.dart` and the new `more_gating_test.dart`).
+- **Flaky test**: before, 15/15 alone and 8/8 under CPU load (it only failed in long loaded runs); reproduced
+  deterministically with 50 ms writes (old fails at step 44 of 54, new passes); `test_sample_books.py` 27 passed.
+
+**Also found and fixed:** `app/layout.py` raced with itself. The first requests after sign-in (Home, the menu bar's
+`GET /profile`, Files) each run the old-folder rename; the loser's move raised `FileNotFoundError`, so
+`GET /books/layout` answered 500 and the Files page lost its "old and new side by side" warning. The loser now
+re-lists past the request memo and carries on (`180589b`, `9a3b5d4`, with a test that fails without it).
+
+## Sources
+
+- Next.js inlines `env` from `next.config.ts` at build time (the repo's own comment there, and
+  `node_modules/next/dist/docs`); the folding was checked by building both modes and scanning the output.
+- HMRC VAT (MTD) box rules as already cited in `packages/ledger/src/accnomos_ledger/vat.py` (checked 26 Oct 2026);
+  not re-fetched here (developer.service.gov.uk is not reachable from this container).
+- No other tax or legal rule was added: the clearing accounts and payouts are bookkeeping, not tax treatment (the
+  provider fee stays an exempt expense, as before).
 
 ## Risks
 
@@ -129,3 +163,6 @@ GATES_PLACEHOLDER
   (developer.service.gov.uk unreachable from here).
 - Clearing accounts cover payouts in GBP only; anything paid from a provider balance needs a journal.
 - `keyboard.spec.ts`'s Tab sweep and the chrome-extension request check depend on the browser build; see the gates.
+- The three source branches carried work-in-progress handovers; only the five defects and the merge fallout the
+  gates exposed were fixed here. Their other open items (e.g. accounting's `ToolsNav` once the menu links settle,
+  Contacts' customer/supplier filter) are unchanged.
