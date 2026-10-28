@@ -93,10 +93,10 @@ guides; the exact header spellings are therefore **not confirmed** against a rea
 
 ## Gate results (28 Oct 2026, this container)
 
-- `cd services/runtime && python -m pytest -q`: GATE_PYTEST
+- `cd services/runtime && python -m pytest -q`: **1465 passed, 2 skipped**.
 - `ruff check .` and `ruff format --check .` (0.17.3): clean. `pyright services/runtime/app` (1.1.414): 0 errors.
 - `cd apps/web && pnpm install --frozen-lockfile && pnpm exec eslint .`: clean. `pnpm run e2e:build`: built.
-- `pnpm run e2e:test`: GATE_E2E Run with `executablePath` pointed at the container's preinstalled Chromium through
+- `pnpm run e2e:test` (CI=1, 3 workers, one retry): **248 passed, 58 skipped, 4 failed**. The 4 are `invoice-payments.spec.ts` (2), `invoices.spec.ts:3` and `keyboard.spec.ts:143` (the `/vat` focus walk). They fail the same way on unchanged `origin/main` in this container (checked in a separate worktree): the container's full Chromium loads its built-in PDF viewer, whose `chrome-extension://` requests trip the specs' "nothing leaves 127.0.0.1" guard on the invoice PDF previews. Both import tests and the `/import` phone and axe sweeps pass. Run with `executablePath` pointed at the container's preinstalled Chromium through
   an uncommitted local config, because the pinned Playwright's own browser build is not installed here and cannot
   be downloaded.
 - No Flutter change (Android has no import screen), so no widget tests.
