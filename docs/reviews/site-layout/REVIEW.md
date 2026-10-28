@@ -202,8 +202,11 @@ Updated:
 2. **No MTD rule dates or thresholds on the page.** gov.uk was unreachable from this session, so the page states only
    what the app does. If the owner wants "MTD for Income Tax from April 2026 for income over £…", verify it on gov.uk
    first and cite the URL and date.
-3. **Landlords and accountants** are described by what works today: the same books; a shared folder, Books.xlsx,
-   exports and the audit trail. Once `claude/landlords` or `claude/accountant` merge, update the two cards and
+3. **Landlords and accountants are described by what worked on this branch's base**: the same books; a shared
+   folder, Books.xlsx, exports and the audit trail. **`origin/main` has since merged `claude/accountant`**
+   (`90cddb55`: accountant portal, Settings › Your accountant, client queries). When this branch is merged with
+   main, replace "A portal for accountants is not in this build" in `Landing.tsx` `Accountants()` with the portal,
+   and point the card at `/accountant`. Do the same for landlords when `claude/landlords` merges, and update
    `public_kb.md`, which the chat answers from.
 4. **"Try the demo" waits for the sandbox** (the first visitor of the day can wait while the seed runs), showing
    "Preparing the sample books…". If it fails it still goes to `/judges`, which shows the reason.
