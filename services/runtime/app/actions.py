@@ -1292,6 +1292,7 @@ async def run_quote(action: ProposedAction, ctx: Context) -> tuple[str, dict[str
         LineIn(
             description=ln["description"],
             quantity=Decimal(ln["quantity"]),
+            unit=None,
             unit_price_pence=ln["unit_price_pence"],
             vat_code=ln["vat_code"],
         )
@@ -1305,6 +1306,7 @@ async def run_quote(action: ProposedAction, ctx: Context) -> tuple[str, dict[str
         issue_date=date.fromisoformat(p["issue_date"]),
         expiry_date=date.fromisoformat(p["expiry_date"]),
         lines=lines,
+        reference=None,
         notes=None,
     )
     q = await quotes_.create_quote(ctx.books, draft, ctx.user)
