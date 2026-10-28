@@ -487,3 +487,22 @@ async def test_a_graph_403_inside_a_clients_books_is_403_not_sign_in_again() -> 
     assert shared.status_code == 403 and b"view-only" in shared.body
     own = await graph_error(request({}), GraphError(403, "accessDenied"))
     assert own.status_code == 401  # your own books: the token lacks a scope, sign in again
+
+
+def test_cors_lets_the_browser_send_the_client_headers() -> None:
+    """A browser preflights X-Books-*; Playwright answers preflights itself when it routes requests, so the e2e
+    suite cannot catch a missing header here."""
+    from app.main import app
+
+    r = TestClient(app).options(
+        "/books/proposals",
+        headers={
+            "Origin": "http://localhost:3000",
+            "Access-Control-Request-Method": "GET",
+            "Access-Control-Request-Headers": "x-graph-token,x-books-drive-id,x-books-item-id,x-books-access",
+        },
+    )
+    assert r.status_code == 200, r.text
+    allowed = r.headers["access-control-allow-headers"].lower()
+    for h in ("x-books-drive-id", "x-books-item-id", "x-books-access"):
+        assert h in allowed

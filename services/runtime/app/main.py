@@ -60,6 +60,9 @@ app.add_middleware(
         "X-Meta-Api-Key",
         "X-Business-Name",
         "X-Autopilot",
+        "X-Books-Drive-Id",  # an accountant in a client's shared books (app/sharing.py)
+        "X-Books-Item-Id",
+        "X-Books-Access",
     ]
     + (["X-Test-Tenant"] if is_test_mode() else []),  # app/testmode.py: one fake OneDrive per Playwright worker
     expose_headers=["X-Correlation-Id", "Retry-After"],
