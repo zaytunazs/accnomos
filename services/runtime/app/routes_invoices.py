@@ -28,7 +28,6 @@ from app.ai import remind
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.books import Books
 from app.books import today as london_today
-from app.todos import TodoIn, add_todo
 from app.invoicing import (
     Invoice,
     InvoiceCustomer,
@@ -40,6 +39,7 @@ from app.invoicing import (
 )
 from app.pdf import render_invoice
 from app.routes_books import get_books, require_user
+from app.todos import TodoIn, add_todo
 from app.validation import Day, Pence, StrictBody
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
@@ -189,9 +189,7 @@ def _contact_flags(inv: Invoice, by_id: dict[str, cb.Contact]) -> tuple[bool, bo
 
 
 @router.get("/chasing/overdue", response_model=list[OverdueRow])
-async def chasing_overdue(
-    as_of: Day | None = None, books: Books = Depends(get_books)
-) -> list[OverdueRow]:
+async def chasing_overdue(as_of: Day | None = None, books: Books = Depends(get_books)) -> list[OverdueRow]:
     """Sent invoices with a reminder step due (from 3 days before the due date), oldest first.
 
     `days_overdue`, the next reminder step, and — for business customers only — the statutory interest and
@@ -217,9 +215,7 @@ async def chasing_overdue(
         business, opted_out = _contact_flags(inv, by_id)
         step = None if opted_out else chase_.next_step(inv, day, config)
         interest = (
-            chase_.interest_pence(balance, inv.due_date, day, config.base_rates)
-            if business and days > 0
-            else None
+            chase_.interest_pence(balance, inv.due_date, day, config.base_rates) if business and days > 0 else None
         )
         rows.append(
             OverdueRow(
@@ -249,9 +245,7 @@ class ChaseDraftOut(BaseModel):
     todo_id: str | None = None  # set when the draft was also filed as a to-do (POST); GET files nothing
 
 
-async def _chase_context(
-    books: Books, number: str, day: date
-) -> tuple[Invoice, chase_.ChasingStep, bool, int]:
+async def _chase_context(books: Books, number: str, day: date) -> tuple[Invoice, chase_.ChasingStep, bool, int]:
     """(invoice, next step, business, days overdue). Raises 404/409 when there is nothing to draft."""
     inv = await _get(books, number)
     if inv.status != "sent":
@@ -276,7 +270,11 @@ async def chase_draft(number: str, as_of: Day | None = None, books: Books = Depe
     inv, step, business, days = await _chase_context(books, number, day)
     subject, body = chase_.render_draft(inv, await inv_.load_profile(books), step, day, business)
     return ChaseDraftOut(
-        number=number, to=inv.customer.email, subject=subject, body=body, step=ChaseStepOut(**step.model_dump()),
+        number=number,
+        to=inv.customer.email,
+        subject=subject,
+        body=body,
+        step=ChaseStepOut(**step.model_dump()),
         days_overdue=days,
     )
 
@@ -291,13 +289,20 @@ async def chase_draft_todo(
     subject, body = chase_.render_draft(inv, await inv_.load_profile(books), step, day, business)
     todo, _ = await add_todo(
         books,
-        TodoIn(text=f"Chase {number}: {step.title} ({inv_.money(inv.total_pence)} from {inv.customer.name})",
-               due=day if days > 0 else inv.due_date),
+        TodoIn(
+            text=f"Chase {number}: {step.title} ({inv_.money(inv.total_pence)} from {inv.customer.name})",
+            due=day if days > 0 else inv.due_date,
+        ),
         user,
     )
     return ChaseDraftOut(
-        number=number, to=inv.customer.email, subject=subject, body=body, step=ChaseStepOut(**step.model_dump()),
-        days_overdue=days, todo_id=todo.id,
+        number=number,
+        to=inv.customer.email,
+        subject=subject,
+        body=body,
+        step=ChaseStepOut(**step.model_dump()),
+        days_overdue=days,
+        todo_id=todo.id,
     )
 
 

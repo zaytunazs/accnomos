@@ -14,7 +14,7 @@ from app import chasing as chase_
 from app import invoicing as inv_
 from app.books import AUDIT, Books
 from app.contacts import CONTACTS, Contact
-from app.invoicing import PROFILE, InvoiceCustomer, InvoiceDraft, InvoiceProfile
+from app.invoicing import PROFILE, InvoiceDraft, InvoiceProfile
 
 USER = "sam@sambuilds.co.uk"
 H = {"X-Graph-Token": "tok", "X-User": USER}
@@ -158,9 +158,7 @@ async def test_drafts_and_paid_invoices_have_no_step(books: Books, sender: FakeM
 
 
 async def test_opted_out_contact_gets_no_step(books: Books, sender: FakeMailSender, client: TestClient):
-    await books.write_json(
-        CONTACTS, [_contact("a1b2c3d4e5f60718", chasing_opt_out=True).model_dump(mode="json")]
-    )
+    await books.write_json(CONTACTS, [_contact("a1b2c3d4e5f60718", chasing_opt_out=True).model_dump(mode="json")])
     customer = {"contact_id": "a1b2c3d4e5f60718", "name": "Acme Kitchens Ltd", "email": "accounts@acme.example"}
     inv = await _sent(books, sender, customer)
     rows = client.get("/invoices/chasing/overdue", params={"as_of": "2026-10-30"}).json()
@@ -282,9 +280,7 @@ async def test_typed_in_customer_is_not_b2b(books: Books, sender: FakeMailSender
 
 
 async def test_draft_endpoints_send_nothing(books: Books, sender: FakeMailSender, client: TestClient):
-    await books.write_json(
-        CONTACTS, [_contact("a1b2c3d4e5f60718").model_dump(mode="json")]
-    )
+    await books.write_json(CONTACTS, [_contact("a1b2c3d4e5f60718").model_dump(mode="json")])
     inv = await _sent(
         books, sender, {"contact_id": "a1b2c3d4e5f60718", "name": "Acme Kitchens Ltd", "email": "a@acme.example"}
     )
