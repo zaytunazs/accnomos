@@ -218,7 +218,9 @@ class LineIn(StrictBody):
     timesheet_entry_ids: list[Annotated[str, Field(max_length=32)]] = Field(
         default_factory=list, max_length=1000
     )  # hours this line bills (jobs)
-    item_code: str | None = Field(default=None, max_length=30)  # the catalogue item that filled this line (app/items.py)
+    item_code: str | None = Field(
+        default=None, max_length=30
+    )  # the catalogue item that filled this line (app/items.py)
 
 
 class InvoiceLine(LineIn):
