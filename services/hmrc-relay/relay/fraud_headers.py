@@ -12,7 +12,7 @@ import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Literal
+from typing import Annotated, Literal
 from urllib.parse import quote
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -47,6 +47,10 @@ REQUIRED: dict[str, list[str]] = {
 # Gov-Vendor-License-IDs is sent when RELAY_LICENCE_HASH is configured; it is not required otherwise.
 
 _TS = r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$"
+# Values sent to HMRC as they are (not percent-encoded) must be printable ASCII: anything else could not be a header
+# value at all. Every client string is capped, like every other free-text field (docs/SECURITY.md).
+_HEADER_SAFE = r"^[\x20-\x7E]+$"
+Short = Annotated[str, Field(min_length=1, max_length=256)]
 
 
 def enc(value: object) -> str:
@@ -65,7 +69,9 @@ class _Strict(BaseModel):
 class MultiFactor(_Strict):
     type: Literal["TOTP", "AUTH_CODE", "OTHER"]
     timestamp: str = Field(pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}Z$")
-    unique_reference: str = Field(min_length=1, description="Hash identifying the factor, never the factor itself")
+    unique_reference: str = Field(
+        min_length=1, max_length=256, description="Hash identifying the factor, never the factor itself"
+    )
 
 
 class Screen(_Strict):
@@ -81,27 +87,27 @@ class WindowSize(_Strict):
 
 
 class DeviceUserAgent(_Strict):
-    os_family: str
-    os_version: str
-    device_manufacturer: str
-    device_model: str
+    os_family: Short
+    os_version: Short
+    device_manufacturer: Short
+    device_model: Short
 
 
 class ClientFacts(_Strict):
     """What the browser / app collected on the device. Field absent = genuinely unavailable."""
 
-    device_id: str | None = None
-    multi_factor: list[MultiFactor] | None = None  # [] = no MFA used (sent as an empty header)
-    screens: list[Screen] | None = None
+    device_id: str | None = Field(None, max_length=128, pattern=_HEADER_SAFE)
+    multi_factor: list[MultiFactor] | None = Field(None, max_length=10)  # [] = no MFA used (sent as an empty header)
+    screens: list[Screen] | None = Field(None, max_length=10)
     timezone: str | None = Field(None, pattern=r"^UTC[+-]\d{2}:\d{2}$")
-    user_ids: dict[str, str] | None = None  # e.g. {"accnomos": "<user id>"}
+    user_ids: dict[Short, Short] | None = Field(None, max_length=10)  # e.g. {"accnomos": "<user id>"}
     window_size: WindowSize | None = None
-    vendor_versions: dict[str, str] | None = None  # client software, e.g. {"accnomos-android": "1.4.0"}
+    vendor_versions: dict[Short, Short] | None = Field(None, max_length=10)  # e.g. {"accnomos-android": "1.4.0"}
     # web only
-    browser_js_user_agent: str | None = None
+    browser_js_user_agent: str | None = Field(None, max_length=1024, pattern=_HEADER_SAFE)
     # mobile only
     user_agent: DeviceUserAgent | None = None
-    local_ips: list[str] | None = None
+    local_ips: list[Annotated[str, Field(min_length=1, max_length=64)]] | None = Field(None, max_length=20)
     local_ips_timestamp: str | None = Field(None, pattern=_TS)
 
 

@@ -76,9 +76,10 @@ _NUMBERISH = re.compile(r"^[+-]?[\d.,]+$")  # a negative number stored as text i
 
 def _safe_text(v: object) -> object:
     """openpyxl writes any string starting with = as a formula;
-    text from receipts, names and notes must never be one.
+    text from receipts, names and notes must never be one. Tab and carriage return too (OWASP): a spreadsheet
+    opening the CSV export may drop them and read what follows as a formula.
     """
-    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@") and not _NUMBERISH.match(v):
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r") and not _NUMBERISH.match(v):
         return "'" + v
     return v
 

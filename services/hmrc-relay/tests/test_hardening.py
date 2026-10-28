@@ -93,6 +93,13 @@ def test_access_log_hides_the_oauth_code_and_still_formats():
     )
 
 
+def test_the_client_secret_is_scrubbed_wherever_it_appears(monkeypatch):
+    from relay.security import scrub
+
+    monkeypatch.setenv("HMRC_CLIENT_SECRET", "client-secret-0123456789")
+    assert scrub("token endpoint echoed client-secret-0123456789") == "token endpoint echoed [redacted]"
+
+
 async def test_hmrc_error_message_is_scrubbed(client_for):
     def hmrc(_: httpx.Request) -> httpx.Response:
         return httpx.Response(401, json={"code": "INVALID_CREDENTIALS", "message": f"Bearer {TOKEN} is not valid"})
@@ -157,3 +164,39 @@ async def test_period_key_format(client_for, key):
         f"/vat/123456789/returns/{key}/view", headers={"X-HMRC-Access-Token": TOKEN}, json=envelope()
     )
     assert r.status_code in (404, 422)
+
+
+@pytest.mark.parametrize(
+    "facts",
+    [
+        {"device_id": "abc\r\nX-Injected: 1"},  # sent to HMRC as it is: a header value must be printable ASCII
+        {"device_id": "d" * 129},
+        {"browser_js_user_agent": "Mozilla/5.0 é"},
+        {"browser_js_user_agent": "M" * 1025},
+        {"user_ids": {"accnomos": "u" * 257}},
+        {"user_ids": {f"k{i}": "v" for i in range(11)}},
+        {"vendor_versions": {"accnomos-pwa": ""}},
+        {"screens": [{"width": 1, "height": 1, "scaling_factor": 1, "colour_depth": 24}] * 11},
+        {"multi_factor": [{"type": "TOTP", "timestamp": "2026-10-27T09:00Z", "unique_reference": "r" * 257}]},
+    ],
+)
+async def test_client_facts_are_capped_and_header_safe(client_for, facts):
+    body = {**envelope(**{"from": "2026-01-01", "to": "2026-03-31"}), "client_facts": {**web_facts(), **facts}}
+    r = await client_for(never).post("/vat/123456789/liabilities", headers={"X-HMRC-Access-Token": TOKEN}, json=body)
+    assert r.status_code == 422, r.text
+
+
+async def test_mobile_facts_are_capped(client_for):
+    from .conftest import mobile_facts
+
+    for facts in ({"local_ips": ["10.0.0.1"] * 21}, {"user_agent": {**mobile_facts()["user_agent"], "os_family": ""}}):
+        body = {
+            "client_facts": {**mobile_facts(), **facts},
+            "method": "MOBILE_APP_VIA_SERVER",
+            "from": "2026-01-01",
+            "to": "2026-03-31",
+        }
+        r = await client_for(never).post(
+            "/vat/123456789/liabilities", headers={"X-HMRC-Access-Token": TOKEN}, json=body
+        )
+        assert r.status_code == 422, r.text

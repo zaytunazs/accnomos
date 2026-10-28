@@ -266,7 +266,7 @@ def app_restricted(api: dict[str, tuple[int, dict]], log: list):
 
 async def test_test_user_and_cached_app_token(client_for):
     log: list[httpx.Request] = []
-    user = {"userId": "945350439195", "password": "bLohysg8utsa", "vrn": "666119668"}
+    user = {"userId": "000000000001", "password": "not-a-real-password", "vrn": "666119668"}
     c = client_for(app_restricted({"/create-test-user/organisations": (201, user)}, log))
     assert (await c.post("/hmrc/test-user")).json()["vrn"] == "666119668"
     assert (await c.post("/hmrc/test-user")).status_code == 201

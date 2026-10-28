@@ -59,11 +59,25 @@ _JWT = re.compile(r"\beyJ[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]{6,}\.[A-Za-z0-9_-]*")
 # The credential values of the request being served, so a token quoted bare in an exception message (no
 # "Bearer", no header name) is still caught. Values under 8 characters are skipped: too likely to be ordinary text.
 _request_secrets: ContextVar[tuple[str, ...]] = ContextVar("request_secrets", default=())
+# The server's own keys, read from the environment on each call (tests change it), so an upstream error that echoes
+# one (a model provider quoting the key it refused) is redacted too.
+SERVER_SECRET_ENV = (
+    "META_API_KEY",
+    "MODEL_API_KEY",
+    "BASETEN_API_KEY",
+    "COMPANIES_HOUSE_API_KEY",
+    "ACTIONS_SIGNING_KEY",
+)
+
+
+def _server_secrets() -> tuple[str, ...]:
+    return tuple(v for name in SERVER_SECRET_ENV if len(v := os.getenv(name, "").strip()) >= 8)
 
 
 def scrub(text: str) -> str:
-    """Remove this request's credentials, bearer tokens, JWTs and credential header/field values from free text."""
-    for secret in _request_secrets.get():
+    """Remove this request's credentials, the server's own keys, bearer tokens, JWTs and credential header/field
+    values from free text."""
+    for secret in (*_request_secrets.get(), *_server_secrets()):
         text = text.replace(secret, REDACTED)
     text = _HEADER_VALUE.sub(lambda m: f"{m.group(1)}{m.group(2)}{REDACTED}", text)
     text = _BEARER.sub(f"Bearer {REDACTED}", text)

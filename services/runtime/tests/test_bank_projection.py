@@ -428,3 +428,23 @@ def test_books_xlsx_never_writes_text_as_a_formula():
     assert _safe_text("@Screwfix") == "'@Screwfix"
     assert _safe_text("-12.50") == "-12.50"  # a negative amount as text is left alone
     assert _safe_text(-1250) == -1250 and _safe_text(None) is None
+    assert _safe_text("\t=1+1") == "'\t=1+1" and _safe_text("\r=cmd") == "'\r=cmd"
+
+
+def test_report_xlsx_writes_a_contact_name_as_text():
+    """The Reports export (aged balances) puts contact names through the same guard as Books.xlsx."""
+    import io
+    from datetime import date
+
+    from openpyxl import load_workbook
+
+    from app.contacts import BUCKETS, AgedBalances, AgedRow, AgedTable
+    from app.reports import build_report_xlsx
+
+    zero = dict.fromkeys(BUCKETS, 0)
+    row = AgedRow(contact_id="c1", name='=HYPERLINK("http://x","y")', buckets=zero, total_pence=0, documents=[])
+    table = AgedTable(rows=[row], buckets=zero, total_pence=0)
+    empty = AgedTable(rows=[], buckets=zero, total_pence=0)
+    data, _ = build_report_xlsx("aged", aged=AgedBalances(as_of=date(2026, 10, 27), debtors=table, creditors=empty))
+    cell = load_workbook(io.BytesIO(data))["Debtors"]["A2"]
+    assert cell.data_type == "s" and cell.value == '\'=HYPERLINK("http://x","y")'

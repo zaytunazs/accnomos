@@ -16,6 +16,11 @@ ErrorDocument 404 /404.html
   Header always set Permissions-Policy "camera=(self), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=()"
   Header always set X-Frame-Options "DENY"
   Header always set Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+  # A full policy in report-only mode first (docs/SECURITY.md): violations show in the browser console and nothing
+  # is blocked. Scripts still need 'unsafe-inline' (Next's inline bootstrap has no nonce in a static export). The
+  # point is connect-src: tokens could only be sent to the runtime/relay, Graph (and its download hosts) and
+  # Microsoft sign-in. Enforce it once a release has run clean with it.
+  Header always set Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' https://api.accnomos.com https://graph.microsoft.com https://*.sharepoint.com https://*.1drv.com https://*.onedrive.com https://*.microsoftpersonalcontent.com https://login.microsoftonline.com https://login.live.com; frame-src https://login.microsoftonline.com https://login.live.com; form-action 'self'; base-uri 'self'; object-src 'none'"
   # Caching (docs/PERF.md). Pages, RSC payloads (.txt) and unhashed public files are revalidated on every use
   # (a cheap 304 via ETag), so a deploy shows at once. Not "always", so error responses (a 404 for a chunk
   # an old page asks for after a deploy) never get the year-long header below.
