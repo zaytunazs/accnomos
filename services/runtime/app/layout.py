@@ -68,7 +68,12 @@ async def migrate(books: Books) -> LayoutStatus:
                 empty = True
             status.conflicts.append(Conflict(old=found.name, new=new, old_is_empty=empty))
             continue
-        await books.storage.move(found.name, new)
+        try:
+            await books.storage.move(found.name, new)
+        except (FileNotFoundError, FileExistsError):
+            # Another request renamed it a moment ago (two tabs at sign-in, or one page's calls in parallel, each
+            # checking the layout): the folder is where it should be, and the move is that request's to report.
+            continue
         top[new.casefold()] = found
         status.moved.append(Renamed(old=found.name, new=new))
     if status.moved:
