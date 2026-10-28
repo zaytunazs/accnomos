@@ -16,7 +16,8 @@ from typing import Any
 
 from accnomos_ledger import LedgerEvent, compute_vat_return, vat_side
 from app.books import EVENTS, PROPOSALS, WORKBOOK, Books
-from app.paths import VAT_RETURNS
+from app.books import today as london_today
+from app.paths import QUOTES, VAT_RETURNS
 from app.routes_vat import box_amounts, period_key_for
 from app.schemas import AskPeriod
 from app.vat_cycle import VatCycle
@@ -178,6 +179,9 @@ def _trim(facts: dict[str, Any]) -> None:
             return
         for key in ("largest_transactions", "top_suppliers", "top_customers"):
             facts[key] = facts[key][:n]
+        for key in ("waiting_for_an_answer", "expired_unanswered"):
+            if "quotes" in facts:
+                facts["quotes"][key]["quotes"] = facts["quotes"][key]["quotes"][: min(n, 3)]
         keep = {t["source"] for t in facts["largest_transactions"]}
         facts["sources"] = [s for s in facts["sources"] if not s.endswith(".json") or s in keep]
         for name in ("this_period", "previous_period"):
@@ -219,6 +223,12 @@ async def build_facts(books: Books, period: AskPeriod, business_name: str | None
     if pending and (pending["proposed"] or pending["needs_a_look"]):
         sources.append(f"{PROPOSALS}/")
 
+    from app import quotes as quotes_  # late: quotes pulls in invoicing, which Ask does not otherwise need
+
+    quote_facts = quotes_.quote_facts(await quotes_.list_quotes(books), london_today())
+    if quote_facts:
+        sources.append(f"{QUOTES}/")
+
     facts: dict[str, Any] = {
         "business": business_name or None,
         "money": "GBP pounds; boxes 1-5 to 2 dp, boxes 6-9 whole pounds; negative = money back or a fall",
@@ -229,6 +239,7 @@ async def build_facts(books: Books, period: AskPeriod, business_name: str | None
         "top_customers": _top([e for _p, e in this_entries], "sales"),
         "largest_transactions": largest,
         "pending_proposals": pending,
+        **({"quotes": quote_facts} if quote_facts else {}),
         "sources": list(dict.fromkeys(sources)) or [f"{EVENTS}/"],
     }
     _trim(facts)

@@ -329,7 +329,9 @@ class AskExplanation(BaseModel):
     confidence: Confidence
 
 
-ActionKind = Literal["create_invoice", "chase_invoice", "log_mileage", "log_timesheet"]
+ActionKind = Literal[
+    "create_invoice", "chase_invoice", "log_mileage", "log_timesheet", "create_quote", "convert_quote_to_invoice"
+]
 
 
 class ProposedAction(StrictBody):

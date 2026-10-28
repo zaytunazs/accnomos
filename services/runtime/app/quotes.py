@@ -390,3 +390,48 @@ async def convert_to_invoice(
         {"quote": number, "invoice": inv.number, "total_pence": inv.total_pence},
     )
     return q, inv
+
+
+# --------------------------------------------------------------------------- #
+# Facts for Ask
+# --------------------------------------------------------------------------- #
+
+EXPIRING_SOON_DAYS = 7
+
+
+def _pounds(pence: int) -> str:
+    return f"{pence // 100}.{pence % 100:02d}"
+
+
+def quote_facts(quotes: list[Quote], today: date) -> dict[str, object] | None:
+    """What a question about quotes may quote: figures worked out here, in pounds as strings, like the rest of the
+    facts pack. None when there are no quotes at all, so a book without any adds nothing to the pack."""
+    if not quotes:
+        return None
+
+    def card(q: Quote) -> dict[str, object]:
+        return {
+            "number": q.number,
+            "customer": q.customer.name,
+            "total": _pounds(q.total_pence),
+            "sent": q.sent_at.date().isoformat() if q.sent_at else None,
+            "valid_until": q.expiry_date.isoformat(),
+            "days_left": (q.expiry_date - today).days,
+        }
+
+    def tally(qs: list[Quote]) -> dict[str, object]:
+        return {"count": len(qs), "total": _pounds(sum(q.total_pence for q in qs))}
+
+    by = {s: [q for q in quotes if q.effective_status(today) == s] for s in ("draft", "sent", "expired", "accepted")}
+    waiting = sorted(by["sent"], key=lambda q: (q.expiry_date, q.number))
+    soon = [q for q in waiting if (q.expiry_date - today).days <= EXPIRING_SOON_DAYS]
+    expired = sorted(by["expired"], key=lambda q: (q.expiry_date, q.number), reverse=True)
+    to_invoice = [q for q in by["accepted"] if not q.invoice_number]
+    return {
+        "as_of": today.isoformat(),
+        "waiting_for_an_answer": {**tally(waiting), "quotes": [card(q) for q in waiting[:6]]},
+        "expiring_within_7_days": tally(soon),
+        "expired_unanswered": {**tally(expired), "quotes": [card(q) for q in expired[:4]]},
+        "accepted_not_yet_invoiced": tally(to_invoice),
+        "drafts": tally(by["draft"]),
+    }
