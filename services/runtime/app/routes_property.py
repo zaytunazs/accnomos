@@ -73,7 +73,7 @@ async def _summary(
 
 
 @router.get("/categories")
-async def categories() -> list[dict[str, str]]:
+async def categories(_books: Books = Depends(get_books)) -> list[dict[str, str]]:
     return [
         {"key": c.key, "label": c.label, "group": c.group, "box": c.box, "field": c.field, "account": c.account}
         for c in pr.CATEGORIES

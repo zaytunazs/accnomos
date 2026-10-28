@@ -55,7 +55,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from accnomos_ledger import LedgerEvent, Line, VatCode
 from app.books import Books, now
@@ -317,7 +317,7 @@ def finance_credit_rate(tax_year: str) -> int:
 # --------------------------------------------------------------------------- #
 
 
-class Owner(BaseModel):
+class Owner(StrictBody):
     name: str = Field(min_length=1, max_length=80)
     share_bp: int = Field(ge=0, le=WHOLE, description="beneficial share in basis points (5000 = 50 %)")
     me: bool = False  # the person whose books these are: their share is what goes to HMRC
@@ -467,7 +467,7 @@ class PropertySettings(BaseModel):
     rent_a_room_relief: bool = True  # claim the exempt amount on Rent a Room rents (instead of their expenses)
     # Unused residential finance costs brought into each tax year (SA105 box 45), pence, from last year's return.
     finance_brought_forward: dict[str, Pence] = Field(default_factory=dict)
-    business_id: str | None = Field(default=None, pattern=r"^X[A-Z0-9]IS\d{11}$")  # HMRC's id, not a secret
+    business_id: str | None = Field(default=None, pattern=r"^X[A-Z0-9]IS\d{11}$", max_length=15)
 
     @field_validator("finance_brought_forward")
     @classmethod
@@ -479,8 +479,8 @@ class PropertySettings(BaseModel):
         return v
 
 
-class PropertySettingsIn(PropertySettings, StrictBody):
-    pass
+class PropertySettingsIn(PropertySettings):
+    model_config = ConfigDict(extra="forbid")
 
 
 async def load_settings(books: Books) -> PropertySettings:
