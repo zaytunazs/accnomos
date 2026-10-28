@@ -135,8 +135,8 @@ function Signed({ account, callback }: { account: AccountInfo; callback: Callbac
     setError(null);
     try {
       const r = await fn();
-      setNote(typeof done === "function" ? done(r) : done);
       await load();
+      setNote(typeof done === "function" ? done(r) : done); // after the reload, so the page shows the result
       return true;
     } catch (e) {
       fail(e);
@@ -168,7 +168,10 @@ function Signed({ account, callback }: { account: AccountInfo; callback: Callbac
       form17: form.joint === "spouses" && form.form17,
       owners,
     };
-    if (await act("property", () => property.add(account, body), `Added ${body.name}`)) setForm(blankProperty);
+    await act("property", () => property.add(account, body), () => {
+      setForm(blankProperty); // with the note, so the form is clear by the time "Added" shows
+      return `Added ${body.name}`;
+    });
   }
 
   async function addEntry() {
@@ -186,8 +189,10 @@ function Signed({ account, callback }: { account: AccountInfo; callback: Callbac
       replacing_existing_item: entry.replacing,
     };
     const cat = cats.find((c) => c.key === entry.category);
-    if (await act("entry", () => property.addEntry(account, body), `Recorded ${pounds(pence)}: ${cat?.label ?? entry.category}`))
-      setEntry({ ...entry, amount: "", description: "", replacing: false });
+    await act("entry", () => property.addEntry(account, body), () => {
+      setEntry((x) => ({ ...x, amount: "", description: "", replacing: false }));
+      return `Recorded ${pounds(pence)}: ${cat?.label ?? entry.category}`;
+    });
   }
 
   if (!ready) return <LoadingSkeleton lines={4} label="Loading your property figures…" />;
@@ -545,8 +550,11 @@ function MtdUpdate({
     property.mtd(account, taxYear, periodEnd ?? undefined).then(
       (m) => {
         if (stale) return;
-        setMtd(m);
-        setConfirmed(false); // a tick is for the figures shown, not for new ones
+        setMtd((old) => {
+          // a tick is for the figures shown, not for new ones
+          if (JSON.stringify(old?.cumulative) !== JSON.stringify(m.cumulative)) setConfirmed(false);
+          return m;
+        });
       },
       (e: Error) => !stale && setNote(e.message),
     );

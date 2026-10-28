@@ -84,8 +84,11 @@ allowance comparison, the export file in `07 Reports` and the submission record 
 with `executablePath` pointed at the preinstalled Chromium through an uncommitted local config. Full (not headless-shell)
 Chromium loads its PDF viewer extension, which the suite's "nothing leaves 127.0.0.1" guard counts as an escaped
 request: `invoices.spec.ts` and `invoice-payments.spec.ts` (which preview a PDF) fail for that reason here, unrelated to
-this branch. The results of the whole run are listed in the summary of the session; CI (with its own browser) is the
-judge.
+this branch. Whole run (`CI=1`, 3 workers, one retry): 246 passed, 58 skipped, 4 failed: those three PDF tests and
+`keyboard.spec.ts:143` (/vat tab order), which fails the same way on an unmodified `main` build in this container. The
+first whole run showed both property tests flaky under load: two real races in the page (a form reset after a save
+overwrote the next entry's category; a settings reload unticked the confirmation), fixed, then
+`property.spec.ts --repeat-each=5 --workers=3`: 10 passed. CI (with its own browser) is the judge.
 
 ## Risks and what remains
 
