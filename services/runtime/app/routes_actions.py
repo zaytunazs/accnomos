@@ -23,16 +23,27 @@ router = APIRouter(prefix="/actions", tags=["actions"])
 
 
 def graph_token(request: Request) -> str:
+    """The caller's Graph token; in a demo (app/demo.py) a per-session stand-in, so actions are signed per session."""
+    from app import demo
+
+    if (sandbox := demo.from_request(request)) is not None:
+        return sandbox.token_key
     token = request.headers.get("X-Graph-Token", "").strip().removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")
     return token
 
 
-def _mail_sender(token: str) -> Any:
-    """() -> a Graph mail sender, or None on a build without sending (it lands with invoicing)."""
+def _mail_sender(token: str, request: Request | None = None) -> Any:
+    """() -> a Graph mail sender, or None on a build without sending (it lands with invoicing).
+    In a demo, the session's recording sender: nothing is sent."""
+    from app import demo
+
+    sandbox = demo.from_request(request) if request is not None else None
 
     def make() -> Any:
+        if sandbox is not None:
+            return sandbox.sender
         if is_test_mode():  # the in-memory sender (GET /__test/state lists what was "sent")
             from app import testmode
 
@@ -63,12 +74,13 @@ class Rejected(BaseModel):
 @router.post("/approve", response_model=actions.ActionResult)
 async def approve(
     body: ApproveBody,
+    request: Request,
     books: Books = Depends(get_books),
     user: str = Depends(require_user),
     token: str = Depends(graph_token),
 ) -> actions.ActionResult:
     """Execute the action once. Approving the same action again returns the first result (status already_done)."""
-    ctx = actions.Context(books=books, user=user, graph_token=token, mail_sender=_mail_sender(token))
+    ctx = actions.Context(books=books, user=user, graph_token=token, mail_sender=_mail_sender(token, request))
     try:
         return await actions.approve(body.action, ctx)
     except actions.ActionError as exc:

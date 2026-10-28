@@ -29,6 +29,11 @@ router = APIRouter(prefix="/mail", tags=["mail"])
 
 
 async def get_mail(request: Request) -> AsyncIterator[MailProvider]:
+    from app import demo
+
+    if (sandbox := demo.from_request(request)) is not None:  # the demo's in-memory mail: no Graph, nothing sent
+        yield sandbox.mail
+        return
     token = request.headers.get("X-Graph-Token", "").strip().removeprefix("Bearer ").strip()
     if not token:
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")

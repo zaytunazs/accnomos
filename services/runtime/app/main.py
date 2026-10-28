@@ -16,7 +16,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, ConfigDict, Field
 
-from app import layout
+from app import demo, layout
 from app.ai.config import TEST_AI_MODEL, base_url_allowed, is_test_mode, stub_ai_base
 from app.security import SecurityMiddleware, install_log_scrubbing, scrub
 
@@ -53,6 +53,7 @@ app.add_middleware(
         "X-Meta-Api-Key",
         "X-Business-Name",
         "X-Autopilot",
+        "X-Demo-Session",  # app/demo.py: a demo sandbox instead of a Graph token
     ]
     + (["X-Test-Tenant"] if is_test_mode() else []),  # app/testmode.py: one fake OneDrive per Playwright worker
     expose_headers=["X-Correlation-Id", "Retry-After"],
@@ -87,6 +88,7 @@ async def health() -> dict:
         "voice": bool(FFMPEG),
         "folder_layout": layout.health(),
         **({"test_mode": True} if is_test_mode() else {}),
+        **({"demo": demo.status()} if demo.enabled() else {}),
     }
 
 
@@ -222,6 +224,17 @@ if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI und
     testmode.warm()
     app.add_middleware(testmode.TenantMiddleware)  # added last, so outermost: X-Test-Tenant picks the fakes
     app.include_router(testmode.router)
+
+if demo.enabled():  # DEMO_MODE=1: per-visitor sandboxes on the sample books (app/demo.py); needs DEMO_SECRET
+    demo.enable()  # after testmode.enable(): it keeps test mode's rate-limit exemptions and its pinned day
+    app.include_router(demo.router)
+
+
+@app.exception_handler(demo.DemoLimit)
+async def demo_limit(_request: Request, exc: demo.DemoLimit) -> JSONResponse:
+    """A demo sandbox went over its size or file-count limit."""
+    return JSONResponse(status_code=413, content={"detail": str(exc)})
+
 
 from app.routes_todos import router as todos_router  # noqa: E402  /todos
 

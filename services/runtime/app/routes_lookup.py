@@ -17,6 +17,10 @@ router = APIRouter(prefix="/lookup", tags=["lookup"])
 
 
 def signed_in(request: Request) -> None:
+    if request.headers.get("X-Demo-Session") is not None:  # app/demo.py: no Companies House or HMRC from a demo
+        raise HTTPException(
+            status_code=403, detail="Look-ups to Companies House and HMRC are switched off in the demo sandbox."
+        )
     if not request.headers.get("X-Graph-Token", "").strip().removeprefix("Bearer ").strip():
         raise HTTPException(status_code=401, detail="X-Graph-Token header required")
 

@@ -32,7 +32,13 @@ router = APIRouter(prefix="/books", tags=["books"])
 
 
 async def get_books(request: Request) -> AsyncIterator[Books]:
-    """Books over the caller's OneDrive, for this request only. 401 without a token."""
+    """Books over the caller's OneDrive, for this request only. 401 without a token.
+    With `X-Demo-Session` instead (app/demo.py): that demo's in-memory sample books; Graph is never called."""
+    from app import demo
+
+    if (sandbox := demo.from_request(request)) is not None:
+        yield sandbox.books()
+        return
     auth = request.headers.get("X-Graph-Token", "").strip()
     token = auth.removeprefix("Bearer ").strip()
     if not token:

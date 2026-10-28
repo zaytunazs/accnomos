@@ -2,7 +2,8 @@
 
 One pure-ASGI middleware, inside CORS so its error responses still carry CORS headers:
   * a correlation id per request (`X-Correlation-Id`), also used in error bodies and logs;
-  * credential headers (X-Graph-Token, X-Meta-Api-Key, X-HMRC-Access-Token, Authorization) over 8 KB -> 431,
+  * credential headers (X-Graph-Token, X-Meta-Api-Key, X-HMRC-Access-Token, Authorization, X-Demo-Session) over
+    8 KB -> 431,
     and over plain HTTP -> 400 whenever a proxy says so in X-Forwarded-Proto;
   * a per-IP token bucket (RATE_LIMIT_PER_MIN, default 60) -> 429 with Retry-After;
   * body caps: 25 MB on the document upload routes, 2 MB on the invoice logo, 256 KB everywhere else -> 413;
@@ -34,7 +35,7 @@ Receive = Callable[[], Awaitable[Message]]
 Send = Callable[[Message], Awaitable[None]]
 ASGIApp = Callable[[Scope, Receive, Send], Awaitable[None]]
 
-SECRET_HEADERS = ("x-graph-token", "x-meta-api-key", "x-hmrc-access-token", "authorization")
+SECRET_HEADERS = ("x-graph-token", "x-meta-api-key", "x-hmrc-access-token", "authorization", "x-demo-session")
 MAX_TOKEN_BYTES = 8 * 1024
 UPLOAD_PATHS = frozenset({"/extract", "/books/ask/voice", "/books/bank/import"})
 UPLOAD_LIMIT = 25 * 1024 * 1024
@@ -49,7 +50,8 @@ MAX_BUCKETS = 10_000
 
 REDACTED = "[redacted]"
 _HEADER_VALUE = re.compile(
-    r"(?i)(x-graph-token|x-meta-api-key|x-hmrc-access-token|authorization|api[_-]?key|access_token|refresh_token)"
+    r"(?i)(x-graph-token|x-demo-session|x-meta-api-key|x-hmrc-access-token|authorization"
+    r"|api[_-]?key|access_token|refresh_token)"
     r"""(["']?\s*[:=]\s*["']?)(?:bearer\s+)?[^\s"',;&}]+"""
 )
 _BEARER = re.compile(r"(?i)\bbearer\s+[A-Za-z0-9._~+/=-]+")
