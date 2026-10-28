@@ -320,6 +320,10 @@ export const runtime = {
   draftReply: (a: AccountInfo, messageId: string, body: string) =>
     call<RtDraftReply>(a, "/mail/draft-reply", { method: "POST", body: JSON.stringify({ message_id: messageId, body }) },
       mailDraftScopesFor(accountKind(a))),
+  /** GET /close: the month that ended last (and closed months changed since), for the Home card. Reads only. */
+  closeOverview: (a: AccountInfo, today: string) => call<RtCloseOverview>(a, `/close?today=${today}`),
+  /** GET /close/{yyyy-mm}: status, the last run, close records, changes since the close. Reads only. */
+  closeMonth: (a: AccountInfo, month: string, today: string) => call<RtCloseMonth>(a, `/close/${month}?today=${today}`),
   /** GET /audit: the audit trail, newest first (`from`, `to`, `actor`, `kind`, `limit`). Reads only. */
   audit: (a: AccountInfo, query: string) => call<RtAuditPage>(a, `/audit${query ? `?${query}` : ""}`),
   /** To-dos in _System/Todos/todos.json. */
@@ -1582,7 +1586,13 @@ export interface RtAskAnswer {
   clarification?: RtClarification | null; // an instruction Ask needs one more detail for
 }
 /** Proposed actions (services/runtime/app/actions.py). Kept by the app only; post back unchanged to approve. */
-export type RtActionKind = "create_invoice" | "chase_invoice" | "log_mileage" | "log_timesheet";
+export type RtActionKind =
+  | "create_invoice"
+  | "chase_invoice"
+  | "log_mileage"
+  | "log_timesheet"
+  | "match_bank_line" // proposed by the month-end close
+  | "close_month"; // proposed by the month-end close
 export interface RtProposedAction {
   id: string;
   kind: RtActionKind;
@@ -1617,6 +1627,31 @@ export interface RtChasePreview {
   to: string;
   subject: string;
   body: string;
+  warnings: string[];
+}
+/** match_bank_line: a match code suggested during the month-end close; approving records it (posts nothing). */
+export interface RtBankMatchPreview {
+  month: string;
+  line_id: string;
+  date: string;
+  amount_pence: number;
+  description: string;
+  bank: string;
+  event_ids: string[];
+  to: string;
+  reasons: string[];
+  warnings: string[];
+}
+/** close_month: approving records the close with this snapshot; refused if the month's figures changed since. */
+export interface RtCloseMonthPreview {
+  month: string;
+  label: string;
+  snapshot_hash: string;
+  reclose: boolean;
+  figures: { sales_pence: number; cost_of_sales_pence: number; overheads_pence: number; net_profit_pence: number };
+  entries: number;
+  bank_lines: number;
+  changes: string[];
   warnings: string[];
 }
 export interface RtTimesheetPreview {
@@ -1812,3 +1847,149 @@ export const ukDate = (iso: string) => {
   const d = new Date(iso);
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 };
+
+/** The month-end close (services/runtime/app/month_end.py). Money in pence; texts are written by code. */
+export type RtCloseStepId = "inbox" | "bank" | "sales" | "purchases" | "payroll" | "vat" | "checks" | "reports" | "lock";
+export interface RtCloseFinding {
+  text: string;
+  level: "blocking" | "needs_you" | "note";
+  link: string | null;
+  refs: Record<string, unknown>;
+}
+export interface RtCloseStep {
+  id: RtCloseStepId;
+  n: number;
+  title: string;
+  status: "ok" | "needs_you" | "blocked";
+  reason: string;
+  link: string | null;
+  checked: string[];
+  found: RtCloseFinding[];
+  proposes: string[];
+  data: Record<string, unknown>;
+  ms: number;
+}
+export interface RtCloseFigureChange {
+  label: string;
+  before: string;
+  after: string;
+}
+export interface RtCloseChanges {
+  closed_at: string;
+  closed_by: string;
+  count: number;
+  items: string[];
+  figures: RtCloseFigureChange[];
+  vat_note: string | null;
+  headline: string;
+}
+export interface RtCloseStoredRun {
+  id: string;
+  month: string;
+  label: string;
+  started_at: string;
+  finished_at: string;
+  by: string;
+  steps: RtCloseStep[];
+  cards: { id: string; kind: string; summary_md: string }[];
+  summary_md: string;
+  summary_model: string;
+  summary_fallback_reason: string | null;
+  needs_you: number;
+  blocking: number;
+  can_close: boolean;
+  snapshot_hash: string;
+}
+export interface RtCloseRun extends RtCloseStoredRun {
+  actions: RtProposedAction[];
+  changes: RtCloseChanges | null;
+}
+export interface RtCloseStatus {
+  month: string;
+  label: string;
+  ended: boolean;
+  closed: boolean;
+  closed_at: string | null;
+  closed_by: string | null;
+  last_run_at: string | null;
+  needs_you: number | null;
+  blocking: number | null;
+  can_close: boolean | null;
+  changes: RtCloseChanges | null;
+  headline: string;
+}
+export interface RtCloseRecord {
+  id: string;
+  month: string;
+  closed_at: string;
+  closed_by: string;
+  snapshot_hash: string;
+  report_path: string | null;
+  reclose: boolean;
+  changes_since_previous: string[];
+}
+export interface RtCloseMonth extends RtCloseStatus {
+  run: RtCloseStoredRun | null;
+  closes: RtCloseRecord[];
+}
+export interface RtCloseOverview {
+  today: string;
+  target: RtCloseStatus;
+  changed: RtCloseStatus[];
+}
+export interface RtCloseStart {
+  run_id: string;
+  month: string;
+  label: string;
+  steps: { id: RtCloseStepId; n: number; title: string }[];
+}
+export interface RtCloseSummary {
+  summary_md: string;
+  model: string;
+  fallback_reason: string | null;
+}
+
+/**
+ * POST /close/{month}/run?stream=1 (server-sent events): `onStart` gets the nine steps, `onStep` each one as the
+ * runtime finishes it, `onSummary` the checked summary; resolves to the whole run with its signed cards. With
+ * `outlook` the token also asks for Mail.Read and the runtime reads the mailbox in a dry run (nothing copied).
+ */
+export async function closeRunStream(
+  account: AccountInfo,
+  month: string,
+  today: string,
+  outlook: boolean,
+  on: { onStart?: (s: RtCloseStart) => void; onStep?: (s: RtCloseStep) => void; onSummary?: (s: RtCloseSummary) => void },
+): Promise<RtCloseRun> {
+  const query = [vatQuery(), `today=${today}`, "stream=1"].filter(Boolean).join("&");
+  const extra = outlook ? mailScopesFor(accountKind(account)) : [];
+  const headers = { ...(await runtimeHeaders(account, extra)), "Content-Type": "application/json", Accept: "text/event-stream" };
+  const path = `/close/${month}/run?${query}`;
+  const res = await fetch(`${RUNTIME_URL}${path}`, { method: "POST", headers, body: JSON.stringify({ outlook }) });
+  if (!res.ok) throw new Error(await errorDetail(res, `POST ${path}`));
+  if (!res.body || !res.headers.get("content-type")?.startsWith("text/event-stream")) throw new Error("No event stream");
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) throw new Error("The close stopped before it finished; run it again.");
+    buffer += value;
+    let cut: number;
+    while ((cut = buffer.indexOf("\n\n")) >= 0) {
+      const block = buffer.slice(0, cut);
+      buffer = buffer.slice(cut + 2);
+      const event = /^event: (.*)$/m.exec(block)?.[1];
+      const data = /^data: (.*)$/m.exec(block)?.[1];
+      if (!event || data === undefined) continue;
+      const payload: unknown = JSON.parse(data);
+      if (event === "start") on.onStart?.(payload as RtCloseStart);
+      else if (event === "step") on.onStep?.(payload as RtCloseStep);
+      else if (event === "summary") on.onSummary?.(payload as RtCloseSummary);
+      else if (event === "error") throw new Error((payload as { detail: string }).detail);
+      else if (event === "run") {
+        void reader.cancel();
+        return payload as RtCloseRun;
+      }
+    }
+  }
+}

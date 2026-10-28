@@ -8,7 +8,7 @@ const NARROW: [string, string][] = [
 ];
 
 /** Every page in the app nav (AppNav.tsx links plus Settings), checked at the narrowest common phone width. */
-const NAV_PAGES = ["/", "/review", "/ask", "/invoices", "/bank", "/vat", "/jobs", "/payroll", "/reports", "/contacts", "/vehicles", "/files", "/settings"];
+const NAV_PAGES = ["/", "/review", "/ask", "/invoices", "/bank", "/vat", "/month-end", "/jobs", "/payroll", "/reports", "/contacts", "/vehicles", "/files", "/settings"];
 
 test.describe("360 px wide (small Android), every nav page", () => {
   test.use({ viewport: { width: 360, height: 740 } });

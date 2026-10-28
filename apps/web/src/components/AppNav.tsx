@@ -15,6 +15,7 @@ const links: NavLink[] = [
   { href: "/invoices", label: "Invoices" },
   { href: "/bank", label: "Bank" },
   { href: "/vat", label: "VAT return", tab: "VAT" },
+  { href: "/month-end", label: "Month-end" },
   { href: "/jobs", label: "Jobs" },
   { href: "/payroll", label: "Payroll" },
   { href: "/reports", label: "Reports" },
@@ -80,7 +81,7 @@ function Badge({ count, className }: { count: string; className: string }) {
 
 const sidebarGroups: { label: string; hrefs: string[] }[] = [
   { label: "Books", hrefs: ["/", "/review", "/ask", "/files"] },
-  { label: "Money", hrefs: ["/invoices", "/bank", "/vat", "/payroll", "/reports"] },
+  { label: "Money", hrefs: ["/invoices", "/bank", "/vat", "/month-end", "/payroll", "/reports"] },
   { label: "Work", hrefs: ["/jobs", "/contacts", "/vehicles"] },
 ];
 

@@ -5,6 +5,8 @@ import type { AccountInfo } from "@azure/msal-browser";
 import {
   runtime,
   type RtActionResult,
+  type RtBankMatchPreview,
+  type RtCloseMonthPreview,
   type RtChasePreview,
   type RtClarification,
   type RtInvoicePreview,
@@ -50,6 +52,8 @@ const TITLES: Record<RtProposedAction["kind"], string> = {
   chase_invoice: "Payment reminder",
   log_timesheet: "Timesheet",
   log_mileage: "Mileage",
+  match_bank_line: "Bank match",
+  close_month: "Close the month",
 };
 
 /** Where an action's result shows up, for checking after an approval that stopped halfway. */
@@ -58,6 +62,8 @@ const WHERE: Record<RtProposedAction["kind"], string> = {
   chase_invoice: "the invoice on Invoices",
   log_timesheet: "the job's timesheet on Jobs",
   log_mileage: "the mileage log on Vehicles",
+  match_bank_line: "the line on Bank",
+  close_month: "Month-end",
 };
 
 /**
@@ -126,6 +132,51 @@ function Details({ action }: { action: RtProposedAction }) {
       </dl>
     );
   }
+  if (action.kind === "match_bank_line") {
+    const p = action.preview as unknown as RtBankMatchPreview;
+    return (
+      <dl className="divide-y divide-border">
+        <Row label="Bank line">
+          <strong className="tabular-nums">{gbp(p.amount_pence)}</strong> · {ukDate(p.date)} · {p.bank}
+          <span className="block text-muted">{p.description}</span>
+        </Row>
+        <Row label="Matches">{p.to}</Row>
+        {p.reasons.length > 0 && <Row label="Why">{p.reasons.join("; ")} (suggested by code)</Row>}
+      </dl>
+    );
+  }
+  if (action.kind === "close_month") {
+    const p = action.preview as unknown as RtCloseMonthPreview;
+    return (
+      <dl className="divide-y divide-border">
+        <Row label="Month">
+          <strong>{p.label}</strong>
+          {p.reclose && <span className="text-muted"> · re-close</span>}
+        </Row>
+        <Row label="Entries">
+          {p.entries} ledger entries · {p.bank_lines} bank lines
+        </Row>
+        <Row label="Sales">
+          <span className="tabular-nums">{gbp(p.figures.sales_pence)}</span>
+        </Row>
+        <Row label={p.figures.net_profit_pence >= 0 ? "Net profit" : "Net loss"}>
+          <strong className="tabular-nums">{gbp(p.figures.net_profit_pence)}</strong>
+        </Row>
+        {p.changes.length > 0 && (
+          <Row label="Changed">
+            <ul className="list-disc pl-5">
+              {p.changes.map((c) => (
+                <li key={c}>{c}</li>
+              ))}
+            </ul>
+          </Row>
+        )}
+        <Row label="Snapshot">
+          <code className="text-[13px]">{p.snapshot_hash.slice(0, 12)}</code>
+        </Row>
+      </dl>
+    );
+  }
   if (action.kind === "log_timesheet") {
     const p = action.preview as unknown as RtTimesheetPreview;
     return (
@@ -164,13 +215,16 @@ export default function ActionCard({
   account,
   receivedAt,
   onChange,
+  expiredText = "This proposal has expired; ask again.",
 }: {
   action: RtProposedAction;
   account: AccountInfo;
   /** When the card arrived by this device's clock; absent (an older saved thread): when it was first shown. */
   receivedAt?: number;
-  /** "Change": put the question back in the box so the user can reword it. */
-  onChange: () => void;
+  /** "Change": put the question back in the box so the user can reword it. Left out: no Change button. */
+  onChange?: () => void;
+  /** What an expired card says; Ask's default is "ask again". */
+  expiredText?: string;
 }) {
   const [state, setState] = useState<State>({ step: "ready" });
   const [lapsed, setLapsed] = useState(false);
@@ -232,7 +286,7 @@ export default function ActionCard({
         </p>
       ) : (
         <>
-          <p className="mt-4 text-[14px] font-bold">{expired ? "This proposal has expired; ask again." : `${action.confirm_text}?`}</p>
+          <p className="mt-4 text-[14px] font-bold">{expired ? expiredText : `${action.confirm_text}?`}</p>
           {state.step === "error" && (
             <p className="mt-2 rounded-xl border border-warn-border bg-warn-bg p-3 text-[14px] leading-6 text-warn-ink" role="alert">
               {state.message}
@@ -248,14 +302,16 @@ export default function ActionCard({
             >
               {state.step === "working" ? "Working…" : "Approve"}
             </button>
-            <button
-              type="button"
-              onClick={onChange}
-              disabled={state.step === "working"}
-              className="flex h-10 items-center rounded-xl border border-teal px-4 text-[15px] font-bold text-teal hover:bg-teal-tint disabled:opacity-50"
-            >
-              Change
-            </button>
+            {onChange && (
+              <button
+                type="button"
+                onClick={onChange}
+                disabled={state.step === "working"}
+                className="flex h-10 items-center rounded-xl border border-teal px-4 text-[15px] font-bold text-teal hover:bg-teal-tint disabled:opacity-50"
+              >
+                Change
+              </button>
+            )}
             <button
               type="button"
               onClick={reject}

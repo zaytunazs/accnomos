@@ -6,6 +6,7 @@ import HomeError from "@/components/home/HomeError";
 import { AttentionCard, TodayCard } from "@/components/home/Tiles";
 import { HomeData, SignedOut } from "@/components/home/HomeData";
 import InboxTriage from "@/components/home/InboxTriage";
+import MonthEndCard from "@/components/home/MonthEndCard";
 import Pitch from "@/components/home/Pitch";
 import PlanToday from "@/components/home/PlanToday";
 import { HomeSampleBooks } from "@/components/home/SampleBooks";
@@ -44,6 +45,7 @@ export default function HomePage() {
           <TodosTile />
           <InboxTriage />
           <Deadlines />
+          <MonthEndCard />
           <PlanToday />
           <Activity />
         </div>
