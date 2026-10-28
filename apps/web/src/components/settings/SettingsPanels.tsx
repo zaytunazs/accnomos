@@ -11,6 +11,7 @@ import AutopilotRules from "@/components/settings/AutopilotRules";
 import BusinessDetails from "@/components/settings/BusinessDetails";
 import StaffEditor from "@/components/settings/StaffEditor";
 import VatPeriodSettings from "@/components/settings/VatPeriodSettings";
+import VatSchemeSettings from "@/components/settings/VatSchemeSettings";
 import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
 import PersonalFinanceSetting from "@/components/settings/PersonalFinanceSetting";
 import WorkingHours from "@/components/settings/WorkingHours";
@@ -58,6 +59,7 @@ const HASH_GROUP: Record<string, GroupId> = {
   "settings-business-hours": "automation",
   "settings-business": "business",
   "settings-vat-periods": "business",
+  "settings-vat-scheme": "business",
   "settings-invoice-profile": "business",
   "invoice-profile": "business",
   "invoice-profile-title": "business",
@@ -424,6 +426,8 @@ export default function SettingsPanels() {
         <OnlinePayments card={card} heading={heading} />
 
         <VatPeriodSettings card={card} heading={heading} />
+
+        <VatSchemeSettings card={card} heading={heading} />
 
         <StaffEditor card={card} heading={heading} />
 
