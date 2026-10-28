@@ -4,7 +4,10 @@ The runtime holds no HMRC token (as for VAT, app/routes_vat.py). The web page fe
 obligations and calculations through the relay with the user's own HMRC token, submits through the relay after an
 explicit confirmation, then posts what was sent and HMRC's answer here. This module:
 
-* GET  summary         the cumulative SA103-style figures for a period, with the ledger lines behind each (code)
+* GET/PUT settings     the accounting basis, cash (HMRC's default for sole traders) or traditional (accruals),
+                       kept in _System/itsa/settings.json; changing it audits a line and never touches the ledger
+* GET  summary         the cumulative SA103-style figures for a period, with the ledger lines behind each (code);
+                       `?basis=` shows the other basis without changing the setting
 * POST receipts        keeps a submission receipt or an HMRC calculation in _System/itsa/{taxYear}/ and audits it;
                        a cumulative update is checked against the books, so a receipt says if what was sent matched
 * GET  receipts        what was saved for a tax year, newest first
@@ -19,12 +22,14 @@ from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
-from pydantic import Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 
+from app import cash_basis as cb
 from app import itsa
 from app import itsa_reports as rep
 from app.books import Books, now
 from app.books import today as current_date
+from app.contacts import load_ledger
 from app.paths import ITSA
 from app.routes_books import get_books, require_user
 from app.validation import StrictBody
@@ -40,6 +45,8 @@ Nino = Annotated[str, Field(pattern=r"^[A-Z]{2}\d{6}[A-D]$", max_length=9)]
 Short = Annotated[str, Field(max_length=200)]  # IDs and timestamps HMRC sends back
 HeaderValue = Annotated[str, Field(max_length=4096)]
 INDEX = "receipts.json"
+SETTINGS = f"{ITSA}/settings.json"
+BasisQuery = Query(None, description="cash or traditional; default: the basis in Settings")
 
 
 def _bounds(tax_year: str) -> tuple[date, date]:
@@ -49,10 +56,25 @@ def _bounds(tax_year: str) -> tuple[date, date]:
         raise HTTPException(422, str(e)) from e
 
 
-async def _summary(books: Books, tax_year: str, period_end: date) -> itsa.SeSummary:
-    start, _ = _bounds(tax_year)
+async def saved_basis(books: Books) -> cb.Basis:
+    """The accounting basis in Settings; cash when nothing (or something unreadable) is saved."""
     try:
-        return itsa.se_summary(await books.list_events(start, period_end), tax_year, period_end)
+        raw = await books.read_json(SETTINGS, {})
+    except ValueError:
+        raw = {}
+    value = raw.get("accounting_basis") if isinstance(raw, dict) else None
+    return value if value in ("cash", "traditional") else cb.DEFAULT_BASIS
+
+
+async def _summary(books: Books, tax_year: str, period_end: date, basis: cb.Basis | None = None) -> itsa.SeSummary:
+    start, _ = _bounds(tax_year)
+    basis = basis or await saved_basis(books)
+    try:
+        if basis == "traditional":
+            return itsa.se_summary(await books.list_events(start, period_end), tax_year, period_end)
+        # Cash: payments can settle documents from any earlier year, so the whole ledger is read.
+        view = cb.cash_view(await load_ledger(books))
+        return itsa.se_summary(view.events, tax_year, period_end, "cash", view.refs, view.left_out)
     except ValueError as e:
         raise HTTPException(422, str(e)) from e
 
@@ -64,15 +86,58 @@ def _default_end(tax_year: str | None, period_end: date | None) -> tuple[str, da
     return ty, period_end or min(max(today, start), end)
 
 
+class Settings(StrictBody):
+    accounting_basis: cb.Basis
+
+
+class SettingsOut(BaseModel):
+    accounting_basis: cb.Basis
+    label: str
+    default: cb.Basis = cb.DEFAULT_BASIS
+    saved: bool  # false: nothing chosen yet, so HMRC's default (cash) applies
+
+
+@router.get("/settings", response_model=SettingsOut)
+async def get_settings(books: Books = Depends(get_books)) -> SettingsOut:
+    basis = await saved_basis(books)
+    try:
+        raw = await books.read_json(SETTINGS, {})
+    except ValueError:
+        raw = {}
+    return SettingsOut(
+        accounting_basis=basis,
+        label=cb.BASIS_LABEL[basis],
+        saved=isinstance(raw, dict) and raw.get("accounting_basis") in ("cash", "traditional"),
+    )
+
+
+@router.put("/settings", response_model=SettingsOut)
+async def put_settings(
+    body: Settings, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> SettingsOut:
+    """Choose cash basis or traditional accounting. Only how the figures are worked out changes: the ledger, the
+    payments and every saved receipt stay exactly as they are."""
+    before = await saved_basis(books)
+    await books.write_json(
+        SETTINGS,
+        {"accounting_basis": body.accounting_basis, "updated_at": now().isoformat(), "updated_by": user},
+    )
+    if before != body.accounting_basis:
+        await books.audit(f"user:{user}", "itsa_basis_changed", {"from": before, "to": body.accounting_basis})
+    return SettingsOut(accounting_basis=body.accounting_basis, label=cb.BASIS_LABEL[body.accounting_basis], saved=True)
+
+
 @router.get("/summary", response_model=itsa.SeSummary)
 async def summary(
     tax_year: str | None = Query(None, pattern=r"^20\d{2}-\d{2}$", description="2026-27; default: this tax year"),
     period_end: date | None = Query(None, description="the obligation's end date; default: today"),
+    basis: cb.Basis | None = BasisQuery,
     books: Books = Depends(get_books),
 ) -> itsa.SeSummary:
-    """Cumulative figures from 6 April to `period_end`, computed by code from the approved entries."""
+    """Cumulative figures from 6 April to `period_end`, computed by code from the approved entries, on the basis in
+    Settings (or `basis`)."""
     ty, end = _default_end(tax_year, period_end)
-    return await _summary(books, ty, end)
+    return await _summary(books, ty, end, basis)
 
 
 class HmrcEnvelope(StrictBody):
@@ -98,6 +163,7 @@ class ReceiptIn(StrictBody):
     confirmed_at: datetime | None = None  # when the user ticked the confirmation (cumulative / final)
     declaration: Annotated[str, Field(max_length=1000)] | None = None  # final declaration: the text the user agreed to
     environment: Literal["sandbox", "production"] = "sandbox"
+    basis: cb.Basis | None = None  # cumulative: the basis the figures were worked out on; default: Settings'
 
     @model_validator(mode="after")
     def _complete(self) -> ReceiptIn:
@@ -128,13 +194,18 @@ async def save_receipt(body: ReceiptIn, books: Books = Depends(get_books), user:
     folder = f"{ITSA}/{body.tax_year}"
     if body.kind == "cumulative":
         assert body.period_end and body.business_id and body.sent is not None
-        computed = await _summary(books, body.tax_year, body.period_end)
+        computed = await _summary(books, body.tax_year, body.period_end, body.basis)
         record["matches_books"] = body.sent == computed.hmrc_body
+        record["accounting_basis"] = computed.accounting_basis
         record["event_ids"] = computed.event_ids
         path = f"{folder}/{body.business_id}/update-to-{body.period_end.isoformat()}-{_stamp(ts)}.json"
         action, refs = (
             "itsa_update_submitted",
-            {"period_end": body.period_end.isoformat(), "matches": record["matches_books"]},
+            {
+                "period_end": body.period_end.isoformat(),
+                "matches": record["matches_books"],
+                "basis": computed.accounting_basis,
+            },
         )
     elif body.kind == "calculation":
         path = f"{folder}/calculations/{body.calculation_id}.json"
@@ -152,6 +223,7 @@ async def save_receipt(body: ReceiptIn, books: Books = Depends(get_books), user:
         "calculation_id": body.calculation_id,
         "correlation_id": body.hmrc.correlation_id,
         "matches_books": record.get("matches_books"),
+        "accounting_basis": record.get("accounting_basis"),
         "environment": body.environment,
     }
     await books._update_json(f"{folder}/{INDEX}", [], lambda old: [*(old if isinstance(old, list) else []), entry])
@@ -207,11 +279,12 @@ def _out(report: rep.Report, fmt: Fmt) -> Any:
 async def report_sa103(
     tax_year: str | None = Query(None, pattern=r"^20\d{2}-\d{2}$"),
     period_end: date | None = None,
+    basis: cb.Basis | None = BasisQuery,
     format: Fmt = "json",
     books: Books = Depends(get_books),
 ) -> Any:
     ty, end = _default_end(tax_year, period_end)
-    return _out(rep.sa103_report(await _summary(books, ty, end)), format)
+    return _out(rep.sa103_report(await _summary(books, ty, end, basis)), format)
 
 
 @router.get("/reports/quarterly")
