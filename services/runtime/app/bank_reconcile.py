@@ -45,7 +45,10 @@ BANK_SUGGEST_PROMPT = (
     "account: the single best ACCOUNTS entry for this line (never invent one); "
     "vat_code: S (20% VAT), R (5%), Z (0%), or N (no VAT / unsure — prefer N when unsure); "
     "contact: the supplier or customer name in the description, or null; "
-    "reason: one short line saying why, quoting the description."
+    "reason: one short line saying why, quoting the description. "
+    "Travel and food need care. Rail, bus, underground, taxi, flights and hotels are 7400 Travel. "
+    "Cafes, coffee, sandwiches, restaurant and takeaway meals while working away are 7410 Subsistence. "
+    "Petrol, diesel and vehicle fuel are 7300 Motor expenses, never Travel."
 )
 
 
