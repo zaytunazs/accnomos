@@ -48,6 +48,7 @@ from accnomos_ledger.matching import Match, suggest_matches
 from app.ai.config import is_test_mode
 from app.checks import parse_iso_date
 from app.paths import (  # noqa: F401  (re-exported: other modules import the folder names from here too)
+    ARCHIVE_SYSTEM,
     AUDIT,
     BANK,
     BANK_LINES,
@@ -72,6 +73,9 @@ AUTOPILOT_RULES = f"{SYSTEM}/Rules/rules.json"
 # OneDrive paths are case-insensitive, so this is the same folder as "_System/Audit/autopilot".
 AUTOPILOT_AUDIT = f"{AUDIT}/autopilot"
 CURSORS = f"{SYSTEM}/cursors.json"
+# Old path -> where the app moved the document (archive, Files page moves and renames). Applied whenever a stored
+# path is read back (proposals' file_path, bank lines' source_file), so links keep working without rewriting them.
+MOVED_MAP = f"{ARCHIVE_SYSTEM}/map.json"
 WORKBOOK = "Books.xlsx"
 WORKBOOK_LIMIT = 4 * 1024 * 1024  # simple-upload size; bigger books still upload, but we say so in the log
 
@@ -141,6 +145,15 @@ def _with_suffix(name: str, n: int) -> str:
     """'a.jpg' -> 'a (2).jpg'."""
     stem, dot, ext = name.rpartition(".")
     return f"{stem} ({n}).{ext}" if dot and stem else f"{name} ({n})"
+
+
+def follow(moved: dict[str, str], path: str) -> str:
+    """Where `path` is now, after the moves in `moved` (old -> new, chains followed, a cycle stops)."""
+    seen: set[str] = set()
+    while path in moved and path not in seen:
+        seen.add(path)
+        path = moved[path]
+    return path
 
 
 def _month(d: date | datetime) -> str:
@@ -299,7 +312,46 @@ class Books:
         """Raises FileNotFoundError (also for ids that are not plain hex, to keep paths inside _System)."""
         if not re.fullmatch(r"[0-9a-f]{8,64}", proposal_id):
             raise FileNotFoundError(proposal_id)
-        return Proposal.model_validate_json(await self.storage.read(f"{PROPOSALS}/{proposal_id}.json"))
+        p = Proposal.model_validate_json(await self.storage.read(f"{PROPOSALS}/{proposal_id}.json"))
+        return self._relink([p], await self.moved_paths())[0]
+
+    @staticmethod
+    def _relink(proposals: list[Proposal], moved: dict[str, str]) -> list[Proposal]:
+        for p in proposals:
+            if p.file_path and moved:
+                p.file_path = follow(moved, p.file_path)
+        return proposals
+
+    # ------------------------------------------------------------------ #
+    # Moved documents (app/archive.py, app/files.py)
+    # ------------------------------------------------------------------ #
+
+    async def moved_paths(self) -> dict[str, str]:
+        """_System/archive/map.json: old path -> new path for every document the app has moved. {} when none."""
+        raw = await self.read_json(MOVED_MAP, {})
+        moved = raw.get("moved") if isinstance(raw, dict) else None
+        return {str(k): str(v) for k, v in moved.items()} if isinstance(moved, dict) else {}
+
+    async def record_moves(self, pairs: list[tuple[str, str]]) -> None:
+        """Note that each (old, new) document was moved. Entries that pointed at `old` now point at `new` (one hop
+        to follow), and an entry for `new` itself goes (it is a real file again), so moving back and forth never
+        builds a cycle."""
+        if not pairs:
+            return
+
+        def change(raw: Any) -> Any:
+            moved = dict((raw or {}).get("moved") or {}) if isinstance(raw, dict) else {}
+            for old, new in pairs:
+                moved.pop(new, None)
+                for k, v in list(moved.items()):
+                    if v == old:
+                        moved[k] = new
+                if old != new:
+                    moved[old] = new
+                moved = {k: v for k, v in moved.items() if k != v}
+            return {"version": 1, "moved": dict(sorted(moved.items()))}
+
+        await self._update_json(MOVED_MAP, {}, change)
 
     async def list_proposals(self, status: ProposalStatus | None = None) -> list[Proposal]:
         files = [f for f in await self.list_files(PROPOSALS) if f.name.endswith(".json")]
@@ -307,9 +359,8 @@ class Books:
         async def read_one(path: str) -> Proposal:
             return Proposal.model_validate_json(await self.storage.read(path))
 
-        out = [
-            p for p in await asyncio.gather(*(read_one(f.path) for f in files)) if status is None or p.status == status
-        ]
+        loaded, moved = await asyncio.gather(asyncio.gather(*(read_one(f.path) for f in files)), self.moved_paths())
+        out = self._relink([p for p in loaded if status is None or p.status == status], moved)
         return sorted(out, key=lambda p: p.created_at or datetime.min.replace(tzinfo=UTC), reverse=True)
 
     # ------------------------------------------------------------------ #
@@ -448,6 +499,9 @@ class Books:
         """Every imported bank line as stored, oldest first."""
         per_file = await asyncio.gather(*(self._read_bank_file(f.path) for f in await self._bank_files()))
         out: list[BankLine] = [ln for lines in per_file for ln in lines]
+        if out and (moved := await self.moved_paths()):
+            for ln in out:
+                ln.source_file = follow(moved, ln.source_file)
         return sorted(out, key=lambda ln: (ln.date, ln.id))
 
     async def import_bank_csv(self, data: bytes, name: str, user: str = "user") -> BankImport:

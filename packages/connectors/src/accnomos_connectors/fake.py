@@ -172,6 +172,7 @@ class FakeStorageProvider(StorageProvider):
             etag=etag,
             modified=datetime.now(UTC),
             is_folder=is_folder,
+            content_hash=None if is_folder else f"sha256:{hashlib.sha256(data).hexdigest()}",
         )
 
     async def ensure_root(self) -> FileRef:

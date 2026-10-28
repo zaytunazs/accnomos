@@ -51,6 +51,9 @@ This folder was created by Accnomos. Everything the app knows about your busines
 - 06 VAT returns: the 9-box calculation and HMRC receipt for each period.
 - 07 Reports: reports you asked Accnomos to save.
 - Books.xlsx: a spreadsheet of your books, rebuilt from the files in _System. Do not edit it; it is overwritten.
+- Archive, Backups, _Trash: made when first used. Archive holds older years you archived (same
+  subfolders), Backups dated copies of _System, and _Trash anything the app would otherwise delete
+  (duplicates, old backups). Accnomos never empties _Trash; you can, in OneDrive.
 - _System: the ledger events and the audit log (never edited: a correction is a new entry that reverses
   the old one), plus rules you approved, contacts, jobs, staff, timesheets, vehicles and your mileage log.
 

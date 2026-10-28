@@ -18,6 +18,9 @@ class FileRef(BaseModel):
     modified: datetime | None = None
     is_folder: bool = False
     web_url: str | None = None
+    # "<algorithm>:<hex>" when the provider lists one (Graph: sha256Hash, else quickXorHash, else sha1Hash);
+    # compare only hashes of the same algorithm, i.e. from the same provider.
+    content_hash: str | None = None
 
 
 class MailMessage(BaseModel):
