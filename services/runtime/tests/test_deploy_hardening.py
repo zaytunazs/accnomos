@@ -61,6 +61,22 @@ def test_static_site_sends_security_headers():
         assert re.search(rf"^\s*Header always set {h} ", htaccess, re.M), h
 
 
+def test_static_site_has_a_full_csp_in_report_only_mode():
+    """The enforced CSP stays frame/object/base only; the report-only one says where tokens may go (connect-src)."""
+    htaccess = (ROOT / "apps/web/public/.htaccess").read_text()
+    m = re.search(r'^\s*Header always set Content-Security-Policy-Report-Only "([^"]+)"$', htaccess, re.M)
+    assert m
+    policy = {d.split()[0]: d.split()[1:] for d in (x.strip() for x in m.group(1).split(";")) if d}
+    assert policy["default-src"] == ["'self'"] and policy["object-src"] == ["'none'"]
+    connect = policy["connect-src"]
+    deploy = (ROOT / ".github/workflows/deploy-web.yml").read_text()
+    for var in ("NEXT_PUBLIC_RUNTIME_URL", "NEXT_PUBLIC_RELAY_URL"):  # the published build's own services
+        url = re.search(rf"{var}: (\S+)", deploy)
+        assert url and url.group(1) in connect, var
+    assert "https://graph.microsoft.com" in connect and "https://login.microsoftonline.com" in connect
+    assert not any(src in ("*", "https:", "http:") for srcs in policy.values() for src in srcs)
+
+
 def test_static_site_caches_hashed_assets_only():
     htaccess = (ROOT / "apps/web/public/.htaccess").read_text()
     # HTML and everything unhashed: revalidate. Only /_next/static/ (content-hashed names) is kept for a year.
@@ -91,3 +107,4 @@ def test_compose_services_are_hardened():
         if "image" in svc and "build" not in svc:
             assert re.search(r":\d+\.\d+\.\d+", svc["image"]), f"{name} image not pinned"
     assert "healthcheck" in services["edge"]
+
