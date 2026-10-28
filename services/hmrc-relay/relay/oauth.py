@@ -25,6 +25,10 @@ from .hmrc_client import HmrcError, HmrcUnavailable
 from .settings import Settings
 
 SCOPES = "read:vat write:vat"
+#: Scopes a client may ask for at /hmrc/authorize (?scope=). VAT's by default; the self-employment page asks for
+#: Income Tax's (Business Details, Obligations, Self-Employment Business, Individual Calculations; checked
+#: 28 Oct 2026).
+ALLOWED_SCOPES = frozenset({"read:vat", "write:vat", "read:self-assessment", "write:self-assessment"})
 STATE_TTL_S = 600  # matches HMRC's 10-minute authorisation code lifetime
 REFRESH_RESULT_TTL_S = 30
 APP_TOKEN_MARGIN_S = 60
@@ -101,12 +105,14 @@ class OAuth:
             self._spent[(use, nonce)] = expires
         return AuthState(redirect_to=redirect_to, pkce=pkce)
 
-    def authorize_url(self, redirect_to: str, code_challenge: str | None = None) -> tuple[str, str]:
+    def authorize_url(
+        self, redirect_to: str, code_challenge: str | None = None, scope: str = SCOPES
+    ) -> tuple[str, str]:
         state = self.make_state(redirect_to, pkce=bool(code_challenge))
         q = {
             "response_type": "code",
             "client_id": self.settings.hmrc_client_id,
-            "scope": SCOPES,
+            "scope": scope,
             "redirect_uri": self.settings.hmrc_redirect_uri,
             "state": state,
         }

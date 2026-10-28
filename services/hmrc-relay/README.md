@@ -28,6 +28,7 @@ unknown body fields → 422, unexpected errors → 500 `{detail, correlation_id}
 | `RELAY_PUBLIC_IP` | Relay's public IP (`Gov-Vendor-Public-IP`, `Gov-Vendor-Forwarded by=`) | — |
 | `RELAY_LICENCE_HASH` | Optional. Sent as `Gov-Vendor-License-IDs` | — |
 | `RELAY_ALLOWED_REDIRECTS` | Comma-separated origins `/hmrc/callback` may redirect tokens to, e.g. `https://app.accnomos.co.uk,accnomos://hmrc`. `http://localhost` and `http://127.0.0.1` are always allowed. The same `http(s)` origins get CORS, since the PWA calls the relay straight from the browser | — |
+| `RELAY_ITSA_PRODUCTION` | `1` lets the MTD Income Tax routes run against a production `HMRC_BASE`. Off by default; nothing here sets it | off |
 | `RATE_LIMIT_PER_MIN` | Requests per minute per client IP (in memory); `0` turns the limit off | `60` |
 
 The relay reads the process environment only. It never reads a `.env` file.
@@ -37,7 +38,7 @@ The relay reads the process environment only. It never reads a `.env` file.
 | Method & path | Notes |
 |---|---|
 | `GET /health` | `{ok, service, version, sandbox, configured, uptime_s}` |
-| `GET /hmrc/authorize?redirect_to=&code_challenge=` | → `{url, state}`. `state` is HMAC-signed, expires after 10 min, and is accepted once by the callback and once by the exchange |
+| `GET /hmrc/authorize?redirect_to=&code_challenge=&scope=` | `scope` from `read:vat write:vat read:self-assessment write:self-assessment`, VAT's two by default. → `{url, state}`. `state` is HMAC-signed, expires after 10 min, and is accepted once by the callback and once by the exchange |
 | `GET /hmrc/callback?code&state` | HMRC redirects here. 303 to `redirect_to#access_token=…&refresh_token=…&expires_in=…&scope=…&token_type=…&state=…` |
 | `POST /hmrc/exchange {code, state, code_verifier}` | PKCE only (see below) → token JSON |
 | `POST /hmrc/refresh {refresh_token}` | → token JSON. Serialised per refresh token |
@@ -48,6 +49,16 @@ The relay reads the process environment only. It never reads a `.env` file.
 | `GET /vat/check/{vrn}` / `GET /vat/check/{vrn}/{requesterVrn}` | Check a UK VAT number v2.0 (app-restricted, `read:vat` token); HMRC's raw answer |
 | `GET /hmrc/vat-check/{vrn}?requester=` | What the app uses: `vrn` as `GB` + 9 or 12 digits (spaces allowed) → `{vrn, registered, name, address, consultation_number, checked_at, checksum_ok, source}`; `source` is `hmrc-sandbox` or `hmrc` from `HMRC_BASE`. HMRC's 404 → `registered: false`; a bad format → 400 without calling HMRC. `checksum_ok` (mod-97) is informational only: HMRC's own sandbox numbers fail it |
 | `POST /hmrc/test-user` | Sandbox only: creates an `mtd-vat` organisation test user |
+| `POST /hmrc/test-user/individual` | Sandbox only: an individual enrolled for `national-insurance`, `self-assessment`, `mtd-income-tax` (→ `userId`, `password`, `nino`, `mtdItId`, …) |
+| `POST /itsa/{nino}/businesses {client_facts, method}` | MTD Income Tax (sandbox only, see `relay/itsa.py`): Business Details 2.0 list |
+| `POST /itsa/{nino}/obligations {from?, to?, status? open/fulfilled, business_id?, …}` | Obligations 3.0, income and expenditure, self-employment |
+| `POST /itsa/{nino}/final-declaration-obligations {tax_year?, status?, …}` | Obligations 3.0, final declaration |
+| `POST /itsa/{nino}/self-employment/{businessId}/cumulative/{taxYear} {summary, confirmed: true, …}` | Self-Employment Business 5.0 cumulative period summary (PUT; `hmrc: null` on HMRC's 204). `summary` is validated against HMRC's schema first; 422 otherwise |
+| `POST …/cumulative/{taxYear}/view` | Read it back |
+| `POST /itsa/{nino}/calculations/{taxYear}/trigger {calculation_type}` | Individual Calculations 8.0 → 202 `{calculationId}` |
+| `POST /itsa/{nino}/calculations/{taxYear}/list {calculation_type?}` / `POST …/{calculationId}/view` | List / retrieve (HMRC answers 404 while it is still calculating) |
+| `POST /itsa/{nino}/calculations/{taxYear}/{calculationId}/final-declaration {declaration, confirmed: true}` | `declaration` must be HMRC's text word for word |
+| `POST /itsa/{nino}/test-business {tax_year}` | Sandbox only: Self Assessment Test Support 1.0, a self-employment test business |
 | `POST /hmrc/validate-headers {client_facts, method}` | Sandbox only: HMRC fraud-header validator |
 | `GET /hmrc/validation-feedback?method=` | Sandbox only: HMRC validation feedback for VAT MTD |
 

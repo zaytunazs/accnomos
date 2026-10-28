@@ -17,6 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from .hmrc_client import HmrcClient, HmrcError, HmrcUnavailable
+from .itsa import router as itsa_router
 from .oauth import OAuth, StateError
 from .routes import Relay, router
 from .security import SecurityMiddleware, TokenBucket, install_log_scrubbing, scrub
@@ -39,6 +40,7 @@ def create_app(settings: Settings | None = None, transport: httpx.AsyncBaseTrans
     app.state.relay = Relay(settings, HmrcClient(settings, http), OAuth(settings, http))
     app.state.started = time.time()
     app.include_router(router)
+    app.include_router(itsa_router)  # MTD Income Tax, sandbox only
     # Limits, credential checks and safe 500s; inside CORS so its answers still reach the page.
     rate = settings.rate_limit_per_min
     app.add_middleware(SecurityMiddleware, limiter=TokenBucket(rate) if rate > 0 else None)
