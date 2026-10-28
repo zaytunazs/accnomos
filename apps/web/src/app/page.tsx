@@ -1,4 +1,5 @@
 import Link from "next/link";
+import EarlyAccessForm from "@/components/early-access/EarlyAccessForm";
 import Activity from "@/components/home/Activity";
 import AskBar from "@/components/home/AskBar";
 import Deadlines from "@/components/home/Deadlines";
@@ -30,6 +31,8 @@ export default function HomePage() {
               Connect your OneDrive
             </Link>
           </div>
+          {/* Public build only (NEXT_PUBLIC_SUBMISSION_MODE=0); renders nothing in the submission build. */}
+          <EarlyAccessForm source="/" />
         </SignedOut>
         <AskBar />
         <HomeError />
