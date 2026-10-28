@@ -31,12 +31,14 @@ from app.validation import StrictBody
 
 router = APIRouter(prefix="/books/self-employment", tags=["self-employment"])
 
-TaxYear = Annotated[str, Field(pattern=r"^20\d{2}-\d{2}$")]
-BusinessId = Annotated[str, Field(pattern=r"^X[A-Z0-9]IS\d{11}$")]  # Business Details API 2.0
+TaxYear = Annotated[str, Field(pattern=r"^20\d{2}-\d{2}$", max_length=7)]
+BusinessId = Annotated[str, Field(pattern=r"^X[A-Z0-9]IS\d{11}$", max_length=15)]  # Business Details API 2.0
 #: Individual Calculations 8.0 calculationId (HMRC's own pattern, anchored as a whole).
 CALC_ID = r"^([0-9]{8}|[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$"
-CalculationId = Annotated[str, Field(pattern=CALC_ID)]
-Nino = Annotated[str, Field(pattern=r"^[A-Z]{2}\d{6}[A-D]$")]
+CalculationId = Annotated[str, Field(pattern=CALC_ID, max_length=36)]
+Nino = Annotated[str, Field(pattern=r"^[A-Z]{2}\d{6}[A-D]$", max_length=9)]
+Short = Annotated[str, Field(max_length=200)]  # IDs and timestamps HMRC sends back
+HeaderValue = Annotated[str, Field(max_length=4096)]
 INDEX = "receipts.json"
 
 
@@ -77,11 +79,11 @@ class HmrcEnvelope(StrictBody):
     """The relay's answer (services/hmrc-relay/relay/routes.py `_envelope`), as the page received it."""
 
     hmrc: Any = None
-    sent_headers: dict[str, str] = {}
-    fraud_headers_missing: list[str] = []
-    correlation_id: str | None = None
-    receipt_id: str | None = None
-    receipt_timestamp: str | None = None
+    sent_headers: dict[str, HeaderValue] = {}
+    fraud_headers_missing: list[Short] = []
+    correlation_id: Short | None = None
+    receipt_id: Short | None = None
+    receipt_timestamp: Short | None = None
 
 
 class ReceiptIn(StrictBody):
@@ -94,7 +96,7 @@ class ReceiptIn(StrictBody):
     sent: dict | None = None  # cumulative: the exact body sent to HMRC
     hmrc: HmrcEnvelope
     confirmed_at: datetime | None = None  # when the user ticked the confirmation (cumulative / final)
-    declaration: str | None = None  # final declaration: the text the user agreed to
+    declaration: Annotated[str, Field(max_length=1000)] | None = None  # final declaration: the text the user agreed to
     environment: Literal["sandbox", "production"] = "sandbox"
 
     @model_validator(mode="after")
