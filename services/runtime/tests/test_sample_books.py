@@ -33,6 +33,7 @@ from app.security import TokenBucket
 TOOL = Path(__file__).resolve().parents[3] / "tools" / "seed_demo.py"
 TODAY = date(2026, 10, 27)
 HEADERS = {"X-Graph-Token": "token-one", "X-User": "judge@example.com"}
+SETTLE_TIMEOUT_S = 900  # a hang, not slowness: the seed takes seconds here and minutes on a loaded machine
 
 
 @pytest.fixture(scope="module")
@@ -148,14 +149,21 @@ def done_books(_cli_books: FakeStorageProvider) -> FakeStorageProvider:
 
 
 async def _settle(client: httpx.AsyncClient, *, until: tuple[str, ...] = ("done", "failed")) -> dict[str, Any]:
-    for _ in range(2000):
+    """The run's status once it has stopped in one of the `until` states. It waits on the run itself
+    (`_Run.stopped`), not on a number of polls: a fixed polling budget raced the background run, so on a loaded
+    machine the seed was still going when the budget ran out. The outer timeout only stops a hang."""
+    for _ in range(3):  # a stop that is not wanted yet (say needs_token) is reported, not waited out
         r = await client.get("/books/sample", headers=HEADERS)
         assert r.status_code == 200, r.text
         status = r.json()
         if status["state"] in until:
             return status
-        await asyncio.sleep(0.01)
-    raise AssertionError(f"still {status}")
+        runs = list(sample_books.RUNS.values())
+        assert len(runs) == 1, f"no run in this process, and the status is {status}"
+        if runs[0].stopped.is_set():
+            break
+        await asyncio.wait_for(runs[0].stopped.wait(), SETTLE_TIMEOUT_S)
+    raise AssertionError(f"stopped at {status}, waiting for {until}")
 
 
 async def _facts(fake: FakeStorageProvider) -> dict[str, Any]:
