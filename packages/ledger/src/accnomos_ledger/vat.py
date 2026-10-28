@@ -83,7 +83,8 @@ def vat_side(ev: LedgerEvent) -> tuple[Literal["sales", "purchases"], int] | Non
     Worked out from the lines alone, so it needs no other event:
     - a sale or purchase counts +1;
     - a reversal touching Sales is on the sales side: -1 when it debits Sales (an undo of a sale, or a credit note
-      to a customer), +1 when it credits Sales (the undo of such a credit note);
+      to a customer), +1 when it credits Sales (the undo of such a credit note); one with no Sales line (a VAT-only
+      sale) is on the sales side when it touches 1100 Debtors: -1 when it credits Debtors, +1 when it debits it;
     - any other reversal with a VAT code is on the purchases side: -1 when it credits the cost (an undo of a
       purchase, or a supplier's credit note), +1 when it debits an expense or VAT control again (the undo of a
       supplier's credit note).
@@ -97,6 +98,9 @@ def vat_side(ev: LedgerEvent) -> tuple[Literal["sales", "purchases"], int] | Non
     sales = [ln for ln in ev.lines if "Sales" in ln.account]
     if sales:
         return "sales", -1 if any(ln.debit for ln in sales) else 1
+    debtors = [ln for ln in ev.lines if ln.account.startswith("1100")]
+    if debtors:  # a VAT-only sale (net £0.00 posts no Sales line): only sales go through 1100 Debtors
+        return "sales", -1 if any(ln.credit for ln in debtors) else 1
     return "purchases", 1 if any(_restores_cost(ln.account, ln.debit) for ln in ev.lines) else -1
 
 
