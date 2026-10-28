@@ -42,6 +42,7 @@ from pydantic import BaseModel, Field, ValidationError
 
 from app import contacts as contacts_
 from app import jobs as jobs_
+from app import quotes as quotes_
 from app.ai import ask as ask_ai
 from app.ai.config import AiConfig, is_test_mode
 from app.ai.extract import ExtractionError, parse_model_json
@@ -61,16 +62,25 @@ CLEAR_LEAD = 0.1  # several reach MATCH_AT: the best is picked only this far ahe
 DEFAULT_TERMS_DAYS = 30
 RATES: dict[str, int] = {"S": 20, "R": 5, "Z": 0, "E": 0, "O": 0}  # same table as app/invoicing.py
 VatCode = Literal["S", "R", "Z", "E", "O"]
-IntentKind = Literal["create_invoice", "chase_invoice", "log_mileage", "log_timesheet", "add_to_shopping_list", "none"]
+IntentKind = Literal[
+    "create_invoice",
+    "chase_invoice",
+    "log_mileage",
+    "log_timesheet",
+    "add_to_shopping_list",
+    "create_quote",
+    "convert_quote_to_invoice",
+    "none",
+]
 
 # Only questions that might be an instruction cost a second model call.
 _ACTION_WORDS = re.compile(
     r"\b(invoice|bill|send|chase|remind|reminder|log|record|add|book|miles?|mileage|drove|driven|hours?|timesheet|"
-    r"shopping|buy|order|remember)\b",
+    r"shopping|buy|order|remember|quotes?|quotation|estimate|convert)\b",
     re.I,
 )
 _QUESTION_START = re.compile(
-    r"^\s*(how|what|why|which|who|whose|when|where|did|was|were|is|are|does|do|have|has)\b", re.I
+    r"^\s*(how|what|why|which|who|whose|when|where|did|was|were|is|are|does|do|have|has|any|show|list)\b", re.I
 )
 
 
@@ -91,7 +101,10 @@ INTENT_PROMPT = (
     "and never invent anything. kind: create_invoice (bill a customer), chase_invoice (remind a customer about an "
     "unpaid invoice), log_mileage (a business journey), log_timesheet (hours someone worked on a job), "
     "add_to_shopping_list (put something on their shopping list to buy), or none "
-    "(a question about the books, or anything else). Copy names exactly as the user said them into customer_ref, "
+    "(a question about the books, or anything else). Two more kinds: create_quote (write a quote or estimate for a "
+    "customer: the same fields as create_invoice, and due_days is how many days the quote is valid) and "
+    "convert_quote_to_invoice (turn a quote the customer accepted into an invoice; quote_ref is the quote number "
+    "as said, or customer_ref names the customer). Copy names exactly as the user said them into customer_ref, "
     "invoice_ref, job_ref, staff_ref and vehicle_ref. Copy figures exactly as said, as text: amount_text ('£100', "
     "'1,250.50'), hours_text ('7.5'), miles_text ('42'), and in lines quantity_text and unit_price_text. "
     "amount_includes_vat: true only if the user said the amount includes VAT. vat_code only if the user named "
@@ -136,6 +149,7 @@ class IntentModelOutput(BaseModel):
     date_text: str | None
     item_text: str | None
     quantity_text: str | None
+    quote_ref: str | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -159,6 +173,18 @@ class CreateInvoiceIntent(BaseModel):
     vat_code: VatCode | None = None
     due_days: int | None = Field(default=None, ge=0, le=120)
     send: bool = False
+
+
+class CreateQuoteIntent(CreateInvoiceIntent):
+    """A quote reads like an invoice; `due_days` is how long the quote is valid, and it is never sent from here."""
+
+    kind: Literal["create_quote"] = "create_quote"  # type: ignore[assignment]
+
+
+class ConvertQuoteIntent(BaseModel):
+    kind: Literal["convert_quote_to_invoice"] = "convert_quote_to_invoice"
+    quote_ref: str | None = None
+    customer_ref: str | None = None
 
 
 class ChaseInvoiceIntent(BaseModel):
@@ -193,7 +219,15 @@ class ShoppingIntent(BaseModel):
     job_ref: str | None = None  # "the Hendon job": found among the open jobs by code
 
 
-Intent = CreateInvoiceIntent | ChaseInvoiceIntent | LogMileageIntent | LogTimesheetIntent | ShoppingIntent
+Intent = (
+    CreateInvoiceIntent
+    | CreateQuoteIntent
+    | ConvertQuoteIntent
+    | ChaseInvoiceIntent
+    | LogMileageIntent
+    | LogTimesheetIntent
+    | ShoppingIntent
+)
 
 
 @dataclass
@@ -314,20 +348,22 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
             )
         return d
 
-    if out.kind == "create_invoice":
+    if out.kind in ("create_invoice", "create_quote"):
+        kind_: ActionKind = out.kind
+        noun = "quote" if kind_ == "create_quote" else "invoice"
         if not (out.customer_ref or "").strip():
-            return Clarification(kind="create_invoice", field="customer", question_md="Who is the invoice for?")
+            return Clarification(kind=kind_, field="customer", question_md=f"Who is the {noun} for?")
         lines: list[LineIntent] = []
         for ln in out.lines or []:
             qty = figure(
                 ln.quantity_text,
-                "create_invoice",
+                kind_,
                 "amount",
                 "How many of each line? I couldn't match the quantities to what you said.",
             )
             price = figure(
                 ln.unit_price_text,
-                "create_invoice",
+                kind_,
                 "amount",
                 "What's the price of each line? I couldn't match the prices to what you said.",
             )
@@ -346,20 +382,19 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
             )
         amount = figure(
             out.amount_text,
-            "create_invoice",
+            kind_,
             "amount",
-            "How much should the invoice be for? Say the amount, e.g. “£100”.",
+            f"How much should the {noun} be for? Say the amount, e.g. “£100”.",
         )
         if isinstance(amount, Clarification):
             return amount
         if not lines and amount is None:
-            return Clarification(
-                kind="create_invoice", field="amount", question_md="How much should the invoice be for?"
-            )
+            return Clarification(kind=kind_, field="amount", question_md=f"How much should the {noun} be for?")
         terms = out.due_days  # terms the user did not say fall back to the profile's, like any other unsaid figure
         if terms is None or not 0 <= terms <= 120 or Decimal(terms) not in said:
             terms = None
-        return CreateInvoiceIntent(
+        cls = CreateQuoteIntent if kind_ == "create_quote" else CreateInvoiceIntent
+        return cls(
             customer_ref=(out.customer_ref or "").strip(),  # checked non-empty above
             description=month_words(out.description or "Work", today),  # type: ignore[union-attr]
             amount_pence=to_pence(amount) if amount is not None else None,
@@ -368,6 +403,16 @@ def parse_intent(out: IntentModelOutput, question: str, today: date) -> Intent |
             vat_code=out.vat_code,
             due_days=terms,
             send=bool(out.send),
+        )
+    if out.kind == "convert_quote_to_invoice":
+        if not ((out.quote_ref or "").strip() or (out.customer_ref or "").strip()):
+            return Clarification(
+                kind="convert_quote_to_invoice",
+                field="quote",
+                question_md="Which quote should I turn into an invoice? Give its number or the customer.",
+            )
+        return ConvertQuoteIntent(
+            quote_ref=(out.quote_ref or "").strip() or None, customer_ref=(out.customer_ref or "").strip() or None
         )
     if out.kind == "chase_invoice":
         if not (out.customer_ref or out.invoice_ref):
@@ -709,6 +754,90 @@ async def resolve_invoice(books: Books, intent: CreateInvoiceIntent, today: date
     return Draft("create_invoice", summary, preview, confirm)
 
 
+async def resolve_quote(books: Books, intent: CreateQuoteIntent, today: date) -> Draft | Clarification:
+    """A quote is priced exactly like an invoice (same lines, VAT code rules and rounding) and is only ever saved as a
+    draft: sending it is the usual step on the Quotes page, with its own confirmation."""
+    as_invoice = CreateInvoiceIntent(**{**intent.model_dump(exclude={"kind"}), "send": False})
+    draft = await resolve_invoice(books, as_invoice, today)
+    if isinstance(draft, Clarification):
+        return draft
+    p = draft.preview
+    valid = intent.due_days if intent.due_days is not None else quotes_.VALID_DAYS
+    expiry = today + timedelta(days=valid)
+    preview = {k: v for k, v in p.items() if k not in ("due_date", "terms_days", "send", "send_to", "reference")}
+    preview |= {"expiry_date": expiry.isoformat(), "valid_days": valid, "reference": None}
+    vat_words = f"VAT {money(p['vat_pence'])}" if p["vat_pence"] else "no VAT"
+    summary = (
+        f"**Create a quote for {_md(p['customer']['name'])}** for **{money(p['total_pence'])}** "
+        f"({money(p['net_pence'])} + {vat_words}), valid until {uk_date(expiry)}."
+        + "".join(f"\n- {_md(ln['description'])}" for ln in p["lines"])
+    )
+    return Draft("create_quote", summary, preview, "Create the quote as a draft (not sent)")
+
+
+async def resolve_convert_quote(books: Books, intent: ConvertQuoteIntent, today: date) -> Draft | Clarification:
+    quotes = [q for q in await quotes_.list_quotes(books) if q.status in ("sent", "accepted") and not q.invoice_number]
+    kind: ActionKind = "convert_quote_to_invoice"
+    if intent.quote_ref:
+        digits = re.sub(r"\D", "", intent.quote_ref).lstrip("0")
+        found = [
+            q
+            for q in quotes
+            if q.number.upper() == intent.quote_ref.strip().upper()
+            or (digits and re.sub(r"\D", "", q.number).lstrip("0") == digits)
+        ]
+        if not found:
+            return Clarification(
+                kind=kind,
+                field="quote",
+                question_md=(
+                    f"I couldn't find a sent or accepted quote “{intent.quote_ref}” that is still waiting"
+                    " to become an invoice."
+                ),
+                candidates=[q.number for q in quotes][:5],
+            )
+    else:
+        names = {q.customer.name: q for q in quotes}
+        hit = pick(
+            intent.customer_ref or "", [Option(n, n, (), n) for n in names], kind, "customer", "customer with a quote"
+        )
+        if isinstance(hit, Clarification):
+            return hit
+        found = [q for q in quotes if q.customer.name == hit.option.name]
+        accepted = [q for q in found if q.status == "accepted"]
+        if len(accepted) == 1:
+            found = accepted
+    found = sorted(found, key=lambda x: x.number)
+    if len(found) > 1:
+        names_ = [f"{q.number} ({money(q.total_pence)})" for q in found][:5]
+        return Clarification(
+            kind=kind,
+            field="quote",
+            candidates=[q.number for q in found][:5],
+            question_md=f"Which quote should I turn into an invoice: {', '.join(names_)}?",
+        )
+    q = found[0]
+    warnings = [f"{q.number} has not been marked as accepted yet."] if q.status != "accepted" else []
+    if q.expiry_date < today:
+        warnings.append(f"{q.number} passed its valid-until date on {uk_date(q.expiry_date)}.")
+    preview = {
+        "quote": q.number,
+        "customer": q.customer.name,
+        "status": q.status,
+        "net_pence": q.net_pence,
+        "vat_pence": q.vat_pence,
+        "total_pence": q.total_pence,
+        "lines": [ln.description for ln in q.lines],
+        "warnings": warnings,
+    }
+    summary = (
+        f"**Turn quote {q.number} into an invoice** for {_md(q.customer.name)}, **{money(q.total_pence)}** "
+        f"({money(q.net_pence)} + VAT {money(q.vat_pence)}), with the same lines."
+        + "".join(f"\n\n- {_md(w)}" for w in warnings)
+    )
+    return Draft(kind, summary, preview, "Create the invoice as a draft (not sent)")
+
+
 async def resolve_chase(books: Books, intent: ChaseInvoiceIntent, cfg: AiConfig, today: date) -> Draft | Clarification:
     inv_mod = invoicing()
     assert inv_mod is not None
@@ -1006,7 +1135,11 @@ async def propose(
     intent = parse_intent(out, question, today)
     if intent is None or isinstance(intent, Clarification):
         return intent
-    if isinstance(intent, CreateInvoiceIntent):
+    if isinstance(intent, CreateQuoteIntent):
+        draft = await resolve_quote(books, intent, today)
+    elif isinstance(intent, ConvertQuoteIntent):
+        draft = await resolve_convert_quote(books, intent, today)
+    elif isinstance(intent, CreateInvoiceIntent):
         draft = await resolve_invoice(books, intent, today)
     elif isinstance(intent, ChaseInvoiceIntent):
         draft = await resolve_chase(books, intent, cfg, today)
@@ -1298,6 +1431,58 @@ async def run_shopping(action: ProposedAction, ctx: Context) -> tuple[str, dict[
     )
 
 
+async def run_quote(action: ProposedAction, ctx: Context) -> tuple[str, dict[str, Any]]:
+    from app.invoicing import InvoiceCustomer, LineIn  # same pricing as the quote module uses
+    from app.invoicing import price_lines as price
+
+    p = action.preview
+    lines = [
+        LineIn(
+            description=ln["description"],
+            quantity=Decimal(ln["quantity"]),
+            unit=None,
+            unit_price_pence=ln["unit_price_pence"],
+            vat_code=ln["vat_code"],
+        )
+        for ln in p["lines"]
+    ]
+    _, _, net, vat = price(lines)
+    if (net, vat) != (p["net_pence"], p["vat_pence"]):
+        raise ActionError("The quote totals no longer match what you approved; ask again.", 409)
+    draft = quotes_.QuoteDraft(
+        customer=InvoiceCustomer(**p["customer"]),
+        issue_date=date.fromisoformat(p["issue_date"]),
+        expiry_date=date.fromisoformat(p["expiry_date"]),
+        lines=lines,
+        reference=None,
+        notes=None,
+    )
+    q = await quotes_.create_quote(ctx.books, draft, ctx.user)
+    return (
+        f"Quote **{q.number}** for {money(q.total_pence)} saved as a draft. Open Quotes to send it.",
+        {"quote": q.number, "total_pence": q.total_pence, "status": q.status},
+    )
+
+
+async def run_convert_quote(action: ProposedAction, ctx: Context) -> tuple[str, dict[str, Any]]:
+    p = action.preview
+    try:
+        q = await quotes_.get_quote(ctx.books, p["quote"])
+    except FileNotFoundError as exc:
+        raise ActionError("That quote no longer exists; ask again.", 409) from exc
+    if q.total_pence != p["total_pence"] or (q.net_pence, q.vat_pence) != (p["net_pence"], p["vat_pence"]):
+        raise ActionError("The quote has changed since you approved; ask again.", 409)
+    try:
+        q, inv = await quotes_.convert_to_invoice(ctx.books, p["quote"], ctx.user)
+    except quotes_.InvoiceError as exc:
+        raise ActionError(str(exc), 409) from exc
+    return (
+        f"Quote **{q.number}** is now draft invoice **{inv.number}** for {money(inv.total_pence)}. "
+        "Open Invoices to check it and send it.",
+        {"quote": q.number, "invoice": inv.number, "total_pence": inv.total_pence},
+    )
+
+
 EXECUTORS: dict[str, Executor] = {
     "create_invoice": run_invoice,
     "chase_invoice": run_chase,
@@ -1306,6 +1491,8 @@ EXECUTORS: dict[str, Executor] = {
     "match_bank_line": run_bank_match,
     "close_month": run_close,
     "add_to_shopping_list": run_shopping,
+    "create_quote": run_quote,
+    "convert_quote_to_invoice": run_convert_quote,
 }
 
 

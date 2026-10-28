@@ -11,7 +11,7 @@ mobile `apps/mobile/lib/screens/ask_screen.dart`.
 
 | Step | Decided by | How |
 |---|---|---|
-| Is this an instruction at all? | code, then the model | Code only asks the model if the message has an action word (invoice, send, chase, log, miles, hours…) and doesn't start like a question ("how", "what", "did"…). The model then returns `kind`: `create_invoice`, `chase_invoice`, `log_mileage`, `log_timesheet` or `none`. `none`, or a reply in the wrong shape, means an ordinary Ask answer. |
+| Is this an instruction at all? | code, then the model | Code only asks the model if the message has an action word (invoice, send, chase, log, miles, hours…) and doesn't start like a question ("how", "what", "did"…). The model then returns `kind`: `create_invoice`, `chase_invoice`, `log_mileage`, `log_timesheet`, `create_quote`, `convert_quote_to_invoice` or `none`. `none`, or a reply in the wrong shape, means an ordinary Ask answer. |
 | Names (customer, job, staff, vehicle, invoice) | the model **quotes**, code **finds** | The model copies the words the user used ("JM Trading"). Code matches them against the user's own lists: contacts (customers only), open jobs, active staff, active vehicles, unpaid invoices. It uses `difflib` ≥ 0.8 on normalised names ("J.M. Trading Ltd" = "JM Trading"), also against runs of whole words, so "Alex" finds Alex Green and "Oak Lane" finds "Bathroom, 4 Oak Lane". If two names match about equally, or none does, Ask asks which one and lists the candidates. The lists never go to the model. |
 | Amounts, hours, miles | the model **quotes**, code **parses** | The model returns the text as said (`"£1,250.50"`, `"7.5"`). Code parses it, and **refuses any figure that isn't in the user's message**, so a made-up amount becomes a "How much?" question. Hours round to the nearest quarter (as on timesheets), miles to 0.1. |
 | Dates | the model **quotes**, code **parses** | "yesterday", "Monday", "3 Oct", "3/10" → a date (a day with no year is the latest one not after today). Future dates are refused. |
@@ -83,6 +83,10 @@ part in them (the match is `Books.bank_suggestions`, code; the close figures are
 `chase_invoice` cards built by `actions.chase_draft`, shared with Ask; with no AI set up, code writes the reminder. The
 cards are not stored: `_System/close/<yyyy-mm>.json` keeps each card's id, kind and summary, so an expired or reloaded
 card is renewed by running the close again. A rejected close card changes nothing.
+| `create_quote` | `quotes.create_quote`: priced like an invoice by the same code, saved as a **draft**; never emailed from Ask (sending is the Quotes page, with its own tick). "Valid for 14 days" is the only figure it reads beyond the amount. | now |
+| `convert_quote_to_invoice` | `quotes.convert_to_invoice`: a draft invoice with the quote's lines and totals exactly. The quote is found by number ("QU-0003", "quote 3") or by customer; several open quotes for a customer means a question (an accepted one wins if only one is). Refused at Approve if the quote changed or was already converted. | now |
+
+Questions about quotes ("any outstanding quotes?") are not actions: they are answered from the quote facts in the Ask pack (`quotes` in `app/facts.py`: waiting for an answer, expiring within 7 days, expired, accepted and not yet invoiced, drafts), worked out by `quotes.quote_facts` and checked by the same number check as every other answer.
 
 Feature checks are still done at runtime (`actions.invoicing()`, `actions.mileage()`); both modules are on `main`, so
 they pass. If one were missing, Ask would say plainly that it can't do that yet and never show a card it couldn't carry out.

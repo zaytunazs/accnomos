@@ -316,6 +316,8 @@ export interface RtProfile {
   /** What these books have; the nav hides the rest (personal: no vat, invoices, payroll). */
   features: string[];
 }
+const statementQuery = (start?: string, end?: string) =>
+  [start ? `start=${start}` : "", end ? `end=${end}` : ""].filter(Boolean).join("&");
 
 export const runtime = {
   /** GET /profile: this account's profile (its own books). */
@@ -677,6 +679,81 @@ export const runtime = {
       body: JSON.stringify({ ...body, confirm: true }),
     }),
   invoiceCustomers: (a: AccountInfo) => call<RtInvoiceCustomer[]>(a, "/invoices/customers"),
+  // ---- Products and services, quotes, purchase orders, repeating, overviews, statements ----
+  items: (a: AccountInfo, archived = false) => call<RtItem[]>(a, `/items${archived ? "?archived=true" : ""}`),
+  createItem: (a: AccountInfo, item: RtItemIn) => call<RtItem>(a, "/items", { method: "POST", body: JSON.stringify(item) }),
+  updateItem: (a: AccountInfo, code: string, item: RtItemIn) =>
+    call<RtItem>(a, `/items/${encodeURIComponent(code)}`, { method: "PUT", body: JSON.stringify(item) }),
+  archiveItem: (a: AccountInfo, code: string) => call<RtItem>(a, `/items/${encodeURIComponent(code)}`, { method: "DELETE" }),
+  exportItems: (a: AccountInfo) => call<{ filename: string; csv: string }>(a, "/items/export"),
+  importItems: (a: AccountInfo, csv: string, updateExisting: boolean) =>
+    call<RtItemImport>(a, "/items/import", { method: "POST", body: JSON.stringify({ csv, update_existing: updateExisting }) }),
+  /** What picking the item puts on a line (sale price for invoices and quotes, purchase price for orders and bills). */
+  itemLine: (a: AccountInfo, code: string, side: "sale" | "purchase", quantity = "1") =>
+    call<RtItemFill>(a, `/items/${encodeURIComponent(code)}/line?side=${side}&quantity=${encodeURIComponent(quantity)}`),
+
+  quotes: (a: AccountInfo) => call<RtQuote[]>(a, "/quotes"),
+  quote: (a: AccountInfo, n: string) => call<RtQuote>(a, `/quotes/${encodeURIComponent(n)}`),
+  createQuote: (a: AccountInfo, d: RtQuoteDraft) => call<RtQuote>(a, "/quotes", { method: "POST", body: JSON.stringify(d) }),
+  updateQuote: (a: AccountInfo, n: string, d: RtQuoteDraft) =>
+    call<RtQuote>(a, `/quotes/${encodeURIComponent(n)}`, { method: "PUT", body: JSON.stringify(d) }),
+  quotePdf: (a: AccountInfo, n: string) => call<RtTradePdf>(a, `/quotes/${encodeURIComponent(n)}/pdf`, { method: "POST" }),
+  /** Sends from the user's Outlook. Call only from the confirmation dialog: `confirm: true` is the user's tap. */
+  sendQuote: (a: AccountInfo, n: string, email: { to: string; subject: string; body: string }) =>
+    call<RtQuote>(a, `/quotes/${encodeURIComponent(n)}/send`, { method: "POST", body: JSON.stringify({ ...email, confirm: true }) },
+      mailSendScopesFor(accountKind(a))),
+  markQuoteSent: (a: AccountInfo, n: string) => call<RtQuote>(a, `/quotes/${encodeURIComponent(n)}/mark-sent`, { method: "POST" }),
+  acceptQuote: (a: AccountInfo, n: string) => call<RtQuote>(a, `/quotes/${encodeURIComponent(n)}/accept`, { method: "POST" }),
+  declineQuote: (a: AccountInfo, n: string) => call<RtQuote>(a, `/quotes/${encodeURIComponent(n)}/decline`, { method: "POST" }),
+  convertQuote: (a: AccountInfo, n: string) =>
+    call<{ quote: RtQuote; invoice: RtInvoice }>(a, `/quotes/${encodeURIComponent(n)}/convert`, { method: "POST", body: "{}" }),
+
+  purchaseOrders: (a: AccountInfo) => call<RtPurchaseOrder[]>(a, "/purchase-orders"),
+  poSuppliers: (a: AccountInfo) => call<RtInvoiceCustomer[]>(a, "/purchase-orders/suppliers"),
+  createPurchaseOrder: (a: AccountInfo, d: RtPurchaseOrderDraft) =>
+    call<RtPurchaseOrder>(a, "/purchase-orders", { method: "POST", body: JSON.stringify(d) }),
+  updatePurchaseOrder: (a: AccountInfo, n: string, d: RtPurchaseOrderDraft) =>
+    call<RtPurchaseOrder>(a, `/purchase-orders/${encodeURIComponent(n)}`, { method: "PUT", body: JSON.stringify(d) }),
+  purchaseOrderPdf: (a: AccountInfo, n: string) =>
+    call<RtTradePdf>(a, `/purchase-orders/${encodeURIComponent(n)}/pdf`, { method: "POST" }),
+  approvePurchaseOrder: (a: AccountInfo, n: string) =>
+    call<RtPurchaseOrder>(a, `/purchase-orders/${encodeURIComponent(n)}/approve`, { method: "POST" }),
+  sendPurchaseOrder: (a: AccountInfo, n: string, email: { to: string; subject: string; body: string }) =>
+    call<RtPurchaseOrder>(a, `/purchase-orders/${encodeURIComponent(n)}/send`, { method: "POST", body: JSON.stringify({ ...email, confirm: true }) },
+      mailSendScopesFor(accountKind(a))),
+  markPurchaseOrderSent: (a: AccountInfo, n: string) =>
+    call<RtPurchaseOrder>(a, `/purchase-orders/${encodeURIComponent(n)}/mark-sent`, { method: "POST" }),
+  cancelPurchaseOrder: (a: AccountInfo, n: string, reason: string) =>
+    call<RtPurchaseOrder>(a, `/purchase-orders/${encodeURIComponent(n)}/cancel`, { method: "POST", body: JSON.stringify({ reason }) }),
+  convertPurchaseOrder: (a: AccountInfo, n: string) =>
+    call<{ order: RtPurchaseOrder; proposal: { id: string } }>(a, `/purchase-orders/${encodeURIComponent(n)}/convert-to-bill`, { method: "POST", body: "{}" }),
+  poBillCandidates: (a: AccountInfo, n: string) =>
+    call<RtBillCandidate[]>(a, `/purchase-orders/${encodeURIComponent(n)}/bill-candidates`),
+  matchPurchaseOrderBill: (a: AccountInfo, n: string, proposalId: string) =>
+    call<RtPurchaseOrder>(a, `/purchase-orders/${encodeURIComponent(n)}/match-bill`, { method: "POST", body: JSON.stringify({ proposal_id: proposalId }) }),
+  unlinkPurchaseOrderBill: (a: AccountInfo, n: string) =>
+    call<RtPurchaseOrder>(a, `/purchase-orders/${encodeURIComponent(n)}/bill`, { method: "DELETE" }),
+
+  repeating: (a: AccountInfo) => call<RtRepeating[]>(a, "/repeating"),
+  repeatingDates: (a: AccountInfo, q: { frequency: RtFrequency; start: string; every: number; end?: string | null }) =>
+    call<string[]>(a, `/repeating/dates?frequency=${q.frequency}&start=${q.start}&every=${q.every}&count=4${q.end ? `&end=${q.end}` : ""}`),
+  /** Makes whatever has come due (drafts, or approved items for templates set to approve automatically). */
+  processRepeating: (a: AccountInfo, withMail = false) =>
+    call<RtRepeatingResult>(a, "/repeating/process", { method: "POST" }, withMail ? mailSendScopesFor(accountKind(a)) : []),
+  createRepeating: (a: AccountInfo, d: RtRepeatingIn) => call<RtRepeating>(a, "/repeating", { method: "POST", body: JSON.stringify(d) }),
+  updateRepeating: (a: AccountInfo, id: string, d: RtRepeatingIn) =>
+    call<RtRepeating>(a, `/repeating/${encodeURIComponent(id)}`, { method: "PUT", body: JSON.stringify(d) }),
+  deleteRepeating: (a: AccountInfo, id: string) => call<void>(a, `/repeating/${encodeURIComponent(id)}`, { method: "DELETE" }),
+
+  salesOverview: (a: AccountInfo) => call<RtSalesOverview>(a, "/sales/overview"),
+  purchasesOverview: (a: AccountInfo) => call<RtPurchasesOverview>(a, "/purchases/overview"),
+  customerStatement: (a: AccountInfo, contactId: string, start?: string, end?: string) =>
+    call<RtCustomerStatement>(a, withQuery(`/statements/${encodeURIComponent(contactId)}`, statementQuery(start, end))),
+  customerStatementPdf: (a: AccountInfo, contactId: string, start?: string, end?: string) =>
+    call<RtCustomerStatementPdf>(a, withQuery(`/statements/${encodeURIComponent(contactId)}/pdf`, statementQuery(start, end)), { method: "POST" }),
+  sendCustomerStatement: (a: AccountInfo, contactId: string, email: { to: string; subject: string; body: string }, start?: string, end?: string) =>
+    call<RtCustomerStatement>(a, withQuery(`/statements/${encodeURIComponent(contactId)}/send`, statementQuery(start, end)),
+      { method: "POST", body: JSON.stringify({ ...email, confirm: true }) }, mailSendScopesFor(accountKind(a))),
   invoiceProfile: (a: AccountInfo) => call<RtInvoiceProfile>(a, "/invoices/profile"),
   saveInvoiceProfile: (a: AccountInfo, profile: RtInvoiceProfile) =>
     call<RtInvoiceProfile>(a, "/invoices/profile", { method: "PUT", body: JSON.stringify(profile) }),
@@ -1426,6 +1503,7 @@ export interface RtInvoiceLineIn {
   unit_price_pence: number;
   vat_code: RtSalesVatCode;
   timesheet_entry_ids?: string[]; // the job hours this line bills; marked invoiced when the invoice is sent
+  item_code?: string | null; // the catalogue item the line was filled from (Sales > Products and services)
 }
 export interface RtInvoiceLine extends RtInvoiceLineIn {
   vat_rate: number;
@@ -1570,6 +1648,236 @@ export interface RtInvoicePdf {
   email: { to: string | null; subject: string; body: string };
   problems: string[]; // why it cannot be sent yet
 }
+/** Products and services (services/runtime/app/items.py). Prices are integer pence; a price may be unset. */
+export interface RtItemIn {
+  code: string;
+  name: string;
+  description: string | null;
+  unit: string | null;
+  sale_price_pence: number | null;
+  purchase_price_pence: number | null;
+  vat_code: RtSalesVatCode;
+  income_account: string;
+  expense_account: string;
+  archived: boolean;
+}
+export interface RtItem extends RtItemIn {
+  created_at: string;
+  updated_at: string;
+}
+export interface RtItemFill {
+  item_code: string;
+  description: string;
+  unit: string | null;
+  quantity: string;
+  unit_price_pence: number | null;
+  vat_code: RtSalesVatCode;
+  account: string;
+}
+export interface RtItemImport {
+  created: number;
+  updated: number;
+  skipped: number;
+  errors: { line: number; code: string | null; message: string }[];
+}
+
+/** The PDF a quote, order or statement is sent as, and the email that goes with it. */
+export interface RtTradePdf {
+  path: string;
+  size: number;
+  sha256: string;
+  data_url: string;
+  email: { to: string | null; subject: string; body: string };
+  problems: string[];
+}
+
+export type RtQuoteStatus = "draft" | "sent" | "accepted" | "declined" | "expired";
+export interface RtQuoteDraft {
+  customer: RtInvoiceCustomer;
+  issue_date: string | null;
+  expiry_date: string | null;
+  lines: RtInvoiceLineIn[];
+  reference: string | null;
+  notes: string | null;
+}
+export interface RtQuote {
+  number: string;
+  status: RtQuoteStatus;
+  customer: RtInvoiceCustomer;
+  issue_date: string;
+  expiry_date: string;
+  lines: RtInvoiceLine[];
+  vat_summary: { vat_code: RtSalesVatCode; vat_rate: number; net_pence: number; vat_pence: number }[];
+  net_pence: number;
+  vat_pence: number;
+  total_pence: number;
+  reference: string | null;
+  notes: string | null;
+  sent_at: string | null;
+  sent_to: string | null;
+  decided_at: string | null;
+  invoice_number: string | null;
+  days_to_expiry: number | null;
+}
+
+export type RtPurchaseOrderStatus = "draft" | "approved" | "sent" | "billed" | "cancelled";
+export interface RtPurchaseOrderDraft {
+  supplier: RtInvoiceCustomer;
+  issue_date: string | null;
+  delivery_date: string | null;
+  delivery_address: string | null;
+  lines: RtInvoiceLineIn[];
+  reference: string | null;
+  notes: string | null;
+  account: string | null;
+}
+export interface RtOrderBill {
+  proposal_id: string;
+  kind: "converted" | "matched";
+  status: string;
+  gross_pence: number | null;
+  variance_pence: number | null;
+  invoice_number: string | null;
+  event_id: string | null;
+}
+export interface RtPurchaseOrder {
+  number: string;
+  status: RtPurchaseOrderStatus;
+  supplier: RtInvoiceCustomer;
+  issue_date: string;
+  delivery_date: string | null;
+  delivery_address: string | null;
+  lines: RtInvoiceLine[];
+  vat_summary: { vat_code: RtSalesVatCode; vat_rate: number; net_pence: number; vat_pence: number }[];
+  net_pence: number;
+  vat_pence: number;
+  total_pence: number;
+  reference: string | null;
+  notes: string | null;
+  account: string | null;
+  approved_at: string | null;
+  sent_at: string | null;
+  sent_to: string | null;
+  bill: { proposal_id: string; kind: "converted" | "matched" } | null;
+  bill_now: RtOrderBill | null;
+  cancel_reason: string | null;
+  overdue_days: number | null;
+}
+export interface RtBillCandidate {
+  proposal_id: string;
+  status: string;
+  supplier: string;
+  date: string;
+  invoice_number: string | null;
+  gross_pence: number;
+  variance_pence: number;
+  exact: boolean;
+  linked_to: string | null;
+}
+
+export type RtFrequency = "weekly" | "monthly" | "quarterly" | "yearly";
+export interface RtRepeatingIn {
+  kind: "invoice" | "bill";
+  name: string | null;
+  frequency: RtFrequency;
+  every: number;
+  start_date: string;
+  end_date: string | null;
+  approve_automatically: boolean;
+  party: RtInvoiceCustomer;
+  lines: RtInvoiceLineIn[];
+  reference: string | null;
+  notes: string | null;
+  due_days: number | null;
+  account: string | null;
+  paused: boolean;
+}
+export interface RtRepeating extends RtRepeatingIn {
+  id: string;
+  last_run_at: string | null;
+  last_error: string | null;
+  history: { index: number; date: string; outcome: string; number: string | null; proposal_id: string | null; note: string | null }[];
+  next_date: string | null;
+  finished: boolean;
+  due_now: boolean;
+  totals: [number, number, number]; // net, VAT, gross in pence, per run
+}
+export interface RtRepeatingResult {
+  made: { template: string; kind: "invoice" | "bill"; date: string; outcome: string; number: string | null; proposal_id: string | null; note: string | null }[];
+  problems: string[];
+  more_due: number;
+}
+
+export interface RtBucket {
+  count: number;
+  total_pence: number;
+}
+export interface RtOwedRow {
+  reference: string;
+  name: string;
+  contact_id: string | null;
+  owed_pence: number;
+  due_date: string;
+  days_overdue: number;
+  number: string | null;
+  event_id: string | null;
+}
+export interface RtRepeatingSummary {
+  active: number;
+  due_now: number;
+  next_date: string | null;
+}
+export interface RtSalesOverview {
+  as_of: string;
+  window_days: number;
+  money_in_pence: number;
+  invoiced_pence: number;
+  drafts: RtBucket;
+  awaiting_payment: RtBucket;
+  overdue: RtBucket;
+  due_soon: RtBucket;
+  aged: Record<string, number>;
+  owed_most: RtOwedRow[];
+  customer_credit_pence: number;
+  quote_drafts: RtBucket;
+  quotes_waiting: RtBucket;
+  quotes_expired: RtBucket;
+  quotes_to_invoice: RtBucket;
+  repeating: RtRepeatingSummary;
+}
+export interface RtPurchasesOverview {
+  as_of: string;
+  window_days: number;
+  money_out_pence: number;
+  in_review: RtBucket;
+  needs_a_look: number;
+  awaiting_payment: RtBucket;
+  overdue: RtBucket;
+  due_soon: RtBucket;
+  aged: Record<string, number>;
+  owed_most: RtOwedRow[];
+  supplier_credit_pence: number;
+  order_drafts: RtBucket;
+  orders_open: RtBucket;
+  orders_late: RtBucket;
+  orders_billed_in_review: RtBucket;
+  repeating: RtRepeatingSummary;
+}
+export interface RtCustomerStatement {
+  contact: { id: string; name: string; email: string | null; address: string | null };
+  start: string | null;
+  end: string;
+  opening_balance_pence: number;
+  closing_balance_pence: number;
+  credit_pence: number;
+  lines: { date: string; details: string; reference: string | null; amount_pence: number; paid_pence: number; balance_pence: number }[];
+  open_documents: { event_id: string; date: string; due_date: string; reference: string | null; gross_pence: number; outstanding_pence: number }[];
+  owed_pence: number;
+  shows_outstanding: boolean;
+  email: string | null;
+}
+export type RtCustomerStatementPdf = RtTradePdf;
+
 export interface RtReminderDraft {
   to: string | null;
   subject: string;
@@ -1902,7 +2210,9 @@ export type RtActionKind =
   | "log_timesheet"
   | "match_bank_line" // proposed by the month-end close
   | "close_month" // proposed by the month-end close
-  | "add_to_shopping_list";
+  | "add_to_shopping_list"
+  | "create_quote"
+  | "convert_quote_to_invoice";
 export interface RtProposedAction {
   id: string;
   kind: RtActionKind;
@@ -1926,6 +2236,17 @@ export interface RtInvoicePreview {
   total_pence: number;
   send: boolean;
   send_to: string | null;
+  warnings: string[];
+}
+/** create_quote shares RtInvoicePreview's lines and totals; it has `expiry_date` and no `due_date`, and is never sent. */
+export interface RtConvertQuotePreview {
+  quote: string;
+  customer: string;
+  status: string;
+  net_pence: number;
+  vat_pence: number;
+  total_pence: number;
+  lines: string[];
   warnings: string[];
 }
 export interface RtChasePreview {

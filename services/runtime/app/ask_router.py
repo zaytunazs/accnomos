@@ -17,10 +17,10 @@ from datetime import date
 from typing import Any
 
 from app.books import EVENTS, PROPOSALS, WORKBOOK
-from app.paths import VAT_RETURNS
+from app.paths import QUOTES, VAT_RETURNS
 
 THIS, PREV = "this", "previous"
-SECTIONS = ("vat", "totals", "suppliers", "customers", "transactions", "pending")
+SECTIONS = ("vat", "totals", "suppliers", "customers", "transactions", "pending", "quotes")
 
 #: Budget for the pack sent to the model. Measured on Glimmer: 2.8 bytes of compact facts JSON per prompt token
 #: (evals/runs/ask_40/report.md), so 2.7 slightly over-counts on purpose.
@@ -47,6 +47,7 @@ _KEYWORDS: dict[str, re.Pattern[str]] = {
     "transactions": re.compile(
         r"\blargest\b|\bbiggest single\b|\bsingle\b|\btransactions?\b|\breceipts?\b|\binvoice on\b|\bpurchase on\b", _I
     ),
+    "quotes": re.compile(r"\bquot(?:e|es|ed|ation|ations)\b|\bestimates?\b", _I),
     "pending": re.compile(
         r"\breview\b|\bwaiting\b|\bpending\b|\bproposals?\b|\binbox\b|\bto approve\b|\bneeds? a look\b", _I
     ),
@@ -290,6 +291,8 @@ def pack(facts: dict[str, Any], r: Route) -> dict[str, Any]:
         out["derived"] = (
             {k: v for k, v in facts["derived"].items() if k != "vat_position" and k.startswith(keep)} if keep else {}
         )
+    if "quotes" in r.sections and facts.get("quotes"):
+        out["quotes"] = facts["quotes"]
     if "pending" in r.sections and facts.get("pending_proposals") is not None:
         out["pending_proposals"] = facts["pending_proposals"]
     out["not_in_these_facts"] = NOT_IN_FACTS
@@ -301,6 +304,7 @@ def pack(facts: dict[str, Any], r: Route) -> dict[str, Any]:
 def _pack_sources(facts: dict[str, Any], r: Route, out: dict[str, Any]) -> list[str]:
     txns = [t["source"] for t in out["this_period"].get("largest_transactions", [])]
     extra = [f"{PROPOSALS}/"] if "pending_proposals" in out and f"{PROPOSALS}/" in facts["sources"] else []
+    extra += [f"{QUOTES}/"] if "quotes" in out and f"{QUOTES}/" in facts["sources"] else []
     return list(dict.fromkeys(sources_for(facts, r.periods) + txns + extra)) or facts["sources"][:1]
 
 
@@ -316,4 +320,7 @@ def _fit(out: dict[str, Any], facts: dict[str, Any], r: Route) -> None:
         if n <= 2:
             for p in (THIS, PREV):
                 out[period_key(p)].get("totals", {}).pop("by_vat_code", None)
+        for key in ("waiting_for_an_answer", "expired_unanswered"):
+            if "quotes" in out:
+                out["quotes"][key] = {**out["quotes"][key], "quotes": out["quotes"][key]["quotes"][: min(n, 3)]}
         out["sources"] = _pack_sources(facts, r, out)

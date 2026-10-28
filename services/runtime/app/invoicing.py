@@ -219,6 +219,9 @@ class LineIn(StrictBody):
         default_factory=list, max_length=1000
     )  # hours this line bills (jobs)
     tracking: Annotated[Tags | None, Field(max_length=2)] = None  # {category id: option id} (app/tracking.py)
+    item_code: str | None = Field(
+        default=None, max_length=30
+    )  # the catalogue item that filled this line (app/items.py)
 
 
 class InvoiceLine(LineIn):
@@ -310,6 +313,7 @@ class Invoice(BaseModel):
     timesheets_marked: bool = False  # the lines' timesheet entries were marked invoiced on this number when sent
     payment_link: PaymentLink | None = None  # "Pay online" (app/online_payments.py)
     online_payments: list[str] = []  # provider payment ids already recorded from the link, so none is proposed twice
+    repeating: str | None = None  # "RP-0001#3": made by that occurrence of a repeating invoice (app/repeating.py)
 
     def timesheet_entry_ids(self) -> list[str]:
         return [i for ln in self.lines for i in ln.timesheet_entry_ids]
