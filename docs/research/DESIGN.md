@@ -354,4 +354,4 @@ or touch structure, so the first three **low-risk** changes (★) are the ones t
   block is `flex-1`), so Dismiss keeps its place.
 
 After screenshots: `design-shots/*-after.png` (same pages, same sizes). The existing e2e suite is unchanged and
-passes: 226 passed, 0 failed, 94 skipped (the gated screenshot specs), 9.6 min with CI=1 on 3 workers; eslint and tsc are clean.
+was run with CI=1 on 3 workers: 226 passed, 5 failed, 94 skipped (the gated screenshot specs). The same 5 fail identically on unchanged `main` (88d0ece) in this container, so they are environmental: the container only has full Chromium 1243, not the pinned headless shell 1248, and its built-in PDF viewer makes `chrome-extension://` requests that trip the "nothing leaves 127.0.0.1" guard (invoices x1, invoice-payments x2), the extra focus stop breaks the keyboard Tab-through test, and `site-health` expects port 3100 in the not-found text where this run used 3270. eslint and tsc are clean.
