@@ -544,3 +544,15 @@ def test_discard_starts_again(client: TestClient) -> None:
     load_set(client, "sage50")
     v = client.delete("/import", headers=H).json()
     assert v["draft"]["files"] == [] and v["draft"]["conversion_date"] is None
+
+
+def test_mapping_only_takes_accounts_in_the_trial_balance(client: TestClient) -> None:
+    upload(client, "sage50", "trial_balance.csv")
+    r = client.put("/import", json={"mapping": {"code:9999": "7100 Rent"}}, headers=H)
+    assert r.status_code == 422 and "not in the trial balance" in r.json()["detail"]
+
+
+def test_a_broken_csv_is_a_sentence_not_a_crash() -> None:
+    huge = b'Code,Account,Debit,Credit\n1,"' + b"x" * 200_000 + b'",1,\n'
+    with pytest.raises(fmt.ImportFormatError, match="not a CSV we can read"):
+        fmt.parse(huge, "tb.csv")

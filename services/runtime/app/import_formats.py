@@ -66,6 +66,7 @@ from pydantic import BaseModel
 
 MAX_FILE = 5 * 1024 * 1024
 MAX_ROWS = 20_000
+MAX_COLS = 80  # an .xlsx is read this wide at most: the exports have a dozen columns, a zip bomb has thousands
 HEADER_SEARCH = 40  # rows scanned for the header (report exports have a title block above it)
 
 FileKind = Literal["trial_balance", "chart_of_accounts", "contacts", "open_items", "bank_balances"]
@@ -382,9 +383,14 @@ def read_grid(data: bytes, name: str) -> list[list[str]]:
         raise ImportFormatError("The file is not text; save the export as CSV")
     sample = text[:4096]
     delimiter = max((",", ";", "\t"), key=sample.count)
-    rows = [[c.strip() for c in row] for row in csv.reader(io.StringIO(text), delimiter=delimiter)]
-    if len(rows) > MAX_ROWS:
-        raise ImportFormatError(f"The file has over {MAX_ROWS:,} rows")
+    rows: list[list[str]] = []
+    try:
+        for row in csv.reader(io.StringIO(text), delimiter=delimiter):
+            rows.append([c.strip() for c in row[:MAX_COLS]])
+            if len(rows) > MAX_ROWS:
+                raise ImportFormatError(f"The file has over {MAX_ROWS:,} rows")
+    except csv.Error as exc:
+        raise ImportFormatError(f"The file is not a CSV we can read ({exc})") from exc
     return rows
 
 
@@ -398,7 +404,7 @@ def _xlsx(data: bytes) -> list[list[str]]:
     try:
         ws = wb.worksheets[0]
         rows: list[list[str]] = []
-        for row in ws.iter_rows(values_only=True):
+        for row in ws.iter_rows(values_only=True, max_col=MAX_COLS):
             rows.append([_cell(v) for v in row])
             if len(rows) > MAX_ROWS:
                 raise ImportFormatError(f"The file has over {MAX_ROWS:,} rows")

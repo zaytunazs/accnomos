@@ -87,7 +87,10 @@ async def edit_draft(
         draft.conversion_date = body.conversion_date
     if body.pl_treatment is not None:
         draft.pl_treatment = body.pl_treatment
+    keys = {r.key for r in ih.mapping_rows(draft)}
     for key, target in body.mapping.items():
+        if key not in keys:
+            raise HTTPException(status_code=422, detail="That account is not in the trial balance you uploaded")
         if target is None:
             draft.mapping.pop(key, None)
             continue

@@ -65,6 +65,7 @@ const HASH_GROUP: Record<string, GroupId> = {
   "settings-personal": "business",
   "settings-payments": "business",
   "settings-data": "data",
+  "settings-data-import": "data",
   "settings-data-export": "data",
   "settings-leave": "data",
 };
