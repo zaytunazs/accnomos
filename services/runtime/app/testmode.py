@@ -16,6 +16,8 @@ With it on, the runtime talks to nothing outside this process:
 * Stripe and PayPal (payment links, app/online_payments.py) are the fakes in app/online_fakes.py: their API calls
   never leave the process, and `/__test/stripe/*` and `/__test/paypal/*` are the pages a browser would see there
   (a consent screen that agrees at once, and a "Pay £…" page per link, so a test can play the customer).
+* TrueLayer (bank feeds, app/bank_feeds.py) is the fake in app/bankfeed_fakes.py: `/__test/truelayer/` is the
+  bank picker, which agrees at once, and its mock bank's six transactions overlap the gold Barclays CSV by three.
 * "Today" is pinned to ACCNOMOS_TEST_TODAY (default 2026-10-27): the gold receipts (Jul-Sep 2026) fall in the
   previous VAT quarter, the one still to file (the VAT page and Ask default to the current one, Oct-Dec);
   timestamps stay real. The `demo` seed moves its tenant to docs/DEMO.md's stage date (4 Nov 2026).
@@ -521,6 +523,9 @@ def enable() -> None:
     from app import online_fakes, online_payments
 
     online_fakes.install(online_payments.public_base())  # Stripe and PayPal calls go to the fakes, never out
+    from app import bankfeed_fakes
+
+    bankfeed_fakes.install()  # TrueLayer calls (bank feeds) go to the fakes, never out
     log.warning("ACCNOMOS_TEST_MODE=1: fake storage/mail/calendar and a stub AI; not for real books")
 
 
@@ -541,6 +546,9 @@ def _payment_pages() -> None:
     from app.online_fakes import router as fakes_router  # the providers' pages a browser sees: consent, pay
 
     router.include_router(fakes_router)
+    from app.bankfeed_fakes import router as bankfeed_router  # TrueLayer's bank picker, already agreed
+
+    router.include_router(bankfeed_router)
 
 
 _payment_pages()

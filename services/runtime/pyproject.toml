@@ -19,6 +19,7 @@ dependencies = [
   "tzdata>=2024.1",  # IANA time-zone database for zoneinfo: Europe/London on slim images and Windows
   "accnomos-ledger",
   "accnomos-connectors",
+  "cryptography>=44",
 ]
 
 [project.optional-dependencies]

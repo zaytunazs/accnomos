@@ -182,6 +182,9 @@ app.include_router(dashboard_router)
 from app.routes_bank import router as bank_router  # noqa: E402  /books/bank/*
 
 app.include_router(bank_router)
+from app.routes_bankfeeds import router as bankfeeds_router  # noqa: E402  /books/bankfeeds/* (TrueLayer)
+
+app.include_router(bankfeeds_router)
 from app.routes_ask import router as ask_router  # noqa: E402  POST /books/ask, /books/ask/voice
 
 app.include_router(ask_router)

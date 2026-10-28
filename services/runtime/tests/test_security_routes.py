@@ -221,6 +221,8 @@ TALKS_HTTP = {
     "company_lookup.py": "Companies House (CH_BASE constant) and the relay (HMRC_RELAY_URL): server env only",
     "payment_providers.py": "Stripe and PayPal: the bases in StripeConfig/PayPalConfig, from server env only",
     "online_fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
+    "truelayer.py": "TrueLayer (bank feeds): the bases in TrueLayerConfig, from server env only",
+    "bankfeed_fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
 }
 
 
@@ -268,6 +270,32 @@ def test_payment_provider_calls_go_only_to_the_configured_provider_bases():
     cfg = StripeConfig(secret_key="sk_test_x", client_id="ca_x", redirect_uri="https://x/cb")
     assert (cfg.api_base, cfg.connect_base) == ("https://api.stripe.com", "https://connect.stripe.com")
     assert PayPalConfig("a", "b", "c", "d", "https://x/cb").base == PAYPAL_SANDBOX == "https://api-m.sandbox.paypal.com"
+
+
+def test_truelayer_calls_go_only_to_the_configured_bases():
+    """app/truelayer.py: every request URL starts with TrueLayerConfig's auth or API base (server env or the
+    documented constants), never a URL TrueLayer, the app or a user sent; its one client follows no redirect. An
+    account id read back from the user's books must match bank_feeds.ID_RE before it is put in a path."""
+    import ast
+
+    from app.bank_feeds import FeedAccount
+    from app.truelayer import SANDBOX_API, SANDBOX_AUTH, TrueLayerConfig
+
+    src = (APP / "truelayer.py").read_text()
+    seen = 0
+    for node in ast.walk(ast.parse(src)):
+        if isinstance(node, ast.JoinedStr) and node.values and isinstance(node.values[0], ast.FormattedValue):
+            head = ast.unparse(node.values[0].value)
+            if head.startswith(("self.cfg.", "cfg.")):
+                assert head in {"self.cfg.auth_base", "self.cfg.api_base", "cfg.auth_base"}, head
+                seen += 1
+        if isinstance(node, ast.Call) and ast.unparse(node.func) in ("httpx.AsyncClient", "httpx.Client"):
+            assert any(k.arg == "follow_redirects" and ast.unparse(k.value) == "False" for k in node.keywords)
+    assert seen >= 5
+    cfg = TrueLayerConfig("id", "secret", "https://x/cb")
+    assert (cfg.auth_base, cfg.api_base) == (SANDBOX_AUTH, SANDBOX_API)
+    with pytest.raises(ValueError):
+        FeedAccount(id="../me", name="x")
 
 
 def test_every_runtime_http_call_goes_to_an_allow_listed_base_and_follows_no_redirects():
@@ -557,6 +585,9 @@ PUBLIC_ROUTES = {
     ),
     "GET /payments/online/paypal/callback": (
         "PayPal's browser redirect; only checks the signed one-time state and hands back to Settings, touches no books"
+    ),
+    "GET /books/bankfeeds/callback": (
+        "TrueLayer's browser redirect; only checks the signed one-time state and hands back to Bank, touches no books"
     ),
 }
 
