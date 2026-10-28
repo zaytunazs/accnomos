@@ -102,6 +102,8 @@ class ContactEdit(StrictBody):
     vat_status: VatStatus | None = None  # null means unknown: the VAT check asks again over £250
     terms_days: int | None = Field(None, ge=0, le=365)  # payment terms in days (ageing); null: the 30-day default
     company_number: str | None = Field(None, max_length=12)  # Companies House number, e.g. 01234567 or SC123456
+    is_business: bool | None = None  # false: a consumer, so no statutory interest figures (app/chasing.py)
+    chasing_opt_out: bool | None = None  # true: never draft reminders for this contact
 
 
 class VatCheckBody(StrictBody):
