@@ -137,7 +137,7 @@ task text only and was never merged.
 | 16 | `claude/batch-tax`, as one branch (cash-basis, vat-schemes, cis, spark/cis-gold, landlords, spark/landlord-gold, payroll-finish in place of payroll-rti, muse/mileage-rate, muse/private-split, muse/payment-chasing, muse/bank-ai-travel-2) | `43f6e10d` | green after one fix (below) | 40740211764 ✓ |
 | 17 | `muse/cis-eval` | `9272c8b6` | 40744420233 | no web change |
 | 18 | `spark/cis-eval-runs` (plus the /cis label fix below) | `f3a8db81` | 40747808603 | 40749547420 ✓ |
-| 19 | `muse/property-reader` with `spark/property-eval-runs` (its Spark run) | see the last row of the gates table | | no web change |
+| 19 | `muse/property-reader` with `spark/property-eval-runs` (its Spark run), plus the payroll fix below | `21c77bd2` | 40759245206 | 40761016629 ✓ |
 
 The integrator wrote a review wherever a branch arrived without one: `docs/reviews/cis-eval/`, `cis-eval-runs/` and
 `property-reader/`. The Spark figures were **recounted from `results.jsonl`**, not copied from the summaries. The CIS
@@ -154,6 +154,7 @@ schedules and 0 of 6 on mortgage statements.
 | batch-tax | 2161 | 101 | 63 | 181 | 338 | 409 | 3 |
 | cis-eval | 2161 | 101 | 63 | 181 | 352 | 411 | 1 |
 | property-reader | 2167 | 101 | 63 | 181 | 353 | 411 | 1 |
+| + payroll fix | 2167 | 101 | 63 | 181 | 353 | 413 | 0 |
 
 ruff 0.17.3 and pyright stayed clean throughout. The flaky tests were: on bank-feeds, the signed-out `/` *Speak*
 button was briefly disabled without a reason; on batch-tax, `files-manage` hit `ECONNRESET`, the PAYE RTI table was
