@@ -673,6 +673,12 @@ async def ai_chat(request: Request) -> JSONResponse:
         return JSONResponse(_ollama(duplicate_reply(messages[-1]["content"])))
     if system == public_chat.SYSTEM_PROMPT:
         return JSONResponse(_ollama(public_chat_reply(messages[-1]["content"])))
+    from app import cashflow
+
+    if system == cashflow.SYSTEM_PROMPT:  # one line quoting two of the forecast's own figures
+        facts = json.loads(messages[-1]["content"].split("FACTS:\n", 1)[1])
+        line = f"Your bank is {facts['bank_balance_today']} today and {facts['balance_in_90_days']} in 90 days."
+        return JSONResponse(_ollama({"line": line}))
     images = [img for m in messages for img in (m.get("images") or [])]
     if system == actions.INTENT_PROMPT:
         return JSONResponse(_ollama(intent_reply(messages[-1]["content"])))

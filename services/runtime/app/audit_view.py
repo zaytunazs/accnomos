@@ -317,6 +317,29 @@ SUMMARIES: dict[str, Summary] = {
         }.get(str(r.get("report")), "a report")
         + f" to {REPORTS} as a spreadsheet"
     ),
+    # Accounting tools (app/chart.py, manual_journals.py, fixed_assets.py, recode.py, tracking.py, budgets.py)
+    "account_added": lambda r, w: f"Added account {r.get('code', '')} to the chart of accounts".replace("  ", " "),
+    "account_edited": lambda r, w: f"Changed account {r.get('code', '')} in the chart of accounts".replace("  ", " "),
+    "account_deleted": lambda r, w: f"Deleted unused account {r.get('code', '')} from the chart".replace("  ", " "),
+    "accounts_imported": lambda r, w: (
+        f"Imported the chart of accounts: {_n(r, 'added')} added, {_n(r, 'updated')} updated"
+    ),
+    "journal_drafted": lambda r, w: f"Saved journal {r.get('number', '')} as a draft" + _pounds(r, "total_pence"),
+    "journal_approved": lambda r, w: (
+        f"Approved journal {r.get('number', '')}: posted to the ledger"
+        + (" with its reversal" if r.get("reversal") else "")
+    ),
+    "journal_discarded": lambda r, w: f"Discarded draft journal {r.get('number', '')}",
+    "journal_voided": lambda r, w: f"Voided journal {r.get('number', '')} with a mirror entry",
+    "asset_registered": lambda r, w: f"Registered fixed asset {r.get('number', '')}" + _pounds(r, "cost_pence"),
+    "asset_removed": lambda r, w: f"Took fixed asset {r.get('number', '')} off the register",
+    "lines_recoded": lambda r, w: f"Recoded {_plural(_n(r, 'lines'), 'line')} with adjusting entries",
+    "tracking_category_added": lambda r, w: f"Added the tracking category {r.get('name', '')}".rstrip(),
+    "tracking_category_renamed": lambda r, w: "Renamed a tracking category",
+    "tracking_category_deleted": lambda r, w: "Deleted an unused tracking category",
+    "tracking_option_added": lambda r, w: f"Added the tracking option {r.get('name', '')}".rstrip(),
+    "tracking_option_edited": lambda r, w: "Changed a tracking option",
+    "budget_saved": lambda r, w: f"Saved the budget from {r.get('start', 'a month')}",
     # Your data
     "data_exported": lambda r, w: f"Saved your full data export to {REPORTS}/Exports as a zip",
     # Load sample books (app/sample_books.py)

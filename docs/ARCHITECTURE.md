@@ -117,6 +117,11 @@ Books.xlsx still show the path as it was saved.
 | `archive/runs/<id>.json` | one archive run: every move, its zips, and when it was undone | written, then updated once by Undo |
 | `Settings/files.json` | `backup_keep` (default 12), `monthly_backup` (default off) | rewritten |
 | `profile.json` | what these books are: name, kind (`company`, `sole_trader`, `personal`), kind settings, other linked accounts by sign-in name (`app/profile.py`, `PUT /profile`) | rewritten whole |
+| `Accounting/accounts.json` | the chart of accounts once the user changes it (absent: the standard UK chart in `chart.py`); codes never change, used accounts are archived, never deleted | rewritten whole |
+| `Accounting/journals.json` | manual, depreciation and disposal journals: draft → posted → voided (or discarded); the posted event ids (`manual_journals.py`) | rewritten whole; a record is never removed |
+| `Accounting/assets.json` | fixed asset register (`fixed_assets.py`); what has been depreciated and disposed of is worked out from posted journals, not stored here | rewritten whole |
+| `Accounting/tracking.json` | up to two tracking categories and their options, by stable id (`tracking.py`) | rewritten whole; options archived, not deleted |
+| `Accounting/budgets/<yyyy-mm>.json` | one budget: twelve monthly amounts per P&L account from that month (`budgets.py`) | rewritten whole |
 
 OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folder. Money is integer pence in every file except
 `Books.xlsx`, which shows pounds.
@@ -195,6 +200,29 @@ and `backups.py`. Every write needs `X-User`; previews write nothing.
 * **Audit kinds:** `files_moved`, `file_renamed`, `files_trashed`, `files_archived`, `archive_undone`,
   `backup_created` (actor `agent:backup` for the monthly one), `backup_verified`, `backup_restored`,
   `file_settings_saved`, each with a sentence in `audit_view.SUMMARIES`.
+## Accounting tools
+
+`app/routes_accounting.py` (`/accounting/*`) and the new reports in `app/routes_reports.py` (`/reports/budgets…`,
+`/reports/cashflow`, `/reports/tracking`). Code calculates every figure; nothing here involves a model except the optional
+one-line cash flow sentence, whose figures must all be in the forecast (`KnownNumbers`, as Ask) or it is dropped.
+
+- **Ledger additions** (`packages/ledger`): a line may carry `tracking` ({category id: option id}); an `adjustment` may
+  carry `vat_box` (sales | purchases) and then its signed `net`/`vat` count on that side of the return as they are
+  (`compute_vat_return`); an adjustment's `recodes` lists the earlier lines it recodes. Depreciation maths is
+  `accnomos_ledger/depreciation.py` (straight line by life or rate, reducing balance by rate, monthly or yearly,
+  cumulative rounding so the charges add up exactly). All new fields are optional, so every older event file still reads.
+- **What posts:** approving a manual journal (`adjustment`, id from the journal's; an auto-reversal is a second event dated
+  its reversal day, posted in the same approval), voiding one (its mirror; dated today if it has VAT in a submitted
+  period), and a recode sent with `confirm: true` (one `adjustment` per original entry, dated like it). Depreciation runs
+  and disposals are journal drafts the user approves. Chart, register, tracking and budget changes post nothing.
+- **Refusals** are plain sentences: unbalanced journals, control accounts (debtors, creditors, VAT control without a VAT
+  side, payroll liabilities) on journals, recodes of bank/control lines, recodes of entries in a submitted VAT period
+  and VAT journals dated in one (submitted periods from `approve.submitted_spans`).
+- **Cash flow** is the ledger balance of bank-type accounts plus `contacts.aged` documents by due date. **Budget variance**
+  and the **Tracking Summary** use the P&L's own account placement and signs (`reports.py`).
+
+Routes (for the menu): `/accounting/chart`, `/accounting/journals`, `/accounting/assets`, `/accounting/recode`,
+`/accounting/tracking`, `/reports/budgets`, `/reports/cashflow` in the web app (`apps/web/src/components/accounting/`).
 
 ## Round trips and caching
 

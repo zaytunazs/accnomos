@@ -224,9 +224,12 @@ app.include_router(payroll_router)
 from app.routes_plan import router as plan_router  # noqa: E402  /plan/day, /plan/day/apply
 
 app.include_router(plan_router)
-from app.routes_reports import router as reports_router  # noqa: E402  /reports/pl, aged, vat, trend, export
+from app.routes_reports import router as reports_router  # noqa: E402  /reports/pl, aged, vat, trend, export, budgets…
 
 app.include_router(reports_router)
+from app.routes_accounting import router as accounting_router  # noqa: E402  /accounting/* (chart, journals, assets…)
+
+app.include_router(accounting_router)
 if is_test_mode():  # ACCNOMOS_TEST_MODE=1 only (e2e tests): fakes + stub AI under /__test (app/testmode.py)
     from app import testmode
 

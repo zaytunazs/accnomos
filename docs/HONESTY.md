@@ -98,6 +98,27 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - The 2026–27 rates in `payroll_rates.py` were checked against GOV.UK on 27 Oct 2026 by the payrun branch's author (a code comment and commit message, no other record); `tests/test_payroll_rates.py` now pins every constant to the GOV.UK figures (re-read 27 Oct 2026, all matched). Re-check each April.
 - Undoing a payroll ledger entry from outside the Payroll page leaves the run "confirmed" until it is reopened.
 
+## Accounting tools (chart, journals, fixed assets, recode, tracking, budgets, cash flow)
+
+- **Tested on fakes only** (runtime unit and route tests, Playwright against the test-mode runtime); never run on a real
+  OneDrive or reviewed by an accountant.
+- **No multi-currency.** Dropped by the owner (28 Oct 2026): a non-GBP receipt still cannot be posted, there are no
+  currency fields, no exchange rates and no FX gains or losses.
+- **Fixed assets are book depreciation only.** Capital allowances (AIA, writing-down allowances) are not calculated; the
+  page and the API say so. Disposals take catch-up depreciation for whole periods only (no part-month), proceeds go to a
+  bank-type account, and output VAT on the sale is whatever the user types. Registering an asset posts nothing: if the
+  purchase was coded to an expense it must be moved with Find and recode.
+- **Find and recode** changes a VAT code only for a sale or purchase whose VAT is on one line, keeping the gross; mixed-rate
+  entries must be undone and posted again. Credit notes, payments and journals can be recoded by account but not VAT.
+  Lines on bank and control accounts are refused.
+- **Chart names are fixed once used**: entries keep the "code name" they were posted with, so a used account can't be
+  renamed (add a new one and recode). Account types must fit the code ranges the reports use; 9000–9999 is not allowed.
+- **Cash flow** includes only open invoices and bills on account (overdue ones counted as due now). There are no repeating
+  invoices or bills in Accnomos yet, and pay runs, VAT payments and card spending are not forecast.
+- **Tracking** on bills is set on approval and applies to every cost line of the bill; credit notes, payments and recodes
+  copy no tags from the user (a recode keeps the original line's tags).
+- Manual journals attach a document by its path in the books folder (no upload from the journal form).
+
 ## Bank statements
 
 - **Bank formats are modelled, not verified.** Barclays, Starling, Tide, Monzo and HSBC/Lloyds layouts follow public formats and have not been checked against real exports; unknown headers fall back to `bank`.
