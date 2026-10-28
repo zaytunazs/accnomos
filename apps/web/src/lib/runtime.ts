@@ -543,6 +543,34 @@ export const runtime = {
   reminderSend: (a: AccountInfo, id: string, email: { to: string; subject: string; body: string }) =>
     call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/reminder-send`, { method: "POST", body: JSON.stringify({ ...email, confirm: true }) },
       mailSendScopesFor(accountKind(a))),
+  /** Online payments (services/runtime/app/routes_online_payments.py). */
+  payProviders: (a: AccountInfo) => call<RtProviderStatus[]>(a, "/payments/online/providers"),
+  payStart: (a: AccountInfo, provider: "stripe" | "paypal", body: { redirect_to: string; binding_hash: string }) =>
+    call<{ url: string }>(a, `/payments/online/${provider}/start`, { method: "POST", body: JSON.stringify(body) }),
+  payConnectStripe: (a: AccountInfo, body: { code: string; state: string; binding: string }) =>
+    call<RtProviderStatus[]>(a, "/payments/online/stripe/connect", { method: "POST", body: JSON.stringify(body) }),
+  payConnectPaypal: (a: AccountInfo, body: { merchant_id: string; state: string; binding: string }) =>
+    call<RtProviderStatus[]>(a, "/payments/online/paypal/connect", { method: "POST", body: JSON.stringify(body) }),
+  paySetPaypalMe: (a: AccountInfo, username: string) =>
+    call<RtProviderStatus[]>(a, "/payments/online/paypalme", { method: "PUT", body: JSON.stringify({ username }) }),
+  payDisconnect: (a: AccountInfo, provider: RtPayProvider) =>
+    call<{ providers: RtProviderStatus[]; warning: string | null }>(a, `/payments/online/${provider}/disconnect`, {
+      method: "POST",
+      body: JSON.stringify({ confirm: true }),
+    }),
+  payCheck: (a: AccountInfo) => call<RtOnlineCheck>(a, "/payments/online/check"),
+  addPaymentLink: (a: AccountInfo, id: string, provider: RtPayProvider) =>
+    call<{ invoice: RtInvoice; warning: string | null }>(a, `/invoices/${encodeURIComponent(id)}/payment-link`, {
+      method: "POST",
+      body: JSON.stringify({ provider }),
+    }),
+  removePaymentLink: (a: AccountInfo, id: string) =>
+    call<{ invoice: RtInvoice; warning: string | null }>(a, `/invoices/${encodeURIComponent(id)}/payment-link`, { method: "DELETE" }),
+  approveOnlinePayment: (a: AccountInfo, id: string, body: { payment_id: string; fee_pence?: number }) =>
+    call<{ invoice: RtInvoice; payment: RtFoundPayment }>(a, `/invoices/${encodeURIComponent(id)}/payment-link/approve`, {
+      method: "POST",
+      body: JSON.stringify({ ...body, confirm: true }),
+    }),
   invoiceCustomers: (a: AccountInfo) => call<RtInvoiceCustomer[]>(a, "/invoices/customers"),
   invoiceProfile: (a: AccountInfo) => call<RtInvoiceProfile>(a, "/invoices/profile"),
   saveInvoiceProfile: (a: AccountInfo, profile: RtInvoiceProfile) =>
@@ -1208,6 +1236,51 @@ export interface RtInvoice {
   days_overdue: number | null; // only while sent and unpaid; 0 or less = not due yet
   job_id: string | null;
   timesheets_marked: boolean;
+  payment_link?: RtPaymentLink | null; // "Pay online" (services/runtime/app/online_payments.py)
+  online_payments?: string[]; // provider payment ids already in the books
+}
+/** Online payments: the user's own Stripe / PayPal account (services/runtime/app/online_payments.py). */
+export type RtPayProvider = "stripe" | "paypal" | "paypalme";
+export interface RtPaymentLink {
+  provider: RtPayProvider;
+  url: string;
+  amount_pence: number;
+  currency: "GBP";
+  test_mode: boolean;
+  provider_ref: string | null;
+  account_ref: string | null;
+  ref: string;
+  created_at: string;
+  created_by: string;
+}
+export interface RtProviderStatus {
+  provider: RtPayProvider;
+  label: string;
+  available: boolean; // this server can do it
+  reason: string | null; // why not
+  test_mode: boolean;
+  connected: boolean;
+  account: string | null;
+  connected_at: string | null;
+  can_match: boolean; // payments through it are found by code (not PayPal.me)
+}
+export interface RtFoundPayment {
+  invoice: string;
+  customer: string;
+  provider: RtPayProvider;
+  payment_id: string;
+  date: string;
+  gross_pence: number;
+  fee_pence: number | null; // null: the provider has not said yet
+  net_pence: number | null;
+  balance_pence: number;
+  test_mode: boolean;
+  journal: { account: string; debit_pence: number; credit_pence: number; vat_code: string | null }[];
+}
+export interface RtOnlineCheck {
+  checked: number;
+  found: RtFoundPayment[];
+  problems: { invoice: string; provider: RtPayProvider; message: string }[];
 }
 export type RtPaymentStatus = "open" | "part_paid" | "paid" | "overpaid";
 export interface RtInvoicePayment {
