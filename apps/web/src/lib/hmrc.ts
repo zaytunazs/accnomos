@@ -9,8 +9,18 @@ import { isDemo } from "./demo";
  * The relay holds the client secret and adds the fraud-prevention headers from the facts we send.
  */
 
-const TOKENS_KEY = "accnomos.hmrc";
-const PENDING_KEY = "accnomos.hmrc.pending"; // {verifier, state} between /hmrc/authorize and the redirect back
+/**
+ * Two HMRC sessions side by side: VAT (`read:vat write:vat`, on /vat) and Income Tax (`read:self-assessment
+ * write:self-assessment`, on /self-employment). Each keeps its own tokens, so connecting one never drops the other.
+ */
+export type HmrcSession = "vat" | "itsa";
+const TOKENS_KEYS: Record<HmrcSession, string> = { vat: "accnomos.hmrc", itsa: "accnomos.hmrc.itsa" };
+// {verifier, state} between /hmrc/authorize and the redirect back
+const PENDING_KEYS: Record<HmrcSession, string> = { vat: "accnomos.hmrc.pending", itsa: "accnomos.hmrc.itsa.pending" };
+const SESSION_SETUP: Record<HmrcSession, { path: string; scope: string }> = {
+  vat: { path: "/vat", scope: "read:vat write:vat" },
+  itsa: { path: "/self-employment", scope: "read:self-assessment write:self-assessment" },
+};
 const DEVICE_KEY = "accnomos.device_id";
 export const VRN_KEY = "accnomos.business.vrn";
 const APP_VERSION = "0.1.0";
@@ -130,7 +140,7 @@ function errorMessage(body: unknown, fallback: string): string {
   return fallback;
 }
 
-async function relay<T>(path: string, init: RequestInit & { token?: string } = {}): Promise<T> {
+export async function relay<T>(path: string, init: RequestInit & { token?: string } = {}): Promise<T> {
   // The demo sandbox never contacts HMRC (not even the sandbox): everything below is simulated (demoHmrc).
   if (isDemo()) throw new RelayError("The demo sandbox doesn't contact HMRC.", 0);
   const { token, ...rest } = init;
@@ -156,9 +166,9 @@ async function relay<T>(path: string, init: RequestInit & { token?: string } = {
 
 // --- tokens ------------------------------------------------------------------------------------------------
 
-export const loadTokens = () => readJson<HmrcTokens>(store("session"), TOKENS_KEY);
+export const loadTokens = (kind: HmrcSession = "vat") => readJson<HmrcTokens>(store("session"), TOKENS_KEYS[kind]);
 
-function saveTokens(t: TokenResponse): HmrcTokens {
+function saveTokens(t: TokenResponse, kind: HmrcSession = "vat"): HmrcTokens {
   const tokens: HmrcTokens = {
     access_token: t.access_token,
     refresh_token: t.refresh_token,
@@ -166,43 +176,45 @@ function saveTokens(t: TokenResponse): HmrcTokens {
     scope: t.scope,
     token_type: t.token_type,
   };
-  store("session")?.setItem(TOKENS_KEY, JSON.stringify(tokens));
+  store("session")?.setItem(TOKENS_KEYS[kind], JSON.stringify(tokens));
   return tokens;
 }
 
-export function disconnect(): void {
-  store("session")?.removeItem(TOKENS_KEY);
-  store("session")?.removeItem(PENDING_KEY);
+export function disconnect(kind: HmrcSession = "vat"): void {
+  store("session")?.removeItem(TOKENS_KEYS[kind]);
+  store("session")?.removeItem(PENDING_KEYS[kind]);
 }
 
 /** A valid access token, refreshed through the relay a minute before it expires. */
-async function accessToken(): Promise<string> {
-  const t = loadTokens();
+export async function accessToken(kind: HmrcSession = "vat"): Promise<string> {
+  const t = loadTokens(kind);
   if (!t) throw new HmrcAuthError("Not connected to HMRC.");
   if (Date.now() < t.expires_at - 60_000) return t.access_token;
   try {
-    return saveTokens(await hmrc.refresh(t.refresh_token)).access_token;
+    return saveTokens(await hmrc.refresh(t.refresh_token), kind).access_token;
   } catch (e) {
-    disconnect();
+    disconnect(kind);
     throw new HmrcAuthError(`Your HMRC session has ended (${(e as Error).message}). Connect again.`);
   }
 }
 
 // --- OAuth (PKCE) ------------------------------------------------------------------------------------------
 
-/** Start the HMRC consent flow; the relay callback sends the browser back to `/vat#code=…&state=…`. */
-export async function startConnect(): Promise<void> {
+/** Start the HMRC consent flow; the relay callback sends the browser back to `/vat#code=…&state=…`
+ *  (or `/self-employment#…` for the Income Tax session, which asks for the self-assessment scopes). */
+export async function startConnect(kind: HmrcSession = "vat"): Promise<void> {
   if (isDemo()) {
     // Demo: no HMRC sign-in. A stand-in token marks this tab "connected" for the simulated flow.
-    saveTokens({ access_token: DEMO_TOKEN, refresh_token: DEMO_TOKEN, expires_in: 2 * 3600, token_type: "demo" });
+    saveTokens({ access_token: DEMO_TOKEN, refresh_token: DEMO_TOKEN, expires_in: 2 * 3600, token_type: "demo" }, kind);
     return;
   }
   const verifier = b64url(crypto.getRandomValues(new Uint8Array(48))); // 64 chars
   const challenge = b64url(await sha256(verifier));
-  const redirectTo = `${window.location.origin}/vat`;
-  const q = new URLSearchParams({ redirect_to: redirectTo, code_challenge: challenge });
+  const { path, scope } = SESSION_SETUP[kind];
+  const redirectTo = `${window.location.origin}${path}`;
+  const q = new URLSearchParams({ redirect_to: redirectTo, code_challenge: challenge, ...(kind === "vat" ? {} : { scope }) });
   const { url, state } = await relay<{ url: string; state: string }>(`/hmrc/authorize?${q}`);
-  store("session")?.setItem(PENDING_KEY, JSON.stringify({ verifier, state }));
+  store("session")?.setItem(PENDING_KEYS[kind], JSON.stringify({ verifier, state }));
   window.location.assign(url);
 }
 
@@ -224,9 +236,9 @@ export function takeCallback(): OAuthCallback | null {
 }
 
 /** Exchange the code for tokens with our verifier. The pending entry is single-use. */
-export async function finishConnect(cb: { code: string; state: string }): Promise<HmrcTokens> {
-  const pending = readJson<{ verifier: string; state: string }>(store("session"), PENDING_KEY);
-  store("session")?.removeItem(PENDING_KEY);
+export async function finishConnect(cb: { code: string; state: string }, kind: HmrcSession = "vat"): Promise<HmrcTokens> {
+  const pending = readJson<{ verifier: string; state: string }>(store("session"), PENDING_KEYS[kind]);
+  store("session")?.removeItem(PENDING_KEYS[kind]);
   if (!pending) throw new Error("This HMRC sign-in wasn't started in this tab. Please connect again.");
   if (pending.state !== cb.state) throw new Error("HMRC sign-in state didn't match. Please connect again.");
   return saveTokens(
@@ -234,6 +246,7 @@ export async function finishConnect(cb: { code: string; state: string }): Promis
       method: "POST",
       body: JSON.stringify({ code: cb.code, state: cb.state, code_verifier: pending.verifier }),
     }),
+    kind,
   );
 }
 

@@ -118,6 +118,25 @@ inline `process.env.NEXT_PUBLIC_SUBMISSION_MODE === "0"` test (which the bundler
 the default build. When a product claim changes in `README.md`
 or `docs/HONESTY.md`, change `public_kb.md` and the landing page (`apps/web/src/components/marketing/Landing.tsx`) too.
 
+## 3b. Live price search (runtime)
+
+Cheaper options and the shopping list compare prices from the user's own books. A live price search can add offers
+from elsewhere; it is a provider interface in `services/runtime/app/price_search.py`, chosen by one variable on the
+**runtime** service:
+
+| Variable | Value |
+|---|---|
+| `PRICE_SEARCH_PROVIDER` | empty or `none` (the default): **off**; the app says "Live price search is off" and shows history only. `fake`: the deterministic test fake, which is refused (stays off) unless `ACCNOMOS_TEST_MODE=1`. Any other name is unknown in this version: off, with a warning in the runtime log |
+
+**No real provider ships in this version.** To switch one on later: implement `PriceSearchProvider.search(query, specs)`
+returning `Offer`s (supplier, title, unit price in pence, pack, URL, `retrieved_at`, `source`), register it in
+`PROVIDERS` under a name, put any API key in the server's `.env` (never the repo), set
+`PRICE_SEARCH_PROVIDER=<name>`, and `docker compose -f deploy/docker-compose.yml --env-file .env up -d runtime`. Code
+does all the unit-price maths on the offers, keeps them apart from the history, and labels each with its source and
+time; a provider that fails or takes over 8 s only loses its offers. Check the provider's terms allow showing its
+prices this way, and add its host to whatever egress allow-list the server uses. `tests/test_prices.py` and
+`tests/test_shopping.py` cover the switch and the fake.
+
 ## 4. What must NOT change
 
 - **No production value as a default anywhere in the repo**: not in `Settings` (`services/hmrc-relay/relay/settings.py`),
@@ -229,3 +248,39 @@ The record per sign-up: email (trimmed, lower-cased), name (optional), business 
 consent flag and its exact wording, the page they signed up on, and the time in UTC. No IP address is stored (the
 rate limit is in memory only). A repeat sign-up appends a newer line; the newest wins and the first time is kept.
 The form gives the same answer for new and repeat addresses, so it cannot be used to test who is on the list.
+
+## 7. The AI provider chain (runtime)
+
+**Recommended production (and judges' demo) setting: `AI_PROVIDERS=modal,meta,spark`.** Every AI call that names no
+backend of its own (no `X-AI-*` headers, or `X-AI-Mode: auto`) tries Muse Glimmer 30B on Modal first, then Muse Spark
+on the Meta Model API with the server's key, and only then the DGX Spark's local Ollama, so the live demo does not depend
+on the owner's home server. All three serve Meta models. A user who chose their own backend in Settings (their local
+agent, or their own Meta key via `X-Meta-Api-Key`) gets exactly that backend, with no failover, as before.
+Code: `services/runtime/app/ai/providers.py` (the chain), `app/ai/chain.py` (failover, circuit breaker, call record),
+`app/routes_ai.py` (`GET /ai/health`, `GET /ai/calls`, `POST /ai/warm`).
+
+| Variable | Value |
+|---|---|
+| `AI_PROVIDERS` | ordered, comma-separated: `modal`, `meta`, `spark`. Unset = no chain (the single `AI_MODE` default, as before) |
+| `MODAL_GLIMMER_URL` | the URL `modal deploy tools/modal_glimmer.py` prints, `https://<workspace>--accnomos-glimmer-serve.<region>.modal.run`. Unset = Modal left out of the chain |
+| `MODAL_MODEL` | default `muse-glimmer:30b` |
+| `MODAL_PROXY_TOKEN_ID`, `MODAL_PROXY_TOKEN_SECRET` | a Modal proxy-auth token, sent as `Modal-Key` / `Modal-Secret`; needed when the endpoint was deployed with `MODAL_PROXY_AUTH=1` (recommended). Secrets: server environment only |
+| `META_API_KEY`, `MODEL_API_BASE`, `MODEL_API_MODEL` | the Meta Model API provider (defaults `https://api.meta.ai/v1`, `muse-spark-1.3`). No key = Meta left out |
+| `OLLAMA_BASE`, `OLLAMA_MODEL` | the DGX Spark (defaults `http://localhost:11434`, `muse-glimmer:30b`) |
+| `<NAME>_CONNECT_S`, `<NAME>_FIRST_TOKEN_S`, `<NAME>_REQUEST_S` | per provider (`MODAL`, `META`, `SPARK`), seconds: connect; the longest wait for a reply to start; the longest one attempt may take. Defaults Modal 10 / 150 / 240 (a cold start is 60-120 s), Meta 10 / 90 / 120, Spark 5 / 180 / 200 |
+| `AI_BREAKER_FAILURES`, `AI_BREAKER_COOLDOWN_S` | circuit breaker: after this many failures in a row a provider is skipped for this long (defaults 3 and 120) |
+| `AI_HEALTH_PROBE_MODAL` | `1` = `/ai/health` probes Modal for real. Off by default: a probe would start a paid GPU container |
+| `BASETEN_API_KEY` | unchanged: with the chain, the Verifier tries Muse Spark Open on Baseten first, then the chain |
+
+Failover happens on a timeout, a connection error, HTTP 5xx, 402 or 429 (billing, rate limit), and 401/403/404/408
+(that provider's own credentials, model or gateway); never on any other 4xx (our own bad request) or on a reply that does
+not parse. A streamed Ask answer fails over only before its first token. Voice transcription stays Muse Voice Transcribe
+on the Meta provider; it needs `META_API_KEY`.
+
+Modal side (deploy-time options of `tools/modal_glimmer.py`): deploy with `MODAL_PROXY_AUTH=1`, so a stranger who learns
+the URL gets a 401 before any GPU starts. `MODAL_KEEP_WARM=08:00-18:00` keeps one container up in that window (about
+$2.00/h: the L40S is $0.000542/s = $1.95/h on modal.com/pricing, checked 28 Oct 2026, plus a few cents of CPU and
+memory); without it the web app's `POST /ai/warm` (sent when someone signed in opens Home or Review without their own AI)
+starts a cold container while they look at the page.
+
+`/health` shows the chain and which providers are configured (names and models, never keys or URLs).

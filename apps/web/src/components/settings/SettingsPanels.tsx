@@ -12,6 +12,7 @@ import BusinessDetails from "@/components/settings/BusinessDetails";
 import ProfileDetails from "@/components/settings/ProfileDetails";
 import StaffEditor from "@/components/settings/StaffEditor";
 import VatPeriodSettings from "@/components/settings/VatPeriodSettings";
+import SelfEmployedSetting from "@/components/settings/SelfEmployedSetting";
 import InvoiceProfileForm from "@/components/invoices/InvoiceProfileForm";
 import PersonalFinanceSetting from "@/components/settings/PersonalFinanceSetting";
 import WorkingHours from "@/components/settings/WorkingHours";
@@ -60,6 +61,7 @@ const HASH_GROUP: Record<string, GroupId> = {
   "settings-business": "business",
   profile: "business", // the profile menu's "Profile details"
   "settings-vat-periods": "business",
+  "settings-self-employed": "business",
   "settings-invoice-profile": "business",
   "invoice-profile": "business",
   "invoice-profile-title": "business",
@@ -343,6 +345,12 @@ export default function SettingsPanels() {
             leaves this device.
           </p>
           <ChooseAi />
+          <p className="mt-3 text-sm text-muted">
+            Without a choice here, the server&apos;s own Meta models answer, trying each in turn if one is down.{" "}
+            <Link href="/models" className="font-bold text-teal-dark underline underline-offset-2 hover:text-teal">
+              See the Meta models at work
+            </Link>
+          </p>
         </section>
 
         <section aria-labelledby="settings-verifier" className={card}>
@@ -428,6 +436,8 @@ export default function SettingsPanels() {
         <OnlinePayments card={card} heading={heading} />
 
         <VatPeriodSettings card={card} heading={heading} />
+
+        <SelfEmployedSetting card={card} heading={heading} />
 
         <StaffEditor card={card} heading={heading} />
 

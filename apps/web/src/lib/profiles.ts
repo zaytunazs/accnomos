@@ -1,7 +1,7 @@
 "use client";
 
 import type { AccountInfo } from "@azure/msal-browser";
-import { getMsal } from "./msal";
+import { getMsal, mailboxOnlyAccounts } from "./msal";
 import type { RtProfile, RtProfileKind } from "./runtime";
 
 /**
@@ -205,10 +205,16 @@ export async function signOutOf(account: AccountInfo): Promise<void> {
   await msal.logoutRedirect({ account, postLogoutRedirectUri: window.location.origin });
 }
 
-/** The sign-ins this browser holds, active one first. */
+/** The sign-ins this browser holds, active one first. An account signed in only to read a linked mailbox (Settings ›
+ * Email intake) shares MSAL's cache but is not a set of books, so it is left out unless it is also a profile. */
 export async function linkedAccounts(): Promise<{ active: AccountInfo | null; all: AccountInfo[] }> {
   const msal = await getMsal();
-  const all = msal.getAllAccounts();
-  const active = msal.getActiveAccount() ?? all[0] ?? null;
+  const mailboxOnly = new Set(mailboxOnlyAccounts());
+  const known = readState()?.meta ?? {};
+  const current = msal.getActiveAccount();
+  const all = msal
+    .getAllAccounts()
+    .filter((a) => !mailboxOnly.has(a.homeAccountId) || a.homeAccountId === current?.homeAccountId || a.homeAccountId in known);
+  const active = current ?? all[0] ?? null;
   return { active, all };
 }

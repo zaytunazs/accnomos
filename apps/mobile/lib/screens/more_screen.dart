@@ -10,7 +10,9 @@ import 'contacts_screen.dart';
 import 'files_screen.dart';
 import 'invoices_screen.dart';
 import 'jobs_screen.dart';
+import 'month_end_screen.dart';
 import 'payroll_screen.dart';
+import 'personal_screen.dart';
 import 'reports_screen.dart';
 import 'vehicles_screen.dart';
 
@@ -30,8 +32,10 @@ class MoreEntry {
 /// The More rows for a profile's [features], as the web's menu hides them:
 /// personal books have no invoices or payroll, and Reports mentions VAT only
 /// for a VAT-registered business. Null features (not known yet, signed out,
-/// or an older runtime without `GET /profile`) show everything.
-List<MoreEntry> moreEntries(List<String>? features) {
+/// or an older runtime without `GET /profile`) show everything. Personal
+/// shows only while Settings › Personal has "Show personal finances" on.
+List<MoreEntry> moreEntries(List<String>? features,
+    {bool showPersonal = false}) {
   final vat = features == null || features.contains('vat');
   final all = [
     const MoreEntry(Icons.folder_outlined, 'Files',
@@ -50,6 +54,11 @@ List<MoreEntry> moreEntries(List<String>? features) {
     const MoreEntry(Icons.payments_outlined, 'Payroll',
         'Pay runs — estimates, read only', PayrollScreen(),
         needs: 'payroll'),
+    const MoreEntry(Icons.event_available_outlined, 'Month-end',
+        'The close checklist — read only; run it on the web', MonthEndScreen()),
+    if (showPersonal)
+      const MoreEntry(Icons.savings_outlined, 'Personal',
+          'Budgets, bills and savings goals', PersonalScreen()),
     MoreEntry(
         Icons.bar_chart_outlined,
         'Reports',
@@ -82,20 +91,24 @@ class MoreScreen extends StatefulWidget {
 
 class _MoreScreenState extends State<MoreScreen> {
   List<String>? _features;
+  bool _showPersonal = false;
 
   @override
   void initState() {
     super.initState();
     _features = widget.features;
-    if (widget.features == null) _loadFeatures();
+    AppSettings.load().then((settings) {
+      if (!mounted) return;
+      setState(() => _showPersonal = settings.showPersonalFinances);
+      if (widget.features == null) _loadFeatures(settings);
+    });
   }
 
-  Future<void> _loadFeatures() async {
+  Future<void> _loadFeatures(AppSettings settings) async {
     try {
       final auth = AuthService();
       final account = await auth.account();
       if (account == null) return;
-      final settings = await AppSettings.load();
       final profile =
           await (await booksClient(settings, auth, account)).booksProfile();
       final features = profile['features'];
@@ -120,7 +133,10 @@ class _MoreScreenState extends State<MoreScreen> {
       ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-        children: [for (final e in moreEntries(_features)) _Entry(entry: e)],
+        children: [
+          for (final e in moreEntries(_features, showPersonal: _showPersonal))
+            _Entry(entry: e),
+        ],
       ),
     );
   }

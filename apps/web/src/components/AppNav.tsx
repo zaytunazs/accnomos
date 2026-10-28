@@ -7,7 +7,8 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { useAccount } from "@/components/jobs/useAccount";
 import { currentFeatures, PROFILE_EVENT } from "@/lib/profiles";
 import { runtime } from "@/lib/runtime";
-import { PERSONAL_CHANGED, personalOn } from "@/lib/personal";
+import { usePersonalOn } from "@/lib/personal";
+import { useSelfEmployed } from "@/lib/itsa";
 
 type NavLink = { href: string; label: string; badge?: string; tab?: string };
 const links: NavLink[] = [
@@ -17,9 +18,14 @@ const links: NavLink[] = [
   { href: "/invoices", label: "Invoices" },
   { href: "/bank", label: "Bank" },
   { href: "/vat", label: "VAT return", tab: "VAT" },
+  { href: "/month-end", label: "Month-end" },
+  { href: "/self-employment", label: "Self-employment" }, // only with Settings › "I am self-employed"
   { href: "/jobs", label: "Jobs" },
   { href: "/payroll", label: "Payroll" },
   { href: "/reports", label: "Reports" },
+  { href: "/spending", label: "Spending" },
+  { href: "/prices", label: "Cheaper options" },
+  { href: "/shopping", label: "Shopping list" },
   { href: "/contacts", label: "Contacts" },
   { href: "/vehicles", label: "Vehicles" },
   { href: "/files", label: "Files", tab: "Files" },
@@ -73,35 +79,21 @@ export function useReviewBadge(pathname: string): string | undefined {
   return count ? String(count) : undefined;
 }
 
-/** The Personal page is in the menu only while Settings › Show personal finances is on (this device). */
-export function usePersonalOn(): boolean {
-  const [on, setOn] = useState(false);
-  useEffect(() => {
-    const read = () => setOn(personalOn());
-    queueMicrotask(read);
-    window.addEventListener(PERSONAL_CHANGED, read);
-    window.addEventListener("storage", read);
-    return () => {
-      window.removeEventListener(PERSONAL_CHANGED, read);
-      window.removeEventListener("storage", read);
-    };
-  }, []);
-  return on;
-}
-
 /** The Review badge, and Home: signed out, `/` is the public landing page, so Home is the sample at `/try`. */
 function withBadges(
   review: string | undefined,
-  personal: boolean,
-  signedOut: boolean,
   features: string[] | null,
+  personal: boolean,
+  selfEmployed: boolean,
+  signedOut: boolean,
 ): NavLink[] {
-  const all = (personal ? [...links, { href: "/personal", label: "Personal" }] : links).filter(
-    (l) => !features || !FEATURE_OF[l.href] || features.includes(FEATURE_OF[l.href]),
-  );
-  return all.map((l) =>
-    l.href === "/review" ? { ...l, badge: review } : l.href === "/" && signedOut ? { ...l, href: "/try" } : l,
-  );
+  const all = personal ? [...links, { href: "/personal", label: "Personal" }] : links;
+  return all
+    .filter((l) => selfEmployed || l.href !== "/self-employment")
+    .filter((l) => !features || !FEATURE_OF[l.href] || features.includes(FEATURE_OF[l.href]))
+    .map((l) =>
+      l.href === "/review" ? { ...l, badge: review } : l.href === "/" && signedOut ? { ...l, href: "/try" } : l,
+    );
 }
 
 function isActive(pathname: string, href: string) {
@@ -125,7 +117,8 @@ function Badge({ count, className }: { count: string; className: string }) {
 
 const sidebarGroups: { label: string; hrefs: string[] }[] = [
   { label: "Books", hrefs: ["/", "/try", "/review", "/ask", "/files"] },
-  { label: "Money", hrefs: ["/invoices", "/bank", "/vat", "/payroll", "/reports"] },
+  { label: "Money", hrefs: ["/invoices", "/bank", "/vat", "/self-employment", "/month-end", "/payroll", "/reports"] },
+  { label: "Buying", hrefs: ["/spending", "/prices", "/shopping"] },
   { label: "Work", hrefs: ["/jobs", "/contacts", "/vehicles"] },
 ];
 
@@ -223,7 +216,7 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
 export default function AppNav({ variant = "sidebar" }: { variant?: "sidebar" | "tabs" }) {
   const pathname = usePathname();
   const signedOut = useAccount() === null;
-  const navLinks = withBadges(useReviewBadge(pathname), usePersonalOn(), signedOut, useFeatures());
+  const navLinks = withBadges(useReviewBadge(pathname), useFeatures(), usePersonalOn(), useSelfEmployed(), signedOut);
 
   if (variant === "tabs") return <TabBar pathname={pathname} links={navLinks} />;
   return <SidebarNav pathname={pathname} links={navLinks} />;

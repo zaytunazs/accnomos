@@ -6,10 +6,12 @@ import HomeError from "@/components/home/HomeError";
 import { AttentionCard, TodayCard } from "@/components/home/Tiles";
 import { HomeData, SignedOut } from "@/components/home/HomeData";
 import InboxTriage from "@/components/home/InboxTriage";
+import MonthEndCard from "@/components/home/MonthEndCard";
 import Pitch from "@/components/home/Pitch";
 import PlanToday from "@/components/home/PlanToday";
 import { HomeSampleBooks } from "@/components/home/SampleBooks";
 import SetupChecklist from "@/components/home/SetupChecklist";
+import SpendingCard from "@/components/home/SpendingCard";
 import TodosTile from "@/components/home/TodosTile";
 
 /**
@@ -46,7 +48,9 @@ export default function HomeDashboard() {
           <TodosTile />
           <InboxTriage />
           <Deadlines />
+          <MonthEndCard />
           <PlanToday />
+          <SpendingCard />
           <Activity />
         </div>
       </HomeData>

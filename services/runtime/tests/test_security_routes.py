@@ -211,7 +211,7 @@ TALKS_HTTP = {
     "main.py": "/ai/test: the allow-listed AI base URL",
     "ai/ask.py": "cfg.base_url",
     "ai/extract.py": "cfg.base_url",
-    "ai/duplicates.py": "cfg.base_url",
+    "ai/duplicates.py": "cfg.base_url, or a chain provider's c.base_url (server env, ai/providers.py)",
     "ai/crop.py": "cfg.base_url (SAM, key mode)",
     "ai/voice.py": "cfg.base_url",
     "ai/verify.py": "cfg.base_url or BASETEN_BASE",
@@ -222,6 +222,9 @@ TALKS_HTTP = {
     "company_lookup.py": "Companies House (CH_BASE constant) and the relay (HMRC_RELAY_URL): server env only",
     "payment_providers.py": "Stripe and PayPal: the bases in StripeConfig/PayPalConfig, from server env only",
     "online_fakes.py": "test fakes: builds httpx.Response objects, sends nothing",
+    "ai/config.py": "httpx.Timeout only; sends nothing",
+    "ai/chain.py": "httpx errors and timeouts only; sends nothing",
+    "routes_ai.py": "/ai/health and /ai/warm: the chain providers' c.base_url (server env, ai/providers.py)",
 }
 
 
@@ -300,6 +303,7 @@ def test_every_runtime_http_call_goes_to_an_allow_listed_base_and_follows_no_red
                     "be.base_url",
                     "base",
                     "cfg.base_url.rstrip('/')",
+                    "c.base_url",  # the AI provider chain: the caller's cfg or a provider from server env only
                 ), f"{rel}:{node.lineno} {ast.unparse(url)}"
     assert calls >= 9
 
@@ -457,10 +461,14 @@ NO_USER_NEEDED = {
     "POST /credit-notes/{number}/pdf": "renders the PDF of a credit note the user already made; no new facts",
     "POST /invoices/{number}/reminder-draft": "drafts text for the user to read; sends and writes nothing",
     "POST /plan/day": "proposes a day; writes nothing (apply needs X-User)",
+    "POST /ai/warm": "pings the server's own Modal provider (one ping a minute at most); no books, writes nothing",
     "POST /files/archive/preview": "lists what archiving would move; writes nothing (archive needs X-User)",
     "POST /backups/restore/preview": "compares a backup with the books; writes nothing (restore needs X-User)",
     "POST /public/early-access": "public sign-up to the operator's launch list (off unless EARLY_ACCESS_ENABLED=1)",
     "POST /public/chat": "the website's Accnomos-only chat: no sign-in, reads no user data, writes nothing",
+    "POST /books/prices/suggest": "the model suggests item matches; nothing is stored (POST /books/prices/matches is)",
+    "POST /shopping/lookup": "reads the price history (and a live search, when on); writes nothing",
+    "POST /shopping/propose": "proposes a signed card that only /actions/approve (X-User) runs",
 }
 
 
@@ -555,6 +563,9 @@ PUBLIC_ROUTES = {
     "GET /books/bank/coding-options": "the fixed chart of accounts and VAT codes; nothing from the user's books",
     "POST /public/early-access": "the operator's launch list sign-up, before anyone has an account",
     "POST /public/chat": "the website's Accnomos-only chat: no sign-in, reads no user data, writes nothing",
+    "GET /ai/health": "the server's AI chain for the /models page; no keys, tokens, URLs or user data",
+    "GET /ai/calls": "the last AI calls (provider, model, task, timing) for /models; no document or user data",
+    "POST /ai/warm": "starts the server's Modal container before a demo; one ping a minute at most, writes nothing",
     "GET /payments/online/stripe/callback": (
         "Stripe's browser redirect; only checks the signed one-time state and hands back to Settings, touches no books"
     ),

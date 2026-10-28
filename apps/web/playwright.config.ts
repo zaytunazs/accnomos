@@ -41,6 +41,7 @@ export default defineConfig({
       // the website chat's own limit (PUBLIC_CHAT_PER_MIN, tested in services/runtime/tests/test_public_chat.py).
       // EARLY_ACCESS_*: the early-adopter form's endpoint on, writing to a temp file (e2e/early-access.spec.ts).
       // DEMO_MODE=1 for e2e/sandbox.spec.ts (services/runtime/app/demo.py); a throwaway secret, per-IP limits off.
+      // AI_PROVIDERS: requests without an AI choice take the chain; in test mode every provider is the stub AI.
       env: {
         ACCNOMOS_TEST_MODE: "1",
         PORT: String(RUNTIME_PORT),
@@ -53,6 +54,7 @@ export default defineConfig({
         DEMO_SECRET: "e2e-only-demo-secret-not-for-production-0000",
         DEMO_SESSIONS_PER_IP_PER_MIN: "0",
         PUBLIC_CHAT_PER_MIN: "0",
+        AI_PROVIDERS: "modal,meta,spark",
       },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",

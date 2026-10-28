@@ -27,6 +27,8 @@ export interface NavGroup {
   href?: string;
   feature?: string;
   kinds?: RtProfileKind[];
+  /** Also shown, whatever the kind, while Settings › Show personal finances is on (lib/personal.ts). */
+  personalSwitch?: boolean;
   items: NavItem[];
 }
 
@@ -115,6 +117,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "Personal",
     kinds: ["personal"],
+    personalSwitch: true,
     items: [
       { label: "Personal overview", href: "/personal" },
       { label: "Spending", href: "/spending" },
@@ -133,13 +136,17 @@ export interface Who {
   /** null: not known yet (show everything the build has). */
   features: string[] | null;
   kind: RtProfileKind | null;
-  /** Settings › Show personal finances is on (this device): the Personal group shows for any kind. */
+  /** Settings › Show personal finances is on for this device. */
   personal?: boolean;
+  /** Settings › "I am self-employed" is on (lib/itsa.ts): shows Self-employment whatever the profile says. */
+  selfEmployed?: boolean;
 }
 
 function allowed(x: { feature?: string; kinds?: RtProfileKind[] }, who: Who): boolean {
-  if (x.feature && who.features && !who.features.includes(x.feature)) return false;
-  if (who.personal && x.kinds?.includes("personal")) return true;
+  if (x.feature === "self_employment") {
+    // Off by default (Settings › "I am self-employed"); a known profile with the feature also shows it.
+    if (!who.selfEmployed && !who.features?.includes(x.feature)) return false;
+  } else if (x.feature && who.features && !who.features.includes(x.feature)) return false;
   if (x.kinds && !(who.kind ? x.kinds.includes(who.kind) : !x.kinds.every((k) => k === "personal"))) return false;
   return true;
 }
@@ -147,7 +154,7 @@ function allowed(x: { feature?: string; kinds?: RtProfileKind[] }, who: Who): bo
 /** The groups and items to show: built pages only, allowed for this profile; empty groups dropped. */
 export function visibleGroups(routes: readonly string[], who: Who): NavGroup[] {
   const built = new Set(routes);
-  return NAV_GROUPS.filter((g) => allowed(g, who))
+  return NAV_GROUPS.filter((g) => allowed(g, who) || (g.personalSwitch && who.personal))
     .map((g) => ({ ...g, items: g.items.filter((i) => built.has(routeOf(i.href)) && allowed(i, who)) }))
     .filter((g) => (g.href ? built.has(routeOf(g.href)) : g.items.length > 0));
 }

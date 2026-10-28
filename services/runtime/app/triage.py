@@ -24,6 +24,7 @@ from accnomos_connectors.base import MailMessage, MailProvider
 from app.ai.config import AiConfig
 from app.books import Books, now
 from app.intake import BULK_SENDER, domain_of, is_from_self
+from app.schemas import ServedBy
 
 ACTOR = "agent:triage"
 PREVIEW_MAX = 255
@@ -68,6 +69,7 @@ class TriageThread(BaseModel):
     suggested_reply: str | None
     todos: list[TriageTodo]
     fallback_reason: str | None = None  # the model's answer was not used (or there is no AI); words are from code
+    served_by: ServedBy | None = None  # the provider that read it, when a model answered
 
 
 class TriageResult(BaseModel):

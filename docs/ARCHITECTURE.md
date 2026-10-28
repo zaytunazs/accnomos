@@ -14,7 +14,8 @@ apps/mobile (Flutter) ──┼─> services/runtime ──┼─> Meta models (
 - **`services/runtime`** (`app`): the Agent Runtime. Every call carries the user's Graph token and AI settings in headers
   (below). Routers are the `include_router` lines in `app/main.py`: extract, books (scan, proposals, approve, undo, rules,
   rebuild), VAT and deadlines, dashboard, bank, ask (typed and voice), mail (intake, triage, draft reply), todos, jobs / staff /
-  timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports. Test mode (`ACCNOMOS_TEST_MODE=1`) adds
+  timesheets, contacts, vehicles / mileage, invoices, actions, payroll, plan, reports, audit, close (the month-end close
+  agent, `app/routes_close.py`). Test mode (`ACCNOMOS_TEST_MODE=1`) adds
   `/__test`. `apps/web/src/lib/runtime.ts` and `apps/mobile/lib/services/runtime_client.dart` have one call per route, except
   that the phone does not call `/reports/*` yet.
 - **`services/hmrc-relay`** (`relay`): exists only because HMRC needs the OAuth **client secret** at code exchange and
@@ -72,6 +73,7 @@ Documents, filed by code and never deleted:
 | `04 Bank statements/<last date>_<bank>.csv` | runtime, bank import | |
 | `05 Payroll/<yyyy-mm>.csv` | runtime, pay-run export | |
 | `06 VAT returns/<periodKey>/return.json`, `receipt.json` | web, after an HMRC sandbox submission | once per key |
+| `07 Reports/<yyyy-mm>-month-end-draft.xlsx`, `07 Reports/<yyyy-mm>-month-end.xlsx` | runtime, the month-end close (`app/month_end.py`): the draft (About, P&L, Balance sheet) is rewritten by each run once nothing blocks the close; the closed one is written on Approve and never overwritten (a re-close saves ` (2)`) | Posts nothing |
 | `07 Reports/<yyyy-mm-dd>-<name>.xlsx` | runtime, `POST /reports/export` (*Export to OneDrive* on Reports) | `name` is `profit-and-loss`, `aged-balances`, `vat-summary`, `monthly-trend` or `reports` (all of them); a second export the same day gets ` (2)`, nothing is overwritten. Starts with `SAMPLE — FICTIONAL COMPANY` when the books are the demo seed's. Posts nothing |
 | `Archive/<year>/<original path>`, `Archive/<year>.zip` | runtime, `POST /files/archive` (`archive.py`) | made when first used; the zip is an extra copy with `manifest.json`, the folder stays. See *Files, archive and backups* |
 | `Backups/accnomos-backup-<yyyy-mm-dd>.zip`, `….zip.sha256` | runtime, `POST /backups` (`backups.py`) | made when first used; a second backup the same day gets ` (2)` |
@@ -123,6 +125,9 @@ Books.xlsx still show the path as it was saved.
 | `Accounting/assets.json` | fixed asset register (`fixed_assets.py`); what has been depreciated and disposed of is worked out from posted journals, not stored here | rewritten whole |
 | `Accounting/tracking.json` | up to two tracking categories and their options, by stable id (`tracking.py`) | rewritten whole; options archived, not deleted |
 | `Accounting/budgets/<yyyy-mm>.json` | one budget: twelve monthly amounts per P&L account from that month (`budgets.py`) | rewritten whole |
+| `close/<yyyy-mm>.json` | the month-end close: the last 10 runs (steps, findings, card summaries; never the signed cards) and every close record (who, when, the snapshot and its SHA-256) | updated; close records are only appended |
+| `shopping_list.json` | the shopping list (`shopping.py`): item, spec, quantity, the cheapest supplier code found in the history, ticked or not | rewritten whole; at most 300 items |
+| `item_matches.json` | the user's yes/no for "are these two item names the same product?" (`prices.py`); never the model's | rewritten whole; one row per pair |
 
 OneDrive paths ignore case, so `_System/audit` and `_System/Audit` are one folder. Money is integer pence in every file except
 `Books.xlsx`, which shows pounds.
@@ -133,8 +138,8 @@ never approve; Autopilot is recorded as `autopilot`). Nothing is edited; **undo 
 original. The nine VAT boxes come from `compute_vat_return`, plain code, boxes 6–9 truncated to whole pounds.
 
 **Audit lines** are one JSON object per line: `{"ts", "actor", "action", "refs"}`. `actor` is `user:<email>` for something a
-person did, or `agent:<name>` (`extractor`, `intake`, `autopilot`, `mileage`, `contacts`, `triage`, `folder-layout`, `backup`) for
-something done for them. Applying a day plan is the user's action (`plan_applied`); there is no `agent:planner` writer yet.
+person did, or `agent:<name>` (`extractor`, `intake`, `autopilot`, `mileage`, `contacts`, `triage`, `folder-layout`, `backup`, `close`)
+for something done for them. Applying a day plan is the user's action (`plan_applied`); there is no `agent:planner` writer yet.
 Chat and voice actions write their own lines to `audit/actions/` (`{"ts", "action_id", "kind", "event", "user", …}`, `event`
 = approving · executed · failed · rejected), and Autopilot's postings are repeated with its reasons in `audit/autopilot/`.
 
@@ -224,6 +229,39 @@ one-line cash flow sentence, whose figures must all be in the forecast (`KnownNu
 
 Routes (for the menu): `/accounting/chart`, `/accounting/journals`, `/accounting/assets`, `/accounting/recode`,
 `/accounting/tracking`, `/reports/budgets`, `/reports/cashflow` in the web app (`apps/web/src/components/accounting/`).
+
+## Spending, cheaper options and the shopping list
+
+All three read the same purchase history (`app/purchases.py`): approved ledger events on the purchases side (the VAT
+return's sign rule, so a supplier credit note or an undo counts against spend), each with the line items of the
+proposal it was approved from. An entry posted by hand or by a bank rule has no lines; an undone purchase's lines are
+dropped.
+
+- **Spending** (`GET /books/spending`, `app/spending.py`): code computes spend by category (the cost account), by
+  supplier and by item, the change on the previous period of the same length, recurring costs (a supplier in 3+
+  months, or 2+ for subscriptions, utilities, rent, insurance) and unusual one-offs (≥ £100 and ≥ 3× the median
+  purchase of the 6 months before, from a supplier that is not a regular cost). `app/ai/spending.py` sends those facts
+  to the user's model for a short summary, then runs Ask's checks on it (`KnownNumbers`, `wrong_period` in
+  `app/ai/ask.py`); a figure that fails, or any model trouble, and code's own summary is shown with the reason.
+  "Summarise my spending" in Ask answers the same way for the Ask period.
+- **Cheaper options** (`GET /books/prices`, `app/prices.py`): code normalises each line (name words, width, length,
+  weight, volume, colour, pack), prices it per metre / kg / litre / item, and groups lines with the same name and size.
+  Different names are joined only by the user (`POST /books/prices/matches`) or, on `POST /books/prices/suggest`, by the
+  model (`app/ai/items.py`, names only, no prices) where code's rules agree (same measure, widths within 10 %, half the
+  name words shared); the model's view is never stored. The saving is (volume-weighted average paid − lowest paid) ×
+  the usual monthly volume, half up to the penny.
+- **Live price search** (`app/price_search.py`): a `PriceSearchProvider` chosen by `PRICE_SEARCH_PROVIDER` (off by
+  default; `fake` in test mode only; docs/PRODUCTION.md). Offers (supplier, title, unit price, pack, URL,
+  `retrieved_at`) are read with the same `normalise()`, priced by code, kept apart from the history and labelled with
+  their source and time; a failing or slow provider (8 s) costs only its offers.
+- **Shopping list** (`/shopping`, `app/shopping.py`): a lookup matches the words against the history (every word in
+  the item's name, sizes exact), offers what was bought before, or asks for width / length / colour / quantity as
+  fields; then live offers when a search is on. Adding stores the cheapest supplier code finds again at that moment
+  (never taken from the client). Ask's `add_to_shopping_list` action (`app/actions.py`, typed or spoken through
+  `/books/ask/voice`: "Remember to order 2-inch bolts for the Hendon job") reads the item, its size and the job the
+  model quotes, finds the job among the open jobs by code (or asks which), asks which history item, or shows the fields
+  (`POST /shopping/propose` makes the card, carrying the job), and adds only on Approve, stored against the job. Purchase orders and supplier emails are
+  not built (shown disabled).
 
 ## Round trips and caching
 
@@ -322,11 +360,49 @@ They add about 13 s to the suites. `HYPOTHESIS_PROFILE=deep` and `-m slow` run d
 are in `docs/reviews/property-tests/REVIEW.md`, and each has a plain example in
 `services/runtime/tests/test_property_regressions.py`.
 
+## The month-end close
+
+`app/month_end.py`, `app/routes_close.py`, web `/month-end` (`apps/web/src/components/month-end/MonthEnd.tsx`) and the
+Home card, Android *More › Month-end* and its Home card (read only). One button, **Close October**, runs an agent loop
+that is plain code: nine steps in order, each reported as it finishes (`POST /close/{yyyy-mm}/run?stream=1`, server-sent
+events `start`, `step` ×9, `summary`, `run`), each ending `ok`, `needs_you` or `blocked` with one plain-English reason, a
+link, what it checked and what it found. A finding is `blocking` (the month's figures are incomplete or wrong until it is
+dealt with), `needs_you` (worth doing, does not stop the close) or `note`.
+
+| # | Step | What code checks | What it proposes |
+|---|---|---|---|
+| 1 | Inbox | files in `00 Inbox` (blocking: they may be dated in the month); proposals waiting on Review dated in the month (blocking) or with no readable date; Outlook, only when the app says intake is on, as a **dry run** of `scan_mail` (nothing copied) | links to Review and Settings › Outlook |
+| 2 | Bank | per bank (from the statement file name): days of the month no imported statement covers, longer than 3 days (`GAP_DAYS`): "Bank statement missing for 12–31 Oct (starling)"; consecutive statements whose balances do not join up; lines in the month not reconciled | each suggested match (`Books.bank_suggestions`, code) as a `match_bank_line` card, at most 10 |
+| 3 | Sales | draft invoices dated in the month (blocking: not in sales); sent invoices past due with money outstanding | a `chase_invoice` card per overdue invoice (at most 5), words by the user's AI checked by code (`app/ai/remind.py`), or by code with no AI |
+| 4 | Purchases | bills on account due within 7 days or overdue (aged creditors); supplier credits not applied | links to Contacts |
+| 5 | Payroll | only if staff or pay runs exist: no pay run for the month (blocking if hours were logged), or a draft one (blocking) | link to Payroll |
+| 6 | VAT | if the month ends a VAT period (the usual `stagger` / `start_month` / `months`): the 9 boxes (`compute_vat_return`), the deadline (HMRC's obligation if posted, else 1 month 7 days), submitted or not, and the digital-links trail (each event on the return with its evidence hashes, up to 200) | link to `/vat?period=…`; **never submits** |
+| 7 | Checks | a balance on `7999 Sundry expenses` (the chart has no suspense account; Sundry is where uncategorised costs go) and accounts with no code (blocking); live sales or purchases with the same counterparty, amount and day (blocking); bank balances below zero; a purchase over 3× the supplier's median (and £100 over it); manual adjustments | links |
+| 8 | Reports | blocked while anything blocks or the month has not ended; otherwise the P&L and balance sheet (`reports.balance_sheet`) saved as `07 Reports/<yyyy-mm>-month-end-draft.xlsx` | |
+| 9 | Lock | blocked while anything blocks or the month has not ended; already closed with the same snapshot → ok | a `close_month` card |
+
+**Safety.** The agent posts nothing and sends nothing. A run writes its record (`_System/close/<yyyy-mm>.json`), one
+`close_run` audit line (`agent:close`) and, at step 8, the draft report. Everything else is a card approved through
+`POST /actions/approve` (`docs/ACTIONS.md`: signed, 15-minute expiry, executed once). A step that raises is shown as
+`blocked` with its error, never skipped; a missing input says what to upload or do. The summary is the only model
+output: `app/ai/close_summary.py` gives the model the steps' titles, statuses and reasons and the counts, and checks the
+reply with Ask's number check (`KnownNumbers`): every figure must be in the facts, no links, and a month that cannot be
+closed may not be called ready. Otherwise, or with no AI, code writes it (`fallback_reason`).
+
+**Close and after.** Approving `close_month` recomputes the month's snapshot (every ledger event and bank line dated in
+the month, the P&L by account and the month's own VAT boxes; SHA-256 over its canonical JSON) and refuses with 409 if
+it differs from the one on the card; otherwise it saves `07 Reports/<yyyy-mm>-month-end.xlsx`, appends a close record
+and audits `month_closed` (or `month_reclosed`). Closing does not stop anyone posting into the month: `GET /close`
+(Home) and `GET /close/{month}` compare the last close's snapshot with the books now and, when they differ, list each
+change in a sentence ("A purchase from Wickes for £24.00 dated 20 Oct was approved on 5 Nov") with the before/after
+P&L lines and VAT boxes, and the next run offers a re-close. When the month's VAT period was already submitted, the
+note says the changes are not on that return; Undo keeps dating corrections today (`app/approve.py`).
+
 ## Models: where each is called
 
 | Model | Called from | Mode | Status |
 |---|---|---|---|
-| **Muse Glimmer 30B** (`muse-glimmer:30b`, Ollama `/api/chat`) | `ai/extract.py` (extraction); `ai/verify.py` (verifier); `ai/ask.py` `call_json_model` (Ask, and through it `actions.py` intents, `ai/triage.py`, `ai/remind.py`, `ai/plan.py` rationale) | local | Run by hand on our DGX Spark for extraction and verifier (`evals/`); the other tasks tested with a stub |
+| **Muse Glimmer 30B** (`muse-glimmer:30b`, Ollama `/api/chat`) | `ai/extract.py` (extraction); `ai/verify.py` (verifier); `ai/ask.py` `call_json_model` (Ask, and through it `actions.py` intents, `ai/triage.py`, `ai/remind.py`, `ai/plan.py` rationale, `ai/spending.py` summaries, `ai/items.py` same-product suggestions) | local | Run by hand on our DGX Spark for extraction and verifier (`evals/`); the other tasks tested with a stub |
 | **Muse Spark** (`muse-spark-1.3`, Meta Model API `/chat/completions`, the user's key) | the same call sites in key mode; `ai/verify.py` when no Baseten key is set | key | **Unverified**: unit-tested against stubs; no key in our eval environment |
 | **Muse Spark Open** (Baseten, `inference.baseten.co`) | `ai/verify.py`, only in key mode when the **server owner** sets `BASETEN_API_KEY` | key | Wired on the demo server (key set 27 Oct 2026); id `meta-models/muse-spark-open` as Baseten lists it; one real call checked; eval on 200 gold documents: all fields 91 % clean, 93 % messy (`evals/runs/spark_open_200`, `spark_open_messy_200`) |
 | **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) | `ai/voice.py` `transcribe()`, from `POST /books/ask/voice` (web and Android mic) after ffmpeg converts to WAV 16 kHz mono | key only | **Unverified**: request format from research notes, never checked against dev.meta.ai; no live mic run |

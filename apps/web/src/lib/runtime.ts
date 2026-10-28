@@ -71,6 +71,8 @@ export interface RtProposal {
   journal_draft: RtJournalLine[];
   model: string;
   elapsed_s: number;
+  /** Which provider of the server's chain read it (services/runtime/app/ai/chain.py). */
+  served_by?: RtServedBy | null;
   /** How the photo was cropped before extraction; "none" = original used. Chip: crop.note. */
   crop?: { method: "sam" | "code" | "none"; box: [number, number, number, number] | null; note: string } | null;
   verification?: RtVerification | null;
@@ -137,7 +139,16 @@ export interface RtFieldAgreement {
   verifier: string | number | null;
   agree: boolean;
 }
+/** Who served an AI result: provider (modal | meta | spark | baseten | local | key | test), model, time. */
+export interface RtServedBy {
+  provider: string;
+  model: string;
+  latency_ms: number;
+  fell_back_from: string[];
+}
+
 export interface RtVerification {
+  served_by?: RtServedBy | null;
   fields: Record<string, RtFieldAgreement>;
   agree_all: boolean;
   model: string;
@@ -385,6 +396,10 @@ export const runtime = {
   draftReply: (a: AccountInfo, messageId: string, body: string) =>
     call<RtDraftReply>(a, "/mail/draft-reply", { method: "POST", body: JSON.stringify({ message_id: messageId, body }) },
       mailDraftScopesFor(accountKind(a))),
+  /** GET /close: the month that ended last (and closed months changed since), for the Home card. Reads only. */
+  closeOverview: (a: AccountInfo, today: string) => call<RtCloseOverview>(a, `/close?today=${today}`),
+  /** GET /close/{yyyy-mm}: status, the last run, close records, changes since the close. Reads only. */
+  closeMonth: (a: AccountInfo, month: string, today: string) => call<RtCloseMonth>(a, `/close/${month}?today=${today}`),
   /** GET /audit: the audit trail, newest first (`from`, `to`, `actor`, `kind`, `limit`). Reads only. */
   audit: (a: AccountInfo, query: string) => call<RtAuditPage>(a, `/audit${query ? `?${query}` : ""}`),
   /** To-dos in _System/Todos/todos.json. */
@@ -703,6 +718,29 @@ export const runtime = {
     export: (a: AccountInfo, body: { report?: RtReportKind; from?: string; to?: string; periods?: number }) =>
       call<RtReportExport>(a, withQuery("/reports/export", vatQuery()), { method: "POST", body: JSON.stringify(body) }),
   },
+  /** GET /books/spending: code's figures for the period (default this month), the model's checked words. */
+  spending: (a: AccountInfo, period?: { start: string; end: string } | null) =>
+    call<RtSpending>(a, withQuery("/books/spending", period ? `start=${period.start}&end=${period.end}` : "")),
+  /** GET /books/prices: item price history and savings from the user's own receipts (code only). */
+  prices: (a: AccountInfo) => call<RtPriceReport>(a, "/books/prices"),
+  /** POST /books/prices/suggest: the same, with the AI's same-product suggestions where code's rules agree. */
+  suggestPrices: (a: AccountInfo) => call<RtPriceReport>(a, "/books/prices/suggest", { method: "POST" }),
+  /** POST /books/prices/matches: the user's yes or no for one possible match (_System/item_matches.json). */
+  decideMatch: (a: AccountInfo, body: { a: string; b: string; same: boolean }) =>
+    call<{ a: string; b: string; same: boolean }>(a, "/books/prices/matches", { method: "POST", body: JSON.stringify(body) }),
+  /** The shopping list in _System/shopping_list.json. */
+  shopping: (a: AccountInfo) => call<RtShoppingList>(a, "/shopping"),
+  shoppingLookup: (a: AccountInfo, text: string) =>
+    call<RtShoppingLookup>(a, "/shopping/lookup", { method: "POST", body: JSON.stringify({ text }) }),
+  addShopping: (a: AccountInfo, body: RtShoppingIn) =>
+    call<RtShoppingItem>(a, "/shopping", { method: "POST", body: JSON.stringify(body) }),
+  /** POST /shopping/propose: a signed Ask card from typed specs (approve with approveAction). */
+  proposeShopping: (a: AccountInfo, body: RtShoppingIn) =>
+    call<RtProposedAction>(a, "/shopping/propose", { method: "POST", body: JSON.stringify(body) }),
+  tickShopping: (a: AccountInfo, id: string, done: boolean) =>
+    call<RtShoppingItem>(a, `/shopping/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify({ done }) }),
+  removeShopping: (a: AccountInfo, id: string) =>
+    call<RtShoppingItem>(a, `/shopping/${encodeURIComponent(id)}`, { method: "DELETE" }),
 };
 
 /** Reports (services/runtime/app/reports.py). Pence throughout; VAT boxes 6 and 7 whole pounds. */
@@ -1733,7 +1771,7 @@ export interface RtKeyNumber {
 }
 export interface RtSuggestedAction {
   label: string;
-  kind: "open_review" | "open_vat" | "chase_supplier" | "plan_day" | "none"; // plan_day: arg = YYYY-MM-DD
+  kind: "open_review" | "open_vat" | "chase_supplier" | "plan_day" | "open_spending" | "none"; // plan_day: arg = YYYY-MM-DD
   arg: string | null;
 }
 export interface RtAskAnswer {
@@ -1745,11 +1783,19 @@ export interface RtAskAnswer {
   model: string;
   period: RtAskPeriod;
   fallback_reason: string | null; // the model's words were replaced by the facts, quoted by code
+  served_by?: RtServedBy | null; // the provider that wrote the words (none when code did)
   proposed_action?: RtProposedAction | null; // an instruction: show the card; nothing happens until Approve
   clarification?: RtClarification | null; // an instruction Ask needs one more detail for
 }
 /** Proposed actions (services/runtime/app/actions.py). Kept by the app only; post back unchanged to approve. */
-export type RtActionKind = "create_invoice" | "chase_invoice" | "log_mileage" | "log_timesheet";
+export type RtActionKind =
+  | "create_invoice"
+  | "chase_invoice"
+  | "log_mileage"
+  | "log_timesheet"
+  | "match_bank_line" // proposed by the month-end close
+  | "close_month" // proposed by the month-end close
+  | "add_to_shopping_list";
 export interface RtProposedAction {
   id: string;
   kind: RtActionKind;
@@ -1786,6 +1832,31 @@ export interface RtChasePreview {
   body: string;
   warnings: string[];
 }
+/** match_bank_line: a match code suggested during the month-end close; approving records it (posts nothing). */
+export interface RtBankMatchPreview {
+  month: string;
+  line_id: string;
+  date: string;
+  amount_pence: number;
+  description: string;
+  bank: string;
+  event_ids: string[];
+  to: string;
+  reasons: string[];
+  warnings: string[];
+}
+/** close_month: approving records the close with this snapshot; refused if the month's figures changed since. */
+export interface RtCloseMonthPreview {
+  month: string;
+  label: string;
+  snapshot_hash: string;
+  reclose: boolean;
+  figures: { sales_pence: number; cost_of_sales_pence: number; overheads_pence: number; net_profit_pence: number };
+  entries: number;
+  bank_lines: number;
+  changes: string[];
+  warnings: string[];
+}
 export interface RtTimesheetPreview {
   staff_name: string;
   job_name: string;
@@ -1809,6 +1880,10 @@ export interface RtClarification {
   question_md: string;
   candidates: string[];
   ref: string | null; // the user's words for the thing, replaced by the picked candidate when re-asking
+  /** add_to_shopping_list with nothing in the history: ask for these as fields, then POST /shopping/propose. */
+  spec_fields?: (RtSpecField & { value?: string })[];
+  /** What code already resolved, sent back with the specs (the shopping item's job). */
+  extra?: { job_id?: string | null; job_name?: string | null };
 }
 export interface RtActionResult {
   action_id: string;
@@ -2259,3 +2334,329 @@ export const filesApi = {
 /** This device runs the monthly backup check (components/files/MonthlyBackup.tsx) only while this is "1". */
 export const MONTHLY_BACKUP_KEY = "accnomos.monthlyBackup";
 export const BACKUP_CHECKED_KEY = "accnomos.backupChecked"; // "YYYY-MM" of the last check on this device
+
+/** The month-end close (services/runtime/app/month_end.py). Money in pence; texts are written by code. */
+export type RtCloseStepId = "inbox" | "bank" | "sales" | "purchases" | "payroll" | "vat" | "checks" | "reports" | "lock";
+export interface RtCloseFinding {
+  text: string;
+  level: "blocking" | "needs_you" | "note";
+  link: string | null;
+  refs: Record<string, unknown>;
+}
+export interface RtCloseStep {
+  id: RtCloseStepId;
+  n: number;
+  title: string;
+  status: "ok" | "needs_you" | "blocked";
+  reason: string;
+  link: string | null;
+  checked: string[];
+  found: RtCloseFinding[];
+  proposes: string[];
+  data: Record<string, unknown>;
+  ms: number;
+}
+export interface RtCloseFigureChange {
+  label: string;
+  before: string;
+  after: string;
+}
+export interface RtCloseChanges {
+  closed_at: string;
+  closed_by: string;
+  count: number;
+  items: string[];
+  figures: RtCloseFigureChange[];
+  vat_note: string | null;
+  headline: string;
+}
+export interface RtCloseStoredRun {
+  id: string;
+  month: string;
+  label: string;
+  started_at: string;
+  finished_at: string;
+  by: string;
+  steps: RtCloseStep[];
+  cards: { id: string; kind: string; summary_md: string }[];
+  summary_md: string;
+  summary_model: string;
+  summary_fallback_reason: string | null;
+  needs_you: number;
+  blocking: number;
+  can_close: boolean;
+  snapshot_hash: string;
+}
+export interface RtCloseRun extends RtCloseStoredRun {
+  actions: RtProposedAction[];
+  changes: RtCloseChanges | null;
+}
+export interface RtCloseStatus {
+  month: string;
+  label: string;
+  ended: boolean;
+  closed: boolean;
+  closed_at: string | null;
+  closed_by: string | null;
+  last_run_at: string | null;
+  needs_you: number | null;
+  blocking: number | null;
+  can_close: boolean | null;
+  changes: RtCloseChanges | null;
+  headline: string;
+}
+export interface RtCloseRecord {
+  id: string;
+  month: string;
+  closed_at: string;
+  closed_by: string;
+  snapshot_hash: string;
+  report_path: string | null;
+  reclose: boolean;
+  changes_since_previous: string[];
+}
+export interface RtCloseMonth extends RtCloseStatus {
+  run: RtCloseStoredRun | null;
+  closes: RtCloseRecord[];
+}
+export interface RtCloseOverview {
+  today: string;
+  target: RtCloseStatus;
+  changed: RtCloseStatus[];
+}
+export interface RtCloseStart {
+  run_id: string;
+  month: string;
+  label: string;
+  steps: { id: RtCloseStepId; n: number; title: string }[];
+}
+export interface RtCloseSummary {
+  summary_md: string;
+  model: string;
+  fallback_reason: string | null;
+}
+
+/**
+ * POST /close/{month}/run?stream=1 (server-sent events): `onStart` gets the nine steps, `onStep` each one as the
+ * runtime finishes it, `onSummary` the checked summary; resolves to the whole run with its signed cards. With
+ * `outlook` the token also asks for Mail.Read and the runtime reads the mailbox in a dry run (nothing copied).
+ */
+export async function closeRunStream(
+  account: AccountInfo,
+  month: string,
+  today: string,
+  outlook: boolean,
+  on: { onStart?: (s: RtCloseStart) => void; onStep?: (s: RtCloseStep) => void; onSummary?: (s: RtCloseSummary) => void },
+): Promise<RtCloseRun> {
+  const query = [vatQuery(), `today=${today}`, "stream=1"].filter(Boolean).join("&");
+  const extra = outlook ? mailScopesFor(accountKind(account)) : [];
+  const headers = { ...(await runtimeHeaders(account, extra)), "Content-Type": "application/json", Accept: "text/event-stream" };
+  const path = `/close/${month}/run?${query}`;
+  const res = await fetch(`${RUNTIME_URL}${path}`, { method: "POST", headers, body: JSON.stringify({ outlook }) });
+  if (!res.ok) throw new Error(await errorDetail(res, `POST ${path}`));
+  if (!res.body || !res.headers.get("content-type")?.startsWith("text/event-stream")) throw new Error("No event stream");
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) throw new Error("The close stopped before it finished; run it again.");
+    buffer += value;
+    let cut: number;
+    while ((cut = buffer.indexOf("\n\n")) >= 0) {
+      const block = buffer.slice(0, cut);
+      buffer = buffer.slice(cut + 2);
+      const event = /^event: (.*)$/m.exec(block)?.[1];
+      const data = /^data: (.*)$/m.exec(block)?.[1];
+      if (!event || data === undefined) continue;
+      const payload: unknown = JSON.parse(data);
+      if (event === "start") on.onStart?.(payload as RtCloseStart);
+      else if (event === "step") on.onStep?.(payload as RtCloseStep);
+      else if (event === "summary") on.onSummary?.(payload as RtCloseSummary);
+      else if (event === "error") throw new Error((payload as { detail: string }).detail);
+      else if (event === "run") {
+        void reader.cancel();
+        return payload as RtCloseRun;
+      }
+    }
+  }
+}
+
+/** Spending, cheaper options and the shopping list (services/runtime/app/spending.py, prices.py, shopping.py). */
+export interface RtSpendRow {
+  name: string;
+  net: string; // pounds before VAT
+  count: number;
+  change_vs_previous: string;
+  change_pct: string | null;
+}
+export interface RtSpendingFacts {
+  this_period: {
+    label: string;
+    start: string;
+    end: string;
+    spent: string;
+    vat: string;
+    purchases: number;
+    by_category: RtSpendRow[];
+    by_supplier: RtSpendRow[];
+    top_items: { item: string; net: string; quantity: string; suppliers: string[] }[];
+    with_line_items: number;
+  };
+  previous_period: { label: string; start: string; end: string; spent: string; purchases: number };
+  change: { spent_vs_previous: string; spent_change_pct: string | null };
+  recurring: { supplier: string; kind: "subscription" | "utility" | "regular"; category: string; months_seen: number; usual_month: string; this_period: string }[];
+  unusual: { date: string; supplier: string; category: string; net: string; times_usual_purchase: string; why: string; source: string }[];
+  sources: string[];
+}
+export interface RtSpending {
+  period: { start: string; end: string };
+  previous: { start: string; end: string };
+  facts: RtSpendingFacts;
+  summary_md: string;
+  summary_by: "model" | "code";
+  fallback_reason: string | null;
+  model: string;
+}
+export interface RtPaid {
+  supplier: string;
+  description: string;
+  date: string;
+  unit_price: string;
+  per_measure: string;
+  pack: number;
+  source: string;
+}
+export interface RtSaving {
+  per_month: string;
+  per_year: string;
+  monthly_volume: string;
+  monthly_items: string;
+  explanation: string;
+}
+export interface RtLiveOffer {
+  source: string;
+  retrieved_at: string;
+  supplier: string;
+  title: string;
+  url: string;
+  unit_price: string;
+  pack: number;
+  per_measure: string | null;
+  measure_word: string;
+  comparable: boolean;
+  note: string;
+}
+export interface RtPriceGroup {
+  id: string;
+  name: string;
+  measure: "m" | "kg" | "l" | "item";
+  measure_word: string;
+  keys: string[];
+  match: "same" | "equivalent";
+  joined_by: string[];
+  observations: number;
+  suppliers: string[];
+  latest: RtPaid;
+  cheapest: RtPaid;
+  by_supplier: RtPaid[];
+  saving: RtSaving | null;
+  monthly_volume: string;
+  average_paid: string;
+  live_offers: RtLiveOffer[];
+  live_saving: RtSaving | null;
+}
+export interface RtSearchStatus {
+  enabled: boolean;
+  provider: string | null;
+  note: string;
+}
+export interface RtPriceReport {
+  since: string;
+  until: string;
+  lines_read: number;
+  groups: RtPriceGroup[];
+  possible_matches: { a: string; b: string; a_name: string; b_name: string; rules_ok: boolean; rules_note: string; ai_says_same: boolean | null }[];
+  total_saving_per_year: string;
+  coverage_note: string;
+  web_search: RtSearchStatus;
+  ai_used: boolean;
+  ai_note: string | null;
+}
+export interface RtSpecField {
+  name: "width_mm" | "length_m" | "colour" | "quantity";
+  label: string;
+  kind: "number" | "choice";
+  unit: string | null;
+  options: string[];
+  required: boolean;
+}
+export interface RtSuggested {
+  supplier: string;
+  description: string;
+  unit_price: string;
+  per_measure: string;
+  measure_word: string;
+  date: string;
+  source: string;
+  basis: string;
+}
+export interface RtShoppingItem {
+  id: string;
+  text: string;
+  description: string;
+  quantity: string;
+  spec: Record<string, string | number | null>;
+  item_key: string | null;
+  suggested: RtSuggested | null;
+  live_offer: RtLiveOffer | null;
+  note: string;
+  job_id: string | null;
+  job_name: string | null;
+  added_at: string;
+  added_by: string;
+  done: boolean;
+  done_at: string | null;
+}
+export interface RtShoppingList {
+  items: RtShoppingItem[];
+  web_search: RtSearchStatus;
+  future_steps: Record<string, string>;
+}
+export interface RtLookupOption {
+  key: string;
+  description: string;
+  supplier: string;
+  unit_price: string;
+  per_measure: string;
+  measure_word: string;
+  date: string;
+  source: string;
+  cheapest: RtSuggested | null;
+  label: string;
+}
+export interface RtShoppingLookup {
+  text: string;
+  read_as: Record<string, string | number | null>;
+  options: RtLookupOption[];
+  fields: RtSpecField[];
+  question_md: string;
+  live_offers: RtLiveOffer[];
+  web_search: RtSearchStatus;
+}
+export interface RtShoppingIn {
+  text: string;
+  option_key?: string | null;
+  spec?: { width_mm?: string | null; length_m?: string | null; colour?: string | null } | null;
+  quantity?: string;
+  note?: string;
+  job_id?: string | null;
+}
+export interface RtShoppingPreview {
+  text: string;
+  description: string;
+  quantity: string;
+  suggested: RtSuggested | null;
+  live_offer: RtLiveOffer | null;
+  job_name: string | null;
+  warnings: string[];
+}

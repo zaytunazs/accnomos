@@ -25,7 +25,7 @@ from __future__ import annotations
 import io
 import re
 from collections import defaultdict
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 
@@ -153,6 +153,65 @@ def profit_and_loss(events: Sequence[LedgerEvent], start: date, end: date) -> Pr
         overheads=over,
         net_profit_pence=gross - over.total_pence,
         entries=sum(any(section_of(ln.account) for ln in e.lines) for e in inside),
+        sample=is_sample(events),
+    )
+
+
+# --------------------------------------------------------------------------- #
+# Balance sheet (the month-end close, app/month_end.py)
+# --------------------------------------------------------------------------- #
+
+
+class BalanceSheet(BaseModel):
+    """Balances at the end of `as_of` from every approved entry dated on or before it, by account code:
+    1xxx assets (debit − credit), 2xxx liabilities and 3xxx capital (credit − debit), and the profit to date
+    (the P&L accounts netted). Accounts without a four-digit code, or with a code the chart does not use, are
+    listed under `other` so nothing is lost. `difference_pence` is assets − (liabilities + capital + profit
+    + other); it is 0 whenever every entry balances, which LedgerEvent enforces."""
+
+    as_of: date
+    assets: PlSection
+    liabilities: PlSection
+    capital: PlSection
+    profit_to_date_pence: int
+    other: PlSection
+    net_assets_pence: int  # assets − liabilities
+    difference_pence: int
+    entries: int
+    sample: bool = False
+
+
+def balance_sheet(events: Sequence[LedgerEvent], as_of: date) -> BalanceSheet:
+    inside = [e for e in events if e.date <= as_of]
+    sums: dict[str, int] = defaultdict(int)  # debit − credit
+    for e in inside:
+        for ln in e.lines:
+            sums[ln.account] += ln.debit - ln.credit
+
+    def rows(pick: Callable[[int | None], bool], sign: int) -> PlSection:
+        out = [
+            PlRow(account=a, amount_pence=sign * v)
+            for a, v in sorted(sums.items(), key=lambda kv: (account_code(kv[0]) or 0, kv[0]))
+            if v and pick(account_code(a)) and section_of(a) is None
+        ]
+        return PlSection(rows=out, total_pence=sum(r.amount_pence for r in out))
+
+    assets = rows(lambda c: c is not None and 1000 <= c <= 1999, 1)
+    liabilities = rows(lambda c: c is not None and 2000 <= c <= 2999, -1)
+    capital = rows(lambda c: c is not None and 3000 <= c <= 3999, -1)
+    other = rows(lambda c: c is None or c < 1000 or c > 8999, -1)
+    profit = -sum(v for a, v in sums.items() if section_of(a) is not None)
+    difference = assets.total_pence - (liabilities.total_pence + capital.total_pence + profit + other.total_pence)
+    return BalanceSheet(
+        as_of=as_of,
+        assets=assets,
+        liabilities=liabilities,
+        capital=capital,
+        profit_to_date_pence=profit,
+        other=other,
+        net_assets_pence=assets.total_pence - liabilities.total_pence,
+        difference_pence=difference,
+        entries=len(inside),
         sample=is_sample(events),
     )
 
@@ -289,6 +348,85 @@ def pl_sheet(ws: Worksheet, pl: ProfitAndLoss) -> None:
     ws.append([pl.basis])
     entries = f"{pl.entries} approved {'entry' if pl.entries == 1 else 'entries'}"
     ws.append([f"{entries}. Worked out by code from _System/Ledger/events; no model involved."])
+
+
+def bs_sheet(ws: Worksheet, bs: BalanceSheet) -> None:
+    """Assets, liabilities, capital and profit to date at the month end."""
+    rows: list[tuple[object, ...]] = []
+    bold: list[int] = []
+
+    def add(label: str, pence: int | None, strong: bool = False) -> None:
+        if strong:
+            bold.append(len(rows))
+        rows.append((label, pounds(pence)))
+
+    for title, sec in (("Assets", bs.assets), ("Liabilities", bs.liabilities)):
+        add(title, None, True)
+        for r in sec.rows:
+            add(f"  {r.account}", r.amount_pence)
+        add(f"Total {title.lower()}", sec.total_pence, True)
+    add("Net assets", bs.net_assets_pence, True)
+    add("Capital", None, True)
+    for r in bs.capital.rows:
+        add(f"  {r.account}", r.amount_pence)
+    add("  Profit to date (P&L accounts)", bs.profit_to_date_pence)
+    if bs.other.rows:
+        add("Other accounts (no code in the chart)", None, True)
+        for r in bs.other.rows:
+            add(f"  {r.account}", r.amount_pence)
+    add("Total capital and profit", bs.capital.total_pence + bs.profit_to_date_pence + bs.other.total_pence, True)
+    _table(ws, (f"Balance sheet at {bs.as_of:%d/%m/%Y}", "£"), rows, money=(2,), widths=(48, 16))
+    for i in bold:
+        ws.cell(row=i + 2, column=1).font = Font(bold=True)
+        ws.cell(row=i + 2, column=2).font = Font(bold=True)
+    ws.append([])
+    ws.append([f"From {bs.entries} approved entries dated on or before {bs.as_of:%d/%m/%Y}. Worked out by code."])
+    if bs.difference_pence:
+        ws.append([f"Does not balance by {pounds(bs.difference_pence)}: check the Accounts sheet of Books.xlsx."])
+
+
+def build_month_end_xlsx(
+    label: str,
+    pl: ProfitAndLoss,
+    bs: BalanceSheet,
+    *,
+    draft: bool,
+    closed_line: str | None = None,
+    sample: bool = False,
+    generated: datetime | None = None,
+) -> tuple[bytes, list[str]]:
+    """The month-end pack (app/month_end.py): About, P&L and Balance sheet. A draft says so on every sheet."""
+    generated = generated or datetime.now(UTC)
+    wb = Workbook()
+    about = wb.active
+    if not isinstance(about, Worksheet):
+        raise RuntimeError("openpyxl Workbook() has no first worksheet")
+    about.title = "About"
+    status = "DRAFT: the month is not closed yet" if draft else (closed_line or "Closed")
+    lines = [
+        f"Accnomos month-end reports: {label}",
+        status,
+        f"Generated at {generated:%d/%m/%Y %H:%M} UTC from the ledger event files in _System/Ledger/events.",
+        "Worked out by code; no model involved. Saving these reports posts nothing to your books.",
+        BASIS,
+    ]
+    if sample:
+        lines.insert(0, SAMPLE_LABEL)
+    for text in lines:
+        about.append([text])
+    about.cell(row=1, column=1).font = Font(bold=True)
+    about.column_dimensions["A"].width = 110
+    pl_sheet(wb.create_sheet("P&L"), pl)
+    bs_sheet(wb.create_sheet("Balance sheet"), bs)
+    for ws in wb.worksheets[1:]:
+        ws.append([])
+        ws.append([SAMPLE_LABEL if sample else status])
+        if sample:
+            ws.append([status])
+        ws.cell(row=ws.max_row, column=1).font = Font(bold=True)
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue(), wb.sheetnames
 
 
 def _aged_sheet(ws: Worksheet, who: str, table: AgedTable, as_of: date) -> None:

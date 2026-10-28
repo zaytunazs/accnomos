@@ -63,7 +63,8 @@ app.add_middleware(
         "X-Demo-Session",  # app/demo.py: a demo sandbox instead of a Graph token
     ]
     + (["X-Test-Tenant"] if is_test_mode() else []),  # app/testmode.py: one fake OneDrive per Playwright worker
-    expose_headers=["X-Correlation-Id", "Retry-After"],
+    # Content-Disposition: the page names a downloaded report file (/books/self-employment/reports/*).
+    expose_headers=["X-Correlation-Id", "Retry-After", "Content-Disposition"],
     max_age=600,
 )
 
@@ -94,8 +95,23 @@ async def health() -> dict:
         "uptime_s": int(time.time() - STARTED),
         "voice": bool(FFMPEG),
         "folder_layout": layout.health(),
+        "ai": ai_chain_summary(),
         **({"test_mode": True} if is_test_mode() else {}),
         **({"demo": demo.status()} if demo.enabled() else {}),
+    }
+
+
+def ai_chain_summary() -> dict:
+    """The provider chain and which providers are configured: names and models only, never keys or URLs."""
+    from app.ai import providers
+
+    infos = providers.describe()
+    return {
+        "chain": [i.name for i in infos],
+        "configured": [i.name for i in infos if i.configured],
+        "providers": [{"name": i.name, "model": i.model, "configured": i.configured} for i in infos],
+        "default": "chain" if infos else (os.getenv("AI_MODE") or "local"),
+        "recommended": providers.RECOMMENDED,
     }
 
 
@@ -128,7 +144,10 @@ async def ai_test(cfg: AiConfig, x_meta_api_key: str | None = Header(default=Non
     raise HTTPException(400, "mode must be 'key' or 'local'")
 
 
+from app.routes_ai import router as ai_router  # noqa: E402  GET /ai/health, GET /ai/calls, POST /ai/warm
 from app.routes_extract import router as extract_router  # noqa: E402  POST /extract
+
+app.include_router(ai_router)
 
 app.include_router(extract_router)
 
@@ -178,6 +197,9 @@ async def unsafe_name(_request: Request, exc: UnsafeName) -> JSONResponse:
 from app.routes_vat import router as vat_router  # noqa: E402  GET /books/vat
 
 app.include_router(vat_router)
+from app.routes_itsa import router as itsa_router  # noqa: E402  /books/self-employment/* (MTD Income Tax)
+
+app.include_router(itsa_router)
 from app.routes_dashboard import router as dashboard_router  # noqa: E402  GET /books/dashboard
 
 app.include_router(dashboard_router)
@@ -217,6 +239,9 @@ app.include_router(online_payments_router)  # also /invoices/{number}/payment-li
 from app.routes_actions import router as actions_router  # noqa: E402  /actions/approve, /actions/reject
 
 app.include_router(actions_router)
+from app.routes_spending import router as spending_router  # noqa: E402  /books/spending, /books/prices, /shopping
+
+app.include_router(spending_router)
 from app.routes_payroll import router as payroll_router  # noqa: E402  /payroll/runs
 
 app.include_router(payroll_router)
@@ -271,6 +296,11 @@ app.include_router(backups_router)
 from app.early_access import router as early_access_router  # noqa: E402  POST /public/early-access (off by default)
 
 app.include_router(early_access_router)
+
 from app.routes_profile import router as profile_router  # noqa: E402  GET/PUT /profile (app/profile.py)
 
 app.include_router(profile_router)
+
+from app.routes_close import router as close_router  # noqa: E402  /close (the month-end close agent)
+
+app.include_router(close_router)

@@ -10,6 +10,7 @@ import type { AccountInfo, AuthenticationResult, IPublicClientApplication } from
  * Several accounts, like MSAL's multi-account cache (linked profiles, lib/profiles.ts): the first is Sam (token
  * "test-token"); signing in again while signed in adds Jo, a second Microsoft account whose token
  * "test-token.jo" the runtime gives a OneDrive of its own (services/runtime/app/testmode.py TEST_ACCOUNT_TOKEN).
+ * A linked mailbox (Settings › Email intake, `loginPopup`) is one more account in the same cache, Mail.Read only.
  */
 const SIGNED_IN = "msal.accnomos-test.signedIn"; // "msal." like the real cache: Settings shows it, Disconnect clears it
 const ACCOUNTS = "msal.accnomos-test.accounts"; // JSON list of signed-in test account keys, in sign-in order
@@ -91,8 +92,10 @@ function setLinked(names: string[]): void {
   window.localStorage.setItem(LINKED, JSON.stringify(names));
 }
 
-/** A mailbox-only (fake) Microsoft account from Email intake: a work account in its own tenant. */
+/** A linked mailbox's (fake) Microsoft account: a work account in its own tenant. */
 function extraAccount(username: string): AccountInfo {
+  const known = Object.values(ALL).find((a) => a.account.username === username);
+  if (known) return known.account;
   return {
     homeAccountId: `test-home-${username}.test-tenant`,
     environment: "login.test.invalid",
@@ -114,8 +117,11 @@ export function createTestMsal(): IPublicClientApplication {
   const fake = {
     handleRedirectPromise: async () => null,
     getActiveAccount: () => active(),
-    // Like MSAL's cache: the signed-in profiles, then any mailbox linked by a popup.
-    getAllAccounts: () => [...signedInKeys().map((k) => ALL[k].account), ...linked().map(extraAccount)],
+    getAllAccounts: () => {
+      const accounts = signedInKeys().map((k) => ALL[k].account);
+      const extra = accounts.length ? linked().map(extraAccount) : [];
+      return [...accounts, ...extra.filter((a) => !accounts.some((b) => b.homeAccountId === a.homeAccountId))];
+    },
     setActiveAccount: (account: AccountInfo | null) => {
       const key = keyOf(account);
       if (key && signedInKeys().includes(key)) window.localStorage.setItem(ACTIVE, key);
@@ -135,8 +141,8 @@ export function createTestMsal(): IPublicClientApplication {
       await new Promise(() => {});
     },
     acquireTokenSilent: async ({ scopes, account }: { scopes: string[]; account?: AccountInfo }) => {
+      if (!signedInKeys().length) throw new Error("not signed in");
       if (account && !keyOf(account)) {
-        if (!signedInKeys().length) throw new Error("not signed in");
         if (!linked().includes(account.username)) throw new Error("interaction_required: account not in the cache");
         return { accessToken: "test-token", account, scopes } as unknown as AuthenticationResult;
       }
@@ -148,8 +154,7 @@ export function createTestMsal(): IPublicClientApplication {
       if (!signedInKeys().length) throw new Error("not signed in");
       const username = window.localStorage.getItem(POPUP_ACCOUNT) || DEFAULT_POPUP_ACCOUNT;
       if (!linked().includes(username)) setLinked([...linked(), username]);
-      const account = username === TEST_ACCOUNT.username ? TEST_ACCOUNT : extraAccount(username);
-      return { accessToken: "test-token", account, scopes: ["Mail.Read"] } as unknown as AuthenticationResult;
+      return { accessToken: "test-token", account: extraAccount(username), scopes: ["Mail.Read"] } as unknown as AuthenticationResult;
     },
     clearCache: async ({ account }: { account?: AccountInfo } = {}) => {
       if (account) setLinked(linked().filter((u) => u !== account.username));

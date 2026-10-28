@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     relay_allowed_redirects: str = ""
     # Requests per minute per client IP (in memory, per process); 0 turns the limit off.
     rate_limit_per_min: int = 60
+    # MTD Income Tax routes (relay/itsa.py) are sandbox only. Against a production HMRC_BASE they answer 403 unless
+    # this is set too (RELAY_ITSA_PRODUCTION=1). Never set by default or by anything in this repository.
+    relay_itsa_production: bool = False
 
     @property
     def sandbox(self) -> bool:

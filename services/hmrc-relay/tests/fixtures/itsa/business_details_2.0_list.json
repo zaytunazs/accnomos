@@ -1,0 +1,14 @@
+{
+  "listOfBusinesses":[
+    {
+      "typeOfBusiness": "self-employment",
+      "businessId": "XAIS12345678910",
+      "tradingType": "Plastering",
+      "tradingName": "RCDTS"
+    },
+    {
+      "typeOfBusiness": "foreign-property",
+      "businessId": "XAIS23456789101"
+    }
+  ]
+}

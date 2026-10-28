@@ -5,6 +5,7 @@ export const FALLBACK_QUESTIONS = [
   "Why is my VAT different from last quarter?",
   "Who owes me the most?",
   "What needs my attention?",
+  "Summarise my spending",
 ];
 
 const MAX_SUGGESTIONS = 4;
@@ -39,6 +40,7 @@ export function suggestedQuestions(d: RtDashboard | null): string[] {
   if ((attention?.unmatched_bank_lines ?? 0) > 0) out.push("Which bank lines still need matching?");
   if ((attention?.proposed ?? 0) + (attention?.needs_a_look ?? 0) > 0) out.push("What is waiting in Review?");
   if (cash?.balance_pence !== null && cash?.balance_pence !== undefined) out.push("What is my cash balance?");
+  if (out.length < MAX_SUGGESTIONS) out.push("Summarise my spending");
   const picked = out.slice(0, MAX_SUGGESTIONS);
   return picked.length > 0 ? picked : FALLBACK_QUESTIONS;
 }

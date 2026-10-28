@@ -85,3 +85,17 @@ test("Email intake: a mailbox this browser is not signed in to is listed and rep
     "office@elsewhere.example: not read: sign in to it again under Email intake",
   );
 });
+
+test("a linked mailbox's account shares the sign-in cache but is never offered as a profile", async ({ page }) => {
+  await signIn(page);
+  await createBooksFolder(page);
+  await page.goto("/settings");
+  const section = (await settingsTab(page, "Automation")).getByRole("region", { name: "Email intake" });
+  await section.getByRole("button", { name: "Add Microsoft mailbox" }).click();
+  await expect(section.getByRole("status")).toContainText(`${LINKED} added`);
+  await page.goto("/");
+  await page.getByRole("button", { name: /^Profile: / }).click();
+  const profiles = page.getByRole("menu", { name: "Profiles" }).getByRole("menuitemradio");
+  await expect(profiles).toHaveCount(1); // Sam's books only, not the receipts mailbox
+  await expect(profiles).not.toContainText(LINKED);
+});

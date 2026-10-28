@@ -49,6 +49,7 @@ AGENT_LABELS = {
     "contacts": "Contacts",
     "backup": "Backup",
     "files": "Files",
+    "close": "Month-end",
 }
 
 
@@ -311,6 +312,17 @@ SUMMARIES: dict[str, Summary] = {
     "mileage_refreshed": lambda r, w: (
         f"Updated the mileage claim: {_plural(_n(r, 'journeys'), 'journey')}" + _pounds(r, "pence")
     ),
+    # MTD Income Tax, self-employment (app/routes_itsa.py)
+    "itsa_update_submitted": lambda r, w: (
+        f"Sent the {r.get('tax_year')} self-employment update to {r.get('period_end')} to HMRC "
+        f"({'HMRC sandbox' if r.get('environment') != 'production' else 'HMRC'})"
+        + ("" if r.get("matches") else "; it did not match the books when saved")
+    ),
+    "itsa_calculation_saved": lambda r, w: f"Saved HMRC's {r.get('tax_year')} tax calculation",
+    "itsa_final_declaration_submitted": lambda r, w: (
+        f"Made the {r.get('tax_year')} final declaration to "
+        f"{'HMRC sandbox' if r.get('environment') != 'production' else 'HMRC'}"
+    ),
     # Reports
     "report_exported": lambda r, w: (
         "Saved "
@@ -397,8 +409,27 @@ SUMMARIES: dict[str, Summary] = {
         f"Backup settings: keep {_n(r, 'backup_keep')}"
         + (", back up monthly" if r.get("monthly_backup") else ", no monthly backup")
     ),
+    # The month-end close (app/month_end.py)
+    "close_run": lambda r, w: (
+        f"Ran the month-end close for {r.get('month', 'a month')}: "
+        + (
+            "ready to close"
+            if r.get("can_close")
+            else f"{_plural(_n(r, 'needs_you'), 'thing')} for you, {_n(r, 'blocking')} blocking"
+        )
+    ),
+    "month_closed": lambda r, w: f"Closed {r.get('month', 'a month')} (snapshot {str(r.get('snapshot', ''))[:12]})",
+    "month_reclosed": lambda r, w: (
+        f"Re-closed {r.get('month', 'a month')} after {_plural(_n(r, 'changes'), 'change')}"
+        f" (snapshot {str(r.get('snapshot', ''))[:12]})"
+    ),
     # To-dos and housekeeping
     "todo_added": lambda r, w: "Added a to-do",
+    "shopping_added": lambda r, w: f"Added {r.get('description') or 'an item'} to the shopping list",
+    "shopping_ticked": lambda r, w: "Ticked off a shopping list item",
+    "shopping_unticked": lambda r, w: "Put a shopping list item back on the list",
+    "shopping_removed": lambda r, w: "Removed a shopping list item",
+    "item_match": lambda r, w: "Said two items are the same product" if r.get("same") else "Said two items differ",
     "todo_deleted": lambda r, w: "Ticked off a to-do",
     "folders_renamed": lambda r, w: f"Renamed old folders: {_moved(r)}",
     "profile_saved": lambda r, w: (

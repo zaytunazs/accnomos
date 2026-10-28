@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from "react";
+import { warmServerAi } from "@/lib/meta-models";
 import type { AccountInfo } from "@azure/msal-browser";
 import { deadlinesQuery, loadBusiness } from "@/lib/business";
 import { getMsal, msalConfigured } from "@/lib/msal";
@@ -45,6 +46,7 @@ export function HomeData({ children }: { children: React.ReactNode }) {
       }
       if (!account) return setState({ mode: "sample" });
       setState({ mode: "loading", account });
+      warmServerAi(); // a cold Modal container starts now, not on the first upload
       // null for annual returns (the runtime's VAT block is ignored). With no saved business the query is empty, so
       // the runtime assumes calendar quarters and says so (`vat.assumed`) instead of the app sending a default.
       const business = loadBusiness();

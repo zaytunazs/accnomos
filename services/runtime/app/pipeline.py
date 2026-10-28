@@ -216,6 +216,7 @@ async def process_image(
         suggested_filename=suggested_filename(doc, file_mime or mime or "image/jpeg"),
         journal_draft=draft_journal(doc),
         model=f"{meta['backend']}:{meta['model']}",
+        served_by=meta.get("served"),
         verification=verification,
         repaired_by_code=[c.message for c in repairs if c.code in REPAIR_CODES],
         elapsed_s=round(time.perf_counter() - t0, 3),

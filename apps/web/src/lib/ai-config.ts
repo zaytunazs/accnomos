@@ -58,7 +58,7 @@ export function shortModelName(model: string): string {
  * Muse Spark on your key, or the stub the tests point at.
  */
 export function aiLabel(cfg: AiConfig | null): string {
-  if (cfg === null) return "AI: local Meta agent (Glimmer 30B)";
+  if (cfg === null) return "AI: the server's Meta models"; // its provider chain (/models), or its single default
   if (/stub/i.test(cfg.model)) return "AI: stub answers (test mode)";
   if (cfg.mode === "key") return `AI: Muse Spark key (${cfg.model.trim() || "muse-spark-1.3"})`;
   return `AI: ${shortModelName(cfg.model)} on your machine`;

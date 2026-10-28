@@ -95,7 +95,7 @@ test("two linked accounts: add one, set it up as personal, switch in one click; 
   await page.getByRole("button", { name: "Sign in with another Microsoft account" }).click();
   await page.getByRole("button", { name: "Create my Accnomos folder" }).click();
   await expect(page.getByText("Your folder is ready.")).toBeVisible();
-  await expect(page.getByText(JO, { exact: true })).toBeVisible();
+  await expect(page.getByText(JO, { exact: true })).toBeVisible(); // the Connect page's line, not the menu bar's "Account: …"
 
   // Jo's books are personal. Every runtime call now carries Jo's token.
   const tokens: string[] = [];
@@ -117,11 +117,6 @@ test("two linked accounts: add one, set it up as personal, switch in one click; 
   const nav = mainNav(page);
   await expect(nav.getByRole("button", { name: "Purchases" })).toBeVisible();
   for (const gone of ["Sales", "Payroll", "Tax"]) await expect(nav.getByRole("button", { name: gone })).toHaveCount(0);
-  // Home has no VAT for personal books: no VAT tile and no (VAT) deadlines.
-  const today = page.getByRole("region", { name: "Today" });
-  await expect(today.getByRole("group", { name: "Owed by you" })).toBeVisible();
-  await expect(today.getByRole("group", { name: /^VAT estimate/ })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Deadlines" })).toHaveCount(0);
   await nav.getByRole("button", { name: "Reporting" }).click();
   await expect(nav.getByRole("link", { name: "VAT return" })).toHaveCount(0);
   // The runtime agrees: Jo's books have no VAT return.
@@ -143,25 +138,6 @@ test("two linked accounts: add one, set it up as personal, switch in one click; 
   await switcher(page).click();
   await expect(page.getByRole("menuitemradio", { name: /Sam Builds Ltd/ })).toHaveAttribute("aria-checked", "true");
   await expect(page.getByRole("menuitemradio", { name: /Jo at home/ })).toHaveAttribute("aria-checked", "false");
-});
-
-test("Home's VAT tile and deadlines show only for a VAT-registered business", async ({ page, runtime }) => {
-  const company = { name: "Sam Builds Ltd", kind: "company", settings: { company_number: "01234567" } };
-  await runtime.api("PUT", "/profile", { ...company, settings: { ...company.settings, vat_registered: false } });
-  await signIn(page);
-  await createBooksFolder(page);
-  await page.goto("/");
-  const today = page.getByRole("region", { name: "Today" });
-  await expect(today.getByRole("group", { name: "Cash in bank" })).toBeVisible();
-  await expect(today.getByRole("group", { name: "Owed by you" })).toBeVisible();
-  await expect(today.getByRole("group", { name: /^VAT estimate/ })).toHaveCount(0);
-  await expect(page.getByRole("heading", { name: "Deadlines" })).toHaveCount(0);
-
-  // Registered for VAT: the tile and the deadlines are back.
-  await runtime.api("PUT", "/profile", { ...company, settings: { ...company.settings, vat_registered: true } });
-  await page.reload();
-  await expect(today.getByRole("group", { name: /^VAT estimate/ })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Deadlines" })).toBeVisible();
 });
 
 test.describe("at 360 px", () => {

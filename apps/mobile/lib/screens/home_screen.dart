@@ -10,6 +10,7 @@ import '../theme.dart';
 import 'bank_screen.dart';
 import 'home_cards.dart';
 import 'invoices_screen.dart';
+import 'month_end_screen.dart' show MonthEndCard;
 import 'review_screen.dart';
 import 'sample_books_card.dart';
 import 'settings_screen.dart';
@@ -238,6 +239,13 @@ class _HomeScreenState extends State<HomeScreen> {
               auth: _auth,
               account: _account,
             ),
+          if (signedIn && _settings != null) ...[
+            const SizedBox(height: 12),
+            MonthEndCard(
+              clientFor: () => booksClient(_settings!, _auth, _account),
+              refresh: _refresh,
+            ),
+          ],
           if (!signedIn) ...[
             const SizedBox(height: 20),
             FilledButton(

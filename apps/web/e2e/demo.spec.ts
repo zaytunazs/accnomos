@@ -70,7 +70,7 @@ for (const vp of VIEWPORTS) {
         await expect(page.getByText("Wednesday 4 November")).toBeVisible();
         await expect(page.getByText("SAMPLE — FICTIONAL COMPANY")).toHaveCount(0); // signed in: the account's own, empty books
         if (!phone) {
-          // Signed in, the AI the books are read with is in the menu bar's account menu (ProfileMenu.tsx).
+          // Signed in, the AI line is in the menu bar's Account menu (ProfileMenu.tsx), not a sidebar.
           await page.getByRole("button", { name: /^Account: / }).click();
           await expect(page.getByRole("menu", { name: "Account" }).getByText("AI: stub answers (test mode)")).toBeVisible();
           await page.keyboard.press("Escape");

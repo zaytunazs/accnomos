@@ -88,7 +88,7 @@ function NumberBlock({ tile }: { tile: Tile }) {
   return (
     <div role="group" aria-label={tile.label}>
       <p className="min-h-5 text-sm font-semibold text-muted">{tile.label}</p>
-      <p className={`mt-1 min-h-8 text-2xl font-extrabold tracking-tight tabular-nums ${valueClass}`}>{tile.value}</p>
+      <p className={`mt-1 min-h-8 text-[28px] leading-tight font-extrabold tracking-tight tabular-nums sm:text-3xl ${valueClass}`}>{tile.value}</p>
       {tile.href ? (
         <Link href={tile.href} className={`mt-1 inline-block hover:underline ${subClass}`}>
           {tile.sub}

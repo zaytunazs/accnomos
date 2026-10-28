@@ -258,9 +258,36 @@ _INVOICE_WORDS = re.compile(
 )
 
 
+_QTY = r"(?:(?P<qty>\d+)\s*(?:x|×|rolls? of|packs? of|boxes of|of)?\s+)?"
+_FOR_JOB = r"(?:\s+for\s+(?:the\s+)?(?P<job>.+?)\s+job)?"
+_SHOPPING_WORDS = (
+    re.compile(
+        rf"^\s*(?:please\s+)?add\s+{_QTY}(?P<item>.+?){_FOR_JOB}\s+to\s+(?:my|the)\s+shopping\s+list"
+        rf"{_FOR_JOB.replace('job>', 'job2>')}[.!]?\s*$",
+        re.I,
+    ),
+    re.compile(
+        rf"^\s*(?:please\s+)?(?:remember to|remind me to|i need to)\s+(?:order|buy|get)\s+{_QTY}(?P<item>.+?)"
+        rf"{_FOR_JOB}[.!]?\s*$",
+        re.I,
+    ),
+)
+
+
 def intent_reply(question: str) -> dict[str, Any]:
-    """The words of "send a £100 invoice to JM Trading [for …]" copied into the intent; anything else is `none`."""
+    """The words of "send a £100 invoice to JM Trading [for …]" or "add [6] packing tape to my shopping list" copied
+    into the intent; anything else is `none`."""
     fields: dict[str, Any] = dict.fromkeys(actions.IntentModelOutput.model_fields)
+    for rx in _SHOPPING_WORDS:
+        if shop := rx.match(question):
+            job = shop.groupdict().get("job") or shop.groupdict().get("job2")
+            return {
+                **fields,
+                "kind": "add_to_shopping_list",
+                "item_text": shop["item"],
+                "quantity_text": shop["qty"],
+                "job_ref": job,
+            }
     m = _INVOICE_WORDS.match(question)
     if m is None:
         return {**fields, "kind": "none"}
@@ -272,6 +299,24 @@ def intent_reply(question: str) -> dict[str, Any]:
         "description": m["description"],
         "send": bool(m["send"]),
     }
+
+
+def spending_reply(content: str) -> dict[str, Any]:
+    """A summary quoting only figures from the spending facts (app/ai/spending.py checks every one)."""
+    facts = json.loads(content.split("FACTS:\n", 1)[1])
+    t = facts["this_period"]
+    answer = f"You spent £{t['spent']} before VAT in {t['label']} across {t['purchases']} purchases."
+    if t["by_category"]:
+        answer += f" Most went on {t['by_category'][0]['name']}."
+    if facts["recurring"]:
+        answer += f" {facts['recurring'][0]['supplier']} is a regular cost."
+    return AskExplanation(answer_md=answer, confidence="high").model_dump()
+
+
+def items_reply(content: str) -> dict[str, Any]:
+    """Deterministic same-product verdicts (app/ai/items.py): every numbered pair is "same"; code's rules decide."""
+    pairs = re.findall(r"^(\d+)\. ", content, re.MULTILINE)
+    return {"verdicts": [{"pair": int(n), "same": True} for n in pairs]}
 
 
 # --------------------------------------------------------------------------- #
@@ -454,7 +499,17 @@ async def _seed_demo(s: State) -> None:
     s.contacts.contacts.append(DEMO_CUSTOMER.model_copy(deep=True))  # one per tenant: workers never share an object
 
 
-SEEDS = {"bank": _seed_bank, "demo": _seed_demo}  # opt-in: they change the VAT figures or the date other flows check
+async def _seed_purchases(s: State) -> None:
+    """A few months of approved purchases with line items (app/sample_purchases.py), for Spending, Cheaper options
+    and the shopping list."""
+    from app.books import Books
+    from app.sample_purchases import seed_purchases
+
+    await seed_purchases(Books(s.storage))
+
+
+#: Opt-in: they change the VAT figures or the date other flows check.
+SEEDS = {"bank": _seed_bank, "demo": _seed_demo, "purchases": _seed_purchases}
 
 
 async def reset(seed: str | None = None) -> dict[str, Any]:
@@ -639,6 +694,14 @@ def bank_ai_reply(content: str) -> dict[str, Any]:
     return {"account": account, "vat_code": "N", "contact": None, "reason": "Test stub coding: no real model ran."}
 
 
+def close_reply(content: str) -> dict[str, Any]:
+    """The month-end summary (app/ai/close_summary.py) in words that quote only the counts it was given."""
+    facts = json.loads(content.split("FACTS:\n", 1)[1])
+    needs, blocking = facts["needs_you"], facts["blocking"]
+    text = f"Test stub summary for {facts['month']}: {needs} to look at, {blocking} blocking the close."
+    return {"summary_md": text}
+
+
 def duplicate_reply(content: str) -> dict[str, Any]:
     """Deterministic duplicate judgement (app/ai/duplicates.py): same, keeping the first name listed."""
     first = re.search(r'^1\. "([^"]+)"', content, re.MULTILINE)
@@ -657,6 +720,10 @@ def public_chat_reply(content: str) -> dict[str, Any]:
         return {"answerable": False, "answer": "", "sections": []}
     first = re.split(r"(?<=[.!?])\s+", m.group(2).strip())[0]
     return {"answerable": True, "answer": f"{first} (Test stub answer: no real model ran.)", "sections": [m.group(1)]}
+@router.api_route("/ai/down/{rest:path}", methods=["GET", "POST"])
+async def ai_down(rest: str) -> JSONResponse:
+    """A provider that is down (ACCNOMOS_TEST_AI_DOWN, app/ai/providers.py): every call answers 503."""
+    return JSONResponse({"error": f"stub AI: this provider is down ({rest})"}, status_code=503)
 
 
 @router.post("/ai/api/chat")
@@ -679,6 +746,17 @@ async def ai_chat(request: Request) -> JSONResponse:
         facts = json.loads(messages[-1]["content"].split("FACTS:\n", 1)[1])
         line = f"Your bank is {facts['bank_balance_today']} today and {facts['balance_in_90_days']} in 90 days."
         return JSONResponse(_ollama({"line": line}))
+    from app.ai import close_summary
+
+    if system == close_summary.SYSTEM_PROMPT:
+        return JSONResponse(_ollama(close_reply(messages[-1]["content"])))
+    from app.ai import items as items_ai
+    from app.ai import spending as spending_ai
+
+    if system == spending_ai.SYSTEM_PROMPT:
+        return JSONResponse(_ollama(spending_reply(messages[-1]["content"])))
+    if system == items_ai.SYSTEM_PROMPT:
+        return JSONResponse(_ollama(items_reply(messages[-1]["content"])))
     images = [img for m in messages for img in (m.get("images") or [])]
     if system == actions.INTENT_PROMPT:
         return JSONResponse(_ollama(intent_reply(messages[-1]["content"])))

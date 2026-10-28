@@ -28,6 +28,11 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - The browser flow (connect → obligations → declaration → submit → receipt in `06 VAT returns/`) is built and type-checked but has **not been run end to end** against HMRC's sandbox. Relay tests mock HMRC.
 - **The runtime holds no HMRC token, so it learns obligations second-hand.** When connected, the web app fetches HMRC's obligations through the relay and posts them to `POST /books/vat/obligations` (stored in `_System/vat/obligations.json`). `/books/vat/periods` and `/books/vat` then mark a period submitted when HMRC says fulfilled (source `hmrc`, with HMRC's period key, due date and received date) or when our own receipt exists (source `accnomos`); a fulfilled period cannot be submitted again from the web. Dates that match none of our periods warn in plain English (our stagger differs from HMRC's). Until the web app has fetched the list, a return filed elsewhere still shows as open — and the whole round trip is **sandbox-only and untested against the live sandbox until the owner signs in** (built and type-checked against a faked relay; relay tests mock HMRC).
 - The runtime's own period key (`26A4` style, saved as `calculated_for`) is still a placeholder; HMRC's key is used on `/books/vat` and `/books/vat/periods` when its dates match, and submission uses HMRC's key. For monthly returns all three months of a quarter get the same placeholder.
+- **Self-employment (MTD Income Tax) is sandbox only and has never been run against HMRC.** The relay routes (`services/hmrc-relay/relay/itsa.py`), the runtime figures (`services/runtime/app/itsa.py`) and the `/self-employment` page were built and tested on 28 Oct 2026 against fakes that answer with HMRC's own published example payloads; no call was made to HMRC's sandbox (or production) from this machine, and no sandbox credentials were present. Against a production `HMRC_BASE` every Income Tax route answers 403 unless `RELAY_ITSA_PRODUCTION=1` is also set; nothing sets it. HMRC has also stopped taking production credential requests for new 2026–27 quarterly-update products (warning on the Individual Calculations page, 28 Oct 2026).
+- **The figures are as approved, not cash basis.** Each cumulative update adds up approved entries by their dates (invoices when raised, receipts when bought). Since 6 April 2024 HMRC treats sole traders as on the cash basis unless they opt out (gov.uk/simpler-income-tax-cash-basis), so for most sole traders these figures will differ from what they should send until a cash-basis view exists. The page and the PDF say so.
+- **Account-to-box mapping is by account code and a few name words** (`app/itsa.py`: entertainment, depreciation, subcontractors, bad debts, interest, repairs). There is no private-use split: disallowable means client entertainment and depreciation in full, plus accounts named "disallowable", "private" or "personal". Consolidated expenses (turnover under £90,000) are accepted by the relay but never produced; Accnomos always itemises. Other tax taken off trading income, CIS deductions, annual adjustments, allowances, losses and the end-of-period statement are not sent.
+- **Tax and NI shown on the page are HMRC's, copied from its calculation response, never Accnomos's.** If HMRC leaves a figure out the page shows a dash. The calculation summary picks fields from Individual Calculations 8.0 by name; a version change could move them.
+- Final declaration: built (HMRC's declaration text word for word, checked in relay, runtime and web by a test) but only exercised against a fake. The page does not check that every quarterly update and the annual submission are in before offering it; HMRC does.
 - `GET /books/vat` accepts `?today=`, so a client can move "current" and with it `can_submit`; the web gate is advisory and HMRC decides what can be filed.
 - No flat-rate scheme, no annual accounting scheme, no fuel scale-charge calculation.
 - The runtime's "today" is the **London date** (`books.today()`, Europe/London via `zoneinfo` + `tzdata`): `GET /audit` `from`/`to` filter by London day too. Both clients send `today` to the dashboard, so this mostly affects direct API callers and chat actions.
@@ -51,6 +56,13 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 
 ## Models
 
+- **Provider chain (`AI_PROVIDERS=modal,meta,spark`) is tested on fake transports only.** Failover order, the circuit breaker, no failover on our own 4xx, the user's own key staying single, the record of who served each result, `/ai/health` and `/ai/warm` are unit-tested with `httpx.MockTransport`; the e2e suite runs the chain with every provider pointed at the stub AI. No request from this branch has reached Modal, the Meta Model API or the Spark. Not measured: the Modal cold start inside the runtime (the 60-120 s figure is from the eval runs on Modal), and whether 150 s covers it under load.
+- **Muse Spark on the Meta Model API is still not run in our evals**, so as the second provider it is unmeasured: its accuracy and latency on the 200 gold documents are unknown. The chain's quality numbers on `/models` are Glimmer's and Spark Open's.
+- **A document read by Modal and verified by Modal is Glimmer checking Glimmer** (same model, different prompt) unless the owner sets `BASETEN_API_KEY`, in which case Spark Open verifies first.
+- **The chain sends documents to third parties the user did not pick.** A request with no AI choice now goes to Modal (the owner's workspace) or the Meta Model API (the owner's key) before the Spark. Before the chain the same request went to the server's single default. Inbox triage still uses only a backend the user chose (`routes_mail.chosen_ai`).
+- **The Modal health line is a guess unless `AI_HEALTH_PROBE_MODAL=1`:** "warm" means a call succeeded in the last 5 minutes, "idle" means none did; probing for real would start a paid GPU container each minute someone has `/models` open.
+- **`/ai/calls` is shared across all users of one runtime** (provider, model, task, latency only; no content, no user id) and lives in memory: a restart or a second worker shows a different list. The circuit breaker is per process too.
+- **`MODAL_KEEP_WARM` is untested:** it uses Modal's documented `Function.autoscaler.update(min_containers=...)` from two scheduled functions; it has not been deployed. The price ($1.95/h for the L40S) is Modal's list price on 28 Oct 2026, not a measured bill.
 - **Verifier needs a Baseten key.** Muse Spark Open runs only in key mode and only if the server owner sets `BASETEN_API_KEY`; the demo deployment now sets one. Without one, key mode verifies with the request's model (muse-spark-1.3 by default) and local mode with Glimmer. The server has a Baseten key since 27 Oct 2026, and a real call through `ai/verify.py` read a gold receipt correctly in 7 s; the eval over the 200 gold receipts has landed: all fields right 91 % clean (`evals/runs/spark_open_200`) and 93 % messy (`evals/runs/spark_open_messy_200`), about 13 s per document. No real Meta (muse-spark-1.3) verifier call has been made. The Baseten model id `meta-models/muse-spark-open` is the one Baseten's `/v1/models` lists (checked 27 Oct 2026).
 - The verifier's catch rate is small and measured on synthetic documents only: over 200 clean plus 200 messy documents Spark Open caught 1 wrong reading, missed 6 (both readings agreed on a wrong figure) and raised 11 false alarms; Glimmer checking Glimmer caught 8, missed 4 and raised 44 (`docs/submission/META_MODELS.md`). The first run, Glimmer checking Glimmer on 20 documents, had 0 extra catches. Mixed-rate receipts give false alarms (it reads the standard-rated subtotal as net); the prompt needs a mixed-rate hint. All six fields are decisive, which is stricter than the original brief.
 - The card cannot adopt the second reading: on a disagreement the user can approve the first reading or reject.
@@ -162,6 +174,33 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - Two Applies at the same moment can both create events (no lock in a stateless runtime). Planner: Europe/London only, travel times are rules of thumb by postcode district, only VAT returns count as "due", the *Visit length* input caps at 12 h in the web (runtime 24 h), *Plan a day with these jobs* sends every open job.
 - Mileage proposals from the planner appear only when active vehicles exist, use the first active vehicle, and write nothing.
 
+## Month-end close
+
+- **Run on fakes only**: unit tests on the in-memory OneDrive (`services/runtime/tests/test_month_end.py`) and the e2e
+  spec on the test runtime (`apps/web/e2e/month-end.spec.ts`), never against a real OneDrive or mailbox. How long a run
+  takes on a large real book through Graph is unmeasured; it reads the whole ledger and every bank line once.
+- **Closing does not lock anything.** Nothing stops a receipt, bank line or undo being dated into a closed month: the
+  app detects it afterwards (snapshot hash), says what changed with before/after figures and offers a re-close. The
+  snapshot and close record are plain files in the user's OneDrive: not signed, so an edit made there by hand would be
+  reported as a change, or could forge a record.
+- Bank coverage is inferred from the dates of the lines in each imported statement (statement files carry no period).
+  A run of up to 3 days without a statement at a month edge or between two statements is taken as days without
+  transactions; a longer quiet spell shows as a missing statement. Balances are compared only between consecutive
+  statements of one bank, and only when both carry running balances. Banks are told apart by the file name
+  (`<date>_<bank>.csv`), so two accounts at one bank are treated as one.
+- There is no suspense account in the chart: "uncategorised" means a balance on `7999 Sundry expenses`, where costs
+  with no better category go. Duplicates are the same counterparty, amount and day; "unusual" is over 3× the
+  supplier's median of at least three earlier purchases and £100 over it. Rules of thumb, not an audit.
+- Outlook is only read in a dry run (what intake *would* copy), and only when the app says intake is on; copying is
+  still the user's *Check now*. Documents in `00 Inbox` always block, because their dates are unknown until scanned.
+- Cards expire after 15 minutes and are not stored; reloading the page shows the last run without its cards (run again).
+  The VAT step shows the boxes for the period the month ends; filing stays on the VAT page. Corrections to a submitted
+  period follow the existing Undo rule; anything else (HMRC's error-correction rules) is not handled.
+- The balance sheet is the trial balance by account code with the profit to date in place of retained earnings; no
+  opening balances, accruals or prepayments.
+- The phone is read only (the last run, its summary and changes since the close) and its widget tests were written in
+  this branch and not run here (no Flutter SDK); the web streams the steps, the phone does not.
+
 ## Load sample books
 
 - **Never run against a real OneDrive.** *Load sample books* (`POST /books/sample`) and the seed it runs have only run on the in-memory fake OneDrive (`test_sample_books.py`, the e2e spec). **How long it takes against Graph is unmeasured.** On the fake the whole seed makes about 11,300 storage calls (most of them folder listings and reads behind each approval), and each is roughly one Graph request, so at a few tenths of a second each it could take well over half an hour, more than a token lasts; throttling (429s are retried) is untested there. (`tools/seed_demo.md` said "several hundred Graph calls"; corrected.)
@@ -181,6 +220,16 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - **Sessions are in one runtime process's memory.** A restart ends every demo, and with several runtime processes a session would exist in one only. The limits (200 sessions, 2 h idle, 20 MB per session, 512 MB in all) are per process.
 - The demo's mailbox, Outlook address book and calendar are small fictional stand-ins (two messages, two contacts, one event), not the seed's.
 - **Android has no *Try the demo* button yet.** The phone calls Graph itself (`apps/mobile/lib/services/graph.dart`) for capture, Review and Files, so a demo needs those calls pointed at `/demo/graph/` too; left for later. It can use the runtime's demo API as the web does.
+
+## Spending, cheaper options, shopping list
+
+- **Only the user's own books.** Price comparisons cover suppliers already in the ledger, from the line items of approved receipts and bills. No shop, marketplace or price site is searched or scraped. A live price search is an interface (`app/price_search.py`) switched off by default (`PRICE_SEARCH_PROVIDER` empty); the only provider that exists is a test fake, which refuses to run outside test mode. No real provider has been chosen, wired or tested, and the UI says "Live price search is off".
+- **Line items are only as good as the reading.** Entries posted by hand or by a bank rule have no lines; a reader that misses a pack size ("6 pack") makes the price per item six times too high. Normalisation is regular expressions for mm/cm/m, g/kg, ml/l, "pack of", "6x1.5L", "10pk", "pair" and 17 colour words; feet, inches, "dozen" and brands are not understood, and units written as words ("fifty metres") are not read.
+- **"Same product" is narrow by design.** Code joins only the same name words, size and colour; two names are joined only by the user, or by the model where code's size rules agree, and the model's view is never stored. The model's same-product judgement has run on the test stub only. Equivalence allows a different colour (noted) but not a different measure or a width more than 10 % off.
+- **Savings are hindsight, not a forecast.** "Could save" is (average paid − lowest paid in the books) × the usual monthly volume over up to 12 months; it ignores delivery, minimum orders, stock, quality and price changes since. A live offer's saving (when a search is on) is labelled with its source and time and says to check it before buying.
+- **Spending summary**: the figures are code's; the model's words pass Ask's number check (every figure must be in the facts; a previous-period figure must name its period), so it shares Ask's limits: a figure that exists in both periods cannot be told apart. Recurring and unusual rules are fixed thresholds (3 months, £100, 3× the median), not learnt. Spend is before VAT. Run on the stub model only.
+- **Voice**: "Remember to order 2-inch bolts for the Hendon job" is tested through `/books/ask/voice` with a stubbed transcription and test mode's pattern-based intent stub, not with Muse Voice or a real model; how well Glimmer or Spark fill `item_text` and `job_ref` from such sentences is unmeasured. A size in inches is part of what the item is (2-inch and 3-inch bolts are different products), not its unit of price.
+- **Shopping list**: one list per books folder, at most 300 items, rewritten whole (an ETag conflict re-reads and retries). Turning it into a purchase order or a supplier email is not built; the buttons are disabled. Android has no screens for these features.
 
 ## Files, Books.xlsx, dashboard
 

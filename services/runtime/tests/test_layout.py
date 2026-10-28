@@ -98,6 +98,27 @@ async def test_old_and_new_side_by_side_are_left_alone_and_reported(fake: FakeSt
     assert ("05 VAT returns", "06 VAT returns") not in {(m.old, m.new) for m in status.moved}
 
 
+class _Yielding(FakeStorageProvider):
+    """Lets other requests run between listing the folder and moving in it, as Graph's round trips do."""
+
+    async def list(self, path: str):  # noqa: ANN201
+        await asyncio.sleep(0)
+        return await super().list(path)
+
+
+async def test_two_requests_checking_at_once_both_succeed_and_rename_once() -> None:
+    fake = _Yielding()
+    await _old_books(fake)
+    await fake.write("06 VAT returns/2026-Q4/return.json", b"new")
+    first, second = await asyncio.gather(layout.migrate(Books(fake)), layout.migrate(Books(fake)))
+    assert "04 Bank statements/2026-09-30_starling.csv" in fake.files
+    assert not any(f.startswith("03 Bank statements") for f in fake.files)
+    moved = [(m.old, m.new) for s in (first, second) for m in s.moved]
+    assert moved.count(("03 Bank statements", "04 Bank statements")) == 1  # one of them did it, once
+    for status in (first, second):  # and each still reports what needs a person
+        assert ("05 VAT returns", paths.VAT_RETURNS) in {(c.old, c.new) for c in status.conflicts}
+
+
 async def test_idempotent(fake: FakeStorageProvider, books: Books) -> None:
     await _old_books(fake)
     await layout.migrate(books)
