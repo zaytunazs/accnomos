@@ -352,6 +352,7 @@ def reversal_of(event: LedgerEvent, user: str, on: date | None = None) -> Ledger
         reverses=event.id,
         net=event.net,
         vat=event.vat,
+        reverse_charge_vat=event.reverse_charge_vat,
         counterparty=event.counterparty,
     )
 
