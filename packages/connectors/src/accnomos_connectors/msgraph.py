@@ -4,6 +4,11 @@ Addressing (paths are relative to the Accnomos books root):
 
 * personal -> the app folder: `/me/drive/special/approot` and `/me/drive/special/approot:/{path}`
 * work     -> a plain folder: `/me/drive/root:/Accnomos` and `/me/drive/root:/Accnomos/{path}`
+* shared   -> someone else's books folder shared with the caller (an accountant opening a client):
+              `/drives/{drive-id}/items/{item-id}` and `/drives/{drive-id}/items/{item-id}:/{path}`, path-addressed
+              relative to the shared folder's item id (Microsoft Learn, "Address resources in a drive on OneDrive",
+              https://learn.microsoft.com/graph/onedrive-addressing-driveitems, checked 28 Oct 2026). Needs a
+              `Files.Read.All` / `Files.ReadWrite.All` token: items in another drive are not reachable otherwise.
 
 Folders are always created with `POST /me/drive/items/{parentId}/children`: creating children
 via `/me/drive/special/approot/children` returns 400 (verified live). Item ids are cached per
@@ -32,12 +37,18 @@ from accnomos_connectors.base import (
     ConflictError,
     ContactsProvider,
     FileRef,
+    Identity,
     MailAttachment,
     MailDraft,
     MailMessage,
     MailProvider,
     MailSender,
     OutgoingMail,
+    SharedFolder,
+    SharedRoot,
+    SharePermission,
+    ShareRole,
+    SharingProvider,
     StorageProvider,
 )
 
@@ -64,6 +75,16 @@ def _safe_path(path: str) -> str:
         if (segment and not segment.strip(" .")) or any(ord(c) < 0x20 or ord(c) == 0x7F for c in segment):
             raise ValueError(f"unsafe storage path {path!r}")
     return path
+
+
+_ID = re.compile(r"[A-Za-z0-9!._~-]{1,256}")
+
+
+def _safe_id(value: str, what: str = "id") -> str:
+    """A drive or item id goes into the URL path as-is: only the characters Graph ids use (`b!…`, `ABC!123`)."""
+    if not _ID.fullmatch(value or ""):
+        raise ValueError(f"unsafe {what} {value!r}")
+    return value
 
 
 def _join(parent: str, name: str) -> str:
@@ -174,11 +195,17 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
         *,
         client: httpx.AsyncClient | None = None,
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+        shared: SharedRoot | None = None,
     ) -> None:
         if account_kind not in ("personal", "work"):
             raise ValueError(f"account_kind must be 'personal' or 'work', not {account_kind!r}")
         super().__init__(token, client=client, sleep=sleep)
         self.account_kind: AccountKind = account_kind
+        self.shared = (
+            SharedRoot(drive_id=_safe_id(shared.drive_id, "drive id"), item_id=_safe_id(shared.item_id, "item id"))
+            if shared
+            else None
+        )
         self._folders: dict[str, dict[str, Any]] = {}  # books-relative path -> drive item
         self._root_drive_path: str | None = None  # e.g. '/Apps/Accnomos' once ensure_root has run
 
@@ -189,6 +216,11 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
     def _item_url(self, path: str, action: str = "") -> str:
         """Path-addressed item URL, optionally with an action such as 'content' or 'children'."""
         path = _safe_path(path.strip("/"))
+        if self.shared:
+            base = f"{GRAPH}/drives/{self.shared.drive_id}/items/{self.shared.item_id}"
+            if not path:
+                return base + (f"/{action}" if action else "")
+            return f"{base}:/{quote(path, safe='/')}" + (f":/{action}" if action else "")
         if self.account_kind == "personal":
             base = "/me/drive/special/approot"
             if not path:
@@ -198,7 +230,13 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
             url = f"{GRAPH}/me/drive/root:/Accnomos" + (f"/{quote(path, safe='/')}" if path else "")
         return url + (f":/{action}" if action else "")
 
+    def _items_url(self) -> str:
+        """`.../items` of the drive the books live in: the caller's own, or the shared folder's drive."""
+        return f"{GRAPH}/drives/{self.shared.drive_id}/items" if self.shared else f"{GRAPH}/me/drive/items"
+
     def _delta_url(self) -> str:
+        if self.shared:
+            return self._item_url("", "delta")
         if self.account_kind == "personal":
             return f"{GRAPH}/me/drive/special/approot/delta"
         return f"{GRAPH}/me/drive/root:/Accnomos:/delta"
@@ -208,6 +246,10 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
     # ------------------------------------------------------------------ #
 
     async def ensure_root(self) -> FileRef:
+        if self.shared:  # someone else's folder: never created from here; 404 when it is no longer shared
+            item = (await self._request("GET", self._item_url(""))).json()
+            self._folders[""] = item
+            return _to_ref(item, "")
         if self.account_kind == "personal":
             item = (await self._request("GET", self._item_url(""))).json()  # auto-creates Apps/<app>
         else:
@@ -228,9 +270,9 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
         _safe_path(name)
         body = {"name": name, "folder": {}, "@microsoft.graph.conflictBehavior": "fail"}
         try:
-            return (await self._request("POST", f"{GRAPH}/me/drive/items/{parent_id}/children", json=body)).json()
+            return (await self._request("POST", f"{self._items_url()}/{parent_id}/children", json=body)).json()
         except FileExistsError:
-            url = f"{GRAPH}/me/drive/items/{parent_id}:/{quote(name, safe='')}"
+            url = f"{self._items_url()}/{parent_id}:/{quote(name, safe='')}"
             return (await self._request("GET", url)).json()
 
     async def _folder(self, path: str) -> dict[str, Any]:
@@ -317,7 +359,7 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
         item = (await self._request("GET", self._item_url(path))).json()
         parent = await self._folder(_parent(new_path))
         body = {"parentReference": {"id": parent["id"]}, "name": new_path.rsplit("/", 1)[-1]}
-        moved = (await self._request("PATCH", f"{GRAPH}/me/drive/items/{item['id']}", json=body)).json()
+        moved = (await self._request("PATCH", f"{self._items_url()}/{item['id']}", json=body)).json()
         if "folder" in item:  # a renamed folder: cached lookups under the old path are gone
             self._folders = {p: v for p, v in self._folders.items() if p != path and not p.startswith(f"{path}/")}
             self._folders[new_path] = moved
@@ -349,6 +391,135 @@ class GraphStorageProvider(_GraphHttp, StorageProvider):
                 return changed, page["@odata.deltaLink"]
             url = page.get("@odata.nextLink")
         raise GraphError(200, "delta response had neither nextLink nor deltaLink")
+
+
+class GraphSharingProvider(_GraphHttp, SharingProvider):
+    """Share the books folder with an accountant, and find the books folders shared with an accountant.
+
+    Microsoft Learn, checked 28 Oct 2026:
+
+    * `POST /drives/{drive-id}/items/{item-id}/invite` with `recipients`, `roles` (`read` | `write`),
+      `requireSignIn`, `sendInvitation`, `message` (max 2,000 characters); 200 (or 207 for a partial success) with a
+      collection of `permission` objects. Least privileged delegated scope **Files.ReadWrite** (work and personal);
+      `Files.ReadWrite.AppFolder` is not listed, and permissions cannot be created on the *root* item of a personal
+      drive (the app folder is not the root). https://learn.microsoft.com/graph/api/driveitem-invite
+    * `DELETE /drives/{drive-id}/items/{item-id}/permissions/{perm-id}`, 204; only non-inherited permissions;
+      Files.ReadWrite. https://learn.microsoft.com/graph/api/permission-delete
+    * `GET /me/drive/sharedWithMe` (`?allowexternal=true` for other tenants): driveItems with a `remoteItem` facet;
+      needs `Files.Read.All` to open what it lists. **Deprecated: "will operate in a degraded state until November,
+      2026, after which it will stop returning data"**, with no documented replacement, so the portal also keeps the
+      client links an accountant adds by hand. https://learn.microsoft.com/graph/api/drive-sharedwithme
+    """
+
+    async def books_root(self, account_kind: str) -> SharedRoot:
+        if account_kind == "personal":
+            item = (await self._request("GET", f"{GRAPH}/me/drive/special/approot")).json()
+        else:
+            resp = await self._request("GET", f"{GRAPH}/me/drive/root:/Accnomos", ok404=True)
+            if resp.status_code == 404:
+                raise FileNotFoundError("Accnomos")  # the books are made at onboarding, never by sharing
+            item = resp.json()
+        drive = (item.get("parentReference") or {}).get("driveId")
+        if not drive:  # the approot item does not always carry its drive id; the drive itself does
+            drive = (await self._request("GET", f"{GRAPH}/me/drive", params={"$select": "id"})).json()["id"]
+        return SharedRoot(drive_id=_safe_id(drive, "drive id"), item_id=_safe_id(item["id"], "item id"))
+
+    @staticmethod
+    def _item(root: SharedRoot, rest: str = "", path: str = "") -> str:
+        """The item, or `path` inside it path-addressed (`.../items/{id}:/{path}:/invite`)."""
+        base = f"{GRAPH}/drives/{_safe_id(root.drive_id, 'drive id')}/items/{_safe_id(root.item_id, 'item id')}"
+        path = _safe_path(path.strip("/"))
+        if path:
+            return f"{base}:/{quote(path, safe='/')}:{rest}"
+        return base + rest
+
+    async def invite(
+        self, root: SharedRoot, email: str, role: ShareRole, message: str, path: str = ""
+    ) -> SharePermission:
+        if role not in ("read", "write"):
+            raise ValueError(f"role must be 'read' or 'write', not {role!r}")
+        body = {
+            "recipients": [{"email": email}],
+            "roles": [role],
+            "requireSignIn": True,
+            "sendInvitation": True,
+            "message": message[:2000],
+        }
+        page = (await self._request("POST", self._item(root, "/invite", path), json=body)).json()
+        perms = page.get("value") or []
+        if not perms:
+            raise GraphError(200, "invite answered with no permission")
+        perm = perms[0]
+        if isinstance(perm.get("error"), dict) and not perm.get("id"):
+            raise GraphError(207, str(perm["error"].get("message") or perm["error"].get("code")))
+        invited = (perm.get("invitation") or {}).get("email") or email
+        return SharePermission(id=str(perm["id"]), roles=list(perm.get("roles") or [role]), email=invited)
+
+    async def revoke(self, root: SharedRoot, permission_id: str, path: str = "") -> bool:
+        resp = await self._request(
+            "DELETE", self._item(root, f"/permissions/{quote(permission_id, safe='')}", path), ok404=True
+        )
+        return resp.status_code != 404
+
+    async def shared_with_me(self) -> list[SharedFolder]:
+        url: str | None = f"{GRAPH}/me/drive/sharedWithMe?allowexternal=true"
+        out: list[SharedFolder] = []
+        while url:
+            page = (await self._request("GET", url)).json()
+            for item in page.get("value", []):
+                remote = item.get("remoteItem") or {}
+                drive = (remote.get("parentReference") or {}).get("driveId")
+                if "folder" not in remote or not drive or not remote.get("id"):
+                    continue  # files, and anything Graph sent without an address
+                if not (_ID.fullmatch(drive) and _ID.fullmatch(remote["id"])):
+                    continue
+                shared = remote.get("shared") or {}
+                owner = (shared.get("owner") or shared.get("sharedBy") or {}).get("user") or {}
+                when = shared.get("sharedDateTime")
+                out.append(
+                    SharedFolder(
+                        drive_id=drive,
+                        item_id=remote["id"],
+                        name=remote.get("name") or item.get("name") or "",
+                        owner=owner.get("email") or owner.get("displayName"),
+                        shared_at=_iso(when) if when else None,
+                        web_url=remote.get("webUrl"),
+                    )
+                )
+            url = page.get("@odata.nextLink")
+        return out
+
+    async def folder(self, root: SharedRoot) -> SharedFolder:
+        item = (await self._request("GET", self._item(root))).json()
+        if "folder" not in item:
+            raise FileNotFoundError(root.item_id)
+        shared = item.get("shared") or {}
+        owner = ((shared.get("owner") or {}).get("user") or {}) or ((item.get("createdBy") or {}).get("user") or {})
+        return SharedFolder(
+            drive_id=root.drive_id,
+            item_id=root.item_id,
+            name=item.get("name") or "",
+            owner=owner.get("email") or owner.get("displayName"),
+            web_url=item.get("webUrl"),
+        )
+
+    async def child_names(self, root: SharedRoot) -> set[str]:
+        url: str | None = self._item(root, "/children") + "?$select=name,folder"
+        names: set[str] = set()
+        while url:
+            page = (await self._request("GET", url)).json()
+            names |= {str(i.get("name")) for i in page.get("value", []) if i.get("name")}
+            url = page.get("@odata.nextLink")
+        return names
+
+    async def whoami(self) -> Identity:
+        me = (
+            await self._request("GET", f"{GRAPH}/me", params={"$select": "mail,userPrincipalName,displayName"})
+        ).json()
+        email = (me.get("mail") or me.get("userPrincipalName") or "").strip().lower()
+        if not email:
+            raise GraphError(200, "/me has neither mail nor userPrincipalName")
+        return Identity(email=email, name=me.get("displayName") or "")
 
 
 def _iso(dt: str | None) -> datetime:

@@ -312,6 +312,42 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - Run on fake storage only (unit tests and the e2e spec); no PDF or XLSX has been opened in a real viewer other than by the
   tests' parsers, and nothing has been saved to a real OneDrive.
 
+## Accountant collaboration
+
+Branch `claude/accountant`; review in `docs/reviews/accountant/REVIEW.md` (gates on that branch, 28 Oct 2026: runtime
+1432 passed, connectors 63, e2e 255 passed / 58 skipped, `flutter test` 274). **Nothing here has called Microsoft Graph**:
+every sharing call ran against httpx mocks shaped like the Microsoft Learn examples, or the test-mode fake sharing world.
+
+- **Sharing the personal app folder is documented, not tried.** `driveItem: invite` lists `Files.ReadWrite` as the least
+  privileged scope and forbids permissions only on a personal drive's *root* item; the app folder (`Apps/Accnomos`) is not
+  the root, and the app-folder page says it "supports all the standard item operations". So the web asks a personal
+  account for `Files.ReadWrite` (the whole OneDrive) when they invite someone. If Microsoft refuses anyway, the client is
+  told to share the folder in OneDrive by hand and record it ("I shared it myself"), or to use a work account; a
+  dedicated shared folder outside the app folder is **not built**.
+- **A view-only accountant's write access to `_System/queries`** is a second permission on a subfolder of a folder shared
+  read-only. OneDrive documents path-addressed items and per-item permissions; whether a child can be given more than its
+  parent on a personal OneDrive has not been tried.
+- **`sharedWithMe` is deprecated** and "will stop returning data" after November 2026, with no documented replacement
+  (Microsoft Q&A says so). The portal also lists client codes the accountant adds by hand (from the invitation email);
+  after November it depends on them. `?allowexternal=true` (other tenants) is sent; cross-tenant and personal ↔ work
+  sharing (a personal-account client, a work-account accountant) has not been tried.
+- **Identity**: the audit names the accountant by the email Graph `/me` gives for their token (needs `User.Read`, which
+  sign-in asks for). A ledger event's `approved_by` still comes from `X-User`, as everywhere, so an accountant's approval
+  is attributed by the audit line, not by the event. In test mode the identity is `X-User`.
+- **Read-only** is enforced by the runtime for a view-only open (403 before Graph) and by the client's OneDrive permission
+  otherwise. Inside a client the browser token has `Files.ReadWrite.All` (queries are writes); the accountant's app
+  registration must allow `Files.Read.All` and `Files.ReadWrite.All`, not yet added in Entra.
+- **The portal summary is the client's own word**: name, kind and VAT stagger come from the profile the client saved in
+  Settings › Your accountant (pre-filled from that device's business details); without one the portal shows the folder
+  name and "Not set by the client". Annual VAT accounting is not worked out. **MTD for Income Tax deadlines are not
+  shown**: gov.uk could not be reached from this session (blocked by the network policy), so the dates could not be
+  checked against the official source and were left out. "Last activity" reads only this and last month's audit files.
+- The browser's previews and file links inside a client read `/drives/{d}/items/{i}:/…`; the test-mode Graph look-alike
+  does not serve that address, so client previews are untested. Upload to Inbox and onboarding refuse inside a client.
+- Revoking stops future access; copies an accountant downloaded stay with them (the consent text says so). Microsoft
+  sends the invitation email (`sendInvitation: true`); its delivery and wording are Microsoft's and were not seen.
+- Android shows who has access and the query threads, read-only (More › Your accountant); answering is on the web.
+
 ## Android
 
 - `flutter analyze` is clean and `flutter test` passes (27 Oct 2026, incl. the payments sheets and Add from phone at 360 dp, now also the company look-up, VAT check, contact edit, review VAT gate and duplicates sheets at 360 dp); both now run on every Android merge; 0.3.4 adds the parity suite (bank-rule sheet, Your-data export, audit filters, web-link rows at 360 dp). Page-by-page parity: `apps/mobile/PARITY.md`. Nothing on the phone has been run on a real device.

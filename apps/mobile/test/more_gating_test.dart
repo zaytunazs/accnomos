@@ -40,7 +40,7 @@ void main() {
   test('features not known yet: every entry, as before profiles', () {
     expect(titles(null), [
       'Files', 'Contacts', 'Invoices', 'Jobs', 'Vehicles', 'Bank',
-      'Payroll', 'Month-end', 'Reports', 'Audit trail',
+      'Payroll', 'Month-end', 'Reports', 'Your accountant', 'Audit trail',
     ]);
     expect(reportsNote(null), contains('VAT'));
   });

@@ -343,6 +343,12 @@ async def test_no_graph_mail_or_calendar_client_is_built_in_a_demo(
     with pytest.raises(HTTPException) as refused:
         factory("a-linked-mailbox-token", None)  # type: ignore[arg-type]
     assert refused.value.status_code == 403 and "demo sandbox" in str(refused.value.detail)
+    # Accountant sharing is real OneDrive permissions: refused before any provider is built.
+    from app.routes_accountant import get_sharing
+
+    with pytest.raises(HTTPException) as no_sharing:
+        await get_sharing(req).__anext__()  # type: ignore[arg-type]
+    assert no_sharing.value.status_code == 403 and "demo sandbox" in str(no_sharing.value.detail)
 
     # The sender only records: nothing is sent.
     from accnomos_connectors.base import OutgoingMail
