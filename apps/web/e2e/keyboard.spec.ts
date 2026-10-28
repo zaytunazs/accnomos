@@ -16,6 +16,7 @@ interface Stop {
   role: string | null;
   ringed: boolean;
   inDialog: boolean;
+  segments: number; // Tab stops inside the element: Chromium tabs through a date field's three parts and its calendar button
 }
 
 /** The focused element, or null when focus is on the body or has left the page (browser UI). */
@@ -39,8 +40,12 @@ function focused(page: Page): Promise<Stop | null> {
       href: el.getAttribute("href"),
       nav: el.closest("nav")?.getAttribute("aria-label") ?? null,
       role: el.getAttribute("role"),
-      ringed: el.matches(":focus-visible") && (ring(el) || ring(el.closest(".focus-ring-within"))),
+      // A date field keeps focus on its calendar button without :focus-visible; globals.css rings it on :focus-within.
+      ringed:
+        (el.matches(":focus-visible") || (el instanceof HTMLInputElement && el.type === "date" && el.matches(":focus-within"))) &&
+        (ring(el) || ring(el.closest(".focus-ring-within"))),
       inDialog: !!el.closest("dialog[open]"),
+      segments: el instanceof HTMLInputElement && el.type === "date" ? 4 : 1,
     };
   });
 }
@@ -48,15 +53,18 @@ function focused(page: Page): Promise<Stop | null> {
 /** Press Tab (or Shift+Tab) until `want` holds. Each stop must be visibly focused and differ from the last. */
 async function tabTo(page: Page, want: (s: Stop) => boolean, what: string, { back = false, max = 80 } = {}): Promise<Stop> {
   let last: string | null = null;
+  let repeats = 0; // presses that stayed on the same element, moving between its segments
   for (let i = 0; i < max; i++) {
     await page.keyboard.press(back ? "Shift+Tab" : "Tab");
     const s = await focused(page);
     if (!s) {
       last = null; // focus went to the browser UI past the end of the page; the next Tab comes back in
+      repeats = 0;
       continue;
     }
     expect(s.ringed, `no visible focus on "${s.name}" (${s.key})`).toBe(true);
-    expect(s.key, `focus stuck on "${s.name}"`).not.toBe(last);
+    repeats = s.key === last ? repeats + 1 : 0;
+    expect(repeats, `focus stuck on "${s.name}"`).toBeLessThan(s.segments);
     last = s.key;
     if (want(s)) return s;
   }

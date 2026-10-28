@@ -22,7 +22,7 @@ Severity:
 | Low | `ruff` has not been run on `main`. |
 | Low | `POST /books/approve/{id}` is an alias kept for older web builds; remove it after the next deploy. |
 | Low | The one-time rename of old-named folders (`app/layout.py`) needs a run against a real OneDrive (personal and work), including a folder that is open in the OneDrive client. `POST /reports/export` writes `07 Reports/` from the web and Android, but only fake storage has been written in tests. |
-| Low | No web unit tests; pages are covered by `pnpm run build` and the Playwright suite, whose CI job has never run on GitHub. |
+| Low | No web unit tests; pages are covered by `pnpm run build` and the Playwright suite, which runs on GitHub as the `e2e` job of `.github/workflows/ci.yml`. |
 ## Read → approve → ledger, Undo, VAT return
 
 | Severity | Item |

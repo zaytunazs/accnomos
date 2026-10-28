@@ -27,6 +27,13 @@ body {
   outline-offset: 2px;
 }
 
+/* A date field's calendar button is a Tab stop inside the field, where the field itself is not :focus-visible
+   and Chromium draws only a thin box round the icon: ring the whole field while any part of it has focus. */
+:where(input[type="date"]):focus-within {
+  outline: 3px solid var(--color-teal-dark);
+  outline-offset: 2px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
