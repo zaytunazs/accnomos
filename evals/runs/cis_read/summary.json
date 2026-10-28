@@ -1,0 +1,283 @@
+{
+  "generated": "2026-10-28T13:10:49+00:00",
+  "model": "muse-glimmer:30b",
+  "base_url": "http://localhost:11434",
+  "stub": false,
+  "docs": 120,
+  "answered": 120,
+  "refusals": 0,
+  "refusal_pct": 0.0,
+  "checks_exact_pct": 93.3,
+  "all_exact_pct": 92.5,
+  "per_field": {
+    "kind": {
+      "scored": 120,
+      "correct": 118,
+      "accuracy_pct": 98.3
+    },
+    "supplier_name": {
+      "scored": 60,
+      "correct": 56,
+      "accuracy_pct": 93.3
+    },
+    "supplier_vat_number": {
+      "scored": 60,
+      "correct": 56,
+      "accuracy_pct": 93.3
+    },
+    "invoice_number": {
+      "scored": 60,
+      "correct": 57,
+      "accuracy_pct": 95.0
+    },
+    "invoice_date": {
+      "scored": 60,
+      "correct": 57,
+      "accuracy_pct": 95.0
+    },
+    "net": {
+      "scored": 60,
+      "correct": 56,
+      "accuracy_pct": 93.3
+    },
+    "vat_rate": {
+      "scored": 60,
+      "correct": 54,
+      "accuracy_pct": 90.0
+    },
+    "reverse_charge_vat": {
+      "scored": 60,
+      "correct": 57,
+      "accuracy_pct": 95.0
+    },
+    "reverse_charge_wording": {
+      "scored": 120,
+      "correct": 118,
+      "accuracy_pct": 98.3
+    },
+    "contractor_name": {
+      "scored": 60,
+      "correct": 60,
+      "accuracy_pct": 100.0
+    },
+    "subcontractor_name": {
+      "scored": 60,
+      "correct": 60,
+      "accuracy_pct": 100.0
+    },
+    "subcontractor_utr": {
+      "scored": 60,
+      "correct": 60,
+      "accuracy_pct": 100.0
+    },
+    "tax_month_end": {
+      "scored": 60,
+      "correct": 60,
+      "accuracy_pct": 100.0
+    },
+    "gross_amount": {
+      "scored": 60,
+      "correct": 58,
+      "accuracy_pct": 96.7
+    },
+    "materials": {
+      "scored": 60,
+      "correct": 59,
+      "accuracy_pct": 98.3
+    },
+    "amount_liable": {
+      "scored": 60,
+      "correct": 59,
+      "accuracy_pct": 98.3
+    },
+    "deduction": {
+      "scored": 60,
+      "correct": 59,
+      "accuracy_pct": 98.3
+    },
+    "net_paid": {
+      "scored": 60,
+      "correct": 59,
+      "accuracy_pct": 98.3
+    }
+  },
+  "by_kind": {
+    "cis_statement": {
+      "docs": 60,
+      "answered": 60,
+      "all_exact": 58,
+      "accuracy_pct": 96.7,
+      "checks_exact_pct": 98.3
+    },
+    "reverse_charge_invoice": {
+      "docs": 60,
+      "answered": 60,
+      "all_exact": 53,
+      "accuracy_pct": 88.3,
+      "checks_exact_pct": 88.3
+    }
+  },
+  "latency_s": {
+    "mean": 14.637,
+    "p50": 14.737,
+    "p95": 16.076,
+    "max": 16.487,
+    "total": 1756.4
+  },
+  "worst": [
+    {
+      "id": "R030",
+      "kind": "reverse_charge_invoice",
+      "wrong_fields": [
+        "invoice_date",
+        "invoice_number",
+        "net",
+        "reverse_charge_wording",
+        "supplier_name",
+        "supplier_vat_number",
+        "vat_rate"
+      ],
+      "checks_want": [
+        "RC_WORDING"
+      ],
+      "checks_got": [],
+      "problems": [
+        "No invoice date read",
+        "No net amount read",
+        "The VAT rate was not 20% or 5%",
+        "No supplier name read"
+      ]
+    },
+    {
+      "id": "R040",
+      "kind": "reverse_charge_invoice",
+      "wrong_fields": [
+        "invoice_date",
+        "invoice_number",
+        "kind",
+        "net",
+        "supplier_name",
+        "supplier_vat_number",
+        "vat_rate"
+      ],
+      "checks_want": [
+        "RC_WORDING"
+      ],
+      "checks_got": [],
+      "problems": [
+        "This does not look like a CIS statement or a reverse-charge invoice"
+      ]
+    },
+    {
+      "id": "R060",
+      "kind": "reverse_charge_invoice",
+      "wrong_fields": [
+        "invoice_date",
+        "invoice_number",
+        "kind",
+        "net",
+        "supplier_name",
+        "supplier_vat_number",
+        "vat_rate"
+      ],
+      "checks_want": [
+        "RC_WORDING"
+      ],
+      "checks_got": [],
+      "problems": [
+        "This does not look like a CIS statement or a reverse-charge invoice"
+      ]
+    },
+    {
+      "id": "R010",
+      "kind": "reverse_charge_invoice",
+      "wrong_fields": [
+        "reverse_charge_vat",
+        "supplier_name",
+        "supplier_vat_number",
+        "vat_rate"
+      ],
+      "checks_want": [
+        "RC_WORDING"
+      ],
+      "checks_got": [],
+      "problems": [
+        "The VAT rate was not 20% or 5%",
+        "No supplier name read"
+      ]
+    },
+    {
+      "id": "S031",
+      "kind": "cis_statement",
+      "wrong_fields": [
+        "amount_liable",
+        "deduction",
+        "gross_amount",
+        "materials",
+        "net_paid"
+      ],
+      "checks_want": [],
+      "checks_got": [],
+      "problems": [
+        "The gross amount or the deduction was not read"
+      ]
+    },
+    {
+      "id": "R020",
+      "kind": "reverse_charge_invoice",
+      "wrong_fields": [
+        "reverse_charge_vat",
+        "reverse_charge_wording",
+        "vat_rate"
+      ],
+      "checks_want": [
+        "RC_WORDING"
+      ],
+      "checks_got": [],
+      "problems": [
+        "The VAT rate was not 20% or 5%"
+      ]
+    },
+    {
+      "id": "R050",
+      "kind": "reverse_charge_invoice",
+      "wrong_fields": [
+        "reverse_charge_vat",
+        "vat_rate"
+      ],
+      "checks_want": [
+        "RC_WORDING"
+      ],
+      "checks_got": [],
+      "problems": [
+        "The VAT rate was not 20% or 5%"
+      ]
+    },
+    {
+      "id": "R016",
+      "kind": "reverse_charge_invoice",
+      "wrong_fields": [
+        "net"
+      ],
+      "checks_want": [],
+      "checks_got": [
+        "RC_VAT"
+      ],
+      "problems": []
+    },
+    {
+      "id": "S019",
+      "kind": "cis_statement",
+      "wrong_fields": [
+        "gross_amount"
+      ],
+      "checks_want": [],
+      "checks_got": [
+        "LIABLE",
+        "NET_PAID",
+        "RATE"
+      ],
+      "problems": []
+    }
+  ]
+}
