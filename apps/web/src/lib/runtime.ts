@@ -1698,6 +1698,8 @@ export interface RtDashboard {
   owed_to_you: (RtOwed & { overdue: number | null; overdue_pence: number | null; most_overdue_days: number | null }) | RtTileError | null;
   owed_by_you: RtOwed | RtTileError | null;
   vat: RtDeadlines | RtTileError | null;
+  /** False when the profile has no VAT (personal, or not VAT-registered): `vat` is null and Home shows no VAT. */
+  vat_applies?: boolean;
   attention: ({
     proposed: number;
     needs_a_look: number;

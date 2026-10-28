@@ -24,6 +24,7 @@ from accnomos_connectors.msgraph import GraphError
 from accnomos_ledger.bank import BankLine, reconciled_to
 from app import contacts as cb
 from app import invoicing
+from app import profile as profile_mod
 from app.books import AUDIT, AUTOPILOT_AUDIT, Books, bank_of
 from app.paths import upgrade
 from app.routes_vat import Deadlines, compute_deadlines
@@ -115,6 +116,9 @@ class Dashboard(BaseModel):
     owed_to_you: OwedToYou | TileError | None
     owed_by_you: Owed | TileError | None
     vat: Deadlines | TileError | None
+    #: False when these books' profile has no VAT (personal books, or a business that is not VAT-registered;
+    #: app/profile.py): `vat` is then null and Home shows no VAT tile or VAT deadlines.
+    vat_applies: bool = True
     attention: Attention | TileError | None
     activity: list[ActivityItem]
     runs: Runs
@@ -337,6 +341,20 @@ class _Reads:
         return TileError(error=TILE_ERROR) if self.failed.intersection(needs) else value
 
 
+async def _profile_or_default(books: Books) -> profile_mod.Profile:
+    """These books' profile (which features Home shows). A read that fails is the default profile, so Home looks as
+    it did before profiles; an auth failure still propagates (401), as in `_Reads.run`."""
+    try:
+        return await profile_mod.load(books)
+    except GraphError as exc:
+        if exc.status in (401, 403):
+            raise
+        log.warning("dashboard: profile.json could not be read; assuming the default profile")
+    except Exception:  # noqa: BLE001 - the profile only hides tiles; it must not take Home down
+        log.exception("dashboard: profile.json could not be read; assuming the default profile")
+    return profile_mod.default_profile()
+
+
 async def build(
     books: Books, today: date, first_vat_month: int, vat_months: int, *, vat_assumed: bool = False
 ) -> Dashboard:
@@ -351,7 +369,10 @@ async def build(
     # The ledger's parts are read on their own, so one hand-edited file only blanks the tiles that need it.
     # Every read is independent of the others, so they all go out in one wave (the request memo caps how many are
     # in flight); each is one Graph round trip per file.
-    (events, proposals, bank_lines, records), (invoices, audit, autopilot, last_scan) = await asyncio.gather(
+    (
+        (events, proposals, bank_lines, records),
+        (invoices, audit, autopilot, last_scan, books_profile),
+    ) = await asyncio.gather(
         asyncio.gather(
             reads.run("ledger", books.list_events),
             reads.run("proposals", load_proposals),
@@ -363,8 +384,12 @@ async def build(
             reads.run("audit", lambda: read_audit(books, AUDIT)),
             reads.run("autopilot audit", lambda: read_audit(books, AUTOPILOT_AUDIT)),
             reads.run("last scan", books.last_scan),
+            # Not a tile: an unreadable profile.json is the default profile (a VAT-registered company), as on the
+            # gated routes (routes_books.require_feature).
+            _profile_or_default(books),
         ),
     )
+    vat_applies = "vat" in books_profile.features
     ledger = cb.Ledger(
         events=events or [], proposals=proposals or {}, bank_lines=bank_lines or [], records=records or []
     )
@@ -384,13 +409,14 @@ async def build(
     audit = audit or []
     autopilot = autopilot or []
     cash_tile = await reads.run("cash", cash) if bank_lines is not None else None
-    vat_tile = await reads.run("vat", vat) if events is not None else None
+    vat_tile = await reads.run("vat", vat) if events is not None and vat_applies else None
     return Dashboard(
         today=today,
         cash=reads.tile(cash_tile, "bank"),
         owed_to_you=reads.tile(owed_pair[0] if owed_pair else None, "ledger", "bank"),
         owed_by_you=reads.tile(owed_pair[1] if owed_pair else None, "ledger", "bank"),
-        vat=reads.tile(vat_tile, "ledger"),
+        vat=reads.tile(vat_tile, "ledger") if vat_applies else None,
+        vat_applies=vat_applies,
         attention=reads.tile(
             attention(ledger, overdue) if proposals is not None and bank_lines is not None else None,
             "ledger",

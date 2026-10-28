@@ -18,6 +18,7 @@ class Dashboard {
     required this.attentionNeedsALook,
     required this.attentionUnmatchedBankLines,
     this.vatAssumed = false,
+    this.vatApplies = true,
   });
 
   final int? cashPence;
@@ -51,6 +52,11 @@ class Dashboard {
   /// quarters were assumed — the runtime's `vat.assumed`, like the web.
   final bool vatAssumed;
 
+  /// False when these books have no VAT (personal books, or a business that
+  /// is not VAT-registered; `GET /profile` features): Home shows no VAT tile.
+  /// The runtime's `vat_applies`; an older runtime without it means true.
+  final bool vatApplies;
+
   static Map<String, dynamic>? _map(Object? v) =>
       v is Map<String, dynamic> ? v : null;
 
@@ -81,6 +87,7 @@ class Dashboard {
       attentionUnmatchedBankLines:
           _int(attention?['unmatched_bank_lines']),
       vatAssumed: vat?['assumed'] == true,
+      vatApplies: json['vat_applies'] != false,
     );
   }
 }
