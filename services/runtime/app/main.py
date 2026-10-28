@@ -86,7 +86,22 @@ async def health() -> dict:
         "uptime_s": int(time.time() - STARTED),
         "voice": bool(FFMPEG),
         "folder_layout": layout.health(),
+        "ai": ai_chain_summary(),
         **({"test_mode": True} if is_test_mode() else {}),
+    }
+
+
+def ai_chain_summary() -> dict:
+    """The provider chain and which providers are configured: names and models only, never keys or URLs."""
+    from app.ai import providers
+
+    infos = providers.describe()
+    return {
+        "chain": [i.name for i in infos],
+        "configured": [i.name for i in infos if i.configured],
+        "providers": [{"name": i.name, "model": i.model, "configured": i.configured} for i in infos],
+        "default": "chain" if infos else (os.getenv("AI_MODE") or "local"),
+        "recommended": providers.RECOMMENDED,
     }
 
 
@@ -119,7 +134,10 @@ async def ai_test(cfg: AiConfig, x_meta_api_key: str | None = Header(default=Non
     raise HTTPException(400, "mode must be 'key' or 'local'")
 
 
+from app.routes_ai import router as ai_router  # noqa: E402  GET /ai/health, GET /ai/calls, POST /ai/warm
 from app.routes_extract import router as extract_router  # noqa: E402  POST /extract
+
+app.include_router(ai_router)
 
 app.include_router(extract_router)
 
