@@ -1,9 +1,11 @@
 # Review: claude/known-fixes
 
-Five known defects, fixed where they live. `claude/marketing`, `claude/profiles` and `claude/accounting-tools` were
-not merged to `main`, so each is merged into this branch from `origin` first (merge commits) and fixed on top;
-`claude/payment-links` was already in `main`, so its fix is on `main`'s code. One commit per fix; merge fallout has
-its own `integration:` commits so the fixes stay readable.
+Five known defects, fixed where they live, and then (extra scope, below) the four branches the integrator refused
+made to pass their own e2e specs. **This branch carries `claude/marketing`, `claude/accounting-tools`,
+`claude/exports` and `claude/sales-purchases`** (each merged from `origin`, unchanged on origin since) and is meant to
+be merged in place of them. `claude/profiles` and `claude/payment-links` are in `main`; `origin/main` is merged in
+last (`4d5df8f`, at `90cddb5`, after `claude/accountant`). One commit per fix; merge fallout has its own
+`integration:` commits so the fixes stay readable.
 
 | # | Defect | Commit |
 |---|---|---|
@@ -100,10 +102,12 @@ was fixed earlier, `docs/reviews/ci/REVIEW.md`).
 test fails at step 44 of 54 with exactly that message; the new one passes (53 s). In isolation the old test passed
 15/15, and 8/8 with all four cores busy, which is why it only failed in full, loaded runs.
 
-**Fix.** `_Run.stopped` (an `asyncio.Event`) is set whenever the run stops: done, failed, or waiting for a token; a
-fresh token clears it before the run goes on. `_settle` waits on that event (and reports a stop in a state it was not
-asked for, such as `needs_token`, instead of spinning). The only time limit left is a 900 s guard against a hang.
-No sleep was added; the whole module passes (27 tests).
+**Fix.** `_Run.stopped` (an `asyncio.Event`) was set whenever the run stopped, and `_settle` waited on it. **Since
+then `main` fixed the same race its own way** (`_settle` waits on the run's task, with a hang guard; integration
+pass of 28 Oct). When `main` was merged in, its version of `test_sample_books.py` and `app/sample_books.py` was kept
+and this branch's dropped, so there is one fix, not two. The same happened to the layout rename race below: `main`'s
+narrower `except (FileNotFoundError, FileExistsError)` is kept; this branch's regression test for it (two requests
+through their own request memos) still passes against it.
 
 ## Integration fallout fixed on the way
 
@@ -117,7 +121,55 @@ No sleep was added; the whole module passes (27 tests).
   are `relative` so the sr-only caption no longer widens the page at 360 px.
 - The landing page shows main's "Try the demo — no sign-in" (sandbox) button when the runtime runs demos.
 
-## Tests and gates (28 Oct 2026, this container: 4 CPUs, Python 3.13, Node 22, Flutter 3.47.8)
+## Extra scope: the integrator's four refused branches
+
+From `origin/main:docs/reviews/integration/REVIEW.md` "Not merged, and why". Each branch's own spec now passes in
+this branch, with these fixes:
+
+| Branch | What failed | Fix | Commit |
+|---|---|---|---|
+| `claude/marketing` | `submission-mode.spec.ts`: "Early access / testers" in the client bundle | Fix 1 above: inline-folded flag, `<Prelaunch>`, a page sweep and a production-file scan in CI | `69d9f07` |
+| `claude/exports` | `exports.spec.ts`: the Xero manual-journals preview never showed `*Narration` | After the spec's reload the period is the current quarter, which has no entries, and the preview dropped the whole table. An empty section now keeps its column headings (the import file still has its header row) with a "Nothing in this period." row | `a3f9c73` |
+| `claude/exports` | axe critical `aria-valid-attr-value` on `/reports/exports` (`aria-controls="report-preview"` named nothing) | The placeholder shown before a report is chosen carries `id="report-preview"` too | `a3f9c73` |
+| `claude/exports` | Disabled *This VAT period* button gave no reason | It, and the From/To fields, are `aria-describedby` a visible sentence: signed out, the sample's period is fixed; for an as-at report, there is no period | `a3f9c73` |
+| `claude/sales-purchases` | A purchase order converted to a bill landed in *needs a look*, not *proposed* | The order was £431.52 with VAT from a supplier with no VAT number: over £250 that needs a full VAT invoice with the supplier's VAT number (HMRC VAT Notice 700 s.16, `app/checks.py`), and the branch's own runtime test asserts exactly this. Making it *proposed* would be wrong. The defect was the page: it said only "waiting in Review". It now says the bill needs a look and why. The spec enters the supplier's VAT number in the form's existing field, as a user would, and gets *proposed* | `d6966f1` |
+| `claude/sales-purchases` | Statement *Customer* picker never selectable | It listed only invoice customers with a saved contact id, so customers known from their invoices (the usual case) hid the whole picker. It now lists the contact book's customers (`GET /contacts`), whose ids `/statements/{id}` already takes | `d6966f1` |
+| `claude/sales-purchases` | `profiles.spec` menu order | Sales now opens on *Sales overview*, then *Invoices*; the "page not built yet" check uses *Balance sheet* | `190f0db` |
+| `claude/accounting-tools` | `accounting.spec.ts` ambiguous locators (two Sign in links, three alerts, two Search buttons) | Scoped to `main`, filtered by text | `f0ed1de` |
+| `claude/accounting-tools` | `/accounting/chart` scrolled 248 px sideways at 360 px | The tables' scroll box is `relative`: the `sr-only` caption is absolutely positioned and escaped the clipping | `f0ed1de` |
+
+Also needed for the gates: `test_security_routes` lists the quote, purchase-order and statement PDF previews beside
+the invoice ones, and `GET /repeating/dates` (date arithmetic, no books) as public (`190f0db`); three unescaped
+apostrophes in the sales/purchases page intros (eslint); a union `ActionKind` list where main's month-end and
+shopping actions meet the quote actions. Their REVIEW and HANDOVER files moved under `docs/reviews/<branch>/`.
+
+Not taken: `claude/payroll-rti` (not in this brief; its own spec and money formatting are left for its author).
+
+## Tests and gates, final (28 Oct 2026, after merging `origin/main` at `90cddb5`)
+
+All on the final tree (after merging `origin/main` at `90cddb5`), in this container (4 CPUs, Python 3.13, Node 22):
+
+- **Runtime** `cd services/runtime && python -m pytest -q`: **1907 passed, 2 skipped** (4 min 39 s).
+- **Other Python suites**: ledger 65, connectors 63, hmrc-relay 172, evals 324: all passed.
+- **ruff** 0.17.3 `check` and `format --check`: clean (493 files). **pyright** 1.1.414 (the project's scope): 0 errors.
+- **Web**: `pnpm install --frozen-lockfile`; `eslint .` 0 errors; `tsc --noEmit` clean. Production `pnpm build`, then
+  `node scripts/prelaunch-words.mjs out`: 314 files, 0 pre-launch phrases; no test-mode code in `out/`.
+- **e2e** (`pnpm run e2e:build && pnpm run e2e:test`, `CI=1`, 3 workers, one retry allowed): **417 passed, 0 failed,
+  0 flaky**, 94 skipped. All the skips are the screenshot generators (`shots.spec`, and `main`'s `design-shots.spec`),
+  which run only when asked; none is in the four branches' specs. The run before the last commit had one flaky test,
+  `signed-out.spec` `/try`, now fixed (`signed-out.spec` 180/180 over two repeats, retries off).
+  The four branches' own specs (`exports`, `sales-purchases`, `accounting`, `submission-mode`, plus `profiles` and
+  the axe sweep `a11y`) were also run alone with retries off: 118 passed.
+  Browser: Chromium headless shell 1243 from the container (Playwright 1.64.1 expects 1248) through a local,
+  git-excluded config; CI uses its own installed shell.
+- **Flutter** 3.47.8: `flutter analyze` no issues; `flutter test` **302 passed**.
+
+**Also fixed on the way, final round:** `signed-out.spec`'s button sweep reloaded the page and used `nth(i)` across
+three separate reads. Late buttons (Try the demo) and state a click leaves behind shifted the positions, so it could
+blame "Speak" (which has a title) for a reasonless disabled button. Each button is now found by name and occurrence
+and read in one go.
+
+## Tests and gates, first round (before the extra scope; kept for the record)
 
 - **Runtime** `cd services/runtime && python -m pytest -q`: **1525 passed, 2 skipped** (4 min 22 s), after every fix
   (the run before the last two integration fixes found 3 failures, all mine: invalid compose YAML from the marketing
@@ -159,10 +211,12 @@ re-lists past the request memo and carries on (`180589b`, `9a3b5d4`, with a test
 
 - The submission sweep reads DOM text and labels, not the pixels of the landing page's screenshots.
 - Android More reads the profile once per app start; a switch takes effect on the next start.
+- A purchase-order bill without the supplier's VAT number needs a look by design (VAT Notice 700 s.16, cited in
+  `app/checks.py`); gov.uk was not reachable from this container to re-check it on 28 Oct 2026.
 - Negative box 4/1 after a reversal into a later period: HMRC's acceptance of negative values was not re-checked
   (developer.service.gov.uk unreachable from here).
 - Clearing accounts cover payouts in GBP only; anything paid from a provider balance needs a journal.
 - `keyboard.spec.ts`'s Tab sweep and the chrome-extension request check depend on the browser build; see the gates.
-- The three source branches carried work-in-progress handovers; only the five defects and the merge fallout the
-  gates exposed were fixed here. Their other open items (e.g. accounting's `ToolsNav` once the menu links settle,
+- The source branches carried work-in-progress handovers; only the listed defects and the merge fallout the gates
+  exposed were fixed here. Their other open items (e.g. accounting's `ToolsNav` once the menu links settle,
   Contacts' customer/supplier filter) are unchanged.
