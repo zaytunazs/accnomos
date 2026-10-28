@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import Link from "next/link";
+import TryDemo from "@/components/demo/TryDemo";
 import EarlyAccessForm from "@/components/early-access/EarlyAccessForm";
 import Prelaunch from "@/components/Prelaunch";
 import { LAUNCH, NOTIFY_HREF, PRELAUNCH_IN_BUILD, SUBMISSION_MODE } from "@/lib/public-site";
@@ -255,6 +256,11 @@ function Hero() {
           </div>
           <div className="mt-7">
             <CtaPair dark />
+          </div>
+          {/* A sandbox of the sample books in this browser, when the runtime runs demos (DEMO_MODE=1, app/demo.py);
+              renders nothing otherwise. */}
+          <div className="mt-3">
+            <TryDemo variant="secondary" />
           </div>
           <p className="mt-4 text-sm text-ground/70">
             The demo uses fictional sample books and needs no sign-in. Submitting to HMRC uses HMRC&apos;s sandbox.

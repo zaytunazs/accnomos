@@ -162,10 +162,11 @@ export function Gate({
   return <>{children}</>;
 }
 
-/** A table that scrolls sideways inside its card on a narrow phone, never the page. */
+/** A table that scrolls sideways inside its card on a narrow phone, never the page. `relative`: the table's sr-only
+ *  caption is absolutely positioned and would otherwise escape the clipping and widen the page (docs/reviews/ci). */
 export function Scroll({ children, label }: { children: ReactNode; label: string }) {
   return (
-    <div className="max-w-full overflow-x-auto" role="region" aria-label={label} tabIndex={0}>
+    <div className="relative max-w-full overflow-x-auto" role="region" aria-label={label} tabIndex={0}>
       {children}
     </div>
   );

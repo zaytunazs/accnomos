@@ -74,7 +74,7 @@ export function useReviewBadge(pathname: string): string | undefined {
 }
 
 /** The Personal page is in the menu only while Settings › Show personal finances is on (this device). */
-function usePersonalOn(): boolean {
+export function usePersonalOn(): boolean {
   const [on, setOn] = useState(false);
   useEffect(() => {
     const read = () => setOn(personalOn());

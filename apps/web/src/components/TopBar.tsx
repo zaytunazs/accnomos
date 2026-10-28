@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useReviewBadge } from "./AppNav";
+import { usePersonalOn, useReviewBadge } from "./AppNav";
 import { AccountMenu, ProfileSwitcher, useLinkedProfiles } from "./ProfileMenu";
 import { isCurrent, visibleGroups, type NavGroup, type NavItem } from "@/lib/nav";
 import { currentFeatures, currentMeta } from "@/lib/profiles";
@@ -27,9 +27,10 @@ export default function TopBar({ routes }: { routes: string[] }) {
   // Re-read on every render (useLinkedProfiles re-renders on a change); compared by value.
   const featureKey = JSON.stringify(features);
   const kind = meta?.exists ? meta.kind : null;
+  const personal = usePersonalOn(); // Settings › Show personal finances, for books that are not personal
   const groups = useMemo(
-    () => visibleGroups(routes, { features: JSON.parse(featureKey) as string[] | null, kind }),
-    [routes, featureKey, kind],
+    () => visibleGroups(routes, { features: JSON.parse(featureKey) as string[] | null, kind, personal }),
+    [routes, featureKey, kind, personal],
   );
   if (!linked) return null;
 

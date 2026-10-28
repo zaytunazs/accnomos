@@ -133,10 +133,13 @@ export interface Who {
   /** null: not known yet (show everything the build has). */
   features: string[] | null;
   kind: RtProfileKind | null;
+  /** Settings › Show personal finances is on (this device): the Personal group shows for any kind. */
+  personal?: boolean;
 }
 
 function allowed(x: { feature?: string; kinds?: RtProfileKind[] }, who: Who): boolean {
   if (x.feature && who.features && !who.features.includes(x.feature)) return false;
+  if (who.personal && x.kinds?.includes("personal")) return true;
   if (x.kinds && !(who.kind ? x.kinds.includes(who.kind) : !x.kinds.every((k) => k === "personal"))) return false;
   return true;
 }

@@ -18,7 +18,7 @@ test("signed out: every tool page says what it does and asks to sign in", async 
   for (const path of TOOLS) {
     await page.goto(path);
     await expect(page.getByRole("navigation", { name: "Accounting tools" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Sign in to see your books" })).toBeVisible();
+    await expect(page.getByRole("main").getByRole("link", { name: "Sign in to see your books" })).toBeVisible();
   }
 });
 
@@ -44,7 +44,7 @@ test.describe("signed in", () => {
     await add.getByLabel("Name").fill("Grants");
     await add.getByLabel("Type").selectOption("revenue");
     await add.getByRole("button", { name: "Add account" }).click();
-    await expect(page.getByRole("alert")).toContainText("Revenue accounts use codes 4000 to 4999");
+    await expect(page.getByRole("alert").filter({ hasText: "Revenue accounts" }).last()).toContainText("Revenue accounts use codes 4000 to 4999");
   });
 
   test("manual journal: balance shown, draft posts nothing, approve posts it and its reversal", async ({ page, runtime }) => {
@@ -102,9 +102,9 @@ test.describe("signed in", () => {
     const before = await events(() => runtime.files());
     await page.goto("/accounting/recode");
     await page.getByLabel("Contact").fill("Novex");
-    await page.getByRole("button", { name: "Search" }).click();
+    await page.getByRole("main").getByRole("button", { name: "Search" }).click();
     const found = page.getByRole("table", { name: "Posted lines found" });
-    await expect(found.getByText(/kept by invoices, bills, the VAT return or bank lines/)).toBeVisible();
+    await expect(found.getByText(/^1200 Bank is kept by invoices, bills, the VAT return or bank lines/)).toBeVisible();
     await found.getByRole("checkbox", { name: /Choose 7500 Office supplies £43.25/ }).check();
     await page.getByLabel("New account").selectOption("0030 Office equipment");
     await page.getByRole("button", { name: "Preview the adjusting entries" }).click();
