@@ -167,7 +167,10 @@ export function RecordPaymentDialog({ account, invoice, onClose, onDone }: {
   onDone: (inv: RtInvoice) => void;
 }) {
   const owed = balanceOf(invoice);
-  const [amount, setAmount] = useState(poundsInput(owed));
+  // A CIS invoice paid for the first time: the contractor pays the balance less the deduction it shows.
+  const cisDefault = invoice.cis && owed === invoice.total_pence ? invoice.cis.deduction_pence : 0;
+  const [cis, setCis] = useState(poundsInput(cisDefault));
+  const [amount, setAmount] = useState(poundsInput(owed - cisDefault));
   const [paidOn, setPaidOn] = useState(todayIso());
   const [into, setInto] = useState<"1200 Bank" | "1210 Cash">("1200 Bank");
   const [ref, setRef] = useState("");
@@ -181,18 +184,21 @@ export function RecordPaymentDialog({ account, invoice, onClose, onDone }: {
   }, [account, invoice.number]);
 
   const line = lines?.find((l) => l.id === lineId);
+  const cut = invoice.cis ? parsePounds(cis || "0") : 0;
   const pence = line ? line.amount_pence : parsePounds(amount);
-  const valid = pence !== null && pence > 0;
-  const over = valid && pence! > owed ? pence! - owed : 0;
+  const valid = pence !== null && pence > 0 && cut !== null && cut >= 0;
+  const settles = valid ? pence! + cut! : 0;
+  const over = valid && settles > owed ? settles - owed : 0;
 
   async function save() {
     if (!valid) return;
     setBusy(true);
     setNote(null);
     try {
+      const cisPart = cut ? { cis_deduction_pence: cut } : {};
       onDone(await runtime.recordInvoicePayment(account, invoice.number, lineId
-        ? { bank_line_id: lineId, payment_ref: ref || undefined }
-        : { amount_pence: pence!, paid_on: paidOn, account: into, payment_ref: ref || undefined }));
+        ? { bank_line_id: lineId, payment_ref: ref || undefined, ...cisPart }
+        : { amount_pence: pence!, paid_on: paidOn, account: into, payment_ref: ref || undefined, ...cisPart }));
     } catch (e) {
       setNote(errorText(e));
     } finally {
@@ -238,13 +244,23 @@ export function RecordPaymentDialog({ account, invoice, onClose, onDone }: {
           </div>
         </div>
       )}
+      {invoice.cis && (
+        <div className="mt-3">
+          <label className={fieldLabel} htmlFor="pay-cis">CIS deducted by the contractor (£)</label>
+          <input id="pay-cis" inputMode="decimal" className={fieldInput} value={cis} onChange={(e) => setCis(e.target.value)} />
+          <p className="mt-1 text-xs text-muted">
+            The invoice shows {money(invoice.cis.deduction_pence)} ({invoice.cis.rate}% of {money(invoice.cis.labour_pence)} labour). Use the figure on the
+            contractor&apos;s statement. It is tax paid on account (1150 CIS suffered), and with the money it settles the invoice.
+          </p>
+        </div>
+      )}
       <div className="mt-3">
         <label className={fieldLabel} htmlFor="pay-ref">Payment reference (optional)</label>
         <input id="pay-ref" className={fieldInput} value={ref} onChange={(e) => setRef(e.target.value)} placeholder="e.g. FPS ACME 0006" />
       </div>
       <p className="mt-3 rounded-xl bg-ground px-4 py-2 text-xs text-muted">
         {valid ? `${money(pence!)} ` : ""}is recorded in your books as money in ({lineId || into === "1200 Bank" ? "1200 Bank" : "1210 Cash"}) against
-        1100 Debtors. {over > 0 ? `${money(over)} more than the balance is kept as a credit for ${invoice.customer.name}.` : valid && pence! < owed ? `${money(owed - pence!)} stays owed.` : ""}
+        1100 Debtors{cut ? `, with ${money(cut)} CIS deducted (1150 CIS suffered)` : ""}. {over > 0 ? `${money(over)} more than the balance is kept as a credit for ${invoice.customer.name}.` : valid && settles < owed ? `${money(owed - settles)} stays owed.` : ""}
       </p>
       <div className="mt-4 flex flex-wrap gap-3">
         <button type="button" onClick={save} disabled={busy || !valid} className={primaryButton}>{busy ? "Saving…" : "Record payment"}</button>

@@ -536,7 +536,14 @@ export const runtime = {
   recordInvoicePayment: (
     a: AccountInfo,
     id: string,
-    body: { amount_pence?: number; paid_on?: string; account?: "1200 Bank" | "1210 Cash"; payment_ref?: string; bank_line_id?: string | null },
+    body: {
+      amount_pence?: number;
+      paid_on?: string;
+      account?: "1200 Bank" | "1210 Cash";
+      payment_ref?: string;
+      bank_line_id?: string | null;
+      cis_deduction_pence?: number; // CIS: deducted by the contractor; amount_pence is then what reached the bank
+    },
   ) => call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/payments`, { method: "POST", body: JSON.stringify(body) }),
   removeInvoicePayment: (a: AccountInfo, id: string, paymentId: string) =>
     call<RtInvoice>(a, `/invoices/${encodeURIComponent(id)}/payments/${encodeURIComponent(paymentId)}`, { method: "DELETE" }),
@@ -655,7 +662,233 @@ export const runtime = {
     export: (a: AccountInfo, body: { report?: RtReportKind; from?: string; to?: string; periods?: number }) =>
       call<RtReportExport>(a, withQuery("/reports/export", vatQuery()), { method: "POST", body: JSON.stringify(body) }),
   },
+  /** CIS and the VAT domestic reverse charge (services/runtime/app/routes_cis.py). Nothing here files with HMRC. */
+  cis: {
+    overview: (a: AccountInfo) => call<RtCisOverview>(a, "/cis"),
+    saveSettings: (a: AccountInfo, s: RtCisSettings) => call<RtCisSettings>(a, "/cis/settings", { method: "PUT", body: JSON.stringify(s) }),
+    statements: (a: AccountInfo) => call<RtCisStatementView[]>(a, "/cis/statements"),
+    addStatement: (a: AccountInfo, s: RtCisStatementIn) => call<RtCisStatement>(a, "/cis/statements", { method: "POST", body: JSON.stringify(s) }),
+    removeStatement: (a: AccountInfo, id: string) => call<{ ok: boolean }>(a, `/cis/statements/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    /** Your AI reads a file in 00 Inbox; the result waits on the CIS page for Approve. */
+    read: (a: AccountInfo, name: string) => call<RtCisReading>(a, "/cis/read", { method: "POST", body: JSON.stringify({ name }) }),
+    readings: (a: AccountInfo, status?: "pending" | "approved" | "rejected") =>
+      call<RtCisReading[]>(a, withQuery("/cis/readings", status ? `status=${status}` : "")),
+    approveReading: (a: AccountInfo, id: string, body: { statement?: RtCisStatementIn | null; bill?: RtCisBillIn | null } = {}) =>
+      call<RtCisReading>(a, `/cis/readings/${encodeURIComponent(id)}/approve`, { method: "POST", body: JSON.stringify(body) }),
+    rejectReading: (a: AccountInfo, id: string) =>
+      call<RtCisReading>(a, `/cis/readings/${encodeURIComponent(id)}/reject`, { method: "POST" }),
+    addBill: (a: AccountInfo, b: RtCisBillIn) =>
+      call<{ event_id: string; reverse_charge_vat_pence: number }>(a, "/cis/reverse-charge/bills", { method: "POST", body: JSON.stringify(b) }),
+    guide: (a: AccountInfo) => call<RtReverseChargeGuide>(a, "/cis/reverse-charge"),
+    year: (a: AccountInfo, taxYear?: string) => call<RtCisYear>(a, withQuery("/cis/year", taxYear ? `tax_year=${taxYear}` : "")),
+    subcontractors: (a: AccountInfo) => call<RtSubcontractor[]>(a, "/cis/subcontractors"),
+    addSubcontractor: (a: AccountInfo, s: RtSubcontractorIn) =>
+      call<RtSubcontractor>(a, "/cis/subcontractors", { method: "POST", body: JSON.stringify(s) }),
+    payments: (a: AccountInfo) => call<RtCisPayment[]>(a, "/cis/payments"),
+    recordPayment: (a: AccountInfo, p: RtCisPaymentIn) => call<RtCisPayment>(a, "/cis/payments", { method: "POST", body: JSON.stringify(p) }),
+    removePayment: (a: AccountInfo, id: string) => call<RtCisPayment>(a, `/cis/payments/${encodeURIComponent(id)}`, { method: "DELETE" }),
+    monthlyReturn: (a: AccountInfo, end: string) => call<RtCisReturn>(a, `/cis/returns/${end}`),
+    exportReturn: (a: AccountInfo, end: string) =>
+      call<{ paths: string[]; csv: string }>(a, `/cis/returns/${end}/export`, { method: "POST" }),
+  },
 };
+
+/** POST /cis/quote: the quote PDF (saved in 03 Sales/quotes by the runtime) and where it went. */
+export async function cisQuote(account: AccountInfo, draft: RtInvoiceDraft, validDays = 30): Promise<{ pdf: Blob; path: string }> {
+  const headers = { ...(await runtimeHeaders(account)), "Content-Type": "application/json" };
+  const res = await fetch(`${RUNTIME_URL}/cis/quote`, { method: "POST", headers, body: JSON.stringify({ draft, valid_days: validDays }) });
+  if (!res.ok) throw new Error(await errorDetail(res, "POST /cis/quote"));
+  return { pdf: await res.blob(), path: res.headers.get("X-Quote-Path") ?? "03 Sales/quotes" };
+}
+
+/** CIS (services/runtime/app/cis.py). Pence throughout; dates YYYY-MM-DD. */
+export type RtCisStatus = "gross" | "net" | "unverified";
+export type RtCisEntity = "sole_trader" | "partnership" | "company";
+export interface RtCisSettings {
+  subcontractor: boolean;
+  status: RtCisStatus;
+  utr: string | null;
+  entity: RtCisEntity;
+  contractor: boolean;
+  contractor_utr: string | null;
+  accounts_office_ref: string | null;
+  employer_ref: string | null;
+  reverse_charge_default: boolean;
+}
+export interface RtCisDeadline {
+  tax_month_start: string;
+  tax_month_end: string;
+  statements_due: string;
+  return_due: string;
+  payment_due: string;
+}
+export interface RtCisOverview {
+  settings: RtCisSettings;
+  rate: number;
+  status_label: string;
+  rates: Record<RtCisStatus, number>;
+  tax_month: RtCisDeadline;
+  last_tax_month: RtCisDeadline;
+  tax_year: string;
+  pending_readings: number;
+  source_url: string;
+  checked: string;
+  not_submitted: string;
+}
+export interface RtCisCheck {
+  code: string;
+  ok: boolean;
+  message: string;
+}
+export interface RtCisStatementIn {
+  contractor_name: string;
+  contractor_ref?: string | null;
+  tax_month_end: string;
+  gross_pence: number;
+  materials_pence: number;
+  deduction_pence: number;
+  subcontractor_utr?: string | null;
+  verification_number?: string | null;
+  document?: string | null;
+}
+export interface RtCisStatement extends RtCisStatementIn {
+  id: string;
+  source: "typed" | "read";
+  approved_by: string;
+  approved_at: string;
+}
+export interface RtCisStatementView {
+  statement: RtCisStatement;
+  liable_pence: number;
+  net_paid_pence: number;
+  checks: RtCisCheck[];
+  recorded_pence: number;
+  difference_pence: number;
+}
+export interface RtCisBillIn {
+  supplier_name: string;
+  supplier_vat_number?: string | null;
+  invoice_number?: string | null;
+  invoice_date: string;
+  net_pence: number;
+  vat_rate: 20 | 5;
+  account?: "5300 Subcontractors" | "5000 Materials";
+  document?: string | null;
+}
+export interface RtCisReading {
+  id: string;
+  path: string;
+  kind: "cis_statement" | "reverse_charge_invoice" | "other";
+  statement: RtCisStatementIn | null;
+  bill: RtCisBillIn | null;
+  problems: string[];
+  checks: RtCisCheck[];
+  confidence: number;
+  model: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
+  statement_id: string | null;
+  event_id: string | null;
+}
+export interface RtCisYear {
+  tax_year: string;
+  start: string;
+  end: string;
+  entity: RtCisEntity;
+  status: RtCisStatus;
+  gross_pence: number;
+  materials_pence: number;
+  deduction_pence: number;
+  recorded_pence: number;
+  difference_pence: number;
+  by_contractor: { contractor_name: string; statements: number; gross_pence: number; materials_pence: number; deduction_pence: number }[];
+  months_missing: string[];
+  where_it_goes: string[];
+  paid_to_subcontractors_pence: number;
+  deducted_from_subcontractors_pence: number;
+  source_urls: string[];
+}
+export interface RtReverseChargeGuide {
+  applies_when: string[];
+  not_when: string[];
+  end_user_wording: string;
+  invoice_wording: string;
+  boxes_supplier: string;
+  boxes_customer: string;
+  schemes: string[];
+  source_urls: string[];
+  checked: string;
+}
+export interface RtSubcontractorIn {
+  name: string;
+  trading_name?: string | null;
+  kind: RtCisEntity;
+  utr: string;
+  status: RtCisStatus;
+  verification_number?: string | null;
+  verified_on?: string | null;
+  vat_registered: boolean;
+}
+export interface RtSubcontractor extends RtSubcontractorIn {
+  id: string;
+}
+export interface RtCisPaymentIn {
+  subcontractor_id: string;
+  date: string;
+  gross_pence: number;
+  materials_pence: number;
+  vat_treatment: "reverse_charge" | "standard" | "none";
+  vat_rate?: 20 | 5;
+  account?: "1200 Bank" | "1210 Cash";
+  bill_event_id?: string | null;
+  reference?: string | null;
+}
+export interface RtCisPayment {
+  id: string;
+  subcontractor_id: string;
+  subcontractor_name: string;
+  utr: string;
+  status: RtCisStatus;
+  date: string;
+  gross_pence: number;
+  materials_pence: number;
+  rate: number;
+  deduction_pence: number;
+  vat_treatment: "reverse_charge" | "standard" | "none";
+  vat_pence: number;
+  paid_pence: number;
+  reference: string | null;
+  removed_at: string | null;
+}
+export interface RtCisReturnLine {
+  subcontractor_name: string;
+  utr: string;
+  verification_number: string | null;
+  total_payments_pence: number;
+  materials_pence: number;
+  deduction_pence: number;
+  rate: number;
+}
+export interface RtCisReturn {
+  tax_month_start: string;
+  tax_month_end: string;
+  return_due: string;
+  payment_due: string;
+  contractor_utr: string | null;
+  accounts_office_ref: string | null;
+  employer_ref: string | null;
+  nil_return: boolean;
+  lines: RtCisReturnLine[];
+  total_payments_pence: number;
+  total_materials_pence: number;
+  total_deductions_pence: number;
+  declaration: string;
+  not_submitted: string;
+  problems: string[];
+  source_url: string;
+  owed_to_hmrc_pence: number;
+  sample: boolean;
+}
 
 /** Reports (services/runtime/app/reports.py). Pence throughout; VAT boxes 6 and 7 whole pounds. */
 export interface RtPlSection {
@@ -1233,6 +1466,7 @@ export interface RtInvoiceLineIn {
   unit_price_pence: number;
   vat_code: RtSalesVatCode;
   timesheet_entry_ids?: string[]; // the job hours this line bills; marked invoiced when the invoice is sent
+  materials?: boolean; // CIS: materials, left out of the deduction
 }
 export interface RtInvoiceLine extends RtInvoiceLineIn {
   vat_rate: number;
@@ -1247,6 +1481,17 @@ export interface RtInvoiceDraft {
   reference: string | null;
   notes: string | null;
   job_id?: string | null;
+  cis?: boolean; // show the CIS deduction on labour (Settings › CIS)
+  reverse_charge?: boolean; // VAT domestic reverse charge (VAT Act 1994 s55A)
+}
+/** The CIS part of an invoice or quote, by code (services/runtime/app/cis.py). */
+export interface RtCisOnInvoice {
+  status: RtCisStatus;
+  rate: number;
+  labour_pence: number;
+  materials_pence: number;
+  deduction_pence: number;
+  payable_pence: number;
 }
 export interface RtInvoice {
   number: string;
@@ -1280,6 +1525,9 @@ export interface RtInvoice {
   timesheets_marked: boolean;
   payment_link?: RtPaymentLink | null; // "Pay online" (services/runtime/app/online_payments.py)
   online_payments?: string[]; // provider payment ids already in the books
+  cis?: RtCisOnInvoice | null;
+  reverse_charge?: boolean;
+  reverse_charge_vat_pence?: number; // the VAT the customer accounts for; not in vat_pence or total_pence
 }
 /** Online payments: the user's own Stripe / PayPal account (services/runtime/app/online_payments.py). */
 export type RtPayProvider = "stripe" | "paypal" | "paypalme";
@@ -1334,6 +1582,7 @@ export interface RtInvoicePayment {
   account: string | null;
   reference: string | null;
   description: string;
+  cis_deduction_pence?: number; // part of amount_pence the contractor deducted under CIS
 }
 export interface RtInvoiceMoney {
   paid_pence: number;
