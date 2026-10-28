@@ -62,6 +62,29 @@ first live filing; it is copy, not behaviour.
 The key is sent as HTTP Basic (key as the username, empty password). Companies House allows 600 requests per 5 minutes
 per key; the runtime asks for at most 60 a minute per process and caches answers for 24 hours.
 
+## 3a. Online payments (runtime, optional)
+
+Payment links on invoices through each user's own Stripe or PayPal account (`services/runtime/app/online_payments.py`;
+the design and its sources are in that module's docstring and `app/payment_providers.py`). All empty by default: the feature is then off and Settings says so.
+Only the platform's credentials live here; a user's link is just their account id in their own OneDrive.
+
+| Variable | Value |
+|---|---|
+| `STRIPE_SECRET_KEY` | the platform account's **test** secret key (`sk_test_…`). A live key is refused unless `PAYMENTS_LIVE=1` |
+| `STRIPE_CONNECT_CLIENT_ID` | Connect OAuth client id (`ca_…`), Dashboard › Settings › Connect › Onboarding options › OAuth (enable OAuth there) |
+| `STRIPE_REDIRECT_URI` | `https://api.accnomos.com/payments/online/stripe/callback`, also added as a redirect URI in those OAuth settings |
+| `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | the REST app's **sandbox** credentials (developer.paypal.com › Apps & Credentials) |
+| `PAYPAL_PARTNER_MERCHANT_ID` | the platform's own PayPal merchant id (the partner) |
+| `PAYPAL_PARTNER_ATTRIBUTION_ID` | the partner BN code PayPal issues; required on partner calls |
+| `PAYPAL_RETURN_URL` | `https://api.accnomos.com/payments/online/paypal/callback` |
+| `PAYPAL_BASE` | `https://api-m.sandbox.paypal.com` (default). The live API is refused unless `PAYMENTS_LIVE=1` |
+| `PAYMENTS_STATE_KEY` | optional; signs the connect `state` (default: derived from the provider's secret) |
+| `PAYMENTS_LIVE` | leave empty. `1` allows live keys; not to be set until live payments have been reviewed and tested |
+
+PayPal's partner onboarding and acting for a merchant (`PayPal-Auth-Assertion`) work only once PayPal has approved
+the platform as a partner; until then leave the PayPal variables empty and users can still use a PayPal.me link.
+Stripe and PayPal webhooks are **not** used (no endpoint to register): payments are found when the user opens Invoices.
+
 ## 4. What must NOT change
 
 - **No production value as a default anywhere in the repo**: not in `Settings` (`services/hmrc-relay/relay/settings.py`),

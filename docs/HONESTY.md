@@ -82,6 +82,15 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - Plain timesheet edits do not rebuild Books.xlsx. A timesheet whose date moves month is written to the new file before the old one is cleared; a failure between leaves a duplicate, never a loss. A purchase can be tagged to a closed job through the API (on purpose).
 - The web mileage log can add, edit and delete journeys; vehicles can be renamed, deactivated or deleted from the page (deletion is refused, with the reason, while journeys or tagged receipts reference the vehicle). The Review vehicle picker offers *Add a vehicle* when no business vehicle is active. Vehicle pre-fill at scan uses a category plus keyword list.
 
+## Online payments (payment links)
+
+- **Never run against live Stripe or PayPal, and not against their test/sandbox APIs either.** Every provider call in the tests and in test mode goes to fakes (`services/runtime/app/online_fakes.py`) written from the documented request and response shapes (pages and dates in `app/payment_providers.py`). No Stripe test account or PayPal sandbox app was available to this branch.
+- Stripe is connected with Connect OAuth (Standard accounts). Stripe says OAuth "isn't recommended for new Connect platforms" but is still the way for an application that needs access to an *existing* account; Accounts v2 onboarding would create a new account controlled by the platform instead of linking the user's own. Revisit before going live.
+- PayPal partner onboarding and `PayPal-Auth-Assertion` need PayPal to approve the platform as a partner; not applied for. That a PayPal invoice payment's `payment_id` can be read with `GET /v2/payments/captures/{id}` (for the fee) is unverified: when it fails the user types the fee.
+- PayPal.me links (`paypal.me/<name>/<amount>GBP`) are only checked by a redirect on 28 Oct 2026 (the decimal form kept its path); PayPal documents whole amounts in its example. Those payments are never found by code.
+- Payments are found only when the user opens Invoices (no webhooks: the runtime holds no token to write to OneDrive). A customer's payment is invisible to the books until then, and is posted only when the user approves it. The gross is posted to 1200 Bank and the fee as a separate exempt expense, so the provider's later payout to the bank is the *same* money: mark that bank line as a transfer, or it would be counted again. There is no clearing account for the Stripe/PayPal balance.
+- A link has a fixed amount. If the balance changes (a bank payment, a credit note) the old link still asks for the old amount until the user makes a new one; the list shows "Not the amount owed now". A payment that arrives on an invoice already paid another way is not proposed (paid invoices are not checked); it stays in Stripe/PayPal for the user to refund or record by hand.
+
 ## Payroll
 
 - **Estimates only. Not payroll, not RTI.** No FPS/EPS, no payment to HMRC; your payroll provider does that.

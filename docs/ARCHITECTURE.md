@@ -105,6 +105,7 @@ Books.xlsx still show the path as it was saved.
 | `Jobs/jobs.json`, `Staff/staff.json`, `Timesheets/<yyyy-mm>.jsonl` | jobs, staff and rates, timesheet entries | entries edited and deleted |
 | `Vehicles/vehicles.json`, `Mileage/<tax-year>.jsonl` | tax year like `2026-27` | entries edited and deleted |
 | `Invoicing/profile.json`, `sequence.json`, `credit_sequence.json`, and the logo file | business profile, invoice and credit note numbering, logo (any file under `_System/Invoicing/`) | rewritten |
+| `Payments/providers.json` | the user's own Stripe account id / PayPal merchant id / PayPal.me name for payment links, when linked (`online_payments.py`); never a key or token | rewritten |
 | `Payments/payments.json` | recorded payments: amount, date, account, the split across invoices or bills, the posted event (`payments.py`) | rewritten whole; a removed payment is kept, marked removed |
 | `Payroll/runs/<yyyy-mm>.json` | one pay run per month | updated |
 | `Planner/applied.json` | which day plans were applied (idempotency) | updated |
