@@ -74,9 +74,46 @@ per key; the runtime asks for at most 60 a minute per process and caches answers
   boxes are still calculated by code, nothing is filed without the declaration tick, and a VAT check or a Companies House
   match still only fills a form for the user to save.
 - **One relay worker.** One-time OAuth state and the rate limit are in memory.
+- **The demo stays a sandbox.** `DEMO_MODE` never touches a real OneDrive, mailbox or HMRC, and must not be given a
+  way to: do not add a shared Microsoft account or refresh token "for the judges"; that is what the sandbox replaces.
+  `DEMO_SECRET` is its own secret, never reused from `ACTIONS_SIGNING_KEY` or anything else.
 - **Sandbox tests stay sandbox.** The test suites fake HMRC and Companies House; never point them at production.
 
-## 5. Not tested live
+## 5. Demo sandbox for judges (runtime)
+
+Judges, and anyone else, can use the whole app on the sample books without a Microsoft sign-in: *Try the demo — no
+sign-in* on the signed-out Home and on Connect, or the guide at `/judges`. Each visitor gets their own copy of the
+fictional Bramblewood Joinery Ltd books in the runtime's memory (`services/runtime/app/demo.py`); nothing is stored
+about them and no Microsoft or HMRC account is involved. Off by default; production turns it on.
+
+| Variable | Value |
+|---|---|
+| `DEMO_MODE` | `1` turns it on (anything else: off, and `/demo/*` does not exist) |
+| `DEMO_SECRET` | 32+ random characters, e.g. `openssl rand -hex 32`, used only to sign demo session ids. Required: with `DEMO_MODE=1` and no (or a short) secret the runtime refuses to start. Changing it ends every demo session |
+| `DEMO_MAX_SESSIONS` | 200: past it, the least recently used session goes |
+| `DEMO_IDLE_TTL_S` | 7200 (2 h without a request ends a session; the banner promises "changes reset after 2 hours") |
+| `DEMO_MAX_SESSION_BYTES` / `DEMO_MAX_SESSION_FILES` / `DEMO_MAX_FILE_BYTES` | 20 MB / 300 new files per session; 10 MB a file (413 past any of them) |
+| `DEMO_MAX_TOTAL_BYTES` | 512 MB added across all sessions; past it the least recently used go |
+| `DEMO_SESSIONS_PER_IP_PER_MIN` | 5 session starts (and resets) a minute per IP; `0` turns the limit off |
+| `DEMO_GRAPH_PER_MIN` | 600 calls a minute per session to the browser's Graph look-alike (`/demo/graph/`), which is exempt from `RATE_LIMIT_PER_MIN` |
+| `DEMO_SEED_TIMEOUT_S` | 600: how long a session start waits for the day's books to be seeded |
+
+How it behaves:
+- At start-up the runtime seeds the day's sample books once, in a background thread (the whole `tools/seed_demo.py`
+  plan, planned for today, then six inbox documents read into Review). `GET /health` says `"demo": {"enabled": true,
+  "ready": …}`. A session start before it is ready waits ("Preparing the sample books…"); every session after that is
+  a copy taking microseconds. The books are re-seeded on the first session of a new day.
+- AI: a demo uses the AI this server is configured with (`AI_MODE`, `OLLAMA_*`, `MODEL_API_*`, or `AI_PROVIDERS` once
+  it lands), exactly as for a signed-in user. The six documents waiting in Review were pre-read by the seed; scanning
+  the 19 still in `00 Inbox`, Ask and the planner call the server's model, at the owner's cost.
+- Never real: mail is recorded, not sent ("Sent (demo — not actually sent)"); HMRC is simulated in the browser (a
+  receipt labelled "Demo — submission simulated", no relay call); Companies House and VAT-number look-ups answer 403.
+- The edge must let `/demo/graph/` uploads through at 11 MB (`deploy/nginx.conf` has the location) and `CORS_ORIGINS`
+  must include the web origin as before (`X-Demo-Session` is in the allowed headers).
+- One runtime process (as the image runs): sessions live in that process's memory. A restart ends every demo.
+- The web app shows the *Try the demo* entries only when `/health` reports the demo on, so turning it off hides them.
+
+## 6. Not tested live
 
 Nothing here has run against HMRC production. The VAT check and the MTD calls have been run only against fakes in the
 test suites; HMRC's sandbox has not been called from this branch (no sandbox credentials in the session that built it).

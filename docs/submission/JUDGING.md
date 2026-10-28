@@ -72,6 +72,26 @@ No user research, usage numbers or time-saved measurements exist in the repo. **
 | Evals report their failures and what they do not show: Autopilot's 17 false posts and their cause, the earlier 21 double posts, the bank matcher's 23 misses, intake's 5 misses, Ask's declined and unanswerable rows | `evals/runs/*/report.md`, `docs/reviews/autopilot-eval/REVIEW.md` |
 | AI-assisted authorship disclosed: Claude, Muse Code and a local Qwen wrote code; every merge was reviewed | `README.md` (Honesty notes), `docs/reviews/` |
 
+## The judges' path: the demo sandbox (no sign-in, no two-step verification)
+
+Open **`/judges`** on the web app (also linked as *For judges* in every page's footer and from Connect) and press
+**Start the demo**, or press **Try the demo — no sign-in** on the signed-out Home or on Connect. You get your own copy
+of six months of books for the fictional Bramblewood Joinery Ltd (labelled SAMPLE — FICTIONAL COMPANY), held in the
+runtime's memory for 2 hours; nobody else sees your changes and nothing about you is stored (`services/runtime/app/demo.py`,
+`docs/PRODUCTION.md` section 5). What to try, in this order:
+
+1. **Review a receipt**: six documents wait in Review; two need a look (an invoice in euros, a malformed VAT number).
+2. **Approve** one: it is posted to the ledger and Books.xlsx.
+3. **VAT return**: pick the previous quarter (*Jul–Sep 2026* in late October 2026) for the 9 boxes worked out by code; *Connect to HMRC (simulated)* → *Show obligations* → *Prepare submission* → tick the declaration → *Submit*: the receipt says **Demo — submission simulated** (HMRC is never contacted from a demo).
+4. **Ask**: "How much VAT do I owe this quarter?"; the figures come from code, the explanation from the server's AI.
+5. **Reports**, 6. **Contacts**, 7. **Bank** (two reconciled statements and bank rules).
+
+*Reset demo* (banner and sidebar) starts again from fresh books; *Set up your own books →* leaves the demo for the real
+Microsoft sign-in, which sets up books in your own OneDrive (HMRC through the sandbox). Simulated in a demo: email is
+never sent ("Sent (demo — not actually sent)"), HMRC, Companies House and VAT-number look-ups. Real: the app, the checks,
+the ledger and VAT arithmetic, and the AI the server runs. Why a sandbox rather than a shared sign-in: see
+`docs/HONESTY.md` ("Demo sandbox") and the branch review (REVIEW.md, "Why a sandbox").
+
 ## How to run it in 10 minutes (test mode, no accounts)
 
 Test mode uses in-memory fakes for OneDrive, Outlook, calendar and contacts and a **stub AI** that returns the gold fields for the gold receipt images and nothing for
