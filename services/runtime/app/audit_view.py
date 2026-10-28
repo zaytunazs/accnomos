@@ -47,6 +47,8 @@ AGENT_LABELS = {
     "mileage": "Mileage",
     "folder-layout": "Folder tidy",
     "contacts": "Contacts",
+    "backup": "Backup",
+    "files": "Files",
 }
 
 
@@ -294,6 +296,39 @@ SUMMARIES: dict[str, Summary] = {
     "sample_books_loaded": lambda r, w: (
         f"Loaded the sample books ({r.get('business') or 'a fictional company'}): "
         f"{_plural(_n(r, 'events'), 'ledger entry', 'ledger entries')}"
+    ),
+    # Files page, archive and backups (app/files.py, app/archive.py, app/backups.py)
+    "files_moved": lambda r, w: f"Moved {_plural(_n(r, 'moved'), 'file')} to {r.get('to') or 'another folder'}",
+    "file_renamed": lambda r, w: (
+        f"Renamed {posixpath.basename(str(r.get('old') or '')) or 'a file'} to "
+        f"{posixpath.basename(str(r.get('new') or '')) or 'a new name'}"
+    ),
+    "files_trashed": lambda r, w: f"Moved {_plural(_n(r, 'moved'), 'file')} to _Trash (nothing was deleted)",
+    "files_archived": lambda r, w: (
+        f"Archived {_plural(_n(r, 'files'), 'file')} up to {r.get('up_to') or 'a year'}"
+        + (f" into {', '.join(map(str, r['years']))}" if isinstance(r.get("years"), list) and r["years"] else "")
+        + (" and zipped them" if r.get("zips") else "")
+    ),
+    "archive_undone": lambda r, w: (
+        f"Undid an archive run: {_plural(_n(r, 'files'), 'file')} moved back"
+        + (f", {_n(r, 'skipped')} no longer in the archive" if _n(r, "skipped") else "")
+    ),
+    "backup_created": lambda r, w: (
+        f"Backed up your books: {_plural(_n(r, 'files'), 'file')} in "
+        f"{posixpath.basename(str(r.get('file') or '')) or 'a backup'}"
+        + (f"; {_plural(_n(r, 'retired'), 'older backup')} moved to _Trash" if _n(r, "retired") else "")
+    ),
+    "backup_verified": lambda r, w: (
+        f"Checked {posixpath.basename(str(r.get('file') or '')) or 'a backup'}: "
+        + ("checksum and every file match" if r.get("ok") else _plural(_n(r, "problems"), "problem"))
+    ),
+    "backup_restored": lambda r, w: (
+        f"Restored {posixpath.basename(str(r.get('file') or '')) or 'a backup'}: "
+        f"{_plural(_n(r, 'restored'), 'file')} added, {_n(r, 'replaced')} replaced (old copies in _Trash)"
+    ),
+    "file_settings_saved": lambda r, w: (
+        f"Backup settings: keep {_n(r, 'backup_keep')}"
+        + (", back up monthly" if r.get("monthly_backup") else ", no monthly backup")
     ),
     # To-dos and housekeeping
     "todo_added": lambda r, w: "Added a to-do",

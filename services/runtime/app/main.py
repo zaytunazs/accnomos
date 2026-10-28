@@ -229,3 +229,8 @@ app.include_router(todos_router)
 from app.routes_audit import router as audit_router  # noqa: E402  GET /audit
 
 app.include_router(audit_router)
+from app.routes_files import backups_router  # noqa: E402  /backups, /backups/verify, /backups/restore
+from app.routes_files import router as files_router  # noqa: E402  /files/overview, index, move, archive
+
+app.include_router(files_router)
+app.include_router(backups_router)
