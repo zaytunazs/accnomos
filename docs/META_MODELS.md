@@ -15,6 +15,24 @@ only stubbed HTTP. Prices are **quotes from our own docs or scripts**, not measu
 Not used: `muse-wonder-1.0` (multi-step planning) is not called anywhere. Chat actions (`app/actions.py`) use the user's configured Glimmer or Spark.
 There is no separate LLM "Reviewer" stage (see `docs/ARCHITECTURE.md`).
 
+## The provider chain: who serves each call
+
+With `AI_PROVIDERS=modal,meta,spark` (the production and demo setting, `docs/PRODUCTION.md` section 6) every AI call that
+names no backend of its own goes to the first provider that answers. All three are Meta models:
+
+| Order | Provider | Model | Reads images | Strict JSON | Voice | Default timeouts (connect / first token / request) |
+|---|---|---|---|---|---|---|
+| 1st | Modal (`tools/modal_glimmer.py`, Ollama on an L40S) | Muse Glimmer 30B | yes | yes (`format` schema) | no | 10 / 150 / 240 s (cold start 60-120 s) |
+| 2nd | Meta Model API, the server's `META_API_KEY` | Muse Spark (`muse-spark-1.3`) | yes | yes (`json_schema` strict) | yes (Muse Voice Transcribe) | 10 / 90 / 120 s |
+| last | DGX Spark, local Ollama | Muse Glimmer 30B | yes | yes | no | 5 / 180 / 200 s |
+
+The Verifier runs on the same chain, with Muse Spark Open on Baseten tried first when `BASETEN_API_KEY` is set. Every
+result records who served it (`served_by`: provider, model, latency_ms, fell_back_from) on proposal cards, Verifier
+readings, Ask answers and inbox triage; the Review card shows it ("Read by Muse Glimmer 30B (Modal) · 14 s · checked by
+…") and links to the app's **/models** page, which shows the chain's live health (`GET /ai/health`), the last 50 calls
+(`GET /ai/calls`, in memory only) and the headline numbers of the eval runs below, read from their summary files when
+the site is built. A user's own backend (their local agent or their own Meta key) is never replaced by the chain.
+
 ## Eval results (synthetic gold set, so real photos will score lower)
 
 | Report | Setup | Result |

@@ -19,6 +19,13 @@ services:
       OLLAMA_BASE: ${OLLAMA_BASE:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-muse-glimmer:30b}
       MODEL_API_BASE: ${MODEL_API_BASE:-https://api.meta.ai/v1}
+      # The provider chain for requests with no AI choice (docs/PRODUCTION.md section 6). A provider without its
+      # settings drops out, so with none of the four below this is just the Spark, as before.
+      AI_PROVIDERS: ${AI_PROVIDERS:-modal,meta,spark}
+      MODAL_GLIMMER_URL: ${MODAL_GLIMMER_URL:-}
+      MODAL_PROXY_TOKEN_ID: ${MODAL_PROXY_TOKEN_ID:-}
+      MODAL_PROXY_TOKEN_SECRET: ${MODAL_PROXY_TOKEN_SECRET:-}
+      META_API_KEY: ${META_API_KEY:-}
       # Base URLs a browser may pick with X-AI-Base-Url (besides the two above); anything else is refused.
       AI_ALLOWED_BASE_URLS: ${AI_ALLOWED_BASE_URLS:-http://192.168.1.176:11434}
       CORS_ORIGINS: ${CORS_ORIGINS:-https://accnomos.com,https://app.accnomos.com,http://localhost:3000}
