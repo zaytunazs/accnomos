@@ -105,7 +105,7 @@ class _SampleBooksCardState extends State<SampleBooksCard>
   /// One poll. Skipped while the Home tab is hidden (TickerMode is off for
   /// an IndexedStack tab that is not showing) or the app is in the background.
   Future<void> _tick() async {
-    if (_polling || !mounted || !_foreground || !TickerMode.of(context)) {
+    if (_polling || !mounted || !_foreground || !TickerMode.valuesOf(context).enabled) {
       return;
     }
     _polling = true;

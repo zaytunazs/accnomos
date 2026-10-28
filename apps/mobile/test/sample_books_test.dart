@@ -165,8 +165,10 @@ void main() {
       expect(find.text('Load sample books'), findsNothing);
       expect(find.byType(LinearProgressIndicator), findsOneWidget);
       expect(
-          find.bySemanticsLabel(
-              'Loading sample books, step 3 of 11: Step name 2'),
+          find.byWidgetPredicate((w) =>
+              w is Semantics &&
+              w.properties.label ==
+                  'Loading sample books, step 3 of 11: Step name 2'),
           findsOneWidget);
       expect(tester.takeException(), isNull);
       await end(tester);
