@@ -282,3 +282,23 @@ replaces the hero's old sandbox sentence.
 - `site-layout.spec.ts`: section headings, the four step titles, the hero region, the footer microcopy, the meta
   description, and that "Pricing is shown in the app" is absent.
 
+## 8. Final state: on top of `origin/main` 2f3f95e (known-fixes, bank-feeds, accountant, import-history merged)
+
+`origin/main` now carries known-fixes (with marketing, exports, sales-purchases and accounting-tools), so `/` there is
+already the marketing landing page. Merging it in raised 12 conflicts. All were in shared files where this branch's
+side was only its own earlier merge resolution of the same branches, so **main's (the integrator's) resolution was
+taken in every one**. Site-layout re-applied only `/terms` in `e2e/pages.ts`.
+
+After the merge the branch differs from `main` in 20 files, all its own: the landing page, public header and footer,
+`DemoLink`, `/terms`, the `/judges` copy, `Marks`, the CSS, the hero image and script, the specs, `COPY.md`, HONESTY
+and this review.
+
+| Gate (on the merged head) | Result |
+|---------------------------|--------|
+| `python -m pytest -q` (services/runtime) | **1835 passed, 2 skipped** (309 s) |
+| `ruff check .` / `ruff format --check .` | clean (471 files) |
+| `pyright services/runtime/app` | 0 errors |
+| `pnpm install --frozen-lockfile`, `eslint .`, `tsc --noEmit` | clean |
+| `pnpm run e2e:build` + `pnpm run e2e:test` (`CI=1`) | **399 passed, 0 failed, 0 flaky**, 94 skipped (493 tests, 14.9 min; the skips are the `SHOTS=1` screenshot specs) |
+| Flutter | not installed here; the Android files are now main's, unchanged by this branch |
+
