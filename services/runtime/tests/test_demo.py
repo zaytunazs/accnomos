@@ -119,7 +119,6 @@ def test_the_image_guard_on_test_mode_is_untouched(demo_env: None, monkeypatch: 
     """Demo mode is allowed in the runtime image; test mode still is not, and demo mode never turns it on."""
     monkeypatch.setenv("ACCNOMOS_IMAGE", "1")
     monkeypatch.setattr(security, "UNLIMITED_PREFIXES", ())
-    monkeypatch.setattr(demo, "start_build", lambda day: None)
     demo.enable()
     assert security.UNLIMITED_PREFIXES == ("/demo/graph/",)
     assert not is_test_mode()
@@ -283,6 +282,15 @@ def test_a_failed_seed_is_a_503_and_retried(client: TestClient, monkeypatch: pyt
     assert r.status_code == 503 and "gold" not in r.text
     monkeypatch.setattr(demo, "BUILD", small_build)
     _start(client)
+
+
+def test_seeding_starts_on_the_first_health_check(demo_env: None, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(security, "UNLIMITED_PREFIXES", ())
+    demo.enable()
+    assert demo._builds == {}  # importing the app never waits on, or competes with, the seed
+    assert demo.status()["ready"] is False
+    (b,) = demo._builds.values()
+    assert b.done.wait(30) and demo.status()["ready"] is True and len(built) == 1
 
 
 async def test_waiters_share_one_build(demo_env: None) -> None:

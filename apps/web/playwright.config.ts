@@ -38,16 +38,26 @@ export default defineConfig({
       command: `${python} -m uvicorn app.main:app --app-dir ../../services/runtime --host 127.0.0.1 --port ${RUNTIME_PORT} --no-access-log`,
       url: `${RUNTIME_URL}/health`,
       // RATE_LIMIT_PER_MIN=0: one browser on 127.0.0.1 makes well over 60 calls a minute across the suite.
-      env: { ACCNOMOS_TEST_MODE: "1", PORT: String(RUNTIME_PORT), CORS_ORIGINS: WEB_URL, RATE_LIMIT_PER_MIN: "0" },
+      // DEMO_MODE=1 for e2e/sandbox.spec.ts (services/runtime/app/demo.py); a throwaway secret, per-IP limits off.
+      env: {
+        ACCNOMOS_TEST_MODE: "1",
+        PORT: String(RUNTIME_PORT),
+        CORS_ORIGINS: WEB_URL,
+        RATE_LIMIT_PER_MIN: "0",
+        DEMO_MODE: "1",
+        DEMO_SECRET: "e2e-only-demo-secret-not-for-production-0000",
+        DEMO_SESSIONS_PER_IP_PER_MIN: "0",
+      },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",
-      timeout: 60_000,
+      // E2E_SERVER_TIMEOUT_MS: a heavily loaded machine can take minutes to render and hash the gold receipts.
+      timeout: Number(process.env.E2E_SERVER_TIMEOUT_MS ?? 60_000),
     },
     {
       command: "node e2e/serve.mjs",
       url: WEB_URL,
       reuseExistingServer: !process.env.CI,
-      timeout: 30_000,
+      timeout: Number(process.env.E2E_SERVER_TIMEOUT_MS ?? 30_000),
     },
   ],
   outputDir: "test-results",

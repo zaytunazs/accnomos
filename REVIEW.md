@@ -77,7 +77,7 @@ Docs: `docs/SECURITY.md` (threat model exception, protection row, per-process an
 
 On this machine (2 cores, shared with other agents' builds, load average 32–38): the seed alone 68 s; the full snapshot
 (seed plus six pre-read documents) 125 s; a per-session copy ~0.007 ms. The brief's "~4 s" could not be checked on an
-idle machine. Hence the snapshot: built once per day in a background thread at start-up (waiters poll, they don't hold
+idle machine. Hence the snapshot: built once per day in a background thread started by the first `/health` request, so it never slows start-up (waiters poll, they don't hold
 worker threads), re-built on the first session of a new day, deep-copied per session at dict level.
 
 ## Tests and gates

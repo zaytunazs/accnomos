@@ -99,7 +99,7 @@ about them and no Microsoft or HMRC account is involved. Off by default; product
 | `DEMO_SEED_TIMEOUT_S` | 600: how long a session start waits for the day's books to be seeded |
 
 How it behaves:
-- At start-up the runtime seeds the day's sample books once, in a background thread (the whole `tools/seed_demo.py`
+- On its first `/health` request (the container healthcheck, within seconds of start) the runtime seeds the day's sample books once, in a background thread (the whole `tools/seed_demo.py`
   plan, planned for today, then six inbox documents read into Review). `GET /health` says `"demo": {"enabled": true,
   "ready": …}`. A session start before it is ready waits ("Preparing the sample books…"); every session after that is
   a copy taking microseconds. The books are re-seeded on the first session of a new day.

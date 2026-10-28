@@ -19,9 +19,9 @@ Nothing is stored about the visitor: no Microsoft password or refresh token exis
 session is gone after `DEMO_IDLE_TTL_S` (2 h) without a request, when it is the least recently used of
 `DEMO_MAX_SESSIONS` (200), or when the runtime restarts.
 
-Seeding runs the whole plan (~4 s on an idle machine, much longer on a busy one), so it runs once per day in a
-background thread and each session gets a copy of that snapshot: the files' bytes are immutable and shared, only the
-dicts are copied, so a new session costs milliseconds and a few kilobytes until it writes.
+Seeding runs the whole plan (~4 s on an idle machine, minutes on a busy one), so it runs once per day in a background
+thread (started by the first /health) and each session gets a copy of that snapshot: the files' bytes are immutable and
+shared, only the dicts are copied, so a new session costs milliseconds and a few kilobytes until it writes.
 
 Limits (env): DEMO_MAX_SESSIONS, DEMO_IDLE_TTL_S, DEMO_MAX_SESSION_BYTES (new bytes one session may add),
 DEMO_MAX_SESSION_FILES (new files), DEMO_MAX_FILE_BYTES (one file), DEMO_MAX_TOTAL_BYTES (all sessions' added bytes;
@@ -536,15 +536,18 @@ async def graph(rest: str, request: Request) -> Response:
 
 
 def status() -> dict[str, Any]:
-    """For /health: whether demos can start, and whether today's books are ready."""
-    s = _snap
-    return {"enabled": True, "ready": s is not None and s.day == current_date(), "sessions": len(STORE)}
+    """For /health: whether demos can start, and whether today's books are ready. The first health check (the
+    container's, or the web app's) starts seeding them, so seeding never slows the runtime's own start-up."""
+    s, day = _snap, current_date()
+    ready = s is not None and s.day == day
+    if not ready:
+        start_build(day)
+    return {"enabled": True, "ready": ready, "sessions": len(STORE)}
 
 
 def enable() -> None:
-    """Called once by app.main when DEMO_MODE=1: refuses to start without DEMO_SECRET, exempts the Graph
-    look-alike from the per-IP budget (it has its own per-session one) and starts seeding today's books."""
+    """Called once by app.main when DEMO_MODE=1: refuses to start without DEMO_SECRET and exempts the Graph
+    look-alike from the per-IP budget (it has its own per-session one). Seeding starts on the first /health."""
     _secret()
     security.UNLIMITED_PREFIXES = (*security.UNLIMITED_PREFIXES, "/demo/graph/")
-    start_build(current_date())
     log.warning("DEMO_MODE=1: demo sandboxes with sample books are on (no Microsoft sign-in)")
