@@ -13,7 +13,8 @@ test("Email intake: add a Microsoft mailbox, check both, set its folder and send
   // The signed-in mailbox is always there; Gmail and (for a personal account) shared mailboxes are not offered.
   await expect(list.getByRole("listitem")).toHaveCount(1);
   await expect(list.getByRole("listitem", { name: "sam@sambuilds.example" })).toContainText("Signed-in account");
-  await expect(section.getByRole("button", { name: "Gmail (coming soon)" })).toBeDisabled();
+  // The submission build (the e2e default) names nothing "coming soon" (e2e/submission-mode.spec.ts).
+  await expect(section.getByRole("button", { name: /Gmail/ })).toHaveCount(0);
   await expect(section).toContainText("Gmail needs a Google Cloud app");
   await expect(section.getByRole("button", { name: "Add shared mailbox" })).toBeDisabled();
   await expect(section).toContainText("Shared mailboxes need a work or school account");

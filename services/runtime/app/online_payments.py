@@ -18,9 +18,14 @@ No database (docs/ARCHITECTURE.md), so:
 * **Payments are found when the user opens the app**, not by webhook: a webhook arrives with no Graph token, so the
   runtime could not write the payment to the user's OneDrive, and there is nowhere else to keep it. Opening Invoices
   calls `GET /payments/online/check`, which asks the provider about each sent invoice that has a link. Each payment
-  found is a proposal: the user approves it, and code posts the money received (Dr 1200 Bank / Cr 1100 Debtors, via
-  app/payments.py) and the provider's fee as its own expense (Dr 7900 Bank charges, VAT exempt / Cr 1200 Bank).
-  Nothing is ever posted on its own.
+  found is a proposal: the user approves it, and code posts the money received into the provider's clearing account
+  (Dr 1230 Stripe clearing or 1240 PayPal clearing / Cr 1100 Debtors, via app/payments.py) and the provider's fee as
+  its own expense (Dr 7900 Bank charges, VAT exempt / Cr the clearing account). Nothing is ever posted on its own.
+* **Payouts.** The money reaches the bank later, as one payout per batch, net of fees. That statement line is
+  matched as a payout (`match_payout`): Dr 1200 Bank / Cr the clearing account, so the receipt is counted once
+  (in the clearing account), the bank only when the money arrives, and the clearing account's balance is what the
+  provider still holds. Before clearing accounts, receipts went straight to 1200 Bank and the payout line was a
+  second receipt of the same money.
 * **PayPal.me** needs no API at all: a `paypal.me/<name>/<amount>GBP` link. PayPal cannot tell us about those
   payments, so they are recorded by hand like a bank transfer.
 """
@@ -39,7 +44,7 @@ import time
 from base64 import urlsafe_b64decode, urlsafe_b64encode
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from urllib.parse import urlsplit, urlunsplit
 from zoneinfo import ZoneInfo
 
@@ -58,7 +63,7 @@ from app.invoicing import (
     money,
     save_invoice,
 )
-from app.journal import BANK, CATEGORY_ACCOUNTS
+from app.journal import BANK, CATEGORY_ACCOUNTS, CLEARING
 from app.payment_providers import (
     PAYPAL_SANDBOX,
     PayPalApi,
@@ -783,15 +788,17 @@ async def paypal_payments(api: PayPalApi, merchant: str, invoice: dict[str, Any]
     return out
 
 
-def journal_for(gross: int, fee: int | None) -> list[JournalPreview]:
+def journal_for(provider: str, gross: int, fee: int | None) -> list[JournalPreview]:
+    """What approving posts: the receipt and the fee, both through the provider's clearing account."""
+    clearing = CLEARING[provider]
     lines = [
-        JournalPreview(account=BANK, debit_pence=gross),
+        JournalPreview(account=clearing, debit_pence=gross),
         JournalPreview(account="1100 Debtors", credit_pence=gross),
     ]
     if fee:
         lines += [
             JournalPreview(account=FEES, debit_pence=fee, vat_code="E"),
-            JournalPreview(account=BANK, credit_pence=fee),
+            JournalPreview(account=clearing, credit_pence=fee),
         ]
     return lines
 
@@ -860,7 +867,7 @@ async def check(books: Books) -> CheckResult:
                 net_pence=r.gross_pence - r.fee_pence if r.fee_pence is not None else None,
                 balance_pence=balance,
                 test_mode=link.test_mode,
-                journal=journal_for(r.gross_pence, r.fee_pence),
+                journal=journal_for(link.provider, r.gross_pence, r.fee_pence),
             )
             for r in raws
             if r.payment_id not in inv.online_payments
@@ -880,7 +887,7 @@ def fee_event_id(provider: str, payment_id: str) -> str:
 
 
 def fee_event(provider: str, payment_id: str, number: str, when: date, fee: int, user: str) -> LedgerEvent:
-    """The provider's fee as an expense of its own: Dr 7900 Bank charges (VAT exempt) / Cr 1200 Bank."""
+    """The provider's fee as an expense of its own: Dr 7900 Bank charges (VAT exempt) / Cr its clearing account."""
     memo = f"{provider_label(provider)} fee for invoice {number}"
     return LedgerEvent(
         id=fee_event_id(provider, payment_id),
@@ -888,7 +895,7 @@ def fee_event(provider: str, payment_id: str, number: str, when: date, fee: int,
         date=when,
         lines=[
             Line(account=FEES, debit=fee, vat_code=VatCode.EXEMPT, memo=memo),
-            Line(account=BANK, credit=fee, memo=memo),
+            Line(account=CLEARING[provider], credit=fee, memo=memo),
         ],
         approved_by=user,
         approved_at=now(),
@@ -949,7 +956,7 @@ async def approve(
             side="sale",
             date=max(raw.when, inv.issue_date),
             amount_pence=raw.gross_pence,
-            account="1200 Bank",
+            account=cast(payments.PaymentAccount, CLEARING[link.provider]),  # the bank sees it in a payout
             reference=reference,
             allocations=[payments.AllocationIn(event_id=inv.event_id, amount_pence=min(raw.gross_pence, owed))],
             bank_line_id=None,
@@ -989,6 +996,128 @@ async def approve(
         net_pence=raw.gross_pence - fee,
         balance_pence=inv.balance_pence or 0,
         test_mode=link.test_mode,
-        journal=journal_for(raw.gross_pence, fee),
+        journal=journal_for(link.provider, raw.gross_pence, fee),
     )
     return inv, found
+
+
+# --------------------------------------------------------------------------- #
+# Payouts: the provider's transfer to the bank, matched to a statement line
+# --------------------------------------------------------------------------- #
+
+PAYOUTS = f"{SYSTEM}/Payments/payouts.json"
+PAYOUT_WORDS = {
+    "stripe": re.compile(r"\bstripe\b", re.IGNORECASE),
+    "paypal": re.compile(r"\bpaypal\b|\bpp\s?\*", re.IGNORECASE),
+}
+
+
+class Payout(BaseModel):
+    """One statement line matched as a payout (`_System/Payments/payouts.json`)."""
+
+    line_id: str
+    provider: Literal["stripe", "paypal"]
+    date: date
+    amount_pence: int
+    event_id: str
+    matched_by: str
+    matched_at: datetime
+    reversal_event_id: str | None = None  # posted when the line is unmatched
+
+
+def payout_provider(description: str) -> Literal["stripe", "paypal"] | None:
+    """Which provider a statement line's words name, for the hint on an unmatched line; None when neither."""
+    for name, words in PAYOUT_WORDS.items():
+        if words.search(description):
+            return name  # type: ignore[return-value]
+    return None
+
+
+async def _payouts(books: Books) -> list[Payout]:
+    return [Payout.model_validate(r) for r in await books.read_json(PAYOUTS, [])]
+
+
+async def clearing_balance(books: Books, provider: str) -> int:
+    """What the provider still holds for the user, by the books: receipts less fees less payouts (pence)."""
+    account = CLEARING[provider]
+    return sum(ln.debit - ln.credit for e in await books.list_events() for ln in e.lines if ln.account == account)
+
+
+async def match_payout(books: Books, line_id: str, provider: Literal["stripe", "paypal"], user: str) -> Any:
+    """The user's yes: this money-in line is a payout from `provider`. Posts Dr 1200 Bank / Cr the clearing account for
+    the line's amount and matches the line to it. Refused (BankMatchError) when the clearing account holds less: the
+    payments it pays out are not approved yet, and posting it would leave the provider owing the user a negative
+    amount."""
+    from app.books import BankMatchError
+
+    line = await books.find_bank_line(line_id)
+    if line.resolved:
+        raise BankMatchError("This bank line is already settled; undo that first")
+    if line.amount_pence <= 0:
+        raise BankMatchError("A payout is money in; this line is money out")
+    held = await clearing_balance(books, provider)
+    if line.amount_pence > held:
+        raise BankMatchError(
+            f"{CLEARING[provider]} holds {money(max(held, 0))}, less than this {money(line.amount_pence)} payout. "
+            f"Approve the {provider_label(provider)} payments it pays out on the Invoices page first"
+        )
+    memo = f"{provider_label(provider)} payout"
+    event = LedgerEvent(
+        kind="bank",
+        date=line.date,
+        lines=[
+            Line(account=BANK, debit=line.amount_pence, memo=memo),
+            Line(account=CLEARING[provider], credit=line.amount_pence, memo=memo),
+        ],
+        approved_by=user,
+        approved_at=now(),
+        counterparty=provider_label(provider),
+    )
+    await books.post_event(event)
+    record = Payout(
+        line_id=line_id,
+        provider=provider,
+        date=line.date,
+        amount_pence=line.amount_pence,
+        event_id=event.id,
+        matched_by=user,
+        matched_at=now(),
+    )
+    await books._update_json(PAYOUTS, [], lambda rows: [*(rows or []), record.model_dump(mode="json")])
+    await books.audit(
+        f"user:{user}",
+        "payout_matched",
+        {"line": line_id, "provider": provider, "amount_pence": line.amount_pence, "event": event.id},
+    )
+    return await books.confirm_match(line_id, [event.id], user)
+
+
+async def on_unmatched(books: Books, line_id: str, event_ids: list[str], user: str) -> None:
+    """A payout line was unmatched: reverse its transfer, so the money is back in the clearing account."""
+    payouts = await _payouts(books)
+    hit = next(
+        (p for p in payouts if p.line_id == line_id and p.event_id in event_ids and not p.reversal_event_id), None
+    )
+    if hit is None:
+        return
+    original = next((e for e in await books.list_events() if e.id == hit.event_id), None)
+    if original is None:
+        return
+    reversal = LedgerEvent(
+        kind="reversal",
+        date=original.date,
+        lines=[Line(account=ln.account, debit=ln.credit, credit=ln.debit, memo=ln.memo) for ln in original.lines],
+        approved_by=user,
+        approved_at=now(),
+        counterparty=original.counterparty,
+        reverses=original.id,
+    )
+    await books.post_event(reversal)
+
+    def change(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        return [{**r, "reversal_event_id": reversal.id} if r.get("event_id") == hit.event_id else r for r in rows or []]
+
+    await books._update_json(PAYOUTS, [], change)
+    await books.audit(
+        f"user:{user}", "payout_unmatched", {"line": line_id, "provider": hit.provider, "event": hit.event_id}
+    )

@@ -503,6 +503,9 @@ export const runtime = {
     /** Reopen a matched, transfer or ignored line. */
     reopen: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/unmatch`, { method: "POST" }),
     transfer: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/transfer`, { method: "POST" }),
+    /** A payout from Stripe or PayPal: Dr 1200 Bank / Cr its clearing account (services/runtime/app/online_payments.py). */
+    payout: (a: AccountInfo, lineId: string, provider: "stripe" | "paypal") =>
+      call<RtBankLine>(a, `/books/bank/lines/${lineId}/payout`, { method: "POST", body: JSON.stringify({ provider }) }),
     ignore: (a: AccountInfo, lineId: string) => call<RtBankLine>(a, `/books/bank/lines/${lineId}/ignore`, { method: "POST" }),
     expenseProposal: (a: AccountInfo, lineId: string) =>
       call<RtProposal>(a, `/books/bank/lines/${lineId}/expense-proposal`, { method: "POST" }),
@@ -1530,6 +1533,8 @@ export interface RtUnmatchedLine {
   suggested: { action: RtUnmatchedAction; reason: string };
   /** Status of the expense proposal made from this line, if any; after "rejected" a new one may be made. */
   proposal_status: "proposed" | "needs_a_look" | "posted" | "rejected" | null;
+  /** Money in whose words name Stripe or PayPal: likely that provider's payout. */
+  payout?: "stripe" | "paypal" | null;
 }
 export interface RtBankSummary {
   total: number;
@@ -1736,6 +1741,8 @@ export interface RtDashboard {
   owed_to_you: (RtOwed & { overdue: number | null; overdue_pence: number | null; most_overdue_days: number | null }) | RtTileError | null;
   owed_by_you: RtOwed | RtTileError | null;
   vat: RtDeadlines | RtTileError | null;
+  /** False when the profile has no VAT (personal, or not VAT-registered): `vat` is null and Home shows no VAT. */
+  vat_applies?: boolean;
   attention: ({
     proposed: number;
     needs_a_look: number;
@@ -2007,6 +2014,18 @@ export interface RtVatView {
   events_in_period: number;
   undone_in_period: number; // reversing events among them
   hmrc_body: Record<string, unknown>;
+  /** Manual journals with VAT (and their reversals or voids) and VAT recodes counted in the boxes. */
+  adjustments?: RtVatAdjustment[];
+}
+
+export interface RtVatAdjustment {
+  event_id: string;
+  date: string;
+  name: string; // "Journal MJ-0001"
+  note: string | null;
+  side: "sales" | "purchases"; // boxes 1 and 6, or boxes 4 and 7
+  net_pence: number; // signed, as counted
+  vat_pence: number; // signed, as counted
 }
 
 /** POST /books/vat/obligations (services/runtime/app/routes_vat.py): one HMRC obligation, as the relay returns it. */

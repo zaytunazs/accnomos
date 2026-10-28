@@ -36,7 +36,7 @@ from pydantic import BaseModel, Field
 
 from accnomos_ledger.bank import BankLine
 from app.books import SYSTEM, Books
-from app.journal import BANK, CASH
+from app.journal import BANK, CASH, PAYPAL_CLEARING, STRIPE_CLEARING
 
 if TYPE_CHECKING:  # app.contacts imports this module
     from app.contacts import Doc
@@ -44,7 +44,7 @@ if TYPE_CHECKING:  # app.contacts imports this module
 log = logging.getLogger(__name__)
 PAYMENTS = f"{SYSTEM}/Payments/payments.json"
 CREDIT_USES = f"{SYSTEM}/Payments/credit_uses.json"
-PAYMENT_ACCOUNTS = (BANK, CASH)
+PAYMENT_ACCOUNTS = (BANK, CASH, STRIPE_CLEARING, PAYPAL_CLEARING)
 PENNY = 1  # the bank matcher's rounding tolerance per document (accnomos_ledger.matching.PENNY)
 Side = Literal["sale", "purchase"]
 PaymentStatus = Literal["open", "part_paid", "paid", "overpaid"]
@@ -277,7 +277,7 @@ def _record(s: Settlement, r: PaymentRecord, live: dict[str, Doc]) -> None:
         account=r.account,
         reference=r.reference,
         description=("Payment received" if r.side == "sale" else "Payment made")
-        + (" (cash)" if r.account == CASH else ""),
+        + {CASH: " (cash)", STRIPE_CLEARING: " (Stripe)", PAYPAL_CLEARING: " (PayPal)"}.get(r.account, ""),
         counterparty=r.counterparty,
         allocations=done,
         unallocated_pence=left,

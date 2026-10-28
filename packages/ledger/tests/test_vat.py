@@ -208,3 +208,66 @@ def test_undoing_a_vat_only_sale_nets_off_box_1_not_box_4():
     assert vat_side(undo) == ("sales", -1)
     ret = compute_vat_return([vat_only, undo], "x", date(2026, 7, 1), date(2026, 9, 30))
     assert (str(ret.vat_due_sales), str(ret.vat_reclaimed), str(ret.net_vat_due)) == ("0.00", "0.00", "0.00")
+
+
+def test_vat_adjustments_count_on_their_side_with_their_signed_figures():
+    """A manual journal or a VAT recode is an adjustment with `vat_box`: its signed net and VAT go in the boxes."""
+    day = date(2026, 8, 10)
+    bill = purchase(10_000, 2_000, day)
+    recode = LedgerEvent(  # the bill was zero rated after all: keep the gross, take the VAT back out of box 4
+        kind="adjustment",
+        date=day,
+        vat_box="purchases",
+        net=2_000,
+        vat=-2_000,
+        lines=[
+            Line(account="5100 Tools", credit=10_000, vat_code=VatCode.STANDARD),
+            Line(account="2200 VAT control", credit=2_000, vat_code=VatCode.STANDARD),
+            Line(account="5100 Tools", debit=12_000, vat_code=VatCode.ZERO),
+        ],
+        **APPROVED,
+    )
+    plain = LedgerEvent(  # no vat_box: never on the return
+        kind="adjustment",
+        date=day,
+        lines=[
+            Line(account="8000 Depreciation", debit=500),
+            Line(account="0031 Office equipment depreciation", credit=500),
+        ],
+        **APPROVED,
+    )
+    r = compute_vat_return([bill, recode, plain], "26Q3", date(2026, 7, 1), date(2026, 9, 30))
+    assert r.vat_reclaimed == 0
+    assert r.total_purchases_ex_vat == 120
+    assert plain.id not in r.event_ids and recode.id in r.event_ids
+
+
+def test_vat_side_names_the_box_of_a_vat_adjustment_and_the_return_says_which_entries_are_behind_each_side():
+    """A journal (or recode) with `vat_box` is on that side as signed; the return lists the ids behind each side,
+    which is what the VAT page counts as the entries behind boxes 1/6 and 4/7."""
+    day = date(2026, 8, 10)
+    journal = LedgerEvent(
+        kind="adjustment",
+        date=day,
+        vat_box="sales",
+        net=10_000,
+        vat=2_000,
+        lines=[
+            Line(account="1200 Bank", debit=12_000),
+            Line(account="4000 Sales", credit=10_000, vat_code=VatCode.STANDARD),
+            Line(account="2200 VAT control", credit=2_000, vat_code=VatCode.STANDARD),
+        ],
+        **APPROVED,
+    )
+    plain = LedgerEvent(
+        kind="adjustment",
+        date=day,
+        lines=[Line(account="7200 Utilities", debit=100), Line(account="2400 Accruals", credit=100)],
+        **APPROVED,
+    )
+    assert vat_side(journal) == ("sales", 1)
+    assert vat_side(plain) is None
+    bill = purchase(5_000, 1_000, day)
+    r = compute_vat_return([journal, plain, bill], "26Q3", date(2026, 7, 1), date(2026, 9, 30))
+    assert (r.sales_event_ids, r.purchase_event_ids) == ([journal.id], [bill.id])
+    assert (str(r.vat_due_sales), r.total_sales_ex_vat) == ("20.00", 100)

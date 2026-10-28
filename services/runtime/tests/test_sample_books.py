@@ -33,6 +33,7 @@ from app.security import TokenBucket
 TOOL = Path(__file__).resolve().parents[3] / "tools" / "seed_demo.py"
 TODAY = date(2026, 10, 27)
 HEADERS = {"X-Graph-Token": "token-one", "X-User": "judge@example.com"}
+SETTLE_TIMEOUT_S = 900  # a hang, not slowness: the seed takes seconds here and minutes on a loaded machine
 
 
 @pytest.fixture(scope="module")

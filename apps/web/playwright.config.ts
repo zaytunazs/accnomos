@@ -37,7 +37,8 @@ export default defineConfig({
     {
       command: `${python} -m uvicorn app.main:app --app-dir ../../services/runtime --host 127.0.0.1 --port ${RUNTIME_PORT} --no-access-log`,
       url: `${RUNTIME_URL}/health`,
-      // RATE_LIMIT_PER_MIN=0: one browser on 127.0.0.1 makes well over 60 calls a minute across the suite.
+      // RATE_LIMIT_PER_MIN=0: one browser on 127.0.0.1 makes well over 60 calls a minute across the suite; the same for
+      // the website chat's own limit (PUBLIC_CHAT_PER_MIN, tested in services/runtime/tests/test_public_chat.py).
       // EARLY_ACCESS_*: the early-adopter form's endpoint on, writing to a temp file (e2e/early-access.spec.ts).
       // DEMO_MODE=1 for e2e/sandbox.spec.ts (services/runtime/app/demo.py); a throwaway secret, per-IP limits off.
       // AI_PROVIDERS: requests without an AI choice take the chain; in test mode every provider is the stub AI.
@@ -53,6 +54,7 @@ export default defineConfig({
         DEMO_SECRET: "e2e-only-demo-secret-not-for-production-0000",
         DEMO_SESSIONS_PER_IP_PER_MIN: "0",
         AI_PROVIDERS: "modal,meta,spark",
+        PUBLIC_CHAT_PER_MIN: "0",
       },
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",

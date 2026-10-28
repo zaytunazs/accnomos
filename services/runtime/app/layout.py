@@ -70,9 +70,13 @@ async def migrate(books: Books) -> LayoutStatus:
             continue
         try:
             await books.storage.move(found.name, new)
-        except (FileNotFoundError, FileExistsError):
-            # Another request renamed it a moment ago (two tabs at sign-in, or one page's calls in parallel, each
-            # checking the layout): the folder is where it should be, and the move is that request's to report.
+        except Exception:
+            # The first requests of a sign-in run this at the same time (Home loads several at once): another may
+            # have renamed it a moment ago. That is not a failure of this request; anything else still is.
+            fresh = getattr(books.storage, "inner", books.storage)  # past the request memo, which still lists `old`
+            now = {f.name.casefold() for f in await fresh.list("") if f.is_folder}
+            if old.casefold() in now or new.casefold() not in now:
+                raise
             continue
         top[new.casefold()] = found
         status.moved.append(Renamed(old=found.name, new=new))

@@ -106,7 +106,7 @@ test.describe("public build (submission mode 0)", () => {
 test.describe("submission build (the default)", () => {
   test("renders nothing on the landing page", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /Books read by AI/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("AI proposes.You approve.Code calculates.");
     await expect(page.getByRole("heading", { name: HEADING })).toHaveCount(0);
     await expect(page.getByText(CONSENT)).toHaveCount(0);
   });
@@ -114,7 +114,7 @@ test.describe("submission build (the default)", () => {
   test("renders nothing when the mode is set to 1 explicitly", async ({ page }) => {
     await submissionMode(page, "1");
     await page.goto("/");
-    await expect(page.getByRole("heading", { name: /Books read by AI/ })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("AI proposes.You approve.Code calculates.");
     await expect(page.getByRole("heading", { name: HEADING })).toHaveCount(0);
   });
 });

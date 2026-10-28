@@ -154,7 +154,8 @@ export function createTestMsal(): IPublicClientApplication {
       if (!signedInKeys().length) throw new Error("not signed in");
       const username = window.localStorage.getItem(POPUP_ACCOUNT) || DEFAULT_POPUP_ACCOUNT;
       if (!linked().includes(username)) setLinked([...linked(), username]);
-      return { accessToken: "test-token", account: extraAccount(username), scopes: ["Mail.Read"] } as unknown as AuthenticationResult;
+      const account = username === TEST_ACCOUNT.username ? TEST_ACCOUNT : extraAccount(username);
+      return { accessToken: "test-token", account, scopes: ["Mail.Read"] } as unknown as AuthenticationResult;
     },
     clearCache: async ({ account }: { account?: AccountInfo } = {}) => {
       if (account) setLinked(linked().filter((u) => u !== account.username));

@@ -27,12 +27,26 @@ class Line(BaseModel):
     credit: int = Field(default=0, ge=0, description="pence")
     vat_code: VatCode | None = None
     memo: str | None = None
+    tracking: dict[str, str] | None = Field(
+        default=None, description="tracking category id -> option id (at most 2), e.g. a department or project"
+    )
 
     @model_validator(mode="after")
     def _one_side(self) -> Line:
         if (self.debit > 0) == (self.credit > 0):
             raise ValueError("a line must have either a debit or a credit, not both or neither")
         return self
+
+
+class Recode(BaseModel):
+    """What an adjusting event does to one line of an earlier event: its new account and VAT code."""
+
+    event_id: str
+    line: int = Field(ge=0, description="index into that event's lines")
+    account: str
+    vat_code: VatCode | None = None
+    amount: int = Field(ge=0, description="pence: the line's amount after the recode (a VAT recode keeps the gross)")
+    vat: int | None = Field(default=None, description="pence: the original event's VAT after a VAT recode")
 
 
 class LedgerEvent(BaseModel):
@@ -54,6 +68,13 @@ class LedgerEvent(BaseModel):
     net: int | None = Field(default=None, description="pence; the VAT-able net for sales/purchases")
     vat: int | None = Field(default=None, description="pence")
     counterparty: str | None = None
+    vat_box: Literal["sales", "purchases"] | None = Field(
+        default=None,
+        description="adjustments only: the side of the VAT return this entry's signed `net` and `vat` count on",
+    )
+    recodes: list[Recode] = Field(
+        default_factory=list, description="adjustments only: the earlier lines this entry recodes (Find and recode)"
+    )
 
     @property
     def is_credit_note(self) -> bool:

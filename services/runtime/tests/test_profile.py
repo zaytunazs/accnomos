@@ -15,6 +15,7 @@ from fastapi.testclient import TestClient
 from accnomos_connectors import FakeStorageProvider
 from app import cache, profile, testmode
 from app.books import Books
+from app.routes_dashboard import router as dashboard_router
 from app.routes_invoices import router as invoices_router
 from app.routes_payroll import router as payroll_router
 from app.routes_profile import router as profile_router
@@ -34,7 +35,15 @@ def client(monkeypatch: pytest.MonkeyPatch) -> TestClient:
     monkeypatch.setenv("ACCNOMOS_TEST_TODAY", testmode.DEFAULT_TODAY)
     monkeypatch.delenv("ACCNOMOS_TEST_AI_BASE", raising=False)
     app = FastAPI()
-    for r in (testmode.router, profile_router, vat_router, invoices_router, payroll_router, reports_router):
+    for r in (
+        testmode.router,
+        profile_router,
+        vat_router,
+        invoices_router,
+        payroll_router,
+        reports_router,
+        dashboard_router,
+    ):
         app.include_router(r)
     app.add_middleware(testmode.TenantMiddleware)
     c = TestClient(app, headers={testmode.TENANT_HEADER: "profiles"})
@@ -153,6 +162,39 @@ def test_vat_pages_need_a_vat_registered_business(client: TestClient) -> None:
     assert client.put("/profile", headers=A, json=on).status_code == 200
     for path in VAT_ROUTES:
         assert client.get(path, headers=A).status_code == 200, path
+
+
+def _dashboard(client: TestClient, who: dict[str, str]) -> dict:
+    r = client.get("/books/dashboard", headers=who, params={"today": "2026-10-27"})
+    assert r.status_code == 200, r.text
+    return r.json()
+
+
+def test_the_dashboard_vat_tile_is_only_for_vat_registered_businesses(client: TestClient) -> None:
+    # No profile yet: a VAT-registered company, as before profiles.
+    d = _dashboard(client, A)
+    assert d["vat_applies"] is True and d["vat"] is not None
+    # A company that is not VAT-registered: no VAT block, and "vat" is not an unavailable section either.
+    assert client.put("/profile", headers=A, json=COMPANY).status_code == 200
+    d = _dashboard(client, A)
+    assert (d["vat_applies"], d["vat"]) == (False, None)
+    assert "vat" not in d["unavailable"]
+    assert d["cash"] is not None and d["attention"] is not None  # the other tiles are still worked out
+    # Personal books: never VAT.
+    assert client.put("/profile", headers=B, json=PERSONAL).status_code == 200
+    d = _dashboard(client, B)
+    assert (d["vat_applies"], d["vat"]) == (False, None)
+    # A sole trader who is VAT-registered gets the tile back.
+    sole = {"name": "Sam", "kind": "sole_trader", "settings": {"vat_number": "GB123456789"}}
+    assert client.put("/profile", headers=A, json=sole).status_code == 200
+    d = _dashboard(client, A)
+    assert d["vat_applies"] is True and d["vat"] is not None
+
+
+def test_an_unreadable_profile_keeps_the_vat_tile(client: TestClient) -> None:
+    _drive("test-token").files[profile.PROFILE] = b"{not json"
+    d = _dashboard(client, A)
+    assert d["vat_applies"] is True and d["vat"] is not None
 
 
 def test_books_with_no_profile_keep_every_feature(client: TestClient) -> None:

@@ -206,6 +206,7 @@ class Proposal(BaseModel):
     account_override: str | None = None  # expense account chosen by a rule or the user
     job_id: str | None = None  # job this purchase is a cost of (_System/Jobs/jobs.json), tagged on approval
     vehicle_id: str | None = None  # business vehicle this cost belongs to (_System/Vehicles/vehicles.json)
+    tracking: dict[str, str] | None = None  # tracking tags put on its cost or income lines when approved
     mileage_claim: MileageClaim | None = None  # set on mileage allowance proposals, which code builds
     created_at: datetime | None = None
     decided_by: str | None = None

@@ -3,7 +3,7 @@
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useReviewBadge } from "./AppNav";
+import { usePersonalOn, useReviewBadge } from "./AppNav";
 import { AccountMenu, ProfileSwitcher, useLinkedProfiles } from "./ProfileMenu";
 import { isCurrent, visibleGroups, type NavGroup, type NavItem } from "@/lib/nav";
 import { useSelfEmployed } from "@/lib/itsa";

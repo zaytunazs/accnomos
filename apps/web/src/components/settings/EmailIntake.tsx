@@ -213,9 +213,13 @@ export default function EmailIntake({ card, heading }: { card: string; heading: 
           >
             Add shared mailbox
           </button>
-          <button type="button" disabled className={smallButton + " h-10 text-muted"}>
-            Gmail (coming soon)
-          </button>
+          {/* Pre-launch build only (NEXT_PUBLIC_SUBMISSION_MODE=0): the judged build names nothing "coming soon".
+              Written out so a submission build folds it away. */}
+          {process.env.NEXT_PUBLIC_SUBMISSION_MODE === "0" && (
+            <button type="button" disabled className={smallButton + " h-10 text-muted"}>
+              Gmail (coming soon)
+            </button>
+          )}
         </div>
       )}
       {account && personal && (

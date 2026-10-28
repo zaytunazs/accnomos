@@ -442,10 +442,10 @@ async def test_stripe_link_pay_find_approve(client: TestClient, books: Books, fa
     f = found[0]
     assert (f["invoice"], f["gross_pence"], f["fee_pence"], f["net_pence"]) == (number, TOTAL, 578, TOTAL - 578)
     assert f["journal"] == [
-        {"account": "1200 Bank", "debit_pence": TOTAL, "credit_pence": 0, "vat_code": None},
+        {"account": "1230 Stripe clearing", "debit_pence": TOTAL, "credit_pence": 0, "vat_code": None},
         {"account": "1100 Debtors", "debit_pence": 0, "credit_pence": TOTAL, "vat_code": None},
         {"account": "7900 Bank charges", "debit_pence": 578, "credit_pence": 0, "vat_code": "E"},
-        {"account": "1200 Bank", "debit_pence": 0, "credit_pence": 578, "vat_code": None},
+        {"account": "1230 Stripe clearing", "debit_pence": 0, "credit_pence": 578, "vat_code": None},
     ]
     lists = _calls("/v1/checkout/sessions")
     assert lists[-1].url.params["payment_link"] == link["provider_ref"]
@@ -473,7 +473,7 @@ async def test_stripe_link_pay_find_approve(client: TestClient, books: Books, fa
     assert fee_ev.kind == "purchase" and fee_ev.net == 578 and fee_ev.vat == 0
     assert [(ln.account, ln.debit, ln.credit, ln.vat_code) for ln in fee_ev.lines] == [
         ("7900 Bank charges", 578, 0, "E"),
-        ("1200 Bank", 0, 578, None),
+        ("1230 Stripe clearing", 0, 578, None),
     ]
     payments = _ok(client.get("/payments", headers=H))
     assert [p["amount_pence"] for p in payments] == [TOTAL]
@@ -796,3 +796,89 @@ def test_a_provider_that_cannot_be_reached_is_a_problem_not_a_failure(client: Te
 
 def test_binding_hash_is_sha256() -> None:
     assert binding_hash("abc") == hashlib.sha256(b"abc").hexdigest()
+
+
+# --------------------------------------------------------------------------- #
+# Clearing accounts and payouts: a receipt is counted once, the bank only when the payout lands
+# --------------------------------------------------------------------------- #
+
+
+def _balance(events: list, account: str) -> int:
+    return sum(ln.debit - ln.credit for e in events for ln in e.lines if ln.account == account)
+
+
+def _statement(*rows: tuple[str, str, str]) -> bytes:
+    return ("Date,Description,Amount\n" + "".join(f"{d},{w},{a}\n" for d, w, a in rows)).encode()
+
+
+async def _paid_by_link(client: TestClient, provider: str) -> tuple[str, str, int]:
+    """A sent invoice paid through a `provider` link and approved: (number, payment id, fee)."""
+    (_connect_stripe if provider == "stripe" else _connect_paypal)(client)
+    number = _sent_invoice(client)
+    link = _ok(client.post(f"/invoices/{number}/payment-link", json={"provider": provider}, headers=H))["invoice"][
+        "payment_link"
+    ]
+    pid = FAKES.pay_stripe(link["provider_ref"]) if provider == "stripe" else FAKES.pay_paypal(link["provider_ref"])
+    f = _ok(client.get("/payments/online/check", headers=H))["found"][0]
+    _ok(
+        client.post(
+            f"/invoices/{number}/payment-link/approve",
+            json={"payment_id": f["payment_id"], "confirm": True},
+            headers=H,
+        )
+    )
+    return number, pid or f["payment_id"], f["fee_pence"]
+
+
+@pytest.mark.parametrize(
+    ("provider", "clearing", "words"),
+    [("stripe", "1230 Stripe clearing", "STRIPE PAYMENTS UK LTD"), ("paypal", "1240 PayPal clearing", "PAYPAL")],
+)
+async def test_a_payout_moves_the_money_from_clearing_to_the_bank_once(
+    client: TestClient, books: Books, provider: str, clearing: str, words: str
+) -> None:
+    _number, _pid, fee = await _paid_by_link(client, provider)
+    events = await _events(books)
+    net = TOTAL - fee
+    # Approved: the provider holds the money, the bank has nothing yet, the invoice is paid.
+    assert (_balance(events, clearing), _balance(events, "1200 Bank")) == (net, 0)
+    assert _balance(events, "1100 Debtors") == 0
+
+    pounds = f"{net / 100:.2f}"
+    r = client.post(
+        "/books/bank/import",
+        headers=H,
+        files={"file": ("payout.csv", _statement(("30/10/2026", f"{words} PAYOUT", pounds)), "text/csv")},
+    )
+    assert r.status_code == 200, r.text
+    lines = _ok(client.get("/books/bank/unmatched", headers=H))
+    line = next(u for u in lines if u["line"]["amount_pence"] == net)
+    assert line["payout"] == provider  # the hint the Bank page shows
+    # The payout is not offered as the invoice's payment: that money is already in the books.
+    r = client.post(f"/books/bank/lines/{line['line']['id']}/payout", json={"provider": provider}, headers=H)
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "matched"
+    events = await _events(books)
+    assert (_balance(events, clearing), _balance(events, "1200 Bank")) == (0, net)  # equal to the statement
+    sales = sum(-ln.credit + ln.debit for e in events for ln in e.lines if ln.account == "4000 Sales")
+    assert sales == -31_000  # the invoice's net, once: the payout added no income
+
+    # Unmatching puts the money back in clearing; matching again moves it once more.
+    _ok(client.post(f"/books/bank/lines/{line['line']['id']}/unmatch", headers=H))
+    events = await _events(books)
+    assert (_balance(events, clearing), _balance(events, "1200 Bank")) == (net, 0)
+    _ok(client.post(f"/books/bank/lines/{line['line']['id']}/payout", json={"provider": provider}, headers=H))
+    assert _balance(await _events(books), "1200 Bank") == net
+
+
+async def test_a_payout_bigger_than_what_the_provider_holds_is_refused(client: TestClient, books: Books) -> None:
+    client.post(
+        "/books/bank/import",
+        headers=H,
+        files={"file": ("p.csv", _statement(("30/10/2026", "STRIPE PAYOUT", "50.00")), "text/csv")},
+    )
+    line = _ok(client.get("/books/bank/unmatched", headers=H))[0]
+    r = client.post(f"/books/bank/lines/{line['line']['id']}/payout", json={"provider": "stripe"}, headers=H)
+    assert r.status_code == 409
+    assert "1230 Stripe clearing holds £0.00" in r.json()["detail"]
+    assert await _events(books) == []
