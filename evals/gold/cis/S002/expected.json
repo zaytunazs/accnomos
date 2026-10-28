@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S002",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Brighton Bay Builders Ltd",
+  "contractor_ref": "247/WD84830",
+  "subcontractor_name": "Flow State Plumbing",
+  "subcontractor_utr": "3909960308",
+  "verification_number": "V4687093963EG",
+  "tax_month_end": "2027-01-05",
+  "gross_amount": 1174.75,
+  "materials": 81.13,
+  "amount_liable": 1093.62,
+  "deduction": 328.08,
+  "net_paid": 846.67,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 117475,
+  "materials": 8113,
+  "deduction": 32808,
+  "correct_deduction": 32808
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}

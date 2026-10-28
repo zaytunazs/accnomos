@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S030",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Dunstable Dome Developments Ltd",
+  "contractor_ref": "601/JA69893",
+  "subcontractor_name": "Shingle & Slate Roofing",
+  "subcontractor_utr": "2516780083",
+  "verification_number": null,
+  "tax_month_end": "2027-02-05",
+  "gross_amount": 1515.3,
+  "materials": 0.0,
+  "amount_liable": 1515.3,
+  "deduction": 303.06,
+  "net_paid": 1212.24,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 151530,
+  "materials": 0,
+  "deduction": 30306,
+  "correct_deduction": 30306
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

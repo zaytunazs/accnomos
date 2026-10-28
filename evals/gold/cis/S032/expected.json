@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S032",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Farnborough Fortitude Ltd",
+  "contractor_ref": "112/SB73674",
+  "subcontractor_name": "Oak & Ash Carpentry",
+  "subcontractor_utr": "3192544992",
+  "verification_number": null,
+  "tax_month_end": "2027-03-05",
+  "gross_amount": 1012.7,
+  "materials": 421.24,
+  "amount_liable": 591.46,
+  "deduction": 118.29,
+  "net_paid": 894.41,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 101270,
+  "materials": 42124,
+  "deduction": 11829,
+  "correct_deduction": 11829
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S047",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Havering Heights Ltd",
+  "contractor_ref": "502/BG13097",
+  "subcontractor_name": "Terra Firma Dig",
+  "subcontractor_utr": "9792376092",
+  "verification_number": null,
+  "tax_month_end": "2026-08-05",
+  "gross_amount": 4265.7,
+  "materials": 0.0,
+  "amount_liable": 4265.7,
+  "deduction": 853.14,
+  "net_paid": 3412.56,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 426570,
+  "materials": 0,
+  "deduction": 85314,
+  "correct_deduction": 85314
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S029",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Calder Valley Constructions Ltd",
+  "contractor_ref": "636/TA99977",
+  "subcontractor_name": "Solid Stone Masonry",
+  "subcontractor_utr": "7249208682",
+  "verification_number": null,
+  "tax_month_end": "2027-01-05",
+  "gross_amount": 8219.2,
+  "materials": 1709.88,
+  "amount_liable": 6509.32,
+  "deduction": 1301.86,
+  "net_paid": 6917.34,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 821920,
+  "materials": 170988,
+  "deduction": 130186,
+  "correct_deduction": 130186
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

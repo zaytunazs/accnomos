@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S041",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Brighton Bay Builders Ltd",
+  "contractor_ref": "761/RP50896",
+  "subcontractor_name": "Mosaic Master Tiling",
+  "subcontractor_utr": "5288314366",
+  "verification_number": null,
+  "tax_month_end": "2026-09-05",
+  "gross_amount": 1213.4,
+  "materials": 376.36,
+  "amount_liable": 837.04,
+  "deduction": 167.4,
+  "net_paid": 1046.0,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 121340,
+  "materials": 37636,
+  "deduction": 16740,
+  "correct_deduction": 16740
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

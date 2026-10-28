@@ -1,0 +1,24 @@
+SAMPLE — FICTIONAL COMPANY
+
+Solid Stone Masonry
+14 Granite Ave, Manchester, M1 1MM
+VAT reg no: GB 008 5997 44
+
+VAT INVOICE
+Invoice number                         SOL-145
+Invoice date                        12/03/2027
+
+Bill to:
+Mansfield Modular Ltd
+11 Factory Street, Nottingham, NG1 1MM
+VAT no: GB 098 7320 30
+
+Build retaining wall (24 h @ £53.50) £1,284.00
+Materials supplied                      £80.13
+
+Net                                  £1,364.13
+VAT at 20% to be accounted for by the  £272.83
+Amount due (no VAT charged)          £1,364.13
+
+Reverse charge: VAT Act 1994 Section 55A applies. Customer to pay the VAT to HMRC.
+SAMPLE — FICTIONAL COMPANY

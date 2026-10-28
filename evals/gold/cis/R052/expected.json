@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R052",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Red Brick Solutions",
+  "supplier_vat_number": "GB 005 4462 09",
+  "invoice_number": "RED-380",
+  "invoice_date": "2027-03-22",
+  "net": 2386.42,
+  "vat_rate": 20,
+  "reverse_charge_vat": 477.28,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 159375,
+  "materials": 79267,
+  "net": 238642,
+  "reverse_charge_vat": 47728
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

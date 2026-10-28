@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S008",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Havering Heights Ltd",
+  "contractor_ref": "206/SN18158",
+  "subcontractor_name": "Colorful Canvas Decorators",
+  "subcontractor_utr": "2890786666",
+  "verification_number": null,
+  "tax_month_end": "2026-05-05",
+  "gross_amount": 5891.2,
+  "materials": 1670.44,
+  "amount_liable": 4220.76,
+  "deduction": 844.15,
+  "net_paid": 5047.05,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 589120,
+  "materials": 167044,
+  "deduction": 84415,
+  "correct_deduction": 84415
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S049",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Jubilee Joint Ventures Ltd",
+  "contractor_ref": "941/PC16456",
+  "subcontractor_name": "Spark & Switch Electrics",
+  "subcontractor_utr": "2101415618",
+  "verification_number": "V6185753974FE",
+  "tax_month_end": "2026-09-05",
+  "gross_amount": 5300.55,
+  "materials": 2319.63,
+  "amount_liable": 2980.92,
+  "deduction": 894.27,
+  "net_paid": 4406.28,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 530055,
+  "materials": 231963,
+  "deduction": 89427,
+  "correct_deduction": 89427
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}

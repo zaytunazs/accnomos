@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R016",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Oak & Ash Carpentry",
+  "supplier_vat_number": "GB 014 3015 38",
+  "invoice_number": "OAK-371",
+  "invoice_date": "2027-03-07",
+  "net": 1462.5,
+  "vat_rate": 20,
+  "reverse_charge_vat": 292.5,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 146250,
+  "materials": 0,
+  "net": 146250,
+  "reverse_charge_vat": 29250
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

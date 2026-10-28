@@ -1,0 +1,29 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S027",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Aldermore Structures Ltd",
+  "contractor_ref": "323/MF10140",
+  "subcontractor_name": "Aqua Flow Systems",
+  "subcontractor_utr": "3407224704",
+  "verification_number": "V2389567515AE",
+  "tax_month_end": "2027-03-05",
+  "gross_amount": 7031.45,
+  "materials": 1478.14,
+  "amount_liable": 5553.31,
+  "deduction": 1675.99,
+  "net_paid": 5355.46,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 703145,
+  "materials": 147814,
+  "deduction": 167599,
+  "correct_deduction": 166599
+ },
+ "expect_check_fail": [
+  "RATE"
+ ],
+ "rate": 30
+}

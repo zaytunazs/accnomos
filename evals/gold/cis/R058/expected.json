@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R058",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Volt Edge Electricals",
+  "supplier_vat_number": "GB 057 7196 39",
+  "invoice_number": "VOL-756",
+  "invoice_date": "2026-05-18",
+  "net": 248.0,
+  "vat_rate": 20,
+  "reverse_charge_vat": 49.6,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 24800,
+  "materials": 0,
+  "net": 24800,
+  "reverse_charge_vat": 4960
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

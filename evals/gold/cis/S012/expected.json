@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S012",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Lancaster Lattice Ltd",
+  "contractor_ref": "630/SM13798",
+  "subcontractor_name": "White Wall Plasters",
+  "subcontractor_utr": "8853933633",
+  "verification_number": null,
+  "tax_month_end": "2026-10-05",
+  "gross_amount": 5062.15,
+  "materials": 1396.15,
+  "amount_liable": 3666.0,
+  "deduction": 733.2,
+  "net_paid": 4328.95,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 506215,
+  "materials": 139615,
+  "deduction": 73320,
+  "correct_deduction": 73320
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

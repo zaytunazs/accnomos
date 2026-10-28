@@ -1,0 +1,168 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "contractors": [
+  {
+   "name": "Aldermore Structures Ltd",
+   "address": "14 Ironworks Road, Leeds, LS1 1AA",
+   "site": "Northgate Office Park"
+  },
+  {
+   "name": "Brighton Bay Builders Ltd",
+   "address": "22 Harbour Street, Brighton, BN1 1BB",
+   "site": "Seafront Residential Tower"
+  },
+  {
+   "name": "Calder Valley Constructions Ltd",
+   "address": "5 Mill Lane, Huddersfield, HD1 1CC",
+   "site": "Riverbank Logistics Hub"
+  },
+  {
+   "name": "Dunstable Dome Developments Ltd",
+   "address": "90 Quarry Road, Milton Keynes, MK1 1DD",
+   "site": "Central Business Centre"
+  },
+  {
+   "name": "Eastwick Estates Ltd",
+   "address": "33 Forest Avenue, Birmingham, B1 1EE",
+   "site": "Greenfield School Extension"
+  },
+  {
+   "name": "Farnborough Fortitude Ltd",
+   "address": "12 Runway Road, Farnborough, GU14 1FF",
+   "site": "Airport Cargo Terminal"
+  },
+  {
+   "name": "Glasgow Gateways Ltd",
+   "address": "77 Clyde Street, Glasgow, G1 1GG",
+   "site": "Old Town Museum Refit"
+  },
+  {
+   "name": "Havering Heights Ltd",
+   "address": "45 High Street, Romford, RM1 1HH",
+   "site": "Hillside Apartment Block"
+  },
+  {
+   "name": "Ipswich Industrial Inc Ltd",
+   "address": "8 Dockside Way, Ipswich, IP1 1II",
+   "site": "Port Warehouse Upgrade"
+  },
+  {
+   "name": "Jubilee Joint Ventures Ltd",
+   "address": "19 Parliament Street, Westminster, SW1 1JJ",
+   "site": "City Library Renovation"
+  },
+  {
+   "name": "Kestrel Kinetic Ltd",
+   "address": "66 Windmill Lane, Cambridge, CB2 1KK",
+   "site": "Tech Campus Phase 2"
+  },
+  {
+   "name": "Lancaster Lattice Ltd",
+   "address": "28 Castle Road, Lancaster, LA1 1LL",
+   "site": "Historic Bridge Repair"
+  },
+  {
+   "name": "Mansfield Modular Ltd",
+   "address": "11 Factory Street, Nottingham, NG1 1MM",
+   "site": "Modular Housing Site A"
+  }
+ ],
+ "subcontractors": [
+  {
+   "name": "Spark & Switch Electrics",
+   "trade": "electrician",
+   "address": "12 Volt Lane, Manchester, M1 1AA",
+   "work": "Install main distribution board"
+  },
+  {
+   "name": "Flow State Plumbing",
+   "trade": "plumber",
+   "address": "5 Pipe Street, Bristol, BS1 1BB",
+   "work": "Fit wet room drainage system"
+  },
+  {
+   "name": "Smooth Surface Co",
+   "trade": "plasterer",
+   "address": "33 Lime Avenue, Cardiff, CF1 1CC",
+   "work": "Skim coat office ceilings"
+  },
+  {
+   "name": "Red Brick Solutions",
+   "trade": "bricklayer",
+   "address": "77 Clay Road, Newcastle, NE1 1DD",
+   "work": "Lay facade brickwork"
+  },
+  {
+   "name": "Peak Roofing Services",
+   "trade": "roofer",
+   "address": "45 Tile Hill, Sheffield, S1 1EE",
+   "work": "Install flat roof membrane"
+  },
+  {
+   "name": "Deep Dig Groundworks",
+   "trade": "groundworker",
+   "address": "9 Shovel Street, Liverpool, L1 1FF",
+   "work": "Excavate foundations"
+  },
+  {
+   "name": "Wood & Wedge Joinery",
+   "trade": "joiner",
+   "address": "21 Timber Lane, York, YO1 1GG",
+   "work": "Fit internal door frames"
+  },
+  {
+   "name": "Colorful Canvas Decorators",
+   "trade": "decorator",
+   "address": "55 Paint Pot Way, Leeds, LS1 1HH",
+   "work": "Paint corridor walls"
+  },
+  {
+   "name": "Mosaic Master Tiling",
+   "trade": "tiler",
+   "address": "10 Grout Street, London, EC1 1II",
+   "work": "Lay bathroom floor tiles"
+  },
+  {
+   "name": "Volt Edge Electricals",
+   "trade": "electrician",
+   "address": "8 Current Close, Birmingham, B1 1JJ",
+   "work": "Wire emergency lighting"
+  },
+  {
+   "name": "Aqua Flow Systems",
+   "trade": "plumber",
+   "address": "66 Water Main Rd, Glasgow, G1 1KK",
+   "work": "Install heating pipes"
+  },
+  {
+   "name": "White Wall Plasters",
+   "trade": "plasterer",
+   "address": "29 Smooth St, Newcastle, NE1 1LL",
+   "work": "Apply plasterboard finish"
+  },
+  {
+   "name": "Solid Stone Masonry",
+   "trade": "bricklayer",
+   "address": "14 Granite Ave, Manchester, M1 1MM",
+   "work": "Build retaining wall"
+  },
+  {
+   "name": "Shingle & Slate Roofing",
+   "trade": "roofer",
+   "address": "33 Tile Top, Edinburgh, EH1 1NN",
+   "work": "Repair damaged slate roof"
+  },
+  {
+   "name": "Terra Firma Dig",
+   "trade": "groundworker",
+   "address": "5 Earth Way, Cardiff, CF1 1OO",
+   "work": "Level ground for patio"
+  },
+  {
+   "name": "Oak & Ash Carpentry",
+   "trade": "joiner",
+   "address": "18 Wood Lane, London, SW1 1PP",
+   "work": "Install kitchen carcasses"
+  }
+ ]
+}

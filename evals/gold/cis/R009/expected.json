@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R009",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Mosaic Master Tiling",
+  "supplier_vat_number": "GB 048 6546 44",
+  "invoice_number": "MOS-552",
+  "invoice_date": "2026-11-23",
+  "net": 2764.22,
+  "vat_rate": 20,
+  "reverse_charge_vat": 552.84,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 244000,
+  "materials": 32422,
+  "net": 276422,
+  "reverse_charge_vat": 55284
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

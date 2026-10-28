@@ -1,0 +1,25 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R050",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Flow State Plumbing",
+  "supplier_vat_number": "GB 097 7221 38",
+  "invoice_number": "FLO-378",
+  "invoice_date": "2026-12-11",
+  "net": 1260.0,
+  "vat_rate": 20,
+  "reverse_charge_vat": null,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "labour": 126000,
+  "materials": 0,
+  "net": 126000,
+  "reverse_charge_vat": 25200
+ },
+ "expect_check_fail": [
+  "RC_WORDING"
+ ],
+ "rate": 20
+}

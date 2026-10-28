@@ -1,0 +1,23 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "R033",
+ "expected": {
+  "kind": "reverse_charge_invoice",
+  "supplier_name": "Spark & Switch Electrics",
+  "supplier_vat_number": "GB 066 0016 04",
+  "invoice_number": "SPA-410",
+  "invoice_date": "2027-02-14",
+  "net": 756.0,
+  "vat_rate": 20,
+  "reverse_charge_vat": 151.2,
+  "reverse_charge_wording": true
+ },
+ "pence": {
+  "labour": 75600,
+  "materials": 0,
+  "net": 75600,
+  "reverse_charge_vat": 15120
+ },
+ "expect_check_fail": [],
+ "rate": 20
+}

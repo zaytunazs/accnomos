@@ -1,0 +1,27 @@
+{
+ "label": "SAMPLE — FICTIONAL COMPANY",
+ "id": "S004",
+ "expected": {
+  "kind": "cis_statement",
+  "contractor_name": "Dunstable Dome Developments Ltd",
+  "contractor_ref": "268/LE74089",
+  "subcontractor_name": "Red Brick Solutions",
+  "subcontractor_utr": "2319487574",
+  "verification_number": "V1314395342JG",
+  "tax_month_end": "2026-12-05",
+  "gross_amount": 5139.3,
+  "materials": 0.0,
+  "amount_liable": 5139.3,
+  "deduction": 1541.79,
+  "net_paid": 3597.51,
+  "reverse_charge_wording": false
+ },
+ "pence": {
+  "gross": 513930,
+  "materials": 0,
+  "deduction": 154179,
+  "correct_deduction": 154179
+ },
+ "expect_check_fail": [],
+ "rate": 30
+}

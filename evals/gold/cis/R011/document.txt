@@ -1,0 +1,23 @@
+SAMPLE — FICTIONAL COMPANY
+
+Aqua Flow Systems
+66 Water Main Rd, Glasgow, G1 1KK
+VAT reg no: GB 039 0000 22
+
+VAT INVOICE
+Invoice number                         AQU-646
+Invoice date                        24/12/2026
+
+Bill to:
+Kestrel Kinetic Ltd
+66 Windmill Lane, Cambridge, CB2 1KK
+VAT no: GB 095 4185 43
+
+Install heating pipes (24 h @ £31.00)  £744.00
+
+Net                                    £744.00
+VAT at 20% to be accounted for by the  £148.80
+Amount due (no VAT charged)            £744.00
+
+Reverse charge: VAT Act 1994 Section 55A applies. Customer to pay the VAT to HMRC.
+SAMPLE — FICTIONAL COMPANY
