@@ -868,10 +868,13 @@ async def mark_paid(
     bank_line_id: str | None = None,
     amount_pence: int | None = None,
     account: str = "1200 Bank",
+    cis_deduction_pence: int = 0,
 ) -> Invoice:
     """Record a payment against this invoice (app/payments.py): the balance unless `amount_pence` says otherwise,
     or the bank line's amount. Posts Dr 1200 Bank (or 1210 Cash) / Cr 1100 Debtors; more than the balance is left
-    as a credit on the customer."""
+    as a credit on the customer. With `cis_deduction_pence` the money is what reached the bank and the deduction
+    the contractor made settles the rest (Dr 1150 CIS suffered); without an amount, the money is the balance less
+    the deduction."""
     from app import payments  # app.payments imports this module
 
     inv = await get_invoice(books, number)
@@ -890,17 +893,21 @@ async def mark_paid(
             raise InvoiceError("No such bank line") from exc
         amount_pence = amount_pence or abs(line.amount_pence)
         payment_ref = payment_ref or line.reference or line.description
-    amount = amount_pence or owed
-    if bank_line_id is None and amount > owed and owed < inv.total_pence:
-        amount = owed  # part-paid: Mark paid finishes the balance; a stale total never overpays
+    cut = cis_deduction_pence
+    if cut >= owed:
+        raise InvoiceError("The CIS deduction is as much as the balance; check the contractor's statement")
+    amount = amount_pence or owed - cut
+    if bank_line_id is None and amount + cut > owed and owed < inv.total_pence:
+        amount = owed - cut  # part-paid: Mark paid finishes the balance; a stale total never overpays
     body = payments.PaymentIn(
         side="sale",
         date=paid_on,
         amount_pence=amount,
         account=account,  # type: ignore[arg-type]
         reference=(payment_ref or "").strip()[:120] or None,
-        allocations=[payments.AllocationIn(event_id=inv.event_id, amount_pence=min(amount, owed))],
+        allocations=[payments.AllocationIn(event_id=inv.event_id, amount_pence=min(amount + cut, owed))],
         bank_line_id=bank_line_id,
+        cis_deduction_pence=cut,
     )
     try:
         record = await payments.record_payment(books, body, user)

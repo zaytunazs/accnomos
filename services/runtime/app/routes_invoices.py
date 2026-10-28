@@ -284,6 +284,7 @@ class PaidBody(StrictBody):
     )  # link the bank line this payment came in on (GET /{number}/bank-candidates)
     amount_pence: Pence | None = Field(default=None, gt=0, le=pay_.MAX_PENCE)  # default: the balance (or the line)
     account: pay_.PaymentAccount = "1200 Bank"
+    cis_deduction_pence: Pence = Field(default=0, ge=0, le=pay_.MAX_PENCE)  # CIS: deducted by the contractor
 
 
 @router.post("/{number}/mark-paid", response_model=InvoiceRow)
@@ -303,6 +304,7 @@ async def mark_paid(
             bank_line_id=body.bank_line_id,
             amount_pence=body.amount_pence,
             account=body.account,
+            cis_deduction_pence=body.cis_deduction_pence,
         )
     except InvoiceError as exc:
         raise _http(exc) from exc

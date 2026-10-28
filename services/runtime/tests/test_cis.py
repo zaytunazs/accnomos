@@ -799,3 +799,18 @@ def test_routes_end_to_end(client: TestClient, books: Books) -> None:
 
 def test_writes_need_a_user(client: TestClient) -> None:
     assert client.put("/cis/settings", headers={"X-Graph-Token": "tok"}, json={}).status_code in (400, 401)
+
+
+def test_invoice_record_payment_route_takes_the_cis_deduction(client: TestClient, books: Books) -> None:
+    client.put("/cis/settings", headers=H, json={"subcontractor": True, "status": "net"})
+    body = {"customer": CONTRACTOR, "issue_date": "2026-10-20", "lines": [LABOUR, MATERIALS], "cis": True}
+    inv = client.post("/invoices", headers=H, json=body).json()
+    assert inv["cis"]["deduction_pence"] == 20_000
+    r = client.post(f"/invoices/{inv['number']}/send", headers=H, json={"confirm": True})
+    assert r.status_code == 200, r.text
+    r = client.post(f"/invoices/{inv['number']}/payments", headers=H, json={"cis_deduction_pence": 20_000})
+    assert r.status_code == 200, r.text
+    row = r.json()
+    assert row["status"] == "paid" and row["money"]["balance_pence"] == 0
+    [p] = row["money"]["payments"]
+    assert p["amount_pence"] == 144_000 and p["cis_deduction_pence"] == 20_000 and "net of CIS" in p["description"]

@@ -321,6 +321,7 @@ class InvoicePayment(BaseModel):
     account: str | None = None
     reference: str | None = None
     description: str
+    cis_deduction_pence: int = 0  # part of amount_pence the contractor deducted under CIS (not in the bank)
 
 
 class AppliedCredit(BaseModel):
@@ -365,7 +366,8 @@ def invoice_money(inv: Invoice, ledger: Ledger) -> InvoiceMoney | None:
             applied_pence=_applied(p, eid),
             account=p.account,
             reference=p.reference,
-            description=p.description,
+            description=p.description + (" (net of CIS)" if p.cis_deduction_pence else ""),
+            cis_deduction_pence=p.cis_deduction_pence,
         )
         for p in pays
     ]
