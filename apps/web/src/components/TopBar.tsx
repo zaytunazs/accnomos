@@ -76,6 +76,20 @@ export default function TopBar({ routes }: { routes: string[] }) {
   );
 }
 
+/**
+ * Second-level links (inside a group) look clearly lower than the groups themselves (docs/research/DASHBOARD.md §9):
+ * indented behind a rule, smaller type (14 px, not 15), normal weight (not semibold), under the group's small
+ * uppercase label; the current page has a teal bar, a tint and semibold text, and aria-current.
+ */
+const subItem = (current: boolean, tall: boolean) =>
+  `relative flex ${tall ? "min-h-11" : "min-h-10"} items-center gap-2 rounded-lg py-1.5 pl-3 pr-3 text-[14px] ${
+    current
+      ? "bg-teal-tint font-semibold text-teal-dark before:absolute before:inset-y-1.5 before:-left-[9px] before:w-[3px] before:rounded-full before:bg-teal"
+      : "font-normal text-ink hover:bg-ground"
+  }`;
+const subList = "ml-3 flex flex-col gap-0.5 border-l border-border pl-2";
+const sectionLabel = "px-3 text-[11px] font-bold uppercase tracking-[0.08em] text-muted";
+
 const iconButton = "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-ground";
 
 function Icon({ children }: { children: ReactNode }) {
@@ -236,28 +250,28 @@ function GroupBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: 
                 <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
             </button>
-            <ul
-              id={id}
-              hidden={!isOpen}
-              onKeyDown={(e) => onListKey(e, g.label)}
-              className="absolute left-0 z-50 mt-1 w-64 rounded-2xl border border-border bg-white p-2 shadow-lg"
-            >
-              {g.items.map((item) => {
-                const page = currentPage(pathname, item);
-                return (
-                  <li key={item.label}>
-                    <Link
-                      href={item.href}
-                      aria-current={page ? "page" : undefined}
-                      onClick={() => setOpen(null)}
-                      className={`flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-[15px] font-semibold ${page ? "bg-teal-tint text-teal-dark" : "text-ink hover:bg-ground"}`}
-                    >
-                      {itemLabel(item, review)}
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+            <div hidden={!isOpen} className="absolute left-0 z-50 mt-1 w-64 rounded-2xl border border-border bg-white px-2 pb-2 pt-3 shadow-lg">
+              <p aria-hidden="true" className={`${sectionLabel} pb-1.5`}>
+                {g.label}
+              </p>
+              <ul id={id} data-submenu="" onKeyDown={(e) => onListKey(e, g.label)} className={subList}>
+                {g.items.map((item) => {
+                  const page = currentPage(pathname, item);
+                  return (
+                    <li key={item.label}>
+                      <Link
+                        href={item.href}
+                        aria-current={page ? "page" : undefined}
+                        onClick={() => setOpen(null)}
+                        className={subItem(page, false)}
+                      >
+                        {itemLabel(item, review)}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
           </li>
         );
       })}
@@ -346,17 +360,17 @@ function MenuDrawer({ groups, pathname, review }: { groups: NavGroup[]; pathname
                     </Link>
                   ) : (
                     <>
-                      <h2 id={`${id}-${g.label}`} className="px-3 text-[13px] font-bold text-muted">
+                      <h2 id={`${id}-${g.label}`} className="px-3 pb-1 text-[15px] font-extrabold text-ink">
                         {g.label}
                       </h2>
-                      <ul>
+                      <ul data-submenu="" className={subList}>
                         {g.items.map((item) => (
                           <li key={item.label}>
                             <Link
                               href={item.href}
                               aria-current={currentPage(pathname, item) ? "page" : undefined}
                               onClick={() => setOpen(false)}
-                              className="flex min-h-11 items-center gap-2 rounded-xl px-3 text-[15px] font-semibold text-ink hover:bg-ground"
+                              className={subItem(currentPage(pathname, item), true)}
                             >
                               {itemLabel(item, review)}
                             </Link>
