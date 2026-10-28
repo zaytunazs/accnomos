@@ -158,3 +158,40 @@ async def test_create_only_loser_sees_the_winner() -> None:
     await inner.write("_System/claim.json", b'{"by": "winner"}')
     await books._update_json("_System/claim.json", {}, lambda old: {**old, "seen": True})
     assert await Books(inner).read_json("_System/claim.json", {}) == {"by": "winner", "seen": True}
+
+
+class PathLog(FakeStorageProvider):
+    """Fake OneDrive that records the path of every read."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.read_paths: list[str] = []
+
+    async def read(self, path: str) -> bytes:
+        self.read_paths.append(path.strip("/"))
+        return await super().read(path)
+
+
+async def test_a_second_request_by_the_same_user_reads_no_event_file_twice() -> None:
+    """Events written behind the runtime's back (the phone app, another server): the first request reads each
+    once, a second request by the same user reads none of them again, however many event reads it makes."""
+    raw = PathLog()
+    for month in (8, 9):
+        for n in range(3):
+            ev = _event().model_copy(update={"date": date(2026, month, 10 + n)})
+            await Books(raw).post_event(ev)  # no cache key: nothing reaches the process cache
+    raw.read_paths.clear()
+
+    first = Books(raw, cache_key=cache.user_cache_key("token-a"))
+    assert len(await first.list_events()) == 6
+    second = Books(raw, cache_key=cache.user_cache_key("token-a"))
+    assert len(await second.list_events()) == 6
+    assert len(await second.list_events(date(2026, 9, 1), date(2026, 9, 30))) == 3
+
+    event_reads = [p for p in raw.read_paths if cache.is_immutable(p)]
+    assert len(event_reads) == 6
+    assert len(set(event_reads)) == len(event_reads)  # no event file was read twice across the two requests
+
+    third = Books(raw, cache_key=cache.user_cache_key("token-b"))  # another user pays for their own reads
+    assert len(await third.list_events()) == 6
+    assert len([p for p in raw.read_paths if cache.is_immutable(p)]) == 12
