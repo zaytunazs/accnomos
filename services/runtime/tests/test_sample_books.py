@@ -147,15 +147,25 @@ def done_books(_cli_books: FakeStorageProvider) -> FakeStorageProvider:
     return fake
 
 
+HANG_S = 600  # only a real hang stops _settle; how long the seed takes never decides a test
+
+
 async def _settle(client: httpx.AsyncClient, *, until: tuple[str, ...] = ("done", "failed")) -> dict[str, Any]:
-    for _ in range(2000):
+    """The status once it is in `until`, read as the page reads it. Waits on the background run itself rather than
+    a number of polls: a count of polls raced the seed, which on a loaded machine took longer than they did."""
+    deadline = asyncio.get_running_loop().time() + HANG_S
+    while True:
+        running = [run.task for run in sample_books.RUNS.values() if run.task is not None and not run.task.done()]
         r = await client.get("/books/sample", headers=HEADERS)
         assert r.status_code == 200, r.text
         status = r.json()
         if status["state"] in until:
             return status
-        await asyncio.sleep(0.01)
-    raise AssertionError(f"still {status}")
+        if not running:  # nothing left running in this process, so waiting cannot change the answer
+            raise AssertionError(f"still {status}")
+        assert asyncio.get_running_loop().time() < deadline, f"hung: {status}"
+        # Wakes as soon as the run ends, or to look again at a state it waits in (needs_token).
+        await asyncio.wait(running, timeout=0.05)
 
 
 async def _facts(fake: FakeStorageProvider) -> dict[str, Any]:
@@ -226,11 +236,16 @@ async def test_loads_the_demo_books_into_an_empty_folder(done_books: FakeStorage
     assert not sample_books.RUNS  # a finished run leaves
 
 
-class Slow(Expiring):
-    """Takes a moment over every write, as OneDrive does."""
+class Held(Expiring):
+    """Holds every write until `release` is set, so the run is certainly still going when the test presses again
+    (sleeping in each write only made that likely, and made the run slow enough to outlast the test's polling)."""
+
+    def __init__(self, inner: FakeStorageProvider) -> None:
+        super().__init__(inner, None)
+        self.release = asyncio.Event()
 
     async def write(self, path: str, data: bytes, *, if_match: str | None = None, create_only: bool = False) -> FileRef:
-        await asyncio.sleep(0.001)
+        await self.release.wait()
         return await super().write(path, data, if_match=if_match, create_only=create_only)
 
 
@@ -238,8 +253,8 @@ async def test_a_second_press_while_running_or_after_is_the_same_run(
     done_books: FakeStorageProvider, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     fake = FakeStorageProvider()
-    slow = Slow(fake, None)
-    _run_on(monkeypatch, slow)
+    held = Held(fake)
+    _run_on(monkeypatch, held)
     async with _client(fake) as client:
         first = (await client.post("/books/sample", headers=HEADERS)).json()
         (run,) = sample_books.RUNS.values()
@@ -247,13 +262,14 @@ async def test_a_second_press_while_running_or_after_is_the_same_run(
         assert again.status_code == 200 and again.json()["state"] == "running"
         assert list(sample_books.RUNS.values()) == [run]
         assert first["started_at"] == again.json()["started_at"]
+        held.release.set()
         await _settle(client)
         files = dict(fake.files)
         after = await client.post("/books/sample", headers=HEADERS)
         assert after.status_code == 200 and after.json()["state"] == "done"
         await asyncio.sleep(0.05)
     assert fake.files == files  # nothing more written
-    assert slow.tokens == ["token-two"]  # the second press handed its token to the run
+    assert held.tokens == ["token-two"]  # the second press handed its token to the run
     assert [a["action"] for a in _audit(fake)].count("sample_books_loaded") == 1
 
 
