@@ -186,7 +186,7 @@ export function MoneyCard() {
 
 const BUCKETS: [keyof RtAgedSide["buckets"], string][] = [
   ["current", "Not due"],
-  ["0-30", "1–30 days"],
+  ["0-30", "1–30"],
   ["31-60", "31–60"],
   ["61-90", "61–90"],
   ["90+", "90+"],
@@ -208,12 +208,12 @@ export function AgedCard() {
       by={<ByWhom className="mt-2" code="Aged by code from your ledger, by days past due" ai="no AI involved" />}
     >
       <table className="mt-3 w-full text-left text-[13px] tabular-nums">
-        <caption className="sr-only">What is unpaid, by how many days past its due date</caption>
+        <caption className="caption-bottom pt-1 text-left text-[12px] text-muted">Days past the due date</caption>
         <thead>
           <tr className="text-[12px] text-muted">
             <th scope="col" className="py-1 font-semibold"><span className="sr-only">Who</span></th>
             {BUCKETS.map(([k, label]) => (
-              <th key={k} scope="col" className="py-1 text-right font-semibold">{label}</th>
+              <th key={k} scope="col" className="py-1 pl-1.5 text-right text-[11px] font-semibold leading-tight">{label}</th>
             ))}
           </tr>
         </thead>
