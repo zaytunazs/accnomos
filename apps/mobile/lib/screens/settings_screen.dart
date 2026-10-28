@@ -37,9 +37,10 @@ const _autopilotOptions = [
   ),
 ];
 
-/// Settings in five expandable groups, mirroring the web's settings panels:
-/// Connection, AI, Automation, Business and Your data. Keys and addresses
-/// stay on this phone; only the web's own headers and bodies go to the reader.
+/// Settings in six expandable groups, mirroring the web's settings panels:
+/// Connection, AI, Automation, Business, Personal and Your data. Keys and
+/// addresses stay on this phone; only the web's own headers and bodies go
+/// to the reader.
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({
     super.key,
@@ -82,9 +83,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
   final _bankAccount = TextEditingController();
   int _stagger = 1;
   String _level = 'L1';
+  bool _showPersonal = false;
 
-  /// Groups currently expanded; all five start open.
-  final _open = {'connection', 'ai', 'automation', 'business', 'data'};
+  /// Groups currently expanded; all six start open.
+  final _open = {'connection', 'ai', 'automation', 'business', 'personal', 'data'};
 
   AppSettings? _initial;
   Account? _account;
@@ -166,6 +168,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _stagger = settings.vatStagger ?? 1;
     // This screen only offers L1/L2; anything else reads as L1 until saved.
     _level = settings.autopilotLevel == 'L2' ? 'L2' : 'L1';
+    _showPersonal = settings.showPersonalFinances;
     _startMonth.text = settings.vatStartMonth?.toString() ?? '';
   }
 
@@ -268,6 +271,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         vatStagger: _stagger,
         vatStartMonth: _startMonthValue() == -1 ? null : _startMonthValue(),
         autopilotLevel: _level,
+        showPersonalFinances: _showPersonal,
       );
 
   /// Probe client for the AI test: no books headers, like the web's
@@ -511,6 +515,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Autopilot level saved')),
+    );
+  }
+
+  /// Show or hide the Personal entry on the More tab. Saved on this phone
+  /// like the other settings; the personal screen itself stays read-only
+  /// apart from setting a budget amount.
+  Future<void> _togglePersonal(bool value) async {
+    if (_showPersonal == value) return;
+    setState(() => _showPersonal = value);
+    await _current().save();
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+          content: Text(value
+              ? 'Personal finances shown on the More tab'
+              : 'Personal finances hidden from the More tab')),
     );
   }
 
@@ -1019,6 +1039,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       busy: _savingBusiness,
                       enabled: _signedIn,
                       onPressed: _saveBusiness,
+                    ),
+                  ],
+                ),
+                _groupTile(
+                  id: 'personal',
+                  title: 'Personal',
+                  disabledReason: null,
+                  children: [
+                    SwitchListTile(
+                      key: const Key('showPersonalSwitch'),
+                      value: _showPersonal,
+                      title: const Text('Show personal finances',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AccnomosColors.ink)),
+                      subtitle: const Text(
+                          'Monthly budgets, regular bills and savings goals from the bank statements you import. Adds a Personal entry to the More tab.',
+                          style: TextStyle(
+                              color: AccnomosColors.muted,
+                              fontSize: 12,
+                              height: 1.4)),
+                      contentPadding: EdgeInsets.zero,
+                      onChanged: _togglePersonal,
                     ),
                   ],
                 ),
