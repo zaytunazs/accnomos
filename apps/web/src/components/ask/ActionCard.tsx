@@ -5,6 +5,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import {
   runtime,
   type RtActionResult,
+  type RtConvertQuotePreview,
   type RtChasePreview,
   type RtClarification,
   type RtInvoicePreview,
@@ -50,6 +51,8 @@ const TITLES: Record<RtProposedAction["kind"], string> = {
   chase_invoice: "Payment reminder",
   log_timesheet: "Timesheet",
   log_mileage: "Mileage",
+  create_quote: "Quote",
+  convert_quote_to_invoice: "Quote to invoice",
 };
 
 /** Where an action's result shows up, for checking after an approval that stopped halfway. */
@@ -58,6 +61,8 @@ const WHERE: Record<RtProposedAction["kind"], string> = {
   chase_invoice: "the invoice on Invoices",
   log_timesheet: "the job's timesheet on Jobs",
   log_mileage: "the mileage log on Vehicles",
+  create_quote: "Quotes",
+  convert_quote_to_invoice: "Invoices and Quotes",
 };
 
 /**
@@ -72,13 +77,33 @@ function stalledAdvice(message: string, kind: RtProposedAction["kind"]): string 
   return "";
 }
 function Details({ action }: { action: RtProposedAction }) {
-  if (action.kind === "create_invoice") {
-    const p = action.preview as unknown as RtInvoicePreview;
+  if (action.kind === "convert_quote_to_invoice") {
+    const p = action.preview as unknown as RtConvertQuotePreview;
+    return (
+      <dl className="divide-y divide-border">
+        <Row label="Quote">
+          <strong>{p.quote}</strong> · {p.customer}
+          <span className="text-muted"> · becomes a draft invoice, not sent</span>
+        </Row>
+        <Row label="Lines">
+          <ul>{p.lines.map((l, i) => <li key={i}>{l}</li>)}</ul>
+        </Row>
+        <Row label="Total">
+          <div className="flex justify-between gap-3 font-extrabold">
+            <span>{gbp(p.net_pence)} + VAT {gbp(p.vat_pence)}</span>
+            <span className="tabular-nums text-teal-dark">{gbp(p.total_pence)}</span>
+          </div>
+        </Row>
+      </dl>
+    );
+  }
+  if (action.kind === "create_invoice" || action.kind === "create_quote") {
+    const p = action.preview as unknown as RtInvoicePreview & { expiry_date?: string };
     return (
       <dl className="divide-y divide-border">
         <Row label="To">
           <strong>{p.customer.name}</strong>
-          {p.send && p.send_to ? <span className="text-muted"> · emailed to {p.send_to}</span> : <span className="text-muted"> · saved as a draft, not sent</span>}
+          {action.kind === "create_invoice" && p.send && p.send_to ? <span className="text-muted"> · emailed to {p.send_to}</span> : <span className="text-muted"> · saved as a draft, not sent</span>}
         </Row>
         <Row label="For">
           <ul>
@@ -103,7 +128,7 @@ function Details({ action }: { action: RtProposedAction }) {
         </Row>
         <Row label="Total">
           <div className="flex justify-between gap-3 font-extrabold">
-            <span>Due {ukDate(p.due_date)}</span>
+            <span>{action.kind === "create_quote" ? `Valid until ${ukDate(p.expiry_date ?? "")}` : `Due ${ukDate(p.due_date)}`}</span>
             <span className="tabular-nums text-teal-dark">{gbp(p.total_pence)}</span>
           </div>
         </Row>

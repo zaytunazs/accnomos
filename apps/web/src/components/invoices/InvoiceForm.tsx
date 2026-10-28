@@ -8,6 +8,8 @@ import SignInCta from "@/components/SignInCta";
 import { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
 import { linePence, liveTotals, money, parsePounds, poundsInput, thousandths, todayIso, useMsAccount, VAT_CODES, type LiveTotals } from "@/lib/invoices";
 import { RuntimeErrorNote } from "@/components/States";
+import { ItemPicker } from "@/components/trade/LinesEditor";
+import { useItems } from "@/components/trade/useItems";
 import { useLookupStatus } from "@/components/contacts/Lookups";
 import {
   INVOICE_DRAFT_KEY,
@@ -28,11 +30,12 @@ interface LineForm {
   price: string; // pounds as typed
   vat_code: RtSalesVatCode;
   entry_ids: string[]; // job hours this line bills; marked invoiced when the invoice is sent
+  item_code: string | null; // the catalogue item it was filled from
 }
 
 const EMPTY_CUSTOMER: RtInvoiceCustomer = { contact_id: null, name: "", email: null, address: null, vrn: null };
 let nextKey = 1;
-const blankLine = (): LineForm => ({ key: nextKey++, description: "", quantity: "1", unit: "", price: "", vat_code: "S", entry_ids: [] });
+const blankLine = (): LineForm => ({ key: nextKey++, description: "", quantity: "1", unit: "", price: "", vat_code: "S", entry_ids: [], item_code: null });
 
 /** The lines and customer a job's "Invoice these hours" left in sessionStorage, or null. */
 function readJobDraft(): JobInvoiceDraft | null {
@@ -55,6 +58,7 @@ export default function InvoiceForm() {
   const fromJob = !editId && params.get("from") === "job";
   const { account, ready } = useMsAccount();
   const [customers, setCustomers] = useState<RtInvoiceCustomer[]>([]);
+  const catalogue = useItems(account);
   const [customer, setCustomer] = useState<RtInvoiceCustomer>(EMPTY_CUSTOMER);
   const [issueDate, setIssueDate] = useState(todayIso());
   const [dueDate, setDueDate] = useState("");
@@ -85,7 +89,7 @@ export default function InvoiceForm() {
       setCustomer({ ...EMPTY_CUSTOMER, contact_id: d.proposal.customer_id, name: d.customer_name ?? "" });
       setLines(d.proposal.lines.map((l) => ({
         key: nextKey++, description: l.description, quantity: String(l.qty), unit: l.unit === "hour" ? "hours" : l.unit,
-        price: poundsInput(l.unit_price_pence), vat_code: l.vat_code as RtSalesVatCode, entry_ids: l.entry_ids,
+        price: poundsInput(l.unit_price_pence), vat_code: l.vat_code as RtSalesVatCode, entry_ids: l.entry_ids, item_code: null,
       })));
     });
   }, [fromJob]);
@@ -115,7 +119,7 @@ export default function InvoiceForm() {
       setJobId(inv.job_id);
       setLines(inv.lines.map((l) => ({
         key: nextKey++, description: l.description, quantity: String(l.quantity), unit: l.unit ?? "",
-        price: poundsInput(l.unit_price_pence), vat_code: l.vat_code, entry_ids: l.timesheet_entry_ids ?? [],
+        price: poundsInput(l.unit_price_pence), vat_code: l.vat_code, entry_ids: l.timesheet_entry_ids ?? [], item_code: l.item_code ?? null,
       })));
       setDirty(false);
     }).catch((e) => setError((e as Error).message));
@@ -255,7 +259,7 @@ export default function InvoiceForm() {
       if (p === null) return `Line ${n + 1}: unit price must be pounds and pence, e.g. 45.00.`;
       out.push({
         description: l.description.trim(), quantity: l.quantity.trim(), unit: l.unit.trim() || null, unit_price_pence: p, vat_code: l.vat_code,
-        timesheet_entry_ids: l.entry_ids,
+        timesheet_entry_ids: l.entry_ids, item_code: l.item_code,
       });
     }
     if (!out.length) return "Add at least one line.";
@@ -458,6 +462,9 @@ export default function InvoiceForm() {
                   }
                 }}
               >
+                {account && l.entry_ids.length === 0 && (
+                  <ItemPicker account={account} items={catalogue} side="sale" quantity={l.quantity} idPrefix={`ln-${l.key}`} value={l.item_code} onFill={(patch) => setLine(l.key, patch)} />
+                )}
                 <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
                   <div>
                     <label className={fieldLabel} htmlFor={`ln-desc-${l.key}`}>Description</label>
