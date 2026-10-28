@@ -62,10 +62,19 @@ folder (moving the books out of the app folder) was not built: it would mean mov
 |---|---|---|
 | `packages/connectors/tests/test_sharing.py` (new): invite body and URL, 207 partial failure, 403, revoke incl. already gone, sharedWithMe paging and filtering (files, unsafe ids), token never sent off Graph, books root personal/work, whoami, unsafe ids, shared-folder storage addressing, subfolder grants, fake inheritance | 14 | pass |
 | `services/runtime/tests/test_accountant.py` (new): view-only and edit grants, email link, duplicate, validation, Graph refusal records nothing, half-invitation undone, revoke (and access lost), manual record, owner-only routes, profile, team hidden / consent required / opt-in / opt-out, portal summary, portal with sharedWithMe empty + codes, code checks, stopped sharing, code parsing, VAT deadline roll-over, same routes on client books, read-only refusal (incl. edit asked on view-only), edit audited as accountant, unshared folder / bad headers, query thread both sides, query ids never paths, audit sentences, cache isolation (immutable cache per client with one token), portal counts not leaking, read-only storage, 403 mapping, CORS preflight for the X-Books-* headers | 31 | pass |
-| Runtime whole suite (`cd services/runtime && python -m pytest -q`) | see summary below | pass |
+| Runtime whole suite (`cd services/runtime && python -m pytest -q`) | 1432 passed, 2 skipped | pass |
 | Connectors whole suite | 63 | pass |
 | `apps/web/e2e/accountant.spec.ts` (new): invite → listed → remove; consent box gates opt-in, stop; portal summary; open view-only → Review shows client's card → reject refused → query sent → back; add by code | 5 | pass |
 | `apps/mobile/test/accountant_screen_test.dart` (new): access and threads at 360 dp with no edit controls, empty, error, More entry, parsing | 5 | pass |
+
+Gates run 28 Oct 2026 on Linux before pushing: `ruff check .` and `ruff format --check .` clean; `pyright` 0 errors (runtime
+app and the configured scope); `pnpm exec eslint .` clean; the whole Playwright suite **255 passed, 58 skipped, 0
+failed** (`CI=1`); `flutter analyze` clean and `flutter test` **274 passed** (Flutter 3.47.8). Playwright ran with the
+container's Chromium 1243 headless shell through an uncommitted local config (`executablePath`), because the pinned
+Playwright wants build 1248, which is not installed here; a first full run with the full Chrome binary instead had 4
+failures that are artefacts of that binary (its built-in PDF viewer requests a `chrome-extension://` stylesheet,
+which the suite's "nothing leaves 127.0.0.1" guard rejects, and Tab wraps to the page top), and all 4 passed with the
+headless shell.
 
 ## Risks
 

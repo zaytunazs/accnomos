@@ -153,7 +153,8 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 
 ## Accountant collaboration
 
-Branch `claude/accountant`; review in `docs/reviews/accountant/REVIEW.md`. **Nothing here has called Microsoft Graph**:
+Branch `claude/accountant`; review in `docs/reviews/accountant/REVIEW.md` (gates on that branch, 28 Oct 2026: runtime
+1432 passed, connectors 63, e2e 255 passed / 58 skipped, `flutter test` 274). **Nothing here has called Microsoft Graph**:
 every sharing call ran against httpx mocks shaped like the Microsoft Learn examples, or the test-mode fake sharing world.
 
 - **Sharing the personal app folder is documented, not tried.** `driveItem: invite` lists `Files.ReadWrite` as the least
