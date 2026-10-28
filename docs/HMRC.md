@@ -80,3 +80,52 @@ curl -X POST http://localhost:8787/hmrc/test-user        # → userId, password,
 
 Open `http://localhost:3000/vat` while signed in with Microsoft and press **Connect to HMRC (sandbox)**. Sign in with the
 test user's `userId` / `password`, then enter its `vrn`.
+
+# HMRC (sandbox): UK property, Making Tax Digital for Income Tax
+
+Landlords send a quarterly cumulative update for their UK property business (6 April to the end of each quarter,
+each one replacing the last) and an annual submission of allowances. Accnomos makes both from the books
+(`services/runtime/app/property.py`) and either saves them as a file to submit (`POST /property/mtd/{taxYear}/export`,
+written to `07 Reports`) or sends them to HMRC's **sandbox** through the relay. Production submission is off: the
+relay's routes answer 403 against a production `HMRC_BASE` unless `RELAY_ITSA_PRODUCTION=1`, which nothing sets.
+
+## Sources checked (28 Oct 2026)
+
+| What | Where |
+| --- | --- |
+| Property Business (MTD) API 6.0: paths, request schemas, examples; "BETA", endpoints released in production | github.com/hmrc/property-business-api `resources/public/api/conf/6.0/application.yaml`, `uk_property_cumulative_summary_create_or_amend.yaml`, `schemas/uk_property_cumulative_summary_create_and_amend/def1/request.json`, `conf/application.conf` (commit e57db0b, 20 Oct 2026) |
+| SA105 boxes for each API field | github.com/hmrc/income-tax-mtd-changelog `mapping/csv/sa105_mapping_v1.csv` |
+| Obligations 3.0 `typeOfBusiness=uk-property` | github.com/hmrc/obligations-api `resources/public/api/conf/3.0/common/queryParameters.yaml` |
+| Test business of type `uk-property` (sandbox) | github.com/hmrc/mtd-sa-test-support-api `resources/public/api/conf/1.0/examples/businesses/create_request_uk_property.json` |
+| Property Business 4.0 was the version in the end-to-end guide's API list | github.com/hmrc/income-tax-mtd-end-to-end-service-guide `api-list.md` (we use 6.0, the newest definition) |
+| Tax rules (finance costs, domestic items, FHL abolition, joint ownership, Rent a Room, property allowance, MTD thresholds) | gov.uk pages cited in `property.py`'s docstring, read through search results: gov.uk itself was not reachable from this session |
+
+These GitHub repositories are the source developer.service.hmrc.gov.uk renders; developer.service.hmrc.gov.uk was not
+reachable from this session, so re-check the live documentation before the first real sandbox call.
+
+## Calls (relay, `relay/itsa_property.py`)
+
+| Relay route (POST, envelope as for VAT) | HMRC call | Version |
+| --- | --- | --- |
+| `/itsa/{nino}/property/businesses` | `GET /individuals/business/details/{nino}/list` | 2.0 |
+| `/itsa/{nino}/property/obligations` | `GET /obligations/details/{nino}/income-and-expenditure?typeOfBusiness=uk-property` | 3.0 |
+| `/itsa/{nino}/property/{businessId}/cumulative/{taxYear}` | `PUT /individuals/business/property/uk/{nino}/{businessId}/cumulative/{taxYear}` (204) | 6.0 |
+| `/itsa/{nino}/property/{businessId}/cumulative/{taxYear}/view` | `GET` the same path | 6.0 |
+| `/itsa/{nino}/property/{businessId}/annual/{taxYear}` | `PUT /individuals/business/property/uk/{nino}/{businessId}/annual/{taxYear}` (allowances: `costOfReplacingDomesticItems` only) | 6.0 |
+| `/itsa/{nino}/property/test-business` (sandbox only) | `POST /individuals/self-assessment-test-support/business/{nino}` | 1.0 |
+
+Scopes `read:self-assessment write:self-assessment`, asked for at `/hmrc/authorize?scope=…` (the same scope plumbing as
+branch `claude/self-employment`). The web page keeps those tokens under the Income Tax session in `sessionStorage`
+(shared with the self-employment page). Writes need `confirmed: true`, sent only after the user ticks that they have
+checked the figures. After a sandbox update the web posts what it sent to `POST /property/submissions`; the runtime
+compares it with what the books say now (`matched_books`).
+
+## Figures
+
+The user's share of each property (spouses 50:50 unless Form 17), cumulative from 6 April: `periodAmount` (rents),
+`premiumsOfLeaseGrant`, `reversePremiums`, `otherIncome`, `rentARoom.rentsReceived`; expenses itemised
+(`premisesRunningCosts`, `repairsAndMaintenance`, `financialCosts` for commercial lets, `professionalFees`,
+`costOfServices`, `travelCosts`, `other`) or as `consolidatedExpenses` when the user chooses it and income is under
+£90,000; `residentialFinancialCost` (residential mortgage interest, never in the expenses) and
+`residentialFinancialCostsCarriedForward` (typed in by the user); `rentARoom.amountClaimed` (capped at £7,500, or
+£3,750 when shared). Replacement of domestic items goes in the annual submission, not the quarterly one.
