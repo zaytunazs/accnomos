@@ -5,8 +5,8 @@ line on anything that pre-existed. This page is the evidence for both. Every tim
 full (unshallowed) clone and from `gh api repos/zaytunazs/accnomos` on 28 Oct 2026; the commands are at the end so anyone
 can re-run them.
 
-**The one line for the video:** *"Before the hackathon I had only my DGX Spark with Ollama installed. Every line of
-Accnomos, and the Meta model set-up, was made after kickoff on 26 October."*
+**The one line for the video** (shot 1 of `docs/submission/VIDEO_SCRIPT.md`): *"Before the hackathon I had only my DGX
+Spark with Ollama. Everything else was built after kickoff."* The caption under it names the date and this page.
 
 ## Timeline (UTC; UK time was the same that week)
 
