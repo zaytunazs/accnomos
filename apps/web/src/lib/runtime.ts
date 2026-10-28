@@ -2460,6 +2460,7 @@ export async function closeRunStream(
       }
     }
   }
+}
 
 /** Spending, cheaper options and the shopping list (services/runtime/app/spending.py, prices.py, shopping.py). */
 export interface RtSpendRow {

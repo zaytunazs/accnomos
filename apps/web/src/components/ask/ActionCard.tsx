@@ -179,6 +179,9 @@ function Details({ action }: { action: RtProposedAction }) {
         <Row label="Snapshot">
           <code className="text-[13px]">{p.snapshot_hash.slice(0, 12)}</code>
         </Row>
+      </dl>
+    );
+  }
   if (action.kind === "add_to_shopping_list") {
     const p = action.preview as unknown as RtShoppingPreview;
     return (
