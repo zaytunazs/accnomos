@@ -26,25 +26,30 @@ test("menu bar: groups as dropdowns, keyboard and screen-reader friendly, only p
   }
   await expect(nav.getByRole("button", { name: "Personal" })).toHaveCount(0); // not personal books
 
-  // Keyboard: ↓ opens Sales on its first link (Sales overview is not in this build, so it is Invoices), ↓ moves,
-  // Escape closes and gives focus back to the button.
+  // Keyboard: ↓ opens Sales on its first link (Sales overview, now that the sales pages are in this build), ↓ moves
+  // in menu order, Escape closes and gives focus back to the button.
   const sales = nav.getByRole("button", { name: "Sales" });
   await sales.focus();
   await page.keyboard.press("ArrowDown");
   await expect(sales).toHaveAttribute("aria-expanded", "true");
-  await expect(nav.getByRole("link", { name: "Invoices" })).toBeFocused();
+  await expect(nav.getByRole("link", { name: "Sales overview" })).toBeFocused();
   await page.keyboard.press("ArrowDown");
-  await expect(nav.getByRole("link", { name: "Jobs" })).toBeFocused();
+  await expect(nav.getByRole("link", { name: "Invoices" })).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(sales).toHaveAttribute("aria-expanded", "false");
   await expect(sales).toBeFocused();
   await expect(nav.getByRole("link", { name: "Invoices" })).toBeHidden();
 
-  // Pages another branch has not landed are not linked at all.
+  // Pages another branch has not landed are not linked at all (no balance sheet page yet).
   await sales.click();
-  for (const missing of ["Sales overview", "Quotes", "Products and services", "Repeating"]) {
-    await expect(nav.getByRole("link", { name: missing })).toHaveCount(0);
+  for (const name of ["Sales overview", "Quotes", "Products and services", "Repeating"]) {
+    await expect(nav.getByRole("link", { name })).toBeVisible(); // claude/sales-purchases' pages, now in the build
   }
+  await sales.click();
+  await nav.getByRole("button", { name: "Reporting" }).click();
+  await expect(nav.getByRole("link", { name: "Balance sheet" })).toHaveCount(0);
+  await nav.getByRole("button", { name: "Reporting" }).click();
+  await sales.click();
   // Enter follows a link; the new page closes the group and marks where you are.
   await nav.getByRole("link", { name: "Invoices" }).click();
   await expect(page).toHaveURL(/\/invoices$/);
