@@ -16,7 +16,7 @@ export const BUSINESS_TYPES: { value: BusinessType; label: string }[] = [
 export type EarlyAccessForm = {
   name: string;
   email: string;
-  business_type: BusinessType;
+  business_type: BusinessType | ""; // "" until one is picked
   heard: string;
   consent: boolean;
   website: string; // honeypot

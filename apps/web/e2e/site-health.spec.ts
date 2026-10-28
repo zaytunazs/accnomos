@@ -1,3 +1,4 @@
+import { WEB_URL } from "./env.mjs";
 import { createBooksFolder, expect, signIn, test } from "./fixtures";
 
 /**
@@ -15,7 +16,7 @@ test("unknown paths show the not-found page, served as a 404", async ({ page, co
   await page.getByRole("button", { name: "Copy details" }).click();
   const clip = await page.evaluate(() => navigator.clipboard.readText());
   expect(clip).toContain("Page not found");
-  expect(clip).toContain("Page: http://127.0.0.1:3100/no-such-page-xyz");
+  expect(clip).toContain(`Page: ${WEB_URL}/no-such-page-xyz`); // E2E_WEB_PORT, not always 3100
   await page.getByRole("link", { name: "Back to Home" }).click();
   await expect(page).toHaveURL("/");
 });

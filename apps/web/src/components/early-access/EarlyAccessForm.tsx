@@ -8,7 +8,6 @@ import {
   joinEarlyAccess,
   looksLikeEmail,
   SUCCESS_TEXT,
-  type BusinessType,
   type EarlyAccessForm as Form,
 } from "@/lib/early-access";
 import { useSubmissionMode } from "@/lib/submission-mode";
@@ -26,7 +25,7 @@ const input =
 export default function EarlyAccessForm({ source }: { source: "/" | "/judges" }) {
   const submission = useSubmissionMode();
   const id = useId();
-  const [form, setForm] = useState<Form>({ name: "", email: "", business_type: "" as BusinessType, heard: "", consent: false, website: "" });
+  const [form, setForm] = useState<Form>({ name: "", email: "", business_type: "", heard: "", consent: false, website: "" });
   const [errors, setErrors] = useState<Errors>({});
   const [failed, setFailed] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
