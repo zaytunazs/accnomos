@@ -30,7 +30,7 @@ from app.ai import ask as ask_ai
 from app.ai import voice
 from app.ai.config import AiConfig, ai_config_from_request
 from app.books import Books, today
-from app.facts import build_facts, default_period
+from app.facts import build_facts
 from app.planner import TZ, plan_intent, uk_day
 from app.routes_actions import graph_token
 from app.routes_books import business_name, get_books
@@ -45,6 +45,7 @@ from app.schemas import (
     SuggestedAction,
 )
 from app.vat_cycle import VatCycle, vat_cycle
+from app.vat_schemes import scheme_context
 
 router = APIRouter(prefix="/books", tags=["ask"])
 _TURNS = TypeAdapter(list[AskTurn])
@@ -94,13 +95,16 @@ async def _prepare(
     """Day-plan intent (code, no model) → instruction (proposed action) → the facts pack for a question about the books.
 
     No period in the request: the current VAT period by the settings sent as `stagger`/`start_month`/`months`."""
-    period = req.period or default_period(today(), cycle)
+    period = req.period
+    if period is None:  # the VAT period we are in now: an annual one under annual accounting
+        start, end = (await scheme_context(books, cycle)).current(today())
+        period = AskPeriod(start=start, end=end)
     if (day := plan_intent(req.question, today(TZ))) is not None:
         return plan_answer(day, period)
     found = await actions.propose(req.question, books, cfg, token, today(TZ))  # the same day as the plan and VAT period
     if found is not None:
         return _action_answer(found, cfg, period)
-    return await build_facts(books, period, business)
+    return await build_facts(books, period, business, cycle)
 
 
 async def _answer(

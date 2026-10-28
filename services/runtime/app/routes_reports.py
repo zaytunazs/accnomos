@@ -14,15 +14,16 @@ from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+from accnomos_ledger import LedgerEvent
 from app import contacts as cb
 from app import reports as rp
 from app.books import Books
 from app.books import today as current_date  # `today` is a query parameter below
-from app.deadlines import recent_periods
 from app.paths import REPORTS
 from app.routes_books import get_books, require_user
 from app.validation import Day, StrictBody
 from app.vat_cycle import VatCycle, vat_cycle
+from app.vat_schemes import scheme_books, scheme_context, scheme_return, scheme_summary
 
 router = APIRouter(prefix="/reports", tags=["reports"])
 TODAY = Query(None, description="for previews and tests; defaults to today")
@@ -63,8 +64,24 @@ async def aged(as_of: date | None = Query(None), books: Books = Depends(get_book
     return AgedReport(**balances.model_dump(), sample=rp.is_sample(ledger.events))
 
 
-def _spans(cycle: VatCycle, today: date, periods: int) -> list[tuple[date, date]]:
-    return recent_periods(today, cycle.start_month, cycle.months, previous=periods - 1)
+async def _vat_summary(
+    books: Books, cycle: VatCycle, today: date, periods: int, events: list[LedgerEvent] | None = None
+) -> rp.VatSummary:
+    """The VAT summary under the saved VAT schemes (app/vat_schemes.py), annual periods included."""
+    ctx = await scheme_context(books, cycle)
+    spans = ctx.recent(today, previous=periods - 1)
+    if not ctx.settings.in_use:
+        events = events if events is not None else await books.list_events(spans[-1][0], spans[0][1])
+        return rp.vat_summary(events, spans, cycle.months)
+    sb = await scheme_books(books, ctx, spans[-1][0], spans[0][1])
+    return rp.vat_summary(
+        sb.events,
+        spans,
+        cycle.months,
+        returns=lambda s, e: scheme_return(sb, ctx, ctx.period_id(s, e), s, e).ret,
+        ids=ctx.period_id,
+        scheme=scheme_summary(ctx, spans[-1][0], spans[0][1]),
+    )
 
 
 @router.get("/vat", response_model=rp.VatSummary)
@@ -74,10 +91,8 @@ async def vat(
     cycle: VatCycle = Depends(vat_cycle),
     books: Books = Depends(get_books),
 ) -> rp.VatSummary:
-    """Boxes 1, 4, 6, 7 and the net VAT per period (compute_vat_return), oldest first."""
-    spans = _spans(cycle, today or current_date(), periods)
-    events = await books.list_events(spans[-1][0], spans[0][1])
-    return rp.vat_summary(events, spans, cycle.months)
+    """Boxes 1, 4, 6, 7 and the net VAT per period (under the saved VAT schemes), oldest first."""
+    return await _vat_summary(books, cycle, today or current_date(), periods)
 
 
 @router.get("/trend", response_model=rp.Trend)
@@ -132,7 +147,7 @@ async def export(
         contacts, _, _ = await cb.contact_book(books, ledger)
         aged_now = cb.aged(contacts, ledger, day)
     if kind in ("vat", "all"):
-        vat_now = rp.vat_summary(events, _spans(cycle, day, body.periods), cycle.months)
+        vat_now = await _vat_summary(books, cycle, day, body.periods, events)
     if kind in ("trend", "all"):
         trend_now = rp.monthly_trend(events, day, body.months)
     sample = rp.is_sample(events)
