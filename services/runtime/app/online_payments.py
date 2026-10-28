@@ -1118,4 +1118,6 @@ async def on_unmatched(books: Books, line_id: str, event_ids: list[str], user: s
         return [{**r, "reversal_event_id": reversal.id} if r.get("event_id") == hit.event_id else r for r in rows or []]
 
     await books._update_json(PAYOUTS, [], change)
-    await books.audit(f"user:{user}", "payout_unmatched", {"line": line_id, "event": hit.event_id})
+    await books.audit(
+        f"user:{user}", "payout_unmatched", {"line": line_id, "provider": hit.provider, "event": hit.event_id}
+    )

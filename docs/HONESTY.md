@@ -119,6 +119,12 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - **Tracking** on bills is set on approval and applies to every cost line of the bill; credit notes, payments and recodes
   copy no tags from the user (a recode keeps the original line's tags).
 - Manual journals attach a document by its path in the books folder (no upload from the journal form).
+- A journal with VAT (and its void, automatic reversal or a VAT recode) counts on the side it names: boxes 1 and 6 for
+  sales, 4 and 7 for purchases, with its signed figures; the VAT page lists each one with the boxes it moved, and Ask's
+  totals use the same rule. Boxes 2, 8 and 9 (NI/EU) cannot be reached by a journal. A reversal into a later period can
+  make box 4 (or box 1) negative there; that HMRC's MTD VAT API accepts negative box values was **not re-checked**
+  against HMRC's specification on 28 Oct 2026 (developer.service.gov.uk is not reachable from the session that made
+  this change); the ledger allowed negative boxes before it.
 
 ## Bank statements
 
@@ -160,6 +166,8 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 
 - **Never run against a real OneDrive.** *Load sample books* (`POST /books/sample`) and the seed it runs have only run on the in-memory fake OneDrive (`test_sample_books.py`, the e2e spec). **How long it takes against Graph is unmeasured.** On the fake the whole seed makes about 11,300 storage calls (most of them folder listings and reads behind each approval), and each is roughly one Graph request, so at a few tenths of a second each it could take well over half an hour, more than a token lasts; throttling (429s are retried) is untested there. (`tools/seed_demo.md` said "several hundred Graph calls"; corrected.)
 - The Graph token expires after about an hour and the runtime cannot refresh it. The page hands the runtime a fresh token every four minutes and whenever the run says it needs one; if the page is closed, the run waits ten minutes, then stops, and the next press (or visit to Home) carries on from the recorded step. Resuming was checked on the fake by refusing the token at, and right after, every one of the 710 writes of a run (1,420 runs, each compared with the books the CLI writes): the first pass found 11 failures in 6 kinds of two-write action, all now repaired and each kept as a named test (an approval posted but not saved, a filed document not yet recorded, an emailed receipt copied but not recorded, a sent invoice's PDF, a filed statement whose lines were not stored, a payment's entry without its record or its record without its line match, a rule coding posted but not saved). A refusal at a read or listing between writes, and a second stop in the same step, were not swept.
+- `test_sample_books.py` waits for the background run to stop (an event the run sets), not for a fixed number of
+  polls; the old polling budget lost the race on loaded machines (`docs/reviews/known-fixes/REVIEW.md`).
 - The background run lives in the runtime process. Progress is in the user's own `_System/sample_seed.json` (the runtime still stores nothing); with more than one runtime process, a run that went quiet is taken over after three minutes without progress.
 - The documents are drawn by the evals' renderer (`evals/harness/render.py`, DejaVu Sans Mono in the image); the Inbox documents are read for real by the account's AI only when someone presses *Scan*. The business name in Connect is not set for the user: set it to *Bramblewood Joinery Ltd* before scanning, or sales may be read as purchases.
 - The runtime image now carries `tools/seed_demo.py`, `evals/gold` and the renderer (fictional data only). The Docker test used to keep `evals` out of the image so that test mode's stub AI could never read receipts there; instead `ACCNOMOS_IMAGE=1` is set in the image and test mode refuses to start under it. The image was not rebuilt in the session that changed it.
@@ -194,13 +202,18 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - The business details this browser keeps are swapped per account in `localStorage`; a second tab open on the other
   profile during a switch is not handled (it keeps the old copy until it reloads). HMRC must be connected again after
   every switch, by design.
-- The Home dashboard still shows its VAT tile for personal books and for books that are not VAT-registered (the menu
-  hides VAT; the dashboard route is not gated). Customers and Suppliers in the menu open the same Contacts page (it has
-  no filter yet).
+- Home shows the VAT tile and the (all-VAT) Deadlines card only for a VAT-registered business: `GET /books/dashboard`
+  reads `_System/profile.json` and answers `vat_applies` (an unreadable profile counts as the default, a VAT-registered
+  company, so VAT shows). Before the dashboard answers, the web uses the profile it last read on this device. Customers
+  and Suppliers in the menu open the same Contacts page (it has no filter yet).
 - Several menu pages are being built elsewhere (`/sales`, `/purchases`, `/accounting/*`, `/self-employment`, `/personal`
   and others); the menu shows each only once its page is in the build, so today those groups are shorter.
-- Android has one account at a time (*Switch account*); its More screen does not hide VAT, invoices or payroll for
-  personal books yet, and the Flutter changes have not been run here (widget tests added, `flutter test` not run).
+- Android has one account at a time (*Switch account*). Its More screen leaves out Invoices and Payroll for personal
+  books and mentions VAT under Reports only when the books have it (`GET /profile` features, read when the tab first
+  opens: after *Switch account* it follows the new books once the app restarts, or the tab is rebuilt), and Home drops
+  the VAT tile on `vat_applies=false`. The bottom bar's VAT tab is still there for every profile (its screen answers
+  with the runtime's sentence for books without VAT). `flutter analyze` and `flutter test` (279 tests) pass, on
+  Flutter 3.47.8 in a Linux container; not run on a phone.
 
 ## Android
 
@@ -244,7 +257,12 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
   `PUBLIC_SUBMISSION_MODE` for the chat's notes). The judged build leaves out what is not built (iPhone app, more
   mailboxes) instead of tagging it "coming soon", and shows no launch date; the pre-launch build (`0`) says "Launching
   November 2026 — get notified" (a `mailto:`, no sign-up list) and tucks sign-in away. Only the default build is
-  tested end to end; the `0` build has been type-checked, not run. "Available on Android" on the landing page means the
+  tested end to end; the `0` build has been built and its files scanned (the pre-launch words are there), not run in a browser.
+  The submission build is checked twice for pre-launch wording ("Early access / testers", "coming soon", "beta",
+  "launch"/"launching", the early-adopter list): `e2e/submission-mode.spec.ts` reads every page's DOM text, title,
+  description and labels, signed out and in (not the pixels of screenshots), and CI scans every file of the
+  production export (`scripts/prelaunch-words.mjs`). In the submission build the privacy page leaves out the
+  early-adopter list, since that build cannot collect sign-ups. "Available on Android" on the landing page means the
   app exists and builds; per `docs/submission/JUDGING.md` the Play production listing was still in review on 27 Oct
   and no real-phone sign-in is recorded. "Try the demo" links to `/judges` when that page is in the build (a parallel
   branch), otherwise to the sample books on `/try`.

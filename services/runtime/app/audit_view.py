@@ -224,6 +224,12 @@ SUMMARIES: dict[str, Summary] = {
         + f" against invoice {_inv(r)}"
         + (f", fee £{int(r['fee_pence']) // 100}.{int(r['fee_pence']) % 100:02d}" if r.get("fee_pence") else "")
     ),
+    "payout_matched": lambda r, w: (
+        f"Matched a bank line as a {_provider(r)} payout"
+        + _pounds(r, "amount_pence")
+        + ", moved from clearing to the bank"
+    ),
+    "payout_unmatched": lambda r, w: f"Unmatched a {_provider(r)} payout; the money is back in clearing",
     # Credits on contacts (app/credits.py)
     "credit_applied": lambda r, w: "Applied a credit on account to another document" + _pounds(r, "amount_pence"),
     "credit_refunded": lambda r, w: (
