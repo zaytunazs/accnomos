@@ -1,0 +1,6 @@
+# Rendered videos and scratch: regenerate with tools/video/regenerate.sh (docs/video/README.md).
+preview/
+out/
+.work/
+raw/.frames-*/
+# Raw shots over 5 MB are listed in raw/.gitignore by regenerate.sh; smaller ones are committed.
