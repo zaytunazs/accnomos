@@ -19,7 +19,8 @@ export interface EvalHeadline {
 
 type Json = Record<string, unknown>;
 
-function read(run: string, file: string): Json | null {
+/** One committed run file, parsed; null when this checkout lacks it. */
+export function readRun(run: string, file: string): Json | null {
   try {
     return JSON.parse(readFileSync(join(RUNS, run, file), "utf8")) as Json;
   } catch {
@@ -39,7 +40,7 @@ function where(cfg: unknown): string {
 }
 
 function extraction(run: string, title: string): EvalHeadline | null {
-  const s = read(run, "summary.json");
+  const s = readRun(run, "summary.json");
   if (!s) return null;
   const cfg = s.config as Json | undefined;
   const fields = (s.field_accuracy ?? {}) as Json;
@@ -59,7 +60,7 @@ function extraction(run: string, title: string): EvalHeadline | null {
 }
 
 function ask(): EvalHeadline | null {
-  const r = read("ask_40", "result.json");
+  const r = readRun("ask_40", "result.json");
   const g = (r?.glimmer as Json | undefined)?.summary as Json | undefined;
   if (!g) return null;
   return {
@@ -78,7 +79,7 @@ function ask(): EvalHeadline | null {
 }
 
 function autopilot(): EvalHeadline | null {
-  const s = read("autopilot_l2", "summary.json");
+  const s = readRun("autopilot_l2", "summary.json");
   const on = s?.on as Json | undefined;
   const all = on?.all as Json | undefined;
   const clean = on?.without_seeded_copies as Json | undefined;
