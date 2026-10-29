@@ -41,7 +41,7 @@ Read in one place each (`services/runtime/app/routes_books.py`, `app/ai/config.p
 | `X-AI-Mode`, `X-AI-Base-Url`, `X-AI-Model`, `X-Meta-Api-Key` | `ai_config_from_request` | mode `key` or `local`; the base URL must be on the server's allow-list. In key mode with no key header the server's `META_API_KEY` is used |
 | `X-User` | `require_user` / `optional_user` | the signed-in email; required for anything that writes; an audit label, not checked against the token |
 | `X-Business-Name` | `business_name` | optional; tells sales invoices from purchases |
-| `X-Autopilot` | `POST /books/scan` | `off` stops Autopilot for that scan. The web sends it at level L1/L0; the phone never sends it |
+| `X-Autopilot` | `POST /books/scan`, `POST /books/scan/jobs` (and its confirm) | `off` stops Autopilot for that scan. The web sends it at level L1/L0; the phone never sends it |
 | `X-Books-Drive-Id`, `X-Books-Item-Id`, `X-Books-Access` | `get_books` → `app/sharing.py` | an accountant opening a client's shared books folder (both ids or neither; access `read` default, or `edit`). See *Accountant collaboration* |
 | `X-HMRC-Access-Token` | relay | scrubbed from logs by the runtime's middleware too |
 | `X-Correlation-Id` | every response | also in the body of a 500 |
@@ -113,6 +113,7 @@ Books.xlsx still show the path as it was saved.
 | `rules.json` | "file this supplier to that account" from Approve | rewritten |
 | `Rules/rules.json` | Autopilot rules ("Always do this") | rewritten |
 | `cursors.json` | last inbox scan | rewritten |
+| `Scans/<id>.json` | one background scan job (`scan_jobs.py`): each file's stage, the AI's guess of its type, the type the user confirmed, where it went; kept 7 days, then moved to `Originals/Scans/` | rewritten after every step |
 | `bank/<sha256>.json` | lines of one statement with their match status | updated |
 | `Intake/seen.json`, `Intake/log/<yyyy-mm>.jsonl` | Outlook intake | |
 | `Originals/<name>.heic` | a HEIC photo from `00 Inbox`, once its JPEG has taken its place (`inbox.py`) | never deleted |

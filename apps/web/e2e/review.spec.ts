@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { createBooksFolder, expect, GOLD, signIn, test } from "./fixtures";
+import { createBooksFolder, expect, GOLD, signIn, test, confirmScan } from "./fixtures";
 
 /** The Review page: keyboard flow, image viewer, edit validation and rule approvals. */
 
@@ -133,7 +133,7 @@ test("signed in: edit sends only changed fields, U undoes through the runtime, p
   await page.goto("/review");
   await page.locator('input[type="file"]').first().setInputFiles({ name: `${GOLD}.png`, mimeType: "image/png", buffer: await runtime.goldPng() });
   await expect(page.getByText("1 file added to 00 Inbox")).toBeVisible();
-  await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
+  await confirmScan(page);
   await expect(page.locator('p[role="status"][aria-live="polite"]')).toHaveText("1 new proposal"); // caches warmed at startup
   const novex = card(page, "Novex Office Supplies Ltd · £51.90");
   await expect(novex).toBeVisible();
@@ -167,7 +167,7 @@ test("signed in: U pressed while an approve is in flight undoes it once it lands
   await page.goto("/review");
   await page.locator('input[type="file"]').first().setInputFiles({ name: `${GOLD}.png`, mimeType: "image/png", buffer: await runtime.goldPng() });
   await expect(page.getByText("1 file added to 00 Inbox")).toBeVisible();
-  await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
+  await confirmScan(page);
   const status = page.locator('p[role="status"][aria-live="polite"]');
   await expect(status).toHaveText("1 new proposal");
   const novex = card(page, "Novex Office Supplies Ltd · £51.90");
@@ -217,7 +217,7 @@ test("signed in: an unknown supplier over £250 with no VAT number is asked abou
   const upload = async (file: string) => {
     await page.locator('input[type="file"]').first().setInputFiles({ name: `${file}.png`, mimeType: "image/png", buffer: await runtime.goldPng(file) });
     await expect(page.getByText("1 file added to 00 Inbox")).toBeVisible();
-    await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
+    await confirmScan(page);
   };
   const status = page.locator('p[role="status"][aria-live="polite"]');
   await upload(NO_VAT);

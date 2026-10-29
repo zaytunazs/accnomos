@@ -840,6 +840,19 @@ def duplicate_reply(content: str) -> dict[str, Any]:
     }
 
 
+def classify_reply(images: list[str], content: str) -> dict[str, Any]:
+    """What kind of document (app/ai/classify.py): a gold receipt's own doc_type, else code's guess from the words."""
+    from app.ai import classify as classify_ai
+
+    if images:
+        file = _by_hash().get(hashlib.sha256(base64.b64decode(images[0])).hexdigest())
+        if file is None:
+            return {"kind": "other", "confidence": 0.3, "reason": "Test stub: not a document it knows."}
+        return {"kind": _documents()[file]["doc_type"], "confidence": 0.9, "reason": "Test stub: a gold document."}
+    guess = classify_ai.by_words(content)
+    return {"kind": guess.kind, "confidence": 0.8, "reason": "Test stub: guessed from the words."}
+
+
 @router.api_route("/ai/down/{rest:path}", methods=["GET", "POST"])
 async def ai_down(rest: str) -> JSONResponse:
     """A provider that is down (ACCNOMOS_TEST_AI_DOWN, app/ai/providers.py): every call answers 503."""
@@ -891,6 +904,10 @@ async def ai_chat(request: Request) -> JSONResponse:
         line = f"Your bank is {facts['bank_balance_today']} today and {facts['balance_in_90_days']} in 90 days."
         return JSONResponse(_ollama({"line": line}))
     images = [img for m in messages for img in (m.get("images") or [])]
+    from app.ai import classify as classify_ai
+
+    if system == classify_ai.SYSTEM_PROMPT:
+        return JSONResponse(_ollama(classify_reply(images, messages[-1]["content"])))
     if system == actions.INTENT_PROMPT:
         return JSONResponse(_ollama(intent_reply(messages[-1]["content"])))
     if system == ask_ai.SYSTEM_PROMPT:

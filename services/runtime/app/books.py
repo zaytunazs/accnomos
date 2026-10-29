@@ -215,6 +215,7 @@ class Books:
             elif storage.user_key is None:
                 storage.user_key = cache_key
         self.storage = storage
+        self.cache_key = cache_key  # also who owns a background scan job (app/scan_jobs.py)
         # Set by routes_books.get_books when an accountant opens a client's shared books (app/sharing.py): their
         # email, from Graph /me, and whether the folder was opened read-only.
         self.accountant: str | None = None

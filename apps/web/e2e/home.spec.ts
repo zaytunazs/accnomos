@@ -1,4 +1,4 @@
-import { createBooksFolder, expect, signIn, test } from "./fixtures";
+import { confirmScan, createBooksFolder, expect, signIn, test } from "./fixtures";
 
 test("Home dashboard: tiles, deadlines and activity from the books, no signed-out pitch", async ({ page, runtime }) => {
   await signIn(page);
@@ -83,6 +83,7 @@ test("Review badge counts the proposals waiting", async ({ page, runtime }) => {
   await runtime.dropInInbox();
   await page.goto("/review");
   await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
+  await confirmScan(page);
   await expect(page.getByRole("status")).toHaveText("1 new proposal");
 
   await page.goto("/");

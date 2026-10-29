@@ -214,6 +214,7 @@ TALKS_HTTP = {
     "ai/duplicates.py": "cfg.base_url, or a chain provider's c.base_url (server env, ai/providers.py)",
     "ai/cis_read.py": "cfg.base_url",
     "ai/property_read.py": "cfg.base_url",
+    "ai/classify.py": "cfg.base_url (what kind of document, before a scan job reads it in full)",
     "ai/crop.py": "cfg.base_url (SAM, key mode)",
     "ai/voice.py": "cfg.base_url",
     "ai/stt.py": "Muse: the user's key-mode cfg.base_url or MODEL_API_BASE; Whisper: SPARK_WHISPER_URL (server env)",
@@ -481,6 +482,9 @@ NO_USER_NEEDED = {
     "POST /ai/test": "pings the AI the caller names (allow-listed); writes nothing",
     "POST /extract": "reads one document; writes nothing",
     "POST /books/scan": "the extractor agent files the inbox; audited as agent:extractor / agent:autopilot",
+    "POST /books/scan/jobs": (
+        "starts the extractor agent on 00 Inbox in the background (as /books/scan); its confirm step needs X-User"
+    ),
     "POST /books/rebuild": "rebuilds Books.xlsx from the files already there; no new facts",
     "POST /books/ask": "answers, or proposes a signed action that only /actions/approve (X-User) runs",
     "POST /books/ask/voice": "as /books/ask",

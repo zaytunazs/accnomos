@@ -173,3 +173,21 @@ export const test = base.extend<{ runtime: Runtime; localOnly: void }>({
 });
 
 export { expect };
+
+/**
+ * Review's background scan (components/review/ScanProgress.tsx): wait for the AI's guess of the document's type on
+ * the row of `name` (else the first row waiting), keep it or pick `kind`, press Confirm, and wait until the file is
+ * done (in Review, Needs a look or Bank). An upload starts the reading by itself; a "Scan 00 Inbox now" press too.
+ */
+export async function confirmScan(page: Page, opts: { name?: string; kind?: string } = {}): Promise<void> {
+  const waiting = opts.name
+    ? page.locator(`[data-scan-file="${opts.name}"][data-stage="confirm"]`)
+    : page.locator('[data-scan-file][data-stage="confirm"]').first();
+  await expect(waiting).toBeVisible({ timeout: 30_000 }); // the first read in a fresh runtime warms the stub AI
+  const name = await waiting.getAttribute("data-scan-file");
+  const job = await waiting.getAttribute("data-scan-job");
+  if (opts.kind) await waiting.getByLabel("Type", { exact: true }).selectOption(opts.kind);
+  await waiting.getByRole("button", { name: "Confirm", exact: true }).click();
+  const row = page.locator(`[data-scan-job="${job}"][data-scan-file="${name}"]`);
+  await expect(row).toHaveAttribute("data-stage", /^(ready|needs_a_look|failed)$/, { timeout: 30_000 });
+}

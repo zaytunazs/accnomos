@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { createBooksFolder, expect, GOLD, pickVatPeriod, signIn, test } from "./fixtures";
+import { createBooksFolder, expect, GOLD, pickVatPeriod, signIn, test, confirmScan } from "./fixtures";
 
 /** The amount cell of one row of the live 9-box return on /vat. */
 function box(page: Page, label: string) {
@@ -24,7 +24,7 @@ test("upload a gold receipt → scan → proposal → approve → VAT boxes chan
   await page.locator('input[type="file"]').first().setInputFiles({ name: `${GOLD}.png`, mimeType: "image/png", buffer: await runtime.goldPng() });
   await expect(page.getByText("1 file added to 00 Inbox")).toBeVisible();
 
-  await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
+  await confirmScan(page);
   await expect(page.locator('p[role="status"][aria-live="polite"]')).toHaveText("1 new proposal"); // caches warmed at startup
   const card = page.getByRole("region", { name: "Novex Office Supplies Ltd · £51.90" });
   await expect(card).toBeVisible();

@@ -226,3 +226,63 @@ Google's verification for the restricted Gmail scopes), which Accnomos does not 
 **Not tested against real mailboxes.** Everything above runs on the in-memory fakes (one fake per linked address in
 test mode, seeded with one receipt the signed-in mailbox also has and one of its own) and a mocked Graph transport; see
 `docs/HONESTY.md`.
+
+## Reading the Inbox in the background (scan jobs)
+
+Added 29 Oct 2026 after an owner report from the live demo: two uploaded PDFs, then "Reading your Inbox…" for over
+ten minutes with nothing happening. **Root cause:** `POST /books/scan` read the Inbox in one request that answered only
+when every document was done, and the demo's 00 Inbox already holds 19 unread sample documents, so the "Scan 00 Inbox
+now" press after the upload read up to 10 files (the oldest first, not necessarily the two uploads). Each document could
+take up to three AI calls (read, re-read when unsure, second opinion), each with up to 120 s on the Meta Model API and
+then up to 200 s on the fallback provider, and nothing bounded a document or the request as a whole. The edge proxy
+(`deploy/nginx.conf`, 300 s) gives up long before that; the runtime carries on regardless (an ASGI app is not
+cancelled when the client goes away), which is why the access log never showed the POST. The phone's scan had a 20 s
+timeout and so always failed on a real model.
+
+**Now** (`services/runtime/app/scan_jobs.py`, `app/routes_scan.py`):
+
+| Call | Body | Answer |
+|---|---|---|
+| `POST /books/scan/jobs` (202) | `{names?: [file names in 00 Inbox], source?: upload\|inbox\|email\|phone}` | the job, at once |
+| `GET /books/scan/jobs/{id}` | | `{id, source, status: working\|waiting\|done, progress 0-1, counts, interrupted, files: [{name, stage, stage_label, progress, guess: {kind, confidence, reason, by: ai\|code}, kind, route, proposal_id, message}]}` |
+| `GET /books/scan/jobs` | | this user's jobs of the last day, with `working` and `to_confirm` totals |
+| `POST /books/scan/jobs/{id}/confirm` (X-User) | `{files: [{name, kind}]}` | the job; 409 for a file not waiting for its type |
+| `POST /mail/scan` | `read_now: true` | as before, plus `scan_job_id` for the files it saved |
+
+A file goes **uploaded → reading → confirm → checking → ready to review / needs a look / not read**:
+
+1. *Reading*: one short AI call says what kind of document it is: receipt, purchase invoice (bill), sales invoice,
+   bank statement, credit note, payslip or something else (`app/ai/classify.py`; the document's own text when it has
+   some, else the image). A CSV is recognised by code (the bank CSV parser).
+2. *Confirm*: the guess and how sure the AI is are shown; the user keeps it or picks another type. **Nothing is read
+   in full, filed or posted before this** (only a file that cannot be opened at all, damaged or password-protected,
+   goes straight to Needs a look saying why, as a scan always did).
+3. *Checking*, by the confirmed type: receipts, bills and credit notes are read in full and checked (the same pipeline
+   as before) into a card in Review; a sales invoice the same, as a sale (it posts to Sales when approved); a bank
+   statement CSV goes through the bank-lines import (`Books.import_bank_csv`, then Bank › match); a PDF statement,
+   a payslip or anything else becomes a card in Needs a look that says why. A type that crosses sides (a sale read as
+   a purchase, or the other way) sends the card to Needs a look (`DOC_KIND`) to check who issued it.
+
+Approving stays in Review. A job posts nothing, except what one of the user's own Autopilot rules posts, as a scan
+always has (docs/AUTOPILOT.md).
+
+**Time limits** (env, seconds): `CLASSIFY_TIMEOUT_S` 45 (past it code guesses the type from the words and says so);
+`SCAN_DOC_TIMEOUT_S` 180 per document read in full, every AI call within it capped at `AI_CALL_TIMEOUT_S` 90
+(`app/ai/chain.py` `limits`: the provider's own `*_REQUEST_S`, the cap and what is left of the document's budget,
+whichever is least; a spent budget is not counted against the provider's circuit breaker and is not failed over).
+A document past its budget stays in 00 Inbox with "The AI did not finish reading this within 180 seconds…". The same
+limits now apply to the plain `POST /books/scan`, kept for older clients, which also leaves alone files a job is
+reading. `JOB_CONCURRENCY` (2) documents of a job and `SCAN_CONCURRENCY` (4) of the server are read at once.
+
+**Where it lives.** No database: the job runs in the runtime process (one worker, `deploy/Dockerfile.runtime`) and is
+written to the user's own books after every step (`_System/Scans/<id>.json`), so a page opened later, another
+device, or a refreshed token finds it (the job file in their books is the proof it is theirs). If the runtime restarts
+mid-read, the job reads as interrupted and the files are still in 00 Inbox. The server logs one line per file and step
+(`accnomos.scan`: job id prefix, file number, stage, type, seconds; never a file name or an amount).
+
+**Clients.** Web: "Add a receipt" (photos, PDFs, bank CSVs) uploads to OneDrive and starts a job for those files;
+"Scan 00 Inbox now" starts one for every file; `components/review/ScanProgress.tsx` shows a bar per file and one for
+the job, the guess, the type picker and Confirm (or Confirm all); the top bar shows "Reading N" or "N to confirm" on
+every page (`components/ScanBadge.tsx`, `lib/scan-jobs.ts`: one poller per tab, 1.5 s while reading, 10 s while
+waiting, none once done). Outlook intake's real check sends `read_now`. Android: the capture screen starts a job
+for the photos it uploaded and Review's "Scan inbox" one for the Inbox (`lib/widgets/scan_progress.dart`).

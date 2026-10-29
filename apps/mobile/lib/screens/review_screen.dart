@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 
 import '../models/proposal.dart';
+import '../models/scan_job.dart';
 import '../services/auth.dart';
 import '../services/capture_queue.dart';
 import '../services/graph.dart';
@@ -14,6 +15,7 @@ import '../services/settings.dart';
 import '../theme.dart';
 import '../widgets/lookups.dart';
 import '../widgets/review_image.dart';
+import '../widgets/scan_progress.dart';
 import 'capture_screen.dart';
 import 'contacts_screen.dart';
 import 'edit_proposal_sheet.dart';
@@ -116,6 +118,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   /// Per-file scan errors from the latest `scan()`.
   List<ScanFileError> _scanErrors = const [];
+
+  /// Background scans started here or by the capture screen, newest first.
+  final List<ScanJob> _jobs = [];
 
   /// Entries the Autopilot approved, shown only when the reader exposes
   /// `POST /books/undo/{event_id}` (checked in `routes_books.py` terms via
@@ -431,7 +436,9 @@ class _ReviewScreenState extends State<ReviewScreen> {
     }
   }
 
-  /// `POST /books/scan`, then reload. Per-file errors stay on screen.
+  /// Start a background scan of `00 Inbox` (`POST /books/scan/jobs`): the
+  /// runtime answers at once and [ScanJobCard] shows the progress, asks for
+  /// each file's type and reloads the cards as files reach Review.
   Future<void> _scan() async {
     if (!_signedIn || _scanning) return;
     setState(() {
@@ -440,23 +447,51 @@ class _ReviewScreenState extends State<ReviewScreen> {
     });
     try {
       final client = await _booksClient();
-      final outcome = await client.scan();
+      final job = await client.startScanJob(source: 'inbox');
       if (!mounted) return;
-      setState(() => _scanErrors = outcome.errors);
-      await _reload();
-      if (!mounted) return;
-      final n = outcome.proposals.length;
-      final m = outcome.errors.length;
-      _say(m == 0
-          ? 'Scan complete · $n proposal${n == 1 ? '' : 's'}'
-          : 'Scan complete · $n proposal${n == 1 ? '' : 's'}, '
-              '$m file${m == 1 ? '' : 's'} need a look');
+      _follow(job);
+      final n = job.files.length;
+      _say(n == 0
+          ? '00 Inbox is empty'
+          : 'Reading $n file${n == 1 ? '' : 's'} from 00 Inbox');
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = _friendly(e));
     } finally {
       if (mounted) setState(() => _scanning = false);
     }
+  }
+
+  void _follow(ScanJob job) {
+    setState(() {
+      _jobs.removeWhere((j) => j.id == job.id);
+      _jobs.insert(0, job);
+    });
+  }
+
+  Widget _scanJobs() {
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 320),
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          for (final job in _jobs)
+            ScanJobCard(
+              key: ValueKey(job.id),
+              job: job,
+              load: (id) async => (await _booksClient()).scanJob(id),
+              confirm: (id, kinds) async =>
+                  (await _booksClient()).confirmScanJob(id, kinds),
+              onFiled: (n) async {
+                await _reload();
+                if (mounted) _say('$n new proposal${n == 1 ? '' : 's'}');
+              },
+              onDismiss: () =>
+                  setState(() => _jobs.removeWhere((j) => j.id == job.id)),
+            ),
+        ],
+      ),
+    );
   }
 
   /// Prepend a freshly captured proposal and jump to it (signed-out flow).
@@ -473,7 +508,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
       MaterialPageRoute(builder: (_) => const CaptureScreen()),
     );
     if (!mounted) return;
-    if (result is CaptureScanSummary && _signedIn) {
+    if (result is ScanJob && _signedIn) {
+      _follow(result);
+      final n = result.files.length;
+      _say('Uploaded · reading $n file${n == 1 ? '' : 's'}');
+    } else if (result is CaptureScanSummary && _signedIn) {
       await _reload();
       _say('Scan complete · ${result.label}');
     } else if (result == true && _signedIn) {
@@ -862,6 +901,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                             const TextStyle(color: _warnInk, height: 1.4)),
                   ),
                 if (_scanErrors.isNotEmpty) _scanErrorBox(),
+                if (_jobs.isNotEmpty) _scanJobs(),
                 if (_signedIn && _undoSupported && _auto.isNotEmpty)
                   _autopilotSection(),
                 if (matches.isNotEmpty) _bulkBanner(matches, ruleFor),

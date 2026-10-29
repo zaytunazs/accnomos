@@ -171,6 +171,10 @@ from app.routes_books import router as books_router  # noqa: E402  /books/*
 
 app.include_router(books_router)
 
+from app.routes_scan import router as scan_router  # noqa: E402  /books/scan/jobs (background scans)
+
+app.include_router(scan_router)
+
 from app.sample_books import router as sample_router  # noqa: E402  /books/sample (Load sample books)
 
 app.include_router(sample_router)

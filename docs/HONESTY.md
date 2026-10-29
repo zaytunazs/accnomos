@@ -68,6 +68,15 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
   receipts in one PDF is read as one document and not split.
 - Receipts in an email body are found by a code rule tested on six fictional emails, not on real Uber, Amazon or SaaS
   mail, nor on Graph's HTML-to-text conversion of them.
+- **Background scan jobs** (`app/scan_jobs.py`, docs/INBOX.md) are tested with a slow fake model, fake storage, the
+  test-mode stub AI and the demo sandbox in Playwright, not against the live Meta Model API, a real OneDrive, a real
+  Graph token that expires mid-job, or behind the real edge proxy. The time limits (45 s for the type, 180 s a
+  document, 90 s an AI call) are judgement, not measured on the live chain. The document-type classifier
+  (`app/ai/classify.py`) has no eval set yet: its accuracy on real receipts, bills and statements is unknown, which is
+  why the user always confirms the type. A job lives in one runtime process; with more than one worker, polls could
+  reach a worker that does not run it (the job file in the books still answers, but a restart reads as interrupted).
+  The Android scan screen and its widget tests (`test/scan_jobs_test.dart`) were written without a Flutter SDK in the
+  session and have not been run.
 - `POST /books/approve/{id}` is kept as an alias for web builds deployed before the integration review; remove it after the next deploy.
 - `POST /reports/export` saves one spreadsheet in `07 Reports/` from the web and from Android More → Reports (a same-day file of the same name gets ` (2)`; it never posts), but only fake storage has been written in tests. The folder names now have one source (`services/runtime/app/paths.py`); existing users' old-named folders are renamed once on first contact (`app/layout.py`), which has only been tested on fake storage, not on a real OneDrive.
 - `services/runtime/tests/test_integration.py` holds the runtime to the documented folder layout only for the features its scenario exercises (not invoicing, payroll, planner, to-dos, action audit).

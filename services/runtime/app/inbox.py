@@ -10,19 +10,29 @@ by content hash) on its proposal and its `proposed` audit line.
 
 Proposals that match an Autopilot rule and pass every check are then posted by Autopilot
 (app/autopilot.py); everything else waits in Review.
+
+Every document has a time budget (SCAN_DOC_TIMEOUT_S, default 180 s) and every AI call within it a cap
+(AI_CALL_TIMEOUT_S, default 90 s; app/ai/chain.py `limits`). A document that runs out of time stays in the Inbox and
+is reported with a plain sentence, so one slow or silent provider can no longer hold a scan for many minutes.
+The web app and the phone no longer wait on this route: they start a background job (app/scan_jobs.py) and poll it.
 """
 
 from __future__ import annotations
 
 import asyncio
 import logging
+import os
+import time
 import uuid
-from dataclasses import dataclass
+from collections.abc import Coroutine
+from dataclasses import dataclass, field
 from datetime import date
+from typing import Any
 
 from accnomos_connectors.base import FileRef
 from app import autopilot
 from app import contacts as contact_book
+from app.ai import chain
 from app.ai.config import AiConfig
 from app.ai.extract import ExtractionError
 from app.approve import ApprovalError, approve
@@ -44,9 +54,47 @@ ACTOR = "agent:extractor"
 ORIGINALS = f"{SYSTEM}/Originals"  # HEIC photos, once their JPEG is in the Inbox
 
 
+def _env_s(name: str, default: float) -> float:
+    try:
+        return float(os.getenv(name) or default)
+    except ValueError:
+        return default
+
+
+DOC_TIMEOUT_S = _env_s("SCAN_DOC_TIMEOUT_S", 180)  # one document, every AI call included
+AI_CALL_TIMEOUT_S = _env_s("AI_CALL_TIMEOUT_S", 90)  # one AI attempt, whoever serves it
+GRACE_S = 10.0  # after the budget, the hard stop (a call that ignores its own cap)
+
+
+class DocTimeout(ExtractionError):
+    """The document used up its time budget. It stays in the Inbox."""
+
+
+def timeout_message(seconds: float) -> str:
+    return (
+        f"The AI did not finish reading this within {seconds:.0f} seconds, so it was stopped. "
+        "It stays in 00 Inbox: try again later, or type it in by hand."
+    )
+
+
+async def bounded[T](coro: Coroutine[Any, Any, T], seconds: float | None = None) -> T:
+    """`coro` within the document budget: each AI call capped, a hard stop just after. Raises `DocTimeout`."""
+    budget = DOC_TIMEOUT_S if seconds is None else seconds
+    with chain.limits(call_s=AI_CALL_TIMEOUT_S, deadline=time.monotonic() + budget):
+        try:
+            return await asyncio.wait_for(coro, budget + GRACE_S)
+        except TimeoutError:
+            raise DocTimeout(timeout_message(budget)) from None
+
+
 def unreadable_placeholder(name: str, digest: str, reason: str) -> Proposal:
     """A needs-a-look proposal for a file we cannot read; the user types the amounts in on approval."""
-    check = Check(code="UNREADABLE", ok=False, severity="fail", message=f"Not read: {reason}. Please check it by hand")
+    return placeholder(name, digest, f"Not read: {reason}. Please check it by hand")
+
+
+def placeholder(name: str, digest: str, message: str, code: str = "UNREADABLE") -> Proposal:
+    """A needs-a-look card with no figures, saying `message`: the user types the amounts in, or rejects it."""
+    check = Check(code=code, ok=False, severity="fail", message=message)
     doc = ExtractedDoc(
         doc_type="purchase_invoice",
         supplier_name=name.rsplit(".", 1)[0],
@@ -121,16 +169,18 @@ async def _propose(
         f, data = await _swap_for_jpeg(books, f, prep.image), prep.image
     start, end = period or (None, None)
     vat = vat or VatContext([], True)
-    p = await process_document(
-        prep,
-        cfg,
-        known_hashes=frozenset(known),
-        digest=sha256_hex(data),
-        business_name=business_name,
-        period_start=start,
-        period_end=end,
-        suppliers=vat.knowledge,
-        business_vat_registered=vat.business_registered,
+    p = await bounded(
+        process_document(
+            prep,
+            cfg,
+            known_hashes=frozenset(known),
+            digest=sha256_hex(data),
+            business_name=business_name,
+            period_start=start,
+            period_end=end,
+            suppliers=vat.knowledge,
+            business_vat_registered=vat.business_registered,
+        )
     )
     apply_rule(p, books.match_rule(p.extracted, rules))
     prefill_vehicle(p, vehicles or [])
@@ -221,53 +271,61 @@ async def scan_inbox(
     return proposals
 
 
-async def scan_inbox_detailed(
+@dataclass
+class ScanContext:
+    """What every document of one scan is checked against, read once per scan."""
+
+    known: set[str]
+    rules: list[Rule]
+    auto_rules: list[autopilot.AutopilotRule]
+    vehicles: list[Vehicle]
+    vat: VatContext
+    business_name: str | None = None
+    autopilot_on: bool = True
+    period: tuple[date, date] | None = None
+    sources: dict[str, str] | None = None  # intake's seen-list, read once and only when a file is filed
+    earlier: list[Proposal] | None = None  # proposals already in the books, for Autopilot's same-document condition
+    posted_by_autopilot: bool = False
+    lock: asyncio.Lock = field(default_factory=asyncio.Lock)  # filing and saving: one document at a time
+
+
+async def scan_context(
     books: Books,
-    cfg: AiConfig,
-    limit: int = 10,
     business_name: str | None = None,
     autopilot_on: bool = True,
     period: tuple[date, date] | None = None,
-) -> tuple[list[Proposal], list[dict]]:
-    """Process up to `limit` documents from the Inbox and return the new proposals.
-
-    A file whose hash we have already seen is not skipped silently: the DUPLICATE check sends it
-    to Needs a look, so the Inbox never keeps files the user thinks were handled. Files the
-    model cannot read stay in the Inbox for the next scan. `period` is the current VAT period: a document
-    dated outside it gets a DATE_IN_PERIOD warning (never a fail; the ledger keeps the document's date).
-    """
+) -> ScanContext:
     await books.ensure_tree()
-    known = await books.known_hashes()
-    rules = await books.load_rules()
-    auto_rules = await autopilot.load_rules(books)
-    vehicles = await _vehicles(books)
-    vat = await vat_context(books)
-    sources: dict[str, str] | None = None  # intake's seen-list, read once and only when the Inbox has files
-    earlier: list[Proposal] | None = None  # proposals already in the books, for Autopilot's same-document condition
-    out: list[Proposal] = []
-    errors: list[dict] = []
-    candidates: list[tuple[FileRef, str]] = []
-    for f in await books.list_files(INBOX):
-        if not (mime := guess_mime(f.name)):
-            continue
-        if f.size > MAX_BYTES:  # never downloaded; stays in the Inbox until the user replaces it
-            errors.append({"path": f.path, "error": f"File is over {MAX_BYTES // (1024 * 1024)} MB; not read"})
-            continue
-        candidates.append((f, mime))
-    for f, mime in candidates[:limit]:  # failures count too: `limit` caps model calls
-        try:
-            p, f, mime = await _propose(books, f, mime, cfg, known, rules, business_name, vehicles, period, vat)
-        except ExtractionError as exc:
-            log.warning("extraction failed for %s: %s", f.path, exc)
-            await books.audit(ACTOR, "extract_failed", {"path": f.path, "error": str(exc)[:200]})
-            errors.append({"path": f.path, "error": str(exc)[:300]})
-            continue
+    return ScanContext(
+        known=await books.known_hashes(),
+        rules=await books.load_rules(),
+        auto_rules=await autopilot.load_rules(books),
+        vehicles=await _vehicles(books),
+        vat=await vat_context(books),
+        business_name=business_name,
+        autopilot_on=autopilot_on,
+        period=period,
+    )
+
+
+async def read_one(
+    books: Books, f: FileRef, mime: str, cfg: AiConfig, ctx: ScanContext
+) -> tuple[Proposal, FileRef, str]:
+    """Read one Inbox file into a proposal (nothing saved yet). Raises `ExtractionError` (`DocTimeout` too)."""
+    return await _propose(
+        books, f, mime, cfg, ctx.known, ctx.rules, ctx.business_name, ctx.vehicles, ctx.period, ctx.vat
+    )
+
+
+async def commit(books: Books, ctx: ScanContext, p: Proposal, f: FileRef, mime: str) -> Proposal:
+    """File the document, save its proposal with an audit line, and let Autopilot post it when a rule says so."""
+    async with ctx.lock:
         p.source_name, p.created_at = f.name, now()
-        if sources is None:
-            sources = await mailbox_sources(books)
-        p.source_mailbox = sources.get(p.doc_sha256)
+        if ctx.sources is None:
+            ctx.sources = await mailbox_sources(books)
+        p.source_mailbox = p.source_mailbox or ctx.sources.get(p.doc_sha256)
         await books.file_document(p, f.path)
-        if p.doc_sha256 not in known:
+        if p.doc_sha256 not in ctx.known:
             await books.save_doc(
                 DocMeta(
                     sha256=p.doc_sha256,
@@ -278,23 +336,77 @@ async def scan_inbox_detailed(
                     filed_path=p.file_path,
                 )
             )
-            known.add(p.doc_sha256)
-        rule = autopilot.match(p, auto_rules)
+            ctx.known.add(p.doc_sha256)
+        rule = autopilot.match(p, ctx.auto_rules)
         if rule is not None:
-            if earlier is None:  # read once per scan, and only when a rule could post something
-                earlier = await books.list_proposals()
-            p.autopilot = autopilot.evaluate(p, rule, autopilot_on, earlier)
+            if ctx.earlier is None:  # read once per scan, and only when a rule could post something
+                ctx.earlier = await books.list_proposals()
+            p.autopilot = autopilot.evaluate(p, rule, ctx.autopilot_on, ctx.earlier)
         await books.save_proposal(p)
-        if earlier is not None:
-            earlier.append(p)
+        if ctx.earlier is not None:
+            ctx.earlier.append(p)
         refs = {"proposal": p.id, "doc": p.doc_sha256, "status": p.status, "path": p.file_path}
         if p.source_mailbox:
             refs["mailbox"] = p.source_mailbox
         await books.audit(ACTOR, "proposed", refs)
         if rule is not None and p.autopilot and p.autopilot.auto_approve:
             p = await _autopilot_post(books, p, rule)
-        out.append(p)
+            ctx.posted_by_autopilot = True
+        return p
+
+
+async def finish(books: Books, ctx: ScanContext) -> None:
+    """After the last document: the scan time, and Books.xlsx when Autopilot posted anything."""
     await books.record_scan(now())
-    if any(p.decided_by == autopilot.AUTOPILOT for p in out):
+    if ctx.posted_by_autopilot:
         await books.rebuild_safely(autopilot.ACTOR)
+
+
+def inbox_candidates(files: list[FileRef], errors: list[dict] | None = None) -> list[tuple[FileRef, str]]:
+    """The Inbox files the reader takes, with their types; one over the size limit is reported, never downloaded."""
+    out: list[tuple[FileRef, str]] = []
+    for f in files:
+        if not (mime := guess_mime(f.name)):
+            continue
+        if f.size > MAX_BYTES:  # never downloaded; stays in the Inbox until the user replaces it
+            if errors is not None:
+                errors.append({"path": f.path, "error": f"File is over {MAX_BYTES // (1024 * 1024)} MB; not read"})
+            continue
+        out.append((f, mime))
+    return out
+
+
+async def scan_inbox_detailed(
+    books: Books,
+    cfg: AiConfig,
+    limit: int = 10,
+    business_name: str | None = None,
+    autopilot_on: bool = True,
+    period: tuple[date, date] | None = None,
+    skip: frozenset[str] = frozenset(),
+) -> tuple[list[Proposal], list[dict]]:
+    """Process up to `limit` documents from the Inbox and return the new proposals.
+
+    A file whose hash we have already seen is not skipped silently: the DUPLICATE check sends it
+    to Needs a look, so the Inbox never keeps files the user thinks were handled. Files the
+    model cannot read (or not in time) stay in the Inbox for the next scan. `period` is the current VAT period: a
+    document dated outside it gets a DATE_IN_PERIOD warning (never a fail; the ledger keeps the document's date).
+    `skip`: Inbox paths a background job is reading now (app/scan_jobs.py), left to it.
+    """
+    ctx = await scan_context(books, business_name, autopilot_on, period)
+    out: list[Proposal] = []
+    errors: list[dict] = []
+    candidates = [c for c in inbox_candidates(await books.list_files(INBOX), errors) if c[0].path not in skip]
+    for i, (f, mime) in enumerate(candidates[:limit]):  # failures count too: `limit` caps model calls
+        t0 = time.perf_counter()
+        try:
+            p, f, mime = await read_one(books, f, mime, cfg, ctx)
+        except ExtractionError as exc:
+            log.warning("scan: document %d of %d not read (%s)", i + 1, min(limit, len(candidates)), type(exc).__name__)
+            await books.audit(ACTOR, "extract_failed", {"path": f.path, "error": str(exc)[:200]})
+            errors.append({"path": f.path, "error": str(exc)[:300]})
+            continue
+        out.append(await commit(books, ctx, p, f, mime))
+        log.info("scan: document %d of %d read in %.1f s", i + 1, min(limit, len(candidates)), time.perf_counter() - t0)
+    await finish(books, ctx)
     return out, errors
