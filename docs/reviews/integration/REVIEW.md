@@ -146,7 +146,7 @@ task text only and was never merged.
 | 25 | `claude/dashboard-ui` (Home as one dashboard with a checked AI summary, `GET /books/home`, lower-looking sub-menus, the header without stray lines, the Android summary card) | `c353bd44` | 40792468435; on `main` 40794211149 | 40794211389 ✓ |
 | 26 | `claude/muse-transcribe` (voice questions: Muse Voice Transcribe first, Whisper on the Spark as fallback; who transcribed shown and audited) | `715c5647` | 40807589881; on `main` 40809215233 | 40809215313 ✓ |
 | 27 | `claude/meta-models-page` (public `/meta-models`: which Meta model does which job, how it is called, what code checks after it, measured results) | with row 28 (`main` moved first, below) | 40811885829 on `ef5a13e` | ✓ on push |
-| 28 | `claude/video-capture` (with `muse/video-scripts`: capture and assembly tools, how-to screenshots, the judges' video plan; **raw shots filtered out**), re-merged over `claude/signup-accountants` and three deploy commits pushed straight to `main`, plus the `test_testmode` fix that turns `main` green again | this commit | see below | ✓ on push |
+| 28 | `claude/video-capture` (with `muse/video-scripts`: capture and assembly tools, how-to screenshots, the judges' video plan; **raw shots filtered out**), re-merged over `claude/signup-accountants` and five deploy commits pushed straight to `main`, plus the `test_testmode` fix that turns `main` green again | this commit | see below | ✓ on push |
 
 The integrator wrote a review wherever a branch arrived without one: `docs/reviews/cis-eval/`, `cis-eval-runs/` and
 `property-reader/`. The Spark figures were **recounted from `results.jsonl`**, not copied from the summaries. The CIS
@@ -298,7 +298,7 @@ cis-eval, `paye.spec.ts` (the long PAYE flow) failed once. On property-reader, a
   re-captures the shots. The tool tests pass without them (pytest 8, node 6). The four teaser `.mp4` files over 5 MB
   (`docs/submission/teaser/`) were already on `main` from `claude/teaser` and were left alone.
 - **`main` moved twice while row 27 was in CI.** Another session pushed `claude/signup-accountants` (`55349d5`), then
-  three deploy commits (`0c010fe`, `49551ca`, `77723f6`, `f2f91c3`), straight to `main`. Row 27 could no longer be
+  five deploy commits (`0c010fe`, `49551ca`, `77723f6`, `f2f91c3`, `44886fd`), straight to `main`. Row 27 could no longer be
   fast-forwarded, so both were merged in and gated again:
   - signup-accountants added the public `/join`, and meta-models-page added `/meta-models`. Every copy of the public
     list now has both: `lib/public-site.ts`, `e2e/pages.ts`, `signed-out.spec`, `site-layout.spec` and the 360 px loop
