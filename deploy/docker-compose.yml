@@ -56,6 +56,8 @@ services:
       # Website chat "Ask about Accnomos" (POST /public/chat, app/public_chat.py): Accnomos-only answers from
       # app/public_kb.md on the server's own model (local Glimmer by default, never a visitor's key).
       PUBLIC_CONTACT_EMAIL: ${PUBLIC_CONTACT_EMAIL:-admin@zaytunauk.co.uk}
+      # The operator's accountants team (app/accountant.py): clients who opt in share their books with this account.
+      ACCOUNTANT_TEAM_EMAIL: ${ACCOUNTANT_TEAM_EMAIL:-admin@zaytunauk.co.uk}
       PUBLIC_CHAT_PER_MIN: ${PUBLIC_CHAT_PER_MIN:-6}
       PUBLIC_CHAT: ${PUBLIC_CHAT:-on}
       PUBLIC_SUBMISSION_MODE: ${PUBLIC_SUBMISSION_MODE:-1}
