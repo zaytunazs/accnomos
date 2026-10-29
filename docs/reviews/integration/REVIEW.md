@@ -144,7 +144,8 @@ task text only and was never merged.
 | 23 | Fix: Ask's number check read digits in file names, so `test_ask` failed 1 run in N (below) | this pass | see row 24 | no web change |
 | 24 | `claude/sales-exports-fix` (on top of row 22, which already had both features) and *Reports & exports* in the menu | `176b96b0` | 40781660107; on `main` 40783592918 | 40783592935 ✓ |
 | 25 | `claude/dashboard-ui` (Home as one dashboard with a checked AI summary, `GET /books/home`, lower-looking sub-menus, the header without stray lines, the Android summary card) | `c353bd44` | 40792468435; on `main` 40794211149 | 40794211389 ✓ |
-| 26 | `claude/muse-transcribe` (voice questions: Muse Voice Transcribe first, Whisper on the Spark as fallback; who transcribed shown and audited) | this commit | see below | ✓ on push |
+| 26 | `claude/muse-transcribe` (voice questions: Muse Voice Transcribe first, Whisper on the Spark as fallback; who transcribed shown and audited) | `715c5647` | 40807589881; on `main` 40809215233 | 40809215313 ✓ |
+| 27 | `claude/meta-models-page` (public `/meta-models`: which Meta model does which job, how it is called, what code checks after it, measured results) | this commit | see below | ✓ on push |
 
 The integrator wrote a review wherever a branch arrived without one: `docs/reviews/cis-eval/`, `cis-eval-runs/` and
 `property-reader/`. The Spark figures were **recounted from `results.jsonl`**, not copied from the summaries. The CIS
@@ -168,6 +169,7 @@ schedules and 0 of 6 on mortgage statements.
 | + Ask fix + sales-exports-fix | 2341 | 101 | 63 | 181 | 354 | 467 | 1 |
 | dashboard-ui | 2360 | 101 | 63 | 181 | 354 | 477 | 0 |
 | muse-transcribe | 2390 | 101 | 63 | 181 | 368 | 477 | 0 |
+| meta-models-page | 2390 | 101 | 63 | 181 | 368 | 486 | 0 |
 
 ruff 0.17.3 and pyright stayed clean throughout. The flaky tests were: on bank-feeds, the signed-out `/` *Speak*
 button was briefly disabled without a reason; on batch-tax, `files-manage` hit `ECONNRESET`, the PAYE RTI table was
@@ -277,6 +279,13 @@ cis-eval, `paye.spec.ts` (the long PAYE flow) failed once. On property-reader, a
   voice: test mode has no speech-to-text and CI has no microphone. The live Muse request shape comes from Meta's
   cookbook, not a live call, and the Whisper server on the Spark is the owner's to set up (its `HONESTY.md` entries
   say so). Its Dart tests (`voice_provider_test.dart`) were not run on the branch; CI's `flutter` job runs them.
+- **`claude/meta-models-page`** forked from `c353bd4` with muse-transcribe already merged in, and merged with no
+  conflict (16 files, no media). `/meta-models` is a public path: signed out it has the marketing shell and the public
+  footer link (Help › Meta models used); signed in it has the app shell and the app footer link. It is also linked
+  from `/judges` and the Home summary card. The site has no sitemap, and the public top menu links only to sections of
+  the landing page, so nothing else was needed. The submission build (`NEXT_PUBLIC_SUBMISSION_MODE=1`) holds 0
+  pre-launch phrases in 345 files, `/meta-models` included. The page names only Meta's models, plus Modal in the chain
+  order, as the owner's brief asked; its spec checks that no host or engine name appears.
 - **Signed-out `/cis` showed the sample label twice** (CI run 40745987742, and flaky locally). The sample card
   repeated the banner's "SAMPLE — FICTIONAL COMPANY" and rendered after the signed-in check, so the sweep counted 1 or
   2 depending on timing. The card no longer repeats it, so the banner is the one label, as the rule says. No test
