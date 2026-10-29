@@ -28,8 +28,8 @@ function useBuild(): string | null {
 }
 
 /**
- * The footer on every app page (AppShell): how it works, help, privacy, the Meta models, judges, contact and the
- * version. The public site has its own footer (MarketingShell).
+ * The footer on every app page (AppShell): how it works, help, privacy, the Meta models, judges, contact, Settings
+ * (the last link on every page, where keyboard users leave it) and the version. The public site has its own footer (MarketingShell).
  */
 export default function AppFooter() {
   const build = useBuild();
@@ -54,6 +54,9 @@ export default function AppFooter() {
         <a href={`mailto:${CONTACT_EMAIL}`} className={linkClass}>
           Contact
         </a>
+        <Link href="/settings" className={linkClass}>
+          Settings
+        </Link>
       </nav>
       <p className="mt-2 text-xs text-muted">
         Accnomos version {APP_VERSION}

@@ -113,8 +113,10 @@ export default function AppShell({ children, routes }: { children: ReactNode; ro
           </Link>
         </header>
       )}
-      {signedOutChrome ? (
-        <div className="flex flex-1 flex-col min-[900px]:flex-row">
+      {/* One wrapper whatever the sign-in state: swapping it would remount the page (and lose, say, the HMRC code
+          the VAT page has just read from the address) when the sign-in check answers after the first render. */}
+      <div className="flex flex-1 flex-col min-[900px]:flex-row">
+        {signedOutChrome && (
           <aside
             data-signed-out-chrome=""
             className="hidden w-full shrink-0 flex-col gap-6 border-b border-border bg-white p-5 min-[900px]:flex min-[900px]:w-[232px] min-[900px]:border-b-0 min-[900px]:border-r"
@@ -134,11 +136,9 @@ export default function AppShell({ children, routes }: { children: ReactNode; ro
               <AiSidebarLabel />
             </div>
           </aside>
-          {main}
-        </div>
-      ) : (
-        <div className="flex flex-1 flex-col">{main}</div>
-      )}
+        )}
+        {main}
+      </div>
       {/* Phone tab bar (Home, Review, Ask, VAT, Files) lives in AppNav; not in the accountant portal. */}
       {!accountant && <AppNav variant="tabs" />}
     </div>

@@ -139,7 +139,7 @@ test("Backups: back up now, check it, restore refuses until RESTORE is typed", a
   await books(page, runtime);
   await runtime.putFile("_System/rules.json", '[{"match": {"supplier_regex": "Novex"}, "account": "5000 Materials"}]');
   await page.goto("/files");
-  const panel = page.getByRole("region", { name: "Backups" });
+  const panel = page.getByRole("region", { name: "Backups", exact: true });
   await expect(panel.getByText("No backups yet.")).toBeVisible();
   await panel.getByRole("button", { name: "Back up now" }).click();
   await expect(panel.getByRole("status").first()).toContainText("to Backups/accnomos-backup-2026-10-27.zip");
@@ -186,7 +186,7 @@ test.describe("Files tools at 360 px", () => {
     await books(page, runtime);
     await page.goto("/files");
     await expect(page.getByRole("region", { name: "Find files" })).toBeVisible();
-    const button = page.getByRole("button", { name: "Back up now" });
+    const button = page.getByRole("region", { name: "Backups", exact: true }).getByRole("button", { name: "Back up now" });
     await button.scrollIntoViewIfNeeded();
     await expect(button).toBeInViewport();
     const box = await page.getByLabel("Name, folder or supplier").boundingBox();

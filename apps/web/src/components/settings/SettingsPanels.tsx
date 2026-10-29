@@ -289,22 +289,13 @@ export default function SettingsPanels() {
               <dt className="text-[15px] font-bold text-ink">HMRC</dt>
               <dd className="flex flex-wrap items-center gap-3">
                 <span className="text-sm text-muted">Sandbox · not connected</span>
-                <button
-                  type="button"
-                  disabled
-                  title="Sign in, then connect HMRC on the VAT page"
-                  className="h-10 whitespace-nowrap rounded-xl border border-border bg-ground px-4 text-sm font-bold text-muted disabled:opacity-60"
+                {/* A real integration: its connect step lives on the VAT page (no disabled stand-in here). */}
+                <Link
+                  href="/vat"
+                  className="inline-flex h-10 items-center whitespace-nowrap rounded-xl border-2 border-teal bg-white px-4 text-sm font-bold text-teal-dark"
                 >
-                  Connect HMRC (sandbox)
-                </button>
-              </dd>
-            </div>
-            <div className="flex items-center justify-between gap-3 py-3">
-              <dt className="text-[15px] font-bold text-ink">Google Drive</dt>
-              <dd>
-                <span className="rounded-full bg-ground px-2 py-0.5 text-[11px] font-extrabold text-muted">
-                  Coming next
-                </span>
+                  Connect on the VAT page
+                </Link>
               </dd>
             </div>
           </dl>
