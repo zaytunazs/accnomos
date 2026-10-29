@@ -20,6 +20,11 @@ const LINKED = "msal.accnomos-test.linked";
 /** Who the next popup signs in as; a spec may set it first. */
 export const POPUP_ACCOUNT = "msal.accnomos-test.popup";
 export const DEFAULT_POPUP_ACCOUNT = "receipts@sambuilds-mail.example";
+/** A spec sets it to "1" to make every silent token request time out as MSAL's hidden iframe does (`timed_out`).
+ *  Not an "msal." key, so it never counts as a sign-in. */
+export const SILENT_TIMEOUT = "accnomos.test.msal-timeout";
+/** How many interactive redirects the app asked for (acquireTokenRedirect), so a spec can count them. */
+export const REDIRECTS = "accnomos.test.msal-redirects";
 
 export const TEST_ACCOUNT: AccountInfo = {
   homeAccountId: "test-home.9188040d-6c67-4c5b-b112-36a304b66dad",
@@ -141,6 +146,13 @@ export function createTestMsal(): IPublicClientApplication {
       await new Promise(() => {});
     },
     acquireTokenSilent: async ({ scopes, account }: { scopes: string[]; account?: AccountInfo }) => {
+      if (read(SILENT_TIMEOUT) === "1") {
+        // The shape of MSAL's BrowserAuthError for a hidden iframe that gave up.
+        throw Object.assign(new Error("timed_out: Token acquisition in iframe failed due to timeout."), {
+          name: "BrowserAuthError",
+          errorCode: "timed_out",
+        });
+      }
       if (account && !keyOf(account)) {
         if (!signedInKeys().length) throw new Error("not signed in");
         if (!linked().includes(account.username)) throw new Error("interaction_required: account not in the cache");
@@ -160,7 +172,14 @@ export function createTestMsal(): IPublicClientApplication {
     clearCache: async ({ account }: { account?: AccountInfo } = {}) => {
       if (account) setLinked(linked().filter((u) => u !== account.username));
     },
-    acquireTokenRedirect: async () => {},
+    acquireTokenRedirect: async () => {
+      // Like the real redirect: the page goes to Microsoft and comes back (here, a reload).
+      window.localStorage.setItem(REDIRECTS, String(Number(read(REDIRECTS) ?? "0") + 1));
+      if (read(SILENT_TIMEOUT) === "1") {
+        window.location.reload();
+        await new Promise(() => {});
+      }
+    },
   };
   return fake as unknown as IPublicClientApplication;
 }

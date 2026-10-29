@@ -48,6 +48,40 @@ export function onClientContextChange(fn: () => void): () => void {
   return () => window.removeEventListener(CHANGED, fn);
 }
 
+/**
+ * Whether to show "Accountant portal" in this account's menus. Normal users never see it: it shows only for a
+ * Microsoft account whose portal, the last time it was opened here, listed at least one client's books (the portal
+ * needs Files.Read.All, so the app does not ask Microsoft on every page just to decide a menu item). Anyone else
+ * reaches /accountant from the public Accountants page. Kept per account (homeAccountId) in this browser.
+ */
+const PORTAL_SEEN = "accnomos.accountant.clients";
+export const ACCOUNTANT_EVENT = "accnomos:accountant-clients";
+
+function seenCounts(): Record<string, number> {
+  try {
+    const raw = JSON.parse(window.localStorage.getItem(PORTAL_SEEN) ?? "{}") as unknown;
+    return raw && typeof raw === "object" ? (raw as Record<string, number>) : {};
+  } catch {
+    return {};
+  }
+}
+
+export function rememberClientCount(accountId: string, count: number): void {
+  const all = seenCounts();
+  if (all[accountId] === count) return;
+  all[accountId] = count;
+  try {
+    window.localStorage.setItem(PORTAL_SEEN, JSON.stringify(all));
+  } catch {
+    /* the menu just keeps the link hidden */
+  }
+  window.dispatchEvent(new Event(ACCOUNTANT_EVENT));
+}
+
+export function hasSharedClients(accountId: string | null | undefined): boolean {
+  return !!accountId && (seenCounts()[accountId] ?? 0) > 0;
+}
+
 /** The runtime headers that point a call at a client's shared folder (none for your own books). */
 export function clientHeaders(c: ClientContext | null): Record<string, string> {
   if (!c) return {};

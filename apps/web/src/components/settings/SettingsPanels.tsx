@@ -19,11 +19,12 @@ import PersonalFinanceSetting from "@/components/settings/PersonalFinanceSetting
 import LandlordSetting from "@/components/settings/LandlordSetting";
 import WorkingHours from "@/components/settings/WorkingHours";
 import YourAccountant from "@/components/settings/YourAccountant";
+import FilesBackups from "@/components/settings/FilesBackups";
 import OnlinePayments from "@/components/settings/OnlinePayments";
 import { hasMsalSignIn } from "@/lib/signed-in";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
-type GroupId = "connection" | "ai" | "automation" | "business" | "accountant" | "data";
+type GroupId = "connection" | "ai" | "automation" | "business" | "accountant" | "files" | "data";
 
 const AUTOPILOT_KEY = "accnomos.autopilot";
 const AI_KEY = "accnomos.ai";
@@ -35,6 +36,7 @@ const GROUPS: { id: GroupId; label: string }[] = [
   { id: "automation", label: "Automation" },
   { id: "business", label: "Business" },
   { id: "accountant", label: "Your accountant" },
+  { id: "files", label: "Files & backups" },
   { id: "data", label: "Your data" },
 ];
 
@@ -75,6 +77,9 @@ const HASH_GROUP: Record<string, GroupId> = {
   "settings-payments": "business",
   "settings-accountant": "accountant",
   accountant: "accountant",
+  "settings-files": "files",
+  "back-up-now": "files",
+  "previous-files": "files",
   "settings-data": "data",
   "settings-data-import": "data",
   "settings-data-export": "data",
@@ -463,6 +468,16 @@ export default function SettingsPanels() {
         className="mt-4 space-y-4"
       >
         {group === "accountant" && <YourAccountant card={card} heading={heading} />}
+      </div>
+
+      <div
+        role="tabpanel"
+        id="panel-files"
+        aria-labelledby="tab-files"
+        hidden={group !== "files"}
+        className="mt-4 space-y-4"
+      >
+        {group === "files" && <FilesBackups card={card} heading={heading} />}
       </div>
 
       <div

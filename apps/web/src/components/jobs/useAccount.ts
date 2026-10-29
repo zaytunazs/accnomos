@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
-import { getMsal, msalConfigured } from "@/lib/msal";
+import { getMsal, isSignInTimeout, msalConfigured, SIGN_IN_SLOW } from "@/lib/msal";
 
 /** The signed-in Microsoft account: undefined while checking, null when signed out. */
 export function useAccount(): AccountInfo | null | undefined {
@@ -22,6 +22,7 @@ export function useAccount(): AccountInfo | null | undefined {
 }
 
 export const errorText = (e: unknown) => {
+  if (isSignInTimeout(e)) return SIGN_IN_SLOW; // never MSAL's own words ("timed_out (MSAL)")
   const m = (e as Error).message ?? String(e);
   const detail = /"detail":\s*"([^"]+)"/.exec(m);
   return detail ? detail[1] : m;

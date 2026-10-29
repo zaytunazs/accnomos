@@ -12,11 +12,17 @@ import { useLandlordOn } from "@/lib/property";
 import { currentFeatures, currentMeta } from "@/lib/profiles";
 
 /**
- * The signed-in menu bar, laid out like Xero's: the profile switcher at the far left, the menu groups (Home, Sales,
- * Purchases, Reporting, Accounting, Tax, Payroll, Contacts, and Personal for personal books) as dropdowns, then
- * Search, Ask, Help and Notifications and the account menu at the right. Under 900 px the groups move into a
- * drawer opened by "Menu". It carries `data-topnav`, which hides the signed-out sidebar and phone header
- * (AppShell). Links come from lib/nav.ts: only pages in this build (`routes`), only features this profile has.
+ * The signed-in menu bar, laid out like Xero's (the owner's choice; docs/reviews/app-shell/REVIEW.md weighs it against
+ * docs/research/DASHBOARD.md's sidebar): the logo and the profile switcher (current profile, its kind, every linked
+ * profile) at the far left, the menu groups (Home, Sales, Purchases, Reporting, Accounting, Tax, Payroll, Contacts,
+ * and Personal for personal books) as dropdowns, then Search, Ask, Help and the Review count, and at the far right
+ * the signed-in person's name and Microsoft email with the account menu (sign out). Under 900 px the groups move
+ * into a drawer opened by "Menu"; there is no sidebar for signed-in pages. Links come from lib/nav.ts: only pages in
+ * this build (`routes`), only features this profile has.
+ *
+ * AppShell renders it whenever this device is signed in, even before MSAL has answered or when MSAL can no longer
+ * read the sign-in: then the right-hand side says "Sign in again" instead of disappearing (it used to return null,
+ * which left a signed-in page with the signed-out sidebar and no bar at all).
  *
  * Keyboard: each group is a disclosure button (WAI-ARIA APG "disclosure navigation"): Enter/Space/↓ open it, ↑/↓
  * move through its links, Escape closes it and returns to its button, Tab moves on; one group is open at a time.
@@ -38,7 +44,6 @@ export default function TopBar({ routes }: { routes: string[] }) {
       visibleGroups(routes, { features: JSON.parse(featureKey) as string[] | null, kind, personal, selfEmployed, landlord }),
     [routes, featureKey, kind, personal, selfEmployed, landlord],
   );
-  if (!linked) return null;
 
   return (
     <header
@@ -47,7 +52,11 @@ export default function TopBar({ routes }: { routes: string[] }) {
     >
       <div className="flex min-h-14 items-center gap-1 px-2 sm:px-4">
         <MenuDrawer groups={groups} pathname={pathname} review={review} />
-        <ProfileSwitcher linked={linked} />
+        <Link href="/" aria-label="Accnomos home" className="flex h-11 shrink-0 items-center gap-2 rounded-xl px-1.5 hover:bg-ground">
+          <LogoMark />
+          <span className="hidden text-lg font-extrabold tracking-tight 2xl:inline">Accnomos</span>
+        </Link>
+        {linked && <ProfileSwitcher linked={linked} />}
         <nav aria-label="Main" className="ml-2 hidden min-w-0 flex-1 min-[900px]:block">
           <GroupBar groups={groups} pathname={pathname} review={review} />
         </nav>
@@ -56,7 +65,7 @@ export default function TopBar({ routes }: { routes: string[] }) {
           <IconLink href="/ask" label="Ask" current={isCurrent(pathname, "/ask")}>
             <path d="M4 5.5h12v8H8.5L5 16.5v-3H4z" />
           </IconLink>
-          <IconLink href="/how-it-works" label="Help" current={isCurrent(pathname, "/how-it-works")} narrowHidden>
+          <IconLink href="/help" label="Help" current={isCurrent(pathname, "/help")} narrowHidden>
             <circle cx="10" cy="10" r="7" />
             <path d="M8.2 8a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1v.6M10 13.6v.1" />
           </IconLink>
@@ -69,10 +78,34 @@ export default function TopBar({ routes }: { routes: string[] }) {
           >
             <path d="M6 13.5V9a4 4 0 0 1 8 0v4.5l1.2 1.5H4.8zM8.5 16.5a1.6 1.6 0 0 0 3 0" />
           </IconLink>
-          <AccountMenu linked={linked} />
+          {linked ? <AccountMenu linked={linked} /> : linked === null ? <SignInAgain pathname={pathname} /> : null}
         </div>
       </div>
     </header>
+  );
+}
+
+/** The app's mark (the same as the signed-out header's and the public site's). */
+export function LogoMark() {
+  return (
+    <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <path d="M10 2.5 16.5 6v8L10 17.5 3.5 14V6L10 2.5Z" stroke="#F4F3EE" strokeWidth="1.8" strokeLinejoin="round" />
+        <path d="M7 10.2l2.1 2.1L13.2 8" stroke="#F4F3EE" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    </span>
+  );
+}
+
+/** This device looks signed in but MSAL has no account it can use: say so where the account menu would be. */
+function SignInAgain({ pathname }: { pathname: string }) {
+  return (
+    <Link
+      href={`/connect?next=${encodeURIComponent(pathname)}`}
+      className="ml-1 flex min-h-11 shrink-0 items-center whitespace-nowrap rounded-xl bg-teal px-3 text-sm font-bold text-white hover:bg-teal-dark"
+    >
+      Sign in again
+    </Link>
   );
 }
 
@@ -201,7 +234,7 @@ function GroupBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: 
     }
   }
 
-  const top = "flex h-11 items-center gap-1 whitespace-nowrap rounded-xl px-3 text-[15px] font-semibold";
+  const top = "flex h-11 items-center gap-1 whitespace-nowrap rounded-xl px-2.5 text-[15px] font-semibold 2xl:px-3";
 
   return (
     <ul ref={bar} className="flex flex-wrap items-center gap-0.5">

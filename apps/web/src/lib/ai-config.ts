@@ -53,16 +53,20 @@ export function shortModelName(model: string): string {
 }
 
 /**
- * The sidebar line for the saved AI choice — the same store `ChooseAi`
- * writes, so the label always names the real setup: Glimmer on your machine,
- * Muse Spark on your key, or the stub the tests point at.
+ * The app's AI line (account menu, signed-out sidebar), in plain words and with no model or third-party names: the
+ * hosted app reads with Meta's Muse models through the server's provider chain (/meta-models says which and how).
+ * A user who chose their own key or their own computer in Settings › AI is told so; the test build says "stub".
+ * The model names stay on Review cards ("Read by …"), where the reading itself is described.
  */
 export function aiLabel(cfg: AiConfig | null): string {
-  if (cfg === null) return "AI: the server's Meta models"; // its provider chain (/models), or its single default
-  if (/stub/i.test(cfg.model)) return "AI: stub answers (test mode)";
-  if (cfg.mode === "key") return `AI: Muse Spark key (${cfg.model.trim() || "muse-spark-1.3"})`;
-  return `AI: ${shortModelName(cfg.model)} on your machine`;
+  if (cfg !== null && /stub/i.test(cfg.model)) return "AI: stub answers (test mode)";
+  if (cfg?.mode === "key") return "AI: Meta Muse models, your own key";
+  if (cfg?.mode === "local") return "AI: Meta Muse models on your own computer";
+  return "AI: Meta Muse models";
 }
+
+/** Where the AI line links: what the Meta models do in Accnomos (app/meta-models, the same page as /models). */
+export const AI_INFO_HREF = "/meta-models";
 
 /** The last passing connection test, so Home's setup checklist can tell "chosen" from "tested". */
 export interface AiTestRecord {

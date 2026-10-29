@@ -2,6 +2,7 @@
 
 import { RELAY_URL } from "./ai-config";
 import { isDemo } from "./demo";
+import { APP_VERSION } from "./version";
 
 /**
  * HMRC MTD VAT (sandbox) through the stateless relay (services/hmrc-relay). OAuth is PKCE: only this
@@ -29,7 +30,6 @@ const SESSION_SETUP: Record<HmrcSession, { path: string; scope: string }> = {
 };
 const DEVICE_KEY = "accnomos.device_id";
 export const VRN_KEY = "accnomos.business.vrn";
-const APP_VERSION = "0.1.0";
 
 export interface HmrcTokens {
   access_token: string;

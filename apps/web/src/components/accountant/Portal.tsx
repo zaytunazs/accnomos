@@ -11,6 +11,7 @@ import {
   KIND_LABELS,
   onClientContextChange,
   parseQueryLink,
+  rememberClientCount,
   setClientContext,
   type ClientAccess,
   type ClientContext,
@@ -75,8 +76,10 @@ function ClientList({ account, addCode }: { account: AccountInfo; addCode: strin
 
   const load = useCallback(async () => {
     try {
-      setPortal(await accountantApi.portal(account));
+      const p = await accountantApi.portal(account);
+      setPortal(p);
       setError(null);
+      rememberClientCount(account.homeAccountId, p.clients.length);
     } catch (e) {
       setError(errorText(e));
     }
@@ -122,7 +125,15 @@ function ClientList({ account, addCode }: { account: AccountInfo; addCode: strin
 
   return (
     <div className="mt-6 space-y-4">
-      {error && <RuntimeErrorNote message={error} />}
+      {error && (
+        <RuntimeErrorNote
+          message={error}
+          onRetry={() => {
+            setError(null);
+            void load();
+          }}
+        />
+      )}
       {portal?.note && <p className="rounded-xl border border-warn-border bg-warn-bg p-3 text-sm text-warn-ink">{portal.note}</p>}
       {portal === null && !error && <p className="text-sm text-muted">Looking for books shared with you…</p>}
       {portal && portal.clients.length === 0 && (
