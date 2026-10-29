@@ -184,13 +184,16 @@ const present = (xs: (Result | null)[]) => xs.filter((x): x is Result => x !== n
  * (app/ai/providers.py) but not deployed, so it is mentioned only as an optional extra provider.
  */
 const CHAIN =
-  "On our live server, with no AI chosen, calls go in this order: 1st Muse Spark on the Meta Model API; last, a local fallback model (Muse Glimmer 30B, open weights on our own server). A timeout, outage or rate limit moves the call to the next; a provider that keeps failing is skipped for a while.";
+  "On our live server, with no AI chosen, calls go in this order: 1st Muse Spark 1.3 on the Meta Model API (Contributor mode for the demo and testing); last, a local fallback model (Muse Glimmer 30B, open weights on our own server). A timeout, outage or rate limit moves the call to the next; a provider that keeps failing is skipped for a while.";
 const MODAL_NOTE =
   "The code also supports Muse Glimmer 30B on Modal as an optional extra provider in that order; it is not what runs live.";
 
-/** Owner's statement (29 Oct 2026); the app's key mode always asks for muse-spark-1.3 (lib/ai-config.ts DEFAULT_KEY). */
-export const STANDARD_SPARK =
-  "Your data goes only to standard Muse Spark, never to Contributor mode, which lets Meta train on the content sent to it.";
+/**
+ * Owner's correction (29 Oct 2026): the live server runs MODEL_API_MODEL=muse-spark-1.3-contributor for the demo and
+ * testers. The app's own key mode still asks for standard muse-spark-1.3 (lib/ai-config.ts DEFAULT_KEY).
+ */
+export const CONTRIBUTOR_NOTE =
+  "Our live server uses Muse Spark 1.3 in Contributor mode for the demo and testing. In Contributor mode Meta may use the content sent to it to improve its models. The demo uses only fictional sample data; testers who connect their own books are served the same way, so please test with documents you are happy to share. Before real customers use it, the server switches to standard mode. With your own Meta key (key mode) the app asks for standard Muse Spark 1.3.";
 
 const TEXT_CHECKS = [
   "AI proposes, you approve, code calculates: the model returns strict JSON or words only; every amount is worked out in pence by code, and nothing is posted, sent or kept until you approve it.",
@@ -208,11 +211,11 @@ export function metaModels(): MetaModel[] {
   return [
     {
       id: "muse-spark",
-      name: "Muse Spark",
-      modelId: "muse-spark-1.3",
+      name: "Muse Spark 1.3",
+      modelId: "muse-spark-1.3-contributor (live, demo and testing) · muse-spark-1.3 (your own key)",
       uses: "Reads documents and CIS and property paperwork; answers Ask; words the summaries; bank, inbox, reminder and duplicate suggestions",
-      via: "Meta Model API: 1st on our live server, or with your own key",
-      what: "Meta's hosted Muse model on the Meta Model API: it reads images and text and replies in strict JSON. The first choice on our live server.",
+      via: "Meta Model API: 1st on our live server (Contributor mode, demo and testing), or standard with your own key",
+      what: "Meta's hosted Muse model on the Meta Model API: it reads images and text and replies in strict JSON. The first choice on our live server, in Contributor mode for the demo and testing.",
       jobs: [
         { job: "Reads receipts, invoices, credit notes and emailed bills into a strict list (supplier, VAT number, date, lines, net, VAT, total) and suggests the category", screen: "Review" },
         { job: "The Verifier's second reading in key mode when no Muse Spark Open endpoint is set", screen: "Review card: “Verifier agrees”" },
@@ -228,7 +231,7 @@ export function metaModels(): MetaModel[] {
       called: [
         CHAIN,
         "Key mode: the Meta Model API (api.meta.ai/v1, /chat/completions) with your own Meta key, which stays on your device and is never logged.",
-        STANDARD_SPARK,
+        CONTRIBUTOR_NOTE,
       ],
       checks: TEXT_CHECKS,
       results: [

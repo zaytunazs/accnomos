@@ -105,12 +105,16 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 
 - **Live order and Contributor mode (owner, 29 Oct 2026).** The live server runs `AI_PROVIDERS=meta,spark`: Muse
   Spark 1.3 on the Meta Model API first, Muse Glimmer on the owner's server last; Modal is supported by the code but not
-  deployed. So the model answering most live calls, Muse Spark, is the one with **no measured accuracy or latency**;
-  every figure on `/meta-models` is Glimmer's or Spark Open's. `/meta-models` says user data goes only to standard Muse
-  Spark, never Contributor mode: the app's key mode always requests `muse-spark-1.3` and the chain uses
-  `MODEL_API_MODEL` (default `muse-spark-1.3`), but how Contributor mode is selected at Meta (model id, key or account
-  setting) was not checked against Meta's documentation, and a direct API caller with their own key can still send
-  another model id in `X-AI-Model`.
+  deployed. The model answering most live calls, Muse Spark, has **no measured accuracy or latency**; every figure on
+  `/meta-models` is Glimmer's or Spark Open's. **The live server uses Contributor mode**
+  (`MODEL_API_MODEL=muse-spark-1.3-contributor`) for the demo and testers: Meta may use the content sent to it to
+  improve its models. The demo's books are fictional sample data, but a tester who signs in with their own books sends
+  their own documents and questions there too. The owner will switch the server to standard `muse-spark-1.3` before
+  real customers; nothing in the code enforces that, it is a server setting. A user's own key in key mode asks for
+  standard `muse-spark-1.3`, but a key-mode request without its own key falls back to the server's `META_API_KEY` with
+  that same standard model id, and a direct API caller can send any `X-AI-Model`. The Contributor model id is the
+  owner's setting and was not checked against Meta's documentation. `/privacy` and the public chat notes do not yet
+  mention Contributor mode.
 
 ## Chat and voice actions, Autopilot
 

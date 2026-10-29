@@ -10,7 +10,7 @@ import { createBooksFolder, expect, signIn, test } from "./fixtures";
  * public footer, the app footer, /judges and the Home summary card.
  */
 const MODELS = [
-  ["muse-spark", "Muse Spark"],
+  ["muse-spark", "Muse Spark 1.3"],
   ["muse-glimmer", "Muse Glimmer 30B"],
   ["muse-spark-open", "Muse Spark Open"],
   ["muse-voice-transcribe", "Muse Voice Transcribe"],
@@ -48,10 +48,12 @@ test.describe("desktop", () => {
     }
 
     // The live order (AI_PROVIDERS=meta,spark): Meta Model API first, the local fallback last; Modal only as optional.
-    await expect(page.getByTestId("live-order")).toContainText("the Meta Model API (Muse Spark) answers first and a local fallback model answers last");
-    await expect(page.getByTestId("live-order")).toContainText("never to Contributor mode");
+    await expect(page.getByTestId("live-order")).toContainText("the Meta Model API (Muse Spark 1.3) answers first and a local fallback model answers last");
+    await expect(page.getByTestId("live-order")).toContainText("Muse Spark 1.3 in Contributor mode for the demo and testing");
+    await expect(page.getByTestId("live-order")).toContainText("Meta may use the content sent to it to improve its models");
+    await expect(page.getByTestId("live-order")).toContainText("the server switches to standard mode");
     await expect(table.locator("tbody tr").first()).toContainText("Muse Spark");
-    await expect(page.getByTestId("model-muse-spark")).toContainText("1st Muse Spark on the Meta Model API; last, a local fallback model");
+    await expect(page.getByTestId("model-muse-spark")).toContainText("1st Muse Spark 1.3 on the Meta Model API (Contributor mode for the demo and testing); last, a local fallback model");
     await expect(page.getByTestId("model-muse-glimmer")).toContainText("optional extra provider");
     const modal = (await page.locator("main").innerText()).split("\n").filter((l) => /Modal/.test(l));
     for (const line of modal) expect(line, "Modal only as an optional provider").toMatch(/optional extra provider/);

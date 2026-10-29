@@ -1,6 +1,6 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
-import { measured, metaModels, STANDARD_SPARK, type MetaModel, type Result } from "@/lib/meta-models-page";
+import { CONTRIBUTOR_NOTE, measured, metaModels, type MetaModel, type Result } from "@/lib/meta-models-page";
 
 export const metadata = { title: "Meta models in Accnomos · Accnomos" };
 
@@ -134,8 +134,8 @@ export default function MetaModelsPage() {
         on {CHECKED}.
       </p>
       <p data-testid="live-order" className="rounded-2xl border border-teal/30 bg-teal-tint p-4 text-[15px] leading-7">
-        <strong>On our live server</strong> the Meta Model API (Muse Spark) answers first and a local fallback model
-        answers last. <strong>{STANDARD_SPARK}</strong>
+        <strong>On our live server</strong> the Meta Model API (Muse Spark 1.3) answers first and a local fallback model
+        answers last. {CONTRIBUTOR_NOTE}
       </p>
       <Overview models={models} />
       {models.map((m) => (

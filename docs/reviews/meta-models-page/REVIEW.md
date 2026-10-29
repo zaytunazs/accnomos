@@ -110,6 +110,23 @@ model":
 - `e2e/meta-models-page.spec.ts` now checks the live-order line, the Contributor sentence, Muse Spark as the first row,
   the chain sentence, and that every line naming Modal calls it an optional extra provider.
 
+## Follow-up: Contributor mode on the live server (owner's correction, 29 Oct 2026)
+
+- The earlier "standard Muse Spark only" sentence was wrong for the live server and is gone. `/meta-models` now names
+  the model **Muse Spark 1.3**, shows `muse-spark-1.3-contributor (live, demo and testing) · muse-spark-1.3 (your own
+  key)`, and the highlighted line and the Muse Spark section say: the live server uses Contributor mode for the demo and
+  testing; in Contributor mode Meta may use the content sent to it to improve its models; the demo uses only fictional
+  sample data; testers who connect their own books are served the same way, so they should test with documents they
+  are happy to share; before real customers the server switches to standard mode; with your own Meta key the app asks
+  for standard Muse Spark 1.3.
+- The tester sentence is mine, not in the owner's wording: a signed-in tester's own documents go through the same
+  server chain, so "the demo uses only fictional sample data" alone would leave them out.
+- `docs/submission/META_MODELS.md` and `docs/HONESTY.md` say the same. HONESTY also records that the switch to standard
+  mode is a server setting nothing in the code enforces, and that `/privacy` and the public chat notes do not mention
+  Contributor mode yet.
+- The earlier full e2e run on `70ef62d`: 485 passed, 94 skipped, 1 flaky (`property.spec.ts` landlord mode, passed on
+  retry; not touched by this branch).
+
 ## Risks
 
 - The page's words are a hand summary of the code: a new AI call site will not appear until someone adds it
