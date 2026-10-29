@@ -29,7 +29,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from app.paths import SYSTEM
 
-ProfileKind = Literal["company", "sole_trader", "personal"]
+ProfileKind = Literal["company", "sole_trader", "landlord", "partnership", "personal"]
 PROFILE = f"{SYSTEM}/profile.json"
 
 COMPANY_NUMBER_RE = re.compile(r"(?:\d{8}|[A-Z]{2}\d{6})")  # 01234567, SC123456, NI…, OC…
@@ -53,7 +53,13 @@ ALL_FEATURES: tuple[str, ...] = (
     "self_employment",
 )
 NOT_PERSONAL = frozenset({"invoices", "payroll", "vat"})
-KIND_LABEL = {"company": "company", "sole_trader": "sole trader", "personal": "personal"}
+KIND_LABEL = {
+    "company": "company",
+    "sole_trader": "sole trader",
+    "landlord": "landlord",
+    "partnership": "partnership",
+    "personal": "personal",
+}
 FEATURE_LABEL = {"vat": "VAT", "invoices": "invoices", "payroll": "payroll", "self_employment": "self-employment"}
 
 
@@ -116,9 +122,39 @@ class PersonalSettings(_Settings):
     pass
 
 
+class LandlordSettings(_VatSettings):
+    """A landlord's books: like a sole trader's, with an optional 10-digit UTR for Self Assessment."""
+
+    utr: str | None = Field(default=None, max_length=14)
+
+    @field_validator("utr")
+    @classmethod
+    def _utr(cls, v: str | None) -> str | None:
+        v = _clean(v)
+        if v is not None and not UTR_RE.fullmatch(v):
+            raise ValueError("a Unique Taxpayer Reference is 10 digits")
+        return v
+
+
+class PartnershipSettings(_VatSettings):
+    """A partnership's books: the partnership UTR is 10 digits, like a person's."""
+
+    utr: str | None = Field(default=None, max_length=14)
+
+    @field_validator("utr")
+    @classmethod
+    def _utr(cls, v: str | None) -> str | None:
+        v = _clean(v)
+        if v is not None and not UTR_RE.fullmatch(v):
+            raise ValueError("a Unique Taxpayer Reference is 10 digits")
+        return v
+
+
 SETTINGS_FOR: dict[str, type[_Settings]] = {
     "company": CompanySettings,
     "sole_trader": SoleTraderSettings,
+    "landlord": LandlordSettings,
+    "partnership": PartnershipSettings,
     "personal": PersonalSettings,
 }
 
