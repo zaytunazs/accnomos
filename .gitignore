@@ -89,3 +89,6 @@ Thumbs.db
 # local virtualenv used by maintainers (symlinked from worktrees)
 .v
 !evals/runs/bench_runtime/
+
+# Raw screen-capture shots for the video (tools/video/capture.ts regenerates them): kept out of git
+docs/video/raw/*.webm

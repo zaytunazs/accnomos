@@ -12,7 +12,7 @@ Credit: **Title art: Muse Image (Meta).**
 | The art itself (Muse Image, `muse-image-1.0`), each with a JSON sidecar: model, prompt, date | `cards/<id>.png` | once generated |
 | Shot list with timing, caption, voice-over, flow, section, and why a shot must be re-filmed live | `manifest.json` | yes |
 | Contact sheets, one frame per shot | `contact-sheet-judges.png`, `contact-sheet-clip-01.png` … `-08.png` | yes |
-| Raw silent footage per shot (1920 × 1080 judges, 1080 × 1920 clips, 30 fps) | `raw/<shot-id>.webm` | under 5 MB each, yes |
+| Raw silent footage per shot (1920 × 1080 judges, 1080 × 1920 clips, 30 fps) | `raw/<shot-id>.webm` | no (regenerate with `tools/video/capture.ts`) |
 | Silent previews with burned captions, and a 1280 × 720 thumbnail per video | `preview/<sequence>.mp4`, `preview/<sequence>-thumbnail.png` | no (regenerate) |
 | Final renders with voice-over | `out/<sequence>.mp4` | no |
 | Voice-over lines, one per shot | `vo/lines.json` (the WAVs go in `vo/<shot-id>.wav`) | lines yes |

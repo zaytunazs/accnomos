@@ -33,6 +33,9 @@ how-to placeholders, which now point at real screenshots.
 
 ## Owner's corrections (29 Oct, second round)
 
+  *Integrator, 29 Oct 2026:* on `main` the raw shots are **not** in git. The owner asked for raw video to stay out, so
+  `docs/video/raw/*.webm` was filtered out of this branch's commits before the merge, and the root `.gitignore` excludes
+  them. Re-capture with `tools/video/capture.ts` (or `regenerate.sh`) before assembling.
 - Shot 1 now uses the owner's wording (10 s; shot 2 trimmed to 18 s, total still 180 s) and names no hardware and no
   third-party tool; the Meta model list was checked against `docs/submission/META_MODELS.md` on `main` (`715c564`).
 - The end card credits only "Title art: Muse Image (Meta)."; the voice engine is named nowhere judge-facing
