@@ -118,14 +118,14 @@ function BlockText({ block }: { block: Block }) {
 const MODELS: { name: string; where: string; job: string; status: string; tone: "good" | "plain" | "off" }[] = [
   {
     name: "Muse Glimmer 30B",
-    where: "Open weights, on our NVIDIA DGX Spark",
+    where: "Open weights, run by us",
     job: "Reads documents; writes Ask answers, inbox triage and reminders",
     status: "Measured on 400 synthetic documents",
     tone: "good",
   },
   {
     name: "Muse Spark Open",
-    where: "Baseten, key mode",
+    where: "Hosted open weights, key mode",
     job: "Independent second reading (the Verifier)",
     status: "Measured on 400 synthetic documents",
     tone: "good",
@@ -139,7 +139,7 @@ const MODELS: { name: string; where: string; job: string; status: string; tone: 
   },
   {
     name: "Muse Voice Transcribe",
-    where: "Meta Model API (Whisper on the DGX Spark as fallback)",
+    where: "Meta Model API (a local fallback model if it fails)",
     job: "Spoken questions and instructions on Ask and Android",
     status: "Unit-tested only, no live microphone run",
     tone: "plain",

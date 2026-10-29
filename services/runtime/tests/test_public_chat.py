@@ -349,6 +349,18 @@ def test_submission_mode_notes_never_mention_a_launch_or_coming_soon(monkeypatch
     assert "try the demo" in availability.body and "sign in" in availability.body
 
 
+THIRD_PARTY_NAMES = r"whisper|kokoro|ollama|vllm|qwen|comfyui|\bdgx\b|baseten"
+
+
+@pytest.mark.parametrize("mode", ["1", "0"])
+def test_notes_name_no_non_meta_tool_engine_or_hardware(monkeypatch: pytest.MonkeyPatch, mode: str):
+    """Owner's rule: the public chat may name Meta's models only; a non-Meta fallback is "a local fallback model"."""
+    monkeypatch.setenv("PUBLIC_SUBMISSION_MODE", mode)
+    text = " ".join(f"{s.title} {s.body}" for s in pc.knowledge())
+    assert re.findall(THIRD_PARTY_NAMES, text, flags=re.IGNORECASE) == []
+    assert "a local fallback model" in text
+
+
 def test_prelaunch_notes_give_the_launch_date_and_the_demo(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setenv("PUBLIC_SUBMISSION_MODE", "0")
     assert "availability" in [s.id for s in pc.retrieve("When can I use it?")]

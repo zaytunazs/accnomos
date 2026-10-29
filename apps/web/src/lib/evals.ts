@@ -19,7 +19,8 @@ export interface EvalHeadline {
 
 type Json = Record<string, unknown>;
 
-function read(run: string, file: string): Json | null {
+/** One committed run file, parsed; null when this checkout lacks it. */
+export function readRun(run: string, file: string): Json | null {
   try {
     return JSON.parse(readFileSync(join(RUNS, run, file), "utf8")) as Json;
   } catch {
@@ -32,14 +33,14 @@ const num = (x: unknown) => (typeof x === "number" ? String(x) : "n/a");
 
 function where(cfg: unknown): string {
   const url = typeof cfg === "object" && cfg && "base_url" in cfg ? String((cfg as Json).base_url) : "";
-  if (url.includes("modal.run")) return "Modal (L40S)";
-  if (url.includes("baseten")) return "Baseten";
-  if (url.includes("localhost") || url.includes("127.0.0.1")) return "DGX Spark";
+  if (url.includes("modal.run")) return "Modal";
+  if (url.includes("baseten")) return "hosted open weights";
+  if (url.includes("localhost") || url.includes("127.0.0.1")) return "our own server";
   return "Meta Model API";
 }
 
 function extraction(run: string, title: string): EvalHeadline | null {
-  const s = read(run, "summary.json");
+  const s = readRun(run, "summary.json");
   if (!s) return null;
   const cfg = s.config as Json | undefined;
   const fields = (s.field_accuracy ?? {}) as Json;
@@ -59,14 +60,14 @@ function extraction(run: string, title: string): EvalHeadline | null {
 }
 
 function ask(): EvalHeadline | null {
-  const r = read("ask_40", "result.json");
+  const r = readRun("ask_40", "result.json");
   const g = (r?.glimmer as Json | undefined)?.summary as Json | undefined;
   if (!g) return null;
   return {
     run: "ask_40",
     title: "Ask: 35 questions over the seeded books",
     model: "Muse Glimmer 30B",
-    where: "Ollama (host not recorded in the run)",
+    where: "host not recorded in the run",
     numbers: [
       { label: "Numbers exact", value: `${num(g.numbers_exact)}/${num(g.with_gold)}` },
       { label: "Invented figures shown", value: num(g.shipped_invented) },
@@ -78,7 +79,7 @@ function ask(): EvalHeadline | null {
 }
 
 function autopilot(): EvalHeadline | null {
-  const s = read("autopilot_l2", "summary.json");
+  const s = readRun("autopilot_l2", "summary.json");
   const on = s?.on as Json | undefined;
   const all = on?.all as Json | undefined;
   const clean = on?.without_seeded_copies as Json | undefined;

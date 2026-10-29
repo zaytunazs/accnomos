@@ -62,8 +62,8 @@ The numbers are calculated by code from your ledger and the AI only writes the w
 checked against the code's facts, and a figure that is not in your books is replaced. Each answer shows the files it
 used. You can also ask for actions, for example "send a £100 invoice to JM Trading": the AI only returns the intent,
 code finds the customer and prices the lines, and a card waits for you to tap Approve before anything happens. Voice
-questions use Muse Voice Transcribe, with Whisper on our own DGX Spark as the fallback, and each answer says which one
-heard you; the voice path is unit-tested only and has not been run with a real microphone. Accnomos does not read answers aloud. This public chat is different: it only answers questions about
+questions use Muse Voice Transcribe, with a local fallback model if it fails, and each answer says which one heard
+you; the voice path is unit-tested only and has not been run with a real microphone. Accnomos does not read answers aloud. This public chat is different: it only answers questions about
 Accnomos itself and never sees anyone's books.
 Keywords: ask, question, questions, chat, chatbot, assistant, voice, speak, microphone, mic, actions, natural language, answer, grounded, figures
 
@@ -111,14 +111,15 @@ Keywords: sign in, login, log in, account, register, sign up, start, getting sta
 
 ## The Meta AI models {#meta-models}
 
-Six Meta models are wired in. Muse Glimmer 30B (open weights) runs on Ollama on the team's own NVIDIA DGX Spark and
-reads documents and writes Ask answers; it is the model with measured results. Muse Spark 1.3 does the same jobs
-through the Meta Model API with your own key; it is unit-tested only and has not been called live. Muse Spark Open on
-Baseten is the independent Verifier in key mode and has been measured. Muse Voice Transcribe turns spoken questions
+Six Meta models are wired in. Muse Glimmer 30B (open weights, run by the team) reads documents and writes Ask answers;
+it is the model with measured results. Muse Spark 1.3 does the same jobs through the Meta Model API with your own key;
+it is unit-tested only and has not been called live. Muse Spark Open (hosted open weights) is the independent Verifier
+in key mode and has been measured. Muse Voice Transcribe turns spoken questions
 into text (unit-tested only). SAM 3.1 can crop a messy receipt photo but is off by default and has never run live; a
 plain-code crop is used instead. Muse Image made the brand art at build time and is not in the running product. "Local"
-means the machine running the Accnomos runtime (for the demo, the team's DGX Spark), not your own laptop.
-Keywords: ai, model, models, meta, llama, muse, glimmer, spark, open weights, baseten, sam, voice, transcribe, image, gpu, dgx, ollama, local, key, api key, which ai
+means the machine running the Accnomos runtime (for the demo, the team's own server), not your own laptop. The page
+/meta-models lists every model, the jobs it does and how it scored.
+Keywords: ai, model, models, meta, llama, muse, glimmer, spark, open weights, sam, voice, transcribe, image, gpu, local, key, api key, which ai, meta models
 
 ## How accurate it is {#accuracy}
 

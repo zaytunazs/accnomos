@@ -289,7 +289,7 @@ export default function AskThread() {
                   means the model was unavailable and code answered from the ledger alone.
                 </p>
                 <p>
-                  Spoken questions are transcribed by Muse Voice Transcribe (Whisper on our DGX Spark
+                  Spoken questions are transcribed by Muse Voice Transcribe (a local fallback model
                   steps in if it fails), then go through the same grounded Ask. Each one says which
                   service heard it. Audio is not kept.
                 </p>

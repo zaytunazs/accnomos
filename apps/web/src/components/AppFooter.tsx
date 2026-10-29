@@ -48,6 +48,9 @@ export default function AppFooter() {
         <Link href="/models" className={linkClass}>
           Meta models at work
         </Link>
+        <Link href="/meta-models" className={linkClass}>
+          Meta models used
+        </Link>
         <Link href="/judges" className={linkClass}>
           For judges
         </Link>

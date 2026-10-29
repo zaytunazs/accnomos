@@ -103,6 +103,28 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - A bad `X-AI-*` configuration makes inbox triage silently run without a model ("No AI is set up") instead of naming the setting.
 - The planner's rationale model sees calendar event subjects as well as job names, and with no `X-AI-*` headers `/plan/day` falls back to the server's default model (`AI_MODE`, or `META_API_KEY` in key mode), not only the user's own (`routes_plan.optional_ai`).
 
+- **The public `/meta-models` page is a summary written from the code, not a live readout.** Jobs, screens, call
+  order and checks were read from `services/runtime/app/ai/*.py` and the callers on 29 Oct 2026 and are typed into
+  `apps/web/src/lib/meta-models-page.ts`; only the figures are read from `evals/runs/*` at build time (the run dates of
+  the extraction, Ask, Autopilot and triage runs are their commit dates, typed in). A new AI call site will not appear
+  there until someone adds it. On that page Muse Spark, Muse Voice Transcribe, Segment Anything 3.1 and bank-line coding
+  say "Not measured yet"; Muse Voice and bank coding switch to figures by themselves once `evals/runs/stt/` or
+  `evals/runs/bank_ai/` (not a stub run) is committed. Inbox triage uses only a backend the user chose, not the server
+  chain, which the page does not spell out per job.
+
+- **Live order and Contributor mode (owner, 29 Oct 2026).** The live server runs `AI_PROVIDERS=meta,spark`: Muse
+  Spark 1.3 on the Meta Model API first, Muse Glimmer on the owner's server last; Modal is supported by the code but not
+  deployed. The model answering most live calls, Muse Spark, has **no measured accuracy or latency**; every figure on
+  `/meta-models` is Glimmer's or Spark Open's. **The live server uses Contributor mode**
+  (`MODEL_API_MODEL=muse-spark-1.3-contributor`) for the demo and testers: Meta may use the content sent to it to
+  improve its models. The demo's books are fictional sample data, but a tester who signs in with their own books sends
+  their own documents and questions there too. The owner will switch the server to standard `muse-spark-1.3` before
+  real customers; nothing in the code enforces that, it is a server setting. A user's own key in key mode asks for
+  standard `muse-spark-1.3`, but a key-mode request without its own key falls back to the server's `META_API_KEY` with
+  that same standard model id, and a direct API caller can send any `X-AI-Model`. The Contributor model id is the
+  owner's setting and was not checked against Meta's documentation. `/privacy` and the public chat notes do not yet
+  mention Contributor mode.
+
 ## Chat and voice actions, Autopilot
 
 - Without `ACTIONS_SIGNING_KEY` (the deploy file passes it through, empty by default), each runtime process makes a random key: after a restart, or with several workers, a card can fail with 403.

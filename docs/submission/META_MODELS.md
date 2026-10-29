@@ -1,6 +1,40 @@
 # Meta models: what is used, where it runs, and what is actually verified
 
-Written 27 Oct 2026 from `docs/META_MODELS.md`, `docs/HONESTY.md`, the code named in the table and the reports under `evals/`.
+Updated 29 Oct 2026. The first section is the same facts as the public page **/meta-models**
+(`apps/web/src/app/meta-models/page.tsx`, data in `apps/web/src/lib/meta-models-page.ts`, figures read from
+`evals/runs/*/summary.json` when the site is built); change one, change the other. The page names Meta's models and the
+Meta Model API only: no hardware and no other company's tools or engines (a non-Meta fallback is "a local fallback
+model"). The engineering detail after it keeps the full names.
+
+## Which Meta model does what (as on /meta-models)
+
+The rule everywhere: AI proposes, the user approves, code calculates. Models return strict JSON or words; code works out
+every amount in pence, checks readings (totals, VAT maths and rates, VAT number shape, duplicates, dates) and checks
+every figure in a summary or answer against facts built from the books (`KnownNumbers` in `app/ai/ask.py`); nothing is
+posted or sent before the user approves.
+
+| Model | Jobs, and where the user sees them | How it is called | What code checks after it | Measured (committed runs) |
+|---|---|---|---|---|
+| **Muse Spark 1.3** (`muse-spark-1.3-contributor` on the live server for the demo and testing; `muse-spark-1.3` with the user's own key) | Reads receipts, invoices, credit notes and emailed bills, suggests the category (Review); the key-mode Verifier when no Spark Open endpoint is set (Review card); CIS statements and reverse-charge invoices (CIS); letting statements, property bills, insurance and mortgage statements (Property); Ask answers and typed or spoken action intents (Ask); words the Home, month-end, spending, cash-flow and day-plan summaries; bank-line coding suggestions (Bank › Reconcile); inbox triage and reply drafts (Home); payment reminder drafts (Invoices); duplicate contacts and same-product items (Contacts, Prices); the website's "Ask about Accnomos" chat | **1st on the live server** (`AI_PROVIDERS=meta,spark`, owner's decision 29 Oct 2026): Meta Model API (`/chat/completions`) with the server's key; or the user's own key in key mode. Live server: Contributor mode (`MODEL_API_MODEL=muse-spark-1.3-contributor`) for the demo and testers; standard mode before real customers | All three checks above | **Not measured yet**: faked HTTP only |
+| **Muse Glimmer 30B** (`muse-glimmer:30b`, open weights, run by us) | Every Muse Spark job when the Meta Model API cannot answer; all of them, the Verifier included, in local mode | **Last on the live server**: the local fallback model, on our own server; or the user's own machine in local mode. The code also supports Glimmer on Modal as an optional extra provider (`modal` in `AI_PROVIDERS`); it is not deployed | All three checks above | Documents, every field right: 85 % clean, 80 % messy (200 each, 27 Oct, `glimmer_200_v2`, `glimmer_messy_200_v2`); CIS reader every figure exact 92.5 % (120, 28 Oct, `cis_read`); property reader 89.8 % (108, 28 Oct, `property_docs`); Ask figures 32/32 exact, 0 invented figures reached the user, 3/5 instructions to the right card (35 questions + 5 instructions, 27 Oct, `ask_40`); Autopilot 17 false posts in 467 (3.6 %), all re-fed documents (27 Oct, `autopilot_l2`); triage category 5/5 (12 threads, 27 Oct, `mail_intake`); bank coding **not measured yet** (`evals/harness/bank_ai.py` written, no run committed) |
+| **Muse Spark Open** (`meta-models/muse-spark-open`) | The Verifier: an independent second reading with a different prompt and schema that never sees the first answer (Review card: "Verifier agrees" / Needs a look) | Hosted open weights the server owner sets up; first choice for the Verifier in key mode and in the chain; never in local mode | Code compares six fields; a disagreement sends the card to Needs a look and never changes a figure | Reader and Verifier, every field right 91 % clean, 93 % messy; second reading caught 1 and 0 wrong readings, missed 3 and 3, 8 and 3 false alarms (200 each, 27 Oct, `spark_open_200`, `spark_open_messy_200`) |
+| **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) | Spoken questions and instructions (overtime, quotes, shopping list) on Ask, web and Android mic | Meta Model API (`/asr/transcribe`) first; a local fallback model second; if both fail the user sees why and can type. Audio not kept | The text takes the typed path (figures checked, action cards priced in pence by code, Approve); answer, card and audit log name the service that heard it | **Not measured yet**: faked HTTP in the cookbook's shapes; `evals/harness/stt.py` not run; no live mic run |
+| **Segment Anything 3.1** (`sam-3.1`) | Finds and crops the receipt in a phone photo before reading (Review) | Meta Model API (`/responses`), key mode only, only with `SAM_CROP=1`; **off by default**; a plain-code crop otherwise | Crop kept only with a box scoring at least 0.5 that covers enough of the photo; any doubt keeps the original | **Not measured yet** (never run live). The default code crop: mean overlap 0.88 vs 0.48 uncropped (20 synthetic scenes, 27 Oct, `evals/REPORT_crop_code_20_2026-10-27.md`) |
+| **Muse Image** (`muse-image-1.0`) | Made the brand artwork (hero illustration, app icon, store graphic), also the demo video's title art and thumbnail; not in the running app | Meta Model API from a build script (`tools/brand_muse.py`) | No figures; images chosen by a person | 12 images, USD 0.12 |
+
+No other Meta model is called (`muse-wonder-1.0` appears nowhere in the code). **Contributor mode (owner, 29 Oct 2026).** The live server sets `MODEL_API_MODEL=muse-spark-1.3-contributor` for the
+demo and testers. In Contributor mode Meta may use the content sent to it to improve its models. The demo uses only
+fictional sample data; testers who connect their own books are served the same way, so their documents are sent in
+Contributor mode too. Before real customers use it, the server switches to standard mode (`muse-spark-1.3`). With the
+user's own Meta key the app asks for standard `muse-spark-1.3` (`apps/web/src/lib/ai-config.ts` `DEFAULT_KEY`). The
+Contributor model id is the owner's setting; it was not checked against Meta's documentation (dev.meta.ai is not
+reachable from the build sandbox).
+
+Every measured figure is Glimmer's or Spark Open's: Muse Spark, which answers first on the live server, has no
+measured figure yet.
+
+## Engineering detail
+
 **Status words:** *measured* = the maintainers ran it for real and a report is committed; *one live call* = run once by hand, no committed log; *unit-tested* = stubbed HTTP in the test suite only; *wired* = in the code path and configured, not yet measured. Nothing is marked measured that has no report.
 
 | Model | Where it runs | What it does in the app | Status | Evidence |

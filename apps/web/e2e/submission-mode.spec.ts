@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { NOT_YET_WORDS, prelaunchHits } from "../scripts/prelaunch-words.mjs";
+import { NOT_YET_WORDS, THIRD_PARTY_NAMES, prelaunchHits } from "../scripts/prelaunch-words.mjs";
 import { expect, signIn, test } from "./fixtures";
 import { PAGES } from "./pages";
 
@@ -9,6 +9,8 @@ import { PAGES } from "./pages";
  * is read whole (title, meta description, all text in the DOM including closed menus, and accessible names held in
  * attributes); scripts are left out because test builds carry the pre-launch branch for specs that flip the mode.
  * The production export is checked file by file in CI (scripts/prelaunch-words.mjs).
+ * The same read also finds no non-Meta tool, engine or hardware name (Whisper, Kokoro, Ollama, vLLM, Qwen, ComfyUI,
+ * DGX, Baseten): a non-Meta fallback is "a local fallback model" on every public or judge-facing page.
  */
 
 async function pageWords(page: Page): Promise<string> {
@@ -27,7 +29,9 @@ async function sweep(page: Page, route: string) {
   await page.goto(route);
   await expect(page.locator("main").first()).toBeVisible();
   await page.waitForLoadState("networkidle");
-  expect(prelaunchHits(await pageWords(page), NOT_YET_WORDS), `${route}: pre-launch wording`).toEqual([]);
+  const words = await pageWords(page);
+  expect(prelaunchHits(words, NOT_YET_WORDS), `${route}: pre-launch wording`).toEqual([]);
+  expect(prelaunchHits(words, THIRD_PARTY_NAMES), `${route}: non-Meta tool names`).toEqual([]);
 }
 
 /** Every page of the app, plus what only shows after a click: each Settings tab and the account menu. */
@@ -39,7 +43,9 @@ async function sweepSettingsTabs(page: Page) {
   for (const name of await tabs.allTextContents()) {
     await tabs.filter({ hasText: name }).first().click();
     await page.waitForLoadState("networkidle");
-    expect(prelaunchHits(await pageWords(page), NOT_YET_WORDS), `Settings › ${name}`).toEqual([]);
+    const words = await pageWords(page);
+    expect(prelaunchHits(words, NOT_YET_WORDS), `Settings › ${name}`).toEqual([]);
+    expect(prelaunchHits(words, THIRD_PARTY_NAMES), `Settings › ${name}: non-Meta tool names`).toEqual([]);
   }
 }
 
@@ -57,7 +63,9 @@ test.describe("submission mode: no pre-launch wording", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Menu" }).click();
     await expect(page.getByRole("navigation", { name: "Site menu" })).toBeVisible();
-    expect(prelaunchHits(await pageWords(page), NOT_YET_WORDS)).toEqual([]);
+    const words = await pageWords(page);
+    expect(prelaunchHits(words, NOT_YET_WORDS)).toEqual([]);
+    expect(prelaunchHits(words, THIRD_PARTY_NAMES)).toEqual([]);
   });
 
   test("every page, signed in, with each Settings tab and the account menu open", async ({ page }) => {
@@ -66,7 +74,9 @@ test.describe("submission mode: no pre-launch wording", () => {
     await sweepSettingsTabs(page);
     await page.goto("/");
     await page.getByRole("button", { name: /^Account: / }).click();
-    expect(prelaunchHits(await pageWords(page), NOT_YET_WORDS), "account menu").toEqual([]);
+    const menuWords = await pageWords(page);
+    expect(prelaunchHits(menuWords, NOT_YET_WORDS), "account menu").toEqual([]);
+    expect(prelaunchHits(menuWords, THIRD_PARTY_NAMES), "account menu: non-Meta tool names").toEqual([]);
   });
 
   test("every page in the demo sandbox", async ({ page }) => {

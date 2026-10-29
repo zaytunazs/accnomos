@@ -13,7 +13,7 @@ test("/models shows the chain in order, each provider's health and the eval head
   await expect(chain.getByRole("listitem").nth(0)).toContainText("1st");
   await expect(chain.getByTestId("provider-modal")).toContainText("Modal");
   await expect(chain.getByTestId("provider-meta")).toContainText("Meta Model API");
-  await expect(chain.getByTestId("provider-spark")).toContainText("DGX Spark");
+  await expect(chain.getByTestId("provider-spark")).toContainText("our own server");
   await expect(chain.getByTestId("provider-modal")).toContainText("Warm"); // test mode probes the stub
   await expect(chain.getByTestId("provider-spark")).toContainText("Up");
   await expect(chain.getByTestId("provider-meta")).toContainText("Voice: no"); // the stub has no Muse Voice

@@ -181,7 +181,7 @@ async def test_whisper_takes_over_when_muse_fails(failure: Any, why: str):
     async with fake.client() as c:
         heard = await stt.transcribe(b"RIFFwav", stt.chain(USER_CFG, ENV), client=c)
     assert heard.text == "Remember to order 2-inch bolts for the Hendon job."
-    assert (heard.by.provider, heard.by.label) == ("whisper", "Whisper on the DGX Spark")
+    assert (heard.by.provider, heard.by.label) == ("whisper", "a local fallback model")
     assert heard.by.fallback_reason and heard.by.fallback_reason.startswith("Muse Voice Transcribe: ")
     assert why in heard.by.fallback_reason
     assert fake.paths() == ["/v1/asr/transcribe", "/v1/audio/transcriptions"]
@@ -214,7 +214,7 @@ async def test_both_fail_reports_muses_reason_and_the_fallback():
         with pytest.raises(voice.VoiceError) as exc:
             await stt.transcribe(b"wav", stt.chain(USER_CFG, ENV), client=c)
     assert exc.value.status == 429
-    assert "rate-limiting" in str(exc.value) and "the fallback failed too: Whisper on the DGX Spark" in str(exc.value)
+    assert "rate-limiting" in str(exc.value) and "the fallback failed too: a local fallback model" in str(exc.value)
 
 
 async def test_only_one_provider_raises_its_own_error():
@@ -391,7 +391,7 @@ def test_spoken_overtime_falls_back_to_whisper_and_says_so(route):
     assert r.status_code == 200, r.text
     body = r.json()
     by = body["transcribed_by"]
-    assert (by["provider"], by["label"]) == ("whisper", "Whisper on the DGX Spark")
+    assert (by["provider"], by["label"]) == ("whisper", "a local fallback model")
     assert "Muse Voice returned HTTP 503" in by["fallback_reason"]
     assert state["fake"].seen[0].headers["Authorization"] == f"Bearer {SERVER_KEY}"
     card = body["proposed_action"]

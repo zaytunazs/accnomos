@@ -11,12 +11,12 @@ void main() {
       'transcript': 'Andy did 2 hours overtime at double time on the Hendon job',
       'transcribed_by': {
         'provider': 'whisper',
-        'label': 'Whisper on the DGX Spark',
+        'label': 'a local fallback model',
         'model': 'Systran/faster-whisper-large-v3',
         'fallback_reason': 'Muse Voice Transcribe: Muse Voice returned HTTP 503',
       },
     });
-    expect(voice.transcribedBy, 'Whisper on the DGX Spark');
+    expect(voice.transcribedBy, 'a local fallback model');
     expect(VoiceAnswer.fromJson({'transcript': 'x'}).transcribedBy, isNull);
     expect(
       VoiceAnswer.fromJson({'transcript': 'x', 'transcribed_by': null})

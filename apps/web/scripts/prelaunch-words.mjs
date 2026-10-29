@@ -22,6 +22,13 @@ export const PRELAUNCH_WORDS = [
  */
 export const NOT_YET_WORDS = [/\bsoon\b/i, /coming next/i, /not yet available/i];
 
+/**
+ * Non-Meta tools, engines and hardware that no public or judge-facing page may name (owner's rule, 29 Oct 2026): a
+ * non-Meta fallback is "a local fallback model". Checked on every rendered page by e2e/submission-mode.spec.ts only,
+ * not on the export's files: the JS keeps provider ids such as "baseten:" and "ollama:" to map them to Meta names.
+ */
+export const THIRD_PARTY_NAMES = [/whisper/i, /kokoro/i, /ollama/i, /vllm/i, /qwen/i, /comfyui/i, /\bdgx\b/i, /baseten/i];
+
 /** Each match in `text` as a short quoted excerpt. `extra`: more patterns (NOT_YET_WORDS on rendered pages). */
 export function prelaunchHits(text, extra = []) {
   const hits = [];

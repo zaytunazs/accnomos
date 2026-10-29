@@ -85,6 +85,7 @@ function SiteFooter() {
           links={[
             { href: "/#faq", text: "FAQ" },
             { href: "/how-it-works", text: "How each feature works" },
+            { href: "/meta-models", text: "Meta models used" },
             { href: `mailto:${CONTACT_EMAIL}`, text: "Contact us" },
           ]}
         />

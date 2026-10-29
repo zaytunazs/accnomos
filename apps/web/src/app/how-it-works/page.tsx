@@ -55,7 +55,7 @@ const features: Feature[] = [
     does: "Ask answers questions about your books (“how much did I spend with Screwfix?”) and can plan a day (“plan my Thursday”). The web streams the answer: key figures first, then the wording. On the mic button you can speak the question instead of typing it.",
     ai: "The model only writes the words. Key figures and quotes come from a facts pack that code builds from your ledger, and code checks every figure the model writes.",
     code: "Code routes the question to the right books and period, checks each figure against the facts, and replaces any invented or wrong-period figure with the quoted facts.",
-    gap: "Not verified yet: voice (Muse Voice Transcribe, with Whisper on our DGX Spark as the fallback) is built to the request format in Meta's own cookbook but has never been called live from our CI; no live mic run on any browser or phone. Bank, payroll, jobs and deadlines are not in the facts pack.",
+    gap: "Not verified yet: voice (Muse Voice Transcribe, with a local fallback model if it fails) is built to the request format in Meta's own cookbook but has never been called live from our CI; no live mic run on any browser or phone. Bank, payroll, jobs and deadlines are not in the facts pack.",
   },
   {
     id: "actions",
@@ -79,7 +79,7 @@ const features: Feature[] = [
     does: "When the first reading passes every code check, a second model reads the same image again with a different prompt, without seeing the first answer. Code compares six fields (supplier, VAT number, date, net, VAT, total). If all six agree the card says so; any disagreement sends the proposal to Needs a look with both readings side by side.",
     ai: "The second model only reads the image again. It never sees the first answer and it never decides.",
     code: "Code compares the six fields (names ignoring case and Ltd/Limited, dates by value, money to the penny, VAT numbers by digits). Nobody picks or merges values: you approve the first reading or reject.",
-    gap: "Not verified yet: local mode verifies with Glimmer and key mode with Muse Spark unless the server owner sets a Baseten key; the Baseten model name is unconfirmed and no real Baseten or Meta verifier call has ever been made. Measured catch rate: 0 extra catches in 20 documents, 1 false alarm on a mixed-rate receipt.",
+    gap: "Not verified yet: local mode verifies with Glimmer and key mode with Muse Spark unless the server owner sets up Muse Spark Open; no real Muse Spark verifier call has been made. Measured on 400 synthetic documents, Muse Spark Open caught 1 wrong reading, missed 6 and raised 11 false alarms (see Meta models used).",
   },
   {
     id: "outlook",
@@ -194,7 +194,7 @@ const faqs: { q: string; a: string }[] = [
   },
   {
     q: "Why do I need a Meta key or a local model?",
-    a: "The reading and answering models run either on a machine you control (Muse Glimmer on Ollama, local mode) or through a Meta API key you paste in (key mode). In local mode documents go only to Ollama. In key mode with no key header, the server’s own key is used as a fallback.",
+    a: "The reading and answering models run either on a machine you control (Muse Glimmer, local mode) or through a Meta API key you paste in (key mode). In local mode documents go only to that machine. In key mode with no key header, the server’s own key is used as a fallback.",
   },
   {
     q: "Can I delete everything?",
@@ -218,7 +218,7 @@ const faqs: { q: string; a: string }[] = [
   },
   {
     q: "What has not been tested on real services?",
-    a: "Almost everything beyond one hand-run receipt flow: key-mode models, the Baseten verifier, SAM crop, voice, HMRC end to end, real OneDrive, mailbox, calendar and phone runs are tested on fakes or not yet run. The full list is in docs/HONESTY.md and each section above says what is not verified yet.",
+    a: "Almost everything beyond one hand-run receipt flow: key-mode models, the Muse Spark Open verifier on real documents, SAM crop, voice, HMRC end to end, real OneDrive, mailbox, calendar and phone runs are tested on fakes or not yet run. The full list is in docs/HONESTY.md and each section above says what is not verified yet.",
   },
   {
     q: "How do I check this page against the code?",
@@ -257,15 +257,15 @@ const models = [
   },
   {
     name: "Muse Spark",
-    job: "Same reading and answering jobs when you bring your own Meta API key (key mode). Stands in as the Verifier when no Baseten key is set.",
+    job: "Same reading and answering jobs when you bring your own Meta API key (key mode). Stands in as the Verifier when Muse Spark Open is not set up.",
   },
   {
-    name: "Muse Spark Open (Baseten, optional)",
-    job: "Independent second reading in key mode, only if the server owner set a key. Unit-tested only; the model name is unconfirmed.",
+    name: "Muse Spark Open (optional)",
+    job: "Independent second reading in key mode, only if the server owner set it up (hosted open weights). Measured on 400 synthetic documents: every field right 91 % clean and 93 % messy.",
   },
   {
     name: "Muse Voice Transcribe",
-    job: "Turns a spoken Ask question or instruction into text, which then goes through the normal grounded Ask. Uses your Meta key or the server's; Whisper on our DGX Spark takes over if it fails, and each answer says which one heard it. Audio is not kept.",
+    job: "Turns a spoken Ask question or instruction into text, which then goes through the normal grounded Ask. Uses your Meta key or the server's; a local fallback model takes over if it fails, and each answer says which one heard it. Audio is not kept.",
   },
   {
     name: "SAM 3.1",
