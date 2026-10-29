@@ -104,6 +104,13 @@ export function SummaryCard() {
           ai={byAi ? `worded by your AI (${s.model}), numbers checked by code` : s.fallback_reason ?? "written by code"}
         />
       ) : null}
+      {s ? (
+        <p className="mt-1 text-[12px] leading-5">
+          <Link href="/meta-models" className="font-semibold text-teal-dark underline underline-offset-2 hover:text-teal">
+            Which Meta model does what
+          </Link>
+        </p>
+      ) : null}
     </section>
   );
 }

@@ -94,6 +94,15 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - A bad `X-AI-*` configuration makes inbox triage silently run without a model ("No AI is set up") instead of naming the setting.
 - The planner's rationale model sees calendar event subjects as well as job names, and with no `X-AI-*` headers `/plan/day` falls back to the server's default model (`AI_MODE`, or `META_API_KEY` in key mode), not only the user's own (`routes_plan.optional_ai`).
 
+- **The public `/meta-models` page is a summary written from the code, not a live readout.** Jobs, screens, call
+  order and checks were read from `services/runtime/app/ai/*.py` and the callers on 29 Oct 2026 and are typed into
+  `apps/web/src/lib/meta-models-page.ts`; only the figures are read from `evals/runs/*` at build time (the run dates of
+  the extraction, Ask, Autopilot and triage runs are their commit dates, typed in). A new AI call site will not appear
+  there until someone adds it. On that page Muse Spark, Muse Voice Transcribe, Segment Anything 3.1 and bank-line coding
+  say "Not measured yet"; Muse Voice and bank coding switch to figures by themselves once `evals/runs/stt/` or
+  `evals/runs/bank_ai/` (not a stub run) is committed. Inbox triage uses only a backend the user chose, not the server
+  chain, which the page does not spell out per job.
+
 ## Chat and voice actions, Autopilot
 
 - Without `ACTIONS_SIGNING_KEY` (the deploy file passes it through, empty by default), each runtime process makes a random key: after a restart, or with several workers, a card can fail with 403.

@@ -91,7 +91,11 @@ export default function JudgesPage() {
         <ul className="mt-3 list-disc space-y-2 pl-5 text-[15px] leading-7">
           <li>
             <strong>Real:</strong> the app, the checks, the ledger and VAT arithmetic, and the AI (the model this server is
-            set up with). Scanning the documents still in <em>00 Inbox</em> sends them to that AI.
+            set up with). Scanning the documents still in <em>00 Inbox</em> sends them to that AI.{" "}
+            <Link href="/meta-models" className="font-bold text-teal-dark underline underline-offset-2">
+              Which Meta model does what
+            </Link>
+            .
           </li>
           <li>
             <strong>Pre-read:</strong> the six documents waiting in Review were read when the sample books were made, from the

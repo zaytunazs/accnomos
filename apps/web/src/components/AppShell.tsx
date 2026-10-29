@@ -96,6 +96,9 @@ export default function AppShell({ children, routes }: { children: ReactNode; ro
               <Link href="/judges" className="hover:text-teal-dark hover:underline underline-offset-2">
                 For judges
               </Link>
+              <Link href="/meta-models" className="hover:text-teal-dark hover:underline underline-offset-2">
+                Meta models used
+              </Link>
               <Link href="/models" className="hover:text-teal-dark hover:underline underline-offset-2">
                 Meta models at work
               </Link>

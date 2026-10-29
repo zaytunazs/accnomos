@@ -46,6 +46,8 @@ Your books are files in your own OneDrive (no Accnomos database); Meta models re
 
 Muse Image made the brand artwork at build time (`tools/brand_muse.py`; not in the runtime). Costs, fallbacks and eval numbers: `docs/META_MODELS.md`.
 
+One page for every model, job, screen, fallback order, code check and measured result: [accnomos.com/meta-models](https://accnomos.com/meta-models) (source `apps/web/src/lib/meta-models-page.ts`; the same facts in [`docs/submission/META_MODELS.md`](docs/submission/META_MODELS.md)).
+
 ## What works today
 
 | Date | Verified |
