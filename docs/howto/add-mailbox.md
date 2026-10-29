@@ -1,5 +1,7 @@
 # Add a mailbox
 
+![Add a mailbox](img/add-mailbox-cover.png)
+
 Who this is for: an owner who gets supplier receipts by email and wants them
 picked up automatically. Intake is read-only: it never sends, moves or deletes
 mail. Never run against a real mailbox without testing on a throwaway first.

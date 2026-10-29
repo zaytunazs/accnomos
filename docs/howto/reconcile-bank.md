@@ -1,5 +1,7 @@
 # Reconcile bank lines
 
+![Reconcile bank lines](img/reconcile-bank-cover.png)
+
 Who this is for: an owner matching a bank statement against the books. Import
 a CSV; Accnomos never connects to your bank.
 

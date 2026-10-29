@@ -1,5 +1,7 @@
 # Do a VAT return
 
+![Do a VAT return](img/vat-return-cover.png)
+
 Who this is for: a VAT-registered owner filing through Making Tax Digital. The
 HMRC connection in the product today is sandbox only: it practises the full
 flow, not a live filing.

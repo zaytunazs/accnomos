@@ -1,5 +1,7 @@
 # Export for your accountant
 
+![Export for your accountant](img/export-accountant-cover.png)
+
 Who this is for: an owner sending a period's records to their accountant.
 Exports are copies; the books stay untouched in your OneDrive.
 

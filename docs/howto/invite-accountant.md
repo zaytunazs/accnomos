@@ -1,5 +1,7 @@
 # Invite your accountant
 
+![Invite your accountant](img/invite-accountant-cover.png)
+
 Who this is for: an owner giving their accountant access to the same books.
 They open your files; every change they make is recorded under their name.
 

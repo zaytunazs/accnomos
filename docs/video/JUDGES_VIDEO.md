@@ -9,25 +9,34 @@ says is untested or unavailable.
 Conventions: each shot names the app route or screen, the on-screen action, a
 caption of at most 8 words, and the spoken voice-over with its word count.
 
-## Shot 1 — what existed before the event (0:00–0:08, 8 s)
+## Shot 1 — what existed before the event (0:00–0:10, 10 s)
 
-Screen: black card, white text (still, 1280 × 720).
+Screen: dark card, white text (still, 1920 × 1080), over the Muse Image title
+art if it has been generated (`docs/video/cards/`).
 
-On-screen action: card holds for the full 8 s:
+On-screen action: card holds for the full 10 s:
 
-> Before the hackathon I had only my DGX Spark with Ollama.
-> Everything else was built after kickoff.
-> Repo created 26 Oct 2026 22:30 UTC, after kickoff 26 Oct 16:00 UK.
-> First Meta model commit 23:18 UTC. (docs/PROVENANCE.md)
+> Before the hackathon: only a local GPU server I already owned.
+> Everything for Accnomos, including the Meta models on it, was set up after kickoff.
+> Repo created 26 Oct 2026 22:30 UTC (kickoff 16:00 UK).
+> Meta models: Muse Spark, Muse Spark Open, Muse Glimmer, Muse Voice Transcribe, Muse Image, Segment Anything.
 
-Caption: `Only Spark hardware predates the event` (6 words).
+Caption: `Only a local server predates the event` (7 words).
 
-Voice-over (17 words, ≤ 20): "Before the hackathon I had only
-my DGX Spark with Ollama. Everything else was built after kickoff."
+Voice-over (23 words, ≤ 25): "Before the hackathon I had only a local
+server. Everything you see, and the Meta models it runs, was set up after
+kickoff."
 
-## Impact — who it helps, MTD deadlines (0:08–0:48, 40 s)
+Owner's rule for this card and everything judge-facing in the video: no
+hardware name and no third-party tool name. The model list was checked on
+29 Oct 2026 against `docs/submission/META_MODELS.md` on `main` (`715c564`):
+all six are in the build (Muse Voice Transcribe merged in `b589cd7`; Muse Image
+made the brand and title art; Segment Anything is wired, off by default).
+Check it again on the day you record and drop any model that is not on `main`.
 
-### Shot 2 — one dashboard for the compulsory part (0:08–0:28, 20 s)
+## Impact — who it helps, MTD deadlines (0:10–0:48, 38 s)
+
+### Shot 2 — one dashboard for the compulsory part (0:10–0:28, 18 s)
 
 Screen: Home dashboard (`/`), demo sandbox with the SAMPLE — FICTIONAL COMPANY
 banner over six months of the fictional joinery's books.
@@ -38,7 +47,7 @@ update, Self Assessment 31 January).
 
 Caption: `Digital records and MTD deadlines, one dashboard` (7 words).
 
-Voice-over (44 words, ≤ 50): "Accnomos helps UK small businesses, sole
+Voice-over (44 words, ≤ 45): "Accnomos helps UK small businesses, sole
 traders and landlords with the compulsory part: digital records and Making Tax
 Digital filings. The dashboard shows cash, what is owed, and what is due: the
 VAT return, quarterly Income Tax updates, and Self Assessment on 31 January."
@@ -173,7 +182,8 @@ Screen: Ask (`/ask`), then end card over Home.
 
 On-screen action: hold the mic button and say the line; the timesheet card
 appears; cut to the end card: `github.com/zaytunazs/accnomos · Sample data ·
-HMRC sandbox · docs/HONESTY.md lists every gap`.
+HMRC sandbox · docs/HONESTY.md lists every gap · Title art: Muse Image (Meta).`
+(the credit sits on its own line under the rest).
 
 Caption: `Voice becomes an approval card` (5 words).
 

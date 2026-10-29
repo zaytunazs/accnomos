@@ -1,5 +1,7 @@
 # Run payroll and file with Basic PAYE Tools
 
+![Run payroll and file with Basic PAYE Tools](img/payroll-paye-cover.png)
+
 Who this is for: an employer running a pay run. Accnomos estimates the run
 and prepares the files; it never files payroll or pays HMRC. You file with
 HMRC's Basic PAYE Tools or your payroll provider.

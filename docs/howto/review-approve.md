@@ -1,5 +1,7 @@
 # Review and approve
 
+![Review and approve](img/review-approve-cover.png)
+
 Who this is for: an owner clearing the Review queue. AI proposes, code checks,
 you approve: nothing posts on its own.
 

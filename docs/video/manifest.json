@@ -1,6 +1,6 @@
 {
   "note": "Silent footage from the test-mode build (NEXT_PUBLIC_SUBMISSION_MODE=1) on the demo sandbox's fictional sample books. AI readings in it come from the test-mode stub, not a live model. Regenerate: tools/video/regenerate.sh",
-  "generated": "2026-10-29T02:56:37.321Z",
+  "generated": "2026-10-29T03:02:54.948Z",
   "sequences": [
     {
       "id": "judges",
@@ -15,15 +15,15 @@
           "id": "judges-01",
           "sequence": "judges",
           "index": 1,
-          "duration": 8,
+          "duration": 10,
           "recorded": null,
           "flow": "card",
           "kind": "card",
-          "what": "what existed before the event. black card, white text (still, 1280 × 720). card holds for the full 8 s:",
-          "caption": "Only Spark hardware predates the event",
-          "vo": "Before the hackathon I had only my DGX Spark with Ollama. Everything else was built after kickoff.",
+          "what": "what existed before the event. dark card, white text (still, 1920 × 1080), over the Muse Image title art if it has been generated (docs/video/cards/). card holds for the full 10 s:",
+          "caption": "Only a local server predates the event",
+          "vo": "Before the hackathon I had only a local server. Everything you see, and the Meta models it runs, was set up after kickoff.",
           "vo_wav": "docs/video/vo/judges-01.wav",
-          "card": "Before the hackathon I had only my DGX Spark with Ollama.\nEverything else was built after kickoff.\nRepo created 26 Oct 2026 22:30 UTC, after kickoff 26 Oct 16:00 UK.\nFirst Meta model commit 23:18 UTC. (docs/PROVENANCE.md)",
+          "card": "Before the hackathon: only a local GPU server I already owned.\nEverything for Accnomos, including the Meta models on it, was set up after kickoff.\nRepo created 26 Oct 2026 22:30 UTC (kickoff 16:00 UK).\nMeta models: Muse Spark, Muse Spark Open, Muse Glimmer, Muse Voice Transcribe, Muse Image, Segment Anything.",
           "file": null,
           "status": "card"
         },
@@ -31,14 +31,15 @@
           "id": "judges-02",
           "sequence": "judges",
           "index": 2,
-          "duration": 20,
-          "recorded": 20,
+          "duration": 18,
+          "recorded": 18,
           "flow": "dashboard",
           "kind": "app",
           "what": "one dashboard for the compulsory part. Home dashboard (/), demo sandbox with the SAMPLE — FICTIONAL COMPANY banner over six months of the fictional joinery's books. slow scroll down the dashboard: cash in and out, amounts owed, then rest on the Coming up deadlines card (VAT return, quarterly Income Tax update, Self Assessment 31 January).",
           "caption": "Digital records and MTD deadlines, one dashboard",
           "vo": "Accnomos helps UK small businesses, sole traders and landlords with the compulsory part: digital records and Making Tax Digital filings. The dashboard shows cash, what is owed, and what is due: the VAT return, quarterly Income Tax updates, and Self Assessment on 31 January.",
           "vo_wav": "docs/video/vo/judges-02.wav",
+          "section": "Impact — who it helps, MTD deadlines (0:10–0:48, 38 s)",
           "file": "docs/video/raw/judges-02.webm",
           "status": "ok"
         },
@@ -56,7 +57,8 @@
           "vo_wav": "docs/video/vo/judges-03.wav",
           "live": "Android camera capture and an Outlook email: film on the phone and a throwaway mailbox",
           "file": "docs/video/raw/judges-03.webm",
-          "status": "ok"
+          "status": "ok",
+          "section": "Impact — who it helps, MTD deadlines (0:10–0:48, 38 s)"
         },
         {
           "id": "judges-04",
@@ -72,7 +74,8 @@
           "vo_wav": "docs/video/vo/judges-04.wav",
           "live": "the reader line must name a live Meta model reading, not the test stub",
           "file": "docs/video/raw/judges-04.webm",
-          "status": "ok"
+          "status": "ok",
+          "section": "Use of Meta AI tooling — which models, measured numbers (0:48–1:28, 40 s)"
         },
         {
           "id": "judges-05",
@@ -88,7 +91,8 @@
           "vo_wav": "docs/video/vo/judges-05.wav",
           "card": "200 synthetic gold documents, all fields right\nMuse Spark Open (Baseten, key mode)   91 % clean, 93 % messy, about 13 s each\nMuse Glimmer 30B (open weights)       85 % clean, 80 % messy, about 18-24 s each\nAsk: figures exact 32 of 32, no invented figure shown\nSynthetic documents: real phone photos will score lower",
           "file": null,
-          "status": "card"
+          "status": "card",
+          "section": "Use of Meta AI tooling — which models, measured numbers (0:48–1:28, 40 s)"
         },
         {
           "id": "judges-06",
@@ -103,7 +107,8 @@
           "vo": "Approving writes an immutable ledger event, never an edit. Your books are files in your own OneDrive: ledger events and Books.xlsx. There is no Accnomos database, so disconnecting loses nothing.",
           "vo_wav": "docs/video/vo/judges-06.wav",
           "file": "docs/video/raw/judges-06.webm",
-          "status": "ok"
+          "status": "ok",
+          "section": "Technical depth — propose, approve, code computes (1:28–2:08, 40 s)"
         },
         {
           "id": "judges-07",
@@ -119,7 +124,8 @@
           "vo_wav": "docs/video/vo/judges-07.wav",
           "live": "HMRC's sandbox (the demo simulates it): film with a real sandbox connection",
           "file": "docs/video/raw/judges-07.webm",
-          "status": "ok"
+          "status": "ok",
+          "section": "Technical depth — propose, approve, code computes (1:28–2:08, 40 s)"
         },
         {
           "id": "judges-08",
@@ -135,7 +141,8 @@
           "vo_wav": "docs/video/vo/judges-08.wav",
           "live": "Outlook intake needs a real (throwaway) mailbox and a live reading",
           "file": "docs/video/raw/judges-08.webm",
-          "status": "ok"
+          "status": "ok",
+          "section": "Demo quality — one receipt end to end (2:08–3:00, 52 s)"
         },
         {
           "id": "judges-09",
@@ -151,7 +158,8 @@
           "vo_wav": "docs/video/vo/judges-09.wav",
           "live": "Home's AI summary is the test stub's: film with a live model",
           "file": "docs/video/raw/judges-09.webm",
-          "status": "ok"
+          "status": "ok",
+          "section": "Demo quality — one receipt end to end (2:08–3:00, 52 s)"
         },
         {
           "id": "judges-10",
@@ -167,7 +175,8 @@
           "vo_wav": "docs/video/vo/judges-10.wav",
           "live": "HMRC's sandbox (the demo simulates it): film with a real sandbox connection",
           "file": "docs/video/raw/judges-10.webm",
-          "status": "ok"
+          "status": "ok",
+          "section": "Demo quality — one receipt end to end (2:08–3:00, 52 s)"
         },
         {
           "id": "judges-11",
@@ -177,14 +186,15 @@
           "recorded": null,
           "flow": "card",
           "kind": "card",
-          "what": "voice, then end card. Ask (/ask), then end card over Home. hold the mic button and say the line; the timesheet card appears; cut to the end card: github.com/zaytunazs/accnomos · Sample data · HMRC sandbox · docs/HONESTY.md lists every gap.",
+          "what": "voice, then end card. Ask (/ask), then end card over Home. hold the mic button and say the line; the timesheet card appears; cut to the end card: github.com/zaytunazs/accnomos · Sample data · HMRC sandbox · docs/HONESTY.md lists every gap · Title art: Muse Image (Meta). (the credit sits on its own line under the rest).",
           "caption": "Voice becomes an approval card",
           "vo": "By voice: Andy did 2 hours overtime at double time on the Hendon job. It becomes a card I approve.",
           "vo_wav": "docs/video/vo/judges-11.wav",
-          "end_card": "github.com/zaytunazs/accnomos · Sample data · HMRC sandbox · docs/HONESTY.md lists every gap",
+          "end_card": "github.com/zaytunazs/accnomos · Sample data · HMRC sandbox · docs/HONESTY.md lists every gap · Title art: Muse Image (Meta).",
           "live": "voice (Muse Voice Transcribe) has never been run live: docs/HONESTY.md",
           "file": null,
-          "status": "card"
+          "status": "card",
+          "section": "Demo quality — one receipt end to end (2:08–3:00, 52 s)"
         }
       ]
     },
