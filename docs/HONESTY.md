@@ -372,6 +372,21 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
   with the runtime's sentence for books without VAT). `flutter analyze` and `flutter test` (279 tests) pass, on
   Flutter 3.47.8 in a Linux container; not run on a phone.
 
+## "Get 3 months free" sign-up (submission build)
+
+Branch `claude/signup-accountants`; review in `docs/reviews/signup-accountants/REVIEW.md`.
+
+- **Tested on the test-mode runtime only.** e2e signs up from the landing page and `/join` and reads the record back
+  from the e2e list file. Whether the live runtime behind accnomos.com has `EARLY_ACCESS_ENABLED=1` (and a persistent
+  `runtime-data` volume) is not visible from the repository: without it every form answers "Sign-ups aren't open on
+  this server yet" with the team's email address.
+- **No email is sent by Accnomos.** The list is a file; the operator exports it (`python -m app.early_access export`)
+  and emails people by hand or with a service named on the privacy page first. "We will set you up" depends on that.
+- **What "3 months free" means is not defined in the product.** There is no billing in this build; the offer is the
+  operator's commitment, recorded only as the consent wording each person ticked.
+- The accountant copy on the landing page describes `app/accountant.py` and the portal as they are on main; the
+  "Accnomos accountants" opt-in shows only where the server sets `ACCOUNTANT_TEAM_EMAIL`, hence "where it is offered".
+
 ## Accountant collaboration
 
 Branch `claude/accountant`; review in `docs/reviews/accountant/REVIEW.md` (gates on that branch, 28 Oct 2026: runtime
@@ -504,8 +519,9 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
   The submission build is checked twice for pre-launch wording ("Early access / testers", "coming soon", "beta",
   "launch"/"launching", the early-adopter list): `e2e/submission-mode.spec.ts` reads every page's DOM text, title,
   description and labels, signed out and in (not the pixels of screenshots), and CI scans every file of the
-  production export (`scripts/prelaunch-words.mjs`). In the submission build the privacy page leaves out the
-  early-adopter list, since that build cannot collect sign-ups. "Available on Android" on the landing page means the
+  production export (`scripts/prelaunch-words.mjs`). Since 29 Oct 2026 (`docs/reviews/signup-accountants/REVIEW.md`)
+  the submission build also collects sign-ups for the same list, through a neutral "Get 3 months free" form
+  (`POST /public/sign-up`, on the landing page and `/join`), and the privacy page describes that list in every build. "Available on Android" on the landing page means the
   app exists and builds; per `docs/submission/JUDGING.md` the Play production listing was still in review on 27 Oct
   and no real-phone sign-in is recorded. "Try the demo" (`DemoLink.tsx`) starts a demo sandbox and opens `/judges`
   inside it in one click; it is a plain link to `/judges` underneath, which explains when the server runs no demos.

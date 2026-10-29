@@ -78,7 +78,18 @@ Your ledger, documents and spreadsheets are files in your own OneDrive folder. A
 
 ## For accountants
 
-Invite your accountant to your books. They open the same files you see: the ledger, Books.xlsx, reports and the audit trail. Queries stay simple. Anything they question can be undone with a reversing entry, never a delete, so the record stays complete.
+Have your books reviewed by an accountant: your own, or ours. Either way they open the same files you see: the ledger, Books.xlsx, reports and the audit trail.
+
+- Invite your own accountant: enter their email and choose view only or view and edit. Your Accnomos folder in OneDrive is shared with their Microsoft account, and they open your books in the Accountant portal. Remove access at any time and the sharing stops at once.
+- Or opt in to a review by Accnomos accountants: where it is offered, you can opt in to have our own accounting team review your books. It is a separate, explicit choice: you read what they can see before you agree, and Stop reviews removes the sharing at once. They never submit anything to HMRC for you and never move money.
+
+Both are in Settings › Your accountant. An accountant can leave a query on a transaction or document, which you answer there; with edit access, every change they make is recorded in your audit trail under their name, and anything they question can be undone with a reversing entry, never a delete.
+
+(29 Oct 2026, claude/signup-accountants: the owner asked for both options to be spelled out; every line is what `app/accountant.py` and the portal on main do. "Where it is offered": the opt-in appears only when the server sets `ACCOUNTANT_TEAM_EMAIL`.)
+
+## Get 3 months free (every build)
+
+Get 3 months free. Leave your email and we will set you up with 3 months free. Hero link next to Try the demo, a section near the end of the landing page, a line in Pricing, a FAQ entry and `/join` (the page the social posts link to). No "coming soon", "beta", "early access", "launch", "testers" or "waiting list".
 
 ## Trust
 
@@ -92,7 +103,7 @@ AI proposes, you approve. Every figure that reaches your books has passed code c
 4. Which banks are covered. You import bank statements as CSV files. Barclays, Starling, Tide and Monzo style layouts are read, along with HSBC and Lloyds style paid-in and paid-out columns.
 5. Can I use it on my phone. There is an Android app with capture, Review, Ask, VAT and reports. Everyday admin such as bank uploads and detailed settings stays on the web.
 6. Can I switch from Xero or QuickBooks. Export your lists and statements from your current software and bring them across as files. Your opening position is entered once, and new documents flow in from there.
-7. Does my accountant need an account. You invite your accountant to see your books. They read the same ledger, spreadsheet and reports that you see.
+7. Does my accountant need an account. Only a Microsoft account. In Settings, Your accountant, you invite them by email and choose view only or view and edit: your Accnomos folder in OneDrive is shared with them, and they open your books in the Accountant portal. Remove access there at any time. (Added, 29 Oct 2026: "How do I get 3 months free?" and "Can an accountant review my books for me?", as on the landing page.)
 8. What can the AI get wrong. It can misread a total, a date or a VAT number, most often on crumpled photos or faint print. That is why every reading is checked by code and waits for your approval before it posts.
 9. How do I stop. Export your files first if you wish, then disconnect. Your books are already files in your OneDrive, so nothing is locked in.
 10. Is my data used to train models. No. Your documents are read to keep your books, and nothing else.
