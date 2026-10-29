@@ -1,0 +1,36 @@
+1:"$Sreact.fragment"
+2:"/_next/static/chunks/3a27yda3y1g7o.js"
+3:"/_next/static/chunks/18qvxsphnq6mn.js"
+4:"/_next/static/chunks/420ejmnuj8_ih.js"
+5:I[99214,["$2","$3","$4"],"default"]
+6:I[59368,["$2","$3","$4"],"default"]
+7:"/_next/static/chunks/2cadmia42yf_8.js"
+8:I[58298,["$2","$3","$4","$7"],"default"]
+9:I[5736,["$2","$3","$4"],"default"]
+a:"/_next/static/chunks/30p2doclbap4b.js"
+b:I[36981,["$2","$3","$4","$a"],"ProblemCard"]
+f:"/_next/static/chunks/1jw4rukx3pwms.js"
+10:"/_next/static/chunks/2_ob_2x1sr_2z.js"
+11:I[77677,["$2","$3","$4","$f","$10"],"default"]
+12:I[74174,["$2","$3","$4","$f","$10"],""]
+13:I[46759,["$2","$3","$4","$f","$10"],"default"]
+15:"ViewportBoundary"
+16:I[50381,["$2","$3","$4"],"$15"]
+18:"MetadataBoundary"
+19:I[50381,["$2","$3","$4"],"$18"]
+1a:"$Sreact.suspense"
+1c:"/_next/static/chunks/3079dpl_2ps27.js"
+1d:I[63491,["$2","$3","$4","$1c"],"default"]
+:HL["/_next/static/chunks/15p-p_blfbovv.css","style"]
+:HL["/_next/static/media/82450a180bcad83c-s.p.0p-wng2nn8o-p.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+d:X
+e:[["children",{"s":"__PAGE__","h":512,"d":{"r":["$","$1","c",{"children":[["$","div",null,{"data-print-page":true,"className":"flex flex-col gap-5","children":[["$","div",null,{"className":"flex items-start justify-between gap-3","children":[["$","div",null,{"className":"min-w-0","children":[["$","h1",null,{"className":"text-3xl font-extrabold tracking-tight","children":"Bank"}],["$","p",null,{"className":"mt-1 text-[15px] leading-7 text-muted","children":"Upload your bank statement CSV and check each payment against your books. Matching never posts anything: it records which ledger entry each bank line pays for."}]]}],["$","$L11",null,{"title":"How bank matching works","children":[["$","p",null,{"children":"Matching is plain code (amount, date, name), never the AI. Confirm only links a bank line to a posted entry. Layouts follow public formats and have not been checked against real exports."}],["$","p",null,{"children":["$","$L12",null,{"href":"/how-it-works#bank","className":"font-bold text-teal-dark underline hover:text-teal","children":"Read more"}]}]]}]]}],["$","$L13",null,{}]]}],[["$","script","script-0",{"src":"/_next/static/chunks/1jw4rukx3pwms.js","async":true,"nonce":"$undefined"}],["$","script","script-1",{"src":"/_next/static/chunks/2_ob_2x1sr_2z.js","async":true,"nonce":"$undefined"}]],"$L14"]}],"p":false,"v":null}}]]
+c:[["children",{"s":"bank","h":512,"d":{"r":["$","$1","c",{"children":[null,["$","$L6",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L9",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],"p":false,"v":"$d"},"c":"$Qe"}]]
+0:{"P":null,"c":["","bank"],"q":"","i":false,"t":{"t":{"s":"","h":528,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/15p-p_blfbovv.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","script","script-0",{"src":"/_next/static/chunks/3a27yda3y1g7o.js","async":true,"nonce":"$undefined"}],["$","script","script-1",{"src":"/_next/static/chunks/18qvxsphnq6mn.js","async":true,"nonce":"$undefined"}],["$","script","script-2",{"src":"/_next/static/chunks/420ejmnuj8_ih.js","async":true,"nonce":"$undefined"}]],["$","html",null,{"lang":"en-GB","className":"HIT9Bq_variable h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"try{var L=localStorage,l=null,e=0,s=0;for(var i=0;i<L.length;i++){var k=L.key(i)||\"\";if(k.indexOf(\"msal.accnomos-\")===0){s=1;break}if(/^msal\\.(\\d+\\.)?account\\.keys$/.test(k)){try{var v=JSON.parse(L.getItem(k)||\"[]\");l=l||(Array.isArray(v)&&v.length>0)}catch(x){l=true}}else if(/^msal\\.\\d+\\|/.test(k))e=1}if(!s)s=l===null?e:l;if(s)document.documentElement.setAttribute(\"data-signed-in\",\"\")}catch(x){}"}}]}],["$","body",null,{"className":"min-h-full flex flex-col","children":["$","$L5",null,{"routes":["/","/accountant","/accounting/assets","/accounting/chart","/accounting/journals","/accounting/recode","/accounting/tracking","/ask","/audit","/bank","/bank/reconcile","/bank/rules","/cis","/connect","/connect/ai","/connect/business","/connect/ready","/contacts","/contacts/customers","/contacts/suppliers","/files","/help","/how-it-works","/import","/invoices","/invoices/new","/jobs","/jobs/job","/join","/judges","/meta-models","/models","/month-end","/payroll","/personal","/prices","/privacy","/property","/purchases","/purchases/orders","/reports","/reports/aged","/reports/budgets","/reports/cashflow","/reports/exports","/reports/profit-and-loss","/review","/sales","/sales/items","/sales/quotes","/sales/repeating","/self-employment","/settings","/settings/employees","/settings/sales","/settings/tax","/setup","/shopping","/spending","/terms","/try","/vat","/vehicles"],"children":["$","$L6",null,{"parallelRouterKey":"children","error":"$8","errorStyles":[],"errorScripts":[["$","script","script-0",{"src":"/_next/static/chunks/2cadmia42yf_8.js","async":true,"nonce":"$undefined"}]],"template":["$","$L9",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","$Lb",null,{"title":"Page not found","body":"That address isn't a page in Accnomos — check for a typo, or head back home. Nothing is lost."}],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}]}]]}]]}],"p":false,"v":null},"c":"$Qc"},"h":{"r":["$","$1","h",{"children":[null,["$","$L16",null,{"children":"$L17"}],["$","$L19",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$1a",null,{"name":"Next.Metadata","children":"$L1b"}]}],null]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}],"p":false,"v":null}},"m":"$undefined","G":["$1d",[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/15p-p_blfbovv.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]]],"S":true,"r":"$undefined","s":"$undefined","a":"$undefined","l":"$undefined","p":"$undefined","d":"$undefined","b":"x-t7cigNckBABqEQQQlWE"}
+1e:I[50381,["$2","$3","$4"],"OutletBoundary"]
+d:C
+14:["$","$L1e",null,{"children":["$","$1a",null,{"name":"Next.MetadataOutlet","children":"$@1f"}]}]
+17:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+20:I[14762,["$2","$3","$4"],"IconMark"]
+1b:[["$","title","0",{"children":"Bank statement lines · Accnomos"}],["$","meta","1",{"name":"description","content":"Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive."}],["$","link","2",{"rel":"icon","href":"/favicon.ico?favicon.117ezoe8m31dk.ico","sizes":"48x48","type":"image/x-icon"}],["$","$L20","3",{}]]
+1f:null

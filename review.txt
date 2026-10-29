@@ -1,0 +1,41 @@
+1:"$Sreact.fragment"
+2:"/_next/static/chunks/3a27yda3y1g7o.js"
+3:"/_next/static/chunks/18qvxsphnq6mn.js"
+4:"/_next/static/chunks/420ejmnuj8_ih.js"
+5:I[99214,["$2","$3","$4"],"default"]
+6:I[59368,["$2","$3","$4"],"default"]
+7:"/_next/static/chunks/2cadmia42yf_8.js"
+8:I[58298,["$2","$3","$4","$7"],"default"]
+9:I[5736,["$2","$3","$4"],"default"]
+a:"/_next/static/chunks/30p2doclbap4b.js"
+b:I[36981,["$2","$3","$4","$a"],"ProblemCard"]
+f:"/_next/static/chunks/3-cd40wfhqslc.js"
+10:"/_next/static/chunks/0i561_8h1zx3w.js"
+11:I[77677,["$2","$3","$4","$f","$10"],"default"]
+19:"ViewportBoundary"
+1a:I[50381,["$2","$3","$4"],"$19"]
+1c:"MetadataBoundary"
+1d:I[50381,["$2","$3","$4"],"$1c"]
+1e:"$Sreact.suspense"
+20:"/_next/static/chunks/3079dpl_2ps27.js"
+21:I[63491,["$2","$3","$4","$20"],"default"]
+:HL["/_next/static/chunks/15p-p_blfbovv.css","style"]
+:HL["/_next/static/media/82450a180bcad83c-s.p.0p-wng2nn8o-p.woff2","font",{"crossOrigin":"","type":"font/woff2"}]
+d:X
+e:[["children",{"s":"__PAGE__","h":512,"d":{"r":["$","$1","c",{"children":[["$","div",null,{"className":"flex flex-col gap-6","children":[["$","div",null,{"className":"flex flex-col gap-4","children":["$","div",null,{"className":"flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between","children":[["$","div",null,{"className":"min-w-0","children":[["$","h1",null,{"className":"text-3xl font-extrabold tracking-tight","children":"Review"}],["$","p",null,{"className":"mt-1 text-[15px] leading-7 text-muted","children":"AI proposes · you approve · code posts. Nothing reaches your books until you tap Approve."}]]}],["$","div",null,{"className":"shrink-0 sm:pt-1","children":["$","$L11",null,{"title":"What the checks mean","children":[["$","p",null,{"children":"Every proposal is read by AI, then checked by plain code — never by the model. The checks are: the receipt lines add up; net plus VAT equals the total; the VAT maths matches the rate (S 20%, R 5%, Z 0%); the VAT number has the right shape; it is not a duplicate of something already filed; it is in pounds sterling; the date is valid; and the reading is confident enough."}],["$","p",null,{"children":["The missing-VAT-number rule: when your business is VAT-registered and a purchase over £250 shows no VAT and no VAT number, code asks the books whether the supplier is VAT-registered. If the books have never seen them, the card asks you instead — “Is ","<supplier>"," VAT-registered? Over £250 they should give a VAT invoice” — with a tick for “isn’t VAT-registered”. The tick teaches “not registered”; a VAT number seen on an approved receipt teaches “registered”; undoing the approval takes the tick back; Contacts can change the stored answer any time."]}],"$L12","$L13","$L14"]}]}]]}]}],"$L15"]}],["$L16","$L17"],"$L18"]}],"p":false,"v":null}}]]
+c:[["children",{"s":"review","h":512,"d":{"r":["$","$1","c",{"children":[null,["$","$L6",null,{"parallelRouterKey":"children","error":"$undefined","errorStyles":"$undefined","errorScripts":"$undefined","template":["$","$L9",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":"$undefined","forbidden":"$undefined","unauthorized":"$undefined"}]]}],"p":false,"v":"$d"},"c":"$Qe"}]]
+0:{"P":null,"c":["","review"],"q":"","i":false,"t":{"t":{"s":"","h":528,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/15p-p_blfbovv.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}],["$","script","script-0",{"src":"/_next/static/chunks/3a27yda3y1g7o.js","async":true,"nonce":"$undefined"}],["$","script","script-1",{"src":"/_next/static/chunks/18qvxsphnq6mn.js","async":true,"nonce":"$undefined"}],["$","script","script-2",{"src":"/_next/static/chunks/420ejmnuj8_ih.js","async":true,"nonce":"$undefined"}]],["$","html",null,{"lang":"en-GB","className":"HIT9Bq_variable h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"try{var L=localStorage,l=null,e=0,s=0;for(var i=0;i<L.length;i++){var k=L.key(i)||\"\";if(k.indexOf(\"msal.accnomos-\")===0){s=1;break}if(/^msal\\.(\\d+\\.)?account\\.keys$/.test(k)){try{var v=JSON.parse(L.getItem(k)||\"[]\");l=l||(Array.isArray(v)&&v.length>0)}catch(x){l=true}}else if(/^msal\\.\\d+\\|/.test(k))e=1}if(!s)s=l===null?e:l;if(s)document.documentElement.setAttribute(\"data-signed-in\",\"\")}catch(x){}"}}]}],["$","body",null,{"className":"min-h-full flex flex-col","children":["$","$L5",null,{"routes":["/","/accountant","/accounting/assets","/accounting/chart","/accounting/journals","/accounting/recode","/accounting/tracking","/ask","/audit","/bank","/bank/reconcile","/bank/rules","/cis","/connect","/connect/ai","/connect/business","/connect/ready","/contacts","/contacts/customers","/contacts/suppliers","/files","/help","/how-it-works","/import","/invoices","/invoices/new","/jobs","/jobs/job","/join","/judges","/meta-models","/models","/month-end","/payroll","/personal","/prices","/privacy","/property","/purchases","/purchases/orders","/reports","/reports/aged","/reports/budgets","/reports/cashflow","/reports/exports","/reports/profit-and-loss","/review","/sales","/sales/items","/sales/quotes","/sales/repeating","/self-employment","/settings","/settings/employees","/settings/sales","/settings/tax","/setup","/shopping","/spending","/terms","/try","/vat","/vehicles"],"children":["$","$L6",null,{"parallelRouterKey":"children","error":"$8","errorStyles":[],"errorScripts":[["$","script","script-0",{"src":"/_next/static/chunks/2cadmia42yf_8.js","async":true,"nonce":"$undefined"}]],"template":["$","$L9",null,{}],"templateStyles":"$undefined","templateScripts":"$undefined","notFound":[["$","$Lb",null,{"title":"Page not found","body":"That address isn't a page in Accnomos — check for a typo, or head back home. Nothing is lost."}],[]],"forbidden":"$undefined","unauthorized":"$undefined"}]}]}]]}]]}],"p":false,"v":null},"c":"$Qc"},"h":{"r":["$","$1","h",{"children":[null,["$","$L1a",null,{"children":"$L1b"}],["$","$L1d",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$1e",null,{"name":"Next.Metadata","children":"$L1f"}]}],null]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}],"p":false,"v":null}},"m":"$undefined","G":["$21",[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/15p-p_blfbovv.css","precedence":"next","crossOrigin":"$undefined","nonce":"$undefined"}]]],"S":true,"r":"$undefined","s":"$undefined","a":"$undefined","l":"$undefined","p":"$undefined","d":"$undefined","b":"x-t7cigNckBABqEQQQlWE"}
+22:I[56514,["$2","$3","$4","$f","$10"],"default"]
+23:I[50381,["$2","$3","$4"],"OutletBoundary"]
+d:C
+12:["$","p",null,{"children":["Any failed check moves the card to ",["$","strong",null,{"children":"Needs a look"}]," with the reason in plain English and a suggested fix. Nothing is posted until you decide."]}]
+13:["$","p",null,{"children":["When every check passes, a second model reads the same image again without seeing the first answer, and code compares six fields: supplier, VAT number, date, net, VAT and total. Any disagreement also means ",["$","strong",null,{"children":"Needs a look"}],", with both readings side by side for you to compare. Neither the model nor the code picks a winner."]}]
+14:["$","p",null,{"children":"The “Why” line on each card is composed by code (“Checker, code”). There is no separate AI reviewer in the pipeline."}]
+15:["$","$L22",null,{}]
+16:["$","script","script-0",{"src":"/_next/static/chunks/3-cd40wfhqslc.js","async":true,"nonce":"$undefined"}]
+17:["$","script","script-1",{"src":"/_next/static/chunks/0i561_8h1zx3w.js","async":true,"nonce":"$undefined"}]
+18:["$","$L23",null,{"children":["$","$1e",null,{"name":"Next.MetadataOutlet","children":"$@24"}]}]
+1b:[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]
+25:I[14762,["$2","$3","$4"],"IconMark"]
+1f:[["$","title","0",{"children":"Review · Accnomos"}],["$","meta","1",{"name":"description","content":"Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive."}],["$","link","2",{"rel":"icon","href":"/favicon.ico?favicon.117ezoe8m31dk.ico","sizes":"48x48","type":"image/x-icon"}],["$","$L25","3",{}]]
+24:null

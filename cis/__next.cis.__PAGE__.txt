@@ -1,0 +1,43 @@
+1:"$Sreact.fragment"
+2:"/_next/static/chunks/3a27yda3y1g7o.js"
+3:"/_next/static/chunks/18qvxsphnq6mn.js"
+4:"/_next/static/chunks/420ejmnuj8_ih.js"
+5:I[99214,["$2","$3","$4"],"default"]
+6:I[59368,["$2","$3","$4"],"default"]
+7:"/_next/static/chunks/2cadmia42yf_8.js"
+8:I[58298,["$2","$3","$4","$7"],"default"]
+9:I[5736,["$2","$3","$4"],"default"]
+a:"/_next/static/chunks/30p2doclbap4b.js"
+b:I[36981,["$2","$3","$4","$a"],"ProblemCard"]
+12:"/_next/static/chunks/402qumvfoylq7.js"
+13:"/_next/static/chunks/3fe7g6m91i2-n.js"
+14:I[77677,["$2","$3","$4","$12","$13"],"default"]
+1b:"ViewportBoundary"
+1c:I[50381,["$2","$3","$4"],"$1b"]
+1d:"MetadataBoundary"
+1e:I[50381,["$2","$3","$4"],"$1d"]
+1f:"$Sreact.suspense"
+20:I[14762,["$2","$3","$4"],"IconMark"]
+:HL["/_next/static/chunks/15p-p_blfbovv.css","style"]
+d:X
+10:X
+10:C
+11:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","div",null,{"className":"flex flex-col gap-6","children":[["$","div",null,{"className":"flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between","children":[["$","div",null,{"className":"min-w-0","children":[["$","h1",null,{"className":"text-3xl font-extrabold tracking-tight","children":"CIS"}],["$","p",null,{"className":"mt-1 text-[15px] leading-7 text-muted","children":"Construction Industry Scheme deductions, statements and monthly returns, and the VAT reverse charge for building work."}]]}],["$","div",null,{"className":"shrink-0 sm:pt-1","children":["$","$L14",null,{"title":"How CIS works here","children":["$","ul",null,{"className":"list-disc space-y-1 pl-5","children":[["$","li",null,{"children":[["$","strong",null,{"children":"Subcontractor"}]," — your invoices show the deduction on labour only (materials and VAT are left out). A payment received net of the deduction pays the invoice in full; the deduction is tax paid on account."]}],["$","li",null,{"children":[["$","strong",null,{"children":"Statements"}]," — your AI reads a contractor's monthly statement, code checks the figures, and you approve. The year totals come from the statements."]}],["$","li",null,{"children":[["$","strong",null,{"children":"Contractor"}]," — code works out each deduction from the subcontractor's status and prepares the CIS300 figures and a file. Accnomos never submits it: you file through HMRC's CIS online service or CIS software."]}],"$L15"]}]}]}]]}],"$L16"]}],["$L17","$L18"],"$L19"]}],"p":"$@1a","v":null,"s":"$d"}}]]
+e:[["children",{"s":"cis","h":96,"d":{"r":["$","$1","c",{"children":[null,["$","$L6",null,{"parallelRouterKey":"children","template":["$","$L9",null,{}]}]]}],"p":"$@f","v":"$10","s":"$d"},"c":"$Q11"}]]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/15p-p_blfbovv.css","precedence":"next"}],["$","script","script-0",{"src":"/_next/static/chunks/3a27yda3y1g7o.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/18qvxsphnq6mn.js","async":true}],["$","script","script-2",{"src":"/_next/static/chunks/420ejmnuj8_ih.js","async":true}]],["$","html",null,{"lang":"en-GB","className":"HIT9Bq_variable h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"try{var L=localStorage,l=null,e=0,s=0;for(var i=0;i<L.length;i++){var k=L.key(i)||\"\";if(k.indexOf(\"msal.accnomos-\")===0){s=1;break}if(/^msal\\.(\\d+\\.)?account\\.keys$/.test(k)){try{var v=JSON.parse(L.getItem(k)||\"[]\");l=l||(Array.isArray(v)&&v.length>0)}catch(x){l=true}}else if(/^msal\\.\\d+\\|/.test(k))e=1}if(!s)s=l===null?e:l;if(s)document.documentElement.setAttribute(\"data-signed-in\",\"\")}catch(x){}"}}]}],["$","body",null,{"className":"min-h-full flex flex-col","children":["$","$L5",null,{"routes":["/","/accountant","/accounting/assets","/accounting/chart","/accounting/journals","/accounting/recode","/accounting/tracking","/ask","/audit","/bank","/bank/reconcile","/bank/rules","/cis","/connect","/connect/ai","/connect/business","/connect/ready","/contacts","/contacts/customers","/contacts/suppliers","/files","/help","/how-it-works","/import","/invoices","/invoices/new","/jobs","/jobs/job","/join","/judges","/meta-models","/models","/month-end","/payroll","/personal","/prices","/privacy","/property","/purchases","/purchases/orders","/reports","/reports/aged","/reports/budgets","/reports/cashflow","/reports/exports","/reports/profit-and-loss","/review","/sales","/sales/items","/sales/quotes","/sales/repeating","/self-employment","/settings","/settings/employees","/settings/sales","/settings/tax","/setup","/shopping","/spending","/terms","/try","/vat","/vehicles"],"children":["$","$L6",null,{"parallelRouterKey":"children","error":"$8","errorStyles":[],"errorScripts":[["$","script","script-0",{"src":"/_next/static/chunks/2cadmia42yf_8.js","async":true}]],"template":["$","$L9",null,{}],"notFound":[["$","$Lb",null,{"title":"Page not found","body":"That address isn't a page in Accnomos — check for a typo, or head back home. Nothing is lost."}],[]]}]}]}]]}]]}],"p":"$@c","v":null,"s":"$d"},"c":"$Qe"},"h":{"r":["$","$1","h",{"children":[null,["$","$L1c",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L1e",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$1f",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"CIS · Accnomos"}],["$","meta","1",{"name":"description","content":"Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive."}],["$","link","2",{"rel":"icon","href":"/favicon.ico?favicon.117ezoe8m31dk.ico","sizes":"48x48","type":"image/x-icon"}],["$","$L20","3",{}]]}]}],null]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}],"p":"$@21","v":null,"s":"$d"}},"a":"$@22","u":"$@23","b":"x-t7cigNckBABqEQQQlWE"}
+24:I[67267,["$2","$3","$4","$12","$13"],"default"]
+25:I[50381,["$2","$3","$4"],"OutletBoundary"]
+15:["$","li",null,{"children":[["$","strong",null,{"children":"Reverse charge"}]," — no VAT on invoices to VAT- and CIS-registered customers; the customer accounts for it."]}]
+16:["$","$L24",null,{}]
+17:["$","script","script-0",{"src":"/_next/static/chunks/402qumvfoylq7.js","async":true}]
+18:["$","script","script-1",{"src":"/_next/static/chunks/3fe7g6m91i2-n.js","async":true}]
+19:["$","$L25",null,{"children":["$","$1f",null,{"name":"Next.MetadataOutlet","children":"$@26"}]}]
+d:300
+26:null
+23:true
+d:C
+22:0
+f:"$undefined"
+c:"$undefined"
+21:"$undefined"
+1a:"$undefined"

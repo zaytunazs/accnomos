@@ -1,0 +1,42 @@
+1:"$Sreact.fragment"
+2:"/_next/static/chunks/3a27yda3y1g7o.js"
+3:"/_next/static/chunks/18qvxsphnq6mn.js"
+4:"/_next/static/chunks/420ejmnuj8_ih.js"
+5:I[99214,["$2","$3","$4"],"default"]
+6:I[59368,["$2","$3","$4"],"default"]
+7:"/_next/static/chunks/2cadmia42yf_8.js"
+8:I[58298,["$2","$3","$4","$7"],"default"]
+9:I[5736,["$2","$3","$4"],"default"]
+a:"/_next/static/chunks/30p2doclbap4b.js"
+b:I[36981,["$2","$3","$4","$a"],"ProblemCard"]
+1a:"ViewportBoundary"
+1b:I[50381,["$2","$3","$4"],"$1a"]
+1c:"MetadataBoundary"
+1d:I[50381,["$2","$3","$4"],"$1c"]
+1e:"$Sreact.suspense"
+1f:I[14762,["$2","$3","$4"],"IconMark"]
+:HL["/_next/static/chunks/15p-p_blfbovv.css","style"]
+d:X
+10:X
+10:C
+11:[["children",{"s":"__PAGE__","h":160,"d":{"r":["$","$1","c",{"children":[["$","div",null,{"className":"mx-auto max-w-2xl px-4 py-10 text-ink","children":[["$","h1",null,{"className":"text-3xl font-extrabold tracking-tight","children":"Terms of use"}],["$","p",null,{"className":"mt-2 text-sm text-muted","children":["Accnomos · Zaytuna Business Services Ltd · last updated ","28 October 2026"]}],["$","section",null,{"className":"mt-8 space-y-3 text-[15px] leading-relaxed","children":[["$","h2",null,{"className":"text-xl font-bold","children":"What Accnomos is"}],["$","p",null,{"children":["Accnomos is bookkeeping software built for the Meta Global AI Developer Hackathon by Zaytuna Business Services Ltd (UK). It is a hackathon build, not a finished commercial product, and it is offered without charge. What has and has not been tested against real services is listed in"," ",["$","a",null,{"className":"font-semibold text-teal-dark underline","href":"https://github.com/zaytunazs/accnomos/blob/main/docs/HONESTY.md","children":"docs/HONESTY.md"}],"."]}]]}],["$","section",null,{"className":"mt-8 space-y-3 text-[15px] leading-relaxed","children":[["$","h2",null,{"className":"text-xl font-bold","children":"You approve, you stay responsible"}],["$","ul",null,{"className":"list-disc space-y-2 pl-5","children":[["$","li",null,{"children":"The AI proposes entries; nothing reaches your books until you approve it. Check each proposal: a model can misread a document."}],"$L12","$L13"]}]]}],"$L14","$L15","$L16","$L17"]}],null,"$L18"]}],"p":"$@19","v":null,"s":"$d"}}]]
+e:[["children",{"s":"terms","h":96,"d":{"r":["$","$1","c",{"children":[null,["$","$L6",null,{"parallelRouterKey":"children","template":["$","$L9",null,{}]}]]}],"p":"$@f","v":"$10","s":"$d"},"c":"$Q11"}]]
+0:{"t":{"t":{"s":"","h":80,"d":{"r":["$","$1","c",{"children":[[["$","link","0",{"rel":"stylesheet","href":"/_next/static/chunks/15p-p_blfbovv.css","precedence":"next"}],["$","script","script-0",{"src":"/_next/static/chunks/3a27yda3y1g7o.js","async":true}],["$","script","script-1",{"src":"/_next/static/chunks/18qvxsphnq6mn.js","async":true}],["$","script","script-2",{"src":"/_next/static/chunks/420ejmnuj8_ih.js","async":true}]],["$","html",null,{"lang":"en-GB","className":"HIT9Bq_variable h-full antialiased","suppressHydrationWarning":true,"children":[["$","head",null,{"children":["$","script",null,{"dangerouslySetInnerHTML":{"__html":"try{var L=localStorage,l=null,e=0,s=0;for(var i=0;i<L.length;i++){var k=L.key(i)||\"\";if(k.indexOf(\"msal.accnomos-\")===0){s=1;break}if(/^msal\\.(\\d+\\.)?account\\.keys$/.test(k)){try{var v=JSON.parse(L.getItem(k)||\"[]\");l=l||(Array.isArray(v)&&v.length>0)}catch(x){l=true}}else if(/^msal\\.\\d+\\|/.test(k))e=1}if(!s)s=l===null?e:l;if(s)document.documentElement.setAttribute(\"data-signed-in\",\"\")}catch(x){}"}}]}],["$","body",null,{"className":"min-h-full flex flex-col","children":["$","$L5",null,{"routes":["/","/accountant","/accounting/assets","/accounting/chart","/accounting/journals","/accounting/recode","/accounting/tracking","/ask","/audit","/bank","/bank/reconcile","/bank/rules","/cis","/connect","/connect/ai","/connect/business","/connect/ready","/contacts","/contacts/customers","/contacts/suppliers","/files","/help","/how-it-works","/import","/invoices","/invoices/new","/jobs","/jobs/job","/join","/judges","/meta-models","/models","/month-end","/payroll","/personal","/prices","/privacy","/property","/purchases","/purchases/orders","/reports","/reports/aged","/reports/budgets","/reports/cashflow","/reports/exports","/reports/profit-and-loss","/review","/sales","/sales/items","/sales/quotes","/sales/repeating","/self-employment","/settings","/settings/employees","/settings/sales","/settings/tax","/setup","/shopping","/spending","/terms","/try","/vat","/vehicles"],"children":["$","$L6",null,{"parallelRouterKey":"children","error":"$8","errorStyles":[],"errorScripts":[["$","script","script-0",{"src":"/_next/static/chunks/2cadmia42yf_8.js","async":true}]],"template":["$","$L9",null,{}],"notFound":[["$","$Lb",null,{"title":"Page not found","body":"That address isn't a page in Accnomos — check for a typo, or head back home. Nothing is lost."}],[]]}]}]}]]}]]}],"p":"$@c","v":null,"s":"$d"},"c":"$Qe"},"h":{"r":["$","$1","h",{"children":[null,["$","$L1b",null,{"children":[["$","meta","0",{"charSet":"utf-8"}],["$","meta","1",{"name":"viewport","content":"width=device-width, initial-scale=1"}]]}],["$","$L1d",null,{"children":[["$","div",null,{"hidden":true,"children":["$","$1e",null,{"name":"Next.Metadata","children":[["$","title","0",{"children":"Terms of use — Accnomos"}],["$","meta","1",{"name":"description","content":"The plain terms for using the Accnomos hackathon build, its demo and its sample books."}],["$","link","2",{"rel":"icon","href":"/favicon.ico?favicon.117ezoe8m31dk.ico","sizes":"48x48","type":"image/x-icon"}],["$","$L1f","3",{}]]}]}],null]}],["$","meta",null,{"name":"next-size-adjust","content":""}]]}],"p":"$@20","v":null,"s":"$d"}},"a":"$@21","u":"$@22","b":"x-t7cigNckBABqEQQQlWE"}
+23:I[74174,["$2","$3","$4"],""]
+24:I[50381,["$2","$3","$4"],"OutletBoundary"]
+12:["$","li",null,{"children":"Accnomos is not tax, legal or accounting advice. You remain responsible for your records and for what you send to HMRC. If you are unsure, ask an accountant."}]
+13:["$","li",null,{"children":"Direct submission to HMRC goes to HMRC's sandbox (its test service). For a real return, Accnomos prepares the figures and files for you to submit."}]
+14:["$","section",null,{"className":"mt-8 space-y-3 text-[15px] leading-relaxed","children":[["$","h2",null,{"className":"text-xl font-bold","children":"Your books and your data"}],["$","p",null,{"children":["Your books are files in your own Microsoft OneDrive. We run no user database and keep no copy; you can export or delete them at any time. How we handle everything else is in the"," ",["$","$L23",null,{"className":"font-semibold text-teal-dark underline","href":"/privacy","children":"privacy policy"}],"."]}]]}]
+15:["$","section",null,{"className":"mt-8 space-y-3 text-[15px] leading-relaxed","children":[["$","h2",null,{"className":"text-xl font-bold","children":"The demo and the sample books"}],["$","p",null,{"children":"The demo sandbox and the sample books use a fictional company. Each demo is kept in memory on our server, reset after 2 hours, and seen only by you. Please do not upload real documents to it."}]]}]
+16:["$","section",null,{"className":"mt-8 space-y-3 text-[15px] leading-relaxed","children":[["$","h2",null,{"className":"text-xl font-bold","children":"Fair use and availability"}],["$","p",null,{"children":"Do not try to break, overload or misuse the service or other people's data. The service is provided as it is, may change or stop, and has not been load-tested; keep your own copy of anything important (your OneDrive already holds it)."}]]}]
+17:["$","section",null,{"className":"mt-8 space-y-3 text-[15px] leading-relaxed","children":[["$","h2",null,{"className":"text-xl font-bold","children":"Contact"}],["$","p",null,{"children":["Questions about these terms:"," ",["$","a",null,{"className":"font-semibold text-teal-dark underline","href":"mailto:admin@zaytunauk.co.uk","children":"admin@zaytunauk.co.uk"}],"."]}]]}]
+18:["$","$L24",null,{"children":["$","$1e",null,{"name":"Next.MetadataOutlet","children":"$@25"}]}]
+d:300
+25:null
+22:true
+d:C
+21:0
+f:"$undefined"
+c:"$undefined"
+20:"$undefined"
+19:"$undefined"

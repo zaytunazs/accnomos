@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 457" preserveAspectRatio="xMidYMid slice">
+  <!-- Accnomos pitch band: a receipt photographed on a phone becomes an approved entry. Flat shapes only, no hairline
+       strokes or textures, so it stays clean at any size (replaces hero.jpg / hero-800.jpg). -->
+  <rect width="800" height="457" fill="#F4F3EE"/>
+  <circle cx="610" cy="210" r="190" fill="#E6F1EF"/>
+  <circle cx="150" cy="380" r="120" fill="#EDE8DC"/>
+
+  <!-- the receipt -->
+  <g transform="rotate(-8 170 250)">
+    <rect x="96" y="128" width="148" height="210" rx="10" fill="#FFFFFF"/>
+    <rect x="116" y="152" width="84" height="12" rx="6" fill="#1B1F24" opacity=".75"/>
+    <rect x="116" y="180" width="108" height="8" rx="4" fill="#C9C6BA"/>
+    <rect x="116" y="198" width="92" height="8" rx="4" fill="#C9C6BA"/>
+    <rect x="116" y="216" width="100" height="8" rx="4" fill="#C9C6BA"/>
+    <rect x="116" y="262" width="56" height="10" rx="5" fill="#4B5159"/>
+    <rect x="186" y="258" width="38" height="16" rx="6" fill="#0F6E63"/>
+    <rect x="116" y="296" width="108" height="20" rx="6" fill="#F4F3EE"/>
+  </g>
+
+  <!-- the phone -->
+  <rect x="268" y="96" width="132" height="250" rx="22" fill="#1B1F24"/>
+  <rect x="279" y="112" width="110" height="218" rx="14" fill="#FFFFFF"/>
+  <rect x="295" y="134" width="78" height="96" rx="8" fill="#E6F1EF"/>
+  <rect x="309" y="150" width="50" height="64" rx="4" fill="#FFFFFF"/>
+  <rect x="295" y="246" width="78" height="10" rx="5" fill="#C9C6BA"/>
+  <rect x="295" y="266" width="56" height="10" rx="5" fill="#C9C6BA"/>
+  <rect x="295" y="292" width="78" height="22" rx="11" fill="#0F6E63"/>
+
+  <!-- one arrow: phone to books -->
+  <path d="M418 220 C 455 200, 480 200, 512 214" fill="none" stroke="#0F6E63" stroke-width="10" stroke-linecap="round"/>
+  <path d="M502 194 L 528 220 L 494 230 Z" fill="#0F6E63"/>
+
+  <!-- the books: one approved entry -->
+  <rect x="540" y="104" width="196" height="240" rx="16" fill="#FFFFFF"/>
+  <rect x="540" y="104" width="196" height="46" rx="16" fill="#0A4F47"/>
+  <rect x="540" y="134" width="196" height="16" fill="#0A4F47"/>
+  <rect x="560" y="120" width="88" height="12" rx="6" fill="#F4F3EE" opacity=".9"/>
+  <rect x="560" y="176" width="100" height="12" rx="6" fill="#1B1F24" opacity=".75"/>
+  <rect x="676" y="176" width="40" height="12" rx="6" fill="#1B1F24" opacity=".75"/>
+  <rect x="560" y="208" width="80" height="10" rx="5" fill="#C9C6BA"/>
+  <rect x="684" y="208" width="32" height="10" rx="5" fill="#C9C6BA"/>
+  <rect x="560" y="236" width="90" height="10" rx="5" fill="#C9C6BA"/>
+  <rect x="684" y="236" width="32" height="10" rx="5" fill="#C9C6BA"/>
+  <rect x="560" y="290" width="156" height="34" rx="17" fill="#E6F1EF"/>
+  <circle cx="702" cy="102" r="30" fill="#0F6E63"/>
+  <path d="M688 102 L 698 112 L 717 92" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

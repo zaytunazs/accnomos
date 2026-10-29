@@ -1,0 +1,33 @@
+# Static Next.js export on Apache (Plesk). Serve /connect as connect.html etc.
+Options -MultiViews -Indexes
+# Next 16 exports both vat.html and a vat/ folder (RSC segments), so /vat must win over the folder:
+# never redirect to a trailing slash, and map /vat or /vat/ to vat.html whenever that page exists.
+DirectorySlash Off
+RewriteEngine On
+RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+RewriteRule ^([^.]+?)/?$ $1.html [L]
+ErrorDocument 404 /404.html
+<IfModule mod_headers.c>
+  # Security headers (docs/SECURITY.md); "always" so error pages carry them too. HSTS only when served over TLS.
+  Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" "expr=%{HTTPS} == 'on'"
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "strict-origin-when-cross-origin"
+  # The app itself uses the microphone (voice questions) and camera (receipt photos); nothing else, and no embeds.
+  Header always set Permissions-Policy "camera=(self), microphone=(self), geolocation=(), payment=(), usb=(), interest-cohort=()"
+  Header always set X-Frame-Options "DENY"
+  Header always set Content-Security-Policy "frame-ancestors 'none'; base-uri 'self'; object-src 'none'"
+  # A full policy in report-only mode first (docs/SECURITY.md): violations show in the browser console and nothing
+  # is blocked. Scripts still need 'unsafe-inline' (Next's inline bootstrap has no nonce in a static export). The
+  # point is connect-src: tokens could only be sent to the runtime/relay, Graph (and its download hosts) and
+  # Microsoft sign-in. Enforce it once a release has run clean with it.
+  Header always set Content-Security-Policy-Report-Only "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' blob:; worker-src 'self' blob:; connect-src 'self' https://api.accnomos.com https://graph.microsoft.com https://*.sharepoint.com https://*.1drv.com https://*.onedrive.com https://*.microsoftpersonalcontent.com https://login.microsoftonline.com https://login.live.com; frame-src https://login.microsoftonline.com https://login.live.com; form-action 'self'; base-uri 'self'; object-src 'none'"
+  # Caching (docs/PERF.md). Pages, RSC payloads (.txt) and unhashed public files are revalidated on every use
+  # (a cheap 304 via ETag), so a deploy shows at once. Not "always", so error responses (a 404 for a chunk
+  # an old page asks for after a deploy) never get the year-long header below.
+  Header set Cache-Control "no-cache"
+  # Next's build output under /_next/static/ is content-hashed and never changes under the same name: a year.
+  # (<If> is merged after the line above, so it wins for these paths.)
+  <If "%{REQUEST_URI} =~ m#^/_next/static/#">
+    Header set Cache-Control "public, max-age=31536000, immutable"
+  </If>
+</IfModule>
