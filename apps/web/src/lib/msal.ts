@@ -115,11 +115,13 @@ export function mailSendScopesFor(kind: AccountKind): string[] {
 /**
  * A silent token request that Microsoft did not answer in time. MSAL v5 falls back to a hidden iframe when the cached
  * refresh token cannot be used (for instance a new scope such as Files.Read.All for the accountant portal); with
- * third-party cookies blocked, or a slow network, that iframe gives up with `timed_out` (BrowserAuthError, MSAL's
- * error codes: https://learn.microsoft.com/entra/identity-platform/msal-error-handling-js, checked 29 Oct 2026).
+ * third-party cookies blocked, throttling or a slow network, that iframe gives up: BrowserAuthError
+ * `monitor_window_timeout` ("Token acquisition in iframe failed due to timeout"), whose documented remedy is an
+ * interactive call such as acquireTokenRedirect (https://learn.microsoft.com/entra/msal/javascript/browser/errors
+ * #browserautherrors, checked 29 Oct 2026). The live site reported it as `timed_out`, so both are matched.
  * These are not the user's fault and not a reason to show MSAL's own words.
  */
-const TIMEOUT_CODES = new Set(["timed_out", "monitor_window_timeout", "block_iframe_reload", "silent_logout_unsupported"]);
+const TIMEOUT_CODES = new Set(["timed_out", "monitor_window_timeout", "block_iframe_reload"]);
 
 /** The sentence the app shows for a sign-in Microsoft did not confirm in time (components/States.tsx matches it). */
 export const SIGN_IN_SLOW =

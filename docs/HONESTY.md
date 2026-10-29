@@ -333,7 +333,7 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - **Archive, backups, Clean up, search and the storage overview are untested against a real OneDrive.** Everything in `services/runtime/app/files.py`, `archive.py` and `backups.py` has run only on `FakeStorageProvider` (`test_files_archive.py`) and the test-mode fake behind the e2e specs (`files-manage.spec.ts`). Not measured or tried on Graph: how long the overview's walk takes on a big folder (one listing per folder, at most 8 in flight; a book with years of monthly receipt folders and events is hundreds of listings per visit, and the Files page asks for the overview and the index together, so it walks twice); whether `quickXorHash`/`sha1Hash` are always present in listings (personal vs work accounts differ; without them only same-size files are read and hashed); how moves of hundreds of files behave under throttling (each is one PATCH, one at a time; a run that fails part way records the moves it made, so links follow and Undo puts them back, but if the runtime process itself dies mid-run those moves are not recorded); and large zips (a year's zip and a backup are built in memory, capped at 50 MB and 100 MB, and uploaded in one upload-session PUT, which Graph allows up to 60 MiB per fragment, so a backup between 60 and 100 MB would likely fail). The redirect map only covers moves the app makes; a file the user moves by hand in OneDrive still breaks its Review link, as before. Restore compares bytes, so it reads every `_System` file once to build the preview. The monthly backup runs only from the web app, only on a device where it was switched on, and only when the app is opened in a new month: a month nobody opens the app has no backup. `_Trash` is never emptied by the app and grows until the user empties it.
 - With no business settings saved, Home *Deadlines* assumes stagger 1 and now says so (`assumed: true`); the phone sends its saved stagger (or nothing, when none is saved) and shows the same note, linking to Settings. With annual accounting the tiles show "—" and "Annual VAT returns are not worked out yet". `GET /books/deadlines` returns `start_month` normalised to 1–3.
 - A provider-level read failure now marks only its tiles `{"error": ...}` (Graph 401/403 still fails the whole request, so the app signs in again); the Android app does not read that marker (not run). A failed pull-to-refresh on the phone keeps the old figures under a "Could not load your figures" line; the tiles are not marked stale.
-- The web sidebar names the saved AI choice (Glimmer on your machine, Muse Spark on your key, or the stub in test mode). Ask uses the period picked on `/vat` but has no picker of its own.
+- The web's AI line (account menu; the signed-out sidebar) says "AI: Meta Muse models", "… your own key" or "… on your own computer" from the choice saved on this device (the stub in test mode), and links to `/meta-models`. It does not ask the runtime which provider actually served the last reading: a stale "own computer" choice on a hosted app still says so (and the runtime refuses a base URL that is not on its allow-list). Ask uses the period picked on `/vat` but has no picker of its own.
 
 - **Home dashboard and its summary (`GET /books/home`, claude/dashboard-ui) run on fakes only.** The summary has been
   worded only by the test-mode stub AI and by code; no real model (Glimmer, Muse Spark, Modal) has written one, so how
@@ -349,6 +349,36 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
   Payroll's "next run" is the month after the last confirmed run; the pay date is shown only for a prepared run.
   The cheaper-options line calls `GET /books/prices` on every Home visit. The Android app shows only the summary card
   from this endpoint; `flutter analyze` and `flutter test` were not run for it (no Flutter SDK in that session).
+
+## App shell (claude/app-shell)
+
+Review: `docs/reviews/app-shell/REVIEW.md`.
+
+- **The live-site cause is inferred, not reproduced on the live site.** The owner's signed-in `/accountant` showed the
+  signed-out sidebar with no menu bar. In code that state needs "this device is signed in" (`lib/signed-in.ts`) to be
+  true while MSAL returns no account (TopBar returned null). The old sign-in test counted any `msal.*` key but
+  `msal.version`, and MSAL 5.26 names its keys `msal.3.account.keys`, `msal.<clientId>.active-account-filters` and so
+  on, which always passed; MSAL 5 also encrypts its localStorage cache with a key in a session cookie, so after the
+  browser is closed it cannot read its own accounts (read in `node_modules/@azure/msal-browser/dist/cache/LocalStorage.mjs`).
+  The e2e spec reproduces that state with the test sign-in, not with real MSAL; no real Microsoft account was used.
+- **The MSAL timeout handling has run only against the test sign-in's fake `timed_out` error** (`app-shell.spec.ts`).
+  With real MSAL, two silent requests that time out at once each start an interactive redirect; MSAL refuses the second
+  (`interaction_in_progress`), which then shows as that page's error until the redirect returns. The five-minute
+  guard is per tab (sessionStorage).
+- **The accountant link** shows only on a device where that account's portal has listed at least one client; an
+  accountant on a new device reaches `/accountant` from the public Accountants page first. Nothing checks with Microsoft
+  in the background, by design (it would need `Files.Read.All` on every page).
+- **Back up now and earlier files have run on fake storage only** (`test_full_backup_previous_files.py`, the test-mode
+  fake in the e2e). The full backup lives in `Accnomos Backups/` *inside* the books folder: a personal account's
+  `Files.ReadWrite.AppFolder` reaches only `Apps/Accnomos`, so a backup outside it would need a wider permission. It is a
+  separate top-level folder that Archive, Clean up and moves leave alone, not a separate OneDrive location; deleting the
+  whole Accnomos folder deletes the backups too. Documents themselves are not copied (the index lists them; OneDrive
+  keeps their versions). There is no retention for full backups. Progress is per step (five steps), not per byte; the
+  `_System` zip is built in memory under the same 100 MB cap as the dated zips.
+- **Earlier files** are matched by path to what the books point at (proposals' files, bank statements' lines). A file
+  the user renamed or moved by hand in OneDrive after it was read shows as "not read"; reading it again gives a
+  DUPLICATE check in Review, so nothing is posted twice, but the user sees it offered. Only 00 Inbox, 01 Receipts and
+  02 Needs a look are looked in.
 
 ## Profiles (linked accounts)
 

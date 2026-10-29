@@ -12,7 +12,9 @@
         RESTORE.txt               how to restore, in plain words
 
 The folder sits at the top of the books folder. A personal Microsoft account gives Accnomos only its app folder
-(Files.ReadWrite.AppFolder: "Apps/Accnomos"), so a backup cannot sit outside it there; it is still a separate
+(Files.ReadWrite.AppFolder: "Apps/Accnomos"; "the service automatically limits access to a single folder",
+https://learn.microsoft.com/graph/onedrive-sharepoint-appfolder#security, checked 29 Oct 2026), so a backup cannot sit
+outside it there; it is still a separate
 folder from the live books' folders, never moved by Archive or Clean up (app/files.py protects it). Work accounts
 use the same layout under /Accnomos. Nothing is deleted: there is no retention for full backups; the user removes
 old ones in OneDrive.
