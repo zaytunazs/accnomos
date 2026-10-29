@@ -1,5 +1,7 @@
 # Income Tax quarterly update (sole trader or landlord)
 
+![Income Tax quarterly update (sole trader or landlord)](img/income-tax-update-cover.png)
+
 Who this is for: a sole trader or landlord sending Making Tax Digital Income
 Tax updates. Deadlines for standard quarters: 7 August, 7 November, 7 February
 and 7 May, with Self Assessment on 31 January. HMRC contact is sandbox only.

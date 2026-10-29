@@ -1,5 +1,7 @@
 # Use voice and chat
 
+![Use voice and chat](img/voice-chat-cover.png)
+
 Who this is for: an owner asking about the books hands-free or in plain words.
 Answers are grounded in your books; instructions become cards that wait for
 Approve. Voice needs key mode with your Meta key; the browser records, the

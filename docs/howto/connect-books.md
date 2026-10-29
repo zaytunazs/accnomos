@@ -1,5 +1,7 @@
 # Connect your books (OneDrive) or try the demo
 
+![Connect your books (OneDrive) or try the demo](img/connect-books-cover.png)
+
 Who this is for: a new owner opening Accnomos for the first time, with a
 Microsoft account and no books set up yet. All data shown is the demo sandbox's
 sample company, labelled SAMPLE — FICTIONAL COMPANY.
