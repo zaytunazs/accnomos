@@ -72,7 +72,7 @@ def test_runs_every_step_in_order_and_logs(box: dict[str, Path]) -> None:
     assert r.returncode == 0, r.stdout + r.stderr
     log = _log(box)
     order = [m for m in re.findall(r"STEP (\w+): start", log)]
-    assert order == ["gen_gold4", "gen_personal", "bank_ai", "extraction_ledger4", "cis_read", "property_docs"]
+    assert order == ["gen_gold4", "gen_personal", "bank_ai", "extraction_ledger4", "cis_read", "property_docs", "stt"]
     assert "STEP extraction_ledger2: skipped" in log and "another schema" in log
     assert "STEP extraction_ledger3: skipped" in log
     assert "nice -n 19" in log  # the politeness prefix is announced
@@ -84,9 +84,10 @@ def test_runs_every_step_in_order_and_logs(box: dict[str, Path]) -> None:
     assert calls[2].startswith(str(box["repo"] / "evals")) and "-m harness.bank_ai" in calls[2]
     assert "--gold-dir gold/ledger4/receipts" in calls[3] and "--messy" in calls[3] and "Bramblewood" in calls[3]
     assert "-m harness.cis_read" in calls[4] and "-m harness.property_docs" in calls[5]
+    assert calls[6].endswith(":: -m harness.stt --generate")
     assert sorted(p.name for p in (box["jobs"] / "state").iterdir()) == [
         "bank_ai.done", "cis_read.done", "extraction_ledger4.done", "gen_gold4.done", "gen_personal.done",
-        "property_docs.done",
+        "property_docs.done", "stt.done",
     ]  # fmt: skip
 
 
@@ -95,7 +96,7 @@ def test_second_run_skips_done_steps(box: dict[str, Path]) -> None:
     n = len(_calls(box))
     r = _run(box, "--no-check")
     assert r.returncode == 0 and len(_calls(box)) == n
-    assert _log(box).count("skipped, already done") == 5
+    assert _log(box).count("skipped, already done") == 6
     r = _run(box, "--no-check", "--force", "--only", "bank_ai")
     assert r.returncode == 0 and len(_calls(box)) == n + 1
 
@@ -138,9 +139,10 @@ def test_unknown_option_is_an_error(box: dict[str, Path]) -> None:
 def test_a_down_model_server_skips_its_steps(box: dict[str, Path]) -> None:
     dead = "http://127.0.0.1:1/x"
     r = _run(box, env={"QWEN_URL": dead, "OLLAMA_URL": dead})
-    assert r.returncode == 1 and not _calls(box)
+    # stt needs neither Qwen nor Ollama (it talks to Meta and the Spark's Whisper), so only it runs
+    assert r.returncode == 1 and [c.split(" :: ")[1] for c in _calls(box)] == ["-m harness.stt --generate"]
     assert "the qwen server did not answer" in _log(box) and "the ollama server did not answer" in _log(box)
-    assert not list((box["jobs"] / "state").iterdir())
+    assert [p.name for p in (box["jobs"] / "state").iterdir()] == ["stt.done"]
 
 
 @pytest.mark.skipif(shutil.which("flock") is None, reason="needs flock")

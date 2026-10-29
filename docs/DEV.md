@@ -31,7 +31,9 @@ gets a 400 (the web app's default local URL, `http://192.168.1.176:11434`, needs
 WAV mono 16 kHz before Muse Voice Transcribe). Windows: `winget install Gyan.FFmpeg`; macOS: `brew install ffmpeg`;
 Debian/Ubuntu: `apt install ffmpeg` (the runtime Docker image includes it). The runtime checks at startup: without
 ffmpeg it logs a warning, `/health` reports `"voice": false` and `/books/ask/voice` answers 503. Its tests skip the
-conversion cases when ffmpeg is missing. Voice works in key mode only (the user's Meta API key); local mode gets a 400.
+conversion cases when ffmpeg is missing. Voice needs a speech-to-text service (`app/ai/stt.py`): Muse Voice Transcribe with the user's key (key mode) or the
+server's `META_API_KEY`, then Whisper on the Spark when `SPARK_WHISPER_URL` is set; with none of them the route answers
+400. Test mode has no speech-to-text.
 
 **Accountant collaboration** (`docs/ARCHITECTURE.md`): `ACCOUNTANT_TEAM_EMAIL` (empty by default) shows the
 "Reviews by Accnomos accountants" opt-in; the Playwright runtime sets `reviews@accnomos.example`. In test mode,

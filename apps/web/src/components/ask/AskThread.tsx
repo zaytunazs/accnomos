@@ -29,17 +29,19 @@ interface Turn {
   elapsedS?: number;
   /** From hold-to-talk: tapping the transcript puts it back in the box to edit. */
   voice?: boolean;
+  /** The speech-to-text service that heard it, shown as "Transcribed by …". */
+  heardBy?: string;
   /** When the answer arrived, by this device's clock (Date.now()): an action card restored after a reload lapses on time. */
   at?: number;
 }
 
 type Mode = "loading" | "sample" | "live";
 
-function Question({ text, voice, onEdit }: { text: string; voice?: boolean; onEdit?: () => void }) {
+function Question({ text, voice, heardBy, onEdit }: { text: string; voice?: boolean; heardBy?: string; onEdit?: () => void }) {
   const bubble =
     "max-w-[min(32rem,85%)] rounded-2xl bg-teal px-4 py-3 text-left text-[15px] leading-6 text-white";
   return (
-    <div className="flex justify-end">
+    <div className="flex flex-col items-end gap-1">
       {text ? (
         voice && onEdit ? (
           <button
@@ -57,6 +59,7 @@ function Question({ text, voice, onEdit }: { text: string; voice?: boolean; onEd
       ) : (
         <p className="rounded-2xl bg-teal/70 px-4 py-3 text-[15px] italic leading-6 text-white">Transcribing…</p>
       )}
+      {text && voice && heardBy && <p className="text-[12px] text-muted">Transcribed by {heardBy}</p>}
     </div>
   );
 }
@@ -171,8 +174,9 @@ export default function AskThread() {
     setTurns([...before, { question: "" }]);
     setBusy(true);
     try {
-      const { transcript, ...answer } = await runtime.askVoice(acct, audio, askPeriod(), historyOf(before));
-      setTurns([...before, { question: transcript, answer, elapsedS: (performance.now() - started) / 1000, voice: true, at: Date.now() }]);
+      const { transcript, transcribed_by, ...answer } = await runtime.askVoice(acct, audio, askPeriod(), historyOf(before));
+      const heardBy = transcribed_by?.label;
+      setTurns([...before, { question: transcript, answer, elapsedS: (performance.now() - started) / 1000, voice: true, heardBy, at: Date.now() }]);
     } catch (e) {
       setTurns([...before, { question: "(voice question)", error: e instanceof Error ? e.message : String(e) }]);
     } finally {
@@ -204,11 +208,12 @@ export default function AskThread() {
         setOffline(true);
         return setMode("sample");
       }
+      const serverStt = (health.stt ?? []).some((p) => p.configured);
       setVoiceOff(
-        ai?.mode !== "key"
-          ? "Voice needs a Meta API key — switch to key mode in Settings (local AI can't transcribe)"
-          : health.voice === false
-            ? "Voice isn't available on your reader service (ffmpeg is missing)"
+        health.voice === false
+          ? "Voice isn't available on your reader service (ffmpeg is missing)"
+          : ai?.mode !== "key" && !serverStt
+            ? "Voice needs a Meta API key — switch to key mode in Settings, or set up speech-to-text on your reader service"
             : null,
       );
       setAccount(acct);
@@ -284,8 +289,9 @@ export default function AskThread() {
                   means the model was unavailable and code answered from the ledger alone.
                 </p>
                 <p>
-                  Spoken questions are transcribed by Muse Voice Transcribe (key mode only) and
-                  then go through the same grounded Ask. Audio is not kept.
+                  Spoken questions are transcribed by Muse Voice Transcribe (Whisper on our DGX Spark
+                  steps in if it fails), then go through the same grounded Ask. Each one says which
+                  service heard it. Audio is not kept.
                 </p>
               </Explain>
             </div>
@@ -361,6 +367,7 @@ export default function AskThread() {
               <Question
                 text={t.question}
                 voice={t.voice}
+                heardBy={t.heardBy}
                 onEdit={
                   busy
                     ? undefined

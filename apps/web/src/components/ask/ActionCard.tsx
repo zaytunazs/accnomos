@@ -345,6 +345,9 @@ export default function ActionCard({
         Proposed · {TITLES[action.kind]} · needs your OK
       </p>
       <Details action={action} />
+      {action.transcribed_by && (
+        <p className="mt-2 text-[12px] text-muted">Spoken request · transcribed by {action.transcribed_by.label} (kept in the audit log)</p>
+      )}
 
       {warnings.length > 0 && (
         <ul className="mt-3 flex flex-col gap-1 rounded-xl border border-warn-border bg-warn-bg p-3 text-[14px] leading-6 text-warn-ink">

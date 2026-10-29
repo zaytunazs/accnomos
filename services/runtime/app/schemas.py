@@ -366,6 +366,16 @@ ActionKind = Literal[
 ]
 
 
+class Transcription(StrictBody):
+    """Who heard a spoken request (app/ai/stt.py): shown as "Transcribed by …", kept on a proposal it led to (covered
+    by the signature) and in the actions audit log."""
+
+    provider: str = Field(max_length=16)  # muse | whisper
+    label: str = Field(max_length=60)  # Muse Voice Transcribe | Whisper on the DGX Spark
+    model: str = Field(max_length=100)
+    fallback_reason: str | None = Field(default=None, max_length=600)  # an earlier provider failed: "<label>: <why>"
+
+
 class ProposedAction(StrictBody):
     """Something Ask offers to do (app/actions.py). Kept by the client only and posted back to approve.
 
@@ -380,6 +390,9 @@ class ProposedAction(StrictBody):
     confirm_text: str = Field(max_length=400)
     created_at: datetime
     expires_at: datetime
+    # Set when the request was spoken: which speech-to-text service heard it. Signed with the rest; None is left out
+    # of the signed payload, so typed proposals sign exactly as before.
+    transcribed_by: Transcription | None = None
     signature: str = Field(default="", max_length=64)
 
 
@@ -409,6 +422,7 @@ class AskAnswer(AskModelOutput):
 
 
 class AskVoiceAnswer(AskAnswer):
-    """POST /books/ask/voice: the answer plus what Muse Voice heard."""
+    """POST /books/ask/voice: the answer plus what was heard, and by which speech-to-text service."""
 
     transcript: str
+    transcribed_by: Transcription | None = None

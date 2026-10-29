@@ -1222,7 +1222,12 @@ def _tenant() -> bytes:
 
 def _payload(action: ProposedAction) -> bytes:
     return json.dumps(
-        action.model_dump(mode="json", exclude={"signature"}), sort_keys=True, separators=(",", ":"), ensure_ascii=False
+        action.model_dump(
+            mode="json", exclude={"signature"} | ({"transcribed_by"} if action.transcribed_by is None else set())
+        ),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
     ).encode()
 
 
@@ -1342,6 +1347,13 @@ class _Stop(Exception):
         self.row = row
 
 
+def _heard(action: ProposedAction) -> dict[str, Any]:
+    """A spoken request's provenance for the audit line: which speech-to-text service heard it (no key, no audio)."""
+    if action.transcribed_by is None:
+        return {}
+    return {"transcribed_by": action.transcribed_by.model_dump(mode="json")}
+
+
 def _audit_path(action: ProposedAction) -> str:
     return f"{ACTIONS_AUDIT}/{action.created_at:%Y-%m}.jsonl"
 
@@ -1369,6 +1381,7 @@ async def _claim(books: Books, action: ProposedAction, user: str) -> dict[str, A
         "user": user,
         "summary_md": action.summary_md,
         "preview": action.preview,
+        **_heard(action),
     }
 
     def change(raw: bytes | None) -> bytes:
@@ -1724,6 +1737,7 @@ async def reject(action: ProposedAction, ctx: Context, reason: str | None = None
         "user": ctx.user,
         "reason": (reason or "").strip()[:300] or None,
         "summary_md": action.summary_md,
+        **_heard(action),
     }
 
     def change(raw: bytes | None) -> bytes:

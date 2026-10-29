@@ -62,8 +62,8 @@ The numbers are calculated by code from your ledger and the AI only writes the w
 checked against the code's facts, and a figure that is not in your books is replaced. Each answer shows the files it
 used. You can also ask for actions, for example "send a £100 invoice to JM Trading": the AI only returns the intent,
 code finds the customer and prices the lines, and a card waits for you to tap Approve before anything happens. Voice
-questions use Muse Voice Transcribe in key mode; the voice path is unit-tested only and has not been run with a real
-microphone. Accnomos does not read answers aloud. This public chat is different: it only answers questions about
+questions use Muse Voice Transcribe, with Whisper on our own DGX Spark as the fallback, and each answer says which one
+heard you; the voice path is unit-tested only and has not been run with a real microphone. Accnomos does not read answers aloud. This public chat is different: it only answers questions about
 Accnomos itself and never sees anyone's books.
 Keywords: ask, question, questions, chat, chatbot, assistant, voice, speak, microphone, mic, actions, natural language, answer, grounded, figures
 
