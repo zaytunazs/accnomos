@@ -72,7 +72,8 @@ def test_docker_image_pins_it_off() -> None:
     sample = {"COPY evals/gold /srv/evals/gold", "COPY evals/harness/render.py /srv/evals/harness/render.py"}
     code = [ln for ln in lines if not ln.lstrip().startswith("#")]
     assert not any("ACCNOMOS_TEST_MODE=1" in ln for ln in code)
-    assert {ln for ln in code if "evals" in ln} == sample
+    # COPY lines only: an ENV naming the copied folder (ACCNOMOS_GOLD_DIR=/srv/evals/gold) adds nothing to the image.
+    assert {ln for ln in code if ln.startswith("COPY") and "evals" in ln} == sample
 
 
 def test_test_mode_is_refused_in_the_image(monkeypatch: pytest.MonkeyPatch) -> None:
