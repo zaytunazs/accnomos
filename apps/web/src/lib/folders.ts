@@ -3,11 +3,12 @@
 
 /** Every folder in the books tree, in the order it is created. Personal accounts: OneDrive app folder
  * (Apps/Accnomos). Work accounts: /Accnomos in the root. */
-export const FOLDERS: readonly string[] = ["00 Inbox", "01 Receipts", "02 Needs a look", "03 Sales", "04 Bank statements", "05 Payroll", "06 VAT returns", "07 Reports", "03 Sales/invoices", "03 Sales/invoices/sent", "_System", "_System/audit", "_System/docs", "_System/proposals", "_System/Ledger/events", "_System/bank"];
+export const FOLDERS: readonly string[] = ["00 Inbox", "01 Bulk upload", "01 Receipts", "02 Needs a look", "03 Sales", "04 Bank statements", "05 Payroll", "06 VAT returns", "07 Reports", "03 Sales/invoices", "03 Sales/invoices/sent", "_System", "_System/audit", "_System/docs", "_System/proposals", "_System/Ledger/events", "_System/bank"];
 
 /** The top-level folders, with the line README.txt shows for each. */
 export const TOP_FOLDERS: readonly { key: string; name: string; note: string }[] = [
   { key: "inbox", name: "00 Inbox", note: "drop receipts, invoices or statements here (photo, PDF, email attachment) and Accnomos will read them." },
+  { key: "bulk", name: "01 Bulk upload", note: "drop any number of files or .zip archives here and Accnomos files them in one go. Only this folder is read in bulk; zips are unpacked safely." },
   { key: "receipts", name: "01 Receipts", note: "purchase documents Accnomos has filed, by month, renamed like \"2026-10-21 Screwfix £38.47.pdf\"." },
   { key: "needs_a_look", name: "02 Needs a look", note: "anything odd (duplicates, missing VAT number, unreadable), with a reason. Nothing in here is posted." },
   { key: "sales", name: "03 Sales", note: "sales documents. Invoices you write in Accnomos are in invoices/, and the exact PDF each customer was sent is in invoices/sent/." },
@@ -20,6 +21,7 @@ export const TOP_FOLDERS: readonly { key: string; name: string; note: string }[]
 /** Top-level folder names by key. */
 export const FOLDER = {
   inbox: "00 Inbox",
+  bulk: "01 Bulk upload",
   receipts: "01 Receipts",
   needs_a_look: "02 Needs a look",
   sales: "03 Sales",
@@ -43,6 +45,7 @@ export const README_TEXT = `These are your books.
 
 This folder was created by Accnomos. Everything the app knows about your business is in here, in plain files:
 - 00 Inbox: drop receipts, invoices or statements here (photo, PDF, email attachment) and Accnomos will read them.
+- 01 Bulk upload: drop any number of files or .zip archives here and Accnomos files them in one go. Only this folder is read in bulk; zips are unpacked safely.
 - 01 Receipts: purchase documents Accnomos has filed, by month, renamed like "2026-10-21 Screwfix £38.47.pdf".
 - 02 Needs a look: anything odd (duplicates, missing VAT number, unreadable), with a reason. Nothing in here is posted.
 - 03 Sales: sales documents. Invoices you write in Accnomos are in invoices/, and the exact PDF each customer was sent is in invoices/sent/.

@@ -156,6 +156,7 @@ def test_runtime_web_and_android_lists_are_byte_for_byte_equal() -> None:
 def test_tree_shape() -> None:
     assert [f.name for f in paths.TOP] == [
         "00 Inbox",
+        "01 Bulk upload",
         "01 Receipts",
         "02 Needs a look",
         "03 Sales",

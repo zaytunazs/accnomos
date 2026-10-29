@@ -21,6 +21,7 @@ class Folder(NamedTuple):
 
 
 INBOX = "00 Inbox"
+BULK = "01 Bulk upload"
 RECEIPTS = "01 Receipts"
 NEEDS_A_LOOK = "02 Needs a look"
 SALES = "03 Sales"
@@ -57,6 +58,11 @@ TOP: tuple[Folder, ...] = (
         "inbox",
         INBOX,
         "drop receipts, invoices or statements here (photo, PDF, email attachment) and Accnomos will read them.",
+    ),
+    Folder(
+        "bulk",
+        BULK,
+        "drop any number of files or .zip archives here and Accnomos files them in one go. Only this folder is read in bulk; zips are unpacked safely.",
     ),
     Folder(
         "receipts",
