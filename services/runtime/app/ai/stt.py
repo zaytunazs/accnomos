@@ -47,7 +47,8 @@ KNOWN: tuple[SttName, ...] = ("muse", "whisper")
 DEFAULT_ORDER = "muse,whisper"
 DEFAULT_WHISPER_MODEL = "Systran/faster-whisper-large-v3"
 DEFAULT_TIMEOUTS: dict[str, float] = {"muse": 45.0, "whisper": 90.0}
-LABELS: dict[str, str] = {"muse": "Muse Voice Transcribe", "whisper": "a local fallback model"}  # shown to users: no non-Meta names
+# Shown to users (answers, action cards, /health): Meta names only, so the fallback is not named.
+LABELS: dict[str, str] = {"muse": "Muse Voice Transcribe", "whisper": "a local fallback model"}
 
 
 @dataclass(frozen=True)

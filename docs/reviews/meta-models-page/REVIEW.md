@@ -85,6 +85,12 @@ model":
   2026; the owner or their adviser should confirm a category is enough); Modal, which the server chain also sends documents to, was already not listed there, which is a gap
   for the owner to decide on.
 
+- Gate totals after the follow-up (29 Oct 2026): runtime `pytest -q` 2392 passed, 2 skipped; `ruff check`,
+  `ruff format --check` clean and `pyright app` 0 errors (after wrapping one over-long line in `app/ai/stt.py`);
+  web `eslint .` clean; `e2e:build` ok; full `e2e:test` (CI=1) 486 passed, 94 skipped, 0 failed. The Flutter
+  test fixture's label string changed (`apps/mobile/test/voice_provider_test.dart`); Flutter is not installed here,
+  so `flutter test` was not run.
+
 ## Risks
 
 - The page's words are a hand summary of the code: a new AI call site will not appear until someone adds it
