@@ -84,9 +84,14 @@ open with one line on what pre-existed and stay within 3:00.
 - [x] **Length**: 180 s exactly (shot 1 10 s, shot 2 trimmed to 18 s); each clip 35 s plus a 2 s title card.
 - [x] **Credit**: the end card carries "Title art: Muse Image (Meta)." on its own line; nothing else is credited.
 - [x] **Impact** (shots 2–3): the dashboard and MTD deadlines are real footage; shot 3 needs the phone filmed.
-- [ ] **Use of Meta AI tooling** (shots 4–5): the eval card is drawn from the script's table, which matches
-      `docs/submission/META_MODELS.md` (91/93 % Muse Spark Open, 85/80 % Muse Glimmer, Ask 32/32, synthetic). Shot 4
-      needs a live reading so the card names a Meta model honestly. Muse Image appears as the title art.
+- [ ] **Use of Meta AI tooling** (shots 4–5): the eval card (shot 5) names Meta models only and takes every figure
+      from `evals/runs/*/summary.json` on `main` with its sample size: receipts and invoices 91 / 93 % (Muse Spark
+      Open) and 85 / 80 % (Muse Glimmer), 200 clean + 200 messy; CIS 92.5 % of 120; property 89.8 % of 108; Ask 32 of
+      32 (`ask_40/report.md`). **The bank row (91.6 % of 459 lines) has no committed `evals/runs/bank_ai/summary.json`
+      on `main` yet: commit it before recording or drop the row.** Shot 4 needs a live reading so the card names a Meta
+      model honestly. Muse Image appears as the title art.
+- [x] **No third-party names on screen**: no hosting provider, serving tool or non-Meta model on any caption or card;
+      `tools/video/test_video_tools.py` checks every caption, card and end card in the manifest.
 - [x] **Technical depth** (shots 6–7): approve → ledger event file → `Books.xlsx`, and the nine VAT boxes by code, are
       real footage. **Check before recording:** shot 7's voice-over quotes the 28 Oct test counts (1260 / 208 / 248);
       the e2e count alone was 477 on 29 Oct. Re-run the gates and update the line.

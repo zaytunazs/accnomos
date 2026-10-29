@@ -147,3 +147,28 @@ def test_judge_facing_video_text_names_no_hardware_tool_or_voice_engine():
         # "Muse Spark" is a model; "Spark" alone would be the hardware.
         assert not re.search(r"(?<!muse )\bspark\b(?! open| 1\.\d)", low.replace("muse spark open", "")), "Spark"
     assert segments.CREDIT == "Title art: Muse Image (Meta)."
+
+
+def test_every_caption_and_card_names_only_meta_models():
+    """Owner's rule: no hosting provider, serving tool or non-Meta model on any caption or card (29 Oct 2026)."""
+    banned = (
+        r"\b(baseten|modal|ollama|vllm|sglang|llama\.cpp|qwen|claude|gpt|openai|whisper|kokoro|comfyui|dgx|nvidia)\b"
+    )
+    manifest = json.loads((ROOT / "docs/video/manifest.json").read_text(encoding="utf-8"))
+    for seq in manifest["sequences"]:
+        for shot in seq["shots"]:
+            for field in ("caption", "card", "end_card"):
+                text = shot.get(field) or ""
+                assert not re.search(banned, text, re.I), f"{shot['id']} {field}: {text}"
+    eval_card = next(s for s in manifest["sequences"][0]["shots"] if s["id"] == "judges-05")["card"]
+    for figure in (
+        "91 % clean",
+        "93 % messy",
+        "85 % clean",
+        "80 % messy",
+        "92.5 % of 120",
+        "89.8 % of 108",
+        "91.6 % of 459",
+    ):
+        assert figure in eval_card
+    assert "32 of 32" in eval_card and "real photos will score lower" in eval_card
