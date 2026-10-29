@@ -419,7 +419,11 @@ function VatSummary({ vat }: { vat: RtVatSummary }) {
   );
 }
 
-function Reports({ pl, prev, year, aged, vat, trend }: {
+/** Which report a page shows: everything (/reports), or one report on its own page. */
+export type ReportOnly = "pl" | "aged";
+
+function Reports({ pl, prev, year, aged, vat, trend, only }: {
+  only?: ReportOnly;
   pl: RtProfitAndLoss | null;
   prev: RtProfitAndLoss | null;
   year: RtProfitAndLoss | null;
@@ -429,9 +433,10 @@ function Reports({ pl, prev, year, aged, vat, trend }: {
 }) {
   return (
     <div className="flex flex-col gap-6">
-      {pl ? <ProfitAndLoss pl={pl} prev={prev} year={year} /> : <LoadingSkeleton lines={6} label="Working out the profit and loss…" />}
-      {trend && <Trend trend={trend} />}
-      {aged && (
+      {only !== "aged" &&
+        (pl ? <ProfitAndLoss pl={pl} prev={prev} year={year} /> : <LoadingSkeleton lines={6} label="Working out the profit and loss…" />)}
+      {!only && trend && <Trend trend={trend} />}
+      {only !== "pl" && aged && (
         <section aria-labelledby="aged-heading" className="flex flex-col gap-3 report-page-break">
           <PrintHeader title="Aged balances" period={`at ${ukDate(aged.as_of)}`} />
           <h2 id="aged-heading" className="text-lg font-extrabold">Aged balances · at {ukDate(aged.as_of)}</h2>
@@ -441,13 +446,13 @@ function Reports({ pl, prev, year, aged, vat, trend }: {
           </div>
         </section>
       )}
-      {vat && <VatSummary vat={vat} />}
+      {!only && vat && <VatSummary vat={vat} />}
     </div>
   );
 }
 
 /** Reports from the runtime when signed in (period from the VAT picker); the labelled sample otherwise. */
-export default function LiveReports() {
+export default function LiveReports({ only }: { only?: ReportOnly } = {}) {
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [state, setState] = useState<"checking" | "demo" | "live" | "error">("checking");
   const [error, setError] = useState<string | null>(null);
@@ -553,7 +558,7 @@ export default function LiveReports() {
         </div>
         {/* Paper only: the banner does not print, and a printed sample must still say what it is. */}
         <p className="hidden text-sm font-bold print:block">SAMPLE — FICTIONAL COMPANY · fictional figures</p>
-        <Reports pl={samplePl} prev={samplePlPrev} year={samplePlYear} aged={sampleAged} vat={sampleVat} trend={sampleTrend} />
+        <Reports only={only} pl={samplePl} prev={samplePlPrev} year={samplePlYear} aged={sampleAged} vat={sampleVat} trend={sampleTrend} />
       </div>
     );
   }
@@ -622,6 +627,7 @@ export default function LiveReports() {
       {state === "error" && error ? <RuntimeErrorNote message={error} title="Couldn't work out the reports" /> : null}
       {state === "live" && (
         <Reports
+          only={only}
           pl={pl}
           prev={compare && compare.period === period ? compare.prev : null}
           year={compare && compare.period === period ? compare.year : null}

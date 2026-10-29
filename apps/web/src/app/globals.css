@@ -249,3 +249,8 @@ body {
 html[data-signed-in] [data-public-only] {
   visibility: hidden;
 }
+
+/* A signed-in device: the signed-out sidebar and phone header never show, not even before React checks (AppShell). */
+html[data-signed-in] [data-signed-out-chrome] {
+  display: none !important;
+}

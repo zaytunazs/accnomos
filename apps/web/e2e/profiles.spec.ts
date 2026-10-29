@@ -100,7 +100,7 @@ test("two linked accounts: add one, set it up as personal, switch in one click; 
   await page.getByRole("button", { name: "Sign in with another Microsoft account" }).click();
   await page.getByRole("button", { name: "Create my Accnomos folder" }).click();
   await expect(page.getByText("Your folder is ready.")).toBeVisible();
-  await expect(page.getByText(JO, { exact: true })).toBeVisible(); // the Connect page's line, not the menu bar's "Account: …"
+  await expect(page.getByRole("main").getByText(JO, { exact: true })).toBeVisible(); // the Connect page's line (the menu bar shows it too)
 
   // Jo's books are personal. Every runtime call now carries Jo's token.
   const tokens: string[] = [];

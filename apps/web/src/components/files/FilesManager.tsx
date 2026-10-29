@@ -5,6 +5,8 @@ import type { AccountInfo } from "@azure/msal-browser";
 import ArchiveYears from "@/components/files/ArchiveYears";
 import BackupsPanel from "@/components/files/BackupsPanel";
 import FileSearch from "@/components/files/FileSearch";
+import FullBackupPanel from "@/components/files/FullBackupPanel";
+import PreviousFiles from "@/components/files/PreviousFiles";
 import StorageOverview from "@/components/files/StorageOverview";
 import { reason } from "@/components/files/manage";
 import { LoadingSkeleton, RuntimeErrorNote } from "@/components/States";
@@ -58,7 +60,9 @@ export default function FilesManager({ account, onTreeChanged }: { account: Acco
           <FileSearch account={account} index={index} onChanged={changed} />
         </>
       )}
+      <PreviousFiles account={account} onChanged={changed} />
       <ArchiveYears account={account} onChanged={changed} />
+      <FullBackupPanel account={account} onChanged={changed} />
       <BackupsPanel account={account} onChanged={changed} />
     </div>
   );

@@ -3512,7 +3512,96 @@ export const filesApi = {
   restorePreview: (a: AccountInfo, path: string) => call<RtRestorePreview>(a, "/backups/restore/preview", post({ path })),
   restore: (a: AccountInfo, path: string, confirm: string | null) =>
     call<RtRestoreResult>(a, "/backups/restore", post({ path, confirm })),
+  fullBackups: (a: AccountInfo) => call<{ backups: RtFullBackup[]; folder: string }>(a, "/backups/full"),
+  previousFiles: (a: AccountInfo) => call<RtPreviousFiles>(a, "/files/previous"),
+  queuePrevious: (a: AccountInfo, paths: string[]) =>
+    call<{ queued: number; moved: RtMoved[]; already_in_inbox: number }>(a, "/files/previous/queue", post({ paths })),
+  leavePrevious: (a: AccountInfo, paths: string[]) => call<{ left: number }>(a, "/files/previous/leave", post({ paths })),
 };
+
+/** One file of a full backup (services/runtime/app/full_backup.py). */
+export interface RtFullBackupFile {
+  name: string;
+  size: number;
+  sha256: string;
+}
+
+/** Back up now: a dated folder in "Accnomos Backups" (services/runtime/app/full_backup.py). */
+export interface RtFullBackup {
+  folder: string;
+  name: string;
+  created_at: string | null;
+  created_by: string | null;
+  files: RtFullBackupFile[];
+  ledger_files: number | null;
+  documents: number | null;
+  /** The zip verify and restore take (filesApi.verifyBackup / restorePreview). */
+  system_zip: string | null;
+  web_url: string | null;
+  /** manifest.json is there: the backup finished. */
+  complete: boolean;
+}
+
+export interface RtFullBackupProgress {
+  step: "folder" | "ledger" | "spreadsheet" | "index" | "manifest" | "done";
+  label: string;
+  done: number;
+  total: number;
+}
+
+/**
+ * POST /backups/full?stream=1: `onProgress` before each step as the runtime takes it, and the finished backup.
+ * Server-sent events, read as askStream reads them.
+ */
+export async function fullBackupStream(
+  account: AccountInfo,
+  onProgress: (p: RtFullBackupProgress) => void,
+): Promise<RtFullBackup> {
+  const headers = { ...(await runtimeHeaders(account)), Accept: "text/event-stream" };
+  const res = await fetch(`${RUNTIME_URL}/backups/full?stream=1`, { method: "POST", headers });
+  if (!res.ok) throw new Error(await errorDetail(res, "POST /backups/full"));
+  if (!res.body) throw new Error("No event stream");
+  const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+  let buffer = "";
+  for (;;) {
+    const { value, done } = await reader.read();
+    if (done) throw new Error("The backup stopped before it finished; nothing in your books changed");
+    buffer += value;
+    let cut: number;
+    while ((cut = buffer.indexOf("\n\n")) >= 0) {
+      const block = buffer.slice(0, cut);
+      buffer = buffer.slice(cut + 2);
+      const event = /^event: (.*)$/m.exec(block)?.[1];
+      const data = /^data: (.*)$/m.exec(block)?.[1];
+      if (!event || data === undefined) continue;
+      const payload: unknown = JSON.parse(data);
+      if (event === "progress") onProgress(payload as RtFullBackupProgress);
+      else if (event === "error") throw new Error((payload as { detail: string }).detail);
+      else if (event === "backup") {
+        void reader.cancel();
+        return payload as RtFullBackup;
+      }
+    }
+  }
+}
+
+/** A document in 00 Inbox, 01 Receipts or 02 Needs a look that nothing in the books points at
+ *  (services/runtime/app/previous_files.py). */
+export interface RtPreviousFile {
+  path: string;
+  name: string;
+  folder: string;
+  size: number;
+  modified: string | null;
+  web_url: string | null;
+}
+
+export interface RtPreviousFiles {
+  files: RtPreviousFile[];
+  count: number;
+  left_alone: number;
+  truncated: boolean;
+}
 
 /** This device runs the monthly backup check (components/files/MonthlyBackup.tsx) only while this is "1". */
 export const MONTHLY_BACKUP_KEY = "accnomos.monthlyBackup";

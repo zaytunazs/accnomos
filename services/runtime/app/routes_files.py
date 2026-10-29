@@ -6,12 +6,14 @@ deleted goes to _Trash (app/files.py). The work is in app/files.py, app/archive.
 
 from __future__ import annotations
 
+import json
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app import archive, backups
+from app import archive, backups, full_backup, previous_files
 from app import files as fm
 from app.books import Books
 from app.routes_books import get_books, require_user
@@ -25,6 +27,8 @@ FilePath = Annotated[str, Field(min_length=1, max_length=1000)]
 
 
 def _refused(exc: Exception) -> HTTPException:
+    if isinstance(exc, previous_files.FileError):
+        return HTTPException(status_code=409, detail=str(exc))
     if isinstance(exc, FileNotFoundError):
         return HTTPException(status_code=404, detail=f"No such file: {exc}")
     if isinstance(exc, FileExistsError):
@@ -264,4 +268,82 @@ async def restore(
             status_code=409, detail="A file changed while restoring; check the preview again and restore once more"
         ) from exc
     except backups.BackupError as exc:
+        raise _refused(exc) from exc
+
+
+# --------------------------------------------------------------------------- #
+# Full backups (Back up now) and earlier files never read
+# --------------------------------------------------------------------------- #
+
+
+class FullBackupList(BaseModel):
+    backups: list[full_backup.FullBackup]
+    folder: str = full_backup.FULL_BACKUPS
+
+
+@backups_router.get("/full", response_model=FullBackupList)
+async def list_full(books: Books = Depends(get_books)) -> FullBackupList:
+    """Full backups in "Accnomos Backups", newest first. Reads only."""
+    return FullBackupList(backups=await full_backup.list_full(books))
+
+
+@backups_router.post("/full", response_model=full_backup.FullBackup)
+async def back_up_full(
+    stream: bool = Query(False),
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
+):
+    """Back up now: a dated folder "Accnomos Backups/YYYY-MM-DD-HHMM" with _System's zip, Books.xlsx, the documents
+    index, a manifest and RESTORE.txt. `?stream=1` sends server-sent events: `progress` before each step, then
+    `backup` with the result (or `error` with a sentence)."""
+    if not stream:
+        try:
+            return await full_backup.run(books, user)
+        except backups.BackupError as exc:
+            raise _refused(exc) from exc
+
+    async def events():
+        try:
+            async for item in full_backup.back_up_full(books, user):
+                kind = "backup" if isinstance(item, full_backup.FullBackup) else "progress"
+                yield f"event: {kind}\ndata: {item.model_dump_json()}\n\n"
+        except (backups.BackupError, OSError) as exc:
+            yield f"event: error\ndata: {json.dumps({'detail': str(exc)})}\n\n"
+
+    return StreamingResponse(events(), media_type="text/event-stream", headers={"Cache-Control": "no-store"})
+
+
+@router.get("/previous", response_model=previous_files.PreviousFiles)
+async def find_previous(books: Books = Depends(get_books)) -> previous_files.PreviousFiles:
+    """Documents in 00 Inbox, 01 Receipts or 02 Needs a look that nothing in the books points at. Reads only."""
+    return await previous_files.find(books)
+
+
+class PreviousBody(StrictBody):
+    paths: list[FilePath] = Field(min_length=1, max_length=fm.MAX_BATCH)
+
+
+@router.post("/previous/queue", response_model=previous_files.QueueResult)
+async def queue_previous(
+    body: PreviousBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> previous_files.QueueResult:
+    """The user chose to have these read: the ones outside the Inbox move into it; the app then scans as usual."""
+    try:
+        return await previous_files.queue(books, body.paths, user)
+    except _ERRORS as exc:
+        raise _refused(exc) from exc
+
+
+class LeftResult(BaseModel):
+    left: int
+
+
+@router.post("/previous/leave", response_model=LeftResult)
+async def leave_previous(
+    body: PreviousBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> LeftResult:
+    """The user chose to leave these alone: they are not offered again. Nothing moves."""
+    try:
+        return LeftResult(left=await previous_files.leave(books, body.paths, user))
+    except _ERRORS as exc:
         raise _refused(exc) from exc

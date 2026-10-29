@@ -51,6 +51,10 @@ PROPERTY = f"{SYSTEM}/Property"  # app/property.py: let properties, tags, landlo
 ARCHIVE = "Archive"  # Archive/{year}/ keeps the same subfolders; Archive/{year}.zip is an extra copy
 BACKUPS = "Backups"  # Backups/accnomos-backup-YYYY-MM-DD.zip (+ .sha256), snapshots of _System
 TRASH = "_Trash"  # what the app would otherwise delete; only the user empties it, in OneDrive
+#: Full backups, made only by "Back up now" (app/full_backup.py): one dated folder each, YYYY-MM-DD-HHMM, holding a
+#: zip of _System, a copy of Books.xlsx, the documents index, a manifest and restore instructions. A top-level folder
+#: of its own, apart from the live books' folders (a personal account's app permission reaches only Apps/Accnomos).
+FULL_BACKUPS = "Accnomos Backups"
 
 TOP: tuple[Folder, ...] = (
     Folder(
@@ -112,9 +116,10 @@ def readme_text() -> str:
 This folder was created by Accnomos. Everything the app knows about your business is in here, in plain files:
 {rows}
 - Books.xlsx: a spreadsheet of your books, rebuilt from the files in {SYSTEM}. Do not edit it; it is overwritten.
-- {ARCHIVE}, {BACKUPS}, {TRASH}: made when first used. {ARCHIVE} holds older years you archived (same
-  subfolders), {BACKUPS} dated copies of {SYSTEM}, and {TRASH} anything the app would otherwise delete
-  (duplicates, old backups). Accnomos never empties {TRASH}; you can, in OneDrive.
+- {ARCHIVE}, {BACKUPS}, {FULL_BACKUPS}, {TRASH}: made when first used. {ARCHIVE} holds older years you archived
+  (same subfolders), {BACKUPS} dated copies of {SYSTEM}, {FULL_BACKUPS} the full backups you made with
+  "Back up now" (one dated folder each, with RESTORE.txt inside), and {TRASH} anything the app would otherwise
+  delete (duplicates, old backups). Accnomos never empties {TRASH}; you can, in OneDrive.
 - {SYSTEM}: the ledger events and the audit log (never edited: a correction is a new entry that reverses
   the old one), plus rules you approved, contacts, jobs, staff, timesheets, vehicles and your mileage log.
 

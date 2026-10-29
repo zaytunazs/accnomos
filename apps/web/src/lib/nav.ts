@@ -6,6 +6,9 @@
  * from src/app at build time by lib/routes.server.ts), so nothing in the menu 404s, and only when the profile's kind
  * has the feature (services/runtime/app/profile.py: personal books have no VAT, invoices or payroll; VAT pages need
  * a VAT-registered business; self-employment is for sole traders).
+ *
+ * Every item opens its own page with its own heading (e2e/menu-pages.spec.ts): no two labels share a page or an
+ * anchor. The same page may appear in two groups only under the same label (Customers under Sales and Contacts).
  */
 
 import type { RtProfileKind } from "./runtime";
@@ -46,8 +49,8 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Products and services", href: "/sales/items" },
       { label: "Repeating", href: "/sales/repeating" },
       { label: "Jobs", href: "/jobs" },
-      { label: "Customers", href: "/contacts" },
-      { label: "Sales settings", href: "/settings#settings-invoice-profile" },
+      { label: "Customers", href: "/contacts/customers" },
+      { label: "Sales settings", href: "/settings/sales" },
     ],
   },
   {
@@ -56,7 +59,7 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Purchases overview", href: "/purchases" },
       { label: "Bills (Review)", href: "/review", badge: "review" },
       { label: "Purchase orders", href: "/purchases/orders", kinds: BUSINESS },
-      { label: "Suppliers", href: "/contacts" },
+      { label: "Suppliers", href: "/contacts/suppliers" },
     ],
   },
   {
@@ -64,21 +67,21 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "All reports", href: "/reports" },
       { label: "Reports & exports", href: "/reports/exports" },
-      { label: "VAT return", href: "/vat", feature: "vat" },
-      { label: "Profit and loss", href: "/reports#pl-heading", kinds: BUSINESS },
+      { label: "VAT returns", href: "/vat", feature: "vat" },
+      { label: "Profit and loss", href: "/reports/profit-and-loss", kinds: BUSINESS },
       { label: "Balance sheet", href: "/reports/balance-sheet", kinds: BUSINESS },
-      { label: "Aged receivables and payables", href: "/reports#aged-heading", kinds: BUSINESS },
+      { label: "Aged receivables and payables", href: "/reports/aged", kinds: BUSINESS },
       { label: "Short-term cash flow", href: "/reports/cashflow" },
       { label: "Budgets", href: "/reports/budgets" },
-      { label: "Spending summary", href: "/spending" },
+      { label: "Spending", href: "/spending" },
     ],
   },
   {
     label: "Accounting",
     items: [
       { label: "Bank accounts", href: "/bank" },
-      { label: "Bank rules", href: "/bank#bank-rules" },
-      { label: "Reconcile", href: "/bank#bank-action-heading" },
+      { label: "Bank rules", href: "/bank/rules" },
+      { label: "Reconcile", href: "/bank/reconcile" },
       { label: "Documents", href: "/files" },
       { label: "Chart of accounts", href: "/accounting/chart" },
       { label: "Fixed assets", href: "/accounting/assets", kinds: BUSINESS },
@@ -97,14 +100,14 @@ export const NAV_GROUPS: NavGroup[] = [
       { label: "Self-employment (MTD Income Tax)", href: "/self-employment", deviceSwitch: "selfEmployed" },
       { label: "Property (landlords)", href: "/property", deviceSwitch: "landlord" },
       { label: "CIS (construction)", href: "/cis", kinds: BUSINESS },
-      { label: "Tax settings", href: "/settings#settings-vat-periods", feature: "vat" },
+      { label: "Tax settings", href: "/settings/tax", feature: "vat" },
     ],
   },
   {
     label: "Payroll",
     feature: "payroll",
     items: [
-      { label: "Employees", href: "/settings#settings-staff" },
+      { label: "Employees", href: "/settings/employees" },
       { label: "Pay runs", href: "/payroll" },
       { label: "RTI files", href: "/payroll/rti" },
       { label: "Pensions", href: "/payroll/pensions" },
@@ -114,8 +117,8 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "Contacts",
     items: [
       { label: "All contacts", href: "/contacts" },
-      { label: "Customers", href: "/contacts?show=customers", feature: "invoices" },
-      { label: "Suppliers", href: "/contacts?show=suppliers" },
+      { label: "Customers", href: "/contacts/customers", feature: "invoices" },
+      { label: "Suppliers", href: "/contacts/suppliers" },
     ],
   },
   {
@@ -167,4 +170,17 @@ export function isCurrent(pathname: string, href: string): boolean {
   const route = routeOf(href);
   if (route === "/") return pathname === "/";
   return pathname === route || pathname.startsWith(`${route}/`);
+}
+
+/**
+ * The menu's current page: the most specific route among every item that `pathname` is (inside), so on /bank/rules
+ * "Bank rules" is current and "Bank accounts" (/bank) is not. null when no item matches.
+ */
+export function activeRoute(pathname: string, groups: readonly NavGroup[]): string | null {
+  let best: string | null = null;
+  for (const href of groups.flatMap((g) => (g.href ? [g.href] : g.items.map((i) => i.href)))) {
+    const route = routeOf(href);
+    if (isCurrent(pathname, href) && (best === null || route.length > best.length)) best = route;
+  }
+  return best;
 }

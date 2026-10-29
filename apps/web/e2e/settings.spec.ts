@@ -102,5 +102,5 @@ test("the account menu names the AI chosen in Settings", async ({ page }) => {
   await ai.getByRole("button", { name: "My own Meta API key" }).click();
   await ai.getByRole("button", { name: /Save.*Continue/ }).click();
   await account.click();
-  await expect(menu).toContainText("Muse Spark key (muse-spark-1.3)");
+  await expect(menu).toContainText("AI: Meta Muse models, your own key");
 });

@@ -57,4 +57,4 @@ export function openChat(question?: string): void {
  * Runs before first paint (layout.tsx): marks <html data-signed-in> when this device holds a Microsoft sign-in, the
  * same test as lib/signed-in.ts, so a signed-in owner opening `/` never sees the landing page flash before Home.
  */
-export const SIGNED_IN_PROBE = `try{var s=0,L=localStorage;for(var i=0;i<L.length;i++){var k=L.key(i)||"";if(k.indexOf("msal.")!==0||k==="msal.version")continue;if(k==="msal.account.keys"||k.indexOf("msal.token.keys")===0){try{var l=JSON.parse(L.getItem(k)||"[]");if(!Array.isArray(l)||l.length){s=1;break}}catch(e){s=1;break}continue}s=1;break}if(s)document.documentElement.setAttribute("data-signed-in","")}catch(e){}`;
+export const SIGNED_IN_PROBE = `try{var L=localStorage,l=null,e=0,s=0;for(var i=0;i<L.length;i++){var k=L.key(i)||"";if(k.indexOf("msal.accnomos-")===0){s=1;break}if(/^msal\\.(\\d+\\.)?account\\.keys$/.test(k)){try{var v=JSON.parse(L.getItem(k)||"[]");l=l||(Array.isArray(v)&&v.length>0)}catch(x){l=true}}else if(/^msal\\.\\d+\\|/.test(k))e=1}if(!s)s=l===null?e:l;if(s)document.documentElement.setAttribute("data-signed-in","")}catch(x){}`;

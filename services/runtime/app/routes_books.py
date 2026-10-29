@@ -25,7 +25,7 @@ from app.approve import ApprovalError, ProposalStateError, approve, reject, subm
 from app.books import Books, now
 from app.books import today as current_date
 from app.deadlines import period_label
-from app.inbox import scan_inbox_detailed
+from app.inbox import scan_inbox_detailed, waiting
 from app.schemas import Proposal, ProposalStatus
 from app.validation import StrictBody
 from app.vat_cycle import VatCycle, vat_cycle
@@ -178,6 +178,18 @@ def _approval_http(exc: ApprovalError) -> HTTPException:
 class ScanResult(BaseModel):
     proposals: list[Proposal]
     errors: list[dict] = []
+
+
+class InboxFile(BaseModel):
+    path: str
+    name: str
+    size: int
+
+
+@router.get("/inbox", response_model=list[InboxFile])
+async def inbox_waiting(books: Books = Depends(get_books)) -> list[InboxFile]:
+    """What the next scan would read, in order: the app shows "Reading 1 of 2 … name" from it. Reads only."""
+    return [InboxFile(path=w.path, name=w.name, size=w.size) for w in await waiting(books)]
 
 
 @router.post("/scan", response_model=ScanResult)

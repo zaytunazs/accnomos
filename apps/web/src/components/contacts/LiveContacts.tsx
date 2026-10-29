@@ -40,7 +40,7 @@ const VAT_CODES: [string, string][] = [
 ];
 const BUCKETS: RtAgedBucket[] = AGED_BUCKETS;
 const KIND_LABEL = { customer: "Customer", supplier: "Supplier", both: "Both" } as const;
-type KindFilter = "customer" | "supplier" | "all";
+export type KindFilter = "customer" | "supplier" | "all";
 type SortKey = "name" | "balance";
 
 /** UK VAT number: GB then 9 or 12 digits; spaces are allowed and ignored. */
@@ -1101,13 +1101,14 @@ function DuplicatesCard({ account, groups, onChanged }: {
 }
 
 /** Contacts: from the runtime when signed in; the sample otherwise. */
-export default function LiveContacts() {
+/** `kind`: the list a page opens on (/contacts/customers, /contacts/suppliers); the filter still changes it. */
+export default function LiveContacts({ kind: initialKind = "all" }: { kind?: KindFilter } = {}) {
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [state, setState] = useState<"checking" | "demo" | "loading" | "live" | "error">("checking");
   const [rows, setRows] = useState<RtContactRow[]>([]);
   const [aged, setAged] = useState<RtAged | null>(null);
   const [tab, setTab] = useState<"contacts" | "aged">("contacts");
-  const [kind, setKind] = useState<KindFilter>("all");
+  const [kind, setKind] = useState<KindFilter>(initialKind);
   const [sort, setSort] = useState<SortKey>("name");
   const [query, setQuery] = useState("");
   // A deep link from Reports (?id=): open that contact's statement on arrival.

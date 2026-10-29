@@ -395,12 +395,22 @@ account's own OneDrive. A user with several links several accounts; there is sti
   routes (`routes_books.require_feature`: `/books/vat*`, `/books/deadlines`, `/reports/vat`, `/invoices/*`,
   `/credit-notes*`, `/payroll/*`), costing one read of `profile.json` on those routes only. The web hides what the kind
   lacks.
-* **Menu bar** (`apps/web/src/components/TopBar.tsx`, `apps/web/src/lib/nav.ts`), signed in only: the profile switcher
-  at the far left, the groups Home, Sales, Purchases, Reporting, Accounting, Tax, Payroll, Contacts and (personal books)
-  Personal as disclosure dropdowns, then Search (find a page), Ask, Help, Notifications (the Review count) and the
-  account menu (email, *Sign out of this one*). Under 900 px the groups are in a modal drawer. A link shows only when its
-  page is in the build (`apps/web/src/lib/routes.server.ts` lists `src/app` when the static export is made) and the
-  profile has its feature, so the menu never links to a 404. Signed out, the old sidebar and phone header stay.
+* **Menu bar** (`apps/web/src/components/TopBar.tsx`, `apps/web/src/lib/nav.ts`), on every signed-in page (AppShell):
+  the logo and the profile switcher (current profile and its kind) at the far left, the groups Home, Sales, Purchases,
+  Reporting, Accounting, Tax, Payroll, Contacts and (personal books) Personal as disclosure dropdowns, then Search (find
+  a page), Ask, Help, Notifications (the Review count) and the signed-in name and Microsoft email opening the account
+  menu (profile, the AI line linking to `/meta-models`, Settings, *Sign out of this one*; *Accountant portal* only for an
+  account whose portal has listed clients). Under 900 px the groups are in a modal drawer; there is no sidebar when
+  signed in. When MSAL cannot give an account on a device that looks signed in, the bar stays and says *Sign in again*.
+  A link shows only when its page is in the build (`apps/web/src/lib/routes.server.ts` lists `src/app` when the static
+  export is made) and the profile has its feature, so the menu never links to a 404. Every app page ends with
+  `AppFooter.tsx` (How it works, Help and guides, Privacy, Meta models at work, For judges, Contact, version). Signed
+  out, the sample's sidebar and phone header stay. `/accountant` with no client open has its own minimal bar.
+* **Back up now and earlier files** (`services/runtime/app/full_backup.py`, `previous_files.py`; `/backups/full`,
+  `/files/previous*`): a dated folder `Accnomos Backups/YYYY-MM-DD-HHMM` with the `_System` zip (restorable through
+  `app/backups.py`), Books.xlsx, the documents index, a manifest and RESTORE.txt; and documents in 00 Inbox, 01 Receipts
+  or 02 Needs a look that nothing in the books points at, read only after the user ticks them (moved to the Inbox, then
+  the usual scan makes Review cards).
 * **Android** is single-account (`msal_config.json` `account_mode: SINGLE`): Settings shows the profile's name and
   kind and *Switch account* signs out, forgets the phone's business details, and signs in again.
 * **Test mode:** a token `test-token.<account>` is another account with fakes of its own (`app/testmode.py`

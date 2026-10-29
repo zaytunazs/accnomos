@@ -724,11 +724,14 @@ function Empty({ text }: { text: string }) {
 type Act = (key: string, run: (a: AccountInfo) => Promise<string>) => void;
 
 /** /bank: upload statements, confirm suggested matches, settle what nothing matches. Reads and writes via the runtime. */
-export default function LiveBank() {
+/** Which part a page shows: everything (/bank), or only the rules (/bank/rules) or the reconciliation (/bank/reconcile). */
+export type BankView = "all" | "rules" | "reconcile";
+
+export default function LiveBank({ view = "all" }: { view?: BankView } = {}) {
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [state, setState] = useState<"checking" | "demo" | "loading" | "live" | "error">("checking");
   const [data, setData] = useState<Data | null>(null);
-  const [tab, setTab] = useState<Tab>("matches");
+  const [tab, setTab] = useState<Tab>(view === "all" ? "matches" : view);
   const [busy, setBusy] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -809,7 +812,13 @@ export default function LiveBank() {
     return (
       <p className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-border bg-white p-5 text-[15px] font-semibold">
         <SignInCta />
-        <span className="font-normal text-muted">to import bank statements. They are saved in your own 04 Bank statements folder.</span>
+        <span className="font-normal text-muted">
+          {view === "rules"
+            ? "to add bank rules: how a regular payment is coded, saved in your own books."
+            : view === "reconcile"
+              ? "to reconcile your bank account against your statements."
+              : "to import bank statements. They are saved in your own 04 Bank statements folder."}
+        </span>
       </p>
     );
   }
@@ -832,6 +841,33 @@ export default function LiveBank() {
     } catch (e) {
       setError((e as Error).message);
     }
+  }
+
+  if (view !== "all") {
+    // A page of its own: just this part. "Create a rule" from Reconcile opens the rule form here, with a way back.
+    return (
+      <div className="flex flex-col gap-5">
+        {note && (
+          <p role="status" className="text-sm font-semibold text-teal-dark">
+            {note}
+          </p>
+        )}
+        {error && <RuntimeErrorNote message={error} />}
+        {tab !== view && (
+          <button type="button" onClick={() => setTab(view)} className="self-start text-sm font-bold text-teal-dark underline">
+            Back to {view === "rules" ? "your rules" : "Reconcile"}
+          </button>
+        )}
+        <section aria-label={tab === "rules" ? "Bank rules" : "Reconcile"} className="rounded-2xl border border-border bg-white p-5">
+          {tab === "reconcile" && account && (
+            <BankReconcile account={account} lines={data.lines} onChanged={() => account && refresh(account)} onCreateRule={(from) => void createRuleFrom(from)} />
+          )}
+          {tab === "rules" && account && (
+            <BankRules account={account} prefill={rulePrefill} onPrefillUsed={() => setRulePrefill(null)} />
+          )}
+        </section>
+      </div>
+    );
   }
 
   const tabs: { id: Tab; label: string; count: number | null }[] = [

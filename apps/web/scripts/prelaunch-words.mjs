@@ -16,10 +16,16 @@ export const PRELAUNCH_WORDS = [
   /\btesters\b/i,
 ];
 
-/** Each match in `text` as a short quoted excerpt. */
-export function prelaunchHits(text) {
+/**
+ * Rendered pages only (e2e/submission-mode.spec.ts): also nothing promised for later. Not used on the export's JS
+ * chunks, where library code may say "soon" in its own messages.
+ */
+export const NOT_YET_WORDS = [/\bsoon\b/i, /coming next/i, /not yet available/i];
+
+/** Each match in `text` as a short quoted excerpt. `extra`: more patterns (NOT_YET_WORDS on rendered pages). */
+export function prelaunchHits(text, extra = []) {
   const hits = [];
-  for (const re of PRELAUNCH_WORDS) {
+  for (const re of [...PRELAUNCH_WORDS, ...extra]) {
     const g = new RegExp(re.source, "gi");
     for (const m of text.matchAll(g)) {
       hits.push(JSON.stringify(text.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40)));

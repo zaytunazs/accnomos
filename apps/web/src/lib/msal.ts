@@ -112,19 +112,78 @@ export function mailSendScopesFor(kind: AccountKind): string[] {
   return ["Mail.Send"];
 }
 
-/** Access token for the given scopes; falls back to an interactive redirect when consent is needed. */
+/**
+ * A silent token request that Microsoft did not answer in time. MSAL v5 falls back to a hidden iframe when the cached
+ * refresh token cannot be used (for instance a new scope such as Files.Read.All for the accountant portal); with
+ * third-party cookies blocked, throttling or a slow network, that iframe gives up: BrowserAuthError
+ * `monitor_window_timeout` ("Token acquisition in iframe failed due to timeout"), whose documented remedy is an
+ * interactive call such as acquireTokenRedirect (https://learn.microsoft.com/entra/msal/javascript/browser/errors
+ * #browserautherrors, checked 29 Oct 2026). The live site reported it as `timed_out`, so both are matched.
+ * These are not the user's fault and not a reason to show MSAL's own words.
+ */
+const TIMEOUT_CODES = new Set(["timed_out", "monitor_window_timeout", "block_iframe_reload"]);
+
+/** The sentence the app shows for a sign-in Microsoft did not confirm in time (components/States.tsx matches it). */
+export const SIGN_IN_SLOW =
+  "Microsoft took too long to confirm your sign-in, so nothing was loaded. Try again; if it keeps happening, sign in again.";
+
+export function isSignInTimeout(e: unknown): boolean {
+  const code = (e as { errorCode?: unknown } | null)?.errorCode;
+  if (typeof code === "string" && TIMEOUT_CODES.has(code)) return true;
+  const text = e instanceof Error ? e.message : String(e ?? "");
+  return /\b(timed_out|monitor_window_timeout)\b/.test(text);
+}
+
+/** This tab already sent the user to Microsoft for these scopes in the last five minutes (sessionStorage). */
+const REDIRECTED = "accnomos.auth.redirected";
+const REDIRECT_WINDOW_MS = 5 * 60 * 1000;
+
+function redirectedRecently(scopes: string[]): boolean {
+  try {
+    const seen = JSON.parse(window.sessionStorage.getItem(REDIRECTED) ?? "{}") as Record<string, number>;
+    return Date.now() - (seen[scopes.join(" ")] ?? 0) < REDIRECT_WINDOW_MS;
+  } catch {
+    return true; // no session storage: never risk a redirect loop
+  }
+}
+
+function markRedirect(scopes: string[], on: boolean): void {
+  try {
+    const seen = JSON.parse(window.sessionStorage.getItem(REDIRECTED) ?? "{}") as Record<string, number>;
+    if (on) seen[scopes.join(" ")] = Date.now();
+    else delete seen[scopes.join(" ")];
+    window.sessionStorage.setItem(REDIRECTED, JSON.stringify(seen));
+  } catch {
+    /* nothing to remember */
+  }
+}
+
+/**
+ * Access token for the given scopes; falls back to an interactive redirect when consent is needed. A silent request
+ * that times out gets one interactive redirect per five minutes (the user signs in at Microsoft and comes back);
+ * if it times out again after that, it fails with SIGN_IN_SLOW rather than looping or showing MSAL's error text.
+ */
 export async function getToken(scopes: string[]): Promise<string> {
   const msal = await getMsal();
   const account = msal.getActiveAccount() ?? msal.getAllAccounts()[0];
   if (!account) throw new Error("not signed in");
   try {
     const result = await msal.acquireTokenSilent({ scopes, account });
+    markRedirect(scopes, false);
     return result.accessToken;
   } catch (e) {
     const { InteractionRequiredAuthError } = await import("@azure/msal-browser");
     if (e instanceof InteractionRequiredAuthError) {
       await msal.acquireTokenRedirect({ scopes, account });
       throw new Error("redirecting for consent");
+    }
+    if (isSignInTimeout(e)) {
+      if (!redirectedRecently(scopes)) {
+        markRedirect(scopes, true);
+        await msal.acquireTokenRedirect({ scopes, account });
+        throw new Error("redirecting for consent");
+      }
+      throw new Error(SIGN_IN_SLOW);
     }
     throw e;
   }

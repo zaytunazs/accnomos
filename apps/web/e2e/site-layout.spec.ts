@@ -120,7 +120,9 @@ test.describe("every app URL still works", () => {
       expect(res?.status(), route).toBe(200);
       await expect(page.getByRole("heading", { name: "Page not found" }), route).toHaveCount(0);
       await expect(page.getByRole("navigation", { name: "Site" }), route).toHaveCount(0);
-      await expect(page.getByRole("navigation", { name: "Main" }), route).toBeVisible();
+      // The accountant portal has its own small bar (no business menu); every other page has the menu bar.
+      if (route === "/accountant") await expect(page.locator("[data-accountant-bar]"), route).toBeVisible();
+      else await expect(page.getByRole("navigation", { name: "Main" }), route).toBeVisible();
     }
   });
 });

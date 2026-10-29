@@ -19,6 +19,7 @@ import {
   PropertyCard,
   SummaryCard,
 } from "@/components/home/OverviewCards";
+import { PreviousFilesNotice } from "@/components/files/PreviousFiles";
 import Pitch from "@/components/home/Pitch";
 import PlanToday from "@/components/home/PlanToday";
 import { HomeSampleBooks } from "@/components/home/SampleBooks";
@@ -55,6 +56,8 @@ export default function HomeDashboard() {
           {/* Signed in with an empty folder: offer the sample books; once loaded, the SAMPLE banner. */}
           <HomeSampleBooks />
           <SetupChecklist />
+          {/* Signed in: documents already in the OneDrive folders that were never read (asks before reading). */}
+          <PreviousFilesNotice />
           {/* One calm grid, signed in or out: 1 column at 390 px, 2 at 768, 3 at 1280. Today spans the row; then
               money, what needs doing and deadlines; then the cards for features these books use (each hides itself
               otherwise: GET /books/home returns null for its section); then buying, to-dos and activity. */}

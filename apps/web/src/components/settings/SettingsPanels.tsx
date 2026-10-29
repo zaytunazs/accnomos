@@ -19,11 +19,12 @@ import PersonalFinanceSetting from "@/components/settings/PersonalFinanceSetting
 import LandlordSetting from "@/components/settings/LandlordSetting";
 import WorkingHours from "@/components/settings/WorkingHours";
 import YourAccountant from "@/components/settings/YourAccountant";
+import FilesBackups from "@/components/settings/FilesBackups";
 import OnlinePayments from "@/components/settings/OnlinePayments";
 import { hasMsalSignIn } from "@/lib/signed-in";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
-type GroupId = "connection" | "ai" | "automation" | "business" | "accountant" | "data";
+type GroupId = "connection" | "ai" | "automation" | "business" | "accountant" | "files" | "data";
 
 const AUTOPILOT_KEY = "accnomos.autopilot";
 const AI_KEY = "accnomos.ai";
@@ -35,6 +36,7 @@ const GROUPS: { id: GroupId; label: string }[] = [
   { id: "automation", label: "Automation" },
   { id: "business", label: "Business" },
   { id: "accountant", label: "Your accountant" },
+  { id: "files", label: "Files & backups" },
   { id: "data", label: "Your data" },
 ];
 
@@ -75,6 +77,9 @@ const HASH_GROUP: Record<string, GroupId> = {
   "settings-payments": "business",
   "settings-accountant": "accountant",
   accountant: "accountant",
+  "settings-files": "files",
+  "back-up-now": "files",
+  "previous-files": "files",
   "settings-data": "data",
   "settings-data-import": "data",
   "settings-data-export": "data",
@@ -284,22 +289,13 @@ export default function SettingsPanels() {
               <dt className="text-[15px] font-bold text-ink">HMRC</dt>
               <dd className="flex flex-wrap items-center gap-3">
                 <span className="text-sm text-muted">Sandbox · not connected</span>
-                <button
-                  type="button"
-                  disabled
-                  title="Sign in, then connect HMRC on the VAT page"
-                  className="h-10 whitespace-nowrap rounded-xl border border-border bg-ground px-4 text-sm font-bold text-muted disabled:opacity-60"
+                {/* A real integration: its connect step lives on the VAT page (no disabled stand-in here). */}
+                <Link
+                  href="/vat"
+                  className="inline-flex h-10 items-center whitespace-nowrap rounded-xl border-2 border-teal bg-white px-4 text-sm font-bold text-teal-dark"
                 >
-                  Connect HMRC (sandbox)
-                </button>
-              </dd>
-            </div>
-            <div className="flex items-center justify-between gap-3 py-3">
-              <dt className="text-[15px] font-bold text-ink">Google Drive</dt>
-              <dd>
-                <span className="rounded-full bg-ground px-2 py-0.5 text-[11px] font-extrabold text-muted">
-                  Coming next
-                </span>
+                  Connect on the VAT page
+                </Link>
               </dd>
             </div>
           </dl>
@@ -463,6 +459,16 @@ export default function SettingsPanels() {
         className="mt-4 space-y-4"
       >
         {group === "accountant" && <YourAccountant card={card} heading={heading} />}
+      </div>
+
+      <div
+        role="tabpanel"
+        id="panel-files"
+        aria-labelledby="tab-files"
+        hidden={group !== "files"}
+        className="mt-4 space-y-4"
+      >
+        {group === "files" && <FilesBackups card={card} heading={heading} />}
       </div>
 
       <div

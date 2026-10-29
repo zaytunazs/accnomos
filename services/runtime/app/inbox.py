@@ -272,6 +272,24 @@ async def scan_inbox(
 
 
 @dataclass
+class Waiting:
+    """A document in the Inbox the next scan would read."""
+
+    path: str
+    name: str
+    size: int
+
+
+async def waiting(books: Books) -> list[Waiting]:
+    """Readable documents in the Inbox, in the order a scan takes them (oldest name first, as listed). Reads only."""
+    return [
+        Waiting(path=f.path, name=f.name, size=f.size)
+        for f in await books.list_files(INBOX)
+        if guess_mime(f.name) and f.size <= MAX_BYTES
+    ]
+
+
+@dataclass
 class ScanContext:
     """What every document of one scan is checked against, read once per scan."""
 

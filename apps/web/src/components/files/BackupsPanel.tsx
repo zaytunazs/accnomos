@@ -21,7 +21,7 @@ function remember(on: boolean) {
   }
 }
 
-function Restore({
+export function Restore({
   account,
   preview,
   onClose,

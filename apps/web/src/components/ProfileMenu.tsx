@@ -4,7 +4,9 @@ import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, ty
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { AccountInfo } from "@azure/msal-browser";
-import AiSidebarLabel from "./AiSidebarLabel";
+import { useAiLabel } from "./AiSidebarLabel";
+import { ACCOUNTANT_EVENT, hasSharedClients } from "@/lib/accountant";
+import { AI_INFO_HREF } from "@/lib/ai-config";
 import { msalConfigured } from "@/lib/msal";
 import {
   KIND_LABEL,
@@ -29,18 +31,24 @@ export interface Linked {
 
 /**
  * The linked sign-ins (lib/profiles.ts), with this browser's per-profile settings made the active profile's first.
- * null while checking or when signed out. Re-renders when a profile's details arrive or change.
+ * undefined while checking; null when MSAL holds no account (signed out, or a sign-in it can no longer read: MSAL v5
+ * encrypts its cache with a key kept in a session cookie, so a closed browser can leave keys it cannot open).
+ * Re-renders when a profile's details arrive or change.
  */
-export function useLinkedProfiles(): Linked | null {
-  const [linked, setLinked] = useState<Linked | null>(null);
+export function useLinkedProfiles(): Linked | null | undefined {
+  const [linked, setLinked] = useState<Linked | null | undefined>(undefined);
   const [, setTick] = useState(0);
   useEffect(() => {
-    if (!msalConfigured()) return;
+    if (!msalConfigured()) {
+      queueMicrotask(() => setLinked(null));
+      return;
+    }
     let stale = false;
     (async () => {
       try {
         const found = await linkedAccounts();
-        if (stale || !found.active) return;
+        if (stale) return;
+        if (!found.active) return setLinked(null);
         if (reconcile(found.active.homeAccountId)) {
           let again = false;
           try {
@@ -61,7 +69,8 @@ export function useLinkedProfiles(): Linked | null {
         const p = await runtime.profile(active);
         if (!stale) rememberProfile(active.homeAccountId, p);
       } catch {
-        /* the runtime is down: the menus show what they know */
+        /* MSAL could not start, or the runtime is down: the menus show what they know */
+        if (!stale) setLinked((l) => (l === undefined ? null : l));
       }
     })();
     const onChange = () => setTick((t) => t + 1);
@@ -272,27 +281,62 @@ function initials(account: AccountInfo): string {
   return ((words[0]?.[0] ?? "") + (words[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
-/** Far right of the menu bar: the signed-in account (email, and the AI it reads with, which the signed-out sidebar
- *  shows) with Profile details and "Sign out of this one". */
-export function AccountMenu({ linked }: { linked: Linked }) {
+/** The signed-in account's "Accountant portal" item: only for an account whose portal lists client books
+ *  (lib/accountant.ts hasSharedClients). Normal users never see it. */
+function useIsAccountant(id: string): boolean {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const read = () => setOn(hasSharedClients(id));
+    queueMicrotask(read);
+    window.addEventListener(ACCOUNTANT_EVENT, read);
+    return () => window.removeEventListener(ACCOUNTANT_EVENT, read);
+  }, [id]);
+  return on;
+}
+
+/**
+ * Far right of the menu bar: the signed-in person's name and Microsoft account email (both visible from 1024 px; the
+ * initials alone below), opening a menu with the current profile and its kind, the AI it reads with, Profile
+ * details, Settings, the accountant portal for accountants, and "Sign out of this one".
+ */
+export function AccountMenu({ linked, minimal = false }: { linked: Linked; minimal?: boolean }) {
   const { active } = linked;
+  const ai = useAiLabel();
+  const accountant = useIsAccountant(active.homeAccountId);
+  const profile = profileLabel(active, profileMeta(active.homeAccountId));
   return (
     <MenuButton
       menuLabel="Account"
       align="right"
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full hover:bg-ground"
+      className="flex h-11 min-w-11 shrink-0 items-center justify-center gap-2 rounded-full px-1 hover:bg-ground lg:rounded-xl lg:pr-2"
       items={
         <>
           <div className="px-3 py-2">
             <p className="truncate text-[15px] font-bold text-ink">{active.name || active.username}</p>
             <p className="truncate text-sm text-muted">{active.username}</p>
-            <div className="mt-2">
-              <AiSidebarLabel />
-            </div>
+            {!minimal && (
+              <p className="mt-1 truncate text-sm text-ink">
+                {profile.name} · {profile.kind}
+              </p>
+            )}
           </div>
+          <Link href={AI_INFO_HREF} role="menuitem" tabIndex={-1} className={menuItemClass}>
+            <span aria-hidden="true" className="h-2 w-2 shrink-0 rounded-full bg-teal" />
+            <span className="min-w-0 truncate font-normal text-muted">{ai}</span>
+          </Link>
           <div role="separator" className="my-1 border-t border-border" />
-          <Link href="/settings#profile" role="menuitem" tabIndex={-1} className={menuItemClass}>
-            Profile details
+          {!minimal && (
+            <Link href="/settings#profile" role="menuitem" tabIndex={-1} className={menuItemClass}>
+              Profile details
+            </Link>
+          )}
+          {(accountant || minimal) && (
+            <Link href={minimal ? "/" : "/accountant"} role="menuitem" tabIndex={-1} className={menuItemClass}>
+              {minimal ? "Your own books" : "Accountant portal"}
+            </Link>
+          )}
+          <Link href="/settings" role="menuitem" tabIndex={-1} className={menuItemClass}>
+            Settings
           </Link>
           <button type="button" role="menuitem" tabIndex={-1} className={menuItemClass} onClick={() => signOutOf(active)}>
             Sign out of this one
@@ -300,11 +344,16 @@ export function AccountMenu({ linked }: { linked: Linked }) {
         </>
       }
     >
-      <span aria-hidden="true" className="flex h-9 w-9 items-center justify-center rounded-full bg-teal text-sm font-bold text-white">
+      {/* The name is this text, not an aria-label, so it always contains the visible words (axe
+          label-content-name-mismatch): "Account: <email> <name>", the name shown above the email. */}
+      <span className="sr-only">Account: </span>
+      <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-teal text-sm font-bold text-white">
         {initials(active)}
       </span>
-      {/* The name is this text, not an aria-label, so it never mismatches the visible initials (axe). */}
-      <span className="sr-only">Account: {active.username}</span>
+      <span className="sr-only lg:not-sr-only lg:flex lg:max-w-[11rem] lg:min-w-0 lg:flex-col-reverse lg:text-left 2xl:max-w-[14rem]">
+        <span className="block truncate text-xs text-muted">{active.username}</span>
+        <span className="block truncate text-sm font-bold text-ink">{active.name || active.username}</span>
+      </span>
     </MenuButton>
   );
 }
