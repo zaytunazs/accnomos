@@ -206,12 +206,15 @@ for sole traders and personal addresses). What the privacy page promises is bind
 
 | Variable | Value |
 |---|---|
-| `EARLY_ACCESS_ENABLED` | `1` turns `POST /public/early-access` on. Anything else (the default `0`): it answers 503 and no file is ever created |
+| `EARLY_ACCESS_ENABLED` | `1` turns `POST /public/early-access` and its neutral alias `POST /public/sign-up` on (same handler, same file). Anything else (the default `0`): both answer 503 and no file is ever created |
 | `EARLY_ACCESS_FILE` | the list, JSON lines. Default `/data/early-access.jsonl`, on the `runtime-data` volume (`deploy/docker-compose.yml`), so it survives `up --build` |
 | `EARLY_ACCESS_PER_MIN` | sign-ups per minute per IP, on top of `RATE_LIMIT_PER_MIN` (default 5; `0` off) |
 
-The web form shows only in a build with `NEXT_PUBLIC_SUBMISSION_MODE=0` (default `1`: the hackathon submission build,
-where it renders nothing). Turn both on together, or the form will say sign-ups are not open.
+Two web forms feed the list. The submission build (`NEXT_PUBLIC_SUBMISSION_MODE` unset or `1`, what accnomos.com
+serves) shows the neutral "Get 3 months free" form (`/public/sign-up`, no launch wording) on the landing page and on
+`/join`, the page the social posts link to; the pre-launch build (`0`) shows its own "Get 3 months free at launch" form
+(`/public/early-access`) on the landing page and the neutral one on `/join`. Each record stores the consent wording the
+person ticked. **`EARLY_ACCESS_ENABLED=1` must be set on the live runtime**, or every form says sign-ups are not open.
 
 **Owner tools** (no web admin; run on the server, inside the runtime container):
 

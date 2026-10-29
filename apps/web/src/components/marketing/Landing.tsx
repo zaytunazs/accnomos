@@ -1,6 +1,7 @@
 import Link from "next/link";
 import EarlyAccessForm from "@/components/early-access/EarlyAccessForm";
 import Prelaunch from "@/components/Prelaunch";
+import JoinForm from "@/components/sign-up/JoinForm";
 import { HONESTY_URL, LAUNCH, NOTIFY_HREF, PRELAUNCH_IN_BUILD, SUBMISSION_MODE } from "@/lib/public-site";
 import { BrowserFrame, PhoneFrame, Shot } from "./Marks";
 import AskLink from "./AskLink";
@@ -186,8 +187,16 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
     a: "Export your lists and statements from your current software and bring them across as files. Your opening position is entered once, and new documents flow in from there.",
   },
   {
+    q: "How do I get 3 months free?",
+    a: "Leave your email in the Get 3 months free form at the end of this page (or at accnomos.com/join) and we will set you up with 3 months free.",
+  },
+  {
     q: "Does my accountant need an account?",
-    a: "You invite your accountant to see your books. They read the same ledger, spreadsheet and reports that you see.",
+    a: "Only a Microsoft account. In Settings, Your accountant, you invite them by email and choose view only or view and edit: your Accnomos folder in OneDrive is shared with them, and they open your books in the Accountant portal. Remove access there at any time.",
+  },
+  {
+    q: "Can an accountant review my books for me?",
+    a: "Where it is offered, you can opt in, in Settings, Your accountant, to have Accnomos accountants, our own accounting team, check your books. It is separate from inviting your own accountant: you read what they can see before you agree, and Stop reviews removes the sharing at once. They never submit anything to HMRC for you and never move money.",
   },
   {
     q: "What can the AI get wrong?",
@@ -231,24 +240,27 @@ export default function Landing() {
       <Status />
       <Pricing />
       <Faq />
-      {/* The early-adopter sign-up: pre-launch build only (in neither the HTML nor the payload of a submission build). */}
-      {PRELAUNCH_IN_BUILD && (
-        <Prelaunch>
-          <div className="mx-auto max-w-3xl px-4 pb-16 sm:px-6">
+      {/* "Get 3 months free": the neutral form in the submission build (JoinForm); the pre-launch build shows its own
+          EarlyAccessForm, which is in neither the HTML nor the payload of a submission build. Same list either way. */}
+      <div id="join" className="mx-auto max-w-3xl scroll-mt-20 px-4 pb-16 sm:px-6">
+        {PRELAUNCH_IN_BUILD && (
+          <Prelaunch>
             <EarlyAccessForm source="/" />
-          </div>
-        </Prelaunch>
-      )}
+          </Prelaunch>
+        )}
+        <JoinForm source="/" />
+      </div>
       <Closing />
     </>
   );
 }
 
 /**
- * The two calls to action. Submission build: "Try the demo" and "Sign in with Microsoft". Pre-launch build: "get
- * notified" by e-mail first, the demo second (sign-in moves to the menu's "Early access / testers").
+ * The two calls to action. Submission build: "Try the demo" and "Sign in with Microsoft", with "Get 3 months free"
+ * (the sign-up near the end of the page) between them in the hero. Pre-launch build: "get notified" by e-mail first,
+ * the demo second (sign-in moves to the menu's "Early access / testers").
  */
-function CtaPair({ dark = false }: { dark?: boolean }) {
+function CtaPair({ dark = false, join = false }: { dark?: boolean; join?: boolean }) {
   const primary = "rounded-xl bg-brass px-5 py-3 text-base font-extrabold text-ink hover:bg-brass-light";
   const secondary = `rounded-xl border-2 px-5 py-[10px] text-base font-extrabold ${
     dark ? "border-ground/40 text-ground hover:border-ground" : "border-teal-dark text-teal-dark hover:bg-teal-tint"
@@ -266,6 +278,11 @@ function CtaPair({ dark = false }: { dark?: boolean }) {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <DemoLink className={primary} />
+      {join && (
+        <a href="#join" className={secondary}>
+          Get 3 months free
+        </a>
+      )}
       <Link href="/connect?next=%2F" className={secondary}>
         Sign in with Microsoft
       </Link>
@@ -304,7 +321,7 @@ function Hero() {
             <AppChips dark />
           </div>
           <div className="mt-7">
-            <CtaPair dark />
+            <CtaPair dark join />
           </div>
           <p className="mt-4 text-sm text-ground/70">
             The demo uses fictional sample books and needs no sign-in. HMRC contact is sandbox only.
@@ -499,18 +516,51 @@ function Mtd() {
   );
 }
 
+/**
+ * Accountants: only what the accountant portal and Settings › Your accountant do (app/accountant.py, the
+ * accountant portal). Reviews by Accnomos accountants appear only where the server sets ACCOUNTANT_TEAM_EMAIL.
+ */
 function Accountants() {
+  const card = "rounded-2xl border border-border bg-ground p-5";
+  const link = "font-bold text-teal-dark underline underline-offset-2 hover:text-teal";
   return (
     <section id="accountants" aria-labelledby="accountants-title" className="scroll-mt-20 border-y border-border bg-white py-20">
       <div className="mx-auto max-w-6xl px-4 sm:px-6">
         <SectionHead
           id="accountants-title"
           title="For accountants"
-          lead="Invite your accountant to your books. They open the same files you see: the ledger, Books.xlsx, reports and the audit trail."
+          lead="Have your books reviewed by an accountant: your own, or ours. Either way they open the same files you see: the ledger, Books.xlsx, reports and the audit trail."
         />
-        <p className="mt-4 max-w-2xl text-[15px] leading-relaxed">
-          Queries stay simple. Anything they question can be undone with a reversing entry, never a delete, so the
-          record stays complete.
+        <ul aria-label="Two ways to have your books reviewed" className="mt-8 grid gap-4 md:grid-cols-2">
+          <li className={card}>
+            <h3 className="font-extrabold">Invite your own accountant</h3>
+            <p className="mt-1 text-[15px] leading-relaxed">
+              Enter their email and choose view only or view and edit. Your Accnomos folder in OneDrive is shared with
+              their Microsoft account, and they open your books in the Accountant portal. Remove access at any time and
+              the sharing stops at once.
+            </p>
+          </li>
+          <li className={card}>
+            <h3 className="font-extrabold">Or opt in to a review by Accnomos accountants</h3>
+            <p className="mt-1 text-[15px] leading-relaxed">
+              Where it is offered, you can opt in to have our own accounting team review your books. It is a separate,
+              explicit choice: you read what they can see before you agree, and Stop reviews removes the sharing at once.
+              They never submit anything to HMRC for you and never move money.
+            </p>
+          </li>
+        </ul>
+        <p className="mt-6 max-w-3xl text-[15px] leading-relaxed">
+          Both are in{" "}
+          <Link href="/settings#settings-accountant" className={link}>
+            Settings › Your accountant
+          </Link>
+          . An accountant can leave a query on a transaction or document, which you answer there; with edit access,
+          every change they make is recorded in your audit trail under their name, and anything they question can be
+          undone with a reversing entry, never a delete. Accountants open their clients&apos; books in the{" "}
+          <Link href="/accountant" className={link}>
+            Accountant portal
+          </Link>
+          .
         </p>
       </div>
     </section>
@@ -526,11 +576,11 @@ function Pricing() {
           title="Pricing"
           lead={
             SUBMISSION_MODE
-              ? "There is no published pricing: Accnomos is a hackathon build, and nothing in it asks you to pay. The demo needs no account and no card; your own books need only a Microsoft account."
+              ? "There is no published pricing: Accnomos is a hackathon build, and nothing in it asks you to pay. The demo needs no account and no card; your own books need only a Microsoft account. Leave your email and we will set you up with 3 months free."
               : "Free while we launch. The demo needs no account and no card; your own books need only a Microsoft account."
           }
         />
-        <CtaPair />
+        <CtaPair join />
       </div>
     </section>
   );

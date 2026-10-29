@@ -6,9 +6,9 @@
 /**
  * Routes shown in the marketing shell to signed-out visitors. `/` is the landing page (signed in: Home); `/judges`
  * is the demo guide (inside a demo sandbox, which counts as signed in, it keeps the app shell and the demo bar);
- * `/meta-models` says which Meta model does which job.
+ * `/meta-models` says which Meta model does which job; `/join` is the sign-up page.
  */
-export const PUBLIC_PATHS = new Set(["/", "/how-it-works", "/meta-models", "/privacy", "/terms", "/judges"]);
+export const PUBLIC_PATHS = new Set(["/", "/how-it-works", "/meta-models", "/privacy", "/terms", "/judges", "/join"]);
 
 export const isPublicPath = (path: string) => PUBLIC_PATHS.has(path);
 

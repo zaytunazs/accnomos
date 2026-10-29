@@ -151,7 +151,20 @@ Keywords: status, tested, tests, testing, ready, production, live, beta, finishe
 
 There is no published pricing. Accnomos is a hackathon build: the sample books are free to try on the website, and no
 paid plan, price or subscription has been announced. For questions about using it for your business, contact the team.
-Keywords: price, pricing, cost, costs, free, pay, paid, plan, plans, subscription, buy, purchase, how much, trial, licence, license, available, availability
+To get 3 months free, leave your email in the "Get 3 months free" form on the home page or at accnomos.com/join, and
+the team will email you to set it up.
+Keywords: price, pricing, cost, costs, free, pay, paid, plan, plans, subscription, buy, purchase, how much, trial, licence, license, available, availability, 3 months free, three months free, offer, join, sign up, signup
+
+## Your accountant {#accountant}
+
+In Settings, Your accountant, you can invite your own accountant by email, view only or view and edit: your Accnomos
+folder in OneDrive is shared with their Microsoft account and they open your books in the Accountant portal, which
+lists the clients who shared books with them. Removing access stops the sharing. Separately, where the server offers
+it, you can opt in to reviews by Accnomos accountants, the accounting team of the people who run Accnomos: you read
+what they can see before agreeing, and Stop reviews removes the sharing at once. They never submit anything to HMRC
+for you and never move money. Accountants can leave queries on a transaction or document, which you answer in
+Settings; with edit access, every change they make is recorded in your audit trail under their name.
+Keywords: accountant, accountants, bookkeeper, review, reviews, reviewed, check my books, invite, share, sharing, portal, panel, queries, query
 
 ## Security {#security}
 

@@ -39,7 +39,7 @@ test.describe("public build (submission mode 0)", () => {
     const consent = form.getByRole("checkbox", { name: CONSENT });
     await expect(consent).not.toBeChecked(); // never pre-ticked
     await expect(form.getByText(/Zaytuna Business Services Ltd keeps these details only/)).toBeVisible();
-    await expect(form.getByRole("link", { name: "privacy policy" })).toHaveAttribute("href", "/privacy#early-access");
+    await expect(form.getByRole("link", { name: "privacy policy" })).toHaveAttribute("href", "/privacy#sign-up");
 
     // Nothing filled: each problem is named and focus goes to the first one.
     await form.getByRole("button", { name: "Join the early list" }).click();
