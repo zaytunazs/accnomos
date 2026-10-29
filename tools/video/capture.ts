@@ -20,7 +20,7 @@ import { createRequire } from "node:module";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import type { Browser, BrowserContext, Page } from "@playwright/test";
-import { chooseFlow, FLOWS, type FlowCtx } from "./flows.ts";
+import { chooseFlow, FLOWS, SHOT_PLAN, type FlowCtx } from "./flows.ts";
 import { CLEAN_CSS, CURSOR_SCRIPT, Human } from "./lib/human.ts";
 import { Recorder } from "./lib/recorder.ts";
 import { parseScript, type ScriptShot, type Sequence } from "./lib/script.ts";
@@ -227,6 +227,11 @@ export interface ManifestShot {
   caption: string;
   vo: string;
   vo_wav: string;
+  /** Card text (provenance, eval table) and an end card drawn over the shot's last seconds. */
+  card?: string;
+  end_card?: string;
+  /** Why this shot must be re-filmed live; the footage, if any, is a test-mode stand-in. */
+  live?: string;
   file: string | null;
   status: "ok" | "failed" | "card" | "skipped";
   error?: string;
@@ -248,6 +253,9 @@ async function captureShot(browser: Browser, format: FormatName, shot: ScriptSho
     caption: shot.caption,
     vo: shot.vo,
     vo_wav: `docs/video/vo/${shot.id}.wav`,
+    card: shot.card,
+    end_card: shot.endCard,
+    live: SHOT_PLAN[shot.id]?.live,
     file: null,
     status: kind === "app" ? "ok" : "card",
   };
@@ -257,6 +265,7 @@ async function captureShot(browser: Browser, format: FormatName, shot: ScriptSho
   const page = await ctx.newPage();
   page.setDefaultTimeout(20_000);
   const h = new Human(page, f.phone);
+  h.pace = SHOT_PLAN[shot.id]?.pace ?? 1;
   const c: FlowCtx = { page, h, phone: f.phone, receipt: path.join(WEB, "public/sample-receipt.png") };
   const rec = new Recorder(ctx, page, { width: f.width, height: f.height });
   const file = path.join(RAW, `${shot.id}.webm`);
@@ -276,7 +285,7 @@ async function captureShot(browser: Browser, format: FormatName, shot: ScriptSho
     const recorded = await rec.stop(file, shot.duration);
     return { ...base, recorded: Math.round(recorded * 100) / 100, file: path.relative(ROOT, file) };
   } catch (e) {
-    const msg = e instanceof Error ? e.message.split("\n")[0]! : String(e);
+    const msg = e instanceof Error ? e.message.split("\n").filter((l) => l.trim() && !/^Call log:/.test(l)).slice(0, 2).join(" ").replace(/\s+/g, " ").slice(0, 300) : String(e);
     if (recording) {
       try {
         const recorded = await rec.stop(file, shot.duration);
@@ -330,7 +339,7 @@ async function main(): Promise<void> {
         const prev = old?.sequences.find((q) => q.id === seq.id)?.shots.find((x) => x.id === s.id);
         if (a.only && !a.only.has(s.id) && !a.only.has(seq.id)) {
           // Not re-recorded this run: keep what the last run wrote, with this script's words and timing.
-          shots.push(prev ? { ...prev, duration: s.duration, caption: s.caption, vo: s.vo, what: s.what } : { ...(await captureShot(browser, format, { ...s, flow: "card" })), status: "skipped" });
+          shots.push(prev ? { ...prev, duration: s.duration, caption: s.caption, vo: s.vo, what: s.what, card: s.card, end_card: s.endCard, live: SHOT_PLAN[s.id]?.live } : { ...(await captureShot(browser, format, { ...s, flow: "card" })), status: "skipped" });
           continue;
         }
         process.stdout.write(`${s.id} … `);

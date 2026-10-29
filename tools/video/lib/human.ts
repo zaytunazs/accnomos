@@ -64,6 +64,8 @@ const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
 export class Human {
   readonly page: Page;
   readonly touch: boolean;
+  /** Below 1 shortens every pause and glide, to fit a busy flow into a short shot. */
+  pace = 1;
   private x = -100;
   private y = -100;
 
@@ -80,7 +82,7 @@ export class Human {
   }
 
   async hold(ms: number): Promise<void> {
-    await this.page.waitForTimeout(ms);
+    await this.page.waitForTimeout(ms * this.pace);
   }
 
   /** An eased glide to (x, y), about 60 frames a second; longer moves take a little longer, as a hand does. */
@@ -93,7 +95,7 @@ export class Human {
       return;
     }
     const dist = Math.hypot(x - this.x, y - this.y);
-    const ms = Math.min(1100, 260 + dist * 0.55);
+    const ms = Math.min(1100, 260 + dist * 0.55) * Math.max(0.7, this.pace);
     const steps = Math.max(8, Math.round(ms / 16));
     const sx = this.x;
     const sy = this.y;
@@ -112,7 +114,9 @@ export class Human {
   }
 
   /** Bring `target` into view smoothly if needed, then glide to a point inside it. */
-  async moveToLocator(target: Locator): Promise<{ x: number; y: number }> {
+  async moveToLocator(locator: Locator): Promise<{ x: number; y: number }> {
+    // Pages often render a control twice (desktop and phone layouts): take the one on screen.
+    const target = locator.filter({ visible: true }).first();
     await target.waitFor({ state: "visible" });
     await this.scrollIntoView(target);
     const box = await target.boundingBox();

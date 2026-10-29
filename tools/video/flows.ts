@@ -36,7 +36,7 @@ const main = (p: Page) => p.getByRole("main");
 
 async function open(c: FlowCtx, path: string, ready: (p: Page) => Locator): Promise<void> {
   await c.page.goto(path);
-  await ready(c.page).first().waitFor({ state: "visible", timeout: 60_000 });
+  await ready(c.page).filter({ visible: true }).first().waitFor({ state: "visible", timeout: 60_000 });
   await c.page.waitForLoadState("networkidle").catch(() => undefined);
   await c.page.evaluate(() => window.scrollTo(0, 0));
   await c.page.waitForTimeout(300);
@@ -48,17 +48,17 @@ const h1 = (name: string | RegExp) => (p: Page) => p.getByRole("heading", { leve
 async function navTo(c: FlowCtx, group: string, link: string | RegExp): Promise<void> {
   const { page, h } = c;
   if (c.phone) {
-    const menu = page.getByRole("button", { name: /^Menu$/ }).first();
+    const menu = page.getByRole("button", { name: /^Menu$/ }).filter({ visible: true }).first();
     if (await menu.isVisible().catch(() => false)) {
       await h.click(menu, 500);
-      await h.click(page.getByRole("link", { name: link }).first(), 900);
+      await h.click(page.getByRole("link", { name: link }).filter({ visible: true }).first(), 900);
       return;
     }
   } else {
-    const btn = page.getByRole("button", { name: new RegExp(`^${group}`) }).first();
+    const btn = page.getByRole("button", { name: new RegExp(`^${group}`) }).filter({ visible: true }).first();
     if (await btn.isVisible().catch(() => false)) {
       await h.click(btn, 500);
-      await h.click(page.getByRole("link", { name: link }).first(), 900);
+      await h.click(page.getByRole("link", { name: link }).filter({ visible: true }).first(), 900);
       return;
     }
   }
@@ -88,7 +88,7 @@ export const FLOWS: Record<string, Flow> = {
       await c.h.hold(1200);
       await browse(c, 2, 1300);
       await c.h.scrollToTop(900);
-      await c.h.hover(main(c.page).getByRole("link", { name: "Try the demo", exact: true }).first(), 900);
+      await c.h.hover(main(c.page).getByRole("link", { name: "Try the demo", exact: true }).filter({ visible: true }).first(), 900);
     },
   },
 
@@ -119,7 +119,7 @@ export const FLOWS: Record<string, Flow> = {
       const today = page.getByRole("heading", { level: 1, name: /^Good / });
       await h.hover(today, 900);
       await h.scrollIntoView(today);
-      await h.hover(page.getByText("VAT estimate").first(), 1200);
+      await h.hover(page.getByText("VAT estimate").filter({ visible: true }).first(), 1200);
       await browse(c, 1, 1200);
     },
   },
@@ -131,20 +131,20 @@ export const FLOWS: Record<string, Flow> = {
       const { page, h } = c;
       await h.park(page.viewportSize()!.width * 0.5, 200);
       await h.hold(700);
-      const add = page.getByRole("button", { name: "Add a receipt" }).first();
+      const add = page.getByRole("button", { name: "Add a receipt" }).filter({ visible: true }).first();
       await h.moveToLocator(add);
       await h.hold(300);
       const chooser = page.waitForEvent("filechooser", { timeout: 10_000 }).catch(() => null);
       await h.click(add, 200);
       const fc = await chooser;
       if (fc) await fc.setFiles(c.receipt);
-      else await page.locator('input[type="file"]').first().setInputFiles(c.receipt);
-      const added = page.getByText(/file added to 00 Inbox/).first();
+      else await page.locator('input[type="file"]').filter({ visible: true }).first().setInputFiles(c.receipt);
+      const added = page.getByText(/file added to 00 Inbox/).filter({ visible: true }).first();
       await added.waitFor({ timeout: 30_000 });
       await h.hover(added, 1600);
       // Not scanned on camera: the test-mode stub reads only the gold receipts, and the demo's 00 Inbox holds sample
       // files it cannot read. Film the reading itself live (docs/video/README.md).
-      await h.hover(page.getByRole("button", { name: "Scan 00 Inbox now" }).first(), 1400);
+      await h.hover(page.getByRole("button", { name: "Scan 00 Inbox now" }).filter({ visible: true }).first(), 1400);
     },
   },
 
@@ -154,17 +154,17 @@ export const FLOWS: Record<string, Flow> = {
     run: async (c) => {
       const { page, h } = c;
       await h.park(page.viewportSize()!.width * 0.5, 220);
-      const waiting = page.getByText(/\d+ waiting for you/).first();
+      const waiting = page.getByText(/\d+ waiting for you/).filter({ visible: true }).first();
       await h.scrollIntoView(waiting, 1000);
       await h.hold(600);
-      const approve = page.getByRole("button", { name: /^Approve/ }).first();
-      const card = page.getByRole("article").filter({ has: approve }).first();
-      const why = card.getByText(/^Why:/).first();
+      const approve = page.getByRole("button", { name: /^Approve/ }).filter({ visible: true }).first();
+      const card = page.locator("section[aria-labelledby^=proposal-]").filter({ has: approve }).filter({ visible: true }).first();
+      const why = card.getByText(/^Why:/).filter({ visible: true }).first();
       if (await why.isVisible().catch(() => false)) await h.hover(why, 1400);
-      const checks = card.getByText(/checks by code/).first();
+      const checks = card.getByText(/checks by code/).filter({ visible: true }).first();
       if (await checks.isVisible().catch(() => false)) await h.hover(checks, 1200);
       await h.click(approve, 400);
-      await page.getByText(/Approved · posted to your books/).first().waitFor({ timeout: 20_000 });
+      await page.getByText(/Approved · posted to your books/).filter({ visible: true }).first().waitFor({ timeout: 20_000 });
       await h.hold(1600);
     },
   },
@@ -175,10 +175,10 @@ export const FLOWS: Record<string, Flow> = {
     run: async (c) => {
       const { page, h } = c;
       await h.park(page.viewportSize()!.width * 0.5, 220);
-      const flag = page.getByText("Needs a look.").first();
+      const flag = page.getByText("Needs a look.").filter({ visible: true }).first();
       await h.scrollIntoView(flag, 1600);
       await h.hover(flag, 1200);
-      const why = page.getByText(/not a UK format|needs converting/).first();
+      const why = page.getByText(/not a UK format|needs converting/).filter({ visible: true }).first();
       if (await why.isVisible().catch(() => false)) await h.hover(why, 1800);
       await h.hold(800);
     },
@@ -191,13 +191,13 @@ export const FLOWS: Record<string, Flow> = {
       const { page, h } = c;
       await h.park(page.viewportSize()!.width * 0.5, 220);
       await h.hold(900);
-      const sys = page.getByRole("button", { name: /^_System/ }).first();
+      const sys = page.getByRole("button", { name: /^_System/ }).filter({ visible: true }).first();
       await h.click(sys, 900);
       for (const name of [/^Ledger/, /^events/]) {
-        const b = page.getByRole("button", { name }).first();
+        const b = page.getByRole("button", { name }).filter({ visible: true }).first();
         if (await b.isVisible().catch(() => false)) await h.click(b, 900);
       }
-      const ev = page.getByRole("button", { name: /^› 2026-0[89]/ }).first();
+      const ev = page.getByRole("button", { name: /^› 2026-0[89]/ }).filter({ visible: true }).first();
       if (await ev.isVisible().catch(() => false)) await h.click(ev, 1200);
       await h.hold(800);
     },
@@ -210,7 +210,7 @@ export const FLOWS: Record<string, Flow> = {
       const { page, h } = c;
       await h.park(page.viewportSize()!.width * 0.5, 220);
       await h.hold(1200);
-      const books = page.getByRole("button", { name: "Books.xlsx" }).first();
+      const books = page.getByRole("button", { name: "Books.xlsx" }).filter({ visible: true }).first();
       if (await books.isVisible().catch(() => false)) await h.hover(books, 1800);
       else await browse(c, 1, 1400);
       await h.hold(800);
@@ -226,11 +226,11 @@ export const FLOWS: Record<string, Flow> = {
       await h.hold(700);
       await h.click(page.getByRole("radiogroup", { name: "VAT period" }).getByRole("radio", { name: /Jul–Sep 2026/ }), 900);
       const ret = page.getByRole("region", { name: /Your return/ });
-      await h.scrollIntoView(ret.getByText("VAT reclaimed on purchases").first(), 1100);
-      await h.hover(ret.getByText("VAT due on sales").first(), 900);
-      await h.hover(ret.getByText("VAT reclaimed on purchases").first(), 900);
-      await h.hover(ret.getByText(/Net VAT to pay HMRC/).first(), 1100);
-      await h.hover(ret.getByText("Total purchases excluding VAT").first(), 1000);
+      await h.scrollIntoView(ret.getByText("VAT reclaimed on purchases").filter({ visible: true }).first(), 1100);
+      await h.hover(ret.getByText("VAT due on sales").filter({ visible: true }).first(), 900);
+      await h.hover(ret.getByText("VAT reclaimed on purchases").filter({ visible: true }).first(), 900);
+      await h.hover(ret.getByText(/Net VAT to pay HMRC/).filter({ visible: true }).first(), 1100);
+      await h.hover(ret.getByText("Total purchases excluding VAT").filter({ visible: true }).first(), 1000);
     },
   },
 
@@ -246,7 +246,7 @@ export const FLOWS: Record<string, Flow> = {
       const { page, h } = c;
       const hmrc = page.getByRole("region", { name: "Connect to HMRC" });
       await h.park(page.viewportSize()!.width * 0.5, 300);
-      await h.hover(hmrc.getByText("Demo · HMRC simulated").first(), 1000);
+      await h.hover(hmrc.getByText("Demo · HMRC simulated").filter({ visible: true }).first(), 1000);
       await h.click(hmrc.getByRole("button", { name: "Connect to HMRC (simulated)" }), 900);
       await h.click(hmrc.getByRole("button", { name: "Show obligations" }), 1000);
       await h.click(hmrc.getByRole("button", { name: "Prepare submission" }), 900);
@@ -255,7 +255,7 @@ export const FLOWS: Record<string, Flow> = {
       const receipt = hmrc.getByRole("heading", { name: /Demo — submission simulated/ });
       await receipt.waitFor({ timeout: 20_000 });
       await h.scrollIntoView(receipt, 800);
-      await h.hover(hmrc.getByText("HMRC was not contacted").first(), 1600);
+      await h.hover(hmrc.getByText("HMRC was not contacted").filter({ visible: true }).first(), 1600);
     },
   },
 
@@ -267,8 +267,8 @@ export const FLOWS: Record<string, Flow> = {
       await h.park(page.viewportSize()!.width * 0.5, 240);
       await h.hold(600);
       // The sample books' open quarter with figures is Jul–Sep 2026 (the demo's "today" is in Oct–Dec, still empty).
-      await h.type(page.getByLabel("Ask your books").first(), "How much VAT do I owe for Jul–Sep 2026?", 300);
-      await h.click(page.getByRole("button", { name: "Ask", exact: true }).first(), 300);
+      await h.type(page.getByLabel("Ask your books").filter({ visible: true }).first(), "How much VAT do I owe for Jul–Sep 2026?", 300);
+      await h.click(page.getByRole("button", { name: "Ask", exact: true }).filter({ visible: true }).first(), 300);
       const answer = page.getByRole("article").last();
       await answer.waitFor({ timeout: 30_000 });
       await h.hold(900);
@@ -285,9 +285,9 @@ export const FLOWS: Record<string, Flow> = {
     run: async (c) => {
       const { page, h } = c;
       await h.park(page.viewportSize()!.width * 0.5, 240);
-      await h.type(page.getByLabel("Ask your books").first(), "Send a £100 invoice to Hartwell Property Maintenance", 300);
-      await h.click(page.getByRole("button", { name: "Ask", exact: true }).first(), 300);
-      const card = page.getByRole("article", { name: /^Proposed:/ }).first();
+      await h.type(page.getByLabel("Ask your books").filter({ visible: true }).first(), "Send a £100 invoice to Hartwell Property Maintenance", 300);
+      await h.click(page.getByRole("button", { name: "Ask", exact: true }).filter({ visible: true }).first(), 300);
+      const card = page.getByRole("article", { name: /^Proposed:/ }).filter({ visible: true }).first();
       await card.waitFor({ timeout: 30_000 });
       await h.scrollIntoView(card, 900);
       await h.hover(card, 1400);
@@ -302,7 +302,7 @@ export const FLOWS: Record<string, Flow> = {
       const { page, h } = c;
       await h.park(page.viewportSize()!.width * 0.5, 260);
       await h.hold(600);
-      await h.click(page.getByRole("button", { name: /^Close / }).first(), 600);
+      await h.click(page.getByRole("button", { name: /^Close / }).filter({ visible: true }).first(), 600);
       const list = page.getByRole("list", { name: /^Close checklist for/ });
       await list.waitFor({ timeout: 60_000 });
       await h.hold(1000);
@@ -317,7 +317,7 @@ export const FLOWS: Record<string, Flow> = {
     run: async (c) => {
       const { page, h } = c;
       await h.park(page.viewportSize()!.width * 0.4, 300);
-      const sw = page.getByRole("button", { name: /Demo visitor|profile/i }).first();
+      const sw = page.getByRole("button", { name: /Demo visitor|profile/i }).filter({ visible: true }).first();
       await h.click(sw, 1800);
       await h.press("Escape", 600);
     },
@@ -331,8 +331,8 @@ export const FLOWS: Record<string, Flow> = {
       await h.park(page.viewportSize()!.width * 0.5, 260);
       await h.hold(800);
       const chain = page.getByRole("list", { name: "Provider chain" });
-      if (await chain.isVisible().catch(() => false)) await h.hover(chain.getByRole("listitem").first(), 1400);
-      const report = page.getByRole("link", { name: /Report: evals\/runs\/spark_open_200/ }).first();
+      if (await chain.isVisible().catch(() => false)) await h.hover(chain.getByRole("listitem").filter({ visible: true }).first(), 1400);
+      const report = page.getByRole("link", { name: /Report: evals\/runs\/spark_open_200/ }).filter({ visible: true }).first();
       if (await report.count()) await h.hover(report, 1600);
       await browse(c, 1, 1200);
     },
@@ -349,7 +349,7 @@ export const FLOWS: Record<string, Flow> = {
     setup: (c) => open(c, "/reports", (p) => p.getByRole("heading", { name: /Profit and loss/ })),
     run: async (c) => {
       await c.h.park(c.page.viewportSize()!.width * 0.5, 260);
-      await c.h.hover(c.page.getByRole("heading", { name: /Profit and loss/ }).first(), 1000);
+      await c.h.hover(c.page.getByRole("heading", { name: /Profit and loss/ }).filter({ visible: true }).first(), 1000);
       await browse(c, 2, 1300);
     },
   },
@@ -379,7 +379,7 @@ export const FLOWS: Record<string, Flow> = {
       const { page, h } = c;
       await h.park(page.viewportSize()!.width * 0.5, 260);
       await h.hold(1000);
-      const first = main(page).getByRole("link", { name: /^INV-/ }).first();
+      const first = main(page).getByRole("link", { name: /^INV-/ }).filter({ visible: true }).first();
       if (await first.isVisible().catch(() => false)) {
         await h.click(first, 1500);
         await browse(c, 1, 1300);
@@ -405,9 +405,9 @@ export const FLOWS: Record<string, Flow> = {
     run: async (c) => {
       const { page, h } = c;
       await h.park(page.viewportSize()!.width * 0.5, 300);
-      const conn = page.getByRole("heading", { name: "Connections" }).first();
+      const conn = page.getByRole("heading", { name: "Connections" }).filter({ visible: true }).first();
       await h.hover(conn, 1200);
-      const outlook = page.getByText(/Outlook/).first();
+      const outlook = page.getByText(/Outlook/).filter({ visible: true }).first();
       if (await outlook.isVisible().catch(() => false)) await h.hover(outlook, 1500);
       await browse(c, 1, 1400);
     },
@@ -459,7 +459,7 @@ export const FLOWS: Record<string, Flow> = {
     about: "Your accountant: invite by email, the books folder is shared in OneDrive",
     setup: (c) => open(c, "/settings", (p) => p.getByRole("heading", { level: 1 })),
     run: async (c) => {
-      const t = c.page.getByText(/Your accountant/).first();
+      const t = c.page.getByText(/Your accountant/).filter({ visible: true }).first();
       if (await t.isVisible().catch(() => false)) await c.h.hover(t, 1500);
       await browse(c, 1, 1400);
     },
@@ -470,7 +470,7 @@ export const FLOWS: Record<string, Flow> = {
     setup: (c) => open(c, "/", (p) => p.getByRole("heading", { level: 1 })),
     run: async (c) => {
       for (const g of ["Sales", "Purchases", "Reporting", "Tax"]) {
-        const b = c.page.getByRole("button", { name: new RegExp(`^${g}`) }).first();
+        const b = c.page.getByRole("button", { name: new RegExp(`^${g}`) }).filter({ visible: true }).first();
         if (!(await b.isVisible().catch(() => false))) continue;
         await c.h.click(b, 1000);
         await c.h.press("Escape", 300);
@@ -514,8 +514,169 @@ export const RULES: [RegExp, string][] = [
   [/home|dashboard/i, "home"],
 ];
 
-export function chooseFlow(shot: { flow?: string; what: string; caption: string }): string {
+/** Run one flow after another in a single shot; the later ones navigate on camera. */
+function chain(about: string, ...names: string[]): Flow {
+  return {
+    about,
+    signedOut: FLOWS[names[0]!]!.signedOut,
+    setup: (c) => FLOWS[names[0]!]!.setup?.(c) ?? Promise.resolve(),
+    run: async (c) => {
+      for (const [i, n] of names.entries()) {
+        const f = FLOWS[n]!;
+        if (i > 0) await f.setup?.(c);
+        await f.run?.(c);
+      }
+    },
+  };
+}
+
+async function settingsSwitch(c: FlowCtx, name: string): Promise<void> {
+  await open(c, "/settings", h1("Settings"));
+  // Settings is in tabs; the switches are under Business.
+  await c.h.click(c.page.getByRole("tab", { name: "Business" }), 900);
+  const sw = c.page.getByRole("switch", { name }).or(c.page.getByRole("checkbox", { name }));
+  await c.h.click(sw, 1000);
+}
+
+Object.assign(FLOWS, {
+  dashboard: {
+    about: "Home: a slow scroll from cash and amounts owed down to the Coming up deadlines",
+    setup: FLOWS.home!.setup,
+    run: async (c: FlowCtx) => {
+      const { page, h } = c;
+      await h.park(page.viewportSize()!.width * 0.55, 240);
+      await h.hold(1200);
+      await h.hover(page.getByText("Cash in bank").filter({ visible: true }).first(), 1400);
+      await h.hover(page.getByText("Owed to you").filter({ visible: true }).first(), 1400);
+      await h.hover(page.getByText("VAT estimate").filter({ visible: true }).first(), 1400);
+      const coming = page.getByRole("heading", { name: "Coming up" }).filter({ visible: true }).first();
+      await h.scrollIntoView(coming, 1400);
+      await h.hover(coming, 1200);
+      await h.hover(page.getByRole("heading", { name: "Deadlines" }).filter({ visible: true }).first(), 1600);
+    },
+  },
+  "review-read": {
+    about: "Review: one proposal card: who read it, the figures, the code checks and the second-reading line (no approve)",
+    setup: FLOWS["review-approve"]!.setup,
+    run: async (c: FlowCtx) => {
+      const { page, h } = c;
+      await h.park(page.viewportSize()!.width * 0.5, 220);
+      const card = page.locator("section[aria-labelledby^=proposal-]").filter({ has: page.getByRole("button", { name: /^Approve/ }) }).filter({ visible: true }).first();
+      await h.scrollIntoView(card.getByText(/Read by/).filter({ visible: true }).first(), 1200);
+      await h.hover(card.getByText(/Read by/).filter({ visible: true }).first(), 1600);
+      await h.hover(card.getByText(/^Net · VAT · Total/).filter({ visible: true }).first(), 1500);
+      await h.hover(card.getByText(/^Why:/).filter({ visible: true }).first(), 1800);
+      await h.hover(card.getByText(/checks by code/).filter({ visible: true }).first(), 2000);
+    },
+  },
+  "review-queue": {
+    about: "Review: the queue of proposals waiting for approval",
+    setup: FLOWS["review-approve"]!.setup,
+    run: async (c: FlowCtx) => {
+      await c.h.park(c.page.viewportSize()!.width * 0.5, 220);
+      await c.h.scrollIntoView(c.page.getByText(/\d+ waiting for you/).filter({ visible: true }).first(), 1100);
+      await browse(c, 2, 1300);
+    },
+  },
+  "vat-entries": {
+    about: "VAT return: the quarter picker, the nine boxes, and the entries behind Box 4",
+    setup: FLOWS["vat-return"]!.setup,
+    run: async (c: FlowCtx) => {
+      await FLOWS["vat-return"]!.run!(c);
+      const row = c.page.getByRole("row").filter({ hasText: "VAT reclaimed on purchases" }).filter({ visible: true }).first();
+      const entries = row.getByRole("link").or(row.getByRole("button")).filter({ visible: true }).first();
+      if (await entries.isVisible().catch(() => false)) await c.h.click(entries, 1800);
+    },
+  },
+  "self-employment-on": {
+    about: "Settings → I am self-employed, then the Self-employment (MTD Income Tax) page",
+    setup: (c: FlowCtx) => open(c, "/settings", h1("Settings")),
+    run: async (c: FlowCtx) => {
+      await settingsSwitch(c, "I am self-employed");
+      await open(c, "/self-employment", h1(/Self-employment/));
+      await browse(c, 1, 1500);
+    },
+  },
+  "property-on": {
+    about: "Settings → I let property (landlord mode), then the Property page",
+    setup: (c: FlowCtx) => open(c, "/settings", h1("Settings")),
+    run: async (c: FlowCtx) => {
+      await settingsSwitch(c, "I let property (landlord mode)");
+      await open(c, "/property", h1("Property"));
+      await browse(c, 1, 1500);
+    },
+  },
+  exports: {
+    about: "Reports & exports: the VAT return layout, SA103 summary, ledger as PDF, spreadsheet or CSV",
+    setup: (c: FlowCtx) => open(c, "/reports/exports", h1(/Reports & exports/)),
+    run: async (c: FlowCtx) => browse(c, 2, 1500),
+  },
+  "payroll-run": {
+    about: "Payroll: prepare a pay run, line by line in pence (estimates; filing is with Basic PAYE Tools)",
+    setup: FLOWS.payroll!.setup,
+    run: async (c: FlowCtx) => {
+      const prep = c.page.getByRole("button", { name: /^Prepare .* pay run$/ }).filter({ visible: true }).first();
+      if (await prep.isVisible().catch(() => false)) await c.h.click(prep, 1500);
+      await browse(c, 1, 1500);
+    },
+  },
+  "payroll-downloads": {
+    about: "Payroll: the downloads (payslips, RTI files, pension schedule)",
+    setup: FLOWS.payroll!.setup,
+    run: async (c: FlowCtx) => {
+      const dl = c.page.getByText(/payslips|RTI/i).filter({ visible: true }).first();
+      if (await dl.isVisible().catch(() => false)) await c.h.hover(dl, 1500);
+      await browse(c, 2, 1300);
+    },
+  },
+  "approve-ledger": chain("Review → Approve, then Files: _System/Ledger/events and Books.xlsx", "review-approve", "files-ledger"),
+  "vat-hmrc": chain("VAT return boxes, then the HMRC flow (simulated in the demo)", "vat-return", "hmrc-sim"),
+  "approve-home": chain("Review → Approve, then Home", "review-approve", "home"),
+} satisfies Record<string, Flow>);
+
+/**
+ * The plan for Muse's scripts (docs/video/JUDGES_VIDEO.md, docs/video/CLIPS.md), shot by shot. `live` marks what the
+ * test-mode build cannot show honestly (a live model's reading or words, the Android camera, voice, a real mailbox or
+ * an accountant's shared books): the flow, if any, is a stand-in and the assembled preview says "Film live"; without a
+ * flow the preview holds a placeholder card. docs/video/README.md lists them.
+ */
+export const SHOT_PLAN: Record<string, { flow: string; live?: string; pace?: number }> = {
+  "judges-01": { flow: "card" },
+  "judges-02": { flow: "dashboard" },
+  "judges-03": { flow: "receipt-upload", live: "Android camera capture and an Outlook email: film on the phone and a throwaway mailbox" },
+  "judges-04": { flow: "review-read", live: "the reader line must name a live Meta model reading, not the test stub" },
+  "judges-05": { flow: "card" },
+  "judges-06": { flow: "approve-ledger" },
+  "judges-07": { flow: "vat-hmrc", pace: 0.55, live: "HMRC's sandbox (the demo simulates it): film with a real sandbox connection" },
+  "judges-08": { flow: "outlook", live: "Outlook intake needs a real (throwaway) mailbox and a live reading" },
+  "judges-09": { flow: "approve-home", pace: 0.45, live: "Home's AI summary is the test stub's: film with a live model" },
+  "judges-10": { flow: "hmrc-sim", pace: 0.8, live: "HMRC's sandbox (the demo simulates it): film with a real sandbox connection" },
+  "judges-11": { flow: "card", live: "voice (Muse Voice Transcribe) has never been run live: docs/HONESTY.md" },
+  "clip-01-01": { flow: "outlook", live: "Outlook intake needs a real (throwaway) mailbox" },
+  "clip-01-02": { flow: "camera", live: "Android camera" },
+  "clip-01-03": { flow: "review-queue" },
+  "clip-02-01": { flow: "dashboard" },
+  "clip-02-02": { flow: "home", live: "the AI summary is the test stub's: film with a live model" },
+  "clip-03-01": { flow: "vat-entries" },
+  "clip-03-02": { flow: "hmrc-sim", live: "HMRC's sandbox (the demo simulates it)" },
+  "clip-04-01": { flow: "self-employment-on" },
+  "clip-04-02": { flow: "property-on" },
+  "clip-04-03": { flow: "self-employment", live: "the MTD Income Tax sandbox submission" },
+  "clip-05-01": { flow: "cis" },
+  "clip-05-02": { flow: "cis" },
+  "clip-06-01": { flow: "payroll-run" },
+  "clip-06-02": { flow: "payroll-downloads" },
+  "clip-07-01": { flow: "card", live: "voice has never been run live, and the stub cannot turn the line into a timesheet card" },
+  "clip-07-02": { flow: "card", live: "the stub cannot price a quote from chat: film with a live model" },
+  "clip-07-03": { flow: "card", live: "the stub cannot turn the line into a to-do: film with a live model" },
+  "clip-08-01": { flow: "card", live: "the accountant portal needs books shared through Microsoft Graph (not in the demo)" },
+  "clip-08-02": { flow: "exports" },
+};
+
+export function chooseFlow(shot: { id?: string; flow?: string; what: string; caption: string }): string {
   if (shot.flow && FLOWS[shot.flow]) return shot.flow;
+  const planned = shot.id ? SHOT_PLAN[shot.id] : undefined;
+  if (planned && FLOWS[planned.flow]) return planned.flow;
   for (const text of [shot.what, shot.caption]) {
     for (const [re, name] of RULES) if (re.test(text)) return name;
   }

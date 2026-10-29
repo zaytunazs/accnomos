@@ -5,6 +5,7 @@
  *
  *   node tools/video/howto.ts                 # every guide (reuses apps/web/out-e2e; starts the servers as capture.ts does)
  *   node tools/video/howto.ts --only vat-return --dry-run
+ *   node tools/video/howto.ts --reshoot       # shoot the pictures it made before again
  *
  * Placeholders it understands (one per line; N counts placeholders in the guide, from 1):
  *   ![Screenshot: what it shows](img/<guide>-<N>.png)        an image link whose file does not exist yet
@@ -67,13 +68,71 @@ export interface Placeholder {
   raw: string;
   alt: string;
   step: string;
+  /** "Must be visible: …" under the placeholder (what the picture has to show); it becomes the alt text. */
+  visible: string;
+  /** Lines [line, visibleEnd) are replaced by the image. */
+  visibleEnd: number;
   page?: string;
+  /** The last route the guide named above this placeholder (`/vat`), used when the step names none. */
+  inherited?: string;
   target?: string;
   full: boolean;
 }
 
+/**
+ * Per-image hints where the guide's words do not name the page or control (or name one outside the app, such as a
+ * Microsoft consent screen or Basic PAYE Tools: those pictures show the app's side of the step).
+ */
+export const HINTS: Record<string, { page?: string; target?: string; full?: boolean }> = {
+  "add-mailbox-2": { page: "/settings", target: "Connections" },
+  "add-mailbox-3": { page: "/settings", target: "Connections" },
+  "add-mailbox-4": { page: "/files", target: "_System" },
+  "add-mailbox-5": { page: "/review", target: "Approve (post to books)" },
+  "connect-books-2": { page: "/", target: "SAMPLE — FICTIONAL COMPANY" },
+  "connect-books-3": { page: "/", target: "Cash in bank" },
+  "connect-books-4": { page: "/files", target: "00 Inbox" },
+  "connect-books-5": { page: "/files", target: "Books.xlsx" },
+  "export-accountant-1": { page: "/reports/exports", target: "Find a report" },
+  "export-accountant-2": { page: "/reports/exports", target: "VAT return" },
+  "export-accountant-3": { page: "/reports/exports", target: "SA103" },
+  "export-accountant-4": { page: "/reports/exports", target: "Audit" },
+  "export-accountant-5": { page: "/files", target: "07 Reports" },
+  "income-tax-update-2": { page: "/property", full: true },
+  "income-tax-update-3": { page: "/self-employment", target: "Sandbox · test data only" },
+  "income-tax-update-4": { page: "/self-employment", full: true },
+  "income-tax-update-5": { page: "/self-employment", full: true },
+  "income-tax-update-6": { page: "/self-employment", full: true },
+  "invite-accountant-2": { page: "/settings", target: "Your accountant" },
+  "invite-accountant-3": { page: "/settings", target: "Your accountant" },
+  "invite-accountant-4": { page: "/accountant", full: true },
+  "invite-accountant-5": { page: "/audit", full: true },
+  "payroll-paye-4": { page: "/payroll", target: "Export CSV" },
+  "payroll-paye-5": { page: "/payroll", full: true },
+  "payroll-paye-6": { page: "/bank", full: true },
+  "review-approve-2": { page: "/review", target: "Net · VAT · Total" },
+  "review-approve-3": { page: "/review", target: "Why:" },
+  "review-approve-4": { page: "/review", target: "Approve (post to books)" },
+  "review-approve-6": { page: "/review", target: "Undo" },
+  "vat-return-1": { page: "/vat", target: "VAT period" },
+  "vat-return-2": { page: "/vat", target: "Total purchases excluding VAT" },
+  "vat-return-3": { page: "/vat", target: "Connect to HMRC (simulated)" },
+  "vat-return-4": { page: "/vat", target: "Connect to HMRC" },
+  "vat-return-5": { page: "/vat", target: "Connect to HMRC" },
+  "vat-return-6": { page: "/files", target: "06 VAT returns" },
+  "voice-chat-2": { page: "/ask", target: "Ask your books" },
+  "voice-chat-3": { page: "/ask", full: true },
+  "voice-chat-4": { page: "/jobs", full: true },
+  "voice-chat-5": { page: "/ask", target: "Ask your books" },
+};
+
+const PNG_FILTER =
+  "scale=1440:900:flags=lanczos,split[a][b];[a]palettegen=max_colors=256:stats_mode=single:reserve_transparent=0[p];[b][p]paletteuse=dither=none";
+
+/** --reshoot: shoot again pictures this tool already made (their alt text is the brief). */
+const RESHOOT = process.argv.includes("--reshoot");
+
 const PATTERNS: RegExp[] = [
-  /^!\[(?<alt>[^\]]*)\]\((?<src>img\/[^)\s]+\.png)\)\s*$/,
+  /^!\[(?<alt>[^\]]*)\]\((?<src>(?:\.\.\/howto\/)?img\/[^)\s]+\.png)\)\s*$/,
   /^<!--\s*screenshot\s*:?\s*(?<alt>.*?)\s*-->\s*$/i,
   /^!?\[\s*screenshot(?:\s+placeholder)?\s*:\s*(?<alt>[^\]]*)\](?:\(\s*\))?\s*$/i,
   /^>\s*(?:📸|🖼️|\[!NOTE\])?\s*\**screenshot\**\s*:\s*(?<alt>.+)$/i,
@@ -101,27 +160,51 @@ function stepText(lines: string[], i: number): string {
   return out.join(" ");
 }
 
+/** "Must be visible: …" right under a placeholder, up to the next "If this goes wrong" or blank line. */
+function visibleText(lines: string[], i: number): { text: string; end: number } {
+  if (!/^\s*must be visible:/i.test(lines[i + 1] ?? "")) return { text: "", end: i + 1 };
+  const out: string[] = [];
+  let j = i + 1;
+  for (; j < lines.length; j++) {
+    const l = lines[j]!.trim();
+    if (!l || /^if this goes wrong/i.test(l) || /^(\d+\.|[-*])\s/.test(l) || PATTERNS.some((p) => p.test(l))) break;
+    out.push(l);
+  }
+  return { text: out.join(" ").replace(/^must be visible:\s*/i, ""), end: j };
+}
+
 export function findPlaceholders(file: string): Placeholder[] {
   const guide = path.basename(file, ".md");
   const lines = readFileSync(file, "utf8").split(/\r?\n/);
   const out: Placeholder[] = [];
+  let lastRoute: string | undefined;
   lines.forEach((line, i) => {
+    const r = /`(\/[a-z0-9/-]*)`/.exec(line);
+    if (r && !PATTERNS.some((p) => p.test(line.trim()))) lastRoute = r[1];
     const t = line.trim().replace(/^(\d+\.|[-*])\s+/, "");
     for (const p of PATTERNS) {
       const m = p.exec(t);
       if (!m) continue;
+      // An image already shot by this tool (its alt is the description) is left alone.
+      if (!RESHOOT && m.groups?.src && existsSync(path.join(HOWTO, m.groups.src.replace(/^\.\.\/howto\//, ""))) && !/^step \d+$/i.test(m.groups.alt ?? "")) break;
       const alt = (m.groups?.alt ?? "").trim();
       const text = alt.replace(/\s*(page|target|crop)=(?:"[^"]*"|“[^”]*”|\S+)/g, "").trim();
+      const num = /-(\d+)\.png$/.exec(m.groups?.src ?? "");
+      const vis = visibleText(lines, i);
+      const n = num ? Number(num[1]) : out.length + 1;
       out.push({
         guide,
-        n: out.length + 1,
+        n,
         line: i,
         raw: line,
-        alt: text || `Step ${out.length + 1}`,
+        alt: /^step \d+$/i.test(text) || !text ? vis.text || `Step ${n}` : text,
         step: stepText(lines, i),
-        page: hint(alt, "page"),
-        target: hint(alt, "target"),
-        full: hint(alt, "crop") === "full",
+        visible: vis.text,
+        visibleEnd: vis.end,
+        inherited: lastRoute,
+        page: HINTS[`${guide}-${n}`]?.page ?? hint(alt, "page"),
+        target: HINTS[`${guide}-${n}`]?.target ?? hint(alt, "target"),
+        full: HINTS[`${guide}-${n}`]?.full ?? hint(alt, "crop") === "full",
       });
       break;
     }
@@ -131,6 +214,9 @@ export function findPlaceholders(file: string): Placeholder[] {
 
 function pickPage(p: Placeholder, title: string): string {
   if (p.page) return p.page;
+  const route = /`(\/[a-z0-9/-]*)`/.exec(p.step);
+  if (route) return route[1]!;
+  if (p.inherited) return p.inherited;
   for (const text of [`${p.alt} ${p.step}`, `${title} ${p.guide}`]) for (const [re, route] of ROUTES) if (re.test(text)) return route;
   return "/";
 }
@@ -138,12 +224,15 @@ function pickPage(p: Placeholder, title: string): string {
 /** Control names the step mentions: **bold**, “quoted”, "quoted", `code`, longest first. */
 export function candidates(p: Placeholder): string[] {
   if (p.target) return [p.target];
-  const text = `${p.step} ${p.alt}`;
   const found = new Set<string>();
-  for (const re of [/\*\*([^*]{2,60})\*\*/g, /“([^”]{2,60})”/g, /"([^"]{2,60})"/g, /`([^`]{2,60})`/g, /‘([^’]{2,60})’/g]) {
-    for (const m of text.matchAll(re)) found.add(m[1]!.trim().replace(/[.,:;]$/, ""));
+  // The step's own words first (the control it says to press), then what the picture must show.
+  for (const text of [p.step, p.visible, p.alt]) {
+    for (const re of [/\*\*([^*]{2,60})\*\*/g, /(?<![*\w])\*([^*\n]{2,60})\*(?![*\w])/g, /“([^”]{2,60})”/g, /"([^"]{2,60})"/g, /`([^`]{2,60})`/g, /‘([^’]{2,60})’/g]) {
+      for (const m of text.matchAll(re)) found.add(m[1]!.trim().replace(/[.,:;]$/, "").replace(/\s+/g, " "));
+    }
   }
-  return [...found].filter((s) => !/^(page|target|crop)=/.test(s)).sort((a, b) => b.length - a.length);
+  // Routes pick the page, not the control.
+  return [...found].filter((s) => !/^(page|target|crop)=/.test(s) && !/^\//.test(s));
 }
 
 async function locate(page: Page, names: string[]): Promise<Locator | null> {
@@ -181,7 +270,16 @@ async function shoot(page: Page, p: Placeholder, title: string, out: string): Pr
     if (await jul.count()) await jul.click();
   }
   const names = candidates(p);
-  const target = names.length ? await locate(page, names) : null;
+  let target = names.length ? await locate(page, names) : null;
+  // Settings and a few other pages keep sections in tabs: look behind each tab before giving up.
+  if (!target && names.length) {
+    for (const tab of await page.getByRole("tab").all()) {
+      await tab.click();
+      await page.waitForTimeout(300);
+      target = await locate(page, names);
+      if (target) break;
+    }
+  }
   const vp = page.viewportSize()!;
   let clip = { x: 0, y: 0, width: vp.width, height: vp.height };
   if (target) {
@@ -200,8 +298,8 @@ async function shoot(page: Page, p: Placeholder, title: string, out: string): Pr
       document.documentElement.appendChild(d);
     }, box);
     if (!p.full) {
-      // Crop to two thirds of the viewport round the control (keeps the 16:10 shape), unless the control is bigger.
-      const w = Math.max(Math.round(vp.width * 0.667), Math.min(vp.width, box.width + 160));
+      // Crop to 80 % of the viewport round the control (keeps the 16:10 shape), unless the control is bigger.
+      const w = Math.max(Math.round(vp.width * 0.8), Math.min(vp.width, box.width + 160));
       const h = Math.round((w * vp.height) / vp.width);
       const x = Math.min(Math.max(0, box.x + box.width / 2 - w / 2), vp.width - w);
       const y = Math.min(Math.max(0, box.y + box.height / 2 - h / 2), vp.height - h);
@@ -211,9 +309,10 @@ async function shoot(page: Page, p: Placeholder, title: string, out: string): Pr
   const tmp = `${out}.tmp.png`;
   await page.screenshot({ path: tmp, clip, animations: "disabled", caret: "hide" });
   await page.evaluate(() => document.getElementById("__howto_hl")?.remove());
-  // Every image is exactly 1440 × 900 (the crop is taken at 2× and scaled).
+  // Every image is exactly 1440 × 900 (the crop is taken at 2× and scaled), then cut to a 256-colour palette:
+  // flat UI screenshots lose nothing visible and come out about a third of the size.
   await new Promise<void>((resolve, reject) => {
-    const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-i", tmp, "-vf", "scale=1440:900:flags=lanczos", "-pred", "mixed", out], { stdio: "inherit" });
+    const ff = spawn("ffmpeg", ["-y", "-loglevel", "error", "-i", tmp, "-vf", PNG_FILTER, "-pred", "mixed", out], { stdio: "inherit" });
     ff.on("exit", (c) => (c === 0 ? resolve() : reject(new Error(`ffmpeg ${c}`))));
   });
   rmSync(tmp, { force: true });
@@ -260,21 +359,41 @@ async function main(): Promise<void> {
         const name = `${p.guide}-${p.n}.png`;
         try {
           const r = await shoot(page, p, title, path.join(IMG, name));
-          report.push(`${name}  ${r.route}  ${r.target ?? "(no control found: whole view)"}`);
+          report.push(`| \`${name}\` | \`${r.route}\` | ${r.target ? r.target.replace(/\|/g, "/") : "none found: whole view (approximate)"} | ${p.alt.replace(/\|/g, "/").slice(0, 140)} |`);
         } catch (e) {
-          report.push(`${name}  FAILED ${e instanceof Error ? e.message.split("\n")[0] : e}`);
+          report.push(`| \`${name}\` | FAILED | ${String(e instanceof Error ? e.message.split("\n")[0] : e).replace(/\|/g, "/")} | |`);
           continue;
         }
         const indent = /^(\s*(?:\d+\.|[-*])?\s*)/.exec(p.raw)![1]!;
-        lines[p.line] = `${indent}![${p.alt.replace(/[[\]]/g, "")}](img/${name})`;
+        lines[p.line] = `${indent}![${p.alt.replace(/[[\]*`]/g, "")}](img/${name})`;
+        // "Must be visible" was the brief for the picture; it is now the image's alt text.
+        for (let k = p.line + 1; k < p.visibleEnd; k++) lines[k] = "\u0000";
       }
-      writeFileSync(g.file, lines.join("\n"));
+      writeFileSync(g.file, lines.filter((l) => l !== "\u0000").join("\n"));
     }
   } finally {
     await browser.close();
     for (const k of kids) k.kill();
   }
   console.log(report.join("\n"));
+  if (!only) {
+    writeFileSync(
+      path.join(IMG, "SHOTS.md"),
+      [
+        "# How-to screenshots",
+        "",
+        "Made by `node tools/video/howto.ts` from the demo sandbox (the fictional sample books, test-mode build). Each picture is",
+        "1440 × 900, cropped round the control the step names, with an amber box on it. Steps that happen outside the app",
+        "(a Microsoft consent screen, HMRC's sign-in, Basic PAYE Tools) show the app's side of the step; rows marked",
+        "*approximate* found no named control and show the whole page. Re-shoot those by hand if the step needs more.",
+        "",
+        "| Image | Page | Control boxed | Must be visible |",
+        "|---|---|---|---|",
+        ...report,
+        "",
+      ].join("\n"),
+    );
+  }
   if (report.some((r) => r.includes("FAILED"))) process.exitCode = 1;
 }
 

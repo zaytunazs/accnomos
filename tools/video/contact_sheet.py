@@ -91,19 +91,33 @@ def main() -> None:
                 if frame(ROOT / s["file"], at, png):
                     tile = Image.open(png).convert("RGB").resize((tw, th), Image.Resampling.LANCZOS)
             if tile is None:
-                tile = Image.new("RGB", (tw, th), INK if s["kind"] != "camera" else (60, 40, 20))
+                live = bool(s.get("live"))
+                bg = (90, 58, 16) if live else (60, 40, 20) if s["kind"] == "camera" else INK
+                tile = Image.new("RGB", (tw, th), bg)
                 td = ImageDraw.Draw(tile)
-                tag = {"card": "CARD", "camera": "CAMERA (film for real)"}.get(s["kind"], s["status"].upper())
-                td.text((12, 10), tag, font=font(16, True), fill=(255, 200, 120) if s["kind"] == "camera" else WHITE)
+                tag = (
+                    "FILM LIVE"
+                    if live
+                    else {"card": "CARD", "camera": "CAMERA (film for real)"}.get(s["kind"], s["status"].upper())
+                )
+                td.text(
+                    (12, 10), tag, font=font(16, True), fill=(255, 200, 120) if live or s["kind"] == "camera" else WHITE
+                )
                 yy = 36
-                for ln in wrap(td, s["caption"] or s["what"], font(15), tw - 24)[:8]:
+                text = s.get("live") if live else s.get("card") or s["caption"] or s["what"]
+                for ln in wrap(td, " ".join(text.split()), font(15), tw - 24)[:8]:
                     td.text((12, yy), ln, font=font(15), fill=WHITE)
                     yy += 20
             sheet.paste(tile, (x, y))
             colour = AMBER if s["status"] == "failed" else TEAL
             d.rectangle([x, y, x + tw - 1, y + th - 1], outline=colour, width=2)
             d.text((x, y + th + 6), f"{s['id']} · {s['duration']:g} s", font=font(15, True), fill=INK)
-            d.text((x, y + th + 26), f"{s['flow']}{' · FAILED' if s['status'] == 'failed' else ''}", font=font(14), fill=colour)
+            d.text(
+                (x, y + th + 26),
+                f"{s['flow']}{' · FAILED' if s['status'] == 'failed' else ''}",
+                font=font(14),
+                fill=colour,
+            )
     out = ROOT / "docs/video" / f"contact-sheet-{a.sequence}.png"
     sheet.save(out, optimize=True)
     print(f"wrote {out.relative_to(ROOT)}")

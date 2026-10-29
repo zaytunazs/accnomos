@@ -23,6 +23,10 @@ export interface ScriptShot {
   caption: string;
   vo: string;
   flow?: string;
+  /** Card text (a quoted or fenced block in the shot's section), for full-screen cards. */
+  card?: string;
+  /** "cut to the end card: `…`": drawn over the last seconds of the shot. */
+  endCard?: string;
 }
 
 export interface Sequence {
@@ -32,15 +36,17 @@ export interface Sequence {
 }
 
 const COLS: Record<keyof Pick<ScriptShot, "id" | "what" | "caption" | "vo" | "flow">, string[]> & {
+  action: string[];
   time: string[];
   duration: string[];
 } = {
   id: ["shot id", "id", "#", "no", "no."],
   time: ["time", "timing", "timecode", "start–end", "start-end"],
   duration: ["duration", "length", "secs", "seconds", "dur"],
-  what: ["shot", "screen", "visual", "what we see", "on screen", "action", "scene", "what's on screen"],
+  what: ["shot", "screen", "visual", "what we see", "on screen", "scene", "what's on screen"],
   caption: ["on-screen caption", "caption", "on-screen text", "burned caption", "lower third", "captions", "text on screen"],
   vo: ["voice-over", "voiceover", "voice over", "vo", "narration", "script", "vo text"],
+  action: ["on-screen action", "action", "what happens"],
   flow: ["flow", "capture"],
 };
 
@@ -63,7 +69,7 @@ function clean(s: string): string {
     .replace(/\s*\((?:if|add|or)\b[^)]*\)/gi, "")
     .replace(/`/g, "")
     .trim()
-    .replace(/^["“]|["”]$/g, "")
+    .replace(/^["“]([^"“”]*)["”]$/, "$1")
     .trim();
 }
 
@@ -128,6 +134,7 @@ export function parseScript(file: string, defaultSequence: string): Sequence[] {
       caption: findCol(header, COLS.caption),
       vo: findCol(header, COLS.vo),
       flow: findCol(header, COLS.flow),
+      action: findCol(header, COLS.action),
     };
     i += 2;
     const rows: string[][] = [];
@@ -135,10 +142,13 @@ export function parseScript(file: string, defaultSequence: string): Sequence[] {
     i--;
     if (col.time < 0 && col.duration < 0) continue;
     if (col.what < 0 && col.caption < 0 && col.vo < 0) continue;
-    const seqId = headingFlow ?? (seqs.length === 0 && heading === defaultSequence ? defaultSequence : slug(heading) || defaultSequence);
+    const clipNo = /^clip\s+(\d+)/i.exec(heading);
+    const seqId =
+      headingFlow ??
+      (clipNo ? `clip-${clipNo[1]!.padStart(2, "0")}` : seqs.length === 0 && heading === defaultSequence ? defaultSequence : slug(heading) || defaultSequence);
     let seq = seqs.find((s) => s.id === seqId);
     if (!seq) {
-      seq = { id: seqId, title: heading, shots: [] };
+      seq = { id: seqId, title: heading.replace(/^clip\s+\d+\s*[—–-]\s*/i, "").replace(/\s*\([\d:–—-]+\)\s*$/, ""), shots: [] };
       seqs.push(seq);
     }
     for (const r of rows) {
@@ -153,12 +163,84 @@ export function parseScript(file: string, defaultSequence: string): Sequence[] {
         sequence: seq.id,
         index,
         duration: dur,
-        what: cell(col.what),
+        what: [cell(col.what), cell(col.action)].filter(Boolean).join(": "),
         caption: cell(col.caption),
-        vo: cell(col.vo),
+        vo: voText(cell(col.vo)),
         flow: cell(col.flow) || undefined,
       });
     }
   }
-  return seqs.filter((s) => s.shots.length > 0);
+  const tabled = seqs.filter((s) => s.shots.length > 0);
+  return tabled.length ? tabled : parseSections(lines, defaultSequence);
+}
+
+/** A voice-over cell or paragraph: the quoted words only, without "(28 words)". */
+function voText(s: string): string {
+  const q = /["“]([\s\S]+)["”]/.exec(s);
+  return (q ? q[1]! : s).replace(/\s*\(\d+ words?[^)]*\)\s*$/i, "").replace(/\s+/g, " ").trim();
+}
+
+/**
+ * The other layout: one heading per shot, "Shot 4 — title (0:48–1:08, 20 s)", then paragraphs that start
+ * "Screen:", "On-screen action:", "Caption:" and "Voice-over (…):"; a quote or fenced block is the card's text.
+ */
+export function parseSections(lines: string[], sequence: string): Sequence[] {
+  const shots: ScriptShot[] = [];
+  let title = sequence;
+  for (let i = 0; i < lines.length; i++) {
+    const h = /^#{1,4}\s+(.*)$/.exec(lines[i]!);
+    if (!h) continue;
+    if (/^#\s/.test(lines[i]!)) title = clean(h[1]!);
+    const m = /^shot\s+(\d+)\s*[—–-]\s*(.*?)\s*\(([^)]*)\)\s*$/i.exec(clean(h[1]!));
+    if (!m) continue;
+    const dur = /(\d+(?:\.\d+)?)\s*s\b/.exec(m[3]!) ? Number(/(\d+(?:\.\d+)?)\s*s\b/.exec(m[3]!)![1]) : parseDuration(m[3]!, true);
+    const body: string[] = [];
+    for (i++; i < lines.length && !/^#{1,4}\s/.test(lines[i]!); i++) body.push(lines[i]!);
+    i--;
+    const paras: string[] = [];
+    let cur: string[] = [];
+    let quote: string[] = [];
+    let fence: string[] | null = null;
+    for (const l of body) {
+      if (fence) {
+        if (/^```/.test(l.trim())) {
+          quote.push(...fence);
+          fence = null;
+        } else fence.push(l);
+        continue;
+      }
+      if (/^```/.test(l.trim())) {
+        fence = [];
+        continue;
+      }
+      if (/^>\s?/.test(l)) {
+        quote.push(l.replace(/^>\s?/, ""));
+        continue;
+      }
+      if (!l.trim()) {
+        if (cur.length) paras.push(cur.join(" "));
+        cur = [];
+      } else cur.push(l.trim());
+    }
+    if (cur.length) paras.push(cur.join(" "));
+    const field = (re: RegExp) => paras.find((p) => re.test(p))?.replace(re, "").trim() ?? "";
+    const screen = field(/^screen:\s*/i);
+    const action = field(/^on-screen action:\s*/i);
+    const caption = (/`([^`]+)`/.exec(field(/^caption:\s*/i)) ?? [, field(/^caption:\s*/i)])[1]!;
+    const vo = voText(field(/^voice-over[^:]*:\s*/i));
+    const end = /end card:?\s*`([^`]+)`/i.exec(action);
+    const n = Number(m[1]);
+    shots.push({
+      id: `${sequence}-${String(n).padStart(2, "0")}`,
+      sequence,
+      index: n,
+      duration: dur,
+      what: clean(`${m[2]}. ${screen} ${action}`),
+      caption: clean(caption),
+      vo,
+      card: quote.length ? quote.map((q) => q.trimEnd()).join("\n").trim() : undefined,
+      endCard: end ? clean(end[1]!) : undefined,
+    });
+  }
+  return shots.length ? [{ id: sequence, title, shots }] : [];
 }
