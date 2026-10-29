@@ -66,7 +66,7 @@ test("section layout: shot headings, card text from a quote, end card from the a
       "> Line one.",
       "> Line two.",
       "",
-      "Caption: `Only Spark hardware predates the event` (6 words).",
+      "Caption: `Only a local server predates the event` (6 words).",
       "",
       'Voice-over (3 words): "Before the hackathon."',
       "### Shot 2 — end (0:08–0:20, 12 s)",
@@ -79,7 +79,7 @@ test("section layout: shot headings, card text from a quote, end card from the a
   assert.equal(seq!.shots.length, 2);
   assert.deepEqual([seq!.shots[0]!.duration, seq!.shots[1]!.duration], [8, 12]);
   assert.equal(seq!.shots[0]!.card, "Line one.\nLine two.");
-  assert.equal(seq!.shots[0]!.caption, "Only Spark hardware predates the event");
+  assert.equal(seq!.shots[0]!.caption, "Only a local server predates the event");
   assert.equal(seq!.shots[0]!.vo, "Before the hackathon.");
   assert.equal(seq!.shots[1]!.endCard, "github.com/x · Sample data");
 });
@@ -87,7 +87,11 @@ test("section layout: shot headings, card text from a quote, end card from the a
 test("Muse's scripts: 180 s judges' video, every shot planned with a known flow", () => {
   const judges = parseScript(path.join(ROOT, "docs/video/JUDGES_VIDEO.md"), "judges")[0]!;
   assert.equal(judges.shots.reduce((t, s) => t + s.duration, 0), 180);
-  assert.match(judges.shots[0]!.card ?? "", /Before the hackathon I had only my DGX Spark with Ollama/);
+  assert.match(judges.shots[0]!.card ?? "", /^Before the hackathon: only a local GPU server I already owned\./);
+  assert.equal(judges.shots[0]!.duration, 10);
+  assert.doesNotMatch(JSON.stringify(judges), /DGX|Ollama|Kokoro|vLLM|Whisper|ComfyUI/i);
+  assert.match(judges.shots.at(-1)!.endCard ?? "", /Title art: Muse Image \(Meta\)\.$/);
+  assert.match(judges.shots[2]!.section ?? "", /^Impact/);
   const clips = parseScript(path.join(ROOT, "docs/video/CLIPS.md"), "clip");
   assert.equal(clips.length, 8);
   for (const s of [...judges.shots, ...clips.flatMap((c) => c.shots)]) {

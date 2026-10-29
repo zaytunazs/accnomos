@@ -27,6 +27,8 @@ export interface ScriptShot {
   card?: string;
   /** "cut to the end card: `…`": drawn over the last seconds of the shot. */
   endCard?: string;
+  /** The section heading the shot sits under ("Impact — who it helps …"), for its card art. */
+  section?: string;
 }
 
 export interface Sequence {
@@ -187,12 +189,16 @@ function voText(s: string): string {
 export function parseSections(lines: string[], sequence: string): Sequence[] {
   const shots: ScriptShot[] = [];
   let title = sequence;
+  let section = "";
   for (let i = 0; i < lines.length; i++) {
     const h = /^#{1,4}\s+(.*)$/.exec(lines[i]!);
     if (!h) continue;
     if (/^#\s/.test(lines[i]!)) title = clean(h[1]!);
     const m = /^shot\s+(\d+)\s*[—–-]\s*(.*?)\s*\(([^)]*)\)\s*$/i.exec(clean(h[1]!));
-    if (!m) continue;
+    if (!m) {
+      if (/^##\s/.test(lines[i]!)) section = clean(h[1]!);
+      continue;
+    }
     const dur = /(\d+(?:\.\d+)?)\s*s\b/.exec(m[3]!) ? Number(/(\d+(?:\.\d+)?)\s*s\b/.exec(m[3]!)![1]) : parseDuration(m[3]!, true);
     const body: string[] = [];
     for (i++; i < lines.length && !/^#{1,4}\s/.test(lines[i]!); i++) body.push(lines[i]!);
@@ -240,6 +246,7 @@ export function parseSections(lines: string[], sequence: string): Sequence[] {
       vo,
       card: quote.length ? quote.map((q) => q.trimEnd()).join("\n").trim() : undefined,
       endCard: end ? clean(end[1]!) : undefined,
+      section: section || undefined,
     });
   }
   return shots.length ? [{ id: sequence, title, shots }] : [];

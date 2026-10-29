@@ -230,6 +230,8 @@ export interface ManifestShot {
   /** Card text (provenance, eval table) and an end card drawn over the shot's last seconds. */
   card?: string;
   end_card?: string;
+  /** The script section the shot sits under (picks its card art). */
+  section?: string;
   /** Why this shot must be re-filmed live; the footage, if any, is a test-mode stand-in. */
   live?: string;
   file: string | null;
@@ -255,6 +257,7 @@ async function captureShot(browser: Browser, format: FormatName, shot: ScriptSho
     vo_wav: `docs/video/vo/${shot.id}.wav`,
     card: shot.card,
     end_card: shot.endCard,
+    section: shot.section,
     live: SHOT_PLAN[shot.id]?.live,
     file: null,
     status: kind === "app" ? "ok" : "card",
@@ -339,7 +342,7 @@ async function main(): Promise<void> {
         const prev = old?.sequences.find((q) => q.id === seq.id)?.shots.find((x) => x.id === s.id);
         if (a.only && !a.only.has(s.id) && !a.only.has(seq.id)) {
           // Not re-recorded this run: keep what the last run wrote, with this script's words and timing.
-          shots.push(prev ? { ...prev, duration: s.duration, caption: s.caption, vo: s.vo, what: s.what, card: s.card, end_card: s.endCard, live: SHOT_PLAN[s.id]?.live } : { ...(await captureShot(browser, format, { ...s, flow: "card" })), status: "skipped" });
+          shots.push(prev ? { ...prev, duration: s.duration, caption: s.caption, vo: s.vo, what: s.what, card: s.card, end_card: s.endCard, section: s.section, live: SHOT_PLAN[s.id]?.live } : { ...(await captureShot(browser, format, { ...s, flow: "card" })), status: "skipped" });
           continue;
         }
         process.stdout.write(`${s.id} … `);
