@@ -68,6 +68,7 @@ function SiteFooter() {
             { href: "/#pricing", text: "Pricing" },
             { href: DEMO_GUIDE, text: "Try the demo" },
             { href: "/try", text: "Browse the sample books" },
+            { href: "/join", text: "Get 3 months free" },
           ]}
         />
         <FooterLinks

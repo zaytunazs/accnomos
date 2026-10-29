@@ -137,7 +137,7 @@ test.describe("process animation", () => {
 test.describe("at 360 px", () => {
   test.use({ viewport: { width: 360, height: 740 } });
 
-  for (const path of ["/", "/how-it-works", "/privacy", "/terms", "/judges"]) {
+  for (const path of ["/", "/how-it-works", "/privacy", "/terms", "/judges", "/join"]) {
     test(`${path}: no sideways scroll`, async ({ page }) => {
       await page.goto(path);
       await page.waitForLoadState("networkidle");
