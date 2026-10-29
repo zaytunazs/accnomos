@@ -232,7 +232,7 @@ class RuntimeClient {
       {List<String>? names, String source = 'phone'}) async {
     final job = await _map('POST', '/books/scan/jobs',
         query: vatQuery(),
-        body: {if (names != null) 'names': names, 'source': source},
+        body: {'names': ?names, 'source': source},
         what: 'start reading your Inbox');
     return ScanJob.fromJson(job);
   }
