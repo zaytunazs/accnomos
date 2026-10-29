@@ -7,7 +7,7 @@ import { PAGES } from "./pages";
  * The one-click demo from the landing page is driven end to end in sandbox.spec.ts (it waits for the seed).
  */
 
-const PUBLIC = new Set(["/", "/how-it-works", "/privacy", "/terms", "/judges"]); // lib/public-site.ts PUBLIC_PATHS
+const PUBLIC = new Set(["/", "/how-it-works", "/meta-models", "/privacy", "/terms", "/judges"]); // lib/public-site.ts PUBLIC_PATHS
 
 test.describe("signed out, / is the marketing home", () => {
   test.use({ viewport: { width: 1440, height: 900 } });

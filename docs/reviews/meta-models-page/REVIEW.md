@@ -50,7 +50,10 @@ Owner's request: "one page that says which Meta model is used for what work and 
   is hidden and nothing scrolls sideways.
 - `/meta-models` added to `e2e/pages.ts` (axe signed out and signed in, phone smoke) and to the public set in
   `e2e/signed-out.spec.ts` (CTA wording, live links and buttons at 390 and 1280 px).
-- Gate totals: GATES
+- `e2e/site-layout.spec.ts`: its copy of the public set gains `/meta-models` (the one failure of the first full run).
+- Gate totals (29 Oct 2026): runtime `pytest -q` 2390 passed, 2 skipped; `ruff check` and `ruff format --check` clean;
+  `pyright app` 0 errors; web `eslint .` clean; `e2e:build` ok; full `e2e:test` (CI=1) 485 passed, 94 skipped, 1 failed
+  (`site-layout.spec.ts`, the public-set copy above), then that spec re-run after the fix: 6 passed. No Flutter change.
 
 ## Risks
 
