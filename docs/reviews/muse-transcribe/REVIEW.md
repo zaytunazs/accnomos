@@ -68,11 +68,15 @@ Branch from `origin/main` (`c353bd4`). No push to main, no PR. Meta's API, Baset
 | `evals/tests/test_spark_queue.py` | `stt` is the 7th step; with Qwen and Ollama down only `stt` runs | pass |
 | `apps/mobile/test/voice_provider_test.dart` | 3 new: `VoiceAnswer.transcribedBy`, `SpokenTag` widget, `voiceOffReason` | **not run: no Flutter SDK in this sandbox** |
 
-Gates, all from this branch: runtime `pytest -q` RUNTIME_TOTALS; `ruff check .` and `ruff format --check .` clean;
+Gates, all from this branch: runtime `pytest -q` 2,390 passed, 2 skipped; `ruff check .` and `ruff format --check .` clean;
 `pyright services/runtime/app` 0 errors; evals `pytest -q tests` 368 passed; web `pnpm install --frozen-lockfile`,
-`eslint .` clean, `e2e:build` built, `e2e:test` E2E_TOTALS. The sandbox's Chromium is older than the one
-`@playwright/test` pins, so e2e ran with a local, uncommitted config that only sets `launchOptions.executablePath` to
-`/opt/pw-browsers/chromium`. No e2e covers voice (test mode has no speech-to-text, and there is no mic in CI).
+`eslint .` clean, `e2e:build` built, `e2e:test` 469 passed, 94 skipped, 8 failed on the first full run, then all 8 (10 tests in their files) passed on
+re-run. The sandbox's browsers are older than the ones `@playwright/test` pins, so e2e ran with a local, uncommitted
+config that only sets `launchOptions.executablePath`. The full run used `/opt/pw-browsers/chromium`, whose built-in PDF
+viewer fetches a `chrome-extension://` stylesheet on invoice and quote previews, which the suite's "nothing leaves
+127.0.0.1" guard rejects (6 failures). The other two were a Tab-order check on `/vat` and a 30 s timeout over 15 pages
+on a loaded machine. Re-run with the headless shell (`/opt/pw-browsers/chromium_headless_shell-1243`), the binary
+Playwright itself uses: all passed. None of the 8 touches a file this branch changed. No e2e covers voice (test mode has no speech-to-text, and there is no mic in CI).
 
 ## Risks
 
