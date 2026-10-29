@@ -145,7 +145,8 @@ task text only and was never merged.
 | 24 | `claude/sales-exports-fix` (on top of row 22, which already had both features) and *Reports & exports* in the menu | `176b96b0` | 40781660107; on `main` 40783592918 | 40783592935 ✓ |
 | 25 | `claude/dashboard-ui` (Home as one dashboard with a checked AI summary, `GET /books/home`, lower-looking sub-menus, the header without stray lines, the Android summary card) | `c353bd44` | 40792468435; on `main` 40794211149 | 40794211389 ✓ |
 | 26 | `claude/muse-transcribe` (voice questions: Muse Voice Transcribe first, Whisper on the Spark as fallback; who transcribed shown and audited) | `715c5647` | 40807589881; on `main` 40809215233 | 40809215313 ✓ |
-| 27 | `claude/meta-models-page` (public `/meta-models`: which Meta model does which job, how it is called, what code checks after it, measured results) | this commit | see below | ✓ on push |
+| 27 | `claude/meta-models-page` (public `/meta-models`: which Meta model does which job, how it is called, what code checks after it, measured results) | with row 28 (`main` moved first, below) | 40811885829 on `ef5a13e` | ✓ on push |
+| 28 | `claude/video-capture` (with `muse/video-scripts`: capture and assembly tools, how-to screenshots, the judges' video plan; **raw shots filtered out**), re-merged over `claude/signup-accountants` and three deploy commits pushed straight to `main`, plus the `test_testmode` fix that turns `main` green again | this commit | see below | ✓ on push |
 
 The integrator wrote a review wherever a branch arrived without one: `docs/reviews/cis-eval/`, `cis-eval-runs/` and
 `property-reader/`. The Spark figures were **recounted from `results.jsonl`**, not copied from the summaries. The CIS
@@ -170,6 +171,7 @@ schedules and 0 of 6 on mortgage statements.
 | dashboard-ui | 2360 | 101 | 63 | 181 | 354 | 477 | 0 |
 | muse-transcribe | 2390 | 101 | 63 | 181 | 368 | 477 | 0 |
 | meta-models-page | 2390 | 101 | 63 | 181 | 368 | 486 | 0 |
+| video-capture + signup-accountants + deploy (+ `tools/video` 8) | 2393 | 101 | 63 | 181 | 368 | 501 | 0 |
 
 ruff 0.17.3 and pyright stayed clean throughout. The flaky tests were: on bank-feeds, the signed-out `/` *Speak*
 button was briefly disabled without a reason; on batch-tax, `files-manage` hit `ECONNRESET`, the PAYE RTI table was
@@ -286,6 +288,25 @@ cis-eval, `paye.spec.ts` (the long PAYE flow) failed once. On property-reader, a
   the landing page, so nothing else was needed. The submission build (`NEXT_PUBLIC_SUBMISSION_MODE=1`) holds 0
   pre-launch phrases in 345 files, `/meta-models` included. The page names only Meta's models, plus Modal in the chain
   order, as the owner's brief asked; its spec checks that no host or engine name appears.
+- **`claude/video-capture`, with no raw video in git.** The branch committed 22 raw screen-capture shots
+  (`docs/video/raw/*.webm`, about 25 MB) so the videos could be assembled without capturing again. The owner asked for
+  raw video to stay out of git, and deleting the files in the merge commit would have left them in `main`'s history.
+  So the branch was merged from a copy with those files filtered out of every commit. Each rewritten commit is
+  re-signed and keeps its author, date and message. The tree differs from `origin/claude/video-capture` (`dfe3232`) by
+  exactly those 22 files, and `muse/video-scripts` (`632d80c`) is unchanged. The root `.gitignore` now excludes
+  `docs/video/raw/*.webm`, and `docs/video/README.md` and the branch's review say so; `tools/video/capture.ts`
+  re-captures the shots. The tool tests pass without them (pytest 8, node 6). The four teaser `.mp4` files over 5 MB
+  (`docs/submission/teaser/`) were already on `main` from `claude/teaser` and were left alone.
+- **`main` moved twice while row 27 was in CI.** Another session pushed `claude/signup-accountants` (`55349d5`), then
+  three deploy commits (`0c010fe`, `49551ca`, `77723f6`, `f2f91c3`), straight to `main`. Row 27 could no longer be
+  fast-forwarded, so both were merged in and gated again:
+  - signup-accountants added the public `/join`, and meta-models-page added `/meta-models`. Every copy of the public
+    list now has both: `lib/public-site.ts`, `e2e/pages.ts`, `signed-out.spec`, `site-layout.spec` and the 360 px loop
+    in `marketing.spec`.
+  - `49551ca` added `ENV ... ACCNOMOS_GOLD_DIR=/srv/evals/gold` to `deploy/Dockerfile.runtime`, which the runtime does
+    read. `test_testmode.py` pinned every line naming `evals`, so **`main` was red** (CI run 40814188715 on `f2f91c3`).
+    The test now compares the image's `COPY` lines, which is what "the only evals in the image" means; an extra
+    `evals` COPY still fails it.
 - **Signed-out `/cis` showed the sample label twice** (CI run 40745987742, and flaky locally). The sample card
   repeated the banner's "SAMPLE — FICTIONAL COMPANY" and rendered after the signed-in check, so the sweep counted 1 or
   2 depending on timing. The card no longer repeats it, so the banner is the one label, as the rule says. No test
