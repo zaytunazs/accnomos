@@ -4,7 +4,9 @@ Code loads the ledger and builds the facts pack; the model only writes words aro
 code then checks every figure and citation (app/ai/ask.py). Nothing is kept after the response.
 An instruction ("send a £100 invoice to JM Trading") gets a proposed action instead (app/actions.py),
 which does nothing until the user approves it with POST /actions/approve.
-A spoken question is transcribed by Muse Voice (app/ai/voice.py) and then takes exactly the same path.
+A spoken question is transcribed by the speech-to-text chain (app/ai/stt.py: Muse Voice Transcribe first, Whisper on
+the DGX Spark as the fallback) and then takes exactly the same path; which service heard it is returned with the answer
+and kept on any proposal it leads to (and so in the actions audit log).
 "Plan my Thursday" (typed or spoken) is not a question about the books: code spots it and answers with a
 `plan_day` action for that date, which the app opens as a day plan (POST /plan/day); no model is called.
 
@@ -16,7 +18,9 @@ day plan needs no model, so it comes as a single `answer` event.
 
 from __future__ import annotations
 
+import asyncio
 import json
+import logging
 from collections.abc import AsyncIterator
 from datetime import date
 from decimal import Decimal
@@ -26,10 +30,10 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from app import actions, spending
+from app import actions, jobs, spending
 from app.ai import ask as ask_ai
 from app.ai import spending as spending_ai
-from app.ai import voice
+from app.ai import stt, voice
 from app.ai.config import AiConfig, ai_config_from_request
 from app.books import EVENTS, Books, today
 from app.facts import build_facts
@@ -198,13 +202,14 @@ async def ask_voice(
     token: str = Depends(graph_token),
     cycle: VatCycle = Depends(vat_cycle),
 ) -> AskVoiceAnswer:
-    """Spoken question (webm/ogg/m4a/wav) -> WAV via ffmpeg -> Muse Voice Transcribe -> the /books/ask answer.
+    """Spoken question (webm/ogg/m4a/wav) -> WAV via ffmpeg -> speech-to-text chain -> the /books/ask answer.
 
-    Optional form fields `period` and `history` are JSON shaped as in AskRequest. Key mode only.
-    """
-    voice_cfg = cfg.with_capability("voice") if cfg.in_chain else cfg  # the chain: its Meta Model API provider
-    if voice_cfg is None or voice_cfg.mode != "key":
-        raise HTTPException(400, "voice needs a Meta API key")
+    Optional form fields `period` and `history` are JSON shaped as in AskRequest. Muse Voice Transcribe hears it when a
+    Meta key is available (the user's own in key mode, else the server's META_API_KEY); Whisper on the Spark when that
+    fails or is not configured. `transcribed_by` names the one that did."""
+    providers = stt.chain(cfg)
+    if not providers:
+        raise HTTPException(400, "Voice needs Muse Voice Transcribe (a Meta API key) or the Spark's Whisper server")
     try:
         when = AskPeriod.model_validate_json(period) if period else None
         turns = _TURNS.validate_json(history) if history else []
@@ -213,15 +218,31 @@ async def ask_voice(
     try:
         voice.require_ffmpeg()
         data = await audio.read(voice.MAX_UPLOAD_BYTES + 1)
-        wav = await voice.to_wav(data, audio.content_type, audio.filename)
-        transcript = await voice.transcribe(wav, voice_cfg)
+        wav, words = await asyncio.gather(voice.to_wav(data, audio.content_type, audio.filename), _names(books))
+        heard = await stt.transcribe(wav, providers, keywords=words)
     except voice.VoiceError as exc:
         raise HTTPException(exc.status, str(exc)) from exc
+    finally:
+        data = wav = b""  # nothing of the recording outlives the request
     try:
-        req = AskRequest(question=transcript, period=when, history=turns)
+        req = AskRequest(question=heard.text, period=when, history=turns)
     except ValidationError as exc:
         raise HTTPException(
-            422, f"That question is too long ({len(transcript)} characters; keep it under 500)"
+            422, f"That question is too long ({len(heard.text)} characters; keep it under 500)"
         ) from exc
     answer = await _answer(req, books, cfg, business, token, cycle)
-    return AskVoiceAnswer(**answer.model_dump(), transcript=transcript)
+    if answer.proposed_action is not None:  # re-signed: the provenance is part of what the user approves
+        spoken = answer.proposed_action.model_copy(update={"transcribed_by": heard.by})
+        answer = answer.model_copy(update={"proposed_action": actions.sign(spoken, token)})
+    return AskVoiceAnswer(**answer.model_dump(), transcript=heard.text, transcribed_by=heard.by)
+
+
+async def _names(books: Books) -> list[str]:
+    """Job and staff names, to bias speech-to-text towards them ("the Hendon job", "Andy"). Best effort: a read
+    failure costs only the bias, never the question."""
+    try:
+        found = [j.name for j in await jobs.load_jobs(books)] + [m.name for m in await jobs.load_staff(books)]
+    except Exception as exc:  # noqa: BLE001 - a hint only
+        logging.getLogger("accnomos.stt").info("no names for speech-to-text bias (%s)", type(exc).__name__)
+        return []
+    return list(dict.fromkeys(n.strip() for n in found if n and n.strip()))[: voice.MAX_KEYWORDS]

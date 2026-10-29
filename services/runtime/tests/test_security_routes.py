@@ -216,6 +216,7 @@ TALKS_HTTP = {
     "ai/property_read.py": "cfg.base_url",
     "ai/crop.py": "cfg.base_url (SAM, key mode)",
     "ai/voice.py": "cfg.base_url",
+    "ai/stt.py": "Muse: the user's key-mode cfg.base_url or MODEL_API_BASE; Whisper: SPARK_WHISPER_URL (server env)",
     "ai/verify.py": "cfg.base_url or BASETEN_BASE",
     "ai/remind.py": "httpx errors only",
     "ai/plan.py": "httpx errors only",

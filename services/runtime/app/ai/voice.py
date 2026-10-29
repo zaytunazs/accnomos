@@ -1,11 +1,23 @@
-"""Voice questions: browser/phone audio -> WAV mono 16 kHz (ffmpeg) -> Muse Voice Transcribe -> text.
+"""Voice questions: browser/phone audio -> WAV mono 16 kHz (ffmpeg) -> speech-to-text -> text.
 
-Key mode only: the transcript comes from the Meta Model API with the user's own key. Audio lives in a
+Which speech-to-text service hears it is app/ai/stt.py (Muse Voice Transcribe first, the owner's Whisper on the
+DGX Spark as the fallback). This module holds the conversion and the Muse Voice Transcribe client. Audio lives in a
 temporary directory for the length of the conversion and is deleted straight after; nothing is kept.
 
-Muse Voice wire format (from research notes; check against https://dev.meta.ai before relying on it):
-`POST {base}/asr/transcribe`, multipart with a `request` JSON part and an `audio` part (WAV mono 16-bit,
-16 or 24 kHz, at most 32 MB and 10 minutes). Everything Meta-specific is in `transcribe()` below.
+Muse Voice Transcribe one-shot endpoint, as documented by Meta (checked 29 Oct 2026; dev.meta.ai itself is not
+reachable from our build sandbox, so the shapes are taken from Meta's own cookbook, meta-models/meta-model-cookbook
+commit 0a99b98 of 7 Oct 2026, 06_muse_voice/01_voice_api_fundamentals/utils.py and README.md, which links
+https://dev.meta.ai/docs/speech-to-text and https://dev.meta.ai/docs/api-reference/voice):
+
+* `POST https://api.meta.ai/v1/asr/transcribe`, header `Authorization: Bearer <Model API key>`.
+* multipart: a `request` part (JSON, application/json) `{"mode": "PUSH_TO_TALK", "model": "muse-voice-transcribe-1.0",
+  "audioEncoding": "WAV", "keywords": [...]?, "languageBias": [...]?}` and an `audio` part (the WAV file).
+* audio: mono 16-bit WAV at 24 kHz (engine-native) or 16 kHz; at most 10 minutes or 32 MB, whichever comes first.
+* 200: `{"sessionId", "transcript", "audioDurationMs", "turns": [...]}`; 400 too long or malformed, 401 key not
+  accepted, 413 body over 32 MB, 429 rate limited, 500 "exceeded its processing budget".
+
+The live WebSocket (`wss://api.meta.ai/v1/asr/realtime`, credential inside the handshake JSON, paced at real time) is
+not used: a question is recorded whole on the phone or in the browser, so one POST is quicker than replaying it.
 """
 
 from __future__ import annotations
@@ -128,33 +140,59 @@ async def to_wav(data: bytes, content_type: str | None = None, filename: str | N
     return wav
 
 
+MODE = "PUSH_TO_TALK"  # the caller ends the turn by uploading a whole clip (the documented default)
+LANGUAGE_BIAS = ["english"]  # UK English speakers; a nudge, not a constraint (the cookbook's example value)
+MAX_KEYWORDS = 50
+
+
 def _transcript(body: Any) -> str:
-    """Pull the text out of the response; tolerant of `text`, `transcript` or a list of segments."""
+    """Pull the text out of the response: documented `transcript`; tolerant of `text`, or a list of turns/segments."""
     if isinstance(body, dict):
-        for key in ("text", "transcript"):
+        for key in ("transcript", "text"):
             if isinstance(body.get(key), str):
                 return body[key]
-        for key in ("results", "segments"):
+        for key in ("turns", "results", "segments"):
             items = body.get(key)
             if isinstance(items, list):
                 return " ".join(_transcript(i) for i in items).strip()
     return ""
 
 
-async def transcribe(wav: bytes, cfg: AiConfig, client: httpx.AsyncClient | None = None) -> str:
-    """Send WAV audio to Muse Voice Transcribe with the user's key; return the transcript text."""
+def muse_request(keywords: list[str] | None = None) -> dict[str, Any]:
+    """The `request` JSON part. `keywords` (job, staff and customer names) bias recognition; sent only when set,
+    because the server silently ignores what it does not know and an empty list would hide a typo."""
+    req: dict[str, Any] = {"mode": MODE, "model": VOICE_MODEL, "audioEncoding": "WAV", "languageBias": LANGUAGE_BIAS}
+    words = [k.strip() for k in (keywords or []) if k and k.strip()][:MAX_KEYWORDS]
+    if words:
+        req["keywords"] = words
+    return req
+
+
+async def transcribe(
+    wav: bytes,
+    cfg: AiConfig,
+    client: httpx.AsyncClient | None = None,
+    *,
+    keywords: list[str] | None = None,
+    timeout_s: float = TRANSCRIBE_TIMEOUT_S,
+) -> str:
+    """Send WAV audio to Muse Voice Transcribe with a Meta key; return the transcript text.
+
+    Error messages name the status, never the key or the request headers."""
     if cfg.mode != "key" or not cfg.api_key:
         raise VoiceError(400, "voice needs a Meta API key")
     files = {
-        "request": (None, json.dumps({"model": VOICE_MODEL}), "application/json"),
+        "request": (None, json.dumps(muse_request(keywords)), "application/json"),
         "audio": ("question.wav", wav, "audio/wav"),
     }
     own = client is None
-    http = client or httpx.AsyncClient(timeout=TRANSCRIBE_TIMEOUT_S)
+    http = client or httpx.AsyncClient(timeout=timeout_s)
     try:
         r = await http.post(
             f"{cfg.base_url}/asr/transcribe", files=files, headers={"Authorization": f"Bearer {cfg.api_key}"}
         )
+    except httpx.TimeoutException as exc:
+        raise VoiceError(504, f"Muse Voice took longer than {timeout_s:g} s") from exc
     except httpx.HTTPError as exc:
         raise VoiceError(502, f"Muse Voice could not be reached ({type(exc).__name__})") from exc
     finally:
@@ -164,6 +202,8 @@ async def transcribe(wav: bytes, cfg: AiConfig, client: httpx.AsyncClient | None
         raise VoiceError(401, "Meta rejected the API key for Muse Voice")
     if r.status_code == 413:
         raise VoiceError(413, "Muse Voice says the recording is too large")
+    if r.status_code == 400:
+        raise VoiceError(422, "Muse Voice refused the recording (longer than 10 minutes, or malformed)")
     if r.status_code == 429:
         raise VoiceError(429, "Muse Voice is rate-limiting this key; try again in a moment")
     if r.status_code >= 400:

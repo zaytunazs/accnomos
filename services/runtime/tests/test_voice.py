@@ -150,12 +150,34 @@ async def test_transcribe_sends_multipart_with_the_users_key():
     assert req.headers["Authorization"] == "Bearer test-key"
     body = req.read()
     assert b'name="request"' in body and b'name="audio"' in body and b"RIFF....WAVE" in body
-    assert json.dumps({"model": "muse-voice-transcribe-1.0"}).encode() in body
+    part = body.split(b'name="request"', 1)[1].split(b"\r\n\r\n", 1)[1].split(b"\r\n--", 1)[0]
+    assert json.loads(part) == {  # the documented one-shot request (app/ai/voice.py)
+        "mode": "PUSH_TO_TALK",
+        "model": "muse-voice-transcribe-1.0",
+        "audioEncoding": "WAV",
+        "languageBias": ["english"],
+    }
+
+
+async def test_transcribe_sends_keywords_only_when_given():
+    seen: list[bytes] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen.append(req.read())
+        return httpx.Response(200, json={"sessionId": "S1", "transcript": "Andy did two hours", "audioDurationMs": 900})
+
+    async with _client(handler) as c:
+        assert await voice.transcribe(b"wav", KEY, c, keywords=["Hendon", " ", "Andy"]) == "Andy did two hours"
+    assert b'"keywords": ["Hendon", "Andy"]' in seen[0]
 
 
 @pytest.mark.parametrize(
     "body,want",
-    [({"transcript": "hello"}, "hello"), ({"results": [{"text": "who did"}, {"text": "I pay"}]}, "who did I pay")],
+    [
+        ({"text": "hello"}, "hello"),
+        ({"turns": [{"transcript": "who did"}, {"transcript": "I pay"}]}, "who did I pay"),
+        ({"results": [{"text": "who did"}, {"text": "I pay"}]}, "who did I pay"),
+    ],
 )
 async def test_transcribe_reads_other_response_shapes(body: dict, want: str):
     async with _client(lambda _r: httpx.Response(200, json=body)) as c:
@@ -168,6 +190,7 @@ async def test_transcribe_reads_other_response_shapes(body: dict, want: str):
         (httpx.Response(401, json={"error": "bad key"}), 401),
         (httpx.Response(403), 401),
         (httpx.Response(413), 413),
+        (httpx.Response(400), 422),
         (httpx.Response(429), 429),
         (httpx.Response(500), 502),
         (httpx.Response(200, text="<html>oops</html>"), 502),
@@ -214,6 +237,8 @@ def _model_reply() -> str:
 
 @pytest.fixture
 def client(monkeypatch: pytest.MonkeyPatch):
+    for name in ("META_API_KEY", "SPARK_WHISPER_URL", "STT_PROVIDERS", "AI_PROVIDERS", "ACCNOMOS_TEST_MODE"):
+        monkeypatch.delenv(name, raising=False)
     from app.main import app
     from app.routes_books import get_books
 
@@ -242,7 +267,7 @@ def test_voice_route_local_mode_is_400(client: TestClient):
         headers={"X-Graph-Token": "t", "X-AI-Mode": "local"},
         files={"audio": ("q.wav", _tone_wav(), "audio/wav")},
     )
-    assert r.status_code == 400 and r.json()["detail"] == "voice needs a Meta API key"
+    assert r.status_code == 400 and "Muse Voice Transcribe (a Meta API key)" in r.json()["detail"]
 
 
 def test_voice_route_without_ffmpeg_is_503(client: TestClient, monkeypatch: pytest.MonkeyPatch):
@@ -255,7 +280,7 @@ def test_voice_route_without_ffmpeg_is_503(client: TestClient, monkeypatch: pyte
 def test_voice_route_answers_with_transcript(client: TestClient, monkeypatch: pytest.MonkeyPatch):
     heard: list[tuple[int, AiConfig]] = []
 
-    async def fake_transcribe(wav: bytes, cfg: AiConfig, client=None) -> str:
+    async def fake_transcribe(wav: bytes, cfg: AiConfig, client=None, **_kw) -> str:
         heard.append((len(wav), cfg))
         return "How much VAT do I owe?"
 
@@ -269,6 +294,12 @@ def test_voice_route_answers_with_transcript(client: TestClient, monkeypatch: py
     assert r.status_code == 200, r.text
     got = r.json()
     assert got["transcript"] == "How much VAT do I owe?"
+    assert got["transcribed_by"] == {
+        "provider": "muse",
+        "label": "Muse Voice Transcribe",
+        "model": "muse-voice-transcribe-1.0",
+        "fallback_reason": None,
+    }
     assert got["period"] == {"start": "2026-07-01", "end": "2026-09-30"} and got["answer_md"]
     assert heard[0][1].api_key == "test-key" and heard[0][0] > 30_000  # ~1 s of 16 kHz 16-bit mono
 
