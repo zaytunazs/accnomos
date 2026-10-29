@@ -222,8 +222,6 @@ async def ask_voice(
         heard = await stt.transcribe(wav, providers, keywords=words)
     except voice.VoiceError as exc:
         raise HTTPException(exc.status, str(exc)) from exc
-    finally:
-        data = wav = b""  # nothing of the recording outlives the request
     try:
         req = AskRequest(question=heard.text, period=when, history=turns)
     except ValidationError as exc:
