@@ -72,7 +72,7 @@ def test_runs_every_step_in_order_and_logs(box: dict[str, Path]) -> None:
     assert r.returncode == 0, r.stdout + r.stderr
     log = _log(box)
     order = [m for m in re.findall(r"STEP (\w+): start", log)]
-    assert order == ["gen_gold4", "gen_personal", "bank_ai", "extraction_ledger4", "cis_read", "property_docs", "stt"]
+    assert order == ["gen_gold4", "gen_personal", "bank_ai", "extraction_ledger4", "cis_read", "property_docs", "classify", "stt"]  # fmt: skip
     assert "STEP extraction_ledger2: skipped" in log and "another schema" in log
     assert "STEP extraction_ledger3: skipped" in log
     assert "nice -n 19" in log  # the politeness prefix is announced
@@ -84,10 +84,11 @@ def test_runs_every_step_in_order_and_logs(box: dict[str, Path]) -> None:
     assert calls[2].startswith(str(box["repo"] / "evals")) and "-m harness.bank_ai" in calls[2]
     assert "--gold-dir gold/ledger4/receipts" in calls[3] and "--messy" in calls[3] and "Bramblewood" in calls[3]
     assert "-m harness.cis_read" in calls[4] and "-m harness.property_docs" in calls[5]
-    assert calls[6].endswith(":: -m harness.stt --generate")
+    assert "-m harness.classify" in calls[6]
+    assert calls[7].endswith(":: -m harness.stt --generate")
     assert sorted(p.name for p in (box["jobs"] / "state").iterdir()) == [
-        "bank_ai.done", "cis_read.done", "extraction_ledger4.done", "gen_gold4.done", "gen_personal.done",
-        "property_docs.done", "stt.done",
+        "bank_ai.done", "cis_read.done", "classify.done", "extraction_ledger4.done", "gen_gold4.done",
+        "gen_personal.done", "property_docs.done", "stt.done",
     ]  # fmt: skip
 
 
@@ -96,7 +97,7 @@ def test_second_run_skips_done_steps(box: dict[str, Path]) -> None:
     n = len(_calls(box))
     r = _run(box, "--no-check")
     assert r.returncode == 0 and len(_calls(box)) == n
-    assert _log(box).count("skipped, already done") == 6
+    assert _log(box).count("skipped, already done") == 7
     r = _run(box, "--no-check", "--force", "--only", "bank_ai")
     assert r.returncode == 0 and len(_calls(box)) == n + 1
 
@@ -117,16 +118,17 @@ def test_a_failed_step_is_logged_the_queue_goes_on_and_the_next_run_retries_it(b
 def test_list_only_and_dry_run(box: dict[str, Path]) -> None:
     r = _run(box, "--dry-run")
     assert r.returncode == 0 and "would run" in r.stdout
-    assert "cis_read" in r.stdout and "property_docs" in r.stdout
+    assert "cis_read" in r.stdout and "property_docs" in r.stdout and "classify" in r.stdout
     assert not box["jobs"].exists() and not _calls(box)  # touches nothing
     _run(box, "--no-check", "--only", "gen_gold4,bank_ai")
     assert [c.split(" :: ")[1].split()[0] for c in _calls(box)][0] == "evals/gold/gen_gold4.py"
     assert len(_calls(box)) == 2
     listing = _run(box, "--list").stdout
     assert "gen_gold4: done" in listing and "gen_personal: pending" in listing and "bank_ai: done" in listing
-    assert "cis_read: pending" in listing and "property_docs: pending" in listing
-    _run(box, "--no-check", "--only", "cis_read,property_docs")
+    assert "cis_read: pending" in listing and "property_docs: pending" in listing and "classify: pending" in listing
+    _run(box, "--no-check", "--only", "cis_read,property_docs,classify")
     listing = _run(box, "--list").stdout
+    assert "classify: done" in listing
     assert "cis_read: done" in listing and "property_docs: done" in listing
 
 
