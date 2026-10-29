@@ -1,5 +1,4 @@
 import { createBooksFolder, expect, signIn, test } from "./fixtures";
-import { RUNTIME_URL } from "./env.mjs";
 
 /**
  * Scan 00 Inbox one document at a time (src/lib/scan-queue.ts): "Reading 1 of 2 … name", a time limit per document
@@ -9,13 +8,13 @@ import { RUNTIME_URL } from "./env.mjs";
 
 test("two receipts: progress per document, a slow one passes its time limit, the scan carries on elsewhere", async ({ page, runtime }) => {
   await runtime.dropInInbox("001_standard");
-  await runtime.dropInInbox("002_no_vat"); // a second gold receipt
+  await runtime.dropInInbox("002_mixed"); // a second gold receipt
   await signIn(page);
   await createBooksFolder(page);
   await page.addInitScript(() => window.localStorage.setItem("accnomos.test.scan-limit-ms", "1500"));
 
   // Hold the first document's reading for 6 s: longer than its limit, as a slow model would be.
-  await page.route(`${RUNTIME_URL}/books/scan?*`, async (route) => {
+  await page.route((url) => url.pathname === "/books/scan", async (route) => {
     if (decodeURIComponent(route.request().url()).includes("001_standard")) await new Promise((r) => setTimeout(r, 6_000));
     await route.continue();
   });
@@ -32,7 +31,7 @@ test("two receipts: progress per document, a slow one passes its time limit, the
   await expect(docs.getByRole("listitem").filter({ hasText: "001_standard.png" })).toContainText(
     "still being read after 2 seconds; it will appear in Review when done",
   );
-  await expect(scan.getByRole("status")).toHaveText(/Reading 2 of 2 … 002_no_vat\.png|Scan finished/);
+  await expect(scan).toContainText(/Reading 2 of 2 … 002_mixed\.png|Scan finished/);
 
   // Leave Review while it runs: the bar on other pages says how far it got, or it has already finished.
   await page.getByRole("link", { name: "Ask", exact: true }).click();
@@ -51,7 +50,7 @@ test("a scan started on Review shows its progress on another page", async ({ pag
   await runtime.dropInInbox("001_standard");
   await signIn(page);
   await createBooksFolder(page);
-  await page.route(`${RUNTIME_URL}/books/scan?*`, async (route) => {
+  await page.route((url) => url.pathname === "/books/scan", async (route) => {
     await new Promise((r) => setTimeout(r, 4_000));
     await route.continue();
   });

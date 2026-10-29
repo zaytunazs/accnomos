@@ -76,7 +76,6 @@ function SampleReview({ note: initialNote, level }: { note: string | null; level
         </span>
         <SignInCta />
       </p>
-      <ScanProgress />
       <Notes note={note} error={error} />
       <ReviewQueue items={items} rules={sampleRules} level={level} adapter={adapter} onNote={setNote} onError={setError} />
       {items.length === 0 && (
@@ -276,6 +275,7 @@ export default function LiveReview() {
         <UploadToInbox account={account!} onDone={() => setNote(null)} />
         <span className="text-sm text-muted">or drop files into OneDrive › Apps › Accnomos › 00 Inbox</span>
       </div>
+      <ScanProgress />
       <Notes note={note} error={error} />
       {autoPosted.length > 0 && (
         <section aria-labelledby="autopilot-posted" className="rounded-2xl border border-border bg-white p-5">
