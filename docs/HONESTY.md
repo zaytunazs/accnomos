@@ -537,7 +537,10 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
 - Muse's judges' script (`docs/video/JUDGES_VIDEO.md`) says "VAT return submitted to sandbox" (shot 10) and has a voice
   shot (shot 11, clip 7); the HMRC browser flow has not been run end to end against the sandbox and voice has never run
   live (both above). Shot 7 quotes the 28 Oct gate counts. The README checklist flags all three.
-- `tools/video/vo.py kokoro` (Kokoro TTS for the voice-over) was written for the owner's Spark and never run here.
+- The voice-over step (`tools/video/vo.py`) and the title-art step (`tools/video/muse_images.py`, Muse Image) were
+  written to run on the owner's PC and have never run here: this session may not call Meta's API, so the Muse Image
+  request is built from Meta's docs (dev.meta.ai, read 29 Oct 2026 through a fetcher, as dev.meta.ai is blocked here)
+  and tested on stubbed HTTP only. Until it runs, every card is plain brand colour.
 - 24 of the 54 how-to screenshots found no named control and show the whole page; steps that happen outside the app
   (Microsoft consent, HMRC sign-in, Basic PAYE Tools) show the app's side only (`docs/howto/img/SHOTS.md`).
 

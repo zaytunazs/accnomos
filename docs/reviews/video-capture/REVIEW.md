@@ -14,9 +14,10 @@ how-to placeholders, which now point at real screenshots.
 | `tools/video/lib/recorder.ts`, `lib/script.ts` | Screencast → ffconcat → WebM; parser for both script layouts (headed sections and tables) |
 | `tools/video/assemble.sh`, `segments.py` | ffmpeg + libass: fit each shot to its length (hold or speed up with a "sped up" tag), burned captions in Atkinson Hyperlegible (OFL, in `tools/video/fonts/`), cards, end cards, provenance card first, VO slot `docs/video/vo/<shot-id>.wav` |
 | `tools/video/howto.ts` | 54 screenshots for the guides (1440 × 900, 80 % crop round the named control, amber box), placeholders replaced, `docs/howto/img/SHOTS.md` |
-| `tools/video/vo.py`, `regenerate.sh`, `contact_sheet.py` | VO lines for Kokoro (and the Spark-only TTS step), one-command regeneration, contact sheets |
+| `tools/video/vo.py`, `regenerate.sh`, `contact_sheet.py` | Voice-over lines (and the owner-run TTS step), one-command regeneration, contact sheets |
+| `tools/video/muse_images.py`, `docs/video/IMAGE_PROMPTS.md`, `covers.py` | Muse Image (`muse-image-1.0`) art for 32 cards: title, section, thumbnail and guide covers, from Meta's documented `/v1/images/generations` (cited in the script); text is always drawn by `assemble.sh` / `covers.py` on top, plain brand colour where a picture is missing |
 | `apps/web/src/app/how-it-works/page.tsx` | The Help page (top bar "Help") gets a "Step-by-step guides" section linking the ten guides on GitHub |
-| `docs/video/README.md` | Regenerate, VO on the Spark, live-only shots, checklist against the judging criteria |
+| `docs/video/README.md`, `tools/video/README.md` | Outputs, card art, live-only shots and the judging checklist (judge-facing, no hardware, tool or voice-engine names); regeneration and voice-over steps (internal) |
 
 ## Design choices
 
@@ -27,11 +28,20 @@ how-to placeholders, which now point at real screenshots.
   HMRC's sandbox or shared books are marked in `SHOT_PLAN` and the preview says *Stand-in: film live* or shows a
   *Film live* card. Every app frame also carries a small "Test-mode capture · fictional sample data · AI stubbed" tag
   until `--no-test-tag`. Only Home's stub summary card is hidden.
-- Raw shots are committed (each 0.3–2 MB, 25 MB in all) so the Spark can assemble without re-capturing; anything over
+- Raw shots are committed (each 0.3–2 MB, 25 MB in all) so another machine can assemble without re-capturing; anything over
   5 MB is listed in `docs/video/raw/.gitignore` by `regenerate.sh`. Previews and finals are git-ignored.
+
+## Owner's corrections (29 Oct, second round)
+
+- Shot 1 now uses the owner's wording (10 s; shot 2 trimmed to 18 s, total still 180 s) and names no hardware and no
+  third-party tool; the Meta model list was checked against `docs/submission/META_MODELS.md` on `main` (`715c564`).
+- The end card credits only "Title art: Muse Image (Meta)."; the voice engine is named nowhere judge-facing
+  (a test, `tools/video/test_video_tools.py`, scans the scripts, README, prompts, VO lines and manifest for it).
 
 ## Tests
 
+- `python3 -m pytest -q tools/video`: **7 passed** (prompts file covers every card, no-key exit 0, request shape and
+  exact-size crop and sidecar with the key never printed, 503 retry, safety block, art fallback, no banned names).
 - `node --test tools/video/video.test.ts`: **6 passed** (durations, both script layouts, Muse's scripts total 180 s and
   every shot has a plan entry with a known flow, keyword rules, how-to placeholder parsing). It found one bug, fixed:
   a voice-over cell `"…" (28 words)` kept a stray quote.
@@ -53,7 +63,8 @@ how-to placeholders, which now point at real screenshots.
   richer demo data or live footage.
 - 24 how-to pictures are whole-page approximations; re-shoot by hand where the step needs a specific state (an open
   dialog, an external page).
-- `tools/video/vo.py kokoro` has never run (no Kokoro here). Fonts: Atkinson Hyperlegible ships with the tool;
+- The voice-over render and `muse_images.py` have never run here (no TTS model; Meta's API may not be called from this
+  session). `muse_images.py` is tested on stubbed HTTP against the documented request and response. Fonts: Atkinson Hyperlegible ships with the tool;
   the eval card's monospace falls back to the system's DejaVu Sans Mono.
 - Capture timing depends on machine load; the flows use waits on visible state, not fixed sleeps, but a slow box can
   overrun a shot (it is then sped up and tagged, never cut).
