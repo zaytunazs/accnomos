@@ -36,7 +36,7 @@ from pydantic import BaseModel, Field
 from app import files as fm
 from app.books import AUDIT, EVENTS, PROPOSALS, SYSTEM, Books, now
 from app.books import today as current_date
-from app.paths import BACKUPS
+from app.paths import BACKUPS, FULL_BACKUPS
 from app.validation import UnsafeName, check_name
 
 PREFIX = "accnomos-backup-"
@@ -46,6 +46,7 @@ DEFAULT_KEEP = 12
 MAX_BACKUP_FILES = 20_000
 MAX_BACKUP_BYTES = 100 * 1024 * 1024
 ACTOR = "agent:backup"
+SYSTEM_ZIP = "books-system.zip"  # the name of _System's zip inside a full backup (app/full_backup.py)
 _NAME = re.compile(rf"^{re.escape(PREFIX)}(\d{{4}}-\d{{2}}-\d{{2}})(?: \((\d+)\))?\.zip$")
 
 
@@ -117,9 +118,14 @@ class BackupResult(BaseModel):
     retired: list[str]  # older backups moved to _Trash by retention
 
 
-async def back_up(books: Books, actor: str, day: date | None = None) -> BackupResult:
-    """Write today's backup and apply retention. `actor` is "user:..." or ACTOR (the monthly backup)."""
-    day = day or current_date()
+class SystemZip(BaseModel):
+    data: bytes
+    files: int
+    sha256: str  # of the zip itself
+
+
+async def system_zip(books: Books, day: date) -> SystemZip:
+    """Every file under _System in one zip, at its own path, with manifest.json (each file's size and sha256)."""
     w = await fm.walk(books, SYSTEM)
     if w.truncated or len(w.files) > MAX_BACKUP_FILES or sum(f.size for f in w.files) > MAX_BACKUP_BYTES:
         raise BackupTooBig(
@@ -146,7 +152,14 @@ async def back_up(books: Books, actor: str, day: date | None = None) -> BackupRe
         }
         z.writestr(zipfile.ZipInfo("manifest.json", date_time=stamp), json.dumps(man, indent=2), zipfile.ZIP_DEFLATED)
     data = buf.getvalue()
-    digest = hashlib.sha256(data).hexdigest()
+    return SystemZip(data=data, files=len(entries), sha256=hashlib.sha256(data).hexdigest())
+
+
+async def back_up(books: Books, actor: str, day: date | None = None) -> BackupResult:
+    """Write today's backup and apply retention. `actor` is "user:..." or ACTOR (the monthly backup)."""
+    day = day or current_date()
+    z = await system_zip(books, day)
+    data, digest = z.data, z.sha256
     await books.storage.ensure_folder(BACKUPS)
     path = await books.free_path(BACKUPS, backup_name(day))
     ref = await books.storage.write(path, data, create_only=True)
@@ -156,7 +169,7 @@ async def back_up(books: Books, actor: str, day: date | None = None) -> BackupRe
     await books.audit(
         actor,
         "backup_created",
-        {"file": path, "files": len(entries), "bytes": len(data), "sha256": digest, "retired": retired},
+        {"file": path, "files": z.files, "bytes": len(data), "sha256": digest, "retired": retired},
     )
     return BackupResult(
         backup=Backup(
@@ -164,7 +177,7 @@ async def back_up(books: Books, actor: str, day: date | None = None) -> BackupRe
             name=name,
             day=day,
             size=len(data),
-            files=len(entries),
+            files=z.files,
             sha256=digest,
             web_url=ref.web_url,
             has_checksum=True,
@@ -230,9 +243,16 @@ class Verification(BaseModel):
     problems: list[str]  # plain sentences, at most 50
 
 
+#: A full backup's copy of _System (app/full_backup.py): Accnomos Backups/YYYY-MM-DD-HHMM[-n]/books-system.zip.
+_FULL = re.compile(rf"^{re.escape(FULL_BACKUPS)}/\d{{4}}-\d{{2}}-\d{{2}}-\d{{4}}(?:-\d+)?/{re.escape(SYSTEM_ZIP)}$")
+
+
 def _backup_path(path: str) -> str:
+    """A path verify and restore may open: a dated zip in Backups/, or a full backup's books-system.zip."""
     path = path.strip("/")
     parent, _, name = path.rpartition("/")
+    if _FULL.match(path):
+        return path
     if parent != BACKUPS or _order(name) is None:
         raise FileNotFoundError(path)
     return path

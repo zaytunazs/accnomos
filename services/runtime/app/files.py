@@ -35,6 +35,7 @@ from app.paths import (
     BACKUPS,
     BANK,
     CREDIT_NOTES,
+    FULL_BACKUPS,
     INBOX,
     INVOICES,
     NEEDS_A_LOOK,
@@ -61,12 +62,19 @@ YearKind = Literal["tax", "financial"]
 FileKind = Literal["pdf", "image", "spreadsheet", "csv", "json", "text", "zip", "other"]
 
 # Read by other modules at a fixed path, or the app's own records: never moved, renamed or trashed from here.
-PROTECTED_PREFIXES = (f"{SYSTEM}/", f"{INVOICES}/", f"{CREDIT_NOTES}/", f"{VAT_RETURNS}/", f"{BACKUPS}/")
+PROTECTED_PREFIXES = (
+    f"{SYSTEM}/",
+    f"{INVOICES}/",
+    f"{CREDIT_NOTES}/",
+    f"{VAT_RETURNS}/",
+    f"{BACKUPS}/",
+    f"{FULL_BACKUPS}/",
+)
 PROTECTED_FILES = ("Books.xlsx", "README.txt")
 # The tree archiving moves from (minus the protected prefixes above).
 ARCHIVABLE = (RECEIPTS, SALES, BANK, PAYROLL, REPORTS)
 # Not counted as the user's documents in the overview's years, largest files or duplicates.
-NOT_DOCUMENTS = (SYSTEM, BACKUPS, TRASH)
+NOT_DOCUMENTS = (SYSTEM, BACKUPS, FULL_BACKUPS, TRASH)
 
 _EXT: dict[str, FileKind] = {
     "pdf": "pdf",
