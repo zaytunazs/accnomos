@@ -191,7 +191,8 @@ never change one.
 person did, or `agent:<name>` (`extractor`, `intake`, `autopilot`, `mileage`, `contacts`, `triage`, `folder-layout`, `backup`, `close`)
 for something done for them. Applying a day plan is the user's action (`plan_applied`); there is no `agent:planner` writer yet.
 Chat and voice actions write their own lines to `audit/actions/` (`{"ts", "action_id", "kind", "event", "user", …}`, `event`
-= approving · executed · failed · rejected), and Autopilot's postings are repeated with its reasons in `audit/autopilot/`.
+= approving · executed · failed · rejected; a spoken request adds `transcribed_by` {provider, label, model, fallback_reason}
+to its approving and rejected lines), and Autopilot's postings are repeated with its reasons in `audit/autopilot/`.
 
 **Reading it back:** `GET /audit?from=&to=&actor=&kind=&limit=` (`app/audit_view.py`, read-only) reads the month files of
 `audit/` and `audit/actions/` for the range (one extra month of `actions/`, which files by the month an action was proposed),
@@ -490,7 +491,7 @@ note says the changes are not on that return; Undo keeps dating corrections toda
 | **Muse Glimmer 30B** (`muse-glimmer:30b`, Ollama `/api/chat`) | `ai/extract.py` (extraction); `ai/verify.py` (verifier); `ai/ask.py` `call_json_model` (Ask, and through it `actions.py` intents, `ai/triage.py`, `ai/remind.py`, `ai/plan.py` rationale, `ai/spending.py` summaries, `ai/items.py` same-product suggestions) | local | Run by hand on our DGX Spark for extraction and verifier (`evals/`); the other tasks tested with a stub |
 | **Muse Spark** (`muse-spark-1.3`, Meta Model API `/chat/completions`, the user's key) | the same call sites in key mode; `ai/verify.py` when no Baseten key is set | key | **Unverified**: unit-tested against stubs; no key in our eval environment |
 | **Muse Spark Open** (Baseten, `inference.baseten.co`) | `ai/verify.py`, only in key mode when the **server owner** sets `BASETEN_API_KEY` | key | Wired on the demo server (key set 27 Oct 2026); id `meta-models/muse-spark-open` as Baseten lists it; one real call checked; eval on 200 gold documents: all fields 91 % clean, 93 % messy (`evals/runs/spark_open_200`, `spark_open_messy_200`) |
-| **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) | `ai/voice.py` `transcribe()`, from `POST /books/ask/voice` (web and Android mic) after ffmpeg converts to WAV 16 kHz mono | key only | **Unverified**: request format from research notes, never checked against dev.meta.ai; no live mic run |
+| **Muse Voice Transcribe** (`muse-voice-transcribe-1.0`) | `ai/stt.py` (the speech-to-text chain: Muse first, Whisper on the DGX Spark as fallback) → `ai/voice.py` `transcribe()`, from `POST /books/ask/voice` (web and Android mic) after ffmpeg converts to WAV 16 kHz mono | the user's key, or the server's `META_API_KEY` | **Unverified live**: request format from Meta's cookbook, faked HTTP in tests; no live mic run |
 | **SAM 3.1** (`sam-3.1`) | `ai/crop.py` `_call_sam`, only with `SAM_CROP=1` | key | **Unverified and off by default**: wire format is a guess; the default crop is code |
 | **Muse Image** (`muse-image-1.0`) | `tools/brand_muse.py`, build time, for the brand artwork | n/a | Run once; **not part of the runtime** |
 
@@ -502,7 +503,7 @@ Ollama are on our DGX Spark, so the image passes through that machine's memory; 
 
 - Meta API key: browser `localStorage`, sent per request to the runtime in a header (Android: app settings, **not** in secure storage yet).
 - HMRC tokens: tab `sessionStorage`. Microsoft tokens: MSAL's cache in the browser or app.
-- Voice audio is not kept; voice needs a Meta key.
+- Voice audio is not kept; voice needs a Meta key (the user's or the server's) or the Spark's Whisper server (`SPARK_WHISPER_URL`).
 
 ## Threat model
 
