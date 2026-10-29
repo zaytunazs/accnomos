@@ -62,7 +62,8 @@ TOP: tuple[Folder, ...] = (
     Folder(
         "bulk",
         BULK,
-        "drop any number of files or .zip archives here and Accnomos files them in one go. Only this folder is read in bulk; zips are unpacked safely.",
+        "drop any number of files or .zip archives here and Accnomos files them in one go. "
+        "Only this folder is read in bulk; zips are unpacked safely.",
     ),
     Folder(
         "receipts",

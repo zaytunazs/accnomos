@@ -202,6 +202,7 @@ class Proposal(BaseModel):
     # Set once the proposal lives in the user's books (_System/proposals/{id}.json).
     source_name: str | None = None  # original file name in the Inbox
     source_mailbox: str | None = None  # the mailbox Outlook intake copied it from (address), if it came by email
+    source_note: str | None = None  # which zip or subfolder a bulk upload came from (app/bulk.py), if flattened
     file_path: str | None = None  # where the document is filed now
     account_override: str | None = None  # expense account chosen by a rule or the user
     #: Business-use percent of a purchase (0-100; None means 100): only this share stays on the expense

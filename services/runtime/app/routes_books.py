@@ -19,7 +19,7 @@ from pydantic import BaseModel, Field
 from accnomos_connectors.base import SharedRoot, StorageProvider
 from accnomos_connectors.msgraph import GraphStorageProvider
 from accnomos_ledger.events import LedgerEvent
-from app import autopilot, data_export, layout, sharing
+from app import autopilot, data_export, launchcheck, layout, sharing
 from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.approve import ApprovalError, ProposalStateError, approve, reject, submitted_spans, undo
 from app.books import Books, now
@@ -382,3 +382,13 @@ async def folder_layout(books: Books = Depends(get_books)) -> layout.LayoutStatu
     """Old-named folders, checked now: `moved` is what this call renamed (usually nothing, because get_books has
     already done it), `conflicts` are old and new folders side by side, which the Files page shows."""
     return await layout.migrate(books)
+
+
+@router.get("/launch-check", response_model=launchcheck.LaunchCheck)
+async def launch_check_route(books: Books = Depends(get_books)) -> launchcheck.LaunchCheck:
+    """What is new or changed in 01 Bulk upload and 00 Inbox since the books last saw them.
+
+    Lists only (names, sizes, dates, provider hashes); no document is downloaded,
+    so the app can run this on launch behind a thin progress bar without blocking.
+    """
+    return await launchcheck.launch_check(books)

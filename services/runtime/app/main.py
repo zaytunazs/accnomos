@@ -375,3 +375,6 @@ app.include_router(profile_router)
 from app.routes_close import router as close_router  # noqa: E402  /close (the month-end close agent)
 
 app.include_router(close_router)
+from app.routes_bulk import router as bulk_router  # noqa: E402  /books/bulk/* (bulk-upload batch jobs)
+
+app.include_router(bulk_router)
