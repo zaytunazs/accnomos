@@ -87,7 +87,7 @@ test.describe("submission build (the default)", () => {
     await page.goto("/join");
     await expect(page).toHaveTitle("Get 3 months free · Accnomos");
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Accnomos: bookkeeping you only have to check");
-    await expect(page.getByRole("link", { name: "Try the demo" })).toHaveAttribute("href", "/judges");
+    await expect(page.getByRole("main").getByRole("link", { name: "Try the demo" })).toHaveAttribute("href", "/judges");
     expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(360);
 
     const email = address("join-page");
@@ -162,7 +162,7 @@ test.describe("accountants on the landing page", () => {
     const href = (await settings.getAttribute("href"))!;
     await expect(section.getByRole("link", { name: "Accountant portal" })).toHaveAttribute("href", "/accountant");
     for (const q of ["Does my accountant need an account?", "Can an accountant review my books for me?"]) {
-      await expect(page.getByText(q, { exact: true })).toBeAttached();
+      await expect(page.locator("#faq summary", { hasText: q })).toHaveCount(1);
     }
 
     // The link opens the Your accountant tab for a signed-in owner.
