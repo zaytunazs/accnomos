@@ -142,7 +142,8 @@ task text only and was never merged.
 | 21 | `spark/property-runs-pass2` (with `muse/property-reader-2`, which it sits on) and its review | `d3d6328e` | 40772672176 (on `integration`); red on `main` in 40774742253, the flaky `test_ask` fixed in row 23 | no web change |
 | 22 | `claude/known-fixes`, second round (brings `claude/exports` and `claude/sales-purchases`, fixed), plus the landing-copy correction for site-layout | `a56bc911` | 40778178762 | 40779614548 ✓ |
 | 23 | Fix: Ask's number check read digits in file names, so `test_ask` failed 1 run in N (below) | this pass | see row 24 | no web change |
-| 24 | `claude/sales-exports-fix` (on top of row 22, which already had both features) and *Reports & exports* in the menu | this commit | see below | ✓ on push |
+| 24 | `claude/sales-exports-fix` (on top of row 22, which already had both features) and *Reports & exports* in the menu | `176b96b0` | 40781660107; on `main` 40783592918 | 40783592935 ✓ |
+| 25 | `claude/dashboard-ui` (Home as one dashboard with a checked AI summary, `GET /books/home`, lower-looking sub-menus, the header without stray lines, the Android summary card) | this commit | see below | ✓ on push |
 
 The integrator wrote a review wherever a branch arrived without one: `docs/reviews/cis-eval/`, `cis-eval-runs/` and
 `property-reader/`. The Spark figures were **recounted from `results.jsonl`**, not copied from the summaries. The CIS
@@ -164,6 +165,7 @@ schedules and 0 of 6 on mortgage statements.
 | property-runs-pass2 | 2171 | 101 | 63 | 181 | 354 | 424 | 2 |
 | known-fixes, round 2 (with site-layout and pass 2 merged) | 2336 | 101 | 63 | 181 | 354 | 467 | 0 |
 | + Ask fix + sales-exports-fix | 2341 | 101 | 63 | 181 | 354 | 467 | 1 |
+| dashboard-ui | 2360 | 101 | 63 | 181 | 354 | 477 | 0 |
 
 ruff 0.17.3 and pyright stayed clean throughout. The flaky tests were: on bank-feeds, the signed-out `/` *Speak*
 button was briefly disabled without a reason; on batch-tax, `files-manage` hit `ECONNRESET`, the PAYE RTI table was
@@ -258,6 +260,14 @@ cis-eval, `paye.spec.ts` (the long PAYE flow) failed once. On property-reader, a
     menu.
   - The only flaky test, `cis.spec.ts` (the CIS registration's "Saved in your OneDrive" status not shown within 10 s),
     passed on retry. It is first seen here, and this merge touches nothing in CIS.
+- **`claude/dashboard-ui`** forked from `a56bc91` and merged `claude/sales-exports-fix` itself. Its 4 conflicts with
+  `main` were all in that inner merge, which it had resolved the other way: it dropped `integration`'s "an empty report
+  section keeps its column headings" fix in `ReportsExports.tsx`, kept `ARCHITECTURE.md`'s garbled router line and the
+  quote rows below the `ACTIONS.md` table, and kept the older *Reports and exports* section of `HONESTY.md`. The branch's
+  own commits touch none of those three files, so `main`'s versions were kept. Its new `HONESTY.md` entry ("Home
+  dashboard and its summary") is in. No new pages; the menu keeps *Reports & exports*. The summary's number check is
+  Ask's `KnownNumbers`, so it has row 23's file-name fix too. Its Android test (`home_summary_test.dart`) was not run
+  on the branch (no Flutter SDK); CI's `flutter` job runs it.
 - **Signed-out `/cis` showed the sample label twice** (CI run 40745987742, and flaky locally). The sample card
   repeated the banner's "SAMPLE — FICTIONAL COMPANY" and rendered after the signed-in check, so the sweep counted 1 or
   2 depending on timing. The card no longer repeats it, so the banner is the one label, as the rule says. No test
