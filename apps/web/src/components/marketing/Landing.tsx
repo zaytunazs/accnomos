@@ -138,8 +138,8 @@ const MODELS: { name: string; where: string; job: string; status: string; tone: 
   },
   {
     name: "Muse Voice Transcribe",
-    where: "Meta Model API, key mode",
-    job: "Spoken questions on Ask and Android",
+    where: "Meta Model API (Whisper on the DGX Spark as fallback)",
+    job: "Spoken questions and instructions on Ask and Android",
     status: "Unit-tested only, no live microphone run",
     tone: "plain",
   },

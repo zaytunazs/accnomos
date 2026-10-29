@@ -55,7 +55,7 @@ const features: Feature[] = [
     does: "Ask answers questions about your books (“how much did I spend with Screwfix?”) and can plan a day (“plan my Thursday”). The web streams the answer: key figures first, then the wording. On the mic button you can speak the question instead of typing it.",
     ai: "The model only writes the words. Key figures and quotes come from a facts pack that code builds from your ledger, and code checks every figure the model writes.",
     code: "Code routes the question to the right books and period, checks each figure against the facts, and replaces any invented or wrong-period figure with the quoted facts.",
-    gap: "Not verified yet: voice (Muse Voice Transcribe) works in key mode only and its request format comes from research notes, never checked live; no live mic run on any browser or phone. Bank, payroll, jobs and deadlines are not in the facts pack.",
+    gap: "Not verified yet: voice (Muse Voice Transcribe, with Whisper on our DGX Spark as the fallback) is built to the request format in Meta's own cookbook but has never been called live from our CI; no live mic run on any browser or phone. Bank, payroll, jobs and deadlines are not in the facts pack.",
   },
   {
     id: "actions",
@@ -265,7 +265,7 @@ const models = [
   },
   {
     name: "Muse Voice Transcribe",
-    job: "Turns a spoken Ask question into text, which then goes through the normal grounded Ask. Key mode only; audio is not kept.",
+    job: "Turns a spoken Ask question or instruction into text, which then goes through the normal grounded Ask. Uses your Meta key or the server's; Whisper on our DGX Spark takes over if it fails, and each answer says which one heard it. Audio is not kept.",
   },
   {
     name: "SAM 3.1",

@@ -311,10 +311,19 @@ export async function runtimeAiTest(cfg: AiConfig): Promise<RtAiTest> {
 }
 
 /** GET /health: no sign-in needed. Null when the runtime does not answer. */
-export async function runtimeHealth(): Promise<{ ok: boolean; voice?: boolean; demo?: { enabled: boolean; ready: boolean } } | null> {
+/** GET /health's speech-to-text chain as the server is set up (no keys, no URLs). */
+export interface RtSttProvider {
+  name: string;
+  label: string;
+  model: string;
+  configured: boolean;
+}
+type RtHealth = { ok: boolean; voice?: boolean; stt?: RtSttProvider[]; demo?: { enabled: boolean; ready: boolean } };
+
+export async function runtimeHealth(): Promise<RtHealth | null> {
   try {
     const res = await fetch(`${RUNTIME_URL}/health`);
-    return res.ok ? ((await res.json()) as { ok: boolean; voice?: boolean; demo?: { enabled: boolean; ready: boolean } }) : null;
+    return res.ok ? ((await res.json()) as RtHealth) : null;
   } catch {
     return null;
   }
@@ -381,7 +390,8 @@ export const runtime = {
       method: "POST",
       body: JSON.stringify({ question, period: period ?? null, history: history.slice(-6) }),
     }),
-  /** POST /books/ask/voice: a spoken question, transcribed by Muse Voice (key mode only), then the same answer. */
+  /** POST /books/ask/voice: a spoken question, transcribed by Muse Voice Transcribe (Whisper on the Spark as the
+   *  fallback), then the same answer. */
   askVoice: (a: AccountInfo, audio: Blob, period?: RtAskPeriod | null, history: RtAskTurn[] = []) => {
     const form = new FormData();
     const ext = audio.type.includes("mp4") ? "m4a" : audio.type.includes("ogg") ? "ogg" : "webm";
@@ -2773,7 +2783,16 @@ export interface RtProposedAction {
   confirm_text: string;
   created_at: string;
   expires_at: string;
+  /** Set when the request was spoken: which speech-to-text service heard it (signed with the rest). */
+  transcribed_by?: RtTranscription | null;
   signature: string;
+}
+/** Who heard a spoken request (services/runtime/app/ai/stt.py): Muse Voice Transcribe, or Whisper on the Spark. */
+export interface RtTranscription {
+  provider: string; // muse | whisper
+  label: string; // "Muse Voice Transcribe" | "Whisper on the DGX Spark"
+  model: string;
+  fallback_reason: string | null; // the first service failed: "<label>: <why>"
 }
 export interface RtInvoicePreview {
   customer: { contact_id: string; name: string; email: string | null; address: string | null; vrn: string | null };
@@ -2886,7 +2905,8 @@ export interface RtActionResult {
   result: Record<string, unknown>;
 }
 export interface RtAskVoiceAnswer extends RtAskAnswer {
-  transcript: string; // what Muse Voice heard; shown as the user's message
+  transcript: string; // what was heard; shown as the user's message
+  transcribed_by?: RtTranscription | null; // shown under it as "Transcribed by …"
 }
 
 

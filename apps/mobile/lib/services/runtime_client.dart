@@ -1610,9 +1610,13 @@ class ScanOutcome {
 /// `answer` is null when the runtime transcribed but could not answer;
 /// the transcript still goes in the user's bubble and typing takes over.
 class VoiceAnswer {
-  VoiceAnswer({required this.transcript, this.answer});
+  VoiceAnswer({required this.transcript, this.answer, this.transcribedBy});
   final String transcript;
   final AskAnswer? answer;
+
+  /// Which speech-to-text service heard it (`transcribed_by.label`), e.g.
+  /// "Muse Voice Transcribe" or "Whisper on the DGX Spark"; null if unsaid.
+  final String? transcribedBy;
 
   factory VoiceAnswer.fromJson(Map<String, dynamic> json) {
     final transcript = (json['transcript'] ??
@@ -1628,7 +1632,13 @@ class VoiceAnswer {
       answer = AskAnswer.fromJson(
           Map<String, dynamic>.from(rawAnswer));
     }
-    return VoiceAnswer(transcript: transcript, answer: answer);
+    final by = json['transcribed_by'];
+    final label = by is Map ? (by['label'] ?? '').toString().trim() : '';
+    return VoiceAnswer(
+      transcript: transcript,
+      answer: answer,
+      transcribedBy: label.isEmpty ? null : label,
+    );
   }
 }
 
