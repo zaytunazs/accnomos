@@ -357,6 +357,34 @@ export interface RtProfile {
 const statementQuery = (start?: string, end?: string) =>
   [start ? `start=${start}` : "", end ? `end=${end}` : ""].filter(Boolean).join("&");
 
+/** POST /books/bulk/jobs (services/runtime/app/bulk.py): one batch job, one row per document. */
+export interface RtBulkRow {
+  name: string;
+  path: string;
+  source_note: string | null;
+  doc_type: string;
+  supplier: string | null;
+  gross: number | null;
+  status: string;
+  reason: string | null;
+  proposal_id: string | null;
+}
+export interface RtBulkJob {
+  id: string;
+  status: string;
+  created_at: string;
+  rows: RtBulkRow[];
+  summary: string;
+  errors: { path: string; error: string }[];
+}
+
+/** GET /books/launch-check (services/runtime/app/launchcheck.py): list-only diff, no downloads. */
+export interface RtLaunchCheck {
+  new: string[];
+  changed: { path: string; reason: string }[];
+  checked: number;
+}
+
 export const runtime = {
   /** GET /profile: this account's profile (its own books). */
   profile: (a: AccountInfo) => call<RtProfile>(a, "/profile"),
@@ -384,6 +412,17 @@ export const runtime = {
   reject: (a: AccountInfo, id: string, reason: string) =>
     call<RtProposal>(a, `/books/proposals/${id}/reject`, { method: "POST", body: JSON.stringify({ reason }) }),
   summary: (a: AccountInfo) => call<RtSummary>(a, "/books/summary"),
+  /** GET /books/launch-check: what is new or changed in 01 Bulk upload and 00 Inbox (lists only, no downloads). */
+  launchCheck: (a: AccountInfo, signal?: AbortSignal) =>
+    call<RtLaunchCheck>(a, "/books/launch-check", { signal }),
+  /** POST /books/bulk/jobs: unpack the zips in 01 Bulk upload and classify what is there (two at a time). */
+  bulkStart: (a: AccountInfo) =>
+    call<RtBulkJob>(a, "/books/bulk/jobs", { method: "POST" }),
+  /** GET /books/bulk/jobs/{id}: one batch job with one row per document. */
+  bulkJob: (a: AccountInfo, id: string) => call<RtBulkJob>(a, `/books/bulk/jobs/${id}`),
+  /** POST /books/bulk/jobs/{id}/confirm: correct types per row, then file every ready document. */
+  bulkConfirm: (a: AccountInfo, id: string, edits: Record<string, string>) =>
+    call<RtBulkJob>(a, `/books/bulk/jobs/${id}/confirm`, { method: "POST", body: JSON.stringify({ edits }) }),
   /** POST /books/ask: numbers from code, words from the user's model, every figure checked against the facts. */
   ask: (a: AccountInfo, question: string, period?: RtAskPeriod | null, history: RtAskTurn[] = []) =>
     call<RtAskAnswer>(a, withQuery("/books/ask", vatQuery()), {

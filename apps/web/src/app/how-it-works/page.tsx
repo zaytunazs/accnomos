@@ -26,6 +26,14 @@ const features: Feature[] = [
     gap: "Not verified yet: key-mode reading (Muse Spark) is unit-tested only; HEIC photos are copied but not read; evals use made-up receipts, so real phone photos will score lower.",
   },
   {
+    id: "bulk",
+    title: "Bulk upload: a whole folder in one go",
+    does: "Put any number of files or .zip archives in 01 Bulk upload — and only there; nothing else is ever read in bulk. Zips are unpacked safely (no path tricks, at most 200 files or 200 MB a batch) with nested folders flattened and the folder name kept on each document. Press “Process the bulk folder” on the Review page: every file is read two at a time, you get one summary (“120 receipts, 30 invoices, 6 bank statements, 4 unclear”) to correct row by row, and Confirm all files each one to its normal folder. Processed files move out; failures stay with a reason.",
+    ai: "The same reader as single receipts: the model reads each document, code checks the reading.",
+    code: "Code unpacks zips entry by entry (absolute paths, parent folders and oversize members are refused), classifies with a two-at-a-time semaphore, and routes each confirmed document through the same filing the Inbox scan uses. When the app opens it lists 01 Bulk upload and 00 Inbox against the filed hashes and names — downloads nothing — behind a thin progress bar, with a small “N new, M changed - Review” badge.",
+    gap: "Not verified yet: never run against a real OneDrive with hundreds of files; large batches are untested for time-outs.",
+  },
+  {
     id: "books",
     title: "Books.xlsx: a copy you can read",
     does: "After every approval, rejection, undo, bank match, invoice, payroll, mileage or job change, the app rebuilds Books.xlsx from the event files. It has 12 sheets (Summary, Ledger, Accounts, VAT, Customers, Suppliers, Bank, Proposals, Jobs, Vehicles, Payroll and a README). It is a read-only copy: do not edit it, it is overwritten.",

@@ -5,6 +5,7 @@ import { warmServerAi } from "@/lib/meta-models";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import ReviewQueue, { type ReviewAdapter } from "@/components/review/ReviewQueue";
+import BulkSection from "@/components/review/BulkSection";
 import SignInCta from "@/components/SignInCta";
 import UploadToInbox from "@/components/review/UploadToInbox";
 import { VatCheckButton, useLookupStatus } from "@/components/contacts/Lookups";
@@ -269,6 +270,7 @@ export default function LiveReview() {
         <span className="text-sm text-muted">or drop files into OneDrive › Apps › Accnomos › 00 Inbox</span>
       </div>
       <Notes note={note} error={error} />
+      <BulkSection account={account!} onDone={() => account && load(account)} />
       {autoPosted.length > 0 && (
         <section aria-labelledby="autopilot-posted" className="rounded-2xl border border-border bg-white p-5">
           <h2 id="autopilot-posted" className="text-[17px] font-extrabold">

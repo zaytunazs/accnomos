@@ -4,6 +4,7 @@ import AiSidebarLabel from "./AiSidebarLabel";
 import ClientBanner from "./accountant/ClientBanner";
 import AppNav from "./AppNav";
 import BankFeedOnOpen from "./bank/BankFeedOnOpen";
+import LaunchCheckBar from "./LaunchCheckBar";
 import DemoBanner from "./DemoBanner";
 import MonthlyBackup from "./files/MonthlyBackup";
 import DemoBar, { DemoMenu, NotInDemo } from "./demo/DemoBar";
@@ -39,6 +40,7 @@ function LogoMark() {
 export default function AppShell({ children, routes }: { children: ReactNode; routes: string[] }) {
   return (
     <div className="group/shell flex min-h-full flex-1 flex-col">
+      <LaunchCheckBar />
       <DemoBar />
       <DemoBanner />
       <ClientBanner />
