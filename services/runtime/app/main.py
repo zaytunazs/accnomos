@@ -97,11 +97,20 @@ async def health() -> dict:
         "version": app.version,
         "uptime_s": int(time.time() - STARTED),
         "voice": bool(FFMPEG),
+        "stt": stt_summary(),
         "folder_layout": layout.health(),
         "ai": ai_chain_summary(),
         **({"test_mode": True} if is_test_mode() else {}),
         **({"demo": demo.status()} if demo.enabled() else {}),
     }
+
+
+def stt_summary() -> list[dict]:
+    """The speech-to-text chain (app/ai/stt.py) as the server is set up: names, labels and models; never a key or URL.
+    A user's own Meta key in key mode also enables Muse Voice Transcribe for their requests."""
+    from app.ai import stt
+
+    return stt.describe()
 
 
 def ai_chain_summary() -> dict:

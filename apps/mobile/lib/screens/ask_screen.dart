@@ -19,13 +19,51 @@ const _warnBg = Color(0xFFFFF7ED);
 const _warnBorder = Color(0xFFF3C892);
 const _warnInk = Color(0xFF8A3F06);
 
+/// Why the mic is off, or null when voice can be used. [health] is the
+/// reader's `GET /health` (null when it did not answer).
+String? voiceOffReason(String aiMode, Map<String, dynamic>? health) {
+  if (health != null && health['voice'] == false) {
+    return 'Voice isn\'t available on your reader service (ffmpeg is missing)';
+  }
+  final stt = health?['stt'];
+  final serverStt =
+      stt is List && stt.any((p) => p is Map && p['configured'] == true);
+  if (aiMode != 'key' && !serverStt) {
+    return 'Voice needs a Meta API key — switch to key mode in Settings, '
+        'or set up speech-to-text on your reader service';
+  }
+  return null;
+}
+
+/// A spoken question's "Spoken" label, with the service that heard it.
+String spokenLabel(String? heardBy) =>
+    heardBy == null ? 'Spoken' : 'Spoken · Transcribed by $heardBy';
+
+/// The small label above a spoken question's bubble.
+class SpokenTag extends StatelessWidget {
+  const SpokenTag({super.key, this.heardBy});
+  final String? heardBy;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: Text(
+          spokenLabel(heardBy),
+          style: const TextStyle(fontSize: 11, color: AccnomosColors.muted),
+        ),
+      );
+}
+
 /// One live question and, once it arrives, its checked answer or an error.
 class _Turn {
-  _Turn(this.question, {this.spoken = false});
+  _Turn(this.question, {this.spoken = false, this.heardBy});
   final String question;
 
   /// True when the question came from a voice recording.
   final bool spoken;
+
+  /// The speech-to-text service that heard it, shown as "Transcribed by …".
+  final String? heardBy;
   AskAnswer? answer;
   String? error;
 
@@ -108,28 +146,18 @@ class _AskScreenState extends State<AskScreen> {
       _account = account;
     });
     if (account == null) return;
-    // Voice needs key mode (local AI cannot transcribe) and a reader whose
-    // `/health` reports voice. Otherwise the mic stays disabled with why.
+    // Voice needs a reader whose `/health` reports voice (ffmpeg), and a
+    // speech-to-text service: the user's own Meta key (key mode) or one the
+    // server has set up (`stt` in /health). Otherwise the mic stays off.
     try {
       final client = await _client(settings);
       final health = await client.health();
       if (!mounted) return;
-      setState(() {
-        _voiceOff = settings.aiMode != 'key'
-            ? 'Voice needs a Meta API key — switch to key mode in '
-                'Settings (local AI can\'t transcribe)'
-            : health != null && health['voice'] == false
-                ? 'Voice isn\'t available on your reader service '
-                    '(ffmpeg is missing)'
-                : null;
-      });
+      setState(() => _voiceOff = voiceOffReason(settings.aiMode, health));
     } catch (_) {
-      // Offline: the mic keeps its key-mode gating below.
-      if (mounted && settings.aiMode != 'key') {
-        setState(() {
-          _voiceOff = 'Voice needs a Meta API key — switch to key mode in '
-              'Settings (local AI can\'t transcribe)';
-        });
+      // Offline: the mic keeps its key-mode gating.
+      if (mounted) {
+        setState(() => _voiceOff = voiceOffReason(settings.aiMode, null));
       }
     }
     await _refreshSuggestions();
@@ -392,6 +420,7 @@ class _AskScreenState extends State<AskScreen> {
       final turn = _Turn(
         transcript.isEmpty ? '(no speech heard)' : transcript,
         spoken: true,
+        heardBy: result.transcribedBy,
       );
       setState(() {
         _sendingVoice = false;
@@ -549,6 +578,7 @@ class _AskScreenState extends State<AskScreen> {
         _questionBubble(
           t.question,
           spoken: t.spoken,
+          heardBy: t.heardBy,
           onEdit: t.spoken && !_busy
               ? () {
                   _input.text = t.question;
@@ -581,7 +611,7 @@ class _AskScreenState extends State<AskScreen> {
   /// A sent question. A spoken one is a button when [onEdit] is set:
   /// tapping puts the transcript back in the box to edit, like the web.
   Widget _questionBubble(String text,
-      {bool spoken = false, VoidCallback? onEdit}) {
+      {bool spoken = false, String? heardBy, VoidCallback? onEdit}) {
     return Align(
       alignment: Alignment.centerRight,
       child: ConstrainedBox(
@@ -589,17 +619,7 @@ class _AskScreenState extends State<AskScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            if (spoken)
-              const Padding(
-                padding: EdgeInsets.only(bottom: 4),
-                child: Text(
-                  'Spoken',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AccnomosColors.muted,
-                  ),
-                ),
-              ),
+            if (spoken) SpokenTag(heardBy: heardBy),
             if (spoken && onEdit != null)
               GestureDetector(
                 onTap: onEdit,

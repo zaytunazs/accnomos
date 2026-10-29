@@ -277,8 +277,9 @@ Code: `services/runtime/app/ai/providers.py` (the chain), `app/ai/chain.py` (fai
 
 Failover happens on a timeout, a connection error, HTTP 5xx, 402 or 429 (billing, rate limit), and 401/403/404/408
 (that provider's own credentials, model or gateway); never on any other 4xx (our own bad request) or on a reply that does
-not parse. A streamed Ask answer fails over only before its first token. Voice transcription stays Muse Voice Transcribe
-on the Meta provider; it needs `META_API_KEY`.
+not parse. A streamed Ask answer fails over only before its first token. Voice transcription has its own chain (`app/ai/stt.py`, `docs/META_MODELS.md`): Muse Voice
+Transcribe on `META_API_KEY` first, then Whisper on the Spark when `SPARK_WHISPER_URL` is set (`STT_PROVIDERS`,
+`SPARK_WHISPER_MODEL`, `SPARK_WHISPER_KEY`, `MUSE_STT_TIMEOUT_S`, `WHISPER_STT_TIMEOUT_S`).
 
 Modal side (deploy-time options of `tools/modal_glimmer.py`): deploy with `MODAL_PROXY_AUTH=1`, so a stranger who learns
 the URL gets a 401 before any GPU starts. `MODAL_KEEP_WARM=08:00-18:00` keeps one container up in that window (about

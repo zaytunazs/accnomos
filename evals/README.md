@@ -25,7 +25,23 @@ has been made by this code yet**.
 | `gold/gen_gold4.py` | Qwen | `gold/ledger4/`: about 120 price-history receipts, five suppliers, six months, `expectations.json` | `--dry-run`, `--stub` |
 | `gold/gen_personal.py` | Qwen | `gold/personal/NN_name/`: six months of a household's bank statement and `expectations.json` | `--dry-run`, `--stub` |
 | `harness/public_chat_eval.py` | the chat route's model | pass rates for `POST /public/chat`: product facts, refusals, injections | `--dry-run`, `--stub` |
-| `tools/spark_queue.sh` | both | runs the first three, then the extraction eval, one after another | `--dry-run` |
+| `harness/stt.py` | Muse Voice Transcribe, Whisper on the Spark | word error rate, number and pound-amount accuracy, latency per provider over the teaser voice-over and 20 accounting clips (`gold/voice/`, made with Kokoro TTS by `--generate`) | `--dry-run`, `--stub` |
+| `tools/spark_queue.sh` | both | runs the jobs above one after another, `stt` last | `--dry-run` |
+
+### `stt`: Muse Voice Transcribe against Whisper
+
+```sh
+cd evals && python -m harness.stt --dry-run                  # samples and which providers are configured
+cd evals && python -m harness.stt --stub                     # the whole pipeline against faked replies
+cd evals && python -m harness.stt --generate                 # make gold/voice/v01-v20.wav with Kokoro, then run both
+KOKORO_URL=http://127.0.0.1:8880/v1 META_API_KEY=… SPARK_WHISPER_URL=http://127.0.0.1:8000/v1 python -m harness.stt --generate
+```
+
+Runs the runtime's own clients (`app.ai.stt`), each provider alone (no fallback), after the same ffmpeg conversion the
+runtime does. Kokoro is reached at its OpenAI-compatible `POST /v1/audio/speech` (Kokoro-FastAPI; voices `bm_george`
+and `bf_emma`); the docs had no Kokoro endpoint written down, so `KOKORO_URL` defaults to Kokoro-FastAPI's port 8880.
+Writes `runs/stt/{results.jsonl, summary.json, report.md}`. Not run yet: it needs the Spark (Whisper, Kokoro) and a
+Meta key, and no key is used from CI.
 
 ### `bank_ai`: does Glimmer code bank lines?
 

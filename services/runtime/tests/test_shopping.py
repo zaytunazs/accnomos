@@ -279,7 +279,7 @@ def _voice(monkeypatch: pytest.MonkeyPatch, said: str) -> None:
     async def wav(data: bytes, content_type: str | None, filename: str | None) -> bytes:
         return b"RIFF-stub"
 
-    async def heard(audio: bytes, cfg: Any, client: Any = None) -> str:
+    async def heard(audio: bytes, cfg: Any, client: Any = None, **_kw: Any) -> str:
         return said
 
     async def model(messages, cfg, schema, name):  # noqa: ANN001, ANN202
