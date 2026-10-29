@@ -25,7 +25,7 @@ from app.approve import ApprovalError, ProposalStateError, approve, reject, subm
 from app.books import Books, now
 from app.books import today as current_date
 from app.deadlines import period_label
-from app.inbox import scan_inbox_detailed
+from app.inbox import scan_inbox_detailed, waiting
 from app.schemas import Proposal, ProposalStatus
 from app.validation import StrictBody
 from app.vat_cycle import VatCycle, vat_cycle
@@ -180,9 +180,22 @@ class ScanResult(BaseModel):
     errors: list[dict] = []
 
 
+class InboxFile(BaseModel):
+    path: str
+    name: str
+    size: int
+
+
+@router.get("/inbox", response_model=list[InboxFile])
+async def inbox_waiting(books: Books = Depends(get_books)) -> list[InboxFile]:
+    """What the next scan would read, in order: the app shows "Reading 1 of 2 … name" from it. Reads only."""
+    return [InboxFile(path=w.path, name=w.name, size=w.size) for w in await waiting(books)]
+
+
 @router.post("/scan", response_model=ScanResult)
 async def scan(
     limit: int = Query(10, ge=1, le=50),
+    path: str | None = Query(None, max_length=1000),
     books: Books = Depends(get_books),
     cfg: AiConfig = Depends(ai_config_from_request),
     business: str | None = Depends(business_name),
@@ -190,11 +203,12 @@ async def scan(
     cycle: VatCycle = Depends(vat_cycle),
 ) -> ScanResult:
     """VAT settings (`stagger`/`start_month`/`months`, as for /books/deadlines)
-    set the period dates are checked against.
+    set the period dates are checked against. `path`: read only that Inbox file (one document per call, so the
+    app can show progress and time out per document).
     """
     autopilot_on = (x_autopilot or "on").strip().lower() != "off"
     period = cycle.current(current_date())
-    proposals, errors = await scan_inbox_detailed(books, cfg, limit, business, autopilot_on, period)
+    proposals, errors = await scan_inbox_detailed(books, cfg, limit, business, autopilot_on, period, only=path)
     return ScanResult(proposals=proposals, errors=errors)
 
 

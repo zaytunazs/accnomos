@@ -84,7 +84,57 @@ Review cards (AI proposes, user approves). *Leave them* is remembered in `_Syste
 Home shows "N earlier files in your OneDrive not read yet" with *See the list* and *Not now* (hidden until the count
 changes). Audited as `previous_files_queued` and `previous_files_left`.
 
-## 6. Tests
+## 6. Nothing "coming soon" in the submission build
+
+Removed from the app, signed in, signed out and in the demo: Settings › Connections' "Google Drive — Coming next" row,
+the disabled "Connect HMRC (sandbox)" stand-in there (now a link to the VAT page, where HMRC really connects; the
+honest "Sandbox · not connected" stays), and the disabled "Gmail (coming soon)" button in Email intake (it was already
+left out of the submission build; now it is gone from every build). The public landing page's "Not in this build" list
+stays: it is the honesty statement, not a promise. Android had no such strings.
+
+Sweeps: `e2e/submission-mode.spec.ts` now reads every page signed out, signed in (with each Settings tab opened and the
+account menu open) and in the demo sandbox, for "coming soon", "beta", "early access", "launching", "testers" and, on
+rendered pages, "soon", "coming next" and "not yet available" (`scripts/prelaunch-words.mjs` `NOT_YET_WORDS`; the
+production-export check keeps the shorter list, since library code in the JS chunks may say "soon"). Android:
+`apps/mobile/test/no_not_yet_words_test.dart` checks every string literal in `lib/` and the Android resource strings
+(no Flutter SDK in this container: the same scan was run with Python here and found nothing; the Dart test is not run).
+
+## 7. Every menu item has its own page
+
+Before, Accounting's Bank accounts, Bank rules and Reconcile all opened /bank (two by anchor), and the same was true of
+Reporting's Profit and loss and Aged (anchors on /reports), Sales/Tax/Payroll settings items (anchors in Settings),
+and Customers/Suppliers (/contacts, or a query string the page ignored). Now each opens its own page with its own
+heading: `/bank/rules`, `/bank/reconcile` (the same rules and reconciliation as /bank's tabs, on their own),
+`/reports/profit-and-loss`, `/reports/aged`, `/contacts/customers`, `/contacts/suppliers` (the list opened on that kind),
+`/settings/sales`, `/settings/tax`, `/settings/employees`. Two items that opened the same page under different labels now
+share one label (VAT returns; Spending). The highlight goes to the most specific match only (`lib/nav.ts`
+`activeRoute`), so /bank/rules lights "Bank rules", not "Bank accounts" too. `e2e/menu-pages.spec.ts` opens every item:
+no anchors or queries, one label per page, a main heading on each and no heading shared by two pages; and checks the
+three bank items one by one with a single highlighted item.
+
+## 8. Scanning: progress, a time limit, and leaving the page
+
+The owner's demo sat on "Reading your Inbox…" for over ten minutes: one request read the whole Inbox and the button
+waited on it. Now (`lib/scan-queue.ts`, `components/review/ScanProgress.tsx`; runtime `GET /books/inbox`,
+`POST /books/scan?path=`):
+
+- The app lists what is waiting and reads **one document per request**: "Reading 1 of 2 … supplier.pdf", each
+  document's state below (Waiting, Reading, Read with its card count, Still being read, Not read and why).
+- **A time limit per document** (2 minutes; a test build can shorten it). A slower reading is not cancelled: the
+  runtime keeps going and files the card when the model answers. The app says "still being read after 2 minutes; it
+  will appear in Review when done", moves on, and marks it read (and reloads the cards) when the answer arrives. A
+  document still being read is not sent again for 15 minutes, so a second scan cannot read it twice.
+- **Leaving the page** does not stop it: the scan lives in a module, not in the page, and every other page shows
+  "Reading 1 of 2 … name · Open Review" while it runs.
+- **The button is never frozen**: it is busy only while the run lasts, and the run is capped at documents × limit.
+- The final note is unchanged ("1 new proposal · …"), with the slow and unreadable ones named.
+
+Same code in the demo sandbox and the signed-in app. Tests: `tests/test_books.py` (what the next scan reads; one named
+file only, and a file already filed reads nothing); `e2e/scan-progress.spec.ts` (two receipts with the first held past
+its limit: progress text, the slow message, the next document, leaving the page, the button ready again, both cards
+in Review; progress shown on another page).
+
+## 9. Tests
 
 - Runtime: `tests/test_full_backup_previous_files.py`, 12 tests (dated folder and contents with checksums, two in a
   minute, verify and restore through the usual restore, protection, an unfinished backup listed, streamed progress
@@ -99,7 +149,7 @@ changes). Audited as `previous_files_queued` and `previous_files_left`.
 
 Gate totals: see the end of this file.
 
-## 7. Screenshots
+## 10. Screenshots
 
 | | |
 | --- | --- |
@@ -112,10 +162,14 @@ Gate totals: see the end of this file.
 | Earlier files on Home | ![](previous-files-home.png) |
 | Earlier files list | ![](previous-files-list.png) |
 | Back up now in Settings | ![](back-up-now-settings.png) |
+| Accounting › Reconcile, its own page | ![](menu-reconcile-1440.png) |
+| Scan: reading 1 of 2 | ![](scan-reading-1-of-2.png) |
+| Scan: progress on another page | ![](scan-elsewhere.png) |
+| Scan: done | ![](scan-done.png) |
 
 Screenshots are written by `e2e/app-shell.spec.ts` on each run (test build, fictional test account).
 
-## 8. Risks
+## 11. Risks
 
 - Real MSAL was not used (no Microsoft account here); see HONESTY.md › App shell for what that leaves untested.
 - Two silent requests timing out together both try the interactive redirect; MSAL refuses the second
@@ -125,3 +179,8 @@ Screenshots are written by `e2e/app-shell.spec.ts` on each run (test build, fict
 - Earlier files are matched by path; a document renamed by hand after it was read is offered again (reading it again
   gives a DUPLICATE check, so nothing posts twice).
 - The full backup's `_System` zip is built in memory (100 MB cap, as before).
+- A full page reload (not a click in the app) during a scan ends the app's side of it; readings already sent to the
+  runtime still finish and appear in Review. Whether a real Graph or model call is cancelled when the browser drops
+  the request was not tried; the runtime does not cancel on disconnect.
+- Menu pages added for distinct destinations reuse the existing components; their print layout (P&L and Aged alone)
+  was not checked on paper.

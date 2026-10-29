@@ -371,6 +371,15 @@ export const runtime = {
       method: "POST",
       headers: autopilotOn() ? {} : { "X-Autopilot": "off" },
     }),
+  /** GET /books/inbox: what the next scan reads, in order (the scan's "Reading 1 of 2 … name"). */
+  inboxWaiting: (a: AccountInfo) => call<{ path: string; name: string; size: number }[]>(a, "/books/inbox"),
+  /** POST /books/scan?path=: read one Inbox document (lib/scan-queue.ts times each one out on its own). */
+  scanOne: (a: AccountInfo, path: string) =>
+    call<{ proposals: RtProposal[]; errors: { path: string; error: string }[] }>(
+      a,
+      `/books/scan?${[`path=${encodeURIComponent(path)}`, vatQuery()].filter(Boolean).join("&")}`,
+      { method: "POST", headers: autopilotOn() ? {} : { "X-Autopilot": "off" } },
+    ),
   proposals: (a: AccountInfo, status?: string) => call<RtProposal[]>(a, `/books/proposals${status ? `?status=${status}` : ""}`),
   proposal: (a: AccountInfo, id: string) => call<RtProposal>(a, `/books/proposals/${id}`),
   /** `edits.job_id` tags a purchase to a job (its net then counts as a job cost). */

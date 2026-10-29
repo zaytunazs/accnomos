@@ -7,6 +7,8 @@ import type { AccountInfo } from "@azure/msal-browser";
 import ReviewQueue, { type ReviewAdapter } from "@/components/review/ReviewQueue";
 import SignInCta from "@/components/SignInCta";
 import UploadToInbox from "@/components/review/UploadToInbox";
+import { ScanProgress } from "@/components/review/ScanProgress";
+import { lastScanSummary, startScan, useScanRun } from "@/lib/scan-queue";
 import { VatCheckButton, useLookupStatus } from "@/components/contacts/Lookups";
 import {
   EmptyState,
@@ -74,6 +76,7 @@ function SampleReview({ note: initialNote, level }: { note: string | null; level
         </span>
         <SignInCta />
       </p>
+      <ScanProgress />
       <Notes note={note} error={error} />
       <ReviewQueue items={items} rules={sampleRules} level={level} adapter={adapter} onNote={setNote} onError={setError} />
       {items.length === 0 && (
@@ -97,6 +100,9 @@ export default function LiveReview() {
   const [openJobs, setOpenJobs] = useState<RtJob[]>([]);
   const [jobFor, setJobFor] = useState<Record<string, string>>({});
   const [businessVehicles, setBusinessVehicles] = useState<RtVehicle[]>([]);
+  const scanRun = useScanRun();
+  const scanBusy = scanRun?.running ?? false;
+  const scanVersion = scanRun?.version ?? 0;
   const [vehicleFor, setVehicleFor] = useState<Record<string, string>>({});
 
   const load = useCallback(async (acct: AccountInfo) => {
@@ -135,6 +141,11 @@ export default function LiveReview() {
     })();
   }, [load]);
 
+  // A document turned into cards (during the scan, or a slow reading that finished later): show them.
+  useEffect(() => {
+    if (account && scanVersion > 0) queueMicrotask(() => void load(account).catch(() => undefined));
+  }, [account, scanVersion, load]);
+
   const adapter = useMemo<ReviewAdapter<string> | null>(
     () =>
       account && {
@@ -166,22 +177,19 @@ export default function LiveReview() {
     }
   }
 
+  /** Scan 00 Inbox one document at a time (lib/scan-queue.ts): progress, a time limit each, and it carries on if the
+   *  user leaves the page. The button is busy only while the run lasts, which is capped per document. */
   async function scan() {
     if (!account) return;
-    setBusy("scan");
     setError(null);
+    setNote(null);
     try {
-      const r = await runtime.scan(account);
-      const auto = r.proposals.filter((p) => p.decided_by === "autopilot").length;
-      const n = r.proposals.length - auto;
-      const errs = r.errors.map((e) => `${e.path.split("/").pop()}: ${e.error}`).join(" · ");
+      await startScan(account);
       // Announced once the cards are on the page, so J (or a screen-reader user) never acts on an empty queue.
       await load(account);
-      setNote(`${n} new proposal${n === 1 ? "" : "s"}${auto ? ` · ${auto} approved by Autopilot` : ""}${errs ? ` · could not read: ${errs}` : ""}`);
+      setNote(lastScanSummary());
     } catch (e) {
       setError((e as Error).message);
-    } finally {
-      setBusy(null);
     }
   }
 
@@ -262,8 +270,8 @@ export default function LiveReview() {
   return (
     <div className="flex min-w-0 flex-col gap-5">
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" onClick={scan} disabled={busy !== null} className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white disabled:opacity-60">
-          {busy === "scan" ? "Reading your Inbox…" : "Scan 00 Inbox now"}
+        <button type="button" onClick={scan} disabled={busy !== null || scanBusy} className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white disabled:opacity-60">
+          {scanBusy ? "Scanning…" : "Scan 00 Inbox now"}
         </button>
         <UploadToInbox account={account!} onDone={() => setNote(null)} />
         <span className="text-sm text-muted">or drop files into OneDrive › Apps › Accnomos › 00 Inbox</span>

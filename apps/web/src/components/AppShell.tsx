@@ -14,6 +14,7 @@ import DemoBar, { DemoMenu, NotInDemo } from "./demo/DemoBar";
 import { AccountMenu, useLinkedProfiles } from "./ProfileMenu";
 import TopBar, { LogoMark } from "./TopBar";
 import { ServiceStrip, VersionStrip } from "./StatusStrips";
+import { ScanStatus } from "./review/ScanProgress";
 import { getClientContext, onClientContextChange } from "@/lib/accountant";
 import { useSignedIn } from "@/lib/signed-in";
 
@@ -93,6 +94,8 @@ export default function AppShell({ children, routes }: { children: ReactNode; ro
       <BankFeedOnOpen />
       {/* Reader trouble and new-version notices: one shared strip each, pages keep what they can below. */}
       <ServiceStrip />
+      {/* A scan started on Review keeps going on every other page; this says how far it got. */}
+      <ScanStatus />
       <VersionStrip />
       {accountant ? <AccountantBar /> : signedIn ? <TopBar routes={routes} /> : null}
       {signedOutChrome && (

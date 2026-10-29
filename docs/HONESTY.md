@@ -375,6 +375,10 @@ Review: `docs/reviews/app-shell/REVIEW.md`.
   whole Accnomos folder deletes the backups too. Documents themselves are not copied (the index lists them; OneDrive
   keeps their versions). There is no retention for full backups. Progress is per step (five steps), not per byte; the
   `_System` zip is built in memory under the same 100 MB cap as the dated zips.
+- **Scanning one document at a time** (Review's progress and time limit) has run only against the test-mode stub,
+  with a slow reading simulated by holding the request in the browser. Against a real model, each document is now its
+  own request (the server's model chain per call is unchanged); a reading that passes its 2-minute limit carries on in
+  the runtime, but if the browser tab is reloaded the app no longer tracks it (the card still appears in Review).
 - **Earlier files** are matched by path to what the books point at (proposals' files, bank statements' lines). A file
   the user renamed or moved by hand in OneDrive after it was read shows as "not read"; reading it again gives a
   DUPLICATE check in Review, so nothing is posted twice, but the user sees it offered. Only 00 Inbox, 01 Receipts and

@@ -19,7 +19,7 @@ from app import pipeline  # noqa: E402
 from app.ai.config import AiConfig  # noqa: E402
 from app.approve import ApprovalError, ProposalStateError, approve, reject  # noqa: E402
 from app.books import AUDIT, CURSORS, DOCS, EVENTS, RULES, Books  # noqa: E402
-from app.inbox import scan_inbox  # noqa: E402
+from app.inbox import scan_inbox, scan_inbox_detailed, waiting  # noqa: E402
 from app.schemas import ExtractedDoc, ExtractedLine  # noqa: E402
 
 CFG = AiConfig(mode="local", base_url="http://ollama.invalid", model="stub")
@@ -129,6 +129,24 @@ async def test_scan_respects_limit(fake: FakeStorageProvider, books: Books) -> N
     fake.files.update({"00 Inbox/1.jpg": SCREWFIX, "00 Inbox/2.jpg": TOOLSTATION})
     assert len(await scan_inbox(books, CFG, limit=1)) == 1
     assert list(fake.files).count("00 Inbox/2.jpg") == 1
+
+
+async def test_waiting_lists_what_the_next_scan_reads(fake: FakeStorageProvider, books: Books) -> None:
+    fake.files.update({"00 Inbox/1.jpg": SCREWFIX, "00 Inbox/2.jpg": TOOLSTATION, "00 Inbox/notes.docx": b"x"})
+    listed = [(w.path, w.name) for w in await waiting(books)]
+    assert listed == [("00 Inbox/1.jpg", "1.jpg"), ("00 Inbox/2.jpg", "2.jpg")]
+
+
+async def test_scan_one_named_file_reads_only_that_one(fake: FakeStorageProvider, books: Books, stub_extract) -> None:
+    """The app scans one document per call to show progress and time each one out."""
+    fake.files.update({"00 Inbox/1.jpg": SCREWFIX, "00 Inbox/2.jpg": TOOLSTATION})
+    proposals, errors = await scan_inbox_detailed(books, CFG, only="00 Inbox/2.jpg")
+    assert [p.extracted.supplier_name for p in proposals] == ["Toolstation"] and errors == []
+    assert stub_extract == [TOOLSTATION]
+    assert "00 Inbox/1.jpg" in fake.files and "00 Inbox/2.jpg" not in fake.files
+    # A file another scan already filed reads nothing (no second card, no model call).
+    assert await scan_inbox_detailed(books, CFG, only="00 Inbox/2.jpg") == ([], [])
+    assert stub_extract == [TOOLSTATION]
 
 
 async def test_approve_posts_balanced_event_with_audit_and_rule(fake: FakeStorageProvider, books: Books) -> None:

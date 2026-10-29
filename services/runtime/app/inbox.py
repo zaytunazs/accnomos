@@ -221,6 +221,24 @@ async def scan_inbox(
     return proposals
 
 
+@dataclass
+class Waiting:
+    """A document in the Inbox the next scan would read."""
+
+    path: str
+    name: str
+    size: int
+
+
+async def waiting(books: Books) -> list[Waiting]:
+    """Readable documents in the Inbox, in the order a scan takes them (oldest name first, as listed). Reads only."""
+    return [
+        Waiting(path=f.path, name=f.name, size=f.size)
+        for f in await books.list_files(INBOX)
+        if guess_mime(f.name) and f.size <= MAX_BYTES
+    ]
+
+
 async def scan_inbox_detailed(
     books: Books,
     cfg: AiConfig,
@@ -228,6 +246,7 @@ async def scan_inbox_detailed(
     business_name: str | None = None,
     autopilot_on: bool = True,
     period: tuple[date, date] | None = None,
+    only: str | None = None,
 ) -> tuple[list[Proposal], list[dict]]:
     """Process up to `limit` documents from the Inbox and return the new proposals.
 
@@ -235,6 +254,8 @@ async def scan_inbox_detailed(
     to Needs a look, so the Inbox never keeps files the user thinks were handled. Files the
     model cannot read stay in the Inbox for the next scan. `period` is the current VAT period: a document
     dated outside it gets a DATE_IN_PERIOD warning (never a fail; the ledger keeps the document's date).
+    `only`: read just that Inbox file (the app scans one document at a time to show progress); a path that is not
+    in the Inbox any more (another scan already filed it) reads nothing.
     """
     await books.ensure_tree()
     known = await books.known_hashes()
@@ -248,6 +269,8 @@ async def scan_inbox_detailed(
     errors: list[dict] = []
     candidates: list[tuple[FileRef, str]] = []
     for f in await books.list_files(INBOX):
+        if only is not None and f.path != only:
+            continue
         if not (mime := guess_mime(f.name)):
             continue
         if f.size > MAX_BYTES:  # never downloaded; stays in the Inbox until the user replaces it

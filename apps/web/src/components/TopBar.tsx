@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useReviewBadge } from "./AppNav";
 import { AccountMenu, ProfileSwitcher, useLinkedProfiles } from "./ProfileMenu";
-import { isCurrent, visibleGroups, type NavGroup, type NavItem } from "@/lib/nav";
+import { activeRoute, isCurrent, routeOf, visibleGroups, type NavGroup, type NavItem } from "@/lib/nav";
 import { useSelfEmployed } from "@/lib/itsa";
 import { usePersonalOn } from "@/lib/personal";
 import { useLandlordOn } from "@/lib/property";
@@ -177,13 +177,14 @@ function itemLabel(item: NavItem, review: string | undefined): ReactNode {
   );
 }
 
-/** aria-current only on the link whose page this is (not on "#section" links into it). */
-function currentPage(pathname: string, item: NavItem): boolean {
-  return !/[?#]/.test(item.href) && isCurrent(pathname, item.href);
+/** aria-current only on the item whose page this is: the most specific match (lib/nav.ts activeRoute). */
+function currentPage(active: string | null, item: NavItem): boolean {
+  return !/[?#]/.test(item.href) && routeOf(item.href) === active;
 }
 
 /** The groups as disclosure dropdowns (≥ 900 px). */
 function GroupBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: string; review: string | undefined }) {
+  const active = activeRoute(pathname, groups);
   const [open, setOpen] = useState<string | null>(null);
   const bar = useRef<HTMLUListElement>(null);
   const base = useId();
@@ -251,7 +252,7 @@ function GroupBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: 
         }
         const id = `${base}-${g.label}`;
         const isOpen = open === g.label;
-        const here = g.items.some((i) => currentPage(pathname, i));
+        const here = g.items.some((i) => currentPage(active, i));
         const count = g.items.some((i) => i.badge === "review") ? review : undefined;
         return (
           <li
@@ -289,7 +290,7 @@ function GroupBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: 
               </p>
               <ul id={id} data-submenu="" onKeyDown={(e) => onListKey(e, g.label)} className={subList}>
                 {g.items.map((item) => {
-                  const page = currentPage(pathname, item);
+                  const page = currentPage(active, item);
                   return (
                     <li key={item.label}>
                       <Link
@@ -339,6 +340,7 @@ function useModal(open: boolean, setOpen: (o: boolean) => void, opener: React.Re
 
 /** Under 900 px: "Menu" opens a drawer with every group, its links listed under the group's heading. */
 function MenuDrawer({ groups, pathname, review }: { groups: NavGroup[]; pathname: string; review: string | undefined }) {
+  const active = activeRoute(pathname, groups);
   const [open, setOpen] = useState(false);
   const opener = useRef<HTMLButtonElement>(null);
   const dialog = useModal(open, setOpen, opener);
@@ -401,9 +403,9 @@ function MenuDrawer({ groups, pathname, review }: { groups: NavGroup[]; pathname
                           <li key={item.label}>
                             <Link
                               href={item.href}
-                              aria-current={currentPage(pathname, item) ? "page" : undefined}
+                              aria-current={currentPage(active, item) ? "page" : undefined}
                               onClick={() => setOpen(false)}
-                              className={subItem(currentPage(pathname, item), true)}
+                              className={subItem(currentPage(active, item), true)}
                             >
                               {itemLabel(item, review)}
                             </Link>
