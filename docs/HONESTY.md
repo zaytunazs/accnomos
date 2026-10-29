@@ -541,6 +541,9 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
   written to run on the owner's PC and have never run here: this session may not call Meta's API, so the Muse Image
   request is built from Meta's docs (dev.meta.ai, read 29 Oct 2026 through a fetcher, as dev.meta.ai is blocked here)
   and tested on stubbed HTTP only. Until it runs, every card is plain brand colour.
+- The judges' eval card (shot 5) shows "Bank lines coded to the right account 91.6 % of 459" at the owner's request;
+  the Glimmer run behind it (`evals/harness/bank_ai.py`) has no committed `evals/runs/bank_ai/summary.json` on `main`
+  (checked 29 Oct 2026). Every other figure on the card is from a committed summary or report.
 - 24 of the 54 how-to screenshots found no named control and show the whole page; steps that happen outside the app
   (Microsoft consent, HMRC sign-in, Basic PAYE Tools) show the app's side only (`docs/howto/img/SHOTS.md`).
 

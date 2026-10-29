@@ -21,7 +21,7 @@
  },
  {
   "file": "judges-05.wav",
-  "text": "Measured on 200 synthetic documents: every field right on 91 per cent clean and 93 messy for Muse Spark Open, 85 and 80 for Glimmer. Ask answers 32 of 32 figures exact. Real photos will score lower.",
+  "text": "Measured on synthetic documents: receipts fully right 91 and 93 per cent for Muse Spark Open, 85 and 80 for Muse Glimmer. Glimmer also reads CIS and property papers and codes bank lines, about nine in ten right. Real photos will score lower.",
   "seconds": 20
  },
  {

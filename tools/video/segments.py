@@ -40,6 +40,12 @@ INK = "1B1F24"
 TEAL_DARK = "0A4F47"
 
 
+def hard_indent(line: str) -> str:
+    """Keep a table row's leading spaces (libass drops ordinary ones at the start of a line)."""
+    stripped = line.lstrip(" ")
+    return "\\h" * (len(line) - len(stripped)) + stripped
+
+
 def art(card_id: str) -> str:
     p = CARDS / f"{card_id}.png"
     return str(p) if card_id and p.exists() else ""
@@ -181,7 +187,9 @@ def main() -> None:
     ) -> None:
         ev = [
             ("Title", 0, dur, title),
-            ("Mono", 0, dur, RAW + "{\\q2}" + esc(body)) if mono else ("Body", 0, dur, body),
+            ("Mono", 0, dur, RAW + "{\\q2}" + "\\N".join(hard_indent(esc(ln)) for ln in body.split("\n")))
+            if mono
+            else ("Body", 0, dur, body),
             ("Caption", 0, dur, caption),
             ("Tag", 0, dur, tag),
         ]

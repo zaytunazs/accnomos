@@ -1,6 +1,6 @@
 {
   "note": "Silent footage from the test-mode build (NEXT_PUBLIC_SUBMISSION_MODE=1) on the demo sandbox's fictional sample books. AI readings in it come from the test-mode stub, not a live model. Regenerate: tools/video/regenerate.sh",
-  "generated": "2026-10-29T03:02:54.948Z",
+  "generated": "2026-10-29T03:14:18.941Z",
   "sequences": [
     {
       "id": "judges",
@@ -85,11 +85,11 @@
           "recorded": null,
           "flow": "card",
           "kind": "card",
-          "what": "measured numbers. full-screen eval card (still, 1280 × 720). Burn in exactly:",
-          "caption": "200 synthetic documents, measured accuracy",
-          "vo": "Measured on 200 synthetic documents: every field right on 91 per cent clean and 93 messy for Muse Spark Open, 85 and 80 for Glimmer. Ask answers 32 of 32 figures exact. Real photos will score lower.",
+          "what": "measured numbers. full-screen eval card (still, 1920 × 1080). Burn in exactly:",
+          "caption": "Measured on synthetic documents, Meta models only",
+          "vo": "Measured on synthetic documents: receipts fully right 91 and 93 per cent for Muse Spark Open, 85 and 80 for Muse Glimmer. Glimmer also reads CIS and property papers and codes bank lines, about nine in ten right. Real photos will score lower.",
           "vo_wav": "docs/video/vo/judges-05.wav",
-          "card": "200 synthetic gold documents, all fields right\nMuse Spark Open (Baseten, key mode)   91 % clean, 93 % messy, about 13 s each\nMuse Glimmer 30B (open weights)       85 % clean, 80 % messy, about 18-24 s each\nAsk: figures exact 32 of 32, no invented figure shown\nSynthetic documents: real phone photos will score lower",
+          "card": "Measured on synthetic documents, Meta models only\nReceipts and invoices, every field right (200 clean + 200 messy)\n  Muse Spark Open     91 % clean   93 % messy\n  Muse Glimmer 30B    85 % clean   80 % messy\nCIS statements and invoices, all fields exact   92.5 % of 120\nProperty statements and bills, all fields exact 89.8 % of 108\nBank lines coded to the right account           91.6 % of 459\nAsk: figures exact in 32 of 32 questions\nSynthetic documents: real photos will score lower",
           "file": null,
           "status": "card",
           "section": "Use of Meta AI tooling — which models, measured numbers (0:48–1:28, 40 s)"

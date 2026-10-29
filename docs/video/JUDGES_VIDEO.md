@@ -86,21 +86,35 @@ fields before you approve."
 
 ### Shot 5 — measured numbers (1:08–1:28, 20 s)
 
-Screen: full-screen eval card (still, 1280 × 720). Burn in exactly:
+Screen: full-screen eval card (still, 1920 × 1080). Burn in exactly:
 
 ```
-200 synthetic gold documents, all fields right
-Muse Spark Open (Baseten, key mode)   91 % clean, 93 % messy, about 13 s each
-Muse Glimmer 30B (open weights)       85 % clean, 80 % messy, about 18-24 s each
-Ask: figures exact 32 of 32, no invented figure shown
-Synthetic documents: real phone photos will score lower
+Measured on synthetic documents, Meta models only
+Receipts and invoices, every field right (200 clean + 200 messy)
+  Muse Spark Open     91 % clean   93 % messy
+  Muse Glimmer 30B    85 % clean   80 % messy
+CIS statements and invoices, all fields exact   92.5 % of 120
+Property statements and bills, all fields exact 89.8 % of 108
+Bank lines coded to the right account           91.6 % of 459
+Ask: figures exact in 32 of 32 questions
+Synthetic documents: real photos will score lower
 ```
 
-Caption: `200 synthetic documents, measured accuracy` (5 words).
+Caption: `Measured on synthetic documents, Meta models only` (7 words).
 
-Voice-over (37 words, ≤ 50): "Measured on 200 synthetic documents: every
-field right on 91 per cent clean and 93 messy for Muse Spark Open, 85 and 80
-for Glimmer. Ask answers 32 of 32 figures exact. Real photos will score lower."
+Voice-over (45 words, ≤ 50): "Measured on synthetic documents: receipts
+fully right 91 and 93 per cent for Muse Spark Open, 85 and 80 for Muse
+Glimmer. Glimmer also reads CIS and property papers and codes bank lines,
+about nine in ten right. Real photos will score lower."
+
+Sources, `evals/runs/*/summary.json` on `main` (`715c564`, read 29 Oct 2026):
+`spark_open_200` and `spark_open_messy_200` (`all_fields_correct` 0.91 / 0.93, n 200 each);
+`glimmer_200_v2` and `glimmer_messy_200_v2` (0.85 / 0.80, n 200 each); `cis_read` (`all_exact_pct` 92.5,
+`docs` 120); `property_docs` (`all_exact_pct` 89.8, `docs` 108); Ask from `evals/runs/ask_40/report.md` (Glimmer
+column, 32/32; there is no `summary.json` for it). The CIS, property and bank rows are Muse Glimmer.
+**Bank lines 91.6 % of 459 is the owner's figure from the Glimmer `harness/bank_ai.py` run: its
+`evals/runs/bank_ai/summary.json` is not committed on `main` yet. Commit it before recording, or drop the row.**
+The card names no hosting provider, serving tool or non-Meta model (owner's rule).
 
 ## Technical depth — propose, approve, code computes (1:28–2:08, 40 s)
 

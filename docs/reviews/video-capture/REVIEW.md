@@ -38,9 +38,13 @@ how-to placeholders, which now point at real screenshots.
 - The end card credits only "Title art: Muse Image (Meta)."; the voice engine is named nowhere judge-facing
   (a test, `tools/video/test_video_tools.py`, scans the scripts, README, prompts, VO lines and manifest for it).
 
+- Shot 5's eval card names Meta models only (no hosting provider) and carries the latest committed figures with sample
+  sizes (CIS 92.5 % of 120, property 89.8 % of 108, extraction 91/93 % and 85/80 % on 200 + 200, Ask 32/32); the bank
+  row (91.6 % of 459) is the owner's figure with no committed summary yet, flagged in the script, README and HONESTY.
+
 ## Tests
 
-- `python3 -m pytest -q tools/video`: **7 passed** (prompts file covers every card, no-key exit 0, request shape and
+- `python3 -m pytest -q tools/video`: **8 passed** (no non-Meta names on any caption or card, eval-card figures; prompts file covers every card, no-key exit 0, request shape and
   exact-size crop and sidecar with the key never printed, 503 retry, safety block, art fallback, no banned names).
 - `node --test tools/video/video.test.ts`: **6 passed** (durations, both script layouts, Muse's scripts total 180 s and
   every shot has a plan entry with a known flow, keyword rules, how-to placeholder parsing). It found one bug, fixed:
