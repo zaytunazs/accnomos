@@ -40,9 +40,13 @@ try:  # serialises the server's appends with the owner's `delete` (POSIX only; t
 except ImportError:  # pragma: no cover  Windows dev box: the in-process lock still covers the server itself
     fcntl = None
 
-# Shown next to the unticked checkbox (apps/web/src/lib/early-access.ts) and stored with every record, so each
-# record says what the person agreed to. The route refuses any other wording.
+# Shown next to the unticked checkbox and stored with every record, so each record says what the person agreed to.
+# The route refuses any other wording. CONSENT_TEXT is the pre-launch form's (apps/web/src/lib/early-access.ts);
+# SIGNUP_CONSENT_TEXT the neutral "Get 3 months free" form's (apps/web/src/lib/sign-up.ts), which the submission build
+# shows and which never mentions a launch. Both feed the same list.
 CONSENT_TEXT = "Email me once Accnomos launches, with my 3 months free. I can unsubscribe any time."
+SIGNUP_CONSENT_TEXT = "Email me to set up my 3 months free of Accnomos. I can unsubscribe any time."
+CONSENT_TEXTS: tuple[str, ...] = (CONSENT_TEXT, SIGNUP_CONSENT_TEXT)
 BusinessType = Literal["company", "sole_trader", "personal", "accountant"]
 BUSINESS_TYPES: tuple[str, ...] = ("company", "sole_trader", "personal", "accountant")
 DEFAULT_FILE = "/data/early-access.jsonl"
@@ -161,7 +165,7 @@ def _cell(value: Any) -> Any:
 
 
 # --------------------------------------------------------------------------- #
-# POST /public/early-access
+# POST /public/early-access (and its neutral alias POST /public/sign-up)
 # --------------------------------------------------------------------------- #
 
 router = APIRouter(prefix="/public", tags=["public"])
@@ -178,7 +182,7 @@ class EarlyAccessIn(BaseModel):
     business_type: BusinessType
     heard: str | None = Field(default=None, max_length=200)  # "How did you hear about us?" (optional)
     consent: bool
-    consent_text: str = Field(max_length=200)  # the wording the page showed; must be CONSENT_TEXT
+    consent_text: str = Field(max_length=200)  # the wording the page showed; must be one of CONSENT_TEXTS
     source: str = Field(default="/", max_length=100)  # the page the form was on, e.g. "/" or "/judges"
     website: str | None = Field(default=None, max_length=200)  # honeypot: hidden from people, filled by bots
 
@@ -189,6 +193,7 @@ class EarlyAccessOut(BaseModel):
 
 
 DONE = EarlyAccessOut(ok=True, message="You're on the list — we'll email you once at launch")
+SIGNUP_DONE = EarlyAccessOut(ok=True, message="Thanks — we'll email you to set up your 3 months free")
 
 
 def _text(value: str | None) -> str | None:
@@ -197,9 +202,11 @@ def _text(value: str | None) -> str | None:
 
 
 @router.post("/early-access", response_model=EarlyAccessOut)
+@router.post("/sign-up", response_model=EarlyAccessOut)
 async def early_access(body: EarlyAccessIn, request: Request) -> EarlyAccessOut | JSONResponse:
-    """Join the early-adopter list. No sign-in. New and repeat sign-ups get the same answer, so the form never
-    says whether an address is already on the list."""
+    """Join the list (3 months free). No sign-in. New and repeat sign-ups get the same answer, so the form never
+    says whether an address is already on the list. `/sign-up` is the same handler under a neutral name, so the
+    submission build's web bundle carries no "early access" wording (apps/web/scripts/prelaunch-words.mjs)."""
     if not enabled():
         raise HTTPException(503, "Early-access sign-ups are not open on this server")
     if LIMITER:
@@ -210,14 +217,16 @@ async def early_access(body: EarlyAccessIn, request: Request) -> EarlyAccessOut 
                 content={"detail": "Too many sign-ups from here; try again in a minute"},
                 headers={"Retry-After": str(max(1, int(wait) + 1))},
             )
+    consent_text = body.consent_text.strip()
+    done = SIGNUP_DONE if consent_text == SIGNUP_CONSENT_TEXT else DONE
     if body.website:  # a bot filled the hidden field: look successful, keep nothing
-        return DONE
+        return done
     email = normalise_email(body.email)
     if not email:
         raise HTTPException(400, "Enter a valid email address")
     if not body.consent:
-        raise HTTPException(400, "Tick the box to agree to the launch email")
-    if body.consent_text.strip() != CONSENT_TEXT:
+        raise HTTPException(400, "Tick the box to agree to the email")
+    if consent_text not in CONSENT_TEXTS:
         raise HTTPException(400, "The consent wording has changed; reload the page and try again")
     source = body.source.strip() or "/"
     if not _SOURCE.fullmatch(source):
@@ -230,11 +239,11 @@ async def early_access(body: EarlyAccessIn, request: Request) -> EarlyAccessOut 
             "heard": _text(body.heard),
             "source": source,
             "consent": True,
-            "consent_text": CONSENT_TEXT,
+            "consent_text": consent_text,
             "at": datetime.now(UTC).isoformat(timespec="seconds"),
         }
     )
-    return DONE
+    return done
 
 
 # --------------------------------------------------------------------------- #

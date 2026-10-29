@@ -1,4 +1,5 @@
-"""Early-adopter list (app/early_access.py): POST /public/early-access and the owner CLI."""
+"""Early-adopter list (app/early_access.py): POST /public/early-access, its neutral alias /public/sign-up, and the
+owner CLI."""
 
 from __future__ import annotations
 
@@ -114,6 +115,39 @@ def test_consent_text_must_match_what_is_stored(client: TestClient, file: Path) 
     r = client.post(URL, json=body(consent_text="Send me anything you like."))
     assert r.status_code == 400
     assert not file.exists()
+
+
+def test_neutral_sign_up_route_feeds_the_same_list(client: TestClient, file: Path) -> None:
+    """POST /public/sign-up (the submission build's "Get 3 months free" form) is the same list under a neutral name,
+    with its own launch-free consent wording stored as agreed."""
+    r = client.post("/public/sign-up", json=body(consent_text=ea.SIGNUP_CONSENT_TEXT, source="/join"))
+    assert r.status_code == 200, r.text
+    assert r.json() == {"ok": True, "message": "Thanks — we'll email you to set up your 3 months free"}
+    assert client.post(URL, json=body(email="other@example.co.uk")).status_code == 200
+    first, second = lines(file)
+    assert first["consent_text"] == ea.SIGNUP_CONSENT_TEXT and first["source"] == "/join"
+    assert second["consent_text"] == ea.CONSENT_TEXT
+    assert [r["email"] for r in ea.records(file)] == ["priya@example.co.uk", "other@example.co.uk"]
+    for word in ("launch", "early", "beta", "coming soon", "waiting"):
+        assert word not in ea.SIGNUP_CONSENT_TEXT.lower()
+
+
+def test_neutral_sign_up_route_has_the_same_checks(client: TestClient, file: Path) -> None:
+    assert client.post("/public/sign-up", json=body(consent_text="Send me anything you like.")).status_code == 400
+    assert (
+        client.post("/public/sign-up", json=body(consent=False, consent_text=ea.SIGNUP_CONSENT_TEXT)).status_code == 400
+    )
+    r = client.post("/public/sign-up", json=body(consent_text=ea.SIGNUP_CONSENT_TEXT, website="https://spam.example"))
+    assert r.status_code == 200 and r.json()["ok"] is True
+    assert not file.exists()
+
+
+def test_neutral_sign_up_route_is_off_with_the_list(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("EARLY_ACCESS_FILE", str(tmp_path / "x.jsonl"))
+    monkeypatch.setenv("EARLY_ACCESS_ENABLED", "0")
+    r = TestClient(app).post("/public/sign-up", json=body(consent_text=ea.SIGNUP_CONSENT_TEXT))
+    assert r.status_code == 503
+    assert not (tmp_path / "x.jsonl").exists()
 
 
 def test_honeypot_looks_successful_but_keeps_nothing(client: TestClient, file: Path) -> None:
