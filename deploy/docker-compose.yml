@@ -58,6 +58,14 @@ services:
       PUBLIC_CONTACT_EMAIL: ${PUBLIC_CONTACT_EMAIL:-admin@zaytunauk.co.uk}
       # The operator's accountants team (app/accountant.py): clients who opt in share their books with this account.
       ACCOUNTANT_TEAM_EMAIL: ${ACCOUNTANT_TEAM_EMAIL:-admin@zaytunauk.co.uk}
+      # Bank feeds through TrueLayer (app/bank_feeds.py, docs/research/BANK_FEEDS.md): off while any of the four is empty.
+      # Sandbox unless TRUELAYER_ENV=live and BANKFEEDS_LIVE=1. Secrets come from .env only.
+      TRUELAYER_CLIENT_ID: ${TRUELAYER_CLIENT_ID:-}
+      TRUELAYER_CLIENT_SECRET: ${TRUELAYER_CLIENT_SECRET:-}
+      TRUELAYER_ENV: ${TRUELAYER_ENV:-sandbox}
+      BANKFEEDS_REDIRECT_URI: ${BANKFEEDS_REDIRECT_URI:-https://api.accnomos.com/books/bankfeeds/callback}
+      BANKFEEDS_TOKEN_KEY: ${BANKFEEDS_TOKEN_KEY:-}
+      BANKFEEDS_LIVE: ${BANKFEEDS_LIVE:-0}
       PUBLIC_CHAT_PER_MIN: ${PUBLIC_CHAT_PER_MIN:-6}
       PUBLIC_CHAT: ${PUBLIC_CHAT:-on}
       PUBLIC_SUBMISSION_MODE: ${PUBLIC_SUBMISSION_MODE:-1}
