@@ -376,6 +376,10 @@ from app.routes_profile import router as profile_router  # noqa: E402  GET/PUT /
 
 app.include_router(profile_router)
 
+from app.routes_setup_wizard import router as setup_wizard_router  # noqa: E402  GET/PUT/POST /setup-wizard
+
+app.include_router(setup_wizard_router)
+
 from app.routes_close import router as close_router  # noqa: E402  /close (the month-end close agent)
 
 app.include_router(close_router)

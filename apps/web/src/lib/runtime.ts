@@ -330,7 +330,7 @@ export async function runtimeHealth(): Promise<RtHealth | null> {
 }
 
 /** GET/PUT /profile (services/runtime/app/profile.py): what these books are, from `_System/profile.json`. */
-export type RtProfileKind = "company" | "sole_trader" | "personal";
+export type RtProfileKind = "company" | "sole_trader" | "landlord" | "partnership" | "personal";
 export interface RtProfileSettings {
   company_number?: string | null;
   vat_number?: string | null;
@@ -542,6 +542,24 @@ export const runtime = {
   /** /lookup/* (services/runtime/app/routes_lookup.py): Companies House suggestions; nothing is saved. */
   lookupCompanies: (a: AccountInfo, q: string) =>
     call<RtCompanySearch>(a, `/lookup/companies?${new URLSearchParams({ q }).toString()}`),
+  /** GET /lookup/companies/{number}: one Companies House profile for the set-up wizard to confirm. */
+  lookupCompany: (a: AccountInfo, number: string) =>
+    call<RtCompanyMatch>(a, `/lookup/companies/${encodeURIComponent(number)}`),
+  /** GET /lookup/vat/{vrn}: HMRC Check a UK VAT number via the relay, for the set-up wizard. */
+  lookupVat: (a: AccountInfo, vrn: string) => call<RtVatCheck>(a, `/lookup/vat/${encodeURIComponent(vrn)}`),
+  /** /setup-wizard (services/runtime/app/routes_setup_wizard.py): the new-user set-up wizard. */
+  setupWizard: {
+    /** GET /setup-wizard: steps, current step, saved answers and the summary. */
+    status: (a: AccountInfo) => call<RtWizardStatus>(a, "/setup-wizard"),
+    /** PUT /setup-wizard/step/{step}: save one step's answers. */
+    answer: (a: AccountInfo, step: string, answers: Record<string, unknown>) =>
+      call<RtWizardStatus>(a, `/setup-wizard/step/${encodeURIComponent(step)}`, {
+        method: "PUT",
+        body: JSON.stringify({ answers }),
+      }),
+    /** POST /setup-wizard/confirm: apply the profile; files nothing. */
+    confirm: (a: AccountInfo) => call<RtWizardStatus>(a, "/setup-wizard/confirm", { method: "POST" }),
+  },
   /** GET /contacts/duplicates: code evidence plus the user's model's view (ai is null when it could not answer). */
   duplicates: (a: AccountInfo) => call<RtDuplicates>(a, "/contacts/duplicates"),
   /** POST /contacts/duplicates/dismiss: remembered; never suggested again. */
@@ -1755,6 +1773,37 @@ export interface RtLookupStatus {
   companies_house: boolean;
   vat_check: boolean;
   sample: boolean;
+}
+
+/** The set-up wizard (services/runtime/app/setup_wizard.py): five business types, saved into `_System/profile.json`. */
+export interface RtWizardBusinessType {
+  value: string;
+  label: string;
+  explains: string;
+}
+export interface RtWizardIssue {
+  code: string;
+  message: string;
+  fix_step: string;
+  blocking: boolean;
+}
+export interface RtWizardPlannedReturn {
+  return: string;
+  when: string;
+}
+export interface RtWizardStatus {
+  business?: string | null;
+  steps: string[];
+  current_step: string;
+  setup: Record<string, unknown>;
+  business_types: RtWizardBusinessType[];
+  returns: RtWizardPlannedReturn[];
+  issues: RtWizardIssue[];
+  blocking: RtWizardIssue[];
+  can_continue: boolean;
+  filed: unknown[];
+  filing_note: string;
+  profile?: RtProfile;
 }
 
 /** GET /lookup/status: which official look-ups this runtime can do (no sign-in). Null when it can't say. */

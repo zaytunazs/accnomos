@@ -628,6 +628,11 @@ SUMMARIES: dict[str, Summary] = {
             else ""
         )
     ),
+    # The set-up wizard (app/setup_wizard.py, app/routes_setup_wizard.py)
+    "setup_wizard_saved": lambda r, w: "Saved a set-up wizard answer",
+    "setup_wizard_confirmed": lambda r, w: (
+        f"Finished the set-up wizard ({str(r.get('kind', '')).replace('_', ' ')})" + "; nothing was filed" + ")"
+    ),
     # Your accountant (app/accountant.py, app/queries.py, app/portal.py)
     "accountant_invited": lambda r, w: (
         f"Gave {r['email']} {_access(r)} to these books" + (" (shared in OneDrive by hand)" if _manual(r) else "")

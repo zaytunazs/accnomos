@@ -60,6 +60,8 @@ interface State {
 export const KIND_LABEL: Record<RtProfileKind, string> = {
   company: "Company",
   sole_trader: "Sole trader",
+  landlord: "Landlord",
+  partnership: "Partnership",
   personal: "Personal",
 };
 

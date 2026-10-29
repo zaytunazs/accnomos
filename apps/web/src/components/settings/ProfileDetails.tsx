@@ -12,6 +12,8 @@ const label = "text-xs font-bold text-muted";
 const KINDS: { value: RtProfileKind; hint: string }[] = [
   { value: "company", hint: "A limited company, with its own company number" },
   { value: "sole_trader", hint: "Self-employment, reported on your Self Assessment" },
+  { value: "landlord", hint: "Renting out property, reported on your Self Assessment" },
+  { value: "partnership", hint: "Two or more people sharing a business that is not a company" },
   { value: "personal", hint: "Household money: no VAT, invoices or payroll" },
 ];
 
@@ -71,12 +73,18 @@ export default function ProfileDetails({ card, heading }: { card: string; headin
         ? {}
         : kind === "company"
           ? { company_number: settings.company_number || null, vat_number: settings.vat_number || null, vat_registered: !!settings.vat_registered }
-          : {
-              utr: settings.utr || null,
-              accounting_period_start: settings.accounting_period_start || "04-06",
-              vat_number: settings.vat_number || null,
-              vat_registered: !!settings.vat_registered,
-            };
+          : kind === "sole_trader"
+            ? {
+                utr: settings.utr || null,
+                accounting_period_start: settings.accounting_period_start || "04-06",
+                vat_number: settings.vat_number || null,
+                vat_registered: !!settings.vat_registered,
+              }
+            : {
+                utr: settings.utr || null,
+                vat_number: settings.vat_number || null,
+                vat_registered: !!settings.vat_registered,
+              };
     try {
       const p = await runtime.saveProfile(account, { name, kind, settings: body, linked });
       setProfile(p);
@@ -154,7 +162,7 @@ export default function ProfileDetails({ card, heading }: { card: string; headin
               />
             </div>
           )}
-          {kind === "sole_trader" && (
+          {(kind === "sole_trader" || kind === "landlord" || kind === "partnership") && (
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label className={label} htmlFor={`${ids}-utr`}>
@@ -168,19 +176,21 @@ export default function ProfileDetails({ card, heading }: { card: string; headin
                   onChange={(e) => set({ utr: e.target.value })}
                 />
               </div>
-              <div>
-                <label className={label} htmlFor={`${ids}-start`}>
-                  Accounting year starts (MM-DD)
-                </label>
-                <input
-                  id={`${ids}-start`}
-                  className={input}
-                  inputMode="numeric"
-                  pattern="(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"
-                  value={settings.accounting_period_start ?? "04-06"}
-                  onChange={(e) => set({ accounting_period_start: e.target.value })}
-                />
-              </div>
+              {kind === "sole_trader" && (
+                <div>
+                  <label className={label} htmlFor={`${ids}-start`}>
+                    Accounting year starts (MM-DD)
+                  </label>
+                  <input
+                    id={`${ids}-start`}
+                    className={input}
+                    inputMode="numeric"
+                    pattern="(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])"
+                    value={settings.accounting_period_start ?? "04-06"}
+                    onChange={(e) => set({ accounting_period_start: e.target.value })}
+                  />
+                </div>
+              )}
             </div>
           )}
           {kind !== "personal" && (
