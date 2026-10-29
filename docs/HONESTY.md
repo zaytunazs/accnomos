@@ -103,6 +103,15 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
   `evals/runs/bank_ai/` (not a stub run) is committed. Inbox triage uses only a backend the user chose, not the server
   chain, which the page does not spell out per job.
 
+- **Live order and Contributor mode (owner, 29 Oct 2026).** The live server runs `AI_PROVIDERS=meta,spark`: Muse
+  Spark 1.3 on the Meta Model API first, Muse Glimmer on the owner's server last; Modal is supported by the code but not
+  deployed. So the model answering most live calls, Muse Spark, is the one with **no measured accuracy or latency**;
+  every figure on `/meta-models` is Glimmer's or Spark Open's. `/meta-models` says user data goes only to standard Muse
+  Spark, never Contributor mode: the app's key mode always requests `muse-spark-1.3` and the chain uses
+  `MODEL_API_MODEL` (default `muse-spark-1.3`), but how Contributor mode is selected at Meta (model id, key or account
+  setting) was not checked against Meta's documentation, and a direct API caller with their own key can still send
+  another model id in `X-AI-Model`.
+
 ## Chat and voice actions, Autopilot
 
 - Without `ACTIONS_SIGNING_KEY` (the deploy file passes it through, empty by default), each runtime process makes a random key: after a restart, or with several workers, a card can fail with 403.

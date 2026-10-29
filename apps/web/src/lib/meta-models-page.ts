@@ -179,8 +179,18 @@ function speech(): Result {
 
 const present = (xs: (Result | null)[]) => xs.filter((x): x is Result => x !== null);
 
+/**
+ * The live server's order (owner's decision, 29 Oct 2026): AI_PROVIDERS=meta,spark. Modal is supported by the code
+ * (app/ai/providers.py) but not deployed, so it is mentioned only as an optional extra provider.
+ */
 const CHAIN =
-  "With no AI chosen, the server's chain answers, in this order: 1st Muse Glimmer 30B on Modal (open weights we deploy), 2nd Muse Spark on the Meta Model API, 3rd Muse Glimmer 30B served on our own server. A timeout, outage or rate limit moves the call to the next; a provider that keeps failing is skipped for a while.";
+  "On our live server, with no AI chosen, calls go in this order: 1st Muse Spark on the Meta Model API; last, a local fallback model (Muse Glimmer 30B, open weights on our own server). A timeout, outage or rate limit moves the call to the next; a provider that keeps failing is skipped for a while.";
+const MODAL_NOTE =
+  "The code also supports Muse Glimmer 30B on Modal as an optional extra provider in that order; it is not what runs live.";
+
+/** Owner's statement (29 Oct 2026); the app's key mode always asks for muse-spark-1.3 (lib/ai-config.ts DEFAULT_KEY). */
+export const STANDARD_SPARK =
+  "Your data goes only to standard Muse Spark, never to Contributor mode, which lets Meta train on the content sent to it.";
 
 const TEXT_CHECKS = [
   "AI proposes, you approve, code calculates: the model returns strict JSON or words only; every amount is worked out in pence by code, and nothing is posted, sent or kept until you approve it.",
@@ -197,15 +207,15 @@ export function measured(m: MetaModel): string {
 export function metaModels(): MetaModel[] {
   return [
     {
-      id: "muse-glimmer",
-      name: "Muse Glimmer 30B",
-      modelId: "muse-glimmer:30b",
+      id: "muse-spark",
+      name: "Muse Spark",
+      modelId: "muse-spark-1.3",
       uses: "Reads documents and CIS and property paperwork; answers Ask; words the summaries; bank, inbox, reminder and duplicate suggestions",
-      via: "Server chain 1st (Modal) and 3rd (our own server); or your own machine",
-      what: "Meta's open-weights Muse model: it reads images and text and replies in strict JSON. We run the weights ourselves.",
+      via: "Meta Model API: 1st on our live server, or with your own key",
+      what: "Meta's hosted Muse model on the Meta Model API: it reads images and text and replies in strict JSON. The first choice on our live server.",
       jobs: [
         { job: "Reads receipts, invoices, credit notes and emailed bills into a strict list (supplier, VAT number, date, lines, net, VAT, total) and suggests the category", screen: "Review" },
-        { job: "The Verifier's second, independent reading in local mode", screen: "Review card: “Verifier agrees”" },
+        { job: "The Verifier's second reading in key mode when no Muse Spark Open endpoint is set", screen: "Review card: “Verifier agrees”" },
         { job: "Reads CIS payment and deduction statements and reverse-charge invoices", screen: "CIS" },
         { job: "Reads letting agents' statements, property bills, insurance schedules and mortgage statements", screen: "Property" },
         { job: "Answers questions about your books, and turns typed or spoken instructions into an action card", screen: "Ask" },
@@ -217,6 +227,33 @@ export function metaModels(): MetaModel[] {
       ],
       called: [
         CHAIN,
+        "Key mode: the Meta Model API (api.meta.ai/v1, /chat/completions) with your own Meta key, which stays on your device and is never logged.",
+        STANDARD_SPARK,
+      ],
+      checks: TEXT_CHECKS,
+      results: [
+        {
+          label: "All jobs",
+          value: "Not measured yet: tested with faked HTTP only; no eval has been run on Muse Spark, so there is no accuracy or speed figure.",
+          basis: "no run committed",
+          report: null,
+        },
+      ],
+    },
+    {
+      id: "muse-glimmer",
+      name: "Muse Glimmer 30B",
+      modelId: "muse-glimmer:30b",
+      uses: "The same jobs as Muse Spark, as the local fallback, or for everything in local mode; all our measured results",
+      via: "A local fallback model, last on our live server; or your own machine",
+      what: "Meta's open-weights Muse model: it reads images and text and replies in strict JSON. We run the weights ourselves, as the local fallback.",
+      jobs: [
+        { job: "Every Muse Spark job above, when the Meta Model API cannot answer: reading documents, CIS and property paperwork, Ask and action cards, the summaries, bank suggestions, inbox triage, reminders, duplicates and item matches", screen: "Review, CIS, Property, Ask, Home, Month end, Spending, Bank, Invoices, Contacts, Prices" },
+        { job: "All of them, when you choose local mode in Settings, including the Verifier's second reading", screen: "the same screens" },
+      ],
+      called: [
+        CHAIN,
+        MODAL_NOTE,
         "Local mode: your own machine running Muse Glimmer, chosen in Settings. Documents then go only there.",
       ],
       checks: TEXT_CHECKS,
@@ -230,31 +267,6 @@ export function metaModels(): MetaModel[] {
         triage(),
         bankCoding(),
       ]),
-    },
-    {
-      id: "muse-spark",
-      name: "Muse Spark",
-      modelId: "muse-spark-1.3",
-      uses: "The same jobs as Muse Glimmer, without a machine of your own",
-      via: "Meta Model API: your key, or 2nd in the server chain",
-      what: "Meta's hosted Muse model on the Meta Model API: the same jobs as Muse Glimmer, with no machine of your own.",
-      jobs: [
-        { job: "Every job Muse Glimmer does above: reading documents, CIS and property paperwork, Ask and action cards, the summaries, bank suggestions, inbox triage, reminders, duplicates and item matches", screen: "Review, CIS, Property, Ask, Home, Month end, Spending, Bank, Invoices, Contacts, Prices" },
-        { job: "The Verifier's second reading in key mode when no Muse Spark Open endpoint is set", screen: "Review card" },
-      ],
-      called: [
-        "Key mode: the Meta Model API (api.meta.ai/v1, /chat/completions) with your own Meta key, which stays on your device and is never logged.",
-        "Server chain: 2nd, after Muse Glimmer on Modal, with the server's key.",
-      ],
-      checks: TEXT_CHECKS,
-      results: [
-        {
-          label: "All jobs",
-          value: "Not measured yet: tested with faked HTTP only; no eval has been run on Muse Spark, so there is no accuracy or speed figure.",
-          basis: "no run committed",
-          report: null,
-        },
-      ],
     },
     {
       id: "muse-spark-open",

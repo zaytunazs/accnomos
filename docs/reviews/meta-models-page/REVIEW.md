@@ -91,6 +91,25 @@ model":
   test fixture's label string changed (`apps/mobile/test/voice_provider_test.dart`); Flutter is not installed here,
   so `flutter test` was not run.
 
+## Follow-up: the live order and Contributor mode (owner's decision, 29 Oct 2026)
+
+- The live server runs `AI_PROVIDERS=meta,spark`. `/meta-models` now lists **Muse Spark first** (it carries the job
+  list) and Muse Glimmer 30B second as "a local fallback model ... on our own server", plus local mode. The chain
+  sentence reads "1st Muse Spark on the Meta Model API; last, a local fallback model"; Modal appears once, as "an
+  optional extra provider" the code supports, "not what runs live". A highlighted line under the intro says the same
+  and: "Your data goes only to standard Muse Spark, never to Contributor mode, which lets Meta train on the content
+  sent to it." The Muse Spark section repeats it.
+- `docs/submission/META_MODELS.md`: Spark row first with the live order and the Contributor sentence; Glimmer row
+  "last on the live server", Modal optional and not deployed; a note on what backs the Contributor claim.
+- What backs it in code: the app's key mode always sends `muse-spark-1.3` (`lib/ai-config.ts` `DEFAULT_KEY`; Settings
+  has no model field for key mode) and the chain's `meta` provider uses `MODEL_API_MODEL`, default `muse-spark-1.3`.
+  Not checked: how Contributor mode is selected at Meta (dev.meta.ai is not reachable from here), and a direct API
+  caller with their own key can still send another `X-AI-Model`. Both in `docs/HONESTY.md`.
+- Consequence recorded in HONESTY: the model answering first live (Muse Spark) has no measured figure; every number on
+  the page is Glimmer's or Spark Open's.
+- `e2e/meta-models-page.spec.ts` now checks the live-order line, the Contributor sentence, Muse Spark as the first row,
+  the chain sentence, and that every line naming Modal calls it an optional extra provider.
+
 ## Risks
 
 - The page's words are a hand summary of the code: a new AI call site will not appear until someone adds it

@@ -10,8 +10,8 @@ import { createBooksFolder, expect, signIn, test } from "./fixtures";
  * public footer, the app footer, /judges and the Home summary card.
  */
 const MODELS = [
-  ["muse-glimmer", "Muse Glimmer 30B"],
   ["muse-spark", "Muse Spark"],
+  ["muse-glimmer", "Muse Glimmer 30B"],
   ["muse-spark-open", "Muse Spark Open"],
   ["muse-voice-transcribe", "Muse Voice Transcribe"],
   ["sam", "Segment Anything 3.1"],
@@ -47,6 +47,14 @@ test.describe("desktop", () => {
       }
     }
 
+    // The live order (AI_PROVIDERS=meta,spark): Meta Model API first, the local fallback last; Modal only as optional.
+    await expect(page.getByTestId("live-order")).toContainText("the Meta Model API (Muse Spark) answers first and a local fallback model answers last");
+    await expect(page.getByTestId("live-order")).toContainText("never to Contributor mode");
+    await expect(table.locator("tbody tr").first()).toContainText("Muse Spark");
+    await expect(page.getByTestId("model-muse-spark")).toContainText("1st Muse Spark on the Meta Model API; last, a local fallback model");
+    await expect(page.getByTestId("model-muse-glimmer")).toContainText("optional extra provider");
+    const modal = (await page.locator("main").innerText()).split("\n").filter((l) => /Modal/.test(l));
+    for (const line of modal) expect(line, "Modal only as an optional provider").toMatch(/optional extra provider/);
     // Figures come from the committed runs at build time.
     await expect(page.getByTestId("row-muse-glimmer")).toContainText("clean documents 85 %; messy documents 80 %; CIS 92.5 %; property 89.8 %");
     await expect(page.getByTestId("row-muse-spark")).toContainText("Not measured yet");

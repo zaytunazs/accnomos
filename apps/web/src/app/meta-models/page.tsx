@@ -1,6 +1,6 @@
 import Link from "next/link";
 import PageHeader from "@/components/PageHeader";
-import { measured, metaModels, type MetaModel, type Result } from "@/lib/meta-models-page";
+import { measured, metaModels, STANDARD_SPARK, type MetaModel, type Result } from "@/lib/meta-models-page";
 
 export const metadata = { title: "Meta models in Accnomos · Accnomos" };
 
@@ -132,6 +132,10 @@ export default function MetaModelsPage() {
         code works out every amount in pence and checks what the model said; nothing is posted or sent until you
         approve it. The test sets are made-up documents, so real phone photos will score lower. Checked against the code
         on {CHECKED}.
+      </p>
+      <p data-testid="live-order" className="rounded-2xl border border-teal/30 bg-teal-tint p-4 text-[15px] leading-7">
+        <strong>On our live server</strong> the Meta Model API (Muse Spark) answers first and a local fallback model
+        answers last. <strong>{STANDARD_SPARK}</strong>
       </p>
       <Overview models={models} />
       {models.map((m) => (
