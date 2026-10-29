@@ -20,9 +20,9 @@ RUN pip install /srv/packages/ledger /srv/packages/connectors /srv/services/runt
 # Load sample books (app/sample_books.py) runs tools/seed_demo.py's plan: it needs the script, the gold documents it
 # re-dates and the renderer that draws them. Fictional data only, all labelled SAMPLE.
 COPY tools/seed_demo.py /srv/tools/seed_demo.py
-# The runtime is pip-installed into site-packages, so app/sample_books.py cannot find tools/ by walking up from its
+# The runtime is pip-installed into site-packages, so app/sample_books.py cannot find tools/ or evals/gold by walking up from its
 # own file: point it at the copy (otherwise Load sample books and the judges' demo sandbox fail with SampleUnavailable).
-ENV ACCNOMOS_SEED_DEMO=/srv/tools/seed_demo.py
+ENV ACCNOMOS_SEED_DEMO=/srv/tools/seed_demo.py ACCNOMOS_GOLD_DIR=/srv/evals/gold
 COPY evals/gold /srv/evals/gold
 COPY evals/harness/render.py /srv/evals/harness/render.py
 # PDFs (pypdfium2) and HEIC photos (pillow-heif) come as wheels with PDFium/libheif inside: no apt packages. Fail the
