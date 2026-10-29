@@ -2,7 +2,7 @@
 
     cd evals && python -m harness.classify --dry-run              # build the cases, call no model
     cd evals && python -m harness.classify --stub                 # whole pipeline against an in-process fake model
-    cd evals && python -m harness.classify                        # Spark local model (OLLAMA_URL), or Meta (META_API_KEY)
+    cd evals && python -m harness.classify                        # Spark model (OLLAMA_URL), or Meta (META_API_KEY)
     cd evals && python -m harness.classify --limit 40
 
 The code under test is ``app.ai.classify.classify`` (the same prompt, strict JSON schema and validation the
@@ -347,9 +347,7 @@ def report_md(s: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     kinds = [k for k in classify_mod.KINDS if k in s["confusion"]]
     header = "| Gold \\ predicted | " + " | ".join(classify_mod.KINDS) + " |"
     sep = "|" + "---|" * (len(classify_mod.KINDS) + 1)
-    conf = [
-        f"| {g} | " + " | ".join(str(s["confusion"][g][p]) for p in classify_mod.KINDS) + " |" for g in kinds
-    ]
+    conf = [f"| {g} | " + " | ".join(str(s["confusion"][g][p]) for p in classify_mod.KINDS) + " |" for g in kinds]
     out = [
         "# Document-type classifier eval",
         "",
@@ -369,8 +367,7 @@ def report_md(s: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         "| Type | Gold | Predicted | Correct | Precision | Recall |",
         "|---|---:|---:|---:|---:|---:|",
         *(
-            f"| {k} | {v['gold']} | {v['predicted']} | {v['correct']} | "
-            f"{v['precision_pct']}% | {v['recall_pct']}% |"
+            f"| {k} | {v['gold']} | {v['predicted']} | {v['correct']} | {v['precision_pct']}% | {v['recall_pct']}% |"
             for k, v in s["per_type"].items()
         ),
         "",
@@ -393,9 +390,7 @@ def report_md(s: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         "",
         "| Id | Gold label | Predicted | Reason |",
         "|---|---|---|---|",
-        *(
-            f"| {w['id']} | {w['label']} | {w['predicted']} | {(w['reason'] or '')[:80]} |" for w in s["worst"]
-        ),
+        *(f"| {w['id']} | {w['label']} | {w['predicted']} | {(w['reason'] or '')[:80]} |" for w in s["worst"]),
         "",
         "Refusals (the model gave nothing usable and code raised):",
         "",
@@ -550,7 +545,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any] | None:
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
                 fh.flush()
                 mark = "ok " if row["outcome"] == "ok" and row.get("correct") else "MISS"
-                print(f"[{i}/{len(cases)}] {mark} {row['elapsed_s']:.1f}s {case.id} -> {row.get('predicted')}", flush=True)
+                print(f"[{i}/{len(cases)}] {mark} {row['elapsed_s']:.1f}s {case.id}", flush=True)
     finally:
         _httpx.AsyncClient = original  # type: ignore[assignment]
     wanted = {c.id for c in cases}

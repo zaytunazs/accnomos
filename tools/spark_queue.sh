@@ -10,7 +10,7 @@
 #
 # Steps, in order: gen_gold4 (Qwen), gen_personal (Qwen), bank_ai (Glimmer), then the extraction eval (Glimmer) on every
 # evals/gold/ledger{2,3,4}/receipts folder that exists (ledger2 has none: its documents use another schema),
-# then cis_read, property_docs and classify (all Glimmer), then stt (Muse Voice Transcribe and Whisper on the Spark over the
+# then cis_read, property_docs and classify (all Glimmer), then stt (Muse Voice Transcribe and Whisper on the Spark;
 # teaser voice-over and evals/gold/voice/, whose 20 accounting clips it first makes with Kokoro TTS when missing:
 # KOKORO_URL, default http://127.0.0.1:8880/v1; providers from META_API_KEY and SPARK_WHISPER_URL, see harness/stt.py).
 #

@@ -72,7 +72,16 @@ def test_runs_every_step_in_order_and_logs(box: dict[str, Path]) -> None:
     assert r.returncode == 0, r.stdout + r.stderr
     log = _log(box)
     order = [m for m in re.findall(r"STEP (\w+): start", log)]
-    assert order == ["gen_gold4", "gen_personal", "bank_ai", "extraction_ledger4", "cis_read", "property_docs", "classify", "stt"]  # fmt: skip
+    assert order == [
+        "gen_gold4",
+        "gen_personal",
+        "bank_ai",
+        "extraction_ledger4",
+        "cis_read",
+        "property_docs",
+        "classify",
+        "stt",
+    ]
     assert "STEP extraction_ledger2: skipped" in log and "another schema" in log
     assert "STEP extraction_ledger3: skipped" in log
     assert "nice -n 19" in log  # the politeness prefix is announced
