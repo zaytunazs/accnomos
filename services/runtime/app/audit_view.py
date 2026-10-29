@@ -580,6 +580,16 @@ SUMMARIES: dict[str, Summary] = {
         f"Restored {posixpath.basename(str(r.get('file') or '')) or 'a backup'}: "
         f"{_plural(_n(r, 'restored'), 'file')} added, {_n(r, 'replaced')} replaced (old copies in _Trash)"
     ),
+    # Back up now and earlier files (app/full_backup.py, app/previous_files.py)
+    "full_backup_created": lambda r, w: (
+        f"Full backup to {r.get('folder') or 'Accnomos Backups'}: {_plural(_n(r, 'ledger_files'), 'file')} from "
+        f"the ledger and settings, Books.xlsx and an index of {_plural(_n(r, 'documents'), 'document')}"
+    ),
+    "previous_files_queued": lambda r, w: (
+        f"Chose {_plural(_n(r, 'files'), 'earlier file')} to be read; "
+        f"{_plural(_n(r, 'moved_to_inbox'), 'file')} moved into the Inbox"
+    ),
+    "previous_files_left": lambda r, w: f"Left {_plural(_n(r, 'files'), 'earlier file')} alone (not to be read)",
     "file_settings_saved": lambda r, w: (
         f"Backup settings: keep {_n(r, 'backup_keep')}"
         + (", back up monthly" if r.get("monthly_backup") else ", no monthly backup")
