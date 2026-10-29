@@ -4,6 +4,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type R
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useReviewBadge } from "./AppNav";
+import ScanBadge from "./ScanBadge";
 import { AccountMenu, ProfileSwitcher, useLinkedProfiles } from "./ProfileMenu";
 import { isCurrent, visibleGroups, type NavGroup, type NavItem } from "@/lib/nav";
 import { useSelfEmployed } from "@/lib/itsa";
@@ -52,6 +53,7 @@ export default function TopBar({ routes }: { routes: string[] }) {
           <GroupBar groups={groups} pathname={pathname} review={review} />
         </nav>
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
+          <ScanBadge />
           <FindPage groups={groups} />
           <IconLink href="/ask" label="Ask" current={isCurrent(pathname, "/ask")}>
             <path d="M4 5.5h12v8H8.5L5 16.5v-3H4z" />

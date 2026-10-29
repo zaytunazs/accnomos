@@ -371,6 +371,22 @@ export const runtime = {
       method: "POST",
       headers: autopilotOn() ? {} : { "X-Autopilot": "off" },
     }),
+  /** POST /books/scan/jobs: read these 00 Inbox files (all, when `names` is left out) in the background; answers at once. */
+  startScan: (a: AccountInfo, names?: string[], source: RtScanSource = "upload") =>
+    call<RtScanJob>(a, withQuery("/books/scan/jobs", vatQuery()), {
+      method: "POST",
+      body: JSON.stringify({ ...(names ? { names } : {}), source }),
+      headers: autopilotOn() ? {} : { "X-Autopilot": "off" },
+    }),
+  scanJob: (a: AccountInfo, id: string) => call<RtScanJob>(a, `/books/scan/jobs/${encodeURIComponent(id)}`),
+  scanJobs: (a: AccountInfo) => call<RtScanJobList>(a, "/books/scan/jobs"),
+  /** The user's types for files waiting on them; reading them in full starts in the background. */
+  confirmScan: (a: AccountInfo, id: string, files: { name: string; kind: RtDocKind }[]) =>
+    call<RtScanJob>(a, withQuery(`/books/scan/jobs/${encodeURIComponent(id)}/confirm`, vatQuery()), {
+      method: "POST",
+      body: JSON.stringify({ files }),
+      headers: autopilotOn() ? {} : { "X-Autopilot": "off" },
+    }),
   proposals: (a: AccountInfo, status?: string) => call<RtProposal[]>(a, `/books/proposals${status ? `?status=${status}` : ""}`),
   proposal: (a: AccountInfo, id: string) => call<RtProposal>(a, `/books/proposals/${id}`),
   /** `edits.job_id` tags a purchase to a job (its net then counts as a job cost). */
@@ -410,13 +426,18 @@ export const runtime = {
       body: JSON.stringify({ action, reason: reason ?? null }),
     }),
   /** POST /mail/scan for the signed-in mailbox (its Mail.Read rides on the one Graph token). */
-  mailScan: (a: AccountInfo, body: { since_days?: number; dry_run?: boolean }) =>
+  mailScan: (a: AccountInfo, body: { since_days?: number; dry_run?: boolean; read_now?: boolean }) =>
     call<RtMailScan>(a, "/mail/scan", { method: "POST", body: JSON.stringify(body) }, mailScopesFor(accountKind(a))),
   /**
    * POST /mail/scan for one linked mailbox: its own token goes in X-Mailbox-Token, for this request only (one
    * mailbox per request; the runtime keeps no token). The Graph token still writes the books.
    */
-  mailScanLinked: (a: AccountInfo, mailboxId: string, mailboxToken: string, body: { since_days?: number; dry_run?: boolean }) =>
+  mailScanLinked: (
+    a: AccountInfo,
+    mailboxId: string,
+    mailboxToken: string,
+    body: { since_days?: number; dry_run?: boolean; read_now?: boolean },
+  ) =>
     call<RtMailScan>(a, "/mail/scan", {
       method: "POST",
       body: JSON.stringify({ ...body, mailbox: mailboxId }),
@@ -2910,8 +2931,43 @@ export interface RtAskVoiceAnswer extends RtAskAnswer {
 }
 
 
+/** Background scan jobs (services/runtime/app/scan_jobs.py): uploaded → reading → confirm → checking → done. */
+export type RtDocKind = "receipt" | "purchase_invoice" | "sales_invoice" | "bank_statement" | "credit_note" | "payslip" | "other";
+export type RtScanStage = "uploaded" | "reading" | "confirm" | "checking" | "ready" | "needs_a_look" | "failed";
+export type RtScanSource = "upload" | "inbox" | "email" | "phone";
+export interface RtScanFile {
+  name: string;
+  path: string;
+  stage: RtScanStage;
+  stage_label: string;
+  progress: number; // 0-1
+  guess: { kind: RtDocKind; confidence: number; reason: string; by: "ai" | "code" } | null;
+  kind: RtDocKind | null; // what the user confirmed
+  route: "review" | "sales" | "bank" | "needs_a_look" | "inbox" | null;
+  proposal_id: string | null;
+  message: string | null;
+  elapsed_s: number | null;
+}
+export interface RtScanJob {
+  id: string;
+  source: RtScanSource;
+  created_at: string;
+  updated_at: string;
+  files: RtScanFile[];
+  interrupted: boolean;
+  status: "working" | "waiting" | "done";
+  progress: number;
+  counts: { working: number; to_confirm: number; ready: number; needs_a_look: number; failed: number };
+}
+export interface RtScanJobList {
+  jobs: RtScanJob[];
+  working: number;
+  to_confirm: number;
+}
+
 /** POST /mail/scan (services/runtime/app/intake.py): Outlook attachments copied into 00 Inbox. */
 export interface RtMailScan {
+  scan_job_id?: string | null; // with read_now: the background job reading the saved files
   scanned: number;
   candidates: number;
   saved: string[];

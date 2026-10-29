@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:msal_auth/msal_auth.dart';
 
 import '../models/proposal.dart';
+import '../models/scan_job.dart';
 import '../services/auth.dart';
 import '../services/capture_queue.dart';
 import '../services/graph.dart';
@@ -366,9 +367,9 @@ class _CaptureScreenState extends State<CaptureScreen>
     }
   }
 
-  /// Signed-in flow, last step: scan the inbox once. Pops a
-  /// [CaptureScanSummary] when everything reads cleanly; per-file errors
-  /// stay on screen with a way back instead.
+  /// Signed-in flow, last step: start reading the uploads in the background
+  /// and pop the [ScanJob]; Review follows its progress and asks for each
+  /// file's type before anything is read in full.
   Future<void> _scanOnce() async {
     final settings = _settings;
     if (settings == null || _scanning) return;
@@ -382,7 +383,14 @@ class _CaptureScreenState extends State<CaptureScreen>
       final account = await _auth.account();
       final user = account?.username ?? settings.userEmail;
       final kind = _auth.kind;
-      final outcome = await RuntimeClient(
+      // A background job over just these uploads (the runtime answers at
+      // once; Review shows the progress and asks for each file's type).
+      final names = [
+        for (final i in _items)
+          if (i.status == CaptureStatus.uploaded && i.inboxName != null)
+            i.inboxName!,
+      ];
+      final job = await RuntimeClient(
         settings,
         books: BooksAuth(
           graphToken: await _auth.token(),
@@ -390,26 +398,11 @@ class _CaptureScreenState extends State<CaptureScreen>
           user: (user != null && user.isNotEmpty) ? user : null,
           businessName: settings.businessName,
         ),
-      ).scan();
+      ).startScanJob(names: names.isEmpty ? null : names, source: 'phone');
       if (!mounted) return;
-      final fresh = outcome.proposals.length;
-      final needALook = outcome.errors.length;
       await CaptureQueueStore.clear();
       if (!mounted) return;
-      if (needALook == 0) {
-        Navigator.of(context)
-            .pop(CaptureScanSummary(fresh: fresh, needALook: 0));
-      } else {
-        setState(() {
-          _scanning = false;
-          _items = const [];
-          _doneMessage =
-              'Uploaded · $fresh proposal${fresh == 1 ? '' : 's'} ready';
-          _scanErrors = outcome.errors;
-          _summary =
-              CaptureScanSummary(fresh: fresh, needALook: needALook);
-        });
-      }
+      Navigator.of(context).pop(job);
     } on SocketException catch (_) {
       if (!mounted) return;
       setState(() {

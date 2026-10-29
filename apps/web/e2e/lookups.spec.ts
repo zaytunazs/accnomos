@@ -1,4 +1,4 @@
-import { createBooksFolder, expect, GOLD, signIn, test } from "./fixtures";
+import { createBooksFolder, expect, GOLD, signIn, test, confirmScan } from "./fixtures";
 
 /**
  * Official look-ups against the test-mode fakes (services/runtime/app/company_lookup.py): fictional SAMPLE
@@ -50,7 +50,7 @@ test("review: check a supplier's VAT number on the card; approving never waits f
   await createBooksFolder(page);
   await page.goto("/review");
   await page.locator('input[type="file"]').first().setInputFiles({ name: `${GOLD}.png`, mimeType: "image/png", buffer: await runtime.goldPng() });
-  await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
+  await confirmScan(page);
   const novex = page.getByRole("region", { name: "Novex Office Supplies Ltd · £51.90" });
   await expect(novex).toBeVisible();
   await expect(novex).not.toContainText("Registered to"); // nothing is checked on scan

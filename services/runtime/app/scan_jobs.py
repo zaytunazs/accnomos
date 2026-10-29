@@ -225,11 +225,13 @@ def _forget_old() -> None:
         LIVE.pop(jid, None)
 
 
+BUSY: frozenset[str] = frozenset({"uploaded", "reading", "checking"})
+
+
 def claimed(owner: str) -> frozenset[str]:
-    """Inbox paths a running job of this user is reading: the plain /books/scan leaves them alone."""
-    return frozenset(
-        f.path for lv in LIVE.values() if lv.owner == owner and lv.running for f in lv.job.files if f.stage not in FINAL
-    )
+    """Inbox paths a job of this user is reading now: a new job and the plain /books/scan leave them alone. A file
+    waiting for its type is not claimed (a later scan may offer it again; whichever is confirmed first files it)."""
+    return frozenset(f.path for lv in LIVE.values() if lv.owner == owner for f in lv.job.files if f.stage in BUSY)
 
 
 def reset_for_tests() -> None:
@@ -359,6 +361,8 @@ async def find(books: Books, job_id: str) -> Live | None:
     if not ID_RE.fullmatch(job_id):
         return None
     live = LIVE.get(job_id)
+    if live is not None and not live.running:
+        mark_interrupted(live.job)  # read back from the books after a restart, and nothing is reading it
     if live is not None and live.owner == (books.cache_key or ""):
         return live
     saved = await load_saved(books, job_id)

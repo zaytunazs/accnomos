@@ -2,6 +2,7 @@
 
 import type { AccountInfo } from "@azure/msal-browser";
 import { mailboxTokenSilent } from "@/lib/msal";
+import { trackScanJob } from "@/lib/scan-jobs";
 import { runtime, type RtMailbox, type RtMailScan } from "@/lib/runtime";
 
 /** Fired after a check, so Settings › Email intake re-reads each mailbox's last check. */
@@ -29,10 +30,13 @@ export const KIND_LABEL: Record<RtMailbox["kind"], string> = {
  */
 export async function checkAllMailboxes(
   account: AccountInfo,
-  body: { since_days?: number; dry_run?: boolean },
+  options: { since_days?: number; dry_run?: boolean },
 ): Promise<MailboxCheck[]> {
   const out: MailboxCheck[] = [];
+  // A real check also starts reading what it saved (a background scan job each, followed by lib/scan-jobs.ts).
+  const body = { ...options, read_now: !options.dry_run };
   const primary = await runtime.mailScan(account, body);
+  if (primary.scan_job_id) trackScanJob(primary.scan_job_id);
   out.push({ mailbox: primary.mailbox || account.username, kind: "primary", result: primary });
   let linked: RtMailbox[] = [];
   try {
@@ -48,7 +52,9 @@ export async function checkAllMailboxes(
       continue;
     }
     try {
-      out.push({ mailbox: box.address, kind: box.kind, result: await runtime.mailScanLinked(account, box.id, token, body) });
+      const result = await runtime.mailScanLinked(account, box.id, token, body);
+      if (result.scan_job_id) trackScanJob(result.scan_job_id);
+      out.push({ mailbox: box.address, kind: box.kind, result });
     } catch (e) {
       out.push({ mailbox: box.address, kind: box.kind, error: (e as Error).message });
     }

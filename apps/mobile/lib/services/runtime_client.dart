@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 
 import '../models/ask_answer.dart';
 import '../models/sample_books.dart';
+import '../models/scan_job.dart';
 import '../models/storage.dart';
 import 'settings.dart';
 
@@ -220,6 +221,39 @@ class RuntimeClient {
     } catch (e) {
       throw RuntimeException('The scan failed. $e');
     }
+  }
+
+  /// Start reading 00 Inbox files in the background (`POST
+  /// /books/scan/jobs`, `services/runtime/app/scan_jobs.py`): answers at
+  /// once with the job; poll [scanJob] for progress. `names` null = every
+  /// file in 00 Inbox. Nothing waits on the AI, so the 20 s scan timeout of
+  /// the old blocking scan can no longer cut a slow read short.
+  Future<ScanJob> startScanJob(
+      {List<String>? names, String source = 'phone'}) async {
+    final job = await _map('POST', '/books/scan/jobs',
+        query: vatQuery(),
+        body: {if (names != null) 'names': names, 'source': source},
+        what: 'start reading your Inbox');
+    return ScanJob.fromJson(job);
+  }
+
+  /// One background scan. `GET /books/scan/jobs/{id}`.
+  Future<ScanJob> scanJob(String id) async => ScanJob.fromJson(await _map(
+      'GET', '/books/scan/jobs/${_seg(id)}',
+      what: 'see how the reading is going'));
+
+  /// The user's types for files waiting on them (`POST
+  /// /books/scan/jobs/{id}/confirm`); reading them in full starts then.
+  Future<ScanJob> confirmScanJob(String id, Map<String, String> kinds) async {
+    final job = await _map('POST', '/books/scan/jobs/${_seg(id)}/confirm',
+        query: vatQuery(),
+        body: {
+          'files': [
+            for (final e in kinds.entries) {'name': e.key, 'kind': e.value},
+          ],
+        },
+        what: 'confirm the document types');
+    return ScanJob.fromJson(job);
   }
 
   /// Live proposals. `GET /books/proposals`.

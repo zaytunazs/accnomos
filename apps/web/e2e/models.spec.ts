@@ -1,4 +1,4 @@
-import { createBooksFolder, expect, GOLD, settingsTab, signIn, test } from "./fixtures";
+import { createBooksFolder, expect, GOLD, settingsTab, signIn, test, confirmScan } from "./fixtures";
 
 /**
  * "Meta models at work": the /models page and the Review card's line, with the runtime's provider chain
@@ -30,7 +30,7 @@ test("signed in on the server's chain: the Review card names the Meta model and 
   await page.goto("/review");
   await page.locator('input[type="file"]').first().setInputFiles({ name: `${GOLD}.png`, mimeType: "image/png", buffer: await runtime.goldPng() });
   await expect(page.getByText("1 file added to 00 Inbox")).toBeVisible();
-  await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
+  await confirmScan(page);
   const novex = page.getByRole("region", { name: "Novex Office Supplies Ltd · £51.90" });
   await expect(novex).toBeVisible();
   const line = novex.getByTestId("served-by");

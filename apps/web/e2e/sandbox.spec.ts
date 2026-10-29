@@ -82,3 +82,36 @@ test("/judges: a short guide that starts a demo in one click", async ({ page }) 
   await expect(bar(page)).toBeVisible();
   await expect(page.getByText("6 waiting for you")).toBeVisible();
 });
+
+test("demo sandbox: Add a receipt reads only the upload, with progress, a type to confirm and the card in Review", async ({ page, runtime }) => {
+  test.setTimeout(SEED_WAIT + 90_000);
+  await page.clock.install({ time: TODAY });
+  await page.goto("/judges");
+  await page.getByRole("button", { name: "Start the demo" }).click();
+  await expect(page).toHaveURL(/\/review$/, { timeout: SEED_WAIT });
+  await expect(page.getByText("6 waiting for you")).toBeVisible();
+
+  // The demo's 00 Inbox already holds 19 unread sample documents: the upload's job must read only the upload
+  // (the owner's report: one blocking request read up to 10 Inbox files before answering).
+  const started: string[] = [];
+  page.on("request", (r) => new URL(r.url()).pathname === "/books/scan/jobs" && r.method() === "POST" && started.push(r.postData() ?? ""));
+  await page.locator('input[type="file"]').first().setInputFiles({ name: "currys-receipt.png", mimeType: "image/png", buffer: await runtime.goldPng() });
+  await expect(page.getByText("1 file added to 00 Inbox. Reading now")).toBeVisible();
+  expect(started).toHaveLength(1);
+  expect(JSON.parse(started[0])).toEqual({ names: ["currys-receipt.png"], source: "upload" });
+
+  const row = page.locator('[data-scan-file="currys-receipt.png"]');
+  await expect(row).toHaveAttribute("data-stage", "confirm", { timeout: 30_000 });
+  await expect(row.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "50");
+  await expect(row).toContainText("Looks like a receipt (90% sure)");
+  await expect(page.locator("[data-scan-badge]")).toHaveText("1 to confirm"); // the top bar's count
+  await expect(page.getByText("6 waiting for you")).toBeVisible(); // nothing read in full before the type is confirmed
+
+  await row.getByRole("button", { name: "Confirm", exact: true }).click();
+  await expect(row).toHaveAttribute("data-stage", /^(ready|needs_a_look)$/, { timeout: 30_000 });
+  await expect(row.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
+  await expect(status(page)).toHaveText("1 new proposal");
+  await expect(page.getByText("7 waiting for you")).toBeVisible();
+  await expect(page.getByRole("region", { name: "Novex Office Supplies Ltd · £51.90" })).toBeVisible();
+  await expect(page.locator("[data-scan-badge]")).toHaveCount(0);
+});

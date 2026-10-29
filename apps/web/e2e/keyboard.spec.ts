@@ -106,7 +106,11 @@ test("keyboard only: Home → Review → approve → Settings tab → Ask", asyn
   // Scan, then J picks the card, E opens the edit sheet (Escape gives focus back to the card), A approves.
   await tabTo(page, (s) => s.name === "Scan 00 Inbox now", "Scan 00 Inbox now");
   await page.keyboard.press("Enter");
-  // The first read in a fresh runtime takes ~10 s (cold stub AI) when this spec runs on its own.
+  // The AI's guess of the type comes back on the file's row; Confirm takes it (the first read in a fresh runtime takes
+  // ~10 s, cold stub AI, when this spec runs on its own).
+  await expect(page.locator('[data-scan-file][data-stage="confirm"]')).toBeVisible({ timeout: 30_000 });
+  await tabTo(page, (s) => s.name === "Confirm", "Confirm the type");
+  await page.keyboard.press("Enter");
   await expect(page.getByRole("status").filter({ hasText: "new proposal" })).toHaveText("1 new proposal", { timeout: 30_000 });
   await page.keyboard.press("j");
   const card = page.getByRole("region", { name: "Novex Office Supplies Ltd · £51.90" });

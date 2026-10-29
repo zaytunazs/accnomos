@@ -7,6 +7,8 @@ import type { AccountInfo } from "@azure/msal-browser";
 import ReviewQueue, { type ReviewAdapter } from "@/components/review/ReviewQueue";
 import SignInCta from "@/components/SignInCta";
 import UploadToInbox from "@/components/review/UploadToInbox";
+import ScanProgress from "@/components/review/ScanProgress";
+import { onScanFiled, trackScanJob } from "@/lib/scan-jobs";
 import { VatCheckButton, useLookupStatus } from "@/components/contacts/Lookups";
 import {
   EmptyState,
@@ -166,18 +168,26 @@ export default function LiveReview() {
     }
   }
 
+  // Background scans (ScanProgress): reload the cards each time another file reaches Review or Needs a look.
+  // Announced once the cards are on the page, so J (or a screen-reader user) never acts on an empty queue.
+  useEffect(
+    () =>
+      onScanFiled((n) => {
+        if (!account) return;
+        void load(account).then(() => n > 0 && setNote(`${n} new proposal${n === 1 ? "" : "s"}`));
+      }),
+    [account, load],
+  );
+
+  /** Starts a background job over every file in 00 Inbox; the answer comes at once, the progress below. */
   async function scan() {
     if (!account) return;
     setBusy("scan");
     setError(null);
     try {
-      const r = await runtime.scan(account);
-      const auto = r.proposals.filter((p) => p.decided_by === "autopilot").length;
-      const n = r.proposals.length - auto;
-      const errs = r.errors.map((e) => `${e.path.split("/").pop()}: ${e.error}`).join(" · ");
-      // Announced once the cards are on the page, so J (or a screen-reader user) never acts on an empty queue.
-      await load(account);
-      setNote(`${n} new proposal${n === 1 ? "" : "s"}${auto ? ` · ${auto} approved by Autopilot` : ""}${errs ? ` · could not read: ${errs}` : ""}`);
+      const job = await runtime.startScan(account, undefined, "inbox");
+      trackScanJob(job);
+      setNote(job.files.length ? `Reading ${job.files.length} file${job.files.length === 1 ? "" : "s"} from 00 Inbox` : "00 Inbox is empty");
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -263,12 +273,13 @@ export default function LiveReview() {
     <div className="flex min-w-0 flex-col gap-5">
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={scan} disabled={busy !== null} className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white disabled:opacity-60">
-          {busy === "scan" ? "Reading your Inbox…" : "Scan 00 Inbox now"}
+          {busy === "scan" ? "Starting…" : "Scan 00 Inbox now"}
         </button>
         <UploadToInbox account={account!} onDone={() => setNote(null)} />
         <span className="text-sm text-muted">or drop files into OneDrive › Apps › Accnomos › 00 Inbox</span>
       </div>
       <Notes note={note} error={error} />
+      {account && <ScanProgress account={account} />}
       {autoPosted.length > 0 && (
         <section aria-labelledby="autopilot-posted" className="rounded-2xl border border-border bg-white p-5">
           <h2 id="autopilot-posted" className="text-[17px] font-extrabold">

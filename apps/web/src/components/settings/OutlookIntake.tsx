@@ -195,7 +195,7 @@ export default function OutlookIntake({ card, heading }: { card: string; heading
           )}
           {!result.dry_run && n > 0 && (
             <p className="mt-2 text-muted">
-              Next: <Link href="/review" className="font-bold text-teal-dark">scan 00 Inbox on Review</Link> to read them.
+              Reading them now: <Link href="/review" className="font-bold text-teal-dark">confirm each one&rsquo;s type on Review</Link>.
             </p>
           )}
           {checks.length > 1 && (

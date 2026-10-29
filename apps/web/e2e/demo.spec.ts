@@ -1,7 +1,7 @@
 import { statSync } from "node:fs";
 import path from "node:path";
 import type { Page } from "@playwright/test";
-import { createBooksFolder, DEMO_DAY, expect, pickVatPeriod, signIn, test } from "./fixtures";
+import { confirmScan, createBooksFolder, DEMO_DAY, expect, pickVatPeriod, signIn, test } from "./fixtures";
 
 /**
  * docs/DEMO.md on stage, step by step, in test mode (`pnpm run e2e:demo` writes the shots): the runtime's "today" is the stage date
@@ -95,13 +95,15 @@ for (const vp of VIEWPORTS) {
         await expect(page.getByRole("status")).toContainText("Connected · accnomos-test-stub"); // live: the Glimmer model's name
       });
 
-      await step(4, "scan", "Review → Add a receipt → Scan 00 Inbox now", async () => {
+      await step(4, "scan", "Review → Add a receipt → confirm it is a receipt", async () => {
         await page.goto("/review");
         await expect(page.getByText("No receipts waiting")).toBeVisible();
-        // "Add a receipt" opens the file picker: the presenter picks sample-receipt.png from Downloads.
+        // "Add a receipt" opens the file picker: the presenter picks sample-receipt.png from Downloads. Reading starts
+        // at once; the AI says it looks like a receipt, and the presenter confirms.
         await page.locator('input[type="file"]').first().setInputFiles(RECEIPT);
-        await expect(page.getByText("1 file added to 00 Inbox. Press “Scan 00 Inbox now”.")).toBeVisible();
-        await page.getByRole("button", { name: "Scan 00 Inbox now" }).click();
+        await expect(page.getByText("1 file added to 00 Inbox. Reading now")).toBeVisible();
+        await expect(page.locator('[data-stage="confirm"]')).toContainText("Looks like a receipt (90% sure)");
+        await confirmScan(page);
         await expect(page.locator('p[role="status"][aria-live="polite"]')).toHaveText("1 new proposal");
       });
 
