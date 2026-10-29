@@ -227,7 +227,7 @@ def test_every_outbound_http_client_has_a_timeout():
     ]
     found = 0
     for path in sources:
-        for node in ast.walk(ast.parse(path.read_text())):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if isinstance(node, ast.Call) and ast.unparse(node.func) in ("httpx.AsyncClient", "httpx.Client"):
                 found += 1
                 assert any(k.arg == "timeout" for k in node.keywords), f"{path}:{node.lineno} has no timeout"
@@ -248,7 +248,7 @@ def test_relay_copy_of_the_middleware_has_not_drifted():
     """services/hmrc-relay/relay/security.py is a copy (separate image); the request handling must stay identical."""
 
     def handler(path: Path) -> str:
-        text = path.read_text()
+        text = path.read_text(encoding="utf-8")
         return text[text.index("    async def __call__") :]
 
     assert handler(ROOT / "services/runtime/app/security.py") == handler(ROOT / "services/hmrc-relay/relay/security.py")

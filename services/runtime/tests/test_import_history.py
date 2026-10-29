@@ -186,7 +186,7 @@ def test_vendor_is_guessed_from_the_headers() -> None:
 
 def test_kinds_are_told_apart() -> None:
     kinds = {
-        str(p.relative_to(FIX)): fmt.parse(p.read_bytes(), p.name, side="purchase").kind
+        p.relative_to(FIX).as_posix(): fmt.parse(p.read_bytes(), p.name, side="purchase").kind
         for p in sorted(FIX.glob("*/*.csv"))
     }
     assert kinds == {

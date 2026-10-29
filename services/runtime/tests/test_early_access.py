@@ -7,6 +7,7 @@ import csv
 import io
 import json
 import stat
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -61,7 +62,8 @@ def test_sign_up_stores_one_record_with_the_consent_text(client: TestClient, fil
     assert rec["consent"] is True and rec["consent_text"] == ea.CONSENT_TEXT
     assert rec["source"] == "/" and rec["at"].endswith("+00:00")
     assert "ip" not in rec  # the rate limit is in memory only
-    assert stat.S_IMODE(file.stat().st_mode) == 0o600
+    if sys.platform != "win32":  # Windows has no Unix permission bits; the file stays 0o666 there
+        assert stat.S_IMODE(file.stat().st_mode) == 0o600
 
 
 def test_optional_fields_may_be_left_out(client: TestClient, file: Path) -> None:
@@ -244,7 +246,8 @@ def test_cli_export_csv(three: Path, tmp_path: Path, capsys: pytest.CaptureFixtu
     assert [r["email"] for r in rows] == ["a@example.co.uk", "b@example.co.uk", "c@example.co.uk"]
     assert rows[0]["name"] == "Al" and rows[2]["name"] == "'=cmd"  # formula cells defused
     assert rows[0]["consent_text"] == ea.CONSENT_TEXT and rows[0]["first_at"]
-    assert stat.S_IMODE(out.stat().st_mode) == 0o600
+    if sys.platform != "win32":  # Windows has no Unix permission bits; the file stays 0o666 there
+        assert stat.S_IMODE(out.stat().st_mode) == 0o600
 
 
 def test_cli_export_to_stdout(three: Path, capsys: pytest.CaptureFixture[str]) -> None:
@@ -258,7 +261,8 @@ def test_cli_delete_erases_every_line_for_that_email(three: Path, capsys: pytest
     assert "deleted 2 line(s)" in capsys.readouterr().out
     assert "a@example.co.uk" not in three.read_text(encoding="utf-8")
     assert [r["email"] for r in ea.records(three)] == ["b@example.co.uk", "c@example.co.uk"]
-    assert stat.S_IMODE(three.stat().st_mode) == 0o600
+    if sys.platform != "win32":  # Windows has no Unix permission bits; the file stays 0o666 there
+        assert stat.S_IMODE(three.stat().st_mode) == 0o600
     assert ea.main(["delete", "--email", "a@example.co.uk"]) == 0
     assert "no record" in capsys.readouterr().out
     assert not [p for p in three.parent.iterdir() if p.name.startswith(".early-access-")]  # no temp file left

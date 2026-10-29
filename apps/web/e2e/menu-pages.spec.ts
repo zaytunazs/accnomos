@@ -16,6 +16,8 @@ test("every menu item opens its own page with its own heading", async ({ page })
   test.setTimeout(240_000);
   await page.goto("/");
   const nav = page.getByRole("navigation", { name: "Main" });
+  // The signed-in menu renders after hydration and the sign-in probe: wait for it before collecting.
+  await expect(nav.getByRole("button").first()).toBeVisible();
   const items: { group: string; label: string; href: string }[] = [];
   for (const button of await nav.getByRole("button").all()) {
     const group = (await button.innerText()).split("\n")[0].trim();

@@ -20,6 +20,7 @@ from app import scan_jobs
 from app.ai.config import AiConfig, ai_config_from_request
 from app.books import Books
 from app.books import today as current_date
+from app.paths import INBOX
 from app.routes_books import business_name, get_books, optional_user, require_user
 from app.scan_jobs import Confirmation, Opener, ScanJob, ScanJobList, Settings, Source
 from app.validation import StrictBody
@@ -80,7 +81,7 @@ async def start(
     body = body or StartBody()
     _writable(books)
     if body.names is not None and any("/" in n or "\\" in n or n in ("", ".", "..") for n in body.names):
-        raise HTTPException(status_code=400, detail="Give file names in 00 Inbox, not paths")
+        raise HTTPException(status_code=400, detail=f"Give file names in {INBOX}, not paths")
     return await scan_jobs.start(books, opener, s, body.names, body.source)
 
 

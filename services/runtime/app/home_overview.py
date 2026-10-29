@@ -262,7 +262,7 @@ def deadlines(
     if itsa:
         add(
             "itsa",
-            f"Income Tax quarterly update to {itsa.period_end:%-d %b %Y}",
+            f"Income Tax quarterly update to {itsa.period_end.day} {itsa.period_end:%b %Y}",
             itsa.due,
             "/self-employment",
             ITSA_URL,
@@ -289,7 +289,7 @@ def summary_facts(d: dash.Dashboard, o: dict[str, Any]) -> dict[str, Any]:
         return None if p is None else home_summary.gbp(p)
 
     def day(x: date | None) -> str | None:
-        return None if x is None else f"{x:%-d %b %Y}"
+        return None if x is None else f"{x.day} {x:%b %Y}"  # no %-d: it is not portable to Windows
 
     facts: dict[str, Any] = {"today": day(d.today), "kind": o["kind"]}
     cash = d.cash if isinstance(d.cash, dash.Cash) else None

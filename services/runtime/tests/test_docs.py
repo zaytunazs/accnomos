@@ -26,7 +26,7 @@ CITED = re.compile(r"`([A-Za-z0-9_./-]+\.(?:py|ts|tsx|dart|md|yml|yaml|mjs|png))
 
 
 def _what_works_rows() -> list[str]:
-    readme = (ROOT / "README.md").read_text()
+    readme = (ROOT / "README.md").read_text(encoding="utf-8")
     section = readme.split("## What works today", 1)[1].split("\n## ", 1)[0]
     lines = section.strip("\n").splitlines()
     first = next(i for i, ln in enumerate(lines) if ln.startswith("| Feature"))
@@ -57,13 +57,13 @@ def test_files_cited_in_docs_exist(doc: str):
     ]
     missing = [
         ref
-        for ref in sorted(set(CITED.findall((ROOT / doc).read_text())))
+        for ref in sorted(set(CITED.findall((ROOT / doc).read_text(encoding="utf-8"))))
         if not any(f == ref or f.endswith("/" + ref) for f in repo)
     ]
     assert not missing, f"{doc} cites files that do not exist: {missing}"
 
 
 def test_architecture_lists_the_books_xlsx_sheets_the_code_writes():
-    arch = (ROOT / "docs/ARCHITECTURE.md").read_text()
+    arch = (ROOT / "docs/ARCHITECTURE.md").read_text(encoding="utf-8")
     row = next(ln for ln in arch.splitlines() if ln.startswith("| `Books.xlsx`"))
     assert re.findall(r"`([\w&]+)`", row.split("sheets", 1)[1])[: len(SHEETS)] == list(SHEETS)

@@ -281,7 +281,7 @@ def mark_interrupted(job: ScanJob) -> ScanJob:
     for f in job.files:
         if f.stage not in FINAL and f.stage != "confirm":
             f.stage, f.route = "failed", "inbox"
-            f.message = "The reader stopped before this was finished. It is still in 00 Inbox: scan it again."
+            f.message = f"The reader stopped before this was finished. It is still in {INBOX}: scan it again."
     job.interrupted = True
     return job
 
@@ -331,13 +331,13 @@ async def start(
         files=[ScanFile(name=f.name, path=f.path) for f in files[:MAX_FILES]],
     )
     for name in sorted(set(names or []) - {f.name for f in files}):
-        message = "Already being read." if f"{INBOX}/{name}" in busy else "Not in 00 Inbox (moved or already read)."
+        message = "Already being read." if f"{INBOX}/{name}" in busy else f"Not in {INBOX} (moved or already read)."
         job.files.append(ScanFile(name=name, path=f"{INBOX}/{name}", stage="failed", route="inbox", message=message))
     too_big = {f.name for f in files if f.size > MAX_BYTES}
     for sf in job.files:
         if sf.name in too_big:
             sf.stage, sf.route = "failed", "inbox"
-            sf.message = f"Over {MAX_BYTES // (1024 * 1024)} MB, so not read. It stays in 00 Inbox."
+            sf.message = f"Over {MAX_BYTES // (1024 * 1024)} MB, so not read. It stays in {INBOX}."
     live = Live(job=job, owner=owner)
     LIVE[job.id] = live
     _forget_old()
@@ -451,7 +451,7 @@ async def _classify_all(live: Live, opener: Opener, settings: Settings) -> None:
                             "scan job %s: file %d failed while reading its type", live.job.id[:8], i, exc_info=True
                         )
                         f.stage, f.route = "failed", "inbox"
-                        f.message = "Something went wrong reading this. It stays in 00 Inbox: try again."
+                        f.message = f"Something went wrong reading this. It stays in {INBOX}: try again."
                     f.elapsed_s = round(time.perf_counter() - t0, 1)
                     log.info(
                         "scan job %s: file %d of %d -> %s (%s, %.1f s)",
@@ -470,14 +470,14 @@ async def _classify_all(live: Live, opener: Opener, settings: Settings) -> None:
         for f in todo:
             if f.stage not in FINAL and f.stage != "confirm":
                 f.stage, f.route = "failed", "inbox"
-                f.message = "Your books could not be opened. The file stays in 00 Inbox: sign in again and retry."
+                f.message = f"Your books could not be opened. The file stays in {INBOX}: sign in again and retry."
 
 
 async def _classify(books: Books, f: ScanFile, settings: Settings) -> None:
     try:
         data = await books.storage.read(f.path)
     except FileNotFoundError:
-        f.stage, f.route, f.message = "failed", "inbox", "No longer in 00 Inbox (moved or already read)."
+        f.stage, f.route, f.message = "failed", "inbox", f"No longer in {INBOX} (moved or already read)."
         return
     if f.name.lower().endswith(".csv"):
         try:
@@ -532,7 +532,7 @@ async def _process_all(live: Live, opener: Opener, settings: Settings, names: li
                     except Exception:  # noqa: BLE001
                         log.warning("scan job %s: file %d failed while checking", live.job.id[:8], i, exc_info=True)
                         f.stage, f.route = "failed", "inbox"
-                        f.message = "Something went wrong checking this. It stays in 00 Inbox: scan it again."
+                        f.message = f"Something went wrong checking this. It stays in {INBOX}: scan it again."
                     f.elapsed_s = round(time.perf_counter() - t0, 1)
                     log.info(
                         "scan job %s: file %d of %d (%s) -> %s via %s (%.1f s)",
@@ -553,12 +553,12 @@ async def _process_all(live: Live, opener: Opener, settings: Settings, names: li
         for f in todo:
             if f.stage not in FINAL:
                 f.stage, f.route = "failed", "inbox"
-                f.message = "Your books could not be opened. The file stays in 00 Inbox: sign in again and retry."
+                f.message = f"Your books could not be opened. The file stays in {INBOX}: sign in again and retry."
 
 
 async def _route(books: Books, ctx: inbox.ScanContext, settings: Settings, f: ScanFile, ref: FileRef | None) -> None:
     if ref is None:
-        f.stage, f.route, f.message = "failed", "inbox", "No longer in 00 Inbox (moved or already read)."
+        f.stage, f.route, f.message = "failed", "inbox", f"No longer in {INBOX} (moved or already read)."
         return
     kind = f.kind or "other"
     if kind in READ_IN_FULL and (mime := guess_mime(ref.name)):
@@ -621,7 +621,7 @@ async def _import_statement(books: Books, settings: Settings, f: ScanFile, ref: 
         result = await books.import_bank_csv(data, ref.name, settings.user or "user")
     except BankCsvError as exc:
         f.stage, f.route = "failed", "inbox"
-        f.message = f"Not a bank statement CSV this app can read: {exc}. It stays in 00 Inbox."
+        f.message = f"Not a bank statement CSV this app can read: {exc}. It stays in {INBOX}."
         return
     await books.storage.ensure_folder(inbox.ORIGINALS)
     await books.storage.move(ref.path, await books.free_path(inbox.ORIGINALS, ref.name))  # the import filed its copy

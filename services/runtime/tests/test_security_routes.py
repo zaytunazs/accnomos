@@ -239,7 +239,7 @@ def _modules_importing_http() -> set[str]:
 
     found = set()
     for path in APP.rglob("*.py"):
-        for node in ast.walk(ast.parse(path.read_text())):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             names = (
                 [a.name for a in node.names]
                 if isinstance(node, ast.Import)
@@ -263,7 +263,7 @@ def test_payment_provider_calls_go_only_to_the_configured_provider_bases():
 
     from app.payment_providers import PAYPAL_SANDBOX, PayPalConfig, StripeConfig
 
-    src = (APP / "payment_providers.py").read_text()
+    src = (APP / "payment_providers.py").read_text(encoding="utf-8")
     bases = {"self.cfg.connect_base", "self.cfg.api_base", "self.cfg.base"}
     seen = 0
     for node in ast.walk(ast.parse(src)):
@@ -289,7 +289,7 @@ def test_truelayer_calls_go_only_to_the_configured_bases():
     from app.bank_feeds import FeedAccount
     from app.truelayer import SANDBOX_API, SANDBOX_AUTH, TrueLayerConfig
 
-    src = (APP / "truelayer.py").read_text()
+    src = (APP / "truelayer.py").read_text(encoding="utf-8")
     seen = 0
     for node in ast.walk(ast.parse(src)):
         if isinstance(node, ast.JoinedStr) and node.values and isinstance(node.values[0], ast.FormattedValue):
@@ -315,7 +315,7 @@ def test_every_runtime_http_call_goes_to_an_allow_listed_base_and_follows_no_red
 
     calls = 0
     for rel in TALKS_HTTP:
-        for node in ast.walk(ast.parse((APP / rel).read_text())):
+        for node in ast.walk(ast.parse((APP / rel).read_text(encoding="utf-8"))):
             if isinstance(node, ast.Call) and ast.unparse(node.func) in ("httpx.AsyncClient", "httpx.Client"):
                 assert not any(
                     k.arg == "follow_redirects" and ast.unparse(k.value) != "False" for k in node.keywords
@@ -427,13 +427,13 @@ def test_cors_allows_every_method_a_route_uses_and_no_other():
 
 def test_the_test_mode_web_build_is_never_published():
     root = APP.parents[2] / ".github/workflows"
-    deploy, e2e = (root / "deploy-web.yml").read_text(), (root / "ci.yml").read_text()
+    deploy, e2e = (root / "deploy-web.yml").read_text(encoding="utf-8"), (root / "ci.yml").read_text(encoding="utf-8")
     assert 'NEXT_PUBLIC_TEST_MODE: ""' in deploy and "publish_dir: apps/web/out\n" in deploy
     guard, publish = deploy.index("Refuse to publish a test-mode build"), deploy.index("publish_dir:")
     assert guard < publish and "__test/(graph|ai)" in deploy[guard:publish]
     assert "permissions:\n  contents: read" in e2e and "pnpm run e2e:build" in e2e
     assert not any(word in e2e for word in ("secrets.", "gh-pages", "publish_dir", "contents: write", "docker push"))
-    build = (APP.parents[2] / "apps/web/e2e/build.mjs").read_text()
+    build = (APP.parents[2] / "apps/web/e2e/build.mjs").read_text(encoding="utf-8")
     assert "out-e2e" in build and 'NEXT_PUBLIC_TEST_MODE: "1"' in build
 
 
@@ -581,7 +581,7 @@ def test_every_audit_actor_is_user_or_agent():
 
     bad = []
     for path in sorted((Path(__file__).resolve().parents[1] / "app").rglob("*.py")):
-        for node in ast.walk(ast.parse(path.read_text())):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if (
                 isinstance(node, ast.Call)
                 and isinstance(node.func, ast.Attribute)

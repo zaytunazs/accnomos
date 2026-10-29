@@ -73,7 +73,7 @@ class DocTimeout(ExtractionError):
 def timeout_message(seconds: float) -> str:
     return (
         f"The AI did not finish reading this within {seconds:.0f} seconds, so it was stopped. "
-        "It stays in 00 Inbox: try again later, or type it in by hand."
+        f"It stays in {INBOX}: try again later, or type it in by hand."
     )
 
 

@@ -274,7 +274,9 @@ def test_every_writer_kind_has_a_summary() -> None:
     for f in src.glob("*.py"):
         if f.name == "audit_view.py":  # its docstring quotes the line format
             continue
-        written |= set(re.findall(r"\.audit(?:_autopilot)?\(\s*[^,\n]+,\s*\"([a-z_]+)\"\s*,", f.read_text()))
+        written |= set(
+            re.findall(r"\.audit(?:_autopilot)?\(\s*[^,\n]+,\s*\"([a-z_]+)\"\s*,", f.read_text(encoding="utf-8"))
+        )
     written |= {"bank_transfer", "bank_ignored", "mileage_proposed", "mileage_refreshed"}  # built at run time
     assert written, "the scan found no audit calls"
     assert written - set(audit_view.SUMMARIES) == set()

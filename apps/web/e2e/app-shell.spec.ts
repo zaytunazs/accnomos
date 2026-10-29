@@ -192,7 +192,7 @@ test.describe("signed in", () => {
     await expect(ai).not.toContainText("Glimmer");
     await ai.click();
     await expect(page).toHaveURL(/\/meta-models$/);
-    await expect(page.getByRole("heading", { level: 1, name: "Meta models at work" })).toBeVisible();
+    await expect(page.getByRole("heading", { level: 1, name: "Meta models in Accnomos" })).toBeVisible();
   });
 });
 
