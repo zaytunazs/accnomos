@@ -191,10 +191,16 @@ async def scan(
 ) -> ScanResult:
     """VAT settings (`stagger`/`start_month`/`months`, as for /books/deadlines)
     set the period dates are checked against.
+
+    Kept for older clients: it answers only when every document is read (each within its time budget). The web app
+    and the phone start a background job instead (/books/scan/jobs, app/routes_scan.py).
     """
     autopilot_on = (x_autopilot or "on").strip().lower() != "off"
     period = cycle.current(current_date())
-    proposals, errors = await scan_inbox_detailed(books, cfg, limit, business, autopilot_on, period)
+    from app.scan_jobs import claimed
+
+    busy = claimed(books.cache_key or "")  # files a background job is reading are left to it
+    proposals, errors = await scan_inbox_detailed(books, cfg, limit, business, autopilot_on, period, busy)
     return ScanResult(proposals=proposals, errors=errors)
 
 

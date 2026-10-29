@@ -14,6 +14,10 @@ tried anyway, in order, rather than failing without a try.
 
 A backend the user chose (their own local agent or Meta key) is a chain of one with no breaker: it behaves as before.
 
+`limits(call_s=..., deadline=...)` caps every attempt made inside it, whoever serves it: no attempt runs longer than
+`call_s`, nor past `deadline` (a `time.monotonic()` value, the document's time budget in app/scan_jobs.py). A cap that
+is reached reads as a timeout, so the chain fails over (or the caller falls back) exactly as for a slow provider.
+
 Every call is recorded (provider, model, task, latency, fell back from) in memory only, the last RECENT_MAX of them,
 for the /models page; nothing about the request's content is kept.
 """
@@ -21,10 +25,12 @@ for the /models page; nothing about the request's content is kept.
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import time
 from collections import deque
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import UTC, datetime
 from typing import Any
@@ -34,6 +40,8 @@ from pydantic import BaseModel
 
 from app.ai.config import AiConfig
 from app.schemas import ServedBy
+
+log = logging.getLogger("accnomos.ai")
 
 FAILOVER_STATUS = frozenset({401, 402, 403, 404, 408, 429})
 RECENT_MAX = 50
@@ -48,6 +56,10 @@ def _env_number(name: str, default: float) -> float:
 
 BREAKER_FAILURES = int(_env_number("AI_BREAKER_FAILURES", 3))
 BREAKER_COOLDOWN_S = _env_number("AI_BREAKER_COOLDOWN_S", 120)
+
+
+class OutOfTime(httpx.ReadTimeout):
+    """The caller's deadline (`limits`) ran out: not the provider's fault, so no breaker failure and no failover."""
 
 
 class ProviderDown(RuntimeError):
@@ -201,14 +213,48 @@ def candidates(cfg: AiConfig, *, vision: bool = False) -> list[AiConfig]:
     return closed or chain
 
 
-async def _within[T](coro: Awaitable[T], c: AiConfig) -> T:
-    """`coro`, cut off after the provider's request_s. A timeout is raised as httpx's, which every caller handles."""
-    if not c.request_s:
-        return await coro
+_CALL_S: ContextVar[float | None] = ContextVar("accnomos_ai_call_s", default=None)
+_DEADLINE: ContextVar[float | None] = ContextVar("accnomos_ai_deadline", default=None)
+
+
+@contextmanager
+def limits(*, call_s: float | None = None, deadline: float | None = None) -> Iterator[None]:
+    """Cap every AI attempt made inside: at most `call_s` each, and none past `deadline` (time.monotonic())."""
+    t1, t2 = _CALL_S.set(call_s), _DEADLINE.set(deadline)
     try:
-        return await asyncio.wait_for(coro, c.request_s)
+        yield
+    finally:
+        _CALL_S.reset(t1)
+        _DEADLINE.reset(t2)
+
+
+def attempt_limit(c: AiConfig, now: float | None = None) -> float | None:
+    """The longest the next attempt on `c` may take: the provider's request_s, the caller's per-call cap and what is
+    left of the deadline, whichever is least (None: no limit beyond the HTTP client's own)."""
+    caps = [x for x in (c.request_s, _CALL_S.get()) if x]
+    if (deadline := _DEADLINE.get()) is not None:
+        caps.append(deadline - (now if now is not None else time.monotonic()))
+    return min(caps) if caps else None
+
+
+async def _within[T](coro: Awaitable[T], c: AiConfig) -> T:
+    """`coro`, cut off at `attempt_limit`. A timeout is raised as httpx's, which every caller handles."""
+    limit = attempt_limit(c)
+    if limit is None:
+        return await coro
+    who = c.provider or c.mode
+    deadline = _DEADLINE.get()
+    by_deadline = deadline is not None and limit >= deadline - time.monotonic() - 0.01
+    if limit <= 0:
+        if asyncio.iscoroutine(coro):
+            coro.close()  # never started: no "was never awaited" warning
+        raise OutOfTime(f"no time left in this document's budget to ask {who}")
+    try:
+        return await asyncio.wait_for(coro, limit)
     except TimeoutError:
-        raise httpx.ReadTimeout(f"{c.provider or c.mode} took longer than {c.request_s:.0f} s") from None
+        log.warning("AI call to %s cut off after %.0f s", who, limit)
+        error = OutOfTime if by_deadline else httpx.ReadTimeout
+        raise error(f"{who} took longer than {limit:.0f} s") from None
 
 
 async def run[T](
@@ -222,6 +268,9 @@ async def run[T](
         t0 = time.perf_counter()
         try:
             result = await _within(attempt(c), c)
+        except OutOfTime:
+            _record(task, c, t0, False, fell, "out of time")
+            raise
         except Exception as exc:
             down = fails_over(exc)
             _record(task, c, t0, False, fell, why(exc))

@@ -127,6 +127,7 @@ class IntakeResult(BaseModel):
     errors: list[dict[str, str]] = []
     items: list[IntakeItem] = []  # one per saved (or, in a dry run, would-be-saved) file
     filtered_senders: int = 0  # messages left out by the mailbox's sender allow/deny lists
+    scan_job_id: str | None = None  # with `read_now`: the background job reading the saved files (app/scan_jobs.py)
 
 
 # ---------------------------------------------------------------------- #

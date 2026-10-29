@@ -27,11 +27,13 @@ from pydantic import BaseModel, Field
 from accnomos_connectors.base import MailProvider
 from accnomos_connectors.msgraph import GraphError, GraphMailProvider
 from app import mailboxes as mb
-from app.ai.config import AiConfig, is_test_mode
+from app.ai.config import AiConfig, ai_config_from_request, is_test_mode
 from app.books import Books
 from app.intake import IntakeResult, scan_mail
 from app.routes_books import business_name, get_books, optional_user, require_user
 from app.routes_plan import optional_ai
+from app.routes_scan import books_opener
+from app.scan_jobs import Opener
 from app.triage import TriageResult, triage_mail
 from app.validation import StrictBody
 
@@ -105,6 +107,7 @@ class MailScanBody(StrictBody):
     mailbox: str | None = Field(
         default=None, max_length=32, pattern=r"^[a-z0-9]{1,32}$"
     )  # a linked mailbox's id; None = yours
+    read_now: bool = False  # start a background scan job over the saved files (app/scan_jobs.py): `scan_job_id`
 
 
 def _http(exc: mb.MailboxError) -> HTTPException:
@@ -113,8 +116,10 @@ def _http(exc: mb.MailboxError) -> HTTPException:
 
 @router.post("/scan", response_model=IntakeResult)
 async def mail_scan(
+    request: Request,
     body: MailScanBody | None = None,
     books: Books = Depends(get_books),
+    opener: Opener = Depends(books_opener),
     primary: MailProvider = Depends(get_mail),
     user: str | None = Depends(optional_user),
     token: str | None = Depends(mailbox_token),
@@ -132,7 +137,7 @@ async def mail_scan(
     else:
         mail = factory(token, box)
     try:
-        return await scan_mail(
+        result = await scan_mail(
             books,
             mail,
             since_days=body.since_days,
@@ -156,6 +161,31 @@ async def mail_scan(
         raise HTTPException(
             status_code=code, detail=f"Could not read {box.address or 'your mailbox'}: {reason}"
         ) from exc
+    if body.read_now and result.saved and not body.dry_run:
+        result.scan_job_id = await _read_saved(request, books, opener, result.saved, user)
+    return result
+
+
+async def _read_saved(request: Request, books: Books, opener: Opener, names: list[str], user: str | None) -> str | None:
+    """The same background reading as an upload (app/scan_jobs.py): progress, then the user confirms each type."""
+    from app import scan_jobs
+    from app.routes_scan import settings
+    from app.vat_cycle import vat_cycle
+
+    try:
+        cfg = ai_config_from_request(request)
+    except HTTPException:
+        return None  # the files are in 00 Inbox; Review's scan reads them with a working AI choice
+    q = request.query_params
+    try:
+        num = lambda k: int(q[k]) if q.get(k) else None  # noqa: E731
+        cycle = vat_cycle(num("stagger"), num("start_month"), num("months") or 3)
+    except (ValueError, HTTPException):
+        cycle = vat_cycle(None, None, 3)
+    business = (request.headers.get("X-Business-Name") or "").strip() or None
+    s = settings(cfg, business, request.headers.get("X-Autopilot"), cycle, user)
+    job = await scan_jobs.start(books, opener, s, names[: scan_jobs.MAX_FILES], "email")
+    return job.id
 
 
 class MailboxList(BaseModel):

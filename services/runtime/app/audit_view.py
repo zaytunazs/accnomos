@@ -161,6 +161,9 @@ SUMMARIES: dict[str, Summary] = {
         + "; it is back in Review"
     ),
     "extract_failed": lambda r, w: f"Could not read {posixpath.basename(str(r.get('path') or '')) or 'a file'}",
+    "scan_type_confirmed": lambda r, w: (
+        "Confirmed the type of " + _plural(len(r.get("files") or []), "document", "documents") + " to read"
+    ),
     "books_rebuild_failed": lambda r, w: "Could not rebuild Books.xlsx; the ledger itself is unchanged",
     "rule_removed": lambda r, w: f"Stopped Autopilot for {r.get('supplier_key') or 'a supplier'}",
     "plan_applied": lambda r, w: (
