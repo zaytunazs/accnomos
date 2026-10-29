@@ -359,7 +359,7 @@ Review: `docs/reviews/app-shell/REVIEW.md`.
   true while MSAL returns no account (TopBar returned null). The old sign-in test counted any `msal.*` key but
   `msal.version`, and MSAL 5.26 names its keys `msal.3.account.keys`, `msal.<clientId>.active-account-filters` and so
   on, which always passed; MSAL 5 also encrypts its localStorage cache with a key in a session cookie, so after the
-  browser is closed it cannot read its own accounts (read in `node_modules/@azure/msal-browser/dist/cache/LocalStorage.mjs`).
+  browser is closed it cannot read its own accounts (read in @azure/msal-browser 5.26, dist/cache/LocalStorage.mjs).
   The e2e spec reproduces that state with the test sign-in, not with real MSAL; no real Microsoft account was used.
 - **The MSAL timeout handling has run only against the test sign-in's fake `timed_out` error** (`app-shell.spec.ts`).
   With real MSAL, two silent requests that time out at once each start an interactive redirect; MSAL refuses the second

@@ -6,5 +6,5 @@ export const PAGES = [
   "/accounting/chart", "/accounting/journals", "/accounting/assets", "/accounting/recode", "/accounting/tracking", "/reports/budgets",
   "/reports/cashflow", "/reports/exports",
   "/sales", "/sales/quotes", "/sales/items", "/sales/repeating", "/purchases", "/purchases/orders",
-  "/property", "/self-employment", "/cis",
+  "/property", "/self-employment", "/cis", "/help", "/meta-models",
 ];

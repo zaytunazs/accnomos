@@ -14,7 +14,7 @@ from localStorage (`lib/signed-in.ts` and the pre-paint probe in `lib/public-sit
 `msal.version`* meant signed in. That test was written for MSAL 2's key names. MSAL 5.26 (the version in the lockfile)
 writes `msal.3.account.keys`, `msal.3.token.keys.<clientId>`, `msal.<clientId>.active-account-filters`, `msal.3|…`
 entries, and encrypts its cache with a key held in a **session cookie** (`msal.cache.encryption`, read in
-`node_modules/@azure/msal-browser/dist/cache/LocalStorage.mjs`): when the browser is closed the key is gone and MSAL
+@azure/msal-browser 5.26, dist/cache/LocalStorage.mjs): when the browser is closed the key is gone and MSAL
 can no longer read its own accounts, but its keys are still in localStorage. So the shell said "signed in" (app shell,
 not the public site), the menu bar said "no account" (nothing), and the CSS that hides the sidebar only when the bar
 is present (`group-has-[[data-topnav]]`) showed the signed-out sidebar: exactly the screenshot.

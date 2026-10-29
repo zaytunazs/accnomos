@@ -31,7 +31,7 @@ async function sweep(page: Page, route: string) {
 }
 
 /** Every page of the app, plus what only shows after a click: each Settings tab and the account menu. */
-const APP_PAGES = [...PAGES, "/help", "/meta-models"];
+const APP_PAGES = PAGES; // includes /help and /meta-models
 
 async function sweepSettingsTabs(page: Page) {
   await page.goto("/settings");
