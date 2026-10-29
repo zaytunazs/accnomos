@@ -55,6 +55,36 @@ Owner's request: "one page that says which Meta model is used for what work and 
   `pyright app` 0 errors; web `eslint .` clean; `e2e:build` ok; full `e2e:test` (CI=1) 485 passed, 94 skipped, 1 failed
   (`site-layout.spec.ts`, the public-set copy above), then that spec re-run after the fix: 6 passed. No Flutter change.
 
+## Follow-up: no non-Meta names on any public or judge-facing page (owner's rule, 29 Oct 2026)
+
+`origin/main` merged (muse-transcribe had landed there). Reworded, with a non-Meta fallback always "a local fallback
+model":
+
+- **Public chat KB** (`services/runtime/app/public_kb.md`): voice fallback, Glimmer "run by the team", Spark Open
+  "hosted open weights", "the team's own server"; Baseten/DGX/Ollama dropped from the retrieval keywords and
+  `meta models` added.
+- **Labels the runtime sends to the UI**: the STT fallback's label is now "a local fallback model" (`app/ai/stt.py`,
+  shown as "Transcribed by …" on web and Android) and the chain's `spark` provider is "our own server"
+  (`app/ai/providers.py`). Code comments and env names keep the real names.
+- **Web**: `/how-it-works` (voice gap, Verifier gap, local-mode FAQ, "not tested" FAQ, the models list), the landing
+  page's models table, the Ask help text, `/privacy` (Glimmer example; Baseten listed as "a hosted inference provider
+  chosen by the server owner"), the Settings label "Local agent address", and the provider labels on `/models` and the
+  Review card line (`lib/meta-models.ts`, `lib/evals.ts`: "our own server", "hosted open weights", "Modal" without
+  the GPU name). Two `/how-it-works` lines were also out of date (Spark Open "unit-tested only, model name
+  unconfirmed"); they now give the measured figures, as `/meta-models` does. `/judges` and `/meta-models` had no such
+  names.
+- **Checks**: `e2e/submission-mode.spec.ts` now also fails on Whisper, Kokoro, Ollama, vLLM, Qwen, ComfyUI, DGX or
+  Baseten in any rendered page's text, title, meta description or accessible-name attributes, signed out, signed in
+  and with the phone menu open (list `THIRD_PARTY_NAMES` in `scripts/prelaunch-words.mjs`; not applied to the export's
+  JS files, which keep provider ids like `baseten:` to map them to Meta names).
+  `tests/test_public_chat.py::test_notes_name_no_non_meta_tool_engine_or_hardware` checks the KB in both build modes.
+- **Not changed**: repository docs (`docs/submission/*.md`, README, `docs/META_MODELS.md`, HONESTY) still use the full
+  names where they explain the engineering; tell me if the judge-facing submission docs should follow the same rule.
+  The privacy page now names a category rather than Baseten (UK GDPR art. 13(1)(e) asks for "the recipients or categories
+  of recipients", from knowledge: **not re-checked**, legislation.gov.uk is not reachable from this sandbox, 29 Oct
+  2026; the owner or their adviser should confirm a category is enough); Modal, which the server chain also sends documents to, was already not listed there, which is a gap
+  for the owner to decide on.
+
 ## Risks
 
 - The page's words are a hand summary of the code: a new AI call site will not appear until someone adds it

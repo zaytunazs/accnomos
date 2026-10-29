@@ -50,7 +50,7 @@ DEFAULT_TIMEOUTS: dict[str, tuple[float, float, float]] = {
 LABELS: dict[str, str] = {
     "modal": "Modal",
     "meta": "Meta Model API",
-    "spark": "DGX Spark",
+    "spark": "our own server",  # shown to users: no hardware or non-Meta names
     "local": "your machine",
     "key": "your Meta key",
     "test": "test stub",

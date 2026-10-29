@@ -1615,7 +1615,7 @@ class VoiceAnswer {
   final AskAnswer? answer;
 
   /// Which speech-to-text service heard it (`transcribed_by.label`), e.g.
-  /// "Muse Voice Transcribe" or "Whisper on the DGX Spark"; null if unsaid.
+  /// "Muse Voice Transcribe" or "a local fallback model"; null if unsaid.
   final String? transcribedBy;
 
   factory VoiceAnswer.fromJson(Map<String, dynamic> json) {

@@ -10,15 +10,15 @@ import type { RtProposal, RtServedBy } from "./runtime";
 const PROVIDERS: Record<string, string> = {
   modal: "Modal",
   meta: "Meta Model API",
-  spark: "DGX Spark",
-  baseten: "Baseten",
+  spark: "our own server",
+  baseten: "hosted open weights",
   local: "your machine",
   key: "your Meta key",
   test: "test stub",
   ollama: "your machine",
 };
 
-/** "Modal", "Meta Model API", "DGX Spark"... for a provider name the runtime records. */
+/** "Modal", "Meta Model API", "our own server"... for a provider name the runtime records. */
 export function providerLabel(name: string): string {
   return PROVIDERS[name] ?? name;
 }
@@ -42,7 +42,7 @@ export function servedName(s: RtServedBy): string {
 }
 
 /**
- * The Review card's line: "Read by Muse Glimmer 30B (Modal) · 14 s · checked by Muse Spark Open (Baseten)", plus
+ * The Review card's line: "Read by Muse Glimmer 30B (Modal) · 14 s · checked by Muse Spark Open (hosted open weights)", plus
  * "· Modal did not answer" when a provider was skipped. Null when the runtime did not say (older proposals, samples).
  */
 export function servedLine(p: Pick<RtProposal, "served_by" | "verification">): string | null {

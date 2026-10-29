@@ -33,9 +33,9 @@ const num = (x: unknown) => (typeof x === "number" ? String(x) : "n/a");
 
 function where(cfg: unknown): string {
   const url = typeof cfg === "object" && cfg && "base_url" in cfg ? String((cfg as Json).base_url) : "";
-  if (url.includes("modal.run")) return "Modal (L40S)";
-  if (url.includes("baseten")) return "Baseten";
-  if (url.includes("localhost") || url.includes("127.0.0.1")) return "DGX Spark";
+  if (url.includes("modal.run")) return "Modal";
+  if (url.includes("baseten")) return "hosted open weights";
+  if (url.includes("localhost") || url.includes("127.0.0.1")) return "our own server";
   return "Meta Model API";
 }
 
@@ -67,7 +67,7 @@ function ask(): EvalHeadline | null {
     run: "ask_40",
     title: "Ask: 35 questions over the seeded books",
     model: "Muse Glimmer 30B",
-    where: "Ollama (host not recorded in the run)",
+    where: "host not recorded in the run",
     numbers: [
       { label: "Numbers exact", value: `${num(g.numbers_exact)}/${num(g.with_gold)}` },
       { label: "Invented figures shown", value: num(g.shipped_invented) },

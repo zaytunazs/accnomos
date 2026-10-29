@@ -79,7 +79,7 @@ export default function ChooseAi() {
       </button>
       {mode === "local" && (
         <div className="rounded-2xl border border-[#E3E1D8] bg-white p-4">
-          <label className="text-xs font-bold text-[#4B5159]" htmlFor="agent">Local agent address (Ollama)</label>
+          <label className="text-xs font-bold text-[#4B5159]" htmlFor="agent">Local agent address</label>
           <input id="agent" className={input} value={local.baseUrl} onChange={(e) => setLocal({ ...local, baseUrl: e.target.value })} />
           <label className="mt-3 block text-xs font-bold text-[#4B5159]" htmlFor="lmodel">Model</label>
           <input id="lmodel" className={input} value={local.model} onChange={(e) => setLocal({ ...local, model: e.target.value })} />

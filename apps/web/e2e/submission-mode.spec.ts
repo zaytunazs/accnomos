@@ -1,5 +1,5 @@
 import type { Page } from "@playwright/test";
-import { prelaunchHits } from "../scripts/prelaunch-words.mjs";
+import { prelaunchHits, THIRD_PARTY_NAMES } from "../scripts/prelaunch-words.mjs";
 import { expect, signIn, test } from "./fixtures";
 import { PAGES } from "./pages";
 
@@ -9,6 +9,8 @@ import { PAGES } from "./pages";
  * is read whole (title, meta description, all text in the DOM including closed menus, and accessible names held in
  * attributes); scripts are left out because test builds carry the pre-launch branch for specs that flip the mode.
  * The production export is checked file by file in CI (scripts/prelaunch-words.mjs).
+ * The same read also finds no non-Meta tool, engine or hardware name (Whisper, Kokoro, Ollama, vLLM, Qwen, ComfyUI,
+ * DGX, Baseten): a non-Meta fallback is "a local fallback model" on every public or judge-facing page.
  */
 
 async function pageWords(page: Page): Promise<string> {
@@ -27,7 +29,9 @@ async function sweep(page: Page, route: string) {
   await page.goto(route);
   await expect(page.locator("main").first()).toBeVisible();
   await page.waitForLoadState("networkidle");
-  expect(prelaunchHits(await pageWords(page)), `${route}: pre-launch wording`).toEqual([]);
+  const words = await pageWords(page);
+  expect(prelaunchHits(words), `${route}: pre-launch wording`).toEqual([]);
+  expect(prelaunchHits(words, THIRD_PARTY_NAMES), `${route}: non-Meta tool names`).toEqual([]);
 }
 
 test.describe("submission mode: no pre-launch wording", () => {
@@ -44,7 +48,9 @@ test.describe("submission mode: no pre-launch wording", () => {
     await page.goto("/");
     await page.getByRole("button", { name: "Menu" }).click();
     await expect(page.getByRole("navigation", { name: "Site menu" })).toBeVisible();
-    expect(prelaunchHits(await pageWords(page))).toEqual([]);
+    const words = await pageWords(page);
+    expect(prelaunchHits(words)).toEqual([]);
+    expect(prelaunchHits(words, THIRD_PARTY_NAMES)).toEqual([]);
   });
 
   test("every page, signed in", async ({ page }) => {

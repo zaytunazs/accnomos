@@ -16,10 +16,17 @@ export const PRELAUNCH_WORDS = [
   /\btesters\b/i,
 ];
 
+/**
+ * Non-Meta tools, engines and hardware that no public or judge-facing page may name (owner's rule, 29 Oct 2026): a
+ * non-Meta fallback is "a local fallback model". Checked on every rendered page by e2e/submission-mode.spec.ts only,
+ * not on the export's files: the JS keeps provider ids such as "baseten:" and "ollama:" to map them to Meta names.
+ */
+export const THIRD_PARTY_NAMES = [/whisper/i, /kokoro/i, /ollama/i, /vllm/i, /qwen/i, /comfyui/i, /\bdgx\b/i, /baseten/i];
+
 /** Each match in `text` as a short quoted excerpt. */
-export function prelaunchHits(text) {
+export function prelaunchHits(text, words = PRELAUNCH_WORDS) {
   const hits = [];
-  for (const re of PRELAUNCH_WORDS) {
+  for (const re of words) {
     const g = new RegExp(re.source, "gi");
     for (const m of text.matchAll(g)) {
       hits.push(JSON.stringify(text.slice(Math.max(0, m.index - 40), m.index + m[0].length + 40)));
