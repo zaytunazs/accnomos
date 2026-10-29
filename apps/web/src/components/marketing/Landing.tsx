@@ -196,7 +196,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
   },
   {
     q: "Can an accountant review my books for me?",
-    a: "Where it is offered, you can opt in, in Settings, Your accountant, to reviews by Accnomos accountants, our own accounting team. It is separate from inviting your own accountant: you read what they can see before you agree, and Stop reviews removes the sharing at once. They never submit anything to HMRC for you and never move money.",
+    a: "Where it is offered, you can opt in, in Settings, Your accountant, to have Accnomos accountants, our own accounting team, check your books. It is separate from inviting your own accountant: you read what they can see before you agree, and Stop reviews removes the sharing at once. They never submit anything to HMRC for you and never move money.",
   },
   {
     q: "What can the AI get wrong?",

@@ -58,6 +58,20 @@ opt-in appears only when `ACCOUNTANT_TEAM_EMAIL` is set, so the copy says "where
 - Production export: `pnpm build` then `node scripts/prelaunch-words.mjs out`: 345 files checked, 0 pre-launch
   phrases; no test-mode code.
 
+## Gate results (merged with `origin/main` at 715c564, 29 Oct 2026)
+
+| Gate | Result |
+| --- | --- |
+| `pytest -q` (services/runtime) | 2393 passed, 2 skipped |
+| `ruff check .`, `ruff format --check .` | clean (586 files) |
+| `pyright` | 0 errors |
+| `eslint .`, `tsc --noEmit` | clean |
+| `pnpm run e2e:build && pnpm run e2e:test` (`CI=1`) | 491 passed, 94 skipped (the opt-in screenshot specs `shots` and `design-shots`), 0 failed |
+| `pnpm build` + `scripts/prelaunch-words.mjs out` | 345 files, 0 pre-launch phrases; no test-mode code |
+
+One landing-page test reserves the words "to review" for app chrome; the first draft of the new FAQ answer said "opt
+in … to reviews by" and was reworded.
+
 ## Risks
 
 - The live runtime must have `EARLY_ACCESS_ENABLED=1` and its data volume; this cannot be seen from the repository.
