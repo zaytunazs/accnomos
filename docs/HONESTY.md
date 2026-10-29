@@ -524,6 +524,23 @@ every sharing call ran against httpx mocks shaped like the Microsoft Learn examp
   corrected: landlords' property income figures and flat-rate VAT are in the build now, and only sending payroll (RTI)
   to HMRC is missing, not the FPS and EPS files.
 
+## Video footage and how-to screenshots
+
+- **Everything in `docs/video/` and `docs/howto/img/` was recorded from the test-mode build** (`tools/video/`, 29 Oct
+  2026) on the demo sandbox's fictional books: a stub stands in for every model and the demo simulates HMRC. Where the
+  script needs a live model, the Android camera, voice, a real mailbox, HMRC's sandbox or shared books, the preview
+  carries a *Stand-in: film live* tag or a *Film live* card (`SHOT_PLAN` in `tools/video/flows.ts`, listed in
+  `docs/video/README.md`). None of those shots has been filmed live yet.
+- Captures hide one test-mode element: Home's summary card ("Test stub summary … (accnomos-test-stub)"). Proposal cards
+  in the demo still say "Read by Muse Spark" and "seed:gold-reading": that is the seeded demo data's label, not a live
+  reading.
+- Muse's judges' script (`docs/video/JUDGES_VIDEO.md`) says "VAT return submitted to sandbox" (shot 10) and has a voice
+  shot (shot 11, clip 7); the HMRC browser flow has not been run end to end against the sandbox and voice has never run
+  live (both above). Shot 7 quotes the 28 Oct gate counts. The README checklist flags all three.
+- `tools/video/vo.py kokoro` (Kokoro TTS for the voice-over) was written for the owner's Spark and never run here.
+- 24 of the 54 how-to screenshots found no named control and show the whole page; steps that happen outside the app
+  (Microsoft consent, HMRC sign-in, Basic PAYE Tools) show the app's side only (`docs/howto/img/SHOTS.md`).
+
 ## Security and deployment
 
 - Single-worker limits: the **rate limit is per process** (in-memory buckets, cleared on restart; several replicas would each allow the full rate) and the relay's spent-state set is per process, hence one relay worker (`deploy/Dockerfile.relay`).
