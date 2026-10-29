@@ -42,7 +42,7 @@ test("setup checklist: signed in and incomplete, each row resumes its connect st
   await page.goto("/");
   const setup = page.getByRole("region", { name: "Get set up" });
   await expect(setup).toBeVisible();
-  await expect(setup).toContainText(/\d of 7 done/);
+  await expect(setup).toContainText(/\d of 8 done/);
   const row = (name: string) => setup.getByRole("link", { name: new RegExp(`^${name.replace(/[+()]/g, "\\$&")} — `) });
   await expect(row("Connect OneDrive")).toHaveAccessibleName("Connect OneDrive — review in Connect"); // signed in, so done
   await expect(row("Business name + VAT number")).toHaveAccessibleName("Business name + VAT number — set up in Connect");
@@ -51,17 +51,25 @@ test("setup checklist: signed in and incomplete, each row resumes its connect st
     "Choose your AI": "/connect/ai",
     "Business name + VAT number": "/connect/business",
     "VAT period": "/connect/business",
+    "Business details wizard": "/setup",
     "Invoice profile": "/settings#settings-invoice-profile",
     "Import Outlook contacts": "/settings#settings-intake",
     "Try a receipt": "/connect/ready",
   };
   for (const [name, href] of Object.entries(links)) await expect(row(name)).toHaveAttribute("href", href);
+  await expect(row("Business details wizard")).toHaveAccessibleName("Business details wizard — set up in Review");
   await expect(row("Try a receipt")).toHaveAccessibleName("Try a receipt — try it in Connect"); // contains the visible "Try it"
 
   // A row resumes its wizard step.
   await row("VAT period").click();
   await expect(page).toHaveURL(/\/connect\/business$/);
   await expect(page.getByLabel("Business name")).toBeVisible();
+
+  // The wizard row resumes in the set-up wizard.
+  await page.goto("/");
+  await row("Business details wizard").click();
+  await expect(page).toHaveURL(/\/setup$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Set up your business" })).toBeVisible();
 
   await page.goto("/");
   await setup.getByRole("button", { name: "Dismiss" }).click();

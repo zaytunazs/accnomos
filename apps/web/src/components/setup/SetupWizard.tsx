@@ -289,7 +289,7 @@ export default function SetupWizard() {
           <div className={card}>
             <h2 className="text-[17px] font-extrabold text-ink">Your company</h2>
             <p className="mt-1 text-sm text-muted">Enter the company number, look it up at Companies House, then confirm it is you.</p>
-            <label className={`${label} mt-3 block`} htmlFor="wiz-cr">Company number</label>
+            <label className={`${label} mt-3 block`} htmlFor="wiz-crn">Company number</label>
             <div className="flex gap-2">
               <input id="wiz-crn" className={input} value={companyNumber} placeholder="e.g. 01234567" onChange={(e) => setCompanyNumber(e.target.value)} />
               <button type="button" disabled={saving || !companyNumber.trim()} className={back} onClick={lookUpCompany}>Look up</button>
