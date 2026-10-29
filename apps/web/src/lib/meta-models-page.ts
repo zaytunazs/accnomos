@@ -193,7 +193,7 @@ const MODAL_NOTE =
  * testers. The app's own key mode still asks for standard muse-spark-1.3 (lib/ai-config.ts DEFAULT_KEY).
  */
 export const CONTRIBUTOR_NOTE =
-  "Our live server uses Muse Spark 1.3 in Contributor mode for the demo and testing. In Contributor mode Meta may use the content sent to it to improve its models. The demo uses only fictional sample data; testers who connect their own books are served the same way, so please test with documents you are happy to share. Before real customers use it, the server switches to standard mode. With your own Meta key (key mode) the app asks for standard Muse Spark 1.3.";
+  "Our live server uses Muse Spark 1.3 in Contributor mode for the demo and testing. In Contributor mode Meta may use the content sent to it to improve its models. The demo uses only fictional sample data; anyone trying it with their own books is served the same way, so please test with documents you are happy to share. Before real customers use it, the server switches to standard mode. With your own Meta key (key mode) the app asks for standard Muse Spark 1.3.";
 
 const TEXT_CHECKS = [
   "AI proposes, you approve, code calculates: the model returns strict JSON or words only; every amount is worked out in pence by code, and nothing is posted, sent or kept until you approve it.",

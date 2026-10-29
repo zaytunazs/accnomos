@@ -116,14 +116,17 @@ model":
   the model **Muse Spark 1.3**, shows `muse-spark-1.3-contributor (live, demo and testing) · muse-spark-1.3 (your own
   key)`, and the highlighted line and the Muse Spark section say: the live server uses Contributor mode for the demo and
   testing; in Contributor mode Meta may use the content sent to it to improve its models; the demo uses only fictional
-  sample data; testers who connect their own books are served the same way, so they should test with documents they
-  are happy to share; before real customers the server switches to standard mode; with your own Meta key the app asks
+  sample data; anyone trying it with their own books is served the same way, so they should test with documents
+  they are happy to share; before real customers the server switches to standard mode; with your own Meta key the app asks
   for standard Muse Spark 1.3.
 - The tester sentence is mine, not in the owner's wording: a signed-in tester's own documents go through the same
   server chain, so "the demo uses only fictional sample data" alone would leave them out.
 - `docs/submission/META_MODELS.md` and `docs/HONESTY.md` say the same. HONESTY also records that the switch to standard
   mode is a server setting nothing in the code enforces, and that `/privacy` and the public chat notes do not mention
   Contributor mode yet.
+- Full e2e on `86907c8`: 484 passed, 94 skipped, 2 failed, both the submission-mode sweep (signed out and signed
+  in): my first wording said "testers", a word the pre-launch list forbids on the submission build. Reworded to
+  "anyone trying it with their own books"; `submission-mode.spec.ts` and `meta-models-page.spec.ts` then 7 passed.
 - The earlier full e2e run on `70ef62d`: 485 passed, 94 skipped, 1 flaky (`property.spec.ts` landlord mode, passed on
   retry; not touched by this branch).
 
