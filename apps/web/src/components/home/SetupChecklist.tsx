@@ -81,6 +81,7 @@ export default function SetupChecklist() {
   const [contactsImported, setContactsImported] = useState(false);
   const [local, setLocal] = useState<{ ai: boolean; business: boolean; vat: boolean } | null>(null);
   const [profileDone, setProfileDone] = useState<boolean | null>(null);
+  const [wizardDone, setWizardDone] = useState<boolean | null>(null);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -104,6 +105,13 @@ export default function SetupChecklist() {
         .invoiceProfile(account)
         .then((p) => setProfileDone(p.name.trim() !== "" && p.address.trim() !== ""))
         .catch(() => setProfileDone(false));
+      runtime.setupWizard
+        .status(account)
+        .then((s) => setWizardDone(!!(s.setup as Record<string, unknown>).confirmed_at))
+        .catch(() => setWizardDone(null));
+    } else {
+      // Defer to avoid a synchronous setState in the effect body.
+      queueMicrotask(() => setWizardDone(null));
     }
   }, [account]);
 
@@ -137,6 +145,13 @@ export default function SetupChecklist() {
       hint: "Quarterly stagger or start month",
       href: "/connect/business",
       done: local.vat,
+    },
+    {
+      id: "wizard",
+      label: "Business details wizard",
+      hint: wizardDone === null ? "Checking your OneDrive…" : "Type, VAT, Income Tax, CIS, payroll, property",
+      href: "/setup",
+      done: wizardDone === true,
     },
     {
       id: "invoice",

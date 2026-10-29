@@ -429,6 +429,17 @@ export default function SettingsPanels() {
         hidden={group !== "business"}
         className="mt-4 space-y-4"
       >
+        <div className={card}>
+          <h2 className={heading}>Set-up wizard</h2>
+          <p className="mt-1 text-sm text-muted">
+            Answer one question at a time — business type, Companies House, VAT, Income Tax, CIS, payroll and
+            property — saved as you go. Nothing is filed.
+          </p>
+          <Link href="/setup" className="mt-2 inline-block min-h-11 font-bold text-teal-dark">
+            Open the set-up wizard →
+          </Link>
+        </div>
+
         <ProfileDetails card={card} heading={heading} />
 
         <BusinessDetails card={card} heading={heading} />
