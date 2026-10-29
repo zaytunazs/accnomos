@@ -16,6 +16,21 @@ interface Feature {
   gap: string;
 }
 
+/** The how-to guides in docs/howto/ (screenshots from the demo sandbox's fictional sample books), read on GitHub. */
+const GUIDES_URL = "https://github.com/zaytunazs/accnomos/blob/main/docs/howto";
+const guides: { file: string; title: string; who: string }[] = [
+  { file: "connect-books", title: "Connect your books or try the demo", who: "Opening Accnomos for the first time" },
+  { file: "add-mailbox", title: "Add a mailbox", who: "Collecting supplier receipts by email" },
+  { file: "review-approve", title: "Review and approve", who: "Clearing the Review queue" },
+  { file: "reconcile-bank", title: "Reconcile bank lines", who: "Matching a statement against the books" },
+  { file: "vat-return", title: "Do a VAT return", who: "VAT-registered and filing through MTD" },
+  { file: "income-tax-update", title: "Income Tax quarterly update", who: "Sole traders and landlords sending MTD updates" },
+  { file: "payroll-paye", title: "Run payroll and file with Basic PAYE Tools", who: "Employers running a pay run" },
+  { file: "invite-accountant", title: "Invite your accountant", who: "Giving your accountant access" },
+  { file: "export-accountant", title: "Export for your accountant", who: "Sending a period's records away" },
+  { file: "voice-chat", title: "Use voice and chat", who: "Asking in plain words, typed or spoken" },
+];
+
 const features: Feature[] = [
   {
     id: "receipts",
@@ -326,6 +341,11 @@ export default function HowItWorksPage() {
       <nav aria-label="Contents" className="rounded-2xl border border-border bg-white p-5">
         <h2 className="text-lg font-extrabold tracking-tight">Contents</h2>
         <ul className="mt-2 grid grid-cols-1 gap-1 text-[15px] min-[560px]:grid-cols-2">
+          <li>
+            <Link href="#guides" className="font-semibold text-teal-dark underline hover:text-teal">
+              Step-by-step guides
+            </Link>
+          </li>
           {features.map((f) => (
             <li key={f.id}>
               <Link href={`#${f.id}`} className="font-semibold text-teal-dark underline hover:text-teal">
@@ -355,6 +375,30 @@ export default function HowItWorksPage() {
           </li>
         </ul>
       </nav>
+
+      <section id="guides" aria-labelledby="guides-heading" className="rounded-2xl border border-border bg-white p-5 sm:p-6 scroll-mt-24">
+        <h2 id="guides-heading" className="text-xl font-extrabold tracking-tight">
+          Step-by-step guides
+        </h2>
+        <p className="mt-1 text-[15px] leading-7 text-muted">
+          Short guides with a screenshot for every step, taken from the demo&apos;s fictional sample books. They open on GitHub.
+        </p>
+        <ul className="mt-3 grid grid-cols-1 gap-2 min-[560px]:grid-cols-2">
+          {guides.map((g) => (
+            <li key={g.file} className="rounded-xl bg-ground p-3">
+              <a
+                href={`${GUIDES_URL}/${g.file}.md`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[15px] font-bold text-teal-dark underline hover:text-teal"
+              >
+                {g.title}
+              </a>
+              <p className="mt-0.5 text-[14px] leading-6 text-muted">{g.who}</p>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       {features.map((f) => (
         <section key={f.id} id={f.id} aria-labelledby={`${f.id}-heading`} className="rounded-2xl border border-border bg-white p-5 sm:p-6 scroll-mt-24">

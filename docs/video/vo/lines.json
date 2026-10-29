@@ -1,0 +1,152 @@
+[
+ {
+  "file": "judges-01.wav",
+  "text": "Before the hackathon I had only a local server. Everything you see, and the Meta models it runs, was set up after kickoff.",
+  "seconds": 10
+ },
+ {
+  "file": "judges-02.wav",
+  "text": "Accnomos helps UK small businesses, sole traders and landlords with the compulsory part: digital records and Making Tax Digital filings. The dashboard shows cash, what is owed, and what is due: the VAT return, quarterly Income Tax updates, and Self Assessment on 31 January.",
+  "seconds": 18
+ },
+ {
+  "file": "judges-03.wav",
+  "text": "Paperwork starts on the phone. Photograph a receipt in the Android app and it lands in your own OneDrive. Forward a supplier email and Outlook intake picks it up, read only. Nothing posts without your tap.",
+  "seconds": 20
+ },
+ {
+  "file": "judges-04.wav",
+  "text": "A Meta model reads each document: Muse Glimmer 30B with open weights, or Muse Spark with your key. Code checks the arithmetic and repairs VAT-inclusive totals. A second independent reading checks six fields before you approve.",
+  "seconds": 20
+ },
+ {
+  "file": "judges-05.wav",
+  "text": "Measured on synthetic documents: receipts fully right 91 and 93 per cent for Muse Spark Open, 85 and 80 for Muse Glimmer. Glimmer also reads CIS and property papers and codes bank lines, about nine in ten right. Real photos will score lower.",
+  "seconds": 20
+ },
+ {
+  "file": "judges-06.wav",
+  "text": "Approving writes an immutable ledger event, never an edit. Your books are files in your own OneDrive: ledger events and Books.xlsx. There is no Accnomos database, so disconnecting loses nothing.",
+  "seconds": 20
+ },
+ {
+  "file": "judges-07.wav",
+  "text": "The nine VAT boxes are worked out by code in whole pence, then walked through HMRC's sandbox flow after the legal declaration. Tested with 1260 runtime checks, 208 browser tests and 248 app tests.",
+  "seconds": 20
+ },
+ {
+  "file": "judges-08.wav",
+  "text": "Watch one receipt travel. A supplier email arrives in Outlook and intake copies it to the inbox. The proposal shows supplier, date and totals, with a second reading agreeing on all six fields.",
+  "seconds": 18
+ },
+ {
+  "file": "judges-09.wav",
+  "text": "I approve and it posts to the ledger. Home's AI summary words the position in plain sentences, every figure checked against the books.",
+  "seconds": 12
+ },
+ {
+  "file": "judges-10.wav",
+  "text": "The VAT return shows the boxes the receipt changed. I connect to HMRC's sandbox, confirm the declaration, and submit. The receipt lands in my OneDrive.",
+  "seconds": 14
+ },
+ {
+  "file": "judges-11.wav",
+  "text": "By voice: Andy did 2 hours overtime at double time on the Hendon job. It becomes a card I approve.",
+  "seconds": 8
+ },
+ {
+  "file": "clip-01-01.wav",
+  "text": "Supplier emails are picked up from Outlook with read-only access. Intake copies likely receipts to the inbox and logs them. It never sends, moves or deletes your mail.",
+  "seconds": 14
+ },
+ {
+  "file": "clip-01-02.wav",
+  "text": "Or snap it on the phone. The photo goes to your own OneDrive first, then to the reader.",
+  "seconds": 11
+ },
+ {
+  "file": "clip-01-03.wav",
+  "text": "Both land in one Review queue as proposals. Nothing posts until you approve.",
+  "seconds": 10
+ },
+ {
+  "file": "clip-02-01.wav",
+  "text": "Home is one dashboard: money in and out this month, who owes you, what you owe, and what is coming up. Cards for features you never use stay hidden.",
+  "seconds": 16
+ },
+ {
+  "file": "clip-02-02.wav",
+  "text": "The AI summary words the position in two to four sentences. Code checks every figure against the books first, and an invented number is replaced by the facts. The card says who wrote it.",
+  "seconds": 19
+ },
+ {
+  "file": "clip-03-01.wav",
+  "text": "The nine VAT boxes are calculated by code from approved entries, in whole pence. No model touches them. Each box opens the ledger lines behind it.",
+  "seconds": 15
+ },
+ {
+  "file": "clip-03-02.wav",
+  "text": "Then walk through the Making Tax Digital flow: connect to HMRC's sandbox, check the obligations, confirm the declaration and submit. The receipt is saved to your OneDrive.",
+  "seconds": 20
+ },
+ {
+  "file": "clip-04-01.wav",
+  "text": "Sole traders switch on self-employment in Settings. Quarterly figures are worked out from approved entries, with the ledger lines behind each box.",
+  "seconds": 12
+ },
+ {
+  "file": "clip-04-02.wav",
+  "text": "Landlords register each property and see its rental income for the year, with expenses beside it.",
+  "seconds": 12
+ },
+ {
+  "file": "clip-04-03.wav",
+  "text": "Tick to confirm, submit the update through the sandbox, and the receipt is filed in your books.",
+  "seconds": 11
+ },
+ {
+  "file": "clip-05-01.wav",
+  "text": "For contractors, each subcontractor's verification status sets the deduction rate, and code works out every deduction to the penny from the bills.",
+  "seconds": 15
+ },
+ {
+  "file": "clip-05-02.wav",
+  "text": "The CIS300 figures and file are prepared for you. Accnomos never submits them: you file through HMRC's CIS online service, then match the payment in the bank.",
+  "seconds": 20
+ },
+ {
+  "file": "clip-06-01.wav",
+  "text": "Enter hours and rates to get a pay-run estimate, line by line in whole pence. These are estimates for planning, not filings.",
+  "seconds": 16
+ },
+ {
+  "file": "clip-06-02.wav",
+  "text": "Download the payslips, the FPS and EPS files and the pension schedule, then file them with HMRC's Basic PAYE Tools. Accnomos never files payroll or pays HMRC itself.",
+  "seconds": 19
+ },
+ {
+  "file": "clip-07-01.wav",
+  "text": "Andy did 2 hours overtime at double time on the Hendon job. It becomes a timesheet card, and nothing is recorded until I approve.",
+  "seconds": 13
+ },
+ {
+  "file": "clip-07-02.wav",
+  "text": "Ask for a quote and the model returns only an intent. Code finds the customer, prices every line in pence, and waits.",
+  "seconds": 11
+ },
+ {
+  "file": "clip-07-03.wav",
+  "text": "Remember to order 2-inch bolts for the Hendon job. Small asks become to-dos instead of paperwork.",
+  "seconds": 11
+ },
+ {
+  "file": "clip-08-01.wav",
+  "text": "Your accountant opens the same files you see: the ledger, the spreadsheet and the audit trail. Every change is recorded under their name.",
+  "seconds": 15
+ },
+ {
+  "file": "clip-08-02.wav",
+  "text": "Export the VAT return as sent, the Income Tax summary and the full ledger as PDF, spreadsheet or CSV. Anything they question is undone with a reversing entry, never a delete.",
+  "seconds": 20
+ }
+]
