@@ -370,7 +370,7 @@ def report_md(s: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         "",
         f"- Documents: **{s['docs']}** ({s['answered']} answered, **{s['refusals']} refusals**, {s['refusal_pct']}%)",
         f"- Accuracy (predicted kind equals the gold label; a refusal counts as wrong): **{s['accuracy_pct']}%**",
-        f"- Model answered **{s['by_ai']}** ({s['by_ai_pct']}%), code's guess used on **{s['by_code']}** ({s['by_code_pct']}%)",
+        f"- Who answered: model **{s['by_ai']}** ({s['by_ai_pct']}%), code **{s['by_code']}** ({s['by_code_pct']}%)",
         f"- Code's fallback guess used on **{s['fallback_used']}** answered documents ({s['fallback_pct']}%)",
         f"- Bank CSVs recognised by code alone: {s['csv_by_code']}",
         f"- Latency: mean {L['mean']} s, p50 {L['p50']} s, p95 {L['p95']} s, max {L['max']} s (total {L['total']} s)",
@@ -601,7 +601,10 @@ def main(argv: list[str] | None = None) -> int:
     if summary:
         print(
             json.dumps(
-                {k: summary[k] for k in ("docs", "answered", "by_ai", "by_code", "accuracy_pct", "refusals", "latency_s")}
+                {
+                    k: summary[k]
+                    for k in ("docs", "answered", "by_ai", "by_code", "accuracy_pct", "refusals", "latency_s")
+                }
             )
         )
     return 0

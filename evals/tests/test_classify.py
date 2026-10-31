@@ -126,7 +126,7 @@ def test_summary_counts_model_answers_vs_code(tmp_path: Path) -> None:
     assert s["by_ai"] > 0 and s["by_code"] > 0
     assert s["by_code"] >= s["csv_by_code"] + s["fallback_used"]  # CSVs by design, misses by fallback
     assert s["by_ai_pct"] == round(100 * s["by_ai"] / s["answered"], 1)
-    assert "Model answered" in (tmp_path / "o" / "report.md").read_text(encoding="utf-8")
+    assert "Who answered" in (tmp_path / "o" / "report.md").read_text(encoding="utf-8")
 
 
 def test_model_miss_records_its_reason(monkeypatch: pytest.MonkeyPatch) -> None:

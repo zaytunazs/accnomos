@@ -18,7 +18,6 @@ import httpx
 import pytest
 
 from accnomos_connectors import FakeStorageProvider
-
 from app import scan_jobs
 from app.ai import chain
 from app.ai import classify as classify_ai
@@ -54,9 +53,7 @@ def _patch(monkeypatch: pytest.MonkeyPatch, handler: Callable[[httpx.Request], h
         seen.append(request)
         return handler(request)
 
-    monkeypatch.setattr(
-        classify_ai.httpx, "AsyncClient", lambda **kw: real(transport=httpx.MockTransport(inner), **kw)
-    )
+    monkeypatch.setattr(classify_ai.httpx, "AsyncClient", lambda **kw: real(transport=httpx.MockTransport(inner), **kw))
     return seen
 
 
@@ -124,7 +121,6 @@ async def test_provider_timeout_falls_back_to_code_with_the_reason_logged(
 
 async def test_spent_budget_never_reaches_the_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     seen = _patch(monkeypatch, lambda r: _reply("receipt"))
-    with chain.limits(deadline=time.monotonic() - 1):  # the document's time is already up
-        with pytest.raises(ExtractionError, match="did not answer"):
-            await classify_ai.classify(None, None, _cfg(), text=TEXT)
+    with chain.limits(deadline=time.monotonic() - 1), pytest.raises(ExtractionError, match="did not answer"):
+        await classify_ai.classify(None, None, _cfg(), text=TEXT)  # the document's time is already up
     assert seen == []  # nothing to ask with: no call, and the reason still says so
