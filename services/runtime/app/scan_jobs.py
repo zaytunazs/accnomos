@@ -504,6 +504,8 @@ async def _classify(books: Books, f: ScanFile, settings: Settings) -> None:
             CLASSIFY_TIMEOUT_S,
         )
     except ExtractionError as exc:
+        # Secret-free: classify's errors carry a status, a timeout kind or a parse note, never the key (header auth).
+        log.warning("classify fell back to code for %s: %s", f.name, exc)
         timed_out = isinstance(exc, inbox.DocTimeout) or "timed out" in str(exc) or "did not answer" in str(exc)
         f.guess = classify_ai.by_words(text, f.name, settings.business_name) if text else PHOTO_GUESS
         why = "did not answer in time" if timed_out else "could not say"

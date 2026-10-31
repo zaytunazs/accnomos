@@ -138,7 +138,9 @@ async def classify(
     try:
         raw, _served = await chain.run(cfg, "classify", attempt, vision=b64 is not None)
     except httpx.HTTPStatusError as exc:
-        raise ExtractionError(f"{cfg.mode} backend HTTP {exc.response.status_code}") from exc
+        detail = " ".join(exc.response.text.split())[:200]  # the provider's own words, never our key (header auth)
+        msg = f"{cfg.mode} backend HTTP {exc.response.status_code}"
+        raise ExtractionError(f"{msg}: {detail}" if detail else msg) from exc
     except httpx.HTTPError as exc:
         raise ExtractionError(f"{cfg.mode} backend did not answer: {type(exc).__name__}") from exc
     except TimeoutError as exc:
