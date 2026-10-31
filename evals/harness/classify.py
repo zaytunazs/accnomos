@@ -23,7 +23,8 @@ Scoring, per document
 * ``correct``: the predicted kind equals the gold label (a refusal counts as wrong: a person gets nothing).
 * per-type precision and recall over the classifier's type set.
 * a confusion matrix (gold label -> predicted kind, refusals as ``refused``).
-* latency p50 / p95 over the answered documents, and the share of rows where code's fallback guess was used.
+* latency p50 / p95 over the answered documents, the share of rows where code's fallback guess was used,
+  and how many answers came from the model vs code (``by_ai`` / ``by_code``).
 
 Writes ``evals/runs/classify/{results.jsonl, summary.json, report.md}``. Resumable: ids already in
 results.jsonl are skipped (``--fresh`` starts again). One request at a time, so the production runtime on
@@ -237,10 +238,14 @@ async def run_case(case: Case, cfg: AiConfig) -> dict[str, Any]:
     try:
         guess = await classify_mod.classify(None, None, cfg, text=case.text, business_name=BUSINESS)
         fallback = False
-    except ExtractionError:
-        # The upload flow's fallback: code guesses from the words when the model does not answer.
+        fallback_reason: str | None = None
+    except ExtractionError as exc:
+        # The upload flow's fallback: code guesses from the words when the model does not answer. The reason is
+        # secret-free (a status, a timeout kind or a parse note, never the key) and stays in the row, so a run of
+        # instant misses says why instead of reading as normal code guesses.
         guess = classify_mod.by_words(case.text, case.name, BUSINESS)
         fallback = True
+        fallback_reason = str(exc)[:300]
     except Exception as exc:  # noqa: BLE001 -- anything else is a refusal, never a crash
         row.update(
             outcome="refused",
@@ -256,6 +261,7 @@ async def run_case(case: Case, cfg: AiConfig) -> dict[str, Any]:
         confidence=guess.confidence,
         by=guess.by,
         fallback=fallback,
+        fallback_reason=fallback_reason,
         csv_by_code=False,
         reason=guess.reason,
         correct=guess.kind == case.label,
@@ -281,6 +287,8 @@ def summarise(rows: list[dict[str, Any]], cfg: AiConfig | None, stub: bool) -> d
     refused = total - len(ok)
     fallback = sum(1 for r in ok if r.get("fallback"))
     csv_code = sum(1 for r in ok if r.get("csv_by_code"))
+    by_ai = sum(1 for r in ok if r.get("by") == "ai")
+    by_code = sum(1 for r in ok if r.get("by") == "code")
     kinds = list(classify_mod.KINDS)
     per_type = {}
     for kind in kinds:
@@ -324,6 +332,10 @@ def summarise(rows: list[dict[str, Any]], cfg: AiConfig | None, stub: bool) -> d
         "fallback_used": fallback,
         "fallback_pct": pct(fallback, len(ok)),
         "csv_by_code": csv_code,
+        "by_ai": by_ai,
+        "by_ai_pct": pct(by_ai, len(ok)),
+        "by_code": by_code,
+        "by_code_pct": pct(by_code, len(ok)),
         "per_type": per_type,
         "confusion": confusion,
         "by_source": by_source,
@@ -358,6 +370,7 @@ def report_md(s: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         "",
         f"- Documents: **{s['docs']}** ({s['answered']} answered, **{s['refusals']} refusals**, {s['refusal_pct']}%)",
         f"- Accuracy (predicted kind equals the gold label; a refusal counts as wrong): **{s['accuracy_pct']}%**",
+        f"- Model answered **{s['by_ai']}** ({s['by_ai_pct']}%), code's guess used on **{s['by_code']}** ({s['by_code_pct']}%)",
         f"- Code's fallback guess used on **{s['fallback_used']}** answered documents ({s['fallback_pct']}%)",
         f"- Bank CSVs recognised by code alone: {s['csv_by_code']}",
         f"- Latency: mean {L['mean']} s, p50 {L['p50']} s, p95 {L['p95']} s, max {L['max']} s (total {L['total']} s)",
@@ -492,7 +505,15 @@ def _default_base() -> str:
 
 
 def default_config(base: str | None = None, model: str | None = None) -> AiConfig:
-    """The provider chain default: the Meta Model API when ``META_API_KEY`` is set, else the Spark local model."""
+    """The provider chain default: the server's own chain (``AI_PROVIDERS``) when one is configured, exactly what
+    the upload flow in ``app/scan_jobs.py`` gets via ``AiConfig.resolve``; else the Meta Model API when
+    ``META_API_KEY`` is set, else the Spark local model. An explicit ``--base``/``--model`` is that one backend."""
+
+    if base is None and model is None:
+        from app.ai import providers as providers_mod  # noqa: E402  the same chain builder the runtime resolves
+
+        if providers_mod.chain_names():
+            return AiConfig.resolve()
     if (os.getenv("META_API_KEY") or "").strip():
         return AiConfig(
             mode="key",
@@ -578,7 +599,11 @@ def main(argv: list[str] | None = None) -> int:
             return 2
     summary = asyncio.run(main_async(args))
     if summary:
-        print(json.dumps({k: summary[k] for k in ("docs", "answered", "accuracy_pct", "refusals", "latency_s")}))
+        print(
+            json.dumps(
+                {k: summary[k] for k in ("docs", "answered", "by_ai", "by_code", "accuracy_pct", "refusals", "latency_s")}
+            )
+        )
     return 0
 
 
