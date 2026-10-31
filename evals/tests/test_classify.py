@@ -8,6 +8,8 @@ import json
 from collections import Counter
 from pathlib import Path
 
+import pytest
+
 from app.ai import classify as classify_mod
 from harness import classify
 
@@ -115,6 +117,29 @@ def test_stub_run_writes_report_and_resumes(tmp_path: Path) -> None:
     assert s2 is not None and s2["docs"] == 24
     rows = classify.read_results(out / "results.jsonl")  # the torn line is skipped
     assert len({r["id"] for r in rows}) == 24
+
+
+def test_summary_counts_model_answers_vs_code(tmp_path: Path) -> None:
+    s = asyncio.run(classify.main_async(_args(tmp_path / "o")))
+    assert s is not None
+    assert s["by_ai"] + s["by_code"] == s["answered"]  # every answer names who gave it
+    assert s["by_ai"] > 0 and s["by_code"] > 0
+    assert s["by_code"] >= s["csv_by_code"] + s["fallback_used"]  # CSVs by design, misses by fallback
+    assert s["by_ai_pct"] == round(100 * s["by_ai"] / s["answered"], 1)
+    assert "Model answered" in (tmp_path / "o" / "report.md").read_text(encoding="utf-8")
+
+
+def test_model_miss_records_its_reason(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.ai.extract import ExtractionError
+
+    async def boom(*a: object, **k: object) -> classify_mod.Guess:
+        raise ExtractionError("meta backend HTTP 503: overloaded")
+
+    monkeypatch.setattr(classify_mod, "classify", boom)
+    case = next(c for c in classify.load_cases() if c.source != "bank_csv")
+    row = asyncio.run(classify.run_case(case, classify.default_config()))
+    assert row["outcome"] == "ok" and row["by"] == "code" and row["fallback"] is True
+    assert "503" in (row["fallback_reason"] or "")
 
 
 def test_stub_faults_are_counted_not_crashed(tmp_path: Path) -> None:
