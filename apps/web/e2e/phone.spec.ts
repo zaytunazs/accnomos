@@ -193,3 +193,37 @@ test.describe("brand images at the size used, and reduced motion", () => {
     expect(reduced.transition).toBeLessThan(0.001);
   });
 });
+
+test.describe("Home attention tiles at 390 px", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  const fits = async (page: Page) => {
+    const tiles = page.getByRole("region", { name: "What needs attention" }).getByRole("link");
+    await expect(tiles).toHaveCount(4);
+    await page.waitForLoadState("networkidle");
+    const tops = await tiles.evaluateAll((as) => as.map((a) => Math.round(a.getBoundingClientRect().top)));
+    expect(tops[0], "tiles 1 and 2 share a row").toBe(tops[1]);
+    expect(tops[2], "tiles 3 and 4 share a row").toBe(tops[3]);
+    expect(tops[2], "2 by 2").toBeGreaterThan(tops[0]);
+    const { scroll, width } = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, width: window.innerWidth }));
+    expect(scroll, `Home is ${scroll}px wide in a ${width}px viewport`).toBeLessThanOrEqual(width);
+  };
+
+  test("/try (sample books): 2 by 2, no sideways scroll", async ({ page }) => {
+    await page.goto("/try");
+    await fits(page);
+  });
+
+  test("/ signed in: 2 by 2, no sideways scroll, and the Menu drawer has Review and Bank beside Home", async ({ page, runtime }) => {
+    await signIn(page);
+    await createBooksFolder(page);
+    await runtime.postGold();
+    await page.goto("/");
+    await fits(page);
+    await page.getByRole("button", { name: "Menu" }).click();
+    const drawer = page.getByRole("dialog", { name: "Menu" });
+    await expect(drawer.getByRole("link", { name: "Review", exact: true })).toHaveAttribute("href", "/review");
+    await expect(drawer.getByRole("link", { name: "Bank", exact: true })).toHaveAttribute("href", "/bank");
+    await expect(drawer.getByRole("heading", { name: "More", exact: true })).toBeVisible();
+  });
+});

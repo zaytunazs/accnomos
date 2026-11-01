@@ -47,7 +47,7 @@ test("business: the AI summary on top, then money, aged debts and deadlines, eac
   // Not used by this company: no Income Tax, payroll, CIS or property cards.
   for (const name of ["Income Tax (MTD)", "Payroll", "CIS (construction)", "Property income"]) await expect(card(page, name)).toHaveCount(0);
   // The cards that were already there still are.
-  for (const name of ["Today", "Needs attention", "Spending", "To-dos", "Month-end"]) await expect(card(page, name)).toBeVisible();
+  for (const name of ["Today", "What needs attention", "Spending", "To-dos", "Month-end"]) await expect(card(page, name)).toBeVisible();
 });
 
 test("sole trader: Income Tax quarterly update and Self Assessment, no VAT", async ({ page, runtime }) => {

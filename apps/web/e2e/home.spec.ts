@@ -13,7 +13,18 @@ test("Home dashboard: tiles, deadlines and activity from the books, no signed-ou
   await expect(tile("VAT estimate · Jul–Sep 2026").getByRole("link")).toHaveText("To reclaim, return due 7 Nov");
   await expect(tile("Owed by you")).toContainText("Nothing unpaid"); // paid by card
   await expect(tile("Owed to you")).toContainText("£0");
-  await expect(tile("Needs attention")).toContainText("Nothing waiting");
+  // What needs attention: up to four tiles under the summary, each one link to where it is cleared. Calm when empty.
+  const attention = page.getByRole("region", { name: "What needs attention" });
+  await expect(attention.getByRole("link")).toHaveCount(4);
+  const link = (label: string) => attention.getByRole("link", { name: new RegExp(`^${label}`) });
+  await expect(link("Items to review")).toContainText("Nothing to review");
+  await expect(link("Items to review")).toHaveAttribute("href", "/review");
+  await expect(link("Overdue invoices")).toContainText("None overdue");
+  await expect(link("Overdue invoices")).toHaveAttribute("href", "/invoices");
+  await expect(link("Bank lines to reconcile")).toContainText("All matched");
+  await expect(link("Bank lines to reconcile")).toHaveAttribute("href", "/bank/reconcile");
+  await expect(link("Next deadline")).toContainText("VAT return Jul–Sep 2026, 7 Nov");
+  await expect(link("Next deadline")).toHaveAttribute("href", "/vat");
   await expect(tile("Cash in bank").getByRole("link")).toHaveText("Import a statement and match a line");
 
   const deadlines = page.getByRole("region", { name: "Deadlines" });
@@ -29,8 +40,15 @@ test("Home dashboard: tiles, deadlines and activity from the books, no signed-ou
   // Signed in: no "Not connected yet?" banner or pitch, and no made-up count on the Review link.
   await expect(page.getByText("Not connected yet?")).toHaveCount(0);
   await expect(page.getByRole("link", { name: "See the demo books" })).toHaveCount(0);
-  // The menu bar (src/components/TopBar.tsx): Review is Purchases › Bills (Review).
+  // The menu bar (src/components/TopBar.tsx): Home · Review · Bank are plain links, in that order; Review is also Purchases › Bills (Review).
   const nav = page.getByRole("navigation", { name: "Main" });
+  const top = nav.locator(":scope > ul > li > a, :scope > ul > li > button");
+  await expect(top).toContainText(["Home", "Review", "Bank", "Sales", "Purchases", "Reporting", "Tax", "More"]);
+  await expect(nav.getByRole("link", { name: "Review", exact: true })).toHaveAttribute("href", "/review");
+  await expect(nav.getByRole("link", { name: "Bank", exact: true })).toHaveAttribute("href", "/bank");
+  await nav.getByRole("button", { name: "More", exact: true }).click();
+  for (const name of ["Reconcile", "Chart of accounts", "All contacts"]) await expect(nav.getByRole("link", { name, exact: true })).toBeVisible();
+  await nav.getByRole("button", { name: "More", exact: true }).click();
   await nav.getByRole("button", { name: "Purchases", exact: true }).click();
   await expect(nav.getByRole("link", { name: "Bills (Review)", exact: true })).toBeVisible();
 });
@@ -119,4 +137,22 @@ test("Home deadlines: a VAT stagger saved in Settings is used and nothing is cal
   const deadlines = page.getByRole("region", { name: "Deadlines" });
   await expect(deadlines).toContainText("VAT period"); // loaded
   await expect(deadlines).not.toContainText("Assuming");
+});
+
+test("sample books (/try): the four attention tiles link to Review, Invoices, Reconcile and the next deadline", async ({ page }) => {
+  await page.goto("/try");
+  const attention = page.getByRole("region", { name: "What needs attention" });
+  await expect(attention.getByRole("link")).toHaveCount(4);
+  const hrefs = await attention.getByRole("link").evaluateAll((as) => as.map((a) => [a.textContent, a.getAttribute("href")]));
+  expect(hrefs.map(([, h]) => h)).toEqual(["/review", "/invoices", "/bank/reconcile", "/payroll"]);
+  await expect(attention.getByRole("link", { name: /^Items to review/ })).toContainText("3 to approve");
+  await expect(attention.getByRole("link", { name: /^Bank lines to reconcile/ })).toContainText("2 lines to match");
+  await expect(attention.getByRole("link", { name: /^Next deadline/ })).toContainText("Pay run 2026-10 to confirm");
+  // Today comes next, and the Income Tax, Payroll, CIS and Property cards sit below Month-end.
+  const order = await page.evaluate(() => {
+    const y = (n: string) => document.querySelector(`[aria-label="${n}"]`)?.getBoundingClientRect().top ?? -1;
+    return [y("What needs attention"), y("Today")];
+  });
+  expect(order[0]).toBeGreaterThan(0);
+  expect(order[1]).toBeGreaterThan(order[0]);
 });
