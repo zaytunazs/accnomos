@@ -107,6 +107,10 @@ def _receipt_label(doc: dict[str, Any]) -> str:
     if doc.get("gold_case") == "credit_note" or doc.get("is_credit_note") or doc.get("doc_type") == "credit_note":
         return "credit_note"
     if doc.get("side") == "sale" or doc.get("doc_type") == "sales_invoice":
+        if doc.get("side") != "sale" and _party(doc, "customer") == BUSINESS:
+            # Four gold files (*_full_invoice) say sales_invoice but print another firm as issuer and our company
+            # as the customer: a bill to us, so a purchase.
+            return "purchase_invoice"
         return "sales_invoice"
     if doc.get("doc_type") == "purchase_invoice":
         return "purchase_invoice"
@@ -590,7 +594,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any] | None:
     print(f"{len(cases)} documents {dict(by_source)}", flush=True)
     if args.dry_run:
         for c in cases[: args.show]:
-            print(f"  {c.id} {c.label} [{args.business or c.business}]")
+            print(f"  {c.id} {c.label} [{getattr(args, 'business', None) or c.business}]")
         print(json.dumps({k: len([c for c in cases if c.label == k]) for k in classify_mod.KINDS}, indent=1))
         return None
 
@@ -613,7 +617,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any] | None:
             for i, case in enumerate(cases, start=1):
                 if case.id in done:
                     continue
-                row = await run_case(case, cfg, args.business)
+                row = await run_case(case, cfg, getattr(args, "business", None))
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
                 fh.flush()
                 mark = "ok " if row["outcome"] == "ok" and row.get("correct") else "MISS"
@@ -623,7 +627,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any] | None:
     wanted = {c.id for c in cases}
     rows = [r for r in read_results(results) if r["id"] in wanted]
     summary = summarise(rows, cfg, args.stub)
-    summary["business"] = args.business or "each case's own owner"
+    summary["business"] = getattr(args, "business", None) or "each case's own owner"
     (out / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
     (out / "report.md").write_text(report_md(summary, rows), encoding="utf-8")
     return summary

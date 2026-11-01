@@ -24,6 +24,7 @@ def _args(out: Path, **kw: object) -> argparse.Namespace:
         "base": "http://127.0.0.1:1",  # nothing listens here: the stub must never reach it
         "model": "muse-glimmer:30b",
         "out": str(out),
+        "business": None,
     }
     return argparse.Namespace(**{**base, **kw})
 
@@ -39,7 +40,7 @@ def test_cases_cover_every_gold_source() -> None:
 def test_receipt_labels_follow_gold_doc_type_and_side() -> None:
     by_id = {c.id: c for c in classify.load_cases()}
     assert by_id["receipts/001_standard"].label == "receipt"
-    assert by_id["receipts/007_full_invoice"].label == "sales_invoice"
+    assert by_id["receipts/007_full_invoice"].label == "purchase_invoice"  # gold says sale; prints us as customer
     assert by_id["receipts/008_sales_invoice"].label == "sales_invoice"
     assert by_id["receipts/010_foreign"].label == "purchase_invoice"
     assert by_id["receipts/062_sales"].label == "sales_invoice"
@@ -66,6 +67,42 @@ def test_cis_and_landlord_labels_use_the_classifier_type_set() -> None:
         "purchase_invoice": 30,
         "bank_statement": 6,
     }
+
+
+def test_each_case_names_its_own_business() -> None:
+    by_id = {c.id: c for c in classify.load_cases()}
+    assert by_id["cis/R002"].business == "Brighton Bay Builders Ltd"  # the CIS bill-to, not Bramblewood
+    assert by_id["receipts/021_foreign"].business == "Thames Valley Retail Ltd"  # the named customer
+    assert by_id["receipts/008_sales_invoice"].business == classify.BUSINESS  # the issuer on a sale
+    assert by_id["receipts/007_full_invoice"].business == classify.BUSINESS
+    landlord = [c for c in by_id.values() if c.source == "landlord"]
+    assert landlord and all(c.business != classify.BUSINESS for c in landlord)  # a landlord's own name
+    sales = [c for c in by_id.values() if c.label == "sales_invoice"]
+    assert sales and all(c.business == classify.BUSINESS for c in sales)
+
+
+def test_mortgage_statement_typed_other_counts_as_right() -> None:
+    by_id = {c.id: c for c in classify.load_cases()}
+    m = by_id["landlord/landlord_7/14_mortgage_statement"]
+    assert classify.is_right(m, "bank_statement") and classify.is_right(m, "other")
+    assert not classify.is_right(m, "receipt")
+    assert not classify.is_right(by_id["cis/R001"], "other")
+
+
+def test_business_override_reaches_the_model(monkeypatch) -> None:  # noqa: ANN001
+    case = next(c for c in classify.load_cases() if c.id == "cis/R002")
+    seen: list[str | None] = []
+
+    async def fake(*_a: object, business_name: str | None = None, **_kw: object) -> classify_mod.Guess:
+        seen.append(business_name)
+        return classify_mod.Guess(kind="purchase_invoice", confidence=0.9)
+
+    monkeypatch.setattr(classify_mod, "classify", fake)
+    cfg = classify.default_config()
+    own = asyncio.run(classify.run_case(case, cfg))
+    fixed = asyncio.run(classify.run_case(case, cfg, "Bramblewood Joinery Ltd"))
+    assert seen == ["Brighton Bay Builders Ltd", "Bramblewood Joinery Ltd"]
+    assert (own["business"], fixed["business"]) == ("Brighton Bay Builders Ltd", "Bramblewood Joinery Ltd")
 
 
 def test_bank_csvs_are_seed_layout_statements() -> None:
