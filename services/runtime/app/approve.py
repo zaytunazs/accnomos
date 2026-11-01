@@ -11,6 +11,7 @@ import asyncio
 import hashlib
 import logging
 import re
+import weakref
 from datetime import date
 from typing import Any
 
@@ -22,7 +23,7 @@ from app.checks import decide, normalise_vat_number
 from app.contacts import forget_from_undo, learn_from_approval
 from app.journal import VAT_CONTROL, draft_journal, private_account, split_business_use, with_expense_account
 from app.mileage import load_vehicles
-from app.paths import NEEDS_A_LOOK, VAT_RETURNS, upgrade
+from app.paths import NEEDS_A_LOOK, PROPOSALS, VAT_RETURNS, upgrade
 from app.schemas import CATEGORIES, ExtractedDoc, JournalLine, Proposal
 
 log = logging.getLogger(__name__)
@@ -35,6 +36,20 @@ NOT_VAT_REGISTERED = "supplier_not_vat_registered"
 #: business-use percent (a purchase only).
 EXTRA_EDITS = {"account", "job_id", "vehicle_id", "tracking", NOT_VAT_REGISTERED, "business_use_percent"}
 OPEN = ("proposed", "needs_a_look")
+#: One lock per books folder (and event loop): two approvals in this process, from a double tap or two tabs, run
+#: one after the other, so the second sees the proposal already posted. Across processes the event id's claim in
+#: Books.post_event is the guard.
+_APPROVE_LOCKS: weakref.WeakValueDictionary[tuple[int, str], asyncio.Lock] = weakref.WeakValueDictionary()
+
+
+def _books_lock(books: Books) -> asyncio.Lock:
+    """Keyed by the user's cache key (an accountant's view of a client has its own), else the storage object."""
+    storage = getattr(books.storage, "inner", books.storage)  # past the per-request memo (app/cache.py)
+    key = (id(asyncio.get_running_loop()), books.cache_key or f"storage:{id(storage)}")
+    lock = _APPROVE_LOCKS.get(key)
+    if lock is None:
+        lock = _APPROVE_LOCKS[key] = asyncio.Lock()
+    return lock
 
 
 class ApprovalError(ValueError):
@@ -193,7 +208,18 @@ async def approve(
     rebuild: bool = True,
 ) -> Proposal:
     """Post the proposal to the ledger as `user`; with `always`, remember this supplier's treatment
-    (the account rule and the Autopilot rule)."""
+    (the account rule and the Autopilot rule). Approvals of one books folder in this process run one at a time."""
+    async with _books_lock(books):
+        p = await _approve(books, proposal_id, user, edits, always)
+    if rebuild:  # outside the lock: the workbook is a convenience copy and can take a while
+        await books.rebuild_safely(_actor(user))
+    return p
+
+
+async def _approve(books: Books, proposal_id: str, user: str, edits: dict[str, Any] | None, always: bool) -> Proposal:
+    forget = getattr(books.storage, "forget", None)  # the request memo (app/cache.py): read the proposal fresh
+    if forget is not None and re.fullmatch(r"[0-9a-f]{8,64}", proposal_id):
+        forget(f"{PROPOSALS}/{proposal_id}.json")
     p = await _open_proposal(books, proposal_id)
     apply_edits(p, edits or {})
     if "job_id" in (edits or {}):
@@ -250,8 +276,6 @@ async def approve(
             "credits": event.credits,
         },
     )
-    if rebuild:
-        await books.rebuild_safely(_actor(user))
     return p
 
 

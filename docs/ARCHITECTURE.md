@@ -106,6 +106,7 @@ Books.xlsx still show the path as it was saved.
 | Path | Holds | Kind |
 |---|---|---|
 | `Ledger/events/<yyyy-mm>/<ts>-runtime-<id>.json` | **The books.** One immutable, balanced journal per file, integer pence | append-only |
+| `Ledger/event-ids/<id>.json` | the claim on one event id (its event's path), created before the event so one id posts once | written once (taken over only if its event never landed) |
 | `docs/<sha256>.json` | one record per document read (the hash is the duplicate key) | written once |
 | `proposals/<id>.json` | proposals and their decisions | updated |
 | `audit/<yyyy-mm>.jsonl` | one line per action | append-only |

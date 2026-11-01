@@ -41,6 +41,8 @@ DOCS = f"{SYSTEM}/docs"
 PROPOSALS = f"{SYSTEM}/proposals"
 AUDIT = f"{SYSTEM}/audit"
 EVENTS = f"{SYSTEM}/Ledger/events"
+# One create-only claim per posted event id, holding the event's path (Books.post_event): the cross-device guard.
+EVENT_IDS = f"{SYSTEM}/Ledger/event-ids"
 BANK_LINES = f"{SYSTEM}/bank"
 ARCHIVE_SYSTEM = f"{SYSTEM}/archive"  # app/archive.py: runs and the redirect map for moved documents
 #: MTD Income Tax (self-employment) submission receipts and HMRC calculations, by tax year (app/routes_itsa.py).

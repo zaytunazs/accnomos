@@ -2,23 +2,28 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import sys
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
 from accnomos_connectors import FakeStorageProvider
-from accnomos_connectors.base import ConflictError
+from accnomos_connectors.base import ConflictError, FileRef
+from accnomos_ledger import Line, VatCode
 from accnomos_ledger.events import LedgerEvent
+from accnomos_ledger.vat import compute_vat_return
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app import pipeline  # noqa: E402
 from app.ai.config import AiConfig  # noqa: E402
-from app.approve import ApprovalError, ProposalStateError, approve, reject  # noqa: E402
-from app.books import AUDIT, CURSORS, DOCS, EVENTS, RULES, Books  # noqa: E402
+from app.approve import ApprovalError, ProposalStateError, approve, reject, undo  # noqa: E402
+from app.books import AUDIT, CURSORS, DOCS, EVENT_IDS, EVENTS, RULES, Books, now  # noqa: E402
 from app.inbox import scan_inbox, scan_inbox_detailed, waiting  # noqa: E402
 from app.schemas import ExtractedDoc, ExtractedLine  # noqa: E402
 
@@ -243,6 +248,165 @@ async def test_post_event_refuses_to_overwrite(books: Books, fake: FakeStoragePr
     await approve(books, p.id, "sam@example.co.uk")
     with pytest.raises(FileExistsError):
         await books.post_event(_events(fake)[0])
+
+
+# --------------------------------------------------------------------------- #
+# Posting one event id twice at once (audit FIN-01)
+# --------------------------------------------------------------------------- #
+
+
+class RacingStorage(FakeStorageProvider):
+    """Both posts list the month's events before either writes: the schedule the listing check alone lost."""
+
+    def __init__(self, folder: str = f"{EVENTS}/2026-10") -> None:
+        super().__init__()
+        self.folder, self.arrivals, self.both_listed, self.armed = folder, 0, asyncio.Event(), True
+
+    async def list(self, path: str) -> list[FileRef]:
+        snapshot = await super().list(path)
+        if self.armed and path == self.folder:
+            self.arrivals += 1
+            if self.arrivals == 2:
+                self.both_listed.set()
+            await asyncio.wait_for(self.both_listed.wait(), 5)
+        return snapshot
+
+
+T0 = datetime(2026, 10, 30, 12, tzinfo=UTC)
+
+
+def _event(at: datetime, net: int = 10000, event_id: str = "a" * 32) -> LedgerEvent:
+    return LedgerEvent(
+        id=event_id,
+        kind="purchase",
+        date=date(2026, 10, 1),
+        approved_at=at,
+        approved_by="owner@example.test",
+        net=net,
+        vat=2000,
+        lines=[
+            Line(account="5100 Tools & small equipment", debit=net, vat_code=VatCode.STANDARD),
+            Line(account="2200 VAT control", debit=2000, vat_code=VatCode.STANDARD),
+            Line(account="1200 Bank", credit=net + 2000),
+        ],
+    )
+
+
+def _reclaimed(events: list[LedgerEvent]) -> object:
+    return compute_vat_return(events, "test", date(2026, 10, 1), date(2026, 10, 31)).vat_reclaimed
+
+
+@pytest.mark.parametrize("second", [0, 1], ids=["same second", "next second"])
+async def test_concurrent_posts_of_one_id_store_one_event(second: int) -> None:
+    single = Books(FakeStorageProvider())
+    await single.post_event(_event(T0))
+    baseline = _reclaimed(await single.list_events())
+
+    racing = RacingStorage()
+    books = Books(racing)
+    results = await asyncio.gather(
+        books.post_event(_event(T0)),
+        books.post_event(_event(T0 + timedelta(seconds=second), net=20000)),
+        return_exceptions=True,
+    )
+    racing.armed = False
+    accepted = [r for r in results if isinstance(r, str)]
+    assert len(accepted) == 1 and [type(r) for r in results if not isinstance(r, str)] == [FileExistsError]
+    entries = await books.list_event_entries()
+    assert [path for path, _ in entries] == accepted  # the claim holder's event, not overwritten by the other
+    events = [ev for _, ev in entries]
+    assert _reclaimed(events) == baseline
+    assert json.loads(racing.files[f"{EVENT_IDS}/{'a' * 32}.json"])["path"] == accepted[0]
+    with pytest.raises(FileExistsError):  # and a later, sequential duplicate is still refused
+        await books.post_event(_event(T0 + timedelta(minutes=1)))
+
+
+async def test_concurrent_approvals_in_two_processes_post_once(fake: FakeStorageProvider) -> None:
+    racing = RacingStorage(f"{EVENTS}/2026-10")
+    racing.armed = False
+    racing.files["00 Inbox/r.jpg"] = SCREWFIX
+    (p,) = await scan_inbox(Books(racing), CFG)
+    racing.armed = True
+    # Different cache keys: two users' locks, as two server processes would have, so only the claim stands between.
+    results = await asyncio.gather(
+        approve(Books(racing, cache_key="one"), p.id, "sam@example.co.uk", rebuild=False),
+        approve(Books(racing, cache_key="two"), p.id, "sam@example.co.uk", rebuild=False),
+        return_exceptions=True,
+    )
+    racing.armed = False
+    assert sorted(type(r).__name__ for r in results) == ["Proposal", "ProposalStateError"]
+    assert len(_events(racing)) == 1
+
+
+async def test_double_submit_in_one_process_is_serialised(fake: FakeStorageProvider) -> None:
+    fake.files["00 Inbox/r.jpg"] = SCREWFIX
+    (p,) = await scan_inbox(Books(fake), CFG)
+    results = await asyncio.gather(
+        approve(Books(fake), p.id, "sam@example.co.uk"),
+        approve(Books(fake), p.id, "sam@example.co.uk"),
+        return_exceptions=True,
+    )
+    assert sorted(type(r).__name__ for r in results) == ["Proposal", "ProposalStateError"]
+    assert "already posted" in str(next(r for r in results if isinstance(r, ProposalStateError)))
+    assert len(_events(fake)) == 1
+
+
+async def test_undo_then_approve_again_posts_a_new_id(fake: FakeStorageProvider, books: Books) -> None:
+    fake.files["00 Inbox/r.jpg"] = SCREWFIX
+    (p,) = await scan_inbox(books, CFG)
+    first = await approve(books, p.id, "sam@example.co.uk")
+    assert first.event_id is not None
+    await undo(books, first.event_id, "sam@example.co.uk")
+    again = await approve(books, p.id, "sam@example.co.uk")
+    assert again.event_id not in (None, first.event_id)
+    assert len({e.id for e in _events(fake)}) == len(_events(fake)) == 3  # original, its undo, the new posting
+    assert {f"{EVENT_IDS}/{e.id}.json" for e in _events(fake)} <= set(fake.files)
+
+
+async def test_legacy_books_without_claims_still_refuse_a_duplicate(fake: FakeStorageProvider, books: Books) -> None:
+    await books.post_event(_event(T0))
+    del fake.files[f"{EVENT_IDS}/{'a' * 32}.json"]  # posted before claims existed
+    with pytest.raises(FileExistsError):
+        await books.post_event(_event(T0 + timedelta(seconds=5)))
+    assert len(_events(fake)) == 1
+
+
+async def test_a_claim_whose_event_never_landed_is_taken_over(
+    fake: FakeStorageProvider, books: Books, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    claim = f"{EVENT_IDS}/{'a' * 32}.json"
+    fresh = {"id": "a" * 32, "path": f"{EVENTS}/2026-10/x-runtime-{'a' * 32}.json", "claimed_at": now().isoformat()}
+    fake.files[claim] = json.dumps(fresh).encode()
+    with pytest.raises(FileExistsError):  # young and its event missing: an approval still in flight
+        await books.post_event(_event(T0))
+    fake.files[claim] = json.dumps({**fresh, "claimed_at": (now() - timedelta(minutes=6)).isoformat()}).encode()
+    path = await books.post_event(_event(T0))  # stale: the process stopped before writing its event
+    assert json.loads(fake.files[claim])["path"] == path and len(_events(fake)) == 1
+
+    # A failed event write releases its claim at once, so trying again does not wait for it to go stale.
+    real_write = fake.write
+
+    async def failing(p: str, data: bytes, **kw: Any) -> FileRef:
+        if p.startswith(f"{EVENTS}/"):
+            raise OSError("network")
+        return await real_write(p, data, **kw)
+
+    monkeypatch.setattr(fake, "write", failing)
+    with pytest.raises(OSError):
+        await books.post_event(_event(T0, event_id="b" * 32))
+    assert json.loads(fake.files[f"{EVENT_IDS}/{'b' * 32}.json"])["released"] is True
+    monkeypatch.setattr(fake, "write", real_write)
+    await books.post_event(_event(T0, event_id="b" * 32))
+    assert len(_events(fake)) == 2
+
+
+async def test_duplicate_event_files_are_counted_once_and_reported(fake: FakeStorageProvider, books: Books) -> None:
+    await fake.ensure_folder(f"{EVENTS}/2026-10")
+    for ts, net in (("20261030T120000Z", 10000), ("20261030T120001Z", 20000)):  # what the race used to leave
+        fake.files[f"{EVENTS}/2026-10/{ts}-runtime-{'a' * 32}.json"] = _event(T0, net).model_dump_json().encode()
+    events = await books.list_events()
+    assert [e.net for e in events] == [10000]
+    assert books.duplicate_events == {"a" * 32: [f"{EVENTS}/2026-10/20261030T120001Z-runtime-{'a' * 32}.json"]}
 
 
 # --------------------------------------------------------------------------- #
