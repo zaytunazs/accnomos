@@ -1,9 +1,9 @@
 """/lookup/*: Companies House and HMRC's VAT check (app/company_lookup.py). Read-only suggestions: nothing is saved.
 
-Signed-in callers only (`X-Graph-Token`), so the server's Companies House key is not an open proxy. Errors come
-back as `{"error": <code>, "detail": <message>}`: 503 `companies_house_not_configured` /
-`vat_check_not_configured`, 400 `bad_query`, 404 `not_found`, 429 `rate_limited` (with Retry-After), 502
-`lookup_unavailable`.
+Signed-in callers only (an `X-Graph-Token` that Graph accepts, app/identity.py), so the server's Companies House
+key is not an open proxy. Errors come back as `{"error": <code>, "detail": <message>}`: 503
+`companies_house_not_configured` / `vat_check_not_configured`, 400 `bad_query`, 404 `not_found`, 429 `rate_limited`
+(with Retry-After), 502 `lookup_unavailable`.
 """
 
 from __future__ import annotations
@@ -12,17 +12,17 @@ from fastapi import APIRouter, Depends, HTTPException, Path, Query, Request
 from pydantic import BaseModel
 
 from app import company_lookup as lookup
+from app import identity
 
 router = APIRouter(prefix="/lookup", tags=["lookup"])
 
 
-def signed_in(request: Request) -> None:
+async def signed_in(request: Request) -> None:
     if request.headers.get("X-Demo-Session") is not None:  # app/demo.py: no Companies House or HMRC from a demo
         raise HTTPException(
             status_code=403, detail="Look-ups to Companies House and HMRC are switched off in the demo sandbox."
         )
-    if not request.headers.get("X-Graph-Token", "").strip().removeprefix("Bearer ").strip():
-        raise HTTPException(status_code=401, detail="X-Graph-Token header required")
+    await identity.signed_in_identity(request)  # Graph must accept the token: 401 for a made-up one
 
 
 class LookupStatus(BaseModel):
