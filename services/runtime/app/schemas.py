@@ -193,6 +193,8 @@ class Proposal(BaseModel):
     journal_draft: list[JournalLine]
     model: str
     elapsed_s: float
+    # Pages in the source file. Only page 1 of a PDF is read, so Autopilot never posts when this is above 1.
+    source_pages: int = Field(default=1, ge=1)
     served_by: ServedBy | None = None  # the provider that read it (the last reading kept, after any re-read)
     # How the photo was cropped before extraction: {"method": "sam"|"code"|"none", "box": [x0,y0,x1,y1]|None, "note"}
     crop: dict[str, Any] | None = None

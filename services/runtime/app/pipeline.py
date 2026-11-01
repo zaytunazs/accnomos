@@ -253,6 +253,7 @@ async def process_document(
         crop=prep.kind == "image",  # a rendered PDF page is already the page
         file_mime=prep.source_mime,
     )
+    p.source_pages = prep.pages
     if prep.note:  # ok=True: shown as a chip, never a reason
         p.checks.append(Check(code="SOURCE", ok=True, severity="warn", message=prep.note))
     return p

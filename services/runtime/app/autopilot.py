@@ -8,6 +8,7 @@ proposal, with the reasons recorded on it:
 - Autopilot is switched on (the app sends `X-Autopilot: off` to skip it);
 - a rule exists for the supplier's normalised name, and the document is a purchase like the rule's;
 - every code check passed: no failure and no warning;
+- the document is one page: only page 1 of a PDF is read, so a longer one always waits for a person;
 - the supplier's VAT number is the one on the rule (no number on either counts as the same);
 - the VAT treatment (VAT codes on the expense lines) is the rule's;
 - the gross is above zero and no more than 2x the rule's typical amount;
@@ -188,6 +189,11 @@ def evaluate(
     refusals: list[str] = []
     if side_of(p) != rule.side:
         refusals.append(f"This is a {side_of(p)}; the rule is for {rule.side}s")
+    if p.source_pages > 1:  # only page 1 of a PDF is read (app/formats.py); the SOURCE check is just a chip
+        refusals.append(
+            f"{p.source_pages - 1} of {p.source_pages} pages were not read: only page 1 of a PDF is read, "
+            "so a person must check the rest"
+        )
     if doc.doc_type == "credit_note":
         refusals.append("A credit note is never approved by Autopilot")
     for c in p.checks:
