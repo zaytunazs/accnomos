@@ -33,7 +33,7 @@ and how to report a problem. Deployment hardening is in [`deploy/README.md`](../
 | CORS | Exact origins from `CORS_ORIGINS` / `RELAY_ALLOWED_REDIRECTS`; wildcards refused at start-up; explicit methods (exactly those the routes use) and headers; preflight cached 10 min; no cookies | `main.py`, `relay/main.py` | `test_cors_*` |
 | File names | Uploaded and model-derived names cannot escape the user's folder: `.`/`..`, separators, absolute and drive paths, control characters refused (`check_name`); `Books.free_path` and the Graph provider refuse unsafe segments as a backstop | `app/validation.py`, `books.py`, `msgraph.py`, `pipeline.py` | `test_validation.py` |
 | Request bodies | Every JSON body forbids unknown fields (runtime and relay, including HMRC client facts) and every free-text string in it has a length cap, checked over every registered route. HMRC client facts: every string and list is capped, and the two sent to HMRC unencoded (device id, browser user agent) must be printable ASCII. Dates are `YYYY-MM-DD` only (`Day`: no timestamps or datetimes); money is whole pence as an integer (`Pence`: no `12.0`, `"12"` or `true`). Totals a client sends for an invoice are refused, not ignored. Files read back from the user's folder are parsed leniently, so a hand-edited file still opens | `app/validation.py`, route models | `test_every_request_body_forbids_unknown_fields`, `test_every_free_text_field_in_a_body_has_a_length_cap`, `test_dates_and_money_are_parsed_strictly`, relay `test_unknown_or_malformed_fields_rejected`, `test_client_facts_are_capped_and_header_safe` |
-| Identity | Every route that writes takes `X-User` (`require_user`), except a short list where the write is an agent's or derived (scan, rebuild, a rendered PDF), each with its reason in the test. Audit lines say `user:<email>` or `agent:<name>`, never a bare address. The Graph token is the only authority: storage is the token's own OneDrive and no route takes an id that selects another one. Every route answers 401 without `X-Graph-Token` except five, each listed with its reason (`/health`, `/ai/test`, `/extract`, `/lookup/status`, `/books/bank/coding-options`) | `routes_*.py`, `books.py` | `test_every_write_route_needs_x_user_or_is_listed_with_a_reason`, `test_every_audit_actor_is_user_or_agent`, `test_every_route_but_the_public_ones_needs_a_graph_token` |
+| Identity | Every route that writes takes `X-User` (`require_user`), but only as a hint: the audit actor is the email Graph `/me` reports for the token (`app/identity.py`; see "Identity verification" below), except a short list where the write is an agent's or derived (scan, rebuild, a rendered PDF), each with its reason in the test. Audit lines say `user:<email>` or `agent:<name>`, never a bare address. The Graph token is the only authority: storage is the token's own OneDrive and no route takes an id that selects another one. Every route answers 401 without `X-Graph-Token` except four, each listed with its reason (`/health`, `/ai/test`, `/lookup/status`, `/books/bank/coding-options`) | `routes_*.py`, `books.py` | `test_every_write_route_needs_x_user_or_is_listed_with_a_reason`, `test_every_audit_actor_is_user_or_agent`, `test_every_route_but_the_public_ones_needs_a_graph_token` |
 | Signed actions | Chat and voice actions are HMAC-signed over every field with a key from `ACTIONS_SIGNING_KEY` and the caller's Graph token (plus `X-Test-Tenant` in test mode), compared in constant time, expire after 15 min. An action id executes once: the claim is an If-Match (or, for a new month's log, create-only) write, so two approvals at once run once and a replay returns the first result. A run that died leaves an `approving` line that is never re-run; after 10 min rejecting the card clears it (`docs/ACTIONS.md`) | `app/actions.py`, `books.py` | `test_replaying_a_card_with_any_signed_field_changed_is_refused`, `test_two_approvals_at_once_execute_once`, `test_a_stale_approving_lock_is_never_rerun_and_rejecting_clears_it`, `test_in_test_mode_a_card_is_bound_to_its_tenant` |
 | Outgoing mail and calendar | Invoices, reminders and calendar events are sent as plain text; a draft reply's text is HTML-escaped before it goes above Outlook's quoted thread; nothing is sent without `confirm: true` from the app's dialog, and a draft reply is only ever saved as a draft | `msgraph.py`, `routes_invoices.py`, `routes_mail.py` | `test_send_mail.py`, `test_mail.py`, `test_calendar.py` |
 | Invoice logo and PDF | The logo must be a PNG or JPEG by its magic bytes (matching the declared type), at most 1 MB and 4000 px a side, and decode; it is saved under a name chosen from the bytes, and only `_System/Invoicing/logo.png` or `logo.jpg` is ever read back, whatever `profile.json` says. PDF text is Latin-1 with control characters removed, and fpdf's page-count alias cannot be typed | `routes_invoices.py`, `invoicing.py`, `pdf.py` | `test_logo_is_sniffed_decoded_and_size_checked`, `test_a_hand_edited_logo_path_is_not_read`, `test_pdf_text_cannot_use_fpdfs_page_count_alias` |
@@ -125,18 +125,30 @@ migration, test mode) and left as it is, for the reason given.
   wrote; there is no new fact to attribute. `/health` reports folder-rename counts summed over all users (no names,
   no paths).
 
+## Identity verification
+
+`X-Graph-Token` is a credential only once Microsoft has accepted it. `app/identity.py` (`verified_identity`) asks
+Graph `/me` for the token, remembers the answer by token hash for ten minutes (SHA-256, 512 entries, no token
+kept, failures never remembered) and answers 401 when Graph refuses it. Three things depend on it:
+
+- **Audit actor.** `require_user` returns the verified email, not the `X-User` header, which must still be sent but
+  is only a hint. A forged `X-User` therefore cannot put someone else's name on an audit line. Demo sessions keep
+  their sandbox user, and an accountant in a client's books is still `accountant:<verified email>`.
+- **`/lookup/*`** (Companies House, HMRC VAT check) needs a verified token, not just a non-empty one.
+- **`/extract`** needs a verified token or a live demo session (`X-Demo-Session`); without either it answers 401
+  before reading the upload, so the server's default model is not an open service. It remembers nothing between
+  calls, so one caller can never learn from a duplicate flag what another uploaded; duplicate detection lives in
+  the books path. The Android capture screen reads receipts before sign-in; that now needs a signed-in account.
+
+In test mode (`ACCNOMOS_TEST_MODE=1`) the fake sharing world answers in place of Graph, as `X-User`.
+
 ## Open after the third pass
 
 Found in the pre-submission review (`docs/reviews/security-3/REVIEW.md`) and left for a product decision.
 
-- **`/extract` and `/ai/test` need no Graph token** (Android reads a receipt before sign-in). With no `X-AI-*`
-  headers they run on the server's default model: `AI_MODE=local` means the operator's `OLLAMA_BASE`, key mode the
-  operator's `META_API_KEY` if set. Anyone can use that model at the per-IP rate limit.
-- **`/lookup/*` checks only that `X-Graph-Token` is present**, not that it is valid, so the Companies House key and
-  the relay's VAT check are reachable with any string (rate-limited).
+- **`/ai/test` needs no Graph token** (Settings' Test connection). With no `X-AI-Base-Url` it pings the server's own
+  local agent but answers only ok or not ok: the server's model list and default model are not returned.
 - **The relay's VAT-number check is public** on `api.accnomos.com` and spends the relay's application token.
-- **`/extract`'s duplicate memory is shared by every caller** of the process: a file someone else uploaded is
-  flagged as a duplicate.
 - **Android allows cleartext HTTP to any host** (`usesCleartextTraffic`), for a runtime on the user's LAN; a user
   who types an `http://` address elsewhere sends the Graph token and Meta key unencrypted. The Meta key is in
   shared preferences, not encrypted storage.
