@@ -1,7 +1,7 @@
 import PageHeader from "@/components/PageHeader";
 import LivePersonal from "@/components/personal/LivePersonal";
 
-export const metadata = { title: "Personal · Accnomos" };
+export const metadata = { title: "Personal · Accnomos", robots: { index: false, follow: false } };
 
 export default function PersonalPage() {
   return (

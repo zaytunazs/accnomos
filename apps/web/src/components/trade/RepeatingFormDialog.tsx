@@ -158,8 +158,8 @@ export default function RepeatingFormDialog({ account, template, onClose, onSave
             <input type="checkbox" className="mt-1 h-5 w-5 shrink-0 accent-teal" checked={auto} onChange={(e) => setAuto(e.target.checked)} />
             <span>
               {kind === "invoice"
-                ? "Approve automatically: when each invoice is due, email it to the customer from my Outlook and post it to my books, without asking me again."
-                : "Approve automatically: when each bill is due, approve it and post it to my books, without asking me again."}
+                ? "Approve automatically: the next time the app is opened on or after each due date, make the invoice and email it to the customer from my Outlook, then post it to my books."
+                : "Approve automatically: the next time the app is opened on or after each due date, approve the bill and post it to my books."}
             </span>
           </label>
           <p className="mt-1 text-sm text-muted">

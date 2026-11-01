@@ -1,7 +1,7 @@
 import ExplainMore from "@/components/ExplainMore";
 import PurchasesOverview from "@/components/trade/PurchasesOverview";
 
-export const metadata = { title: "Purchases · Accnomos" };
+export const metadata = { title: "Purchases · Accnomos", robots: { index: false, follow: false } };
 
 export default function Page() {
   return (

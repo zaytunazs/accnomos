@@ -2,7 +2,7 @@ import ExplainMore from "@/components/ExplainMore";
 import LiveFiles from "@/components/files/LiveFiles";
 import PageHeader from "@/components/PageHeader";
 
-export const metadata = { title: "Files · Accnomos" };
+export const metadata = { title: "Files · Accnomos", robots: { index: false, follow: false } };
 
 export default function FilesPage() {
   return (

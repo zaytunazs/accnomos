@@ -1,7 +1,7 @@
 import ExplainMore from "@/components/ExplainMore";
 import LiveInvoices from "@/components/invoices/LiveInvoices";
 
-export const metadata = { title: "Invoices · Accnomos" };
+export const metadata = { title: "Invoices · Accnomos", robots: { index: false, follow: false } };
 
 export default function InvoicesPage() {
   return (

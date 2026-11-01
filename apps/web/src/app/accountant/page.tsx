@@ -1,7 +1,7 @@
 import Portal from "@/components/accountant/Portal";
 import PageHeader from "@/components/PageHeader";
 
-export const metadata = { title: "Accountant portal · Accnomos" };
+export const metadata = { title: "Accountant portal · Accnomos", robots: { index: false, follow: false } };
 
 export default function AccountantPage() {
   return (

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import TryDemo from "@/components/demo/TryDemo";
 
-export const metadata = { title: "For judges · Accnomos" };
+export const metadata = { title: "For judges · Accnomos", robots: { index: false, follow: false } };
 
 const steps: { title: string; href: string; body: string }[] = [
   {

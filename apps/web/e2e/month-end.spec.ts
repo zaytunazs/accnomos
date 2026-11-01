@@ -17,13 +17,13 @@ test("a month with no bank statement: each step says what is missing, nothing is
 
   const list = page.getByRole("list", { name: "Close checklist for August 2026" });
   const step = (n: number, title: string) => list.getByRole("listitem", { name: `Step ${n}: ${title}` });
-  await expect(step(9, "Lock")).toContainText("Blocked", { timeout: 30_000 });
+  await expect(step(9, "Close")).toContainText("Blocked", { timeout: 30_000 });
   await expect(step(1, "Inbox")).toContainText("OK");
   await expect(step(2, "Bank")).toContainText("No bank statements imported yet: upload August's statement (CSV) on Bank.");
   await expect(step(2, "Bank").getByRole("link", { name: "Open Bank" })).toHaveAttribute("href", "/bank");
   await expect(step(6, "VAT")).toContainText("August does not end a VAT period (Jul–Sep 2026 ends on 30 Sep 2026).");
   await expect(step(8, "Reports")).toContainText("Waiting for 1 blocking item above");
-  await expect(step(9, "Lock")).toContainText("Clear the 1 blocking item above first");
+  await expect(step(9, "Close")).toContainText("Clear the 1 blocking item above first");
   await expect(page.getByRole("button", { name: "Approve" })).toHaveCount(0); // no close card while something blocks
 
   const summary = page.getByRole("region", { name: "August 2026" });
@@ -58,7 +58,7 @@ test("the sample books: September ends the VAT quarter, the boxes are shown and 
   await page.getByRole("button", { name: "Close September" }).click();
   const list = page.getByRole("list", { name: "Close checklist for September 2026" });
   const step = (n: number, title: string) => list.getByRole("listitem", { name: `Step ${n}: ${title}` });
-  await expect(step(9, "Lock")).not.toContainText("Waiting", { timeout: 60_000 });
+  await expect(step(9, "Close")).not.toContainText("Waiting", { timeout: 60_000 });
 
   const vat = step(6, "VAT");
   await expect(vat).toContainText("The return for Jul–Sep 2026 is ready to check");

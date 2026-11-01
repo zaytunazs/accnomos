@@ -1,7 +1,7 @@
 import ExplainMore from "@/components/ExplainMore";
 import LiveContacts from "@/components/contacts/LiveContacts";
 
-export const metadata = { title: "Contacts · Accnomos" };
+export const metadata = { title: "Contacts · Accnomos", robots: { index: false, follow: false } };
 
 export default function ContactsPage() {
   return (

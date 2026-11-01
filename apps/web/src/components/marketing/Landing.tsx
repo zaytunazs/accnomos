@@ -172,7 +172,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
   },
   {
     q: "Does it file to HMRC?",
-    a: "The HMRC connection in the product today is sandbox only, for VAT and for self-employed Income Tax. It is there to practise the full flow, not to file a live return.",
+    a: "The HMRC connection in the product today is sandbox only, for VAT and for self-employed Income Tax. It is there to practise the full flow, not to file a live return. HMRC has closed production access for new Income Tax quarterly-update products for the 2026-27 tax year, so live Income Tax filing from Accnomos cannot start before the 2027-28 year; live VAT filing needs a separate HMRC production application.",
   },
   {
     q: "Which banks are covered?",
@@ -224,9 +224,35 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
       ]),
 ];
 
+/**
+ * Structured data for the public landing page: who publishes it and what the
+ * software is. No ratings, no review counts, no offers: none are claimed here.
+ */
+function StructuredData() {
+  const data = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        name: "Accnomos",
+        url: "https://accnomos.com",
+        logo: "https://accnomos.com/brand/icon-512.png",
+      },
+      {
+        "@type": "SoftwareApplication",
+        name: "Accnomos",
+        applicationCategory: "BusinessApplication",
+        operatingSystem: "Web, Android",
+      },
+    ],
+  };
+  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }} />;
+}
+
 export default function Landing() {
   return (
     <>
+      <StructuredData />
       <Hero />
       <WhoFor />
       <Process />

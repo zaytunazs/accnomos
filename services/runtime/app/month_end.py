@@ -12,7 +12,7 @@ The agent loop is plain code, one step after another, each one reported as it fi
     6 VAT        if the month ends a VAT period: the 9 boxes, the digital-links trail, the deadline; never submitted
     7 Checks     uncategorised (7999 Sundry) and uncoded balances, duplicates, negative bank balances, unusual postings
     8 Reports    the month's P&L and balance sheet saved as a draft in 07 Reports, once nothing blocks the close
-    9 Lock       "Mark October closed": an approve card; approving records a close event with a snapshot hash
+    9 Close      "Mark October closed": an approve card; approving records a close event with a snapshot hash
 
 Each step ends `ok`, `needs_you` or `blocked` with one plain-English reason and a link. A step that cannot run says
 what is missing and how to fix it (never a silent skip, never an invented figure). Findings are `blocking` (the
@@ -96,7 +96,7 @@ STEPS: list[tuple[StepId, str]] = [
     ("vat", "VAT"),
     ("checks", "Checks"),
     ("reports", "Reports"),
-    ("lock", "Lock"),
+    ("lock", "Close"),
 ]
 
 
@@ -1410,7 +1410,7 @@ async def step_reports(ctx: Ctx) -> Step:
     )
 
 
-# ---- 9 Lock -----------------------------------------------------------------
+# ---- 9 Close ----------------------------------------------------------------
 
 
 async def step_lock(ctx: Ctx, snap: Snapshot, record: MonthFile, changes: Changes | None) -> Step:
@@ -1421,7 +1421,7 @@ async def step_lock(ctx: Ctx, snap: Snapshot, record: MonthFile, changes: Change
         return Step(
             id="lock",
             n=9,
-            title="Lock",
+            title="Close",
             status="blocked",
             reason=f"{ctx.label} has not ended yet (it ends on {day(ctx.end)}), so it cannot be closed.",
             link=link,
@@ -1430,7 +1430,7 @@ async def step_lock(ctx: Ctx, snap: Snapshot, record: MonthFile, changes: Change
         return Step(
             id="lock",
             n=9,
-            title="Lock",
+            title="Close",
             status="ok",
             reason=f"{ctx.label} was closed on {day(last.closed_at.date())} and nothing dated in it has changed since.",
             link=link,
@@ -1440,7 +1440,7 @@ async def step_lock(ctx: Ctx, snap: Snapshot, record: MonthFile, changes: Change
         return Step(
             id="lock",
             n=9,
-            title="Lock",
+            title="Close",
             status="blocked",
             reason=f"Clear the {_plural(blocking, 'blocking item')} above first; then run the close again to mark "
             f"{ctx.short} closed.",
@@ -1482,7 +1482,7 @@ async def step_lock(ctx: Ctx, snap: Snapshot, record: MonthFile, changes: Change
     return Step(
         id="lock",
         n=9,
-        title="Lock",
+        title="Close",
         status="needs_you",
         reason=text,
         link=link,
@@ -1567,7 +1567,7 @@ async def run(ctx: Ctx) -> AsyncIterator[tuple[str, Any]]:
     try:
         lock = await step_lock(ctx, snap, record, changes)
     except Exception as exc:  # noqa: BLE001
-        lock = _failed("lock", 9, "Lock", exc)
+        lock = _failed("lock", 9, "Close", exc)
     lock.ms = int((time.monotonic() - t0) * 1000)
     ctx.steps.append(lock)
     yield "step", lock
@@ -1626,7 +1626,7 @@ async def run_to_end(ctx: Ctx) -> CloseRun:
 
 
 # --------------------------------------------------------------------------- #
-# Lock (the user's Approve on the close_month card, app/actions.py)
+# Close (the user's Approve on the close_month card, app/actions.py)
 # --------------------------------------------------------------------------- #
 
 

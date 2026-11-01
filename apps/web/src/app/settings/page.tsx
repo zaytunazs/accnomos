@@ -1,7 +1,7 @@
 import SettingsPanels from "@/components/settings/SettingsPanels";
 import PageHeader from "@/components/PageHeader";
 
-export const metadata = { title: "Settings · Accnomos" };
+export const metadata = { title: "Settings · Accnomos", robots: { index: false, follow: false } };
 
 export default function SettingsPage() {
   return (

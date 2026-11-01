@@ -51,6 +51,21 @@ and how to report a problem. Deployment hardening is in [`deploy/README.md`](../
 | Correlation | Every response carries `X-Correlation-Id`; the same id is in the error body and the server log line | middleware | `test_every_response_has_a_correlation_id` |
 | Early-adopter list | `POST /public/early-access` and its neutral alias `POST /public/sign-up` (same handler; no sign-in) answer 503 and creates no file unless `EARLY_ACCESS_ENABLED=1`; email shape-checked and lower-cased, every field length-capped, unknown fields refused; consent must be `true` with one of the two exact stored wordings (pre-launch or neutral), the one ticked being stored; honeypot field answers success and keeps nothing; its own per-IP bucket (`EARLY_ACCESS_PER_MIN`, 5) on top of the global one; same answer for new and repeat addresses (no enumeration); file `0600` on the `runtime-data` volume, never in git or the image; CSV export defuses formula cells | `app/early_access.py`, `deploy/` | `test_early_access.py`, `test_early_access_list_lives_on_the_data_volume_only` |
 
+## Supply chain
+
+- **Dependabot** (`.github/dependabot.yml`) sends weekly grouped minor/patch updates for
+  GitHub Actions, Python (`pip`, covering the uv-managed root), the web app (`npm`) and the
+  mobile app (`pub`), keeping third-party code fresh without PR noise.
+- **CodeQL** (`.github/workflows/codeql.yml`) scans `python` and `javascript-typescript` on
+  every push to `main` and every pull request.
+- The deploy workflow's third-party step is pinned to a commit SHA
+  (`peaceiris/actions-gh-pages@329bcc8…`, the `v4` tag); the remaining GitHub-owned actions
+  stay on their major tags.
+- **Release-signing guard:** an Android `release` build without `android/key.properties`
+  fails with a clear error instead of silently signing with the debug key; `debug` builds,
+  `flutter test` and `flutter analyze` are unaffected. The upload key itself is created by
+  `tools/make_upload_key.ps1` and used by `tools/build_release.ps1`.
+
 ## Early-adopter list (personal data the operator keeps)
 
 People who sign up before the public launch (November 2026) get 3 months free and one email at launch. This is
@@ -140,7 +155,6 @@ Found in the pre-submission review (`docs/reviews/security-3/REVIEW.md`) and lef
 - **Android allows cleartext HTTP to any host** (`usesCleartextTraffic`), for a runtime on the user's LAN; a user
   who types an `http://` address elsewhere sends the Graph token and Meta key unencrypted. The Meta key is in
   shared preferences, not encrypted storage.
-- **Android release builds fall back to the debug key** when `android/key.properties` is missing.
 
 ## Reporting a vulnerability
 

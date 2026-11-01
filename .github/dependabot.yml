@@ -1,0 +1,36 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-patch:
+        patterns:
+          - "*"
+  # Workspace is managed by uv (root pyproject.toml + uv.lock); Dependabot has
+  # no uv ecosystem, so pip covers the same requirements here.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-patch:
+        patterns:
+          - "*"
+  - package-ecosystem: "npm"
+    directory: "/apps/web"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-patch:
+        patterns:
+          - "*"
+  - package-ecosystem: "pub"
+    directory: "/apps/mobile"
+    schedule:
+      interval: "weekly"
+    groups:
+      minor-patch:
+        patterns:
+          - "*"

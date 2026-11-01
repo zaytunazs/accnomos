@@ -193,7 +193,7 @@ const faqs: { q: string; a: string }[] = [
   },
   {
     q: "Can it file my VAT by itself?",
-    a: "No. The nine boxes are worked out by code, but nothing is sent until you tick the legal declaration and press Submit. Filing is sandbox only: no production filing is built.",
+    a: "No. The nine boxes are worked out by code, but nothing is sent until you tick the legal declaration and press Submit. Filing is sandbox only: no production filing is built. HMRC has closed production access for new Income Tax quarterly-update products for the 2026-27 tax year, so live Income Tax filing from Accnomos cannot start before the 2027-28 year; live VAT filing needs a separate HMRC production application.",
   },
   {
     q: "What if the AI is wrong?",

@@ -1,6 +1,6 @@
 import LiveShopping from "@/components/spending/LiveShopping";
 
-export const metadata = { title: "Shopping list · Accnomos" };
+export const metadata = { title: "Shopping list · Accnomos", robots: { index: false, follow: false } };
 
 export default function Page() {
   return (

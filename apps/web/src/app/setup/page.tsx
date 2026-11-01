@@ -4,6 +4,7 @@ import PageHeader from "@/components/PageHeader";
 
 export const metadata: Metadata = {
   title: "Set up your business · Accnomos",
+  robots: { index: false, follow: false },
 };
 
 /** First-run set-up wizard, also reached from Settings › Business. One question per step, saved as you go. */
