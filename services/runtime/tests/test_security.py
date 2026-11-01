@@ -346,6 +346,25 @@ def test_extract_502_never_quotes_the_callers_key(monkeypatch):
     r = TestClient(app).post(
         "/extract",
         files={"file": ("r.png", png.getvalue(), "image/png")},
-        headers={"X-AI-Mode": "key", "X-Meta-Api-Key": key},
+        headers={"X-AI-Mode": "key", "X-Meta-Api-Key": key, "X-Graph-Token": "tok"},
     )
     assert r.status_code == 502 and key not in r.text and "[redacted]" in r.text
+
+
+@pytest.mark.parametrize(
+    ("body", "shown"), [({"mode": "local"}, False), ({"mode": "local", "base_url": "http://127.0.0.1:11434"}, True)]
+)
+def test_ai_test_does_not_list_the_servers_models_to_a_stranger(
+    monkeypatch: pytest.MonkeyPatch, body: dict[str, str], shown: bool
+) -> None:
+    import httpx
+
+    async def tags(self: httpx.AsyncClient, url: str, **kw: object) -> httpx.Response:
+        return httpx.Response(200, json={"models": [{"name": "secret-model:70b"}]}, request=httpx.Request("GET", url))
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", tags)
+    monkeypatch.setenv("OLLAMA_MODEL", "secret-model:70b")
+    monkeypatch.setenv("AI_ALLOWED_BASE_URLS", "http://127.0.0.1:11434")
+    r = TestClient(app).post("/ai/test", json=body)
+    assert r.status_code == 200 and r.json()["ok"] is True
+    assert ("secret-model" in r.text) is shown

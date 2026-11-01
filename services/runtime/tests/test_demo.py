@@ -20,6 +20,7 @@ from app.routes_actions import _mail_sender, graph_token
 from app.routes_books import get_books
 from app.routes_books import router as books_router
 from app.routes_contacts import get_address_book
+from app.routes_extract import router as extract_router
 from app.routes_invoices import get_sender
 from app.routes_lookup import router as lookup_router
 from app.routes_mail import get_mail
@@ -58,6 +59,7 @@ def _app() -> FastAPI:
     app.include_router(demo.router)
     app.include_router(books_router)
     app.include_router(lookup_router)
+    app.include_router(extract_router)
 
     @app.exception_handler(demo.DemoLimit)
     async def limit(_r, exc: demo.DemoLimit) -> JSONResponse:  # noqa: ANN001
@@ -396,3 +398,12 @@ def test_connecting_an_outside_provider_is_refused_in_a_demo(path: str) -> None:
 
     r = TestClient(app).post(path, json={}, headers={demo.HEADER: "any", "X-Graph-Token": "t", "X-User": "u"})
     assert r.status_code == 403 and "demo sandbox" in r.json()["detail"]
+
+
+def test_extract_takes_a_demo_session_but_not_a_stranger(client: TestClient) -> None:
+    """/extract needs a verified sign-in or a live demo session; the demo one needs no Graph token."""
+    gif = {"file": ("x.gif", b"GIF89a", "image/gif")}  # a 415 is past the sign-in check
+    h = _start(client)
+    assert client.post("/extract", files=gif).status_code == 401
+    assert client.post("/extract", files=gif, headers={demo.HEADER: "forged"}).status_code == 401
+    assert client.post("/extract", files=gif, headers=h).status_code == 415
