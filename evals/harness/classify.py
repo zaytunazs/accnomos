@@ -82,6 +82,9 @@ LANDLORD_LABEL = {
     "mortgage_statement": "bank_statement",
     "invoice": "purchase_invoice",
 }
+#: A PDF mortgage statement is kept unread in Needs a look whether it is typed bank_statement or other (only a bank
+#: CSV is imported), so either answer routes it the same way.
+LANDLORD_ALSO: dict[str, tuple[str, ...]] = {"mortgage_statement": ("other",)}
 
 
 @dataclass
@@ -93,6 +96,11 @@ class Case:
     label: str  # one of app.ai.classify.KINDS
     text: str
     name: str = ""  # file name, as the upload flow passes it to the code fallback
+    #: The business the document belongs to, as the upload flow passes the signed-in business's name. Each gold
+    #: set has its own fictional owner (CIS contractors, landlords), so one fixed name would test the wrong thing.
+    business: str = BUSINESS
+    #: Other kinds that route the file the same way in the upload flow (``app/scan_jobs.py``) and so count as right.
+    also: tuple[str, ...] = ()
 
 
 def _receipt_label(doc: dict[str, Any]) -> str:
@@ -105,14 +113,41 @@ def _receipt_label(doc: dict[str, Any]) -> str:
     return "receipt"
 
 
+def _party(doc: dict[str, Any], key: str) -> str | None:
+    party = doc.get(key)
+    name = party.get("name") if isinstance(party, dict) else None
+    return str(name).strip() or None if name else None
+
+
+def _receipt_business(doc: dict[str, Any], label: str) -> str:
+    """Ours is the issuer on a sale, the named customer on a purchase; else the default fictional company."""
+    own = _party(doc, "supplier") if label == "sales_invoice" else _party(doc, "customer")
+    return own or BUSINESS
+
+
 def load_receipt_cases() -> list[Case]:
     out = []
     for path in sorted(RECEIPTS.glob("*.json")):
         doc = json.loads(path.read_text(encoding="utf-8"))
         text = doc.get("printed_text") or ""
         assert text, f"{path.name} has no printed_text"
-        out.append(Case(id=f"receipts/{path.stem}", source="receipts", label=_receipt_label(doc), text=text))
+        label = _receipt_label(doc)
+        out.append(
+            Case(
+                id=f"receipts/{path.stem}",
+                source="receipts",
+                label=label,
+                text=text,
+                business=_receipt_business(doc, label),
+            )
+        )
     return out
+
+
+def _bill_to(text: str) -> str:
+    """The contractor a CIS document is addressed to (the line after ``Bill to:``/``To:``)."""
+    m = re.search(r"^(?:bill to|to|contractor):?\s*\n\s*(\S.*)$", text, re.IGNORECASE | re.MULTILINE)
+    return m.group(1).strip() if m else BUSINESS
 
 
 def load_cis_cases() -> list[Case]:
@@ -124,12 +159,14 @@ def load_cis_cases() -> list[Case]:
         if not (doc.exists() and exp.exists()):
             continue
         kind = str(json.loads(exp.read_text(encoding="utf-8"))["expected"].get("kind", ""))
+        text = doc.read_text(encoding="utf-8")
         out.append(
             Case(
                 id=f"cis/{d.name}",
                 source="cis",
                 label=CIS_LABEL.get(kind, "other"),
-                text=doc.read_text(encoding="utf-8"),
+                text=text,
+                business=_bill_to(text),
             )
         )
     return out
@@ -151,6 +188,8 @@ def load_landlord_cases() -> list[Case]:
         if not landlord.is_dir():
             continue
         exp = json.loads((landlord / "expectations.json").read_text(encoding="utf-8"))
+        me = [o["name"] for owners in exp.get("owners", {}).values() for o in owners if o.get("me")]
+        business = me[0] if me else BUSINESS  # a landlord's books are in their own name
         bills = _bill_files(landlord / "bills")
         for doc in exp["documents"]:
             kind = str(doc["kind"])
@@ -164,6 +203,8 @@ def load_landlord_cases() -> list[Case]:
                     source="landlord",
                     label=LANDLORD_LABEL[kind],
                     text=path.read_text(encoding="utf-8"),
+                    business=business,
+                    also=LANDLORD_ALSO.get(kind, ()),
                 )
             )
     return out
@@ -216,9 +257,15 @@ def load_cases() -> list[Case]:
 # -------------------------------------------------------------------------------- run
 
 
-async def run_case(case: Case, cfg: AiConfig) -> dict[str, Any]:
+def is_right(case: Case, kind: str) -> bool:
+    return kind == case.label or kind in case.also
+
+
+async def run_case(case: Case, cfg: AiConfig, business: str | None = None) -> dict[str, Any]:
+    """``business`` overrides the case's own business name (``--business``: the old one-name stress test)."""
     t0 = time.perf_counter()
-    row: dict[str, Any] = {"id": case.id, "source": case.source, "label": case.label}
+    ours = business or case.business
+    row: dict[str, Any] = {"id": case.id, "source": case.source, "label": case.label, "business": ours}
     if case.source == "bank_csv":
         # The upload flow recognises a CSV by code alone; it never reaches the model.
         guess = classify_mod.Guess(
@@ -236,14 +283,14 @@ async def run_case(case: Case, cfg: AiConfig) -> dict[str, Any]:
         )
         return row
     try:
-        guess = await classify_mod.classify(None, None, cfg, text=case.text, business_name=BUSINESS)
+        guess = await classify_mod.classify(None, None, cfg, text=case.text, business_name=ours)
         fallback = False
         fallback_reason: str | None = None
     except ExtractionError as exc:
         # The upload flow's fallback: code guesses from the words when the model does not answer. The reason is
         # secret-free (a status, a timeout kind or a parse note, never the key) and stays in the row, so a run of
         # instant misses says why instead of reading as normal code guesses.
-        guess = classify_mod.by_words(case.text, case.name, BUSINESS)
+        guess = classify_mod.by_words(case.text, case.name, ours)
         fallback = True
         fallback_reason = str(exc)[:300]
     except Exception as exc:  # noqa: BLE001 -- anything else is a refusal, never a crash
@@ -264,7 +311,7 @@ async def run_case(case: Case, cfg: AiConfig) -> dict[str, Any]:
         fallback_reason=fallback_reason,
         csv_by_code=False,
         reason=guess.reason,
-        correct=guess.kind == case.label,
+        correct=is_right(case, guess.kind),
         elapsed_s=round(time.perf_counter() - t0, 3),
     )
     return row
@@ -355,6 +402,7 @@ def summarise(rows: list[dict[str, Any]], cfg: AiConfig | None, stub: bool) -> d
 
 def report_md(s: dict[str, Any], rows: list[dict[str, Any]]) -> str:
     L = s["latency_s"]
+    who = s.get("business") or "each case's own owner"
     stub_note = " (STUB: a fake model, numbers mean nothing)" if s["stub"] else ""
     kinds = [k for k in classify_mod.KINDS if k in s["confusion"]]
     header = "| Gold \\ predicted | " + " | ".join(classify_mod.KINDS) + " |"
@@ -412,8 +460,11 @@ def report_md(s: dict[str, Any], rows: list[dict[str, Any]]) -> str:
         "How it is scored: the predicted kind against the gold label, one of the classifier's own types. "
         "Receipts and invoices take their label from the gold `doc_type`/`side` (credit notes first); "
         "CIS statements are `other` and reverse-charge invoices `purchase_invoice`; letting statements are "
-        "`other`, insurance and landlord bills `purchase_invoice`, mortgage statements `bank_statement`; "
-        "synthetic Starling-layout CSVs are `bank_statement`.",
+        "`other`, insurance and landlord bills `purchase_invoice`, mortgage statements `bank_statement` "
+        "(`other` also counts: a PDF statement is kept unread in Needs a look either way); "
+        "synthetic Starling-layout CSVs are `bank_statement`. "
+        f"Business name given to the model: {who} "
+        "(the named customer on a purchase, the issuer on a sale, the CIS contractor, the landlord).",
     ]
     return "\n".join(out) + "\n"
 
@@ -539,7 +590,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any] | None:
     print(f"{len(cases)} documents {dict(by_source)}", flush=True)
     if args.dry_run:
         for c in cases[: args.show]:
-            print(f"  {c.id} {c.label}")
+            print(f"  {c.id} {c.label} [{args.business or c.business}]")
         print(json.dumps({k: len([c for c in cases if c.label == k]) for k in classify_mod.KINDS}, indent=1))
         return None
 
@@ -562,7 +613,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any] | None:
             for i, case in enumerate(cases, start=1):
                 if case.id in done:
                     continue
-                row = await run_case(case, cfg)
+                row = await run_case(case, cfg, args.business)
                 fh.write(json.dumps(row, ensure_ascii=False) + "\n")
                 fh.flush()
                 mark = "ok " if row["outcome"] == "ok" and row.get("correct") else "MISS"
@@ -572,6 +623,7 @@ async def main_async(args: argparse.Namespace) -> dict[str, Any] | None:
     wanted = {c.id for c in cases}
     rows = [r for r in read_results(results) if r["id"] in wanted]
     summary = summarise(rows, cfg, args.stub)
+    summary["business"] = args.business or "each case's own owner"
     (out / "summary.json").write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding="utf-8")
     (out / "report.md").write_text(report_md(summary, rows), encoding="utf-8")
     return summary
@@ -587,6 +639,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--base", default=None, help="local base URL (default OLLAMA_URL or localhost:11434)")
     ap.add_argument("--model", default=None, help="default OLLAMA_MODEL/MODEL_API_MODEL per provider")
     ap.add_argument("--out", default=None, help="default evals/runs/classify/")
+    ap.add_argument(
+        "--business",
+        default=None,
+        help="one business name for every case (stress test: a bill addressed to a name that is not ours); "
+        "default each case's own owner",
+    )
     args = ap.parse_args(argv)
     if not args.stub and not args.dry_run and not (os.getenv("META_API_KEY") or "").strip():
         import urllib.request  # noqa: E402

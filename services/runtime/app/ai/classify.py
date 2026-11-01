@@ -49,7 +49,10 @@ SYSTEM_PROMPT = (
     "receipt: a till or card slip for something bought. purchase_invoice: a bill a supplier sent us. "
     "sales_invoice: an invoice we sent a customer (the issuer is our business). bank_statement: a list of bank "
     "transactions with balances. credit_note: a supplier or we credit an earlier invoice. payslip: an employee's pay "
-    "slip. other: anything else (letters, quotes, contracts, photos). confidence: your 0-1 estimate. "
+    "slip. other: anything else (letters, quotes, contracts, photos). The owner uploaded this to their own books, so "
+    "a bill or receipt from another firm is ours even when it is addressed to a different name (the owner's own "
+    "name, a trading name, a misspelling, or no name): never answer other just because the name differs; say so "
+    "in reason instead. confidence: your 0-1 estimate. "
     "reason: one short sentence, quoting no amounts. Return only the JSON."
 )
 
