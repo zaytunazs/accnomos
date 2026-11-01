@@ -35,6 +35,8 @@ anything that a code check is unsure about.
    - it is a purchase, like the rule;
    - **every** code check passed: no failure **and no warning** (low confidence, line detail that
      doesn't add up, duplicate file, non-GBP, bad VAT number… any of them stops it);
+   - it is **one page**: only page 1 of a PDF is read, so a longer PDF always waits in Review with
+     "N of M pages were not read", even when every check passed;
    - the supplier's VAT number is the one on the rule (missing on one side counts as different);
    - the VAT treatment (S/R/Z/N…) is the rule's;
    - the total is above zero and **no more than 2×** the rule's typical amount.

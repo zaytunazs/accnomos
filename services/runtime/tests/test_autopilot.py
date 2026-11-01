@@ -271,6 +271,44 @@ async def test_switched_off_and_no_rule(fake: FakeStorageProvider, books: Books)
     assert len(_events(fake)) == 1
 
 
+async def _scan_pages(fake: FakeStorageProvider, books: Books, monkeypatch: pytest.MonkeyPatch, pages: int):
+    """Scan one Screwfix receipt that the file reader says has `pages` pages (only page 1 is ever read)."""
+    import dataclasses
+
+    from app import inbox
+
+    real = inbox.prepare
+
+    def fake_prepare(data: bytes, name: str):
+        return dataclasses.replace(real(data, name), pages=pages)
+
+    monkeypatch.setattr(inbox, "prepare", fake_prepare)
+    return await _scan(fake, books, b"again")
+
+
+async def test_multi_page_document_is_never_auto_posted(
+    fake: FakeStorageProvider, books: Books, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _learn(fake, books)
+    (p,) = await _scan_pages(fake, books, monkeypatch, 3)
+
+    assert p.source_pages == 3
+    assert p.status in ("proposed", "needs_a_look") and p.decided_by is None
+    assert p.autopilot is not None and not p.autopilot.auto_approve
+    assert any("2 of 3 pages were not read" in r for r in p.autopilot.reasons), p.autopilot.reasons
+    assert len(_events(fake)) == 1 and _jsonl(fake, f"{AUTOPILOT_AUDIT}/") == []
+    assert (await books.get_proposal(p.id)).source_pages == 3  # kept for Review
+
+
+async def test_single_page_document_with_the_same_rule_is_still_auto_posted(
+    fake: FakeStorageProvider, books: Books, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    await _learn(fake, books)
+    (p,) = await _scan_pages(fake, books, monkeypatch, 1)
+
+    assert p.source_pages == 1 and p.status == "posted" and p.decided_by == "autopilot"
+
+
 def test_wrong_side_is_refused() -> None:
     from app.journal import draft_journal
     from app.schemas import Proposal

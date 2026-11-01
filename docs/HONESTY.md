@@ -122,8 +122,10 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
   real customers; nothing in the code enforces that, it is a server setting. A user's own key in key mode asks for
   standard `muse-spark-1.3`, but a key-mode request without its own key falls back to the server's `META_API_KEY` with
   that same standard model id, and a direct API caller can send any `X-AI-Model`. The Contributor model id is the
-  owner's setting and was not checked against Meta's documentation. `/privacy` and the public chat notes do not yet
-  mention Contributor mode.
+  owner's setting and was not checked against Meta's documentation. `/privacy` now says so in "Where your documents go
+  for AI reading" and the third-parties list (the server chain, Contributor mode, the optional processors: the IONOS web host,
+  TrueLayer, Stripe, PayPal); the public chat notes do not yet mention Contributor mode. The privacy wording about
+  what TrueLayer, Stripe and PayPal receive is written from the code's request shapes, not from their contracts.
 
 ## Chat and voice actions, Autopilot
 
@@ -132,6 +134,7 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
 - Invoice drafts for chat actions can end as drafts when `Mail.Send` has not been granted; the card cannot request consent.
 - The Autopilot level lives in the browser's `localStorage` (`accnomos.autopilot`; only L2 turns posting on). The Android app stores its own level the same way and sends `X-Autopilot: off` on every runtime call below L2, so phone scans post nothing without the user.
 - Autopilot only handles purchases that match a rule; it never makes rules itself.
+- Autopilot never posts a PDF of more than one page. Only page 1 is read (the other pages' text is extracted but not given to the model), so the proposal carries `source_pages` and Autopilot leaves it for a person with the reason "2 of 3 pages were not read". Approving by hand is unaffected, and the Review card still shows the "page 1 read" chip.
 
 ## Invoicing, jobs, contacts
 
