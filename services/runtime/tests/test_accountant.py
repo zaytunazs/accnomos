@@ -18,6 +18,7 @@ from accnomos_connectors.fake import FakeStorageProvider
 from accnomos_connectors.msgraph import GraphError
 from app import accountant, audit_view, portal, sharing, testmode
 from app.books import Books
+from app.books import today as london_today
 from app.main import read_only_books
 from app.routes_accountant import router as accountant_router
 from app.routes_audit import router as audit_router
@@ -53,6 +54,12 @@ def _own_lines(path: str) -> list[dict]:
     return [json.loads(x) for x in raw.decode().splitlines() if x.strip()]
 
 
+def _audit_file(folder: str = "_System/audit") -> str:
+    """The audit file Books.audit writes to: keyed by the London day, the same clock the code files by
+    (pinned to ACCNOMOS_TEST_TODAY in these tests), never a hardcoded month."""
+    return f"{folder}/{london_today():%Y-%m}.jsonl"
+
+
 def _client_storage(drive: str, item: str) -> FakeStorageProvider:
     return _world().folders[(drive, item)][2]
 
@@ -75,7 +82,7 @@ def test_view_only_invitation_shares_the_folder_read_and_the_queries_folder_writ
     saved = client.get("/accountant").json()
     assert [i["email"] for i in saved["invitations"]] == [ANA]
     assert saved["client_code"] == "t-drive:t-root"
-    assert [ln["action"] for ln in _own_lines("_System/audit/2026-10.jsonl")][-1] == "accountant_invited"
+    assert [ln["action"] for ln in _own_lines(_audit_file())][-1] == "accountant_invited"
 
 
 def test_edit_invitation_is_one_write_permission(client: TestClient) -> None:
@@ -152,7 +159,7 @@ def test_revoke_removes_every_permission_and_the_accountant_loses_access(client:
     assert client.get("/queries", headers=as_ana).status_code == 404
     assert client.post(f"/accountant/invitations/{inv['id']}/revoke").status_code == 200  # twice is harmless
     assert client.post("/accountant/invitations/nope/revoke").status_code == 404
-    assert [ln["action"] for ln in _own_lines("_System/audit/2026-10.jsonl")][-1] == "accountant_removed"
+    assert [ln["action"] for ln in _own_lines(_audit_file())][-1] == "accountant_removed"
     # A new invitation is allowed once the old one is revoked.
     assert client.post("/accountant/invitations", json={"email": ANA}).status_code == 201
 
@@ -230,7 +237,7 @@ def test_team_opt_in_needs_explicit_agreement_to_the_current_text(
     assert out.status_code == 200 and out.json()["revoked_at"]
     assert _world().role_of(testmode.OWN_ROOT, "reviews@accnomos.example") is None
     assert client.delete("/accountant/team").status_code == 404
-    actions = [ln["action"] for ln in _own_lines("_System/audit/2026-10.jsonl")]
+    actions = [ln["action"] for ln in _own_lines(_audit_file())]
     assert actions[-2:] == ["accountant_team_opted_in", "accountant_team_opted_out"]
 
 
@@ -330,7 +337,7 @@ def test_read_only_view_refuses_writes_but_queries_still_work(client: TestClient
     )
     assert q.status_code == 201, q.text
     files = _client_storage("c2-drive", "c2-root").files
-    lines = [json.loads(x) for x in files["_System/queries/audit/2026-10.jsonl"].decode().splitlines()]
+    lines = [json.loads(x) for x in files[_audit_file("_System/queries/audit")].decode().splitlines()]
     assert lines[-1]["actor"] == f"accountant:{OWNER}" and lines[-1]["action"] == "query_opened"
 
 
@@ -338,7 +345,7 @@ def test_edit_view_writes_and_audits_under_the_accountants_identity(client: Test
     edit = {**C1, "X-Books-Access": "edit", "X-User": OWNER}
     r = client.post("/books/proposals/5eed0001/reject", json={"reason": "Personal purchase"}, headers=edit)
     assert r.status_code == 200, r.text
-    raw = _client_storage("c1-drive", "c1-root").files["_System/audit/2026-10.jsonl"].decode().splitlines()
+    raw = _client_storage("c1-drive", "c1-root").files[_audit_file()].decode().splitlines()
     last = json.loads(raw[-1])
     assert last["actor"] == f"accountant:{OWNER}" and last["action"] == "rejected"
     audit = client.get("/audit?actor=accountant&from=2026-10-01&to=2027-06-30", headers=C1).json()["entries"]

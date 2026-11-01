@@ -383,6 +383,10 @@ class Books:
         `actor` is "user:{email}" for something a person did, or "agent:{name}" for something done for them. In a
         client's books opened by their accountant, "user:…" becomes "accountant:{verified email}"; opened read-only,
         the line goes to _System/queries/audit/ (the only place a view-only accountant may write).
+
+        The file's month is the London day (today(), pinned in test mode), so readers that scan by London day
+        (audit_view.read, portal._last_activity) find the line even when UTC has already rolled over; `ts` itself
+        stays a real UTC timestamp.
         """
         if self.accountant and actor.startswith("user:"):
             actor = f"accountant:{self.accountant}"
@@ -390,7 +394,7 @@ class Books:
                 folder = QUERIES_AUDIT
         ts = now()
         line = json.dumps({"ts": ts.isoformat(), "actor": actor, "action": action, "refs": refs}, ensure_ascii=False)
-        await self._update(f"{folder}/{_month(ts)}.jsonl", lambda old: (old or b"") + line.encode() + b"\n")
+        await self._update(f"{folder}/{_month(today())}.jsonl", lambda old: (old or b"") + line.encode() + b"\n")
 
     async def audit_autopilot(self, actor: str, action: str, refs: dict[str, Any]) -> None:
         """The same line in _System/audit/autopilot/{yyyy-mm}.jsonl: Autopilot's own record, with its reasons."""
