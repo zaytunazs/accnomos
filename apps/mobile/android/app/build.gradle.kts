@@ -41,7 +41,8 @@ android {
     }
 
     // Upload-key signing. android/key.properties is git-ignored and created by the owner
-    // with tools/make_upload_key.ps1. Without it, release builds fall back to the debug key.
+    // with tools/make_upload_key.ps1 (used by tools/build_release.ps1). A release build
+    // without it fails below instead of silently falling back to the debug key.
     val keyProps = Properties()
     val keyPropsFile = rootProject.file("key.properties")
     if (keyPropsFile.exists()) {
@@ -60,7 +61,26 @@ android {
 
     buildTypes {
         release {
-            signingConfig = if (keyPropsFile.exists()) signingConfigs.getByName("upload") else signingConfigs.getByName("debug")
+            if (keyPropsFile.exists()) {
+                signingConfig = signingConfigs.getByName("upload")
+            } else {
+                // Fail only when a release artifact is actually requested, so debug
+                // builds, `flutter test` and `flutter analyze` keep working without
+                // android/key.properties. This block is evaluated at configuration
+                // time for every Gradle invocation, hence the task-name check.
+                val tasks = gradle.startParameter.taskNames
+                val wantsRelease = tasks.any {
+                    it.contains("Release", ignoreCase = true) ||
+                        it.contains("Bundle", ignoreCase = true)
+                } || tasks.any {
+                    it.equals("build", ignoreCase = true) || it.endsWith(":build") ||
+                        it.equals("assemble") || it.endsWith(":assemble")
+                }
+                if (wantsRelease) {
+                    throw GradleException("Release build needs android/key.properties; see tools/build_release.ps1")
+                }
+                signingConfig = signingConfigs.getByName("debug")
+            }
         }
     }
 }
