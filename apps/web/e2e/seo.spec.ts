@@ -26,7 +26,7 @@ test("sitemap.xml lists the public pages, never the app shells", async ({ reques
 
 test("the landing page has a canonical link and valid JSON-LD", async ({ page }) => {
   await page.goto("/");
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://accnomos.com/");
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute("href", "https://accnomos.com");
   const raw = await page.locator('script[type="application/ld+json"]').first().textContent();
   expect(raw).toBeTruthy();
   const data = JSON.parse(raw as string);
