@@ -138,7 +138,7 @@ kept, failures never remembered) and answers 401 when Graph refuses it. Three th
 - **`/extract`** needs a verified token or a live demo session (`X-Demo-Session`); without either it answers 401
   before reading the upload, so the server's default model is not an open service. It remembers nothing between
   calls, so one caller can never learn from a duplicate flag what another uploaded; duplicate detection lives in
-  the books path. The Android capture screen reads receipts before sign-in; that now needs a signed-in account.
+  the books path. The Android capture screen reads receipts before sign-in on a demo session it starts itself (`POST /demo/session`), so a reader with `DEMO_MODE` off needs the user to sign in first.
 
 In test mode (`ACCNOMOS_TEST_MODE=1`) the fake sharing world answers in place of Graph, as `X-User`.
 

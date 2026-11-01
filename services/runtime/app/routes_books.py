@@ -147,6 +147,8 @@ async def require_user(request: Request, x_user: str | None = Header(default=Non
     return (await identity.verified_identity(identity.bearer(request), hint)).email
 
 
+# TODO: unverified X-User; reads and mail look-ups only, nothing is audited under it. Use identity.verified_identity
+# if a route ever writes an audit line from it.
 def optional_user(x_user: str | None = Header(default=None)) -> str | None:
     return (x_user or "").strip() or None
 
