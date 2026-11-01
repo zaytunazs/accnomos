@@ -7,7 +7,7 @@ test("robots.txt allows the site and disallows the app shells", async ({ request
   expect(res.status()).toBe(200);
   const body = await res.text();
   expect(body).toContain("Sitemap: https://accnomos.com/sitemap.xml");
-  expect(body).toMatch(/^User-agent: \*/m);
+  expect(body).toMatch(/^User-Agent: \*/m);
   for (const shell of ["/review", "/bank", "/settings", "/auth"]) {
     expect(body).toMatch(new RegExp(`^Disallow: ${shell}$`, "m"));
   }
