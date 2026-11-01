@@ -402,6 +402,77 @@ async def test_replacement_keeps_disposal_and_trade_in(books: Books, fake: FakeS
     assert sum(ln.amount_pence for ln in posted) == 40799  # cost + disposal - proceeds
 
 
+async def test_a_repeated_vat_line_is_counted_once(books: Books, fake: FakeStorageProvider, model) -> None:
+    # What the model did in the property eval: VAT on the net line and again as its own line (£268.10, not £229.80).
+    await fake.write(f"{INBOX}/boiler2.txt", INVOICE_VAT_TEXT.encode())
+    model.replies = [
+        _ollama(
+            {
+                "kind": "invoice",
+                "date": "2026-08-03",
+                "property_text": "42 Brackley Lane, Dovercourt CT18 4PL",
+                "lines": [
+                    _line("Replace diverter valve, labour and parts", "repairs", 191.5, vat=38.3),
+                    _line("VAT at 20%", "repairs", 38.3),
+                    _line("Total", "repairs", 229.8, info=True),
+                ],
+                "total": 229.8,
+            }
+        )
+    ]
+    r = await prr.read_document(books, "boiler2.txt", CFG, USER)
+    assert not r.problems
+    assert all(c.ok for c in r.checks)
+    assert any(c.code == "VAT_ONCE" for c in r.checks)
+    posted = prr.expense_lines(r)
+    assert sum(ln.amount_pence + (ln.vat_pence or 0) for ln in posted) == 22980
+
+
+def test_a_vat_line_is_kept_when_no_charge_carries_vat() -> None:
+    lines = [
+        prr.ReadLine(description="Callout", category="repairs", amount_pence=10000),
+        prr.ReadLine(description="VAT at 20%", category="repairs", amount_pence=2000),
+    ]
+    kept, checks = prr.tidy_invoice_lines(lines)
+    assert kept == lines and checks == []  # the VAT is only here once: it stands
+
+
+async def test_replacement_disposal_read_as_other_joins_the_replacement(
+    books: Books, fake: FakeStorageProvider, model
+) -> None:
+    # What the model did in the property eval: the disposal line in another category (£387.99, not £407.99).
+    await fake.write(f"{INBOX}/washing2.txt", WASHING_TEXT.encode())
+    model.replies = [
+        _ollama(
+            {
+                "kind": "invoice",
+                "date": "2026-06-22",
+                "property_text": "Flat 3, Willow House, 14 Elm Street, Dovercourt CT18 2XY",
+                "lines": [
+                    _line("Washing machine, 8 kg", "domestic_items", 387.99, replacement=True),
+                    _line("Removal and disposal of the old machine", "other", 20.0),
+                    _line("Trade-in allowance", "other", 0.0),
+                ],
+                "total": None,
+            }
+        )
+    ]
+    r = await prr.read_document(books, "washing2.txt", CFG, USER)
+    assert any(c.code == "REPLACEMENT_COSTS" for c in r.checks)
+    posted = prr.expense_lines(r)
+    assert [ln.category for ln in posted] == ["domestic_items"] * 2
+    assert sum(ln.amount_pence for ln in posted) == 40799
+
+
+def test_incidental_lines_stay_put_without_a_replacement() -> None:
+    lines = [
+        prr.ReadLine(description="Boiler service", category="repairs", amount_pence=9000),
+        prr.ReadLine(description="Disposal of old parts", category="repairs", amount_pence=1500),
+    ]
+    kept, checks = prr.tidy_invoice_lines(lines)
+    assert [ln.category for ln in kept] == ["repairs", "repairs"] and checks == []
+
+
 async def test_invalid_json_is_asked_once_more(books: Books, fake: FakeStorageProvider, model) -> None:
     await fake.write(f"{INBOX}/april.txt", STATEMENT_TEXT.encode())
     model.replies = ["Here is the extraction: some text without JSON", _ollama(_statement_obj())]

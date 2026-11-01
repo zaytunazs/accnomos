@@ -113,6 +113,55 @@ def expense_lines(reading: Reading) -> list[ReadLine]:
     return [ln for ln in reading.lines if not ln.info and not ln.capital and ln.amount_pence != 0]
 
 
+#: A line that is only the VAT ("VAT", "VAT at 20%", "VAT @ 20%").
+_VAT_ONLY = re.compile(r"^\s*(?:total\s+)?vat\b(?:\s*(?:at|@)?\s*\d+(?:\.\d+)?\s*%)?\s*:?\s*$", re.IGNORECASE)
+#: Costs of getting the new item in or the old one out (HMRC PIM3210: they increase the replacement deduction).
+_INCIDENTAL = re.compile(
+    r"\b(deliver(?:y|ed)?|install(?:ation|ed)?|fitting|plumb(?:ing)? in|removal|remove|dispos(?:al|e)|collection|"
+    r"recycl(?:e|ing)|trade[- ]in|part[- ]exchange)\b",
+    re.IGNORECASE,
+)
+
+
+def tidy_invoice_lines(lines: list[ReadLine]) -> tuple[list[ReadLine], list[cis.Check]]:
+    """Code's rules for a bill, after the model has listed its lines.
+
+    * A separate VAT line that repeats the VAT already carried on the charge lines is the same money twice: it is
+      dropped (the model was asked to put VAT on the net line only; this is the backstop).
+    * On a like-for-like replacement, delivery, installation, removal and disposal of the old item are part of the
+      replacement (HMRC PIM3210: incidental costs increase the deduction), so they take its category.
+    """
+    checks: list[cis.Check] = []
+    carried = sum(ln.vat_pence or 0 for ln in lines if not ln.info and not _VAT_ONLY.match(ln.description))
+    kept: list[ReadLine] = []
+    for ln in lines:
+        if not ln.info and carried and _VAT_ONLY.match(ln.description) and abs(ln.amount_pence - carried) <= 1:
+            checks.append(
+                cis.Check(code="VAT_ONCE", ok=True, message=f"VAT of {cis.money(carried)} counted once, on the charge")
+            )
+            continue
+        kept.append(ln)
+    if any(ln.category == "domestic_items" and ln.replacement and not ln.info for ln in kept):
+        moved = [
+            ln
+            for ln in kept
+            if not ln.info and not ln.capital and ln.category != "domestic_items" and _INCIDENTAL.search(ln.description)
+        ]
+        if moved:
+            kept = [
+                ln.model_copy(update={"category": "domestic_items", "replacement": True}) if ln in moved else ln
+                for ln in kept
+            ]
+            checks.append(
+                cis.Check(
+                    code="REPLACEMENT_COSTS",
+                    ok=True,
+                    message="Delivery, fitting and disposal count towards the replacement of domestic items",
+                )
+            )
+    return kept, checks
+
+
 def from_reading(read: PropertyReading, properties: list[pr.Property], path: str) -> tuple[Reading, list[str]]:
     """Code's half: pounds to pence, dates parsed, the property matched, the lines checked against the totals."""
     problems: list[str] = []
@@ -154,6 +203,8 @@ def from_reading(read: PropertyReading, properties: list[pr.Property], path: str
     if not read.property_text:
         problems.append("No property address read; choose the property when approving")
     checks: list[cis.Check] = []
+    if read.kind == "invoice":
+        lines, checks = tidy_invoice_lines(lines)
     if total is not None and lines:
         s = sum(ln.amount_pence for ln in lines if not ln.info) + sum(ln.vat_pence or 0 for ln in lines if not ln.info)
         checks.append(
