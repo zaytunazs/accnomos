@@ -53,7 +53,7 @@ const STEP_TITLES: { id: RtCloseStepId; title: string; what: string }[] = [
   { id: "vat", title: "VAT", what: "If the month ends a VAT period: the 9 boxes and the deadline (never submitted)" },
   { id: "checks", title: "Checks", what: "Uncategorised balances, duplicates, negative balances, unusual postings" },
   { id: "reports", title: "Reports", what: "P&L and balance sheet saved as a draft in 07 Reports" },
-  { id: "lock", title: "Lock", what: "Mark the month closed, with a snapshot of its figures" },
+  { id: "lock", title: "Close", what: "Mark the month closed with a snapshot of its figures; later changes are detected and shown, not blocked." },
 ];
 
 const STATUS: Record<RtCloseStep["status"], { label: string; cls: string; icon: string }> = {
@@ -164,7 +164,7 @@ function StepRow({
               <>
                 {" "}
                 <Link href={step.link} className="font-bold text-teal-dark underline hover:text-teal">
-                  Open {title === "Lock" ? "Month-end" : title === "Checks" ? "Reports" : title}
+                  Open {title === "Close" ? "Month-end" : title === "Checks" ? "Reports" : title}
                 </Link>
               </>
             )}

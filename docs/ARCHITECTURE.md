@@ -476,7 +476,7 @@ dealt with), `needs_you` (worth doing, does not stop the close) or `note`.
 | 6 | VAT | if the month ends a VAT period (the usual `stagger` / `start_month` / `months`): the 9 boxes (`compute_vat_return`), the deadline (HMRC's obligation if posted, else 1 month 7 days), submitted or not, and the digital-links trail (each event on the return with its evidence hashes, up to 200) | link to `/vat?period=…`; **never submits** |
 | 7 | Checks | a balance on `7999 Sundry expenses` (the chart has no suspense account; Sundry is where uncategorised costs go) and accounts with no code (blocking); live sales or purchases with the same counterparty, amount and day (blocking); bank balances below zero; a purchase over 3× the supplier's median (and £100 over it); manual adjustments | links |
 | 8 | Reports | blocked while anything blocks or the month has not ended; otherwise the P&L and balance sheet (`reports.balance_sheet`) saved as `07 Reports/<yyyy-mm>-month-end-draft.xlsx` | |
-| 9 | Lock | blocked while anything blocks or the month has not ended; already closed with the same snapshot → ok | a `close_month` card |
+| 9 | Close | blocked while anything blocks or the month has not ended; already closed with the same snapshot → ok | a `close_month` card |
 
 **Safety.** The agent posts nothing and sends nothing. A run writes its record (`_System/close/<yyyy-mm>.json`), one
 `close_run` audit line (`agent:close`) and, at step 8, the draft report. Everything else is a card approved through
