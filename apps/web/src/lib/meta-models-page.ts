@@ -163,7 +163,11 @@ function speech(): Result {
     return {
       label: "Spoken questions to text",
       short: `word error rate ${wer}`,
-      value: `word error rate ${wer}; amounts heard right ${pct1(muse.amounts_accuracy_pct)}; ${num(muse.failures)} failures`,
+      value: `word error rate ${wer}; ${
+        typeof muse.amounts_accuracy_pct === "number"
+          ? `amounts heard right ${pct1(muse.amounts_accuracy_pct)}`
+          : `spoken numbers heard right ${pct1(muse.numbers_accuracy_pct)}, so a spoken card reads its figures back in words before you approve`
+      }; ${num(muse.failures)} failures`,
       basis: `${day(s.at) ?? "date not recorded"} · ${num(muse.clips)} recordings`,
       report: report("stt"),
     };
@@ -174,6 +178,22 @@ function speech(): Result {
       "Not measured yet: tested with faked HTTP in the request and reply shapes from Meta's own cookbook; the comparison eval (evals/harness/stt.py) has not been run, and there has been no live microphone run.",
     basis: "no run committed",
     report: null,
+  };
+}
+
+/**
+ * evals/harness/classify.py writes evals/runs/classify/: the upload flow's first step (what kind of document is this?)
+ * through the live provider chain, so Muse Spark 1.3 first. Shown under Muse Spark only when Muse Spark answered.
+ */
+function classifier(): Result | null {
+  const s = readRun("classify", "summary.json");
+  if (!s || s.stub === true || typeof s.model !== "string" || !s.model.startsWith("muse-spark")) return null;
+  return {
+    label: "What kind of document is this (the upload flow's first step: receipt, bill, sales invoice, statement…)",
+    value: `right type ${pct1(s.accuracy_pct)}; ${pct1(s.by_ai_pct)} answered by the model, the rest by code (bank CSVs)`,
+    short: `document type ${pct1(s.accuracy_pct)}`,
+    basis: `${day(s.generated) ?? "date not recorded"} · ${num(s.docs)} documents`,
+    report: report("classify"),
   };
 }
 
@@ -217,6 +237,7 @@ export function metaModels(): MetaModel[] {
       via: "Meta Model API: 1st on our live server (Contributor mode, demo and testing), or standard with your own key",
       what: "Meta's hosted Muse model on the Meta Model API: it reads images and text and replies in strict JSON. The first choice on our live server, in Contributor mode for the demo and testing.",
       jobs: [
+        { job: "Says what kind of document each upload is (receipt, bill, sales invoice, credit note, statement) before it is read; you confirm or change it", screen: "Upload" },
         { job: "Reads receipts, invoices, credit notes and emailed bills into a strict list (supplier, VAT number, date, lines, net, VAT, total) and suggests the category", screen: "Review" },
         { job: "The Verifier's second reading in key mode when no Muse Spark Open endpoint is set", screen: "Review card: “Verifier agrees”" },
         { job: "Reads CIS payment and deduction statements and reverse-charge invoices", screen: "CIS" },
@@ -234,20 +255,21 @@ export function metaModels(): MetaModel[] {
         CONTRIBUTOR_NOTE,
       ],
       checks: TEXT_CHECKS,
-      results: [
+      results: present([
+        classifier(),
         {
-          label: "All jobs",
-          value: "Not measured yet: tested with faked HTTP only; no eval has been run on Muse Spark, so there is no accuracy or speed figure.",
+          label: classifier() ? "Every other job" : "All jobs",
+          value: "Not measured yet on Muse Spark: tested with faked HTTP only. The same jobs are measured on Muse Glimmer 30B below.",
           basis: "no run committed",
           report: null,
         },
-      ],
+      ]),
     },
     {
       id: "muse-glimmer",
       name: "Muse Glimmer 30B",
       modelId: "muse-glimmer:30b",
-      uses: "The same jobs as Muse Spark, as the local fallback, or for everything in local mode; all our measured results",
+      uses: "The same jobs as Muse Spark, as the local fallback, or for everything in local mode; most of our measured results",
       via: "A local fallback model, last on our live server; or your own machine",
       what: "Meta's open-weights Muse model: it reads images and text and replies in strict JSON. We run the weights ourselves, as the local fallback.",
       jobs: [

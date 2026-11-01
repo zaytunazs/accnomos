@@ -1,0 +1,168 @@
+{
+  "generated": "2026-10-28T07:44:04+00:00",
+  "model": "muse-glimmer:30b",
+  "base_url": "http://localhost:11434",
+  "stub": false,
+  "lines": 459,
+  "scored_lines": 285,
+  "unscored_lines": 174,
+  "accuracy_pct": 91.6,
+  "accuracy_when_answered_pct": 91.6,
+  "primary_accuracy_pct": 78.2,
+  "outcomes": {
+    "ok": 459
+  },
+  "refusals": 0,
+  "refusal_pct": 0.0,
+  "invalid_json": 0,
+  "invalid_account": 0,
+  "invalid_vat_code": 0,
+  "transport_errors": 0,
+  "latency_s": {
+    "mean": 4.52,
+    "p50": 4.463,
+    "p95": 5.775,
+    "max": 6.764,
+    "total": 2074.6
+  },
+  "by_source": {
+    "hand-written": {
+      "scored": 13,
+      "correct": 13,
+      "accuracy_pct": 100.0
+    },
+    "ledger2": {
+      "scored": 189,
+      "correct": 189,
+      "accuracy_pct": 100.0
+    },
+    "two-month": {
+      "scored": 83,
+      "correct": 59,
+      "accuracy_pct": 71.1
+    }
+  },
+  "by_expected_account": {
+    "5000 Materials": {
+      "scored": 62,
+      "correct": 62,
+      "accuracy_pct": 100.0
+    },
+    "5100 Tools & small equipment": {
+      "scored": 50,
+      "correct": 50,
+      "accuracy_pct": 100.0
+    },
+    "7100 Rent": {
+      "scored": 6,
+      "correct": 6,
+      "accuracy_pct": 100.0
+    },
+    "7200 Utilities": {
+      "scored": 5,
+      "correct": 4,
+      "accuracy_pct": 80.0
+    },
+    "7300 Motor expenses": {
+      "scored": 60,
+      "correct": 60,
+      "accuracy_pct": 100.0
+    },
+    "7400 Travel": {
+      "scored": 6,
+      "correct": 2,
+      "accuracy_pct": 33.3
+    },
+    "7410 Subsistence": {
+      "scored": 10,
+      "correct": 6,
+      "accuracy_pct": 60.0
+    },
+    "7510 Software & subscriptions": {
+      "scored": 6,
+      "correct": 4,
+      "accuracy_pct": 66.7
+    },
+    "7550 Telephone & internet": {
+      "scored": 36,
+      "correct": 31,
+      "accuracy_pct": 86.1
+    },
+    "7600 Professional fees": {
+      "scored": 8,
+      "correct": 0,
+      "accuracy_pct": 0.0
+    },
+    "7700 Insurance": {
+      "scored": 5,
+      "correct": 5,
+      "accuracy_pct": 100.0
+    },
+    "7900 Bank charges": {
+      "scored": 31,
+      "correct": 31,
+      "accuracy_pct": 100.0
+    }
+  },
+  "top_confusions": [
+    {
+      "expected": "7600 Professional fees",
+      "got": "5000 Materials",
+      "n": 8
+    },
+    {
+      "expected": "7550 Telephone & internet",
+      "got": "7999 Sundry expenses",
+      "n": 4
+    },
+    {
+      "expected": "7410 Subsistence",
+      "got": "5000 Materials",
+      "n": 4
+    },
+    {
+      "expected": "7400 Travel",
+      "got": "6200 Advertising",
+      "n": 2
+    },
+    {
+      "expected": "7510 Software & subscriptions",
+      "got": "7600 Professional fees",
+      "n": 2
+    },
+    {
+      "expected": "7550 Telephone & internet",
+      "got": "7510 Software & subscriptions",
+      "n": 1
+    },
+    {
+      "expected": "7200 Utilities",
+      "got": "5000 Materials",
+      "n": 1
+    },
+    {
+      "expected": "7400 Travel",
+      "got": "5000 Materials",
+      "n": 1
+    },
+    {
+      "expected": "7400 Travel",
+      "got": "7300 Motor expenses",
+      "n": 1
+    }
+  ],
+  "unscored_answers": {
+    "5000 Materials": 125,
+    "7999 Sundry expenses": 40,
+    "7900 Bank charges": 3,
+    "7600 Professional fees": 2,
+    "7200 Utilities": 2,
+    "7410 Subsistence": 1,
+    "7100 Rent": 1
+  },
+  "vat_codes": {
+    "S": 292,
+    "N": 166,
+    "Z": 1
+  }
+}
