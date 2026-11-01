@@ -20,6 +20,7 @@ import {
 } from "@/lib/runtime";
 import { SpecFields, specBody, type SpecValues } from "@/components/spending/LiveShopping";
 import { Markdown } from "./AnswerCard";
+import { readBack } from "@/lib/readback";
 
 const gbp = (pence: number) =>
   `${pence < 0 ? "-" : ""}£${(Math.abs(pence) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -295,9 +296,12 @@ export default function ActionCard({
   receivedAt,
   onChange,
   expiredText = "This proposal has expired; ask again.",
+  spoken,
 }: {
   action: RtProposedAction;
   account: AccountInfo;
+  /** What the speech-to-text heard, for a spoken request: shown with the card's figures read back in words. */
+  spoken?: string;
   /** When the card arrived by this device's clock; absent (an older saved thread): when it was first shown. */
   receivedAt?: number;
   /** "Change": put the question back in the box so the user can reword it. Left out: no Change button. */
@@ -308,6 +312,7 @@ export default function ActionCard({
   const [state, setState] = useState<State>({ step: "ready" });
   const [lapsed, setLapsed] = useState(false);
   const warnings = ((action.preview.warnings as string[] | undefined) ?? []).filter(Boolean);
+  const heard = action.transcribed_by ? readBack(action.kind, action.preview as Record<string, unknown>) : [];
   const expired = lapsed && state.step === "ready";
 
   // Timed from when the card arrived, not by comparing the server's expiry with this device's clock, which may be off
@@ -345,6 +350,20 @@ export default function ActionCard({
         Proposed · {TITLES[action.kind]} · needs your OK
       </p>
       <Details action={action} />
+      {action.transcribed_by && heard.length > 0 && !expired && state.step === "ready" && (
+        <div className="mt-3 rounded-xl border border-warn-border bg-warn-bg p-3 text-[14px] leading-6 text-warn-ink" role="note" aria-label="Check the figures you said">
+          <p className="font-bold">Check the figures: speech gets numbers wrong more often than words.</p>
+          {spoken && <p className="mt-1 italic">We heard: “{spoken}”</p>}
+          <ul className="mt-1">
+            {heard.map((h) => (
+              <li key={h.label}>
+                {h.label}: <strong className="tabular-nums">{h.figure}</strong> ({h.words})
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1">Not what you said? {onChange ? "Choose Change and type it." : "Reject it and type it instead."}</p>
+        </div>
+      )}
       {action.transcribed_by && (
         <p className="mt-2 text-[12px] text-muted">Spoken request · transcribed by {action.transcribed_by.label} (kept in the audit log)</p>
       )}
