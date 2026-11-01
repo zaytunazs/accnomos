@@ -1,0 +1,11 @@
+{
+  "id": "section-demo",
+  "model": "muse-image-1.0",
+  "endpoint": "https://api.meta.ai/v1/images/generations",
+  "prompt": "Flat, clean vector illustration with soft geometric shapes and gentle depth, calm and trustworthy, for a UK small-business bookkeeping app. Palette from the app's design tokens only: deep teal #0F6E63, dark teal #0A4F47, deep ledger green #073B35, teal tint #E6F1EF, warm paper off-white #F4F3EE, charcoal #1B1F24, and a small brass accent #D9B55A. No text, no letters, no numbers, no words, no logos or brand marks of any real company, no real people and no faces, no screenshots of real software, no flags, no currency symbols. Leave a wide calm area of plain colour where a title will be added later. A single paper receipt following a dotted path across the frame: from a phone on the left, through an inbox tray, to a ledger book and a sealed envelope on the right. Deep ledger green background, off-white and brass shapes, wide empty band across the middle.",
+  "size_requested": "1920x1080",
+  "size_saved": "1920x1080",
+  "use": "background for Demo quality cards (shots 8\u201311) and the end card",
+  "date": "2026-11-01T08:14:07+00:00",
+  "docs": "https://dev.meta.ai/docs/image-generation (read 29 Oct 2026)"
+}
