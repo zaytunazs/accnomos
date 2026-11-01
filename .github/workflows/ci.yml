@@ -36,8 +36,8 @@ jobs:
           - { suite: evals, path: evals/tests, timeout: 10 }
     timeout-minutes: ${{ matrix.timeout }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
@@ -54,8 +54,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - name: ruff check
@@ -67,8 +67,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v6
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
@@ -87,11 +87,11 @@ jobs:
       run:
         working-directory: apps/web
     steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: apps/web/package.json # its packageManager pins the version
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -103,7 +103,7 @@ jobs:
         # next typegen writes the route/layout types (LayoutProps etc.) that a clean checkout lacks
         run: pnpm exec next typegen && pnpm exec tsc --noEmit
       - name: Cache the Next build cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: apps/web/.next/cache
           key: next-build-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}-${{ hashFiles('apps/web/src/**', 'apps/web/next.config.ts') }}
@@ -130,9 +130,9 @@ jobs:
       CI: "1"
       ACCNOMOS_TEST_MODE: "1" # playwright.config.ts also sets it for the runtime it starts
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
         with:
           python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
@@ -141,10 +141,10 @@ jobs:
         run: uv sync --frozen --package accnomos-runtime
         working-directory: .
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
           package_json_file: apps/web/package.json
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 24
           cache: pnpm
@@ -156,7 +156,7 @@ jobs:
         run: echo "version=$(node -p 'require("@playwright/test/package.json").version')" >> "$GITHUB_OUTPUT"
       - name: Cache Playwright browsers
         id: pw-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-chromium-shell
@@ -168,7 +168,7 @@ jobs:
         run: pnpm exec playwright install-deps chromium
 
       - name: Cache the Next build cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: apps/web/.next/cache
           key: next-e2e-${{ runner.os }}-${{ hashFiles('apps/web/pnpm-lock.yaml') }}-${{ hashFiles('apps/web/src/**', 'apps/web/next.config.ts') }}
@@ -184,7 +184,7 @@ jobs:
 
       - name: Upload traces and report on failure
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-traces
           path: |
@@ -200,14 +200,14 @@ jobs:
       run:
         working-directory: apps/mobile
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: subosito/flutter-action@v2
         with:
           channel: stable
           flutter-version: 3.47.8 # Dart 3.13.7, the floor pubspec.yaml sets
           cache: true
       - name: Cache pub packages
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.pub-cache
           key: pub-${{ runner.os }}-${{ hashFiles('apps/mobile/pubspec.lock') }}
