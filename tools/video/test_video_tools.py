@@ -167,7 +167,7 @@ def test_every_caption_and_card_names_only_meta_models():
         "85 % clean",
         "80 % messy",
         "92.5 % of 120",
-        "89.8 % of 108",
+        "99.1 % of 108",
         "91.6 % of 459",
     ):
         assert figure in eval_card

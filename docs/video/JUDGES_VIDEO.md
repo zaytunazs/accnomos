@@ -94,7 +94,7 @@ Receipts and invoices, every field right (200 clean + 200 messy)
   Muse Spark Open     91 % clean   93 % messy
   Muse Glimmer 30B    85 % clean   80 % messy
 CIS statements and invoices, all fields exact   92.5 % of 120
-Property statements and bills, all fields exact 89.8 % of 108
+Property statements and bills, all fields exact 99.1 % of 108
 Bank lines coded to the right account           91.6 % of 459
 Ask: figures exact in 32 of 32 questions
 Synthetic documents: real photos will score lower
@@ -110,10 +110,10 @@ about nine in ten right. Real photos will score lower."
 Sources, `evals/runs/*/summary.json` on `main` (`715c564`, read 29 Oct 2026):
 `spark_open_200` and `spark_open_messy_200` (`all_fields_correct` 0.91 / 0.93, n 200 each);
 `glimmer_200_v2` and `glimmer_messy_200_v2` (0.85 / 0.80, n 200 each); `cis_read` (`all_exact_pct` 92.5,
-`docs` 120); `property_docs` (`all_exact_pct` 89.8, `docs` 108); Ask from `evals/runs/ask_40/report.md` (Glimmer
+`docs` 120); `property_docs` (`all_exact_pct` 99.1, `docs` 108); Ask from `evals/runs/ask_40/report.md` (Glimmer
 column, 32/32; there is no `summary.json` for it). The CIS, property and bank rows are Muse Glimmer.
-**Bank lines 91.6 % of 459 is the owner's figure from the Glimmer `harness/bank_ai.py` run: its
-`evals/runs/bank_ai/summary.json` is not committed on `main` yet. Commit it before recording, or drop the row.**
+Bank lines 91.6 % of 459 is from the Glimmer `harness/bank_ai.py` run (`evals/runs/bank_ai/summary.json`,
+committed 1 Nov 2026); property 99.1 % is the 1 Nov re-run after the VAT-once and replacement-costs rules.
 The card names no hosting provider, serving tool or non-Meta model (owner's rule).
 
 ## Technical depth — propose, approve, code computes (1:28–2:08, 40 s)

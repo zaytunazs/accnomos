@@ -58,13 +58,13 @@ test.describe("desktop", () => {
     const modal = (await page.locator("main").innerText()).split("\n").filter((l) => /Modal/.test(l));
     for (const line of modal) expect(line, "Modal only as an optional provider").toMatch(/optional extra provider/);
     // Figures come from the committed runs at build time.
-    await expect(page.getByTestId("row-muse-glimmer")).toContainText("clean documents 85 %; messy documents 80 %; CIS 92.5 %; property 89.8 %");
+    await expect(page.getByTestId("row-muse-glimmer")).toContainText("clean documents 85 %; messy documents 80 %; CIS 92.5 %; property 99.1 %");
     await expect(page.getByTestId("row-muse-spark")).toContainText(/document type \d+(\.\d)? %/); // evals/runs/classify
     await expect(page.getByTestId("model-muse-spark")).toContainText("Every other job");
     await expect(page.getByTestId("model-muse-glimmer")).toContainText(/right account \d+(\.\d)? %/); // evals/runs/bank_ai
     const glimmer = page.getByTestId("model-muse-glimmer");
     await expect(glimmer).toContainText("every figure exact 92.5 %"); // evals/runs/cis_read
-    await expect(glimmer).toContainText("every figure exact 89.8 %"); // evals/runs/property_docs
+    await expect(glimmer).toContainText("every figure exact 99.1 %"); // evals/runs/property_docs
     await expect(glimmer).toContainText("32/32 exact; 0 invented figures reached the user"); // evals/runs/ask_40
     await expect(page.getByTestId("model-muse-spark-open")).toContainText("every field right 91 %");
     await expect(page.getByTestId("model-muse-voice-transcribe")).toContainText(/word error rate \d+(\.\d)? %/); // evals/runs/stt
