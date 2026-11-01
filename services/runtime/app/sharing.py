@@ -24,7 +24,6 @@ Rules kept here:
 from __future__ import annotations
 
 import re
-from collections import OrderedDict
 from typing import Literal
 
 from fastapi import HTTPException, Request
@@ -120,28 +119,12 @@ async def sharing_for(token: str, user: str | None = None) -> SharingProvider:
     return GraphSharingProvider(token)
 
 
-_IDENTITIES: OrderedDict[str, str] = OrderedDict()  # hash of the token -> its /me email (no token is kept)
-_IDENTITIES_MAX = 256
-
-
 async def identity(token: str, user: str | None) -> str:
-    """The accountant's email, from Graph /me for this token (remembered by token hash for the hour it lives)."""
+    """The accountant's email, from Graph /me for this token (app/identity.py remembers it for ten minutes)."""
     if is_test_mode():
         if not user:
             raise HTTPException(400, "X-User header required")
         return user.strip().lower()
-    from app.cache import user_cache_key
+    from app import identity as verified
 
-    key = user_cache_key(token, "identity")
-    if key in _IDENTITIES:
-        _IDENTITIES.move_to_end(key)
-        return _IDENTITIES[key]
-    provider = await sharing_for(token)
-    try:
-        email = (await provider.whoami()).email
-    finally:
-        await provider.aclose()  # type: ignore[attr-defined]
-    _IDENTITIES[key] = email
-    while len(_IDENTITIES) > _IDENTITIES_MAX:
-        _IDENTITIES.popitem(last=False)
-    return email
+    return (await verified.verified_identity(token)).email
