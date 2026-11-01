@@ -79,8 +79,8 @@ void main() {
 
   test('demo mode off says to sign in', () async {
     final client = signedOut(reader(demoStatus: 401));
-    expect(
-      () => client.extract(photo),
+    await expectLater(
+      client.extract(photo),
       throwsA(isA<RuntimeException>()
           .having((e) => e.message, 'message', contains('Sign in'))),
     );
@@ -89,8 +89,8 @@ void main() {
 
   test('a 401 from /extract surfaces the sign-in message', () async {
     final client = signedOut(reader(extractStatus: 401));
-    expect(
-      () => client.extract(photo),
+    await expectLater(
+      client.extract(photo),
       throwsA(isA<RuntimeException>()
           .having((e) => e.message, 'message', contains('Sign in'))),
     );
