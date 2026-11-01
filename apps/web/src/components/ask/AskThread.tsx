@@ -382,6 +382,7 @@ export default function AskThread() {
                   action={t.answer.proposed_action}
                   account={account}
                   receivedAt={t.at}
+                  spoken={t.voice ? t.question : undefined}
                   onChange={() => {
                     setInput(t.question);
                     inputRef.current?.focus();

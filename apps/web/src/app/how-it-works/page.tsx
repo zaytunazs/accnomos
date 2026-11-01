@@ -237,7 +237,7 @@ const faqs: { q: string; a: string }[] = [
   },
   {
     q: "How do I check this page against the code?",
-    a: "Each section names the behaviour; the contracts live in docs/ARCHITECTURE.md, AUTOPILOT.md, ACTIONS.md, INBOX.md, PLANNER.md and HONESTY.md, tested by services/runtime/tests and the Playwright suite (pnpm run e2e). This page was last checked against main on 27 Oct 2026.",
+    a: "Each section names the behaviour; the contracts live in docs/ARCHITECTURE.md, AUTOPILOT.md, ACTIONS.md, INBOX.md, PLANNER.md and HONESTY.md, tested by the runtime tests (services/runtime/tests) and the browser tests (apps/web/e2e). This page was last checked against main on 27 Oct 2026.",
   },
 ];
 
