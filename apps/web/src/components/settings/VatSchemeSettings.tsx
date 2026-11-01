@@ -43,16 +43,17 @@ export default function VatSchemeSettings({ card, heading }: { card: string; hea
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  // The change being made: a scheme from a date.
+  // The change being made: a scheme from a date. The defaults come from the device clock, so they are set after
+  // mount: a render-time `new Date()` mismatches hydration whenever the build month and the viewing month differ.
   const [scheme, setScheme] = useState<RtSchemeName>("standard");
-  const [from, setFrom] = useState(firstOfMonth);
+  const [from, setFrom] = useState("");
   const [sector, setSector] = useState("");
   const [method, setMethod] = useState<"basic" | "cash">("basic");
   const [limited, setLimited] = useState<"auto" | "yes" | "no">("auto");
   const [cashExit, setCashExit] = useState<"immediate" | "six_months">("immediate");
   const [registered, setRegistered] = useState("");
   const [annualOn, setAnnualOn] = useState(false);
-  const [annualStart, setAnnualStart] = useState(firstOfMonth);
+  const [annualStart, setAnnualStart] = useState("");
   const [instalments, setInstalments] = useState<"monthly" | "quarterly">("monthly");
   const [basis, setBasis] = useState("");
 
@@ -74,6 +75,14 @@ export default function VatSchemeSettings({ card, heading }: { card: string; hea
       setLimited(entry.flat_rate.limited_cost);
     }
   }
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      const first = firstOfMonth();
+      setFrom((v) => v || first);
+      setAnnualStart((v) => v || first);
+    });
+  }, []);
 
   useEffect(() => {
     if (!account) return;

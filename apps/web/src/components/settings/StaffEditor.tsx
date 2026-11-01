@@ -5,8 +5,9 @@ import Link from "next/link";
 import { pence, runtime, type RtStaff, type RtStaffIn } from "@/lib/runtime";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
 
-const payMonth = () =>
-  new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "Europe/London" });
+/** The pay-run month ("November 2026"): read from the device clock only after mount, so the prerendered page and
+ *  the first client render agree (a render-time `new Date()` mismatches hydration whenever the build month and the
+ *  viewing month differ, e.g. e2e's frozen clock). */
 
 type Draft = { name: string; role: string; hourly: string; charge: string; active: boolean };
 const EMPTY: Draft = { name: "", role: "", hourly: "", charge: "", active: true };
@@ -24,6 +25,7 @@ const field = "h-10 rounded-xl border border-border px-2 text-sm";
 /** Settings › Staff: names, roles and rates in _System/Staff/staff.json (no other personal details). */
 export default function StaffEditor({ card, heading }: { card: string; heading: string }) {
   const account = useAccount();
+  const [payMonth, setPayMonth] = useState<string | null>(null);
   const [staff, setStaff] = useState<RtStaff[] | null>(null);
   const [editing, setEditing] = useState<string | null>(null); // staff id, or "new"
   const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -42,6 +44,12 @@ export default function StaffEditor({ card, heading }: { card: string; heading: 
   useEffect(() => {
     queueMicrotask(load);
   }, [load]);
+
+  useEffect(() => {
+    queueMicrotask(() =>
+      setPayMonth(new Date().toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "Europe/London" })),
+    );
+  }, []);
 
   function edit(s: RtStaff | null) {
     setNote(null);
@@ -142,7 +150,7 @@ export default function StaffEditor({ card, heading }: { card: string; heading: 
       <p className="mt-1 text-sm text-muted">
         Who works on your jobs, what an hour costs you and what you charge for it. Only names and roles are kept: no other personal
         details. People with hours can be marked inactive but not removed. Their hours feed the{" "}
-        <Link href="/payroll" className="font-bold text-teal-dark underline">pay run for {payMonth()}</Link>.
+        <Link href="/payroll" className="font-bold text-teal-dark underline">pay run{payMonth ? ` for ${payMonth}` : ""}</Link>.
       </p>
       {staff === null ? (
         <p className="mt-3 text-sm text-muted">{account === null ? "Sign in to manage staff." : (note ?? "Loading…")}</p>
