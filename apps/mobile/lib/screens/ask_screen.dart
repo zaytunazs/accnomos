@@ -8,6 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../models/ask_answer.dart';
 import '../models/ask_suggestions.dart';
 import '../models/day_plan.dart';
+import '../models/readback.dart';
 import '../services/auth.dart';
 import '../services/books.dart' show gbp;
 import '../services/graph.dart';
@@ -46,12 +47,12 @@ class SpokenTag extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: Text(
-          spokenLabel(heardBy),
-          style: const TextStyle(fontSize: 11, color: AccnomosColors.muted),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 4),
+    child: Text(
+      spokenLabel(heardBy),
+      style: const TextStyle(fontSize: 11, color: AccnomosColors.muted),
+    ),
+  );
 }
 
 /// One live question and, once it arrives, its checked answer or an error.
@@ -226,8 +227,7 @@ class _AskScreenState extends State<AskScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(
-          () => turn.error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => turn.error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _busy = false);
       _scrollToEnd();
@@ -272,8 +272,9 @@ class _AskScreenState extends State<AskScreen> {
       setState(() => turn.actionResult = result);
     } catch (e) {
       if (!mounted) return;
-      setState(() =>
-          turn.actionError = e.toString().replaceFirst('Exception: ', ''));
+      setState(
+        () => turn.actionError = e.toString().replaceFirst('Exception: ', ''),
+      );
     } finally {
       if (mounted) setState(() => turn.actionBusy = false);
     }
@@ -284,9 +285,8 @@ class _AskScreenState extends State<AskScreen> {
   Future<void> _startVoice() async {
     if (_voiceOff != null) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(_voiceOff!)),
-        );
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(_voiceOff!)));
       }
       return;
     }
@@ -294,8 +294,7 @@ class _AskScreenState extends State<AskScreen> {
     if (settings == null || _account == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-              content: Text('Sign in to ask with your voice.')),
+          const SnackBar(content: Text('Sign in to ask with your voice.')),
         );
       }
       return;
@@ -309,9 +308,11 @@ class _AskScreenState extends State<AskScreen> {
     }
     if (!allowed) {
       if (!mounted) return;
-      setState(() => _voiceError =
-          'Microphone access was refused. Allow it in the phone '
-          'settings, or type your question instead.');
+      setState(
+        () => _voiceError =
+            'Microphone access was refused. Allow it in the phone '
+            'settings, or type your question instead.',
+      );
       return;
     }
     final path =
@@ -327,8 +328,10 @@ class _AskScreenState extends State<AskScreen> {
       );
     } catch (_) {
       if (!mounted) return;
-      setState(() => _voiceError =
-          'Could not start recording. Type your question instead.');
+      setState(
+        () => _voiceError =
+            'Could not start recording. Type your question instead.',
+      );
       return;
     }
     if (!mounted) return;
@@ -351,9 +354,11 @@ class _AskScreenState extends State<AskScreen> {
     if (!mounted) return;
     setState(() => _recording = false);
     if (path == null) {
-      setState(() => _voiceError =
-          'That recording was lost. Hold the mic and try again, '
-          'or type your question instead.');
+      setState(
+        () => _voiceError =
+            'That recording was lost. Hold the mic and try again, '
+            'or type your question instead.',
+      );
       return;
     }
     final file = File(path);
@@ -370,9 +375,11 @@ class _AskScreenState extends State<AskScreen> {
     }
     if (bytes.isEmpty) {
       if (!mounted) return;
-      setState(() => _voiceError =
-          'Nothing was heard. Hold the mic a moment longer, '
-          'or type your question instead.');
+      setState(
+        () => _voiceError =
+            'Nothing was heard. Hold the mic a moment longer, '
+            'or type your question instead.',
+      );
       return;
     }
     await _sendVoice(bytes);
@@ -398,10 +405,7 @@ class _AskScreenState extends State<AskScreen> {
 
   Future<void> _sendVoice(List<int> bytes) async {
     final settings = _settings;
-    if (settings == null ||
-        _account == null ||
-        _busy ||
-        _sendingVoice) {
+    if (settings == null || _account == null || _busy || _sendingVoice) {
       return;
     }
     setState(() => _sendingVoice = true);
@@ -440,7 +444,8 @@ class _AskScreenState extends State<AskScreen> {
       if (!mounted) return;
       setState(() {
         _sendingVoice = false;
-        _voiceError = '${e.toString().replaceFirst('Exception: ', '')} '
+        _voiceError =
+            '${e.toString().replaceFirst('Exception: ', '')} '
             'Type your question instead.';
       });
     } finally {
@@ -468,10 +473,7 @@ class _AskScreenState extends State<AskScreen> {
       appBar: AppBar(
         backgroundColor: AccnomosColors.ground,
         elevation: 0,
-        title: Text(
-          'Ask',
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
+        title: Text('Ask', style: Theme.of(context).textTheme.headlineSmall),
       ),
       body: Column(
         children: [
@@ -610,8 +612,12 @@ class _AskScreenState extends State<AskScreen> {
 
   /// A sent question. A spoken one is a button when [onEdit] is set:
   /// tapping puts the transcript back in the box to edit, like the web.
-  Widget _questionBubble(String text,
-      {bool spoken = false, String? heardBy, VoidCallback? onEdit}) {
+  Widget _questionBubble(
+    String text, {
+    bool spoken = false,
+    String? heardBy,
+    VoidCallback? onEdit,
+  }) {
     return Align(
       alignment: Alignment.centerRight,
       child: ConstrainedBox(
@@ -625,30 +631,32 @@ class _AskScreenState extends State<AskScreen> {
                 onTap: onEdit,
                 child: Container(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 12),
+                    horizontal: 14,
+                    vertical: 12,
+                  ),
                   decoration: BoxDecoration(
                     color: AccnomosColors.teal,
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: Text(
                     text,
-                    style: const TextStyle(
-                        color: Colors.white, height: 1.4),
+                    style: const TextStyle(color: Colors.white, height: 1.4),
                   ),
                 ),
               )
             else
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: AccnomosColors.teal,
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
                   text,
-                  style:
-                      const TextStyle(color: Colors.white, height: 1.4),
+                  style: const TextStyle(color: Colors.white, height: 1.4),
                 ),
               ),
             if (spoken && onEdit != null)
@@ -656,10 +664,7 @@ class _AskScreenState extends State<AskScreen> {
                 padding: EdgeInsets.only(top: 4),
                 child: Text(
                   'Tap to edit before sending',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: AccnomosColors.muted,
-                  ),
+                  style: TextStyle(fontSize: 11, color: AccnomosColors.muted),
                 ),
               ),
           ],
@@ -695,13 +700,15 @@ class _AskScreenState extends State<AskScreen> {
       } else if (bullet.hasMatch(line)) {
         widgets.add(_numbered('•', line.replaceFirst(bullet, ''), dot: false));
       } else {
-        widgets.add(Padding(
-          padding: EdgeInsets.only(top: widgets.isEmpty ? 0 : 8),
-          child: Text(
-            line.replaceFirst(RegExp(r'^#+\s*'), ''),
-            style: const TextStyle(color: AccnomosColors.ink, height: 1.4),
+        widgets.add(
+          Padding(
+            padding: EdgeInsets.only(top: widgets.isEmpty ? 0 : 8),
+            child: Text(
+              line.replaceFirst(RegExp(r'^#+\s*'), ''),
+              style: const TextStyle(color: AccnomosColors.ink, height: 1.4),
+            ),
           ),
-        ));
+        );
       }
     }
     return widgets;
@@ -723,8 +730,10 @@ class _AskScreenState extends State<AskScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (a.fallbackReason != null) ...[
-            _warnBox('${a.fallbackReason} These figures come straight '
-                'from your ledger.'),
+            _warnBox(
+              '${a.fallbackReason} These figures come straight '
+              'from your ledger.',
+            ),
             const SizedBox(height: 10),
           ],
           ..._markdown(a.answerMd),
@@ -740,8 +749,11 @@ class _AskScreenState extends State<AskScreen> {
                   TableRow(
                     children: [
                       Padding(
-                        padding:
-                            const EdgeInsets.only(right: 12, top: 4, bottom: 4),
+                        padding: const EdgeInsets.only(
+                          right: 12,
+                          top: 4,
+                          bottom: 4,
+                        ),
                         child: Tooltip(
                           message: 'From ${k.source}',
                           child: Text(
@@ -754,8 +766,7 @@ class _AskScreenState extends State<AskScreen> {
                         ),
                       ),
                       Padding(
-                        padding:
-                            const EdgeInsets.only(top: 4, bottom: 4),
+                        padding: const EdgeInsets.only(top: 4, bottom: 4),
                         child: Text(
                           k.value,
                           textAlign: TextAlign.right,
@@ -800,17 +811,18 @@ class _AskScreenState extends State<AskScreen> {
                   if (s.kind != 'none')
                     ActionChip(
                       label: Text(s.label),
-                      onPressed: s.kind == 'plan_day' &&
-                              (s.arg ?? '').isNotEmpty
+                      onPressed:
+                          s.kind == 'plan_day' && (s.arg ?? '').isNotEmpty
                           ? () => _openPlan(s.arg!)
-                          : () =>
-                              ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(s.kind == 'open_vat'
-                                  ? 'Open the VAT tab to see this.'
-                                  : 'Open the Review tab to see this.'),
+                          : () => ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(
+                                  s.kind == 'open_vat'
+                                      ? 'Open the VAT tab to see this.'
+                                      : 'Open the Review tab to see this.',
+                                ),
+                              ),
                             ),
-                          ),
                     ),
               ],
             ),
@@ -855,8 +867,18 @@ class _AskScreenState extends State<AskScreen> {
   /// "29 October" from "2026-10-29", without going through a time zone.
   static String _dayLabel(String iso) {
     const months = [
-      'January', 'February', 'March', 'April', 'May', 'June',
-      'July', 'August', 'September', 'October', 'November', 'December',
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December',
     ];
     final parts = iso.split('-');
     if (parts.length < 3) return iso;
@@ -894,10 +916,7 @@ class _AskScreenState extends State<AskScreen> {
             width: 72,
             child: Text(
               label,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AccnomosColors.muted,
-              ),
+              style: const TextStyle(fontSize: 14, color: AccnomosColors.muted),
             ),
           ),
           Expanded(
@@ -924,10 +943,10 @@ class _AskScreenState extends State<AskScreen> {
     num pence(Object? v) => v is num ? v : 0;
     String str(Object? v) => (v ?? '').toString();
     List<Map<String, dynamic>> maps(Object? v) => [
-          if (v is List)
-            for (final i in v)
-              if (i is Map) Map<String, dynamic>.from(i),
-        ];
+      if (v is List)
+        for (final i in v)
+          if (i is Map) Map<String, dynamic>.from(i),
+    ];
     if (a.kind == 'create_invoice') {
       final customer = p['customer'] is Map
           ? Map<String, dynamic>.from(p['customer'] as Map)
@@ -949,8 +968,7 @@ class _AskScreenState extends State<AskScreen> {
                   text: send && str(p['send_to']).isNotEmpty
                       ? ' · emailed to ${p['send_to']}'
                       : ' · saved as a draft, not sent',
-                  style:
-                      const TextStyle(color: AccnomosColors.muted),
+                  style: const TextStyle(color: AccnomosColors.muted),
                 ),
               ],
             ),
@@ -1001,8 +1019,7 @@ class _AskScreenState extends State<AskScreen> {
               Expanded(
                 child: Text(
                   'Due ${_longDate(str(p['due_date']))}',
-                  style:
-                      const TextStyle(fontWeight: FontWeight.w800),
+                  style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
               ),
               Text(
@@ -1035,8 +1052,7 @@ class _AskScreenState extends State<AskScreen> {
                   text: overdue > 0
                       ? ' · $overdue days overdue'
                       : ' · due ${_longDate(str(p['due_date']))}',
-                  style:
-                      const TextStyle(color: AccnomosColors.muted),
+                  style: const TextStyle(color: AccnomosColors.muted),
                 ),
               ],
             ),
@@ -1063,8 +1079,12 @@ class _AskScreenState extends State<AskScreen> {
         _detailRow('Who', Text(str(p['staff_name']))),
         if (str(p['job_name']).isNotEmpty)
           _detailRow('Job', Text(str(p['job_name']))),
-        _detailRow('Week',
-            Text('${_longDate(str(p['week_start']))} – ${_longDate(str(p['week_end']))}')),
+        _detailRow(
+          'Week',
+          Text(
+            '${_longDate(str(p['week_start']))} – ${_longDate(str(p['week_end']))}',
+          ),
+        ),
         _detailRow(
           'Hours',
           Text(
@@ -1086,15 +1106,13 @@ class _AskScreenState extends State<AskScreen> {
             style: const TextStyle(fontWeight: FontWeight.w800),
           ),
         ),
-        if (str(p['note']).isNotEmpty)
-          _detailRow('Note', Text(str(p['note']))),
+        if (str(p['note']).isNotEmpty) _detailRow('Note', Text(str(p['note']))),
       ];
     }
     // log_mileage.
     return [
       _detailRow('Vehicle', Text(str(p['vehicle_name']))),
-      _detailRow(
-          'Journey', Text('${str(p['from'])} → ${str(p['to'])}')),
+      _detailRow('Journey', Text('${str(p['from'])} → ${str(p['to'])}')),
       _detailRow('When', Text(_longDate(str(p['date'])))),
       _detailRow(
         'Miles',
@@ -1114,8 +1132,8 @@ class _AskScreenState extends State<AskScreen> {
     final name = code == 'O'
         ? 'outside the scope'
         : code == 'E'
-            ? 'exempt'
-            : 'zero rated';
+        ? 'exempt'
+        : 'zero rated';
     if (rate is num && rate != 0) {
       final pct = rate == rate.toInt() ? '${rate.toInt()}' : '$rate';
       return '$pct% on ${gbp(v['net_pence'] is num ? v['net_pence'] as num : 0)}';
@@ -1154,6 +1172,15 @@ class _AskScreenState extends State<AskScreen> {
           ),
           const SizedBox(height: 8),
           ..._actionDetails(a),
+          if (t.spoken && t.actionResult == null && !expired)
+            ...() {
+              final heard = readBack(a.kind, a.preview);
+              if (heard.isEmpty) return const <Widget>[];
+              return [
+                const SizedBox(height: 8),
+                _warnBox(spokenReadBack(t.question, heard)),
+              ];
+            }(),
           for (final w in a.warnings) ...[
             const SizedBox(height: 8),
             _warnBox(w),
@@ -1196,8 +1223,9 @@ class _AskScreenState extends State<AskScreen> {
                 ),
                 const SizedBox(width: 8),
                 TextButton(
-                  onPressed:
-                      t.actionBusy ? null : () => _decide(t, approve: false),
+                  onPressed: t.actionBusy
+                      ? null
+                      : () => _decide(t, approve: false),
                   child: const Text('Reject'),
                 ),
               ],
@@ -1237,8 +1265,7 @@ class _AskScreenState extends State<AskScreen> {
                     label: Text(name),
                     onPressed: _busy
                         ? null
-                        : () => _askQuestion(
-                            withPicked(t.question, c, name)),
+                        : () => _askQuestion(withPicked(t.question, c, name)),
                   ),
               ],
             ),
@@ -1258,17 +1285,11 @@ class _AskScreenState extends State<AskScreen> {
           children: [
             const Text(
               'Spoken · Muse Voice',
-              style: TextStyle(
-                fontSize: 11,
-                color: AccnomosColors.muted,
-              ),
+              style: TextStyle(fontSize: 11, color: AccnomosColors.muted),
             ),
             const SizedBox(height: 4),
             Container(
-              padding: const EdgeInsets.symmetric(
-                horizontal: 14,
-                vertical: 12,
-              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
                 color: AccnomosColors.teal,
                 borderRadius: BorderRadius.circular(16),
@@ -1303,10 +1324,7 @@ class _AskScreenState extends State<AskScreen> {
           Expanded(
             child: Text(
               text,
-              style: const TextStyle(
-                color: AccnomosColors.ink,
-                height: 1.4,
-              ),
+              style: const TextStyle(color: AccnomosColors.ink, height: 1.4),
             ),
           ),
         ],
@@ -1353,7 +1371,7 @@ class _AskScreenState extends State<AskScreen> {
             ),
             child: const Text(
               'If Howdens sends the VAT invoice before 7 Nov, your bill '
-                  'drops to about £1,728.',
+              'drops to about £1,728.',
               style: TextStyle(color: _warnInk, height: 1.4),
             ),
           ),
@@ -1367,13 +1385,13 @@ class _AskScreenState extends State<AskScreen> {
               TableRow(
                 children: [
                   Padding(
-                    padding: EdgeInsets.only(
-                        right: 12, top: 4, bottom: 4),
+                    padding: EdgeInsets.only(right: 12, top: 4, bottom: 4),
                     child: Text(
                       'Net VAT (Box 5), Q3',
                       style: TextStyle(
-                          fontSize: 13,
-                          color: AccnomosColors.muted),
+                        fontSize: 13,
+                        color: AccnomosColors.muted,
+                      ),
                     ),
                   ),
                   Padding(
@@ -1393,13 +1411,13 @@ class _AskScreenState extends State<AskScreen> {
               TableRow(
                 children: [
                   Padding(
-                    padding: EdgeInsets.only(
-                        right: 12, top: 4, bottom: 4),
+                    padding: EdgeInsets.only(right: 12, top: 4, bottom: 4),
                     child: Text(
                       'Net VAT (Box 5), Q2',
                       style: TextStyle(
-                          fontSize: 13,
-                          color: AccnomosColors.muted),
+                        fontSize: 13,
+                        color: AccnomosColors.muted,
+                      ),
                     ),
                   ),
                   Padding(
@@ -1440,10 +1458,7 @@ class _AskScreenState extends State<AskScreen> {
           const SizedBox(height: 8),
           const Text(
             'numbers by code · explanation by Muse Spark · 1.2 s',
-            style: TextStyle(
-              fontSize: 12,
-              color: AccnomosColors.muted,
-            ),
+            style: TextStyle(fontSize: 12, color: AccnomosColors.muted),
           ),
           const SizedBox(height: 10),
           Wrap(
@@ -1472,8 +1487,8 @@ class _AskScreenState extends State<AskScreen> {
     final micOff = !live
         ? 'Sign in to ask by voice'
         : _busy || _sendingVoice
-            ? 'Wait for the answer'
-            : _voiceOff;
+        ? 'Wait for the answer'
+        : _voiceOff;
     final micActive = live && !_busy && !_sendingVoice && _voiceOff == null;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
@@ -1511,38 +1526,37 @@ class _AskScreenState extends State<AskScreen> {
                           ? 'Hold to ask by voice'
                           : (micOff ?? 'Voice unavailable'),
                       child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _recording
-                            ? const Color(0xFFB3261E)
-                            : AccnomosColors.teal,
-                        padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(24),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _recording
+                              ? const Color(0xFFB3261E)
+                              : AccnomosColors.teal,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(24),
+                          ),
                         ),
-                      ),
-                      // Hold-to-talk is driven by the long-press above;
-                      // a plain tap only explains the gesture.
-                      onPressed: micActive
-                          ? () => ScaffoldMessenger.of(context)
-                              .showSnackBar(
+                        // Hold-to-talk is driven by the long-press above;
+                        // a plain tap only explains the gesture.
+                        onPressed: micActive
+                            ? () => ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
                                   content: Text(
-                                      'Hold the mic and speak, then release to send.'),
+                                    'Hold the mic and speak, then release to send.',
+                                  ),
                                 ),
                               )
-                          : null,
-                      child: _sendingVoice
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Icon(Icons.mic,
-                              color: Colors.white),
-                    ),
+                            : null,
+                        child: _sendingVoice
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.mic, color: Colors.white),
+                      ),
                     ),
                   ),
                 ),
@@ -1562,8 +1576,7 @@ class _AskScreenState extends State<AskScreen> {
                         hintText: live
                             ? 'Ask your books…'
                             : 'Sign in to ask your own books',
-                        contentPadding:
-                            const EdgeInsets.symmetric(
+                        contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16,
                           vertical: 16,
                         ),
@@ -1586,10 +1599,7 @@ class _AskScreenState extends State<AskScreen> {
                         borderRadius: BorderRadius.circular(24),
                       ),
                     ),
-                    onPressed:
-                        live && !_busy && !_sendingVoice
-                            ? _send
-                            : null,
+                    onPressed: live && !_busy && !_sendingVoice ? _send : null,
                     child: live && _busy
                         ? const SizedBox(
                             width: 20,
@@ -1599,8 +1609,7 @@ class _AskScreenState extends State<AskScreen> {
                               color: Colors.white,
                             ),
                           )
-                        : const Icon(Icons.send,
-                            color: Colors.white),
+                        : const Icon(Icons.send, color: Colors.white),
                   ),
                 ),
               ],
@@ -1666,15 +1675,12 @@ class _CitationChipState extends State<_CitationChip> {
       builder: (context, _) {
         final url = _url;
         return ActionChip(
-          label: Text(
-            label,
-            style: const TextStyle(fontSize: 12),
-          ),
+          label: Text(label, style: const TextStyle(fontSize: 12)),
           tooltip: url != null
               ? 'Open ${widget.citation}'
               : widget.sheet != null
-                  ? '${widget.citation}, ${widget.sheet} sheet'
-                  : widget.citation,
+              ? '${widget.citation}, ${widget.sheet} sheet'
+              : widget.citation,
           onPressed: url == null
               ? null
               : () async {
@@ -1685,7 +1691,8 @@ class _CitationChipState extends State<_CitationChip> {
                   if (!launched && context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('Could not open that file.')),
+                        content: Text('Could not open that file.'),
+                      ),
                     );
                   }
                 },
@@ -1732,15 +1739,12 @@ class _PlanSheetState extends State<_PlanSheet> {
 
   Future<RuntimeClient> _client({String? graphToken}) async {
     final account = widget.account;
-    final user =
-        account?.username ?? widget.settings.userEmail;
+    final user = account?.username ?? widget.settings.userEmail;
     return RuntimeClient(
       widget.settings,
       books: BooksAuth(
         graphToken: graphToken ?? await widget.auth.token(),
-        accountKind: widget.auth.kind == AccountKind.work
-            ? 'work'
-            : 'personal',
+        accountKind: widget.auth.kind == AccountKind.work ? 'work' : 'personal',
         user: (user != null && user.isNotEmpty) ? user : null,
         businessName: widget.settings.businessName,
       ),
@@ -1751,19 +1755,14 @@ class _PlanSheetState extends State<_PlanSheet> {
     try {
       // Calendars.Read is asked for here — the first time the user plans a
       // day — never at sign-in.
-      final token =
-          await widget.auth.tokenFor(AuthService.calendarReadScopes);
+      final token = await widget.auth.tokenFor(AuthService.calendarReadScopes);
       final client = await _client(graphToken: token);
-      final json = await client.planDay(
-        date: widget.date,
-        graphToken: token,
-      );
+      final json = await client.planDay(date: widget.date, graphToken: token);
       if (!mounted) return;
       setState(() => _plan = DayPlan.fromJson(json));
     } catch (e) {
       if (!mounted) return;
-      setState(() =>
-          _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     }
   }
 
@@ -1787,8 +1786,7 @@ class _PlanSheetState extends State<_PlanSheet> {
             child: const Text('Cancel'),
           ),
           FilledButton(
-            style: FilledButton.styleFrom(
-                backgroundColor: AccnomosColors.teal),
+            style: FilledButton.styleFrom(backgroundColor: AccnomosColors.teal),
             onPressed: () => Navigator.of(context).pop(true),
             child: const Text('Add events'),
           ),
@@ -1801,8 +1799,7 @@ class _PlanSheetState extends State<_PlanSheet> {
       _error = null;
     });
     try {
-      final token =
-          await widget.auth.tokenFor(AuthService.calendarScopes);
+      final token = await widget.auth.tokenFor(AuthService.calendarScopes);
       final client = await _client(graphToken: token);
       final json = await client.applyPlan(
         date: plan.date,
@@ -1813,8 +1810,7 @@ class _PlanSheetState extends State<_PlanSheet> {
       setState(() => _applied = AppliedPlan.fromJson(json));
     } catch (e) {
       if (!mounted) return;
-      setState(
-          () => _error = e.toString().replaceFirst('Exception: ', ''));
+      setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _applying = false);
     }
@@ -1863,8 +1859,7 @@ class _PlanSheetState extends State<_PlanSheet> {
           const Text(
             'Order and times worked out by code from your calendar and '
             'open jobs.',
-            style:
-                TextStyle(fontSize: 13, color: AccnomosColors.muted),
+            style: TextStyle(fontSize: 13, color: AccnomosColors.muted),
           ),
           if (_plan == null && _error == null) ...[
             const SizedBox(height: 16),
@@ -1900,8 +1895,7 @@ class _PlanSheetState extends State<_PlanSheet> {
                       ),
                       Expanded(
                         child: Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               i.title,
@@ -1939,7 +1933,9 @@ class _PlanSheetState extends State<_PlanSheet> {
                 child: Text(
                   _plan!.rationaleMd,
                   style: const TextStyle(
-                      color: AccnomosColors.ink, height: 1.4),
+                    color: AccnomosColors.ink,
+                    height: 1.4,
+                  ),
                 ),
               ),
             ],
@@ -1951,13 +1947,11 @@ class _PlanSheetState extends State<_PlanSheet> {
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF7ED),
                   borderRadius: BorderRadius.circular(10),
-                  border:
-                      Border.all(color: const Color(0xFFF3C892)),
+                  border: Border.all(color: const Color(0xFFF3C892)),
                 ),
                 child: Text(
                   w,
-                  style: const TextStyle(
-                      color: Color(0xFF8A3F06), height: 1.4),
+                  style: const TextStyle(color: Color(0xFF8A3F06), height: 1.4),
                 ),
               ),
             ],
@@ -1968,8 +1962,8 @@ class _PlanSheetState extends State<_PlanSheet> {
                   _applied!.alreadyApplied
                       ? 'This plan is already in your calendar.'
                       : 'Added ${_applied!.created.length} '
-                          '${_applied!.created.length == 1 ? 'event' : 'events'} '
-                          'to your calendar, each marked [Accnomos].',
+                            '${_applied!.created.length == 1 ? 'event' : 'events'} '
+                            'to your calendar, each marked [Accnomos].',
                   style: const TextStyle(
                     color: AccnomosColors.teal,
                     fontWeight: FontWeight.w700,
@@ -1983,15 +1977,18 @@ class _PlanSheetState extends State<_PlanSheet> {
                 children: [
                   FilledButton(
                     style: FilledButton.styleFrom(
-                        backgroundColor: AccnomosColors.teal),
+                      backgroundColor: AccnomosColors.teal,
+                    ),
                     onPressed: _applying || _plan!.fresh.isEmpty
                         ? null
                         : _apply,
-                    child: Text(_applying
-                        ? 'Adding…'
-                        : 'Apply: add ${_plan!.fresh.length} '
-                            '${_plan!.fresh.length == 1 ? 'event' : 'events'} '
-                            'to Outlook'),
+                    child: Text(
+                      _applying
+                          ? 'Adding…'
+                          : 'Apply: add ${_plan!.fresh.length} '
+                                '${_plan!.fresh.length == 1 ? 'event' : 'events'} '
+                                'to Outlook',
+                    ),
                   ),
                   const SizedBox(width: 8),
                   TextButton(
@@ -2014,8 +2011,7 @@ class _PlanSheetState extends State<_PlanSheet> {
               ),
               child: Text(
                 _error!,
-                style: const TextStyle(
-                    color: Color(0xFF8A3F06), height: 1.4),
+                style: const TextStyle(color: Color(0xFF8A3F06), height: 1.4),
               ),
             ),
           ],

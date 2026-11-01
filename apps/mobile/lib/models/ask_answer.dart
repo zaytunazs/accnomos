@@ -44,10 +44,10 @@ class AskAnswer {
 
   factory AskAnswer.fromJson(Map<String, dynamic> json) {
     List<Map<String, dynamic>> maps(Object? list) => [
-          if (list is List)
-            for (final item in list)
-              if (item is Map) Map<String, dynamic>.from(item),
-        ];
+      if (list is List)
+        for (final item in list)
+          if (item is Map) Map<String, dynamic>.from(item),
+    ];
     final period = json['period'] is Map
         ? Map<String, dynamic>.from(json['period'] as Map)
         : const <String, dynamic>{};
@@ -58,8 +58,9 @@ class AskAnswer {
         if (json['citations'] is List)
           for (final c in json['citations'] as List) c.toString(),
       ],
-      suggestedActions:
-          maps(json['suggested_actions']).map(SuggestedAction.fromJson).toList(),
+      suggestedActions: maps(json['suggested_actions'])
+          .map(SuggestedAction.fromJson)
+          .toList(),
       confidence: (json['confidence'] ?? 'low').toString(),
       model: (json['model'] ?? '').toString(),
       periodStart: (period['start'] ?? '').toString(),
@@ -67,11 +68,13 @@ class AskAnswer {
       fallbackReason: json['fallback_reason']?.toString(),
       proposedAction: json['proposed_action'] is Map
           ? ProposedAction(
-              Map<String, dynamic>.from(json['proposed_action'] as Map))
+              Map<String, dynamic>.from(json['proposed_action'] as Map),
+            )
           : null,
       clarification: json['clarification'] is Map
           ? Clarification.fromJson(
-              Map<String, dynamic>.from(json['clarification'] as Map))
+              Map<String, dynamic>.from(json['clarification'] as Map),
+            )
           : null,
     );
   }
@@ -165,10 +168,16 @@ class ProposedAction {
   String get summaryMd => (raw['summary_md'] ?? '').toString();
   String get confirmText => (raw['confirm_text'] ?? '').toString();
   DateTime? get expiresAt => DateTime.tryParse('${raw['expires_at']}');
+  Map<String, dynamic> get preview => raw['preview'] is Map
+      ? Map<String, dynamic>.from(raw['preview'] as Map)
+      : const {};
   List<String> get warnings {
     final preview = raw['preview'];
     final list = preview is Map ? preview['warnings'] : null;
-    return [if (list is List) for (final w in list) w.toString()];
+    return [
+      if (list is List)
+        for (final w in list) w.toString(),
+    ];
   }
 }
 
