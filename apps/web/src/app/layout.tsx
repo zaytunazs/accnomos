@@ -14,6 +14,10 @@ const manrope = Manrope({
 export const metadata: Metadata = {
   title: "Accnomos",
   description: "Books read by AI, approved by you, stored only by you — UK bookkeeping and VAT in your own OneDrive.",
+  metadataBase: new URL("https://accnomos.com"),
+  alternates: { canonical: "./" },
+  openGraph: { siteName: "Accnomos", type: "website", locale: "en_GB" },
+  twitter: { card: "summary_large_image" },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
