@@ -1,6 +1,7 @@
 /**
- * The signed-in menu bar (components/TopBar.tsx), grouped like Xero's: Home, Sales, Purchases, Reporting,
- * Accounting, Tax, Payroll, Contacts and, for personal books only, Personal.
+ * The signed-in menu bar (components/TopBar.tsx), grouped like Xero's: Home, Review (with its count) and Bank as plain
+ * links so the two things an owner acts on most are one click away, then Sales, Purchases, Reporting, Tax and More.
+ * More holds the rest under small headings: Accounting, Payroll, Contacts and, for personal books, Personal.
  *
  * Other work is building some of these pages. A link shows only when its page is in this build (`routes`, read
  * from src/app at build time by lib/routes.server.ts), so nothing in the menu 404s, and only when the profile's kind
@@ -22,6 +23,8 @@ export interface NavItem {
   kinds?: RtProfileKind[];
   /** Shows the Review count. */
   badge?: "review";
+  /** A small heading above this item in a group (More), shown when it differs from the item before. */
+  heading?: string;
   /** Only while this device switch is on: Settings › I am self-employed (lib/itsa.ts) or I let property (lib/property.ts). */
   deviceSwitch?: "selfEmployed" | "landlord";
 }
@@ -30,6 +33,8 @@ export interface NavGroup {
   label: string;
   /** A group with a single destination is a plain link (Home). */
   href?: string;
+  /** Shows the Review count beside a plain link. */
+  badge?: "review";
   feature?: string;
   kinds?: RtProfileKind[];
   items: NavItem[];
@@ -39,6 +44,8 @@ const BUSINESS: RtProfileKind[] = ["company", "sole_trader"];
 
 export const NAV_GROUPS: NavGroup[] = [
   { label: "Home", href: "/", items: [] },
+  { label: "Review", href: "/review", badge: "review", items: [] },
+  { label: "Bank", href: "/bank", items: [] },
   {
     label: "Sales",
     feature: "invoices",
@@ -77,22 +84,6 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Accounting",
-    items: [
-      { label: "Bank accounts", href: "/bank" },
-      { label: "Bank rules", href: "/bank/rules" },
-      { label: "Reconcile", href: "/bank/reconcile" },
-      { label: "Documents", href: "/files" },
-      { label: "Chart of accounts", href: "/accounting/chart" },
-      { label: "Fixed assets", href: "/accounting/assets", kinds: BUSINESS },
-      { label: "Manual journals", href: "/accounting/journals" },
-      { label: "Find and recode", href: "/accounting/recode" },
-      { label: "Tracking", href: "/accounting/tracking" },
-      { label: "Vehicles and mileage", href: "/vehicles" },
-      { label: "Audit trail", href: "/audit" },
-    ],
-  },
-  {
     label: "Tax",
     items: [
       { label: "VAT returns", href: "/vat", feature: "vat" },
@@ -104,30 +95,28 @@ export const NAV_GROUPS: NavGroup[] = [
     ],
   },
   {
-    label: "Payroll",
-    feature: "payroll",
+    label: "More",
     items: [
-      { label: "Employees", href: "/settings/employees" },
-      { label: "Pay runs", href: "/payroll" },
-      { label: "RTI files", href: "/payroll/rti" },
-      { label: "Pensions", href: "/payroll/pensions" },
-    ],
-  },
-  {
-    label: "Contacts",
-    items: [
-      { label: "All contacts", href: "/contacts" },
-      { label: "Customers", href: "/contacts/customers", feature: "invoices" },
-      { label: "Suppliers", href: "/contacts/suppliers" },
-    ],
-  },
-  {
-    label: "Personal",
-    kinds: ["personal"],
-    items: [
-      { label: "Personal overview", href: "/personal" },
-      { label: "Spending", href: "/spending" },
-      { label: "Shopping", href: "/shopping" },
+      { heading: "Accounting", label: "Bank rules", href: "/bank/rules" },
+      { heading: "Accounting", label: "Reconcile", href: "/bank/reconcile" },
+      { heading: "Accounting", label: "Documents", href: "/files" },
+      { heading: "Accounting", label: "Chart of accounts", href: "/accounting/chart" },
+      { heading: "Accounting", label: "Fixed assets", href: "/accounting/assets", kinds: BUSINESS },
+      { heading: "Accounting", label: "Manual journals", href: "/accounting/journals" },
+      { heading: "Accounting", label: "Find and recode", href: "/accounting/recode" },
+      { heading: "Accounting", label: "Tracking", href: "/accounting/tracking" },
+      { heading: "Accounting", label: "Vehicles and mileage", href: "/vehicles" },
+      { heading: "Accounting", label: "Audit trail", href: "/audit" },
+      { heading: "Payroll", label: "Employees", href: "/settings/employees", feature: "payroll" },
+      { heading: "Payroll", label: "Pay runs", href: "/payroll", feature: "payroll" },
+      { heading: "Payroll", label: "RTI files", href: "/payroll/rti", feature: "payroll" },
+      { heading: "Payroll", label: "Pensions", href: "/payroll/pensions", feature: "payroll" },
+      { heading: "Contacts", label: "All contacts", href: "/contacts" },
+      { heading: "Contacts", label: "Customers", href: "/contacts/customers", feature: "invoices" },
+      { heading: "Contacts", label: "Suppliers", href: "/contacts/suppliers" },
+      { heading: "Personal", label: "Personal overview", href: "/personal", kinds: ["personal"] },
+      { heading: "Personal", label: "Spending", href: "/spending", kinds: ["personal"] },
+      { heading: "Personal", label: "Shopping", href: "/shopping", kinds: ["personal"] },
     ],
   },
 ];

@@ -4,7 +4,7 @@ export const PAGES = [
   "/", "/try", "/ask", "/audit", "/bank", "/contacts", "/files", "/how-it-works", "/models", "/invoices", "/invoices/new", "/jobs", "/jobs/job", "/payroll", "/personal", "/review", "/settings",
   "/vat", "/month-end", "/vehicles", "/accountant", "/reports", "/import", "/spending", "/prices", "/shopping", "/privacy", "/terms", "/judges", "/join", "/connect", "/connect/ai", "/connect/business", "/connect/ready", "/setup",
   "/accounting/chart", "/accounting/journals", "/accounting/assets", "/accounting/recode", "/accounting/tracking", "/reports/budgets",
-  "/reports/cashflow", "/reports/exports",
+  "/reports/cashflow", "/reports/exports", "/bank/reconcile",
   "/sales", "/sales/quotes", "/sales/items", "/sales/repeating", "/purchases", "/purchases/orders",
   "/property", "/self-employment", "/cis", "/help", "/meta-models",
 ];
