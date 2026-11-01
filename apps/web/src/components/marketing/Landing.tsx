@@ -172,7 +172,7 @@ const FAQ: { q: string; a: React.ReactNode }[] = [
   },
   {
     q: "Does it file to HMRC?",
-    a: "The HMRC connection in the product today is sandbox only, for VAT and for self-employed Income Tax. It is there to practise the full flow, not to file a live return.",
+    a: "The HMRC connection in the product today is sandbox only, for VAT and for self-employed Income Tax. It is there to practise the full flow, not to file a live return. HMRC has closed production access for new Income Tax quarterly-update products for the 2026-27 tax year, so live Income Tax filing from Accnomos cannot start before the 2027-28 year; live VAT filing needs a separate HMRC production application.",
   },
   {
     q: "Which banks are covered?",
