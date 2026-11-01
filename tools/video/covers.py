@@ -29,16 +29,22 @@ def cover(guide: str, title: str) -> Path:
         ass = Path(tmp) / "c.ass"
         events = [("Title", 0, 1, title), ("Body", 0, 1, "Accnomos how-to guide")]
         if art.exists():
-            events.append(("Tag", 0, 1, CREDIT))
-        write_ass(ass, W, H, events)
-        subs = f"subtitles=filename='{ass}':fontsdir='{FONTS}'"
-        if art.exists():
-            src = ["-i", str(art)]
-            vf = f"scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1,"
-            vf += f"drawbox=x=0:y=0:w=iw:h=ih:color=0x{TEAL_DARK}@0.5:t=fill,{subs}"
+            # The art leaves its left half plain for the title (docs/video/IMAGE_PROMPTS.md): the title goes on a solid
+            # brand panel over exactly that half, so it never sits across the picture; the credit stays bottom right.
+            panel = W // 2
+            write_ass(ass, panel, H, events)
+            credit = Path(tmp) / "credit.ass"
+            write_ass(credit, W, H, [("Tag", 0, 1, CREDIT)])
+            src = ["-i", str(art), "-f", "lavfi", "-i", f"color=c=0x{TEAL_DARK}:s={panel}x{H}"]
+            vf = (
+                f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},setsar=1[art];"
+                f"[1:v]subtitles=filename='{ass}':fontsdir='{FONTS}'[panel];"
+                f"[art][panel]overlay=0:0,subtitles=filename='{credit}':fontsdir='{FONTS}'"
+            )
         else:
+            write_ass(ass, W, H, events)
             src = ["-f", "lavfi", "-i", f"color=c=0x{TEAL_DARK}:s={W}x{H}"]
-            vf = subs
+            vf = f"subtitles=filename='{ass}':fontsdir='{FONTS}'"
         out.parent.mkdir(parents=True, exist_ok=True)
         subprocess.run(
             [
@@ -49,7 +55,7 @@ def cover(guide: str, title: str) -> Path:
                 "-loglevel",
                 "error",
                 *src,
-                "-vf",
+                "-filter_complex" if art.exists() else "-vf",
                 vf,
                 "-frames:v",
                 "1",
