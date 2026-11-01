@@ -42,6 +42,7 @@ LAYOUT = [
     r"_System/audit/\d{4}-\d{2}\.jsonl",
     r"_System/audit/autopilot/\d{4}-\d{2}\.jsonl",
     r"_System/Ledger/events/\d{4}-\d{2}/\d{8}T\d{6}Z-runtime-[0-9a-f]+\.json",
+    r"_System/Ledger/event-ids/[0-9a-f]+\.json",
     r"_System/bank/[0-9a-f]{64}\.json",
     r"_System/rules\.json",
     r"_System/Rules/rules\.json",

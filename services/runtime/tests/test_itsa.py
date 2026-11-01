@@ -11,7 +11,7 @@ from __future__ import annotations
 import csv
 import io
 import json
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 
 import pytest
 from fastapi.testclient import TestClient
@@ -354,6 +354,33 @@ def test_summary_route(client: TestClient) -> None:
         client.get("/books/self-employment/summary?tax_year=2026-27&period_end=2027-05-01", headers=H).status_code
         == 422
     )
+
+
+def test_two_saves_in_one_second_keep_two_receipts(client: TestClient, books: Books, monkeypatch) -> None:
+    from app import routes_itsa
+
+    monkeypatch.setattr(routes_itsa, "now", lambda: datetime(2026, 10, 30, 12, tzinfo=UTC))  # one second for both
+    body = client.get("/books/self-employment/summary?tax_year=2026-27&period_end=2026-10-05", headers=H).json()
+    receipt = {
+        "kind": "cumulative",
+        "tax_year": "2026-27",
+        "nino": "TC663795B",
+        "business_id": "XAIS12345678910",
+        "period_end": "2026-10-05",
+        "sent": body["hmrc_body"],
+        "confirmed_at": "2026-10-28T09:00:00Z",
+    }
+    envelopes = (_envelope(correlation_id="first"), _envelope(correlation_id="first"), _envelope(correlation_id=None))
+    paths = [
+        client.post("/books/self-employment/receipts", json={**receipt, "hmrc": e}, headers=H).json()["path"]
+        for e in envelopes
+    ]
+    assert len(set(paths)) == 3 and paths[0].endswith("-first.json")  # a retry with the same id gets its own file
+    listed = client.get("/books/self-employment/receipts?tax_year=2026-27", headers=H).json()["receipts"]
+    assert sorted(x["path"] for x in listed) == sorted(paths)
+    stored = [json.loads(books.storage.files[p]) for p in paths]  # type: ignore[attr-defined]
+    assert [s["hmrc"]["correlation_id"] for s in stored] == ["first", "first", None]
+    assert all(s["hmrc_verified"] is False for s in stored)  # recorded as the browser reported it, never checked
 
 
 def test_cumulative_receipt_is_checked_against_the_books_and_audited(client: TestClient, books: Books) -> None:

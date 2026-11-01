@@ -599,7 +599,6 @@ PUBLIC_ROUTES = {
     "GET /repeating/dates": "date arithmetic for the repeating-schedule form; reads and writes no books",
     "GET /health": "liveness for the container healthcheck; no user data",
     "POST /ai/test": "Settings' Test connection, with the caller's own key or local agent (docs/SECURITY.md)",
-    "POST /extract": "Android reads a receipt before sign-in; returns a proposal, touches no books",
     "GET /lookup/status": "says only whether look-ups are configured",
     "GET /books/bank/coding-options": "the fixed chart of accounts and VAT codes; nothing from the user's books",
     "POST /public/early-access": "the operator's launch list sign-up, before anyone has an account",

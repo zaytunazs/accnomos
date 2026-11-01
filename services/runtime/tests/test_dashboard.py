@@ -14,7 +14,7 @@ from accnomos_ledger.bank import BankLine
 from app import dashboard
 from app import invoicing as inv_
 from app.approve import reversal_of
-from app.books import AUDIT, AUTOPILOT_AUDIT, BANK_LINES, Books
+from app.books import AUDIT, AUTOPILOT_AUDIT, BANK_LINES, EVENTS, Books
 from app.schemas import ExtractedDoc, Proposal
 
 USER = "sam@sambuilds.co.uk"
@@ -287,7 +287,7 @@ def test_broken_proposal_file_blanks_attention_only(client: TestClient, fake: Fa
 
 
 def test_broken_ledger_event_blanks_vat_and_owed(client: TestClient, fake: FakeStorageProvider) -> None:
-    path = next(k for k in fake.files if k.endswith(f"{'d' * 32}.json"))
+    path = next(k for k in fake.files if k.startswith(f"{EVENTS}/") and k.endswith(f"{'d' * 32}.json"))
     fake.files[path] = b"{not json"
     d = client.get(f"/books/dashboard?stagger=1&today={TODAY}", headers=H).json()
     assert "ledger" in d["unavailable"]

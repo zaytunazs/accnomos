@@ -54,19 +54,19 @@ test("every menu item opens its own page with its own heading", async ({ page })
   }
 });
 
-test("the Accounting bank items each have a page; only the current item is highlighted", async ({ page }) => {
+test("the bank items each have a page (Bank on the bar, the rest under More); only the current item is highlighted", async ({ page }) => {
   const nav = page.getByRole("navigation", { name: "Main" });
-  for (const [label, path, heading] of [
-    ["Bank accounts", "/bank", "Bank"],
-    ["Bank rules", "/bank/rules", "Bank rules"],
-    ["Reconcile", "/bank/reconcile", "Reconcile"],
+  for (const [label, path, heading, inMore] of [
+    ["Bank", "/bank", "Bank", false],
+    ["Bank rules", "/bank/rules", "Bank rules", true],
+    ["Reconcile", "/bank/reconcile", "Reconcile", true],
   ] as const) {
     await page.goto("/");
-    await nav.getByRole("button", { name: /^Accounting/ }).click();
+    if (inMore) await nav.getByRole("button", { name: "More", exact: true }).click();
     await nav.getByRole("link", { name: label, exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`${path}$`));
     await expect(page.getByRole("heading", { level: 1, name: heading, exact: true })).toBeVisible();
-    await nav.getByRole("button", { name: /^Accounting/ }).click();
+    if (inMore) await nav.getByRole("button", { name: "More", exact: true }).click();
     await expect(nav.getByRole("link", { name: label, exact: true })).toHaveAttribute("aria-current", "page");
     await expect(nav.locator('[aria-current="page"]')).toHaveCount(1);
   }

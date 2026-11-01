@@ -86,9 +86,8 @@ open with one line on what pre-existed and stay within 3:00.
 - [x] **Impact** (shots 2–3): the dashboard and MTD deadlines are real footage; shot 3 needs the phone filmed.
 - [ ] **Use of Meta AI tooling** (shots 4–5): the eval card (shot 5) names Meta models only and takes every figure
       from `evals/runs/*/summary.json` on `main` with its sample size: receipts and invoices 91 / 93 % (Muse Spark
-      Open) and 85 / 80 % (Muse Glimmer), 200 clean + 200 messy; CIS 92.5 % of 120; property 89.8 % of 108; Ask 32 of
-      32 (`ask_40/report.md`). **The bank row (91.6 % of 459 lines) has no committed `evals/runs/bank_ai/summary.json`
-      on `main` yet: commit it before recording or drop the row.** Shot 4 needs a live reading so the card names a Meta
+      Open) and 85 / 80 % (Muse Glimmer), 200 clean + 200 messy; CIS 92.5 % of 120; property 99.1 % of 108; Ask 32 of
+      32 (`ask_40/report.md`); bank lines 91.6 % of 459 (`bank_ai/summary.json`, committed 1 Nov). Shot 4 needs a live reading so the card names a Meta
       model honestly. Muse Image appears as the title art.
 - [x] **No third-party names on screen**: no hosting provider, serving tool or non-Meta model on any caption or card;
       `tools/video/test_video_tools.py` checks every caption, card and end card in the manifest.

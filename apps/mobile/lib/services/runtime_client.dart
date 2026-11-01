@@ -117,15 +117,67 @@ class RuntimeClient {
     }
   }
 
+  /// The demo session id for this app run, for reading photos before
+  /// sign-in (`/extract` needs a sign-in or a demo session). Memory only.
+  static String? _demoSession;
+
+  static const _signInToRead =
+      'Sign in to read photos. This reader has no demo mode to read them '
+      'without an account.';
+
+  /// Forget the remembered demo session (tests only).
+  @visibleForTesting
+  static void forgetDemoSession() => _demoSession = null;
+
+  /// A live demo session id, like the web's `startDemo()` in
+  /// `apps/web/src/lib/demo.ts`: the remembered one while
+  /// `GET /demo/session` still answers, else a new `POST /demo/session`.
+  /// Throws a sign-in message when the reader has demo mode off.
+  @visibleForTesting
+  Future<String> demoSession() async {
+    final client = _http;
+    final base = settings.runtimeUrl;
+    final known = _demoSession;
+    if (known != null) {
+      final alive = await client.get(Uri.parse('$base/demo/session'),
+          headers: {'X-Demo-Session': known}).timeout(_timeout);
+      if (alive.statusCode == 200) return known;
+      _demoSession = null;
+    }
+    final res = await client
+        .post(Uri.parse('$base/demo/session'))
+        .timeout(_timeout);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      if (res.statusCode == 401 || res.statusCode == 403) {
+        throw RuntimeException(_signInToRead);
+      }
+      _fail(res.statusCode, res.body.trim());
+    }
+    final id = (json.decode(res.body) as Map<String, dynamic>)['session'];
+    if (id is! String || id.isEmpty) {
+      throw RuntimeException(_signInToRead);
+    }
+    return _demoSession = id;
+  }
+
   /// Send [image] to the runtime and return the decoded JSON response.
+  /// Signed in, the Graph token goes with it; before sign-in the call rides
+  /// on a demo session (see [demoSession]).
   Future<Map<String, dynamic>> extract(File image) async {
     final uri = Uri.parse('${settings.runtimeUrl}/extract');
     try {
+      final signedIn = books != null;
+      final demo = signedIn ? null : await demoSession();
       final request = http.MultipartRequest('POST', uri)
         ..headers.addAll(_headers)
         ..files.add(await http.MultipartFile.fromPath('file', image.path));
+      if (demo != null) request.headers['X-Demo-Session'] = demo;
       final streamed = await _http.send(request).timeout(_timeout);
       final body = await streamed.stream.bytesToString();
+      if (!signedIn && streamed.statusCode == 401) {
+        _demoSession = null; // ended or switched off: start over next time
+        throw RuntimeException(_signInToRead);
+      }
       if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
         _fail(streamed.statusCode, body.trim());
       }

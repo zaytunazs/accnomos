@@ -89,7 +89,7 @@
           "caption": "Measured on synthetic documents, Meta models only",
           "vo": "Measured on synthetic documents: receipts fully right 91 and 93 per cent for Muse Spark Open, 85 and 80 for Muse Glimmer. Glimmer also reads CIS and property papers and codes bank lines, about nine in ten right. Real photos will score lower.",
           "vo_wav": "docs/video/vo/judges-05.wav",
-          "card": "Measured on synthetic documents, Meta models only\nReceipts and invoices, every field right (200 clean + 200 messy)\n  Muse Spark Open     91 % clean   93 % messy\n  Muse Glimmer 30B    85 % clean   80 % messy\nCIS statements and invoices, all fields exact   92.5 % of 120\nProperty statements and bills, all fields exact 89.8 % of 108\nBank lines coded to the right account           91.6 % of 459\nAsk: figures exact in 32 of 32 questions\nSynthetic documents: real photos will score lower",
+          "card": "Measured on synthetic documents, Meta models only\nReceipts and invoices, every field right (200 clean + 200 messy)\n  Muse Spark Open     91 % clean   93 % messy\n  Muse Glimmer 30B    85 % clean   80 % messy\nCIS statements and invoices, all fields exact   92.5 % of 120\nProperty statements and bills, all fields exact 99.1 % of 108\nBank lines coded to the right account           91.6 % of 459\nAsk: figures exact in 32 of 32 questions\nSynthetic documents: real photos will score lower",
           "file": null,
           "status": "card",
           "section": "Use of Meta AI tooling — which models, measured numbers (0:48–1:28, 40 s)"

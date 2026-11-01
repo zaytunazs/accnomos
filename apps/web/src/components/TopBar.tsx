@@ -15,8 +15,8 @@ import { currentFeatures, currentMeta } from "@/lib/profiles";
 /**
  * The signed-in menu bar, laid out like Xero's (the owner's choice; docs/reviews/app-shell/REVIEW.md weighs it against
  * docs/research/DASHBOARD.md's sidebar): the logo and the profile switcher (current profile, its kind, every linked
- * profile) at the far left, the menu groups (Home, Sales, Purchases, Reporting, Accounting, Tax, Payroll, Contacts,
- * and Personal for personal books) as dropdowns, then Search, Ask, Help and the Review count, and at the far right
+ * profile) at the far left, then Home, Review (with its count) and Bank as plain links and Sales, Purchases, Reporting,
+ * Tax and More (Accounting, Payroll, Contacts, Personal) as dropdowns, then Search, Ask, Help and the Review count, and at the far right
  * the signed-in person's name and Microsoft email with the account menu (sign out). Under 900 px the groups move
  * into a drawer opened by "Menu"; there is no sidebar for signed-in pages. Links come from lib/nav.ts: only pages in
  * this build (`routes`), only features this profile has.
@@ -179,6 +179,26 @@ function itemLabel(item: NavItem, review: string | undefined): ReactNode {
   );
 }
 
+/** A plain top-level link's text, with the Review count beside it (spoken as "N items to review"). */
+function linkLabel(g: NavGroup, review: string | undefined): ReactNode {
+  if (g.badge !== "review" || !review) return g.label;
+  return (
+    <>
+      {g.label}
+      <span aria-hidden="true" className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-amber px-1.5 text-[12px] font-bold text-white">
+        {review}
+      </span>
+      <span className="sr-only">, {review} item{review === "1" ? "" : "s"} to review</span>
+    </>
+  );
+}
+
+/** The small heading above the first item of each section of More. */
+function headed(items: NavItem[], i: number): string | undefined {
+  const h = items[i].heading;
+  return h && h !== items[i - 1]?.heading ? h : undefined;
+}
+
 /** aria-current only on the item whose page this is: the most specific match (lib/nav.ts activeRoute). */
 function currentPage(active: string | null, item: NavItem): boolean {
   return !/[?#]/.test(item.href) && routeOf(item.href) === active;
@@ -243,11 +263,11 @@ function GroupBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: 
     <ul ref={bar} className="flex flex-wrap items-center gap-0.5">
       {groups.map((g) => {
         if (g.href) {
-          const here = isCurrent(pathname, g.href);
+          const here = routeOf(g.href) === active; // the most specific match, so Bank is not lit on Bank rules
           return (
             <li key={g.label}>
               <Link href={g.href} aria-current={here ? "page" : undefined} className={`${top} ${here ? "bg-teal-tint text-teal-dark" : "text-ink hover:bg-ground"}`}>
-                {g.label}
+                {linkLabel(g, review)}
               </Link>
             </li>
           );
@@ -286,15 +306,17 @@ function GroupBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: 
                 <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
             </button>
-            <div hidden={!isOpen} className="absolute left-0 z-50 mt-1 w-64 rounded-2xl border border-border bg-white px-2 pb-2 pt-3 shadow-lg">
+            <div hidden={!isOpen} className="absolute left-0 z-50 mt-1 max-h-[calc(100vh-5rem)] w-64 overflow-y-auto rounded-2xl border border-border bg-white px-2 pb-2 pt-3 shadow-lg">
               <p aria-hidden="true" className={`${sectionLabel} pb-1.5`}>
                 {g.label}
               </p>
               <ul id={id} data-submenu="" onKeyDown={(e) => onListKey(e, g.label)} className={subList}>
-                {g.items.map((item) => {
+                {g.items.map((item, i) => {
                   const page = currentPage(active, item);
+                  const heading = headed(g.items, i);
                   return (
                     <li key={item.label}>
+                      {heading ? <p aria-hidden="true" className={`${sectionLabel} pb-1 ${i ? "pt-2" : ""}`}>{heading}</p> : null}
                       <Link
                         href={item.href}
                         aria-current={page ? "page" : undefined}
@@ -390,10 +412,10 @@ function MenuDrawer({ groups, pathname, review }: { groups: NavGroup[]; pathname
                     <Link
                       id={`${id}-${g.label}`}
                       href={g.href}
-                      aria-current={isCurrent(pathname, g.href) ? "page" : undefined}
+                      aria-current={routeOf(g.href) === active ? "page" : undefined}
                       className="flex min-h-11 items-center rounded-xl px-3 text-[15px] font-extrabold text-ink hover:bg-ground"
                     >
-                      {g.label}
+                      {linkLabel(g, review)}
                     </Link>
                   ) : (
                     <>
@@ -401,8 +423,9 @@ function MenuDrawer({ groups, pathname, review }: { groups: NavGroup[]; pathname
                         {g.label}
                       </h2>
                       <ul data-submenu="" className={subList}>
-                        {g.items.map((item) => (
+                        {g.items.map((item, i) => (
                           <li key={item.label}>
+                            {headed(g.items, i) ? <p className={`${sectionLabel} pb-1 pt-2`}>{headed(g.items, i)}</p> : null}
                             <Link
                               href={item.href}
                               aria-current={currentPage(active, item) ? "page" : undefined}
@@ -437,7 +460,7 @@ function FindPage({ groups }: { groups: NavGroup[] }) {
   const all = useMemo(
     () =>
       groups.flatMap((g) =>
-        g.href ? [{ label: g.label, href: g.href, group: "" }] : g.items.map((i) => ({ label: i.label, href: i.href, group: g.label })),
+        g.href ? [{ label: g.label, href: g.href, group: "" }] : g.items.map((i) => ({ label: i.label, href: i.href, group: i.heading ?? g.label })),
       ),
     [groups],
   );

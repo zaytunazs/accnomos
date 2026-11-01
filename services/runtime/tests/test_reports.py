@@ -392,6 +392,7 @@ def test_bad_periods_are_refused(client: TestClient, query: str) -> None:
 
 def test_export_writes_one_file_in_07_reports_and_posts_nothing(client: TestClient, fake: FakeStorageProvider) -> None:
     events_before = {p for p in fake.files if p.startswith(EVENTS)}
+    before = set(fake.files)
     r = client.post(
         f"/reports/export?today={TODAY}", json={"report": "pl", "from": "2026-07-01", "to": "2026-09-30"}, headers=H
     )
@@ -410,7 +411,7 @@ def test_export_writes_one_file_in_07_reports_and_posts_nothing(client: TestClie
     assert everything["sheets"] == ["About", "P&L", "Debtors", "Creditors", "VAT summary", "Trend"]
 
     assert {p for p in fake.files if p.startswith(EVENTS)} == events_before
-    new = [p for p in fake.files if not p.startswith(EVENTS) and not p.startswith(REPORTS) and not p.startswith(AUDIT)]
+    new = [p for p in fake.files if p not in before and not p.startswith(REPORTS) and not p.startswith(AUDIT)]
     assert new == []
     audit = b"".join(d for p, d in fake.files.items() if p.startswith(AUDIT))
     assert audit.count(b'"report_exported"') == 3

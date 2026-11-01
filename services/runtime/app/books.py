@@ -14,6 +14,7 @@ Layout (relative to the books root; the folder names live in app/paths.py):
     _System/proposals/{id}.json    proposals and their decisions
     _System/audit/{yyyy-mm}.jsonl  append-only audit trail
     _System/Ledger/events/{yyyy-mm}/{ts}-{device}-{id}.json   immutable ledger events
+    _System/Ledger/event-ids/{id}.json   the claim on one event id, holding its event's path (post_event)
     _System/bank/{sha256}.json     bank lines parsed from one statement (matches recorded on them)
     _System/rules.json  _System/cursors.json
     _System/Rules/rules.json       Autopilot rules, one per supplier (app/autopilot.py)
@@ -30,12 +31,13 @@ tests/test_integration.py checks that everything written fits it.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import hashlib
 import json
 import logging
 import re
 from collections.abc import Callable
-from datetime import UTC, date, datetime, tzinfo
+from datetime import UTC, date, datetime, timedelta, tzinfo
 from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
@@ -53,6 +55,7 @@ from app.paths import (  # noqa: F401  (re-exported: other modules import the fo
     BANK,
     BANK_LINES,
     DOCS,
+    EVENT_IDS,
     EVENTS,
     INBOX,
     NEEDS_A_LOOK,
@@ -80,6 +83,9 @@ QUERIES_AUDIT = f"{QUERIES}/audit"
 # Old path -> where the app moved the document (archive, Files page moves and renames). Applied whenever a stored
 # path is read back (proposals' file_path, bank lines' source_file), so links keep working without rewriting them.
 MOVED_MAP = f"{ARCHIVE_SYSTEM}/map.json"
+# A claim whose event file is still missing this long after it was made is stale (the event write failed, or the
+# process stopped in between) and may be taken over; a younger one belongs to an approval still in flight.
+CLAIM_GRACE = timedelta(minutes=5)
 WORKBOOK = "Books.xlsx"
 WORKBOOK_LIMIT = 4 * 1024 * 1024  # simple-upload size; bigger books still upload, but we say so in the log
 
@@ -220,6 +226,9 @@ class Books:
         # email, from Graph /me, and whether the folder was opened read-only.
         self.accountant: str | None = None
         self.read_only = False
+        # Event id -> the extra files list_event_entries found with that id and skipped (an integrity problem: the
+        # event was posted twice before claims guarded post_event). Empty in healthy books.
+        self.duplicate_events: dict[str, list[str]] = {}
 
     # ------------------------------------------------------------------ #
     # Low-level helpers
@@ -401,13 +410,65 @@ class Books:
         await self.audit(actor, action, refs, folder=AUTOPILOT_AUDIT)
 
     async def post_event(self, event: LedgerEvent) -> str:
-        """Write an immutable ledger event and return its path. Refuses to overwrite."""
+        """Write an immutable ledger event and return its path. Refuses (FileExistsError) to post an id twice.
+
+        Two guards. The claim: `_System/Ledger/event-ids/{id}.json` is written create-only before the event, holding
+        the event's path; only the writer that creates it posts, so two approvals racing in different tabs, devices
+        or processes cannot both get through (the event file names differ by second, so they would not collide).
+        The listing check covers books posted before claims existed. Events are never moved or deleted, so a claim
+        outlives its event only when the event write fails: the claim is then marked released at once, or (if the
+        process stopped in between) it goes stale once its event path is still missing after CLAIM_GRACE; either
+        way the next post of that id takes it over (If-Match) and goes ahead. A new id after an undo (approve.py's
+        undo count) is a new claim. The event filename scheme is unchanged.
+        """
         ts = event.approved_at.astimezone(UTC).strftime("%Y%m%dT%H%M%SZ")
         path = f"{EVENTS}/{_month(event.date)}/{ts}-{DEVICE}-{event.id}.json"
         if any(f.name.endswith(f"-{event.id}.json") for f in await self.list_files(_split(path)[0])):
             raise FileExistsError(f"ledger event {event.id} already posted")
-        await self.storage.write(path, event.model_dump_json(indent=2).encode())
+        claim_path = f"{EVENT_IDS}/{event.id}.json"
+        claim = {"id": event.id, "path": path, "claimed_at": now().isoformat()}
+        try:
+            ref = await self.storage.write(claim_path, json.dumps(claim).encode(), create_only=True)
+        except (ConflictError, FileExistsError):
+            ref = await self._take_over_claim(claim_path, claim)
+        try:
+            await self.storage.write(path, event.model_dump_json(indent=2).encode(), create_only=True)
+        except BaseException:
+            with contextlib.suppress(Exception):  # best effort: otherwise the claim goes stale after CLAIM_GRACE
+                released = json.dumps({**claim, "released": True}).encode()
+                await self.storage.write(claim_path, released, if_match=ref.etag)
+            raise
         return path
+
+    async def _take_over_claim(self, claim_path: str, claim: dict[str, Any]) -> FileRef:
+        """Someone holds the claim: FileExistsError unless it is released or stale and its event never landed."""
+        forget = getattr(self.storage, "forget", None)  # the request memo (app/cache.py): stat and read fresh
+        if forget is not None:
+            forget(claim_path)
+        refused = FileExistsError(f"ledger event {claim['id']} already posted")
+        ref = await self._stat(claim_path)
+        try:
+            held = json.loads(await self.storage.read(claim_path)) if ref else {}
+        except (FileNotFoundError, ValueError):
+            held = {}
+        if ref is None or not isinstance(held, dict):
+            raise refused
+        try:
+            age = now() - datetime.fromisoformat(str(held.get("claimed_at")))
+        except (TypeError, ValueError):  # missing, malformed or without a zone
+            age = CLAIM_GRACE  # judged by whether its event is there
+        if not held.get("released") and age < CLAIM_GRACE:
+            raise refused  # an approval still in flight
+        event_path = str(held.get("path") or "")
+        if event_path:
+            if forget is not None:
+                forget(event_path)
+            if await self.exists(event_path):
+                raise refused
+        try:
+            return await self.storage.write(claim_path, json.dumps(claim).encode(), if_match=ref.etag)
+        except (ConflictError, FileExistsError) as exc:
+            raise refused from exc
 
     async def list_events(self, start: date | None = None, end: date | None = None) -> list[LedgerEvent]:
         """All posted ledger events (optionally within [start, end] by event date), oldest first."""
@@ -442,7 +503,18 @@ class Books:
             ]
 
         per_month = await asyncio.gather(*(read_month(m) for m in sorted(months)))
-        entries = [pe for month_entries in per_month for pe in month_entries]
+        entries: list[tuple[str, LedgerEvent]] = []
+        first: dict[str, str] = {}
+        for path, ev in sorted((pe for month_entries in per_month for pe in month_entries), key=lambda pe: pe[0]):
+            if ev.id in first:
+                # Two files with one id (posted twice before the claim existed): counted once, the first by path.
+                log.warning("ledger event %s is in %s and %s; the second is skipped", ev.id, first[ev.id], path)
+                self.duplicate_events.setdefault(ev.id, [])
+                if path not in self.duplicate_events[ev.id]:
+                    self.duplicate_events[ev.id].append(path)
+                continue
+            first[ev.id] = path
+            entries.append((path, ev))
         entries.sort(key=lambda pe: (pe[1].date, pe[1].approved_at))
         return entries
 

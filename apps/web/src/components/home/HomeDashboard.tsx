@@ -3,7 +3,7 @@ import Activity from "@/components/home/Activity";
 import AskBar from "@/components/home/AskBar";
 import Deadlines from "@/components/home/Deadlines";
 import HomeError from "@/components/home/HomeError";
-import { AttentionCard, TodayCard } from "@/components/home/Tiles";
+import { AttentionTiles, TodayCard } from "@/components/home/Tiles";
 import { HomeData, SignedOut } from "@/components/home/HomeData";
 import InboxTriage from "@/components/home/InboxTriage";
 import MonthEndCard from "@/components/home/MonthEndCard";
@@ -52,6 +52,8 @@ export default function HomeDashboard() {
           {/* The summary first: two to four sentences on the whole picture, then the detail below. */}
           <SummaryCard />
           <AskBar />
+          {/* What needs attention, one tap from Review, Invoices and Bank (up to four tiles, 2 by 2 on a phone). */}
+          <AttentionTiles />
           <HomeError />
           {/* Signed in with an empty folder: offer the sample books; once loaded, the SAMPLE banner. */}
           <HomeSampleBooks />
@@ -59,23 +61,23 @@ export default function HomeDashboard() {
           {/* Signed in: documents already in the OneDrive folders that were never read (asks before reading). */}
           <PreviousFilesNotice />
           {/* One calm grid, signed in or out: 1 column at 390 px, 2 at 768, 3 at 1280. Today spans the row; then
-              money, what needs doing and deadlines; then the cards for features these books use (each hides itself
-              otherwise: GET /books/home returns null for its section); then buying, to-dos and activity. */}
+              money, deadlines and who owes what; then spending, buying, to-dos and month-end; then the cards for
+              features these books use (each hides itself otherwise: GET /books/home returns null for its section);
+              then the inbox, the day's plan and activity. */}
           <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
             <TodayCard />
-            <AttentionCard />
             <MoneyCard />
             <ComingUpCard />
             <Deadlines />
             <AgedCard />
-            <IncomeTaxCard />
-            <PayrollCard />
-            <CisCard />
-            <PropertyCard />
             <SpendingCard />
             <BuyingCard />
             <TodosTile />
             <MonthEndCard />
+            <IncomeTaxCard />
+            <PayrollCard />
+            <CisCard />
+            <PropertyCard />
             <InboxTriage />
             <PlanToday />
             <Activity />

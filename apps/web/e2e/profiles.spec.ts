@@ -21,9 +21,10 @@ test("menu bar: groups as dropdowns, keyboard and screen-reader friendly, only p
   await page.goto("/");
   const nav = mainNav(page);
   await expect(nav.getByRole("link", { name: "Home" })).toHaveAttribute("aria-current", "page");
-  for (const g of ["Sales", "Purchases", "Reporting", "Accounting", "Tax", "Payroll", "Contacts"]) {
+  for (const g of ["Sales", "Purchases", "Reporting", "Tax", "More"]) {
     await expect(nav.getByRole("button", { name: new RegExp(`^${g}`) })).toHaveAttribute("aria-expanded", "false");
   }
+  for (const l of ["Review", "Bank"]) await expect(nav.getByRole("link", { name: new RegExp(`^${l}`) })).toBeVisible();
   await expect(nav.getByRole("button", { name: "Personal" })).toHaveCount(0); // not personal books
 
   // Keyboard: ↓ opens Sales on its first link (Sales overview, now that the sales pages are in this build), ↓ moves
@@ -59,7 +60,7 @@ test("menu bar: groups as dropdowns, keyboard and screen-reader friendly, only p
 
   // Every link the menu shows opens a page of this build (no 404).
   const hrefs = new Set<string>();
-  for (const g of ["Sales", "Purchases", "Reporting", "Accounting", "Tax", "Payroll", "Contacts"]) {
+  for (const g of ["Sales", "Purchases", "Reporting", "Tax", "More"]) {
     await nav.getByRole("button", { name: new RegExp(`^${g}`) }).click();
     for (const href of await nav.getByRole("link").evaluateAll((els) => els.map((e) => e.getAttribute("href") ?? ""))) hrefs.add(href.split(/[?#]/)[0]);
   }
@@ -121,7 +122,10 @@ test("two linked accounts: add one, set it up as personal, switch in one click; 
   await expect(switcher(page)).toContainText("Personal");
   const nav = mainNav(page);
   await expect(nav.getByRole("button", { name: "Purchases" })).toBeVisible();
-  for (const gone of ["Sales", "Payroll", "Tax"]) await expect(nav.getByRole("button", { name: gone })).toHaveCount(0);
+  for (const gone of ["Sales", "Tax"]) await expect(nav.getByRole("button", { name: gone })).toHaveCount(0);
+  await nav.getByRole("button", { name: "More", exact: true }).click();
+  await expect(nav.getByRole("link", { name: "Pay runs" })).toHaveCount(0); // no payroll for personal books
+  await nav.getByRole("button", { name: "More", exact: true }).click();
   await nav.getByRole("button", { name: "Reporting" }).click();
   await expect(nav.getByRole("link", { name: "VAT return" })).toHaveCount(0);
   // The runtime agrees: Jo's books have no VAT return.
@@ -157,7 +161,7 @@ test.describe("at 360 px", () => {
     await open.click();
     const drawer = page.getByRole("dialog", { name: "Menu" });
     await expect(drawer.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Invoices" })).toBeVisible();
-    await expect(drawer.getByRole("heading", { name: "Accounting" })).toBeVisible();
+    await expect(drawer.getByRole("heading", { name: "More", exact: true })).toBeVisible();
     const width = await page.evaluate(() => document.documentElement.scrollWidth);
     expect(width).toBeLessThanOrEqual(360); // nothing pushes the page sideways
     await page.keyboard.press("Escape");

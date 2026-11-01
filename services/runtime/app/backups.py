@@ -34,7 +34,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from app import files as fm
-from app.books import AUDIT, EVENTS, PROPOSALS, SYSTEM, Books, now
+from app.books import AUDIT, EVENT_IDS, EVENTS, PROPOSALS, SYSTEM, Books, now
 from app.books import today as current_date
 from app.paths import BACKUPS, FULL_BACKUPS
 from app.validation import UnsafeName, check_name
@@ -345,7 +345,7 @@ class RestorePreview(BaseModel):
 
 
 def _append_only(path: str) -> bool:
-    return path.startswith(f"{EVENTS}/") or path.startswith(f"{AUDIT}/")
+    return path.startswith((f"{EVENTS}/", f"{EVENT_IDS}/", f"{AUDIT}/"))  # an event id's claim is never replaced
 
 
 async def _plan(books: Books, path: str) -> tuple[RestorePreview, dict[str, bytes], dict[str, RestoreStatus]]:

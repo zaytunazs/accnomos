@@ -131,12 +131,24 @@ def require_feature(feature: str) -> Any:
     return Depends(check)
 
 
-def require_user(x_user: str | None = Header(default=None)) -> str:
-    if not x_user or not x_user.strip():
+async def require_user(request: Request, x_user: str | None = Header(default=None)) -> str:
+    """Who is doing this, for the audit line: the email Graph `/me` reports for `X-Graph-Token` (app/identity.py),
+    never the `X-User` the client wrote, which must still be sent but is only a hint (and, in a demo session, the
+    sandbox's own fixed user)."""
+    from app import demo, identity
+
+    hint = (x_user or "").strip()
+    if not hint:
         raise HTTPException(status_code=400, detail="X-User header required")
-    return x_user.strip()
+    if demo.is_demo_request(request):  # the sandbox has no Graph token; get_books checks the session itself
+        return hint
+    if not hint:
+        raise HTTPException(status_code=400, detail="X-User header required")
+    return (await identity.verified_identity(identity.bearer(request), hint)).email
 
 
+# TODO: unverified X-User; reads and mail look-ups only, nothing is audited under it. Use identity.verified_identity
+# if a route ever writes an audit line from it.
 def optional_user(x_user: str | None = Header(default=None)) -> str | None:
     return (x_user or "").strip() or None
 

@@ -3,10 +3,12 @@
 import Link from "next/link";
 import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
-import { isTileError, type RtDashboard } from "@/lib/runtime";
-import { tiles as sampleTiles, type Tile } from "@/lib/sample-home";
+import { isTileError, tileData, type RtDashboard, type RtHome } from "@/lib/runtime";
+import { sampleAttention, tiles as sampleTiles, type Tile } from "@/lib/sample-home";
 import Greeting from "./Greeting";
 import { pounds, SampleTag, shortDate, Skeleton, UNKNOWN, useHome, useVatApplies } from "./HomeData";
+import { daysWord } from "./OverviewCards";
+import { useOverview } from "./Overview";
 
 const COULDNT_LOAD = "Couldn't load this just now";
 
@@ -51,21 +53,6 @@ function vatTile(vat: RtDashboard["vat"], annual: boolean): Tile {
   const sub = `${what} ${shortDate(next.deadline)}${
     next === vat.current ? " · so far" : ""}`;
   return { label: `VAT estimate · ${next.label}`, value: next.box5_direction === "nil" ? "£0" : amount, sub, href: "/vat" };
-}
-
-function attentionTile(a: RtDashboard["attention"]): Tile {
-  const label = "Needs attention";
-  if (isTileError(a)) return { label, value: UNKNOWN, sub: COULDNT_LOAD };
-  if (!a) return { label, value: UNKNOWN, sub: "Could not read your books" };
-  if (!a.total) return { label, value: "0", sub: "Nothing waiting" };
-  const parts = [
-    a.proposed && `${a.proposed} to approve`,
-    a.needs_a_look && `${a.needs_a_look} to look at`,
-    a.unmatched_bank_lines && plural(a.unmatched_bank_lines, "bank line"),
-    a.overdue_invoices && `${a.overdue_invoices} overdue`,
-  ].filter(Boolean);
-  const href = a.proposed || a.needs_a_look ? "/review" : a.unmatched_bank_lines ? "/bank" : "/invoices";
-  return { label, value: String(a.total), sub: `${parts.join(" · ")} →`, tone: "warn", href };
 }
 
 /** The key figures; VAT only when the profile has it (personal books and non-VAT businesses have no VAT tile). */
@@ -160,69 +147,153 @@ export function TodayCard() {
   );
 }
 
+type Attention = Extract<NonNullable<RtDashboard["attention"]>, { proposed: number }>;
+
+interface AttentionTile {
+  key: string;
+  label: string;
+  /** The big figure, or a short phrase ("Up to date"). */
+  value: string;
+  /** Beside a number: "days", "days late". */
+  unit?: string;
+  text: string;
+  href: string;
+  /** Something waits (warm tone and an alert icon) or nothing does (a tick). */
+  waiting: boolean;
+}
+
+/** Items to review, overdue invoices and bank lines to reconcile, from the dashboard's `attention` counts. */
+function attentionTiles(a: Attention): AttentionTile[] {
+  const review = a.proposed + a.needs_a_look;
+  const tiles: AttentionTile[] = [
+    {
+      key: "review",
+      label: "Items to review",
+      value: String(review),
+      text: review
+        ? [a.proposed && `${a.proposed} to approve`, a.needs_a_look && `${a.needs_a_look} to look at`].filter(Boolean).join(" · ")
+        : "Nothing to review",
+      href: "/review",
+      waiting: review > 0,
+    },
+  ];
+  // Missing information (readings that need a look) is already inside the first tile: it is not counted twice here.
+  if (a.overdue_invoices !== null)
+    tiles.push({
+      key: "overdue",
+      label: "Overdue invoices",
+      value: String(a.overdue_invoices),
+      text: a.overdue_invoices ? `${plural(a.overdue_invoices, "invoice")} to chase` : "None overdue",
+      href: "/invoices",
+      waiting: a.overdue_invoices > 0,
+    });
+  tiles.push({
+    key: "bank",
+    label: "Bank lines to reconcile",
+    value: String(a.unmatched_bank_lines),
+    text: a.unmatched_bank_lines ? `${plural(a.unmatched_bank_lines, "line")} to match` : "All matched",
+    href: "/bank/reconcile",
+    waiting: a.unmatched_bank_lines > 0,
+  });
+  return tiles;
+}
+
+/** The nearest dated obligation (VAT, MTD Income Tax, payroll, CIS) from GET /books/home, or "Up to date" when none is within 14 days. */
+function deadlineTile(deadlines: RtHome["deadlines"]): AttentionTile {
+  const next = [...deadlines].sort((x, y) => x.days_left - y.days_left)[0];
+  if (!next || next.days_left > 14)
+    return { key: "deadline", label: "On track", value: "Up to date", text: "Nothing due in the next 14 days", href: next?.href ?? "/vat", waiting: false };
+  return {
+    key: "deadline",
+    label: "Next deadline",
+    value: String(Math.abs(next.days_left)),
+    unit: `${Math.abs(next.days_left) === 1 ? "day" : "days"}${next.days_left < 0 ? " late" : next.days_left === 0 ? "" : " left"}`,
+    text: `${next.title}, ${shortDate(next.due)} (${daysWord(next.days_left)})`,
+    href: next.href,
+    waiting: true,
+  };
+}
+
+function TileIcon({ waiting }: { waiting: boolean }) {
+  return (
+    <svg aria-hidden="true" width="18" height="18" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+      {waiting ? (
+        <>
+          <circle cx="10" cy="10" r="7.5" />
+          <path d="M10 6v4.5M10 13.6v.1" />
+        </>
+      ) : (
+        <>
+          <circle cx="10" cy="10" r="7.5" />
+          <path d="m6.8 10.2 2.2 2.2 4.2-4.6" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+function AttentionLink({ tile }: { tile: AttentionTile }) {
+  return (
+    <li className="flex">
+      <Link
+        href={tile.href}
+        className={`flex w-full min-w-0 flex-col rounded-2xl border p-3 hover:bg-ground sm:p-4 ${
+          tile.waiting ? "border-warn-border bg-warn-bg text-warn-ink" : "border-border bg-white text-ink"
+        }`}
+      >
+        <span className="flex items-center gap-1.5 text-[13px] font-bold">
+          <TileIcon waiting={tile.waiting} />
+          <span className="min-w-0">{tile.label}</span>
+        </span>
+        <span className={`mt-1 font-extrabold leading-tight tracking-tight tabular-nums ${tile.value.length > 3 ? "text-xl sm:text-2xl" : "text-3xl"}`}>
+          {tile.value}
+          {tile.unit && <span className="ml-1 text-sm font-bold">{tile.unit}</span>}
+        </span>
+        <span className="mt-1 text-[13px] font-semibold leading-snug">{tile.text}</span>
+      </Link>
+    </li>
+  );
+}
+
 /**
- * Home › Needs attention: the one count from GET /books/dashboard, with the one
- * place to clear it. Signed out it shows the sample's three proposals.
+ * Home › what needs attention, under the summary: up to four small tiles (items to review, overdue invoices, bank
+ * lines to reconcile, the next deadline), each a link to the place that clears it. Counts come from the one GET
+ * /books/dashboard `attention` block and the deadlines from GET /books/home that Home already loads (the Bramblewood
+ * sample when signed out). Status is the icon and the words, never colour alone. A count that is not available drops
+ * its tile rather than showing a made-up number.
  */
-export function AttentionCard() {
+export function AttentionTiles() {
   const home = useHome();
+  const overview = useOverview();
   const sample = home.mode === "sample";
-  const tile: Tile | null =
-    sample ? sampleTiles[4]
-    : home.mode === "live" ? attentionTile(home.data.attention)
-    : home.mode === "error" ? { label: "Needs attention", value: UNKNOWN, sub: "Could not reach your books" }
-    : null;
+  const attention = sample ? sampleAttention : home.mode === "live" ? tileData(home.data.attention) : null;
+  const loading = home.mode === "checking" || home.mode === "loading";
+  if (home.mode === "error") return null;
+
+  let tiles: AttentionTile[] | null = null;
+  if (attention) {
+    tiles = attentionTiles(attention);
+    if (overview.mode === "live" || overview.mode === "sample") tiles.push(deadlineTile(overview.data.deadlines));
+  }
+  if (!loading && !tiles) return null;
 
   return (
-    <section aria-labelledby="attention-heading" className="flex flex-col rounded-2xl border border-border bg-white p-4 sm:p-5">
-      <div className="flex items-center gap-2">
-        <h2 id="attention-heading" className="text-lg font-extrabold tracking-tight">
-          Needs attention{sample && <SampleTag />}
-        </h2>
-        <ExplainMore title="What this count is" anchor="receipts">
-          One number for everything waiting: proposals to approve, readings to look at, unmatched bank lines and
-          overdue invoices. Code counts them from your books; you clear them one tap at a time in Review.
-        </ExplainMore>
-      </div>
-      {tile === null ? (
-        <div aria-busy="true">
-          <Skeleton className="mt-2 h-9 w-16" />
-          <Skeleton className="mt-2 h-5 w-40 max-w-full" />
-        </div>
+    <section aria-label="What needs attention" aria-busy={loading}>
+      {tiles ? (
+        <ul className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {tiles.map((t) => <AttentionLink key={t.key} tile={t} />)}
+        </ul>
       ) : (
-        <div role="group" aria-label={tile.label} className="mt-1">
-          <p className={`min-h-9 text-3xl font-extrabold tracking-tight tabular-nums ${tile.tone === "warn" ? "text-warn-ink" : "text-ink"}`}>
-            {tile.value}
-          </p>
-          <p className={`mt-1 min-h-5 text-[13px] font-semibold ${tile.tone === "warn" ? "text-warn-ink" : "text-muted"}`}>
-            {tile.sub}
-          </p>
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="min-h-[6.5rem] rounded-2xl border border-border bg-white p-3 sm:p-4">
+              <Skeleton className="h-4 w-24 max-w-full" />
+              <Skeleton className="mt-3 h-8 w-12" />
+            </div>
+          ))}
         </div>
       )}
-      <ByWhom
-        className="mt-2"
-        code={sample ? "Sample count from the fictional Bramblewood books" : "Counted by code from your books"}
-        ai={sample ? "sample readings, not AI" : "proposals read by AI"}
-      />
-      <div className="mt-auto pt-4">
-        {tile !== null && tile.href ? (
-          <Link
-            href={tile.href}
-            className="inline-block whitespace-nowrap rounded-xl bg-teal px-4 py-2 text-sm font-bold text-white hover:bg-teal-dark"
-          >
-            {tile.href === "/review" ? `Review ${tile.value} item${tile.value === "1" ? "" : "s"}`
-              : tile.href === "/bank" ? "Match bank lines"
-              : "Chase overdue invoices"}
-          </Link>
-        ) : (
-          <Link
-            href="/review"
-            className="inline-block whitespace-nowrap rounded-xl border border-border px-4 py-2 text-sm font-bold text-teal-dark hover:bg-ground"
-          >
-            Open Review
-          </Link>
-        )}
-      </div>
+      {sample && <p className="mt-1.5 text-xs font-semibold text-muted">Sample counts from the fictional Bramblewood books</p>}
     </section>
   );
 }

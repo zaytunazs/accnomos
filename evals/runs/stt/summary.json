@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-29T16:21:57+00:00",
+  "skipped": [
+    "whisper"
+  ],
+  "providers": {
+    "muse": {
+      "model": "muse-voice-transcribe-1.0",
+      "clips": 14,
+      "failures": 0,
+      "corpus_wer": 0.1269,
+      "mean_wer": 0.1669,
+      "median_wer": 0.1215,
+      "numbers_accuracy_pct": 50.0,
+      "amounts_accuracy_pct": null,
+      "latency_mean_s": 1.714,
+      "latency_p50_s": 1.707,
+      "latency_p95_s": 2.436
+    }
+  }
+}

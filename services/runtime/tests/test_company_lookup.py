@@ -139,6 +139,38 @@ def test_signed_out_is_401(client: TestClient, monkeypatch) -> None:
     assert client.get("/lookup/vat/GB123456789").status_code == 401
 
 
+@pytest.mark.real_identity
+def test_a_forged_token_is_401_and_a_verified_one_is_served(client: TestClient, monkeypatch) -> None:
+    """The token must be one Graph accepts (app/identity.py), not just present."""
+    from accnomos_connectors.base import Identity
+    from accnomos_connectors.msgraph import GraphError
+    from app import identity, sharing
+
+    class FakeGraphMe:
+        def __init__(self, token: str) -> None:
+            self.token = token
+
+        async def whoami(self) -> Identity:
+            if self.token != "real-token":
+                raise GraphError(401, "InvalidAuthenticationToken")
+            return Identity(email="sam@example.co.uk", name="Sam")
+
+        async def aclose(self) -> None: ...
+
+    async def graph_for(token: str, user: str | None = None) -> FakeGraphMe:
+        return FakeGraphMe(token)
+
+    identity.reset()
+    monkeypatch.setattr(sharing, "sharing_for", graph_for)
+    monkeypatch.setenv("COMPANIES_HOUSE_API_KEY", KEY)
+    log = fake_upstream(monkeypatch, {"/search/companies": (200, SEARCH)})
+    forged = client.get("/lookup/companies?q=howdens", headers={"X-Graph-Token": "made-up"})
+    assert forged.status_code == 401 and log == []  # Companies House was never asked
+    ok = client.get("/lookup/companies?q=howdens", headers={"X-Graph-Token": "Bearer real-token"})
+    assert ok.status_code == 200 and len(log) == 1
+    identity.reset()
+
+
 def test_search_basic_auth_mapping_and_cache(client: TestClient, monkeypatch) -> None:
     monkeypatch.setenv("COMPANIES_HOUSE_API_KEY", KEY)
     log = fake_upstream(monkeypatch, {"/search/companies": (200, SEARCH)})

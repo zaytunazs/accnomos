@@ -28,14 +28,10 @@ export const tiles: Tile[] = [
     value: "£2,140",
     sub: "Calculated by code from approved entries",
   },
-  {
-    label: "Needs a look",
-    value: "3",
-    sub: "Review now →",
-    tone: "warn",
-    href: "/review",
-  },
 ];
+
+/** The sample's "what needs attention" counts (GET /books/dashboard `attention`), as on Home for the fictional Bramblewood books. */
+export const sampleAttention = { proposed: 3, needs_a_look: 0, unmatched_bank_lines: 2, overdue_invoices: 1, total: 6 };
 
 export type Deadline = {
   month: string;

@@ -17,6 +17,9 @@ explicit confirmation, then posts what was sent and HMRC's answer here. This mod
 from __future__ import annotations
 
 import hashlib
+import json
+import re
+import uuid
 from datetime import date, datetime
 from typing import Annotated, Any, Literal
 
@@ -24,6 +27,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response
 from pydantic import BaseModel, Field, model_validator
 
+from accnomos_connectors.base import ConflictError
 from app import cash_basis as cb
 from app import itsa
 from app import itsa_reports as rep
@@ -180,6 +184,12 @@ def _stamp(ts: datetime) -> str:
     return ts.strftime("%Y%m%dT%H%M%SZ")
 
 
+def _unique(correlation_id: str | None) -> str:
+    """What tells two saves in one second apart: HMRC's correlation id (made filename-safe), else a random part."""
+    safe = re.sub(r"[^A-Za-z0-9-]", "", correlation_id or "")[:36]
+    return safe or uuid.uuid4().hex[:8]
+
+
 @router.post("/receipts", status_code=201)
 async def save_receipt(body: ReceiptIn, books: Books = Depends(get_books), user: str = Depends(require_user)) -> dict:
     """Keep what was sent and HMRC's answer in the books, and add an audit line. Never calls HMRC."""
@@ -198,13 +208,20 @@ async def save_receipt(body: ReceiptIn, books: Books = Depends(get_books), user:
         record["matches_books"] = body.sent == computed.hmrc_body
         record["accounting_basis"] = computed.accounting_basis
         record["event_ids"] = computed.event_ids
-        path = f"{folder}/{body.business_id}/update-to-{body.period_end.isoformat()}-{_stamp(ts)}.json"
+        # This route records what the browser says it sent and HMRC answered; it never calls HMRC itself, so
+        # nothing here is verified with HMRC. (The audit action keeps its name: the audit view, docs and tests use it.)
+        record["hmrc_verified"] = False
+        path = (
+            f"{folder}/{body.business_id}/update-to-{body.period_end.isoformat()}-{_stamp(ts)}"
+            f"-{_unique(body.hmrc.correlation_id)}.json"
+        )
         action, refs = (
             "itsa_update_submitted",
             {
                 "period_end": body.period_end.isoformat(),
                 "matches": record["matches_books"],
                 "basis": computed.accounting_basis,
+                "hmrc_verified": False,
             },
         )
     elif body.kind == "calculation":
@@ -213,7 +230,16 @@ async def save_receipt(body: ReceiptIn, books: Books = Depends(get_books), user:
     else:
         path = f"{folder}/final-declaration-{body.calculation_id}.json"
         action, refs = "itsa_final_declaration_submitted", {"calculation": body.calculation_id}
-    await books.write_json(path, record)
+    if body.kind == "cumulative":
+        # Create-only: two saves in one second (a retry with the same correlation id) must not share one file.
+        data = json.dumps(record, indent=2, ensure_ascii=False).encode()  # as write_json writes it
+        try:
+            await books.storage.write(path, data, create_only=True)
+        except (ConflictError, FileExistsError):
+            path = f"{path.removesuffix('.json')}-{uuid.uuid4().hex[:8]}.json"
+            await books.storage.write(path, data, create_only=True)
+    else:
+        await books.write_json(path, record)
     entry = {
         "kind": body.kind,
         "path": path,

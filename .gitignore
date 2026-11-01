@@ -47,6 +47,14 @@ evals/runs/*
 !evals/runs/supplier_vat_replay/
 !evals/runs/bank_ai/
 !evals/runs/public_chat/
+!evals/runs/classify/
+evals/runs/classify/*
+!evals/runs/classify/report.md
+!evals/runs/classify/summary.json
+!evals/runs/stt/
+evals/runs/stt/*
+!evals/runs/stt/report.md
+!evals/runs/stt/summary.json
 !evals/runs/glimmer_messy_200/
 evals/runs/glimmer_messy_200/*
 !evals/runs/glimmer_messy_200/report.md

@@ -1,5 +1,5 @@
 {
-  "generated": "2026-10-28T17:31:52+00:00",
+  "generated": "2026-11-01T09:23:47+00:00",
   "model": "muse-glimmer:30b",
   "base_url": "http://localhost:11434",
   "stub": false,
@@ -8,12 +8,12 @@
   "answered": 108,
   "refusals": 0,
   "refusal_pct": 0.0,
-  "all_exact_pct": 89.8,
+  "all_exact_pct": 99.1,
   "per_field": {
     "kind": {
       "scored": 108,
-      "correct": 108,
-      "accuracy_pct": 100.0
+      "correct": 107,
+      "accuracy_pct": 99.1
     },
     "property": {
       "scored": 108,
@@ -27,8 +27,8 @@
     },
     "line_amount": {
       "scored": 186,
-      "correct": 175,
-      "accuracy_pct": 94.1
+      "correct": 186,
+      "accuracy_pct": 100.0
     }
   },
   "by_kind": {
@@ -37,14 +37,14 @@
       "answered": 6,
       "all_exact": 6,
       "accuracy_pct": 100.0,
-      "baseline_exact": 0,
-      "baseline_pct": 0.0
+      "baseline_exact": 1,
+      "baseline_pct": 16.7
     },
     "invoice": {
       "docs": 24,
       "answered": 24,
-      "all_exact": 13,
-      "accuracy_pct": 54.2,
+      "all_exact": 23,
+      "accuracy_pct": 95.8,
       "baseline_exact": 1,
       "baseline_pct": 4.2
     },
@@ -68,18 +68,18 @@
   "baseline": {
     "reader": "generic",
     "answered": 108,
-    "all_exact": 1,
-    "all_exact_pct": 0.9,
+    "all_exact": 2,
+    "all_exact_pct": 1.9,
     "per_field": {
       "category": {
         "scored": 108,
-        "correct": 26,
-        "accuracy_pct": 24.1
+        "correct": 30,
+        "accuracy_pct": 27.8
       },
       "property": {
         "scored": 108,
-        "correct": 7,
-        "accuracy_pct": 6.5
+        "correct": 8,
+        "accuracy_pct": 7.4
       },
       "amount": {
         "scored": 108,
@@ -94,94 +94,18 @@
     }
   },
   "latency_s": {
-    "mean": 37.113,
-    "p50": 40.678,
-    "p95": 46.32,
-    "max": 50.513,
-    "total": 4008.2
+    "mean": 36.541,
+    "p50": 39.762,
+    "p95": 46.278,
+    "max": 48.797,
+    "total": 3946.4
   },
   "worst": [
     {
       "id": "landlord_10/17_invoice",
       "kind": "invoice",
       "wrong_fields": [
-        "amt:domestic_items"
-      ],
-      "got": {
-        "figures": {
-          "domestic_items": 510.99
-        },
-        "property": "flat"
-      },
-      "want": {
-        "figures": {
-          "domestic_items": 505.99
-        },
-        "property": "flat"
-      }
-    },
-    {
-      "id": "landlord_11/16_invoice",
-      "kind": "invoice",
-      "wrong_fields": [
-        "amt:repairs"
-      ],
-      "got": {
-        "figures": {
-          "repairs": 296.1
-        },
-        "property": "house"
-      },
-      "want": {
-        "figures": {
-          "repairs": 253.8
-        },
-        "property": "house"
-      }
-    },
-    {
-      "id": "landlord_11/17_invoice",
-      "kind": "invoice",
-      "wrong_fields": [
-        "amt:domestic_items"
-      ],
-      "got": {
-        "figures": {
-          "domestic_items": 377.99
-        },
-        "property": "flat"
-      },
-      "want": {
-        "figures": {
-          "domestic_items": 372.99
-        },
-        "property": "flat"
-      }
-    },
-    {
-      "id": "landlord_12/16_invoice",
-      "kind": "invoice",
-      "wrong_fields": [
-        "amt:repairs"
-      ],
-      "got": {
-        "figures": {
-          "repairs": 423.5
-        },
-        "property": "house"
-      },
-      "want": {
-        "figures": {
-          "repairs": 363.0
-        },
-        "property": "house"
-      }
-    },
-    {
-      "id": "landlord_12/17_invoice",
-      "kind": "invoice",
-      "wrong_fields": [
-        "amt:domestic_items"
+        "kind"
       ],
       "got": {
         "figures": {
@@ -191,104 +115,9 @@
       },
       "want": {
         "figures": {
-          "domestic_items": 525.99
+          "domestic_items": 505.99
         },
         "property": "flat"
-      }
-    },
-    {
-      "id": "landlord_7/16_invoice",
-      "kind": "invoice",
-      "wrong_fields": [
-        "amt:repairs"
-      ],
-      "got": {
-        "figures": {
-          "repairs": 268.1
-        },
-        "property": "house"
-      },
-      "want": {
-        "figures": {
-          "repairs": 229.8
-        },
-        "property": "house"
-      }
-    },
-    {
-      "id": "landlord_7/17_invoice",
-      "kind": "invoice",
-      "wrong_fields": [
-        "amt:domestic_items"
-      ],
-      "got": {
-        "figures": {
-          "domestic_items": 387.99
-        },
-        "property": "flat"
-      },
-      "want": {
-        "figures": {
-          "domestic_items": 407.99
-        },
-        "property": "flat"
-      }
-    },
-    {
-      "id": "landlord_8/16_invoice",
-      "kind": "invoice",
-      "wrong_fields": [
-        "amt:repairs"
-      ],
-      "got": {
-        "figures": {
-          "repairs": 419.3
-        },
-        "property": "house"
-      },
-      "want": {
-        "figures": {
-          "repairs": 359.4
-        },
-        "property": "house"
-      }
-    },
-    {
-      "id": "landlord_8/17_invoice",
-      "kind": "invoice",
-      "wrong_fields": [
-        "amt:domestic_items"
-      ],
-      "got": {
-        "figures": {
-          "domestic_items": 544.99
-        },
-        "property": "flat"
-      },
-      "want": {
-        "figures": {
-          "domestic_items": 564.99
-        },
-        "property": "flat"
-      }
-    },
-    {
-      "id": "landlord_9/16_invoice",
-      "kind": "invoice",
-      "wrong_fields": [
-        "amt:repairs"
-      ],
-      "got": {
-        "figures": {
-          "repairs": 503.3
-        },
-        "property": "house"
-      },
-      "want": {
-        "figures": {
-          "repairs": 431.4
-        },
-        "property": "house"
       }
     }
   ]
