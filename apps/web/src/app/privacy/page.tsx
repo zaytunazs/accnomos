@@ -12,8 +12,10 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-bold">The short version</h2>
         <p>
           Accnomos keeps your books in <strong>your own Microsoft OneDrive</strong>. We do not run a user database and we
-          do not store your receipts, invoices, ledger or VAT figures on our servers. The AI that reads your documents runs
-          either on a machine you control or through an API key you provide.
+          do not store your receipts, invoices, ledger or VAT figures on our servers. Unless you choose otherwise, the AI that
+          reads your documents is the one on our server: <strong>Meta&apos;s Model API</strong>, then a fallback model
+          on our own server. You can instead run it on a machine you control or use your own API key
+          (see <a className="font-semibold text-teal underline" href="#ai-documents">where your documents go</a>).
           {/* The "Get 3 months free" list (components/sign-up/JoinForm.tsx; the pre-launch build's EarlyAccessForm). */}
           {" "}The one exception is the{" "}
           <a className="font-semibold text-teal underline" href="#sign-up">3 months free list</a>, which holds only what
@@ -28,9 +30,25 @@ export default function PrivacyPage() {
           <li><strong>OneDrive app folder:</strong> the app reads and writes files inside its own <em>Accnomos</em> folder (inbox, ledger events, Books.xlsx, VAT returns). It does not read the rest of your drive.</li>
           <li><strong>Sending invoices (Outlook, optional):</strong> the first time you send an invoice or a payment reminder, the app asks Microsoft for permission to send mail as you (<code>Mail.Send</code>). It sends only the email you saw and confirmed, to the address you confirmed, with the invoice PDF attached; a copy is in your Sent Items and the PDF in your <em>Accnomos</em> folder. Reminder wording is drafted by your own AI connection from the invoice number, amount and dates; your bank details are not sent to the AI.</li>
           <li><strong>Camera / photos (Android):</strong> only when you choose to capture or pick a receipt; the image is uploaded to your OneDrive inbox.</li>
-          <li><strong>Your AI connection:</strong> either the address of a model running on your own hardware (e.g. Muse Glimmer), or a Meta Model API key you paste in. The key is stored on your device and sent only to our stateless runtime over HTTPS to make the request on your behalf; it is never logged or stored server-side.</li>
+          <li><strong>Your AI connection (optional):</strong> by default none: our server&apos;s own AI chain is used (see below). If you choose it, either the address of a model running on your own hardware (e.g. Muse Glimmer), or a Meta Model API key you paste in. The key is stored on your device and sent only to our stateless runtime over HTTPS to make the request on your behalf; it is never logged or stored server-side.</li>
           <li><strong>HMRC (sandbox during the hackathon):</strong> if you connect HMRC, the OAuth tokens stay in your browser session. Our relay holds only the HMRC application secret and forwards requests; it stores nothing about you. HMRC requires fraud-prevention headers (device, screen size, time zone, IP address) which the relay forwards with each request.</li>
         </ul>
+      </section>
+
+      <section id="ai-documents" className="mt-8 scroll-mt-6 space-y-3 text-[15px] leading-relaxed">
+        <h2 className="text-xl font-bold">Where your documents go for AI reading</h2>
+        <p>
+          The AI reads a document, or a question you ask, only when you ask it to. Where that request is processed
+          depends on your AI choice in Settings.
+        </p>
+        <ul className="list-disc space-y-2 pl-5">
+          <li><strong>Default (you have made no AI choice):</strong> our live server&apos;s chain. The request goes first to <strong>Meta&apos;s Model API</strong> using the server owner&apos;s key; if that cannot answer, to a fallback model running on our own server. The request is processed in memory and not kept by us.</li>
+          <li><strong>Contributor mode:</strong> our live server uses Muse Spark 1.3 in Contributor mode for the demo and testing. In Contributor mode Meta may use the content sent to it to improve its models. The demo uses only fictional sample data; anyone trying it with their own books is served the same way, so please test with documents you are happy to share. Before real customers use it, the server switches to standard mode.</li>
+          <li><strong>Local mode (your choice):</strong> the document goes to the model address you give, on hardware you control, and to nobody else. The one exception is spoken questions: the audio is transcribed with Meta&apos;s Model API using the server&apos;s key, in every mode.</li>
+          <li><strong>Your own key (your choice):</strong> the document goes to Meta&apos;s Model API under your key, in standard mode, subject to Meta&apos;s terms for that key. It does not use the server owner&apos;s key.</li>
+          <li><strong>Optional extra provider:</strong> a hosted inference provider may be added to the server&apos;s chain as an optional extra provider; it is not used today. We will name it here before it is.</li>
+        </ul>
+        <p>Spoken questions are converted to text and the audio is not kept.</p>
       </section>
 
       <section className="mt-8 space-y-3 text-[15px] leading-relaxed">
@@ -119,6 +137,7 @@ export default function PrivacyPage() {
                 { data: "The books: _System/Ledger/events, proposals, docs, audit trail, Autopilot rules", where: "Your OneDrive Accnomos folder, _System/", who: "You — append-only; corrections are new reversing entries" },
                 { data: "Working data: Contacts, Jobs, Staff, Timesheets, Vehicles, Mileage, bank, Intake, Todos, Planner, Payroll runs, Invoicing profile", where: "Your OneDrive Accnomos folder, _System/", who: "You — names and details only; money is recomputed from the events" },
                 { data: "Microsoft sign-in (name, e-mail)", where: "This browser's sign-in cache", who: "You, shown as who is signed in" },
+                { data: "Documents and questions sent to the AI (default: no AI choice made)", where: "Sent per request over HTTPS to Meta's Model API with the server owner's key, then, if needed, to a fallback model on our own server; not stored by us", who: "Meta (Contributor mode on our live server: it may use the content to improve its models); nobody else" },
                 { data: "Your Meta API key and AI address", where: "This device only", who: "Sent per request over HTTPS so the runtime can call the model for you; never logged or stored" },
                 { data: "HMRC tokens", where: "This browser tab only", who: "Gone when the tab closes or you disconnect" },
                 { data: "Device ID and VAT number", where: "This device only", who: "Sent to HMRC as fraud-prevention data when you submit" },
@@ -148,7 +167,11 @@ export default function PrivacyPage() {
         <h2 className="text-xl font-bold">Third parties</h2>
         <ul className="list-disc space-y-2 pl-5">
           <li>Microsoft (sign-in and OneDrive) — under your Microsoft account terms.</li>
-          <li>Meta Model API — only if you provide your own key; subject to Meta&apos;s terms for your key.</li>
+          <li>Meta Model API — the default for AI reading on our live server (server owner&apos;s key, Contributor mode for the demo and testing: Meta may use the content sent to it to improve its models), and with your own key if you provide one, under Meta&apos;s terms for that key. It receives the document or question being read. Not used in local mode.</li>
+          <li>Our own server — runs the fallback model if Meta&apos;s Model API cannot answer, and receives the same content; it is not kept.</li>
+          <li>Cloudflare (the tunnel that carries traffic to our server) — carries your requests, including document content, in transit over HTTPS; it is a processor for that transport only.</li>
+          <li>TrueLayer — only if you connect a bank for bank feeds; it receives your bank sign-in choice and consent, and returns account and transaction data, which we write to your OneDrive.</li>
+          <li>Stripe and PayPal — only if you connect either for payment links on invoices; they receive the invoice amount, reference and description needed to create the link, and tell us when it is paid.</li>
           <li>A hosted inference provider chosen by the server owner — only if you use your own key and the server owner has switched on the Muse Spark Open verifier; the document image is then sent there for an independent second reading. In local mode documents are never sent there.</li>
           <li>HM Revenue &amp; Customs — only if you connect HMRC.</li>
         </ul>

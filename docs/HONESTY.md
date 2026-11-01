@@ -122,8 +122,10 @@ project venv (no `python3` on this machine's PATH). `ruff` has not been run.
   real customers; nothing in the code enforces that, it is a server setting. A user's own key in key mode asks for
   standard `muse-spark-1.3`, but a key-mode request without its own key falls back to the server's `META_API_KEY` with
   that same standard model id, and a direct API caller can send any `X-AI-Model`. The Contributor model id is the
-  owner's setting and was not checked against Meta's documentation. `/privacy` and the public chat notes do not yet
-  mention Contributor mode.
+  owner's setting and was not checked against Meta's documentation. `/privacy` now says so in "Where your documents go
+  for AI reading" and the third-parties list (the server chain, Contributor mode, the optional processors: Cloudflare,
+  TrueLayer, Stripe, PayPal); the public chat notes do not yet mention Contributor mode. The privacy wording about
+  what TrueLayer, Stripe and PayPal receive is written from the code's request shapes, not from their contracts.
 
 ## Chat and voice actions, Autopilot
 
