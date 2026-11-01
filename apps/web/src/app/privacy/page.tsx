@@ -42,11 +42,11 @@ export default function PrivacyPage() {
           depends on your AI choice in Settings.
         </p>
         <ul className="list-disc space-y-2 pl-5">
-          <li><strong>Default (you have made no AI choice):</strong> our live server&apos;s chain. The request goes first to <strong>Meta&apos;s Model API</strong> using the server owner&apos;s key; if that cannot answer, to a fallback model running on our own server. The request is processed in memory and not kept by us.</li>
+          <li><strong>Default (you have made no AI choice):</strong> our live server&apos;s chain. The request goes first to <strong>Meta&apos;s Model API</strong> using the server owner&apos;s key; if that cannot answer, to a fallback model running on our own server. We do not keep the request; Meta&apos;s own retention is described in its terms and, in Contributor mode, above.</li>
           <li><strong>Contributor mode:</strong> our live server uses Muse Spark 1.3 in Contributor mode for the demo and testing. In Contributor mode Meta may use the content sent to it to improve its models. The demo uses only fictional sample data; anyone trying it with their own books is served the same way, so please test with documents you are happy to share. Before real customers use it, the server switches to standard mode.</li>
           <li><strong>Local mode (your choice):</strong> the document goes to the model address you give, on hardware you control, and to nobody else. The one exception is spoken questions: the audio is transcribed with Meta&apos;s Model API using the server&apos;s key, in every mode.</li>
           <li><strong>Your own key (your choice):</strong> the document goes to Meta&apos;s Model API under your key, in standard mode, subject to Meta&apos;s terms for that key. It does not use the server owner&apos;s key.</li>
-          <li><strong>Optional extra provider:</strong> a hosted inference provider may be added to the server&apos;s chain as an optional extra provider; it is not used today. We will name it here before it is.</li>
+          <li><strong>Optional extra provider:</strong> a hosted inference provider may be added to the server&apos;s chain as an optional extra provider; it is not used today and this page will be updated if that changes.</li>
         </ul>
         <p>Spoken questions are converted to text and the audio is not kept.</p>
       </section>
@@ -169,7 +169,7 @@ export default function PrivacyPage() {
           <li>Microsoft (sign-in and OneDrive) — under your Microsoft account terms.</li>
           <li>Meta Model API — the default for AI reading on our live server (server owner&apos;s key, Contributor mode for the demo and testing: Meta may use the content sent to it to improve its models), and with your own key if you provide one, under Meta&apos;s terms for that key. It receives the document or question being read. Not used in local mode.</li>
           <li>Our own server — runs the fallback model if Meta&apos;s Model API cannot answer, and receives the same content; it is not kept.</li>
-          <li>Cloudflare (the tunnel that carries traffic to our server) — carries your requests, including document content, in transit over HTTPS; it is a processor for that transport only.</li>
+          <li>Our web host (IONOS, the server that terminates HTTPS for accnomos.com and api.accnomos.com) — carries your requests, including document content, over an encrypted tunnel to our own server; it is a processor for that transport only.</li>
           <li>TrueLayer — only if you connect a bank for bank feeds; it receives your bank sign-in choice and consent, and returns account and transaction data, which we write to your OneDrive.</li>
           <li>Stripe and PayPal — only if you connect either for payment links on invoices; they receive the invoice amount, reference and description needed to create the link, and tell us when it is paid.</li>
           <li>A hosted inference provider chosen by the server owner — only if you use your own key and the server owner has switched on the Muse Spark Open verifier; the document image is then sent there for an independent second reading. In local mode documents are never sent there.</li>
