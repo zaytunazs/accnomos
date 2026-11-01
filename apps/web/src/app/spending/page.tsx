@@ -1,6 +1,6 @@
 import LiveSpending from "@/components/spending/LiveSpending";
 
-export const metadata = { title: "Spending · Accnomos" };
+export const metadata = { title: "Spending · Accnomos", robots: { index: false, follow: false } };
 
 export default function Page() {
   return (

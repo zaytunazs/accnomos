@@ -2,7 +2,7 @@ import PageHeader from "@/components/PageHeader";
 import SelfEmployment from "@/components/itsa/SelfEmployment";
 import SelfEmployedHint from "@/components/itsa/SelfEmployedHint";
 
-export const metadata = { title: "Self-employment (MTD Income Tax) · Accnomos" };
+export const metadata = { title: "Self-employment (MTD Income Tax) · Accnomos", robots: { index: false, follow: false } };
 
 export default function SelfEmploymentPage() {
   return (

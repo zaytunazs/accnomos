@@ -2,7 +2,7 @@ import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
 import ImportWizard from "@/components/import/ImportWizard";
 
-export const metadata = { title: "Import history · Accnomos" };
+export const metadata = { title: "Import history · Accnomos", robots: { index: false, follow: false } };
 
 export default function ImportPage() {
   return (

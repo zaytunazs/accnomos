@@ -3,7 +3,7 @@ import ConnectSteps from "@/components/connect/ConnectSteps";
 import Link from "next/link";
 import TryDemo, { IfDemoAvailable } from "@/components/demo/TryDemo";
 
-export const metadata = { title: "Connect your cloud · Accnomos" };
+export const metadata = { title: "Connect your cloud · Accnomos", robots: { index: false, follow: false } };
 
 export default function ConnectPage() {
   return (

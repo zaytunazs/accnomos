@@ -1,7 +1,7 @@
 import LiveBank from "@/components/bank/LiveBank";
 import ExplainMore from "@/components/ExplainMore";
 
-export const metadata = { title: "Bank statement lines · Accnomos" };
+export const metadata = { title: "Bank statement lines · Accnomos", robots: { index: false, follow: false } };
 
 export default function BankPage() {
   return (

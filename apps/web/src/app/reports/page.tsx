@@ -3,7 +3,7 @@ import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
 import LiveReports from "@/components/reports/LiveReports";
 
-export const metadata = { title: "Reports · Accnomos" };
+export const metadata = { title: "Reports · Accnomos", robots: { index: false, follow: false } };
 
 export default function ReportsPage() {
   return (

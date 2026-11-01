@@ -1,7 +1,7 @@
 import PageHeader from "@/components/PageHeader";
 import LiveProperty from "@/components/property/LiveProperty";
 
-export const metadata = { title: "Property · Accnomos" };
+export const metadata = { title: "Property · Accnomos", robots: { index: false, follow: false } };
 
 export default function PropertyPage() {
   return (

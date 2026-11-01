@@ -1,7 +1,7 @@
 import LiveAudit from "@/components/audit/LiveAudit";
 import PageHeader from "@/components/PageHeader";
 
-export const metadata = { title: "Audit trail · Accnomos" };
+export const metadata = { title: "Audit trail · Accnomos", robots: { index: false, follow: false } };
 
 export default function AuditPage() {
   return (

@@ -2,7 +2,7 @@ import ExplainMore from "@/components/ExplainMore";
 import LivePaye from "@/components/payroll/LivePaye";
 import LivePayroll from "@/components/payroll/LivePayroll";
 
-export const metadata = { title: "Payroll · Accnomos" };
+export const metadata = { title: "Payroll · Accnomos", robots: { index: false, follow: false } };
 
 export default function PayrollPage() {
   return (

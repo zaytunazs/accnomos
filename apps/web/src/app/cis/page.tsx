@@ -2,7 +2,7 @@ import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
 import LiveCis from "@/components/cis/LiveCis";
 
-export const metadata = { title: "CIS · Accnomos" };
+export const metadata = { title: "CIS · Accnomos", robots: { index: false, follow: false } };
 
 export default function CisPage() {
   return (

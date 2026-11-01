@@ -2,7 +2,7 @@ import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
 import LiveReview from "@/components/review/LiveReview";
 
-export const metadata = { title: "Review · Accnomos" };
+export const metadata = { title: "Review · Accnomos", robots: { index: false, follow: false } };
 
 export default function ReviewPage() {
   return (

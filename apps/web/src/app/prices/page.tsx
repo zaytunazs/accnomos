@@ -1,6 +1,6 @@
 import LivePrices from "@/components/spending/LivePrices";
 
-export const metadata = { title: "Cheaper options · Accnomos" };
+export const metadata = { title: "Cheaper options · Accnomos", robots: { index: false, follow: false } };
 
 export default function Page() {
   return (

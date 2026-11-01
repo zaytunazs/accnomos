@@ -2,7 +2,7 @@ import Explain from "@/components/Explain";
 import PageHeader from "@/components/PageHeader";
 import MonthEnd from "@/components/month-end/MonthEnd";
 
-export const metadata = { title: "Month-end · Accnomos" };
+export const metadata = { title: "Month-end · Accnomos", robots: { index: false, follow: false } };
 
 export default function MonthEndPage() {
   return (

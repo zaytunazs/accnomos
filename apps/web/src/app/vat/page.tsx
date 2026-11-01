@@ -15,7 +15,7 @@ import { box4SampleRows, vatBoxes, vatMeta } from "@/lib/sample-vat";
 
 const SAMPLE_BOX5 = "£2,140 to pay · due 7 Nov · 12 days left";
 
-export const metadata = { title: "VAT return · Accnomos" };
+export const metadata = { title: "VAT return · Accnomos", robots: { index: false, follow: false } };
 
 function EntriesCell({ box, count }: { box: number; count: number }) {
   return (

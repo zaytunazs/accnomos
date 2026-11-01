@@ -1,7 +1,7 @@
 import ExplainMore from "@/components/ExplainMore";
 import JobsList from "@/components/jobs/JobsList";
 
-export const metadata = { title: "Jobs · Accnomos" };
+export const metadata = { title: "Jobs · Accnomos", robots: { index: false, follow: false } };
 
 export default function JobsPage() {
   return (
