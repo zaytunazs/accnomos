@@ -1,5 +1,8 @@
 """POST /extract: upload one receipt/invoice (photo, HEIC, PDF), get a `Proposal` back.
 
+Signed-in callers only: an `X-Graph-Token` that Graph accepts (app/identity.py) or a demo session, so the server's
+own model is not an open service. Nothing is remembered between calls: duplicate detection lives in the books path.
+
 Needs `python-multipart` installed for `UploadFile`.
 """
 
@@ -7,8 +10,9 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 
+from app import demo, identity
 from app.ai.config import AiConfig, ai_config_from_request
 from app.ai.extract import SUPPORTED_MIME, ExtractionError
 from app.books import today
@@ -23,11 +27,14 @@ ACCEPTED_MIME = SUPPORTED_MIME | {"image/jpg", PDF_MIME, HEIC_MIME, "image/heif"
 
 router = APIRouter(tags=["extract"])
 
-# Demo-grade duplicate memory (per process). Replace with ledger-backed hashes.
-_SEEN_HASHES: set[str] = set()
+
+async def caller(request: Request) -> None:
+    """A demo session (its own fixed sample user) or a Graph-verified sign-in; anything else is a 401."""
+    if demo.from_request(request) is None:
+        await identity.signed_in_identity(request)
 
 
-@router.post("/extract", response_model=Proposal)
+@router.post("/extract", response_model=Proposal, dependencies=[Depends(caller)])
 async def extract(
     file: UploadFile = File(...),
     cfg: AiConfig = Depends(ai_config_from_request),
@@ -53,7 +60,7 @@ async def extract(
         proposal = await process_document(
             prep,
             cfg,
-            known_hashes=frozenset(_SEEN_HASHES),
+            known_hashes=frozenset(),  # one caller never learns what another uploaded
             digest=digest,
             business_name=business,
             period_start=start,
@@ -61,5 +68,4 @@ async def extract(
         )
     except ExtractionError as exc:  # may quote the model provider's error body: never a key
         raise HTTPException(status_code=502, detail=scrub(str(exc))) from exc
-    _SEEN_HASHES.add(proposal.doc_sha256)
     return proposal

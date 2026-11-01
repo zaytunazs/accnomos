@@ -340,7 +340,9 @@ def test_extract_route_reads_a_real_pdf(models: dict[str, list]) -> None:
     data = _pdf(["Harrow & Finch Ltd\nInvoice HFS-2\nTotal GBP 18.40", "Terms"])
     app.dependency_overrides[ai_config_from_request] = lambda: LOCAL
     try:
-        r = TestClient(app).post("/extract", files={"file": ("inv.pdf", data, "application/pdf")})
+        r = TestClient(app).post(
+            "/extract", files={"file": ("inv.pdf", data, "application/pdf")}, headers={"X-Graph-Token": "tok"}
+        )
     finally:
         app.dependency_overrides.pop(ai_config_from_request, None)
     assert r.status_code == 200, r.text
@@ -349,3 +351,26 @@ def test_extract_route_reads_a_real_pdf(models: dict[str, list]) -> None:
     body = r.json()
     assert body["doc_sha256"] == pipeline.sha256_hex(data) and body["suggested_filename"].endswith(".pdf")
     assert any(c["code"] == "SOURCE" and c["message"] == "PDF, 2 pages: page 1 read" for c in body["checks"])
+
+
+def test_extract_needs_a_sign_in_and_never_tells_one_caller_what_another_uploaded(models: dict[str, list]) -> None:
+    pytest.importorskip("pypdfium2")
+    from fastapi.testclient import TestClient
+
+    from app.ai.config import ai_config_from_request
+    from app.main import app
+
+    data = _pdf(["Harrow & Finch Ltd\nInvoice HFS-3\nTotal GBP 18.40"])
+    files = {"file": ("inv.pdf", data, "application/pdf")}
+    app.dependency_overrides[ai_config_from_request] = lambda: LOCAL
+    try:
+        client = TestClient(app)
+        assert client.post("/extract", files=files).status_code == 401  # no token: the server's model is not free
+        assert client.post("/extract", files=files, headers={"X-Graph-Token": " "}).status_code == 401
+        for who in ("alice@example.co.uk", "bob@example.co.uk", "alice@example.co.uk"):
+            r = client.post("/extract", files=files, headers={"X-Graph-Token": "tok", "X-User": who})
+            assert r.status_code == 200, r.text
+            dup = next(c for c in r.json()["checks"] if c["code"] == "DUPLICATE")
+            assert dup["ok"] is True and "Not seen before" in dup["message"], (who, dup)
+    finally:
+        app.dependency_overrides.pop(ai_config_from_request, None)

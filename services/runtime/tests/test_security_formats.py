@@ -217,7 +217,7 @@ def client() -> Iterator[TestClient]:
 
 def test_extract_route_refusals(client: TestClient, no_model: None, monkeypatch: pytest.MonkeyPatch) -> None:
     def post(name: str, data: bytes, ctype: str) -> tuple[int, str]:
-        r = client.post("/extract", files={"file": (name, data, ctype)})
+        r = client.post("/extract", files={"file": (name, data, ctype)}, headers={"X-Graph-Token": "tok"})
         return r.status_code, r.json()["detail"]
 
     assert post("x.gif", b"GIF89a", "image/gif")[0] == 415

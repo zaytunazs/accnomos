@@ -146,12 +146,18 @@ async def ai_test(cfg: AiConfig, x_meta_api_key: str | None = Header(default=Non
             want = cfg.model or "muse-spark-1.3"
             return AiTestResult(ok=want in ids, mode="key", model=want, detail=f"{len(ids)} models available")
         if cfg.mode == "local":
+            own = bool(
+                cfg.base_url
+            )  # the caller named the agent; otherwise it is this server's, which needs no sign-in
             base = (cfg.base_url or os.getenv("OLLAMA_BASE", "http://127.0.0.1:11434")).rstrip("/")
             r = await client.get(f"{base}/api/tags")
             if r.status_code != 200:
                 return AiTestResult(ok=False, mode="local", detail=f"local agent returned {r.status_code}")
             names = [m["name"] for m in r.json().get("models", [])]
             want = cfg.model or os.getenv("OLLAMA_MODEL", "muse-glimmer:30b")
+            if not own:  # the server's own model list and default model are not for an unauthenticated caller
+                ok = want in names
+                return AiTestResult(ok=ok, mode="local", detail="The local agent answers" if ok else "Model not found")
             return AiTestResult(ok=want in names, mode="local", model=want, detail=f"models: {', '.join(names)}")
     raise HTTPException(400, "mode must be 'key' or 'local'")
 
