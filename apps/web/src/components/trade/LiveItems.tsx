@@ -90,7 +90,7 @@ function ItemFormDialog({ account, item, onClose, onSaved }: { account: AccountI
         </div>
       </div>
       <p className="mt-3 text-xs text-muted">
-        Invoices still post their sales to 4000 Sales whatever the income account says; bills and purchase orders use the expense account.
+        Kept for your records. For now every invoice line posts to 4000 Sales; use tracking categories to split income.
       </p>
       {error && <p role="alert" className="mt-3 text-sm font-bold text-warn-ink">{error}</p>}
       <div className="mt-4 flex flex-wrap gap-3">
