@@ -36,7 +36,7 @@ export default function PlanToday() {
   return (
     <section aria-labelledby="plan-today-heading" className="flex flex-col rounded-2xl border border-border bg-white p-4 sm:p-5">
       <div className="flex items-center gap-2">
-        <h2 id="plan-today-heading" className="text-lg font-extrabold tracking-tight">
+        <h2 id="plan-today-heading" className="text-lg font-bold tracking-tight">
           Plan today
         </h2>
         <ExplainMore title="How the plan is made" anchor="planner">

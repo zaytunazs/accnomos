@@ -74,12 +74,13 @@ function Header({ date, title, badge, run }: { date: string; title: string; badg
         <p className="text-sm font-semibold text-muted">
           {date}
           {badge && (
-            <span className="ml-2 rounded-full bg-ink px-2 py-0.5 text-[11px] font-extrabold uppercase tracking-wide text-ground">
+            <span className="ml-2 rounded-md border border-warn-border bg-warn-bg px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-warn-ink">
               {badge}
             </span>
           )}
         </p>
-        <h1 className="mt-1 text-3xl font-extrabold tracking-tight">{title}</h1>
+        <h1 className="mt-1 text-[26px] leading-tight font-bold tracking-tight sm:text-3xl">{title}</h1>
+        <p className="mt-1 text-[15px] text-muted">What needs attention, how things are going and what comes next.</p>
       </div>
       {run === null ? <Skeleton className="h-4 w-56" /> : <LastInboxCheck>{run}</LastInboxCheck>}
     </div>

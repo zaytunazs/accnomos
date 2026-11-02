@@ -56,13 +56,13 @@ export default function TodosTile() {
   return (
     <section aria-labelledby="home-todos" className="flex flex-col rounded-2xl border border-border bg-white p-4 sm:p-5">
       <div className="flex items-center gap-2">
-        <h2 id="home-todos" className="text-lg font-extrabold tracking-tight">To-dos</h2>
+        <h2 id="home-todos" className="text-lg font-bold tracking-tight">To-dos</h2>
         <ExplainMore title="Where to-dos come from" anchor="inbox">
           To-dos are suggested by your AI from your inbox threads and added when you tap Add; Done removes one.
           The list lives in _System/Todos in your OneDrive.
         </ExplainMore>
       </div>
-      <p className="mt-1 min-h-9 text-3xl font-extrabold tracking-tight tabular-nums text-ink">{todos ? todos.length + queries.length : "–"}</p>
+      <p className="mt-1 min-h-9 text-3xl font-bold tracking-tight tabular-nums text-ink">{todos ? todos.length + queries.length : "–"}</p>
       <p className={`min-h-5 text-[13px] font-semibold ${late ? "text-warn-ink" : "text-muted"}`}>
         {account === null ? "Sign in to keep a to-do list" : late ? `${late} overdue` : "Add them from your inbox"}
       </p>

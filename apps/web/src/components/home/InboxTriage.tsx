@@ -95,7 +95,7 @@ export default function InboxTriage() {
     return (
       <section aria-labelledby="home-inbox" aria-busy="true" className="rounded-2xl border border-border bg-white p-4 sm:p-5 md:col-span-2 xl:col-span-2">
         <div className="flex items-center gap-2">
-          <h2 id="home-inbox" className="text-lg font-extrabold tracking-tight text-ink">Inbox</h2>
+          <h2 id="home-inbox" className="text-lg font-bold tracking-tight text-ink">Inbox</h2>
           <InboxExplain />
         </div>
         <div className="mt-3 flex min-h-[7rem] flex-col gap-2">
@@ -110,7 +110,7 @@ export default function InboxTriage() {
     return (
       <section aria-labelledby="home-inbox" className="rounded-2xl border border-border bg-white p-4 sm:p-5 md:col-span-2 xl:col-span-2">
         <div className="flex items-center gap-2">
-          <h2 id="home-inbox" className="text-lg font-extrabold tracking-tight text-ink">Inbox</h2>
+          <h2 id="home-inbox" className="text-lg font-bold tracking-tight text-ink">Inbox</h2>
           <InboxExplain />
         </div>
         <p className="mt-1 min-h-[7rem] text-sm leading-6 text-muted">
@@ -133,7 +133,7 @@ export default function InboxTriage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <div className="flex items-center gap-2">
-            <h2 id="home-inbox" className="text-lg font-extrabold tracking-tight text-ink">Inbox</h2>
+            <h2 id="home-inbox" className="text-lg font-bold tracking-tight text-ink">Inbox</h2>
             <InboxExplain />
           </div>
           <p className="min-h-5 text-[13px] font-medium text-muted">
@@ -252,11 +252,11 @@ function ThreadRow({
   return (
     <li className="py-2">
       <button type="button" onClick={onToggle} aria-expanded={open} className="flex w-full items-center gap-2 text-left">
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-extrabold ${cat.tone}`}>{cat.label}</span>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${cat.tone}`}>{cat.label}</span>
         {t.unread && <span aria-label="unread" className="h-2 w-2 shrink-0 rounded-full bg-teal" />}
         <span className="shrink-0 text-sm font-bold text-ink">{t.from_name || t.from_address}</span>
         <span className="min-w-0 flex-1 truncate text-sm text-muted">{t.summary}</span>
-        {t.needs_reply && <span className="shrink-0 text-[11px] font-extrabold text-amber">Reply</span>}
+        {t.needs_reply && <span className="shrink-0 text-[11px] font-bold text-amber">Reply</span>}
         {t.todos.length > 0 && <span className="shrink-0 text-[11px] font-bold text-muted">{t.todos.length} to-do</span>}
         <span className="shrink-0 text-[12px] text-muted">{ago(t.received_at)}</span>
       </button>

@@ -33,7 +33,7 @@ export default function MonthEndCard() {
       className={`flex flex-col rounded-2xl border bg-white p-4 sm:p-5 ${warn ? "border-warn-border" : "border-border"}`}
     >
       <div className="flex items-center gap-2">
-        <h2 id="home-month-end" className="text-lg font-extrabold tracking-tight">
+        <h2 id="home-month-end" className="text-lg font-bold tracking-tight">
           Month-end
         </h2>
         <Explain title="The month-end close">
