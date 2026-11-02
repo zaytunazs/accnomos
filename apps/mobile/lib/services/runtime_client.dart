@@ -1459,6 +1459,30 @@ class RuntimeClient {
   Future<List<Map<String, dynamic>>> personalGoals() =>
       _list('GET', '/personal/goals', what: 'load savings goals');
 
+  // Goals tracked against the books (/books/goals, services/runtime/app/
+  // routes_goals.py). Same paths and bodies as the web's lib/goals.ts.
+
+  /// Every goal with its progress, code's suggestions and the note.
+  /// `GET /books/goals?today=YYYY-MM-DD`.
+  Future<Map<String, dynamic>> goals({String? today}) => _map(
+      'GET', '/books/goals',
+      query: {'today': ?today}, what: 'load your goals');
+
+  /// `POST /books/goals` with the GoalIn body (name, kind, start, end and
+  /// target_pence / percent / focus / measure / saved_pence).
+  Future<Map<String, dynamic>> addGoal(Map<String, dynamic> goal) =>
+      _map('POST', '/books/goals', body: goal, what: 'add that goal');
+
+  /// `PATCH /books/goals/{id}`, e.g. `{saved_pence: …}` for money put aside.
+  Future<Map<String, dynamic>> patchGoal(
+          String id, Map<String, dynamic> changes) =>
+      _map('PATCH', '/books/goals/${_seg(id)}',
+          body: changes, what: 'save that goal');
+
+  /// `DELETE /books/goals/{id}`.
+  Future<void> deleteGoal(String id) =>
+      _json('DELETE', '/books/goals/${_seg(id)}', what: 'remove that goal');
+
   /// One pay run with its lines. `GET /payroll/runs/{period}`.
   Future<Map<String, dynamic>> payrollRun(String period) => _map(
       'GET', '/payroll/runs/${_seg(period)}',

@@ -10,6 +10,7 @@ import '../services/settings.dart';
 import '../theme.dart';
 import 'bank_screen.dart';
 import 'home_cards.dart';
+import 'household_home_screen.dart' show SampleSwitch;
 import 'invoices_screen.dart';
 import 'month_end_screen.dart' show MonthEndCard;
 import 'review_screen.dart';
@@ -206,6 +207,10 @@ class _HomeScreenState extends State<HomeScreen> {
                     'only when you say so.',
             style: const TextStyle(color: AccnomosColors.muted, height: 1.4),
           ),
+          if (!signedIn) ...[
+            const SizedBox(height: 12),
+            const SampleSwitch(),
+          ],
           if (signedIn && _summary != null) ...[
             const SizedBox(height: 14),
             SummaryCard(summary: _summary!),

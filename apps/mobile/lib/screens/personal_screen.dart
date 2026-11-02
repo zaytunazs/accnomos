@@ -26,7 +26,11 @@ class PersonalScreen extends StatefulWidget {
     @visibleForTesting this.testAccount,
     @visibleForTesting this.testAccountReady = false,
     this.clientFactory,
+    this.title = 'Personal',
   });
+
+  /// The app bar title: "Budget" when it is a tab of the household app.
+  final String title;
 
   /// Signed-in account to use without touching MSAL (tests only).
   @visibleForTesting
@@ -167,7 +171,7 @@ class _PersonalScreenState extends State<PersonalScreen> {
       appBar: AppBar(
         backgroundColor: AccnomosColors.ground,
         elevation: 0,
-        title: Text('Personal',
+        title: Text(widget.title,
             style: Theme.of(context).textTheme.headlineSmall),
         actions: [
           if (_account != null)

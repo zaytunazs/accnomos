@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
 
 import 'screens/ask_screen.dart';
+import 'screens/goals_screen.dart';
+import 'screens/household_home_screen.dart';
 import 'screens/more_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/personal_screen.dart';
 import 'screens/review_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/vat_screen.dart';
+import 'services/app_mode.dart';
 import 'theme.dart';
 
 /// Accnomos — bookkeeping and VAT for UK small businesses.
@@ -58,6 +62,31 @@ class Shell extends StatefulWidget {
 class _ShellState extends State<Shell> {
   int _tab = 0;
 
+  @override
+  void initState() {
+    super.initState();
+    AppMode.state.addListener(_modeChanged);
+    AppMode.refresh();
+  }
+
+  @override
+  void dispose() {
+    AppMode.state.removeListener(_modeChanged);
+    super.dispose();
+  }
+
+  bool _household = AppMode.household;
+
+  /// Personal books (or the household sample) get the household tabs; a
+  /// change of treatment starts again on Home.
+  void _modeChanged() {
+    if (!mounted || AppMode.household == _household) return;
+    setState(() {
+      _household = AppMode.household;
+      _tab = 0;
+    });
+  }
+
   /// Review, Ask, VAT and More bring their own app bars, so the shell
   /// only titles Home.
   bool get _hasOwnAppBar => _tab != 0;
@@ -79,12 +108,12 @@ class _ShellState extends State<Shell> {
                         tooltip: 'Settings',
                         constraints: const BoxConstraints(
                             minWidth: 48, minHeight: 48),
-                        onPressed: () =>
-                            Navigator.of(context).push(
-                          MaterialPageRoute(
-                              builder: (_) =>
-                                  const SettingsScreen()),
-                        ),
+                        onPressed: () => Navigator.of(context)
+                            .push(
+                              MaterialPageRoute(
+                                  builder: (_) => const SettingsScreen()),
+                            )
+                            .then((_) => AppMode.refresh()),
                       ),
                     ]
                   : null,
@@ -93,19 +122,29 @@ class _ShellState extends State<Shell> {
         children: [
           // Tabs with their own app bar have no AppBar above this banner, so keep it below the status bar.
           if (_hasOwnAppBar)
-            const SafeArea(bottom: false, child: _SampleBanner())
+            SafeArea(
+                bottom: false, child: _SampleBanner(household: _household))
           else
-            const _SampleBanner(),
+            _SampleBanner(household: _household),
           Expanded(
             child: IndexedStack(
+              key: ValueKey(_household),
               index: _tab,
-              children: const [
-                HomeScreen(),
-                ReviewScreen(),
-                AskScreen(),
-                VatScreen(),
-                MoreScreen(),
-              ],
+              children: _household
+                  ? const [
+                      HouseholdHomeScreen(),
+                      ReviewScreen(),
+                      PersonalScreen(title: 'Budget'),
+                      GoalsScreen(),
+                      MoreScreen(household: true),
+                    ]
+                  : const [
+                      HomeScreen(),
+                      ReviewScreen(),
+                      AskScreen(),
+                      VatScreen(),
+                      MoreScreen(),
+                    ],
             ),
           ),
         ],
@@ -114,24 +153,50 @@ class _ShellState extends State<Shell> {
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
         indicatorColor: AccnomosColors.tealTint,
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.home_outlined), label: 'Home'),
-          NavigationDestination(
-              icon: Icon(Icons.checklist_outlined), label: 'Review'),
-          NavigationDestination(
-              icon: Icon(Icons.chat_bubble_outline), label: 'Ask'),
-          NavigationDestination(
-              icon: Icon(Icons.receipt_long_outlined), label: 'VAT'),
-          NavigationDestination(
-              icon: Icon(Icons.more_horiz_outlined), label: 'More'),
-        ],
+        destinations: shellDestinations(household: _household),
       ),
     );
   }
 }
 
+/// The bottom tabs: the household app (personal books) has Budget and Goals
+/// where a business has Ask and VAT; there is no VAT tab for a household.
+List<NavigationDestination> shellDestinations({required bool household}) =>
+    household
+        ? const [
+            NavigationDestination(
+                icon: Icon(Icons.home_outlined), label: 'Home'),
+            NavigationDestination(
+                icon: Icon(Icons.checklist_outlined), label: 'Review'),
+            NavigationDestination(
+                icon: Icon(Icons.pie_chart_outline), label: 'Budget'),
+            NavigationDestination(
+                icon: Icon(Icons.flag_outlined), label: 'Goals'),
+            NavigationDestination(
+                icon: Icon(Icons.more_horiz_outlined), label: 'More'),
+          ]
+        : const [
+            NavigationDestination(
+                icon: Icon(Icons.home_outlined), label: 'Home'),
+            NavigationDestination(
+                icon: Icon(Icons.checklist_outlined), label: 'Review'),
+            NavigationDestination(
+                icon: Icon(Icons.chat_bubble_outline), label: 'Ask'),
+            NavigationDestination(
+                icon: Icon(Icons.receipt_long_outlined), label: 'VAT'),
+            NavigationDestination(
+                icon: Icon(Icons.more_horiz_outlined), label: 'More'),
+          ];
+
+/// The sample label above every tab.
+String sampleBannerText({required bool household}) => household
+    ? 'SAMPLE — FICTIONAL HOUSEHOLD · demo data only'
+    : 'SAMPLE — FICTIONAL COMPANY · demo data only';
+
 class _SampleBanner extends StatelessWidget {
-  const _SampleBanner();
+  const _SampleBanner({required this.household});
+
+  final bool household;
 
   @override
   Widget build(BuildContext context) {
@@ -139,10 +204,10 @@ class _SampleBanner extends StatelessWidget {
       width: double.infinity,
       color: AccnomosColors.ink,
       padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      child: const Text(
-        'SAMPLE — FICTIONAL COMPANY · demo data only',
+      child: Text(
+        sampleBannerText(household: household),
         textAlign: TextAlign.center,
-        style: TextStyle(
+        style: const TextStyle(
             color: AccnomosColors.ground,
             fontSize: 11,
             fontWeight: FontWeight.w700,
