@@ -100,7 +100,7 @@ export const NAV_GROUPS: NavGroup[] = [
     label: "More",
     items: [
       // Your plan: shown as its own small section in the wide-screen sidebar (TopBar.tsx SideBar), under More elsewhere.
-      { heading: "Your plan", label: "Goals", href: "/goals" },
+      { heading: "Your plan", label: "Goals & progress", href: "/goals" },
       { heading: "Accounting", label: "Bank rules", href: "/bank/rules" },
       { heading: "Accounting", label: "Reconcile", href: "/bank/reconcile" },
       { heading: "Accounting", label: "Documents", href: "/files" },

@@ -5,6 +5,7 @@ import Deadlines from "@/components/home/Deadlines";
 import HomeError from "@/components/home/HomeError";
 import { AttentionTiles, TodayCard } from "@/components/home/Tiles";
 import { HomeData, SignedOut } from "@/components/home/HomeData";
+import HomeGoals from "@/components/home/HomeGoals";
 import InboxTriage from "@/components/home/InboxTriage";
 import MonthEndCard from "@/components/home/MonthEndCard";
 import { OverviewData } from "@/components/home/Overview";
@@ -61,6 +62,8 @@ export default function HomeDashboard() {
           {/* The business snapshot, full width before Today: the year to date against last year, the last 12 months
               and the 90-day cash line (GET /books/home snapshot, trend, cash_points). Personal books: nothing. */}
           <BusinessSnapshot />
+          {/* Goals & progress: up to three goals, most urgent first, and the checked note (GET /books/goals). */}
+          <HomeGoals />
           <SetupChecklist />
           {/* Signed in: documents already in the OneDrive folders that were never read (asks before reading). */}
           <PreviousFilesNotice />
