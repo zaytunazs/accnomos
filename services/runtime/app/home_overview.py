@@ -53,6 +53,7 @@ from app import contacts as cb
 from app import dashboard as dash
 from app import payroll as payroll_mod
 from app import payrun
+from app import personal as pf
 from app import profile as profile_mod
 from app import property as pr
 from app import reports as rp
@@ -475,6 +476,81 @@ def trend_facts(trend: rp.Trend) -> dict[str, Any] | None:
     return out
 
 
+class Household(BaseModel):
+    """A household's month (personal books only), from app/personal.py: this month so far and last month, budgets and
+    the next regular bill code found on the statements (an estimate)."""
+
+    this_month: pf.MonthlySummary
+    last_month: pf.MonthlySummary
+    next_bill: pf.RecurringItem | None = None
+
+
+async def household(books: Books, lines: Sequence[BankLine], today: date) -> Household:
+    cats = await pf.load_categories(books)
+    budgets = await pf.load_budgets(books)
+    rules = await pf.load_rules(books)
+    overrides = await pf.load_overrides(books)
+    every = list(lines)
+    last = today.replace(day=1) - timedelta(days=1)
+    bills = [
+        i
+        for i in pf.detect_recurring(every, cats, rules, overrides, today)
+        if i.status != "stopped" and i.days_until >= 0
+    ]
+    return Household(
+        this_month=pf.summarise_month(today.strftime("%Y-%m"), every, cats, budgets, rules, overrides),
+        last_month=pf.summarise_month(last.strftime("%Y-%m"), every, cats, budgets, rules, overrides),
+        next_bill=min(bills, key=lambda i: (i.days_until, i.label), default=None),
+    )
+
+
+def household_facts(h: Household, today: date) -> dict[str, Any]:
+    """Every household figure the summary may quote, formatted by code."""
+
+    def gbp(p: int) -> str:
+        return home_summary.gbp(p)
+
+    def month(m: pf.MonthlySummary, label: str) -> dict[str, Any]:
+        return {"label": label, "in": gbp(m.income_pence), "out": gbp(m.spent_pence), "left": gbp(m.left_pence)}
+
+    last_day = today.replace(day=1) - timedelta(days=1)
+    out: dict[str, Any] = {
+        "this_month": month(h.this_month, f"{month_label(today)} so far"),
+        "last_month": month(h.last_month, month_label(last_day)),
+        "over_budget": [
+            {
+                "category": c.name,
+                "spent": gbp(c.spent_pence),
+                "budget": gbp(c.budget_pence or 0),
+                "over_by": gbp(-(c.remaining_pence or 0)),
+            }
+            for c in h.this_month.categories
+            if c.state == "over"
+        ],
+        "near_budget": [
+            {
+                "category": c.name,
+                "spent": gbp(c.spent_pence),
+                "budget": gbp(c.budget_pence or 0),
+                "left": gbp(c.remaining_pence or 0),
+            }
+            for c in h.this_month.categories
+            if c.state == "near"
+        ],
+        "uncategorised_lines": h.this_month.uncategorised_count,
+    }
+    b = h.next_bill
+    if b:
+        out["next_bill"] = {
+            "what": b.label,
+            "usual_amount": gbp(b.amount_pence),
+            "due": f"{b.next_due.day} {b.next_due:%b %Y}",
+            "days_left": b.days_until,
+            "estimate": True,
+        }
+    return out
+
+
 def summary_facts(d: dash.Dashboard, o: dict[str, Any]) -> dict[str, Any]:
     """The facts the summary may use, every figure already formatted by code (pounds to 2 dp, dates in words)."""
 
@@ -488,8 +564,12 @@ def summary_facts(d: dash.Dashboard, o: dict[str, Any]) -> dict[str, Any]:
     cash = d.cash if isinstance(d.cash, dash.Cash) else None
     if cash and cash.balance_pence is not None:
         facts["cash"] = {"balance": gbp(cash.balance_pence), "as_of": day(cash.as_of)}
+    personal = o["kind"] == "personal"
+    hh: Household | None = o.get("household")
+    if personal and hh:
+        facts["household"] = household_facts(hh, d.today)
     m: Money | None = o["money"]
-    if m:
+    if m and not (personal and hh):
         facts["money"] = {
             "this_month": {
                 "label": f"{m.this_month.label} so far",
@@ -540,16 +620,22 @@ def summary_facts(d: dash.Dashboard, o: dict[str, Any]) -> dict[str, Any]:
             "proposed": w.proposed,
         }
     att = d.attention if isinstance(d.attention, dash.Attention) else None
-    if att:
+    if att and personal:
+        # A household matches no bank lines to a ledger: what waits is receipts in Review and lines with no category.
+        facts["needs_doing"] = {
+            "in_review": att.proposed + att.needs_a_look,
+            "uncategorised_bank_lines": hh.this_month.uncategorised_count if hh else 0,
+        }
+    elif att:
         facts["needs_doing"] = {
             "in_review": att.proposed + att.needs_a_look,
             "unmatched_bank_lines": att.unmatched_bank_lines,
             "overdue_invoices": att.overdue_invoices or 0,
         }
-    owed = d.owed_to_you if isinstance(d.owed_to_you, dash.OwedToYou) else None
+    owed = d.owed_to_you if isinstance(d.owed_to_you, dash.OwedToYou) and not personal else None
     if owed and owed.overdue:
         facts["overdue"] = {"invoices": owed.overdue, "amount": gbp(owed.overdue_pence)}
-    a: Aged | None = o["aged"]
+    a: Aged | None = None if personal else o["aged"]
     if a and a.creditors.overdue_pence:
         facts["bills_overdue"] = gbp(a.creditors.overdue_pence)
     ds: list[Due] = o["deadlines"]
@@ -674,6 +760,11 @@ async def build(
         return cf_mod.series(await cf_mod.build(books, today))
 
     business = prof.kind != "personal"
+    household_v = (
+        await reads.run("household", lambda: household(books, lines or [], today))
+        if not business and lines is not None
+        else None
+    )
     snapshot_v = await reads.run("snapshot", snap) if business else None
     trend_v = await reads.run("trend", trend) if business else None
     cash_v = await reads.run("cash forecast", cash_points) if business else None
@@ -692,6 +783,7 @@ async def build(
         "snapshot": snapshot_v,
         "trend": trend_v,
         "cash_points": cash_v,
+        "household": household_v,
     }
     summary = await home_summary.summarise(summary_facts(d, o), cfg)
     return Overview(

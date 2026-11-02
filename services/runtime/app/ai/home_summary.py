@@ -31,7 +31,10 @@ SYSTEM_PROMPT = (
     "`_vs_last_year` wording, and FACTS.monthly_trend's direction or best and weakest month; else this month against "
     "last month); what needs doing; and the next deadline. If FACTS.cash_forecast.goes_below_zero is true, say when. "
     "3) If FACTS.needs_doing has any count above zero, never say that nothing needs doing. 4) Leave out anything FACTS "
-    "does not have. Return JSON with `summary_md`."
+    'does not have. 5) A household (FACTS.kind is "personal") is not a business: cover, in this order, money in, '
+    "money out and what was left this month against last month (FACTS.household), any budgets over or near their "
+    "limit, what needs doing (receipts in Review, bank lines with no category), and the next regular bill, saying "
+    "its date is an estimate; never mention VAT, turnover, profit or invoices. Return JSON with `summary_md`."
 )
 
 LINK = re.compile(r"https?://|www\.", re.IGNORECASE)
@@ -58,15 +61,57 @@ def gbp(pence: int) -> str:
 
 def _waiting(facts: dict[str, Any]) -> int:
     n = facts.get("needs_doing") or {}
-    return int(n.get("in_review", 0)) + int(n.get("unmatched_bank_lines", 0)) + int(n.get("overdue_invoices", 0))
+    return sum(int(v) for v in n.values() if isinstance(v, int))
 
 
 def _count(n: int, one: str, many: str | None = None) -> str:
     return f"{n} {one if n == 1 else (many or one + 's')}"
 
 
+def _left(left: str) -> str:
+    """ "leaving £120.00" or "£35.00 more went out than came in" from a formatted left-over figure."""
+    return f"{left.lstrip('-')} more went out than came in" if left.startswith("-") else f"leaving {left}"
+
+
+def household_summary(facts: dict[str, Any]) -> str:
+    """A household's summary by code: the month, budgets, what needs doing and the next bill. At most four sentences."""
+    out: list[str] = []
+    h = facts["household"]
+    t, last = h["this_month"], h["last_month"]
+    out.append(
+        f"{t['label']}, {t['in']} came in and {t['out']} went out, {_left(t['left'])}; in {last['label']} "
+        f"{last['in']} came in and {last['out']} went out."
+    )
+    over = h.get("over_budget") or []
+    near = h.get("near_budget") or []
+    if over:
+        o = over[0]
+        more = f" ({_count(len(over) - 1, 'other category', 'other categories')} too)" if len(over) > 1 else ""
+        out.append(f"{o['category']} is over budget: {o['spent']} spent of {o['budget']}{more}.")
+    elif near:
+        c = near[0]
+        out.append(f"{c['category']} is close to its budget: {c['spent']} of {c['budget']}, {c['left']} left.")
+    n = facts.get("needs_doing") or {}
+    parts = []
+    if n.get("in_review"):
+        parts.append(f"{_count(n['in_review'], 'receipt')} waiting in Review")
+    if n.get("uncategorised_bank_lines"):
+        parts.append(_count(n["uncategorised_bank_lines"], "bank line") + " with no category")
+    if parts:
+        out.append("To do: " + " and ".join(parts) + ".")
+    b = h.get("next_bill")
+    if b:
+        when = "today" if b["days_left"] == 0 else f"in {_count(b['days_left'], 'day')}"
+        out.append(
+            f"Next regular bill: {b['what']}, usually {b['usual_amount']}, around {b['due']} ({when}, an estimate)."
+        )
+    return " ".join(out[:4])
+
+
 def fallback_summary(facts: dict[str, Any]) -> str:
     """Written by code from the facts alone: the same order the model is asked for, at most four sentences."""
+    if facts.get("kind") == "personal" and facts.get("household"):
+        return household_summary(facts)
     out: list[str] = []
     cash = facts.get("cash")
     if cash:

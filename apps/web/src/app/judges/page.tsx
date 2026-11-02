@@ -64,7 +64,7 @@ export default function JudgesPage() {
             coffee, each tracked against their books with suggestions.
           </p>
           <div className="mt-3">
-            <TryDemo kind="personal" next="/personal" label="Start the personal demo" variant="secondary" always />
+            <TryDemo kind="personal" next="/" label="Start the personal demo" variant="secondary" always />
           </div>
         </div>
       </header>

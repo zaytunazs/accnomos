@@ -12,11 +12,19 @@ test("the personal demo opens a household's books from /judges, and its bar offe
   await page.clock.install({ time: TODAY });
   await page.goto("/judges");
   await page.getByRole("button", { name: "Start the personal demo" }).click();
-  await expect(page).toHaveURL(/\/personal$/, { timeout: 60_000 });
+  await expect(page).toHaveURL(/:\d+\/$/, { timeout: 60_000 }); // Home, which is the household's own
   await expect(bar(page)).toContainText("SAMPLE — FICTIONAL HOUSEHOLD");
   await expect(bar(page)).toContainText("Demo sandbox with sample data — changes reset after 2 hours.");
   await expect(bar(page).getByRole("button", { name: "Switch to the company demo" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Budget", level: 1 })).toBeVisible();
+  // A household's Home: its month, budgets and bills, never the business's turnover, VAT or invoices.
+  const main = page.getByRole("main");
+  await expect(main.getByRole("heading", { name: /^This month/ })).toBeVisible({ timeout: 30_000 });
+  await expect(main.getByRole("heading", { name: "Budgets this month" })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "Bills and subscriptions due" })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "Goals & progress" })).toBeVisible();
+  await expect(main.getByRole("link", { name: /Receipts to review/ })).toBeVisible();
+  await expect(main.getByRole("heading", { name: "Business snapshot" })).toHaveCount(0);
+  await expect(main).not.toContainText(/turnover|Overdue invoices|VAT estimate|Business snapshot/i);
 
   // The runtime holds a household: personal profile, bank lines, and goals with mixed statuses.
   const session = await page.evaluate(() => JSON.parse(window.localStorage.getItem("msal.accnomos-demo.session") ?? "{}"));

@@ -37,7 +37,7 @@ export const DEMO_KINDS: Record<DemoKind, { title: string; blurb: string; next: 
   personal: {
     title: "Personal demo (a household)",
     blurb: "A family's own money: bank lines sorted into budgets, bills, and goals like saving for school fees.",
-    next: "/personal",
+    next: "/", // Home is the household's own: its month, budgets, bills and goals
     label: "SAMPLE — FICTIONAL HOUSEHOLD",
   },
 };

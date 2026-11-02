@@ -149,7 +149,7 @@ export function TodayCard() {
 
 type Attention = Extract<NonNullable<RtDashboard["attention"]>, { proposed: number }>;
 
-interface AttentionTile {
+export interface AttentionTile {
   key: string;
   label: string;
   /** The big figure, or a short phrase ("Up to date"). */
@@ -232,7 +232,7 @@ function TileIcon({ waiting }: { waiting: boolean }) {
   );
 }
 
-function AttentionLink({ tile }: { tile: AttentionTile }) {
+export function AttentionLink({ tile }: { tile: AttentionTile }) {
   // A white card whatever the state (the brief: no row of coloured cards); the state is the tinted icon square and the
   // words, so colour never carries it alone.
   return (

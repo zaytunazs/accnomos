@@ -6,7 +6,8 @@ import { useHousehold } from "@/lib/profiles";
 export const ASK_EXAMPLE = "Ask your books — “how much VAT do I owe and why?”";
 export const ASK_EXAMPLE_HOUSEHOLD = "Ask your money — “what did I spend on eating out this month?”";
 
-export default function AskBar() {
+/** `example`: a hint the page passes in (the household Home asks about its own money); else by profile. */
+export default function AskBar({ example }: { example?: string } = {}) {
   const household = useHousehold();
   return (
     <form
@@ -21,7 +22,7 @@ export default function AskBar() {
         id="home-ask"
         name="q"
         type="text"
-        placeholder={household ? ASK_EXAMPLE_HOUSEHOLD : ASK_EXAMPLE}
+        placeholder={example ? `Ask your books — “${example}”` : household ? ASK_EXAMPLE_HOUSEHOLD : ASK_EXAMPLE}
         className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted"
       />
       <button

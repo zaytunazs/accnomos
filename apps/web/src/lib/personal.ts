@@ -39,3 +39,21 @@ export function usePersonalOn(): boolean {
   }, []);
   return on;
 }
+
+/** "2026-11" for the month `iso` (YYYY-MM-DD) is in. */
+export function monthOf(iso: string): string {
+  return iso.slice(0, 7);
+}
+
+/** The month before "2026-11": "2026-10" (January goes back to December of the year before). */
+export function monthBefore(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  return m === 1 ? `${y - 1}-12` : `${y}-${String(m - 1).padStart(2, "0")}`;
+}
+
+/** "November 2026" from "2026-11". */
+export function monthName(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  const names = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+  return `${names[m - 1] ?? ""} ${y}`;
+}

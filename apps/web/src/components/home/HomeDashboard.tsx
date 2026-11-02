@@ -6,6 +6,8 @@ import HomeError from "@/components/home/HomeError";
 import { AttentionTiles, TodayCard } from "@/components/home/Tiles";
 import { HomeData, SignedOut } from "@/components/home/HomeData";
 import HomeGoals from "@/components/home/HomeGoals";
+import { HomeByKind, HouseholdData } from "@/components/home/household/HouseholdData";
+import { Bills, Budgets, HouseholdTiles, ThisMonth, WhereItWent } from "@/components/home/household/HouseholdPanels";
 import InboxTriage from "@/components/home/InboxTriage";
 import MonthEndCard from "@/components/home/MonthEndCard";
 import { OverviewData } from "@/components/home/Overview";
@@ -53,42 +55,73 @@ export default function HomeDashboard() {
         <OverviewData>
           {/* The summary first: two to four sentences on the whole picture, then the detail below. */}
           <SummaryCard />
-          <AskBar />
-          {/* What needs attention, one tap from Review, Invoices and Bank (up to four tiles, 2 by 2 on a phone). */}
-          <AttentionTiles />
-          <HomeError />
-          {/* Signed in with an empty folder: offer the sample books; once loaded, the SAMPLE banner. */}
-          <HomeSampleBooks />
-          {/* The business snapshot, full width before Today: the year to date against last year, the last 12 months
-              and the 90-day cash line (GET /books/home snapshot, trend, cash_points). Personal books: nothing. */}
-          <BusinessSnapshot />
-          {/* Goals & progress: up to three goals, most urgent first, and the checked note (GET /books/goals). */}
-          <HomeGoals />
-          <SetupChecklist />
-          {/* Signed in: documents already in the OneDrive folders that were never read (asks before reading). */}
-          <PreviousFilesNotice />
-          {/* One calm grid, signed in or out: 1 column at 390 px, 2 at 768, 3 at 1280. Today spans the row; then
-              money, deadlines and who owes what; then spending, buying, to-dos and month-end; then the cards for
-              features these books use (each hides itself otherwise: GET /books/home returns null for its section);
-              then the inbox, the day's plan and activity. */}
-          <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
-            <TodayCard />
-            <MoneyCard />
-            <ComingUpCard />
-            <Deadlines />
-            <AgedCard />
-            <SpendingCard />
-            <BuyingCard />
-            <TodosTile />
-            <MonthEndCard />
-            <IncomeTaxCard />
-            <PayrollCard />
-            <CisCard />
-            <PropertyCard />
-            <InboxTriage />
-            <PlanToday />
-            <Activity />
-          </div>
+          <HomeByKind
+            business={
+              <>
+              <AskBar />
+              {/* What needs attention, one tap from Review, Invoices and Bank (up to four tiles, 2 by 2 on a phone). */}
+              <AttentionTiles />
+              <HomeError />
+              {/* Signed in with an empty folder: offer the sample books; once loaded, the SAMPLE banner. */}
+              <HomeSampleBooks />
+              {/* The business snapshot, full width before Today: the year to date against last year, the last 12 months
+                  and the 90-day cash line (GET /books/home snapshot, trend, cash_points). Personal books: nothing. */}
+              <BusinessSnapshot />
+              {/* Goals & progress: up to three goals, most urgent first, and the checked note (GET /books/goals). */}
+              <HomeGoals />
+              <SetupChecklist />
+              {/* Signed in: documents already in the OneDrive folders that were never read (asks before reading). */}
+              <PreviousFilesNotice />
+              {/* One calm grid, signed in or out: 1 column at 390 px, 2 at 768, 3 at 1280. Today spans the row; then
+                  money, deadlines and who owes what; then spending, buying, to-dos and month-end; then the cards for
+                  features these books use (each hides itself otherwise: GET /books/home returns null for its section);
+                  then the inbox, the day's plan and activity. */}
+              <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <TodayCard />
+                <MoneyCard />
+                <ComingUpCard />
+                <Deadlines />
+                <AgedCard />
+                <SpendingCard />
+                <BuyingCard />
+                <TodosTile />
+                <MonthEndCard />
+                <IncomeTaxCard />
+                <PayrollCard />
+                <CisCard />
+                <PropertyCard />
+                <InboxTriage />
+                <PlanToday />
+                <Activity />
+              </div>
+              </>
+            }
+            household={
+              /* A household (personal books): no turnover, VAT or invoices. Its month, budgets, goals and regular bills,
+                 all worked out by code from the imported statements (GET /personal/summary, /personal/recurring). */
+              <HouseholdData>
+                <AskBar example="where did my money go this month?" />
+                <HouseholdTiles />
+                <HomeError />
+                <ThisMonth />
+                <div className="grid grid-cols-1 items-start gap-4 lg:grid-cols-2">
+                  <Budgets />
+                  <Bills />
+                </div>
+                <HomeGoals />
+                <WhereItWent />
+                {/* A household that lets property or is self-employed still has Income Tax: these hide themselves
+                    otherwise (GET /books/home returns null for their sections). */}
+                <div className="grid grid-cols-1 items-stretch gap-4 empty:hidden md:grid-cols-2">
+                  <PropertyCard />
+                  <IncomeTaxCard />
+                </div>
+                <SetupChecklist />
+                <PreviousFilesNotice />
+                <Activity />
+              </HouseholdData>
+            }
+          />
         </OverviewData>
       </HomeData>
     </div>
