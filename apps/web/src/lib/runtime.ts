@@ -4209,10 +4209,50 @@ export interface RtHomeSummary {
   fallback_reason: string | null;
   facts: Record<string, unknown>;
 }
+/** GET /books/home `snapshot`: the P&L year to date against the same span last year, and the VAT tile's figure. */
+export interface RtHomeYearFigures {
+  turnover_pence: number;
+  expenses_pence: number; // cost of sales + overheads
+  net_profit_pence: number; // negative is a loss
+}
+export interface RtHomeSnapshot extends RtHomeYearFigures {
+  start: string;
+  end: string;
+  period_label: string; // "6 Apr – 1 Nov 2026"
+  year_start_rule: string;
+  basis: string; // "accrual from approved entries" | "cash basis"
+  accounting_basis: "cash" | "traditional";
+  last_year_start: string;
+  last_year_end: string;
+  last_year_label: string;
+  last_year: RtHomeYearFigures;
+  change_pct: { turnover: number | null; expenses: number | null; net_profit: number | null }; // null: last year was 0
+  vat_position: {
+    label: string;
+    amount_pence: number;
+    direction: "pay" | "reclaim" | "nil";
+    due: string;
+    days_left: number;
+    estimate: boolean; // the period has not ended: Box 5 so far
+  } | null;
+  entries: number;
+}
+/** GET /books/home `cash_points`: the 90-day cash forecast (GET /reports/cashflow) sampled weekly. */
+export interface RtCashSeries {
+  as_of: string;
+  opening_balance_pence: number;
+  points: { days: number; date: string; balance_pence: number }[];
+  lowest_balance_pence: number;
+  lowest_on: string;
+  below_zero_on: string | null;
+}
 export interface RtHome {
   today: string;
   kind: RtProfileKind;
   features: string[];
+  snapshot: RtHomeSnapshot | null; // null: personal books, or the ledger could not be read
+  trend: RtTrend | null;
+  cash_points: RtCashSeries | null; // null: no bank statement imported yet
   money: { this_month: RtMoneyMonth; last_month: RtMoneyMonth } | null;
   week: { start: string; end: string; money_in_pence: number; money_out_pence: number; approved: number; proposed: number } | null;
   aged: { debtors: RtAgedSide; creditors: RtAgedSide } | null;

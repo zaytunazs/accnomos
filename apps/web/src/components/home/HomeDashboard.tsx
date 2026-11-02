@@ -24,6 +24,7 @@ import Pitch from "@/components/home/Pitch";
 import PlanToday from "@/components/home/PlanToday";
 import { HomeSampleBooks } from "@/components/home/SampleBooks";
 import SetupChecklist from "@/components/home/SetupChecklist";
+import { BusinessSnapshot } from "@/components/home/Snapshot";
 import SpendingCard from "@/components/home/SpendingCard";
 import TodosTile from "@/components/home/TodosTile";
 
@@ -57,6 +58,9 @@ export default function HomeDashboard() {
           <HomeError />
           {/* Signed in with an empty folder: offer the sample books; once loaded, the SAMPLE banner. */}
           <HomeSampleBooks />
+          {/* The business snapshot, full width before Today: the year to date against last year, the last 12 months
+              and the 90-day cash line (GET /books/home snapshot, trend, cash_points). Personal books: nothing. */}
+          <BusinessSnapshot />
           <SetupChecklist />
           {/* Signed in: documents already in the OneDrive folders that were never read (asks before reading). */}
           <PreviousFilesNotice />

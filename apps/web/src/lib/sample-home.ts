@@ -97,6 +97,69 @@ export const sampleOverview: import("./runtime").RtHome = {
   today: "2026-10-27",
   kind: "company",
   features: ["vat", "invoices", "payroll"],
+  // The business snapshot: a company's year runs from 1 January (no year end saved). Turnover and expenses for
+  // Jan–Oct are the trend's months added up; the changes are worked out from last year's figures below.
+  snapshot: {
+    start: "2026-01-01",
+    end: "2026-10-27",
+    period_label: "1 Jan – 27 Oct 2026",
+    year_start_rule: "the calendar year (no year end is saved for these books)",
+    basis: "accrual from approved entries",
+    accounting_basis: "traditional",
+    turnover_pence: 14862000,
+    expenses_pence: 10134000,
+    net_profit_pence: 4728000,
+    last_year_start: "2025-01-01",
+    last_year_end: "2025-10-27",
+    last_year_label: "1 Jan – 27 Oct 2025",
+    last_year: { turnover_pence: 13270000, expenses_pence: 9410000, net_profit_pence: 3860000 },
+    change_pct: { turnover: 12, expenses: 8, net_profit: 22 },
+    vat_position: { label: "Jul–Sep 2026", amount_pence: 214000, direction: "pay", due: "2026-11-07", days_left: 11, estimate: false },
+    entries: 412,
+  },
+  trend: {
+    sample: true,
+    months: [
+      { month: "2025-11", label: "Nov 2025", start: "2025-11-01", end: "2025-11-30", sales_pence: 1310000, purchases_pence: 940000, net_pence: 370000 },
+      { month: "2025-12", label: "Dec 2025", start: "2025-12-01", end: "2025-12-31", sales_pence: 1020000, purchases_pence: 980000, net_pence: 40000 },
+      { month: "2026-01", label: "Jan 2026", start: "2026-01-01", end: "2026-01-31", sales_pence: 1240000, purchases_pence: 910000, net_pence: 330000 },
+      { month: "2026-02", label: "Feb 2026", start: "2026-02-01", end: "2026-02-28", sales_pence: 1180000, purchases_pence: 870000, net_pence: 310000 },
+      { month: "2026-03", label: "Mar 2026", start: "2026-03-01", end: "2026-03-31", sales_pence: 1420000, purchases_pence: 990000, net_pence: 430000 },
+      { month: "2026-04", label: "Apr 2026", start: "2026-04-01", end: "2026-04-30", sales_pence: 1510000, purchases_pence: 1040000, net_pence: 470000 },
+      { month: "2026-05", label: "May 2026", start: "2026-05-01", end: "2026-05-31", sales_pence: 1630000, purchases_pence: 1120000, net_pence: 510000 },
+      { month: "2026-06", label: "Jun 2026", start: "2026-06-01", end: "2026-06-30", sales_pence: 1580000, purchases_pence: 1060000, net_pence: 520000 },
+      { month: "2026-07", label: "Jul 2026", start: "2026-07-01", end: "2026-07-31", sales_pence: 1720000, purchases_pence: 1180000, net_pence: 540000 },
+      { month: "2026-08", label: "Aug 2026", start: "2026-08-01", end: "2026-08-31", sales_pence: 1490000, purchases_pence: 1030000, net_pence: 460000 },
+      { month: "2026-09", label: "Sep 2026", start: "2026-09-01", end: "2026-09-30", sales_pence: 1650000, purchases_pence: 1090000, net_pence: 560000 },
+      { month: "2026-10", label: "Oct 2026", start: "2026-10-01", end: "2026-10-31", sales_pence: 1442000, purchases_pence: 844000, net_pence: 598000 },
+    ],
+  },
+  cash_points: {
+    as_of: "2026-10-27",
+    opening_balance_pence: 1248000,
+    points: [
+      { days: 0, date: "2026-10-27", balance_pence: 1248000 },
+      { days: 7, date: "2026-11-03", balance_pence: 1410000 },
+      { days: 14, date: "2026-11-10", balance_pence: 1196000 },
+      { days: 21, date: "2026-11-17", balance_pence: 1280000 },
+      { days: 28, date: "2026-11-24", balance_pence: 940000 },
+      { days: 30, date: "2026-11-26", balance_pence: 940000 },
+      { days: 35, date: "2026-12-01", balance_pence: 690000 },
+      { days: 42, date: "2026-12-08", balance_pence: 430000 },
+      { days: 48, date: "2026-12-14", balance_pence: 124000 },
+      { days: 49, date: "2026-12-15", balance_pence: 260000 },
+      { days: 56, date: "2026-12-22", balance_pence: 510000 },
+      { days: 60, date: "2026-12-26", balance_pence: 510000 },
+      { days: 63, date: "2026-12-29", balance_pence: 380000 },
+      { days: 70, date: "2027-01-05", balance_pence: 790000 },
+      { days: 77, date: "2027-01-12", balance_pence: 1040000 },
+      { days: 84, date: "2027-01-19", balance_pence: 1120000 },
+      { days: 90, date: "2027-01-25", balance_pence: 1205000 },
+    ],
+    lowest_balance_pence: 124000,
+    lowest_on: "2026-12-14",
+    below_zero_on: null,
+  },
   money: {
     this_month: { label: "October 2026", start: "2026-10-01", end: "2026-10-27", money_in_pence: 1842000, money_out_pence: 1126050, lines: 41 },
     last_month: { label: "September 2026", start: "2026-09-01", end: "2026-09-30", money_in_pence: 1610000, money_out_pence: 1385500, lines: 52 },
@@ -123,9 +186,10 @@ export const sampleOverview: import("./runtime").RtHome = {
   ],
   summary: {
     summary_md:
-      "You had £12,480.00 in the bank on 24 Oct 2026. October 2026 so far, £18,420.00 came in and £11,260.50 went out, " +
-      "against £16,100.00 in and £13,855.00 out in September 2026. To do: 3 items waiting in Review and 1 invoice " +
-      "overdue (£3,250.00). Next deadline: Pay run 2026-10 to confirm, due 31 Oct 2026 (in 4 days).",
+      "You had £12,480.00 in the bank on 24 Oct 2026. This year so far (1 Jan – 27 Oct 2026, accrual from approved " +
+      "entries), turnover was £148,620.00 and expenses £101,340.00: a net profit of £47,280.00, with turnover up 12% on " +
+      "1 Jan – 27 Oct 2025. To do: 3 items waiting in Review, 2 bank lines to match and 1 invoice overdue (£3,250.00). " +
+      "Next deadline: Pay run 2026-10 to confirm, due 31 Oct 2026 (in 4 days).",
     model: "code",
     fallback_reason: "Sample books: code wrote this.",
     facts: {},
