@@ -1,6 +1,6 @@
-/// The household Home's figures, all worked out by the runtime from the
-/// imported bank statements (`GET /personal/summary`, `GET /personal/recurring`,
-/// services/runtime/app/personal.py). The phone only picks and orders them.
+// The household Home's figures, all worked out by the runtime from the
+// imported bank statements (`GET /personal/summary`, `GET /personal/recurring`,
+// services/runtime/app/personal.py). The phone only picks and orders them.
 
 int _int(Object? v) => v is num ? v.toInt() : int.tryParse('$v') ?? 0;
 int? _intOrNull(Object? v) =>

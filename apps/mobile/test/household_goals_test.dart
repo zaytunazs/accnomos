@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:accnomos_mobile/main.dart' show sampleBannerText, shellDestinations;
 import 'package:accnomos_mobile/models/goals.dart';
-import 'package:accnomos_mobile/models/household.dart';
 import 'package:accnomos_mobile/screens/goals_screen.dart';
 import 'package:accnomos_mobile/screens/household_home_screen.dart';
 import 'package:accnomos_mobile/screens/more_screen.dart';
