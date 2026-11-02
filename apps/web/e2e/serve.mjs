@@ -1,8 +1,18 @@
 // Minimal static host for the test-mode export, mapping /connect to connect.html as the production .htaccess does.
-import { createReadStream, existsSync, statSync } from "node:fs";
+import { createReadStream, existsSync, readFileSync, statSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, normalize, resolve } from "node:path";
-import { OUT_DIR, WEB_PORT } from "./env.mjs";
+import { OUT_DIR, RELAY_URL, RUNTIME_URL, WEB_PORT } from "./env.mjs";
+
+// The production enforced CSP (public/.htaccess), with this run's runtime and relay in place of the live API host,
+// so every spec runs under the same connect-src / form-action a visitor's browser enforces. E2E_CSP=0 turns it off.
+function enforcedCsp() {
+  const htaccess = readFileSync(new URL("../public/.htaccess", import.meta.url), "utf8");
+  const m = /^\s*Header always set Content-Security-Policy "([^"]+)"$/m.exec(htaccess);
+  if (!m) throw new Error("serve.mjs: no enforced Content-Security-Policy in public/.htaccess");
+  return m[1].replace("https://api.accnomos.com", `${RUNTIME_URL} ${RELAY_URL}`);
+}
+const CSP = process.env.E2E_CSP === "0" ? null : enforcedCsp();
 
 const root = resolve(OUT_DIR);
 const TYPES = {
@@ -37,6 +47,10 @@ createServer((req, res) => {
   const file = resolveFile(path);
   const status = file ? 200 : 404;
   const body = file ?? join(root, "404.html");
-  res.writeHead(status, { "Content-Type": TYPES[extname(body)] ?? "application/octet-stream", "Cache-Control": "no-store" });
+  res.writeHead(status, {
+    "Content-Type": TYPES[extname(body)] ?? "application/octet-stream",
+    "Cache-Control": "no-store",
+    ...(CSP ? { "Content-Security-Policy": CSP } : {}),
+  });
   createReadStream(body).pipe(res);
 }).listen(WEB_PORT, "127.0.0.1", () => console.log(`serving ${root} on http://127.0.0.1:${WEB_PORT}`));
