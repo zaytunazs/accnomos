@@ -59,7 +59,7 @@ function Tick({ done }: { done: boolean }) {
   return (
     <span
       aria-hidden="true"
-      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[13px] font-extrabold ${
+      className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[13px] font-bold ${
         done ? "bg-teal text-white" : "border-2 border-border bg-white text-muted"
       }`}
     >
@@ -191,7 +191,7 @@ export default function SetupChecklist() {
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <h2 id="setup-checklist" className="text-[17px] font-extrabold text-ink">
+          <h2 id="setup-checklist" className="text-[17px] font-bold text-ink">
             Get set up
           </h2>
           <p className="mt-0.5 text-sm text-muted">

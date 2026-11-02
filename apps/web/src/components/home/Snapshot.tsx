@@ -35,7 +35,7 @@ function useWidth(fallback: number) {
 function Panel({ id, title, children, className = "" }: { id: string; title: string; children: ReactNode; className?: string }) {
   return (
     <section aria-labelledby={id} className={`flex min-w-0 flex-col rounded-2xl border border-border bg-white p-4 sm:p-5 ${className}`}>
-      <h3 id={id} className="text-base font-extrabold tracking-tight">
+      <h3 id={id} className="text-base font-bold tracking-tight">
         {title}
       </h3>
       {children}
@@ -77,7 +77,7 @@ function Figure({ label, value, children }: { label: string; value: string; chil
   return (
     <div role="group" aria-label={label} className="min-w-0">
       <p className="text-sm font-semibold text-muted">{label}</p>
-      <p className="mt-1 text-2xl leading-tight font-extrabold tracking-tight tabular-nums sm:text-[28px]">{value}</p>
+      <p className="mt-1 text-2xl leading-tight font-bold tracking-tight tabular-nums sm:text-[28px]">{value}</p>
       {children}
     </div>
   );
@@ -252,27 +252,29 @@ export function MonthlyChart({ months }: { months: RtTrendMonth[] }) {
               ))}
             </svg>
           </div>
-          <table className="sr-only">
-            <caption>Sales, purchases and net profit per month</caption>
-            <thead>
-              <tr>
-                <th scope="col">Month</th>
-                <th scope="col">Sales</th>
-                <th scope="col">Purchases</th>
-                <th scope="col">Net profit</th>
-              </tr>
-            </thead>
-            <tbody>
-              {months.map((mo) => (
-                <tr key={mo.month}>
-                  <th scope="row">{mo.label}</th>
-                  <td>{money(mo.sales_pence)}</td>
-                  <td>{money(mo.purchases_pence)}</td>
-                  <td>{money(mo.net_pence)}</td>
+          <div className="sr-only">
+            <table>
+              <caption>Sales, purchases and net profit per month</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Month</th>
+                  <th scope="col">Sales</th>
+                  <th scope="col">Purchases</th>
+                  <th scope="col">Net profit</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {months.map((mo) => (
+                  <tr key={mo.month}>
+                    <th scope="row">{mo.label}</th>
+                    <td>{money(mo.sales_pence)}</td>
+                    <td>{money(mo.purchases_pence)}</td>
+                    <td>{money(mo.net_pence)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </figure>
       )}
       <div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-3">
@@ -352,7 +354,7 @@ function Spark({ cash, width, box }: { cash: RtCashSeries; width: number; box: R
           aria-label={`Forecast bank balance over the next 90 days, from ${pounds(cash.opening_balance_pence)} today to ${pounds(last.balance_pence)} on ${shortDate(last.date)}. ${lowest}.${cash.below_zero_on ? ` It goes below £0 on ${shortDate(cash.below_zero_on)}.` : ""}`}
           className="block"
         >
-          <polygon points={area} fill="#e6f1ef" />
+          <polygon points={area} fill="#e8f4f1" />
           {negative && <line x1={SPARK_PAD.left} x2={W - SPARK_PAD.right} y1={y(0)} y2={y(0)} stroke={MUTED} strokeDasharray="3 3" strokeWidth={1} />}
           <polyline points={line} fill="none" stroke={SALES} strokeWidth={2} strokeLinejoin="round" />
           {pts.map((p) => (
@@ -374,23 +376,25 @@ function Spark({ cash, width, box }: { cash: RtCashSeries; width: number; box: R
           Goes below £0 on {shortDate(cash.below_zero_on)}
         </p>
       ) : null}
-      <table className="sr-only">
-        <caption>Forecast bank balance</caption>
-        <thead>
-          <tr>
-            <th scope="col">Date</th>
-            <th scope="col">Balance</th>
-          </tr>
-        </thead>
-        <tbody>
-          {pts.map((p) => (
-            <tr key={p.days}>
-              <th scope="row">{shortDate(p.date)}</th>
-              <td>{pounds(p.balance_pence)}</td>
+      <div className="sr-only">
+        <table>
+          <caption>Forecast bank balance</caption>
+          <thead>
+            <tr>
+              <th scope="col">Date</th>
+              <th scope="col">Balance</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {pts.map((p) => (
+              <tr key={p.days}>
+                <th scope="row">{shortDate(p.date)}</th>
+                <td>{pounds(p.balance_pence)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -409,12 +413,12 @@ export function BusinessSnapshot() {
   const vat = data ? data.features.includes("vat") : false;
   return (
     <section aria-labelledby="business-snapshot" data-home-card="business-snapshot" className="flex min-w-0 flex-col gap-3">
-      <h2 id="business-snapshot" className="text-lg font-extrabold tracking-tight">
+      <h2 id="business-snapshot" className="text-[19px] font-semibold tracking-tight">
         Business snapshot
         {sample ? <SampleTag /> : null}
       </h2>
       {data ? (
-        <div className="grid min-w-0 grid-cols-1 gap-3 lg:grid-cols-3">
+        <div className="grid min-w-0 grid-cols-1 gap-4 lg:grid-cols-3">
           {data.snapshot ? <SnapshotCard snapshot={data.snapshot} vat={vat} /> : null}
           {data.trend ? <MonthlyChart months={data.trend.months} /> : null}
           <CashSparkline cash={data.cash_points} />

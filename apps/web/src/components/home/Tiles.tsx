@@ -75,7 +75,7 @@ function NumberBlock({ tile }: { tile: Tile }) {
   return (
     <div role="group" aria-label={tile.label}>
       <p className="min-h-5 text-sm font-semibold text-muted">{tile.label}</p>
-      <p className={`mt-1 min-h-8 text-[28px] leading-tight font-extrabold tracking-tight tabular-nums sm:text-3xl ${valueClass}`}>{tile.value}</p>
+      <p className={`mt-1 min-h-8 text-[28px] leading-tight font-bold tracking-tight tabular-nums sm:text-3xl ${valueClass}`}>{tile.value}</p>
       {tile.href ? (
         <Link href={tile.href} className={`mt-1 inline-block hover:underline ${subClass}`}>
           {tile.sub}
@@ -233,23 +233,31 @@ function TileIcon({ waiting }: { waiting: boolean }) {
 }
 
 function AttentionLink({ tile }: { tile: AttentionTile }) {
+  // A white card whatever the state (the brief: no row of coloured cards); the state is the tinted icon square and the
+  // words, so colour never carries it alone.
   return (
     <li className="flex">
       <Link
         href={tile.href}
-        className={`flex w-full min-w-0 flex-col rounded-2xl border p-3 hover:bg-ground sm:p-4 ${
-          tile.waiting ? "border-warn-border bg-warn-bg text-warn-ink" : "border-border bg-white text-ink"
-        }`}
+        data-waiting={tile.waiting ? "" : undefined}
+        className="flex w-full min-w-0 flex-col rounded-2xl border border-border bg-white p-3 text-ink hover:border-teal/40 hover:bg-ground sm:p-4"
       >
-        <span className="flex items-center gap-1.5 text-[13px] font-bold">
-          <TileIcon waiting={tile.waiting} />
-          <span className="min-w-0">{tile.label}</span>
+        <span className="flex items-center gap-2.5 text-[13px] font-semibold text-muted">
+          <span
+            aria-hidden="true"
+            className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+              tile.waiting ? "bg-warn-bg text-warn-ink" : "bg-teal-tint text-teal-dark"
+            }`}
+          >
+            <TileIcon waiting={tile.waiting} />
+          </span>
+          <span className="min-w-0 text-ink">{tile.label}</span>
         </span>
-        <span className={`mt-1 font-extrabold leading-tight tracking-tight tabular-nums ${tile.value.length > 3 ? "text-xl sm:text-2xl" : "text-3xl"}`}>
+        <span className={`mt-2 font-bold leading-tight tracking-tight tabular-nums ${tile.value.length > 3 ? "text-xl sm:text-2xl" : "text-[28px]"}`}>
           {tile.value}
-          {tile.unit && <span className="ml-1 text-sm font-bold">{tile.unit}</span>}
+          {tile.unit && <span className="ml-1 text-sm font-semibold">{tile.unit}</span>}
         </span>
-        <span className="mt-1 text-[13px] font-semibold leading-snug">{tile.text}</span>
+        <span className={`mt-1 text-[13px] leading-snug ${tile.waiting ? "font-semibold text-warn-ink" : "text-muted"}`}>{tile.text}</span>
       </Link>
     </li>
   );
@@ -280,7 +288,7 @@ export function AttentionTiles() {
   return (
     <section aria-label="What needs attention" aria-busy={loading}>
       {tiles ? (
-        <ul className="grid grid-cols-2 gap-3 md:grid-cols-4">
+        <ul className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
           {tiles.map((t) => <AttentionLink key={t.key} tile={t} />)}
         </ul>
       ) : (

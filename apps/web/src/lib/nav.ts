@@ -1,7 +1,9 @@
 /**
  * The signed-in menu bar (components/TopBar.tsx), grouped like Xero's: Home, Review (with its count) and Bank as plain
  * links so the two things an owner acts on most are one click away, then Sales, Purchases, Reporting, Tax and More.
- * More holds the rest under small headings: Accounting, Payroll, Contacts and, for personal books, Personal.
+ * More holds the rest under small headings: Your plan (Goals), Accounting, Payroll, Contacts and, for personal books,
+ * Personal. At 1280 px and wider the same groups sit in a dark-teal sidebar (TopBar.tsx SideBar), Your plan as its own
+ * section there.
  *
  * Other work is building some of these pages. A link shows only when its page is in this build (`routes`, read
  * from src/app at build time by lib/routes.server.ts), so nothing in the menu 404s, and only when the profile's kind
@@ -97,6 +99,8 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "More",
     items: [
+      // Your plan: shown as its own small section in the wide-screen sidebar (TopBar.tsx SideBar), under More elsewhere.
+      { heading: "Your plan", label: "Goals", href: "/goals" },
       { heading: "Accounting", label: "Bank rules", href: "/bank/rules" },
       { heading: "Accounting", label: "Reconcile", href: "/bank/reconcile" },
       { heading: "Accounting", label: "Documents", href: "/files" },

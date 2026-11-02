@@ -88,7 +88,7 @@ export default function Deadlines() {
   return (
     <section aria-labelledby="deadlines-heading" aria-busy={tiles === null} className="flex flex-col gap-3">
       <div className="flex items-center gap-2">
-        <h2 id="deadlines-heading" className="text-lg font-extrabold tracking-tight">
+        <h2 id="deadlines-heading" className="text-lg font-bold tracking-tight">
           Deadlines{sample && <SampleTag />}
         </h2>
         <ExplainMore title="Where the dates come from" anchor="vat-periods">
@@ -114,10 +114,10 @@ export default function Deadlines() {
                   d.tinted ? "bg-teal-tint text-teal-dark" : "bg-ground text-muted"
                 }`}
               >
-                <span className="text-[11px] font-extrabold tracking-wide">
+                <span className="text-[11px] font-bold tracking-wide">
                   {d.month}
                 </span>
-                <span className="text-xl font-extrabold leading-none">
+                <span className="text-xl font-bold leading-none">
                   {d.day}
                 </span>
               </div>

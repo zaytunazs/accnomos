@@ -51,14 +51,15 @@ export default function TopBar({ routes }: { routes: string[] }) {
       data-topnav=""
       className="sticky top-0 z-40 border-b border-border bg-white print:hidden"
     >
-      <div className="flex min-h-14 items-center gap-1 px-2 sm:px-4">
+      <SideBar groups={groups} pathname={pathname} review={review} />
+      <div className="flex min-h-14 items-center gap-1 px-2 sm:px-4 min-[1280px]:min-h-16 min-[1280px]:px-8">
         <MenuDrawer groups={groups} pathname={pathname} review={review} />
-        <Link href="/" aria-label="Accnomos home" className="flex h-11 shrink-0 items-center gap-2 rounded-xl px-1.5 hover:bg-ground">
+        <Link href="/" aria-label="Accnomos home" className="flex h-11 shrink-0 items-center gap-2 rounded-lg px-1.5 hover:bg-ground min-[1280px]:hidden">
           <LogoMark />
           <span className="hidden text-lg font-extrabold tracking-tight 2xl:inline">Accnomos</span>
         </Link>
         {linked && <ProfileSwitcher linked={linked} />}
-        <nav aria-label="Main" className="ml-2 hidden min-w-0 flex-1 min-[900px]:block">
+        <nav aria-label="Main" className="ml-2 hidden min-w-0 flex-1 min-[900px]:block min-[1280px]:hidden">
           <GroupBar groups={groups} pathname={pathname} review={review} />
         </nav>
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
@@ -124,6 +125,16 @@ const subItem = (current: boolean, tall: boolean) =>
   }`;
 const subList = "ml-3 flex flex-col gap-0.5 border-l border-border pl-2";
 const sectionLabel = "px-3 text-[11px] font-bold uppercase tracking-[0.08em] text-muted";
+
+/** The sidebar's second-level links: on dark teal, smaller and lighter than the groups, indented behind a faint rule. */
+const sideSubItem = (current: boolean) =>
+  `relative flex min-h-10 items-center gap-2 rounded-lg py-1.5 pl-3 pr-2 text-[14px] ${
+    current
+      ? "bg-white/12 font-semibold text-white before:absolute before:inset-y-1.5 before:-left-[9px] before:w-[3px] before:rounded-full before:bg-brass"
+      : "font-normal text-white/80 hover:bg-white/10 hover:text-white"
+  }`;
+const sideSubList = "ml-[22px] flex flex-col gap-0.5 border-l border-white/15 pl-2";
+const sideSectionLabel = "px-3 text-[11px] font-bold uppercase tracking-[0.08em] text-white/60";
 
 const iconButton = "relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-ink hover:bg-ground";
 
@@ -204,19 +215,29 @@ function currentPage(active: string | null, item: NavItem): boolean {
   return !/[?#]/.test(item.href) && routeOf(item.href) === active;
 }
 
-/** The groups as disclosure dropdowns (≥ 900 px). */
-function GroupBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: string; review: string | undefined }) {
+/** The groups as disclosure dropdowns (900–1279 px), or, `vertical`, as the sidebar's disclosure groups (≥ 1280 px). */
+function GroupBar({
+  groups,
+  pathname,
+  review,
+  vertical = false,
+}: {
+  groups: NavGroup[];
+  pathname: string;
+  review: string | undefined;
+  vertical?: boolean;
+}) {
   const active = activeRoute(pathname, groups);
   const [open, setOpen] = useState<string | null>(null);
   const bar = useRef<HTMLUListElement>(null);
   const base = useId();
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || vertical) return; // the sidebar's groups stay open until toggled or a new page opens
     const away = (e: MouseEvent) => !bar.current?.contains(e.target as Node) && setOpen(null);
     document.addEventListener("mousedown", away);
     return () => document.removeEventListener("mousedown", away);
-  }, [open]);
+  }, [open, vertical]);
 
   const [seen, setSeen] = useState(pathname); // a new page closes the open group
   if (seen !== pathname) {
@@ -257,16 +278,27 @@ function GroupBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: 
     }
   }
 
-  const top = "flex h-11 items-center gap-1 whitespace-nowrap rounded-xl px-2.5 text-[15px] font-semibold 2xl:px-3";
+  const top = vertical
+    ? "flex h-11 w-full items-center gap-3 whitespace-nowrap rounded-lg px-3 text-left text-[15px] font-semibold"
+    : "flex h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2.5 text-[15px] font-semibold 2xl:px-3";
+  const tone = (here: boolean) =>
+    vertical
+      ? here
+        ? "bg-sidebar-active text-white"
+        : "text-white/90 hover:bg-white/10 hover:text-white"
+      : here
+        ? "bg-teal-tint text-teal-dark"
+        : "text-ink hover:bg-ground";
 
   return (
-    <ul ref={bar} className="flex flex-wrap items-center gap-0.5">
+    <ul ref={bar} className={vertical ? "flex flex-col gap-0.5" : "flex flex-wrap items-center gap-0.5"}>
       {groups.map((g) => {
         if (g.href) {
           const here = routeOf(g.href) === active; // the most specific match, so Bank is not lit on Bank rules
           return (
             <li key={g.label}>
-              <Link href={g.href} aria-current={here ? "page" : undefined} className={`${top} ${here ? "bg-teal-tint text-teal-dark" : "text-ink hover:bg-ground"}`}>
+              <Link href={g.href} aria-current={here ? "page" : undefined} className={`${top} ${tone(here)}`}>
+                {vertical && <NavIcon label={g.label} />}
                 {linkLabel(g, review)}
               </Link>
             </li>
@@ -291,8 +323,9 @@ function GroupBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: 
               aria-controls={id}
               onClick={() => setOpen(isOpen ? null : g.label)}
               onKeyDown={(e) => onButtonKey(e, g.label)}
-              className={`${top} ${here ? "bg-teal-tint text-teal-dark" : "text-ink hover:bg-ground"}`}
+              className={`${top} ${tone(here)}`}
             >
+              {vertical && <NavIcon label={g.label} />}
               {g.label}
               {count ? (
                 <>
@@ -302,26 +335,45 @@ function GroupBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: 
                   <span className="sr-only">, {count} to review</span>
                 </>
               ) : null}
-              <svg aria-hidden="true" width="12" height="12" viewBox="0 0 12 12" className="text-muted">
+              <svg
+                aria-hidden="true"
+                width="12"
+                height="12"
+                viewBox="0 0 12 12"
+                className={`${vertical ? `ml-auto text-white/70 ${isOpen ? "rotate-180" : ""}` : "text-muted"}`}
+              >
                 <path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
               </svg>
             </button>
-            <div hidden={!isOpen} className="absolute left-0 z-50 mt-1 max-h-[calc(100vh-5rem)] w-64 overflow-y-auto rounded-2xl border border-border bg-white px-2 pb-2 pt-3 shadow-lg">
-              <p aria-hidden="true" className={`${sectionLabel} pb-1.5`}>
-                {g.label}
-              </p>
-              <ul id={id} data-submenu="" onKeyDown={(e) => onListKey(e, g.label)} className={subList}>
+            <div
+              hidden={!isOpen}
+              className={
+                vertical
+                  ? "pb-1 pt-0.5"
+                  : "absolute left-0 z-50 mt-1 max-h-[calc(100vh-5rem)] w-64 overflow-y-auto rounded-xl border border-border bg-white px-2 pb-2 pt-3 shadow-lg"
+              }
+            >
+              {!vertical && (
+                <p aria-hidden="true" className={`${sectionLabel} pb-1.5`}>
+                  {g.label}
+                </p>
+              )}
+              <ul id={id} data-submenu="" onKeyDown={(e) => onListKey(e, g.label)} className={vertical ? sideSubList : subList}>
                 {g.items.map((item, i) => {
                   const page = currentPage(active, item);
                   const heading = headed(g.items, i);
                   return (
                     <li key={item.label}>
-                      {heading ? <p aria-hidden="true" className={`${sectionLabel} pb-1 ${i ? "pt-2" : ""}`}>{heading}</p> : null}
+                      {heading ? (
+                        <p aria-hidden="true" className={`${vertical ? sideSectionLabel : sectionLabel} pb-1 ${i ? "pt-2" : ""}`}>
+                          {heading}
+                        </p>
+                      ) : null}
                       <Link
                         href={item.href}
                         aria-current={page ? "page" : undefined}
-                        onClick={() => setOpen(null)}
-                        className={subItem(page, false)}
+                        onClick={() => !vertical && setOpen(null)}
+                        className={vertical ? sideSubItem(page) : subItem(page, false)}
                       >
                         {itemLabel(item, review)}
                       </Link>
@@ -335,6 +387,121 @@ function GroupBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: 
       })}
     </ul>
   );
+}
+
+/** Items that sit under "Your plan" (Goals): their own section in the sidebar, under More in the bar and drawer. */
+const PLAN = "Your plan";
+
+/**
+ * At 1280 px and wider: a 232 px dark-teal sidebar with the logo, the same groups as the menu bar (lib/nav.ts; each
+ * group a disclosure that opens in place), Your plan, and Settings and Help at the bottom. It sits inside the banner
+ * (the bar's own <header>) so the page keeps one banner and one "Main" navigation at any width; the bar's own links
+ * hide at this width (AppShell pads the page by the sidebar's width).
+ */
+function SideBar({ groups, pathname, review }: { groups: NavGroup[]; pathname: string; review: string | undefined }) {
+  const plan = groups.flatMap((g) => g.items.filter((i) => i.heading === PLAN));
+  const rest = groups
+    .map((g) => ({ ...g, items: g.items.filter((i) => i.heading !== PLAN) }))
+    .filter((g) => g.href || g.items.length > 0);
+  const active = activeRoute(pathname, groups);
+  const bottom = "flex h-11 items-center gap-3 rounded-lg px-3 text-[15px] font-semibold";
+  const tone = (here: boolean) => (here ? "bg-sidebar-active text-white" : "text-white/90 hover:bg-white/10 hover:text-white");
+  return (
+    <div
+      data-sidebar=""
+      className="on-dark fixed inset-y-0 left-0 z-40 hidden w-[232px] flex-col overflow-y-auto bg-sidebar px-4 pb-4 pt-5 text-white min-[1280px]:flex"
+    >
+      <Link href="/" aria-label="Accnomos home" className="flex h-11 shrink-0 items-center gap-2.5 rounded-lg px-2">
+        <LogoMark />
+        <span className="text-lg font-extrabold tracking-tight">Accnomos</span>
+      </Link>
+      <nav aria-label="Main" className="mt-6">
+        <GroupBar groups={rest} pathname={pathname} review={review} vertical />
+        {plan.length > 0 && (
+          <>
+            <p aria-hidden="true" className={`${sideSectionLabel} mt-5 pb-1.5`}>
+              {PLAN}
+            </p>
+            <ul className="flex flex-col gap-0.5">
+              {plan.map((item) => {
+                const here = currentPage(active, item);
+                return (
+                  <li key={item.href}>
+                    <Link href={item.href} aria-current={here ? "page" : undefined} className={`${bottom} ${tone(here)}`}>
+                      <NavIcon label={item.label} />
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </>
+        )}
+      </nav>
+      <div className="mt-auto flex flex-col gap-0.5 border-t border-white/15 pt-4">
+        <Link href="/settings" className={`${bottom} ${tone(isCurrent(pathname, "/settings"))}`}>
+          <NavIcon label="Settings" />
+          Settings
+        </Link>
+        <Link href="/help" className={`${bottom} ${tone(isCurrent(pathname, "/help"))}`}>
+          <NavIcon label="Help" />
+          Help &amp; support
+        </Link>
+      </div>
+    </div>
+  );
+}
+
+const NAV_ICONS: Record<string, ReactNode> = {
+  Home: <path d="M3.5 9.5 10 4l6.5 5.5M5.5 8v8h9V8" />,
+  Review: (
+    <>
+      <rect x="3.5" y="3.5" width="13" height="13" rx="2" />
+      <path d="m7 10 2.2 2.2L13.5 8" />
+    </>
+  ),
+  Bank: <path d="M3 8h14L10 4zM5 8v7M8.5 8v7M11.5 8v7M15 8v7M3 16.5h14" />,
+  Sales: <path d="M3.5 14.5 8 10l3 3 5.5-6.5M12.5 6.5h4v4" />,
+  Purchases: <path d="M16.5 5.5 12 10l-3-3-5.5 6.5M7.5 13.5h-4v-4" />,
+  Reporting: <path d="M4 16.5V9M8 16.5V5M12 16.5v-6M16 16.5V7.5" />,
+  Tax: (
+    <>
+      <rect x="4" y="3" width="12" height="14" rx="1.5" />
+      <path d="M7 7h6M7 10h6M7 13h3" />
+    </>
+  ),
+  More: (
+    <>
+      <circle cx="5" cy="10" r="1" />
+      <circle cx="10" cy="10" r="1" />
+      <circle cx="15" cy="10" r="1" />
+    </>
+  ),
+  Goals: (
+    <>
+      <circle cx="10" cy="10" r="6.5" />
+      <circle cx="10" cy="10" r="3" />
+      <circle cx="10" cy="10" r=".6" />
+    </>
+  ),
+  Settings: (
+    <>
+      <circle cx="10" cy="10" r="2.5" />
+      <path d="M10 3v2M10 15v2M3 10h2M15 10h2M5 5l1.4 1.4M13.6 13.6 15 15M5 15l1.4-1.4M13.6 6.4 15 5" />
+    </>
+  ),
+  Help: (
+    <>
+      <circle cx="10" cy="10" r="7" />
+      <path d="M8.2 8a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1v.6M10 13.6v.1" />
+    </>
+  ),
+};
+
+/** A 20 px line icon for a sidebar row (none for an unknown label). */
+function NavIcon({ label }: { label: string }) {
+  const d = NAV_ICONS[label];
+  return d ? <Icon>{d}</Icon> : <span aria-hidden="true" className="w-5" />;
 }
 
 /** A native modal <dialog> (page behind inert, Escape closes, focus back to the opener), as components/Explain.tsx. */

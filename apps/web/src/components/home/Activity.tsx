@@ -149,7 +149,7 @@ export default function Activity() {
       className="flex flex-col rounded-2xl border border-border bg-white p-4 sm:p-5 md:col-span-2 xl:col-span-2"
     >
       <div className="flex items-center gap-2">
-        <h2 id="activity-heading" className="text-lg font-extrabold tracking-tight">
+        <h2 id="activity-heading" className="text-lg font-bold tracking-tight">
           {heading}{sample && <SampleTag />}
         </h2>
         <ExplainMore title="What this list is" anchor="data">
@@ -177,7 +177,7 @@ export default function Activity() {
         <div className="mt-1 flex min-h-[10rem] flex-col">
           {days.map((group) => (
             <div key={group.day}>
-              <h3 className="mt-3 text-[13px] font-extrabold uppercase tracking-wide text-muted">{group.label}</h3>
+              <h3 className="mt-3 text-[13px] font-bold uppercase tracking-wide text-muted">{group.label}</h3>
               <ul className="flex flex-col divide-y divide-border">
                 {group.rows.map((row) => (
                   <li key={row.key}>

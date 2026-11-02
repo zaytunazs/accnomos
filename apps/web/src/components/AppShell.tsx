@@ -73,19 +73,21 @@ export default function AppShell({ children, routes }: { children: ReactNode; ro
   // Before the client check, the probe in layout.tsx has already marked <html data-signed-in>: globals.css hides
   // the signed-out chrome ([data-signed-out-chrome]) for a signed-in device, so nothing flashes.
   const signedOutChrome = signedIn !== true && !accountant;
+  // Signed in, 1280 px and wider: TopBar's dark-teal sidebar is fixed at the left; the whole frame moves over by its width.
+  const sidebar = signedIn === true && !accountant;
 
   // The footer sits after <main>, not in it, so it is the page's contentinfo landmark.
   const main = (
     <div className="flex min-w-0 flex-1 flex-col px-4 pb-28 pt-6 sm:px-8 min-[900px]:py-8 min-[900px]:pb-8">
       <main className="min-w-0 flex-1">
-        <div className="mx-auto w-full max-w-3xl xl:max-w-5xl">{children}</div>
+        <div className="mx-auto w-full max-w-3xl xl:max-w-6xl">{children}</div>
       </main>
       <AppFooter />
     </div>
   );
 
   return (
-    <div className="group/shell flex min-h-full flex-1 flex-col">
+    <div className={`group/shell flex min-h-full flex-1 flex-col ${sidebar ? "min-[1280px]:pl-[232px] print:pl-0" : ""}`}>
       <DemoBar />
       <DemoBanner />
       <ClientBanner />

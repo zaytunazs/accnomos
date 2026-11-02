@@ -89,7 +89,7 @@ export default function SampleBooks({ account, place }: { account: AccountInfo; 
       className="rounded-2xl border border-teal bg-teal-tint p-4"
       aria-busy={running ? true : undefined}
     >
-      <h2 id="sample-books-title" ref={headingRef} tabIndex={-1} className="font-extrabold text-teal-dark outline-none">
+      <h2 id="sample-books-title" ref={headingRef} tabIndex={-1} className="font-bold text-teal-dark outline-none">
         {running ? "Loading sample books…" : "Try it with sample books"}
       </h2>
       {!running && !failed && (
@@ -172,7 +172,7 @@ function Progress({ status }: { status: RtSampleStatus }) {
 function SampleBanner({ status }: { status: RtSampleStatus }) {
   return (
     <section aria-label="Sample books" className="rounded-2xl border border-border bg-white px-4 py-3">
-      <p className="text-[12px] font-extrabold uppercase tracking-wide text-teal-dark">{SAMPLE_LABEL}</p>
+      <p className="text-[12px] font-bold uppercase tracking-wide text-teal-dark">{SAMPLE_LABEL}</p>
       <p className="mt-1 text-sm text-ink">
         These are sample books for {status.business ?? "a made-up company"}, loaded to try Accnomos. Every document in
         them is fictional. To start on your own books, delete the Accnomos folder in OneDrive.
@@ -184,7 +184,7 @@ function SampleBanner({ status }: { status: RtSampleStatus }) {
 function Loaded() {
   return (
     <section aria-label="Sample books" className="rounded-2xl border border-teal bg-teal-tint p-4">
-      <p className="font-extrabold text-teal-dark">Sample books are loaded</p>
+      <p className="font-bold text-teal-dark">Sample books are loaded</p>
       <Link href="/" className="mt-2 inline-block text-sm font-bold text-teal-dark underline">
         Open Home
       </Link>

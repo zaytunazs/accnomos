@@ -34,7 +34,7 @@ import TodosTile from "@/components/home/TodosTile";
  */
 export default function HomeDashboard() {
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {/* Greeting, figures, Deadlines and Activity share one GET /books/dashboard (the sample when signed out). */}
       <HomeData>
         <SignedOut>
@@ -68,7 +68,7 @@ export default function HomeDashboard() {
               money, deadlines and who owes what; then spending, buying, to-dos and month-end; then the cards for
               features these books use (each hides itself otherwise: GET /books/home returns null for its section);
               then the inbox, the day's plan and activity. */}
-          <div className="grid grid-cols-1 items-stretch gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2 xl:grid-cols-3">
             <TodayCard />
             <MoneyCard />
             <ComingUpCard />

@@ -102,7 +102,7 @@ export function Skeleton({ className = "" }: { className?: string }) {
 /** Small "Sample" pill flagging a card that shows the fictional Bramblewood books (signed out). */
 export function SampleTag() {
   return (
-    <span className="ml-2 rounded-full bg-ground px-2 py-0.5 align-middle text-[11px] font-extrabold uppercase tracking-wide text-muted">
+    <span className="ml-2 rounded-full bg-ground px-2 py-0.5 align-middle text-[11px] font-bold uppercase tracking-wide text-muted">
       Sample
     </span>
   );

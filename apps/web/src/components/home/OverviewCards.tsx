@@ -46,7 +46,7 @@ function Card({
       data-home-card={id}
       className={`flex min-w-0 flex-col rounded-2xl border bg-white p-4 sm:p-5 ${warn ? "border-warn-border" : "border-border"} ${wide ? "md:col-span-2" : ""}`}
     >
-      <h2 id={id} className="text-lg font-extrabold tracking-tight">
+      <h2 id={id} className="text-lg font-bold tracking-tight">
         {title}
       </h2>
       {children}
@@ -73,7 +73,7 @@ export function SummaryCard() {
   return (
     <section aria-labelledby="home-summary" className="col-span-full rounded-2xl border border-teal/30 bg-teal-tint p-4 sm:p-5">
       <div className="flex items-start justify-between gap-2">
-        <h2 id="home-summary" className="text-lg font-extrabold tracking-tight text-teal-dark">
+        <h2 id="home-summary" className="text-lg font-bold tracking-tight text-teal-dark">
           Your summary
           <Sample />
         </h2>
@@ -301,7 +301,7 @@ export function IncomeTaxCard() {
         </p>
       }
     >
-      <p className="mt-1 text-3xl font-extrabold tracking-tight tabular-nums">{shortDate(i.due)}</p>
+      <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums">{shortDate(i.due)}</p>
       <p className="text-[13px] font-semibold text-muted">
         Quarterly update to {shortDate(i.period_end)} ({i.tax_year}) due {daysWord(i.days_left)}
       </p>
@@ -352,7 +352,7 @@ export function CisCard() {
     >
       {c.subcontractor ? (
         <>
-          <p className="mt-1 text-3xl font-extrabold tracking-tight tabular-nums">{pounds(c.suffered_pence)}</p>
+          <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums">{pounds(c.suffered_pence)}</p>
           <p className="text-[13px] font-semibold text-muted">
             Deducted by contractors in {c.tax_year} · {c.status_label} ({c.rate}%)
           </p>
@@ -384,7 +384,7 @@ export function PropertyCard() {
     >
       {p ? (
         <>
-          <p className="mt-1 text-3xl font-extrabold tracking-tight tabular-nums">{pounds(p.profit_pence)}</p>
+          <p className="mt-1 text-3xl font-bold tracking-tight tabular-nums">{pounds(p.profit_pence)}</p>
           <p className="text-[13px] font-semibold text-muted">
             Profit in {p.tax_year} so far: {pounds(p.income_pence)} rent, {pounds(p.expenses_pence)} costs ·{" "}
             {p.properties} propert{p.properties === 1 ? "y" : "ies"}

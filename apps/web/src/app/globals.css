@@ -1,23 +1,44 @@
 @import "tailwindcss";
 
 @theme {
-  --color-ink: #1b1f24;
+  /* Signed-in app palette (docs: CLAUDE_DESIGN_ONLY_BRIEF, 2 Nov 2026): a light grey-blue page, white cards,
+     teal for primary actions and selected states, a dark-teal sidebar. Text on page/tint/white is >= 5.6:1. */
+  --color-ink: #172b35;
   --color-teal: #0f6e63;
   --color-teal-dark: #0a4f47;
-  --color-teal-tint: #e6f1ef;
-  --color-ground: #f4f3ee;
-  --color-muted: #4b5159;
-  --color-border: #e3e1d8;
-  --color-warn-bg: #fff7ed;
-  --color-warn-border: #f3c892;
-  --color-warn-ink: #8a3f06;
+  --color-teal-tint: #e8f4f1;
+  --color-ground: #f5f8fa;
+  --color-muted: #52626d;
+  --color-border: #dce5e9;
+  --color-warn-bg: #fff4dc;
+  --color-warn-border: #ebc77a;
+  --color-warn-ink: #8a470d;
   --color-amber: #b45309;
+  --color-sidebar: #0b3f43;
+  --color-sidebar-active: #17666a;
+  --color-pos-ink: #166534;
+  --color-pos-tint: #ecfdf3;
+  --color-neg-ink: #a12626;
+  --color-neg-tint: #fff0f0;
+  --color-info-ink: #175c86;
+  --color-info-tint: #edf6ff;
+  /* Cards (rounded-2xl) 12 px, buttons, inputs and inner panels (rounded-xl) 8 px: the brief's calmer corners,
+     app-wide without touching every component. */
+  --radius-xl: 0.5rem;
+  --radius-2xl: 0.75rem;
 }
 
 body {
   background: var(--color-ground);
   color: var(--color-ink);
   font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Money lines up in columns and tiles: tabular figures wherever a figure is marked as one. */
+.tabular-nums,
+[data-money],
+td.text-right {
+  font-variant-numeric: tabular-nums;
 }
 
 /* Visible keyboard focus on every interactive element. Teal-dark keeps a

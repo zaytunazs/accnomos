@@ -25,10 +25,10 @@ export default function Pitch() {
     >
       <div className="grid gap-0 min-[760px]:grid-cols-[1.1fr_1fr]">
         <div className="flex flex-col gap-4 p-6 sm:p-8">
-          <p className="text-xs font-extrabold uppercase tracking-[0.08em] text-teal-dark">
+          <p className="text-xs font-bold uppercase tracking-[0.08em] text-teal-dark">
             Bookkeeping for UK small businesses
           </p>
-          <h2 id="pitch" className="text-3xl font-extrabold leading-[1.1] tracking-tight sm:text-4xl">
+          <h2 id="pitch" className="text-3xl font-bold leading-[1.1] tracking-tight sm:text-4xl">
             Books read by AI.
             <br />
             Approved by you.
@@ -64,7 +64,7 @@ export default function Pitch() {
       <ul className="grid gap-px border-t border-border bg-border min-[760px]:grid-cols-3">
         {claims.map((p) => (
           <li key={p.title} className="bg-white p-5">
-            <p className="text-sm font-extrabold text-ink">{p.title}</p>
+            <p className="text-sm font-bold text-ink">{p.title}</p>
             <p className="mt-1 text-[13px] leading-relaxed text-muted">{p.body}</p>
           </li>
         ))}
