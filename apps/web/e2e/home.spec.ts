@@ -156,3 +156,74 @@ test("sample books (/try): the four attention tiles link to Review, Invoices, Re
   expect(order[0]).toBeGreaterThan(0);
   expect(order[1]).toBeGreaterThan(order[0]);
 });
+
+test("Business snapshot (signed in): the year to date, the last 12 months and the cash line from the books", async ({ page, runtime }) => {
+  await signIn(page);
+  await createBooksFolder(page);
+  await runtime.postGold(); // Novex, 14 Aug 2026: £43.25 office costs, £8.65 VAT to reclaim; no bank statement yet
+
+  await page.goto("/");
+  const snap = page.getByRole("region", { name: "Business snapshot" });
+  const figure = (label: string) => snap.getByRole("group", { name: label });
+  // No profile saved: a company, so the year runs from 1 January (services/runtime/app/home_overview.py `year_start`).
+  await expect(snap).toContainText("1 Jan – 27 Oct 2026 against 1 Jan – 27 Oct 2025 · accrual from approved entries");
+  await expect(figure("Turnover")).toContainText("£0");
+  await expect(figure("Turnover")).toContainText("— no figure last year"); // nothing last year: no percentage
+  await expect(figure("Expenses")).toContainText("£43");
+  await expect(figure("Net loss")).toContainText("£43");
+  await expect(figure("VAT to reclaim")).toContainText("£9");
+  await expect(figure("VAT to reclaim")).toContainText("Jul–Sep 2026 · due 7 Nov");
+  await expect(snap.getByRole("link", { name: "Profit and loss" })).toHaveAttribute("href", "/reports");
+  await expect(snap.getByRole("link", { name: "VAT return" })).toHaveAttribute("href", "/vat");
+
+  // The chart: one image with a text alternative, the figures as a table, and the arrow keys read each month.
+  const chart = snap.getByRole("img", { name: /^Sales and purchases as bars/ });
+  await expect(chart).toBeVisible();
+  await expect(chart).toHaveAttribute("aria-label", /Nov 2025 to Oct 2026/);
+  await expect(snap.getByRole("table", { name: "Sales, purchases and net profit per month" })).toContainText("Aug 2026£0£43-£43");
+  const readout = snap.locator("[data-chart-readout]");
+  await expect(readout).toHaveText("Oct 2026: sales £0 · purchases £0 · net £0");
+  await chart.focus();
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("ArrowLeft");
+  await expect(readout).toHaveText("Aug 2026: sales £0 · purchases £43 · net -£43");
+  await expect(snap.getByRole("link", { name: "Full trend" })).toHaveAttribute("href", "/reports");
+
+  // No bank statement: a calm empty state, never a made-up line.
+  await expect(snap.getByRole("region", { name: "Cash, next 90 days" })).toContainText("Import a bank statement to see cash forecast");
+  await expect(snap.getByRole("link", { name: "Cash flow forecast" })).toHaveAttribute("href", "/reports/cashflow");
+
+  // Between What needs attention and Today.
+  const order = await page.evaluate(() =>
+    ["What needs attention", "Business snapshot", "Today"].map((n) => {
+      const el = document.querySelector(`[aria-label="${n}"]`) ?? document.getElementById("business-snapshot");
+      return el?.getBoundingClientRect().top ?? -1;
+    }),
+  );
+  expect(order[1]).toBeGreaterThan(order[0]);
+  expect(order[2]).toBeGreaterThan(order[1]);
+});
+
+test("Business snapshot (/try): the sample year, chart and cash line, marked as sample", async ({ page }) => {
+  await page.goto("/try");
+  const snap = page.getByRole("region", { name: /^Business snapshot ?Sample$/ });
+  const figure = (label: string) => snap.getByRole("group", { name: label });
+  await expect(figure("Turnover")).toContainText("£148,620");
+  await expect(figure("Turnover")).toContainText("▲ up 12% vs last year");
+  await expect(figure("Expenses")).toContainText("▲ up 8% vs last year");
+  await expect(figure("Net profit")).toContainText("£47,280");
+  await expect(figure("Net profit")).toContainText("22% vs last year");
+  await expect(figure("Net profit")).toContainText("Last year £38,600");
+  await expect(figure("VAT to pay")).toContainText("£2,140");
+  await expect(figure("VAT to pay")).toContainText("due 7 Nov");
+  await expect(snap.getByRole("img", { name: /^Sales and purchases as bars/ })).toBeVisible();
+  await expect(snap.getByRole("table", { name: "Sales, purchases and net profit per month" }).getByRole("row")).toHaveCount(13);
+  const cash = snap.getByRole("region", { name: "Cash, next 90 days" });
+  await expect(cash.getByRole("img", { name: /^Forecast bank balance/ })).toBeVisible();
+  await expect(cash).toContainText("Lowest £1,240 on 14 Dec");
+  await expect(cash).toContainText("Today £12,480");
+  for (const [name, href] of [["Profit and loss", "/reports"], ["VAT return", "/vat"], ["Full trend", "/reports"], ["Cash flow forecast", "/reports/cashflow"]]) {
+    await expect(snap.getByRole("link", { name, exact: true })).toHaveAttribute("href", href);
+  }
+  await expect(snap).toContainText("Sample figures from the fictional Bramblewood books");
+});

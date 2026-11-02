@@ -227,3 +227,36 @@ test.describe("Home attention tiles at 390 px", () => {
     await expect(drawer.getByRole("heading", { name: "More", exact: true })).toBeVisible();
   });
 });
+
+test.describe("Home business snapshot at 390 px", () => {
+  test.use({ viewport: { width: 390, height: 844 } });
+
+  /** The snapshot's panels stack, the chart is drawn within the screen, and nothing scrolls sideways. */
+  const fits = async (page: Page) => {
+    const snap = page.getByRole("region", { name: /^Business snapshot( ?Sample)?$/ });
+    const chart = snap.getByRole("img", { name: /^Sales and purchases as bars/ });
+    await chart.scrollIntoViewIfNeeded();
+    await expect(chart).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    const box = await chart.boundingBox();
+    const width = await page.evaluate(() => window.innerWidth);
+    expect(box && box.x >= 0 && box.x + box.width <= width, `chart ${JSON.stringify(box)} in ${width}px`).toBe(true);
+    const lefts = await snap.locator(":scope > div > section").evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().left)));
+    expect(new Set(lefts).size, "the panels stack in one column").toBe(1);
+    const scroll = await page.evaluate(() => document.documentElement.scrollWidth);
+    expect(scroll, `Home is ${scroll}px wide in a ${width}px viewport`).toBeLessThanOrEqual(width);
+  };
+
+  test("/try: the chart stacks and fits", async ({ page }) => {
+    await page.goto("/try");
+    await fits(page);
+  });
+
+  test("/ signed in: the chart stacks and fits", async ({ page, runtime }) => {
+    await signIn(page);
+    await createBooksFolder(page);
+    await runtime.postGold();
+    await page.goto("/");
+    await fits(page);
+  });
+});
