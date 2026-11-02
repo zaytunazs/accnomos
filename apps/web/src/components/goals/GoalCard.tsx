@@ -76,7 +76,8 @@ export function GoalBar({ p }: { p: RtGoalProgress }) {
 }
 
 export function Inset({ p }: { p: RtGoalProgress }) {
-  const run = p.run_rate_pence;
+  // A run-rate of nothing says nothing (no money in or out yet): leave it out.
+  const run = p.run_rate_pence ? p.run_rate_pence : null;
   if (!p.needed_text && (run === null || run === undefined)) return null;
   return (
     <div className="mt-4 rounded-lg bg-[#F3F6F8] p-3 text-[13px] leading-5 text-ink">
