@@ -114,3 +114,31 @@ async def test_test_mode_answers_from_the_fakes_without_calling_graph(monkeypatc
     assert me.email == "sam@example.co.uk"
     assert (await identity.verified_identity("test-token")).email == testmode.OWNER
     assert FakeGraphMe.calls == 0
+
+
+def _request(headers: dict[str, str]):  # noqa: ANN202
+    from starlette.requests import Request
+
+    return Request({"type": "http", "headers": [(k.lower().encode(), v.encode()) for k, v in headers.items()]})
+
+
+async def test_optional_user_is_the_verified_identity_or_none() -> None:
+    from app.routes_books import optional_user
+
+    good = _request({"X-Graph-Token": "good-token", "X-User": "boss@victim.example"})
+    assert await optional_user(good, "boss@victim.example") == "real.person@example.co.uk"
+    forged = _request({"X-Graph-Token": "forged", "X-User": "boss@victim.example"})
+    assert await optional_user(forged, "boss@victim.example") is None  # never the unchecked header
+    assert await optional_user(_request({"X-User": "x@example.com"}), "x@example.com") is None  # no token
+    assert await optional_user(_request({"X-Graph-Token": "good-token"}), None) is None  # no X-User: nobody named
+    assert FakeGraphMe.calls == 2
+
+
+async def test_optional_user_when_graph_cannot_be_reached_is_none(monkeypatch: pytest.MonkeyPatch) -> None:
+    from app.routes_books import optional_user
+
+    async def down(token: str, user: str | None = None) -> FakeGraphMe:
+        raise GraphError(503, "serviceNotAvailable")
+
+    monkeypatch.setattr(sharing, "sharing_for", down)
+    assert await optional_user(_request({"X-Graph-Token": "good-token"}), "a@example.com") is None

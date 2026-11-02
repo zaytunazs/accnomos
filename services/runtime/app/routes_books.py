@@ -147,10 +147,25 @@ async def require_user(request: Request, x_user: str | None = Header(default=Non
     return (await identity.verified_identity(identity.bearer(request), hint)).email
 
 
-# TODO: unverified X-User; reads and mail look-ups only, nothing is audited under it. Use identity.verified_identity
-# if a route ever writes an audit line from it.
-def optional_user(x_user: str | None = Header(default=None)) -> str | None:
-    return (x_user or "").strip() or None
+async def optional_user(request: Request, x_user: str | None = Header(default=None)) -> str | None:
+    """As require_user, for routes that also work without a user: the verified Graph `/me` email when `X-User` is
+    sent with a token Graph accepts; in a demo session the sandbox's own user; otherwise None (never the unchecked
+    header). A Graph that cannot be reached also gives None: the route goes on as for an unnamed caller."""
+    from accnomos_connectors.msgraph import GraphError
+    from app import demo, identity
+
+    hint = (x_user or "").strip()
+    if not hint:
+        return None
+    if demo.is_demo_request(request):
+        return hint
+    token = identity.bearer(request)
+    if not token:
+        return None
+    try:
+        return (await identity.verified_identity(token, hint)).email
+    except (HTTPException, GraphError):
+        return None
 
 
 def business_name(x_business_name: str | None = Header(default=None)) -> str | None:
