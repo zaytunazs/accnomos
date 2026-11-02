@@ -1,4 +1,5 @@
-export default function AskBar() {
+/** Home's Ask box; `example` is the hint (a household asks about its own money, not VAT). */
+export default function AskBar({ example = "how much VAT do I owe and why?" }: { example?: string }) {
   return (
     <form
       method="get"
@@ -12,7 +13,7 @@ export default function AskBar() {
         id="home-ask"
         name="q"
         type="text"
-        placeholder="Ask your books — “how much VAT do I owe and why?”"
+        placeholder={`Ask your books — “${example}”`}
         className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted"
       />
       <button

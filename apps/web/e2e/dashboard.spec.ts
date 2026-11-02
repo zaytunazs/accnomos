@@ -74,7 +74,9 @@ test("landlord: a registered property shows property income and the Income Tax c
 
 test("personal books: no business cards (aged debts, payroll, CIS, VAT, Income Tax)", async ({ page, runtime }) => {
   await home(page, runtime, PERSONAL);
-  await expect(card(page, "Money in and out")).toBeVisible();
+  // A household's own Home (e2e/household-home.spec.ts): its month instead of the business's money card.
+  await expect(page.getByRole("region", { name: /^This month/ })).toBeVisible();
+  await expect(card(page, "Money in and out")).toHaveCount(0);
   for (const name of ["Unpaid invoices and bills", "Income Tax (MTD)", "Payroll", "CIS (construction)", "Property income"]) {
     await expect(card(page, name)).toHaveCount(0);
   }
