@@ -8,6 +8,7 @@ import {
   runtime,
   ukDate,
   type RtFeedConnection,
+  type RtFeedDuplicate,
   type RtFeedStatus,
   type RtFeedSync,
 } from "@/lib/runtime";
@@ -29,6 +30,9 @@ async function sha256(text: string): Promise<string> {
 }
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
+
+const signedPounds = (p: number) =>
+  `${p < 0 ? "−" : ""}£${(Math.abs(p) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
 /** "Fetched from your bank feed: 3 new lines (3 already in a statement)." */
 export function syncSentence(r: RtFeedSync): string {
@@ -61,6 +65,7 @@ export default function BankFeeds({ account, onSynced }: { account: AccountInfo 
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
+  const [dupes, setDupes] = useState<RtFeedDuplicate[]>([]);
   const handled = useRef(false);
 
   const load = useCallback(async () => {
@@ -69,6 +74,13 @@ export default function BankFeeds({ account, onSynced }: { account: AccountInfo 
       const got = await runtime.bankFeeds.status(account);
       setStatus(got);
       remember(got);
+      if (got.available && got.connections.length > 0) {
+        try {
+          setDupes(await runtime.bankFeeds.duplicates(account));
+        } catch {
+          /* the list is a convenience: the feed itself still works */
+        }
+      }
     } catch (e) {
       setError((e as Error).message);
     }
@@ -162,12 +174,26 @@ export default function BankFeeds({ account, onSynced }: { account: AccountInfo 
       const got = await runtime.bankFeeds.reconfirm(account, c.id);
       setNote(got.message);
       setError(null);
-      if (got.reauthorise) await connect();
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(null);
       await load();
+    }
+  }
+
+  async function restore(d: RtFeedDuplicate) {
+    if (!account) return;
+    setBusy(d.line_id);
+    try {
+      setDupes(await runtime.bankFeeds.restoreDuplicate(account, d.line_id));
+      setNote(`Added ${d.description} (${signedPounds(d.amount_pence)}, ${ukDate(d.date)}) to your bank lines.`);
+      setError(null);
+      onSynced();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -228,6 +254,11 @@ export default function BankFeeds({ account, onSynced }: { account: AccountInfo 
                       {busy === "sync" ? "Fetching…" : "Fetch now"}
                     </button>
                   )}
+                  {c.state === "reconnect" && (
+                    <button type="button" className={primary} disabled={busy !== null} onClick={connect}>
+                      {busy === "connect" ? "Opening…" : "Reconnect your bank"}
+                    </button>
+                  )}
                   {(c.state === "expired" || c.state === "key_changed") && (
                     <button type="button" className={primary} disabled={busy !== null} onClick={connect}>
                       Connect again
@@ -265,6 +296,33 @@ export default function BankFeeds({ account, onSynced }: { account: AccountInfo 
             </li>
           ))}
         </ul>
+      )}
+      {dupes.length > 0 && (
+        <div role="group" aria-label="Left out as duplicates" className="mt-3 rounded-xl border border-border bg-ground p-3">
+          <p className="text-sm font-bold text-ink">Left out as already in a statement ({dupes.length})</p>
+          <p className="text-xs text-muted">
+            These feed lines look like payments your statement CSV already has, so they are not in your bank lines or
+            any total. If one is a different payment, add it.
+          </p>
+          <ul className="mt-2 divide-y divide-border">
+            {dupes.map((d) => (
+              <li key={d.line_id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                <span className="min-w-0">
+                  <span className="font-semibold text-ink">
+                    {ukDate(d.date)} · {d.description} · <span className="tabular-nums">{signedPounds(d.amount_pence)}</span>
+                  </span>
+                  <span className="block text-xs text-muted">
+                    Matches {d.duplicate_of_description ?? "a statement line"}
+                    {d.duplicate_of_date ? ` on ${ukDate(d.duplicate_of_date)}` : ""}
+                  </span>
+                </span>
+                <button type="button" className={button} disabled={busy !== null} onClick={() => restore(d)}>
+                  {busy === d.line_id ? "Adding…" : "Not a duplicate: add it"}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {note && (
         <p role="status" className="mt-2 text-sm font-semibold text-teal-dark">

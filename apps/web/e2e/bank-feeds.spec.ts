@@ -51,6 +51,16 @@ test("connect a bank in the sandbox; the feed leaves out what the statement CSV 
 
   await card.getByRole("button", { name: "Fetch now" }).click();
   await expect(card.getByRole("status")).toHaveText("Fetched from your bank feed: 0 new lines.");
+
+  // FIN-03: the three paired feed lines are kept and listed, not thrown away; one can be added back.
+  const left = card.getByRole("group", { name: "Left out as duplicates" });
+  await expect(left).toContainText("Left out as already in a statement (3)");
+  const screwfix = left.getByRole("listitem").filter({ hasText: "Matches SCREWFIX DIRECT ON 30 SEP" });
+  await expect(screwfix).toContainText("−£38.47");
+  await screwfix.getByRole("button", { name: "Not a duplicate: add it" }).click();
+  await expect(card.getByRole("status")).toContainText("Added SCREWFIX DIRECT");
+  await expect(left).toContainText("Left out as already in a statement (2)");
+  await expect(lines.getByText("SCREWFIX DIRECT", { exact: true })).toHaveCount(1);
 });
 
 test("feed first, then the CSV imports only the lines the feed did not have", async ({ page }) => {

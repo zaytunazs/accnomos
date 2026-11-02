@@ -22,8 +22,11 @@ Why TrueLayer, and what was compared: docs/research/BANK_FEEDS.md. No database (
 * **Transactions are fetched when the user opens the app** (no webhook: it would arrive without a Graph token).
   New lines go through the same pipeline as a CSV: filed as `04 Bank statements/{last date}_feed.csv`, stored in
   `_System/bank/{sha256}.json`, matched by the same code. A line already imported from a statement CSV is dropped
-  (`accnomos_ledger.bank.pair_duplicates`: same amount, dates within 2 days, same reference or a word in common),
-  and so is a feed line seen before (TrueLayer's `transaction_id`). CSV import stays as the fallback.
+  (`accnomos_ledger.bank.pair_duplicates`: same amount, dates within 2 days, same reference or a word in common) is
+  kept out of the bank lines and every total, but not thrown away: it is flagged in `_System/bankfeed_duplicates.json`
+  with the statement line it paired with, listed after the fetch, and the user can add it back ("not a duplicate")
+  when the fuzzy pairing was wrong. A feed line seen before (TrueLayer's `transaction_id`) is dropped. CSV import stays
+  as the fallback.
 """
 
 from __future__ import annotations
@@ -73,7 +76,8 @@ TEST_TOKEN_KEY = base64.b64encode(b"accnomos-test-mode-bankfeed-key!").decode() 
 ID_RE = re.compile(r"^[A-Za-z0-9_:-][A-Za-z0-9._:-]{0,127}$")  # ids put in a path or a file; never "." or ".."
 OFF_SENTENCE = "Bank feeds are not set up on this server yet. Upload a statement CSV instead."
 
-ConnectionState = Literal["ok", "reconfirm", "expired", "key_changed"]
+RECONNECT = "Reconnect your bank to keep it going."
+ConnectionState = Literal["ok", "reconfirm", "reconnect", "expired", "key_changed"]
 
 
 class BankFeedError(ValueError):
@@ -281,6 +285,9 @@ class FeedConnection(BaseModel):
     synced_to: date | None = None
     token: str  # the refresh token, sealed (see seal); never the access token
     key_id: str
+    # TrueLayer said the user has to go back through the bank (extend answered authentication_needed, or the refresh
+    # token was refused): nothing is read until they connect again.
+    needs_reauth: bool = False
 
 
 class FeedsFile(BaseModel):
@@ -367,6 +374,8 @@ def view(conn: FeedConnection, key: bytes | None, on: date) -> ConnectionView:
         state, msg = "key_changed", "This connection can't be read any more (the server's key changed). Connect again."
     elif days < 0:
         state, msg = "expired", f"Your consent ended on {uk_date(last_day)}. Connect again to keep the feed going."
+    elif conn.needs_reauth:
+        state, msg = "reconnect", f"{conn.bank} wants you to sign in at the bank again. {RECONNECT}"
     elif days <= RECONFIRM_DAYS:
         when = "today" if days == 0 else f"in {days} day{'s' if days != 1 else ''}"
         state, msg = "reconfirm", f"Your 90-day consent ends {when} ({uk_date(last_day)}). Reconfirm to keep it going."
@@ -484,7 +493,13 @@ async def connect(books: Books, code: str, state: str, binding: str, user: str) 
         token=seal(refresh, key, cred),
         key_id=key_id(key),
     )
-    await _save(books, _put(conn))
+
+    def put_replacing(f: FeedsFile) -> FeedsFile:
+        # Reconnecting a bank that asked for a new sign-in replaces the stale connection rather than listing both.
+        f.connections = [c for c in f.connections if not (c.needs_reauth and c.bank == conn.bank and c.id != conn.id)]
+        return _put(conn)(f)
+
+    await _save(books, put_replacing)
     await books.audit(
         f"user:{user}",
         "bank_feed_connected",
@@ -521,7 +536,27 @@ class ReconfirmResult(BaseModel):
     message: str
 
 
-async def reconfirm(books: Books, connection_id: str, user: str) -> ReconfirmResult:
+REAUTH_ACTIONS = {"authentication_needed", "reconfirmation_of_consent_needed"}
+
+
+def end_user(user: str, name: str | None) -> dict[str, str]:
+    """The `user` object extend requires of an unregulated client: an id, a name and an email. The id is a hash of
+    the email (no raw identifier as an id); the name is Microsoft's display name, else the email's local part."""
+    email = user.strip()
+    return {"id": user_hash(email), "name": (name or "").strip() or email.split("@", 1)[0], "email": email}
+
+
+async def _mark_reauth(books: Books, connection_id: str) -> None:
+    def change(f: FeedsFile) -> FeedsFile:
+        for c in f.connections:
+            if c.id == connection_id:
+                c.needs_reauth = True
+        return f
+
+    await _save(books, change)
+
+
+async def reconfirm(books: Books, connection_id: str, user: str, name: str | None = None) -> ReconfirmResult:
     """The user ticked "keep sharing" in the app: extend the consent at TrueLayer for another 90 days."""
     cfg, key = _need()
     conn = await _find(books, connection_id)
@@ -531,10 +566,14 @@ async def reconfirm(books: Books, connection_id: str, user: str) -> ReconfirmRes
     async with client() as http:
         api = TrueLayerApi(cfg, http)
         try:
-            got = await api.extend(token)
-            if got.get("user_input_link") and not got.get("access_token"):
+            got = await api.extend(token, end_user(user, name))
+            action = str(got.get("action_needed") or "")
+            if action in REAUTH_ACTIONS or (got.get("user_input_link") and not got.get("access_token")):
+                await _mark_reauth(books, conn.id)
+                detail = {"connection": conn.id, "bank": conn.bank, "via": "extend"}
+                await books.audit(f"user:{user}", "bank_feed_reauth_needed", detail)
                 return ReconfirmResult(
-                    reauthorise=True, message=f"{conn.bank} wants you to sign in at the bank again: connect again."
+                    reauthorise=True, message=f"{conn.bank} wants you to sign in at the bank again. {RECONNECT}"
                 )
             if not got.get("access_token"):  # extend gave no tokens back: refresh to read the new expiry
                 got = await api.refresh(token)
@@ -638,15 +677,31 @@ class ConnectionSync(BaseModel):
     bank: str
     fetched: int = 0
     error: str | None = None  # in a sentence; the other connections still sync
+    reauth: bool = False  # the bank wants the user to sign in again: show "Reconnect your bank"
+
+
+class FlaggedDuplicate(BaseModel):
+    """A feed line paired with a line a statement CSV already brought in: kept here, out of the bank lines and every
+    total, until the user says it is a different payment ("not a duplicate")."""
+
+    line_id: str
+    date: date
+    amount_pence: int
+    description: str
+    duplicate_of: str  # the statement line's id
+    duplicate_of_date: date | None = None
+    duplicate_of_description: str | None = None
+    flagged_at: datetime
 
 
 class SyncResult(BaseModel):
     new_lines: int
-    already_imported: int  # lines a statement CSV had already brought in (dropped)
+    already_imported: int  # lines a statement CSV had already brought in (flagged in `duplicates`, not in totals)
     already_fetched: int  # lines an earlier sync had already brought in (dropped)
     skipped: int  # not GBP, or no id / date / amount
     filed_path: str | None
     connections: list[ConnectionSync]
+    duplicates: list[FlaggedDuplicate] = []  # flagged by this fetch; restore one with restore_duplicate
 
 
 async def _fetch(
@@ -677,21 +732,27 @@ async def sync(books: Books, user: str) -> SyncResult:
     skipped = 0
     per: list[ConnectionSync] = []
     updated: list[FeedConnection] = []
+    reauth: list[str] = []
     async with client() as http:
         api = TrueLayerApi(cfg, http)
         for conn in feeds.connections:
             v = view(conn, key, on)
             row = ConnectionSync(id=conn.id, bank=conn.bank)
             per.append(row)
-            if v.state in ("expired", "key_changed"):
-                row.error = v.message  # consent over: we must not read (PS21/19)
+            if v.state in ("expired", "key_changed", "reconnect"):
+                row.error = v.message  # consent over, or the bank wants a new sign-in: we must not read (PS21/19)
+                row.reauth = v.state == "reconnect"
                 continue
             try:
                 lines, bad, rotated = await _fetch(api, conn, key, on)
             except TrueLayerError as exc:
                 # A refused refresh token: the consent was withdrawn at the bank, or has lapsed there early.
-                again = " Connect again." if exc.status in (400, 401) else ""
-                row.error = f"{conn.bank}: {exc.message}.{again}"
+                if exc.status in (400, 401):
+                    row.error = f"{conn.bank}: {exc.message}. {RECONNECT}"
+                    row.reauth = True
+                    reauth.append(conn.id)
+                else:
+                    row.error = f"{conn.bank}: {exc.message}."
                 continue
             except BankFeedError as exc:
                 row.error = str(exc)
@@ -705,30 +766,35 @@ async def sync(books: Books, user: str) -> SyncResult:
             updated.append(conn)
 
     stored = await books.stored_bank_lines()
+    flagged_before = await load_duplicates(books)
+    # A line flagged before is "already fetched" too: the overlap re-reads it and it must not be flagged twice.
     seen_ids = {ln.feed_id for ln in stored if ln.feed_id}
+    seen_ids |= {d.line.feed_id for d in flagged_before if d.line.feed_id}
     unique: dict[str, BankLine] = {}
     for ln in fetched:
         unique.setdefault(ln.id, ln)
     candidates = [ln for ln in unique.values() if ln.feed_id not in seen_ids]
     already_fetched = len(fetched) - len(candidates)
-    dupes = pair_duplicates(candidates, [ln for ln in stored if not ln.feed_id])
+    statement_lines = {ln.id: ln for ln in stored if not ln.feed_id}
+    dupes = pair_duplicates(candidates, list(statement_lines.values()))
     fresh = [ln for ln in candidates if ln.id not in dupes]
+    stamp = now()
+    flagged = [_Flagged(line=ln, duplicate_of=dupes[ln.id], flagged_at=stamp) for ln in candidates if ln.id in dupes]
 
-    filed = None
-    if fresh:
-        data = feed_csv(fresh)
-        sha = hashlib.sha256(data).hexdigest()
-        filed = await books.free_path(BANK, f"{max(ln.date for ln in fresh).isoformat()}_feed.csv")
-        await books.storage.write(filed, data)
-        for ln in fresh:
-            ln.source_file = filed
-        await books.write_json(f"{BANK_LINES}/{sha}.json", [ln.model_dump(mode="json") for ln in fresh])
+    filed = await _file_lines(books, fresh) if fresh else None
+    if flagged:
+        await _save_duplicates(
+            books, lambda cur: cur + [f for f in flagged if f.line.id not in {c.line.id for c in cur}]
+        )
 
-    if updated:
+    if updated or reauth:
         by_id = {c.id: c for c in updated}
 
         def change(f: FeedsFile) -> FeedsFile:
             f.connections = [by_id.get(c.id, c) for c in f.connections]
+            for c in f.connections:
+                if c.id in reauth:
+                    c.needs_reauth = True
             return f
 
         await _save(books, change)
@@ -752,4 +818,88 @@ async def sync(books: Books, user: str) -> SyncResult:
         skipped=skipped,
         filed_path=filed,
         connections=per,
+        duplicates=[f.view(statement_lines) for f in flagged],
     )
+
+
+# --------------------------------------------------------------------------- #
+# Feed lines flagged as duplicates of statement lines (kept, never in totals, restorable)
+# --------------------------------------------------------------------------- #
+
+DUPLICATES = f"{SYSTEM}/bankfeed_duplicates.json"
+
+
+class _Flagged(BaseModel):
+    line: BankLine
+    duplicate_of: str
+    flagged_at: datetime
+
+    def view(self, statement_lines: dict[str, BankLine]) -> FlaggedDuplicate:
+        other = statement_lines.get(self.duplicate_of)
+        return FlaggedDuplicate(
+            line_id=self.line.id,
+            date=self.line.date,
+            amount_pence=self.line.amount_pence,
+            description=self.line.description,
+            duplicate_of=self.duplicate_of,
+            duplicate_of_date=other.date if other else None,
+            duplicate_of_description=other.description if other else None,
+            flagged_at=self.flagged_at,
+        )
+
+
+async def load_duplicates(books: Books) -> list[_Flagged]:
+    raw = await books.read_json(DUPLICATES, [])
+    out: list[_Flagged] = []
+    for item in raw if isinstance(raw, list) else []:
+        with contextlib.suppress(ValueError, TypeError):
+            out.append(_Flagged.model_validate(item))
+    return out
+
+
+async def _save_duplicates(books: Books, change: Any) -> None:
+    def apply(old: Any) -> list[dict[str, Any]]:
+        cur: list[_Flagged] = []
+        for item in old if isinstance(old, list) else []:
+            with contextlib.suppress(ValueError, TypeError):
+                cur.append(_Flagged.model_validate(item))
+        return [f.model_dump(mode="json") for f in change(cur)]
+
+    await books._update_json(DUPLICATES, [], apply)
+
+
+async def _file_lines(books: Books, lines: list[BankLine]) -> str:
+    """File feed lines as the evidence CSV in 04 Bank statements and store them as bank lines; the CSV's path."""
+    data = feed_csv(lines)
+    sha = hashlib.sha256(data).hexdigest()
+    filed = await books.free_path(BANK, f"{max(ln.date for ln in lines).isoformat()}_feed.csv")
+    await books.storage.write(filed, data)
+    for ln in lines:
+        ln.source_file = filed
+    await books.write_json(f"{BANK_LINES}/{sha}.json", [ln.model_dump(mode="json") for ln in lines])
+    return filed
+
+
+async def list_duplicates(books: Books) -> list[FlaggedDuplicate]:
+    statement_lines = {ln.id: ln for ln in await books.stored_bank_lines() if not ln.feed_id}
+    return [f.view(statement_lines) for f in sorted(await load_duplicates(books), key=lambda f: f.line.date)]
+
+
+async def restore_duplicate(books: Books, line_id: str, user: str) -> list[FlaggedDuplicate]:
+    """The user said a flagged feed line is a different payment: add it to the bank lines. FileNotFoundError when no
+    such flagged line."""
+    item = next((f for f in await load_duplicates(books) if f.line.id == line_id), None)
+    if item is None:
+        raise FileNotFoundError(line_id)
+    if any(ln.id == line_id for ln in await books.stored_bank_lines()):  # restored already (a second tab)
+        await _save_duplicates(books, lambda cur: [f for f in cur if f.line.id != line_id])
+        return await list_duplicates(books)
+    filed = await _file_lines(books, [item.line.model_copy()])
+    await _save_duplicates(books, lambda cur: [f for f in cur if f.line.id != line_id])
+    await books.audit(
+        f"user:{user}",
+        "bank_feed_duplicate_restored",
+        {"line": line_id, "was_paired_with": item.duplicate_of, "path": filed},
+    )
+    await books.rebuild_safely(f"user:{user}")
+    return await list_duplicates(books)

@@ -161,17 +161,33 @@ def handle(request: httpx.Request) -> httpx.Response:
                 return _err(400, "invalid_grant")
             return _json(200, FAKES.tokens(cred.id))
         return _err(400, "unsupported_grant_type")
-    if request.method == "POST" and path.endswith("/connections/extend"):
+    if request.method == "POST" and path == "/connections/extend" and request.url.host == "api.truelayer-sandbox.com":
+        # The API reference (docs.truelayer.com/reference/extendconnection): api. host, JSON body, a `user` object
+        # (an unregulated client gives a name and an email or phone); the answer is discriminated by action_needed.
         body = json.loads(request.content or b"{}")
         if (body.get("client_id"), body.get("client_secret")) != CLIENT:
             return _err(401, "invalid_client")
         cred = FAKES.by_refresh(str(body.get("refresh_token") or ""))
-        if cred is None or body.get("user_has_reconfirmed_consent") is not True:
+        user = body.get("user")
+        if (
+            cred is None
+            or body.get("user_has_reconfirmed_consent") is not True
+            or not body.get("redirect_uri")
+            or not isinstance(user, dict)
+            or not user.get("name")
+            or not (user.get("email") or user.get("phone"))
+        ):
             return _err(400, "invalid_request")
         if FAKES.extend_needs_reauth:
-            return _json(200, {"user_input_link": f"https://auth.truelayer-sandbox.com/?reauth={cred.id}"})
+            return _json(
+                200,
+                {
+                    "action_needed": "authentication_needed",
+                    "user_input_link": f"https://auth.truelayer-sandbox.com/?reauth={cred.id}",
+                },
+            )
         cred.expires = datetime.combine(_today(), time(9, 0), tzinfo=UTC) + timedelta(days=90)
-        return _json(200, FAKES.tokens(cred.id))
+        return _json(200, {"action_needed": "no_action_needed", **FAKES.tokens(cred.id)})
     if request.url.host == "api.truelayer-sandbox.com":
         cred = _cred_from_bearer(request)
         if cred is None:

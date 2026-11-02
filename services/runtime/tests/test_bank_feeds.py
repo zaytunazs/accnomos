@@ -316,6 +316,42 @@ async def test_csv_first_then_feed_drops_the_three_payments_already_there(client
     feed = [ln for ln in await books.stored_bank_lines() if ln.feed_id]
     assert [ln.description for ln in feed] == ["B&Q WARRINGTON", "HARBOUR CAFE LTD", "COSTA COFFEE 1234"]
     assert len(await books.stored_bank_lines()) == 9
+    # FIN-03: the three paired feed lines are flagged, not thrown away, and are in no total.
+    assert len(got["duplicates"]) == 3
+    csv_ids = {ln.id for ln in await books.stored_bank_lines() if not ln.feed_id}
+    assert all(d["duplicate_of"] in csv_ids and d["duplicate_of_description"] for d in got["duplicates"])
+    listed = _ok(client.get("/books/bankfeeds/duplicates", headers=H))
+    assert sorted(d["line_id"] for d in listed) == sorted(d["line_id"] for d in got["duplicates"])
+    statements = _ok(client.get("/books/bank/statements", headers=H))
+    assert sum(s["lines"] for s in statements) == 9
+
+
+async def test_a_flagged_duplicate_is_flagged_once_and_can_be_restored(
+    client: TestClient, books: Books, fake: FakeStorageProvider
+) -> None:
+    with BARCLAYS.open("rb") as f:
+        _ok(client.post("/books/bank/import", files={"file": ("barclays.csv", f, "text/csv")}, headers=H))
+    _connect(client)
+    first = _ok(client.post("/books/bankfeeds/sync", headers=H))
+    again = _ok(client.post("/books/bankfeeds/sync", headers=H))  # the overlap re-reads the same lines
+    assert again["already_imported"] == 0 and again["duplicates"] == []
+    assert len(_ok(client.get("/books/bankfeeds/duplicates", headers=H))) == 3
+
+    one = first["duplicates"][0]["line_id"]
+    r = client.post(f"/books/bankfeeds/duplicates/{one}/restore", json={}, headers=H)
+    assert r.status_code == 400  # not without the user's yes
+    left = _ok(client.post(f"/books/bankfeeds/duplicates/{one}/restore", json={"confirm": True}, headers=H))
+    assert len(left) == 2
+    assert one not in {d["line_id"] for d in left}
+    lines = await books.stored_bank_lines()
+    assert len(lines) == 10 and any(ln.id == one and ln.feed_id for ln in lines)
+    assert "bank_feed_duplicate_restored" in [a["action"] for a in await _audit(fake)]
+    # Restored lines are fetched lines now: a later sync neither re-adds nor re-flags them.
+    third = _ok(client.post("/books/bankfeeds/sync", headers=H))
+    assert third["new_lines"] == 0 and third["duplicates"] == []
+    assert len(await books.stored_bank_lines()) == 10
+    r = client.post(f"/books/bankfeeds/duplicates/{one}/restore", json={"confirm": True}, headers=H)
+    assert r.status_code == 404
 
 
 async def test_feed_first_then_csv_imports_only_what_the_feed_lacks(client: TestClient, books: Books) -> None:
@@ -336,7 +372,16 @@ def test_a_consent_withdrawn_at_the_bank_says_connect_again(client: TestClient) 
     conn = _connect(client)["connections"][0]
     FAKES.deleted.add(conn["id"])  # the user stopped sharing in their bank's app
     got = _ok(client.post("/books/bankfeeds/sync", headers=H))
-    assert got["new_lines"] == 0 and got["connections"][0]["error"].endswith("Connect again.")
+    assert got["new_lines"] == 0 and got["connections"][0]["error"].endswith("Reconnect your bank to keep it going.")
+    assert got["connections"][0]["reauth"] is True
+    [v] = _ok(client.get("/books/bankfeeds", headers=H))["connections"]
+    assert v["state"] == "reconnect" and "Reconnect your bank" in v["message"]
+    before = len(FAKES.requests)
+    again = _ok(client.post("/books/bankfeeds/sync", headers=H))  # nothing is read until the user reconnects
+    assert again["connections"][0]["reauth"] is True and len(FAKES.requests) == before
+    # Reconnecting the same bank replaces the stale connection instead of listing both.
+    [fresh] = _connect(client)["connections"]
+    assert fresh["id"] != conn["id"] and fresh["state"] == "ok"
 
 
 async def test_one_bank_down_does_not_fail_the_sync(client: TestClient) -> None:
@@ -412,7 +457,10 @@ async def test_reconfirm_prompt_then_extend(client: TestClient, clock: Clock, fa
     assert got["reauthorise"] is False
     assert got["connection"]["state"] == "ok" and got["connection"]["days_left"] == 90
     extend = next(r for r in FAKES.requests if r.url.path.endswith("/connections/extend"))
-    assert json.loads(extend.content)["user_has_reconfirmed_consent"] is True
+    assert extend.url.host == "api.truelayer-sandbox.com"  # INT-01: the api. host, not auth.
+    sent = json.loads(extend.content)
+    assert sent["user_has_reconfirmed_consent"] is True and sent["redirect_uri"]
+    assert sent["user"]["email"] == USER and sent["user"]["name"] and sent["user"]["id"] != USER
     assert "bank_feed_reconfirmed" in [a["action"] for a in await _audit(fake)]
 
 
@@ -421,7 +469,9 @@ def test_reconfirm_when_the_bank_wants_the_user_back(client: TestClient, clock: 
     clock.day = TODAY + timedelta(days=85)
     FAKES.extend_needs_reauth = True
     got = _ok(client.post(f"/books/bankfeeds/{conn['id']}/reconfirm", json={"confirm": True}, headers=H))
-    assert got["reauthorise"] is True and "connect again" in got["message"]
+    assert got["reauthorise"] is True and "Reconnect your bank" in got["message"]
+    [v] = _ok(client.get("/books/bankfeeds", headers=H))["connections"]
+    assert v["state"] == "reconnect"
 
 
 def test_after_expiry_nothing_is_read(client: TestClient, clock: Clock) -> None:

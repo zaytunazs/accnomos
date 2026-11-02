@@ -9,13 +9,15 @@ transactions into the bank lines. Same headers as /books/*.
     POST /books/bankfeeds/sync                     fetch new transactions (the call made when the app opens)
     POST /books/bankfeeds/{id}/reconfirm           {confirm: true}: the user reconfirmed; extend the consent
     POST /books/bankfeeds/{id}/disconnect          {confirm: true}: forget it here and end it at TrueLayer
+    GET  /books/bankfeeds/duplicates               feed lines left out as already in a statement (kept, not counted)
+    POST /books/bankfeeds/duplicates/{line}/restore {confirm: true}: "not a duplicate": add it to the bank lines
 """
 
 from __future__ import annotations
 
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from pydantic import BaseModel, Field, StrictBool
 
@@ -115,13 +117,29 @@ def _confirmed(body: ConfirmBody) -> None:
         raise HTTPException(status_code=400, detail="Nothing was changed: confirm in the app first (confirm: true)")
 
 
+async def _display_name(request: Request) -> str | None:
+    """Microsoft's display name for the signed-in user (cached by app/identity.py), for TrueLayer's `user` object."""
+    from app import identity
+
+    if demo.is_demo_request(request):
+        return None
+    try:
+        return (await identity.verified_identity(identity.bearer(request), request.headers.get("X-User"))).name or None
+    except HTTPException:
+        return None
+
+
 @router.post("/{connection_id}/reconfirm", response_model=bf.ReconfirmResult)
 async def reconfirm(
-    connection_id: str, body: ConfirmBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+    connection_id: str,
+    body: ConfirmBody,
+    request: Request,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> bf.ReconfirmResult:
     _confirmed(body)
     try:
-        return await bf.reconfirm(books, connection_id, user)
+        return await bf.reconfirm(books, connection_id, user, await _display_name(request))
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="No such bank feed") from exc
     except bf.BankFeedError as exc:
@@ -143,3 +161,19 @@ async def disconnect(
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="No such bank feed") from exc
     return DisconnectResult(status=await bf.status(books), warning=warning)
+
+
+@router.get("/duplicates", response_model=list[bf.FlaggedDuplicate])
+async def duplicates(books: Books = Depends(get_books)) -> list[bf.FlaggedDuplicate]:
+    return await bf.list_duplicates(books)
+
+
+@router.post("/duplicates/{line_id}/restore", response_model=list[bf.FlaggedDuplicate])
+async def restore_duplicate(
+    line_id: str, body: ConfirmBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> list[bf.FlaggedDuplicate]:
+    _confirmed(body)
+    try:
+        return await bf.restore_duplicate(books, line_id, user)
+    except FileNotFoundError as exc:
+        raise HTTPException(status_code=404, detail="No such flagged line") from exc
