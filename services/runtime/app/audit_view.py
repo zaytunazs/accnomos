@@ -204,9 +204,15 @@ SUMMARIES: dict[str, Summary] = {
     "bank_feed_synced": lambda r, w: (
         "Fetched the bank feed: "
         + _plural(_n(r, "new"), "new line")
-        + (f", {_plural(_n(r, 'duplicates'), 'line')} already in a statement" if r.get("duplicates") else "")
+        + (
+            f", {_plural(_n(r, 'duplicates'), 'line')} already in a statement (kept aside)"
+            if r.get("duplicates")
+            else ""
+        )
     ),
     "bank_feed_reconfirmed": lambda r, w: f"Reconfirmed the {r.get('bank') or 'bank'} feed for another 90 days",
+    "bank_feed_reauth_needed": lambda r, w: f"{r.get('bank') or 'The bank'} asked for a new sign-in: reconnect needed",
+    "bank_feed_duplicate_restored": lambda r, w: "Added a bank-feed line that had been set aside as a duplicate",
     "bank_feed_disconnected": lambda r, w: f"Disconnected the {r.get('bank') or 'bank'} feed",
     # Sales invoices
     "invoice_profile_saved": lambda r, w: "Saved your invoice details",
