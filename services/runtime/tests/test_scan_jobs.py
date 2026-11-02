@@ -322,6 +322,24 @@ def test_a_job_whose_work_stopped_reads_as_interrupted(client: TestClient, fake:
     assert client.get("/books/scan/jobs/not-an-id", headers=H).status_code == 404
 
 
+def test_scan_again_reads_an_interrupted_jobs_files(client: TestClient, fake: FakeStorageProvider, model) -> None:
+    """The app's "Scan again" button: the stopped files are still in 00 Inbox; a new job with their names reads them."""
+    fake.files["00 Inbox/currys.jpg"] = SCREWFIX
+    old = scan_jobs.ScanJob(
+        id="ef" * 16,
+        created_at=now() - timedelta(hours=1),
+        updated_at=now() - timedelta(hours=1),
+        files=[scan_jobs.ScanFile(name="currys.jpg", path="00 Inbox/currys.jpg", stage="reading")],
+    )
+    fake.files[f"_System/Scans/{old.id}.json"] = old.model_dump_json().encode()
+    stopped = client.get(f"/books/scan/jobs/{old.id}", headers=H).json()
+    names = [f["name"] for f in stopped["files"] if f["stage"] == "failed" and f["route"] == "inbox"]
+    assert stopped["interrupted"] is True and names == ["currys.jpg"]
+    again = client.post("/books/scan/jobs", headers=H, json={"names": names}).json()
+    assert again["id"] != old.id
+    assert _stages(_wait(client, again["id"], "waiting")) == {"currys.jpg": "confirm"}
+
+
 def test_missing_and_path_names(client: TestClient, fake: FakeStorageProvider) -> None:
     assert client.post("/books/scan/jobs", headers=H, json={"names": ["../x.jpg"]}).status_code == 400
     job = client.post("/books/scan/jobs", headers=H, json={"names": ["gone.jpg"]}).json()

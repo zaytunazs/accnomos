@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import { runtime, type RtDocKind, type RtScanFile, type RtScanJob } from "@/lib/runtime";
-import { KIND_LABEL, KINDS, untrackScanJob, updateScanJob, useScanJobs } from "@/lib/scan-jobs";
+import { KIND_LABEL, KINDS, trackScanJob, untrackScanJob, updateScanJob, useScanJobs } from "@/lib/scan-jobs";
 
 /**
  * Every background scan this browser follows (lib/scan-jobs.ts): one progress bar per file (uploaded → reading →
@@ -66,6 +66,22 @@ function JobCard({ job, account }: { job: RtScanJob; account: AccountInfo }) {
   const [error, setError] = useState<string | null>(null);
   const waiting = job.files.filter((f) => f.stage === "confirm");
   const kindOf = (f: RtScanFile): RtDocKind => choice[f.name] ?? f.guess?.kind ?? "other";
+  // After a restart the unfinished files are still in 00 Inbox (route "inbox"): one tap reads them again.
+  const stopped = job.interrupted ? job.files.filter((f) => f.stage === "failed" && f.route === "inbox") : [];
+
+  async function scanAgain() {
+    setBusy(true);
+    setError(null);
+    try {
+      const fresh = await runtime.startScan(account, stopped.map((f) => f.name), job.source);
+      trackScanJob(fresh);
+      untrackScanJob(job.id);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function confirm(files: RtScanFile[]) {
     setBusy(true);
@@ -94,6 +110,17 @@ function JobCard({ job, account }: { job: RtScanJob; account: AccountInfo }) {
               className="h-11 rounded-xl bg-teal px-4 text-sm font-bold text-white disabled:opacity-60"
             >
               Confirm all {waiting.length}
+            </button>
+          )}
+          {stopped.length > 0 && (
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void scanAgain()}
+              data-scan-again=""
+              className="h-11 rounded-xl bg-teal px-4 text-sm font-bold text-white disabled:opacity-60"
+            >
+              Scan {stopped.length === 1 ? "it" : `these ${stopped.length}`} again
             </button>
           )}
           {job.status === "done" && (
