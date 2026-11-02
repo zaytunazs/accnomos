@@ -27,7 +27,11 @@ export default function JoinPage() {
       <p className="mt-6 text-[15px] leading-relaxed">
         Want to look around first?{" "}
         <DemoLink className="font-bold text-teal-dark underline underline-offset-2 hover:text-teal">Try the demo</DemoLink>{" "}
-        with fictional sample books, or read{" "}
+        with a fictional company&apos;s books, try the{" "}
+        <DemoLink kind="personal" className="font-bold text-teal-dark underline underline-offset-2 hover:text-teal">
+          personal demo
+        </DemoLink>{" "}
+        with a fictional household&apos;s money, or read{" "}
         <Link href="/how-it-works" className="font-bold text-teal-dark underline underline-offset-2 hover:text-teal">
           how each feature works
         </Link>

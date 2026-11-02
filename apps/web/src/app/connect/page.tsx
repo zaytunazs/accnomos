@@ -21,11 +21,12 @@ export default function ConnectPage() {
           Just looking? Try the demo first
         </h2>
         <p className="mt-1 text-sm leading-relaxed text-[#4B5159]">
-          A sandbox with a fictional business&apos;s books (labelled SAMPLE), no sign-in needed. It resets after 2 hours and
-          sends nothing anywhere. <Link href="/judges" className="font-bold text-[#0A4F47] underline underline-offset-2">Judging? Start here</Link>.
+          Two sandboxes, no sign-in needed: a fictional business&apos;s books, or a fictional household&apos;s own money
+          (both labelled SAMPLE). Each resets after 2 hours and sends nothing anywhere. <Link href="/judges" className="font-bold text-[#0A4F47] underline underline-offset-2">Judging? Start here</Link>.
         </p>
-        <div className="mt-3">
-          <TryDemo />
+        <div className="mt-3 flex flex-wrap gap-2">
+          <TryDemo label="Company demo — no sign-in" />
+          <TryDemo kind="personal" next="/personal" label="Personal demo — no sign-in" variant="secondary" />
         </div>
       </section>
       </IfDemoAvailable>

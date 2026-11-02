@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { demoAlive, isDemo, leaveDemo, startDemo } from "@/lib/demo";
+import { DEMO_KINDS, demoAlive, demoKind, isDemo, leaveDemo, startDemo, type DemoKind } from "@/lib/demo";
 
 /** Reset demo: a fresh copy of the sample books (the runtime drops the old one), then Home. */
 export async function resetDemo(): Promise<void> {
@@ -11,6 +11,14 @@ export async function resetDemo(): Promise<void> {
   // eslint-disable-next-line @next/next/no-location-assign-relative-destination
   window.location.assign("/");
 }
+
+/** Switch between the company and personal demos: a fresh session of the other kind, on its starting page. */
+export async function switchDemo(kind: DemoKind): Promise<void> {
+  await startDemo(kind);
+  window.location.assign(kind === "company" ? "/" : DEMO_KINDS[kind].next);
+}
+
+const other = (k: DemoKind): DemoKind => (k === "company" ? "personal" : "company");
 
 function useDemo(dep?: unknown): boolean {
   const [demo, setDemo] = useState(false);
@@ -32,6 +40,10 @@ export default function DemoBar() {
   const [ended, setEnded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [kind, setKind] = useState<DemoKind>("company");
+  useEffect(() => {
+    if (demo) queueMicrotask(() => setKind(demoKind() ?? "company"));
+  }, [demo]);
 
   useEffect(() => {
     if (!demo) return;
@@ -44,11 +56,11 @@ export default function DemoBar() {
 
   if (!demo) return null;
 
-  async function reset() {
+  async function run(work: () => Promise<void>) {
     setBusy(true);
     setError(null);
     try {
-      await resetDemo();
+      await work();
     } catch (e) {
       setError((e as Error).message);
       setBusy(false);
@@ -62,7 +74,9 @@ export default function DemoBar() {
           <span className="font-bold">This demo has ended (demos reset after 2 hours). Start a new one to carry on.</span>
         ) : (
           <span>
-            <span className="font-extrabold">SAMPLE — FICTIONAL COMPANY</span>
+            <span className="font-extrabold" data-demo-kind={kind}>
+              {DEMO_KINDS[kind].label}
+            </span>
             <span aria-hidden="true"> · </span>
             <span className="font-bold">Demo sandbox with sample data — changes reset after 2 hours.</span>
           </span>
@@ -71,8 +85,12 @@ export default function DemoBar() {
           Set up your own books →
         </button>
         <span aria-hidden="true">·</span>
-        <button type="button" onClick={reset} disabled={busy} className={linkBtn}>
+        <button type="button" onClick={() => void run(resetDemo)} disabled={busy} className={linkBtn}>
           {busy ? "Resetting…" : ended ? "Start a new demo" : "Reset demo"}
+        </button>
+        <span aria-hidden="true">·</span>
+        <button type="button" onClick={() => void run(() => switchDemo(other(kind)))} disabled={busy} className={linkBtn}>
+          {other(kind) === "personal" ? "Switch to the personal demo" : "Switch to the company demo"}
         </button>
         {error && (
           <span role="alert" className="w-full font-semibold">
@@ -88,6 +106,10 @@ export default function DemoBar() {
 export function DemoMenu() {
   const demo = useDemo();
   const [busy, setBusy] = useState(false);
+  const [kind, setKind] = useState<DemoKind>("company");
+  useEffect(() => {
+    if (demo) queueMicrotask(() => setKind(demoKind() ?? "company"));
+  }, [demo]);
   if (!demo) return null;
   return (
     <div className="flex flex-col gap-1 rounded-2xl border border-border p-3 text-sm">
@@ -107,6 +129,21 @@ export function DemoMenu() {
         className="mt-1 h-10 rounded-xl border border-border bg-white px-3 text-left font-bold text-teal-dark hover:bg-ground"
       >
         {busy ? "Resetting…" : "Reset demo"}
+      </button>
+      <button
+        type="button"
+        disabled={busy}
+        onClick={async () => {
+          setBusy(true);
+          try {
+            await switchDemo(other(kind));
+          } catch {
+            setBusy(false);
+          }
+        }}
+        className="h-10 rounded-xl px-3 text-left font-bold text-teal-dark hover:bg-ground"
+      >
+        {other(kind) === "personal" ? "Switch to the personal demo" : "Switch to the company demo"}
       </button>
       <button
         type="button"

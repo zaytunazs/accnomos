@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, type ReactNode } from "react";
-import { isDemo, startDemo } from "@/lib/demo";
+import { isDemo, startDemo, type DemoKind } from "@/lib/demo";
 import { runtimeHealth } from "@/lib/runtime";
 
 let healthOnce: Promise<boolean | null> | null = null;
@@ -37,11 +37,13 @@ export default function TryDemo({
   label = "Try the demo — no sign-in",
   variant = "primary",
   always = false,
+  kind = "company",
 }: {
   next?: string;
   label?: string;
   variant?: "primary" | "secondary";
   always?: boolean;
+  kind?: DemoKind;
 }) {
   const available = useDemoAvailable();
   const [busy, setBusy] = useState(false);
@@ -53,7 +55,7 @@ export default function TryDemo({
     setBusy(true);
     setError(null);
     try {
-      await startDemo();
+      await startDemo(kind);
       window.location.assign(next); // a full load, so every page picks the demo session up
     } catch (e) {
       setError((e as Error).message);

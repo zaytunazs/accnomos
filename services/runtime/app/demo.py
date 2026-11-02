@@ -15,6 +15,11 @@ in-memory fakes instead:
   refused for demo sessions (403).
 * AI calls use the server's normal AI configuration, exactly as for a signed-in user.
 
+Two demos (`POST /demo/session?kind=`): `company` (the default, above) and `personal`, a fictional household's
+books (app/demo_personal.py: bank lines, household budgets and goals, labelled "SAMPLE — FICTIONAL HOUSEHOLD"),
+built in about a second, once a day like the company books, with no mail, contacts or calendar. The company books
+also get three business goals sized from their own figures (app/demo_personal.add_company_goals).
+
 Nothing is stored about the visitor: no Microsoft password or refresh token exists anywhere in this flow, and a
 session is gone after `DEMO_IDLE_TTL_S` (2 h) without a request, when it is the least recently used of
 `DEMO_MAX_SESSIONS` (200), or when the runtime restarts.
@@ -44,10 +49,10 @@ from collections import OrderedDict
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
-from typing import Any
+from typing import Any, Literal
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, HTTPException, Request, Response
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel
 
 from accnomos_connectors import (
@@ -175,6 +180,7 @@ class DemoSession:
     today: date
     created: float
     last_used: float
+    kind: DemoKind = "company"
 
     @property
     def token_key(self) -> str:
@@ -297,12 +303,18 @@ def is_demo_request(request: Request) -> bool:
 # --------------------------------------------------------------------------- #
 
 
+DemoKind = Literal["company", "personal"]
+KINDS: tuple[DemoKind, ...] = ("company", "personal")
+LABELS: dict[str, str] = {"company": LABEL, "personal": "SAMPLE — FICTIONAL HOUSEHOLD"}
+
+
 @dataclass
 class Snapshot:
     day: date
     storage: FakeStorageProvider
     business: str
     seconds: float
+    kind: DemoKind = "company"
 
 
 async def build_full(day: date) -> Snapshot:
@@ -321,58 +333,84 @@ async def build_full(day: date) -> Snapshot:
     for d in picks:
         path = f"{INBOX}/{d.file_name}"
         await seed._propose(books, d, plan, arrived=(path, st.files[path]))
+    from app import demo_personal
+
+    await demo_personal.add_company_goals(st, day)  # three goals sized from these books (app/goals.py)
     return Snapshot(day, st, plan.business, time.perf_counter() - started)
 
 
+async def build_personal(day: date) -> Snapshot:
+    """The personal demo: a fictional household's bank lines, budgets and goals (app/demo_personal.py), seconds."""
+    from app import demo_personal
+
+    started = time.perf_counter()
+    st = await demo_personal.build_storage(day)
+    return Snapshot(day, st, demo_personal.HOUSEHOLD, time.perf_counter() - started, kind="personal")
+
+
 BUILD: Callable[[date], Coroutine[Any, Any, Snapshot]] = build_full  # tests swap in a small one
+BUILD_PERSONAL: Callable[[date], Coroutine[Any, Any, Snapshot]] = build_personal
 SEED_TIMEOUT_S = _env_num("DEMO_SEED_TIMEOUT_S", 600)
 
 
 @dataclass
 class _Build:
     day: date
+    kind: DemoKind = "company"
     done: threading.Event = field(default_factory=threading.Event)
     result: Snapshot | None = None
     error: BaseException | None = None
 
 
 _lock = threading.Lock()
-_snap: Snapshot | None = None
+_snap: Snapshot | None = None  # the company demo's books
 _builds: dict[date, _Build] = {}
+_psnap: Snapshot | None = None  # the personal demo's books
+_pbuilds: dict[date, _Build] = {}
+
+
+def _builder(kind: DemoKind) -> Callable[[date], Coroutine[Any, Any, Snapshot]]:
+    return BUILD_PERSONAL if kind == "personal" else BUILD  # looked up per build, so tests can swap either
 
 
 def _run_build(b: _Build) -> None:
-    global _snap
+    global _snap, _psnap
+    builds = _pbuilds if b.kind == "personal" else _builds
     try:
-        result = b.result = asyncio.run(BUILD(b.day))
-        log.info("demo sandbox: sample books for %s seeded in %.1f s", b.day, result.seconds)
+        result = b.result = asyncio.run(_builder(b.kind)(b.day))
+        log.info("demo sandbox: %s sample books for %s seeded in %.1f s", b.kind, b.day, result.seconds)
         with _lock:
-            if _snap is None or _snap.day <= b.day:
-                _snap = result
-            for d in [d for d in _builds if d < b.day]:
-                _builds.pop(d, None)
+            current = _psnap if b.kind == "personal" else _snap
+            if current is None or current.day <= b.day:
+                if b.kind == "personal":
+                    _psnap = result
+                else:
+                    _snap = result
+            for d in [d for d in builds if d < b.day]:
+                builds.pop(d, None)
     except BaseException as exc:  # noqa: BLE001  reported to every waiter; the next request starts again
-        log.warning("demo sandbox: seeding failed: %s", type(exc).__name__, exc_info=True)
+        log.warning("demo sandbox: %s seeding failed: %s", b.kind, type(exc).__name__, exc_info=True)
         b.error = exc
     finally:
         b.done.set()
 
 
-def start_build(day: date) -> _Build:
+def start_build(day: date, kind: DemoKind = "company") -> _Build:
+    builds = _pbuilds if kind == "personal" else _builds
     with _lock:
-        b = _builds.get(day)
+        b = builds.get(day)
         if b is None or (b.done.is_set() and b.error is not None):
-            b = _builds[day] = _Build(day)
-            threading.Thread(target=_run_build, args=(b,), name=f"demo-seed-{day}", daemon=True).start()
+            b = builds[day] = _Build(day, kind)
+            threading.Thread(target=_run_build, args=(b,), name=f"demo-seed-{kind}-{day}", daemon=True).start()
         return b
 
 
-async def snapshot(day: date) -> Snapshot:
-    """Today's seeded books, built on first need; waiters poll rather than hold a worker thread each."""
-    s = _snap
+async def snapshot(day: date, kind: DemoKind = "company") -> Snapshot:
+    """Today's seeded books of that kind, built on first need; waiters poll rather than hold a worker thread each."""
+    s = _psnap if kind == "personal" else _snap
     if s is not None and s.day == day:
         return s
-    b = start_build(day)
+    b = start_build(day, kind)
     deadline = time.monotonic() + SEED_TIMEOUT_S
     while not b.done.is_set():
         if time.monotonic() > deadline:
@@ -384,10 +422,11 @@ async def snapshot(day: date) -> Snapshot:
 
 
 def reset_for_tests() -> None:
-    global _snap
+    global _snap, _psnap
     with _lock:
-        _snap = None
+        _snap = _psnap = None
         _builds.clear()
+        _pbuilds.clear()
     STORE.sessions.clear()
     for limiter in (CREATE_LIMITER, GRAPH_LIMITER):
         if limiter:
@@ -461,21 +500,23 @@ def _calendar(day: date) -> FakeCalendarProvider:
     )
 
 
-async def new_session(day: date | None = None) -> tuple[str, DemoSession]:
+async def new_session(day: date | None = None, kind: DemoKind = "company") -> tuple[str, DemoSession]:
     day = day or current_date()
-    snap = await snapshot(day)
+    snap = await snapshot(day, kind)
     now = STORE.clock()
     s = DemoSession(
         id=secrets.token_urlsafe(24),
         storage=DemoStorage(snap.storage, LIMITS),
-        mail=_mailbox(),
+        # The household has no trade mail, customers or site visits: empty fakes, so nothing business-like shows.
+        mail=_mailbox() if kind == "company" else FakeMailProvider(),
         sender=FakeMailSender(),
-        contacts=FakeContactsProvider(_contacts()),
-        calendar=_calendar(day),
+        contacts=FakeContactsProvider(_contacts() if kind == "company" else []),
+        calendar=_calendar(day) if kind == "company" else FakeCalendarProvider([]),
         business=snap.business,
         today=day,
         created=now,
         last_used=now,
+        kind=kind,
     )
     STORE.add(s)
     return sign(s.id), s
@@ -490,6 +531,7 @@ router = APIRouter(prefix="/demo", tags=["demo sandbox"])
 
 class SessionInfo(BaseModel):
     session: str | None = None  # the token: only in the answer to POST
+    kind: DemoKind = "company"  # company: Bramblewood Joinery; personal: a fictional household
     business: str
     label: str = LABEL
     user: str = USER
@@ -499,7 +541,14 @@ class SessionInfo(BaseModel):
 
 
 def _info(s: DemoSession, token: str | None = None) -> SessionInfo:
-    return SessionInfo(session=token, business=s.business, today=s.today, idle_ttl_s=int(LIMITS.idle_ttl_s))
+    return SessionInfo(
+        session=token,
+        kind=s.kind,
+        business=s.business,
+        label=LABELS[s.kind],
+        today=s.today,
+        idle_ttl_s=int(LIMITS.idle_ttl_s),
+    )
 
 
 def _client_ip(request: Request) -> str:
@@ -507,9 +556,12 @@ def _client_ip(request: Request) -> str:
 
 
 @router.post("/session", response_model=SessionInfo, response_model_exclude_none=True)
-async def start_session(request: Request) -> SessionInfo:
-    """A fresh sandbox with the sample books. Sent with a current `X-Demo-Session`, that one is dropped first
-    (Reset demo). Rate-limited per IP."""
+async def start_session(
+    request: Request,
+    kind: DemoKind = Query("company", description="company (Bramblewood Joinery) or personal (a household)"),
+) -> SessionInfo:
+    """A fresh sandbox with the sample books of that kind. Sent with a current `X-Demo-Session`, that one is dropped
+    first (Reset demo, or switching between the company and personal demos). Rate-limited per IP."""
     if CREATE_LIMITER and (wait := CREATE_LIMITER.take(_client_ip(request))):
         raise HTTPException(
             429,
@@ -519,7 +571,7 @@ async def start_session(request: Request) -> SessionInfo:
     if (old := request.headers.get(HEADER)) and (raw := unsign(old)):
         STORE.drop(raw)
     try:
-        token, s = await new_session()
+        token, s = await new_session(kind=kind)
     except Exception as exc:  # noqa: BLE001  the details are in the log (seeding is retried on the next request)
         log.warning("demo sandbox: no session: %s", type(exc).__name__)
         raise HTTPException(503, "The demo sandbox couldn't be prepared just now; try again in a minute.") from exc
@@ -548,13 +600,23 @@ async def graph(rest: str, request: Request) -> Response:
 
 
 def status() -> dict[str, Any]:
-    """For /health: whether demos can start, and whether today's books are ready. The first health check (the
-    container's, or the web app's) starts seeding them, so seeding never slows the runtime's own start-up."""
-    s, day = _snap, current_date()
+    """For /health: whether demos can start, and whether today's books of each kind are ready. The first health check
+    (the container's, or the web app's) starts seeding the company books, so seeding never slows the runtime's own
+    start-up; the household books take a second and are built on the first personal demo, or by the next check."""
+    day = current_date()
+    s, p = _snap, _psnap
     ready = s is not None and s.day == day
+    personal_ready = p is not None and p.day == day
     if not ready:
         start_build(day)
-    return {"enabled": True, "ready": ready, "sessions": len(STORE)}
+    elif not personal_ready:
+        start_build(day, "personal")
+    return {
+        "enabled": True,
+        "ready": ready,
+        "kinds": {"company": ready, "personal": personal_ready},
+        "sessions": len(STORE),
+    }
 
 
 def enable() -> None:
