@@ -8,7 +8,9 @@ import 'accountant_screen.dart';
 import 'audit_screen.dart';
 import 'bank_screen.dart';
 import 'contacts_screen.dart';
+import 'ask_screen.dart';
 import 'files_screen.dart';
+import 'goals_screen.dart';
 import 'invoices_screen.dart';
 import 'jobs_screen.dart';
 import 'month_end_screen.dart';
@@ -36,7 +38,8 @@ class MoreEntry {
 /// or an older runtime without `GET /profile`) show everything. Personal
 /// shows only while Settings › Personal has "Show personal finances" on.
 List<MoreEntry> moreEntries(List<String>? features,
-    {bool showPersonal = false}) {
+    {bool showPersonal = false, bool household = false}) {
+  if (household) return householdMoreEntries;
   final vat = features == null || features.contains('vat');
   final all = [
     const MoreEntry(Icons.folder_outlined, 'Files',
@@ -67,6 +70,8 @@ List<MoreEntry> moreEntries(List<String>? features,
             ? 'Profit and loss, aged balances, VAT and trend'
             : 'Profit and loss, aged balances and trend',
         const ReportsScreen()),
+    const MoreEntry(Icons.flag_outlined, 'Goals',
+        'Targets tracked against your books', GoalsScreen()),
     const MoreEntry(Icons.handshake_outlined, 'Your accountant',
         'Who can see your books, and their queries — read only', AccountantScreen()),
     const MoreEntry(Icons.history_outlined, 'Audit trail',
@@ -79,12 +84,31 @@ List<MoreEntry> moreEntries(List<String>? features,
   ];
 }
 
+/// The More rows for personal books (the household app): Budget and Goals
+/// are tabs, Ask moves here, and nothing business-only (invoices, jobs,
+/// vehicles, payroll, month-end, business reports, accountant) shows.
+const householdMoreEntries = [
+  MoreEntry(Icons.chat_bubble_outline, 'Ask',
+      'Questions about your money, answered from your books', AskScreen()),
+  MoreEntry(Icons.account_balance_outlined, 'Bank',
+      'Statements, unmatched lines and rules', BankScreen()),
+  MoreEntry(Icons.folder_outlined, 'Files',
+      'Your Accnomos folder in OneDrive', FilesScreen()),
+  MoreEntry(Icons.people_outline, 'Contacts', 'People and payees',
+      ContactsScreen()),
+  MoreEntry(Icons.history_outlined, 'Audit trail',
+      'Who did what in your books — read only', AuditScreen()),
+];
+
 /// "More" tab: keeps the bottom bar at five items while the new thin
 /// clients live one tap away. Signed in, it reads the books' profile
 /// (`GET /profile`) and leaves out what those books do not have. The Personal
 /// entry only shows while Settings › Personal has "Show personal finances" on.
 class MoreScreen extends StatefulWidget {
-  const MoreScreen({super.key, this.features});
+  const MoreScreen({super.key, this.features, this.household = false});
+
+  /// The household app's More (personal books, or the household sample).
+  final bool household;
 
   /// The profile's features, for tests; null reads them from the runtime.
   final List<String>? features;
@@ -138,7 +162,8 @@ class _MoreScreenState extends State<MoreScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
         children: [
-          for (final e in moreEntries(_features, showPersonal: _showPersonal))
+          for (final e in moreEntries(_features,
+              showPersonal: _showPersonal, household: widget.household))
             _Entry(entry: e),
         ],
       ),

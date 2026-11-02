@@ -11,6 +11,9 @@ class AccnomosColors {
   static const Color ground = Color(0xFFF4F3EE);
   static const Color muted = Color(0xFF4B5159);
 
+  /// Card outlines (goal cards, household Home panels), as the web's border.
+  static const Color border = Color(0xFFDCE5E9);
+
   /// Budget progress states on the Personal screen: on track, close to
   /// the limit, and over it.
   static const Color budgetOk = Color(0xFF0A4F47);
