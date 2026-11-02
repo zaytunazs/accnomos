@@ -590,6 +590,14 @@ export const runtime = {
         method: "POST",
         body: JSON.stringify({ confirm: true }),
       }),
+    /** Feed lines left out as already in a statement: kept, in no total, until the user adds one back. */
+    duplicates: (a: AccountInfo) => call<RtFeedDuplicate[]>(a, "/books/bankfeeds/duplicates"),
+    /** "Not a duplicate": add the flagged line to the bank lines; answers the lines still flagged. */
+    restoreDuplicate: (a: AccountInfo, lineId: string) =>
+      call<RtFeedDuplicate[]>(a, `/books/bankfeeds/duplicates/${encodeURIComponent(lineId)}/restore`, {
+        method: "POST",
+        body: JSON.stringify({ confirm: true }),
+      }),
   },
   /** /books/bank/* (services/runtime/app/routes_bank.py): statements, matches and unmatched lines. */
   bank: {
@@ -2521,7 +2529,7 @@ export interface RtFeedConnection {
   consent_expires_at: string;
   reconfirm_by: string;
   days_left: number;
-  state: "ok" | "reconfirm" | "expired" | "key_changed";
+  state: "ok" | "reconfirm" | "reconnect" | "expired" | "key_changed";
   message: string;
   connected_at: string;
   last_synced_at: string | null;
@@ -2541,7 +2549,20 @@ export interface RtFeedSync {
   already_fetched: number;
   skipped: number;
   filed_path: string | null;
-  connections: { id: string; bank: string; fetched: number; error: string | null }[];
+  connections: { id: string; bank: string; fetched: number; error: string | null; reauth?: boolean }[];
+  /** Feed lines flagged by this fetch as already in a statement (not in any total). */
+  duplicates?: RtFeedDuplicate[];
+}
+/** A feed line paired with a statement line (services/runtime/app/bank_feeds.py FlaggedDuplicate). */
+export interface RtFeedDuplicate {
+  line_id: string;
+  date: string;
+  amount_pence: number;
+  description: string;
+  duplicate_of: string;
+  duplicate_of_date: string | null;
+  duplicate_of_description: string | null;
+  flagged_at: string;
 }
 export interface RtFeedReconfirm {
   connection: RtFeedConnection | null;

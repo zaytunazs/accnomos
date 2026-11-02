@@ -62,12 +62,30 @@ def test_static_site_sends_security_headers():
         assert re.search(rf"^\s*Header always set {h} ", htaccess, re.M), h
 
 
-def test_static_site_has_a_full_csp_in_report_only_mode():
-    """The enforced CSP stays frame/object/base only; the report-only one says where tokens may go (connect-src)."""
+def _policy(htaccess: str, header: str) -> dict[str, list[str]]:
+    m = re.search(rf'^\s*Header always set {header} "([^"]+)"$', htaccess, re.M)
+    assert m, header
+    return {d.split()[0]: d.split()[1:] for d in (x.strip() for x in m.group(1).split(";")) if d}
+
+
+def test_static_site_enforces_connect_src_and_form_action():
+    """SEC-04: where tokens may go (connect-src) and where forms may post are enforced, independent of script-src;
+    the enforced connect-src is the report-only one's, so the two never drift."""
     htaccess = (ROOT / "apps/web/public/.htaccess").read_text()
-    m = re.search(r'^\s*Header always set Content-Security-Policy-Report-Only "([^"]+)"$', htaccess, re.M)
-    assert m
-    policy = {d.split()[0]: d.split()[1:] for d in (x.strip() for x in m.group(1).split(";")) if d}
+    enforced = _policy(htaccess, "Content-Security-Policy")
+    report = _policy(htaccess, "Content-Security-Policy-Report-Only")
+    assert enforced["frame-ancestors"] == ["'none'"] and enforced["object-src"] == ["'none'"]
+    assert enforced["base-uri"] == ["'self'"] and enforced["form-action"] == ["'self'"]
+    assert enforced["connect-src"] == report["connect-src"]
+    assert "script-src" not in enforced and "default-src" not in enforced  # scripts stay report-only (no nonce)
+    serve = (ROOT / "apps/web/e2e/serve.mjs").read_text()
+    assert "Content-Security-Policy" in serve and "https://api.accnomos.com" in serve  # e2e runs under it
+
+
+def test_static_site_has_a_full_csp_in_report_only_mode():
+    """The report-only CSP is the full policy; it says where tokens may go (connect-src)."""
+    htaccess = (ROOT / "apps/web/public/.htaccess").read_text()
+    policy = _policy(htaccess, "Content-Security-Policy-Report-Only")
     assert policy["default-src"] == ["'self'"] and policy["object-src"] == ["'none'"]
     connect = policy["connect-src"]
     deploy = (ROOT / ".github/workflows/deploy-web.yml").read_text()

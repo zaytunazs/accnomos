@@ -54,7 +54,7 @@ export default function BankFeedOnOpen() {
     <div role="note" aria-label="Bank feed" className="border-b border-warn-border bg-warn-bg px-4 py-2 text-sm font-semibold text-warn-ink print:hidden">
       {first.bank}: {first.message}{" "}
       <Link href="/bank#bank-feed" className="underline underline-offset-2">
-        {first.state === "reconfirm" ? "Reconfirm on Bank" : "Connect again on Bank"}
+        {first.state === "reconfirm" ? "Reconfirm on Bank" : first.state === "reconnect" ? "Reconnect on Bank" : "Connect again on Bank"}
       </Link>
     </div>
   );

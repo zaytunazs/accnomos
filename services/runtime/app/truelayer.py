@@ -17,9 +17,13 @@ are from TrueLayer's documentation as quoted in search results and from the publ
   * `GET {api}/data/v1/accounts`, `GET {api}/data/v1/accounts/{id}/transactions?from=&to=`: `{"results": [...],
     "status": "Succeeded"}`; a transaction has `transaction_id`, `timestamp`, `description`, `amount`, `currency`,
     `transaction_type` (DEBIT | CREDIT), `running_balance.amount`, `meta.provider_reference`.
-  * https://support.truelayer.com/hc/en-us/articles/360017594238 (re-authentication): `POST {auth}/connections/extend`
-    with the `refresh_token` and `user_has_reconfirmed_consent: true` extends the consent after the user reconfirmed
-    it in our app (FCA PS21/19); when the bank itself wants the user back, the answer carries a `user_input_link`.
+  * https://docs.truelayer.com/reference/extendconnection (read 2 Nov 2026, the API reference itself):
+    `POST {api}/connections/extend` (the `api.` host, not `auth.`) with `client_id`, `client_secret`,
+    `refresh_token`, `redirect_uri`, `user_has_reconfirmed_consent: true` and a required `user` object (`id`;
+    unregulated clients must give `name` and one of `email` / `phone`). The 200 answer is discriminated by
+    `action_needed`: `no_action_needed` (with `access_token`, `expires_in`, `token_type`, `refresh_token`),
+    `authentication_needed` or `reconfirmation_of_consent_needed` (each with a `user_input_link`): the user has to go
+    back through the bank, which here means connecting again.
   * `DELETE {api}/api/delete` with the access token ends the connection at TrueLayer.
 
 Every amount leaves this module as integer pence (`pence_from_amount`); only GBP is read.
@@ -145,16 +149,18 @@ class TrueLayerApi:
     async def refresh(self, refresh_token: str) -> dict[str, Any]:
         return await self._token({"grant_type": "refresh_token", "refresh_token": refresh_token})
 
-    async def extend(self, refresh_token: str) -> dict[str, Any]:
-        """Extend the consent after the user reconfirmed it in the app. UNVERIFIED request and answer shape."""
+    async def extend(self, refresh_token: str, user: dict[str, str]) -> dict[str, Any]:
+        """Extend the consent after the user reconfirmed it in the app (API reference, see the module docstring).
+        `user`: {"id", "name", "email"}, the end user as TrueLayer requires it for an unregulated client."""
         body = {
             "client_id": self.cfg.client_id,
             "client_secret": self.cfg.client_secret,
             "refresh_token": refresh_token,
             "redirect_uri": self.cfg.redirect_uri,
             "user_has_reconfirmed_consent": True,
+            "user": {k: v for k, v in user.items() if v},
         }
-        return await self._send("POST", f"{self.cfg.auth_base}/connections/extend", json=body)
+        return await self._send("POST", f"{self.cfg.api_base}/connections/extend", json=body)
 
     def _bearer(self, access_token: str) -> dict[str, str]:
         return {"Authorization": f"Bearer {access_token}"}
