@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { AccountInfo } from "@azure/msal-browser";
 import { useAccount } from "@/components/jobs/useAccount";
-import { currentFeatures, PROFILE_EVENT } from "@/lib/profiles";
+import { currentFeatures, currentMeta, PROFILE_EVENT } from "@/lib/profiles";
 import { runtime } from "@/lib/runtime";
 import { usePersonalOn } from "@/lib/personal";
 import { useSelfEmployed } from "@/lib/itsa";
@@ -33,20 +33,39 @@ const links: NavLink[] = [
   { href: "/files", label: "Files", tab: "Files" },
 ];
 
+/** Personal books (profile kind "personal"): household pages first, and the tabs a household uses, no VAT tab. */
+const householdLinks: NavLink[] = [
+  { href: "/", label: "Home", tab: "Home" },
+  { href: "/review", label: "Review", tab: "Review" },
+  { href: "/personal", label: "Budget", tab: "Budget" },
+  { href: "/goals", label: "Goals", tab: "Goals" },
+  { href: "/ask", label: "Ask", tab: "Ask" },
+  { href: "/bank", label: "Bank" },
+  { href: "/spending", label: "Spending" },
+  { href: "/prices", label: "Cheaper options" },
+  { href: "/shopping", label: "Shopping list" },
+  { href: "/self-employment", label: "Self-employment" }, // only with Settings › "I am self-employed"
+  { href: "/files", label: "Files" },
+];
+
 /** Pages a profile's kind may lack (services/runtime/app/profile.py features): personal books have no VAT,
  *  invoices or payroll; VAT shows only for a VAT-registered business. */
 const FEATURE_OF: Record<string, string> = { "/invoices": "invoices", "/vat": "vat", "/payroll": "payroll" };
 
-/** The current profile's features (lib/profiles.ts); null until known, and then nothing is hidden. */
-function useFeatures(): string[] | null {
-  const [features, setFeatures] = useState<string[] | null>(null);
+/** The current profile's features (null until known: nothing hidden) and whether its books are personal, kept current (profile switch, Settings). */
+function useProfile(): { features: string[] | null; household: boolean } {
+  const [state, setState] = useState<{ features: string[] | null; household: boolean }>({ features: null, household: false });
   useEffect(() => {
-    const read = () => setFeatures(currentFeatures());
+    const read = () => {
+      const meta = currentMeta();
+      const next = { features: currentFeatures(), household: meta?.exists === true && meta.kind === "personal" };
+      setState((s) => (JSON.stringify(s) === JSON.stringify(next) ? s : next));
+    };
     queueMicrotask(read);
     window.addEventListener(PROFILE_EVENT, read);
     return () => window.removeEventListener(PROFILE_EVENT, read);
   }, []);
-  return features;
+  return state;
 }
 
 const SAMPLE_WAITING = 1; // signed out, Review shows the one sample proposal
@@ -90,10 +109,11 @@ function withBadges(
   selfEmployed: boolean,
   signedOut: boolean,
   landlord = false,
+  household = false,
 ): NavLink[] {
   const all = [
-    ...links,
-    ...(personal ? [{ href: "/personal", label: "Personal" }] : []),
+    ...(household ? householdLinks : links),
+    ...(personal && !household ? [{ href: "/personal", label: "Personal" }] : []),
     ...(landlord ? [{ href: "/property", label: "Property" }] : []),
   ];
   return all
@@ -225,13 +245,15 @@ function TabBar({ pathname, links }: { pathname: string; links: NavLink[] }) {
 export default function AppNav({ variant = "sidebar" }: { variant?: "sidebar" | "tabs" }) {
   const pathname = usePathname();
   const signedOut = useAccount() === null;
+  const profile = useProfile();
   const navLinks = withBadges(
     useReviewBadge(pathname),
-    useFeatures(),
+    profile.features,
     usePersonalOn(),
     useSelfEmployed(),
     signedOut,
     useLandlordOn(),
+    profile.household && !signedOut,
   );
 
   if (variant === "tabs") return <TabBar pathname={pathname} links={navLinks} />;

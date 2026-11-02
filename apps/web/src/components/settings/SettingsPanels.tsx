@@ -22,6 +22,7 @@ import YourAccountant from "@/components/settings/YourAccountant";
 import FilesBackups from "@/components/settings/FilesBackups";
 import OnlinePayments from "@/components/settings/OnlinePayments";
 import { hasMsalSignIn } from "@/lib/signed-in";
+import { useHousehold } from "@/lib/profiles";
 
 type AutopilotLevel = "L0" | "L1" | "L2";
 type GroupId = "connection" | "ai" | "automation" | "business" | "accountant" | "files" | "data";
@@ -114,6 +115,9 @@ export default function SettingsPanels() {
   const [autopilot, setAutopilot] = useState<AutopilotLevel>("L1");
   const [disconnected, setDisconnected] = useState(false);
   const [group, setGroup] = useState<GroupId>("connection");
+  // Personal books: the Business tab is "Profile", without the business-only sections (business details and VAT
+  // number, invoices, online payments, VAT periods and scheme, staff); "Show personal finances" is always on there.
+  const household = useHousehold();
   const pendingHash = useRef<string | null>(null);
 
   function choose(g: GroupId) {
@@ -257,7 +261,7 @@ export default function SettingsPanels() {
                   : "border-border bg-white text-ink hover:bg-ground"
               }`}
             >
-              {g.label}
+              {household && g.id === "business" ? "Profile" : g.label}
             </button>
           );
         })}
@@ -432,8 +436,9 @@ export default function SettingsPanels() {
         <div className={card}>
           <h2 className={heading}>Set-up wizard</h2>
           <p className="mt-1 text-sm text-muted">
-            Answer one question at a time — business type, Companies House, VAT, Income Tax, CIS, payroll and
-            property — saved as you go. Nothing is filed.
+            {household
+              ? "Answer one question at a time — what these books are for, and whether you are also self-employed or let property — saved as you go. Nothing is filed."
+              : "Answer one question at a time — business type, Companies House, VAT, Income Tax, CIS, payroll and property — saved as you go. Nothing is filed."}
           </p>
           <Link href="/setup" className="mt-2 inline-block min-h-11 font-bold text-teal-dark">
             Open the set-up wizard →
@@ -442,22 +447,30 @@ export default function SettingsPanels() {
 
         <ProfileDetails card={card} heading={heading} />
 
-        <BusinessDetails card={card} heading={heading} />
+        {!household && (
+          <>
+            <BusinessDetails card={card} heading={heading} />
 
-        <div id="settings-invoice-profile" className="scroll-mt-4">
-          <InvoiceProfileForm card={card} heading={heading} />
-        </div>
+            <div id="settings-invoice-profile" className="scroll-mt-4">
+              <InvoiceProfileForm card={card} heading={heading} />
+            </div>
 
-        <OnlinePayments card={card} heading={heading} />
+            <OnlinePayments card={card} heading={heading} />
 
-        <VatPeriodSettings card={card} heading={heading} />
+            <VatPeriodSettings card={card} heading={heading} />
+          </>
+        )}
 
         <SelfEmployedSetting card={card} heading={heading} />
-        <VatSchemeSettings card={card} heading={heading} />
+        {!household && (
+          <>
+            <VatSchemeSettings card={card} heading={heading} />
 
-        <StaffEditor card={card} heading={heading} />
+            <StaffEditor card={card} heading={heading} />
 
-        <PersonalFinanceSetting card={card} heading={heading} />
+            <PersonalFinanceSetting card={card} heading={heading} />
+          </>
+        )}
 
         <LandlordSetting card={card} heading={heading} />
       </div>

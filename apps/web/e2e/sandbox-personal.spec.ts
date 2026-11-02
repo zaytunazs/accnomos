@@ -16,7 +16,7 @@ test("the personal demo opens a household's books from /judges, and its bar offe
   await expect(bar(page)).toContainText("SAMPLE — FICTIONAL HOUSEHOLD");
   await expect(bar(page)).toContainText("Demo sandbox with sample data — changes reset after 2 hours.");
   await expect(bar(page).getByRole("button", { name: "Switch to the company demo" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Personal", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Budget", level: 1 })).toBeVisible();
 
   // The runtime holds a household: personal profile, bank lines, and goals with mixed statuses.
   const session = await page.evaluate(() => JSON.parse(window.localStorage.getItem("msal.accnomos-demo.session") ?? "{}"));

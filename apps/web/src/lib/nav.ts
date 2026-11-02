@@ -1,8 +1,8 @@
 /**
  * The signed-in menu bar (components/TopBar.tsx), grouped like Xero's: Home, Review (with its count) and Bank as plain
  * links so the two things an owner acts on most are one click away, then Sales, Purchases, Reporting, Tax and More.
- * More holds the rest under small headings: Your plan (Goals), Accounting, Payroll, Contacts and, for personal books,
- * Personal. At 1280 px and wider the same groups sit in a dark-teal sidebar (TopBar.tsx SideBar), Your plan as its own
+ * More holds the rest under small headings: Your plan (Goals), Accounting, Payroll, Contacts and, when Settings ›
+ * Show personal finances is on, Personal. Personal books have a menu of their own (HOUSEHOLD_GROUPS). At 1280 px and wider the same groups sit in a dark-teal sidebar (TopBar.tsx SideBar), Your plan as its own
  * section there.
  *
  * Other work is building some of these pages. A link shows only when its page is in this build (`routes`, read
@@ -125,6 +125,42 @@ export const NAV_GROUPS: NavGroup[] = [
   },
 ];
 
+/**
+ * Personal books (profile kind "personal") get their own menu, as each business kind gets its own features: a
+ * household has no sales, VAT, payroll or ledger housekeeping, so instead of the business menu with gaps it gets the
+ * pages a household uses. Budget is the household overview (/personal: categories, monthly budgets, bills and the
+ * month's summary). Vehicles and mileage stays out: personal mileage is not claimable, and a self-employed person's
+ * business mileage belongs with Self-employment, which shows here (with Property) only while its device switch is on.
+ */
+export const HOUSEHOLD_GROUPS: NavGroup[] = [
+  { label: "Home", href: "/", items: [] },
+  { label: "Review", href: "/review", badge: "review", items: [] },
+  { label: "Bank", href: "/bank", items: [] },
+  { label: "Budget", href: "/personal", items: [] },
+  {
+    label: "Spending",
+    items: [
+      { label: "Spending overview", href: "/spending" },
+      { label: "Cheaper options", href: "/prices" },
+      { label: "Shopping list", href: "/shopping" },
+    ],
+  },
+  { label: "Goals", href: "/goals", items: [] },
+  {
+    label: "More",
+    items: [
+      { heading: "Money", label: "Bank rules", href: "/bank/rules" },
+      { heading: "Money", label: "Short-term cash flow", href: "/reports/cashflow" },
+      { heading: "Money", label: "Reports & exports", href: "/reports/exports" },
+      { heading: "Records", label: "Documents", href: "/files" },
+      { heading: "Records", label: "Audit trail", href: "/audit" },
+      { heading: "Records", label: "All contacts", href: "/contacts" },
+      { heading: "Tax", label: "Self-employment (MTD Income Tax)", href: "/self-employment", deviceSwitch: "selfEmployed" },
+      { heading: "Tax", label: "Property (landlords)", href: "/property", deviceSwitch: "landlord" },
+    ],
+  },
+];
+
 /** "/reports#pl-heading" -> "/reports"; "/" stays "/". */
 export function routeOf(href: string): string {
   const path = href.split(/[?#]/, 1)[0] || "/";
@@ -153,7 +189,8 @@ function allowed(x: { feature?: string; kinds?: RtProfileKind[]; deviceSwitch?: 
 /** The groups and items to show: built pages only, allowed for this profile; empty groups dropped. */
 export function visibleGroups(routes: readonly string[], who: Who): NavGroup[] {
   const built = new Set(routes);
-  return NAV_GROUPS.filter((g) => allowed(g, who))
+  return (who.kind === "personal" ? HOUSEHOLD_GROUPS : NAV_GROUPS)
+    .filter((g) => allowed(g, who))
     .map((g) => ({ ...g, items: g.items.filter((i) => built.has(routeOf(i.href)) && allowed(i, who)) }))
     .filter((g) => (g.href ? built.has(routeOf(g.href)) : g.items.length > 0));
 }

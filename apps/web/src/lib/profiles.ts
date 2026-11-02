@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, mailboxOnlyAccounts } from "./msal";
 import type { RtProfile, RtProfileKind } from "./runtime";
@@ -219,4 +220,20 @@ export async function linkedAccounts(): Promise<{ active: AccountInfo | null; al
     .filter((a) => !mailboxOnly.has(a.homeAccountId) || a.homeAccountId === current?.homeAccountId || a.homeAccountId in known);
   const active = current ?? all[0] ?? null;
   return { active, all };
+}
+
+/**
+ * Whether the current profile's books are personal (kind "personal"), kept current as profiles are read or switched.
+ * False until known, so a business never flashes the household layout. Personal books get their own menu, tabs,
+ * set-up steps and wording (lib/nav.ts HOUSEHOLD_GROUPS), as each business kind gets its own features.
+ */
+export function useHousehold(): boolean {
+  const [household, setHousehold] = useState(false);
+  useEffect(() => {
+    const read = () => setHousehold(currentMeta()?.kind === "personal");
+    queueMicrotask(read);
+    window.addEventListener(PROFILE_EVENT, read);
+    return () => window.removeEventListener(PROFILE_EVENT, read);
+  }, []);
+  return household;
 }

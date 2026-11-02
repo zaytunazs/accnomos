@@ -1,4 +1,13 @@
+"use client";
+
+import { useHousehold } from "@/lib/profiles";
+
+/** Personal books get a household example; a business keeps the VAT one. */
+export const ASK_EXAMPLE = "Ask your books — “how much VAT do I owe and why?”";
+export const ASK_EXAMPLE_HOUSEHOLD = "Ask your money — “what did I spend on eating out this month?”";
+
 export default function AskBar() {
+  const household = useHousehold();
   return (
     <form
       method="get"
@@ -12,7 +21,7 @@ export default function AskBar() {
         id="home-ask"
         name="q"
         type="text"
-        placeholder="Ask your books — “how much VAT do I owe and why?”"
+        placeholder={household ? ASK_EXAMPLE_HOUSEHOLD : ASK_EXAMPLE}
         className="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted"
       />
       <button

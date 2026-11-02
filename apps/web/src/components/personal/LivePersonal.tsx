@@ -7,6 +7,7 @@ import { useAccount } from "@/components/jobs/useAccount";
 import SignInCta from "@/components/SignInCta";
 import { LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError, parseRuntimeError } from "@/components/States";
 import { personalOn } from "@/lib/personal";
+import { currentMeta } from "@/lib/profiles";
 import {
   gbp,
   runtime,
@@ -66,7 +67,8 @@ export default function LivePersonal() {
   const account = useAccount();
   const [shown, setShown] = useState<boolean | null>(null);
   useEffect(() => {
-    queueMicrotask(() => setShown(personalOn()));
+    // Personal books always show it; a business shows it only while Settings › Show personal finances is on.
+    queueMicrotask(() => setShown(personalOn() || currentMeta()?.kind === "personal"));
   }, []);
 
   if (shown === null || account === undefined) return <LoadingSkeleton lines={3} label="Loading Personal…" />;

@@ -143,7 +143,7 @@ export default function AppShell({ children, routes }: { children: ReactNode; ro
         )}
         {main}
       </div>
-      {/* Phone tab bar (Home, Review, Ask, VAT, Files) lives in AppNav; not in the accountant portal. */}
+      {/* Phone tab bar (Home, Review, Ask, VAT, Files; personal books: Home, Review, Budget, Goals, Ask) lives in AppNav; not in the accountant portal. */}
       {!accountant && <AppNav variant="tabs" />}
     </div>
   );

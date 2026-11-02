@@ -120,14 +120,15 @@ test("two linked accounts: add one, set it up as personal, switch in one click; 
   await page.goto("/");
   await expect(switcher(page)).toContainText("Jo at home");
   await expect(switcher(page)).toContainText("Personal");
+  // Personal books have a household menu of their own (lib/nav.ts HOUSEHOLD_GROUPS), not the business one with gaps.
   const nav = mainNav(page);
-  await expect(nav.getByRole("button", { name: "Purchases" })).toBeVisible();
-  for (const gone of ["Sales", "Tax"]) await expect(nav.getByRole("button", { name: gone })).toHaveCount(0);
+  await expect(nav.getByRole("link", { name: "Budget", exact: true })).toBeVisible();
+  await expect(nav.getByRole("button", { name: "Spending" })).toBeVisible();
+  for (const gone of ["Sales", "Purchases", "Reporting", "Tax"]) await expect(nav.getByRole("button", { name: gone })).toHaveCount(0);
   await nav.getByRole("button", { name: "More", exact: true }).click();
   await expect(nav.getByRole("link", { name: "Pay runs" })).toHaveCount(0); // no payroll for personal books
+  await expect(nav.getByRole("link", { name: "VAT returns" })).toHaveCount(0);
   await nav.getByRole("button", { name: "More", exact: true }).click();
-  await nav.getByRole("button", { name: "Reporting" }).click();
-  await expect(nav.getByRole("link", { name: "VAT return" })).toHaveCount(0);
   // The runtime agrees: Jo's books have no VAT return.
   const vat = await page.request.get(`${RUNTIME_URL}/books/vat`, { headers: { "X-Graph-Token": JO_TOKEN } });
   expect(vat.status()).toBe(404);

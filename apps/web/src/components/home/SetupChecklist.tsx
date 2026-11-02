@@ -3,9 +3,10 @@
 import { isDemo } from "@/lib/demo";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { aiTested, loadAiConfig } from "@/lib/ai-config";
+import { aiTested, loadAiConfig, RUNTIME_URL } from "@/lib/ai-config";
 import { loadBusiness, validateVatNumber } from "@/lib/business";
-import { runtime } from "@/lib/runtime";
+import { currentMeta, PROFILE_EVENT } from "@/lib/profiles";
+import { runtime, runtimeHeaders } from "@/lib/runtime";
 import { useHome } from "./HomeData";
 
 const DISMISS_KEY = "accnomos.setup.dismissed";
@@ -46,6 +47,19 @@ function writeFlag(key: string): void {
   }
 }
 
+/** Personal books: what the household steps need, each read from the books (null while it is being read). */
+interface HouseholdFacts {
+  statement: boolean | null; // a bank statement imported (GET /books/bank/statements)
+  budgets: boolean | null; // a monthly budget saved (GET /personal/budgets)
+  goal: boolean | null; // a goal set (GET /books/goals, code only: no model call for a tick)
+}
+
+async function hasGoal(account: Parameters<typeof runtimeHeaders>[0]): Promise<boolean> {
+  const res = await fetch(`${RUNTIME_URL}/books/goals?note_ai=false`, { headers: await runtimeHeaders(account) });
+  if (!res.ok) throw new Error(String(res.status));
+  return ((await res.json()) as { goals: unknown[] }).goals.length > 0;
+}
+
 interface Step {
   id: string;
   label: string;
@@ -53,6 +67,16 @@ interface Step {
   href: string;
   done: boolean;
   optional?: boolean;
+}
+
+/** Where a step's link goes, for its accessible name ("Set up in Budget"). */
+function placeOf(href: string): string {
+  if (href.startsWith("/settings")) return "Settings";
+  if (href.startsWith("/connect")) return "Connect";
+  if (href.startsWith("/bank")) return "Bank";
+  if (href.startsWith("/personal")) return "Budget";
+  if (href.startsWith("/goals")) return "Goals";
+  return "Review";
 }
 
 function Tick({ done }: { done: boolean }) {
@@ -72,6 +96,9 @@ function Tick({ done }: { done: boolean }) {
  * First-run checklist on Home. Signed in only, and only while a required step is still open:
  * hide when every required step is done, or once dismissed (remembered on this device).
  * Local steps read the existing settings; the invoice profile is the one GET /invoices/profile.
+ * Personal books (profile kind "personal") get household steps instead of the business ones (business name, VAT,
+ * the business details wizard, invoice profile, Outlook customers and suppliers): import a bank statement, set
+ * monthly budgets, set a goal, each ticked from what the books hold.
  */
 export default function SetupChecklist() {
   const home = useHome();
@@ -82,6 +109,15 @@ export default function SetupChecklist() {
   const [local, setLocal] = useState<{ ai: boolean; business: boolean; vat: boolean } | null>(null);
   const [profileDone, setProfileDone] = useState<boolean | null>(null);
   const [wizardDone, setWizardDone] = useState<boolean | null>(null);
+  const [household, setHousehold] = useState<HouseholdFacts | null>(null);
+  const [personal, setPersonal] = useState(false); // the current profile's books are personal (lib/profiles.ts)
+
+  useEffect(() => {
+    const read = () => setPersonal(currentMeta()?.kind === "personal");
+    queueMicrotask(read);
+    window.addEventListener(PROFILE_EVENT, read);
+    return () => window.removeEventListener(PROFILE_EVENT, read);
+  }, []);
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -100,6 +136,15 @@ export default function SetupChecklist() {
       });
       if (!account) setProfileDone(false);
     });
+    if (account && personal) {
+      queueMicrotask(() => setHousehold({ statement: null, budgets: null, goal: null }));
+      const set = (k: keyof HouseholdFacts) => (v: boolean) => setHousehold((h) => ({ ...(h ?? { statement: null, budgets: null, goal: null }), [k]: v }));
+      runtime.bank.statements(account).then((all) => all.length > 0, () => false).then(set("statement"));
+      runtime.personal.budgets(account).then((b) => Object.values(b).some((v) => v > 0), () => false).then(set("budgets"));
+      hasGoal(account).catch(() => false).then(set("goal"));
+      return;
+    }
+    queueMicrotask(() => setHousehold(null));
     if (account) {
       runtime
         .invoiceProfile(account)
@@ -113,11 +158,57 @@ export default function SetupChecklist() {
       // Defer to avoid a synchronous setState in the effect body.
       queueMicrotask(() => setWizardDone(null));
     }
-  }, [account]);
+  }, [account, personal]);
 
   if (!account || dismissed || local === null || isDemo()) return null; // a demo's books are already set up
 
-  const steps: Step[] = [
+  const checking = "Checking your OneDrive…";
+  const steps: Step[] = household
+    ? [
+        {
+          id: "onedrive",
+          label: "Connect OneDrive",
+          hint: "Signed in — your money records live in your own folder",
+          href: "/connect",
+          done: true,
+        },
+        {
+          id: "ai",
+          label: "Choose your AI",
+          hint: "A local address or a key, tested and answering",
+          href: "/connect/ai",
+          done: local.ai,
+        },
+        {
+          id: "statement",
+          label: "Import a bank statement",
+          hint: household.statement === null ? checking : "A CSV from your bank: money in and out, sorted into categories",
+          href: "/bank",
+          done: household.statement === true,
+        },
+        {
+          id: "budgets",
+          label: "Set your monthly budgets",
+          hint: household.budgets === null ? checking : "How much for groceries, eating out, bills and the rest",
+          href: "/personal",
+          done: household.budgets === true,
+        },
+        {
+          id: "goal",
+          label: "Set a goal",
+          hint: household.goal === null ? checking : "Save for something, or spend less on something",
+          href: "/goals",
+          done: household.goal === true,
+        },
+        {
+          id: "receipt",
+          label: "Try a receipt",
+          hint: "Add the sample receipt and approve the reading",
+          href: "/connect/ready",
+          done: triedReceipt,
+        },
+      ]
+    : [
     {
       id: "onedrive",
       label: "Connect OneDrive",
@@ -175,7 +266,7 @@ export default function SetupChecklist() {
       href: "/connect/ready",
       done: triedReceipt,
     },
-  ];
+      ];
   const requiredOpen = steps.some((s) => !s.optional && !s.done);
   if (!requiredOpen) return null;
 
@@ -222,7 +313,7 @@ export default function SetupChecklist() {
             </div>
             <Link
               href={s.href}
-              aria-label={`${s.label} — ${s.done ? "review" : s.id === "receipt" ? "try it" : "set up"} in ${s.href.startsWith("/settings") ? "Settings" : s.href.startsWith("/connect") ? "Connect" : "Review"}`}
+              aria-label={`${s.label} — ${s.done ? "review" : s.id === "receipt" ? "try it" : "set up"} in ${placeOf(s.href)}`}
               onClick={
                 s.id === "receipt"
                   ? () => {

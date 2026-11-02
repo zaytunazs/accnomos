@@ -477,6 +477,18 @@ const NAV_ICONS: Record<string, ReactNode> = {
       <circle cx="15" cy="10" r="1" />
     </>
   ),
+  Budget: (
+    <>
+      <rect x="3" y="5" width="14" height="11" rx="1.5" />
+      <path d="M3 8.5h14M12.5 12h2" />
+    </>
+  ),
+  Spending: (
+    <>
+      <path d="M4 6h12l-1.2 7.5a1.5 1.5 0 0 1-1.5 1.3H6.7a1.5 1.5 0 0 1-1.5-1.3z" />
+      <path d="M7.5 6a2.5 2.5 0 0 1 5 0" />
+    </>
+  ),
   Goals: (
     <>
       <circle cx="10" cy="10" r="6.5" />

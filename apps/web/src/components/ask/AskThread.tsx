@@ -14,6 +14,8 @@ import { getMsal, msalConfigured } from "@/lib/msal";
 import { askStream, runtime, runtimeHealth, type RtAskAnswer, type RtAskTurn } from "@/lib/runtime";
 import { sampleAnswer, sampleQuestion } from "@/lib/sample-ask";
 import { pickedPeriod } from "@/lib/vat-period";
+import { useHousehold } from "@/lib/profiles";
+import { ASK_EXAMPLE, ASK_EXAMPLE_HOUSEHOLD } from "@/components/home/AskBar";
 import ActionCard, { ClarifyCard, withPicked } from "./ActionCard";
 import AnswerCard from "./AnswerCard";
 import MicButton from "./MicButton";
@@ -98,6 +100,7 @@ function keepTurns(turns: Turn[]): void {
 
 /** Live answers from POST /books/ask when signed in and the runtime answers; otherwise the sample thread. */
 export default function AskThread() {
+  const household = useHousehold();
   const [mode, setMode] = useState<Mode>("loading");
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [offline, setOffline] = useState(false);
@@ -428,7 +431,9 @@ export default function AskThread() {
           disabled={!live || busy}
           placeholder={
             live
-              ? "Ask your books — “how much VAT do I owe and why?”"
+              ? household
+                ? ASK_EXAMPLE_HOUSEHOLD
+                : ASK_EXAMPLE
               : offline
                 ? "Reader service not reachable"
                 : "Sign in to ask your own books"
