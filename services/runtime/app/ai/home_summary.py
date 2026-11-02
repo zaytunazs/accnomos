@@ -25,11 +25,13 @@ SUMMARY_MAX = 700
 SYSTEM_PROMPT = (
     "You write the two to four sentence summary at the top of a UK small business owner's or household's bookkeeping "
     "home page, in plain UK English: no headings, no lists, no links, no advice about tax law. You are given FACTS as "
-    "JSON, worked out by code. Rules: 1) Quote figures, counts and dates exactly as they appear in FACTS; never add, "
-    "subtract, compare as percentages or calculate anything. 2) Cover, in this order and only where FACTS has them: "
-    "the cash position, what changed (this month against last month, or this week), what needs doing, and the next "
-    "deadline. 3) If FACTS.needs_doing has any count above zero, never say that nothing needs doing. 4) Leave out "
-    "anything FACTS does not have. Return JSON with `summary_md`."
+    "JSON, worked out by code. Rules: 1) Quote figures, counts, percentages and dates exactly as they appear in FACTS; "
+    "never add, subtract, work out a percentage or calculate anything. 2) Cover, in this order and only where FACTS "
+    "has them: the cash position; how the business is doing (FACTS.year_to_date against last year, using its "
+    "`_vs_last_year` wording, and FACTS.monthly_trend's direction or best and weakest month; else this month against "
+    "last month); what needs doing; and the next deadline. If FACTS.cash_forecast.goes_below_zero is true, say when. "
+    "3) If FACTS.needs_doing has any count above zero, never say that nothing needs doing. 4) Leave out anything FACTS "
+    "does not have. Return JSON with `summary_md`."
 )
 
 LINK = re.compile(r"https?://|www\.", re.IGNORECASE)
@@ -64,15 +66,33 @@ def _count(n: int, one: str, many: str | None = None) -> str:
 
 
 def fallback_summary(facts: dict[str, Any]) -> str:
-    """Written by code from the facts alone: the same order the model is asked for."""
+    """Written by code from the facts alone: the same order the model is asked for, at most four sentences."""
     out: list[str] = []
     cash = facts.get("cash")
     if cash:
-        out.append(f"You had {cash['balance']} in the bank on {cash['as_of']}.")
+        low = facts.get("cash_forecast") or {}
+        dip = ""
+        if low.get("goes_below_zero"):
+            dip = f", and the 90-day forecast goes below £0 from {low['below_zero_from']}"
+        out.append(f"You had {cash['balance']} in the bank on {cash['as_of']}{dip}.")
     else:
         out.append("There is no bank balance yet: import a bank statement and match a line to see one.")
     money = facts.get("money")
-    if money:
+    ytd = facts.get("year_to_date")
+    if ytd:  # the year so far says more than one month against another; the Money card still shows the months
+        np = str(ytd["net_profit"])
+        result = f"a net loss of {np.lstrip('-')}" if np.startswith("-") else f"a net profit of {np}"
+        text = (
+            f"This year so far ({ytd['period']}, {ytd['basis']}), turnover was {ytd['turnover']} and expenses "
+            f"{ytd['expenses']}: {result}"
+        )
+        vs = ytd.get("turnover_vs_last_year")
+        if vs == "no change":
+            text += f", with the same turnover as {ytd['last_year_period']}"
+        elif vs:
+            text += f", with turnover {vs} on {ytd['last_year_period']}"
+        out.append(text + ".")
+    elif money:
         t, last = money["this_month"], money["last_month"]
         out.append(
             f"{t['label']}, {t['in']} came in and {t['out']} went out, against {last['in']} in and "
@@ -97,7 +117,7 @@ def fallback_summary(facts: dict[str, Any]) -> str:
     nxt = facts.get("next_deadline")
     if nxt:
         days = nxt["days_left"]
-        when = "today" if days == 0 else f"{days} days late" if days < 0 else f"in {_count(days, 'day')}"
+        when = "today" if days == 0 else f"{_count(-days, 'day')} late" if days < 0 else f"in {_count(days, 'day')}"
         out.append(f"Next deadline: {nxt['what']}, due {nxt['due']} ({when}).")
     return " ".join(out[:4])
 

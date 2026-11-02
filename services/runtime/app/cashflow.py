@@ -199,6 +199,83 @@ def forecast(
     )
 
 
+async def build(books: Any, today: date) -> CashFlow:
+    """The forecast GET /reports/cashflow returns (and Home's balance line): the ledger's bank balance, open invoices
+    and bills, and repeating items not made yet. Raises app.chart.ChartError when the chart cannot be read."""
+    from app import contacts as cb
+    from app import repeating as rp_
+    from app.chart import load_chart
+    from app.invoicing import load_profile
+
+    chart, _ = await load_chart(books)
+    contacts, ledger, _ = await cb.contact_book(books)
+    opening, banks = bank_balance(ledger.events, chart, today)
+    terms = {c.id: c.terms_days for c in contacts if c.terms_days is not None}
+    repeating = repeating_items(await rp_.list_templates(books), today, (await load_profile(books)).terms_days, terms)
+    return forecast(cb.aged(contacts, ledger, today), opening, banks, today, repeating)
+
+
+# --------------------------------------------------------------------------- #
+# Home's balance line: the same forecast, sampled weekly
+# --------------------------------------------------------------------------- #
+
+SERIES_STEP_DAYS = 7
+
+
+class SeriesPoint(BaseModel):
+    days: int
+    date: date
+    balance_pence: int  # opening + everything due on or before this day (overdue items land today)
+
+
+class CashSeries(BaseModel):
+    as_of: date
+    opening_balance_pence: int
+    points: list[SeriesPoint]  # today, every 7 days, days 30/60/90 (CashFlow.points) and the lowest day, in order
+    lowest_balance_pence: int  # CashFlow.lowest_balance_pence: the same figure the cash flow page shows
+    lowest_on: date
+    below_zero_on: date | None  # the first day the running balance goes below £0, if it does within 90 days
+
+
+def _signed(it: CashItem) -> int:
+    return it.amount_pence if it.direction == "in" else -it.amount_pence
+
+
+def first_below_zero(cf: CashFlow) -> date | None:
+    """The first day the running balance (item by item, in the forecast's order) is below zero."""
+    running = cf.opening_balance_pence
+    if running < 0:
+        return cf.as_of
+    for it in cf.items:
+        running += _signed(it)
+        if running < 0:
+            return max(it.due_date, cf.as_of)
+    return None
+
+
+def series(cf: CashFlow, step: int = SERIES_STEP_DAYS) -> CashSeries:
+    """The end-of-day balance today, every `step` days and on days 30, 60 and 90 (the same figures as CashFlow.points),
+    plus the lowest day at the lowest figure, so a small chart can show where the low point falls without one point
+    per item."""
+    low_day = (cf.lowest_on - cf.as_of).days
+    days = sorted({*range(0, HORIZONS[-1] + 1, step), *HORIZONS, low_day})
+    points = []
+    for n in days:
+        day = cf.as_of + timedelta(days=n)
+        bal = cf.opening_balance_pence + sum(_signed(i) for i in cf.items if max(i.due_date, cf.as_of) <= day)
+        if n == low_day:
+            bal = min(bal, cf.lowest_balance_pence)
+        points.append(SeriesPoint(days=n, date=day, balance_pence=bal))
+    return CashSeries(
+        as_of=cf.as_of,
+        opening_balance_pence=cf.opening_balance_pence,
+        points=points,
+        lowest_balance_pence=cf.lowest_balance_pence,
+        lowest_on=cf.lowest_on,
+        below_zero_on=first_below_zero(cf),
+    )
+
+
 # --------------------------------------------------------------------------- #
 # One plain-English line from the model, checked by code
 # --------------------------------------------------------------------------- #

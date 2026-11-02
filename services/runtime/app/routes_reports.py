@@ -178,7 +178,7 @@ from app import budgets as bg  # noqa: E402
 from app import cashflow as cf  # noqa: E402
 from app import tracking as tr  # noqa: E402
 from app.ai.config import AiConfig, ai_config_from_request  # noqa: E402
-from app.chart import ChartError, load_chart  # noqa: E402
+from app.chart import ChartError  # noqa: E402
 
 
 def _bad(exc: Exception) -> HTTPException:
@@ -240,19 +240,9 @@ async def budget_variance(
 
 async def _cashflow(books: Books, today: date) -> cf.CashFlow:
     try:
-        chart, _ = await load_chart(books)
+        return await cf.build(books, today)
     except ChartError as exc:
         raise _bad(exc) from exc
-    contacts, ledger, _ = await cb.contact_book(books)
-    opening, banks = cf.bank_balance(ledger.events, chart, today)
-    from app import repeating as rp_
-    from app.invoicing import load_profile
-
-    terms = {c.id: c.terms_days for c in contacts if c.terms_days is not None}
-    repeating = cf.repeating_items(
-        await rp_.list_templates(books), today, (await load_profile(books)).terms_days, terms
-    )
-    return cf.forecast(cb.aged(contacts, ledger, today), opening, banks, today, repeating)
 
 
 @router.get("/cashflow", response_model=cf.CashFlow)

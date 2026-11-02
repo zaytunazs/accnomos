@@ -222,8 +222,30 @@ def test_home_payload(client: TestClient, fake: FakeStorageProvider) -> None:  #
         "href": "/vat",
         "source_url": None,
     }
+    # The business snapshot: the P&L year to date (a company: from 1 January), the trend as GET /reports/trend gives
+    # it, and the cash forecast sampled weekly (a statement is imported).
+    snap = d["snapshot"]
+    assert (snap["start"], snap["period_label"], snap["basis"]) == (
+        "2026-01-01",
+        "1 Jan – 27 Oct 2026",
+        "accrual from approved entries",
+    )
+    pl = client.get(f"/reports/pl?from=2026-01-01&to={TODAY}", headers=H).json()
+    assert snap["turnover_pence"] == pl["sales"]["total_pence"] and snap["net_profit_pence"] == pl["net_profit_pence"]
+    assert snap["change_pct"]["turnover"] is None  # nothing last year
+    assert snap["vat_position"]["due"] == "2026-11-07" and snap["vat_position"]["label"] == "Jul–Sep 2026"
+    assert d["trend"] == client.get(f"/reports/trend?today={TODAY}", headers=H).json()
+    cash = d["cash_points"]
+    assert cash["points"][0]["days"] == 0 and cash["points"][-1]["days"] == 90
+    flow = client.get(f"/reports/cashflow?today={TODAY}", headers=H).json()
+    assert cash["lowest_balance_pence"] == flow["lowest_balance_pence"]
+    assert [p["balance_pence"] for p in cash["points"] if p["days"] in (30, 60, 90)] == [
+        p["balance_pence"] for p in flow["points"]
+    ]
     s = d["summary"]
     assert s["model"] == "code"  # summary_ai=false: code writes it
+    assert s["facts"]["year_to_date"]["turnover"] == hs.gbp(snap["turnover_pence"])
+    assert "This year so far (1 Jan – 27 Oct 2026" in s["summary_md"]
     assert s["facts"]["cash"] == {"balance": "£5,400.00", "as_of": "24 Oct 2026"}
     assert s["facts"]["needs_doing"] == {"in_review": 2, "unmatched_bank_lines": 3, "overdue_invoices": 1}
     assert s["summary_md"].startswith("You had £5,400.00 in the bank on 24 Oct 2026.")
@@ -260,3 +282,8 @@ def test_sections_follow_the_profile_kind(
     if itsa:
         assert d["itsa"]["due"] == "2026-11-07"
     assert d["payroll"] is None and "VAT" not in d["summary"]["summary_md"]
+    if kind == "personal":  # a household has no turnover: no snapshot, trend or forecast
+        assert d["snapshot"] is None and d["trend"] is None and d["cash_points"] is None
+    else:  # a sole trader: the tax year by default, on the cash basis unless traditional is chosen
+        assert (d["snapshot"]["start"], d["snapshot"]["basis"]) == ("2026-04-06", "cash basis")
+        assert d["snapshot"]["vat_position"] is None
