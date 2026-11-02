@@ -257,6 +257,20 @@ class Ledgerish:
         self.overrides = overrides or {}
         self._names = {c.id: c.name for c in self.categories}
         self._known = set(self._names)
+        self._regular: set[str] | None = None
+
+    def regular_payees(self) -> set[str]:
+        """Household payees paid on a regular cycle (rent, bills, subscriptions; app/personal.py detect_recurring).
+        They are left out of the biggest movers only: a monthly payment falling inside one span and not the other
+        looks like a change in spending when it is only timing. Totals still count them."""
+        if self._regular is None:
+            if not (self.household and self.lines):
+                self._regular = set()
+            else:
+                last = max(ln.date for ln in self.lines)
+                found = pf.detect_recurring(self.lines, self.categories, self.rules, self.overrides, last)
+                self._regular = {r.key for r in found}
+        return self._regular
 
     # -- the spending rows a focus is matched against --------------------------------------------------------- #
 
@@ -302,8 +316,11 @@ class Ledgerish:
         items: dict[str, int] = defaultdict(int)
         sups: dict[str, int] = defaultdict(int)
         if self.household:
+            regular = self.regular_payees()
             for c, d, p in self._bank_rows(start, end):
                 if f and not (f in c.casefold() or f in d.casefold()):
+                    continue
+                if pf.payee_key(d) in regular:
                     continue
                 cats[c] += p
                 sups[_payee(d)] += p

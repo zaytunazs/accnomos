@@ -230,3 +230,12 @@ def test_routes_add_list_patch_delete(client: TestClient) -> None:
     assert client.patch("/books/goals/nope", headers=H, json={"saved_pence": 1}).status_code == 404
     assert client.delete(f"/books/goals/{gid}", headers=H).status_code == 204
     assert client.get("/books/goals", headers=H).json()["goals"] == []
+
+
+def test_regular_bills_are_not_biggest_movers_but_still_count() -> None:
+    rent = [line(f"2026-{m:02d}-28", -120000, "RENT LANDLORD") for m in range(6, 11)]  # monthly; Oct 28 is in the span
+    data = household([*rent, line("2026-11-02", -3500, "COSTA COFFEE"), line("2026-11-05", -3500, "COSTA COFFEE")])
+    g = goal(kind="spend_cap", target_pence=200000, start=date(2026, 10, 20))
+    p = gm.progress(g, data, TODAY)
+    assert p.current_pence == 127000  # the rent still counts in the total
+    assert all("Rent" not in d.name for d in p.drivers) and p.drivers[0].name in ("Eating out", "Costa Coffee")
