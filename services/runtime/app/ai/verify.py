@@ -9,12 +9,12 @@ Backend choice (`select_backend`), keeping the user's own choice of where their 
 
 * local mode -> Glimmer via Ollama with the verifier prompt. The image never leaves the machine,
   even when the server has a Baseten key.
-* key mode   -> (1) Muse Spark Open on Baseten when the owner set `BASETEN_API_KEY` on the server
-  (OpenAI-compatible; model from `VERIFIER_MODEL`, else `BASETEN_MODEL`, else the default slug);
-  (2) otherwise the Meta Model API with the user's own key (`X-Meta-Api-Key`).
-* the server's chain (AI_PROVIDERS, app/ai/providers.py) -> Muse Spark Open on Baseten first when the owner set
-  `BASETEN_API_KEY` (a different model from the Extractor's), then the chain's providers in order, with the same
-  failover and circuit breaker as every other call (app/ai/chain.py).
+* key mode   -> the Meta Model API with the user's own key (`X-Meta-Api-Key`); Muse Spark Open on Baseten first only
+  when the owner switched it on (`BASETEN_ENABLED=1` and `BASETEN_API_KEY`; model from `VERIFIER_MODEL`, else
+  `BASETEN_MODEL`, else the default slug).
+* the server's chain (AI_PROVIDERS, app/ai/providers.py) -> the chain's providers in order (Meta Model API, the
+  Spark), with the same failover and circuit breaker as every other call (app/ai/chain.py). Baseten goes first only
+  with `BASETEN_ENABLED=1` and a key. Baseten is off by default (owner's decision, 2 Nov 2026).
 
 `VERIFIER=off` on the server disables the verifier entirely.
 """
@@ -58,8 +58,15 @@ class VerifierBackend(BaseModel):
         return f"{self.kind}:{self.model}"
 
 
+def baseten_key(env: Mapping[str, str]) -> str | None:
+    """The Baseten key, only when the owner also switched Baseten on (`BASETEN_ENABLED=1`; off by default)."""
+    if (env.get("BASETEN_ENABLED") or "").strip().lower() not in ("1", "true", "yes", "on"):
+        return None
+    return (env.get("BASETEN_API_KEY") or "").strip() or None
+
+
 def _baseten(env: Mapping[str, str], in_chain: bool) -> AiConfig | None:
-    key = (env.get("BASETEN_API_KEY") or "").strip()
+    key = baseten_key(env)
     if not key:
         return None
     model = env.get("VERIFIER_MODEL") or env.get("BASETEN_MODEL") or DEFAULT_BASETEN_MODEL
@@ -108,10 +115,9 @@ def select_backend(cfg: AiConfig, env: Mapping[str, str] | None = None) -> Verif
         return backend_for(vc) if vc is not None else None
     if cfg.mode == "local":
         return VerifierBackend(kind="ollama", base_url=cfg.base_url, model=cfg.model)
-    baseten_key = (env.get("BASETEN_API_KEY") or "").strip()
-    if baseten_key:
+    if key := baseten_key(env):
         model = env.get("VERIFIER_MODEL") or env.get("BASETEN_MODEL") or DEFAULT_BASETEN_MODEL
-        return VerifierBackend(kind="baseten", base_url=BASETEN_BASE, model=model, api_key=baseten_key)
+        return VerifierBackend(kind="baseten", base_url=BASETEN_BASE, model=model, api_key=key)
     return VerifierBackend(kind="meta", base_url=cfg.base_url, model=cfg.model, api_key=cfg.api_key)
 
 

@@ -349,7 +349,7 @@ def test_the_verifier_only_leaves_for_baseten_or_the_users_own_ai():
     local = AiConfig(mode="local", base_url="http://127.0.0.1:11434", model="m")
     assert select_backend(local, {"BASETEN_API_KEY": "k"}).base_url == local.base_url  # type: ignore[union-attr]
     key = AiConfig(mode="key", base_url="https://api.meta.ai/v1", model="m", api_key="k")
-    assert select_backend(key, {"BASETEN_API_KEY": "b"}).base_url == BASETEN_BASE  # type: ignore[union-attr]
+    assert select_backend(key, {"BASETEN_API_KEY": "b", "BASETEN_ENABLED": "1"}).base_url == BASETEN_BASE  # type: ignore[union-attr]
     assert select_backend(key, {}).base_url == key.base_url  # type: ignore[union-attr]
 
 

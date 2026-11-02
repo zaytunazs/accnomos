@@ -40,7 +40,7 @@ Your books are files in your own OneDrive (no Accnomos database); Meta models re
 |---|---|
 | Muse Glimmer 30B (open weights, Ollama) | Receipt/invoice reading, categorising, local-mode Ask, Verifier and the other text tasks |
 | muse-spark-1.3 (Meta Model API, user's key) | Key-mode extraction, Ask and the other text tasks |
-| Muse Spark Open (Baseten, optional) | Independent verifier (key mode; needs the server owner's Baseten key; unit-tested only) |
+| Muse Spark Open (Baseten, optional, off for now) | Independent verifier, only with `BASETEN_ENABLED=1` and the server owner's Baseten key; off on the live server since 2 Nov 2026, so the Verifier runs on the Meta chain |
 | muse-voice-transcribe-1.0 | Spoken questions on Ask (key mode; not yet run live) |
 | sam-3.1 | Crop receipts in messy photos, **off by default** (code crop is the default; never run live) |
 
@@ -168,7 +168,7 @@ by digits. If all six agree, the Review card says *Verifier agrees · all 6 fiel
 proposal to *Needs a look* with both readings side by side; check the document, then approve or reject. Neither the
 model nor the code picks or merges values (choosing the second reading in the card is not built yet). **Which
 model:** in local mode it is Glimmer on your machine, so the document stays there. With your own key it is Muse Spark
-Open on Baseten if the server owner has set `BASETEN_API_KEY`, otherwise muse-spark-1.3 with your key.
+Open on Baseten only if the server owner has switched it on (`BASETEN_ENABLED=1` plus `BASETEN_API_KEY`; off on the live server since 2 Nov 2026), otherwise muse-spark-1.3 with your key, or the Meta chain on the server.
 `VERIFIER=off` disables it. First numbers (20 messy receipts, Glimmer/Glimmer): 94% full agreement, 0 errors caught
 beyond what the code checks already caught, 1 false alarm. See `evals/REPORT_verifier_glimmer_messy_20_2026-10-27.md`.
 Not built: Google Drive (OneDrive only), production HMRC filing, `muse-wonder` multi-step planning, credit notes, RTI.

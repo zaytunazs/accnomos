@@ -36,6 +36,8 @@ services:
       RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-60}
       # Signs chat/voice action proposals so they survive a restart (docs/ACTIONS.md). Set in .env; never commit it.
       ACTIONS_SIGNING_KEY: ${ACTIONS_SIGNING_KEY:-}
+      # Baseten (Muse Spark Open verifier) is used only with BASETEN_ENABLED=1; off by default (owner, 2 Nov 2026).
+      BASETEN_ENABLED: ${BASETEN_ENABLED:-0}
       BASETEN_API_KEY: ${BASETEN_API_KEY:-}
       VERIFIER: ${VERIFIER:-}
       VERIFIER_MODEL: ${VERIFIER_MODEL:-}

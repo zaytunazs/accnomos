@@ -239,7 +239,7 @@ export function metaModels(): MetaModel[] {
       jobs: [
         { job: "Says what kind of document each upload is (receipt, bill, sales invoice, credit note, statement) before it is read; you confirm or change it", screen: "Upload" },
         { job: "Reads receipts, invoices, credit notes and emailed bills into a strict list (supplier, VAT number, date, lines, net, VAT, total) and suggests the category", screen: "Review" },
-        { job: "The Verifier's second reading in key mode when no Muse Spark Open endpoint is set", screen: "Review card: “Verifier agrees”" },
+        { job: "The Verifier's second reading in key mode and on the server chain", screen: "Review card: “Verifier agrees”" },
         { job: "Reads CIS payment and deduction statements and reverse-charge invoices", screen: "CIS" },
         { job: "Reads letting agents' statements, property bills, insurance schedules and mortgage statements", screen: "Property" },
         { job: "Answers questions about your books, and turns typed or spoken instructions into an action card", screen: "Ask" },
@@ -298,21 +298,21 @@ export function metaModels(): MetaModel[] {
       name: "Muse Spark Open",
       modelId: "meta-models/muse-spark-open",
       uses: "The Verifier: an independent second reading of each document",
-      via: "Hosted open weights, first choice for the Verifier when set up",
-      what: "The open-weights Muse Spark, on a hosted endpoint the server owner sets up. A different model from the first reader, so the second reading is independent.",
+      via: "Hosted open weights; switched off on the live server for now",
+      what: "The open-weights Muse Spark, on a hosted endpoint the server owner can switch on. A different model from the first reader, so the second reading is independent. It is off on the live server for now: the Verifier runs on the same Meta chain as the reader (Muse Spark, then Muse Glimmer). The results below are from earlier runs when it was on.",
       jobs: [
         { job: "The Verifier: a second reading of each document with a different prompt and schema that never sees the first answer", screen: "Review card: “Verifier agrees” or “Needs a look”" },
       ],
       called: [
-        "Key mode and the server chain: first choice for the Verifier when the server owner has set it up; otherwise the chain's providers in order.",
+        "Key mode and the server chain: only when the server owner switches it on (off for now); otherwise the chain's providers in order.",
         "Local mode never uses it: your documents stay on your machine.",
       ],
       checks: [
         "The model never merges or picks values: code compares six fields (supplier, VAT number, date, net, VAT, gross). A disagreement sends the card to Needs a look; it never changes a figure.",
       ],
       results: present([
-        extraction("spark_open_200", "Receipts and invoices, clean (reader and Verifier)"),
-        extraction("spark_open_messy_200", "Receipts and invoices, messy photos (reader and Verifier)"),
+        extraction("spark_open_200", "Receipts and invoices, clean (reader and Verifier; earlier run)"),
+        extraction("spark_open_messy_200", "Receipts and invoices, messy photos (reader and Verifier; earlier run)"),
       ]),
     },
     {

@@ -142,16 +142,22 @@ def test_local_mode_stays_local_even_with_baseten_key() -> None:
 
 
 def test_key_mode_prefers_baseten_when_owner_configured_it() -> None:
-    be = select_backend(KEY, {"BASETEN_API_KEY": "owner-key"})
+    be = select_backend(KEY, {"BASETEN_API_KEY": "owner-key", "BASETEN_ENABLED": "1"})
     assert be is not None and be.kind == "baseten"
     assert be.base_url == "https://inference.baseten.co/v1"
     assert be.model == DEFAULT_BASETEN_MODEL and be.api_key == "owner-key"
 
 
 def test_verifier_model_env_overrides_baseten_model() -> None:
-    env = {"BASETEN_API_KEY": "k", "BASETEN_MODEL": "a/b", "VERIFIER_MODEL": "meta-models/other"}
+    env = {"BASETEN_ENABLED": "1", "BASETEN_API_KEY": "k", "BASETEN_MODEL": "a/b", "VERIFIER_MODEL": "meta-models/other"}
     assert select_backend(KEY, env).model == "meta-models/other"  # type: ignore[union-attr]
-    assert select_backend(KEY, {"BASETEN_API_KEY": "k", "BASETEN_MODEL": "a/b"}).model == "a/b"  # type: ignore[union-attr]
+    assert select_backend(KEY, {"BASETEN_ENABLED": "1", "BASETEN_API_KEY": "k", "BASETEN_MODEL": "a/b"}).model == "a/b"  # type: ignore[union-attr]
+
+
+def test_baseten_key_alone_is_not_used_baseten_is_off_by_default() -> None:
+    be = select_backend(KEY, {"BASETEN_API_KEY": "owner-key"})
+    assert be is not None and be.kind == "meta" and be.api_key != "owner-key"
+    assert select_backend(KEY, {"BASETEN_API_KEY": "owner-key", "BASETEN_ENABLED": "0"}).kind == "meta"  # type: ignore[union-attr]
 
 
 def test_key_mode_without_baseten_uses_users_meta_key() -> None:
@@ -274,7 +280,7 @@ async def test_baseten_request_uses_owner_key_and_never_the_users(monkeypatch: p
         return httpx.Response(200, json={"choices": [{"message": {"content": content}}]})
 
     _fake_client(monkeypatch, handler)
-    v = await verify(b"img", _doc(), KEY, env={"BASETEN_API_KEY": "owner-key"})
+    v = await verify(b"img", _doc(), KEY, env={"BASETEN_API_KEY": "owner-key", "BASETEN_ENABLED": "1"})
     assert v is not None and v.agree_all and v.model == f"baseten:{DEFAULT_BASETEN_MODEL}"
     (req,) = seen
     assert str(req.url) == "https://inference.baseten.co/v1/chat/completions"
