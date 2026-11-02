@@ -364,6 +364,9 @@ app.include_router(audit_router)
 from app.routes_personal import router as personal_router  # noqa: E402  /personal/* (budgets, bills, goals)
 
 app.include_router(personal_router)
+from app.routes_goals import router as goals_router  # noqa: E402  /books/goals (goals tracked against the books)
+
+app.include_router(goals_router)
 from app.routes_property import router as property_router  # noqa: E402  /property/* (landlords, MTD property)
 
 app.include_router(property_router)
