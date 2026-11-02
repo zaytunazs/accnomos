@@ -149,7 +149,12 @@ def test_key_mode_prefers_baseten_when_owner_configured_it() -> None:
 
 
 def test_verifier_model_env_overrides_baseten_model() -> None:
-    env = {"BASETEN_ENABLED": "1", "BASETEN_API_KEY": "k", "BASETEN_MODEL": "a/b", "VERIFIER_MODEL": "meta-models/other"}
+    env = {
+        "BASETEN_ENABLED": "1",
+        "BASETEN_API_KEY": "k",
+        "BASETEN_MODEL": "a/b",
+        "VERIFIER_MODEL": "meta-models/other",
+    }
     assert select_backend(KEY, env).model == "meta-models/other"  # type: ignore[union-attr]
     assert select_backend(KEY, {"BASETEN_ENABLED": "1", "BASETEN_API_KEY": "k", "BASETEN_MODEL": "a/b"}).model == "a/b"  # type: ignore[union-attr]
 

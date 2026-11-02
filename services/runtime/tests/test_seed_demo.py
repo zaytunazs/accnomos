@@ -23,7 +23,19 @@ from openpyxl import load_workbook
 from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger.bank import detect_bank, parse_bank_csv, reconciled_to
 from accnomos_ledger.vat import compute_vat_return
-from app import autopilot, bank_rules, credit_notes, dashboard, invoicing, jobs, mileage, payments, payroll, reports, todos
+from app import (
+    autopilot,
+    bank_rules,
+    credit_notes,
+    dashboard,
+    invoicing,
+    jobs,
+    mileage,
+    payments,
+    payroll,
+    reports,
+    todos,
+)
 from app import contacts as contacts_mod
 from app.books import INBOX, NEEDS_A_LOOK, Books
 from app.checks import decide, run_checks
