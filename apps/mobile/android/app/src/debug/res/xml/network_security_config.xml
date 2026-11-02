@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only (this source set overrides src/main/res/xml/network_security_config.xml): plain HTTP to any
+     host, for a runtime or reader on whatever LAN address a developer uses. Release builds never carry this. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

@@ -43,7 +43,7 @@ and how to report a problem. Deployment hardening is in [`deploy/README.md`](../
 | OAuth (relay) | `state` is HMAC-SHA256-signed with a key derived from the client secret, compared in constant time, expires after 10 min and is accepted once per step (callback, exchange); PKCE (S256) supported; tokens go back in the URL fragment with `Cache-Control: no-store` and `Referrer-Policy: no-referrer` | `relay/oauth.py`, `relay/routes.py` | `test_state_and_redirects.py` |
 | Redirects (relay) | `redirect_to` must be an exact allowed origin (plus plain-http localhost for development); userinfo, backslashes, whitespace/control characters, other ports, scheme downgrades and look-alike hosts are refused | `relay/settings.py` | `test_redirect_bypass_attempts_refused` |
 | Spreadsheets | Text that a spreadsheet would run as a formula (leading `=`, `+`, `-`, `@`, tab or carriage return; a number stored as text excepted) gets a leading apostrophe in `Books.xlsx`, the Reports export, the data-export CSVs and the payroll CSV | `projection.py` `_safe_text`, `data_export.py`, `payroll.py` | `test_books_xlsx_never_writes_text_as_a_formula`, `test_report_xlsx_writes_a_contact_name_as_text` |
-| Static site | HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy` (camera and microphone for the app itself only), `X-Frame-Options: DENY`, an enforced CSP (`frame-ancestors 'none'; base-uri 'self'; object-src 'none'`) and a full CSP in report-only mode whose `connect-src` lists the runtime/relay, Graph and its download hosts, and Microsoft sign-in | `apps/web/public/.htaccess` | `test_static_site_sends_security_headers`, `test_static_site_has_a_full_csp_in_report_only_mode` |
+| Static site | HSTS, `nosniff`, `Referrer-Policy`, `Permissions-Policy` (camera and microphone for the app itself only), `X-Frame-Options: DENY`, an enforced CSP (`frame-ancestors 'none'; base-uri 'self'; object-src 'none'; form-action 'self'` and a `connect-src` limited to the runtime/relay, Graph and its download hosts, Microsoft sign-in, and the app's own `data:`/`blob:` URLs) and the full CSP (scripts, styles) in report-only mode | `apps/web/public/.htaccess` | `test_static_site_sends_security_headers`, `test_static_site_enforces_connect_src_and_form_action`, `test_static_site_has_a_full_csp_in_report_only_mode` |
 | Android | Camera, microphone, internet and network state only; no cloud backup (`allowBackup="false"`: settings hold the Meta key); only the launcher activity is exported by the app | `apps/mobile/android/app/src/main/AndroidManifest.xml` | `test_android_manifest_asks_for_little_and_is_not_backed_up` |
 | Secrets in git | Every commit scanned with gitleaks and trufflehog before submission (third pass): no real secret. `.gitleaks.toml` allow-lists the three test fixtures, so `gitleaks git .` is clean | `.gitleaks.toml` | `docs/reviews/security-3/REVIEW.md` |
 | Online payments | The server holds only the platform's Stripe/PayPal credentials (env); a user's link is the account id in their own OneDrive, never a token (Stripe's deprecated OAuth tokens are dropped). Connect `state` is HMAC-signed, expires after 15 min, is spent once per step (callback, connect), names the provider, and carries a hash of the signed-in user and of a secret only the starting browser tab holds, so a code or merchant id started elsewhere cannot be linked to someone's books; `redirect_to` must be Settings on a `CORS_ORIGINS` origin. A PayPal merchant is accepted only when PayPal confirms it onboarded through that sign-up (`tracking_id`). Amounts and fees for approval are read again from the provider, never from the browser; nothing is posted without `confirm: true`. Live keys/APIs are refused unless `PAYMENTS_LIVE=1`; calls go only to the configured provider bases with no redirects | `app/online_payments.py`, `payment_providers.py`, `routes_online_payments.py` | `test_online_payments.py`, `test_payment_provider_calls_go_only_to_the_configured_provider_bases` |
@@ -100,9 +100,11 @@ marketing data held by the operator, separate from anyone's books, and handled u
 - **Prompt injection beyond file names.** A crafted document can still mislead the model's reading of amounts or
   suppliers. Every figure is checked by code and nothing is posted without the user's approval (or an Autopilot rule
   the user created), but the extraction itself is not adversarially robust.
-- **Content-Security-Policy for the web app.** Enforced: frame, object and base restrictions only. The full policy
-  (scripts, styles, `connect-src`) is sent in report-only mode until a release has run clean with it; scripts still
-  need `'unsafe-inline'` because a static export has no nonces for Next.js inline scripts.
+- **Content-Security-Policy for the web app.** Enforced: frame, object and base restrictions, `form-action 'self'`
+  and `connect-src` (SEC-04, 2 Nov 2026: the Playwright suite runs under the same enforced line, e2e/serve.mjs). The
+  script and style policy is still report-only; scripts need `'unsafe-inline'` because a static export has no nonces
+  for Next.js inline scripts, so an XSS could still read browser storage, but could only send it to the hosts
+  connect-src lists.
 - **Data at rest.** The books are files in the user's OneDrive; their protection is Microsoft's and the user's.
 - **Browser storage.** The AI key and HMRC tokens live in the user's browser storage (local / session); an XSS on the
   web origin could read them.
@@ -164,9 +166,11 @@ Found in the pre-submission review (`docs/reviews/security-3/REVIEW.md`) and lef
 - **`/ai/test` needs no Graph token** (Settings' Test connection). With no `X-AI-Base-Url` it pings the server's own
   local agent but answers only ok or not ok: the server's model list and default model are not returned.
 - **The relay's VAT-number check is public** on `api.accnomos.com` and spends the relay's application token.
-- **Android allows cleartext HTTP to any host** (`usesCleartextTraffic`), for a runtime on the user's LAN; a user
-  who types an `http://` address elsewhere sends the Graph token and Meta key unencrypted. The Meta key is in
-  shared preferences, not encrypted storage.
+- **Android cleartext HTTP** is allowed in release builds only to the named LAN/loopback hosts in
+  `res/xml/network_security_config.xml` (the DGX Spark and development PC on the owner LAN, the emulator host, localhost); debug builds allow
+  any host (SEC-05, 2 Nov 2026). A local reader on another LAN address needs a debug build or HTTPS. The Meta key is
+  still in shared preferences (Auto Backup off), not encrypted storage: moving it to `flutter_secure_storage` needs a
+  lockfile change that could not be made without the Flutter SDK in that session.
 
 ## Reporting a vulnerability
 
