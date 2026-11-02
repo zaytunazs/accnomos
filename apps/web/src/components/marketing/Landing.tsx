@@ -282,7 +282,8 @@ export default function Landing() {
 }
 
 /**
- * The two calls to action. Submission build: "Try the demo" and "Sign in with Microsoft", with "Get 3 months free"
+ * The calls to action. Submission build: "Try the demo" (the company), "Try the personal demo" (a household's own
+ * money) and "Sign in with Microsoft", with "Get 3 months free"
  * (the sign-up near the end of the page) between them in the hero. Pre-launch build: "get notified" by e-mail first,
  * the demo second (sign-in moves to the menu's "Early access / testers").
  */
@@ -304,6 +305,9 @@ function CtaPair({ dark = false, join = false }: { dark?: boolean; join?: boolea
   return (
     <div className="flex flex-wrap items-center gap-3">
       <DemoLink className={primary} />
+      <DemoLink kind="personal" className={secondary}>
+        Try the personal demo
+      </DemoLink>
       {join && (
         <a href="#join" className={secondary}>
           Get 3 months free

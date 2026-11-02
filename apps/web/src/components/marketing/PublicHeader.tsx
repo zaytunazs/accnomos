@@ -165,6 +165,12 @@ export default function PublicHeader({ path }: { path: string }) {
           </ul>
         </nav>
         <DemoLink className="mt-3 block rounded-lg bg-brass px-4 py-3 text-center text-base font-bold text-ink hover:bg-brass-light" />
+        <DemoLink
+          kind="personal"
+          className="mt-2 block rounded-lg border-2 border-brass px-4 py-[10px] text-center text-base font-bold text-ground hover:bg-ledger-deep"
+        >
+          Try the personal demo
+        </DemoLink>
       </div>
     </header>
   );

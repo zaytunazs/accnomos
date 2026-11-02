@@ -56,6 +56,17 @@ export default function JudgesPage() {
         <div>
           <TryDemo next="/review" label="Start the demo" always />
         </div>
+        <div className="rounded-2xl border border-border bg-white p-4">
+          <h2 className="text-[15px] font-extrabold">Also: the personal demo</h2>
+          <p className="mt-1 text-sm leading-relaxed text-muted">
+            Accnomos also keeps a household&apos;s own money. The personal demo opens a fictional family&apos;s bank lines
+            sorted into budgets, their bills and subscriptions, and goals such as saving for school fees or spending less on
+            coffee, each tracked against their books with suggestions.
+          </p>
+          <div className="mt-3">
+            <TryDemo kind="personal" next="/personal" label="Start the personal demo" variant="secondary" always />
+          </div>
+        </div>
       </header>
 
       <section aria-labelledby="what-to-try" className="rounded-2xl border border-border bg-white p-5 sm:p-6">

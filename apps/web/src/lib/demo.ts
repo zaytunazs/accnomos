@@ -24,8 +24,28 @@ export function sentNote(text: string): string {
   return isDemo() ? `${NOT_SENT} · ${text}` : text;
 }
 
+/** Which sample books: the company (Bramblewood Joinery, the default) or a fictional household's personal finances. */
+export type DemoKind = "company" | "personal";
+
+export const DEMO_KINDS: Record<DemoKind, { title: string; blurb: string; next: string; label: string }> = {
+  company: {
+    title: "Company demo (Bramblewood Joinery)",
+    blurb: "A small joinery business: receipts to review, bank matching, invoices, VAT and business goals.",
+    next: "/judges",
+    label: "SAMPLE — FICTIONAL COMPANY",
+  },
+  personal: {
+    title: "Personal demo (a household)",
+    blurb: "A family's own money: bank lines sorted into budgets, bills, and goals like saving for school fees.",
+    next: "/personal",
+    label: "SAMPLE — FICTIONAL HOUSEHOLD",
+  },
+};
+
 export interface DemoSession {
   session: string;
+  /** Absent in sessions started before there were two demos: those are company demos. */
+  kind?: DemoKind;
   business: string;
   label: string;
   user: string;
@@ -58,6 +78,12 @@ export function isDemo(): boolean {
   return typeof window !== "undefined" && demoSession() !== null;
 }
 
+/** The running demo's kind (company for sessions from before there were two), or null outside a demo. */
+export function demoKind(): DemoKind | null {
+  const s = typeof window === "undefined" ? null : demoSession();
+  return s ? (s.kind ?? "company") : null;
+}
+
 /** The runtime's error detail, or a plain sentence. */
 async function detail(res: Response, fallback: string): Promise<string> {
   try {
@@ -70,14 +96,16 @@ async function detail(res: Response, fallback: string): Promise<string> {
 }
 
 /**
- * Start a fresh demo (or, in one, Reset demo: the runtime drops the old session). Resolves once the sample books are
- * ready; the first visitor of the day may wait while they are seeded.
+ * Start a fresh demo of `kind` (or, in one, Reset demo: the runtime drops the old session; with no `kind`, a reset
+ * keeps the running demo's kind, else the company demo). Resolves once the sample books are ready; the first visitor
+ * of the day may wait while they are seeded.
  */
-export async function startDemo(): Promise<DemoSession> {
+export async function startDemo(kind?: DemoKind): Promise<DemoSession> {
   const old = demoSession();
+  const want: DemoKind = kind ?? old?.kind ?? "company";
   let res: Response;
   try {
-    res = await fetch(`${RUNTIME_URL}/demo/session`, {
+    res = await fetch(`${RUNTIME_URL}/demo/session?kind=${want}`, {
       method: "POST",
       headers: old ? { [DEMO_HEADER]: old.session } : {},
     });
@@ -87,7 +115,7 @@ export async function startDemo(): Promise<DemoSession> {
   if (res.status === 404) throw new Error("The demo sandbox isn't switched on for this server.");
   if (!res.ok) throw new Error(await detail(res, `The demo couldn't start (${res.status}). Try again in a minute.`));
   const body = (await res.json()) as Omit<DemoSession, "started_at">;
-  const session: DemoSession = { ...body, started_at: Date.now() };
+  const session: DemoSession = { ...body, kind: body.kind ?? want, started_at: Date.now() };
   try {
     window.localStorage.setItem(DEMO_KEY, JSON.stringify(session));
     // The HMRC (simulated) connection from an earlier demo belongs to that demo.

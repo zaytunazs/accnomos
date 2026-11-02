@@ -8,6 +8,16 @@ laptop's browser at `https://accnomos.com`. HMRC is a separate sandbox **test us
 (from 0.3.1+4 a Play build carries the Play signing hash registered in Entra, but sign-in on a real phone is still untried, see `docs/HONESTY.md`).
 **Sample business:** Bramblewood Joinery Ltd, fictional, shown only while signed out and labelled "SAMPLE — FICTIONAL COMPANY". Once signed in, every page shows the throwaway account's own (empty) books.
 
+**Two public demos (no sign-in, `DEMO_MODE=1` on the runtime).** *Company*: Bramblewood Joinery Ltd's books (the
+seed in `tools/seed_demo.py`, "SAMPLE — FICTIONAL COMPANY"), opened on `/judges`, plus three business goals sized from
+those books (this month's sales, spending in its busiest purchase category, a VAT pot). *Personal*: a fictional
+household, "The Patel household (fictional)", labelled "SAMPLE — FICTIONAL HOUSEHOLD" (`app/demo_personal.py`): bank
+lines from 1 January last year (salary, rent, bills, groceries, coffee rising this year, takeaways, travel,
+subscriptions, savings transfers), household categories, budgets and five goals with mixed statuses (school fees off
+track, holiday pot at risk, rainy-day fund on track, coffee over last year's level less 30%, groceries this month). It
+opens on `/personal`; it builds in well under a second. Start either from the landing page ("Try the demo" / "Try the
+personal demo"), `/judges`, `/join` or `/connect`; the demo bar switches between them (`POST /demo/session?kind=`).
+
 **The numbers.** The demo date is 4 Nov 2026, so on stagger 1 the current VAT period is **Oct–Dec 2026**. The receipt is
 `https://accnomos.com/sample-receipt.png` (`apps/web/public/sample-receipt.png`, drawn by `tools/make_sample_receipt.py`):
 fictional **Novex Office Supplies Ltd**, VAT GB 882431902, dated **2 Nov 2026**, 2 × A4 paper £25.00 + gel pens £18.25 =
