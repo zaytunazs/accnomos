@@ -219,7 +219,7 @@ export function ProfileSwitcher({ linked }: { linked: Linked }) {
   return (
     <MenuButton
       menuLabel="Profiles"
-      className="flex min-h-11 min-w-0 max-w-[11rem] items-center gap-2 rounded-xl px-2 py-1 text-left hover:bg-ground sm:max-w-[16rem]"
+      className="flex min-h-11 min-w-0 max-w-[11rem] items-center gap-2 rounded-xl px-2 py-1 text-left hover:bg-ground max-[399px]:max-w-[5.5rem] sm:max-w-[16rem]"
       items={
         <>
           <p className="px-3 pb-1 pt-1 text-[13px] font-bold text-muted" aria-hidden="true">
