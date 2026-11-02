@@ -30,7 +30,7 @@ from collections.abc import Sequence
 from datetime import date, datetime, timedelta
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, ValidationError, field_validator, model_validator
 
 from accnomos_ledger import LedgerEvent
 from accnomos_ledger.bank import BankLine
@@ -216,13 +216,8 @@ async def delete_goal(books: Books, goal_id: str, user: str) -> None:
 
 
 def _first_error(exc: ValueError) -> str:
-    errors = getattr(exc, "errors", None)
-    if callable(errors):
-        try:
-            msg = str(errors()[0].get("msg", exc))
-            return msg.removeprefix("Value error, ")
-        except (IndexError, TypeError):
-            pass
+    if isinstance(exc, ValidationError) and exc.errors():
+        return str(exc.errors()[0].get("msg", exc)).removeprefix("Value error, ")
     return str(exc)
 
 
@@ -437,7 +432,9 @@ def drivers(data: Ledgerish, goal: Goal, start: date, end: date) -> list[Driver]
     pe = start - timedelta(days=1)
     ps = pe - timedelta(days=days)
     focus = goal.focus if goal.kind in ("spend_cap", "spend_less") else None
-    now_rows = {(s.kind, s.name): s.pence for s in data.breakdown(start, end, focus)}
+    now_rows: dict[tuple[Literal["category", "item", "supplier"], str], int] = {
+        (s.kind, s.name): s.pence for s in data.breakdown(start, end, focus)
+    }
     before = {(s.kind, s.name): s.pence for s in data.breakdown(ps, pe, focus)}
     rows = [
         Driver(name=n, kind=k, this_pence=p, before_pence=before.get((k, n), 0), change_pence=p - before.get((k, n), 0))

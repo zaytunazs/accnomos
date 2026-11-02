@@ -527,7 +527,7 @@ SUMMARIES: dict[str, Summary] = {
     "personal_line_categorised": lambda r, w: "Put a bank line in a personal spending category",
     "personal_goal_saved": lambda r, w: "Saved a savings goal",
     "goal_saved": lambda r, w: {"added": "Added a goal", "deleted": "Removed a goal"}.get(
-        r.get("change"), "Changed a goal"
+        str(r.get("change") or ""), "Changed a goal"
     ),
     "personal_goal_deleted": lambda r, w: "Deleted a savings goal",
     # Landlords (app/property.py, app/routes_property.py)
