@@ -17,6 +17,7 @@ import {
   type RtCloseMonth,
   type RtCloseStep,
   type RtCloseStepId,
+  type RtDuplicateEvent,
   type RtCloseSummary,
   type RtProposedAction,
 } from "@/lib/runtime";
@@ -71,6 +72,47 @@ function StatusChip({ status }: { status: RtCloseStep["status"] }) {
       <span aria-hidden="true">{s.icon}</span>
       {s.label}
     </span>
+  );
+}
+
+const gbp = (pence: number) =>
+  (pence / 100).toLocaleString("en-GB", { style: "currency", currency: "GBP" });
+
+/** Entries the books found stored twice (from before approvals were made create-only). Shown, never fixed here. */
+export function DuplicatesNotice({ duplicates }: { duplicates: RtDuplicateEvent[] }) {
+  if (!duplicates.length) return null;
+  const n = duplicates.length;
+  return (
+    <section
+      data-close-duplicates=""
+      aria-labelledby="close-duplicates"
+      className="rounded-2xl border-2 border-warn-border bg-warn-bg p-4 sm:p-5"
+    >
+      <h2 id="close-duplicates" className="text-lg font-extrabold tracking-tight text-warn-ink">
+        {n === 1 ? "1 entry is stored twice in your ledger" : `${n} entries are stored twice in your ledger`}
+      </h2>
+      <p className="mt-1 text-sm text-ink">
+        The same approval was saved in more than one file, probably from a double tap before this was prevented. Your
+        reports and VAT count each entry once (the first copy). The extra copies stay in your files until you or your
+        accountant remove them; nothing is deleted automatically.
+      </p>
+      <ul className="mt-3 space-y-2 text-sm">
+        {duplicates.map((d) => (
+          <li key={d.id} className="rounded-xl border border-border bg-white p-3">
+            <p className="font-bold">
+              {d.date ? new Date(`${d.date}T00:00:00`).toLocaleDateString("en-GB") : "Date unknown"}
+              {d.kind ? ` · ${d.kind}` : ""}
+              {d.counterparty ? ` · ${d.counterparty}` : ""}
+              {d.net_pence != null ? ` · ${gbp(d.net_pence)} before VAT` : ""}
+            </p>
+            <p className="mt-0.5 text-[13px] text-muted">
+              Entry {d.id.slice(0, 8)} · extra {d.extra_files.length === 1 ? "copy" : "copies"}:{" "}
+              <span className="break-all">{d.extra_files.map((f) => f.split("/").pop()).join(", ")}</span>
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -361,6 +403,7 @@ export default function MonthEnd() {
       </div>
 
       {error && <RuntimeErrorNote message={error} onRetry={() => void load()} />}
+      {detail?.duplicates && <DuplicatesNotice duplicates={detail.duplicates} />}
       {detail?.changes && <ChangesBanner changes={detail.changes} onRerun={runClose} running={phase === "running"} />}
 
       <p ref={live} className="sr-only" role="status" aria-live="polite">

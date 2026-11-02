@@ -3736,14 +3736,25 @@ export interface RtCloseRecord {
   reclose: boolean;
   changes_since_previous: string[];
 }
+/** A ledger entry stored in more than one file: the books count it once; the extra copies are listed. */
+export interface RtDuplicateEvent {
+  id: string;
+  date: string | null;
+  kind: string | null;
+  counterparty: string | null;
+  net_pence: number | null;
+  extra_files: string[];
+}
 export interface RtCloseMonth extends RtCloseStatus {
   run: RtCloseStoredRun | null;
   closes: RtCloseRecord[];
+  duplicates?: RtDuplicateEvent[];
 }
 export interface RtCloseOverview {
   today: string;
   target: RtCloseStatus;
   changed: RtCloseStatus[];
+  duplicates?: RtDuplicateEvent[];
 }
 export interface RtCloseStart {
   run_id: string;

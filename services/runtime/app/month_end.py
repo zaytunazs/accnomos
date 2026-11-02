@@ -1696,15 +1696,50 @@ class MonthStatus(BaseModel):
     headline: str
 
 
+class DuplicateEvent(BaseModel):
+    """A ledger entry stored in more than one file (posted twice before the create-only claim existed). The books
+    count it once (the first file by path); the extra copies are listed here so the owner can tidy them up."""
+
+    id: str
+    date: date | None
+    kind: str | None
+    counterparty: str | None
+    net_pence: int | None
+    extra_files: list[str]  # the copies the books skip
+
+
 class CloseOverview(BaseModel):
     today: date
     target: MonthStatus  # the month that ended last
     changed: list[MonthStatus]  # other closed months with changes since, newest first
+    duplicates: list[DuplicateEvent] = Field(default_factory=list)
 
 
 class MonthDetail(MonthStatus):
     run: StoredRun | None = None  # the last run
     closes: list[CloseRecord] = Field(default_factory=list)
+    duplicates: list[DuplicateEvent] = Field(default_factory=list)  # anywhere in the books, not only this month
+
+
+async def duplicate_events(books: Books, events: list[LedgerEvent] | None = None) -> list[DuplicateEvent]:
+    """Entries the ledger found in more than one file (Books.duplicate_events, filled while the events are read)."""
+    if events is None:
+        events = await books.list_events()
+    by_id = {e.id: e for e in events}
+    out: list[DuplicateEvent] = []
+    for event_id, paths in sorted(books.duplicate_events.items()):
+        ev = by_id.get(event_id)
+        out.append(
+            DuplicateEvent(
+                id=event_id,
+                date=ev.date if ev else None,
+                kind=ev.kind if ev else None,
+                counterparty=ev.counterparty if ev else None,
+                net_pence=ev.net if ev else None,
+                extra_files=list(paths),
+            )
+        )
+    return sorted(out, key=lambda d: (d.date or date.min, d.id))
 
 
 def _headline(st: MonthStatus) -> str:
@@ -1770,5 +1805,10 @@ async def overview(books: Books, today: date | None = None) -> CloseOverview:
     for m in sorted(months, reverse=True)[:24]:
         st = await month_status(books, m, today, events, lines)
         if st.changes is not None:
-            changed.append(MonthStatus(**st.model_dump(exclude={"run", "closes"})))
-    return CloseOverview(today=today, target=MonthStatus(**tgt.model_dump(exclude={"run", "closes"})), changed=changed)
+            changed.append(MonthStatus(**st.model_dump(exclude={"run", "closes", "duplicates"})))
+    return CloseOverview(
+        today=today,
+        target=MonthStatus(**tgt.model_dump(exclude={"run", "closes", "duplicates"})),
+        changed=changed,
+        duplicates=await duplicate_events(books, events),
+    )

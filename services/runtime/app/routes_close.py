@@ -64,7 +64,9 @@ async def close_detail(
     """Reads only."""
     day = today or current_date()
     _check(month, day)
-    return await me.month_status(books, month, day)
+    detail = await me.month_status(books, month, day)
+    detail.duplicates = await me.duplicate_events(books)
+    return detail
 
 
 def _mail(token: str) -> MailProvider:

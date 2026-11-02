@@ -409,6 +409,22 @@ async def test_duplicate_event_files_are_counted_once_and_reported(fake: FakeSto
     assert books.duplicate_events == {"a" * 32: [f"{EVENTS}/2026-10/20261030T120001Z-runtime-{'a' * 32}.json"]}
 
 
+async def test_month_end_lists_duplicate_event_files(fake: FakeStorageProvider, books: Books) -> None:
+    from app import month_end as me
+
+    assert await me.duplicate_events(books) == []
+    await fake.ensure_folder(f"{EVENTS}/2026-10")
+    for ts in ("20261030T120000Z", "20261030T120001Z"):
+        fake.files[f"{EVENTS}/2026-10/{ts}-runtime-{'a' * 32}.json"] = _event(T0).model_dump_json().encode()
+    dup = await me.duplicate_events(books)
+    assert [(d.id, d.date, d.kind, d.net_pence) for d in dup] == [("a" * 32, date(2026, 10, 1), "purchase", 10000)]
+    assert dup[0].extra_files == [f"{EVENTS}/2026-10/20261030T120001Z-runtime-{'a' * 32}.json"]
+    detail = await me.month_status(books, "2026-10", date(2026, 11, 2))
+    assert detail.duplicates == []  # the route fills it, once per request
+    ov = await me.overview(books, date(2026, 11, 2))
+    assert [d.id for d in ov.duplicates] == ["a" * 32]
+
+
 # --------------------------------------------------------------------------- #
 # HTTP
 # --------------------------------------------------------------------------- #
