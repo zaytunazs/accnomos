@@ -97,6 +97,7 @@ export const NAV_GROUPS: NavGroup[] = [
   {
     label: "More",
     items: [
+      { heading: "Your plan", label: "Goals & progress", href: "/goals" },
       { heading: "Accounting", label: "Bank rules", href: "/bank/rules" },
       { heading: "Accounting", label: "Reconcile", href: "/bank/reconcile" },
       { heading: "Accounting", label: "Documents", href: "/files" },
