@@ -23,7 +23,7 @@ from openpyxl import load_workbook
 from accnomos_connectors import FakeStorageProvider
 from accnomos_ledger.bank import detect_bank, parse_bank_csv, reconciled_to
 from accnomos_ledger.vat import compute_vat_return
-from app import autopilot, bank_rules, credit_notes, dashboard, invoicing, jobs, mileage, payments, payroll, todos
+from app import autopilot, bank_rules, credit_notes, dashboard, invoicing, jobs, mileage, payments, payroll, reports, todos
 from app import contacts as contacts_mod
 from app.books import INBOX, NEEDS_A_LOOK, Books
 from app.checks import decide, run_checks
@@ -55,7 +55,7 @@ def plan(seed_demo: ModuleType):  # noqa: ANN201
 
 
 def test_counts(plan) -> None:  # noqa: ANN001
-    assert (plan.event_count, plan.approved_count, plan.coded_count) == (59, 45, 14)
+    assert (plan.event_count, plan.approved_count, plan.coded_count, len(plan.comparatives)) == (59, 45, 14, 10)
     assert (len(plan.posted), len(plan.supplier_docs), len(plan.invoices), bool(plan.claim_journeys())) == (
         36,
         2,
@@ -290,13 +290,22 @@ async def test_ledger(seed_demo: ModuleType, seeded: tuple) -> None:
     plan, fake, report = seeded
     books = Books(fake)
     events = await books.list_events()
-    assert report["events"] == len(events) == plan.event_count == 59
+    assert report["events"] == len(events) == plan.ledger_count == 69
     assert all(sum(ln.debit for ln in e.lines) == sum(ln.credit for ln in e.lines) for e in events)
+    # Last year's comparatives: one summary journal a month, 1 Jan to this day a year ago, no VAT; the rest are in
+    # the seeded VAT periods.
+    last_year = [e for e in events if e.date.year == plan.today.year - 1]
+    assert [e.date for e in last_year] == [d for d, *_ in plan.comparatives]
+    assert all(e.kind == "adjustment" and e.vat is None and e.net is None for e in last_year)
+    events = [e for e in events if e not in last_year]
+    assert len(events) == plan.event_count == 59
     assert all(plan.window[0] <= e.date <= plan.window[1] for e in events)
     kinds = Counter(e.kind for e in events)
     assert kinds["reversal"] == 2 and {"sale", "purchase", "bank"} <= set(kinds)  # the two credit notes
     by = Counter(e.approved_by for e in events)
     assert by == {seed_demo.USER: 53, autopilot.AUTOPILOT: 6}
+    pl = reports.profit_and_loss(last_year, date(2025, 1, 1), date(2025, 10, 27))
+    assert pl.sales.total_pence == sum(c[1] for c in plan.comparatives) and pl.sample
     proposals = await books.list_proposals()
     assert sum(p.status == "posted" for p in proposals) == len(proposals) == 38 + 1 + 8  # docs, mileage, bank codings
     assert sum(p.job_id is not None for p in proposals) == sum(d.job is not None for d in plan.posted) >= 2
@@ -424,7 +433,7 @@ async def test_files_jobs_payroll_todos_reports(seed_demo: ModuleType, seeded: t
     assert "README.txt" in fake.files and "Books.xlsx" in fake.files
     wb = load_workbook(io.BytesIO(fake.files["Books.xlsx"]))
     summary = {r[0].value: r[1].value for r in wb["Summary"].iter_rows(min_row=2)}
-    assert summary["Entries posted"] == 59 and summary["Proposals waiting"] == 0
+    assert summary["Entries posted"] == 69 and summary["Proposals waiting"] == 0
     (report,) = [p for p in fake.files if p.startswith("07 Reports/")]
     assert report == "07 Reports/2026-10-27-reports.xlsx"
     sheets = load_workbook(io.BytesIO(fake.files[report]))
@@ -436,7 +445,7 @@ async def test_a_second_run_changes_nothing(seed_demo: ModuleType, seeded: tuple
     plan, fake, _ = seeded
     before = dict(fake.files)
     again = await seed_demo.seed(fake, plan, say=lambda _msg: None)
-    assert again["already_seeded"] and again["events"] == 59
+    assert again["already_seeded"] and again["events"] == 69
     assert fake.files == before
 
 

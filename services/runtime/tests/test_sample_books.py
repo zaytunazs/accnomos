@@ -223,13 +223,13 @@ async def test_loads_the_demo_books_into_an_empty_folder(done_books: FakeStorage
     assert stored["state"] == "done" and stored["today"] == TODAY.isoformat() and stored["stagger"] == 1
     assert await _facts(fake) == await _facts(done_books)
     facts = await _facts(fake)
-    assert facts["events"] == 59 and len(facts["inbox"]) == 25 and facts["reports"] == 1
+    assert facts["events"] == 69 and len(facts["inbox"]) == 25 and facts["reports"] == 1
     loaded = [a for a in _audit(fake) if a["action"] == "sample_books_loaded"]
     assert loaded == [
         {
             **loaded[0],
             "actor": "user:judge@example.com",
-            "refs": {"business": "Bramblewood Joinery Ltd", "events": 59, "steps": status["total"]},
+            "refs": {"business": "Bramblewood Joinery Ltd", "events": 69, "steps": status["total"]},
         }
     ]
     assert [a["action"] for a in _audit(fake)].count("sample_books_started") == 1

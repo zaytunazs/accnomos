@@ -24,6 +24,8 @@ nothing here writes JSON by hand. What it posts (stagger 1, run in Oct-Dec 2026;
   in "Needs a look" (an EUR invoice and a malformed VAT number).
 * Before any of that, four suppliers marked "not VAT-registered" in the contacts: their receipts over £250 charge no
   VAT and show no VAT number, which for a supplier the books don't know means "Is <supplier> VAT-registered?".
+* Last year's trading for comparison: one summary journal a month from 1 January to this day a year ago (no VAT),
+  so Home's Business snapshot shows "vs last year". Ten of them when run on 27 Oct.
 * A pay-run estimate, two to-dos, Books.xlsx, and last every report in "07 Reports" (how a re-run knows the seed
   finished: it then changes nothing).
 
@@ -36,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import calendar
 import csv
 import getpass
 import hashlib
@@ -228,6 +231,9 @@ class Plan:
     payroll_period: str | None = None  # a pay run estimated from that month's timesheets (not confirmed)
     todos: list[todos_mod.TodoIn] = field(default_factory=list)
     export_report: bool = False  # 07 Reports: every report in one spreadsheet (written last)
+    # Last year's trading, one summary journal a month from 1 January to this day a year ago, so Home's Business
+    # snapshot has a "vs last year" figure: (date, sales, cost of sales, overheads), pence. Fictional, labelled.
+    comparatives: list[tuple[date, int, int, int]] = field(default_factory=list)
 
     @property
     def window(self) -> tuple[date, date]:
@@ -250,7 +256,13 @@ class Plan:
 
     @property
     def event_count(self) -> int:
+        """Entries in the seeded VAT periods (the comparatives are last year's and counted on their own)."""
         return self.approved_count + self.coded_count
+
+    @property
+    def ledger_count(self) -> int:
+        """Every ledger event the seed writes: the periods' entries and last year's comparative journals."""
+        return self.event_count + len(self.comparatives)
 
     def invoice(self, number: str) -> PlannedInvoice:
         return next(i for i in self.invoices if i.number == number)
@@ -700,8 +712,23 @@ def _fee_rows(plan: Plan) -> list[tuple[date, str, str, str, int]]:
     return [r for r in _bank_rows(plan) if r[1] == "Starling Bank"] if plan.bank_rules else []
 
 
+def comparatives(today: date) -> list[tuple[date, int, int, int]]:
+    """One month a row from 1 January last year to this day a year ago (the span Home compares the year to date
+    with). Round, plausible figures for a small joinery firm; deterministic for the day."""
+    end = today.replace(year=today.year - 1) if (today.month, today.day) != (2, 29) else date(today.year - 1, 2, 28)
+    out: list[tuple[date, int, int, int]] = []
+    for m in range(1, end.month + 1):
+        last = date(end.year, m, calendar.monthrange(end.year, m)[1])
+        day = min(last, end)
+        season = (0, 2, 4, 6, 7, 8, 8, 7, 6, 5, 3, 1)[m - 1]  # busier in summer
+        sales = 1_150_000 + season * 60_000
+        out.append((day, sales, sales * 38 // 100, 260_000 + season * 5_000))
+    return out
+
+
 def _plan_extras(plan: Plan, utilities: list[str]) -> None:
     (start, _), newer = plan.window, plan.periods[1]
+    plan.comparatives = comparatives(plan.today)
     # Autopilot: each energy supplier's first bill is approved with "Always do this" ticked, the second (a quarter
     # later, the same amount) is posted by Autopilot.
     seen: set[str] = set()
@@ -984,6 +1011,12 @@ def describe(plan: Plan) -> str:
         lines.append(f"Pay run: an estimate for {plan.payroll_period} from the timesheets (not confirmed)")
     if plan.todos:
         lines.append(f"{len(plan.todos)} to-dos: " + "; ".join(t.text for t in plan.todos))
+    if plan.comparatives:
+        first, last = plan.comparatives[0][0], plan.comparatives[-1][0]
+        lines.append(
+            f"Last year's figures for comparison: {len(plan.comparatives)} monthly summary journals, "
+            f"{_uk(first)} to {_uk(last)} (sales, materials, overheads; no VAT)"
+        )
     lines.append(
         "Then: contacts refreshed from the ledger, Books.xlsx rebuilt"
         + (f", every report saved in {REPORTS}." if plan.export_report else ".")
@@ -1184,6 +1217,10 @@ def seed_steps(plan: Plan, sender: NotEmailed | None = None) -> list[Step]:
         Step("Bank reconciliation", lambda b, r: _step_reconcile(b, plan, r)),
         Step("Pay run estimate and to-dos", lambda b, r: _step_payroll_todos(b, plan)),
         Step(f"Documents waiting in {INBOX}", lambda b, r: _step_inbox(b, plan)),
+    ]
+    if plan.comparatives:
+        steps.append(Step("Last year's figures (for comparison)", lambda b, r: _step_comparatives(b, plan, r)))
+    steps += [
         Step("Books.xlsx", lambda b, r: _rebuild(b)),
     ]
     if plan.export_report:  # last: its file in 07 Reports is how a second run knows the seed finished
@@ -1711,6 +1748,33 @@ async def _step_payroll_todos(books: Books, plan: Plan) -> None:
 async def _step_inbox(books: Books, plan: Plan) -> None:
     for d in plan.inbox:  # same name, same bytes: writing again changes nothing
         await _upload(books, d)
+
+
+async def _step_comparatives(books: Books, plan: Plan, resuming: bool) -> None:
+    """Last year's trading as one summary journal a month (sales, materials, overheads against retained earnings),
+    approved through the app's own manual-journal code, so the Business snapshot can compare with last year. No VAT:
+    these months are long before the books' VAT periods."""
+    from app import manual_journals as mj
+
+    done = {j.date for j in await mj.list_journals(books) if j.narration.startswith(COMPARATIVE)} if resuming else set()
+    for day, sales, materials, overheads in plan.comparatives:
+        if day in done:
+            continue
+        body = mj.ManualJournalIn(
+            date=day,
+            narration=f"{COMPARATIVE} {day:%B %Y}, summary of last year's trading ({LABEL})",
+            lines=[
+                mj.JournalLineIn(account="4000", credit_pence=sales),
+                mj.JournalLineIn(account="5000", debit_pence=materials),
+                mj.JournalLineIn(account="7999", debit_pence=overheads),
+                mj.JournalLineIn(account="3100", debit_pence=sales - materials - overheads),
+            ],
+        )
+        draft = await mj.create_draft(books, body, USER)
+        await mj.approve_journal(books, draft.id, USER)
+
+
+COMPARATIVE = "Comparative figures:"
 
 
 async def _rebuild(books: Books) -> None:
