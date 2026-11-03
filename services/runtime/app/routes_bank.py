@@ -28,12 +28,13 @@ from collections.abc import Awaitable, Callable
 from datetime import date
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Request, UploadFile
 from pydantic import BaseModel, Field
 
 from accnomos_ledger.bank import BankCsvError, BankLine, BankLineStatus, reconciled_to
 from accnomos_ledger.events import LedgerEvent
 from accnomos_ledger.matching import Match, settlement_pence
+from app import bank_status
 from app.ai.config import ai_config_from_request
 from app.bank_actions import UnmatchedLine, create_expense_proposal, create_private_proposal, unmatched_lines
 from app.bank_reconcile import (
@@ -95,6 +96,12 @@ class BankSummary(BaseModel):
     transfer: int
     ignored: int
     reconciled_to: date | None  # every line on or before this date is matched, a transfer or ignored
+    # The one definition every screen shows (app/bank_status.py): Home's tile reads the same `open`.
+    basis: bank_status.Basis = "ledger"
+    resolved: int = 0
+    open: int = 0
+    label: str = ""
+    open_label: str = ""
 
 
 async def _line_action[T](action: Callable[[], Awaitable[T]]) -> T:
@@ -131,12 +138,43 @@ async def import_csv(
 
 @router.get("/statements", response_model=list[BankStatement])
 async def statements(books: Books = Depends(get_books)) -> list[BankStatement]:
-    return await books.bank_statements()
+    """Per statement, how many lines are resolved: by the one definition in app/bank_status.py (for personal books,
+    sorted by the household rules)."""
+    return await books.bank_statements(await bank_status.household_for(books))
 
 
-@router.get("/lines", response_model=list[BankLine])
-async def lines(status: BankLineStatus | None = None, books: Books = Depends(get_books)) -> list[BankLine]:
-    return await books.list_bank_lines(status)
+class BankLineRow(BankLine):
+    """A bank line as the Bank page lists it. For personal books, its household category (app/personal.py rules
+    and hand-set categories): `household_sorted` false is a line the Budget page counts as uncategorised."""
+
+    household_category_id: str | None = None
+    household_category: str | None = None
+    household_source: bank_status.HouseholdSource | None = None
+    household_sorted: bool | None = None
+
+
+@router.get("/lines", response_model=list[BankLineRow])
+async def lines(
+    status: BankLineStatus | None = None,
+    open: bool | None = Query(  # noqa: A002 - the query parameter's public name
+        None, description="true: only open lines (what Home counts as to match / with no category); false: only sorted"
+    ),
+    books: Books = Depends(get_books),
+) -> list[BankLineRow]:
+    household = await bank_status.household_for(books)
+    rows = []
+    for ln in await books.list_bank_lines(status):
+        row = BankLineRow(**ln.model_dump())
+        if household is not None:
+            h = household.line(ln)
+            row.household_category_id, row.household_category = h.category_id, h.category
+            row.household_source, row.household_sorted = h.source, h.sorted
+            sorted_ = h.sorted
+        else:
+            sorted_ = ln.resolved
+        if open is None or open is not sorted_:
+            rows.append(row)
+    return rows
 
 
 @router.get("/suggestions", response_model=list[Suggestion])
@@ -418,7 +456,5 @@ async def coding_options() -> CodingOptions:
 @router.get("/summary", response_model=BankSummary)
 async def summary(books: Books = Depends(get_books)) -> BankSummary:
     every = await books.list_bank_lines()
-    count = {
-        s: sum(ln.status == s for ln in every) for s in ("matched", "suggested", "unmatched", "transfer", "ignored")
-    }
-    return BankSummary(total=len(every), reconciled_to=reconciled_to(every), **count)
+    st = bank_status.status(every, await bank_status.household_for(books))
+    return BankSummary(reconciled_to=reconciled_to(every), **st.model_dump())

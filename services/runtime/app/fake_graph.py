@@ -98,13 +98,16 @@ async def respond(
     method = request.method
     if rest == "me/drive/root/children" and method == "POST":  # work account: create /Accnomos
         return JSONResponse(item(FileRef(id="", path="", name="Accnomos", is_folder=True)), status_code=201)
-    if m := re.fullmatch(r"me/drive/items/([^/]+)/children", rest):
-        if method != "POST":
-            return JSONResponse({"error": {"code": "notSupported"}}, status_code=400)
+    if m := re.fullmatch(r"me/drive/items/([^/]+)(/children|/content)?", rest):
         try:
-            parent = path_of(m.group(1))
+            target = path_of(m.group(1))
         except ValueError:  # not an id this look-alike handed out (binascii.Error and UnicodeDecodeError included)
             return not_found(m.group(1))
+        if method == "GET":  # id-addressed reads (the Android Files screen lists a folder by the id it was given)
+            return await _read(st, target, (m.group(2) or "").lstrip("/"), item)
+        if m.group(2) != "/children" or method != "POST":
+            return JSONResponse({"error": {"code": "notSupported"}}, status_code=400)
+        parent = target
         name = (await request.json()).get("name")
         if not isinstance(name, str) or not name.strip("/"):
             return JSONResponse({"error": {"code": "invalidRequest", "message": "name required"}}, status_code=400)
@@ -131,16 +134,22 @@ async def respond(
         data = await request.body()
         ref = await (put or st.write)(rel, data)
         return JSONResponse(item(ref), status_code=201)
+    return await _read(st, rel, action, item)
+
+
+async def _read(st: FakeStorageProvider, rel: str, action: str, item: Callable[[FileRef], dict[str, Any]]) -> Response:
+    """GET one item, its children or its content, by its path under the books root ("" = the root)."""
     if action == "content":
         if rel not in st.files:
             return not_found(rel)
         ext = rel.rsplit(".", 1)[-1].lower()  # the Review preview reads the filed receipt
         return Response(st.files[rel], media_type=_CONTENT.get(ext, "application/octet-stream"))
+    is_folder = rel == "" or rel in st.folders
     if action == "children":
-        if rel not in st.folders:
+        if not is_folder:
             return not_found(rel)
         return JSONResponse({"value": [item(r) for r in await st.list(rel)]})
-    if rel in st.folders:
+    if is_folder:
         return JSONResponse(item(FileRef(id="", path=rel, name=rel.rsplit("/", 1)[-1], is_folder=True)))
     if rel in st.files:
         return JSONResponse(item(st._ref(rel)))
