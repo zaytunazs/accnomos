@@ -83,6 +83,9 @@ export default function AppShell({ children, routes }: { children: ReactNode; ro
       <main className="min-w-0 flex-1">
         <div className="mx-auto w-full max-w-3xl xl:max-w-6xl">{children}</div>
       </main>
+      {/* "Talk to Accnomos": voice or chat from any signed-in or demo page (components/assistant). Fixed on screen, but
+          before the footer in the tab order, so a keyboard user meets it before the page ends. */}
+      {signedIn === true && !accountant && <Assistant />}
       <AppFooter />
     </div>
   );
@@ -146,8 +149,6 @@ export default function AppShell({ children, routes }: { children: ReactNode; ro
       </div>
       {/* Phone tab bar (Home, Review, Ask, VAT, Files; personal books: Home, Review, Budget, Goals, Ask) lives in AppNav; not in the accountant portal. */}
       {!accountant && <AppNav variant="tabs" />}
-      {/* "Talk to Accnomos": voice or chat from any signed-in or demo page (components/assistant). */}
-      {signedIn === true && !accountant && <Assistant />}
     </div>
   );
 }
