@@ -70,10 +70,10 @@ export default function PrivacyPage() {
                 { scope: "User.Read, offline_access", when: "At sign-in", use: "Show who is signed in; keep you signed in" },
                 { scope: "Files.ReadWrite.AppFolder", when: "At sign-in (personal accounts)", use: "Read and write only the Apps/Accnomos folder: 00 Inbox to 07 Reports, Books.xlsx, _System" },
                 { scope: "Files.ReadWrite", when: "At sign-in (work accounts only)", use: "Read and write only the /Accnomos folder; the app folder is personal-accounts only" },
-                { scope: "Mail.Read", when: "When you switch on Outlook intake or inbox triage", use: "Intake copies likely bills to 00 Inbox; triage reads sender, subject, date and a short preview" },
+                { scope: "Mail.Read", when: "When you switch on Outlook intake or inbox triage, or open Import contacts › People who email you", use: "Intake copies likely bills to 00 Inbox; triage reads sender, subject, date and a short preview; Import contacts lists who emailed you (names and addresses only)" },
                 { scope: "Mail.ReadWrite", when: "The first time you tap Draft in Outlook", use: "Save that one reply as a draft; nothing is ever sent" },
                 { scope: "Mail.Send", when: "The first time you send an invoice or reminder, in the confirmation dialog", use: "Send only the email you saw and confirmed, with the invoice PDF" },
-                { scope: "Contacts.Read", when: "The first time you tap Import from Outlook", use: "Fill blank emails and phones; add new contacts only if you choose it" },
+                { scope: "Contacts.Read", when: "The first time you open Import contacts › Outlook contacts", use: "List your Outlook contacts so you can tick which to add; ones already in your books only gain a missing email or phone" },
                 { scope: "Calendars.Read", when: "The first time you plan a day", use: "Read that day from your default calendar to plan around it" },
                 { scope: "Calendars.ReadWrite", when: "The first time you tap Apply on a plan", use: "Create the plan’s new items as calendar events" },
               ].map((row) => (

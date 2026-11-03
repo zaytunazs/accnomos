@@ -11,7 +11,7 @@ laptop's browser at `https://accnomos.com`. HMRC is a separate sandbox **test us
 **Two public demos (no sign-in, `DEMO_MODE=1` on the runtime).** *Company*: Bramblewood Joinery Ltd's books (the
 seed in `tools/seed_demo.py`, "SAMPLE — FICTIONAL COMPANY"), opened on `/judges`, plus three business goals sized from
 those books (this month's sales, spending in its busiest purchase category, a VAT pot). *Personal*: a fictional
-household, "The Patel household (fictional)", labelled "SAMPLE — FICTIONAL HOUSEHOLD" (`app/demo_personal.py`): bank
+household, "The Harrison household (fictional)", labelled "SAMPLE — FICTIONAL HOUSEHOLD" (`app/demo_personal.py`): bank
 lines from 1 January last year (salary, rent, bills, groceries, coffee rising this year, takeaways, travel,
 subscriptions, savings transfers), household categories, budgets and five goals with mixed statuses (school fees off
 track, holiday pot at risk, rainy-day fund on track, coffee over last year's level less 30%, groceries this month). It

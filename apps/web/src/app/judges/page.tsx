@@ -32,7 +32,7 @@ const steps: { title: string; href: string; body: string }[] = [
   {
     title: "Contacts",
     href: "/contacts",
-    body: "Customers and suppliers built from the ledger: who owes what, which suppliers aren't VAT-registered, and Import from Outlook (a demo address book).",
+    body: "Customers and suppliers built from the ledger: who owes what, which suppliers aren't VAT-registered, and Import contacts from Outlook or the people who email you (a demo address book and mailbox).",
   },
   {
     title: "Bank",

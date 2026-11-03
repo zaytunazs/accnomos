@@ -394,7 +394,7 @@ def build_plan(
         ),
         jobs.StaffMember(
             id=_hex(business, "staff", 2, n=12),
-            name="Priya Hale",
+            name="Ellie Hale",
             role="Apprentice",
             hourly_rate_pence=1100,
             charge_rate_pence=2800,

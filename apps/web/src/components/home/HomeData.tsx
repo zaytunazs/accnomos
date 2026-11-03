@@ -24,7 +24,7 @@ const HomeContext = createContext<HomeState>({ mode: "checking" });
 
 export const useHome = () => useContext(HomeContext);
 
-/** "Priya" from the MSAL display name, or the part of the email before the @. */
+/** "Emma" from the MSAL display name, or the part of the email before the @. */
 export function firstName(account: AccountInfo): string {
   const name = (account.name ?? "").trim().split(/\s+/)[0];
   return name || account.username.split("@")[0];

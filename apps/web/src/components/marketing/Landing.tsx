@@ -79,7 +79,7 @@ const BLOCK = {
   itsa: {
     title: "Income Tax for the self-employed",
     body: "If you are self-employed, quarterly Income Tax figures are worked out from your approved entries, with the ledger lines behind each box. The HMRC connection here is sandbox only.",
-    example: "A fictional sole trader, Priya Nair, sees £18,400 of turnover for the period to 5 July with each line traceable.",
+    example: "A fictional sole trader, Emma Hughes, sees £18,400 of turnover for the period to 5 July with each line traceable.",
   },
   payroll: {
     title: "Pay runs, estimated in pence",

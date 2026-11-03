@@ -1,6 +1,6 @@
 """The personal demo: a fictional household's books for the demo sandbox (app/demo.py), next to the company demo.
 
-Everything here is made up and labelled so: the household is "The Patel household (fictional)" (the name every page
+Everything here is made up and labelled so: the household is "The Harrison household (fictional)" (the name every page
 shows), the demo bar says "SAMPLE — FICTIONAL HOUSEHOLD", and no line names a real person. The books are personal
 (`_System/profile.json` kind "personal"), so the app shows its household pages (no VAT, invoices or payroll).
 
@@ -31,7 +31,7 @@ from app import profile as profile_mod
 from app.bank_rules import BankRuleMatch
 from app.books import Books
 
-HOUSEHOLD = "The Patel household (fictional)"
+HOUSEHOLD = "The Harrison household (fictional)"
 LABEL = "SAMPLE — FICTIONAL HOUSEHOLD"
 USER = "demo@accnomos.example"
 STATEMENT = "SAMPLE-FICTIONAL-household-statement.csv"

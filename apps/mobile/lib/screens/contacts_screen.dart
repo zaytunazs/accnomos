@@ -12,7 +12,7 @@ import '../widgets/lookups.dart';
 import '../widgets/vat_status.dart';
 import 'contact_edit_sheet.dart';
 import 'payments_sheets.dart';
-import 'phone_import_sheet.dart';
+import 'import_contacts_screen.dart';
 import 'settings_screen.dart';
 
 /// Contacts from `GET /contacts`: search the list, see each open balance,
@@ -109,36 +109,28 @@ class _ContactsScreenState extends State<ContactsScreen> {
     }
   }
 
-  /// Open the system contact picker, then review the picks before
-  /// importing. The picker reads only the contacts the user taps (no
-  /// Contacts permission); the review sheet saves them to the books.
-  Future<void> _addFromPhone() async {
+  /// Contacts › Import contacts: from the phone, Outlook or the people who
+  /// email you — all, or the ones ticked (import_contacts_screen.dart).
+  Future<void> _importContacts() async {
     final settings = _settings;
     if (settings == null || _account == null) return;
-    final picker = widget.phoneContacts ?? PhoneContacts();
-    PickedPhoneContact? first;
-    try {
-      first = await picker.pickContact();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(friendly(e))),
-      );
-      return;
-    }
-    if (first == null || !mounted) return;
-    final imported = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => PhoneImportSheet(
-        initialPicks: [first!],
-        onPickAnother: picker.pickContact,
-        onImport: (body) async {
-          final client =
-              await booksClient(settings, _auth, _account);
-          return client.importPhoneContacts(body);
-        },
-      ),
+    final phone = widget.phoneContacts ?? PhoneContacts();
+    final api = ImportContactsApi(
+      preview: (source) async {
+        final token = await _auth.tokenFor(source == ImportSource.outlook
+            ? AuthService.contactsReadScopes
+            : AuthService.mailReadScopes);
+        final client = await booksClient(settings, _auth, _account, graphToken: token);
+        return client.importPreview(source.id);
+      },
+      check: (rows) async =>
+          (await booksClient(settings, _auth, _account)).importCheck(rows),
+      save: (source, rows) async =>
+          (await booksClient(settings, _auth, _account)).importContacts(source.id, rows),
+      listPhone: phone.listAll,
+    );
+    final imported = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => ImportContactsScreen(api: api)),
     );
     if (imported == true) await _reload();
   }
@@ -154,11 +146,11 @@ class _ContactsScreenState extends State<ContactsScreen> {
         actions: [
           if (_account != null) ...[
             IconButton(
-              icon: const Icon(Icons.person_add_outlined),
-              tooltip: 'Add from phone',
+              icon: const Icon(Icons.group_add_outlined),
+              tooltip: 'Import contacts',
               constraints:
                   const BoxConstraints(minWidth: 48, minHeight: 48),
-              onPressed: _loading ? null : _addFromPhone,
+              onPressed: _loading ? null : _importContacts,
             ),
             IconButton(
               icon: const Icon(Icons.refresh_outlined),

@@ -95,7 +95,7 @@ export function mailDraftScopesFor(kind: AccountKind): string[] {
 }
 
 /**
- * Contacts › Import from Outlook reads the address book, nothing more. Requested only when the user taps
+ * Contacts › Import contacts › Outlook contacts reads the address book, nothing more. Requested only when the user taps
  * Import (H26), together with the storage scopes, because the import also writes contacts.json to OneDrive.
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

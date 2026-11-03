@@ -465,20 +465,60 @@ def _mailbox() -> FakeMailProvider:
 
 
 def _contacts() -> list[AddressBookContact]:
+    """The company demo's Outlook address book (fictional): two already in the books, the rest new."""
+    rows = [
+        ("demo-contact-1", "JM Trading Ltd", "JM Trading Ltd", "accounts@jmtrading.example", "020 7946 0101"),
+        ("demo-contact-2", "Emily Clarke", "Clarke Interiors Ltd", "emily@clarkeinteriors.example", "0161 496 0202"),
+        ("demo-contact-3", "Tom Bradley", "Sterling & Co. Architects", "accounts@sterling-architects.example", ""),
+        ("demo-contact-4", "Hannah Wright", "Northfield Timber Supplies", "sales@northfieldtimber.example", ""),
+        ("demo-contact-5", "George Palmer", "", "george.palmer@example.co.uk", "07700 900303"),
+        ("demo-contact-6", "Lucy Bennett", "Bennett Kitchens Ltd", "lucy@bennettkitchens.example", "0113 496 0404"),
+    ]
     return [
         AddressBookContact(
-            id="demo-contact-1",
-            display_name="JM Trading Ltd",
-            company_name="JM Trading Ltd",
-            emails=["accounts@jmtrading.example"],
-        ),
-        AddressBookContact(
-            id="demo-contact-2",
-            display_name="Priya Shah",
-            company_name="Shah Interiors Ltd",
-            emails=["priya@shahinteriors.example"],
-        ),
+            id=i, display_name=n, company_name=c, emails=[e] if e else [], business_phones=[p] if p else []
+        )
+        for i, n, c, e, p in rows
     ]
+
+
+def _household_contacts() -> list[AddressBookContact]:
+    """The personal demo's address book (fictional): people and services a household pays."""
+    rows = [
+        ("demo-hh-1", "Oakfield Lettings", "Oakfield Lettings", "rent@oakfieldlettings.example", "020 7946 0505"),
+        ("demo-hh-2", "Dave Morgan", "Morgan Plumbing", "dave@morganplumbing.example", "07700 900606"),
+        ("demo-hh-3", "Sarah Collins", "", "sarah.collins@example.co.uk", "07700 900707"),
+    ]
+    return [
+        AddressBookContact(
+            id=i, display_name=n, company_name=c, emails=[e] if e else [], business_phones=[p] if p else []
+        )
+        for i, n, c, e, p in rows
+    ]
+
+
+def _household_mailbox() -> FakeMailProvider:
+    """Two fictional emails, so "People you email" has something to show in the personal demo."""
+    mail = FakeMailProvider()
+    received = datetime.now(UTC)
+    for i, (addr, name, subject, hours) in enumerate(
+        [
+            ("rent@oakfieldlettings.example", "Oakfield Lettings", "Your November rent statement", 5),
+            ("office@hillcrestprimary.example", "Hillcrest Primary School", "Trip payment reminder", 30),
+        ],
+        1,
+    ):
+        mail.add(
+            MailMessage(
+                id=f"demo-hh-msg-{i}",
+                received_at=received - timedelta(hours=hours),
+                from_address=addr,
+                from_name=name,
+                subject=subject,
+            ),
+            body=f"{subject}. (SAMPLE — FICTIONAL HOUSEHOLD)",
+        )
+    return mail
 
 
 def _calendar(day: date) -> FakeCalendarProvider:
@@ -507,10 +547,11 @@ async def new_session(day: date | None = None, kind: DemoKind = "company") -> tu
     s = DemoSession(
         id=secrets.token_urlsafe(24),
         storage=DemoStorage(snap.storage, LIMITS),
-        # The household has no trade mail, customers or site visits: empty fakes, so nothing business-like shows.
-        mail=_mailbox() if kind == "company" else FakeMailProvider(),
+        # The household has no trade mail, customers or site visits: its own small fictional address book and two
+        # emails (for importing contacts), nothing business-like.
+        mail=_mailbox() if kind == "company" else _household_mailbox(),
         sender=FakeMailSender(),
-        contacts=FakeContactsProvider(_contacts() if kind == "company" else []),
+        contacts=FakeContactsProvider(_contacts() if kind == "company" else _household_contacts()),
         calendar=_calendar(day) if kind == "company" else FakeCalendarProvider([]),
         business=snap.business,
         today=day,

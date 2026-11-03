@@ -28,6 +28,7 @@ import {
 } from "@/lib/runtime";
 import { sampleAged, sampleContacts } from "@/lib/sample-contacts";
 import { CompanyLookup, VatCheckButton, useLookupStatus } from "@/components/contacts/Lookups";
+import ImportContacts from "@/components/contacts/ImportContacts";
 
 /** services/runtime/app/schemas.py CATEGORIES, minus Sales (a supplier default). */
 const CATEGORIES = [
@@ -888,65 +889,6 @@ function AgedTable({ title, hint, table, onSelect }: { title: string; hint: stri
  * a blank email or phone — nothing already set is overwritten. The runtime answers with counts only
  * (RtContactImport), so the names below are the local contacts that could gain details, not Outlook's list.
  */
-function OutlookReview({ rows, addNew, onAddNewChange, busy, onConfirm, onCancel }: {
-  rows: RtContactRow[];
-  addNew: boolean;
-  onAddNewChange: (v: boolean) => void;
-  busy: boolean;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  const matchable = useMemo(() => rows.filter((c) => !c.email || !c.phone), [rows]);
-  const shownNames = matchable.slice(0, 8).map((c) => c.name);
-  const rest = matchable.length - shownNames.length;
-  return (
-    <section aria-label="Review Outlook import" aria-busy={busy} className={`${card} flex flex-col gap-3 p-4`}>
-      <div>
-        <h2 className="text-[15px] font-extrabold">Review the Outlook import</h2>
-        <p className="mt-1 text-[13px] leading-6 text-muted">
-          Outlook contacts are matched by company name. A match only fills in a blank email or phone — nothing you
-          already have is overwritten. Entries that match nobody are left out unless you tick the box below.
-        </p>
-      </div>
-      <div className="flex flex-col gap-1 text-[13px]">
-        <p className="font-bold">
-          Could gain an email or phone ({matchable.length})
-        </p>
-        {matchable.length === 0 ? (
-          <p className="text-muted">Every contact already has an email and a phone.</p>
-        ) : (
-          <ul className="flex flex-col gap-0.5">
-            {shownNames.map((n) => (
-              <li key={n} className="font-medium">{n}</li>
-            ))}
-          </ul>
-        )}
-        {rest > 0 && <p className="text-muted">…and {rest} more.</p>}
-      </div>
-      <label className="flex items-start gap-2 text-[13px] font-semibold text-muted">
-        <input type="checkbox" checked={addNew} onChange={(e) => onAddNewChange(e.target.checked)} className="mt-1" />
-        <span>Also add Outlook entries that are not in your books (as customers)</span>
-      </label>
-      {addNew && (
-        <p className="text-[13px] text-muted">Anything new arrives as a customer with whatever email and phone Outlook has.</p>
-      )}
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          onClick={onConfirm}
-          disabled={busy}
-          className="h-11 rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60"
-        >
-          {busy ? "Importing…" : "Confirm import"}
-        </button>
-        <button type="button" onClick={onCancel} disabled={busy} className="text-sm font-bold text-teal-dark hover:underline disabled:opacity-60">
-          Cancel
-        </button>
-      </div>
-    </section>
-  );
-}
-
 /**
  * Possible duplicates: code finds the candidates (shared email, phone, VAT number or close name) and the
  * user's model gives its view; the user approves and code merges. Blocked groups (different VAT numbers)
@@ -1135,7 +1077,6 @@ export default function LiveContacts({ kind: initialKind = "all" }: { kind?: Kin
   const [editing, setEditing] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState<"refresh" | "import" | null>(null);
-  const [addNew, setAddNew] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [dups, setDups] = useState<RtDuplicateGroup[]>([]);
 
@@ -1185,27 +1126,6 @@ export default function LiveContacts({ kind: initialKind = "all" }: { kind?: Kin
       setNote(`${list.contacts.length} contacts saved to _System/Contacts/contacts.json in your OneDrive.`);
     } catch (e) {
       setNote(`Could not refresh: ${parseRuntimeError((e as Error).message).detail || "try again."}`);
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  async function importOutlook() {
-    if (!account) return;
-    setBusy("import");
-    setNote(null);
-    try {
-      const r = await runtime.importOutlookContacts(account, addNew);
-      markContactsImported(); // the setup checklist's optional step stays ticked
-      setNote(
-        `Read ${r.read} Outlook contacts: ${r.matched} already here (${r.updated} gained an email or phone)` +
-          (addNew ? `, ${r.added} added` : "") + `, ${r.skipped} left out.`,
-      );
-      setImportOpen(false);
-      await load(account);
-    } catch (e) {
-      const msg = (e as Error).message;
-      if (!/redirecting for consent/.test(msg)) setNote(`Could not import from Outlook: ${parseRuntimeError(msg).detail || "try again."}`);
     } finally {
       setBusy(null);
     }
@@ -1285,9 +1205,9 @@ export default function LiveContacts({ kind: initialKind = "all" }: { kind?: Kin
             {busy === "refresh" ? "Refreshing…" : "Refresh from books"}
           </button>
           <button type="button" onClick={() => { setNote(null); setImportOpen(true); }} disabled={!account || busy !== null}
-            title={account ? "Asks Microsoft for read-only access to your Outlook contacts" : "Connect your OneDrive first"}
+            title={account ? "From Outlook or the people who email you: all or the ones you tick" : "Connect your OneDrive first"}
             className="shrink-0 rounded-xl bg-teal px-4 py-2.5 text-sm font-bold text-white hover:bg-teal-dark disabled:opacity-60">
-            Import from Outlook
+            Import contacts
           </button>
           {filtered.length > 0 && (
             <button
@@ -1313,14 +1233,16 @@ export default function LiveContacts({ kind: initialKind = "all" }: { kind?: Kin
         </p>
       ) : null}
 
-      {importOpen && (
-        <OutlookReview
-          rows={shown}
-          addNew={addNew}
-          onAddNewChange={setAddNew}
-          busy={busy === "import"}
-          onConfirm={importOutlook}
-          onCancel={() => setImportOpen(false)}
+      {importOpen && account && (
+        <ImportContacts
+          account={account}
+          onClose={() => setImportOpen(false)}
+          onDone={async (summary) => {
+            markContactsImported(); // the setup checklist's optional step stays ticked
+            setImportOpen(false);
+            setNote(summary.message);
+            await load(account);
+          }}
         />
       )}
 
@@ -1411,7 +1333,7 @@ export default function LiveContacts({ kind: initialKind = "all" }: { kind?: Kin
             {live && rows.length === 0 ? (
               <EmptyState
                 title="No contacts yet"
-                body="Customers and suppliers appear here once you approve receipts and invoices — or import them from Outlook."
+                body="Customers and suppliers appear here once you approve receipts and invoices — or import them from Outlook or the people who email you."
                 action={
                   <button
                     type="button"
@@ -1419,7 +1341,7 @@ export default function LiveContacts({ kind: initialKind = "all" }: { kind?: Kin
                     disabled={busy !== null}
                     className="h-11 whitespace-nowrap rounded-xl bg-teal px-5 text-[15px] font-bold text-white hover:bg-teal-dark disabled:opacity-60"
                   >
-                    Import from Outlook
+                    Import contacts
                   </button>
                 }
               />

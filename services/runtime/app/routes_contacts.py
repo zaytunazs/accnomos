@@ -15,14 +15,16 @@ from typing import Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
-from accnomos_connectors.base import ConflictError, ContactsProvider
+from accnomos_connectors.base import ConflictError, ContactsProvider, MailProvider
 from accnomos_connectors.msgraph import GraphContactsProvider
 from app import company_lookup as lookup
 from app import contacts as cb
+from app import contacts_import as ci
 from app.ai.config import AiConfig, is_test_mode
 from app.books import Books
 from app.books import today as london_today
 from app.routes_books import get_books, require_user
+from app.routes_mail import get_mail
 from app.schemas import VatStatus
 from app.taxyear import uk_tax_year_start
 from app.validation import StrictBody
@@ -196,6 +198,62 @@ async def import_outlook(
     entries = await address_book.list_contacts()
     try:
         return await cb.import_outlook(books, entries, (body or ImportBody()).add_new, user)
+    except ConflictError as exc:
+        raise _conflict(exc) from exc
+
+
+class ImportRowIn(StrictBody):
+    name: str = Field(max_length=200)
+    person: str | None = Field(None, max_length=200)
+    email: str | None = Field(None, max_length=254)
+    phone: str | None = Field(None, max_length=40)
+    kind: Literal["customer", "supplier", "both"] = "customer"
+
+
+class ImportCheckBody(StrictBody):
+    contacts: list[ImportRowIn] = Field(max_length=ci.MAX_ROWS)
+
+
+class ImportSaveBody(StrictBody):
+    source: Literal["outlook", "email", "phone"]
+    contacts: list[ImportRowIn] = Field(min_length=1, max_length=ci.MAX_ROWS)
+
+
+def _rows(items: list[ImportRowIn]) -> list[ci.Row]:
+    return [ci.Row(**i.model_dump()) for i in items]
+
+
+@router.get("/import/outlook", response_model=ci.Preview)
+async def import_preview_outlook(
+    books: Books = Depends(get_books), address_book: ContactsProvider = Depends(get_address_book)
+) -> ci.Preview:
+    """Every Outlook contact, marked when it is already in the books. Reads only."""
+    return await ci.preview(books, ci.from_address_book(await address_book.list_contacts()), "outlook")
+
+
+@router.get("/import/email", response_model=ci.Preview)
+async def import_preview_email(
+    request: Request, books: Books = Depends(get_books), mail: MailProvider = Depends(get_mail)
+) -> ci.Preview:
+    """People who emailed the user in the last 180 days (newsletters and no-reply senders left out). Reads only."""
+    own = [request.headers.get("X-User", "")]
+    return await ci.preview(books, ci.from_messages(await ci.recent_senders(mail), own), "email")
+
+
+@router.post("/import/check", response_model=ci.Preview)
+async def import_check(body: ImportCheckBody, books: Books = Depends(get_books)) -> ci.Preview:
+    """Mark which of the client's rows (the phone's address book) are already in the books. Saves nothing."""
+    return await ci.preview(books, ci.from_rows(_rows(body.contacts)), "phone")
+
+
+@router.post("/import", response_model=ci.Summary)
+async def import_save(
+    body: ImportSaveBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> ci.Summary:
+    """Save the chosen rows: new ones are added with their kind, ones already in the books are skipped (a blank email
+    or phone is filled in). A second import of the same rows adds nothing."""
+    try:
+        return await ci.save(books, _rows(body.contacts), body.source, user)
     except ConflictError as exc:
         raise _conflict(exc) from exc
 

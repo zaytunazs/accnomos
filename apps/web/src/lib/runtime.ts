@@ -528,6 +528,12 @@ export const runtime = {
   refreshContacts: (a: AccountInfo) => call<RtContactList>(a, "/contacts/refresh", { method: "POST" }),
   editContact: (a: AccountInfo, id: string, edits: RtContactEdits) =>
     call<RtContact>(a, `/contacts/${id}`, { method: "PUT", body: JSON.stringify(edits) }),
+  /** /contacts/import/*: preview a source (all rows, each marked if already in the books), then save the chosen ones. */
+  importPreview: (a: AccountInfo, source: "outlook" | "email") =>
+    call<RtImportPreview>(a, `/contacts/import/${source}`, {},
+      source === "outlook" ? contactsScopesFor(accountKind(a)) : mailScopesFor(accountKind(a))),
+  importContacts: (a: AccountInfo, source: RtImportSource, contacts: RtImportRow[]) =>
+    call<RtImportSummary>(a, "/contacts/import", { method: "POST", body: JSON.stringify({ source, contacts }) }),
   importOutlookContacts: (a: AccountInfo, addNew: boolean) =>
     call<RtContactImport>(a, "/contacts/import-outlook", { method: "POST", body: JSON.stringify({ add_new: addNew }) },
       contactsScopesFor(accountKind(a))),
@@ -1957,6 +1963,47 @@ export interface RtAged {
   as_of: string;
   debtors: RtAgedTable;
   creditors: RtAgedTable;
+}
+export type RtImportSource = "outlook" | "email" | "phone";
+export type RtContactImportKind = "customer" | "supplier" | "both";
+/** One row offered for import (services/runtime/app/contacts_import.py Candidate). */
+export interface RtImportCandidate {
+  ref: string;
+  source: RtImportSource;
+  name: string;
+  person: string | null;
+  email: string | null;
+  phone: string | null;
+  messages: number | null;
+  existing_id: string | null;
+  existing_name: string | null;
+  match: string | null;
+  kind: RtContactImportKind;
+}
+export interface RtImportPreview {
+  source: RtImportSource;
+  note: string;
+  candidates: RtImportCandidate[];
+  new: number;
+  existing: number;
+}
+export interface RtImportRow {
+  name: string;
+  person?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  kind: RtContactImportKind;
+}
+export interface RtImportSummary {
+  source: RtImportSource;
+  requested: number;
+  added: number;
+  already: number;
+  filled: number;
+  invalid: number;
+  added_names: string[];
+  already_names: string[];
+  message: string;
 }
 export interface RtContactImport {
   read: number;

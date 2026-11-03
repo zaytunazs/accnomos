@@ -3,6 +3,9 @@
     <uses-permission android:name="android.permission.CAMERA"/>
     <!-- Needed for hold-to-talk questions on the Ask screen. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
+    <!-- Contacts › Import contacts › Phone: lists the phone's contacts so the user can tick which to add. Asked for
+         only when that list is opened; read-only, nothing is written to the phone. -->
+    <uses-permission android:name="android.permission.READ_CONTACTS"/>
     <uses-permission android:name="android.permission.INTERNET"/>
     <!-- Needed by MSAL for browser-delegated Microsoft sign-in. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>

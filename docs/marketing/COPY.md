@@ -58,7 +58,7 @@ Your nine VAT boxes are calculated by code from approved entries, not typed by h
 
 ### Income Tax for the self-employed
 
-If you are self-employed, quarterly Income Tax figures are worked out from your approved entries, with the ledger lines behind each box. The HMRC connection here is sandbox only. Example: a fictional sole trader, Priya Nair, sees £18,400 of turnover for the period to 5 July with each line traceable.
+If you are self-employed, quarterly Income Tax figures are worked out from your approved entries, with the ledger lines behind each box. The HMRC connection here is sandbox only. Example: a fictional sole trader, Emma Hughes, sees £18,400 of turnover for the period to 5 July with each line traceable.
 
 ### Pay runs, estimated in pence
 
