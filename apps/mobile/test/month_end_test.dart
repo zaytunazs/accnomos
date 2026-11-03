@@ -88,7 +88,7 @@ void main() {
 
   testWidgets('warns about entries stored twice', (tester) async {
     phone(tester);
-    final fake = _Fake(duplicates: true);
+    final fake = _Fake(withDuplicates: true);
     await tester.pumpWidget(MaterialApp(
       home: MonthEndScreen(
         testAccount: _account,
@@ -199,11 +199,11 @@ Map<String, dynamic> _detail({bool changed = false, bool duplicates = false}) =>
     };
 
 class _Fake extends RuntimeClient {
-  _Fake({this.changed = false, this.duplicates = false})
+  _Fake({this.changed = false, this.withDuplicates = false})
       : super(AppSettings(runtimeUrl: 'http://reader:8780'));
 
   final bool changed;
-  final bool duplicates;
+  final bool withDuplicates;
   final List<String> months = [];
   final List<String> runs = [];
   final List<String> approved = [];
@@ -211,7 +211,7 @@ class _Fake extends RuntimeClient {
   @override
   Future<Map<String, dynamic>> closeMonth(String month, {String? today}) async {
     months.add(month);
-    return _detail(changed: changed, duplicates: duplicates);
+    return _detail(changed: changed, duplicates: withDuplicates);
   }
 
   @override
