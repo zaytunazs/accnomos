@@ -595,20 +595,24 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
           style: const TextStyle(height: 1.4),
         ),
         const SizedBox(height: 8),
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: AccnomosColors.ground,
+        Material(
+          // The tile paints on the nearest Material: give it its own, tinted, so the tick's ink shows.
+          color: AccnomosColors.ground,
+          shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AccnomosColors.border),
+            side: const BorderSide(color: AccnomosColors.border),
           ),
-          child: CheckboxListTile(
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            child: CheckboxListTile(
             key: const Key('hmrc-declare'),
             contentPadding: EdgeInsets.zero,
             controlAffinity: ListTileControlAffinity.leading,
             value: _declared,
             onChanged: submitting ? null : (v) => setState(() => _declared = v ?? false),
             title: const Text(vatDeclaration, style: TextStyle(height: 1.4)),
+            ),
           ),
         ),
       ],
