@@ -162,8 +162,8 @@ void main() {
       expect(find.text('Money in'), findsOneWidget);
       expect(find.text('Money out'), findsOneWidget);
       expect(find.text('Left over'), findsOneWidget);
-      expect(find.text('£2500.00'), findsOneWidget);
-      expect(find.text('£1800.00'), findsOneWidget);
+      expect(find.text('£2,500.00'), findsOneWidget);
+      expect(find.text('£1,800.00'), findsOneWidget);
       expect(find.text('£700.00'), findsOneWidget);
       expect(tester.takeException(), isNull);
     });

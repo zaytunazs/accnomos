@@ -68,16 +68,6 @@ class _VatScreenState extends State<VatScreen> {
     if (mounted && _vat != null) _reload();
   }
 
-  /// The period the VAT tab opens on: the runtime's `due_period` hint when it
-  /// sends one, else the earliest period still open that is not the current
-  /// one (the return Home counts down to), else the current period (null).
-  static String? duePeriod(Map<String, dynamic> json, List<VatPeriod> periods) {
-    final hint = (json['due_period'] ?? '').toString();
-    if (hint.isNotEmpty && periods.any((p) => p.period == hint)) return hint;
-    final open = periods.where((p) => p.status == 'open' && !p.current).toList()
-      ..sort((a, b) => a.start.compareTo(b.start));
-    return open.isEmpty ? null : open.first.period;
-  }
 
   String _friendly(Object e) => e.toString().replaceFirst('Exception: ', '');
 
@@ -124,7 +114,7 @@ class _VatScreenState extends State<VatScreen> {
       if (!_chosen && _picked == null) {
         final json = await client.vatPeriods();
         _periods = VatPeriod.listFromJson(json);
-        _picked = duePeriod(json, _periods);
+        _picked = vatDuePeriod(json, _periods);
         _chosen = true;
         fetchPeriods = false;
       }
@@ -467,4 +457,15 @@ class _VatScreenState extends State<VatScreen> {
       return text;
     }
   }
+}
+
+/// The period the VAT tab opens on: the runtime's `due_period` hint when it
+/// sends one, else the earliest period still open that is not the current
+/// one (the return Home counts down to), else the current period (null).
+String? vatDuePeriod(Map<String, dynamic> json, List<VatPeriod> periods) {
+  final hint = (json['due_period'] ?? '').toString();
+  if (hint.isNotEmpty && periods.any((p) => p.period == hint)) return hint;
+  final open = periods.where((p) => p.status == 'open' && !p.current).toList()
+    ..sort((a, b) => a.start.compareTo(b.start));
+  return open.isEmpty ? null : open.first.period;
 }

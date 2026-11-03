@@ -85,10 +85,10 @@ void main() {
         VatPeriod(period: '2026-Q3', label: 'Jul–Sep 2026', status: 'open', current: false, start: '2026-07-01'),
         VatPeriod(period: '2026-Q2', label: 'Apr–Jun 2026', status: 'submitted', current: false, start: '2026-04-01'),
       ];
-      expect(VatScreen.duePeriod(const {}, periods), '2026-Q3');
-      expect(VatScreen.duePeriod(const {'due_period': '2026-Q4'}, periods), '2026-Q4');
-      expect(VatScreen.duePeriod(const {'due_period': 'nope'}, periods), '2026-Q3');
-      expect(VatScreen.duePeriod(const {}, [periods.first]), isNull);
+      expect(vatDuePeriod(const {}, periods), '2026-Q3');
+      expect(vatDuePeriod(const {'due_period': '2026-Q4'}, periods), '2026-Q4');
+      expect(vatDuePeriod(const {'due_period': 'nope'}, periods), '2026-Q3');
+      expect(vatDuePeriod(const {}, [periods.first]), isNull);
     });
   });
 
