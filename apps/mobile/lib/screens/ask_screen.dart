@@ -12,6 +12,7 @@ import '../models/readback.dart';
 import '../services/app_mode.dart';
 import '../services/auth.dart';
 import '../services/books.dart' show gbp;
+import '../services/business_prefs.dart';
 import '../services/demo.dart';
 import '../services/graph.dart';
 import '../services/hands_free.dart';
@@ -2034,7 +2035,10 @@ class _PlanSheetState extends State<_PlanSheet> {
       // day — never at sign-in.
       final token = await widget.auth.tokenFor(AuthService.calendarReadScopes);
       final client = await _client(graphToken: token);
-      final json = await client.planDay(date: widget.date, graphToken: token);
+      // The working hours and visit limit from Settings › Business setup.
+      final hours = await BusinessPrefs.load();
+      final json = await client.planDay(
+          date: widget.date, graphToken: token, constraints: hours.constraints);
       if (!mounted) return;
       setState(() => _plan = DayPlan.fromJson(json));
     } catch (e) {

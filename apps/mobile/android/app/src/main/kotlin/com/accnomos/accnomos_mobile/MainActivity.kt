@@ -31,6 +31,9 @@ class MainActivity : FlutterActivity() {
      *  Dart takes it (once). It holds a one-time PKCE code that is useless without the verifier the app keeps. */
     private var hmrcCallback: String? = null
 
+    /** `accnomos/files`: the document picker for statement CSVs and the invoice logo (FilePickerBridge.kt). */
+    private val filePicker by lazy { FilePickerBridge(this) }
+
     /** The Dart call waiting for the system contact picker, if any. */
     private var pickResult: MethodChannel.Result? = null
 
@@ -45,6 +48,7 @@ class MainActivity : FlutterActivity() {
      */
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
+        if (filePicker.onResult(requestCode, resultCode, data)) return
         if (requestCode != PICK_CONTACT) return
         val result = pickResult
         pickResult = null
@@ -73,6 +77,7 @@ class MainActivity : FlutterActivity() {
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
         speech = SpeechChannel(this, flutterEngine.dartExecutor.binaryMessenger)
+        filePicker.register(flutterEngine.dartExecutor.binaryMessenger)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 if (call.method == "getSharedFiles") {

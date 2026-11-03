@@ -6,6 +6,7 @@ GET    /budgets               {category id: pence a month}
 PUT    /budgets               replace the budgets
 GET    /rules                 personal categorisation rules, in order (first match wins)
 POST   /rules                 add one;  DELETE /rules/{id};  POST /rules/starter adds common UK merchants
+POST   /rules/reorder         new order {ids}: every rule id exactly once
 POST   /lines/{id}/category   put one bank line in a category by hand (null hands it back to the rules)
 GET    /summary?month=        income, spend by category against budget, uncategorised
 GET    /recurring             bills and subscriptions found in the statements (estimates)
@@ -81,6 +82,21 @@ async def post_starter_rules(
     books: Books = Depends(get_books), user: str = Depends(require_user)
 ) -> list[p.PersonalRule]:
     return await p.add_starter_rules(books, user)
+
+
+class RuleOrder(StrictBody):
+    ids: list[str] = Field(max_length=p.MAX_RULES)
+
+
+@router.post("/rules/reorder", response_model=list[p.PersonalRule])
+async def reorder_rules(
+    body: RuleOrder, books: Books = Depends(get_books), user: str = Depends(require_user)
+) -> list[p.PersonalRule]:
+    """New evaluation order: every rule id exactly once, first match wins (as POST /books/bank/rules/reorder)."""
+    try:
+        return await p.reorder_rules(books, body.ids, user)
+    except p.PersonalError as exc:
+        raise _refused(exc) from exc
 
 
 @router.delete("/rules/{rule_id}", status_code=204)

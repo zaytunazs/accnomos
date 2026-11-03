@@ -6,10 +6,10 @@ import '../services/runtime_client.dart';
 import '../theme.dart';
 import 'home_cards.dart' show HomeCard;
 
-/// Files › storage, like the web's Storage panel but read-only: totals, the
-/// biggest folders and the tax years, how many duplicate sets there are, and
-/// a "Back up now" button (`POST /backups`). Archiving, moving and Clean up
-/// stay on the web, where there is room to preview them.
+/// Files › storage, like the web's Storage panel: totals, the biggest
+/// folders and the tax years, duplicate sets with Clean up (`POST
+/// /files/trash` moves the extra copies to _Trash; nothing is deleted), and
+/// a "Back up now" button (`POST /backups`).
 class StorageCard extends StatefulWidget {
   const StorageCard({super.key, required this.clientFor});
 
@@ -68,6 +68,46 @@ class _StorageCardState extends State<StorageCard> {
       await _fetch();
     } catch (e) {
       if (mounted) setState(() => _note = 'Could not back up: ${friendly(e)}');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  Future<void> _cleanUp(StorageOverview o) async {
+    final paths = o.cleanUpPaths;
+    if (paths.isEmpty || _busy) return;
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Clean up duplicates?'),
+        content: Text(
+            'Moves ${paths.length} extra ${paths.length == 1 ? 'copy' : 'copies'} (${sizeLabel(o.duplicateBytes)}) to _Trash in your OneDrive. '
+            'One copy of each file stays, and nothing your books point at is moved. Nothing is deleted.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Move to _Trash')),
+        ],
+      ),
+    );
+    if (ok != true || !mounted) return;
+    setState(() {
+      _busy = true;
+      _note = null;
+    });
+    var moved = 0;
+    try {
+      final client = await widget.clientFor();
+      for (var i = 0; i < paths.length; i += 200) {
+        final r = await client.trashFiles(paths.sublist(i, i + 200 > paths.length ? paths.length : i + 200));
+        moved += r['moved'] is List ? (r['moved'] as List).length : 0;
+      }
+      if (!mounted) return;
+      setState(() => _note = 'Moved $moved ${moved == 1 ? 'copy' : 'copies'} to _Trash.');
+      await _fetch();
+    } catch (e) {
+      if (mounted) {
+        setState(() => _note = '${moved > 0 ? 'Moved $moved, then stopped: ' : ''}Could not clean up: ${friendly(e)}');
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -157,10 +197,20 @@ class _StorageCardState extends State<StorageCard> {
               o.duplicateSets == 0
                   ? 'No duplicate files.'
                   : '${o.duplicateSets} ${o.duplicateSets == 1 ? 'set' : 'sets'} of duplicates '
-                        '(${sizeLabel(o.duplicateBytes)}). Clean up on the web moves copies to _Trash.',
+                        '(${sizeLabel(o.duplicateBytes)}).',
               key: const Key('storage-duplicates'),
               style: _muted,
             ),
+            if (o.cleanUpPaths.isNotEmpty)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  key: const Key('storage-clean-up'),
+                  icon: const Icon(Icons.cleaning_services_outlined, size: 18),
+                  label: Text('Clean up ${o.cleanUpPaths.length} ${o.cleanUpPaths.length == 1 ? 'copy' : 'copies'}'),
+                  onPressed: _busy ? null : () => _cleanUp(o),
+                ),
+              ),
           ],
           if (_note != null) ...[
             const SizedBox(height: 8),

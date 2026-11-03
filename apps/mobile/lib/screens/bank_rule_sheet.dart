@@ -19,7 +19,10 @@ int? rulePence(String text) {
 /// `createBankRule`/`updateBankRule` and shows the refusal sentence.
 /// [initial] is a rule as `bankRules()` returned, or null for a new one.
 class BankRuleSheet extends StatefulWidget {
-  const BankRuleSheet({super.key, this.initial, required this.onSave});
+  const BankRuleSheet({super.key, this.initial, this.draft = false, required this.onSave});
+
+  /// [initial] is a draft for a new rule (from a bank line), not a saved one.
+  final bool draft;
 
   final Map<String, dynamic>? initial;
   final Future<String?> Function(Map<String, dynamic> body) onSave;
@@ -148,7 +151,7 @@ class _BankRuleSheetState extends State<BankRuleSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Text(
-              widget.initial == null ? 'New bank rule' : 'Edit bank rule',
+              widget.initial == null || widget.draft ? 'New bank rule' : 'Edit bank rule',
               style: const TextStyle(
                   fontWeight: FontWeight.w800,
                   fontSize: 18,

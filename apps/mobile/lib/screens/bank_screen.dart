@@ -7,16 +7,16 @@ import '../services/proposal_editing.dart' show formatPence;
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
-import '../widgets/web_only.dart';
+import '../widgets/statement_import.dart';
 import 'bank_rule_sheet.dart';
 import 'personal_screen.dart';
 import 'settings_screen.dart';
 
-/// Bank: statements, unmatched lines, and rules. Confirming a match is
-/// offered only where the runtime returns exactly one suggestion for the
-/// line (`POST /books/bank/lines/{id}/match`); rules can be added, edited
-/// and deleted here. Anything ambiguous — CSV upload, several possible
-/// matches, rule order — stays in the web app behind a link.
+/// Bank: statements (import a CSV from the phone, `POST /books/bank/import`),
+/// open lines with every suggested match to choose from
+/// (`POST /books/bank/lines/{id}/match`), transfer / ignore / expense / make a
+/// rule from a line, and bank rules — add, edit, delete and reorder
+/// (`POST /books/bank/rules/reorder`) — as on the web's Bank pages.
 class BankScreen extends StatefulWidget {
   const BankScreen({super.key});
 
@@ -31,6 +31,7 @@ class _BankScreenState extends State<BankScreen> {
   bool _authChecked = false;
   bool _loading = false;
   bool _confirming = false;
+  String? _lineBusy;
   String? _deletingRule;
   String? _error;
   String? _notice;
@@ -139,8 +140,8 @@ class _BankScreenState extends State<BankScreen> {
 
   Future<void> _confirm(
       String lineId, List<Map<String, dynamic>> matches) async {
-    if (_confirming || matches.length != 1) return;
-    final suggestion = matches.single;
+    if (_confirming || matches.isEmpty) return;
+    final suggestion = matches.first;
     final eventIds = <String>[
       for (final id in (suggestion['event_ids'] as List? ?? const []))
         id.toString(),
@@ -160,6 +161,64 @@ class _BankScreenState extends State<BankScreen> {
       setState(() => _notice = _friendly(e));
     } finally {
       if (mounted) setState(() => _confirming = false);
+    }
+  }
+
+  /// One line action (transfer, ignore, expense proposal): [done] on success.
+  Future<void> _lineAction(String lineId,
+      Future<Object?> Function(RuntimeClient c) work, String done) async {
+    if (_lineBusy != null) return;
+    setState(() {
+      _lineBusy = lineId;
+      _notice = null;
+    });
+    try {
+      await work(await _booksClient());
+      if (!mounted) return;
+      setState(() => _notice = done);
+      await _reload(quiet: true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _notice = _friendly(e));
+    } finally {
+      if (mounted) setState(() => _lineBusy = null);
+    }
+  }
+
+  /// A rule drafted from this line by the runtime, opened in the rule sheet.
+  Future<void> _ruleFromLine(String lineId) async {
+    Map<String, dynamic>? draft;
+    try {
+      draft = await (await _booksClient()).bankRuleDraft(lineId);
+    } catch (e) {
+      if (mounted) setState(() => _notice = _friendly(e));
+      return;
+    }
+    if (!mounted) return;
+    final body = Map<String, dynamic>.from(draft)..remove('id');
+    await _openRuleSheet(null, draft: body);
+  }
+
+  /// Move a rule one place up or down: the runtime takes the whole order.
+  Future<void> _moveRule(int index, int by) async {
+    final to = index + by;
+    if (to < 0 || to >= _rules.length || _lineBusy != null) return;
+    final list = [..._rules];
+    final moved = list.removeAt(index);
+    list.insert(to, moved);
+    setState(() {
+      _rules = list;
+      _lineBusy = 'rules';
+    });
+    try {
+      await (await _booksClient())
+          .reorderBankRules([for (final r in list) (r['id'] ?? '').toString()]);
+      if (mounted) setState(() => _notice = 'Rule order saved — the first rule that matches decides.');
+    } catch (e) {
+      if (mounted) setState(() => _notice = _friendly(e));
+      await _reload(quiet: true);
+    } finally {
+      if (mounted) setState(() => _lineBusy = null);
     }
   }
 
@@ -267,9 +326,12 @@ class _BankScreenState extends State<BankScreen> {
           if (_notice != null) _noticeBox(),
           _heading('Statements'),
           if (_statements.isEmpty)
-            const _EmptyLine('No statements imported yet.')
+            const _EmptyLine('No statements imported yet. Download one from your bank as a CSV and import it here.')
           else
             for (final s in _statements) _statementCard(s),
+          const SizedBox(height: 4),
+          ImportStatementButton(
+              clientFor: _booksClient, onImported: () => _reload(quiet: true)),
           const SizedBox(height: 8),
           if (_summary['label'] != null) _summaryLine(),
           if (_household) ...[
@@ -311,14 +373,15 @@ class _BankScreenState extends State<BankScreen> {
           if (_rules.isEmpty)
             const _EmptyLine(
                 'No bank rules yet — add one for repeat payments.')
-          else
-            for (final rule in _rules) _ruleCard(rule),
-          const WebOnlyCard(
-            message:
-                'Uploading a statement CSV, choosing between several matches, '
-                'and changing rule order happen on the web.',
-            page: '/bank',
-          ),
+          else ...[
+            if (_rules.length > 1)
+              const Padding(
+                padding: EdgeInsets.only(bottom: 6),
+                child: Text('Checked from the top; the first rule that matches decides.',
+                    style: TextStyle(color: AccnomosColors.muted, fontSize: 12)),
+              ),
+            for (var i = 0; i < _rules.length; i++) _ruleCard(_rules[i], index: i),
+          ],
           ],
         ],
       ),
@@ -431,20 +494,93 @@ class _BankScreenState extends State<BankScreen> {
           if (single)
             _singleMatch(lineId, matches.single)
           else if (matches.isEmpty)
-            const Text('No suggested match yet — match it in the web app.',
+            const Text('No suggested match yet.',
                 style: TextStyle(
                     color: AccnomosColors.muted,
                     fontSize: 12,
                     height: 1.4))
-          else
-            Text(
-                '${matches.length} possible matches — pick one in the web app.',
+          else ...[
+            Text('${matches.length} possible matches — choose the right one:',
                 style: const TextStyle(
                     color: AccnomosColors.muted,
                     fontSize: 12,
                     height: 1.4)),
+            for (final m in matches) _choice(lineId, m),
+          ],
+          const SizedBox(height: 6),
+          _lineActions(lineId, amount),
         ],
       ),
+    );
+  }
+
+  /// One candidate among several: who, how much, when, and Choose.
+  Widget _choice(String lineId, Map<String, dynamic> suggestion) {
+    return Container(
+      margin: const EdgeInsets.only(top: 6),
+      padding: const EdgeInsets.fromLTRB(10, 6, 6, 6),
+      decoration: BoxDecoration(
+        border: Border.all(color: AccnomosColors.border),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(_matchLabel(suggestion),
+                style: const TextStyle(color: AccnomosColors.ink, fontSize: 13, height: 1.3)),
+          ),
+          TextButton(
+            onPressed: _confirming ? null : () => _confirm(lineId, [suggestion]),
+            child: const Text('Choose'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _matchLabel(Map<String, dynamic> suggestion) {
+    final events = suggestion['events'];
+    final first = events is List && events.isNotEmpty && events.first is Map
+        ? Map<String, dynamic>.from(events.first as Map)
+        : <String, dynamic>{};
+    final who = (first['counterparty'] ?? '').toString();
+    final amount = _asInt(first['amount_pence']);
+    final date = _ukDate((first['date'] ?? '').toString());
+    final more = events is List && events.length > 1 ? ' (+${events.length - 1} more)' : '';
+    return who.isEmpty
+        ? '${formatPence(amount)} on $date$more'
+        : '$who · ${formatPence(amount)} on $date$more';
+  }
+
+  /// What else a line can be: a transfer between your own accounts, not
+  /// business (ignore), an expense to review, or the start of a rule.
+  Widget _lineActions(String lineId, int amount) {
+    final busy = _lineBusy == lineId;
+    return Wrap(
+      spacing: 4,
+      runSpacing: 0,
+      children: [
+        TextButton(
+          onPressed: busy ? null : () => _lineAction(lineId, (c) => c.bankTransfer(lineId), 'Marked as a transfer.'),
+          child: const Text('Transfer'),
+        ),
+        TextButton(
+          onPressed: busy ? null : () => _lineAction(lineId, (c) => c.bankIgnore(lineId), 'Ignored — left out of the books.'),
+          child: const Text('Ignore'),
+        ),
+        if (amount < 0)
+          TextButton(
+            onPressed: busy
+                ? null
+                : () => _lineAction(lineId, (c) => c.bankExpenseProposal(lineId),
+                    'An expense for this line is waiting in Review.'),
+            child: const Text('Expense'),
+          ),
+        TextButton(
+          onPressed: busy ? null : () => _ruleFromLine(lineId),
+          child: const Text('Make a rule'),
+        ),
+      ],
     );
   }
 
@@ -567,12 +703,14 @@ class _BankScreenState extends State<BankScreen> {
 
   /// Add ([existing] null) or edit a rule in a bottom sheet. The sheet
   /// posts to the runtime; a refusal comes back as the sheet's error.
-  Future<void> _openRuleSheet(Map<String, dynamic>? existing) async {
+  Future<void> _openRuleSheet(Map<String, dynamic>? existing,
+      {Map<String, dynamic>? draft}) async {
     final saved = await showModalBottomSheet<bool>(
       context: context,
       isScrollControlled: true,
       builder: (_) => BankRuleSheet(
-        initial: existing,
+        initial: existing ?? draft,
+        draft: existing == null && draft != null,
         onSave: (body) async {
           try {
             final client = await _booksClient();
@@ -638,7 +776,7 @@ class _BankScreenState extends State<BankScreen> {
     }
   }
 
-  Widget _ruleCard(Map<String, dynamic> rule) {
+  Widget _ruleCard(Map<String, dynamic> rule, {int index = 0}) {
     final id = (rule['id'] ?? '').toString();
     final name = (rule['name'] ?? '').toString();
     final match = rule['match'] is Map ? Map<String, dynamic>.from(rule['match'] as Map) : <String, dynamic>{};
@@ -658,7 +796,27 @@ class _BankScreenState extends State<BankScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+          Row(
+            children: [
+              Expanded(
+                  child: Text('${index + 1}. $title',
+                      style: const TextStyle(fontWeight: FontWeight.w800))),
+              if (_rules.length > 1) ...[
+                IconButton(
+                  tooltip: 'Move up',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.arrow_upward, size: 20),
+                  onPressed: index == 0 || _lineBusy != null ? null : () => _moveRule(index, -1),
+                ),
+                IconButton(
+                  tooltip: 'Move down',
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.arrow_downward, size: 20),
+                  onPressed: index == _rules.length - 1 || _lineBusy != null ? null : () => _moveRule(index, 1),
+                ),
+              ],
+            ],
+          ),
           const SizedBox(height: 2),
           Text(when,
               style: const TextStyle(

@@ -12,6 +12,7 @@ import '../services/books_events.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/statement_import.dart';
 import '../widgets/tile_grid.dart';
 import 'goals_screen.dart';
 import 'goals_widgets.dart';
@@ -223,9 +224,18 @@ class _HouseholdHomeScreenState extends State<HouseholdHomeScreen> {
             const SizedBox(height: 16),
             _Panel(
               title: 'Import a bank statement to start',
-              child: const Text(
-                'Your household figures come from your bank statements. Import one on the web (Bank) and this page fills in: money in and out, budgets, bills and goals.',
-                style: TextStyle(color: AccnomosColors.muted, height: 1.4),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Text(
+                    'Your household figures come from your bank statements. Download a statement from your bank as a CSV, import it here, and this page fills in: money in and out, budgets, bills and goals.',
+                    style: TextStyle(color: AccnomosColors.muted, height: 1.4),
+                  ),
+                  if (signedIn) ...[
+                    const SizedBox(height: 12),
+                    ImportStatementButton(clientFor: _client, onImported: _reload),
+                  ],
+                ],
               ),
             ),
           ] else if (thisMonth != null) ...[

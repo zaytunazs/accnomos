@@ -250,6 +250,18 @@ async def add_rule(books: Books, body: PersonalRuleIn, user: str) -> PersonalRul
     return rule
 
 
+async def reorder_rules(books: Books, ids: list[str], user: str) -> list[PersonalRule]:
+    """New evaluation order (first match wins): every rule id exactly once, as /books/bank/rules/reorder."""
+    rules = await load_rules(books)
+    if sorted(ids) != sorted(r.id for r in rules):
+        raise PersonalError("Reorder with every rule id exactly once")
+    by_id = {r.id: r for r in rules}
+    ordered = [by_id[i] for i in ids]
+    await _write_rules(books, ordered)
+    await books.audit(f"user:{user}", "personal_rules_reordered", {"ids": ids})
+    return ordered
+
+
 async def delete_rule(books: Books, rule_id: str, user: str) -> None:
     rules = await load_rules(books)
     if all(r.id != rule_id for r in rules):

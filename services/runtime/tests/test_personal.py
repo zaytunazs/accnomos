@@ -371,3 +371,16 @@ def test_goals_routes(client: TestClient) -> None:
     assert len(client.get("/personal/goals", headers=H).json()) == 1
     assert client.delete(f"/personal/goals/{gid}", headers=H).status_code == 204
     assert client.get("/personal/goals", headers=H).json() == []
+
+
+async def test_rules_reorder_every_id_once(client: TestClient, books: Books) -> None:
+    a = client.post(
+        "/personal/rules", headers=H, json={"match": {"op": "contains", "value": "tesco"}, "category_id": "groceries"}
+    ).json()
+    b = client.post(
+        "/personal/rules", headers=H, json={"match": {"op": "contains", "value": "rent"}, "category_id": "housing"}
+    ).json()
+    r = client.post("/personal/rules/reorder", headers=H, json={"ids": [b["id"], a["id"]]})
+    assert r.status_code == 200 and [x["id"] for x in r.json()] == [b["id"], a["id"]]
+    assert [x["id"] for x in client.get("/personal/rules", headers=H).json()] == [b["id"], a["id"]]
+    assert client.post("/personal/rules/reorder", headers=H, json={"ids": [a["id"]]}).status_code == 409
