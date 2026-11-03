@@ -399,7 +399,7 @@ void main() {
         findsOneWidget);
   });
 
-  testWidgets('linked mailboxes are listed read-only, as on the web',
+  testWidgets('linked mailboxes are listed here; changes are in Business setup',
       (tester) async {
     await pumpSignedIn(tester, FakeSettingsClient(mailboxesData: _mailboxes));
 
@@ -423,9 +423,9 @@ void main() {
         findsOneWidget);
     expect(
         find.textContaining(
-            'Add, change or remove mailboxes in Settings on the web'),
+            'Link, change or remove mailboxes in Settings › Business setup'),
         findsOneWidget);
-    // Read-only: nothing to add, edit or remove here.
+    // The list itself is read-only: changes live in Business setup.
     for (final label in [
       'Add Microsoft mailbox',
       'Add shared mailbox',

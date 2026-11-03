@@ -193,7 +193,6 @@ class _HouseholdRulesScreenState extends State<HouseholdRulesScreen> {
 
   Future<void> _reorder(int oldIndex, int newIndex) async {
     final list = [..._rules];
-    if (newIndex > oldIndex) newIndex -= 1;
     final moved = list.removeAt(oldIndex);
     list.insert(newIndex, moved);
     setState(() => _rules = list);
@@ -223,7 +222,7 @@ class _HouseholdRulesScreenState extends State<HouseholdRulesScreen> {
         Expanded(
           child: ReorderableListView(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
-            onReorder: _busy ? (a, b) {} : _reorder,
+            onReorderItem: _busy ? (a, b) {} : _reorder,
             children: [
               for (var i = 0; i < _rules.length; i++)
                 Card(
