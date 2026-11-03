@@ -8,9 +8,11 @@ import '../models/household.dart';
 import '../services/app_mode.dart';
 import '../services/auth.dart';
 import '../services/books.dart' show booksClient, isoDate;
+import '../services/books_events.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/tile_grid.dart';
 import 'goals_screen.dart';
 import 'goals_widgets.dart';
 import 'home_screen.dart' show SummaryCard;
@@ -63,13 +65,30 @@ class _HouseholdHomeScreenState extends State<HouseholdHomeScreen> {
   GoalsData? _goals;
   int? _receipts;
   HomeSummary? _summary;
+  bool _billsLoaded = false;
+  int _generation = 0;
+  int _seenChange = BooksEvents.changed.value;
 
   DateTime get _today => widget.today ?? DateTime.now();
 
   @override
   void initState() {
     super.initState();
+    BooksEvents.changed.addListener(_onBooksChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    BooksEvents.changed.removeListener(_onBooksChanged);
+    super.dispose();
+  }
+
+  /// An approval or other change elsewhere: the counts may have moved.
+  void _onBooksChanged() {
+    if (BooksEvents.changed.value == _seenChange) return;
+    _seenChange = BooksEvents.changed.value;
+    if (mounted && _account != null && !_loading) _reload();
   }
 
   Future<void> _load() async {
@@ -99,55 +118,57 @@ class _HouseholdHomeScreenState extends State<HouseholdHomeScreen> {
     return booksClient(_settings!, _auth, _account);
   }
 
-  /// Each section loads on its own: one that fails leaves the rest standing.
+  /// Each section loads on its own and shows as soon as it arrives: the
+  /// month first (the tiles), then bills, goals and the summary. One that
+  /// fails leaves the rest standing.
   Future<void> _reload() async {
+    final generation = ++_generation;
     setState(() {
       _loading = true;
       _error = null;
     });
+    bool current() => mounted && generation == _generation;
     try {
       final c = await _client();
       final today = isoDate(_today);
-      Future<T?> soft<T>(Future<T> f) async {
+      Future<void> soft<T>(Future<T> f, void Function(T value) apply) async {
         try {
-          return await f;
+          final v = await f;
+          if (current()) setState(() => apply(v));
         } catch (_) {
-          return null;
+          // This section stays as it was; the others still load.
         }
       }
 
-      final results = await Future.wait<Object?>([
-        c.personalSummary(month: monthKey(_today)),
-        soft(c.personalSummary(month: previousMonthKey(_today))),
-        soft(c.personalRecurring()),
-        soft(c.goals(today: today)),
-        soft(c.dashboard(today: today)),
-        soft(c.home(today: today)),
+      await Future.wait<void>([
+        c.personalSummary(month: monthKey(_today)).then((json) {
+          if (current()) setState(() => _this = MonthSummary.fromJson(json));
+        }),
+        soft(c.personalSummary(month: previousMonthKey(_today)),
+            (Map<String, dynamic> json) => _last = MonthSummary.fromJson(json)),
+        soft(c.personalRecurring(), (Map<String, dynamic> json) {
+          _bills = upcomingBills(json);
+          _billsNote = '${json['note'] ?? ''}';
+          _billsLoaded = true;
+        }),
+        soft(c.goals(today: today),
+            (Map<String, dynamic> json) => _goals = GoalsData.fromJson(json)),
+        soft(c.dashboard(today: today), (Map<String, dynamic> json) {
+          final d = Dashboard.fromJson(json);
+          _receipts = (d.attentionProposed ?? 0) + (d.attentionNeedsALook ?? 0);
+        }),
+        soft(c.home(today: today),
+            (Map<String, dynamic> json) => _summary = HomeSummary.fromHomeJson(json)),
       ]);
-      if (!mounted) return;
-      final recurring = results[2] as Map<String, dynamic>?;
-      final dash = results[4] as Map<String, dynamic>?;
-      final home = results[5] as Map<String, dynamic>?;
-      int? receipts;
-      if (dash != null) {
-        final d = Dashboard.fromJson(dash);
-        receipts = (d.attentionProposed ?? 0) + (d.attentionNeedsALook ?? 0);
-      }
-      setState(() {
-        _this = MonthSummary.fromJson(results[0] as Map<String, dynamic>);
-        final last = results[1] as Map<String, dynamic>?;
-        _last = last == null ? null : MonthSummary.fromJson(last);
-        _bills = recurring == null ? const [] : upcomingBills(recurring);
-        _billsNote = '${recurring?['note'] ?? ''}';
-        final g = results[3] as Map<String, dynamic>?;
-        _goals = g == null ? null : GoalsData.fromJson(g);
-        _receipts = receipts;
-        _summary = home == null ? null : HomeSummary.fromHomeJson(home);
-      });
     } catch (e) {
-      if (mounted) setState(() => _error = goalError(e));
+      if (current()) setState(() => _error = goalError(e));
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (current()) {
+        setState(() {
+          _loading = false;
+          _billsLoaded = true;
+        });
+      }
     }
   }
 
@@ -244,9 +265,12 @@ class _HouseholdHomeScreenState extends State<HouseholdHomeScreen> {
               ),
             ),
           ],
-          if (!noStatement) ...[
+          if (!noStatement && (!signedIn || _billsLoaded)) ...[
             const SizedBox(height: 12),
             BillsPanel(bills: bills, note: billsNote),
+          ] else if (!noStatement && signedIn) ...[
+            const SizedBox(height: 12),
+            const _LoadingPanel(title: 'Bills and subscriptions coming up'),
           ],
           if (thisMonth != null && thisMonth.top(5).isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -335,13 +359,8 @@ class _AttentionTiles extends StatelessWidget {
     final over = month.overBudget;
     final near = month.nearBudget;
     final bill = nextBill;
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 10,
-      crossAxisSpacing: 10,
-      childAspectRatio: 1.25,
+    return TileGrid(
+      spacing: 10,
       children: [
         _Tile(
           icon: Icons.receipt_long_outlined,
@@ -429,16 +448,15 @@ class _Tile extends StatelessWidget {
                     color: tone.tint, borderRadius: BorderRadius.circular(8)),
                 child: Icon(icon, size: 18, color: tone.text),
               ),
+              const SizedBox(height: 10),
               const Spacer(),
               Text(count,
                   style: const TextStyle(
                       fontSize: 22, fontWeight: FontWeight.w700)),
               Text(label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
               Text(note,
-                  maxLines: 1,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
                       fontSize: 12, color: AccnomosColors.muted)),
@@ -684,6 +702,45 @@ class WhereItWentPanel extends StatelessWidget {
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// A panel still loading: its title and grey bars, never an empty state.
+class _LoadingPanel extends StatelessWidget {
+  const _LoadingPanel({required this.title});
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget bar(double w) => Container(
+          width: w,
+          height: 12,
+          margin: const EdgeInsets.only(top: 10),
+          decoration: BoxDecoration(
+              color: AccnomosColors.ground,
+              borderRadius: BorderRadius.circular(6)),
+        );
+    return Semantics(
+      label: '$title, loading',
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AccnomosColors.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title,
+                style: const TextStyle(
+                    fontWeight: FontWeight.w700, fontSize: 16)),
+            bar(220),
+            bar(160),
+          ],
+        ),
       ),
     );
   }

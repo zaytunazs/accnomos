@@ -6,7 +6,7 @@ void main() {
   test('gbp formats pence as pounds', () {
     expect(gbp(1234), '£12.34');
     expect(gbp(0), '£0.00');
-    expect(gbp(-50), '−£0.50');
+    expect(gbp(-50), '-£0.50');
   });
 
   test('ukDate renders day month year', () {

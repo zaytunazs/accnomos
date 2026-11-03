@@ -294,7 +294,10 @@ class _PayrollScreenState extends State<PayrollScreen> {
     final payDate = (run['pay_date'] ?? '').toString();
     final month = _ukMonth(start);
     if (payDate.isNotEmpty && payDate != start) {
-      return '$month · paid ${_ukDate(payDate)}';
+      // Only a confirmed run has been paid; a draft is still to pay.
+      final status = (run['status'] ?? '').toString();
+      final paid = status == 'confirmed' || status == 'paid' || status == 'submitted';
+      return '$month · ${paid ? 'paid' : 'pay day'} ${_ukDate(payDate)}';
     }
     return end.isEmpty || end == start ? month : '$month ($start – $end)';
   }

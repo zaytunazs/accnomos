@@ -5,6 +5,7 @@ import 'package:msal_auth/msal_auth.dart';
 
 import '../models/vat_return.dart';
 import '../services/auth.dart';
+import '../services/books_events.dart';
 import '../services/graph.dart';
 import '../services/hmrc.dart';
 import '../services/runtime_client.dart';
@@ -40,6 +41,8 @@ class _VatScreenState extends State<VatScreen> {
   VatReturn? _vat;
   List<VatPeriod> _periods = const [];
   String? _picked; // null: the current period
+  bool _chosen = false; // the first load picks the period that is due next
+  int _seenChange = BooksEvents.changed.value;
   RuntimeClient? _client;
   String? _token;
   Hmrc? _hmrc;
@@ -48,8 +51,23 @@ class _VatScreenState extends State<VatScreen> {
   @override
   void initState() {
     super.initState();
+    BooksEvents.changed.addListener(_onBooksChanged);
     _load();
   }
+
+  @override
+  void dispose() {
+    BooksEvents.changed.removeListener(_onBooksChanged);
+    super.dispose();
+  }
+
+  /// An approval (or any other change) elsewhere: the boxes may have moved.
+  void _onBooksChanged() {
+    if (BooksEvents.changed.value == _seenChange) return;
+    _seenChange = BooksEvents.changed.value;
+    if (mounted && _vat != null) _reload();
+  }
+
 
   String _friendly(Object e) => e.toString().replaceFirst('Exception: ', '');
 
@@ -92,9 +110,17 @@ class _VatScreenState extends State<VatScreen> {
           businessName: settings.businessName,
         ),
       );
+      var fetchPeriods = withPeriods || _periods.isEmpty;
+      if (!_chosen && _picked == null) {
+        final json = await client.vatPeriods();
+        _periods = VatPeriod.listFromJson(json);
+        _picked = vatDuePeriod(json, _periods);
+        _chosen = true;
+        fetchPeriods = false;
+      }
       final results = await Future.wait([
         client.vat(period: _picked),
-        if (withPeriods || _periods.isEmpty) client.vatPeriods(),
+        if (fetchPeriods) client.vatPeriods(),
       ]);
       _hmrc ??= Hmrc(relayUrl: settings.runtimeUrl);
       final vat = VatReturn.fromJson(results[0]);
@@ -254,7 +280,7 @@ class _VatScreenState extends State<VatScreen> {
                     color: AccnomosColors.muted, height: 1.4),
               ),
               const Divider(height: 24),
-              for (final box in vat.boxes) _boxRow(box),
+              for (final box in vat.boxes) _boxRow(vat, box),
             ],
           ),
         ),
@@ -361,13 +387,13 @@ class _VatScreenState extends State<VatScreen> {
           : (period) {
               if (period == null || period == vat.period) return;
               final pick = _periods.firstWhere((p) => p.period == period);
-              _picked = pick.current ? null : period;
+              _picked = pick.period;
               _reload(withPeriods: false);
             },
     );
   }
 
-  Widget _boxRow(VatBox box) {
+  Widget _boxRow(VatReturn vat, VatBox box) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 7),
       child: Row(
@@ -393,7 +419,7 @@ class _VatScreenState extends State<VatScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(box.label,
+                Text(vat.labelFor(box),
                     style: const TextStyle(
                         color: AccnomosColors.ink,
                         fontWeight: FontWeight.w700)),
@@ -406,7 +432,7 @@ class _VatScreenState extends State<VatScreen> {
             ),
           ),
           Text(
-            box.display,
+            vat.displayFor(box),
             style: const TextStyle(
                 color: AccnomosColors.ink,
                 fontWeight: FontWeight.w800,
@@ -431,4 +457,15 @@ class _VatScreenState extends State<VatScreen> {
       return text;
     }
   }
+}
+
+/// The period the VAT tab opens on: the runtime's `due_period` hint when it
+/// sends one, else the earliest period still open that is not the current
+/// one (the return Home counts down to), else the current period (null).
+String? vatDuePeriod(Map<String, dynamic> json, List<VatPeriod> periods) {
+  final hint = (json['due_period'] ?? '').toString();
+  if (hint.isNotEmpty && periods.any((p) => p.period == hint)) return hint;
+  final open = periods.where((p) => p.status == 'open' && !p.current).toList()
+    ..sort((a, b) => a.start.compareTo(b.start));
+  return open.isEmpty ? null : open.first.period;
 }

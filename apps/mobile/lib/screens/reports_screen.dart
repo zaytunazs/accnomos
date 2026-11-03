@@ -5,6 +5,7 @@ import '../models/reports.dart';
 import '../models/vat_return.dart';
 import '../services/auth.dart';
 import '../services/demo.dart';
+import '../services/money.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
@@ -602,44 +603,52 @@ Widget _agedCard(String title, String hint, AgedTable table) {
       const Text('Nothing unpaid.',
           style: TextStyle(
               color: AccnomosColors.muted, fontWeight: FontWeight.w600)),
+    // Phone width: one block per name (total first, then only the age
+    // buckets that hold money), never a wide table cut off at the edge.
+    for (final r in table.rows) _agedRow(r.name, r.totalPence, r.buckets),
     if (table.rows.isNotEmpty)
-      SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          columnSpacing: 16,
-          columns: [
-            const DataColumn(label: Text('Name')),
-            for (final b in _buckets)
-              DataColumn(label: Text(_bucketLabel(b)), numeric: true),
-            const DataColumn(label: Text('Total'), numeric: true),
-          ],
-          rows: [
-            for (final r in table.rows)
-              DataRow(cells: [
-                DataCell(ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 140),
-                  child: Text(r.name, overflow: TextOverflow.ellipsis),
-                )),
-                for (final b in _buckets)
-                  DataCell(Text(r.buckets[b] != null && r.buckets[b] != 0
-                      ? gbp(r.buckets[b]!)
-                      : '—')),
-                DataCell(Text(gbp(r.totalPence),
-                    style: const TextStyle(fontWeight: FontWeight.w700))),
-              ]),
-            DataRow(cells: [
-              const DataCell(Text('Total',
-                  style: TextStyle(fontWeight: FontWeight.w800))),
-              for (final b in _buckets)
-                DataCell(Text(gbp(table.buckets[b] ?? 0),
-                    style: const TextStyle(fontWeight: FontWeight.w700))),
-              DataCell(Text(gbp(table.totalPence),
-                  style: const TextStyle(fontWeight: FontWeight.w800))),
-            ]),
+      _agedRow('Total', table.totalPence, table.buckets, total: true),
+  ]);
+}
+
+Widget _agedRow(String name, int totalPence, Map<String, int> buckets,
+    {bool total = false}) {
+  final parts = [
+    for (final b in _buckets)
+      if ((buckets[b] ?? 0) != 0) '${_bucketLabel(b)} ${gbp(buckets[b]!)}',
+  ];
+  return Container(
+    padding: const EdgeInsets.symmetric(vertical: 10),
+    decoration: const BoxDecoration(
+      border: Border(top: BorderSide(color: AccnomosColors.border)),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(name,
+                  style: TextStyle(
+                      fontWeight: total ? FontWeight.w800 : FontWeight.w700)),
+            ),
+            const SizedBox(width: 8),
+            Text(gbp(totalPence),
+                style: TextStyle(
+                    fontWeight: total ? FontWeight.w800 : FontWeight.w700,
+                    fontFeatures: const [FontFeature.tabularFigures()])),
           ],
         ),
-      ),
-  ]);
+        if (parts.isNotEmpty) ...[
+          const SizedBox(height: 4),
+          Text(parts.join(' · '),
+              style: const TextStyle(
+                  color: AccnomosColors.muted, fontSize: 13, height: 1.4)),
+        ],
+      ],
+    ),
+  );
 }
 
 /// VAT boxes per period, oldest first.
@@ -679,8 +688,8 @@ class VatSummaryView extends StatelessWidget {
                           : gbp(p.netPence),
                       style: const TextStyle(fontWeight: FontWeight.w700),
                     )),
-                    DataCell(Text('£${p.salesExPounds}')),
-                    DataCell(Text('£${p.purchasesExPounds}')),
+                    DataCell(Text(formatMoneyPounds(p.salesExPounds))),
+                    DataCell(Text(formatMoneyPounds(p.purchasesExPounds))),
                   ]),
                 DataRow(cells: [
                   const DataCell(Text('Total',

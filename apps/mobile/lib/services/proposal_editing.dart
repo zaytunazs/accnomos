@@ -13,6 +13,7 @@
 /// never sent.
 library;
 
+import 'money.dart';
 import 'review_rules.dart';
 
 /// VAT codes offered by the edit sheet.
@@ -63,7 +64,7 @@ int? parsePoundsToPence(String text) {
 }
 
 /// Format integer pence as pounds ('£12.34').
-String formatPence(int pence) => '£${(pence / 100).toStringAsFixed(2)}';
+String formatPence(int pence) => formatMoneyPence(pence);
 
 /// Returns a discrepancy line when net + VAT != gross, else null.
 String? totalsDiscrepancy({

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 
+import '../services/app_mode.dart';
 import '../services/auth.dart';
 import '../services/proposal_editing.dart' show formatPence;
 import '../services/runtime_client.dart';
@@ -8,6 +9,7 @@ import '../services/settings.dart';
 import '../theme.dart';
 import '../widgets/web_only.dart';
 import 'bank_rule_sheet.dart';
+import 'personal_screen.dart';
 import 'settings_screen.dart';
 
 /// Bank: statements, unmatched lines, and rules. Confirming a match is
@@ -34,6 +36,13 @@ class _BankScreenState extends State<BankScreen> {
   String? _notice;
   List<Map<String, dynamic>> _statements = const [];
   List<Map<String, dynamic>> _unmatched = const [];
+  List<Map<String, dynamic>> _recent = const [];
+  Map<String, dynamic> _summary = const {};
+
+  /// Household view: the server says so (`basis`), else the app's mode.
+  bool get _household => _summary['basis'] != null
+      ? _summary['basis'] == 'household'
+      : AppMode.household;
   List<Map<String, dynamic>> _suggestions = const [];
   List<Map<String, dynamic>> _rules = const [];
 
@@ -83,18 +92,37 @@ class _BankScreenState extends State<BankScreen> {
     setState(() => _error = null);
     try {
       final client = await _booksClient();
-      final results = await Future.wait([
+      Future<Map<String, dynamic>> softSummary() async {
+        try {
+          return await client.bankSummary();
+        } catch (_) {
+          return const {}; // an older runtime: the statements still show
+        }
+      }
+
+      final results = await Future.wait<Object>([
         client.bankStatements(),
-        client.bankLines(status: 'unmatched'),
+        client.bankLines(),
         client.bankSuggestions(),
         client.bankRules(),
+        softSummary(),
       ]);
       if (!mounted) return;
+      final all = (results[1] as List).cast<Map<String, dynamic>>();
+      final summary = results[4] as Map<String, dynamic>;
       setState(() {
-        _statements = results[0].cast<Map<String, dynamic>>();
-        _unmatched = results[1].cast<Map<String, dynamic>>();
-        _suggestions = results[2].cast<Map<String, dynamic>>();
-        _rules = results[3].cast<Map<String, dynamic>>();
+        _summary = summary;
+        _statements = (results[0] as List).cast<Map<String, dynamic>>();
+        // "Open" by the server's one definition (GET /books/bank/summary,
+        // app/bank_status.py): what Home counts too. Personal books: lines
+        // with no household category; a business: lines not yet matched.
+        _unmatched = [for (final l in all) if (bankLineIsOpen(l)) l];
+        _recent = ([...all]
+              ..sort((a, b) => '${b['date'] ?? ''}'.compareTo('${a['date'] ?? ''}')))
+            .take(30)
+            .toList();
+        _suggestions = (results[2] as List).cast<Map<String, dynamic>>();
+        _rules = (results[3] as List).cast<Map<String, dynamic>>();
       });
     } catch (e) {
       if (!mounted) return;
@@ -243,11 +271,31 @@ class _BankScreenState extends State<BankScreen> {
           else
             for (final s in _statements) _statementCard(s),
           const SizedBox(height: 8),
-          _heading('Need an action'),
-          if (_unmatched.isEmpty)
-            const _EmptyLine('Nothing unmatched — every line is resolved.')
-          else
-            for (final line in _unmatched) _lineCard(line),
+          if (_summary['label'] != null) _summaryLine(),
+          if (_household) ...[
+            // A household has no ledger to match lines against: each line is
+            // sorted into a category by the household rules (the Budget tab).
+            _heading('Lines with no category'),
+            if (_unmatched.isEmpty)
+              const _EmptyLine('All sorted — every line has a category.')
+            else ...[
+              for (final line in _unmatched) _plainLine(line),
+              _budgetLink(),
+            ],
+            const SizedBox(height: 8),
+            _heading('Recent lines'),
+            if (_recent.isEmpty)
+              const _EmptyLine('No bank lines yet.')
+            else
+              for (final line in _recent) _plainLine(line),
+          ] else ...[
+            _heading('Need an action'),
+            if (_unmatched.isEmpty)
+              const _EmptyLine('Nothing to match — every line is resolved.')
+            else
+              for (final line in _unmatched) _lineCard(line),
+          ],
+          if (!_household) ...[
           const SizedBox(height: 8),
           Row(
             children: [
@@ -271,6 +319,7 @@ class _BankScreenState extends State<BankScreen> {
                 'and changing rule order happen on the web.',
             page: '/bank',
           ),
+          ],
         ],
       ),
     );
@@ -320,13 +369,15 @@ class _BankScreenState extends State<BankScreen> {
           Text(bank.isEmpty ? 'Statement' : bank,
               style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 2),
-          Text('$first – $last · $resolved of $lines lines resolved',
+          Text(
+              '$first – $last · '
+              '${(s['label'] ?? '').toString().isNotEmpty ? s['label'] : '$resolved of $lines lines resolved'}',
               style: const TextStyle(
                   color: AccnomosColors.muted, fontSize: 12, height: 1.4)),
           const SizedBox(height: 4),
           Text(
-            'In ${formatPence(_asInt(s['money_in_pence']))} · '
-            'out ${formatPence(_asInt(s['money_out_pence']))}',
+            'In ${formatPence(_asInt(s['money_in_pence']).abs())} · '
+            'out ${formatPence(_asInt(s['money_out_pence']).abs())}',
             style: const TextStyle(
                 color: AccnomosColors.ink,
                 fontSize: 13,
@@ -392,6 +443,82 @@ class _BankScreenState extends State<BankScreen> {
                     color: AccnomosColors.muted,
                     fontSize: 12,
                     height: 1.4)),
+        ],
+      ),
+    );
+  }
+
+  /// The server's one-line status: "760 of 770 lines sorted · 10 lines
+  /// with no category" / "9 of 25 lines resolved · 16 lines to match".
+  Widget _summaryLine() {
+    final open = (_summary['open_label'] ?? '').toString();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Text(
+        [_summary['label'].toString(), if (open.isNotEmpty) open].join(' · '),
+        style: const TextStyle(
+            color: AccnomosColors.ink, fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+
+  /// Household lines with no category are sorted on the Budget tab.
+  Widget _budgetLink() {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: TextButton.icon(
+        icon: const Icon(Icons.pie_chart_outline, size: 18),
+        label: const Text('Give them a category on Budget',
+            style: TextStyle(fontWeight: FontWeight.w800)),
+        onPressed: () => Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const PersonalScreen()))
+            .then((_) => _reload(quiet: true)),
+      ),
+    );
+  }
+
+  /// One bank line for a household: description, date, category, amount.
+  Widget _plainLine(Map<String, dynamic> line) {
+    final description = (line['description'] ?? '').toString();
+    final date = _ukDate((line['date'] ?? '').toString());
+    final amount = _asInt(line['amount_pence']);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(description.isEmpty ? 'Bank line' : description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                    [
+                      date,
+                      if (householdCategoryLabel(line) != null)
+                        householdCategoryLabel(line)!,
+                    ].join(' · '),
+                    style: TextStyle(
+                        color: line['household_sorted'] == false
+                            ? const Color(0xFF8A470D)
+                            : AccnomosColors.muted,
+                        fontSize: 12)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(formatPence(amount),
+              style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: amount > 0 ? AccnomosColors.tealDark : AccnomosColors.ink)),
         ],
       ),
     );
@@ -619,4 +746,26 @@ class _EmptyLine extends StatelessWidget {
               color: AccnomosColors.muted, height: 1.4)),
     );
   }
+}
+
+/// Whether a bank line is open, by the server's one definition
+/// (app/bank_status.py): personal books' lines carry `household_sorted`;
+/// a business line is open until matched, a transfer or ignored (a line
+/// with a suggestion waiting still needs a decision).
+bool bankLineIsOpen(Map<String, dynamic> line) {
+  final sorted = line['household_sorted'];
+  if (sorted is bool) return !sorted;
+  final status = (line['status'] ?? 'unmatched').toString();
+  return status == 'unmatched' || status == 'suggested';
+}
+
+/// "Groceries", "Income", "No category yet"; null for transfers and lines
+/// with no household fields (a business).
+String? householdCategoryLabel(Map<String, dynamic> line) {
+  if (line['household_sorted'] == false) return 'No category yet';
+  final source = (line['household_source'] ?? '').toString();
+  if (source == 'excluded') return 'Transfer / not counted';
+  final name = (line['household_category'] ?? '').toString();
+  if (name.isEmpty) return null;
+  return source == 'hand' ? '$name (set by you)' : name;
 }

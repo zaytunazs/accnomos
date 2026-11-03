@@ -259,7 +259,7 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                       ),
                     ),
                     Text(
-                      '${(quarter['miles'] ?? 0).toString()} mi',
+                      '${milesText(quarter['miles'])} mi',
                       style: const TextStyle(
                           color: AccnomosColors.muted),
                     ),
@@ -271,6 +271,14 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
                   style: const TextStyle(
                       color: AccnomosColors.muted),
                 ),
+                if (summary != null) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    yearLine(summary),
+                    style: const TextStyle(
+                        color: AccnomosColors.ink, fontWeight: FontWeight.w600),
+                  ),
+                ],
               ],
             ),
     );
@@ -556,4 +564,26 @@ class _AddMileageState extends State<AddMileageScreen> {
       ),
     );
   }
+}
+
+/// "12.5", "40" — miles without a trailing ".0".
+String milesText(Object? miles) {
+  final n = num.tryParse('${miles ?? 0}') ?? 0;
+  return n == n.roundToDouble() ? n.round().toString() : n.toStringAsFixed(1);
+}
+
+/// The whole tax year, so a quarter with no journeys yet never reads as if
+/// the books had none: "Tax year 2026-27 so far: £123.30 · 274 mi".
+String yearLine(Map<String, dynamic> summary) {
+  var miles = 0.0;
+  final quarters = summary['quarters'];
+  if (quarters is List) {
+    for (final q in quarters) {
+      if (q is Map) miles += num.tryParse('${q['miles'] ?? 0}')?.toDouble() ?? 0;
+    }
+  }
+  final pence = (summary['allowance_pence'] as num?) ?? 0;
+  final year = (summary['tax_year'] ?? '').toString();
+  return 'Tax year${year.isEmpty ? '' : ' $year'} so far: '
+      '${gbp(pence)} · ${milesText(miles)} mi';
 }

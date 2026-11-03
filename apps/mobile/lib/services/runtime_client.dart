@@ -9,6 +9,7 @@ import '../models/ask_answer.dart';
 import '../models/sample_books.dart';
 import '../models/scan_job.dart';
 import '../models/storage.dart';
+import 'books_events.dart';
 import 'demo.dart';
 import 'settings.dart';
 
@@ -1050,9 +1051,13 @@ class RuntimeClient {
       _list('GET', '/books/bank/statements', what: 'load bank statements');
 
   /// [status]: unmatched, matched, suggested, transfer or ignored.
-  Future<List<Map<String, dynamic>>> bankLines({String? status}) =>
+  /// `GET /books/bank/lines`. [open] true: only the open lines, by the one
+  /// definition the summary and Home use (business: not yet matched;
+  /// household: no category). Personal books' lines carry
+  /// `household_category`, `household_source` and `household_sorted`.
+  Future<List<Map<String, dynamic>>> bankLines({String? status, bool? open}) =>
       _list('GET', '/books/bank/lines',
-          query: {'status': ?status},
+          query: {'status': ?status, if (open != null) 'open': '$open'},
           what: 'load bank lines');
 
   Future<List<Map<String, dynamic>>> bankSuggestions() =>
@@ -1750,6 +1755,9 @@ class RuntimeClient {
       if (streamed.statusCode < 200 || streamed.statusCode >= 300) {
         _fail(streamed.statusCode, text.trim());
       }
+      if (request.method != 'GET' && _changesBooks(request.url.path)) {
+        BooksEvents.bump();
+      }
       return text.isEmpty ? null : json.decode(text);
     } on TimeoutException {
       throw RuntimeException(
@@ -1764,6 +1772,13 @@ class RuntimeClient {
       throw RuntimeException('Could not $what. $e');
     }
   }
+
+  /// Whether a successful non-GET to [path] changed the books (asking a
+  /// question, reading a photo or starting a demo did not).
+  static bool _changesBooks(String path) => !const [
+        '/ask', '/extract', '/demo', '/ai', '/voice', '/stt', '/lookup',
+        '/public',
+      ].any(path.startsWith);
 
   Never _fail(int status, String body) {
     if (Demo.active && (status == 401 || status == 404) && _demoGone(body)) {

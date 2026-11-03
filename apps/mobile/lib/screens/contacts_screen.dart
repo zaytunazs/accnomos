@@ -97,7 +97,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
         _rows = [
           if (contacts is List)
             for (final c in contacts)
-              if (c is Map) Map<String, dynamic>.from(c),
+              if (c is Map && !isSystemContact(c)) Map<String, dynamic>.from(c),
         ];
         _dupGroups = groups;
       });
@@ -1893,4 +1893,13 @@ class _ContactDetailState extends State<ContactDetailScreen> {
       ),
     );
   }
+}
+
+/// Counterparties the app itself writes, not people or businesses: a
+/// mileage claim is posted with the supplier "Mileage allowance"
+/// (services/runtime/app/mileage.py), which is not a supplier to list.
+bool isSystemContact(Map<dynamic, dynamic> contact) {
+  final name = (contact['name'] ?? '').toString().trim().toLowerCase();
+  final email = (contact['email'] ?? '').toString().trim();
+  return name == 'mileage allowance' && email.isEmpty;
 }

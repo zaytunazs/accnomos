@@ -1,6 +1,10 @@
 /// `GET /books/dashboard` (services/runtime/app/dashboard.py), as the Home
 /// tiles need it. Money is integer pence; a null figure is unknown and shows
 /// as "—".
+library;
+
+import '../services/money.dart';
+
 class Dashboard {
   Dashboard({
     required this.cashPence,
@@ -95,10 +99,7 @@ class Dashboard {
 /// "£12,480" from pence (whole pounds, as the tiles show them); "—" if null.
 String poundsFromPence(int? pence) {
   if (pence == null) return '—';
-  final whole = (pence.abs() / 100).round().toString();
-  final grouped = whole.replaceAllMapped(
-      RegExp(r'(\d)(?=(\d{3})+$)'), (m) => '${m[1]},');
-  return '${pence < 0 ? '-' : ''}£$grouped';
+  return formatMoneyPence(pence, whole: true, round: true);
 }
 
 /// "24 Oct" from "2026-10-24"; "—" if null.

@@ -1,6 +1,7 @@
 import 'package:msal_auth/msal_auth.dart';
 
 import 'auth.dart';
+import 'money.dart';
 import 'runtime_client.dart';
 import 'settings.dart';
 
@@ -26,11 +27,8 @@ Future<RuntimeClient> booksClient(
   );
 }
 
-/// Pence to pounds, e.g. 1234 → £12.34, -50 → −£0.50.
-String gbp(num pence) {
-  final pounds = (pence / 100).toStringAsFixed(2);
-  return pence < 0 ? '−£${pounds.substring(1)}' : '£$pounds';
-}
+/// Pence to pounds, e.g. 123456 → £1,234.56, -50 → -£0.50.
+String gbp(num pence) => formatMoneyPence(pence);
 
 /// ISO date to UK display, e.g. 2026-10-27 → 27 Oct 2026.
 String ukDate(String iso) {

@@ -358,7 +358,7 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen> {
             minimumSize: const Size.fromHeight(52),
           ),
           onPressed: _working ? null : _preview,
-          child: Text(_working ? 'Working…' : 'Preview totals'),
+          child: Text(_working ? 'Working…' : 'Save draft and show totals'),
         ),
       ],
     );

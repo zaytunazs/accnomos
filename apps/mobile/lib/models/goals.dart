@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import '../services/money.dart';
+
 /// Goals tracked by code against the books (`GET /books/goals`,
 /// services/runtime/app/goals.py). The runtime works out every figure,
 /// status and suggestion; the phone only shows them, like the web's
@@ -15,21 +17,12 @@ String? _strOrNull(Object? v) {
 }
 
 /// £1,234.56 from pence; a minus sign before the pound sign when negative.
-String money(int pence) {
-  final sign = pence < 0 ? '−' : '';
-  final p = pence.abs();
-  final whole = (p ~/ 100).toString().replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
-  return '$sign£$whole.${(p % 100).toString().padLeft(2, '0')}';
-}
+String money(int pence) => formatMoneyPence(pence);
 
 /// The large figure on a card: whole pounds when there are no pence.
 String moneyShort(int pence) {
   if (pence % 100 != 0) return money(pence);
-  final sign = pence < 0 ? '−' : '';
-  final whole = (pence.abs() ~/ 100).toString().replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
-  return '$sign£$whole';
+  return formatMoneyPence(pence, whole: true);
 }
 
 class GoalDriver {
