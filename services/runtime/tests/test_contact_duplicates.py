@@ -18,7 +18,8 @@ def test_shared_email_phone_vat_and_name_all_link() -> None:
     (g,) = cb.find_duplicate_groups([a, b])
     assert g.contact_ids == ["a" * 16, "b" * 16] and not g.blocked
     assert "same email trade@screwfix.com" in g.evidence
-    assert any(e.startswith("share name word: screwfix") for e in g.evidence)
+    assert "names nearly the same: 'Screwfix' / 'SCREWFIX DIRECT LTD'" in g.evidence
+    assert g.reason == "same email trade@screwfix.com"
 
 
 def test_phone_normalised_to_uk_format() -> None:
@@ -99,3 +100,56 @@ def test_transitive_grouping_collects_evidence() -> None:
     assert g.contact_ids == ["a" * 16, "b" * 16, "c" * 16]
     assert "same email same@example.co.uk" in g.evidence
     assert "same phone 01174960123" in g.evidence
+
+
+def test_shared_place_or_trade_words_never_chain_into_one_group() -> None:
+    # The Bramblewood mega-group: many businesses share one word each with a neighbour ("Northgate", "Interiors",
+    # "Finch", "Energy", "& Sons"). None of them is the same business; none is suggested, and nothing chains.
+    names = [
+        "Northgate Civic Parking Ltd",
+        "Halloway & Sons Interiors",
+        "Thornfield Interiors Ltd",
+        "Oak & Ash Interiors Ltd",
+        "Northgate Transit Solutions Ltd",
+        "Thornbury & Finch Books Ltd",
+        "Harlow & Finch Interiors Ltd",
+        "Northgate Energy Solutions Ltd",
+        "Harrowgate Interiors",
+        "Crimson Post & Parcel Ltd",
+        "Northgate Premium Post Services Ltd",
+        "Nimbus Home Energy Ltd",
+        "Harrow & Finch Trading Ltd",
+        "Havoc Hardware & Tools Ltd",
+    ]
+    contacts = [_contact(f"{i:016x}", n) for i, n in enumerate(names)]
+    assert cb.find_duplicate_groups(contacts) == []
+
+
+def test_close_names_are_pairs_never_chained() -> None:
+    a = _contact("a" * 16, "Hargreaves & Sons Ironmongery")
+    b = _contact("b" * 16, "Hargreaves & Son Hardware Ltd")
+    c = _contact("c" * 16, "Hargreaves Hardware")
+    d = _contact("d" * 16, "Halloway Joinery")
+    e = _contact("e" * 16, "Holloway Joinery")  # a typo of d
+    groups = cb.find_duplicate_groups([a, b, c, d, e])
+    # a, b, c differ only by "& Son(s)" and hardware/ironmongery (one trade); d and e by one letter. Close names only
+    # ever pair up: three pairs, never one chained group of three.
+    assert [g.contact_ids for g in groups] == [
+        ["a" * 16, "b" * 16],
+        ["a" * 16, "c" * 16],
+        ["b" * 16, "c" * 16],
+        ["d" * 16, "e" * 16],
+    ]
+    assert (
+        groups[0].reason == "names nearly the same: 'Hargreaves & Sons Ironmongery' / 'Hargreaves & Son Hardware Ltd'"
+    )
+
+
+def test_a_huge_hard_linked_set_is_shown_as_pairs() -> None:
+    shared = [
+        _contact(f"{i:016x}", f"Shop {chr(65 + i)}{chr(70 + i)}{chr(75 + i)}", email="all@example.co.uk")
+        for i in range(8)
+    ]
+    groups = cb.find_duplicate_groups(shared)
+    assert groups and all(len(g.contact_ids) == 2 for g in groups)
+    assert len(groups) == 28  # every pair, each with its own evidence

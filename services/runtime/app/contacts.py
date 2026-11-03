@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import difflib
 import re
 import uuid
 from collections import Counter, defaultdict
@@ -1419,10 +1420,112 @@ async def judge_groups(groups: Sequence[DuplicateGroup], contacts: Sequence[Cont
     return out
 
 
-#: Name words too common to link two contacts on their own.
-_STOP_WORDS = frozenset(
-    {"ltd", "limited", "plc", "llp", "uk", "co", "company", "services", "group", "holdings", "the", "and"}
+#: Legal and filler words: never part of a name comparison.
+_STOP_WORDS = frozenset({"ltd", "limited", "plc", "llp", "uk", "co", "company", "the", "and", "of", "t/a", "ta"})
+#: Trade and descriptive words many unrelated businesses share ("Interiors", "Energy", "& Sons"). Two names that
+#: share only these are never a candidate, and names that differ only by these still are ("Screwfix" / "Screwfix
+#: Direct").
+_WEAK_WORDS = frozenset(
+    {
+        "services",
+        "service",
+        "group",
+        "holdings",
+        "direct",
+        "trade",
+        "trading",
+        "traders",
+        "solutions",
+        "systems",
+        "interiors",
+        "interior",
+        "energy",
+        "power",
+        "son",
+        "sons",
+        "brothers",
+        "bros",
+        "partners",
+        "associates",
+        "hardware",
+        "tools",
+        "ironmongery",
+        "supplies",
+        "supply",
+        "suppliers",
+        "builders",
+        "building",
+        "construction",
+        "joinery",
+        "timber",
+        "electrical",
+        "electrics",
+        "plumbing",
+        "heating",
+        "insurance",
+        "mutual",
+        "post",
+        "parcel",
+        "parcels",
+        "premium",
+        "home",
+        "homes",
+        "books",
+        "store",
+        "stores",
+        "shop",
+        "centre",
+        "center",
+        "international",
+        "global",
+        "enterprises",
+        "consulting",
+        "consultants",
+        "management",
+        "property",
+        "properties",
+        "logistics",
+        "transport",
+        "transit",
+        "motors",
+        "garage",
+        "media",
+        "digital",
+        "design",
+        "studio",
+        "wholesale",
+        "retail",
+        "foods",
+        "food",
+        "catering",
+        "cleaning",
+        "office",
+        "uk",
+        "gb",
+        "london",
+    }
 )
+#: Trade words that mean the same trade: "Hargreaves Hardware" and "Hargreaves Ironmongery" may be one shop.
+_TRADE_FAMILY = {
+    "ironmongery": "hardware",
+    "tools": "hardware",
+    "power": "energy",
+    "parcel": "post",
+    "parcels": "post",
+    "interior": "interiors",
+    "electrics": "electrical",
+    "supply": "supplies",
+    "suppliers": "supplies",
+    "center": "centre",
+    "trade": "trading",
+    "traders": "trading",
+    "building": "builders",
+    "construction": "builders",
+}
+#: The most contacts one suggestion lists; a bigger linked set is shown as its separate pairs instead.
+MAX_GROUP = 6
+#: Two names whose distinctive words read this alike (difflib ratio) are a candidate pair: typos, "Holloway"/"Halloway".
+NAME_RATIO = 0.85
 
 
 def normalise_email(raw: str | None) -> str | None:
@@ -1443,12 +1546,40 @@ def normalise_phone(raw: str | None) -> str | None:
     return digits if len(digits) >= 7 else None
 
 
+def _word(t: str) -> str:
+    return "son" if t == "sons" else t
+
+
+def _name_words(c: Contact) -> set[str]:
+    """The words of the contact's own name (not aliases), lower case, legal/filler words dropped, "sons" as "son"."""
+    return {_word(t) for t in re.split(r"[^a-z0-9]+", c.name.lower()) if len(t) >= 2 and t not in _STOP_WORDS}
+
+
 def _name_tokens(c: Contact) -> set[str]:
-    """Significant words in the contact's names: its key and aliases, split up, stop words dropped."""
+    """Distinctive words in the contact's names (key and aliases): legal, filler and trade words dropped."""
     out: set[str] = set()
     for key in (c.normalised_key, *c.aliases):
-        out.update(t for t in key.split("-") if len(t) >= 4 and t not in _STOP_WORDS)
+        out.update(_word(t) for t in key.split("-") if len(t) >= 4 and t not in _STOP_WORDS | _WEAK_WORDS)
     return out
+
+
+def close_names(a: Contact, b: Contact) -> bool:
+    """Names close enough to suggest as the same business: one name is the other plus trade words only ("Screwfix" /
+    "Screwfix Direct"; trade words of one family count as the same: Hardware = Ironmongery), or the same trade words with distinctive words that read almost the same (a typo:
+    "Halloway Joinery" / "Holloway Joinery"). Different trade words after a shared place name ("Northgate Energy" /
+    "Northgate Transit") are two businesses."""
+    wa, wb = _name_words(a), _name_words(b)
+    strong_a, strong_b = wa - _WEAK_WORDS, wb - _WEAK_WORDS
+    if not strong_a or not strong_b:
+        return False
+    weak_a = {_TRADE_FAMILY.get(t, t) for t in wa & _WEAK_WORDS}
+    weak_b = {_TRADE_FAMILY.get(t, t) for t in wb & _WEAK_WORDS}
+    if strong_a == strong_b and (weak_a <= weak_b or weak_b <= weak_a):
+        return True
+    if weak_a != weak_b:
+        return False
+    ra, rb = " ".join(sorted(strong_a)), " ".join(sorted(strong_b))
+    return difflib.SequenceMatcher(None, ra, rb).ratio() >= NAME_RATIO
 
 
 def _email_domain(email: str | None) -> str | None:
@@ -1459,7 +1590,7 @@ def _email_domain(email: str | None) -> str | None:
 
 
 def _domain_tokens(domain: str) -> set[str]:
-    return {t for t in re.split(r"[^a-z0-9]+", domain.lower()) if len(t) >= 4 and t not in _STOP_WORDS}
+    return {t for t in re.split(r"[^a-z0-9]+", domain.lower()) if len(t) >= 4 and t not in _STOP_WORDS | _WEAK_WORDS}
 
 
 class DuplicateAI(BaseModel):
@@ -1474,6 +1605,7 @@ class DuplicateAI(BaseModel):
 class DuplicateGroup(BaseModel):
     contact_ids: list[str]
     evidence: list[str]
+    reason: str = ""  # the one line a card leads with: the strongest evidence, in words
     blocked: bool = False  # different VAT numbers: code never suggests these as the same business
     ai: DuplicateAI | None = None
 
@@ -1495,9 +1627,9 @@ def _pair_evidence(a: Contact, b: Contact) -> tuple[list[str], bool]:
     if keys_a & keys_b:
         evidence.append(f"same normalised name {(keys_a & keys_b).pop()}")
     else:
+        if close_names(a, b):
+            evidence.append(f"names nearly the same: {a.name!r} / {b.name!r}")
         ta, tb = _name_tokens(a), _name_tokens(b)
-        if shared := sorted(ta & tb):
-            evidence.append(f"share name {('word' if len(shared) == 1 else 'words')}: {', '.join(shared)}")
         da, db = _email_domain(ea), _email_domain(eb)
         for dom, other_tokens, other_name in ((da, tb, b.name), (db, ta, a.name)):
             if dom and _domain_tokens(dom) & other_tokens:
@@ -1540,14 +1672,55 @@ async def remember_not_same(books: Books, ids: Sequence[str], user: str) -> None
     await books.audit(f"user:{user}", "contacts_not_same", {"contacts": key})
 
 
+_HARD = ("same email", "same phone", "same VAT", "same normalised")
+
+
+def _reason(evidence: Sequence[str], blocked: bool) -> str:
+    """The card's lead line: the strongest piece of evidence, in plain words."""
+    if blocked:
+        return next((e for e in evidence if e.startswith("different VAT numbers")), "different VAT numbers")
+    for prefix in ("same VAT", "same email", "same phone", "same normalised", "names nearly", "email domain"):
+        if hit := next((e for e in evidence if e.startswith(prefix)), None):
+            return hit.replace("same normalised name", "same name once Ltd and punctuation are ignored:")
+    return evidence[0] if evidence else ""
+
+
+def _group(part: Sequence[Contact], pair_evidence: dict[tuple[str, str], tuple[list[str], bool]]) -> DuplicateGroup:
+    evidence: list[str] = []
+    blocked = len({(c.vrn or "").strip().upper() for c in part if c.vrn}) > 1
+    for i in range(len(part)):
+        for j in range(i + 1, len(part)):
+            key = (part[i].id, part[j].id)
+            key = key if key[0] <= key[1] else (key[1], key[0])
+            ev, conflict = pair_evidence.get(key, ([], False))
+            blocked = blocked or conflict
+            evidence.extend(e for e in ev if e not in evidence)
+    if blocked:
+        vrns = sorted({(c.vrn or "").strip().upper() for c in part if c.vrn})
+        if len(vrns) > 1:
+            evidence.append(f"different VAT numbers: {', '.join(vrns)}")
+    evidence = sorted(evidence)
+    return DuplicateGroup(
+        contact_ids=sorted(c.id for c in part), evidence=evidence, reason=_reason(evidence, blocked), blocked=blocked
+    )
+
+
 def find_duplicate_groups(
     contacts: Sequence[Contact], dismissed: set[tuple[str, str]] | None = None
 ) -> list[DuplicateGroup]:
-    """Candidate duplicate groups by code. A pair links only on hard evidence (shared email, phone, VAT
-    number, normalised name or email domain); a close name alone never links across different VAT numbers.
-    Groups carrying two different VAT numbers are marked `blocked`: never suggested as the same business."""
+    """Candidate duplicates by code.
+
+    * Hard evidence (shared email, phone, VAT number, or the same name once Ltd and punctuation are ignored) links
+      contacts into one group, transitively: A and B share an email, B and C a phone. A linked set bigger than
+      MAX_GROUP is shown as its separate pairs instead.
+    * Soft evidence (names nearly the same, an email domain that matches the other's name) only ever makes a pair of
+      two: it is never chained, so "Northgate Energy" and "Northgate Parking" never join one long list through
+      their neighbours. A soft pair across different VAT numbers is no candidate at all.
+    * A suggestion carrying two different VAT numbers is `blocked`: never suggested as the same business.
+    * Pairs the user said are not the same business (`dismissed`) are never suggested again."""
     dismissed = dismissed or set()
     parent = {c.id: c.id for c in contacts}
+    by_id = {c.id: c for c in contacts}
 
     def root(x: str) -> str:
         while parent[x] != x:
@@ -1556,6 +1729,8 @@ def find_duplicate_groups(
         return x
 
     pair_evidence: dict[tuple[str, str], tuple[list[str], bool]] = {}
+    hard_pairs: list[tuple[str, str]] = []
+    soft_pairs: list[tuple[str, str]] = []
     for i in range(len(contacts)):
         for j in range(i + 1, len(contacts)):
             a, b = contacts[i], contacts[j]
@@ -1565,42 +1740,34 @@ def find_duplicate_groups(
             evidence, conflict = _pair_evidence(a, b)
             if not evidence:
                 continue
-            hard = any(
-                e.startswith(("same email", "same phone", "same VAT", "same normalised", "email domain"))
-                for e in evidence
-            )
-            if not hard and conflict:
+            if any(e.startswith(_HARD) for e in evidence):
+                parent[root(a.id)] = root(b.id)
+                hard_pairs.append(key)
+            elif conflict:
                 continue  # a close name across different VAT numbers: two businesses, not a candidate
-            parent[root(a.id)] = root(b.id)
+            else:
+                soft_pairs.append(key)
             pair_evidence[key] = (evidence, conflict)
-    groups: dict[str, list[Contact]] = {}
+    components: dict[str, list[Contact]] = {}
     for c in contacts:
-        groups.setdefault(root(c.id), []).append(c)
+        components.setdefault(root(c.id), []).append(c)
     out: list[DuplicateGroup] = []
-    for members in groups.values():
+    for members in components.values():
+        if len(members) < 2:
+            continue
         for part in _split_dismissed(members, dismissed):
             if len(part) < 2:
                 continue
-            evidence: list[str] = []
-            blocked = len({(c.vrn or "").strip().upper() for c in part if c.vrn}) > 1
-            for i in range(len(part)):
-                for j in range(i + 1, len(part)):
-                    key = (part[i].id, part[j].id)
-                    key = key if key[0] <= key[1] else (key[1], key[0])
-                    ev, conflict = pair_evidence.get(key, ([], False))
-                    if conflict:
-                        blocked = True
-                    for e in ev:
-                        if e not in evidence:
-                            evidence.append(e)
-            if blocked:
-                vrns = sorted({(c.vrn or "").strip().upper() for c in part if c.vrn})
-                if len(vrns) > 1:
-                    evidence.append(f"different VAT numbers: {', '.join(vrns)}")
-            out.append(
-                DuplicateGroup(contact_ids=sorted(c.id for c in part), evidence=sorted(evidence), blocked=blocked)
-            )
-    return sorted(out, key=lambda g: g.contact_ids)
+            if len(part) <= MAX_GROUP:
+                out.append(_group(part, pair_evidence))
+                continue
+            ids = {c.id for c in part}
+            out.extend(_group([by_id[x], by_id[y]], pair_evidence) for x, y in hard_pairs if x in ids and y in ids)
+    for x, y in soft_pairs:
+        if root(x) == root(y):
+            continue  # already in a group with harder evidence
+        out.append(_group([by_id[x], by_id[y]], pair_evidence))
+    return sorted(out, key=lambda g: (g.blocked, g.contact_ids))
 
 
 def _split_dismissed(members: list[Contact], dismissed: set[tuple[str, str]]) -> list[list[Contact]]:

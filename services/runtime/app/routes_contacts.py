@@ -241,6 +241,7 @@ class DuplicateGroupOut(BaseModel):
     contact_ids: list[str]
     contacts: list[cb.Contact]
     evidence: list[str]
+    reason: str = ""  # the strongest evidence in words: the line a card leads with
     blocked: bool = False  # different VAT numbers: code never suggests these as the same business
     ai: cb.DuplicateAI | None = None  # the model's view; null when it could not answer
 
@@ -268,6 +269,7 @@ async def duplicates(request: Request, books: Books = Depends(get_books)) -> Dup
                 contact_ids=g.contact_ids,
                 contacts=[by_id[i] for i in g.contact_ids if i in by_id],
                 evidence=g.evidence,
+                reason=g.reason,
                 blocked=g.blocked,
                 ai=g.ai,
             )
