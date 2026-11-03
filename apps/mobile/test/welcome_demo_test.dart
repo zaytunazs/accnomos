@@ -189,7 +189,8 @@ void main() {
       expect(h['X-User'], 'demo@accnomos.example');
     });
 
-    test('signed in, the Graph token and AI headers as before', () {
+    test('signed in, the Graph token; AI headers only for an AI of your own',
+        () {
       final client = RuntimeClient(
         AppSettings(runtimeUrl: 'https://api.example'),
         books: BooksAuth(graphToken: 'tok', accountKind: 'personal'),
@@ -197,7 +198,16 @@ void main() {
       final h = client.debugHeaders;
       expect(h['X-Graph-Token'], 'tok');
       expect(h.containsKey('X-Demo-Session'), isFalse);
-      expect(h.containsKey('X-AI-Mode'), isTrue);
+      // The default is the reader service's own Meta chain, as on the web.
+      expect(h.containsKey('X-AI-Mode'), isFalse);
+      final own = RuntimeClient(
+        AppSettings(
+            runtimeUrl: 'https://api.example',
+            aiMode: 'local',
+            aiBaseUrl: 'http://10.0.0.5:11434'),
+        books: BooksAuth(graphToken: 'tok', accountKind: 'personal'),
+      ).debugHeaders;
+      expect(own['X-AI-Mode'], 'local');
     });
 
     test('OneDrive calls go to the runtime look-alike during a demo', () {

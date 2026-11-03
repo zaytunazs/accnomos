@@ -1758,7 +1758,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
           // As printed on the document; the HMRC check below says whether it
           // is registered, so no tick here that could contradict it.
           if (proposal.vatNumber != null)
-            _fieldRow('VAT number', proposal.vatNumber!),
+            _fieldRow('Supplier VAT number', proposal.vatNumber!),
           _vatCheckRow(proposal),
           if (showWhyNote(proposal.reviewerNote, proposal.verifierNote))
             _noteBox(
