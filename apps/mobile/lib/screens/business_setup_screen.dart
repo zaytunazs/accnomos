@@ -359,30 +359,36 @@ class _BusinessSetupScreenState extends State<BusinessSetupScreen> {
       appBar: AppBar(title: const Text('Business setup')),
       body: _loading && _profile == null && _staff.isEmpty
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _reload,
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-                children: [
-                  if (_note != null)
-                    Container(
-                      width: double.infinity,
-                      margin: const EdgeInsets.only(bottom: 12),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                          color: AccnomosColors.tealTint, borderRadius: BorderRadius.circular(10)),
-                      child: Semantics(
-                        liveRegion: true,
-                        child: Text(_note!, key: const Key('setup-note'),
-                            style: const TextStyle(color: AccnomosColors.tealDark, height: 1.4)),
-                      ),
+          : Column(
+              children: [
+                // The outcome of the last change stays in view above the list,
+                // however far down the change was made.
+                if (_note != null)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    color: AccnomosColors.tealTint,
+                    child: Semantics(
+                      liveRegion: true,
+                      child: Text(_note!, key: const Key('setup-note'),
+                          style: const TextStyle(color: AccnomosColors.tealDark, height: 1.4)),
                     ),
-                  _staffSection(),
-                  _hoursSection(),
-                  _logoSection(),
-                  _mailboxSection(),
-                ],
-              ),
+                  ),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _reload,
+                    child: ListView(
+                      padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                      children: [
+                        _staffSection(),
+                        _hoursSection(),
+                        _logoSection(),
+                        _mailboxSection(),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
     );
   }
