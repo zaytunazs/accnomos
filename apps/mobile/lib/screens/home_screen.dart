@@ -424,9 +424,8 @@ class HomeTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Labels wrap as far as they need (large text sizes included).
           Text(label,
-              maxLines: 3,
-              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,

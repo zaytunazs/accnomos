@@ -454,8 +454,6 @@ class _Tile extends StatelessWidget {
                   style: const TextStyle(
                       fontSize: 22, fontWeight: FontWeight.w700)),
               Text(label,
-                  maxLines: 3,
-                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
               Text(note,
                   maxLines: 3,

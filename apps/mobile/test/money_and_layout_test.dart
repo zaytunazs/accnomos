@@ -178,7 +178,8 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     final label = tester.widget<Text>(find.text('Lines with no category this month'));
-    expect(label.maxLines, greaterThan(1));
+    expect(label.maxLines, isNull); // wraps as far as it needs
+    expect(label.overflow, isNot(TextOverflow.ellipsis));
     final rendered = tester.renderObject<RenderParagraph>(
         find.text('Lines with no category this month'));
     expect(rendered.didExceedMaxLines, isFalse);
