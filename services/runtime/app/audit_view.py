@@ -524,6 +524,7 @@ SUMMARIES: dict[str, Summary] = {
     "personal_budgets_saved": lambda r, w: "Changed your personal monthly budgets",
     "personal_rule_added": lambda r, w: "Added personal spending rules",
     "personal_rule_deleted": lambda r, w: "Deleted a personal spending rule",
+    "personal_rules_reordered": lambda r, w: "Changed the order of personal spending rules",
     "personal_line_categorised": lambda r, w: "Put a bank line in a personal spending category",
     "personal_goal_saved": lambda r, w: "Saved a savings goal",
     "goal_saved": lambda r, w: {"added": "Added a goal", "deleted": "Removed a goal"}.get(

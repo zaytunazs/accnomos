@@ -7,6 +7,7 @@ import '../models/todo.dart';
 import '../models/triage.dart';
 import '../services/auth.dart';
 import '../services/books.dart' show booksClient, friendly;
+import '../services/business_prefs.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
@@ -417,6 +418,17 @@ class _InboxCardState extends State<InboxCard> {
   String? _error;
   final Set<String> _savedDrafts = {};
   final Set<String> _open = {};
+
+  @override
+  void initState() {
+    super.initState();
+    // Settings › Business setup › "Check the inbox when Home opens".
+    if (widget.account != null) {
+      BusinessPrefs.load().then((p) {
+        if (p.triageOnHome && mounted && !_checked) _check();
+      });
+    }
+  }
 
   Future<void> _check() async {
     if (_checking) return;

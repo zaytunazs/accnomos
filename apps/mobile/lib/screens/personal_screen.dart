@@ -7,8 +7,9 @@ import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
 import '../widgets/brand.dart';
-import '../widgets/web_only.dart';
+import '../widgets/statement_import.dart';
 import 'goals_screen.dart';
+import 'household_rules_screen.dart';
 import 'settings_screen.dart';
 
 /// Builds a [RuntimeClient] for the personal screen. The app builds the
@@ -21,7 +22,9 @@ typedef PersonalClientFactory = RuntimeClient Function(
 /// amount for a category: the month's money in, out and left over,
 /// budgets with progress bars, recurring bills with next due dates, and
 /// savings goals with the monthly amount the runtime works out.
-/// Categories, rules and goals themselves are edited on the web.
+/// Categories, the rules that sort bank lines into them and hand-set lines
+/// are edited on Categories and rules (household_rules_screen.dart); a bank
+/// statement can be imported from the phone.
 class PersonalScreen extends StatefulWidget {
   const PersonalScreen({
     super.key,
@@ -286,11 +289,7 @@ class _PersonalScreenState extends State<PersonalScreen> {
             const SizedBox(height: 8),
           ],
           _goalsLink(),
-          const WebOnlyCard(
-            message:
-                'Spending categories and rules are added and edited on the web — the phone sets budget amounts.',
-            page: '/personal',
-          ),
+          _rulesLink(),
         ],
       ),
     );
@@ -389,8 +388,13 @@ class _PersonalScreenState extends State<PersonalScreen> {
     }
     if (categories.isEmpty) {
       return [
-        _plainCard('No spending this month yet — '
-            'import a bank statement on the web first.')
+        _plainCard('No spending this month yet — import a bank statement '
+            '(download it from your bank as a CSV).'),
+        if (_account != null) ...[
+          const SizedBox(height: 8),
+          ImportStatementButton(
+              clientFor: _booksClient, onImported: () => _reload(quiet: true)),
+        ],
       ];
     }
     return [for (final c in categories) _budgetRow(c)];
@@ -616,6 +620,24 @@ class _PersonalScreenState extends State<PersonalScreen> {
 
   /// Where goals are set and tracked now: the Goals screen (a tab in the
   /// household app).
+  Widget _rulesLink() {
+    return Card(
+      key: const Key('budgetRulesLink'),
+      child: ListTile(
+        leading: const Icon(Icons.rule_outlined, color: AccnomosColors.teal),
+        title: const Text('Categories and rules',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: const Text(
+            'Add or rename categories, sort bank lines automatically, or put one line in a category by hand.'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context)
+            .push(MaterialPageRoute(
+                builder: (_) => HouseholdRulesScreen(clientFor: _booksClient)))
+            .then((_) => _reload(quiet: true)),
+      ),
+    );
+  }
+
   Widget _goalsLink() {
     return Card(
       key: const Key('budgetGoalsLink'),

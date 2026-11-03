@@ -1,6 +1,7 @@
-/// `GET /files/overview` (services/runtime/app/files.py), read-only on the
-/// phone: counts and sizes per folder and per tax year, and how many
-/// duplicates Clean up on the web would offer to move to _Trash.
+/// `GET /files/overview` (services/runtime/app/files.py): counts and sizes
+/// per folder and per tax year, and the duplicate copies Clean up moves to
+/// _Trash (`POST /files/trash`): every copy except the one kept, never a
+/// document the books link to.
 class StorageUse {
   const StorageUse(this.name, this.files, this.bytes);
   final String name;
@@ -17,6 +18,7 @@ class StorageOverview {
     this.duplicateSets = 0,
     this.duplicateBytes = 0,
     this.truncated = false,
+    this.cleanUpPaths = const [],
   });
 
   final int totalFiles;
@@ -27,6 +29,9 @@ class StorageOverview {
   final int duplicateBytes;
   final bool truncated;
 
+  /// The copies Clean up would move to _Trash (not the kept one, not linked).
+  final List<String> cleanUpPaths;
+
   factory StorageOverview.fromJson(Map<String, dynamic> j) {
     int n(Object? v) => v is num ? v.toInt() : 0;
     List<StorageUse> uses(Object? list, String key) => [
@@ -36,6 +41,14 @@ class StorageOverview {
             StorageUse('${x[key] ?? ''}', n(x['files']), n(x['bytes'])),
     ];
     final dupes = j['duplicates'];
+    final paths = <String>[
+      if (dupes is List)
+        for (final g in dupes)
+          if (g is Map && g['files'] is List)
+            for (final f in g['files'] as List)
+              if (f is Map && f['keep'] != true && f['linked'] != true && f['protected'] != true)
+                '${f['path']}',
+    ];
     return StorageOverview(
       totalFiles: n(j['total_files']),
       totalBytes: n(j['total_bytes']),
@@ -44,6 +57,7 @@ class StorageOverview {
       duplicateSets: dupes is List ? dupes.length : 0,
       duplicateBytes: n(j['duplicate_bytes']),
       truncated: j['truncated'] == true,
+      cleanUpPaths: paths,
     );
   }
 }

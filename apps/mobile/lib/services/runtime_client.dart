@@ -1680,6 +1680,97 @@ class RuntimeClient {
           },
           what: 'claim the mileage allowance');
 
+  // --- parity-b ---
+  // The web's editing routes for Bank, household Budget, Settings and Files,
+  // so the phone does what the web does (same bodies as apps/web/src/lib/runtime.ts).
+
+  /// `POST /books/bank/import` from bytes the document picker read.
+  Future<Map<String, dynamic>> bankImportBytes(String name, List<int> bytes) =>
+      _uploadBytes('/books/bank/import', 'file', name, bytes,
+          what: 'import that statement');
+
+  /// `POST /books/bank/rules/reorder`: every rule id exactly once.
+  Future<List<Map<String, dynamic>>> reorderBankRules(List<String> ids) =>
+      _list('POST', '/books/bank/rules/reorder',
+          body: {'ids': ids}, what: 'reorder the rules');
+
+  /// `GET /books/bank/lines/{id}/rule-draft`: a rule drafted from one line.
+  Future<Map<String, dynamic>> bankRuleDraft(String lineId) => _map(
+      'GET', '/books/bank/lines/${_seg(lineId)}/rule-draft',
+      what: 'draft a rule from that line');
+
+  Future<List<Map<String, dynamic>>> personalCategories() =>
+      _list('GET', '/personal/categories', what: 'load categories');
+
+  /// `PUT /personal/categories`: the whole list; ids kept so budgets and
+  /// rules follow a rename, a new one has no id.
+  Future<List<Map<String, dynamic>>> savePersonalCategories(
+          List<Map<String, dynamic>> categories) =>
+      _list('PUT', '/personal/categories',
+          body: {'categories': categories}, what: 'save categories');
+
+  Future<List<Map<String, dynamic>>> personalRules() =>
+      _list('GET', '/personal/rules', what: 'load spending rules');
+
+  /// `POST /personal/rules`: `{name?, match: {op, value}, category_id}`.
+  Future<Map<String, dynamic>> addPersonalRule(Map<String, dynamic> rule) =>
+      _map('POST', '/personal/rules', body: rule, what: 'save that rule');
+
+  Future<List<Map<String, dynamic>>> addStarterPersonalRules() =>
+      _list('POST', '/personal/rules/starter', what: 'add the starter rules');
+
+  Future<void> deletePersonalRule(String id) =>
+      _json('DELETE', '/personal/rules/${_seg(id)}', what: 'delete that rule');
+
+  Future<List<Map<String, dynamic>>> reorderPersonalRules(List<String> ids) =>
+      _list('POST', '/personal/rules/reorder',
+          body: {'ids': ids}, what: 'reorder the rules');
+
+  /// Put one bank line in a category by hand; null hands it back to the rules.
+  Future<void> setLineCategory(String lineId, String? categoryId) => _json(
+      'POST', '/personal/lines/${_seg(lineId)}/category',
+      body: {'category_id': categoryId}, what: 'set that category');
+
+  /// `POST /mail/mailboxes`: link a shared mailbox (work accounts) by address.
+  Future<Map<String, dynamic>> addMailbox(Map<String, dynamic> body) =>
+      _map('POST', '/mail/mailboxes', body: body, what: 'link that mailbox');
+
+  /// `PATCH /mail/mailboxes/{id}`: folder and sender filters.
+  Future<Map<String, dynamic>> updateMailbox(
+          String id, Map<String, dynamic> changes) =>
+      _map('PATCH', '/mail/mailboxes/${_seg(id)}',
+          body: changes, what: 'save that mailbox');
+
+  Future<Map<String, dynamic>> removeMailbox(String id) => _map(
+      'DELETE', '/mail/mailboxes/${_seg(id)}', what: 'remove that mailbox');
+
+  /// `POST /invoices/profile/logo`: a PNG or JPEG up to 1 MB.
+  Future<Map<String, dynamic>> uploadInvoiceLogo(String name, List<int> bytes) =>
+      _uploadBytes('/invoices/profile/logo', 'file', name, bytes,
+          what: 'save the logo');
+
+  /// `POST /files/trash`: Clean up moves these documents to _Trash (at most
+  /// 200 a call); documents the books link to are refused by the runtime.
+  Future<Map<String, dynamic>> trashFiles(List<String> paths) =>
+      _map('POST', '/files/trash', body: {'paths': paths}, what: 'clean up');
+
+  Future<Map<String, dynamic>> _uploadBytes(
+    String path,
+    String field,
+    String name,
+    List<int> bytes, {
+    required String what,
+  }) async {
+    _requireBooks();
+    final request =
+        http.MultipartRequest('POST', Uri.parse('${settings.runtimeUrl}$path'))
+          ..headers.addAll(_headers)
+          ..files.add(http.MultipartFile.fromBytes(field, bytes, filename: name));
+    final decoded = await _send(request, what);
+    return decoded is Map ? Map<String, dynamic>.from(decoded) : {};
+  }
+  // --- end parity-b ---
+
   static String _seg(String s) => Uri.encodeComponent(s);
 
   /// One books call with an optional JSON [body]. [what] completes

@@ -10,7 +10,7 @@ import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../services/sign_in_messages.dart';
 import '../theme.dart';
-import '../widgets/web_only.dart';
+import 'business_setup_screen.dart';
 
 const _warnBg = Color(0xFFFFF7ED);
 const _warnBorder = Color(0xFFF3C892);
@@ -1206,11 +1206,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: AccnomosColors.muted,
                             fontSize: 12,
                             height: 1.4)),
-                    const WebOnlyCard(
-                      message:
-                          'Staff lists, working hours, inbox triage defaults and the invoice logo are edited on the web.',
-                      page: '/settings',
-                    ),
+                    if (_signedIn && !AppMode.household) ...[
+                      const SizedBox(height: 12),
+                      _businessSetupLink(),
+                    ],
                   ],
                 ),
               ],
@@ -1747,12 +1746,41 @@ class _SettingsScreenState extends State<SettingsScreen> {
         for (final box in boxes) _mailboxRow(box),
         const SizedBox(height: 8),
         const Text(
-            'Add, change or remove mailboxes in Settings on the web: their '
-            'sign-ins stay in that browser. Check my inbox now on this phone '
-            'reads your signed-in mailbox only.',
+            'Link, change or remove mailboxes in Settings › Business setup. '
+            'Check my inbox now on this phone reads your signed-in mailbox only.',
             style: TextStyle(
                 color: AccnomosColors.muted, fontSize: 12, height: 1.4)),
       ],
+    );
+  }
+
+  /// Settings › Business setup: staff, working hours, the inbox check on
+  /// Home, the invoice logo and linked mailboxes.
+  Widget _businessSetupLink() {
+    return Card(
+      key: const Key('business-setup-link'),
+      margin: EdgeInsets.zero,
+      child: ListTile(
+        leading: const Icon(Icons.tune_outlined, color: AccnomosColors.teal),
+        title: const Text('Business setup',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: const Text(
+            'Staff, working hours, inbox check, invoice logo and mailboxes'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context)
+            .push(MaterialPageRoute(
+              builder: (_) => BusinessSetupScreen(
+                clientFor: _booksClient,
+                workAccount: _auth.kind == AccountKind.work,
+              ),
+            ))
+            .then((_) async {
+          try {
+            final boxes = await (await _booksClient()).mailboxes();
+            if (mounted) setState(() => _mailboxes = boxes);
+          } catch (_) {}
+        }),
+      ),
     );
   }
 
