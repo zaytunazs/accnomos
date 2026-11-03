@@ -680,6 +680,19 @@ export const runtime = {
       }),
     deleteRule: (a: AccountInfo, id: string) => call<void>(a, `/personal/rules/${id}`, { method: "DELETE" }),
     addStarterRules: (a: AccountInfo) => call<RtPersonalRule[]>(a, "/personal/rules/starter", { method: "POST" }),
+    /** PUT /personal/categories: the whole list; an existing category keeps its id (so budgets and rules follow a rename),
+     *  a new one has none. A category a rule or a hand-set line still uses is refused (409, the reason in `detail`). */
+    saveCategories: (a: AccountInfo, categories: { id: string | null; name: string }[]) =>
+      call<RtPersonalCategory[]>(a, "/personal/categories", { method: "PUT", body: JSON.stringify({ categories }) }),
+    /** POST /personal/rules/reorder: every rule id exactly once; the first matching rule wins. */
+    reorderRules: (a: AccountInfo, ids: string[]) =>
+      call<RtPersonalRule[]>(a, "/personal/rules/reorder", { method: "POST", body: JSON.stringify({ ids }) }),
+    /** POST /personal/lines/{id}/category: one bank line in a category by hand; null hands it back to the rules. */
+    setLineCategory: (a: AccountInfo, lineId: string, categoryId: string | null) =>
+      call<void>(a, `/personal/lines/${encodeURIComponent(lineId)}/category`, {
+        method: "POST",
+        body: JSON.stringify({ category_id: categoryId }),
+      }),
     goals: (a: AccountInfo) => call<RtGoalPlan[]>(a, "/personal/goals"),
     addGoal: (a: AccountInfo, g: RtGoalIn) => call<RtGoalPlan>(a, "/personal/goals", { method: "POST", body: JSON.stringify(g) }),
     updateGoal: (a: AccountInfo, id: string, patch: Partial<RtGoalIn>) =>

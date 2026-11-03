@@ -1007,11 +1007,11 @@ function HouseholdOpen({ lines }: { lines: RtBankLine[] }) {
         Lines with no category ({lines.length})
       </h2>
       <p className="mt-1 text-sm text-muted">
-        Money out that none of your household rules recognises yet. Give it a category or add a rule on the{" "}
-        <Link href="/personal" className="font-bold text-teal-dark underline">
-          Budget
-        </Link>{" "}
-        page; nothing here is matched against a ledger.
+        Money out that none of your household rules recognises yet. Give each a category, or add a rule, in{" "}
+        <Link href="/personal#household-lines" className="font-bold text-teal-dark underline">
+          Budget › Categories and rules
+        </Link>
+        ; nothing here is matched against a ledger.
       </p>
       {lines.length === 0 ? (
         <p className="mt-3 text-sm font-semibold text-teal-dark">All sorted.</p>
