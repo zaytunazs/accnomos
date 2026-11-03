@@ -8,6 +8,7 @@ import '../services/settings.dart';
 import '../theme.dart';
 import '../widgets/brand.dart';
 import '../widgets/web_only.dart';
+import 'goals_screen.dart';
 import 'settings_screen.dart';
 
 /// Builds a [RuntimeClient] for the personal screen. The app builds the
@@ -276,12 +277,18 @@ class _PersonalScreenState extends State<PersonalScreen> {
           const SizedBox(height: 8),
           ..._billRows(),
           const SizedBox(height: 16),
-          _sectionTitle('Savings goals'),
-          const SizedBox(height: 8),
-          ..._goalRows(),
+          // Goals (saving, spending less, limits) live on the Goals screen;
+          // savings goals set up before it are still listed here.
+          if (_goals.isNotEmpty) ...[
+            _sectionTitle('Savings goals'),
+            const SizedBox(height: 8),
+            ..._goalRows(),
+            const SizedBox(height: 8),
+          ],
+          _goalsLink(),
           const WebOnlyCard(
             message:
-                'Categories, rules and goals are added and edited on the web — the phone only sets a budget amount.',
+                'Spending categories and rules are added and edited on the web — the phone sets budget amounts.',
             page: '/personal',
           ),
         ],
@@ -603,12 +610,27 @@ class _PersonalScreenState extends State<PersonalScreen> {
     );
   }
 
-  /// Savings goals with the monthly amount the runtime works out.
-  List<Widget> _goalRows() {
-    if (_goals.isEmpty) {
-      return [_plainCard('No savings goals yet — add one on the web.')];
-    }
-    return [for (final goal in _goals) _goalRow(goal)];
+  /// Savings goals set up before Goals, with the monthly amount the runtime
+  /// works out.
+  List<Widget> _goalRows() => [for (final goal in _goals) _goalRow(goal)];
+
+  /// Where goals are set and tracked now: the Goals screen (a tab in the
+  /// household app).
+  Widget _goalsLink() {
+    return Card(
+      key: const Key('budgetGoalsLink'),
+      child: ListTile(
+        leading: const Icon(Icons.flag_outlined, color: AccnomosColors.teal),
+        title: const Text('Goals and progress',
+            style: TextStyle(fontWeight: FontWeight.w700)),
+        subtitle: const Text(
+            'Save for something, spend less or keep under a limit — set and track them on Goals.'),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const GoalsScreen()),
+        ),
+      ),
+    );
   }
 
   Widget _goalRow(Map<String, dynamic> plan) {

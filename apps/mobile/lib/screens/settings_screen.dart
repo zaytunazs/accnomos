@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../services/app_mode.dart';
 import '../services/auth.dart';
+import '../services/demo.dart';
 import '../services/proposal_editing.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
@@ -91,7 +93,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   AppSettings? _initial;
   Account? _account;
   bool _authChecked = false;
-  String _mode = 'local';
+  String _mode = kDefaultAiMode;
   bool _obscureKey = true;
 
   bool _authBusy = false;
@@ -471,8 +473,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
     final defaults = AppSettings(
       runtimeUrl: kDefaultRuntimeUrl,
-      aiMode: 'local',
-      aiBaseUrl: 'http://192.168.1.176:11434',
+      aiMode: kDefaultAiMode,
+      aiBaseUrl: '',
       aiModel: 'muse-glimmer:30b',
       vatStagger: 1,
       autopilotLevel: 'L1',
@@ -823,6 +825,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // A demo has no Microsoft account and reads with the server's models:
+    // no sign-in buttons, no AI address of anyone's own. Personal books
+    // (the household app) have no business details, VAT or invoices.
+    final demo = Demo.active;
+    final household = AppMode.household;
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
@@ -844,7 +851,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   title: 'Connection',
                   disabledReason: null,
                   children: [
-                    _accountSection(),
+                    if (demo) _demoSection() else _accountSection(),
                     const SizedBox(height: 16),
                     _field(
                       fieldKey: 'readerField',
@@ -868,8 +875,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       enabled: true,
                       onPressed: _saveConnection,
                     ),
-                    const SizedBox(height: 16),
-                    _disconnectSection(),
+                    if (!demo) ...[
+                      const SizedBox(height: 16),
+                      _disconnectSection(),
+                    ],
                   ],
                 ),
                 _groupTile(
@@ -879,6 +888,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ? null
                       : 'Sign in with Microsoft to change the AI settings.',
                   children: [
+                    if (demo)
+                      const Text(
+                        'The demo reads and answers with Meta\'s Muse models on '
+                        'the Accnomos reader service, as the website\'s demo does. '
+                        'Your own AI choice applies once you sign in.',
+                        key: Key('demoAiNote'),
+                        style: TextStyle(
+                            color: AccnomosColors.muted,
+                            fontSize: 13,
+                            height: 1.4),
+                      )
+                    else ...[
                     if (!_signedIn)
                       _disabledNote(
                           'Sign in with Microsoft to change the AI settings.'),
@@ -888,7 +909,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _field(
                         fieldKey: 'aiAddressField',
                         label: 'Local AI address',
-                        helper: 'Where your on-machine model listens.',
+                        helper: 'Where your on-machine model listens, '
+                            'e.g. $kLocalAiHint.',
+                        hint: kLocalAiHint,
                         controller: _aiBaseUrl,
                         enabled: _signedIn,
                       ),
@@ -956,6 +979,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       _resultBox(
                           ok: _aiTestOk, message: _aiTestMessage!),
                     ],
+                    ],
                   ],
                 ),
                 _groupTile(
@@ -1013,6 +1037,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     _inboxSection(),
                   ],
                 ),
+                if (!household)
                 _groupTile(
                   id: 'business',
                   title: 'Business',
@@ -1098,6 +1123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                   ],
                 ),
+                if (!household)
                 _groupTile(
                   id: 'personal',
                   title: 'Personal',
@@ -1298,6 +1324,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               child: Column(
                 children: [
               RadioListTile<String>(
+                value: 'auto',
+                title: const Text('Accnomos reader service',
+                    style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        color: AccnomosColors.ink)),
+                subtitle: const Text(
+                    'Meta\'s Muse models on the reader service, as on the website. Nothing to set up.',
+                    style: TextStyle(
+                        color: AccnomosColors.muted,
+                        fontSize: 12,
+                        height: 1.4)),
+                contentPadding: EdgeInsets.zero,
+                dense: true,
+              ),
+              RadioListTile<String>(
                 value: 'local',
                 title: const Row(
                   children: [
@@ -1427,6 +1468,45 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 color: AccnomosColors.muted, fontSize: 12, height: 1.4),
           ),
         ],
+      ],
+    );
+  }
+
+  /// In a demo: which sample this is, and the way out (no Microsoft
+  /// account exists to sign out of).
+  Widget _demoSection() {
+    final info = Demo.current;
+    return Column(
+      key: const Key('demoSettingsSection'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text('Demo',
+            style: TextStyle(
+                fontWeight: FontWeight.w700, color: AccnomosColors.ink)),
+        const SizedBox(height: 4),
+        Text(
+          'You are looking at ${info?.business ?? 'fictional sample books'}: '
+          'fictional sample data on the reader service. Nothing here is '
+          'anyone\'s real books, and it resets after two hours.',
+          style: const TextStyle(
+              color: AccnomosColors.muted, fontSize: 12, height: 1.4),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              minimumSize: const Size.fromHeight(52),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () {
+              Navigator.of(context).popUntil((r) => r.isFirst);
+              Demo.end();
+            },
+            child: const Text('Exit demo'),
+          ),
+        ),
       ],
     );
   }
@@ -1854,6 +1934,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ValueChanged<String>? onChanged,
     int maxLines = 1,
     TextInputType? keyboardType,
+    String? hint,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1880,6 +1961,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 borderRadius: BorderRadius.circular(12)),
             suffixIcon: suffix,
             errorText: error,
+            hintText: hint,
           ),
         ),
         const SizedBox(height: 4),
