@@ -330,7 +330,10 @@ def test_graph_lookalike_errors_are_graph_shaped(client: TestClient) -> None:
     missing = testmode._id("no/such/folder")
     assert client.post(f"{g}/me/drive/items/{missing}/children", json={"name": "x"}).status_code == 404
     assert client.post(f"{g}/me/drive/items/{testmode.GRAPH_ROOT_ID}/children", json={"folder": {}}).status_code == 400
-    assert client.get(f"{g}/me/drive/items/{testmode.GRAPH_ROOT_ID}/children").status_code == 400
+    # reads by id are answered (the Android Files screen lists a folder by id); only POST creates
+    assert client.get(f"{g}/me/drive/items/{testmode.GRAPH_ROOT_ID}/children").status_code == 200
+    assert client.get(f"{g}/me/drive/items/{missing}/children").status_code == 404
+    assert client.put(f"{g}/me/drive/items/{testmode.GRAPH_ROOT_ID}/children", content=b"x").status_code in (400, 405)
     assert client.get(f"{g}/me/drive/special/approot:/nope:/children").status_code == 404
     assert client.get("/__test/gold/999_nope.png").status_code == 404
 

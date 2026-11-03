@@ -158,6 +158,15 @@ function Tile({ label, value, sub, tone, hint }: { label: string; value: string;
 }
 
 function Tiles({ s }: { s: RtBankSummary }) {
+  if (s.basis === "household") {
+    const open = s.open ?? 0;
+    return (
+      <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2">
+        <Tile label="Sorted" value={`${s.resolved ?? 0} of ${s.total}`} sub="In a category, money in, a transfer or ignored" tone="teal" />
+        <Tile label="No category" value={String(open)} sub={open ? "Money out no rule recognises yet" : "All sorted"} tone={open ? "warn" : undefined} />
+      </div>
+    );
+  }
   return (
     <div className="grid grid-cols-1 gap-3 min-[560px]:grid-cols-2 min-[1100px]:grid-cols-4">
       <Tile
@@ -215,9 +224,19 @@ function StatementLines({ statement, lines }: { statement: RtBankStatement; line
                 {l.reference ? <span className="block text-[13px] font-medium text-muted">{l.reference}</span> : null}
               </span>
               <span className="font-bold whitespace-nowrap tabular-nums">{money(l.amount_pence)}</span>
-              <span className={`rounded-full px-2 py-0.5 text-[12px] font-bold whitespace-nowrap ${STATUS_CHIP[l.status]}`}>
-                {STATUS_LABEL[l.status]}
-              </span>
+              {statement.basis === "household" ? (
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[12px] font-bold whitespace-nowrap ${
+                    l.household_sorted ? "bg-teal-tint text-teal-dark" : "border border-warn-border bg-warn-bg text-warn-ink"
+                  }`}
+                >
+                  {l.household_sorted ? (l.household_category ?? "Sorted") : "No category"}
+                </span>
+              ) : (
+                <span className={`rounded-full px-2 py-0.5 text-[12px] font-bold whitespace-nowrap ${STATUS_CHIP[l.status]}`}>
+                  {STATUS_LABEL[l.status]}
+                </span>
+              )}
               <span className="w-full text-[13px] font-medium tabular-nums text-muted">
                 Balance {l.balance_pence === null ? "—" : money(l.balance_pence)}
               </span>
@@ -262,7 +281,7 @@ function Statements({ list, lines }: { list: RtBankStatement[]; lines: RtBankLin
                     st.resolved === st.lines ? "bg-teal-tint text-teal-dark" : "border border-warn-border bg-warn-bg text-warn-ink"
                   }`}
                 >
-                  {st.resolved}/{st.lines} done
+                  {st.resolved}/{st.lines} {st.basis === "household" ? "sorted" : "done"}
                 </span>
               </button>
               {expanded && <StatementLines statement={st} lines={lines} />}
@@ -938,7 +957,9 @@ export default function LiveBank({ view = "all" }: { view?: BankView } = {}) {
           Bank rules live here too: open the <strong>Rules</strong> tab below to add one before your first statement arrives.
         </p>
       ) : null}
-      {
+      {data.summary.basis === "household" ? (
+        <HouseholdOpen lines={data.lines.filter((l) => l.household_sorted === false)} />
+      ) : (
         <section aria-label="Bank lines" className="rounded-2xl border border-border bg-white p-5 print:hidden">
           <div role="tablist" aria-label="Bank lines" className="flex flex-wrap gap-2 border-b border-border pb-3">
             {tabs.map((t) => (
@@ -973,7 +994,38 @@ export default function LiveBank({ view = "all" }: { view?: BankView } = {}) {
             {tab === "done" && <Done rows={data.done} busy={busy} act={act} />}
           </div>
         </section>
-      }
+      )}
     </div>
+  );
+}
+
+/** Personal books: no ledger to match. The lines that need a household category, with the way to sort them. */
+function HouseholdOpen({ lines }: { lines: RtBankLine[] }) {
+  return (
+    <section aria-labelledby="household-open-heading" className="rounded-2xl border border-border bg-white p-5 print:hidden">
+      <h2 id="household-open-heading" className="text-[15px] font-extrabold tracking-tight">
+        Lines with no category ({lines.length})
+      </h2>
+      <p className="mt-1 text-sm text-muted">
+        Money out that none of your household rules recognises yet. Give it a category or add a rule on the{" "}
+        <Link href="/personal" className="font-bold text-teal-dark underline">
+          Budget
+        </Link>{" "}
+        page; nothing here is matched against a ledger.
+      </p>
+      {lines.length === 0 ? (
+        <p className="mt-3 text-sm font-semibold text-teal-dark">All sorted.</p>
+      ) : (
+        <ul className="mt-2 flex flex-col divide-y divide-border">
+          {lines.map((l) => (
+            <li key={l.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-1 py-2">
+              <span className="text-[13px] font-medium whitespace-nowrap text-muted">{ukDate(l.date)}</span>
+              <span className="min-w-0 flex-1 font-semibold">{l.description || "—"}</span>
+              <span className="font-bold whitespace-nowrap tabular-nums">{money(l.amount_pence)}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

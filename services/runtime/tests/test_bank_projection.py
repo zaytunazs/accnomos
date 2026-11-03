@@ -118,6 +118,11 @@ def test_import_suggest_match_unmatch_routes(client: TestClient, fake: FakeStora
         "transfer": 0,
         "ignored": 0,
         "reconciled_to": None,
+        "basis": "ledger",
+        "resolved": 0,
+        "open": 3,
+        "label": "0 of 3 lines resolved",
+        "open_label": "3 lines to match",
     }
 
     screwfix = next(s for s in sugg if s["event_id"] == "e" * 32)
@@ -142,6 +147,11 @@ def test_import_suggest_match_unmatch_routes(client: TestClient, fake: FakeStora
         "transfer": 0,
         "ignored": 0,
         "reconciled_to": "2026-10-21",
+        "basis": "ledger",
+        "resolved": 1,
+        "open": 2,
+        "label": "1 of 3 lines resolved",
+        "open_label": "2 lines to match",
     }
     assert [ln["matched_event_id"] for ln in client.get("/books/bank/lines?status=matched", headers=H).json()] == [
         "e" * 32
