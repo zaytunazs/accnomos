@@ -952,6 +952,11 @@ function OutlookReview({ rows, addNew, onAddNewChange, busy, onConfirm, onCancel
  * user's model gives its view; the user approves and code merges. Blocked groups (different VAT numbers)
  * are shown with the code's verdict and no Merge button. "Not the same" is remembered, never suggested again.
  */
+/** "same VAT number GB…" → "Same VAT number GB…": the card's lead line. */
+function sentence(text: string): string {
+  return text ? text[0].toUpperCase() + text.slice(1) : text;
+}
+
 function DuplicatesCard({ account, groups, onChanged }: {
   account: AccountInfo;
   groups: RtDuplicateGroup[];
@@ -1039,10 +1044,22 @@ function DuplicatesCard({ account, groups, onChanged }: {
         const working = busy === key || busy === `merge:${key}`;
         return (
           <article key={key} aria-label={`Possible duplicate: ${g.contacts.map((c) => c.name).join(", ")}`} className="flex flex-col gap-2 rounded-xl bg-ground p-3">
-            <h3 className="text-[15px] font-bold">{g.contacts.map((c) => c.name).join(" + ")}</h3>
-            <ul className="flex flex-col gap-0.5 text-[13px] font-medium text-muted">
-              {g.evidence.map((e) => <li key={e}>· {e}</li>)}
+            <h3 className="text-[13px] font-semibold text-teal-dark">{sentence(g.reason || g.evidence[0] || "Possible duplicate")}</h3>
+            <ul aria-label="Contacts in this suggestion" className="flex flex-col divide-y divide-border rounded-lg border border-border bg-white">
+              {g.contacts.map((c) => (
+                <li key={c.id} className="flex flex-col px-3 py-2">
+                  <span className="text-[15px] font-bold">{c.name}</span>
+                  <span className="text-[13px] text-muted">
+                    {[c.kind === "both" ? "Customer and supplier" : KIND_LABEL[c.kind], c.email, c.vrn ? `VAT ${c.vrn}` : null].filter(Boolean).join(" · ")}
+                  </span>
+                </li>
+              ))}
             </ul>
+            {g.evidence.length > 1 && (
+              <ul aria-label="Evidence" className="flex flex-col gap-0.5 text-[13px] font-medium text-muted">
+                {g.evidence.map((e) => <li key={e}>· {e}</li>)}
+              </ul>
+            )}
             {g.ai ? (
               <p className="text-[13px] font-semibold text-teal-dark">
                 {g.blocked ? g.ai.reason : `AI view: ${g.ai.same ? "same business" : "not the same"} (${Math.round(g.ai.confidence * 100)}%): ${g.ai.reason}`}

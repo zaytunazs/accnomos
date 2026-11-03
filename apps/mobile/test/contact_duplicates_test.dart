@@ -115,9 +115,10 @@ void main() {
       for (var i = 0; i < 5; i++) group(ids: ['a$i', 'b$i']),
     ]));
     expect(find.text('Merge…'), findsNWidgets(3));
+    await tester.ensureVisible(find.text('Show all 5'));
     await tester.tap(find.text('Show all 5'));
     await tester.pumpAndSettle();
-    expect(find.text('Merge…'), findsNWidgets(5));
+    expect(find.text('Merge…', skipOffstage: false), findsNWidgets(5));
   });
 
   testWidgets('merge confirms naming the kept contact', (tester) async {

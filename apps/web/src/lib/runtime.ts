@@ -1976,6 +1976,7 @@ export interface RtDuplicateGroup {
   contact_ids: string[];
   contacts: RtContact[];
   evidence: string[];
+  reason?: string; // the strongest evidence in words: the line each suggestion leads with
   blocked: boolean; // different VAT numbers: code never suggests these as the same business
   ai: RtDuplicateAI | null; // null when the model could not answer; the code evidence stands alone
 }

@@ -25,7 +25,10 @@ test("contacts: possible duplicates, merge, undo, not the same", async ({ page, 
   await page.goto("/contacts");
   const card = page.getByLabel("Possible duplicates");
   await expect(card.getByRole("heading", { name: "Possible duplicates (1)" })).toBeVisible();
-  await expect(card).toContainText("same phone 01174960123");
+  await expect(card).toContainText(/same phone 01174960123/i);
+  // One row per contact, never a run-on " + " line of names.
+  await expect(card.getByRole("list", { name: "Contacts in this suggestion" }).getByRole("listitem")).toHaveCount(2);
+  await expect(card).not.toContainText(" + ");
   await expect(card).toContainText("AI view: same business");
 
   await card.getByRole("button", { name: "Merge" }).click();
