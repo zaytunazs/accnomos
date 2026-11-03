@@ -55,7 +55,9 @@ void main() {
   }
 
   Widget app() => MaterialApp(
-      theme: accnomosTheme(), home: const LaunchGate(restore: false));
+      theme: accnomosTheme(),
+      builder: demoFrameBuilder,
+      home: const LaunchGate(restore: false));
 
   group('launch', () {
     testWidgets('signed out opens on Welcome, not on half-empty books',

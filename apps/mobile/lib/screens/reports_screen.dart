@@ -4,6 +4,7 @@ import 'package:msal_auth/msal_auth.dart';
 import '../models/reports.dart';
 import '../models/vat_return.dart';
 import '../services/auth.dart';
+import '../services/demo.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
@@ -295,7 +296,8 @@ class _ReportsScreenState extends State<ReportsScreen>
   Widget _body() {
     return Column(
       children: [
-        if (_sample)
+        // In a demo the demo bar above every screen already says so.
+        if (_sample && !Demo.active)
           Container(
             width: double.infinity,
             margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),

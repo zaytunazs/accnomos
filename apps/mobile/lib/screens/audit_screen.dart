@@ -457,11 +457,10 @@ class _AuditScreenState extends State<AuditScreen> {
               padding: const EdgeInsets.fromLTRB(4, 8, 4, 6),
               child: Semantics(
                 header: true,
-                child: Text(auditDayHeading(day.key).toUpperCase(),
+                child: Text(auditDayHeading(day.key),
                     style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: 0.6,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
                         color: AccnomosColors.muted)),
               ),
             ),

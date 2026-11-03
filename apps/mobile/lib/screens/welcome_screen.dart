@@ -112,9 +112,32 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
   @override
   Widget build(BuildContext context) {
     final busy = _busy != null;
+    final statusBar = MediaQuery.paddingOf(context).top;
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
-      body: ListView(
+      // The status bar keeps the hero's dark teal while the page scrolls, so
+      // text never runs under the clock.
+      body: Column(
+        children: [
+          Container(
+            key: const Key('welcome-status-strip'),
+            height: statusBar,
+            color: AccnomosColors.ledger,
+          ),
+          Expanded(
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: _page(busy),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _page(bool busy) {
+    return ListView(
         padding: EdgeInsets.zero,
         children: [
           _Hero(),
@@ -246,7 +269,6 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
             ),
           ),
         ],
-      ),
     );
   }
 }

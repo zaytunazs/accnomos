@@ -6,6 +6,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 const String kDefaultRuntimeUrl =
     kReleaseMode ? 'https://api.accnomos.com' : 'http://10.0.2.2:8780';
 
+/// The reader service's own Meta model chain (no X-AI-* choice sent), like
+/// the website when no AI has been chosen.
+const String kDefaultAiMode = 'auto';
+
+/// Shown greyed in the local address field; never sent.
+const String kLocalAiHint = 'http://192.168.x.x:11434';
+
 /// Runtime + AI settings, persisted on-device.
 ///
 /// `apiKey` is stored with shared_preferences for now.
@@ -13,8 +20,8 @@ const String kDefaultRuntimeUrl =
 class AppSettings {
   AppSettings({
     this.runtimeUrl = kDefaultRuntimeUrl,
-    this.aiMode = 'local',
-    this.aiBaseUrl = 'http://192.168.1.176:11434',
+    this.aiMode = kDefaultAiMode,
+    this.aiBaseUrl = '',
     this.aiModel = 'muse-glimmer:30b',
     this.apiKey,
     this.userEmail,
@@ -31,10 +38,13 @@ class AppSettings {
   /// running on your own computer.
   final String runtimeUrl;
 
-  /// 'local' reads on your machine, 'key' reads with Muse Spark via API key.
+  /// 'auto' (the default, as on the website) reads with the reader service's
+  /// own Meta model chain; 'local' reads on your machine; 'key' reads with
+  /// Muse Spark via your own API key.
   final String aiMode;
 
-  /// Address of the on-machine model (Ollama).
+  /// Address of the on-machine model (Ollama). Empty until the user types
+  /// their own: no address on anyone's home network is shipped as a default.
   final String aiBaseUrl;
 
   /// On-machine model name.
@@ -90,8 +100,8 @@ class AppSettings {
     final prefs = await SharedPreferences.getInstance();
     return AppSettings(
       runtimeUrl: prefs.getString(_kRuntimeUrl) ?? kDefaultRuntimeUrl,
-      aiMode: prefs.getString(_kAiMode) ?? 'local',
-      aiBaseUrl: prefs.getString(_kAiBaseUrl) ?? 'http://192.168.1.176:11434',
+      aiMode: _clampMode(prefs.getString(_kAiMode)),
+      aiBaseUrl: prefs.getString(_kAiBaseUrl) ?? '',
       aiModel: prefs.getString(_kAiModel) ?? 'muse-glimmer:30b',
       apiKey: prefs.getString(_kApiKey),
       userEmail: prefs.getString(_kUserEmail),
@@ -118,6 +128,9 @@ class AppSettings {
       await prefs.remove(key);
     }
   }
+
+  static String _clampMode(String? value) =>
+      value == 'local' || value == 'key' ? value! : kDefaultAiMode;
 
   static int? _clampStagger(int? value) =>
       value == null || value < 1 || value > 3 ? null : value;

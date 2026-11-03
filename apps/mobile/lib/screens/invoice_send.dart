@@ -3,8 +3,19 @@ import 'package:msal_auth/msal_auth.dart';
 
 import '../services/auth.dart';
 import '../services/books.dart';
+import '../services/demo.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+
+/// The web's demo wording (apps/web/src/lib/demo.ts `NOT_SENT`): a demo
+/// never sends mail, the runtime only records it.
+const demoNotSent = 'Sent (demo — not actually sent)';
+
+/// What the phone says after a send; in a demo, that nothing really went.
+String sentMessage(String number, String to, {bool? demo}) {
+  final text = 'Invoice $number sent to $to.';
+  return (demo ?? Demo.active) ? '$demoNotSent · $text' : text;
+}
 
 /// "Send via Outlook" from `POST /invoices/{number}/send`. Nothing is sent
 /// until the user confirms in the dialog below; the runtime posts
@@ -61,8 +72,8 @@ Future<Map<String, dynamic>?> confirmAndSend(
     if (!context.mounted) return null;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-          content: Text(
-              'Invoice $number sent to ${sent['sent_to'] ?? draft['to']}.')),
+          content: Text(sentMessage(
+              number, (sent['sent_to'] ?? draft['to']).toString()))),
     );
     return sent;
   } catch (e) {

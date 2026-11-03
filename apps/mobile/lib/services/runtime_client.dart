@@ -92,10 +92,17 @@ class RuntimeClient {
         if (settings.autopilotLevel != 'L2') 'X-Autopilot': 'off',
       };
     }
+    // 'auto': no AI choice is sent, so the runtime reads with its own Meta
+    // model chain (the website's default). A local choice without an
+    // address falls back to the same chain rather than a blank URL.
+    final ownAi = settings.aiMode == 'key' ||
+        (settings.aiMode == 'local' && settings.aiBaseUrl.trim().isNotEmpty);
     final headers = <String, String>{
-      'X-AI-Mode': settings.aiMode,
-      'X-AI-Base-Url': settings.aiBaseUrl,
-      'X-AI-Model': settings.aiModel,
+      if (ownAi) ...{
+        'X-AI-Mode': settings.aiMode,
+        'X-AI-Base-Url': settings.aiBaseUrl,
+        'X-AI-Model': settings.aiModel,
+      },
     };
     // Autopilot posts only at level L2 (Settings > Automation, like the
     // web's runtime.ts): every other level sends `X-Autopilot: off`, so a
@@ -210,8 +217,43 @@ class RuntimeClient {
     }
   }
 
-  /// Ask the runtime whether the configured AI answers.
+  /// The model the reader service's own chain answers with (its first
+  /// configured provider in `GET /health` → `ai`), or null.
+  static String? serverModel(Map<String, dynamic>? health) {
+    final ai = health?['ai'];
+    if (ai is! Map) return null;
+    final providers = ai['providers'];
+    if (providers is! List) return null;
+    for (final p in providers) {
+      if (p is Map && p['configured'] == true) {
+        final model = (p['model'] ?? '').toString().trim();
+        if (model.isNotEmpty) return model;
+      }
+    }
+    return null;
+  }
+
+  /// Ask the runtime whether the configured AI answers. For 'auto' (the
+  /// reader's own chain) `GET /health` says which Meta models are set up.
   Future<Map<String, dynamic>> aiTest() async {
+    if (settings.aiMode != 'key' &&
+        !(settings.aiMode == 'local' && settings.aiBaseUrl.trim().isNotEmpty)) {
+      final health = await this.health();
+      if (health == null) {
+        throw RuntimeException(
+            'Could not reach the reader at ${settings.runtimeUrl}. '
+            'Is it running?');
+      }
+      final model = serverModel(health);
+      return {
+        'ok': model != null,
+        'mode': 'auto',
+        'model': model ?? '',
+        'detail': model != null
+            ? 'The reader service\'s Meta models answer'
+            : 'The reader service has no AI set up',
+      };
+    }
     final uri = Uri.parse('${settings.runtimeUrl}/ai/test');
     try {
       final response = await _http.post(

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
+import 'package:flutter/services.dart';
 
 import 'screens/ask_screen.dart';
 import 'screens/goals_screen.dart';
@@ -36,7 +37,50 @@ class AccnomosApp extends StatelessWidget {
       // dark, so text is always readable.
       themeMode: ThemeMode.light,
       theme: accnomosTheme(),
+      navigatorKey: appNavigatorKey,
+      builder: demoFrameBuilder,
       home: const LaunchGate(),
+    );
+  }
+}
+
+/// The app's one navigator, so the demo bar (above every route) can close
+/// pushed screens when the demo ends.
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
+/// `MaterialApp.builder`: during a demo the demo bar sits above every route
+/// (tabs and pushed screens alike), like the website's demo bar; the route
+/// below it no longer pads for the status bar.
+Widget demoFrameBuilder(BuildContext context, Widget? child) =>
+    DemoFrame(child: child ?? const SizedBox.shrink());
+
+class DemoFrame extends StatelessWidget {
+  const DemoFrame({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<DemoInfo?>(
+      valueListenable: Demo.state,
+      builder: (context, demo, _) {
+        if (demo == null) return child;
+        return Column(
+          children: [
+            Material(
+              color: AccnomosColors.sidebar,
+              child: SafeArea(bottom: false, child: DemoBanner(demo: demo)),
+            ),
+            Expanded(
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: true,
+                child: child,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -172,8 +216,48 @@ class _ShellState extends State<Shell> {
   /// only titles Home.
   bool get _hasOwnAppBar => _tab != 0;
 
+  /// A message from one tab (an "Approved · Undo" bar) never follows the
+  /// user to another tab.
+  void _selectTab(int i) {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    setState(() => _tab = i);
+  }
+
+  DateTime? _backAt;
+
+  /// Back on a tab other than Home goes to Home; on Home a second Back
+  /// within two seconds leaves the app, so one stray Back never closes it.
+  void _onBack(bool didPop, Object? result) {
+    if (didPop) return;
+    final messenger = ScaffoldMessenger.of(context);
+    if (_tab != 0) {
+      _selectTab(0);
+      return;
+    }
+    final now = DateTime.now();
+    if (_backAt != null && now.difference(_backAt!) < const Duration(seconds: 2)) {
+      SystemNavigator.pop();
+      return;
+    }
+    _backAt = now;
+    messenger
+      ..hideCurrentSnackBar()
+      ..showSnackBar(const SnackBar(
+        content: Text('Press Back again to leave Accnomos'),
+        duration: Duration(seconds: 2),
+      ));
+  }
+
   @override
   Widget build(BuildContext context) {
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: _onBack,
+      child: _scaffold(context),
+    );
+  }
+
+  Widget _scaffold(BuildContext context) {
     return Scaffold(
       appBar: _hasOwnAppBar
           ? null
@@ -197,52 +281,29 @@ class _ShellState extends State<Shell> {
                     ]
                   : null,
             ),
-      body: Column(
-        children: [
-          // A demo says so above every tab, with the way out. Tabs with their
-          // own app bar have no AppBar above it, so keep it below the status bar.
-          ValueListenableBuilder<DemoInfo?>(
-            valueListenable: Demo.state,
-            builder: (context, demo, _) {
-              if (demo == null) return const SizedBox.shrink();
-              final banner = DemoBanner(demo: demo);
-              return _hasOwnAppBar
-                  ? SafeArea(bottom: false, child: banner)
-                  : banner;
-            },
-          ),
-          Expanded(
-            // Under the demo banner the status bar is already accounted for,
-            // so a tab's own app bar must not pad for it again.
-            child: MediaQuery.removePadding(
-              context: context,
-              removeTop: _hasOwnAppBar && Demo.active,
-              child: IndexedStack(
-              key: ValueKey(_household),
-              index: _tab,
-              children: _household
-                  ? const [
-                      HouseholdHomeScreen(),
-                      ReviewScreen(),
-                      PersonalScreen(title: 'Budget'),
-                      GoalsScreen(),
-                      MoreScreen(household: true),
-                    ]
-                  : const [
-                      HomeScreen(),
-                      ReviewScreen(),
-                      AskScreen(),
-                      VatScreen(),
-                      MoreScreen(),
-                    ],
-              ),
-            ),
-          ),
-        ],
+      // The demo bar is drawn above every route by [DemoFrame].
+      body: IndexedStack(
+        key: ValueKey(_household),
+        index: _tab,
+        children: _household
+            ? const [
+                HouseholdHomeScreen(),
+                ReviewScreen(),
+                PersonalScreen(title: 'Budget'),
+                GoalsScreen(),
+                MoreScreen(household: true),
+              ]
+            : const [
+                HomeScreen(),
+                ReviewScreen(),
+                AskScreen(),
+                VatScreen(),
+                MoreScreen(),
+              ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
-        onDestinationSelected: (i) => setState(() => _tab = i),
+        onDestinationSelected: _selectTab,
         destinations: shellDestinations(household: _household),
       ),
     );
@@ -313,7 +374,10 @@ class DemoBanner extends StatelessWidget {
           ),
           TextButton(
             key: const Key('demo-exit'),
-            onPressed: Demo.end,
+            onPressed: () {
+              appNavigatorKey.currentState?.popUntil((r) => r.isFirst);
+              Demo.end();
+            },
             style: TextButton.styleFrom(
                 foregroundColor: AccnomosColors.markLight,
                 minimumSize: const Size(44, 44)),

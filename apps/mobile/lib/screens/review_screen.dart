@@ -69,6 +69,16 @@ bool showReviewVatCheck({
 /// section with Undo, but only when the reader exposes
 /// `POST /books/undo/{event_id}` — otherwise the section stays hidden.
 /// Signed out: the fictional sample cards stay as a demo.
+/// The "Why" note, unless the second-reading box below already says the
+/// same thing (it repeats the checks line), so it is not shown twice.
+bool showWhyNote(String? why, String verifierNote) {
+  final w = (why ?? '').trim();
+  if (w.isEmpty) return false;
+  // "Checks: 11 of 11 passed" beside "… Checks run by code: 11 of 11 passed".
+  final core = w.replaceFirst(RegExp(r'^Checks:\s*'), '').trim();
+  return !verifierNote.contains(core);
+}
+
 class ReviewScreen extends StatefulWidget {
   const ReviewScreen({super.key});
 
@@ -172,12 +182,20 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 
-  /// A decision snackbar with an Undo action when [onUndo] is given.
+  /// A decision snackbar with an Undo action when [onUndo] is given. It
+  /// goes after six seconds (Flutter keeps a bar with an action until it is
+  /// dismissed unless told otherwise), replaces any earlier one, and is
+  /// cleared before the next decision so it never sits over Approve, Edit
+  /// or Reject.
   void _sayDecision(String message, {Future<void> Function()? onUndo}) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
       SnackBar(
         content: Text(message),
+        duration: const Duration(seconds: 6),
+        persist: false,
         action: onUndo == null
             ? null
             : SnackBarAction(
@@ -574,6 +592,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   Future<void> _approveProposal(Proposal proposal) async {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     if (!_signedIn) {
       _removeLocal(proposal);
       _sayDecision('Approved · posted to your books',
@@ -610,6 +629,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   /// Open the edit sheet, then save-and-approve the corrected proposal.
   Future<void> _openEditSheet(Proposal proposal) async {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     final result = await showModalBottomSheet<EditResult>(
       context: context,
       isScrollControlled: true,
@@ -658,6 +678,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
   }
 
   Future<void> _rejectProposal(Proposal proposal, {String reason = ''}) async {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     if (!_signedIn) {
       _removeLocal(proposal);
       _sayDecision('Rejected', onUndo: _undoLastDecision);
@@ -867,7 +888,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                       height: 20,
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
-                  : const Icon(Icons.refresh_outlined),
+                  : const Icon(Icons.move_to_inbox_outlined),
               tooltip: 'Scan inbox',
               constraints:
                   const BoxConstraints(minWidth: 48, minHeight: 48),
@@ -1731,11 +1752,15 @@ class _ReviewScreenState extends State<ReviewScreen> {
           if (proposal.net != null)
             _fieldRow('Net', _gbp(proposal.net!)),
           if (proposal.vat != null)
-            _fieldRow('VAT to reclaim (20%)', _gbp(proposal.vat!)),
+            proposal.vat == 0
+                ? _fieldRow('VAT', 'No VAT')
+                : _fieldRow('VAT to reclaim', _gbp(proposal.vat!)),
+          // As printed on the document; the HMRC check below says whether it
+          // is registered, so no tick here that could contradict it.
           if (proposal.vatNumber != null)
-            _fieldRow('VAT number ✓', proposal.vatNumber!),
+            _fieldRow('VAT number', proposal.vatNumber!),
           _vatCheckRow(proposal),
-          if (proposal.reviewerNote != null)
+          if (showWhyNote(proposal.reviewerNote, proposal.verifierNote))
             _noteBox(
               'Why: ${proposal.reviewerNote}',
               bg: AccnomosColors.ground,

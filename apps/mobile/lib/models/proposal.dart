@@ -268,7 +268,7 @@ class Proposal {
     } else if (paymentMethod == 'cash') {
       paidBy = 'Cash';
     } else if (paymentMethod.isNotEmpty) {
-      paidBy = paymentMethod;
+      paidBy = paymentMethodWords(paymentMethod);
     } else {
       paidBy = 'Unknown';
     }
@@ -611,4 +611,24 @@ class _VerifierView {
   final String verifierNote;
   final VerifierTone verifierTone;
   final List<VerifierDiff> verifierDiffs;
+}
+
+
+/// A payment method code as words: "bank_transfer" → "Bank transfer",
+/// "paypal" → "PayPal"; anything else in sentence case.
+String paymentMethodWords(String method) {
+  const known = {
+    'bank_transfer': 'Bank transfer',
+    'direct_debit': 'Direct debit',
+    'standing_order': 'Standing order',
+    'paypal': 'PayPal',
+    'bacs': 'BACS',
+    'faster_payment': 'Faster Payment',
+    'cheque': 'Cheque',
+  };
+  final key = method.trim().toLowerCase();
+  final word = known[key];
+  if (word != null) return word;
+  final words = key.replaceAll(RegExp(r'[_\-]+'), ' ').trim();
+  return words.isEmpty ? method : words[0].toUpperCase() + words.substring(1);
 }

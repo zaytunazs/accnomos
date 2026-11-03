@@ -3,9 +3,17 @@ import 'package:msal_auth/msal_auth.dart';
 
 import '../services/auth.dart';
 import '../services/books.dart';
+import '../services/demo.dart';
 import '../services/settings.dart';
 import '../theme.dart';
 import 'invoice_send.dart';
+
+/// "draft" → "Draft", "part_paid" → "Part paid": the runtime's status words
+/// in sentence case.
+String _statusWords(String status) {
+  final words = status.replaceAll('_', ' ').trim();
+  return words.isEmpty ? '' : words[0].toUpperCase() + words.substring(1);
+}
 
 const _vatLabels = {
   'S': 'Standard 20%',
@@ -472,15 +480,20 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Draft ${(created['number'] ?? '').toString()} saved',
+                sent == null
+                    ? 'Draft ${(created['number'] ?? '').toString()} saved'
+                    : 'Invoice ${(created['number'] ?? '').toString()} sent',
                 style: Theme.of(context)
                     .textTheme
                     .titleMedium,
               ),
               const SizedBox(height: 2),
               Text(
-                'Status: $status'
-                '${sentTo.isNotEmpty ? ' · sent to $sentTo' : ''}',
+                sent != null && Demo.active
+                    ? '$demoNotSent${sentTo.isNotEmpty ? ' · to $sentTo' : ''}'
+                    : 'Status: ${_statusWords(status)}'
+                        '${sentTo.isNotEmpty ? ' · sent to $sentTo' : ''}',
+                key: const Key('invoiceSendStatus'),
                 style: const TextStyle(
                     color: AccnomosColors.muted),
               ),

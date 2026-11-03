@@ -9,8 +9,10 @@ import '../models/ask_answer.dart';
 import '../models/ask_suggestions.dart';
 import '../models/day_plan.dart';
 import '../models/readback.dart';
+import '../services/app_mode.dart';
 import '../services/auth.dart';
 import '../services/books.dart' show gbp;
+import '../services/demo.dart';
 import '../services/graph.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
@@ -23,6 +25,38 @@ const _warnInk = Color(0xFF8A3F06);
 
 /// Why the mic is off, or null when voice can be used. [health] is the
 /// reader's `GET /health` (null when it did not answer).
+/// Starter questions for a household (personal books): its own money, never
+/// a VAT quarter.
+const householdAskQuestions = [
+  'Where did my money go this month?',
+  'How much did I spend on groceries this month?',
+  'Which budgets am I over this month?',
+  'What are my regular bills?',
+];
+
+/// The model that writes Ask's words. A demo, or no AI of your own (the
+/// default), uses the reader service's Meta model chain: its first set-up
+/// model from `GET /health`. Your own local machine or key: that model.
+String askModelLabel(AppSettings? settings, Map<String, dynamic>? health,
+    {required bool demo}) {
+  final own = settings != null &&
+      !demo &&
+      (settings.aiMode == 'key' ||
+          (settings.aiMode == 'local' && settings.aiBaseUrl.trim().isNotEmpty));
+  if (own && settings.aiModel.trim().isNotEmpty) return settings.aiModel;
+  return RuntimeClient.serverModel(health) ?? 'a Meta model';
+}
+
+/// The empty-thread note above the starter questions.
+String askIntro({required bool household, required String model}) => household
+    ? 'Ask about your own money — “Where did my money go this month?” '
+        'or “What are my regular bills?”. Numbers are calculated by '
+        'code from your bank statements; $model only writes the words.'
+    : 'Ask about your current VAT quarter and the one before — '
+        '“Why is my VAT different from last quarter?” or '
+        '“Who did I spend most with?”. Numbers are calculated by code; '
+        '$model only writes the words.';
+
 String? voiceOffReason(String aiMode, Map<String, dynamic>? health) {
   if (health != null && health['voice'] == false) {
     return 'Voice isn\'t available on your reader service (ffmpeg is missing)';
@@ -112,6 +146,13 @@ class _AskScreenState extends State<AskScreen> {
 
   /// True between mic press and release; [_sendingVoice] while uploading.
   bool _recording = false;
+
+  /// The finger is on the mic. The first press may open Android's permission
+  /// prompt, which ends the press before recording could start.
+  bool _holding = false;
+
+  /// `GET /health` from the reader, for the model the chain answers with.
+  Map<String, dynamic>? _health;
   bool _sendingVoice = false;
 
   /// Last voice failure (e.g. local mode without transcription): shown
@@ -155,7 +196,10 @@ class _AskScreenState extends State<AskScreen> {
       final client = await _client(settings);
       final health = await client.health();
       if (!mounted) return;
-      setState(() => _voiceOff = voiceOffReason(settings.aiMode, health));
+      setState(() {
+        _health = health;
+        _voiceOff = voiceOffReason(settings.aiMode, health);
+      });
     } catch (_) {
       // Offline: the mic keeps its key-mode gating.
       if (mounted) {
@@ -175,10 +219,13 @@ class _AskScreenState extends State<AskScreen> {
       final client = await _client(settings);
       final dashboard = await client.dashboard(today: _today());
       if (!mounted) return;
-      setState(() => _suggestions = suggestedAskQuestions(dashboard));
+      setState(() => _suggestions = AppMode.household
+          ? householdAskQuestions
+          : suggestedAskQuestions(dashboard));
     } catch (_) {
       if (!mounted) return;
-      setState(() => _suggestions = askFallbackQuestions);
+      setState(() => _suggestions =
+          AppMode.household ? householdAskQuestions : askFallbackQuestions);
     }
   }
 
@@ -336,6 +383,22 @@ class _AskScreenState extends State<AskScreen> {
       return;
     }
     if (!mounted) return;
+    if (!_holding) {
+      // Released while Android asked for the microphone: nothing to send.
+      try {
+        final early = await _mic.stop();
+        if (early != null) await File(early).delete();
+      } catch (_) {
+        // Best effort.
+      }
+      if (mounted) {
+        setState(() => _voiceError = null);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Microphone ready. Hold the mic and speak, then release to send.'),
+        ));
+      }
+      return;
+    }
     setState(() {
       _recording = true;
       _voiceError = null;
@@ -535,10 +598,10 @@ class _AskScreenState extends State<AskScreen> {
             border: Border.all(color: AccnomosColors.border),
           ),
           child: Text(
-            'Ask about your current VAT quarter and the one before — '
-            '“Why is my VAT different from last quarter?” or '
-            '“Who did I spend most with?”. Numbers are calculated by code; '
-            '${_settings?.aiModel ?? 'your AI'} only writes the words.',
+            askIntro(
+              household: AppMode.household,
+              model: askModelLabel(_settings, _health, demo: Demo.active),
+            ),
             style: const TextStyle(color: AccnomosColors.muted, height: 1.4),
           ),
         ),
@@ -1515,14 +1578,25 @@ class _AskScreenState extends State<AskScreen> {
             Row(
               children: [
                 GestureDetector(
-                  onLongPressStart: (_) => _startVoice(),
-                  onLongPressEnd: (_) => _stopVoiceAndSend(),
-                  onLongPressCancel: _cancelVoice,
+                  onLongPressStart: (_) {
+                    _holding = true;
+                    _startVoice();
+                  },
+                  onLongPressEnd: (_) {
+                    _holding = false;
+                    _stopVoiceAndSend();
+                  },
+                  onLongPressCancel: () {
+                    _holding = false;
+                    _cancelVoice();
+                  },
                   child: SizedBox(
                     width: 48,
                     height: 48,
-                    child: Tooltip(
-                      message: micActive
+                    // No Tooltip here: its own long-press would win the
+                    // gesture and hold-to-talk would only show the hint.
+                    child: Semantics(
+                      label: micActive
                           ? 'Hold to ask by voice'
                           : (micOff ?? 'Voice unavailable'),
                       child: FilledButton(
