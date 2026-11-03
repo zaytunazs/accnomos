@@ -195,23 +195,32 @@ class _WelcomeScreenState extends State<WelcomeScreen> {
                   children: [
                     for (final a in WelcomeScreen.audiences)
                       Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(8),
-                          border: const Border(
-                            left: BorderSide(
-                                color: AccnomosColors.brass, width: 3),
-                            top: BorderSide(color: AccnomosColors.border),
-                            right: BorderSide(color: AccnomosColors.border),
-                            bottom: BorderSide(color: AccnomosColors.border),
-                          ),
+                          border: Border.all(color: AccnomosColors.border),
                         ),
-                        child: Text(a,
-                            style: const TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: AccnomosColors.ink)),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                                width: 3,
+                                height: 36,
+                                decoration: const BoxDecoration(
+                                  color: AccnomosColors.brass,
+                                  borderRadius: BorderRadius.horizontal(
+                                      left: Radius.circular(7)),
+                                )),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 12, vertical: 8),
+                              child: Text(a,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                      color: AccnomosColors.ink)),
+                            ),
+                          ],
+                        ),
                       ),
                   ],
                 ),

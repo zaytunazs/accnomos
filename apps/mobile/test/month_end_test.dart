@@ -72,7 +72,7 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
-    expect(find.text('CHANGED SINCE THE CLOSE'), findsOneWidget);
+    expect(find.text('Changed since the close'), findsOneWidget);
     expect(find.text('Net profit: -£100.00 → -£120.00'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -86,7 +86,7 @@ void main() {
       ),
     ));
     await tester.pumpAndSettle();
-    expect(find.text('MONTH-END'), findsOneWidget);
+    expect(find.text('Month-end'), findsOneWidget);
     expect(find.textContaining('October was closed on 3 Nov; 1 change since'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });

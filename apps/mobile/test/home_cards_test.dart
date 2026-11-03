@@ -89,8 +89,8 @@ void main() {
     await tester.pumpWidget(shell(const Scaffold(body: HomeScreen())));
     await tester.pumpAndSettle();
     expect(find.text('SAMPLE — FICTIONAL COMPANY'), findsNWidgets(2));
-    expect(find.text('TO-DOS'), findsOneWidget);
-    expect(find.text('INBOX'), findsOneWidget);
+    expect(find.text('To-dos'), findsOneWidget);
+    expect(find.text('Inbox'), findsOneWidget);
     expect(find.text('Chase INV-0041 (12 days overdue)'), findsOneWidget);
     expect(find.text('Bramblewood Ltd'), findsOneWidget);
     expect(find.text('Sign in to check your inbox.'), findsOneWidget);
@@ -104,7 +104,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(shell(const Scaffold(body: HomeScreen())));
     await tester.pumpAndSettle();
-    expect(find.text('TO-DOS'), findsOneWidget);
+    expect(find.text('To-dos'), findsOneWidget);
     // Any RenderFlex overflow throws during pumpAndSettle above.
   });
 }
