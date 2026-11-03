@@ -44,9 +44,10 @@ test("off by default; Settings switch adds Personal; budgets, bills and goals wo
   await expect(summary).toContainText("did not match a rule"); // nothing sorted yet: all 5 payments are under Other
 
   // rules: common merchants, then one of our own
-  await page.getByRole("button", { name: "Add common UK merchants" }).click();
+  const sorting = page.getByRole("region", { name: "Categories and rules" });
+  await sorting.getByRole("tab", { name: /Rules/ }).click();
+  await sorting.getByRole("button", { name: "Add common UK merchants" }).click();
   await expect(page.getByRole("status").filter({ hasText: "common UK merchants" })).toBeVisible();
-  const sorting = page.getByRole("region", { name: "Sorting payments" });
   await sorting.getByLabel("When the payment contains").fill("rent landlord");
   await sorting.getByLabel("Put it in").selectOption({ label: "Housing" });
   await sorting.getByRole("button", { name: "Add rule" }).click();

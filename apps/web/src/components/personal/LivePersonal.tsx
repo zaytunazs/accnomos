@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AccountInfo } from "@azure/msal-browser";
 import { useAccount } from "@/components/jobs/useAccount";
 import SignInCta from "@/components/SignInCta";
+import HouseholdRules from "@/components/personal/HouseholdRules";
 import { LoadingSkeleton, RuntimeErrorNote, isAuthError, isServerError, parseRuntimeError } from "@/components/States";
 import { personalOn } from "@/lib/personal";
 import { currentMeta } from "@/lib/profiles";
@@ -104,7 +105,6 @@ function Signed({ account }: { account: AccountInfo }) {
   const [note, setNote] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
-  const [rule, setRule] = useState({ value: "", category: "groceries" });
   const [goal, setGoal] = useState({ name: "", target: "", date: "", saved: "", planned: "" });
   const [savedText, setSavedText] = useState<Record<string, string>>({});
 
@@ -169,13 +169,6 @@ function Signed({ account }: { account: AccountInfo }) {
       if (p > 0) budgets[id] = p;
     }
     await act("budgets", () => runtime.personal.saveBudgets(account, budgets), "Budgets saved");
-  }
-
-  async function addRule() {
-    if (!rule.value.trim()) return setNote("Type some of the payee's name, such as TESCO.");
-    const name = cats.find((c) => c.id === rule.category)?.name ?? rule.category;
-    if (await act("rule", () => runtime.personal.addRule(account, rule.value.trim(), rule.category), `Payments containing "${rule.value.trim()}" now go to ${name}`))
-      setRule({ ...rule, value: "" });
   }
 
   async function addGoal() {
@@ -286,70 +279,14 @@ function Signed({ account }: { account: AccountInfo }) {
         </section>
       )}
 
-      <section aria-labelledby="p-rules" className={card}>
-        <h2 id="p-rules" className={h2}>
-          Sorting payments
-        </h2>
-        <p className="mt-1 text-sm text-muted">
-          Payments are put in a category by rules you control, separate from your business bank rules. The first matching rule wins.
-          {summary && summary.uncategorised_count > 0
-            ? ` ${summary.uncategorised_count} payment${summary.uncategorised_count === 1 ? "" : "s"} (${pounds(summary.uncategorised_pence)}) sit under Other this month.`
-            : ""}
-        </p>
-        <div className="mt-3 flex flex-col gap-2 min-[560px]:flex-row min-[560px]:items-end">
-          <label className="flex min-w-0 flex-1 flex-col gap-1 text-sm font-bold text-ink">
-            When the payment contains
-            <input value={rule.value} onChange={(e) => setRule({ ...rule, value: e.target.value })} placeholder="TESCO" className={input} />
-          </label>
-          <label className="flex flex-col gap-1 text-sm font-bold text-ink">
-            Put it in
-            <select value={rule.category} onChange={(e) => setRule({ ...rule, category: e.target.value })} className={input}>
-              {cats.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="button" onClick={addRule} disabled={busy !== null} className={button}>
-            Add rule
-          </button>
-        </div>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            disabled={busy !== null}
-            className={quiet}
-            onClick={() =>
-              act("starter", () => runtime.personal.addStarterRules(account), (added) =>
-                added.length ? `Added ${added.length} common UK merchants` : "Those common UK merchants are already there",
-              )
-            }
-          >
-            Add common UK merchants
-          </button>
-        </div>
-        {rules.length > 0 && (
-          <ul className="mt-3 divide-y divide-border text-sm">
-            {rules.map((r) => (
-              <li key={r.id} className="flex items-center justify-between gap-3 py-2">
-                <span className="min-w-0 break-words">
-                  Contains <strong>{r.match.value}</strong> → {cats.find((c) => c.id === r.category_id)?.name ?? r.category_id}
-                </span>
-                <button
-                  type="button"
-                  aria-label={`Delete rule ${r.match.value}`}
-                  disabled={busy !== null}
-                  onClick={() => act(`del-${r.id}`, () => runtime.personal.deleteRule(account, r.id), "Rule deleted")}
-                  className="h-11 shrink-0 rounded-xl px-3 font-bold text-teal-dark"
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <HouseholdRules
+        account={account}
+        cats={cats}
+        rules={rules}
+        busy={busy}
+        act={act}
+        uncategorised={summary?.uncategorised_count ?? 0}
+      />
 
       <section aria-labelledby="p-bills" className={card}>
         <h2 id="p-bills" className={h2}>
