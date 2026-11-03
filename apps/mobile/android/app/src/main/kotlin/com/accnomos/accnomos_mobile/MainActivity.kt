@@ -60,6 +60,19 @@ class MainActivity : FlutterActivity() {
                 if (call.method == "getSharedFiles") {
                     result.success(ArrayList(pending))
                     pending.clear()
+                } else if (call.method == "shareText") {
+                    // The system share sheet with plain text (a CSV export, say): no file provider, no permission.
+                    val send = Intent(Intent.ACTION_SEND).apply {
+                        type = call.argument<String>("mime") ?: "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, call.argument<String>("text") ?: "")
+                        call.argument<String>("subject")?.let { putExtra(Intent.EXTRA_SUBJECT, it) }
+                    }
+                    try {
+                        startActivity(Intent.createChooser(send, call.argument<String>("subject") ?: "Share"))
+                        result.success(true)
+                    } catch (_: Exception) {
+                        result.success(false)
+                    }
                 } else {
                     result.notImplemented()
                 }

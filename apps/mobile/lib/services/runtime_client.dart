@@ -1702,6 +1702,88 @@ class RuntimeClient {
     return _send(request, what);
   }
 
+  // --- parity-a --- month-end runs, pay runs, staff, accountant and queries,
+  // with the same routes and bodies as the web (apps/web/src/lib/runtime.ts).
+
+  /// `POST /close/{month}/run`: work through the nine-step checklist. Posts
+  /// nothing; what needs the owner comes back as signed cards (`actions`) to
+  /// approve with [approveAction], the `close_month` card among them.
+  Future<Map<String, dynamic>> runClose(String month, {String? today}) =>
+      _map('POST', '/close/${_seg(month)}/run',
+          body: {'outlook': false},
+          query: {'today': ?today},
+          what: 'run the month-end close');
+
+  /// `POST /payroll/runs/prepare`: a draft run from that month's timesheets.
+  Future<Map<String, dynamic>> preparePayRun(String period, {String? payDate}) =>
+      _map('POST', '/payroll/runs/prepare',
+          body: {'period': period, 'pay_date': payDate},
+          what: 'prepare that pay run');
+
+  /// `PUT /payroll/runs/{period}`: hours, rates and notes per person.
+  Future<Map<String, dynamic>> editPayRun(
+          String period, List<Map<String, dynamic>> lines, {String? payDate}) =>
+      _map('PUT', '/payroll/runs/${_seg(period)}',
+          body: {'lines': lines, 'pay_date': payDate},
+          what: 'save that pay run');
+
+  /// `POST /payroll/runs/{period}/export`: saves `05 Payroll/<period>.csv` in
+  /// the books and returns `{path, csv, estimate}`.
+  Future<Map<String, dynamic>> exportPayRun(String period) =>
+      _map('POST', '/payroll/runs/${_seg(period)}/export',
+          what: 'export that pay run');
+
+  /// `POST /payroll/runs/{period}/confirm`: the figures the payroll provider
+  /// calculated (not the estimate); this posts the wages journal.
+  Future<Map<String, dynamic>> confirmPayRun(
+          String period, int actualGrossPence, int actualErNiPence) =>
+      _map('POST', '/payroll/runs/${_seg(period)}/confirm',
+          body: {
+            'actual_gross_pence': actualGrossPence,
+            'actual_er_ni_pence': actualErNiPence,
+          },
+          what: 'confirm that pay run');
+
+  /// `POST /payroll/runs/{period}/reopen`: undoes the journal, back to draft.
+  Future<Map<String, dynamic>> reopenPayRun(String period) =>
+      _map('POST', '/payroll/runs/${_seg(period)}/reopen',
+          what: 'reopen that pay run');
+
+  /// `POST /accountant/invitations`: [method] `graph` shares the books folder
+  /// through Microsoft; `manual` records the invitation and you share it.
+  Future<Map<String, dynamic>> inviteAccountant({
+    required String email,
+    required String name,
+    required String role,
+    required String method,
+    String message = '',
+  }) =>
+      _map('POST', '/accountant/invitations',
+          body: {
+            'email': email,
+            'name': name,
+            'role': role,
+            'method': method,
+            'message': message,
+          },
+          what: 'invite your accountant');
+
+  /// `POST /accountant/invitations/{id}/revoke`.
+  Future<Map<String, dynamic>> revokeAccountant(String id) => _map(
+      'POST', '/accountant/invitations/${_seg(id)}/revoke',
+      what: 'remove that access');
+
+  /// `POST /queries/{id}/messages`: answer your accountant.
+  Future<Map<String, dynamic>> replyQuery(String id, String text) => _map(
+      'POST', '/queries/${_seg(id)}/messages',
+      body: {'text': text}, what: 'send that answer');
+
+  /// `POST /queries/{id}/resolve`.
+  Future<Map<String, dynamic>> resolveQuery(String id) => _map(
+      'POST', '/queries/${_seg(id)}/resolve', what: 'mark that resolved');
+
+  // --- end parity-a ---
+
   Future<Map<String, dynamic>> _map(
     String method,
     String path, {

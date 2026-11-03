@@ -1,8 +1,8 @@
 library;
 
 /// The month-end close from `GET /close` and `GET /close/{yyyy-mm}`
-/// (`services/runtime/app/month_end.py`). The phone only reads it: the
-/// close is run, and its cards approved, on the web. Every text here was
+/// (`services/runtime/app/month_end.py`), and the run from `POST
+/// /close/{yyyy-mm}/run` with its signed cards. Every text here was
 /// written by the runtime's code (the summary by the user's AI, checked
 /// by code); the phone never computes a figure.
 
@@ -69,6 +69,7 @@ class CloseStep {
     required this.reason,
     required this.found,
     required this.checked,
+    this.proposes = const [],
   });
 
   final int n;
@@ -77,6 +78,9 @@ class CloseStep {
   final String reason;
   final List<CloseFinding> found;
   final List<String> checked;
+
+  /// Ids of the run's cards (`actions`) this step proposes.
+  final List<String> proposes;
 
   String get statusLabel => switch (status) {
         'ok' => 'OK',
@@ -95,6 +99,42 @@ class CloseStep {
           if (j['checked'] is List)
             for (final c in j['checked'] as List) _s(c),
         ],
+        proposes: [
+          if (j['proposes'] is List)
+            for (final c in j['proposes'] as List) _s(c),
+        ],
+      );
+}
+
+/// A ledger entry stored twice (`duplicates` on the month-end responses):
+/// reports and VAT count it once; nothing is deleted automatically.
+class DuplicateEvent {
+  const DuplicateEvent({
+    required this.id,
+    this.date,
+    this.kind,
+    this.counterparty,
+    this.netPence,
+    this.extraFiles = const [],
+  });
+
+  final String id;
+  final String? date;
+  final String? kind;
+  final String? counterparty;
+  final int? netPence;
+  final List<String> extraFiles;
+
+  static DuplicateEvent fromJson(Map<String, dynamic> j) => DuplicateEvent(
+        id: _s(j['id']),
+        date: j['date']?.toString(),
+        kind: j['kind']?.toString(),
+        counterparty: j['counterparty']?.toString(),
+        netPence: _int(j['net_pence']),
+        extraFiles: [
+          if (j['extra_files'] is List)
+            for (final f in j['extra_files'] as List) _s(f),
+        ],
       );
 }
 
@@ -112,6 +152,9 @@ class MonthClose {
     this.lastRunAt,
     this.changes = const [],
     this.figures = const [],
+    this.duplicates = const [],
+    this.closedAt,
+    this.canClose,
   });
 
   final String month;
@@ -129,6 +172,14 @@ class MonthClose {
   /// (label, when closed, now) for each figure that moved.
   final List<(String, String, String)> figures;
 
+  /// Ledger entries stored twice (a warning; nothing is fixed for you).
+  final List<DuplicateEvent> duplicates;
+
+  final DateTime? closedAt;
+
+  /// Whether the last run found nothing blocking (null before any run).
+  final bool? canClose;
+
   static MonthClose fromJson(Map<String, dynamic> j) {
     final run = j['run'] is Map ? Map<String, dynamic>.from(j['run'] as Map) : null;
     final changes = j['changes'] is Map ? Map<String, dynamic>.from(j['changes'] as Map) : null;
@@ -142,6 +193,9 @@ class MonthClose {
       summary: run == null ? null : _s(run['summary_md']),
       summaryByCode: run != null && run['summary_fallback_reason'] != null,
       lastRunAt: DateTime.tryParse(_s(j['last_run_at']))?.toLocal(),
+      closedAt: DateTime.tryParse(_s(j['closed_at']))?.toLocal(),
+      canClose: j['can_close'] is bool ? j['can_close'] as bool : null,
+      duplicates: _maps(j['duplicates']).map(DuplicateEvent.fromJson).toList(),
       changes: [
         if (changes != null && changes['items'] is List)
           for (final c in changes['items'] as List) _s(c),

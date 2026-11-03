@@ -52,16 +52,16 @@ List<MoreEntry> moreEntries(List<String>? features,
         'Raise, preview and send', InvoicesScreen(),
         needs: 'invoices'),
     const MoreEntry(
-        Icons.work_outline, 'Jobs', 'Jobs and timesheets', JobsScreen()),
+        Icons.work_outline, 'Jobs', 'Jobs, timesheets, staff and invoicing hours', JobsScreen()),
     const MoreEntry(Icons.directions_car_outlined, 'Vehicles',
         'Mileage and allowance', VehiclesScreen()),
     const MoreEntry(Icons.account_balance_outlined, 'Bank',
         'Statements, unmatched lines and rules', BankScreen()),
     const MoreEntry(Icons.payments_outlined, 'Payroll',
-        'Pay runs — estimates, read only', PayrollScreen(),
+        'Pay runs: prepare, export and confirm', PayrollScreen(),
         needs: 'payroll'),
     const MoreEntry(Icons.event_available_outlined, 'Month-end',
-        'The close checklist — read only; run it on the web', MonthEndScreen()),
+        'Run the close and approve its cards', MonthEndScreen()),
     if (showPersonal)
       const MoreEntry(Icons.savings_outlined, 'Personal',
           'Budgets, bills and savings goals', PersonalScreen()),
@@ -75,9 +75,9 @@ List<MoreEntry> moreEntries(List<String>? features,
     const MoreEntry(Icons.flag_outlined, 'Goals',
         'Targets tracked against your books', GoalsScreen()),
     const MoreEntry(Icons.handshake_outlined, 'Your accountant',
-        'Who can see your books, and their queries — read only', AccountantScreen()),
+        'Invite, remove access, answer queries', AccountantScreen()),
     const MoreEntry(Icons.history_outlined, 'Audit trail',
-        'Who did what in your books — read only', AuditScreen()),
+        'Who did what in your books, with CSV export', AuditScreen()),
   ];
   return [
     for (final e in all)
@@ -99,7 +99,7 @@ const householdMoreEntries = [
   MoreEntry(Icons.people_outline, 'Contacts', 'People and payees',
       ContactsScreen()),
   MoreEntry(Icons.history_outlined, 'Audit trail',
-      'Who did what in your books — read only', AuditScreen()),
+      'Who did what in your books, with CSV export', AuditScreen()),
 ];
 
 /// "More" tab: keeps the bottom bar at five items while the new thin

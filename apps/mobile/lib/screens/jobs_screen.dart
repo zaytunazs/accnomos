@@ -5,11 +5,12 @@ import '../services/auth.dart';
 import '../services/books.dart';
 import '../services/settings.dart';
 import '../theme.dart';
-import '../widgets/web_only.dart';
+import 'job_detail_screen.dart';
 import 'settings_screen.dart';
 
-/// Jobs from `GET /jobs`, plus a quick timesheet entry
-/// (`POST /timesheets`) with a date picker.
+/// Jobs from `GET /jobs`, as on the web: open a job for its figures,
+/// entries and "Invoice these hours"; add or edit jobs; log hours
+/// (`POST /timesheets`); staff and their rates.
 class JobsScreen extends StatefulWidget {
   const JobsScreen({super.key});
 
@@ -80,6 +81,22 @@ class _JobsScreenState extends State<JobsScreen> {
         actions: [
           if (_account != null)
             IconButton(
+              icon: const Icon(Icons.badge_outlined),
+              tooltip: 'Staff and rates',
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              onPressed: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => StaffScreen(
+                      clientFor: () => booksClient(_settings!, _auth, _account)))),
+            ),
+          if (_account != null)
+            IconButton(
+              icon: const Icon(Icons.add_business_outlined),
+              tooltip: 'Add a job',
+              constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+              onPressed: _addJob,
+            ),
+          if (_account != null)
+            IconButton(
               icon: const Icon(Icons.refresh_outlined),
               tooltip: 'Reload jobs',
               constraints:
@@ -120,6 +137,17 @@ class _JobsScreenState extends State<JobsScreen> {
                   ? _errorView()
                   : _listView(),
     );
+  }
+
+  Future<void> _addJob() async {
+    final client = await booksClient(_settings!, _auth, _account);
+    if (!mounted) return;
+    final added = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => JobEditSheet(client: client),
+    );
+    if (added == true) await _reload();
   }
 
   Widget _signedOut() {
@@ -184,28 +212,23 @@ class _JobsScreenState extends State<JobsScreen> {
       child: _rows.isEmpty && !_loading
           ? ListView(
               padding: const EdgeInsets.all(24),
-              children: const [
-                Center(child: Text('No jobs yet.')),
-                WebOnlyCard(
-                  message:
-                      'Job details, staff rates and invoicing unbilled hours happen on the web.',
-                  page: '/jobs',
+              children: [
+                const Center(child: Text('No jobs yet.')),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.add_business_outlined),
+                  label: const Text('Add a job'),
+                  onPressed: _addJob,
                 ),
               ],
             )
           : ListView.separated(
               padding:
                   const EdgeInsets.fromLTRB(16, 8, 16, 88),
-              itemCount: _rows.length + 1,
+              itemCount: _rows.length,
               separatorBuilder: (_, _) =>
                   const SizedBox(height: 8),
-              itemBuilder: (context, i) => i < _rows.length
-                  ? _row(_rows[i])
-                  : const WebOnlyCard(
-                      message:
-                          'Job details, staff rates and invoicing unbilled hours happen on the web.',
-                      page: '/jobs',
-                    ),
+              itemBuilder: (context, i) => _row(_rows[i]),
             ),
     );
   }
@@ -224,6 +247,19 @@ class _JobsScreenState extends State<JobsScreen> {
       margin: EdgeInsets.zero,
       child: ListTile(
         minVerticalPadding: 10,
+        onTap: job is Map && job['id'] != null
+            ? () async {
+                await Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => JobDetailScreen(
+                    jobId: job['id'].toString(),
+                    settings: _settings,
+                    auth: _auth,
+                    account: _account,
+                  ),
+                ));
+                await _reload();
+              }
+            : null,
         title: Text(name,
             style:
                 const TextStyle(fontWeight: FontWeight.w700)),

@@ -4,6 +4,7 @@ library;
 
 class AccountantAccess {
   AccountantAccess({
+    this.id = '',
     required this.email,
     required this.name,
     required this.team,
@@ -12,6 +13,8 @@ class AccountantAccess {
     required this.since,
   });
 
+  /// The invitation id (`POST /accountant/invitations/{id}/revoke`).
+  final String id;
   final String email;
   final String name;
   final bool team; // the Accnomos accountants opt-in
@@ -30,6 +33,7 @@ class AccountantAccess {
       for (final i in raw)
         if (i is Map && i['revoked_at'] == null)
           AccountantAccess(
+            id: (i['id'] ?? '').toString(),
             email: (i['email'] ?? '').toString(),
             name: (i['name'] ?? '').toString(),
             team: i['kind'] == 'team',

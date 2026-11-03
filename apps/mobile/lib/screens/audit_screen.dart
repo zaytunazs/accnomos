@@ -5,7 +5,7 @@ import '../services/auth.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
-import '../widgets/web_only.dart';
+import '../services/share.dart';
 import 'settings_screen.dart';
 
 /// Who chips: each is one `GET /audit` actor filter (Planner plans are
@@ -66,6 +66,28 @@ class AuditLine {
 }
 
 /// Lines (newest first) grouped by local day, newest day first.
+/// The trail as CSV with the web's columns (apps/web/src/components/audit/LiveAudit.tsx
+/// `auditRows`): one row per entry shown, quoted where needed.
+String auditCsv(List<Map<String, dynamic>> entries) {
+  String cell(Object? v) {
+    final t = (v ?? '').toString();
+    return RegExp(r'[",\n\r]').hasMatch(t) ? '"${t.replaceAll('"', '""')}"' : t;
+  }
+
+  final rows = <List<Object?>>[
+    ['ts', 'actor', 'actor_kind', 'who', 'event', 'summary', 'proposal', 'ledger_event', 'invoice', 'action', 'file'],
+    for (final e in entries)
+      () {
+        final refs = e['refs'] is Map ? Map<String, dynamic>.from(e['refs'] as Map) : const <String, dynamic>{};
+        return [
+          e['ts'], e['actor'], e['actor_kind'], e['actor_label'], e['event'], e['summary'],
+          refs['proposal'], refs['event'], refs['invoice'], refs['action'], refs['file'],
+        ];
+      }(),
+  ];
+  return '${rows.map((r) => r.map(cell).join(',')).join('\r\n')}\r\n';
+}
+
 List<MapEntry<DateTime, List<AuditLine>>> auditDays(List<AuditLine> lines) {
   final days = <DateTime, List<AuditLine>>{};
   for (final l in lines) {
@@ -95,7 +117,7 @@ typedef AuditClientFactory = RuntimeClient Function(
 
 /// The audit trail, read-only: everything done in the books and who did
 /// it — you, or an agent. Who/what/date filters use the same `GET /audit`
-/// query as the web; only the CSV export stays on the web.
+/// query as the web, and the same CSV export (through the share sheet).
 class AuditScreen extends StatefulWidget {
   const AuditScreen({
     super.key,
@@ -127,6 +149,7 @@ class _AuditScreenState extends State<AuditScreen> {
   bool _loading = false;
   String? _error;
   List<AuditLine> _lines = const [];
+  List<Map<String, dynamic>> _raw = const [];
   bool _truncated = false;
   String _who = 'all';
   String _kind = '';
@@ -236,15 +259,22 @@ class _AuditScreenState extends State<AuditScreen> {
         kind: filter.kind,
       );
       final lines = <AuditLine>[];
+      final raw = <Map<String, dynamic>>[];
       if (data['entries'] is List) {
         for (final e in data['entries'] as List) {
-          final line = e is Map ? AuditLine.fromJson(Map<String, dynamic>.from(e)) : null;
-          if (line != null) lines.add(line);
+          if (e is! Map) continue;
+          final m = Map<String, dynamic>.from(e);
+          final line = AuditLine.fromJson(m);
+          if (line != null) {
+            lines.add(line);
+            raw.add(m);
+          }
         }
       }
       if (!mounted) return;
       setState(() {
         _lines = lines;
+        _raw = raw;
         _truncated = data['truncated'] == true;
       });
     } catch (e) {
@@ -485,9 +515,27 @@ class _AuditScreenState extends State<AuditScreen> {
               child: Text('Showing the newest 200 lines. Narrow the dates to see more.',
                   style: TextStyle(color: AccnomosColors.muted, fontSize: 12)),
             ),
-          const WebOnlyCard(
-            message: 'Downloading the trail as a spreadsheet (CSV) happens on the web.',
-            page: '/audit',
+          const SizedBox(height: 12),
+          OutlinedButton.icon(
+            icon: const Icon(Icons.ios_share_outlined),
+            label: const Text('Export CSV'),
+            onPressed: _raw.isEmpty
+                ? null
+                : () async {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final ok = await ShareText.share(auditCsv(_raw),
+                        subject: 'Accnomos audit trail ${_isoDay(_from)} to ${_isoDay(_to)}', mime: 'text/csv');
+                    if (!ok) {
+                      messenger.showSnackBar(const SnackBar(
+                          duration: Duration(seconds: 4),
+                          content: Text('No app on this phone can take the CSV.')));
+                    }
+                  },
+          ),
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Text('The lines shown, with the same columns as the web download.',
+                style: TextStyle(color: AccnomosColors.muted, fontSize: 12)),
           ),
         ],
       ),

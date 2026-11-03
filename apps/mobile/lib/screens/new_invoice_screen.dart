@@ -32,11 +32,24 @@ class NewInvoiceScreen extends StatefulWidget {
     required this.settings,
     required this.auth,
     required this.account,
+    this.jobId,
+    this.prefillCustomerName,
+    this.prefillCustomerId,
+    this.prefillLines = const [],
   });
 
   final AppSettings settings;
   final AuthService auth;
   final Account? account;
+
+  /// A job's "Invoice these hours" (`POST /jobs/{id}/invoice-lines`): the
+  /// job, its customer and the proposed lines, all editable here. Each line
+  /// keeps its timesheet entry ids so saving the invoice marks those hours
+  /// invoiced, as the web's /invoices/new?from=job does.
+  final String? jobId;
+  final String? prefillCustomerName;
+  final String? prefillCustomerId;
+  final List<Map<String, dynamic>> prefillLines;
 
   @override
   State<NewInvoiceScreen> createState() => _NewInvoiceScreenState();
@@ -48,6 +61,7 @@ class _LineState {
       TextEditingController(text: '1');
   final TextEditingController unitPrice = TextEditingController();
   String vatCode = 'S';
+  List<String> entryIds = const [];
 
   void dispose() {
     description.dispose();
@@ -62,7 +76,27 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen> {
   final _address = TextEditingController();
   final _reference = TextEditingController();
   final _notes = TextEditingController();
-  final _lines = [_LineState()];
+  late final List<_LineState> _lines = widget.prefillLines.isEmpty
+      ? [_LineState()]
+      : [
+          for (final l in widget.prefillLines)
+            _LineState()
+              ..description.text = (l['description'] ?? '').toString()
+              ..qty.text = _qtyText(l['qty'])
+              ..unitPrice.text = l['unit_price_pence'] is num
+                  ? ((l['unit_price_pence'] as num) / 100).toStringAsFixed(2)
+                  : ''
+              ..vatCode = (l['vat_code'] ?? 'S').toString()
+              ..entryIds = [
+                if (l['entry_ids'] is List)
+                  for (final e in l['entry_ids'] as List) e.toString(),
+              ],
+        ];
+
+  static String _qtyText(Object? q) {
+    if (q is num) return q == q.roundToDouble() ? q.toInt().toString() : q.toString();
+    return (q ?? '1').toString();
+  }
   List<Map<String, dynamic>> _customers = const [];
   Map<String, dynamic>? _picked;
   bool _loadingCustomers = true;
@@ -74,6 +108,9 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen> {
   @override
   void initState() {
     super.initState();
+    if (widget.prefillCustomerName != null) {
+      _name.text = widget.prefillCustomerName!;
+    }
     _loadCustomers();
   }
 
@@ -100,6 +137,15 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen> {
         _customers = rows;
         _loadingCustomers = false;
       });
+      final want = widget.prefillCustomerId;
+      if (want != null && want.isNotEmpty && _picked == null) {
+        for (final c in rows) {
+          if ((c['contact_id'] ?? c['id'])?.toString() == want) {
+            _pickCustomer(c);
+            break;
+          }
+        }
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _loadingCustomers = false);
@@ -146,6 +192,7 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen> {
         'unit': null,
         'unit_price_pence': (price * 100).round(),
         'vat_code': line.vatCode,
+        if (line.entryIds.isNotEmpty) 'timesheet_entry_ids': line.entryIds,
       });
     }
     if (lines.isEmpty) {
@@ -178,6 +225,7 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen> {
       'notes': _notes.text.trim().isEmpty
           ? null
           : _notes.text.trim(),
+      if (widget.jobId != null) 'job_id': widget.jobId,
     };
   }
 
