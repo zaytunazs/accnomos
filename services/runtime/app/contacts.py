@@ -29,8 +29,8 @@ the user owes the contact.
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import difflib
+import hashlib
 import re
 import uuid
 from collections import Counter, defaultdict
@@ -1564,10 +1564,11 @@ def _name_tokens(c: Contact) -> set[str]:
 
 
 def close_names(a: Contact, b: Contact) -> bool:
-    """Names close enough to suggest as the same business: one name is the other plus trade words only ("Screwfix" /
-    "Screwfix Direct"; trade words of one family count as the same: Hardware = Ironmongery), or the same trade words with distinctive words that read almost the same (a typo:
-    "Halloway Joinery" / "Holloway Joinery"). Different trade words after a shared place name ("Northgate Energy" /
-    "Northgate Transit") are two businesses."""
+    """Names close enough to suggest as the same business: one name is the other plus trade words only
+    ("Screwfix" / "Screwfix Direct"; trade words of one family count as the same: Hardware = Ironmongery), or the
+    same trade words with distinctive words that read almost the same (a typo: "Halloway Joinery" / "Holloway
+    Joinery"). Different trade words after a shared place name ("Northgate Energy" / "Northgate Transit") are two
+    businesses."""
     wa, wb = _name_words(a), _name_words(b)
     strong_a, strong_b = wa - _WEAK_WORDS, wb - _WEAK_WORDS
     if not strong_a or not strong_b:
