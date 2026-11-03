@@ -710,6 +710,7 @@ class _BankScreenState extends State<BankScreen> {
       isScrollControlled: true,
       builder: (_) => BankRuleSheet(
         initial: existing ?? draft,
+        draft: existing == null && draft != null,
         onSave: (body) async {
           try {
             final client = await _booksClient();

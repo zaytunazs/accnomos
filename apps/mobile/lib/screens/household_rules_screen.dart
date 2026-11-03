@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/books.dart' show ukDate;
 import '../services/money.dart';
 import '../services/runtime_client.dart';
 import '../theme.dart';
@@ -293,8 +294,12 @@ class _HouseholdRulesScreenState extends State<HouseholdRulesScreen> {
     final picked = await showModalBottomSheet<String>(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (c) => SafeArea(
-        child: ListView(
+        child: ConstrainedBox(
+          // Tall enough to reach every category; the list scrolls.
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(c).size.height * 0.8),
+          child: ListView(
           shrinkWrap: true,
           children: [
             Padding(
@@ -315,6 +320,7 @@ class _HouseholdRulesScreenState extends State<HouseholdRulesScreen> {
                 onTap: () => Navigator.pop(c, ''),
               ),
           ],
+          ),
         ),
       ),
     );
@@ -354,7 +360,7 @@ class _HouseholdRulesScreenState extends State<HouseholdRulesScreen> {
             child: ListTile(
               title: Text('${l['description'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis),
               subtitle: Text(
-                '${l['date'] ?? ''} · ${l['household_sorted'] == false ? 'No category yet' : (l['household_category'] ?? 'Other')}'
+                '${ukDate('${l['date'] ?? ''}')} · ${l['household_sorted'] == false ? 'No category yet' : (l['household_category'] ?? 'Other')}'
                 '${l['household_source'] == 'hand' ? ' (set by you)' : ''}',
                 style: TextStyle(
                     color: l['household_sorted'] == false ? const Color(0xFF8A470D) : AccnomosColors.muted),
