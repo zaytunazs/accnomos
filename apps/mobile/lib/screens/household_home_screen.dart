@@ -174,7 +174,7 @@ class _HouseholdHomeScreenState extends State<HouseholdHomeScreen> {
         children: [
           Text(
             signedIn
-                ? 'Hello, ${AuthService.displayName(_account!).split(' ').first}'
+                ? 'Hello, ${AuthService.greetingName(_account!)}'
                 : 'Your household at a glance',
             style: Theme.of(context).textTheme.titleMedium,
           ),

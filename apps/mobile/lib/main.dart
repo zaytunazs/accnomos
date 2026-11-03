@@ -141,12 +141,18 @@ class _ShellState extends State<Shell> {
   void initState() {
     super.initState();
     AppMode.state.addListener(_modeChanged);
+    Demo.state.addListener(_demoChanged);
     AppMode.refresh();
+  }
+
+  void _demoChanged() {
+    if (mounted) setState(() {});
   }
 
   @override
   void dispose() {
     AppMode.state.removeListener(_modeChanged);
+    Demo.state.removeListener(_demoChanged);
     super.dispose();
   }
 
@@ -206,7 +212,12 @@ class _ShellState extends State<Shell> {
             },
           ),
           Expanded(
-            child: IndexedStack(
+            // Under the demo banner the status bar is already accounted for,
+            // so a tab's own app bar must not pad for it again.
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: _hasOwnAppBar && Demo.active,
+              child: IndexedStack(
               key: ValueKey(_household),
               index: _tab,
               children: _household
@@ -224,6 +235,7 @@ class _ShellState extends State<Shell> {
                       VatScreen(),
                       MoreScreen(),
                     ],
+              ),
             ),
           ),
         ],

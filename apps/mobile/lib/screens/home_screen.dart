@@ -193,7 +193,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: [
           Text(
               signedIn
-                  ? 'Hello, ${AuthService.displayName(_account!).split(' ').first}'
+                  ? 'Hello, ${AuthService.greetingName(_account!)}'
                   : 'Your books. Your cloud. Meta AI on your terms.',
               style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 6),

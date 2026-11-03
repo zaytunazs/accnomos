@@ -189,6 +189,18 @@ class AuthService {
     return (account.username ?? '').trim();
   }
 
+  /// The name in Home's "Hello, …": the first name, or during a demo the
+  /// fictional household ("Patel household") or business ("Bramblewood").
+  static String greetingName(Account account) {
+    final full = displayName(account);
+    if (account.id != 'demo') return full.split(' ').first;
+    final name = full
+        .replaceAll(RegExp(r'\s*\(fictional\)\s*', caseSensitive: false), '')
+        .replaceFirst(RegExp(r'^the\s+', caseSensitive: false), '')
+        .trim();
+    return (Demo.current?.household ?? false) ? name : name.split(' ').first;
+  }
+
   /// Package name used in the MSAL redirect URI.
   static String get packageName => _packageName;
 
