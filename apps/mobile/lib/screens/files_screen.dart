@@ -171,7 +171,7 @@ class _FilesScreenState extends State<FilesScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE3E1D8)),
+            border: Border.all(color: AccnomosColors.border),
           ),
           child: const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -212,7 +212,7 @@ class _FilesScreenState extends State<FilesScreen> {
                 backgroundColor: AccnomosColors.teal,
                 minimumSize: const Size.fromHeight(52),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: _refresh,
               child: const Text('Try again',
@@ -253,7 +253,7 @@ class _FilesScreenState extends State<FilesScreen> {
             : const Divider(
                 height: 1,
                 indent: 72,
-                color: Color(0xFFE3E1D8),
+                color: AccnomosColors.border,
               ),
         itemBuilder: (context, i) {
           if (card && i == 0) {

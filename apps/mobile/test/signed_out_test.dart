@@ -62,7 +62,7 @@ void main() {
     addTearDown(tester.view.resetDevicePixelRatio);
     await tester.pumpWidget(shell(const Scaffold(body: HomeScreen())));
     await tester.pumpAndSettle();
-    expect(find.text('CASH IN BANK'), findsOneWidget);
+    expect(find.text('Cash in bank'), findsOneWidget);
     expect(find.text('Connect to see'), findsNWidgets(3));
     expect(find.text('Connect your cloud'), findsOneWidget);
   });

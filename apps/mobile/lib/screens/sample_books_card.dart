@@ -169,7 +169,7 @@ class _SampleBooksCardState extends State<SampleBooksCard>
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: AccnomosColors.tealTint,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AccnomosColors.teal),
       ),
       child: Column(

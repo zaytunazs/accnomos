@@ -123,7 +123,7 @@ class _CompanyLookupState extends State<CompanyLookupSection> {
       decoration: BoxDecoration(
         color: AccnomosColors.ground,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

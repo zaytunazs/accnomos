@@ -9,6 +9,7 @@ import '../models/ask_answer.dart';
 import '../models/sample_books.dart';
 import '../models/scan_job.dart';
 import '../models/storage.dart';
+import 'demo.dart';
 import 'settings.dart';
 
 /// Error from the reader service. [message] is safe to show in the UI.
@@ -78,6 +79,19 @@ class RuntimeClient {
   static const _timeout = Duration(seconds: 120);
 
   Map<String, String> get _headers {
+    final demo = Demo.current;
+    if (demo != null && books != null) {
+      // A demo: the session id instead of a Graph token, and no X-AI-*
+      // headers, so the runtime reads with its own Meta model chain, as the
+      // website's demo does (this phone's own AI settings may point at a
+      // machine on someone else's network).
+      return {
+        Demo.header: demo.session,
+        'X-Account-Kind': 'personal',
+        'X-User': demo.user,
+        if (settings.autopilotLevel != 'L2') 'X-Autopilot': 'off',
+      };
+    }
     final headers = <String, String>{
       'X-AI-Mode': settings.aiMode,
       'X-AI-Base-Url': settings.aiBaseUrl,
@@ -1701,10 +1715,27 @@ class RuntimeClient {
   }
 
   Never _fail(int status, String body) {
+    if (Demo.active && (status == 401 || status == 404) && _demoGone(body)) {
+      // The runtime forgot this demo (two idle hours, or a restart): start
+      // a fresh one of the same kind; the screen's retry then works.
+      unawaited(Demo.renew());
+      throw RuntimeException(
+          'The demo had timed out, so a fresh one has started. Pull down to reload.');
+    }
     final detail = body.length > 300 ? '${body.substring(0, 300)}…' : body;
     throw RuntimeException(
         'The reader refused that request (status $status). $detail');
   }
+}
+
+/// A 401/404 that means the demo session is gone (not a missing record).
+bool _demoGone(String body) {
+  final b = body.toLowerCase();
+  return b.contains('demo') ||
+      b.contains('x-graph-token') ||
+      b.contains('sign in') ||
+      b.contains('not authenticated') ||
+      b.contains('token');
 }
 
 /// Result of `POST /books/scan`: new proposals plus one entry per file

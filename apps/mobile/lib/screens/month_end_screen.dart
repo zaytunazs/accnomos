@@ -314,7 +314,7 @@ class _MonthEndCardState extends State<MonthEndCard> {
   Widget build(BuildContext context) {
     final o = _overview;
     return InkWell(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
       onTap: () => Navigator.of(context).push(MaterialPageRoute(
           builder: (_) => MonthEndScreen(month: (o?.month.isNotEmpty ?? false) ? o!.month : null))),
       child: HomeCard(

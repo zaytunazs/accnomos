@@ -238,7 +238,7 @@ class _BankRuleSheetState extends State<BankRuleSheet> {
                   backgroundColor: AccnomosColors.teal,
                   minimumSize: const Size.fromHeight(52),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: _saving ? null : _save,
                 child: _saving

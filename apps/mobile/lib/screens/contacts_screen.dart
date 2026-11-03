@@ -297,7 +297,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               border:
-                  Border.all(color: const Color(0xFFE3E1D8)),
+                  Border.all(color: AccnomosColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1227,7 +1227,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
             border:
-                Border.all(color: const Color(0xFFE3E1D8)),
+                Border.all(color: AccnomosColors.border),
           ),
           child: Column(
             children: [
@@ -1281,7 +1281,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1317,7 +1317,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1434,7 +1434,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1520,7 +1520,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE3E1D8)),
+            border: Border.all(color: AccnomosColors.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1628,7 +1628,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE3E1D8)),
+            border: Border.all(color: AccnomosColors.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1745,7 +1745,7 @@ class _ContactDetailState extends State<ContactDetailScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

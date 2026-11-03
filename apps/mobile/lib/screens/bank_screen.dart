@@ -188,7 +188,7 @@ class _BankScreenState extends State<BankScreen> {
                   backgroundColor: AccnomosColors.teal,
                   minimumSize: const Size.fromHeight(52),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14))),
+                      borderRadius: BorderRadius.circular(12))),
               onPressed: () => Navigator.of(context)
                   .push(
                     MaterialPageRoute(
@@ -221,7 +221,7 @@ class _BankScreenState extends State<BankScreen> {
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => _reload(),
               child: const Text('Retry'),
@@ -313,8 +313,8 @@ class _BankScreenState extends State<BankScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -351,8 +351,8 @@ class _BankScreenState extends State<BankScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -425,7 +425,7 @@ class _BankScreenState extends State<BankScreen> {
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(48),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: _confirming ? null : () => _confirm(lineId, [suggestion]),
             child: _confirming
@@ -527,8 +527,8 @@ class _BankScreenState extends State<BankScreen> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -613,8 +613,8 @@ class _EmptyLine extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Text(text,
           style: const TextStyle(

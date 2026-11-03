@@ -35,8 +35,8 @@ class WebOnlyCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

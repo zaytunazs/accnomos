@@ -217,7 +217,7 @@ class _PersonalScreenState extends State<PersonalScreen> {
                   backgroundColor: AccnomosColors.teal,
                   minimumSize: const Size.fromHeight(52),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14))),
+                      borderRadius: BorderRadius.circular(12))),
               onPressed: () => Navigator.of(context)
                   .push(
                     MaterialPageRoute(
@@ -250,7 +250,7 @@ class _PersonalScreenState extends State<PersonalScreen> {
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => _reload(),
               child: const Text('Retry'),
@@ -311,7 +311,7 @@ class _PersonalScreenState extends State<PersonalScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -409,7 +409,7 @@ class _PersonalScreenState extends State<PersonalScreen> {
       case 'ok':
         barColor = AccnomosColors.budgetOk;
       default:
-        barColor = const Color(0xFFE3E1D8);
+        barColor = AccnomosColors.border;
     }
     final detail = budget > 0
         ? '${formatPence(spent)} of ${formatPence(budget)}'
@@ -421,12 +421,12 @@ class _PersonalScreenState extends State<PersonalScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Material(
         type: MaterialType.transparency,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: ListTile(
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
@@ -560,8 +560,8 @@ class _PersonalScreenState extends State<PersonalScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -629,7 +629,7 @@ class _PersonalScreenState extends State<PersonalScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -673,8 +673,8 @@ class _PersonalScreenState extends State<PersonalScreen> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Text(text,
           style: const TextStyle(color: AccnomosColors.muted, height: 1.4)),

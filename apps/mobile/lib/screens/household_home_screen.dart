@@ -185,10 +185,6 @@ class _HouseholdHomeScreenState extends State<HouseholdHomeScreen> {
                 : 'A fictional household, so you can see how it works. Sign in to see your own.',
             style: const TextStyle(color: AccnomosColors.muted, height: 1.4),
           ),
-          if (!signedIn) ...[
-            const SizedBox(height: 12),
-            const SampleSwitch(),
-          ],
           if (signedIn && _summary != null) ...[
             const SizedBox(height: 14),
             SummaryCard(summary: _summary!),
@@ -278,28 +274,6 @@ class _HouseholdHomeScreenState extends State<HouseholdHomeScreen> {
             style: TextStyle(color: AccnomosColors.muted, fontSize: 12),
           ),
         ],
-      ),
-    );
-  }
-}
-
-/// Signed out: which fictional sample to look at.
-class SampleSwitch extends StatelessWidget {
-  const SampleSwitch({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder<ModeState>(
-      valueListenable: AppMode.state,
-      builder: (context, mode, _) => SegmentedButton<String>(
-        key: const Key('sample-switch'),
-        segments: const [
-          ButtonSegment(value: 'company', label: Text('Company sample')),
-          ButtonSegment(value: 'household', label: Text('Household sample')),
-        ],
-        showSelectedIcon: false,
-        selected: {mode.sample},
-        onSelectionChanged: (v) => AppMode.setSample(v.first),
       ),
     );
   }

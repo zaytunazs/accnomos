@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'auth.dart';
 import 'books.dart' show booksClient;
+import 'demo.dart';
 import 'settings.dart';
 
 /// Which treatment the app shows: the business app or the household one.
@@ -10,19 +11,30 @@ import 'settings.dart';
 /// services/runtime/app/profile.py), the same way the More tab already
 /// follows its `features`: personal books get the household tabs (Home ·
 /// Review · Budget · Goals · More) and a household Home; every business kind
-/// keeps the business app unchanged. Signed out, the visitor picks which
-/// fictional sample to look at (Company sample / Household sample).
+/// keeps the business app unchanged. Signed out, the app opens on Welcome
+/// (screens/welcome_screen.dart); a live demo counts as signed in, with the
+/// demo books' own profile deciding the treatment.
 @immutable
 class ModeState {
-  const ModeState({this.signedIn = false, this.kind, this.sample = 'company'});
+  const ModeState({
+    this.signedIn = false,
+    this.kind,
+    this.sample = 'company',
+    this.loaded = true,
+  });
 
   final bool signedIn;
+
+  /// False only until the first [AppMode.refresh] at launch has answered:
+  /// the app shows its brand splash instead of guessing signed in or out.
+  final bool loaded;
 
   /// `company`, `sole_trader`, `personal`, … from `GET /profile`; null while
   /// unknown (signed out, offline or an older runtime).
   final String? kind;
 
-  /// Signed out only: `company` or `household`.
+  /// Signed out only, for the screens' own signed-out fallbacks:
+  /// `company` or `household`.
   final String sample;
 
   bool get household => signedIn ? kind == 'personal' : sample == 'household';
@@ -39,7 +51,7 @@ class AppMode {
   AppMode._();
 
   static final ValueNotifier<ModeState> state =
-      ValueNotifier(const ModeState());
+      ValueNotifier(const ModeState(loaded: false));
 
   static bool get household => state.value.household;
 
@@ -53,6 +65,14 @@ class AppMode {
   static Future<void> refresh() async {
     final auth = AuthService();
     try {
+      final demo = Demo.current;
+      if (demo != null) {
+        // The demo's kind is known before the profile answers.
+        state.value = ModeState(
+            signedIn: true,
+            kind: demo.household ? 'personal' : (state.value.kind ?? 'company'),
+            sample: state.value.sample);
+      }
       final account = await auth.account();
       if (account == null) {
         state.value = state.value.copyWith(signedIn: false);

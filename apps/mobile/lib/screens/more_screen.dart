@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../services/auth.dart';
 import '../services/books.dart' show booksClient;
+import '../services/demo.dart';
 import '../services/settings.dart';
 import '../theme.dart';
 import 'accountant_screen.dart';
@@ -162,6 +163,11 @@ class _MoreScreenState extends State<MoreScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
         children: [
+          ValueListenableBuilder<DemoInfo?>(
+            valueListenable: Demo.state,
+            builder: (context, demo, _) =>
+                demo == null ? const SizedBox.shrink() : DemoCard(demo: demo),
+          ),
           for (final e in moreEntries(_features,
               showPersonal: _showPersonal, household: widget.household))
             _Entry(entry: e),
@@ -193,6 +199,91 @@ class _Entry extends StatelessWidget {
         onTap: () => Navigator.of(context).push(
           MaterialPageRoute(builder: (_) => entry.screen),
         ),
+      ),
+    );
+  }
+}
+
+/// During a demo, at the top of More: which demo this is, a switch to the
+/// other one, and the way out (back to Welcome).
+class DemoCard extends StatefulWidget {
+  const DemoCard({super.key, required this.demo});
+
+  final DemoInfo demo;
+
+  @override
+  State<DemoCard> createState() => _DemoCardState();
+}
+
+class _DemoCardState extends State<DemoCard> {
+  bool _busy = false;
+  String? _error;
+
+  Future<void> _switch() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await Demo.start(
+          widget.demo.runtimeUrl, widget.demo.household ? 'company' : 'personal');
+    } catch (e) {
+      if (mounted) setState(() => _error = e.toString());
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final demo = widget.demo;
+    final other = demo.household ? 'company' : 'personal';
+    return Container(
+      key: const Key('more-demo-card'),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AccnomosColors.tealTint,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFB9DCD5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(demo.household ? 'Personal demo' : 'Company demo',
+              style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AccnomosColors.ink)),
+          const SizedBox(height: 4),
+          Text(
+            '${demo.business.isEmpty ? 'Fictional sample books' : demo.business}. '
+            'Changes reset after two hours; nothing is sent to HMRC or by email.',
+            style: const TextStyle(color: AccnomosColors.muted, height: 1.4),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 8),
+            Text(_error!, style: const TextStyle(color: AccnomosColors.negText)),
+          ],
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              OutlinedButton(
+                key: const Key('more-demo-switch'),
+                onPressed: _busy ? null : _switch,
+                child: Text(_busy ? 'Starting…' : 'Switch to the $other demo'),
+              ),
+              TextButton(
+                key: const Key('more-demo-exit'),
+                onPressed: _busy ? null : Demo.end,
+                child: const Text('Exit demo'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

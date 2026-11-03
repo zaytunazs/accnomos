@@ -350,7 +350,7 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
                       padding:
                           const EdgeInsets.symmetric(horizontal: 8),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                          borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: problems.isNotEmpty ? null : _save,
                     child: const Text('Save & approve',
@@ -441,7 +441,7 @@ class _EditProposalSheetState extends State<EditProposalSheet> {
       contentPadding:
           const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       border:
-          OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+          OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 

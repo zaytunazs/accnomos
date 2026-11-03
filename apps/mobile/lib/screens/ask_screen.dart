@@ -532,7 +532,7 @@ class _AskScreenState extends State<AskScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE3E1D8)),
+            border: Border.all(color: AccnomosColors.border),
           ),
           child: Text(
             'Ask about your current VAT quarter and the one before — '
@@ -724,7 +724,7 @@ class _AskScreenState extends State<AskScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1248,7 +1248,7 @@ class _AskScreenState extends State<AskScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1338,7 +1338,7 @@ class _AskScreenState extends State<AskScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1494,7 +1494,7 @@ class _AskScreenState extends State<AskScreen> {
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       decoration: const BoxDecoration(
         color: Colors.white,
-        border: Border(top: BorderSide(color: Color(0xFFE3E1D8))),
+        border: Border(top: BorderSide(color: AccnomosColors.border)),
       ),
       child: SafeArea(
         top: false,
@@ -1832,7 +1832,7 @@ class _PlanSheetState extends State<_PlanSheet> {
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: const Color(0xFFE3E1D8),
+                color: AccnomosColors.border,
                 borderRadius: BorderRadius.circular(2),
               ),
             ),

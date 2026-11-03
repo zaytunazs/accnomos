@@ -33,18 +33,17 @@ class HomeCard extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label.toUpperCase(),
+          Text(label,
               style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AccnomosColors.muted,
-                  letterSpacing: 0.6)),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AccnomosColors.muted)),
           if (sampled) ...[
             const SizedBox(height: 6),
             Container(
@@ -495,7 +494,7 @@ class _InboxCardState extends State<InboxCard> {
                     style: OutlinedButton.styleFrom(
                         minimumSize: const Size.fromHeight(48),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14))),
+                            borderRadius: BorderRadius.circular(12))),
                     onPressed: () => Navigator.of(sheet).pop(),
                     child: const Text('Cancel'),
                   ),
@@ -507,7 +506,7 @@ class _InboxCardState extends State<InboxCard> {
                         backgroundColor: AccnomosColors.teal,
                         minimumSize: const Size.fromHeight(48),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14))),
+                            borderRadius: BorderRadius.circular(12))),
                     onPressed: () {
                       if (controller.text.trim().isEmpty) return;
                       Navigator.of(sheet).pop(controller.text);
@@ -586,7 +585,7 @@ class _InboxCardState extends State<InboxCard> {
                     backgroundColor: AccnomosColors.teal,
                     minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14))),
+                        borderRadius: BorderRadius.circular(12))),
                 onPressed: _checking ? null : _check,
                 child: _checking
                     ? const SizedBox(

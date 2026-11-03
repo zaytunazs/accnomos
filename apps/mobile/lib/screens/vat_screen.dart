@@ -166,7 +166,7 @@ class _VatScreenState extends State<VatScreen> {
                   backgroundColor: AccnomosColors.teal,
                   minimumSize: const Size.fromHeight(52),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14))),
+                      borderRadius: BorderRadius.circular(12))),
               onPressed: () => Navigator.of(context)
                   .push(
                     MaterialPageRoute(
@@ -200,7 +200,7 @@ class _VatScreenState extends State<VatScreen> {
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: _reload,
               child: const Text('Retry'),
@@ -220,7 +220,7 @@ class _VatScreenState extends State<VatScreen> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE3E1D8)),
+            border: Border.all(color: AccnomosColors.border),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

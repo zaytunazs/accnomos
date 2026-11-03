@@ -125,7 +125,7 @@ class _ConfirmSheetState extends State<_ConfirmSheet> {
                 width: 40,
                 height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE3E1D8),
+                  color: AccnomosColors.border,
                   borderRadius: BorderRadius.circular(999),
                 ),
               ),

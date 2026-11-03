@@ -10,7 +10,6 @@ import '../services/settings.dart';
 import '../theme.dart';
 import 'bank_screen.dart';
 import 'home_cards.dart';
-import 'household_home_screen.dart' show SampleSwitch;
 import 'invoices_screen.dart';
 import 'month_end_screen.dart' show MonthEndCard;
 import 'review_screen.dart';
@@ -207,10 +206,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     'only when you say so.',
             style: const TextStyle(color: AccnomosColors.muted, height: 1.4),
           ),
-          if (!signedIn) ...[
-            const SizedBox(height: 12),
-            const SampleSwitch(),
-          ],
           if (signedIn && _summary != null) ...[
             const SizedBox(height: 14),
             SummaryCard(summary: _summary!),
@@ -271,7 +266,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   backgroundColor: AccnomosColors.teal,
                   minimumSize: const Size.fromHeight(52),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14))),
+                      borderRadius: BorderRadius.circular(12))),
               onPressed: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SettingsScreen()),
               ),
@@ -398,18 +393,17 @@ class HomeTile extends StatelessWidget {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label.toUpperCase(),
+          Text(label,
               style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: AccnomosColors.muted,
-                  letterSpacing: 0.6)),
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AccnomosColors.muted)),
           const Spacer(),
           if (value == null) ...[
             _bar(72, 26),

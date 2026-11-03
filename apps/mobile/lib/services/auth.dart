@@ -1,5 +1,7 @@
 import 'package:msal_auth/msal_auth.dart';
 
+import 'demo.dart';
+
 /// Which kind of Microsoft account is signed in. Personal accounts keep the
 /// books in the OneDrive app folder; work accounts use `/Accnomos` instead,
 /// and need the broader `Files.ReadWrite` scope (AppFolder is MSA-only).
@@ -64,7 +66,16 @@ class AuthService {
   AuthenticationResult? _lastResult;
 
   /// Account kind of the last authentication result (personal by default).
-  AccountKind get kind => _kind;
+  /// A demo's books sit where a personal account's would (the app folder).
+  AccountKind get kind => Demo.active ? AccountKind.personal : _kind;
+
+  /// The demo's stand-in account: every screen treats a running demo as
+  /// signed in, and the session id goes where the Graph token would.
+  static Account demoAccount(DemoInfo d) => Account(
+        id: 'demo',
+        username: d.user,
+        name: d.business.isEmpty ? 'Demo' : d.business,
+      );
 
   Future<SingleAccountPca> _pcaAsync() async {
     final existing = _pca;
@@ -89,6 +100,7 @@ class AuthService {
 
   /// Interactive sign-in. Returns the signed-in account.
   Future<Account> signIn() async {
+    if (Demo.active) await Demo.end(); // a real sign-in ends the demo
     final pca = await _pcaAsync();
     final result = await pca.acquireToken(scopes: personalScopes);
     _record(result);
@@ -118,6 +130,8 @@ class AuthService {
 
   /// Graph access token: silent first, interactive on `MsalUiRequiredException`.
   Future<String> token() async {
+    final demo = Demo.current;
+    if (demo != null) return demo.session;
     final pca = await _pcaAsync();
     try {
       final result =
@@ -138,6 +152,8 @@ class AuthService {
   /// Access token for extra [scopes] (e.g. [mailSendScopes]): silent first,
   /// interactive when consent is needed.
   Future<String> tokenFor(List<String> scopes) async {
+    final demo = Demo.current;
+    if (demo != null) return demo.session;
     final pca = await _pcaAsync();
     try {
       final result = await pca.acquireTokenSilent(scopes: scopes);
@@ -156,6 +172,8 @@ class AuthService {
 
   /// The cached account, or null when nobody is signed in.
   Future<Account?> account() async {
+    final demo = Demo.current;
+    if (demo != null) return demoAccount(demo);
     try {
       final pca = await _pcaAsync();
       return await pca.currentAccount;
@@ -175,6 +193,10 @@ class AuthService {
   static String get packageName => _packageName;
 
   Future<void> signOut() async {
+    if (Demo.active) {
+      await Demo.end();
+      return;
+    }
     final pca = await _pcaAsync();
     await pca.signOut();
     _lastResult = null;

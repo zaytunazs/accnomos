@@ -289,13 +289,10 @@ void main() {
       ));
       await tester.pumpAndSettle();
       expect(find.text('Your household at a glance'), findsOneWidget);
-      expect(find.text('Household sample'), findsOneWidget);
       expect(find.text('This month'), findsOneWidget);
       expect(find.text('Spend less on coffee'), findsOneWidget);
-      // Switching to the company sample changes the treatment.
-      await tester.tap(find.text('Company sample'));
-      await tester.pumpAndSettle();
-      expect(AppMode.household, isFalse);
+      // The app opens on Welcome when signed out; no sample switch here.
+      expect(find.text('Household sample'), findsNothing);
       expect(tester.takeException(), isNull);
     });
 

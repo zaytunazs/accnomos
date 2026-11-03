@@ -940,7 +940,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed:
                             (_testingAi || !_signedIn) ? null : _testAi,
@@ -1152,7 +1152,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         style: OutlinedButton.styleFrom(
                           minimumSize: const Size.fromHeight(48),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed:
                             (_exporting || !_signedIn) ? null : _exportData,
@@ -1207,7 +1207,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: ExpansionTile(
         key: Key('group-$id'),
@@ -1387,7 +1387,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     backgroundColor: AccnomosColors.teal,
                     minimumSize: const Size.fromHeight(52),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: _authBusy ? null : _signIn,
                   child: _authBusy
@@ -1405,7 +1405,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   style: OutlinedButton.styleFrom(
                     minimumSize: const Size.fromHeight(52),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14)),
+                        borderRadius: BorderRadius.circular(12)),
                   ),
                   onPressed: _authBusy ? null : _signOut,
                   child: const Text('Sign out'),
@@ -1453,7 +1453,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: OutlinedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
               shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                  borderRadius: BorderRadius.circular(12)),
             ),
             onPressed: _authBusy ? null : _disconnect,
             child: const Text('Disconnect Accnomos'),
@@ -1607,7 +1607,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 backgroundColor: AccnomosColors.teal,
                 minimumSize: const Size.fromHeight(52),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: _inboxBusy ? null : _checkInbox,
               child: _inboxBusy
@@ -1692,7 +1692,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         margin: const EdgeInsets.only(top: 8),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          border: Border.all(color: const Color(0xFFE3E1D8)),
+          border: Border.all(color: AccnomosColors.border),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
@@ -1828,7 +1828,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           backgroundColor: AccnomosColors.teal,
           minimumSize: const Size.fromHeight(52),
           shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(14)),
+              borderRadius: BorderRadius.circular(12)),
         ),
         onPressed: (!enabled || busy) ? null : onPressed,
         child: busy
@@ -1880,7 +1880,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16, vertical: 16),
             border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(12)),
             suffixIcon: suffix,
             errorText: error,
           ),

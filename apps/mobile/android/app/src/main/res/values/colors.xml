@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand colours (apps/mobile/lib/theme.dart, the website's tokens). -->
+    <color name="accnomos_ledger">#0A4F47</color>
+    <color name="ic_launcher_background">#0B6A5E</color>
+</resources>

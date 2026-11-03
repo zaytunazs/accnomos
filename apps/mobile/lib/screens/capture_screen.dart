@@ -550,7 +550,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                   backgroundColor: AccnomosColors.teal,
                   minimumSize: const Size.fromHeight(48),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14)),
+                      borderRadius: BorderRadius.circular(12)),
                 ),
                 onPressed: () => Navigator.of(sheetContext).pop(),
                 child: const Text('Done'),
@@ -608,7 +608,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                       backgroundColor: AccnomosColors.teal,
                       minimumSize: const Size.fromHeight(56),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                          borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: (_busy || _scanning) ? null : _takePhoto,
                     icon: const Icon(Icons.photo_camera_outlined),
@@ -624,7 +624,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(56),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(14)),
+                          borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: (_busy || _scanning) ? null : _pickGallery,
                     icon: const Icon(Icons.photo_library_outlined),
@@ -648,7 +648,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: AccnomosColors.tealTint,
-                      borderRadius: BorderRadius.circular(14),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -677,7 +677,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                           backgroundColor: AccnomosColors.teal,
                           minimumSize: const Size.fromHeight(52),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: (_busy ||
                                 _scanning ||
@@ -701,7 +701,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                           style: OutlinedButton.styleFrom(
                             minimumSize: const Size.fromHeight(52),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(14)),
+                                borderRadius: BorderRadius.circular(12)),
                           ),
                           onPressed:
                               (_busy || _scanning) ? null : _scanOnce,
@@ -717,7 +717,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                           backgroundColor: AccnomosColors.teal,
                           minimumSize: const Size.fromHeight(52),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(14)),
+                              borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: (_busy ||
                                 _scanning ||
@@ -765,7 +765,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                               minimumSize: const Size.fromHeight(48),
                               shape: RoundedRectangleBorder(
                                   borderRadius:
-                                      BorderRadius.circular(14)),
+                                      BorderRadius.circular(12)),
                             ),
                             onPressed: () => Navigator.of(context)
                                 .pop(_summary ?? true),
@@ -801,7 +801,7 @@ class _CaptureScreenState extends State<CaptureScreen>
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Row(
         children: [
@@ -933,7 +933,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                 side: const BorderSide(color: _warnInk),
                 minimumSize: const Size.fromHeight(48),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: (_busy || _scanning || !_signedIn)
                   ? null
@@ -970,7 +970,7 @@ class _CaptureScreenState extends State<CaptureScreen>
                 side: const BorderSide(color: _warnInk),
                 minimumSize: const Size.fromHeight(48),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: (_busy || _scanning || _pendingCount == 0)
                   ? null

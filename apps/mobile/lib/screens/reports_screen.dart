@@ -12,7 +12,7 @@ import 'settings_screen.dart';
 const _warnBg = Color(0xFFFFF7ED);
 const _warnBorder = Color(0xFFF3C892);
 const _warnInk = Color(0xFF8A3F06);
-const _line = Color(0xFFE3E1D8);
+const _line = AccnomosColors.border;
 
 /// Aged buckets in column order (`GET /reports/aged`, like the web's
 /// `AGED_BUCKETS` in `apps/web/src/lib/runtime.ts`).
@@ -250,7 +250,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                   backgroundColor: AccnomosColors.teal,
                   minimumSize: const Size.fromHeight(52),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14))),
+                      borderRadius: BorderRadius.circular(12))),
               onPressed: () => Navigator.of(context)
                   .push(
                     MaterialPageRoute(
@@ -284,7 +284,7 @@ class _ReportsScreenState extends State<ReportsScreen>
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => _reload(),
               child: const Text('Retry'),
@@ -325,7 +325,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                     backgroundColor: AccnomosColors.teal,
                     minimumSize: const Size.fromHeight(48),
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14))),
+                        borderRadius: BorderRadius.circular(12))),
                 onPressed: _saving ? null : _export,
                 child: Text(
                   _saving ? 'Saving…' : 'Save to 07 Reports',

@@ -302,7 +302,7 @@ class _AuditScreenState extends State<AuditScreen> {
               style: FilledButton.styleFrom(
                   backgroundColor: AccnomosColors.teal,
                   minimumSize: const Size.fromHeight(52),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               onPressed: () => Navigator.of(context)
                   .push(MaterialPageRoute(builder: (_) => const SettingsScreen()))
                   .then((_) => _load()),
@@ -329,7 +329,7 @@ class _AuditScreenState extends State<AuditScreen> {
             OutlinedButton(
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => _reload(),
               child: const Text('Retry'),
@@ -345,8 +345,8 @@ class _AuditScreenState extends State<AuditScreen> {
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -448,8 +448,8 @@ class _AuditScreenState extends State<AuditScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE3E1D8)),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AccnomosColors.border),
               ),
               child: const Text('Nothing matches these filters.',
                   style: TextStyle(color: AccnomosColors.muted, height: 1.4)),
@@ -471,12 +471,12 @@ class _AuditScreenState extends State<AuditScreen> {
               margin: const EdgeInsets.only(bottom: 8),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE3E1D8)),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AccnomosColors.border),
               ),
               child: Column(children: [
                 for (var i = 0; i < day.value.length; i++) ...[
-                  if (i > 0) const Divider(height: 1, color: Color(0xFFE3E1D8)),
+                  if (i > 0) const Divider(height: 1, color: AccnomosColors.border),
                   _row(day.value[i]),
                 ],
               ]),

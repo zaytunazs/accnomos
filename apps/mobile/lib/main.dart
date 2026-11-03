@@ -9,8 +9,11 @@ import 'screens/personal_screen.dart';
 import 'screens/review_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/vat_screen.dart';
+import 'screens/welcome_screen.dart';
 import 'services/app_mode.dart';
+import 'services/demo.dart';
 import 'theme.dart';
+import 'widgets/brand.dart';
 
 /// Accnomos — bookkeeping and VAT for UK small businesses.
 /// Your books stay in your own cloud. Meta AI does the work.
@@ -31,25 +34,88 @@ class AccnomosApp extends StatelessWidget {
       // No dark theme: stay on the light theme even when the system is
       // dark, so text is always readable.
       themeMode: ThemeMode.light,
-      theme: ThemeData(
-        useMaterial3: true,
-        scaffoldBackgroundColor: AccnomosColors.ground,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AccnomosColors.teal,
-          primary: AccnomosColors.teal,
-          surface: Colors.white,
-        ),
-        textTheme: const TextTheme(
-          headlineSmall: TextStyle(
-              fontWeight: FontWeight.w800, color: AccnomosColors.ink),
-          titleMedium: TextStyle(
-              fontWeight: FontWeight.w700, color: AccnomosColors.ink),
-          bodyMedium: TextStyle(color: AccnomosColors.ink),
-        ),
-      ),
-      home: const Shell(),
+      theme: accnomosTheme(),
+      home: const LaunchGate(),
     );
   }
+}
+
+/// What the app opens on. Signed in with Microsoft, or in a live demo: the
+/// tabs ([Shell]). Otherwise the Welcome page, as the website opens on its
+/// landing page rather than on half-empty books. Until the first check has
+/// answered, the brand splash.
+class LaunchGate extends StatefulWidget {
+  const LaunchGate({super.key, this.restore = true});
+
+  /// Tests: skip reading the saved demo and MSAL at launch.
+  final bool restore;
+
+  @override
+  State<LaunchGate> createState() => _LaunchGateState();
+}
+
+class _LaunchGateState extends State<LaunchGate> {
+  String? _notice;
+  bool _hadDemo = Demo.active;
+
+  @override
+  void initState() {
+    super.initState();
+    AppMode.state.addListener(_changed);
+    Demo.state.addListener(_demoChanged);
+    if (widget.restore) _start();
+  }
+
+  Future<void> _start() async {
+    try {
+      await Demo.restore();
+    } catch (_) {
+      // No saved demo, or storage unavailable.
+    }
+    _hadDemo = Demo.active;
+    await AppMode.refresh();
+  }
+
+  @override
+  void dispose() {
+    AppMode.state.removeListener(_changed);
+    Demo.state.removeListener(_demoChanged);
+    super.dispose();
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
+
+  /// A demo started, switched, timed out or ended: read the treatment again.
+  void _demoChanged() {
+    final now = Demo.active;
+    if (_hadDemo && !now) {
+      _notice = null; // left on purpose, or could not be renewed
+    }
+    _hadDemo = now;
+    AppMode.refresh();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final mode = AppMode.state.value;
+    if (!mode.loaded) return const BrandSplash();
+    if (mode.signedIn) return const Shell();
+    return WelcomeScreen(notice: _notice);
+  }
+}
+
+/// The first frame while the app checks the sign-in: the same dark-teal and
+/// mark as the Android launch screen.
+class BrandSplash extends StatelessWidget {
+  const BrandSplash({super.key});
+
+  @override
+  Widget build(BuildContext context) => const Scaffold(
+        backgroundColor: AccnomosColors.ledger,
+        body: Center(child: BrandLockup(onDark: true, size: 44)),
+      );
 }
 
 class Shell extends StatefulWidget {
@@ -97,10 +163,8 @@ class _ShellState extends State<Shell> {
       appBar: _hasOwnAppBar
           ? null
           : AppBar(
-              backgroundColor: AccnomosColors.ground,
-              elevation: 0,
-              title: Text('Home',
-                  style: Theme.of(context).textTheme.headlineSmall),
+              titleSpacing: 16,
+              title: const BrandLockup(size: 30),
               actions: _tab == 0
                   ? [
                       IconButton(
@@ -120,12 +184,18 @@ class _ShellState extends State<Shell> {
             ),
       body: Column(
         children: [
-          // Tabs with their own app bar have no AppBar above this banner, so keep it below the status bar.
-          if (_hasOwnAppBar)
-            SafeArea(
-                bottom: false, child: _SampleBanner(household: _household))
-          else
-            _SampleBanner(household: _household),
+          // A demo says so above every tab, with the way out. Tabs with their
+          // own app bar have no AppBar above it, so keep it below the status bar.
+          ValueListenableBuilder<DemoInfo?>(
+            valueListenable: Demo.state,
+            builder: (context, demo, _) {
+              if (demo == null) return const SizedBox.shrink();
+              final banner = DemoBanner(demo: demo);
+              return _hasOwnAppBar
+                  ? SafeArea(bottom: false, child: banner)
+                  : banner;
+            },
+          ),
           Expanded(
             child: IndexedStack(
               key: ValueKey(_household),
@@ -152,7 +222,6 @@ class _ShellState extends State<Shell> {
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
-        indicatorColor: AccnomosColors.tealTint,
         destinations: shellDestinations(household: _household),
       ),
     );
@@ -193,25 +262,43 @@ String sampleBannerText({required bool household}) => household
     ? 'SAMPLE — FICTIONAL HOUSEHOLD · demo data only'
     : 'SAMPLE — FICTIONAL COMPANY · demo data only';
 
-class _SampleBanner extends StatelessWidget {
-  const _SampleBanner({required this.household});
+/// The slim bar above every tab during a demo: the web demo bar's label and
+/// Exit demo (back to Welcome; the runtime drops the session).
+class DemoBanner extends StatelessWidget {
+  const DemoBanner({super.key, required this.demo});
 
-  final bool household;
+  final DemoInfo demo;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      key: const Key('demo-banner'),
       width: double.infinity,
-      color: AccnomosColors.ink,
-      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
-      child: Text(
-        sampleBannerText(household: household),
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-            color: AccnomosColors.ground,
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            letterSpacing: 0.6),
+      color: AccnomosColors.sidebar,
+      padding: const EdgeInsets.only(left: 14, right: 4),
+      child: Row(
+        children: [
+          Container(width: 3, height: 18, color: AccnomosColors.brass),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '${demo.label} · demo data only',
+              style: const TextStyle(
+                  color: AccnomosColors.markLight,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.3),
+            ),
+          ),
+          TextButton(
+            key: const Key('demo-exit'),
+            onPressed: Demo.end,
+            style: TextButton.styleFrom(
+                foregroundColor: AccnomosColors.markLight,
+                minimumSize: const Size(44, 44)),
+            child: const Text('Exit demo'),
+          ),
+        ],
       ),
     );
   }

@@ -1065,7 +1065,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1475,7 +1475,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
                 backgroundColor: AccnomosColors.teal,
                 minimumSize: const Size.fromHeight(48),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: _busy
                   ? null
@@ -1612,7 +1612,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   Widget _decisionRow(Proposal proposal) {
     final buttonShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
     );
     return Row(
       children: [
@@ -1670,7 +1670,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
         decoration: BoxDecoration(
           color: bg ?? Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: border ?? const Color(0xFFE3E1D8)),
+          border: Border.all(color: border ?? AccnomosColors.border),
         ),
         child: child,
       ),
@@ -1763,7 +1763,7 @@ class _ReviewScreenState extends State<ReviewScreen> {
 
   Widget _needsALookCard(Proposal proposal) {
     final buttonShape = RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(14),
+      borderRadius: BorderRadius.circular(12),
     );
     return _cardShell(
       bg: _warnBg,

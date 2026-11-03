@@ -150,7 +150,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
                   backgroundColor: AccnomosColors.teal,
                   minimumSize: const Size.fromHeight(52),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14))),
+                      borderRadius: BorderRadius.circular(12))),
               onPressed: () => Navigator.of(context)
                   .push(
                     MaterialPageRoute(
@@ -183,7 +183,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
               style: OutlinedButton.styleFrom(
                 minimumSize: const Size.fromHeight(48),
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14)),
+                    borderRadius: BorderRadius.circular(12)),
               ),
               onPressed: () => _reload(),
               child: const Text('Retry'),
@@ -214,8 +214,8 @@ class _PayrollScreenState extends State<PayrollScreen> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: const Color(0xFFE3E1D8)),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AccnomosColors.border),
               ),
               child: const Text('No pay runs yet — prepare one in the web app.',
                   style: TextStyle(
@@ -249,12 +249,12 @@ class _PayrollScreenState extends State<PayrollScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE3E1D8)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
       ),
       child: Material(
         type: MaterialType.transparency,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: ListTile(
           title: Text(title,
               style: const TextStyle(fontWeight: FontWeight.w800)),
@@ -371,7 +371,7 @@ class PayrollDetailScreen extends StatelessWidget {
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: const Color(0xFFE3E1D8)),
+              border: Border.all(color: AccnomosColors.border),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
