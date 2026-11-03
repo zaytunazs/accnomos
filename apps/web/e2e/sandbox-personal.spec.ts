@@ -29,7 +29,7 @@ test("the personal demo opens a household's books from /judges, and its bar offe
   // The runtime holds a household: personal profile, bank lines, and goals with mixed statuses.
   const session = await page.evaluate(() => JSON.parse(window.localStorage.getItem("msal.accnomos-demo.session") ?? "{}"));
   expect(session.kind).toBe("personal");
-  expect(session.business).toBe("The Patel household (fictional)");
+  expect(session.business).toBe("The Harrison household (fictional)");
   const goals = await page.request.get(`${RUNTIME_URL}/books/goals?note_ai=false`, {
     headers: { "X-Demo-Session": session.session, "X-User": "demo@accnomos.example" },
   });

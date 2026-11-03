@@ -29,7 +29,7 @@ function lastRun(runs: RtDashboard["runs"]): string | null {
   return `${label} ${ago(run!.at)}${run!.summary ? ` · ${run!.summary}` : ""}`;
 }
 
-/** Date, greeting and last agent run. The sample's Priya at Bramblewood only when signed out, and labelled. */
+/** Date, greeting and last agent run. The sample's Emma at Bramblewood only when signed out, and labelled. */
 export default function Greeting() {
   const home = useHome();
 
@@ -37,7 +37,7 @@ export default function Greeting() {
     return (
       <Header
         date="Monday 26 October"
-        title="Good evening, Priya"
+        title="Good evening, Emma"
         badge="Fictional demo company · Bramblewood Joinery Ltd"
         run="Last Autopilot run 4 min ago · 2 receipts imported from Outlook"
       />

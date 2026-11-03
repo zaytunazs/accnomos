@@ -486,6 +486,7 @@ NO_USER_NEEDED = {
         "starts the extractor agent on 00 Inbox in the background (as /books/scan); its confirm step needs X-User"
     ),
     "POST /books/rebuild": "rebuilds Books.xlsx from the files already there; no new facts",
+    "POST /contacts/import/check": "marks which of the phone's rows are already in the books; saves nothing",
     "POST /books/ask": "answers, or proposes a signed action that only /actions/approve (X-User) runs",
     "POST /books/ask/voice": "as /books/ask",
     "POST /mail/scan": (

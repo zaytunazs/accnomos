@@ -15,7 +15,7 @@ export default function ContactsPage() {
           </p>
         </div>
         <ExplainMore title="How contacts work" anchor="contacts">
-          Contacts are rebuilt from your ledger by code, so a rename to another contact’s name is refused and two tabs editing at once means last write wins. Import from Outlook only fills blank details unless you also add new contacts.
+          Contacts are rebuilt from your ledger by code, so a rename to another contact’s name is refused and two tabs editing at once means last write wins. Import contacts brings in Outlook contacts or the people who email you — all, or only the ones you tick; ones already here only gain a missing email or phone.
         </ExplainMore>
       </div>
       <LiveContacts />

@@ -123,7 +123,7 @@ const features: Feature[] = [
   {
     id: "contacts",
     title: "Contacts",
-    does: "Customers and suppliers are built from your ledger (one contact per VAT number, else per name). Each has a statement with a running balance and an Aged balances tab (0–30/31–60/61–90/90+ days from the document date). Edit keeps your changes across Refresh; Import from Outlook fills blank emails and phones.",
+    does: "Customers and suppliers are built from your ledger (one contact per VAT number, else per name). Each has a statement with a running balance and an Aged balances tab (0–30/31–60/61–90/90+ days from the document date). Edit keeps your changes across Refresh; Import contacts brings in Outlook contacts or the people who email you, all or the ones you tick (the Android app adds the phone’s address book); a contact already here only gains a missing email or phone.",
     ai: "No AI.",
     code: "Code rebuilds contacts from the event files on each call; only names and details are saved, in _System/Contacts/contacts.json. Money is always worked out again from the events.",
     gap: "Not verified yet: never run against a real OneDrive or Outlook; admin consent on work accounts is untested; a matched bank line counts as full payment, so part payments drop out of Aged balances.",

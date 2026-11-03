@@ -15,7 +15,7 @@ test("empty books: every list names its next step", async ({ page }) => {
   await page.goto("/contacts");
   await expect(page.getByRole("heading", { name: "No contacts yet" })).toBeVisible();
   // The toolbar button plus the empty state's own next step.
-  await expect(page.getByRole("button", { name: "Import from Outlook" })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Import contacts" })).toHaveCount(2);
 
   await page.goto("/invoices");
   await expect(page.getByRole("heading", { name: "No invoices yet" })).toBeVisible();

@@ -57,11 +57,10 @@ for (const vp of VIEWPORTS) {
       await signIn(page, DEMO_DAY);
       await createBooksFolder(page);
       await page.goto("/contacts");
-      // Import from Outlook now has a review step: see who will be added, tick "also add new", then confirm.
-      await page.getByRole("button", { name: "Import from Outlook" }).first().click();
-      await page.getByRole("checkbox", { name: "Also add Outlook entries that are not in your books (as customers)" }).check();
-      await page.getByRole("button", { name: "Confirm import" }).click();
-      await expect(page.getByRole("status")).toContainText(/\d+ added/); // JM Trading Ltd and the seeded suppliers
+      // Import contacts: the Outlook list arrives with every new entry ticked; import them all.
+      await page.getByRole("button", { name: "Import contacts" }).first().click();
+      await page.getByRole("button", { name: /^Import [1-9]\d*$/ }).click();
+      await expect(page.getByRole("status")).toContainText(/Imported [1-9]/); // JM Trading Ltd and the seeded suppliers
       await page.goto("/");
       await page.getByRole("region", { name: "Get set up" }).getByRole("button", { name: "Dismiss" }).click();
 

@@ -24,7 +24,7 @@ void main() {
     session: 'sess-1',
     kind: 'personal',
     runtimeUrl: 'https://api.example',
-    business: 'The Patel household (fictional)',
+    business: 'The Harrison household (fictional)',
     user: 'demo@accnomos.example',
   );
 

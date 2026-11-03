@@ -190,7 +190,7 @@ class AuthService {
   }
 
   /// The name in Home's "Hello, …": the first name, or during a demo the
-  /// fictional household ("Patel household") or business ("Bramblewood").
+  /// fictional household ("Harrison household") or business ("Bramblewood").
   static String greetingName(Account account) {
     final full = displayName(account);
     if (account.id != 'demo') return full.split(' ').first;
