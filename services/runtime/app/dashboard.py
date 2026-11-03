@@ -22,8 +22,8 @@ from pydantic import BaseModel
 
 from accnomos_connectors.msgraph import GraphError
 from accnomos_ledger.bank import BankLine, reconciled_to
+from app import bank_status, invoicing
 from app import contacts as cb
-from app import invoicing
 from app import profile as profile_mod
 from app.books import AUDIT, AUTOPILOT_AUDIT, Books, bank_of
 from app.paths import upgrade
@@ -194,12 +194,14 @@ def owed_to_you(ledger: cb.Ledger, invoices: list[invoicing.Invoice] | None, tod
     ), owed(purchases, today, ledger)
 
 
-def attention(ledger: cb.Ledger, overdue: int | None) -> Attention:
+def attention(ledger: cb.Ledger, overdue: int | None, household: bank_status.Household | None = None) -> Attention:
+    """What needs doing. The bank count is app/bank_status.py's `open`, the figure the Bank page shows too: lines
+    not yet matched (a business), or money out with no household category (personal books, `household`)."""
     every = ledger.proposals.values()
     counts = {
         "proposed": sum(p.status == "proposed" for p in every),
         "needs_a_look": sum(p.status == "needs_a_look" for p in every),
-        "unmatched_bank_lines": sum(not ln.resolved for ln in ledger.bank_lines),
+        "unmatched_bank_lines": bank_status.status(ledger.bank_lines, household).open,
     }
     return Attention(**counts, overdue_invoices=overdue, total=sum(counts.values()) + (overdue or 0))
 
@@ -410,6 +412,12 @@ async def build(
     async def cash() -> Cash:
         return cash_position(ledger.bank_lines)
 
+    household = (
+        await reads.run("household rules", lambda: bank_status.load_household(books))
+        if books_profile.kind == "personal"
+        else None
+    )
+
     # Owed needs the events and the bank lines (payments); proposals only add labels.
     owed_pair = await reads.run("owed", money) if events is not None and bank_lines is not None else None
     overdue = owed_pair[0].overdue if owed_pair else None
@@ -425,7 +433,7 @@ async def build(
         vat=reads.tile(vat_tile, "ledger") if vat_applies else None,
         vat_applies=vat_applies,
         attention=reads.tile(
-            attention(ledger, overdue) if proposals is not None and bank_lines is not None else None,
+            attention(ledger, overdue, household) if proposals is not None and bank_lines is not None else None,
             "ledger",
             "proposals",
             "bank",

@@ -2510,6 +2510,11 @@ export interface RtBankLine {
   proposal_id: string | null;
   /** The bank feed's transaction id, for lines fetched through a bank feed. */
   feed_id?: string | null;
+  /** Personal books only: the line's household category (services/runtime/app/bank_status.py). */
+  household_category_id?: string | null;
+  household_category?: string | null;
+  household_source?: "rule" | "hand" | "income" | "excluded" | "none" | null;
+  household_sorted?: boolean | null;
 }
 export interface RtBankImport {
   sha256: string;
@@ -2576,9 +2581,13 @@ export interface RtBankStatement {
   first_date: string;
   last_date: string;
   lines: number;
+  /** Matched, transfer or ignored; for personal books, sorted by the household rules. */
   resolved: number;
   money_in_pence: number;
   money_out_pence: number;
+  basis?: "ledger" | "household";
+  /** "9 of 25 lines resolved" / "767 of 770 lines sorted". */
+  label?: string | null;
 }
 export interface RtBankSuggestion {
   line_id: string;
@@ -2608,6 +2617,12 @@ export interface RtBankSummary {
   transfer: number;
   ignored: number;
   reconciled_to: string | null;
+  /** The one status every screen shows (services/runtime/app/bank_status.py); Home's tile reads the same `open`. */
+  basis?: "ledger" | "household";
+  resolved?: number;
+  open?: number;
+  label?: string;
+  open_label?: string;
 }
 /** A bank rule (services/runtime/app/bank_rules.py): "when the description contains X, code it to Y". */
 export interface RtBankRule {

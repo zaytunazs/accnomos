@@ -195,9 +195,11 @@ class BankStatement(BaseModel):
     first_date: date
     last_date: date
     lines: int
-    resolved: int  # matched, transfer or ignored
+    resolved: int  # matched, transfer or ignored; for personal books, sorted (app/bank_status.py)
     money_in_pence: int
     money_out_pence: int  # negative
+    basis: str = "ledger"  # "household" for personal books
+    label: str | None = None  # "9 of 25 lines resolved" / "760 of 770 lines sorted"
 
 
 def bank_of(path: str) -> str:
@@ -659,24 +661,31 @@ class Books:
             sha256=sha, filed_path=filed, lines=len(lines), new_lines=len(fresh), bank=bank, from_feed=len(from_feed)
         )
 
-    async def bank_statements(self) -> list[BankStatement]:
-        """Imported statements, newest last date first, summarised from their stored lines."""
+    async def bank_statements(self, household: Any = None) -> list[BankStatement]:
+        """Imported statements, newest last date first, summarised from their stored lines. `household`
+        (app/bank_status.Household, personal books) counts lines as sorted by the household rules instead."""
+        from app import bank_status  # lazy: bank_status imports this module
+
         by_file: dict[str, list[BankLine]] = {}
         for ln in await self.stored_bank_lines():
             by_file.setdefault(upgrade(ln.source_file), []).append(ln)  # where it is now, after a folder rename
-        out = [
-            BankStatement(
-                path=path,
-                bank=bank_of(path),
-                first_date=min(ln.date for ln in lines),
-                last_date=max(ln.date for ln in lines),
-                lines=len(lines),
-                resolved=sum(ln.resolved for ln in lines),
-                money_in_pence=sum(ln.amount_pence for ln in lines if ln.amount_pence > 0),
-                money_out_pence=sum(ln.amount_pence for ln in lines if ln.amount_pence < 0),
+        out = []
+        for path, lines in by_file.items():
+            st = bank_status.status(lines, household)
+            out.append(
+                BankStatement(
+                    path=path,
+                    bank=bank_of(path),
+                    first_date=min(ln.date for ln in lines),
+                    last_date=max(ln.date for ln in lines),
+                    lines=len(lines),
+                    resolved=st.resolved,
+                    money_in_pence=sum(ln.amount_pence for ln in lines if ln.amount_pence > 0),
+                    money_out_pence=sum(ln.amount_pence for ln in lines if ln.amount_pence < 0),
+                    basis=st.basis,
+                    label=st.label,
+                )
             )
-            for path, lines in by_file.items()
-        ]
         return sorted(out, key=lambda s: (s.last_date, s.path), reverse=True)
 
     async def card_hints(self) -> dict[str, str]:

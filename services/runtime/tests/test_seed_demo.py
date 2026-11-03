@@ -501,3 +501,61 @@ async def test_graph(seed_demo: ModuleType) -> None:
         plan = seed_demo.build_plan("Bramblewood Joinery Ltd", date.today())
         report = await seed_demo.seed(storage, plan, say=print)
         assert report["events"] == plan.event_count and report["inbox"] == 25
+
+
+# --------------------------------------------------------------------------- #
+# The demo's figures agree across screens (Android audit, 3 Nov 2026)
+# --------------------------------------------------------------------------- #
+
+
+async def test_bank_status_is_one_figure_on_every_screen(seeded: tuple) -> None:
+    """Statements, the Bank summary, the open-lines list and Home's tile count the same open lines."""
+    from app import bank_status
+    from app import dashboard as dash
+
+    _plan, fake, _report = seeded
+    books = Books(fake)
+    every = await books.list_bank_lines()
+    summary = bank_status.status(every)
+    statements = await books.bank_statements()
+    home = await dash.build(books, TODAY, 1, 3)
+    assert summary.basis == "ledger" and summary.open == summary.total - summary.resolved > 0
+    assert sum(s.resolved for s in statements) == summary.resolved
+    assert sum(s.lines for s in statements) == summary.total
+    assert home.attention is not None and home.attention.unmatched_bank_lines == summary.open
+    # "suggested" lines are open too: the app's "need an action" list must include them, not only "unmatched"
+    assert summary.open == summary.suggested + summary.unmatched
+    assert summary.open_label == f"{summary.open} lines to match"
+
+
+async def test_owed_to_you_agrees_on_home_aged_contacts_and_invoices(seeded: tuple) -> None:
+    from app import contacts as cb
+    from app import dashboard as dash
+    from app import invoicing as inv_
+    from app import payments as pay_
+    from app.routes_invoices import _row
+
+    _plan, fake, _report = seeded
+    books = Books(fake)
+    contacts, ledger, _ = await cb.contact_book(books)
+    aged = cb.aged(contacts, ledger, TODAY)
+    rows = cb.with_totals(contacts, ledger, date(TODAY.year, 1, 1), TODAY)
+    home = await dash.build(books, TODAY, 1, 3)
+    assert home.owed_to_you is not None
+    total = home.owed_to_you.total_pence
+    assert total > 0
+    assert aged.debtors.total_pence == total
+    assert sum(r.totals.open_receivable_pence for r in rows) == total
+    by_name = {r.contact_id: r for r in aged.debtors.rows}
+    for r in rows:
+        if r.totals.open_receivable_pence:
+            assert by_name[r.id].total_pence == r.totals.open_receivable_pence, r.name
+    # every sent invoice's balance is the amount the Aged report shows for that document, aged past its due date
+    docs = {d.reference: d for row in aged.debtors.rows for d in row.documents}
+    pl = await pay_.load_ledger(books)
+    for inv in await inv_.list_invoices(books):
+        row = _row(inv, pl)
+        if inv.status == "sent" and row.balance_pence:
+            d = docs[inv.number]
+            assert d.amount_pence == row.balance_pence, inv.number
+            assert d.due_date == inv.due_date and d.age_days == (TODAY - inv.due_date).days

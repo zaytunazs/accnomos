@@ -407,3 +407,24 @@ def test_extract_takes_a_demo_session_but_not_a_stranger(client: TestClient) -> 
     assert client.post("/extract", files=gif).status_code == 401
     assert client.post("/extract", files=gif, headers={demo.HEADER: "forged"}).status_code == 401
     assert client.post("/extract", files=gif, headers=h).status_code == 415
+
+
+def test_files_by_item_id_as_the_android_app_lists_them(client: TestClient) -> None:
+    """The Android Files screen opens a folder by path, then lists it by the id it was given
+    (GET me/drive/items/{id}/children?$top=200): that used to answer 400 notSupported in a demo."""
+    h = _start(client)
+    root = client.get(G, headers=h).json()
+    listing = client.get(f"/demo/graph/v1.0/me/drive/items/{root['id']}/children?$top=200", headers=h)
+    assert listing.status_code == 200, listing.text
+    names = {i["name"] for i in listing.json()["value"]}
+    assert {"README.txt", INBOX, "_System"} <= names
+    inbox = client.get(f"{G}:/{INBOX}", headers=h).json()
+    r = client.get(f"/demo/graph/v1.0/me/drive/items/{inbox['id']}/children", headers=h)
+    assert [i["name"] for i in r.json()["value"]] == ["SAMPLE 01.png"]
+    one = r.json()["value"][0]
+    assert client.get(f"/demo/graph/v1.0/me/drive/items/{one['id']}", headers=h).json()["name"] == "SAMPLE 01.png"
+    content = client.get(f"/demo/graph/v1.0/me/drive/items/{one['id']}/content", headers=h)
+    assert content.content == b"\x89PNG sample"
+    assert client.get("/demo/graph/v1.0/me/drive/items/nonsense/children", headers=h).status_code == 404
+    # a file has no children; creating still needs POST on /children
+    assert client.get(f"/demo/graph/v1.0/me/drive/items/{one['id']}/children", headers=h).status_code == 404
