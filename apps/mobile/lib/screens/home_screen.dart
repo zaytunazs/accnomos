@@ -6,8 +6,10 @@ import '../models/home_summary.dart';
 import '../models/suggestions.dart';
 import '../services/auth.dart';
 import '../services/books.dart' show booksClient;
+import '../services/books_events.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/tile_grid.dart';
 import 'bank_screen.dart';
 import 'home_cards.dart';
 import 'invoices_screen.dart';
@@ -49,10 +51,41 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  int _seenChange = BooksEvents.changed.value;
+
   @override
   void initState() {
     super.initState();
+    BooksEvents.changed.addListener(_onBooksChanged);
     _load();
+  }
+
+  @override
+  void dispose() {
+    BooksEvents.changed.removeListener(_onBooksChanged);
+    super.dispose();
+  }
+
+  /// An approval or other change elsewhere: refresh the tiles (not the
+  /// worded summary, which would cost a model call on every tap).
+  Future<void> _onBooksChanged() async {
+    if (BooksEvents.changed.value == _seenChange) return;
+    _seenChange = BooksEvents.changed.value;
+    final settings = _settings;
+    final account = _account;
+    if (!mounted || settings == null || account == null || _loading) return;
+    try {
+      final client = await booksClient(settings, _auth, account);
+      final json = await client.dashboard(today: _today());
+      if (mounted) {
+        setState(() {
+          _data = Dashboard.fromJson(json);
+          _refresh++;
+        });
+      }
+    } catch (_) {
+      // The tiles keep their last figures; pull to refresh shows the error.
+    }
   }
 
   static String _today() {
@@ -216,15 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: const TextStyle(color: AccnomosColors.muted, fontSize: 12)),
           ],
           const SizedBox(height: 20),
-          GridView.count(
-            crossAxisCount: 2,
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            mainAxisSpacing: 12,
-            crossAxisSpacing: 12,
-            childAspectRatio: 1.35,
-            children: _tiles(),
-          ),
+          TileGrid(children: _tiles()),
           const SizedBox(height: 12),
           if (signedIn && _settings != null) ...[
             SampleBooksCard(
@@ -400,12 +425,13 @@ class HomeTile extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
-              maxLines: 1,
+              maxLines: 3,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                   color: AccnomosColors.muted)),
+          const SizedBox(height: 10),
           const Spacer(),
           if (value == null) ...[
             _bar(72, 26),
@@ -413,12 +439,15 @@ class HomeTile extends StatelessWidget {
             _bar(96, 12),
           ] else ...[
             Text(value,
+                maxLines: 1,
+                softWrap: false,
+                overflow: TextOverflow.fade,
                 style: const TextStyle(
                     fontSize: 26,
                     fontWeight: FontWeight.w800,
                     color: AccnomosColors.ink)),
             Text(note ?? '',
-                maxLines: 1,
+                maxLines: 3,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                     fontSize: 12,

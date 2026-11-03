@@ -1,5 +1,9 @@
 /// VAT return view from `GET /books/vat` (see
 /// `services/runtime/app/routes_vat.py`): the 9 boxes HMRC expects.
+library;
+
+import '../services/money.dart';
+
 class VatReturn {
   VatReturn({
     required this.periodKey,
@@ -36,6 +40,30 @@ class VatReturn {
 
   /// The ledger entries the boxes count, saved with a submitted return.
   final List<String> eventIds;
+
+  num _amountOf(int box) {
+    for (final b in boxes) {
+      if (b.box == box) return num.tryParse(b.amount) ?? 0;
+    }
+    return 0;
+  }
+
+  /// Box 5 is the difference between boxes 3 and 4 and HMRC takes it as a
+  /// positive figure: when box 4 (VAT reclaimed) is the larger, it is money
+  /// HMRC owes the business, never "to pay".
+  bool get isRefund {
+    final five = _amountOf(5);
+    return five < 0 || _amountOf(4) > _amountOf(3);
+  }
+
+  /// The label to show for [box] (box 5 says which way the money goes).
+  String labelFor(VatBox box) =>
+      box.box == 5 && isRefund ? 'Net VAT HMRC owes you (4 − 3)' : box.label;
+
+  /// The amount to show for [box] (box 5 as a positive figure on a refund).
+  String displayFor(VatBox box) => box.box == 5 && isRefund
+      ? formatPounds((num.tryParse(box.amount) ?? 0).abs())
+      : box.display;
 
   factory VatReturn.fromJson(Map<String, dynamic> json) {
     final boxes = <VatBox>[];
@@ -152,18 +180,5 @@ class VatPeriod {
 
 /// `£1,234.56` from a pounds string or number; `whole` drops the pence (boxes
 /// 6–9 are whole pounds). A minus sign goes before the pound sign.
-String formatPounds(Object? amount, {bool whole = false}) {
-  final n = num.tryParse('${amount ?? 0}') ?? 0;
-  final negative = n < 0;
-  final abs = n.abs();
-  final pence = whole ? abs.truncate() * 100 : (abs * 100).round();
-  final pounds = pence ~/ 100;
-  final digits = pounds.toString();
-  final grouped = StringBuffer();
-  for (var i = 0; i < digits.length; i++) {
-    if (i > 0 && (digits.length - i) % 3 == 0) grouped.write(',');
-    grouped.write(digits[i]);
-  }
-  final tail = whole ? '' : '.${(pence % 100).toString().padLeft(2, '0')}';
-  return '${negative ? '-' : ''}£$grouped$tail';
-}
+String formatPounds(Object? amount, {bool whole = false}) =>
+    formatMoneyPounds(amount, whole: whole);

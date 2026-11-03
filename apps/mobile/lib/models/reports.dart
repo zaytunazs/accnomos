@@ -1,5 +1,7 @@
 library;
 
+import '../services/money.dart';
+
 /// Reports from `GET /reports/*` (see `services/runtime/app/reports.py`):
 /// profit and loss, aged balances, VAT summary and monthly trend, worked
 /// out by code from the user's own ledger events. Money is integer pence;
@@ -24,13 +26,7 @@ String ukDate(String iso) {
 }
 
 /// £1,234.56 from integer pence (negative as -£1.56).
-String gbp(int pence) {
-  final sign = pence < 0 ? '-' : '';
-  final abs = pence.abs();
-  final pounds = (abs ~/ 100).toString().replaceAllMapped(
-      RegExp(r'\B(?=(\d{3})+(?!\d))'), (m) => ',');
-  return '$sign£$pounds.${(abs % 100).toString().padLeft(2, '0')}';
-}
+String gbp(int pence) => formatMoneyPence(pence);
 
 /// One account row on the profit and loss.
 class PlRow {

@@ -236,7 +236,7 @@ class _JobsScreenState extends State<JobsScreen> {
         trailing: Text(
           unbilled == null
               ? ''
-              : '${unbilled.toString()} h due',
+              : '${unbilled.toString()} h to invoice',
           style: const TextStyle(
               fontWeight: FontWeight.w800, fontSize: 14),
         ),

@@ -8,6 +8,8 @@
 /// of Flutter so `flutter test` covers it.
 library;
 
+import 'money.dart';
+
 /// Words the supplier key drops from the end (and a leading 'the').
 const _trailing = {'ltd', 'limited', 'plc', 'llp', 'uk', 'co'};
 
@@ -261,4 +263,4 @@ String ruleMatchLine(ReviewRule rule, int typicalGrossPence) {
 }
 
 /// Format integer pence as pounds ('£12.34').
-String formatPence(int pence) => '£${(pence / 100).toStringAsFixed(2)}';
+String formatPence(int pence) => formatMoneyPence(pence);

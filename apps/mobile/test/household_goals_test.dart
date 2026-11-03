@@ -170,7 +170,7 @@ void main() {
 
     test('money and the refused-request sentence', () {
       expect(money(123456), '£1,234.56');
-      expect(money(-50), '−£0.50');
+      expect(money(-50), '-£0.50');
       expect(moneyShort(9000), '£90');
       expect(moneyShort(9050), '£90.50');
       expect(

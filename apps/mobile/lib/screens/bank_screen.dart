@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 
+import '../services/app_mode.dart';
 import '../services/auth.dart';
 import '../services/proposal_editing.dart' show formatPence;
 import '../services/runtime_client.dart';
@@ -34,6 +35,7 @@ class _BankScreenState extends State<BankScreen> {
   String? _notice;
   List<Map<String, dynamic>> _statements = const [];
   List<Map<String, dynamic>> _unmatched = const [];
+  List<Map<String, dynamic>> _recent = const [];
   List<Map<String, dynamic>> _suggestions = const [];
   List<Map<String, dynamic>> _rules = const [];
 
@@ -85,14 +87,22 @@ class _BankScreenState extends State<BankScreen> {
       final client = await _booksClient();
       final results = await Future.wait([
         client.bankStatements(),
-        client.bankLines(status: 'unmatched'),
+        client.bankLines(),
         client.bankSuggestions(),
         client.bankRules(),
       ]);
       if (!mounted) return;
+      final all = results[1].cast<Map<String, dynamic>>();
       setState(() {
         _statements = results[0].cast<Map<String, dynamic>>();
-        _unmatched = results[1].cast<Map<String, dynamic>>();
+        // One source for "needs an action": every line not yet resolved —
+        // unmatched or with a suggestion waiting — the same lines the
+        // statement's "x of y resolved" leaves out and Home counts.
+        _unmatched = [for (final l in all) if (bankLineNeedsAction(l)) l];
+        _recent = ([...all]
+              ..sort((a, b) => '${b['date'] ?? ''}'.compareTo('${a['date'] ?? ''}')))
+            .take(30)
+            .toList();
         _suggestions = results[2].cast<Map<String, dynamic>>();
         _rules = results[3].cast<Map<String, dynamic>>();
       });
@@ -243,11 +253,25 @@ class _BankScreenState extends State<BankScreen> {
           else
             for (final s in _statements) _statementCard(s),
           const SizedBox(height: 8),
-          _heading('Need an action'),
-          if (_unmatched.isEmpty)
-            const _EmptyLine('Nothing unmatched — every line is resolved.')
-          else
-            for (final line in _unmatched) _lineCard(line),
+          if (AppMode.household) ...[
+            // A household has no ledger to match lines against: its lines
+            // are sorted into categories, shown on the Budget tab.
+            _heading('Recent lines'),
+            const _EmptyLine(
+                'Each line is sorted into a household category by your rules; '
+                'see categories and budgets on the Budget tab.'),
+            if (_recent.isEmpty)
+              const _EmptyLine('No bank lines yet.')
+            else
+              for (final line in _recent) _plainLine(line),
+          ] else ...[
+            _heading('Need an action'),
+            if (_unmatched.isEmpty)
+              const _EmptyLine('Nothing to match — every line is resolved.')
+            else
+              for (final line in _unmatched) _lineCard(line),
+          ],
+          if (!AppMode.household) ...[
           const SizedBox(height: 8),
           Row(
             children: [
@@ -271,6 +295,7 @@ class _BankScreenState extends State<BankScreen> {
                 'and changing rule order happen on the web.',
             page: '/bank',
           ),
+          ],
         ],
       ),
     );
@@ -320,13 +345,16 @@ class _BankScreenState extends State<BankScreen> {
           Text(bank.isEmpty ? 'Statement' : bank,
               style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 2),
-          Text('$first – $last · $resolved of $lines lines resolved',
+          Text(
+              AppMode.household
+                  ? '$first – $last · $lines lines'
+                  : '$first – $last · $resolved of $lines lines resolved',
               style: const TextStyle(
                   color: AccnomosColors.muted, fontSize: 12, height: 1.4)),
           const SizedBox(height: 4),
           Text(
-            'In ${formatPence(_asInt(s['money_in_pence']))} · '
-            'out ${formatPence(_asInt(s['money_out_pence']))}',
+            'In ${formatPence(_asInt(s['money_in_pence']).abs())} · '
+            'out ${formatPence(_asInt(s['money_out_pence']).abs())}',
             style: const TextStyle(
                 color: AccnomosColors.ink,
                 fontSize: 13,
@@ -392,6 +420,45 @@ class _BankScreenState extends State<BankScreen> {
                     color: AccnomosColors.muted,
                     fontSize: 12,
                     height: 1.4)),
+        ],
+      ),
+    );
+  }
+
+  /// One bank line for a household: description, date and amount only.
+  Widget _plainLine(Map<String, dynamic> line) {
+    final description = (line['description'] ?? '').toString();
+    final date = _ukDate((line['date'] ?? '').toString());
+    final amount = _asInt(line['amount_pence']);
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(description.isEmpty ? 'Bank line' : description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(date,
+                    style: const TextStyle(
+                        color: AccnomosColors.muted, fontSize: 12)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(formatPence(amount),
+              style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  color: amount > 0 ? AccnomosColors.tealDark : AccnomosColors.ink)),
         ],
       ),
     );
@@ -619,4 +686,11 @@ class _EmptyLine extends StatelessWidget {
               color: AccnomosColors.muted, height: 1.4)),
     );
   }
+}
+
+/// A bank line still to resolve: not matched, not a transfer, not ignored
+/// (a line with a suggestion waiting counts — it still needs a decision).
+bool bankLineNeedsAction(Map<String, dynamic> line) {
+  final status = (line['status'] ?? 'unmatched').toString();
+  return status == 'unmatched' || status == 'suggested';
 }

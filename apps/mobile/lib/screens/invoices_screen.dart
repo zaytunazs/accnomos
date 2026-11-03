@@ -223,7 +223,6 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
         ? (customer['name'] ?? '').toString()
         : '';
     final total = (inv['total_pence'] ?? 0) as num;
-    final status = (inv['status'] ?? '').toString();
     return Card(
       margin: EdgeInsets.zero,
       child: ListTile(
@@ -233,9 +232,13 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
           style: const TextStyle(fontWeight: FontWeight.w700),
         ),
         subtitle: Text(
-          '${_statusLabel(status)} · due ${ukDate((inv['due_date'] ?? '').toString())}',
-          style:
-              const TextStyle(color: AccnomosColors.muted),
+          invoiceStatusLine(inv),
+          style: TextStyle(
+              color: invoiceOverdue(inv)
+                  ? const Color(0xFF8A470D)
+                  : AccnomosColors.muted,
+              fontWeight:
+                  invoiceOverdue(inv) ? FontWeight.w700 : FontWeight.w400),
         ),
         trailing: Text(
           gbp(total),
@@ -565,8 +568,10 @@ class _InvoiceDetailState extends State<InvoiceDetailScreen> {
                       .titleMedium),
               const SizedBox(height: 2),
               Text(
-                'Status: $status'
-                '${(inv['sent_to'] ?? '').toString().isNotEmpty ? ' · sent to ${inv['sent_to']}' : ''}',
+                invoiceStatusLine(inv) +
+                    ((inv['sent_to'] ?? '').toString().isNotEmpty
+                        ? ' · sent to ${inv['sent_to']}'
+                        : ''),
                 style: const TextStyle(
                     color: AccnomosColors.muted),
               ),
@@ -781,4 +786,47 @@ class _InvoiceDetailState extends State<InvoiceDetailScreen> {
       ),
     );
   }
+}
+
+/// Whether a sent invoice is past its due date with money still owed.
+bool invoiceOverdue(Map<String, dynamic> inv) {
+  final status = (inv['status'] ?? '').toString();
+  final days = (inv['days_overdue'] as num?)?.toInt() ?? 0;
+  final money = inv['money'];
+  final payment = money is Map ? (money['payment_status'] ?? '').toString() : '';
+  final pay = payment.isEmpty ? (inv['payment_status'] ?? '').toString() : payment;
+  return status == 'sent' && days > 0 && pay != 'paid' && pay != 'overpaid';
+}
+
+/// The status line for an invoice, from the runtime's own fields:
+/// "Draft", "Sent · due 24 Aug 2026", "Overdue 75 days · due 24 Aug 2026",
+/// "Part paid · £600.00 left · due …", "Paid", "Void".
+String invoiceStatusLine(Map<String, dynamic> inv) {
+  final status = (inv['status'] ?? '').toString();
+  final due = ukDate((inv['due_date'] ?? '').toString());
+  final money = inv['money'];
+  String field(String k) => money is Map && money[k] != null
+      ? money[k].toString()
+      : (inv[k] ?? '').toString();
+  final payment = field('payment_status');
+  final balance = num.tryParse(field('balance_pence'));
+  switch (status) {
+    case 'draft':
+      return 'Draft';
+    case 'void':
+      return 'Void';
+    case 'paid':
+      return 'Paid';
+  }
+  if (payment == 'paid' || payment == 'overpaid') return 'Paid';
+  final days = (inv['days_overdue'] as num?)?.toInt() ?? 0;
+  final parts = <String>[
+    if (invoiceOverdue(inv))
+      'Overdue $days ${days == 1 ? 'day' : 'days'}'
+    else
+      status == 'sent' ? 'Sent' : (status.isEmpty ? '—' : '${status[0].toUpperCase()}${status.substring(1)}'),
+    if (payment == 'part_paid' && balance != null) 'part paid, ${gbp(balance)} left',
+    if (due != '—' && due.isNotEmpty) 'due $due',
+  ];
+  return parts.join(' · ');
 }

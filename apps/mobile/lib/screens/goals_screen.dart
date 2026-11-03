@@ -4,7 +4,7 @@ import 'package:msal_auth/msal_auth.dart';
 import '../models/goals.dart';
 import '../services/app_mode.dart';
 import '../services/auth.dart';
-import '../services/books.dart' show booksClient, isoDate;
+import '../services/books.dart' show booksClient, isoDate, ukDate;
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
@@ -172,11 +172,23 @@ class _GoalsScreenState extends State<GoalsScreen> {
               onPressed: _loading ? null : _reload,
             ),
         ],
+        // A reload with goals already on screen: a thin bar under the title,
+        // never a spinner over the Add button.
+        bottom: _loading && _data != null
+            ? const PreferredSize(
+                preferredSize: Size.fromHeight(3),
+                child: LinearProgressIndicator(minHeight: 3),
+              )
+            : null,
       ),
       body: !_checked
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
-              onRefresh: _signedIn ? _reload : () async {},
+              // Return at once: the reload (the AI note can take a while)
+              // shows as the thin bar under the title instead.
+              onRefresh: () async {
+                if (_signedIn && !_loading) _reload();
+              },
               child: ListView(
                 padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
                 children: [
@@ -793,7 +805,7 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
                   style: OutlinedButton.styleFrom(
                       minimumSize: const Size.fromHeight(44)),
                   onPressed: () => _pick(true),
-                  child: Text('From ${isoDate(_start)}'),
+                  child: Text('From ${ukDate(isoDate(_start))}'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -803,7 +815,9 @@ class _AddGoalSheetState extends State<AddGoalSheet> {
                       minimumSize: const Size.fromHeight(44)),
                   onPressed: () => _pick(false),
                   child: Text(
-                      t == GoalTemplate.save ? 'By ${isoDate(_end)}' : 'To ${isoDate(_end)}'),
+                      t == GoalTemplate.save
+                          ? 'By ${ukDate(isoDate(_end))}'
+                          : 'To ${ukDate(isoDate(_end))}'),
                 ),
               ),
             ],
