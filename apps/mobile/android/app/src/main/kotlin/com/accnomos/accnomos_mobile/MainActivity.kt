@@ -1,7 +1,9 @@
 package com.accnomos.accnomos_mobile
 
 import android.content.Intent
+import android.graphics.PixelFormat
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.provider.ContactsContract
 import io.flutter.embedding.android.FlutterActivity
@@ -13,11 +15,17 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val CHANNEL = "accnomos/share"
         private const val CONTACTS_CHANNEL = "accnomos/phone-contacts"
+        private const val DEVICE_CHANNEL = "accnomos/device"
+        private const val HMRC_CHANNEL = "accnomos/hmrc"
         private const val PICK_CONTACT = 4711
     }
 
     /** Shared files staged into our cache dir, waiting for Dart to collect. */
     private val pending = mutableListOf<String>()
+
+    /** HMRC's answer handed back by accnomos.com/auth/hmrc-app.html (com.accnomos.app://hmrc/callback?...), until
+     *  Dart takes it (once). It holds a one-time PKCE code that is useless without the verifier the app keeps. */
+    private var hmrcCallback: String? = null
 
     /** The Dart call waiting for the system contact picker, if any. */
     private var pickResult: MethodChannel.Result? = null
@@ -73,7 +81,51 @@ class MainActivity : FlutterActivity() {
                     result.notImplemented()
                 }
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEVICE_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method == "facts") result.success(deviceFacts()) else result.notImplemented()
+            }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, HMRC_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method == "takeCallback") {
+                    result.success(hmrcCallback)
+                    hmrcCallback = null
+                } else {
+                    result.notImplemented()
+                }
+            }
         handleIntent(intent)
+    }
+
+    /**
+     * What the phone reports for HMRC's fraud-prevention headers (MOBILE_APP_VIA_SERVER: Gov-Client-User-Agent and
+     * the colour depth in Gov-Client-Screens) and the app version for Gov-Vendor-Version. A value Android does not
+     * give is left out, never guessed.
+     */
+    private fun deviceFacts(): Map<String, Any?> {
+        val out = mutableMapOf<String, Any?>(
+            "os_family" to "Android",
+            "os_version" to Build.VERSION.RELEASE,
+            "device_manufacturer" to Build.MANUFACTURER,
+            "device_model" to Build.MODEL,
+        )
+        runCatching {
+            @Suppress("DEPRECATION")
+            val format = windowManager.defaultDisplay.pixelFormat
+            // Colour bits only (no alpha), as a browser's screen.colorDepth reports them.
+            val depth = when (format) {
+                PixelFormat.RGBA_8888, PixelFormat.RGBX_8888, PixelFormat.RGB_888 -> 24
+                PixelFormat.RGB_565 -> 16
+                else -> PixelFormat().also { PixelFormat.getPixelFormatInfo(format, it) }.bitsPerPixel
+            }
+            if (depth > 0) out["colour_depth"] = depth
+        }
+        runCatching {
+            @Suppress("DEPRECATION")
+            val info = packageManager.getPackageInfo(packageName, 0)
+            out["app_version"] = info.versionName
+        }
+        return out
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -157,6 +209,14 @@ class MainActivity : FlutterActivity() {
 
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return
+        if (intent.action == Intent.ACTION_VIEW) {
+            val data = intent.data
+            if (data != null && data.scheme == "com.accnomos.app" && data.host == "hmrc") {
+                hmrcCallback = data.toString()
+                intent.data = null // taken: a later configuration change must not hand it over again
+            }
+            return
+        }
         when (intent.action) {
             Intent.ACTION_SEND -> {
                 val uri = intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)

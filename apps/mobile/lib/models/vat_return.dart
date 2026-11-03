@@ -12,6 +12,9 @@ class VatReturn {
     required this.boxes,
     required this.warnings,
     required this.eventsInPeriod,
+    this.canSubmit = false,
+    this.hmrcBody = const {},
+    this.eventIds = const [],
   });
 
   final String periodKey;
@@ -24,6 +27,15 @@ class VatReturn {
   final List<VatBox> boxes;
   final List<String> warnings;
   final int eventsInPeriod;
+
+  /// The current or previous period, not yet submitted (the runtime decides).
+  final bool canSubmit;
+
+  /// The 11 HMRC fields, computed by code from the ledger (`hmrc_body`).
+  final Map<String, dynamic> hmrcBody;
+
+  /// The ledger entries the boxes count, saved with a submitted return.
+  final List<String> eventIds;
 
   factory VatReturn.fromJson(Map<String, dynamic> json) {
     final boxes = <VatBox>[];
@@ -50,6 +62,13 @@ class VatReturn {
       boxes: boxes,
       warnings: warnings,
       eventsInPeriod: (json['events_in_period'] as num?)?.toInt() ?? 0,
+      canSubmit: json['can_submit'] == true,
+      hmrcBody: json['hmrc_body'] is Map
+          ? Map<String, dynamic>.from(json['hmrc_body'] as Map)
+          : const {},
+      eventIds: [
+        for (final e in (json['event_ids'] as List?) ?? const []) e.toString(),
+      ],
     );
   }
 }
@@ -67,6 +86,10 @@ class VatBox {
   final String label;
   final String amount;
   final int entries;
+
+  /// The amount as the web shows it: boxes 1–5 to the penny, boxes 6–9 in
+  /// whole pounds, with thousands separators (£3,807.33; £19,288).
+  String get display => formatPounds(amount, whole: box >= 6);
 
   factory VatBox.fromJson(Map<String, dynamic> json) {
     return VatBox(
@@ -125,4 +148,22 @@ class VatPeriod {
                 : 'nothing recorded';
     return '$label · $what';
   }
+}
+
+/// `£1,234.56` from a pounds string or number; `whole` drops the pence (boxes
+/// 6–9 are whole pounds). A minus sign goes before the pound sign.
+String formatPounds(Object? amount, {bool whole = false}) {
+  final n = num.tryParse('${amount ?? 0}') ?? 0;
+  final negative = n < 0;
+  final abs = n.abs();
+  final pence = whole ? abs.truncate() * 100 : (abs * 100).round();
+  final pounds = pence ~/ 100;
+  final digits = pounds.toString();
+  final grouped = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) grouped.write(',');
+    grouped.write(digits[i]);
+  }
+  final tail = whole ? '' : '.${(pence % 100).toString().padLeft(2, '0')}';
+  return '${negative ? '-' : ''}£$grouped$tail';
 }
