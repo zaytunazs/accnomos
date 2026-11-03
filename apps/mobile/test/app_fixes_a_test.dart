@@ -120,6 +120,15 @@ void main() {
       expect(householdAskQuestions.any((q) => q.contains('VAT')), isFalse);
       expect(askIntro(household: false, model: 'm'), contains('VAT quarter'));
     });
+
+    test('a refused voice question reads as the runtime\'s sentence', () {
+      expect(
+          voiceErrorText(RuntimeException(
+              'The reader refused that request (status 422). '
+              '{"detail":"Didn\'t catch any words in that recording"}')),
+          "Didn't catch any words in that recording.");
+      expect(voiceErrorText(RuntimeException('Offline.')), 'Offline.');
+    });
   });
 
   group('demo', () {

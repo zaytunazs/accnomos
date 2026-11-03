@@ -71,6 +71,20 @@ String? voiceOffReason(String aiMode, Map<String, dynamic>? health) {
   return null;
 }
 
+/// A voice upload's refusal in plain words: the runtime's own `detail`
+/// sentence ("Didn't catch any words…") rather than the status and JSON.
+String voiceErrorText(Object e) {
+  final text = e.toString().replaceFirst('Exception: ', '').trim();
+  final m = RegExp(r'"detail"\s*:\s*"((?:[^"\\]|\\.)*)"').firstMatch(text);
+  if (m != null) {
+    final detail = m.group(1)!.replaceAll(r'\"', '"').trim();
+    if (detail.isNotEmpty) {
+      return RegExp(r'[.!?]$').hasMatch(detail) ? detail : '$detail.';
+    }
+  }
+  return text;
+}
+
 /// A spoken question's "Spoken" label, with the service that heard it.
 String spokenLabel(String? heardBy) =>
     heardBy == null ? 'Spoken' : 'Spoken · Transcribed by $heardBy';
@@ -508,9 +522,7 @@ class _AskScreenState extends State<AskScreen> {
       if (!mounted) return;
       setState(() {
         _sendingVoice = false;
-        _voiceError =
-            '${e.toString().replaceFirst('Exception: ', '')} '
-            'Type your question instead.';
+        _voiceError = '${voiceErrorText(e)} Type your question instead.';
       });
     } finally {
       if (mounted) _scrollToEnd();
