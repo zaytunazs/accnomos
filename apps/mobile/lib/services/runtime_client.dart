@@ -1129,6 +1129,28 @@ class RuntimeClient {
       _map('PUT', '/contacts/${_seg(id)}',
           body: edits, what: 'save that contact');
 
+  /// `GET /contacts/import/{outlook|email}`: every row of that source, each
+  /// marked when it is already in the books (`existing_id`, `match`).
+  /// Outlook needs `Contacts.Read` on the token, email `Mail.Read`.
+  Future<Map<String, dynamic>> importPreview(String source) =>
+      _map('GET', '/contacts/import/$source', what: 'read that list');
+
+  /// `POST /contacts/import/check`: the same marking for the phone's rows.
+  Future<Map<String, dynamic>> importCheck(
+          List<Map<String, dynamic>> rows) =>
+      _map('POST', '/contacts/import/check',
+          body: {'contacts': rows}, what: 'check those contacts');
+
+  /// `POST /contacts/import`: save the ticked rows (`name`, `person`,
+  /// `email`, `phone`, `kind`). Ones already in the books are skipped; the
+  /// answer carries `message` ("Imported 10, skipped 2 already in your
+  /// books.").
+  Future<Map<String, dynamic>> importContacts(
+          String source, List<Map<String, dynamic>> rows) =>
+      _map('POST', '/contacts/import',
+          body: {'source': source, 'contacts': rows},
+          what: 'import those contacts');
+
   /// `POST /contacts/import-outlook`. The Graph token must carry
   /// `Contacts.Read`.
   Future<Map<String, dynamic>> importOutlookContacts({bool addNew = false}) =>

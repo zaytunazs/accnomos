@@ -1,6 +1,8 @@
 package com.accnomos.accnomos_mobile
 
+import android.Manifest
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.PixelFormat
 import android.net.Uri
 import android.os.Build
@@ -18,6 +20,8 @@ class MainActivity : FlutterActivity() {
         private const val DEVICE_CHANNEL = "accnomos/device"
         private const val HMRC_CHANNEL = "accnomos/hmrc"
         private const val PICK_CONTACT = 4711
+        private const val READ_CONTACTS_REQUEST = 4712
+        private const val MAX_PHONE_CONTACTS = 3000
     }
 
     /** Shared files staged into our cache dir, waiting for Dart to collect. */
@@ -30,9 +34,13 @@ class MainActivity : FlutterActivity() {
     /** The Dart call waiting for the system contact picker, if any. */
     private var pickResult: MethodChannel.Result? = null
 
+    /** The Dart call waiting for the Contacts permission answer (Import contacts › Phone), if any. */
+    private var listResult: MethodChannel.Result? = null
+
     /**
      * The system contact picker (ACTION_PICK on Contacts). It returns the contact's URI with a one-time read grant,
-     * so the app needs no `READ_CONTACTS` permission (nothing is added to the manifest). FlutterActivity is not a
+     * so picking one needs no `READ_CONTACTS` permission (Import contacts › Phone, which lists them all, does ask for
+     * it then). FlutterActivity is not a
      * ComponentActivity, so this uses startActivityForResult rather than registerForActivityResult.
      */
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
@@ -66,7 +74,9 @@ class MainActivity : FlutterActivity() {
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CONTACTS_CHANNEL)
             .setMethodCallHandler { call, result ->
-                if (call.method == "pickContact") {
+                if (call.method == "listContacts") {
+                    listContacts(result)
+                } else if (call.method == "pickContact") {
                     if (pickResult != null) {
                         result.error("BUSY", "A contact pick is already open.", null)
                     } else {
@@ -137,6 +147,95 @@ class MainActivity : FlutterActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleIntent(intent)
+    }
+
+    /**
+     * Import contacts › Phone: every contact on the phone (name, company, emails, phones), read on the phone only.
+     * Needs READ_CONTACTS, asked for at the moment the user opens the Phone list (never at start-up). Only the rows
+     * the user then ticks are sent to their books; nothing is ever written to the phone.
+     */
+    private fun listContacts(result: MethodChannel.Result) {
+        if (checkSelfPermission(Manifest.permission.READ_CONTACTS) == PackageManager.PERMISSION_GRANTED) {
+            readAllContacts(result)
+            return
+        }
+        if (listResult != null) {
+            result.error("BUSY", "Already asking for the Contacts permission.", null)
+            return
+        }
+        listResult = result
+        requestPermissions(arrayOf(Manifest.permission.READ_CONTACTS), READ_CONTACTS_REQUEST)
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != READ_CONTACTS_REQUEST) return
+        val result = listResult ?: return
+        listResult = null
+        if (grantResults.isNotEmpty() && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+            readAllContacts(result)
+        } else {
+            result.error("DENIED", "Contacts permission was not given.", null)
+        }
+    }
+
+    private fun readAllContacts(result: MethodChannel.Result) {
+        Thread {
+            try {
+                val out = allContacts()
+                runOnUiThread { result.success(out) }
+            } catch (_: Exception) {
+                runOnUiThread { result.error("READ_FAILED", "Could not read the phone's contacts.", null) }
+            }
+        }.start()
+    }
+
+    private fun allContacts(): List<Map<String, Any?>> {
+        data class Row(val name: String, val emails: MutableList<String>, val phones: MutableList<String>, var company: String?)
+        val rows = linkedMapOf<String, Row>()
+        contentResolver.query(
+            ContactsContract.Contacts.CONTENT_URI,
+            arrayOf(ContactsContract.Contacts._ID, ContactsContract.Contacts.DISPLAY_NAME),
+            null, null, "${ContactsContract.Contacts.DISPLAY_NAME} COLLATE NOCASE ASC",
+        )?.use { c ->
+            while (c.moveToNext() && rows.size < MAX_PHONE_CONTACTS) {
+                val id = c.getString(0) ?: continue
+                val name = c.getString(1)?.trim().orEmpty()
+                if (name.isNotEmpty()) rows[id] = Row(name, mutableListOf(), mutableListOf(), null)
+            }
+        }
+        contentResolver.query(
+            ContactsContract.Data.CONTENT_URI,
+            arrayOf(
+                ContactsContract.Data.CONTACT_ID,
+                ContactsContract.Data.MIMETYPE,
+                ContactsContract.Data.DATA1,
+            ),
+            "${ContactsContract.Data.MIMETYPE} IN (?, ?, ?)",
+            arrayOf(
+                ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE,
+                ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE,
+                ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE,
+            ),
+            null,
+        )?.use { c ->
+            while (c.moveToNext()) {
+                val row = rows[c.getString(0) ?: continue] ?: continue
+                val value = c.getString(2)?.trim().orEmpty()
+                if (value.isEmpty()) continue
+                when (c.getString(1)) {
+                    ContactsContract.CommonDataKinds.Email.CONTENT_ITEM_TYPE ->
+                        if (row.emails.size < 5 && value !in row.emails) row.emails.add(value)
+                    ContactsContract.CommonDataKinds.Phone.CONTENT_ITEM_TYPE ->
+                        if (row.phones.size < 5 && value !in row.phones) row.phones.add(value)
+                    ContactsContract.CommonDataKinds.Organization.CONTENT_ITEM_TYPE ->
+                        if (row.company == null) row.company = value
+                }
+            }
+        }
+        return rows.values.map {
+            mapOf("name" to it.name, "emails" to it.emails, "phones" to it.phones, "company" to it.company)
+        }
     }
 
     /**

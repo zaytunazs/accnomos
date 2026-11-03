@@ -12,9 +12,11 @@ class PickedPhoneContact {
     this.emails = const [],
     this.phones = const [],
     this.address,
+    this.company,
   });
 
   final String name;
+  final String? company;
   final List<String> emails;
   final List<String> phones;
   final String? address;
@@ -40,6 +42,32 @@ class PhoneContacts {
       : channel = channel ?? const MethodChannel('accnomos/phone-contacts');
 
   final MethodChannel channel;
+
+  /// Every contact on the phone (Import contacts › Phone). Asks for the
+  /// Contacts permission the first time; throws a [PlatformException] with
+  /// code `DENIED` when the user refuses. Read-only.
+  Future<List<PickedPhoneContact>> listAll() async {
+    final raw = await channel.invokeMethod<List<Object?>>('listContacts');
+    List<String> strings(Object? value) => [
+          if (value is List)
+            for (final v in value)
+              if (v.toString().trim().isNotEmpty) v.toString().trim(),
+        ];
+    final out = <PickedPhoneContact>[];
+    for (final item in raw ?? const <Object?>[]) {
+      if (item is! Map) continue;
+      final name = (item['name'] ?? '').toString().trim();
+      if (name.isEmpty) continue;
+      final company = (item['company'] ?? '').toString().trim();
+      out.add(PickedPhoneContact(
+        name: name,
+        emails: strings(item['emails']),
+        phones: strings(item['phones']),
+        company: company.isEmpty ? null : company,
+      ));
+    }
+    return out;
+  }
 
   /// Show the picker once. Returns null when the user backs out.
   Future<PickedPhoneContact?> pickContact() async {

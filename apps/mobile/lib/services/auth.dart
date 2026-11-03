@@ -116,6 +116,10 @@ class AuthService {
   /// the user first taps "Check inbox" — never at sign-in.
   static const mailReadScopes = ['Mail.Read'];
 
+  /// Extra scope for listing Outlook contacts in Import contacts. Asked for
+  /// only when the user opens that list — never at sign-in.
+  static const contactsReadScopes = ['Contacts.Read'];
+
   /// Extra scope for saving a reply as an Outlook draft. Asked for only when
   /// the user first taps "Save draft in Outlook" — never at sign-in.
   static const mailReadWriteScopes = ['Mail.ReadWrite'];
