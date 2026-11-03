@@ -63,6 +63,9 @@ class AppMode {
   /// profile switch, or a pull to refresh). Never throws: on any failure the
   /// app keeps what it knew, as the More tab does.
   static Future<void> refresh() async {
+    // Never notify during the caller's build (the shell calls this from
+    // initState): the first change lands after the current frame's work.
+    await Future<void>.value();
     final auth = AuthService();
     try {
       final demo = Demo.current;
