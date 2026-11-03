@@ -52,7 +52,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(fake.months, ['2026-10']);
     expect(find.text('October: 1 thing needs you before close.'), findsOneWidget);
-    expect(find.text('1  INBOX'), findsOneWidget);
+    expect(find.text('1  Inbox'), findsOneWidget);
     expect(find.text('Needs you'), findsOneWidget);
     expect(find.text('Blocks the close: 1 document in 00 Inbox not read yet.'), findsOneWidget);
     expect(find.textContaining('approve its cards on the web'), findsOneWidget);

@@ -72,16 +72,16 @@ ThemeData accnomosTheme() {
     scaffoldBackgroundColor: AccnomosColors.ground,
     dividerColor: AccnomosColors.border,
     textTheme: const TextTheme(
-      headlineMedium: TextStyle(
-          fontWeight: FontWeight.w700, color: AccnomosColors.ink, height: 1.2),
-      headlineSmall: TextStyle(
-          fontWeight: FontWeight.w700, color: AccnomosColors.ink, height: 1.2),
-      titleLarge: TextStyle(
-          fontWeight: FontWeight.w700, color: AccnomosColors.ink, height: 1.2),
+      headlineMedium:
+          TextStyle(fontWeight: FontWeight.w700, color: AccnomosColors.ink),
+      headlineSmall:
+          TextStyle(fontWeight: FontWeight.w700, color: AccnomosColors.ink),
+      titleLarge:
+          TextStyle(fontWeight: FontWeight.w700, color: AccnomosColors.ink),
       titleMedium:
           TextStyle(fontWeight: FontWeight.w600, color: AccnomosColors.ink),
-      bodyLarge: TextStyle(color: AccnomosColors.ink, height: 1.5),
-      bodyMedium: TextStyle(color: AccnomosColors.ink, height: 1.5),
+      bodyLarge: TextStyle(color: AccnomosColors.ink),
+      bodyMedium: TextStyle(color: AccnomosColors.ink),
       bodySmall: TextStyle(color: AccnomosColors.muted),
       labelLarge: TextStyle(fontWeight: FontWeight.w600),
     ),
