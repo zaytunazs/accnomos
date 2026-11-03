@@ -133,7 +133,7 @@ def test_android_manifest_asks_for_little_and_is_not_backed_up():
     manifest = (ROOT / "apps/mobile/android/app/src/main/AndroidManifest.xml").read_text()
     code = re.sub(r"<!--.*?-->", "", manifest, flags=re.S)
     perms = set(re.findall(r'<uses-permission android:name="android\.permission\.([A-Z_]+)"', code))
-    # READ_CONTACTS: Contacts › Import contacts › Phone, asked for only when that list opens (Play data safety declares it)
+    # READ_CONTACTS: Contacts › Import contacts › Phone, asked for only when that list opens
     assert perms == {"CAMERA", "RECORD_AUDIO", "INTERNET", "ACCESS_NETWORK_STATE", "READ_CONTACTS"}
     assert 'android:allowBackup="false"' in code
     assert "android:debuggable" not in code
