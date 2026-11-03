@@ -714,15 +714,17 @@ def _fee_rows(plan: Plan) -> list[tuple[date, str, str, str, int]]:
 
 def comparatives(today: date) -> list[tuple[date, int, int, int]]:
     """One month a row from 1 January last year to this day a year ago (the span Home compares the year to date
-    with). Round, plausible figures for a small joinery firm; deterministic for the day."""
+    with). Round figures sized to the seeded year (a few months of sales, a few thousand pounds), so this year
+    against last reads as an ordinary year-on-year change (roughly -25% to +10% here) rather than a collapse;
+    deterministic for the day."""
     end = today.replace(year=today.year - 1) if (today.month, today.day) != (2, 29) else date(today.year - 1, 2, 28)
     out: list[tuple[date, int, int, int]] = []
     for m in range(1, end.month + 1):
         last = date(end.year, m, calendar.monthrange(end.year, m)[1])
         day = min(last, end)
         season = (0, 2, 4, 6, 7, 8, 8, 7, 6, 5, 3, 1)[m - 1]  # busier in summer
-        sales = 1_150_000 + season * 60_000
-        out.append((day, sales, sales * 38 // 100, 260_000 + season * 5_000))
+        sales = 200_000 + season * 10_000
+        out.append((day, sales, sales * 14 // 100, 30_000 + season * 1_000))
     return out
 
 

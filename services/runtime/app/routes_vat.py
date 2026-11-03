@@ -84,6 +84,14 @@ class VatAdjustment(BaseModel):
     vat_pence: int  # signed, as it counts in box 1 or 4
 
 
+class DuePeriodHint(BaseModel):
+    period: str  # pass back as ?period=
+    start: date
+    end: date
+    label: str
+    deadline: date
+
+
 class VatReturnView(BaseModel):
     period_key: str
     start: date
@@ -103,6 +111,12 @@ class VatReturnView(BaseModel):
     undone_in_period: int  # reversing events among them (each nets off the entry it reverses)
     adjustments: list[VatAdjustment] = []  # journals and recodes in the boxes, listed on the VAT page
     scheme: SchemeView | None = None  # flat rate, cash or annual accounting in use: how the boxes were worked out
+    # Box 5 is the absolute difference (as HMRC takes it): "pay" when Box 3 > Box 4, "reclaim" when HMRC owes the
+    # business, "nil" when they are equal. Box 5's label says the same in words.
+    box5_direction: Literal["pay", "reclaim", "nil"] = "pay"
+    # The ended period whose return is still to file (not submitted, deadline not passed): the one Home's VAT tile
+    # shows with its due date, so a client can open on it instead of the period we are in now.
+    due_period: DuePeriodHint | None = None
 
 
 LABELS = {
@@ -110,7 +124,7 @@ LABELS = {
     2: "VAT due on acquisitions from NI/EU",
     3: "Total VAT due (1 + 2)",
     4: "VAT reclaimed on purchases",
-    5: "Net VAT to pay HMRC (3 − 4)",
+    5: "Net VAT to pay HMRC (3 − 4)",  # "Net VAT to reclaim from HMRC (4 − 3)" when Box 4 is larger (BOX5_RECLAIM)
     6: "Total sales excluding VAT",
     7: "Total purchases excluding VAT",
     8: "Supplies of goods to NI/EU",
@@ -186,6 +200,22 @@ def _resolve(
     return ctx.current(today)
 
 
+BOX5_RECLAIM = "Net VAT to reclaim from HMRC (4 − 3)"
+BOX5_NIL = "Net VAT (3 − 4): nothing to pay or reclaim"
+
+
+def due_period_hint(ctx: SchemeContext, today: date, submitted: set[tuple[date, date]]) -> DuePeriodHint | None:
+    """The period before the current one, while its return is still to file and not yet past its deadline."""
+    cur_start, _ = ctx.current(today)
+    start, end = ctx.previous(cur_start)
+    deadline = ctx.deadline(start, end)
+    if (start, end) in submitted or deadline < today:
+        return None
+    return DuePeriodHint(
+        period=ctx.period_id(start, end), start=start, end=end, label=period_label(start, end), deadline=deadline
+    )
+
+
 def can_submit(start: date, ctx: SchemeContext, today: date, submitted: bool) -> bool:
     """Only the current period or the one just before it, and only while it hasn't been submitted."""
     cur_start, _ = ctx.current(today)
@@ -247,10 +277,14 @@ async def vat_return(
         if e.kind == "adjustment" and e.vat_box
     ]
     amounts = box_amounts(ret)
-    receipt_key = (await submitted_periods(books)).get((start, end))
-    fulfilled = next(
-        (o for o in await read_obligations(books) if (o.start, o.end) == (start, end) and o.status == "F"), None
-    )
+    receipts = await submitted_periods(books)
+    obligations = await read_obligations(books)
+    receipt_key = receipts.get((start, end))
+    fulfilled = next((o for o in obligations if (o.start, o.end) == (start, end) and o.status == "F"), None)
+    done = set(receipts) | {(o.start, o.end) for o in obligations if o.status == "F"}
+    diff = ret.total_vat_due - ret.vat_reclaimed
+    direction: Literal["pay", "reclaim", "nil"] = "pay" if diff > 0 else "reclaim" if diff < 0 else "nil"
+    labels = {**LABELS, 5: BOX5_RECLAIM if direction == "reclaim" else BOX5_NIL if direction == "nil" else LABELS[5]}
     if fulfilled is not None:
         period_key, submitted, source, received = fulfilled.periodKey, True, "hmrc", fulfilled.received
     elif receipt_key is not None:
@@ -268,7 +302,7 @@ async def vat_return(
         submitted_source=source,
         received=received,
         can_submit=can_submit(start, ctx, today, submitted),
-        boxes=[VatBox(box=i, label=LABELS[i], amount=amounts[i], entries=counts[i]) for i in range(1, 10)],
+        boxes=[VatBox(box=i, label=labels[i], amount=amounts[i], entries=counts[i]) for i in range(1, 10)],
         event_ids=ret.event_ids,
         warnings=ret.warnings,
         hmrc_body=ret.to_hmrc(finalised=False),
@@ -276,6 +310,8 @@ async def vat_return(
         undone_in_period=sum(1 for e in events if e.kind == "reversal"),
         adjustments=sorted(adjustments, key=lambda a: (a.date, a.name)),
         scheme=scheme,
+        box5_direction=direction,
+        due_period=due_period_hint(ctx, today, done),
     )
 
 

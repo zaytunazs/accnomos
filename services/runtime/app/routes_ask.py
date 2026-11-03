@@ -30,7 +30,8 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Upload
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
-from app import actions, jobs, spending
+from app import actions, ask_more, jobs, spending
+from app import dashboard as dash
 from app.ai import ask as ask_ai
 from app.ai import spending as spending_ai
 from app.ai import stt, voice
@@ -129,6 +130,11 @@ async def _prepare(
         period = AskPeriod(start=start, end=end)
     if (day := plan_intent(req.question, today(TZ))) is not None:
         return plan_answer(day, period)
+    prof = await dash._profile_or_default(books)  # noqa: SLF001 - the same lenient profile read Home uses
+    if prof.kind == "personal":  # a household has no VAT return: its questions are about its bank lines
+        return await ask_more.household_answer(req.question, books, cfg, period, today(TZ))
+    if (side := ask_more.owed_intent(req.question)) is not None:  # the aged balances Home shows
+        return await ask_more.owed_answer(req.question, side, books, cfg, period, today(TZ))
     if spending.asks_for_summary(req.question):
         return await spending_answer(books, period, cfg, business)
     found = await actions.propose(req.question, books, cfg, token, today(TZ))  # the same day as the plan and VAT period

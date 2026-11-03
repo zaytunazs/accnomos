@@ -37,7 +37,6 @@ from accnomos_ledger.bank import BankLine
 from app import personal as pf
 from app import reports as rp
 from app.books import SYSTEM, Books, now
-from app.facts import pounds
 from app.purchases import Purchase, load_purchases
 from app.validation import LENIENT, Day, Pence, StrictBody
 
@@ -48,10 +47,13 @@ MAX_PENCE = 10_000_000_000
 GoalKind = Literal["save", "spend_cap", "spend_less", "earn"]
 GoalScope = Literal["business", "personal"]
 Measure = Literal["manual", "net_cash"]
-Status = Literal["not_started", "on_track", "at_risk", "off_track", "reached", "missed", "over_limit", "no_data"]
+Status = Literal[
+    "not_started", "just_started", "on_track", "at_risk", "off_track", "reached", "missed", "over_limit", "no_data"
+]
 
 STATUS_LABELS: dict[str, str] = {
     "not_started": "Not started",
+    "just_started": "Just started",
     "on_track": "On track",
     "at_risk": "At risk",
     "off_track": "Off track",
@@ -63,6 +65,7 @@ STATUS_LABELS: dict[str, str] = {
 # How a status should look: favourable / warning / negative / neutral (the web maps these to badge styles).
 TONE: dict[str, str] = {
     "not_started": "neutral",
+    "just_started": "neutral",
     "on_track": "positive",
     "at_risk": "warning",
     "off_track": "negative",
@@ -82,6 +85,8 @@ ON_TRACK_SHARE = 0.95  # save / earn: at least 95% of the even-pace amount
 AT_RISK_SHARE = 0.75  # at least 75%: at risk; below: off track
 OVER_PACE_SLACK = 1.15  # spending: up to 15% over the even pace is "at risk"
 MIN_SHARE_FOR_RUN_RATE = 0.1  # a run-rate is only shown once a tenth of the period has gone
+GRACE_DAYS = 3  # no pace judgement in a goal's first days (from its start, or from when it was set up if later)
+GRACE_SHARE = 0.1  # ... or before a tenth of its period has gone
 DRIVERS = 4
 
 
@@ -474,6 +479,14 @@ def drivers(data: Ledgerish, goal: Goal, start: date, end: date) -> list[Driver]
     return out
 
 
+def just_started(goal: Goal, today: date, current: int) -> bool:
+    """Too early to judge the pace: the goal's first days or first tenth, or it was set up in the last few days and
+    nothing has counted towards it yet (a goal added today is not "off track" because nothing is recorded)."""
+    if (today - goal.start).days < GRACE_DAYS or _share(goal, today) < GRACE_SHARE:
+        return True
+    return current == 0 and (today - goal.created_at.date()).days < GRACE_DAYS
+
+
 def _status_up(current: int, target: int, plan: int, goal: Goal, today: date) -> Status:
     """save / earn: more is better."""
     if current >= target:
@@ -580,11 +593,15 @@ def progress(goal: Goal, data: Ledgerish, today: date) -> GoalProgress:
         status = _status_up(current, target, plan, goal, today)
     else:
         status = _status_down(current, target, plan, goal, today)
+    if status in ("at_risk", "off_track") and just_started(goal, today, current):
+        status = "just_started"  # too early to call the pace: a goal set up today is not "off track"
 
     up = goal.kind in ("save", "earn")
     variance = (current - plan) if up else (plan - current)
     if not started:
         vtext = f"Starts {day_label(goal.start)}."
+    elif status == "just_started":
+        vtext = "Just started: too early to judge the pace."
     elif status == "reached" and up:
         vtext = f"Target reached: {gbp(current)} of {gbp(target)}."
     elif up:
@@ -657,7 +674,8 @@ def suggestions(p: GoalProgress) -> list[str]:
         if not grew and p.drivers and worried:
             d = p.drivers[0]
             out.append(f"Your largest spending here is {d.name}: {gbp(d.this_pence)} so far.")
-    if g.kind == "save" and g.measure == "manual" and p.status != "reached":
+    behind = p.variance_pence is not None and p.variance_pence < 0
+    if g.kind == "save" and g.measure == "manual" and p.status != "reached" and behind:
         out.append("Record what you put aside as you go, so the progress stays current.")
     if g.kind == "earn" and worried and p.needed_text:
         out.append(p.needed_text)
@@ -696,7 +714,9 @@ async def load_data(books: Books, goals: Sequence[Goal], household: bool, today:
 
 
 def facts(progress_list: Sequence[GoalProgress], today: date) -> dict[str, Any]:
-    """What the model may word: every figure as pounds strings, exactly as code worked it out."""
+    """What the model may word: every amount already written as money ("£521.80"), and the difference from plan
+    in words ("£360.45 over the limit"), exactly as code worked it out, so the note never quotes a bare or signed
+    figure."""
     out = []
     for p in progress_list:
         g = p.goal
@@ -707,24 +727,25 @@ def facts(progress_list: Sequence[GoalProgress], today: date) -> dict[str, Any]:
                 "focus": g.focus,
                 "dates": p.period_label,
                 "status": p.status_label,
-                "so_far": pounds(p.current_pence),
-                "target_or_limit": pounds(p.target_pence) if p.target_pence is not None else None,
-                "plan_to_date": pounds(p.plan_to_date_pence) if p.plan_to_date_pence is not None else None,
-                "difference_from_plan": pounds(p.variance_pence) if p.variance_pence is not None else None,
+                "so_far": gbp(p.current_pence),
+                "target_or_limit": gbp(p.target_pence) if p.target_pence is not None else None,
+                "plan_to_date": gbp(p.plan_to_date_pence) if p.plan_to_date_pence is not None else None,
+                "against_plan": p.variance_text,
                 "cut_percent": g.percent,
-                "comparison": pounds(p.baseline_pence) if p.baseline_pence is not None else None,
+                "comparison": gbp(p.baseline_pence) if p.baseline_pence is not None else None,
                 "days_left": p.days_left,
                 "still_needed": p.needed_text,
                 "biggest_movers": [
                     {
                         "name": d.name,
-                        "this_span": pounds(d.this_pence),
-                        "span_before": pounds(d.before_pence),
-                        "change": pounds(d.change_pence),
+                        "this_span": gbp(d.this_pence),
+                        "span_before": gbp(d.before_pence),
+                        "up_by": gbp(d.change_pence) if d.change_pence > 0 else None,
+                        "down_by": gbp(-d.change_pence) if d.change_pence < 0 else None,
                     }
                     for d in p.drivers
                 ],
                 "code_suggestions": p.suggestions,
             }
         )
-    return {"today": today.isoformat(), "money": "GBP pounds", "goals": out}
+    return {"today": day_label(today), "goals": out}

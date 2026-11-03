@@ -537,8 +537,9 @@ def household_facts(h: Household, today: date) -> dict[str, Any]:
             for c in h.this_month.categories
             if c.state == "near"
         ],
-        "uncategorised_lines": h.this_month.uncategorised_count,
     }
+    if h.this_month.uncategorised_count:
+        out["uncategorised_lines"] = h.this_month.uncategorised_count
     b = h.next_bill
     if b:
         out["next_bill"] = {
@@ -622,10 +623,13 @@ def summary_facts(d: dash.Dashboard, o: dict[str, Any]) -> dict[str, Any]:
     att = d.attention if isinstance(d.attention, dash.Attention) else None
     if att and personal:
         # A household matches no bank lines to a ledger: what waits is receipts in Review and lines with no category.
-        facts["needs_doing"] = {
+        # Only counts above zero: "there are 0 receipts in Review" is not worth a sentence in a household's summary.
+        todo = {
             "in_review": att.proposed + att.needs_a_look,
             "uncategorised_bank_lines": hh.this_month.uncategorised_count if hh else 0,
         }
+        if todo := {k: v for k, v in todo.items() if v}:
+            facts["needs_doing"] = todo
     elif att:
         facts["needs_doing"] = {
             "in_review": att.proposed + att.needs_a_look,
@@ -638,7 +642,9 @@ def summary_facts(d: dash.Dashboard, o: dict[str, Any]) -> dict[str, Any]:
     a: Aged | None = None if personal else o["aged"]
     if a and a.creditors.overdue_pence:
         facts["bills_overdue"] = gbp(a.creditors.overdue_pence)
-    ds: list[Due] = o["deadlines"]
+    # The next deadline still ahead (today counts): a date already gone, such as a draft pay run's pay date, is not
+    # what comes next (the Deadlines card still lists it).
+    ds: list[Due] = [x for x in o["deadlines"] if x.days_left >= 0]
     if ds:
         facts["next_deadline"] = {"what": ds[0].title, "due": day(ds[0].due), "days_left": ds[0].days_left}
     return facts

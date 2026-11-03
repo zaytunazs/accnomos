@@ -13,6 +13,7 @@ import { runtimeHeaders } from "./runtime";
 export type GoalKind = "save" | "spend_cap" | "spend_less" | "earn";
 export type GoalStatus =
   | "not_started"
+  | "just_started"
   | "on_track"
   | "at_risk"
   | "off_track"
@@ -142,6 +143,7 @@ const URGENCY: Record<GoalStatus, number> = {
   missed: 0,
   at_risk: 1,
   on_track: 2,
+  just_started: 3,
   no_data: 3,
   not_started: 4,
   reached: 5,

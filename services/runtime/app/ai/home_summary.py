@@ -34,7 +34,8 @@ SYSTEM_PROMPT = (
     'does not have. 5) A household (FACTS.kind is "personal") is not a business: cover, in this order, money in, '
     "money out and what was left this month against last month (FACTS.household), any budgets over or near their "
     "limit, what needs doing (receipts in Review, bank lines with no category), and the next regular bill, saying "
-    "its date is an estimate; never mention VAT, turnover, profit or invoices. Return JSON with `summary_md`."
+    "its date is an estimate; never mention VAT, turnover, profit or invoices, and never mention a count of zero "
+    '("0 receipts", "0 bank lines"): leave it out. Return JSON with `summary_md`.'
 )
 
 LINK = re.compile(r"https?://|www\.", re.IGNORECASE)

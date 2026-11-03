@@ -223,7 +223,7 @@ def test_routes_add_list_patch_delete(client: TestClient) -> None:
     assert client.post("/books/goals", headers=H, json={**body, "end": "2026-01-01"}).status_code == 422
     view = client.get("/books/goals?today=2026-11-15&note_ai=false", headers=H).json()
     assert view["goals"][0]["current_pence"] == 10000 and view["note"]["model"] == "code"
-    assert view["facts"]["goals"][0]["so_far"] == "100.00"
+    assert view["facts"]["goals"][0]["so_far"] == "£100.00"
     r = client.patch(f"/books/goals/{gid}", headers=H, json={"saved_pence": 25000})
     assert r.status_code == 200 and r.json()["saved_pence"] == 25000
     assert client.patch(f"/books/goals/{gid}", headers=H, json={"end": "2020-01-01"}).status_code == 422
@@ -239,3 +239,48 @@ def test_regular_bills_are_not_biggest_movers_but_still_count() -> None:
     p = gm.progress(g, data, TODAY)
     assert p.current_pence == 127000  # the rent still counts in the total
     assert all("Rent" not in d.name for d in p.drivers) and p.drivers[0].name in ("Eating out", "Costa Coffee")
+
+
+def test_too_early_to_judge_is_just_started_not_off_track() -> None:
+    from datetime import datetime
+
+    data = gm.Ledgerish(household=True)
+    # 2 days into a month-long goal: no pace judgement yet
+    early = gm.progress(goal(saved_pence=0), data, date(2026, 11, 2))
+    assert early.status == "just_started" and early.tone == "neutral"
+    assert early.variance_text == "Just started: too early to judge the pace."
+    # set up today with nothing recorded, on a goal that began weeks ago: still too early
+    fresh = goal(saved_pence=0, created_at=datetime(2026, 11, 15, 9, 0))
+    assert gm.progress(fresh, data, TODAY).status == "just_started"
+    # set up earlier, still nothing: a real judgement
+    old = goal(saved_pence=0, created_at=datetime(2026, 11, 1, 9, 0))
+    assert gm.progress(old, data, TODAY).status == "off_track"
+    # over a limit is said at once, however early
+    lines = [line("2026-11-01", -9000, "COSTA COFFEE")]
+    over = gm.progress(goal(kind="spend_cap", target_pence=5000), household(lines), date(2026, 11, 1))
+    assert over.status == "over_limit"
+
+
+def test_ahead_of_plan_is_not_told_to_record_more() -> None:
+    data = gm.Ledgerish(household=True)
+    assert not any(
+        "Record what you put aside" in s for s in gm.progress(goal(saved_pence=20000), data, TODAY).suggestions
+    )
+    behind = gm.progress(goal(saved_pence=12000), data, TODAY).suggestions
+    assert any("Record what you put aside" in s for s in behind)
+
+
+def test_note_facts_carry_money_and_words_and_bare_numbers_are_refused() -> None:
+    lines = [line("2026-11-02", -9000, "COSTA COFFEE")]
+    p = gm.progress(goal(kind="spend_cap", target_pence=5000, name="Coffee"), household(lines), TODAY)
+    f = gm.facts([p], TODAY)
+    g = f["goals"][0]
+    assert (
+        g["so_far"] == "£90.00" and g["target_or_limit"] == "£50.00" and g["against_plan"] == "£40.00 over the limit."
+    )
+    assert goals_ai.check("Coffee is £40.00 over the limit, with £90.00 spent.", f) is None
+    assert (
+        goals_ai.check("Coffee is 40.00 over.", f)
+        == "The model wrote an amount without its £ sign, or as a negative number."
+    )
+    assert goals_ai.check("Coffee stands at -£40.00 against plan.", f) is not None

@@ -141,8 +141,10 @@ def goal_plan(day: date) -> list[gm.GoalIn]:
     """Five household goals, with hand-recorded amounts set against today's pace so the statuses are mixed."""
     sept = date(day.year if day.month >= 9 else day.year - 1, 9, 1)
     fees_end = date(sept.year + 1, 8, 31)
-    fees_target = 100_000
-    fees_saved = int(fees_target * _share(sept, fees_end, day) * 0.65) // 500 * 500  # behind: off track
+    # The school-fees pot is what the monthly "SCHOOL FEES SAVER TRANSFER" lines have put aside since September
+    # (£100 a month, as the statement shows), against a £2,000 target: behind its pace, so off track.
+    fees_target = 200_000
+    fees_saved = -sum(p for d, desc, p in plan_lines(day) if desc.startswith("SCHOOL FEES SAVER") and d >= sept)
     hol_start = date(day.year, 1, 1)
     hol_end = date(day.year + 1, 6, 30)
     hol_target = 180_000
@@ -157,7 +159,7 @@ def goal_plan(day: date) -> list[gm.GoalIn]:
             end=fees_end,
             target_pence=fees_target,
             saved_pence=fees_saved,
-            note="For the school trip and next year's fees.",
+            note="£100 a month into the school-fees saver, for the school trip and next year's fees.",
         ),
         gm.GoalIn(
             name="Summer holiday pot",
@@ -225,9 +227,116 @@ async def seed(storage: StorageProvider, day: date) -> None:
         await gm.add_goal(books, g, USER, "personal")
 
 
+def receipt_docs(day: date) -> list[dict]:
+    """Two household receipts that arrived in the last couple of days and wait in Review (gold readings, no model):
+    a supermarket shop with its items and a chemist's receipt. Fictional, and labelled so on the printed text."""
+    shop_day, chem_day = day - timedelta(days=2), day - timedelta(days=1)
+    items = [
+        ("Semi-skimmed milk 4 pints", 1.55),
+        ("Wholemeal bread", 1.40),
+        ("Free-range eggs x12", 3.10),
+        ("Bananas", 0.95),
+        ("Ground coffee 227g", 4.50),
+        ("Pasta 500g", 0.85),
+        ("Cheddar 400g", 3.75),
+    ]
+    shop_total = round(sum(p for _n, p in items), 2)
+    return [
+        {
+            "gold": "household tesco receipt",
+            "date": shop_day,
+            "file_name": f"SAMPLE {shop_day.isoformat()} Tesco receipt.png",
+            "text": "TESCO STORES 2231\n"
+            + "\n".join(f"{n}  £{p:.2f}" for n, p in items)
+            + f"\nTOTAL  £{shop_total:.2f}\nCARD ****4417\n\nSAMPLE — FICTIONAL HOUSEHOLD",
+            "extracted": {
+                "doc_type": "receipt",
+                "supplier_name": "Tesco Stores",
+                "supplier_vat_number": None,
+                "customer_name": None,
+                "invoice_number": None,
+                "date": shop_day.isoformat(),
+                "currency": "GBP",
+                "lines": [
+                    {"description": n, "qty": 1, "unit_price": p, "net": p, "vat_rate": 0, "vat": 0.0} for n, p in items
+                ],
+                "net_total": shop_total,
+                "vat_total": 0.0,
+                "gross_total": shop_total,
+                "payment_method": "card",
+                "card_last4": "4417",
+                "category_guess": "Sundry",
+                "confidence": 0.97,
+            },
+        },
+        {
+            "gold": "household boots receipt",
+            "date": chem_day,
+            "file_name": f"SAMPLE {chem_day.isoformat()} Boots receipt.png",
+            "text": "BOOTS PHARMACY\nHay fever tablets 30  £4.29\nPlasters assorted  £2.50\nTOTAL  £6.79\nCASH\n\n"
+            "SAMPLE — FICTIONAL HOUSEHOLD",
+            "extracted": {
+                "doc_type": "receipt",
+                "supplier_name": "Boots",
+                "supplier_vat_number": None,
+                "customer_name": None,
+                "invoice_number": None,
+                "date": chem_day.isoformat(),
+                "currency": "GBP",
+                "lines": [
+                    {
+                        "description": "Hay fever tablets 30",
+                        "qty": 1,
+                        "unit_price": 4.29,
+                        "net": 4.29,
+                        "vat_rate": 0,
+                        "vat": 0.0,
+                    },
+                    {
+                        "description": "Plasters assorted",
+                        "qty": 1,
+                        "unit_price": 2.50,
+                        "net": 2.50,
+                        "vat_rate": 0,
+                        "vat": 0.0,
+                    },
+                ],
+                "net_total": 6.79,
+                "vat_total": 0.0,
+                "gross_total": 6.79,
+                "payment_method": "cash",
+                "card_last4": None,
+                "category_guess": "Sundry",
+                "confidence": 0.95,
+            },
+        },
+    ]
+
+
+async def seed_receipts(storage: StorageProvider, day: date) -> int:
+    """Put the receipts in Review the way the company demo's pre-read inbox documents are (tools/seed_demo.py
+    `_propose`: the scan's own checks, the gold reading standing in for the model's)."""
+    from types import SimpleNamespace
+
+    from app import sample_books
+
+    seed_mod = sample_books.seed_module()
+    books = seed_mod.SeedBooks(storage)
+    plan = SimpleNamespace(business=HOUSEHOLD, current=(day.replace(day=1), day))
+    n = 0
+    for r in receipt_docs(day):
+        d = seed_mod.PlannedDoc(
+            gold=r["gold"], date=r["date"], text=r["text"], extracted=r["extracted"], file_name=r["file_name"]
+        )
+        await seed_mod._propose(books, d, plan)  # noqa: SLF001 - the demo seed's own proposal path
+        n += 1
+    return n
+
+
 async def build_storage(day: date) -> FakeStorageProvider:
     st = FakeStorageProvider()
     await seed(st, day)
+    await seed_receipts(st, day)
     return st
 
 

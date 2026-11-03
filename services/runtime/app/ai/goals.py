@@ -8,6 +8,7 @@ If any check fails, or the model cannot be reached, code's note stands in, with 
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from pydantic import BaseModel, ValidationError
@@ -26,11 +27,17 @@ SYSTEM_PROMPT = (
     "code from their own books. Write two to four short sentences in plain, friendly UK English, no headings, no "
     "lists, no links. Say which goal most needs attention and why, then give one or two practical suggestions "
     "drawn only from FACTS (the biggest_movers and code_suggestions), for example a category or item that grew. "
-    "Rules: 1) Quote figures exactly as they appear in FACTS (you may add £ and thousands commas); never add, "
-    "subtract, work out a percentage or estimate anything. 2) Do not promise outcomes or give investment, tax or "
+    'Rules: 1) Every amount in FACTS is already written as money ("£521.80"): quote amounts exactly as written, '
+    "with their £ sign, never as a bare or negative number; say how a goal stands against its plan with its "
+    "against_plan words; never add, subtract, work out a percentage or estimate anything. 2) Do not promise "
+    "outcomes or give investment, tax or "
     "debt advice. 3) If every goal is on track or reached, say so briefly and name the one closest to slipping, if "
     "any. Return JSON with `note_md`."
 )
+
+
+#: An amount with pence but no £ in front ("521.80"), or a signed one ("-£360.45", "£-360.45", "-360.45").
+BARE_MONEY = re.compile(r"(?<![£\d.,])\d[\d,]*\.\d{2}\b|[-−]\s?£|£\s?[-−]|(?<![\w])[-−]\d[\d,]*\.\d{2}\b")
 
 
 class NoteOutput(BaseModel):
@@ -67,6 +74,8 @@ def check(text: str, facts: dict[str, Any]) -> str | None:
         return "The model's note was too long."
     if LINK.search(text):
         return "The model's note contained a link."
+    if BARE_MONEY.search(text):
+        return "The model wrote an amount without its £ sign, or as a negative number."
     if invented := KnownNumbers(facts).unknown(text, all_tokens=False):
         return f"The model quoted figures that are not in your books ({', '.join(dict.fromkeys(invented[:3]))})."
     return None
