@@ -1,3 +1,4 @@
+import 'package:accnomos_mobile/models/ask_answer.dart';
 import 'package:accnomos_mobile/models/month_end.dart';
 import 'package:accnomos_mobile/screens/month_end_screen.dart';
 import 'package:accnomos_mobile/services/runtime_client.dart';
@@ -7,8 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:msal_auth/msal_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-/// The month-end checklist on the phone: read only, from `GET /close/{month}`
-/// and `GET /close` (services/runtime/app/month_end.py). Fakes answer without
+/// The month-end close on the phone, as on the web: `GET /close/{month}`,
+/// `POST /close/{month}/run` and its signed cards (services/runtime/app/month_end.py). Fakes answer without
 /// network or MSAL; every case runs at 360 dp with no overflow.
 void main() {
   setUp(() => SharedPreferences.setMockInitialValues({}));
@@ -38,7 +39,7 @@ void main() {
     expect(m.summaryByCode, isTrue);
   });
 
-  testWidgets('shows the last run read only, at 360 dp', (tester) async {
+  testWidgets('shows the last run and a Close button, at 360 dp', (tester) async {
     phone(tester);
     final fake = _Fake();
     await tester.pumpWidget(MaterialApp(
@@ -55,8 +56,50 @@ void main() {
     expect(find.text('1  Inbox'), findsOneWidget);
     expect(find.text('Needs you'), findsOneWidget);
     expect(find.text('Blocks the close: 1 document in 00 Inbox not read yet.'), findsOneWidget);
-    expect(find.textContaining('approve its cards on the web'), findsOneWidget);
-    expect(find.byType(FilledButton), findsNothing); // nothing to approve on the phone
+    expect(find.widgetWithText(FilledButton, 'Close October'), findsOneWidget);
+    expect(find.textContaining('on the web'), findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('runs the close and approves its card', (tester) async {
+    phone(tester);
+    final fake = _Fake();
+    await tester.pumpWidget(MaterialApp(
+      home: MonthEndScreen(
+        testAccount: _account,
+        testAccountReady: true,
+        today: DateTime(2026, 11, 4),
+        clientFactory: (settings, books) => fake,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Close October'));
+    await tester.pumpAndSettle();
+    expect(fake.runs, ['2026-10']);
+    expect(find.text('Close the month · needs your OK'), findsOneWidget);
+    expect(find.text('Mark October 2026 closed?'), findsOneWidget);
+    await tester.ensureVisible(find.widgetWithText(FilledButton, 'Approve'));
+    await tester.tap(find.widgetWithText(FilledButton, 'Approve'));
+    await tester.pumpAndSettle();
+    expect(fake.approved, ['card-1']);
+    expect(find.text('✓ October 2026 is closed.'), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('warns about entries stored twice', (tester) async {
+    phone(tester);
+    final fake = _Fake(duplicates: true);
+    await tester.pumpWidget(MaterialApp(
+      home: MonthEndScreen(
+        testAccount: _account,
+        testAccountReady: true,
+        today: DateTime(2026, 11, 4),
+        clientFactory: (settings, books) => fake,
+      ),
+    ));
+    await tester.pumpAndSettle();
+    expect(find.text('1 ledger entry is stored twice'), findsOneWidget);
+    expect(find.textContaining('Wickes · £24.00 · 1 extra file'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -94,7 +137,18 @@ void main() {
 
 final _account = Account(id: '1', username: 'user@example.com', name: 'Test User');
 
-Map<String, dynamic> _detail({bool changed = false}) => {
+Map<String, dynamic> _detail({bool changed = false, bool duplicates = false}) => {
+      if (duplicates)
+        'duplicates': [
+          {
+            'id': 'ev-1',
+            'date': '2026-10-20',
+            'kind': 'purchase',
+            'counterparty': 'Wickes',
+            'net_pence': 2400,
+            'extra_files': ['_System/Ledger/x.json'],
+          },
+        ],
       'month': '2026-10',
       'label': 'October 2026',
       'ended': true,
@@ -145,15 +199,55 @@ Map<String, dynamic> _detail({bool changed = false}) => {
     };
 
 class _Fake extends RuntimeClient {
-  _Fake({this.changed = false}) : super(AppSettings(runtimeUrl: 'http://reader:8780'));
+  _Fake({this.changed = false, this.duplicates = false})
+      : super(AppSettings(runtimeUrl: 'http://reader:8780'));
 
   final bool changed;
+  final bool duplicates;
   final List<String> months = [];
+  final List<String> runs = [];
+  final List<String> approved = [];
 
   @override
   Future<Map<String, dynamic>> closeMonth(String month, {String? today}) async {
     months.add(month);
-    return _detail(changed: changed);
+    return _detail(changed: changed, duplicates: duplicates);
+  }
+
+  @override
+  Future<Map<String, dynamic>> runClose(String month, {String? today}) async {
+    runs.add(month);
+    return {
+      'summary_md': 'October 2026 is ready to close.',
+      'steps': [
+        {
+          'id': 'lock',
+          'n': 9,
+          'title': 'Close',
+          'status': 'needs_you',
+          'reason': 'Approve the card to mark October closed.',
+          'checked': [],
+          'found': [],
+          'proposes': ['card-1'],
+        },
+      ],
+      'actions': [
+        {
+          'id': 'card-1',
+          'kind': 'close_month',
+          'summary_md': 'Mark **October 2026** closed with a snapshot of its figures.',
+          'confirm_text': 'Mark October 2026 closed',
+          'expires_at': DateTime.now().add(const Duration(minutes: 15)).toUtc().toIso8601String(),
+          'preview': {'warnings': []},
+        },
+      ],
+    };
+  }
+
+  @override
+  Future<String> approveAction(ProposedAction action) async {
+    approved.add(action.id);
+    return 'October 2026 is closed.';
   }
 
   @override

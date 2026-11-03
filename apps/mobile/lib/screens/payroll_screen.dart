@@ -408,7 +408,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
 }
 
 /// One pay run: its lines, estimates and warnings. A draft can be edited
-/// (hours, hourly rate, notes), exported (05 Payroll/<period>.csv, then the
+/// (hours, hourly rate, notes), exported (`05 Payroll/<period>.csv`, then the
 /// share sheet) and confirmed with the provider's real figures; a confirmed
 /// run can be reopened. Same routes as the web.
 class PayrollDetailScreen extends StatefulWidget {

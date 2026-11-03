@@ -222,9 +222,8 @@ void main() {
       ));
       await tester.pumpAndSettle();
       expect(find.text('Paid INV-2041.'), findsOneWidget);
-      expect(
-          find.text('Downloading the trail as a spreadsheet (CSV) happens on the web.'),
-          findsOneWidget);
+      await reveal(tester, find.widgetWithText(OutlinedButton, 'Export CSV'));
+      expect(find.widgetWithText(OutlinedButton, 'Export CSV'), findsOneWidget);
 
       await reveal(tester, find.text('Autopilot'));
       await tester.tap(find.text('Autopilot'));
