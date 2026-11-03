@@ -171,7 +171,7 @@ model:** in local mode it is Glimmer on your machine, so the document stays ther
 Open on Baseten only if the server owner has switched it on (`BASETEN_ENABLED=1` plus `BASETEN_API_KEY`; off on the live server since 2 Nov 2026), otherwise muse-spark-1.3 with your key, or the Meta chain on the server.
 `VERIFIER=off` disables it. First numbers (20 messy receipts, Glimmer/Glimmer): 94% full agreement, 0 errors caught
 beyond what the code checks already caught, 1 false alarm. See `evals/REPORT_verifier_glimmer_messy_20_2026-10-27.md`.
-Not built: Google Drive (OneDrive only), production HMRC filing, `muse-wonder` multi-step planning, credit notes, RTI.
+Not built: Google Drive (OneDrive only), production HMRC filing, `muse-wonder` multi-step planning, filing RTI to HMRC (payroll RTI files are prepared, not sent), an iPhone app.
 
 ## Honesty notes
 
@@ -179,7 +179,7 @@ Not built: Google Drive (OneDrive only), production HMRC filing, `muse-wonder` m
   DGX Spark/Ollama host setup predates the event and is infrastructure, not product code.
 - Demo data is synthetic and labelled "SAMPLE — FICTIONAL COMPANY". HMRC is sandbox only.
 - Coding assistants (Claude, Muse Code, local Qwen) were used to write code; Meta models are the ones doing the work at runtime.
-- Meta has no text-to-speech model, and Accnomos does not read answers aloud: voice is input only.
+- Meta has no text-to-speech model. Speech in is Muse Voice Transcribe; the hands-free assistant ("Talk to Accnomos", web and Android) reads answers aloud with the device's own built-in voice (the browser's speech synthesis, Android's text-to-speech), not a Meta model and not a third-party service. Spoken read-back on a real phone is not yet tested; on the web it is tested with a faked mic and speech engine.
 
 ## Running locally
 
