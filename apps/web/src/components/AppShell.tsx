@@ -13,6 +13,7 @@ import MonthlyBackup from "./files/MonthlyBackup";
 import DemoBar, { DemoMenu, NotInDemo } from "./demo/DemoBar";
 import { AccountMenu, useLinkedProfiles } from "./ProfileMenu";
 import TopBar, { LogoMark } from "./TopBar";
+import Assistant from "./assistant/Assistant";
 import { ServiceStrip, VersionStrip } from "./StatusStrips";
 import { getClientContext, onClientContextChange } from "@/lib/accountant";
 import { useSignedIn } from "@/lib/signed-in";
@@ -145,6 +146,8 @@ export default function AppShell({ children, routes }: { children: ReactNode; ro
       </div>
       {/* Phone tab bar (Home, Review, Ask, VAT, Files; personal books: Home, Review, Budget, Goals, Ask) lives in AppNav; not in the accountant portal. */}
       {!accountant && <AppNav variant="tabs" />}
+      {/* "Talk to Accnomos": voice or chat from any signed-in or demo page (components/assistant). */}
+      {signedIn === true && !accountant && <Assistant />}
     </div>
   );
 }

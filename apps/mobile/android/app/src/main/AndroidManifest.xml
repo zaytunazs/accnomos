@@ -96,5 +96,9 @@
         <intent>
             <action android:name="android.media.action.IMAGE_CAPTURE"/>
         </intent>
+        <!-- The hands-free assistant reads answers aloud with the phone's text-to-speech engine (SpeechChannel.kt). -->
+        <intent>
+            <action android:name="android.intent.action.TTS_SERVICE"/>
+        </intent>
     </queries>
 </manifest>

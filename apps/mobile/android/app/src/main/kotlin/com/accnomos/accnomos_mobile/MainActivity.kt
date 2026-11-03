@@ -53,8 +53,18 @@ class MainActivity : FlutterActivity() {
         }
     }
 
+    /** The hands-free assistant's voice (SpeechChannel.kt). */
+    private var speech: SpeechChannel? = null
+
+    override fun onDestroy() {
+        speech?.shutdown()
+        speech = null
+        super.onDestroy()
+    }
+
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        speech = SpeechChannel(this, flutterEngine.dartExecutor.binaryMessenger)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
             .setMethodCallHandler { call, result ->
                 if (call.method == "getSharedFiles") {
