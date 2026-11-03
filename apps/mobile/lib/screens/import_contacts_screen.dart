@@ -355,7 +355,7 @@ class _ImportContactsScreenState extends State<ImportContactsScreen> {
                 key: const Key('import-list'),
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                 itemCount: _shown.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (context, i) => _row(_shown[i]),
               ),
             ),
