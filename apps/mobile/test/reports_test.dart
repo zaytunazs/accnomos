@@ -248,6 +248,8 @@ void main() {
       await tester.pumpAndSettle();
       await tester.scrollUntilVisible(find.text('Reports'), 100);
       expect(find.text('Reports'), findsOneWidget);
+      await tester.ensureVisible(find.text('Reports'));
+      await tester.pumpAndSettle();
       await tester.tap(find.text('Reports'));
       await tester.pumpAndSettle();
       expect(

@@ -54,10 +54,12 @@ void main() {
     expect(find.widgetWithText(FilledButton, 'Send answer'), findsOneWidget);
     expect(find.text('Remove'), findsOneWidget); // own invitation; the team opt-in stays on the web
 
-    await tester.scrollUntilVisible(find.text('Show resolved (1)'), 200);
+    await tester.scrollUntilVisible(find.text('Show resolved (1)'), 200,
+        scrollable: find.byType(Scrollable).first);
     await tester.tap(find.text('Show resolved (1)'));
     await tester.pumpAndSettle();
-    await tester.scrollUntilVisible(find.text('Old question'), 200);
+    await tester.scrollUntilVisible(find.text('Old question'), 200,
+        scrollable: find.byType(Scrollable).first);
     expect(find.text('Old question'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
