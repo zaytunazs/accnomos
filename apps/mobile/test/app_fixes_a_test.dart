@@ -147,10 +147,6 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
-      for (final group in ['Connection', 'AI']) {
-        await tester.tap(find.text(group));
-        await tester.pumpAndSettle();
-      }
       expect(find.byKey(const Key('demoSettingsSection')), findsOneWidget);
       expect(find.byKey(const Key('demoAiNote')), findsOneWidget);
       expect(find.text('Sign out'), findsNothing);
