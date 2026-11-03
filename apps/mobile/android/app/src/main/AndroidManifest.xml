@@ -53,6 +53,14 @@
                 <category android:name="android.intent.category.DEFAULT"/>
                 <data android:mimeType="image/*"/>
             </intent-filter>
+            <!-- HMRC sign-in (VAT): accnomos.com/auth/hmrc-app.html hands HMRC's one-time PKCE code back to the app here
+                 (lib/services/hmrc.dart). The code is useless without the verifier only this app holds. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="com.accnomos.app" android:host="hmrc" android:path="/callback" />
+            </intent-filter>
         </activity>
         <!-- MSAL redirect target for Microsoft sign-in. The path is the
              base64 signature hash of the signing key, injected by Gradle

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Back to the Accnomos app</title>
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <style>
+    body{margin:0;font-family:system-ui,sans-serif;background:#F5F8FA;color:#172B35;display:flex;align-items:center;justify-content:center;min-height:100vh}
+    main{max-width:28rem;margin:1.5rem;padding:1.5rem;background:#fff;border:1px solid #DCE5E9;border-radius:12px}
+    h1{font-size:1.25rem;margin:0 0 .5rem}
+    p{line-height:1.5;color:#52626D;margin:.5rem 0}
+    a.btn{display:block;text-align:center;margin-top:1rem;padding:.8rem 1rem;border-radius:8px;background:#0F6E63;color:#fff;font-weight:700;text-decoration:none}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>HMRC sign-in finished</h1>
+    <p id="msg">Taking you back to the Accnomos app…</p>
+    <a class="btn" id="back" href="#">Return to the Accnomos app</a>
+    <p>If nothing happens, tap the button. This page only passes HMRC's one-time code back to the app on this phone; the app alone holds the key that turns it into access.</p>
+  </main>
+  <script>
+    // The Android app's HMRC connect (apps/mobile/lib/services/hmrc.dart): the relay's callback sends the
+    // browser here with #code=…&state=… (PKCE) or #error=…; hand it to the app by its own URL scheme
+    // (AndroidManifest intent-filter com.accnomos.app://hmrc/callback). The fragment is removed from this page's
+    // address straight away, and nothing is sent to any server.
+    (function () {
+      var frag = window.location.hash.replace(/^#/, "");
+      history.replaceState(null, "", window.location.pathname);
+      var link = document.getElementById("back");
+      if (!frag) {
+        document.getElementById("msg").textContent = "Nothing to hand back: start Connect to HMRC again in the app.";
+        link.style.display = "none";
+        return;
+      }
+      var target = "com.accnomos.app://hmrc/callback?" + frag;
+      link.href = target;
+      window.location.href = target;
+    })();
+  </script>
+</body>
+</html>

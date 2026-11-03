@@ -1,12 +1,16 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:msal_auth/msal_auth.dart';
 
 import '../models/vat_return.dart';
 import '../services/auth.dart';
+import '../services/graph.dart';
+import '../services/hmrc.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
-import '../widgets/web_only.dart';
+import '../widgets/hmrc_filing.dart';
 import 'settings_screen.dart';
 
 const _warnBg = Color(0xFFFFF7ED);
@@ -15,7 +19,9 @@ const _warnInk = Color(0xFF8A3F06);
 
 /// VAT return for a period (the current one unless picked): the 9 boxes from
 /// `GET /books/vat`, computed by code from the user's own ledger events. The
-/// picker lists `GET /books/vat/periods`; the phone does no VAT maths.
+/// picker lists `GET /books/vat/periods`; the phone does no VAT maths. Below
+/// the boxes, [HmrcFilingCard] connects to HMRC (sandbox), lists HMRC's
+/// periods, takes the legal declaration and submits the return, as the web.
 class VatScreen extends StatefulWidget {
   const VatScreen({super.key});
 
@@ -33,6 +39,10 @@ class _VatScreenState extends State<VatScreen> {
   VatReturn? _vat;
   List<VatPeriod> _periods = const [];
   String? _picked; // null: the current period
+  RuntimeClient? _client;
+  String? _token;
+  Hmrc? _hmrc;
+  final GraphService _graph = GraphService();
 
   @override
   void initState() {
@@ -70,8 +80,9 @@ class _VatScreenState extends State<VatScreen> {
     });
     try {
       final token = await _auth.token();
+      _token = token;
       final user = _account?.username ?? settings.userEmail;
-      final client = RuntimeClient(
+      final client = _client = RuntimeClient(
         settings,
         books: BooksAuth(
           graphToken: token,
@@ -84,6 +95,7 @@ class _VatScreenState extends State<VatScreen> {
         client.vat(period: _picked),
         if (withPeriods || _periods.isEmpty) client.vatPeriods(),
       ]);
+      _hmrc ??= Hmrc(relayUrl: settings.runtimeUrl);
       final vat = VatReturn.fromJson(results[0]);
       if (results.length > 1) _periods = VatPeriod.listFromJson(results[1]);
       if (!mounted) return;
@@ -273,12 +285,56 @@ class _VatScreenState extends State<VatScreen> {
           textAlign: TextAlign.center,
           style: TextStyle(color: AccnomosColors.muted, fontSize: 12),
         ),
-        const WebOnlyCard(
-          message:
-              'Filing to HMRC (sandbox connect, obligations, declaration and submit) happens on the web.',
-          page: '/vat',
-        ),
+        if (_hmrc != null && _client != null && _token != null)
+          HmrcFilingCard(
+            vat: vat,
+            periods: _periods,
+            deps: _filingDeps(),
+            onPickPeriod: (period) {
+              if (period == _picked && period != null) return;
+              _picked = period;
+              _reload(withPeriods: false);
+            },
+          ),
       ],
+    );
+  }
+
+  VatFilingDeps _filingDeps() {
+    final client = _client!;
+    final token = _token!;
+    final kind = _auth.kind;
+    return VatFilingDeps(
+      hmrc: _hmrc!,
+      accountId: _account?.id,
+      businessVat: _settings?.vatNumber,
+      postObligations: (list) => client.postVatObligations(list),
+      saveFile: (relPath, text) async {
+        final folder = relPath.substring(0, relPath.lastIndexOf('/'));
+        await _graph.ensureFolder(token, kind, vatReturnsFolder);
+        await _graph.ensureFolder(token, kind, folder);
+        await _graph.putFileBytes(
+          token: token,
+          kind: kind,
+          relPath: relPath,
+          bytes: utf8.encode(text),
+          contentType: 'application/json',
+        );
+      },
+      listReceipts: () async {
+        final kids = await _graph.listChildren(token, kind, vatReturnsFolder);
+        final folders = [for (final k in kids) if (k.isFolder) k.name]..sort();
+        final rows = <(String, bool)>[];
+        for (final name in folders.reversed.take(9)) {
+          try {
+            final inner = await _graph.listChildren(token, kind, '$vatReturnsFolder/$name');
+            rows.add((name, inner.any((f) => f.name == 'receipt.json')));
+          } catch (_) {
+            rows.add((name, false));
+          }
+        }
+        return rows;
+      },
     );
   }
 
@@ -351,7 +407,7 @@ class _VatScreenState extends State<VatScreen> {
             ),
           ),
           Text(
-            '£${box.amount}',
+            box.display,
             style: const TextStyle(
                 color: AccnomosColors.ink,
                 fontWeight: FontWeight.w800,

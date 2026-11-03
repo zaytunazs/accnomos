@@ -500,6 +500,15 @@ class RuntimeClient {
         query: vatQuery(), what: 'load VAT periods');
   }
 
+  /// Hand HMRC's obligations to the runtime (it holds no HMRC token) so the
+  /// period list marks fulfilled periods submitted. `POST /books/vat/obligations`.
+  Future<Map<String, dynamic>> postVatObligations(
+      List<Map<String, dynamic>> obligations) {
+    _requireBooks();
+    return _map('POST', '/books/vat/obligations',
+        body: {'obligations': obligations}, what: "store HMRC's VAT periods");
+  }
+
   /// Ask the books a question. `POST /books/ask` → a checked [AskAnswer].
   /// [periodStart]/[periodEnd] are `YYYY-MM-DD`; omit both for the current
   /// VAT quarter (the saved VAT period rides along as the query, so the
