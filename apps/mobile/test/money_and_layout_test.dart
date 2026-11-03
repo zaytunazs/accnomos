@@ -109,7 +109,7 @@ void main() {
             'days_overdue': 0,
             'money': {'payment_status': 'part_paid', 'balance_pence': 60000},
           }),
-          'Sent · part paid, £600.00 left · due 1 Dec 2026');
+          'Sent · part paid, £600.00 left of £0.00 · due 1 Dec 2026');
       expect(
           invoiceStatusLine({
             'status': 'sent',
@@ -118,16 +118,45 @@ void main() {
           }),
           'Paid');
       expect(invoiceStatusLine({'status': 'draft'}), 'Draft');
+      // INV-0006: £1,057.68 invoiced, £318 paid → £739.68 owed is shown.
+      final inv6 = {
+        'status': 'sent',
+        'total_pence': 105768,
+        'balance_pence': 73968,
+        'payment_status': 'part_paid',
+        'days_overdue': 0,
+        'due_date': '2026-11-20',
+      };
+      expect(invoiceShownPence(inv6), 73968);
+      expect(invoiceStatusLine(inv6),
+          'Sent · part paid, £739.68 left of £1,057.68 · due 20 Nov 2026');
+      expect(invoiceShownPence({'status': 'draft', 'total_pence': 5000, 'balance_pence': 0}), 5000);
+      expect(invoiceShownPence({'status': 'sent', 'total_pence': 5000, 'money': {'balance_pence': 1200}}), 1200);
       expect(invoiceOverdue({'status': 'sent', 'days_overdue': 3}), isTrue);
       expect(invoiceOverdue({'status': 'draft', 'days_overdue': 3}), isFalse);
     });
 
-    test('bank: suggested lines still need an action', () {
-      expect(bankLineNeedsAction({'status': 'unmatched'}), isTrue);
-      expect(bankLineNeedsAction({'status': 'suggested'}), isTrue);
-      expect(bankLineNeedsAction({'status': 'matched'}), isFalse);
-      expect(bankLineNeedsAction({'status': 'transfer'}), isFalse);
-      expect(bankLineNeedsAction({'status': 'ignored'}), isFalse);
+    test('bank: open lines by the server definition', () {
+      expect(bankLineIsOpen({'status': 'unmatched'}), isTrue);
+      expect(bankLineIsOpen({'status': 'suggested'}), isTrue);
+      expect(bankLineIsOpen({'status': 'matched'}), isFalse);
+      expect(bankLineIsOpen({'status': 'transfer'}), isFalse);
+      expect(bankLineIsOpen({'status': 'ignored'}), isFalse);
+      // Personal books: the household category decides, not ledger matching.
+      expect(bankLineIsOpen({'status': 'unmatched', 'household_sorted': true}), isFalse);
+      expect(bankLineIsOpen({'status': 'unmatched', 'household_sorted': false}), isTrue);
+    });
+
+    test('bank: household category per line', () {
+      expect(householdCategoryLabel({'household_sorted': false, 'household_category': 'Other'}),
+          'No category yet');
+      expect(householdCategoryLabel({'household_sorted': true, 'household_source': 'rule', 'household_category': 'Groceries'}),
+          'Groceries');
+      expect(householdCategoryLabel({'household_sorted': true, 'household_source': 'hand', 'household_category': 'Car'}),
+          'Car (set by you)');
+      expect(householdCategoryLabel({'household_sorted': true, 'household_source': 'excluded'}),
+          'Transfer / not counted');
+      expect(householdCategoryLabel({'status': 'matched'}), isNull);
     });
 
     test('the mileage counterparty is not a supplier', () {

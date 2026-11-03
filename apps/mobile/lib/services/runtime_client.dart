@@ -1009,9 +1009,13 @@ class RuntimeClient {
       _list('GET', '/books/bank/statements', what: 'load bank statements');
 
   /// [status]: unmatched, matched, suggested, transfer or ignored.
-  Future<List<Map<String, dynamic>>> bankLines({String? status}) =>
+  /// `GET /books/bank/lines`. [open] true: only the open lines, by the one
+  /// definition the summary and Home use (business: not yet matched;
+  /// household: no category). Personal books' lines carry
+  /// `household_category`, `household_source` and `household_sorted`.
+  Future<List<Map<String, dynamic>>> bankLines({String? status, bool? open}) =>
       _list('GET', '/books/bank/lines',
-          query: {'status': ?status},
+          query: {'status': ?status, if (open != null) 'open': '$open'},
           what: 'load bank lines');
 
   Future<List<Map<String, dynamic>>> bankSuggestions() =>

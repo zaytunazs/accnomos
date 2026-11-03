@@ -222,7 +222,6 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     final name = customer is Map
         ? (customer['name'] ?? '').toString()
         : '';
-    final total = (inv['total_pence'] ?? 0) as num;
     return Card(
       margin: EdgeInsets.zero,
       child: ListTile(
@@ -241,7 +240,7 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
                   invoiceOverdue(inv) ? FontWeight.w700 : FontWeight.w400),
         ),
         trailing: Text(
-          gbp(total),
+          gbp(invoiceShownPence(inv)),
           style: const TextStyle(
               fontWeight: FontWeight.w800, fontSize: 15),
         ),
@@ -825,8 +824,24 @@ String invoiceStatusLine(Map<String, dynamic> inv) {
       'Overdue $days ${days == 1 ? 'day' : 'days'}'
     else
       status == 'sent' ? 'Sent' : (status.isEmpty ? '—' : '${status[0].toUpperCase()}${status.substring(1)}'),
-    if (payment == 'part_paid' && balance != null) 'part paid, ${gbp(balance)} left',
+    if (payment == 'part_paid' && balance != null)
+      'part paid, ${gbp(balance)} left of ${gbp((inv['total_pence'] as num?) ?? 0)}',
     if (due != '—' && due.isNotEmpty) 'due $due',
   ];
   return parts.join(' · ');
+}
+
+/// The money an invoice stands for in a list: what is still owed on a sent
+/// invoice (the runtime's `balance_pence`, after payments and credit notes),
+/// else its total (drafts, paid and void invoices).
+num invoiceShownPence(Map<String, dynamic> inv) {
+  final total = (inv['total_pence'] as num?) ?? 0;
+  if ((inv['status'] ?? '').toString() != 'sent') return total;
+  final money = inv['money'];
+  final balance = money is Map && money['balance_pence'] is num
+      ? money['balance_pence'] as num
+      : inv['balance_pence'] is num
+          ? inv['balance_pence'] as num
+          : null;
+  return balance ?? total;
 }
