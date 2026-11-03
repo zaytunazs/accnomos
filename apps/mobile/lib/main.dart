@@ -301,6 +301,12 @@ class _ShellState extends State<Shell> {
                 MoreScreen(),
               ],
       ),
+      // "Talk to Accnomos" (the Ask screen as a full-screen sheet, with
+      // hands-free). Not on Review, where Approve/Edit/Reject sit at the
+      // bottom, nor on a business's Ask tab, which is the same screen.
+      floatingActionButton: showAssistantButton(household: _household, tab: _tab)
+          ? const AssistantButton()
+          : null,
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: _selectTab,
@@ -308,6 +314,30 @@ class _ShellState extends State<Shell> {
       ),
     );
   }
+}
+
+/// Whether the tab shows the "Talk to Accnomos" button: every tab but Review
+/// (index 1) and a business's own Ask tab (index 2).
+bool showAssistantButton({required bool household, required int tab}) =>
+    tab != 1 && (household || tab != 2);
+
+/// Opens the assistant: Ask with hands-free, as a full-screen sheet.
+class AssistantButton extends StatelessWidget {
+  const AssistantButton({super.key});
+
+  @override
+  Widget build(BuildContext context) => FloatingActionButton.extended(
+        heroTag: 'assistant',
+        tooltip: 'Talk to Accnomos — ask by voice or chat',
+        backgroundColor: AccnomosColors.teal,
+        foregroundColor: Colors.white,
+        onPressed: () => Navigator.of(context).push(MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (_) => const AskScreen(asSheet: true),
+        )),
+        icon: const Icon(Icons.record_voice_over_outlined),
+        label: const Text('Talk'),
+      );
 }
 
 /// The bottom tabs: the household app (personal books) has Budget and Goals

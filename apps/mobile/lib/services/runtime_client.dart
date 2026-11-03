@@ -658,9 +658,12 @@ class RuntimeClient {
   Future<VoiceAnswer> askVoice(
     List<int> wavBytes, {
     String filename = 'question.wav',
+    List<AskTurn> history = const [],
   }) async {
     _requireBooks();
     final uri = _uri('/books/ask/voice');
+    final recent =
+        history.length > 6 ? history.sublist(history.length - 6) : history;
     try {
       final request = http.MultipartRequest('POST', uri)
         ..headers.addAll(_headers)
@@ -669,6 +672,11 @@ class RuntimeClient {
           wavBytes,
           filename: filename,
         ));
+      // Earlier turns, so a spoken follow-up ("and last month?") is understood.
+      if (recent.isNotEmpty) {
+        request.fields['history'] =
+            json.encode([for (final t in recent) t.toJson()]);
+      }
       final streamed = await _http.send(request).timeout(_timeout);
       final body = await streamed.stream.bytesToString();
       if (streamed.statusCode < 200 || streamed.statusCode >= 300) {

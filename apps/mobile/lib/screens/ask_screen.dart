@@ -14,8 +14,11 @@ import '../services/auth.dart';
 import '../services/books.dart' show gbp;
 import '../services/demo.dart';
 import '../services/graph.dart';
+import '../services/hands_free.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
+import '../services/tts.dart';
+import '../services/voice_turn.dart';
 import '../theme.dart';
 import '../widgets/brand.dart';
 
@@ -134,7 +137,11 @@ class _Turn {
 /// the transcript appears as your bubble with the answer below it. Signed
 /// out, this screen shows a sample conversation.
 class AskScreen extends StatefulWidget {
-  const AskScreen({super.key});
+  const AskScreen({super.key, this.asSheet = false});
+
+  /// Opened from the "Talk to Accnomos" button: a full-screen sheet with a
+  /// close button instead of the tab's brand mark.
+  final bool asSheet;
 
   @override
   State<AskScreen> createState() => _AskScreenState();
@@ -173,6 +180,14 @@ class _AskScreenState extends State<AskScreen> {
   /// above the thread with a prompt to type instead.
   String? _voiceError;
 
+  /// Hands-free (services/hands_free.dart): the running loop, what it is
+  /// doing, the mic level for the meter, and why it last stopped.
+  HandsFreeLoop? _loop;
+  HandsFreeState _hands = HandsFreeState.off;
+  double _level = 0;
+  String? _handsNote;
+  final Speaker _speaker = Speaker();
+
   @override
   void initState() {
     super.initState();
@@ -184,6 +199,8 @@ class _AskScreenState extends State<AskScreen> {
     _input.dispose();
     _scroll.dispose();
     _focus.dispose();
+    _loop?.stop();
+    _speaker.stop();
     _graph.close();
     _mic.dispose();
     super.dispose();
@@ -529,6 +546,172 @@ class _AskScreenState extends State<AskScreen> {
     }
   }
 
+  /// The conversation so far, for follow-ups ("and last month?").
+  List<AskTurn> _history() => [
+        for (final t in _turns)
+          if (t.answer != null) ...[
+            AskTurn(role: 'user', text: t.question),
+            AskTurn(role: 'assistant', text: t.answer!.answerMd),
+          ],
+      ];
+
+  /// One hands-free turn: the recording goes to `POST /books/ask/voice` with
+  /// the conversation so far; the transcript and answer join the thread.
+  /// A stop phrase ("that's all") ends the loop and is not added.
+  Future<HandsFreeReply?> _handsFreeAsk(List<int> bytes) async {
+    final settings = _settings;
+    if (settings == null || _account == null) return null;
+    final history = _history();
+    setState(() => _sendingVoice = true);
+    try {
+      final client = await _client(settings);
+      final result = await client.askVoice(bytes, history: history);
+      if (!mounted) return null;
+      final transcript = result.transcript.trim();
+      if (isStopPhrase(transcript)) {
+        setState(() => _sendingVoice = false);
+        return HandsFreeReply(transcript: transcript, answerMd: '');
+      }
+      final turn = _Turn(
+        transcript.isEmpty ? '(no speech heard)' : transcript,
+        spoken: true,
+        heardBy: result.transcribedBy,
+      );
+      setState(() {
+        _sendingVoice = false;
+        _suggestions = null;
+        _turns.add(turn);
+        if (_turns.length > 6) _turns.removeRange(0, _turns.length - 6);
+        turn.answer = result.answer;
+        if (result.answer == null) {
+          turn.error = 'Heard you, but no answer came back. Try again.';
+        }
+      });
+      _scrollToEnd();
+      final a = result.answer;
+      if (a == null) return null;
+      return HandsFreeReply(
+        transcript: transcript,
+        answerMd: a.answerMd,
+        needsApproval: a.proposedAction != null || a.clarification != null,
+      );
+    } catch (e) {
+      if (!mounted) return null;
+      setState(() {
+        _sendingVoice = false;
+        _voiceError = '${voiceErrorText(e)} Type your question instead.';
+      });
+      return null;
+    }
+  }
+
+  /// Hands-free on: listen → answer → speak → listen, until Stop, "that's
+  /// all", two quiet turns, or a card to approve. Off: stop at once.
+  Future<void> _toggleHandsFree() async {
+    final running = _loop;
+    if (running != null) {
+      running.stop();
+      await _speaker.stop();
+      return;
+    }
+    final loop = HandsFreeLoop(
+      listen: (stopped) => recordUntilSilence(
+        _mic,
+        stopped: stopped,
+        onLevel: (l) {
+          if (mounted) setState(() => _level = l);
+        },
+      ),
+      ask: _handsFreeAsk,
+      speak: _speaker.say,
+      onState: (st) {
+        if (mounted) setState(() => _hands = st);
+      },
+      onNote: (n) {
+        if (mounted) setState(() => _handsNote = n);
+      },
+    );
+    setState(() {
+      _loop = loop;
+      _handsNote = null;
+      _voiceError = null;
+    });
+    try {
+      await loop.run();
+    } on MicRefused catch (e) {
+      if (mounted) setState(() => _handsNote = e.message);
+    } catch (_) {
+      if (mounted) {
+        setState(() => _handsNote =
+            'Hands-free stopped: the microphone could not start. Type instead.');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _loop = null;
+          _hands = HandsFreeState.off;
+          _level = 0;
+        });
+      }
+    }
+  }
+
+  /// The hands-free strip above the input: the toggle, what it is doing,
+  /// and a calm level meter while listening.
+  Widget _handsFreeBar() {
+    final on = _loop != null;
+    final canStart = !_busy && !_sendingVoice && !_recording && _voiceOff == null;
+    final status = _hands == HandsFreeState.off
+        ? (_handsNote ?? (_voiceOff ?? 'Go hands-free: just talk, I\'ll answer out loud.'))
+        : handsFreeLabels[_hands]!;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          on
+              ? FilledButton.icon(
+                  key: const ValueKey('handsfree-stop'),
+                  onPressed: _toggleHandsFree,
+                  icon: const Icon(Icons.stop_circle_outlined),
+                  label: const Text('Stop hands-free'),
+                )
+              : OutlinedButton.icon(
+                  key: const ValueKey('handsfree-start'),
+                  onPressed: canStart ? _toggleHandsFree : null,
+                  icon: const Icon(Icons.record_voice_over_outlined),
+                  label: const Text('Hands-free'),
+                ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Semantics(
+              liveRegion: true,
+              child: Text(
+                status,
+                key: const ValueKey('handsfree-status'),
+                style: const TextStyle(color: AccnomosColors.muted, fontSize: 13),
+              ),
+            ),
+          ),
+          if (_hands == HandsFreeState.listening) ...[
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 56,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: _level,
+                  minHeight: 8,
+                  backgroundColor: AccnomosColors.ground,
+                  color: AccnomosColors.teal,
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   void _scrollToEnd() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scroll.hasClients) {
@@ -547,8 +730,14 @@ class _AskScreenState extends State<AskScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        leading: const BrandLeading(),
-        title: Text('Ask'),
+        leading: widget.asSheet
+            ? IconButton(
+                icon: const Icon(Icons.close),
+                tooltip: 'Close',
+                onPressed: () => Navigator.of(context).maybePop(),
+              )
+            : const BrandLeading(),
+        title: Text(widget.asSheet ? 'Talk to Accnomos' : 'Ask'),
       ),
       body: Column(
         children: [
@@ -1564,7 +1753,8 @@ class _AskScreenState extends State<AskScreen> {
         : _busy || _sendingVoice
         ? 'Wait for the answer'
         : _voiceOff;
-    final micActive = live && !_busy && !_sendingVoice && _voiceOff == null;
+    final micActive =
+        live && !_busy && !_sendingVoice && _voiceOff == null && _loop == null;
     return Container(
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       decoration: const BoxDecoration(
@@ -1576,6 +1766,7 @@ class _AskScreenState extends State<AskScreen> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            if (live) _handsFreeBar(),
             if (_recording)
               const Padding(
                 padding: EdgeInsets.only(bottom: 8),
