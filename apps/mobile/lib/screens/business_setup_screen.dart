@@ -396,14 +396,17 @@ class _Section extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      // A Material (not a decorated box) so the ListTiles inside paint their ink.
+      child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AccnomosColors.border),
-      ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: const BorderSide(color: AccnomosColors.border),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -413,6 +416,8 @@ class _Section extends StatelessWidget {
           const SizedBox(height: 8),
           ...children,
         ],
+      ),
+        ),
       ),
     );
   }

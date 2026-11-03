@@ -203,7 +203,8 @@ void main() {
         'charge_rate_pence': 4500,
         'active': true,
       });
-      await tester.scrollUntilVisible(find.byKey(const Key('choose-logo')), 200);
+      await tester.ensureVisible(find.byKey(const Key('choose-logo')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('choose-logo')));
       await tester.pumpAndSettle();
       expect(requested.any((r) => r.url.path == '/invoices/profile/logo'), isTrue);
@@ -216,7 +217,8 @@ void main() {
       routes['GET /invoices/profile'] = (_) => <String, Object>{};
       routes['POST /mail/mailboxes'] = (r) => {...(json.decode(r.body) as Map), 'id': 'm1'};
       await pumpAt360(tester, BusinessSetupScreen(clientFor: () async => client(), workAccount: true));
-      await tester.scrollUntilVisible(find.byKey(const Key('add-mailbox')), 200);
+      await tester.ensureVisible(find.byKey(const Key('add-mailbox')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('add-mailbox')));
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField).first, 'invoices@firm.co.uk');
