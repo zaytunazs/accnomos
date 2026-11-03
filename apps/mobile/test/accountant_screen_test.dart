@@ -28,7 +28,7 @@ void main() {
     ),
   );
 
-  testWidgets('shows who has access and the queries, with nothing to edit', (
+  testWidgets('shows who has access and the queries, with a reply box on the open one', (
     tester,
   ) async {
     usePhoneSurface(tester);
@@ -50,8 +50,9 @@ void main() {
       find.text('Old question'),
       findsNothing,
     ); // resolved, hidden until asked
-    expect(find.byType(TextField), findsNothing); // read-only: no reply box
-    expect(find.byType(FilledButton), findsNothing);
+    expect(find.byType(TextField), findsOneWidget); // the open query's answer box
+    expect(find.widgetWithText(FilledButton, 'Send answer'), findsOneWidget);
+    expect(find.text('Remove'), findsOneWidget); // own invitation; the team opt-in stays on the web
 
     await tester.scrollUntilVisible(find.text('Show resolved (1)'), 200);
     await tester.tap(find.text('Show resolved (1)'));

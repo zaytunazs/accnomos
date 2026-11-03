@@ -79,6 +79,7 @@ void main() {
     expect(find.text('Close the month · needs your OK'), findsOneWidget);
     expect(find.text('Mark October 2026 closed?'), findsOneWidget);
     await tester.ensureVisible(find.widgetWithText(FilledButton, 'Approve'));
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Approve'));
     await tester.pumpAndSettle();
     expect(fake.approved, ['card-1']);

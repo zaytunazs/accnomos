@@ -611,8 +611,7 @@ class _PayrollDetailScreenState extends State<PayrollDetailScreen> {
     );
     final g = double.tryParse(gross.text.trim().replaceAll('£', ''));
     final n = double.tryParse(ni.text.trim().replaceAll('£', ''));
-    gross.dispose();
-    ni.dispose();
+    // Not disposed here: the dialog's closing animation still reads them.
     if (ok != true) return;
     if (g == null || n == null || g < 0 || n < 0) {
       setState(() => _error = 'Gross pay and employer NI are pounds, e.g. 4250.00.');
