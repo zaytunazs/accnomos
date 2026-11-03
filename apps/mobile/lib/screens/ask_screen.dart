@@ -15,6 +15,7 @@ import '../services/graph.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/brand.dart';
 
 const _warnBg = Color(0xFFFFF7ED);
 const _warnBorder = Color(0xFFF3C892);
@@ -471,9 +472,8 @@ class _AskScreenState extends State<AskScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
-        title: Text('Ask', style: Theme.of(context).textTheme.headlineSmall),
+        leading: const BrandLeading(),
+        title: Text('Ask'),
       ),
       body: Column(
         children: [

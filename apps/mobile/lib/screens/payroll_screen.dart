@@ -102,10 +102,7 @@ class _PayrollScreenState extends State<PayrollScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
-        title: Text('Payroll',
-            style: Theme.of(context).textTheme.headlineSmall),
+        title: Text('Payroll'),
         actions: [
           if (_account != null)
             IconButton(
@@ -358,10 +355,7 @@ class PayrollDetailScreen extends StatelessWidget {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
-        title: Text(title,
-            style: Theme.of(context).textTheme.headlineSmall),
+        title: Text(title),
       ),
       body: ListView(
         padding: const EdgeInsets.all(16),

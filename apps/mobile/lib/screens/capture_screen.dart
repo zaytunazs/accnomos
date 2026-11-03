@@ -574,11 +574,8 @@ class _CaptureScreenState extends State<CaptureScreen>
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title: Text(
           'Add receipts',
-          style: Theme.of(context).textTheme.headlineSmall,
         ),
       ),
       body: !_authChecked

@@ -222,11 +222,8 @@ class _NewInvoiceScreenState extends State<NewInvoiceScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title: Text(
           'New invoice',
-          style: Theme.of(context).textTheme.titleMedium,
         ),
       ),
       body: created == null ? _formView() : _previewView(created),

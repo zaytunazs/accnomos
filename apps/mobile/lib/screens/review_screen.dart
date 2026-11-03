@@ -13,6 +13,8 @@ import '../services/review_rules.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/brand.dart';
+import '../widgets/autopilot_summary.dart';
 import '../widgets/lookups.dart';
 import '../widgets/review_image.dart';
 import '../widgets/scan_progress.dart';
@@ -850,13 +852,11 @@ class _ReviewScreenState extends State<ReviewScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
+        leading: const BrandLeading(),
         title: Text(
           proposals.isEmpty
               ? 'Review'
               : 'Review ${_index + 1} of ${proposals.length}',
-          style: Theme.of(context).textTheme.headlineSmall,
         ),
         actions: [
           if (_signedIn)
@@ -1055,77 +1055,70 @@ class _ReviewScreenState extends State<ReviewScreen> {
     );
   }
 
-  /// Entries the Autopilot approved, each with an Undo button.
+  /// Entries the Autopilot approved: one compact line above the queue ("6 approved by Autopilot · Review or undo"), so
+  /// the document being reviewed keeps the screen; the list with each Undo opens in a sheet.
   /// Rendered only when the reader exposes `POST /books/undo/{event_id}`.
-  Widget _autopilotSection() {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-      padding: const EdgeInsets.fromLTRB(12, 10, 12, 6),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AccnomosColors.border),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Approved by Autopilot',
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 14,
-              color: AccnomosColors.ink,
-            ),
-          ),
-          const SizedBox(height: 2),
-          const Text(
-            'Checked by your rules. Undo puts one back for review.',
-            style: TextStyle(
-                fontSize: 12, color: AccnomosColors.muted),
-          ),
-          for (final item in _auto)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _autopilotSection() =>
+      AutopilotSummary(count: _auto.length, onOpen: _openAutopilotSheet);
+
+  void _openAutopilotSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (sheetContext, setSheet) => SafeArea(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.of(sheetContext).size.height * 0.7),
+            child: ListView(
+              shrinkWrap: true,
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              children: [
+                const Text('Approved by Autopilot',
+                    style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18, color: AccnomosColors.ink)),
+                const SizedBox(height: 2),
+                const Text('Checked by your rules. Undo puts one back for review.',
+                    style: TextStyle(fontSize: 13, color: AccnomosColors.muted)),
+                if (_auto.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 12),
+                    child: Text('Nothing left to review here.', style: TextStyle(color: AccnomosColors.muted)),
+                  ),
+                for (final item in _auto)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Row(
                       children: [
-                        Text(
-                          item.supplier,
-                          softWrap: false,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.w700),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(item.supplier,
+                                  softWrap: false,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontWeight: FontWeight.w700)),
+                              Text(_gbp(item.total), style: const TextStyle(color: AccnomosColors.muted)),
+                            ],
+                          ),
                         ),
-                        Text(
-                          _gbp(item.total),
-                          style: const TextStyle(
-                              color: AccnomosColors.muted),
+                        const SizedBox(width: 8),
+                        OutlinedButton(
+                          style: OutlinedButton.styleFrom(minimumSize: const Size(72, 44)),
+                          onPressed: _undoBusy
+                              ? null
+                              : () async {
+                                  await _undo(item);
+                                  if (sheetContext.mounted) setSheet(() {});
+                                },
+                          child: const Text('Undo', softWrap: false),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: const Size(72, 40),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8),
-                      shape: RoundedRectangleBorder(
-                          borderRadius:
-                              BorderRadius.circular(12)),
-                    ),
-                    onPressed: _undoBusy ? null : () => _undo(item),
-                    child: const Text('Undo', softWrap: false),
-                  ),
-                ],
-              ),
+              ],
             ),
-          const SizedBox(height: 6),
-        ],
+          ),
+        ),
       ),
     );
   }

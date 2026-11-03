@@ -8,6 +8,7 @@ import '../services/books.dart' show booksClient, isoDate;
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/brand.dart';
 import 'goals_widgets.dart';
 import 'settings_screen.dart';
 
@@ -160,10 +161,8 @@ class _GoalsScreenState extends State<GoalsScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
-        title: Text('Goals & progress',
-            style: Theme.of(context).textTheme.headlineSmall),
+        leading: const BrandLeading(),
+        title: Text('Goals & progress'),
         actions: [
           if (_signedIn)
             IconButton(

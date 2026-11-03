@@ -144,11 +144,8 @@ class _AccountantScreenState extends State<AccountantScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title: Text(
           'Your accountant',
-          style: Theme.of(context).textTheme.headlineSmall,
         ),
         actions: [
           if (_account != null)

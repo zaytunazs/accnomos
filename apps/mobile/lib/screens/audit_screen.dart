@@ -260,9 +260,7 @@ class _AuditScreenState extends State<AuditScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
-        title: Text('Audit trail', style: Theme.of(context).textTheme.headlineSmall),
+        title: Text('Audit trail'),
         actions: [
           if (_account != null)
             IconButton(

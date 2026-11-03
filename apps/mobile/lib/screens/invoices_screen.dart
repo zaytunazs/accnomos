@@ -89,11 +89,8 @@ class _InvoicesScreenState extends State<InvoicesScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title: Text(
           'Invoices',
-          style: Theme.of(context).textTheme.headlineSmall,
         ),
         actions: [
           if (_account != null)
@@ -499,11 +496,8 @@ class _InvoiceDetailState extends State<InvoiceDetailScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title: Text(
           widget.number,
-          style: Theme.of(context).textTheme.titleMedium,
         ),
       ),
       body: _loading

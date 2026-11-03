@@ -94,3 +94,19 @@ class BrandLockup extends StatelessWidget {
     );
   }
 }
+
+
+/// The leading slot of a tab screen's app bar: the logo mark, or the back button when the screen was pushed (Goals and
+/// Budget open from More for a business), so every screen carries the brand without losing its way back.
+class BrandLeading extends StatelessWidget {
+  const BrandLeading({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    if (Navigator.of(context).canPop()) return const BackButton();
+    return const Padding(
+      padding: EdgeInsets.all(12),
+      child: LogoMark(size: 28),
+    );
+  }
+}

@@ -60,9 +60,13 @@ List<Map<String, dynamic>> _groupMembers(Map<String, dynamic> g) => [
 
 String _groupNames(Map<String, dynamic> g) => _groupMembers(g)
     .map((c) => (c['name'] ?? 'Unnamed').toString())
-    .join(' + ');
+    .join('\n');
+
+/// Suggestions shown before "Show all N".
+const _collapsedCount = 3;
 
 class _DuplicatesState extends State<DuplicatesCard> {
+  bool _showAll = false;
   String? _busy;
   String? _error;
   ({String mergeId, String message})? _undone;
@@ -142,25 +146,6 @@ class _DuplicatesState extends State<DuplicatesCard> {
     }
   }
 
-  void _openGroup(Map<String, dynamic> g) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (sheetContext) => _GroupSheet(
-        group: g,
-        busy: _busy != null,
-        onMerge: () {
-          Navigator.of(sheetContext).pop();
-          _openMerge(g);
-        },
-        onDismiss: () {
-          Navigator.of(sheetContext).pop();
-          _dismiss(g);
-        },
-      ),
-    );
-  }
-
   void _openMerge(Map<String, dynamic> g) {
     final members = _groupMembers(g);
     final ai = g['ai'] is Map ? Map<String, dynamic>.from(g['ai']) : null;
@@ -200,7 +185,7 @@ class _DuplicatesState extends State<DuplicatesCard> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AccnomosColors.border),
       ),
       child: Column(
@@ -215,29 +200,33 @@ class _DuplicatesState extends State<DuplicatesCard> {
             ),
             const SizedBox(height: 4),
             const Text(
-              'Code found these by shared email, phone, VAT number or close name. '
-              'The AI view is advice only — nothing merges until you say so.',
+              'Found by code from shared details or close names. '
+              'Nothing merges until you choose.',
               style:
                   TextStyle(fontSize: 13, color: AccnomosColors.muted),
             ),
-            const SizedBox(height: 8),
-            for (final g in widget.groups)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      alignment: Alignment.centerLeft,
-                      foregroundColor: AccnomosColors.ink,
-                      minimumSize: const Size(48, 48),
-                    ),
-                    onPressed: () => _openGroup(g),
-                    child: Text(
-                      _groupNames(g),
-                      style: const TextStyle(fontWeight: FontWeight.w700),
-                    ),
+            const SizedBox(height: 12),
+            for (final g in _showAll ? widget.groups : widget.groups.take(_collapsedCount))
+              _GroupTile(
+                group: g,
+                busy: _busy != null,
+                merging: _busy == 'merge:${_groupKey(g)}',
+                dismissing: _busy == _groupKey(g),
+                onMerge: () => _openMerge(g),
+                onDismiss: () => _dismiss(g),
+              ),
+            if (widget.groups.length > _collapsedCount)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton(
+                  style: TextButton.styleFrom(
+                    foregroundColor: AccnomosColors.tealDark,
+                    minimumSize: const Size(48, 44),
                   ),
+                  onPressed: () => setState(() => _showAll = !_showAll),
+                  child: Text(_showAll
+                      ? 'Show fewer'
+                      : 'Show all ${widget.groups.length}'),
                 ),
               ),
           ],
@@ -273,106 +262,6 @@ class _DuplicatesState extends State<DuplicatesCard> {
                       fontWeight: FontWeight.w600)),
             ),
         ],
-      ),
-    );
-  }
-}
-
-/// One group: the code evidence and the AI's view, with Merge / Not the same.
-class _GroupSheet extends StatelessWidget {
-  const _GroupSheet({
-    required this.group,
-    required this.busy,
-    required this.onMerge,
-    required this.onDismiss,
-  });
-
-  final Map<String, dynamic> group;
-  final bool busy;
-  final VoidCallback onMerge;
-  final VoidCallback onDismiss;
-
-  @override
-  Widget build(BuildContext context) {
-    final members = _groupMembers(group);
-    final evidence = [
-      for (final e in ((group['evidence'] as List?) ?? const []))
-        e.toString(),
-    ];
-    final blocked = group['blocked'] == true;
-    final ai =
-        group['ai'] is Map ? Map<String, dynamic>.from(group['ai']) : null;
-    final aiText = duplicateAiText(ai, blocked);
-    return SafeArea(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              _groupNames(group),
-              style:
-                  const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
-            ),
-            const SizedBox(height: 8),
-            for (final m in members)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 2),
-                child: Text(
-                  [
-                    (m['name'] ?? '').toString(),
-                    if ((m['vrn'] ?? '').toString().isNotEmpty)
-                      'VAT ${(m['vrn'] ?? '').toString()}',
-                    if ((m['email'] ?? '').toString().isNotEmpty)
-                      (m['email'] ?? '').toString(),
-                  ].join(' · '),
-                  style: const TextStyle(color: AccnomosColors.muted),
-                ),
-              ),
-            const SizedBox(height: 8),
-            const Text('Code evidence',
-                style: TextStyle(fontWeight: FontWeight.w700)),
-            for (final e in evidence) Text('• $e'),
-            const SizedBox(height: 8),
-            Text(
-              aiText ?? 'The model could not answer — decide from the evidence above.',
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: aiText == null
-                    ? AccnomosColors.muted
-                    : AccnomosColors.tealDark,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                if (!blocked)
-                  Expanded(
-                    child: FilledButton(
-                      style: FilledButton.styleFrom(
-                        backgroundColor: AccnomosColors.teal,
-                        minimumSize: const Size.fromHeight(52),
-                      ),
-                      onPressed: busy ? null : onMerge,
-                      child: const Text('Merge'),
-                    ),
-                  ),
-                if (!blocked) const SizedBox(width: 8),
-                Expanded(
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AccnomosColors.tealDark,
-                      minimumSize: const Size.fromHeight(52),
-                    ),
-                    onPressed: busy ? null : onDismiss,
-                    child: const Text('Not the same'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -532,6 +421,133 @@ class _MergeSheetState extends State<_MergeSheet> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// One suggestion as its own small card: why code thinks so, each contact on its own row, the AI's view when there is
+/// one, then Merge… and Not duplicates. Never a run-on line of names.
+class _GroupTile extends StatelessWidget {
+  const _GroupTile({
+    required this.group,
+    required this.busy,
+    required this.merging,
+    required this.dismissing,
+    required this.onMerge,
+    required this.onDismiss,
+  });
+
+  final Map<String, dynamic> group;
+  final bool busy;
+  final bool merging;
+  final bool dismissing;
+  final VoidCallback onMerge;
+  final VoidCallback onDismiss;
+
+  static String _kind(String k) => switch (k) {
+        'customer' => 'Customer',
+        'supplier' => 'Supplier',
+        'both' => 'Customer and supplier',
+        _ => k.isEmpty ? '' : '${k[0].toUpperCase()}${k.substring(1)}',
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final members = _groupMembers(group);
+    final evidence = [
+      for (final e in ((group['evidence'] as List?) ?? const [])) e.toString(),
+    ];
+    final reason = (group['reason'] ?? '').toString().trim();
+    final lead = reason.isNotEmpty ? reason : (evidence.isEmpty ? '' : evidence.first);
+    final blocked = group['blocked'] == true;
+    final ai = group['ai'] is Map ? Map<String, dynamic>.from(group['ai']) : null;
+    final aiText = duplicateAiText(ai, blocked);
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+      decoration: BoxDecoration(
+        color: AccnomosColors.ground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AccnomosColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (lead.isNotEmpty)
+            Text(
+              lead[0].toUpperCase() + lead.substring(1),
+              style: const TextStyle(
+                  fontSize: 13, fontWeight: FontWeight.w600, color: AccnomosColors.tealDark),
+            ),
+          const SizedBox(height: 6),
+          for (final m in members)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 2, right: 8),
+                    child: Icon(Icons.person_outline, size: 18, color: AccnomosColors.muted),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          (m['name'] ?? 'Unnamed').toString(),
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                        ),
+                        Builder(builder: (_) {
+                          final details = [
+                            _kind((m['kind'] ?? '').toString()),
+                            if ((m['email'] ?? '').toString().isNotEmpty) (m['email'] ?? '').toString(),
+                            if ((m['vrn'] ?? '').toString().isNotEmpty) 'VAT ${(m['vrn'] ?? '').toString()}',
+                          ].where((t) => t.isNotEmpty).join(' · ');
+                          return details.isEmpty
+                              ? const SizedBox.shrink()
+                              : Text(details,
+                                  style: const TextStyle(fontSize: 13, color: AccnomosColors.muted));
+                        }),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (aiText != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(aiText, style: const TextStyle(fontSize: 13, color: AccnomosColors.muted)),
+            ),
+          const SizedBox(height: 6),
+          Wrap(
+            spacing: 8,
+            runSpacing: 4,
+            children: [
+              if (!blocked)
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AccnomosColors.teal,
+                    minimumSize: const Size(96, 44),
+                  ),
+                  onPressed: busy ? null : onMerge,
+                  child: Text(merging ? 'Merging…' : 'Merge…'),
+                ),
+              OutlinedButton(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AccnomosColors.tealDark,
+                  minimumSize: const Size(96, 44),
+                ),
+                onPressed: busy ? null : onDismiss,
+                child: Text(dismissing ? 'Saving…' : 'Not duplicates'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }

@@ -16,6 +16,7 @@ void main() {
         'contacts': [
           {
             'id': 'a1',
+            'kind': 'supplier',
             'name': 'Novex Office Supplies Ltd',
             'vrn': 'GB882431902',
             'email': 'sales@novex.example',
@@ -28,6 +29,7 @@ void main() {
           },
         ],
         'evidence': ['same VAT number GB882431902', 'same email sales@novex.example'],
+        'reason': 'same VAT number GB882431902',
         'blocked': blocked,
         'ai': ai ??
             {
@@ -69,10 +71,7 @@ void main() {
     );
   }
 
-  Future<void> openGroup(WidgetTester tester) async {
-    await tester.tap(find.text('Novex Office Supplies Ltd + Novex Office Ltd'));
-    await tester.pumpAndSettle();
-  }
+  Future<void> openGroup(WidgetTester tester) async {}
 
   test('duplicateAiText states the view and the confidence', () {
     expect(
@@ -97,21 +96,28 @@ void main() {
     expect(find.textContaining('Possible duplicates'), findsNothing);
   });
 
-  testWidgets('card names the count and the group', (tester) async {
+  testWidgets('each suggestion is a card: reason, one row per contact, never a run-on line',
+      (tester) async {
     await tester.pumpWidget(card());
     expect(find.text('Possible duplicates (1)'), findsOneWidget);
-    expect(find.text('Novex Office Supplies Ltd + Novex Office Ltd'),
-        findsOneWidget);
+    expect(find.text('Same VAT number GB882431902'), findsOneWidget);
+    expect(find.text('Novex Office Supplies Ltd'), findsOneWidget);
+    expect(find.text('Novex Office Ltd'), findsOneWidget);
+    expect(find.text('Supplier · sales@novex.example · VAT GB882431902'), findsOneWidget);
+    expect(find.textContaining(' + '), findsNothing);
+    expect(find.textContaining('AI view: same business (90%)'), findsOneWidget);
+    expect(find.text('Merge…'), findsOneWidget);
+    expect(find.text('Not duplicates'), findsOneWidget);
   });
 
-  testWidgets('sheet shows evidence and the AI view', (tester) async {
-    await tester.pumpWidget(card());
-    await openGroup(tester);
-    expect(find.text('• same VAT number GB882431902'), findsOneWidget);
-    expect(find.textContaining('AI view: same business (90%)'),
-        findsOneWidget);
-    expect(find.text('Merge'), findsOneWidget);
-    expect(find.text('Not the same'), findsOneWidget);
+  testWidgets('more than three suggestions collapse behind Show all N', (tester) async {
+    await tester.pumpWidget(card(groups: [
+      for (var i = 0; i < 5; i++) group(ids: ['a$i', 'b$i']),
+    ]));
+    expect(find.text('Merge…'), findsNWidgets(3));
+    await tester.tap(find.text('Show all 5'));
+    await tester.pumpAndSettle();
+    expect(find.text('Merge…'), findsNWidgets(5));
   });
 
   testWidgets('merge confirms naming the kept contact', (tester) async {
@@ -129,7 +135,7 @@ void main() {
       };
     }));
     await openGroup(tester);
-    await tester.tap(find.text('Merge'));
+    await tester.tap(find.text('Merge…'));
     await tester.pumpAndSettle();
     expect(find.text('Keep which contact?'), findsOneWidget);
     await tester.tap(find.text('Confirm merge'));
@@ -151,7 +157,7 @@ void main() {
       onChanged: () => changed++,
     ));
     await openGroup(tester);
-    await tester.tap(find.text('Merge'));
+    await tester.tap(find.text('Merge…'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Confirm merge'));
     await tester.pumpAndSettle();
@@ -170,7 +176,7 @@ void main() {
       onChanged: () => changed++,
     ));
     await openGroup(tester);
-    await tester.tap(find.text('Not the same'));
+    await tester.tap(find.text('Not duplicates'));
     await tester.pumpAndSettle();
     expect(dismissed, ['a1', 'b2']);
     expect(changed, 1);
@@ -189,10 +195,9 @@ void main() {
         },
       ),
     ]));
-    await openGroup(tester);
     expect(find.textContaining('Code rules this out'), findsOneWidget);
-    expect(find.text('Merge'), findsNothing);
-    expect(find.text('Not the same'), findsOneWidget);
+    expect(find.text('Merge…'), findsNothing);
+    expect(find.text('Not duplicates'), findsOneWidget);
   });
 
   testWidgets('no AI view leaves the evidence alone', (tester) async {
@@ -205,13 +210,8 @@ void main() {
         'ai': null,
       },
     ]));
-    await tester.tap(find.byType(OutlinedButton).first);
-    await tester.pumpAndSettle();
-    expect(
-        find.text(
-            'The model could not answer — decide from the evidence above.'),
-        findsOneWidget);
-    await tester.tap(find.text('Merge'));
+    expect(find.text('Share name words: novex'), findsOneWidget);
+    await tester.tap(find.text('Merge…'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Confirm merge'));
     await tester.pumpAndSettle();
@@ -227,7 +227,7 @@ void main() {
     await openGroup(tester);
     await tester.pump();
     expect(tester.takeException(), isNull);
-    await tester.tap(find.text('Merge'));
+    await tester.tap(find.text('Merge…'));
     await tester.pumpAndSettle();
     await tester.pump();
     expect(tester.takeException(), isNull);

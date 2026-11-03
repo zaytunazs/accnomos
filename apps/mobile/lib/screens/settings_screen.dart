@@ -826,11 +826,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title: Text(
           'Settings',
-          style: Theme.of(context).textTheme.headlineSmall,
         ),
       ),
       body: _initial == null

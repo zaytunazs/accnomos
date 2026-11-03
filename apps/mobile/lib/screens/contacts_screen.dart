@@ -148,11 +148,8 @@ class _ContactsScreenState extends State<ContactsScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title: Text(
           'Contacts',
-          style: Theme.of(context).textTheme.headlineSmall,
         ),
         actions: [
           if (_account != null) ...[
@@ -1158,11 +1155,8 @@ class _ContactDetailState extends State<ContactDetailScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title: Text(
           widget.name,
-          style: Theme.of(context).textTheme.titleMedium,
         ),
         actions: [
           if (!_loading && _error == null)

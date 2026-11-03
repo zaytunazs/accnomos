@@ -140,10 +140,8 @@ class _BankScreenState extends State<BankScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title:
-            Text('Bank', style: Theme.of(context).textTheme.headlineSmall),
+            Text('Bank'),
         actions: [
           if (_account != null)
             IconButton(

@@ -74,11 +74,8 @@ class _JobsScreenState extends State<JobsScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title: Text(
           'Jobs',
-          style: Theme.of(context).textTheme.headlineSmall,
         ),
         actions: [
           if (_account != null)
@@ -373,11 +370,8 @@ class _AddTimesheetState extends State<AddTimesheetScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title: Text(
           'Log hours',
-          style: Theme.of(context).textTheme.titleMedium,
         ),
       ),
       body: _loadingLists

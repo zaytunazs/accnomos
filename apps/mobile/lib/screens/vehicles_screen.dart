@@ -79,11 +79,8 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title: Text(
           'Vehicles',
-          style: Theme.of(context).textTheme.headlineSmall,
         ),
         actions: [
           if (_account != null)
@@ -439,11 +436,8 @@ class _AddMileageState extends State<AddMileageScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title: Text(
           'Log journey',
-          style: Theme.of(context).textTheme.titleMedium,
         ),
       ),
       body: ListView(

@@ -135,12 +135,9 @@ class _FilesScreenState extends State<FilesScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         automaticallyImplyLeading: false,
         title: Text(
           inFolder ? _trail.last : 'Files',
-          style: Theme.of(context).textTheme.headlineSmall,
         ),
         leading: inFolder
             ? IconButton(

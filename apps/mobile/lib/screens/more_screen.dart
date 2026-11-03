@@ -5,6 +5,7 @@ import '../services/books.dart' show booksClient;
 import '../services/demo.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/brand.dart';
 import 'accountant_screen.dart';
 import 'audit_screen.dart';
 import 'bank_screen.dart';
@@ -153,11 +154,9 @@ class _MoreScreenState extends State<MoreScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
+        leading: const BrandLeading(),
         title: Text(
           'More',
-          style: Theme.of(context).textTheme.headlineSmall,
         ),
       ),
       body: ListView(

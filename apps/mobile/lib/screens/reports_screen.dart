@@ -199,11 +199,8 @@ class _ReportsScreenState extends State<ReportsScreen>
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
         title: Text(
           'Reports',
-          style: Theme.of(context).textTheme.headlineSmall,
         ),
         actions: [
           if (_account != null)

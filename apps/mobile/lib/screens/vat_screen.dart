@@ -6,6 +6,7 @@ import '../services/auth.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/brand.dart';
 import '../widgets/web_only.dart';
 import 'settings_screen.dart';
 
@@ -101,11 +102,9 @@ class _VatScreenState extends State<VatScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
+        leading: const BrandLeading(),
         title: Text(
           'VAT return',
-          style: Theme.of(context).textTheme.headlineSmall,
         ),
         actions: [
           if (_account != null)

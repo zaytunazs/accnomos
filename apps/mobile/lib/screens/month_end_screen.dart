@@ -138,9 +138,7 @@ class _MonthEndScreenState extends State<MonthEndScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
-        title: Text('Month-end', style: Theme.of(context).textTheme.headlineSmall),
+        title: Text('Month-end'),
       ),
       body: RefreshIndicator(
         onRefresh: _reload,

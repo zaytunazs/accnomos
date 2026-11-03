@@ -6,6 +6,7 @@ import '../services/proposal_editing.dart' show formatPence;
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/brand.dart';
 import '../widgets/web_only.dart';
 import 'settings_screen.dart';
 
@@ -169,10 +170,8 @@ class _PersonalScreenState extends State<PersonalScreen> {
     return Scaffold(
       backgroundColor: AccnomosColors.ground,
       appBar: AppBar(
-        backgroundColor: AccnomosColors.ground,
-        elevation: 0,
-        title: Text(widget.title,
-            style: Theme.of(context).textTheme.headlineSmall),
+        leading: const BrandLeading(),
+        title: Text(widget.title),
         actions: [
           if (_account != null)
             IconButton(
