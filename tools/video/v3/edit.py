@@ -150,7 +150,6 @@ EDL: list[dict] = [
     {
         "id": "s5a",
         "lead": 0.3,
-        "lt": ("Automatic bank feed", "TrueLayer sandbox · read only"),
         "shots": [
             {"layout": "full", "src": "w-bankfeed", "segs": [BANK_SEGS[0]], "dur": 1.6},
             {"layout": "full", "src": "w-bankfeed", "segs": [BANK_SEGS[1]], "dur": 1.4},
