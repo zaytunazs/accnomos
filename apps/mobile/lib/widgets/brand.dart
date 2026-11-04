@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../services/navigation.dart';
 import '../theme.dart';
 
 /// The Accnomos mark, as the web draws it (apps/web/src/components/TopBar.tsx
@@ -104,9 +105,34 @@ class BrandLeading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (Navigator.of(context).canPop()) return const BackButton();
-    return const Padding(
-      padding: EdgeInsets.all(12),
-      child: LogoMark(size: 28),
+    return IconButton(
+      key: const Key('logo-home'),
+      tooltip: 'Home',
+      onPressed: AppNav.goHome,
+      icon: const LogoMark(size: 28),
     );
   }
+}
+
+/// The logo and wordmark as a button: tap to go Home, as the website's logo
+/// does. Used as the Home app bar's title.
+class HomeLogoButton extends StatelessWidget {
+  const HomeLogoButton({super.key, this.size = 30});
+
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        label: 'Accnomos, go to Home',
+        child: InkWell(
+          key: const Key('logo-lockup-home'),
+          borderRadius: BorderRadius.circular(8),
+          onTap: AppNav.goHome,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 2),
+            child: ExcludeSemantics(child: BrandLockup(size: size)),
+          ),
+        ),
+      );
 }

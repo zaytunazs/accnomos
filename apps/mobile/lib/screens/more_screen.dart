@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/auth.dart';
 import '../services/books.dart' show booksClient;
 import '../services/demo.dart';
+import '../services/navigation.dart';
 import '../services/settings.dart';
 import '../theme.dart';
 import '../widgets/brand.dart';
@@ -277,7 +278,7 @@ class _DemoCardState extends State<DemoCard> {
               ),
               TextButton(
                 key: const Key('more-demo-exit'),
-                onPressed: _busy ? null : Demo.end,
+                onPressed: _busy ? null : AppNav.exitDemo,
                 child: const Text('Exit demo'),
               ),
             ],

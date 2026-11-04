@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../services/app_mode.dart';
 import '../services/auth.dart';
 import '../services/demo.dart';
+import '../services/navigation.dart';
 import '../services/proposal_editing.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
@@ -402,9 +403,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
       await _auth.signOut();
       if (!mounted) return;
       setState(() => _account = null);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Signed out.')),
-      );
+      // Back to the Welcome page, as the website goes to its home page.
+      await AppNav.signedOut();
+      return;
     } catch (e) {
       if (!mounted) return;
       setState(() => _authError = friendlySignInMessage(e));
@@ -445,6 +446,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _authBusy = false;
     });
     await _signIn();
+    // Signed in with another account: the books may be another kind. No
+    // account in the end (the sign-in was cancelled): the Welcome page.
+    if (!mounted) return;
+    if (_account == null) {
+      await AppNav.signedOut();
+    } else {
+      await AppMode.refresh();
+    }
   }
 
   static String _kindLabel(Object? kind) => switch (kind) {
@@ -498,9 +507,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       _exportMessage = null;
       _exportOk = false;
     });
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Disconnected.')),
-    );
+    await AppNav.signedOut();
   }
 
   Future<void> _saveConnection() async {
@@ -1499,10 +1506,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12)),
             ),
-            onPressed: () {
-              Navigator.of(context).popUntil((r) => r.isFirst);
-              Demo.end();
-            },
+            onPressed: AppNav.exitDemo,
             child: const Text('Exit demo'),
           ),
         ),

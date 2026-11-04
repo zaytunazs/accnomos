@@ -7,8 +7,10 @@ import '../models/suggestions.dart';
 import '../services/auth.dart';
 import '../services/books.dart' show booksClient;
 import '../services/books_events.dart';
+import '../services/runtime_client.dart' show RuntimeClient;
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/loading.dart';
 import '../widgets/tile_grid.dart';
 import 'bank_screen.dart';
 import 'home_cards.dart';
@@ -36,6 +38,10 @@ class _HomeScreenState extends State<HomeScreen> {
   String? _error;
   Dashboard? _data;
   HomeSummary? _summary;
+
+  /// Code's summary is on screen and the AI's words are still coming.
+  bool _summaryPending = false;
+  int _summaryGen = 0;
   int _refresh = 0;
 
   /// Opens the screen a dashboard suggestion points at.
@@ -117,21 +123,44 @@ class _HomeScreenState extends State<HomeScreen> {
       // quarter); dashboard() sends it as stagger=/start_month=.
       final client =
           await booksClient(settings, _auth, account);
+      // The summary loads beside the tiles and never holds them up.
+      _loadSummary(client);
       final json = await client.dashboard(today: _today());
       if (!mounted) return;
       setState(() => _data = Dashboard.fromJson(json));
-      // The summary is extra: if it cannot load, the tiles still stand.
-      try {
-        final home = await client.home(today: _today());
-        if (mounted) setState(() => _summary = HomeSummary.fromHomeJson(home));
-      } catch (_) {
-        if (mounted) setState(() => _summary = null);
-      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _error = e.toString().replaceFirst('Exception: ', ''));
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Code's summary first (no model call, so it is quick), then the AI's
+  /// words in the background, swapped in when they arrive. If the AI's
+  /// words do not come, code's summary stays. An older load never overwrites
+  /// a newer one.
+  Future<void> _loadSummary(RuntimeClient client) async {
+    final gen = ++_summaryGen;
+    bool current() => mounted && gen == _summaryGen;
+    if (!current()) return;
+    setState(() => _summaryPending = true);
+    try {
+      final fast = await client.home(today: _today(), summaryAi: false);
+      if (current()) {
+        setState(() => _summary = HomeSummary.fromHomeJson(fast) ?? _summary);
+      }
+    } catch (_) {
+      // The AI call below may still answer.
+    }
+    try {
+      final full = await client.home(today: _today());
+      final worded = HomeSummary.fromHomeJson(full);
+      if (current() && worded != null) setState(() => _summary = worded);
+    } catch (_) {
+      // Code's summary stands.
+    } finally {
+      if (current()) setState(() => _summaryPending = false);
     }
   }
 
@@ -144,12 +173,14 @@ class _HomeScreenState extends State<HomeScreen> {
         HomeTile(label: 'Needs attention', value: '—', note: 'Connect to see'),
       ];
     }
-    if (_loading) {
+    if (_loading && _data == null) {
+      // Same size as the real tiles, shimmering, so nothing jumps when the
+      // figures arrive. A reload keeps the last figures on screen instead.
       return const [
-        HomeTile(label: 'Cash in bank'),
-        HomeTile(label: 'Owed to you'),
-        HomeTile(label: 'VAT estimate'),
-        HomeTile(label: 'Needs attention'),
+        SkeletonTile(label: 'Cash in bank'),
+        SkeletonTile(label: 'Owed to you'),
+        SkeletonTile(label: 'VAT estimate'),
+        SkeletonTile(label: 'Needs attention'),
       ];
     }
     final d = _data;
@@ -241,7 +272,10 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           if (signedIn && _summary != null) ...[
             const SizedBox(height: 14),
-            SummaryCard(summary: _summary!),
+            SummaryCard(summary: _summary!, pending: _summaryPending),
+          ] else if (signedIn && _summaryPending) ...[
+            const SizedBox(height: 14),
+            const SummaryCardSkeleton(),
           ],
           if (_error != null) ...[
             const SizedBox(height: 10),
@@ -316,41 +350,82 @@ class _HomeScreenState extends State<HomeScreen> {
 /// the web's Deadlines note. The link opens Settings.
 /// The summary at the top of Home: two to four sentences, figures by code.
 class SummaryCard extends StatelessWidget {
-  const SummaryCard({super.key, required this.summary});
+  const SummaryCard({super.key, required this.summary, this.pending = false});
 
   final HomeSummary summary;
+
+  /// Code's summary is showing and the AI's words are on their way: a thin
+  /// teal bar along the top and "Muse Spark is writing your summary…".
+  final bool pending;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       container: true,
       label: 'Your summary',
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: AccnomosColors.tealTint,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Your summary',
-                style: TextStyle(
-                    fontWeight: FontWeight.w800,
-                    color: AccnomosColors.tealDark,
-                    fontSize: 16)),
-            const SizedBox(height: 6),
-            Text(summary.text,
-                style: const TextStyle(color: AccnomosColors.ink, height: 1.45)),
-            const SizedBox(height: 6),
-            Text(summary.byLine,
-                style:
-                    const TextStyle(color: AccnomosColors.muted, fontSize: 12)),
-          ],
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          decoration: const BoxDecoration(color: AccnomosColors.tealTint),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(
+                height: 3,
+                child: pending
+                    ? const LinearProgressIndicator(
+                        key: Key('summary-progress'),
+                        minHeight: 3,
+                        color: AccnomosColors.teal,
+                        backgroundColor: Color(0xFFC9E2DC),
+                      )
+                    : null,
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 11, 14, 14),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Your summary',
+                        style: TextStyle(
+                            fontWeight: FontWeight.w800,
+                            color: AccnomosColors.tealDark,
+                            fontSize: 16)),
+                    const SizedBox(height: 6),
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 350),
+                      child: Text(summary.text,
+                          key: ValueKey(summary.text),
+                          style: const TextStyle(
+                              color: AccnomosColors.ink, height: 1.45)),
+                    ),
+                    const SizedBox(height: 8),
+                    pending
+                        ? const AiWritingBar(
+                            key: Key('summary-writing'),
+                            label: 'Muse Spark is writing your summary…')
+                        : Text(summary.byLine,
+                            style: const TextStyle(
+                                color: AccnomosColors.muted, fontSize: 12)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+/// The summary card before even code's figures are in: its title and
+/// shimmering lines, in the same teal card.
+class SummaryCardSkeleton extends StatelessWidget {
+  const SummaryCardSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) => const SkeletonCard(
+      key: Key('summary-skeleton'), title: 'Your summary', lines: 3, tinted: true);
 }
 
 class AssumedStaggerNote extends StatelessWidget {
