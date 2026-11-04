@@ -183,7 +183,7 @@ CASES: list[Case] = [
         ("flat rate", "flat-rate"),
         src="docs/HONESTY.md",
     ),  # fmt: skip
-    _q("feature", "Does it work with Google Drive?", ("google drive",), NOT_SUPPORTED, src="README.md"),
+    _q("feature", "Which cloud storage does it keep the books in?", "onedrive", src="README.md"),
     _q("feature", "Can it look up a company on Companies House?", "companies house", src="docs/HONESTY.md"),
     _q(
         "feature",
