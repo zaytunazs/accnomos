@@ -125,7 +125,7 @@ EDL: list[dict] = [
             {
                 "layout": "full",
                 "src": "w-profit",
-                "segs": ["wait-2.5..wait+0.5", "ready-0.2..ready+2.8"],
+                "segs": ["wait..wait+0.6", "ready-0.2..ready+4.2"],
                 "dur": 5.0,
                 "crop": "ASK",
             },
