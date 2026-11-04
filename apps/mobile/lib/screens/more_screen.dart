@@ -269,7 +269,7 @@ class _DemoCardState extends State<DemoCard> {
           const SizedBox(height: 4),
           Text(
             '${demo.business.isEmpty ? 'Fictional sample books' : demo.business}. '
-            'Changes reset after two hours; nothing is sent to HMRC or by email.',
+            'Changes reset after two hours; VAT returns go to HMRC\'s sandbox, never live HMRC, and no email is sent.',
             style: const TextStyle(color: AccnomosColors.muted, height: 1.4),
           ),
           if (_error != null) ...[
