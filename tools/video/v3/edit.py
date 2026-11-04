@@ -51,6 +51,8 @@ XF = 0.3  # crossfade between the kept parts of one recording
 # The edit. Lower thirds: (feature, the Meta model at work). Text on screen: UK English, Meta models only.
 # The judges stop at 3:00: keep the total <= 2:58.
 # A scene whose footage is missing from raw/ is left out (with a warning), so the edit still renders without it.
+# the bank feed: the button, TrueLayer's sandbox sign-in, Fetch now, the lines arriving
+BANK_SEGS = ["connect-1.0..connect+1.0", "tl+3.0..tl+5.5", "fetch-0.6..fetch+0.4", "fetched-0.2..fetched+3.0"]
 HMRC_PW = [
     {"from": "userReady-0.15", "until": "hmrc", "box": [596, 838, 200, 54]}
 ]  # the sandbox test user's password, blurred
@@ -149,7 +151,7 @@ EDL: list[dict] = [
         "id": "s5a",
         "lead": 0.3,
         "lt": ("Automatic bank feed", "TrueLayer sandbox · matched by code"),
-        "shots": [{"layout": "full", "src": "w-bankfeed", "segs": ["0..end"], "dur": 5.6}],
+        "shots": [{"layout": "full", "src": "w-bankfeed", "segs": BANK_SEGS, "dur": 5.6}],
     },
     {
         "id": "s5",
