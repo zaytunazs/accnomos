@@ -74,7 +74,9 @@ export default function TopBar({ routes }: { routes: string[] }) {
         <div className="ml-auto flex shrink-0 items-center gap-0.5">
           <ScanBadge />
           <FindPage groups={groups} />
-          <IconLink href="/ask" label="Ask" current={isCurrent(pathname, "/ask")}>
+          {/* Under 400 px the Ask tab in the phone tab bar (AppNav) is the way to Ask: the icon makes room for the
+              profile's name. */}
+          <IconLink href="/ask" label="Ask" current={isCurrent(pathname, "/ask")} className="max-[399px]:hidden">
             <path d="M4 5.5h12v8H8.5L5 16.5v-3H4z" />
           </IconLink>
           <IconLink href="/help" label="Help" current={isCurrent(pathname, "/help")} narrowHidden>
@@ -118,7 +120,8 @@ function SignInAgain({ pathname }: { pathname: string }) {
 /**
  * Second-level links (inside a group) look clearly lower than the groups themselves (docs/research/DASHBOARD.md §9):
  * indented behind a rule, smaller type (14 px, not 15), normal weight (not semibold), under the group's small
- * uppercase label; the current page has a teal bar, a tint and semibold text, and aria-current.
+ * uppercase label; the current page has a teal bar, a tint and semibold text, and aria-current. Only the page
+ * itself gets that fill: the group holding it is marked more quietly (GroupBar `groupTone`).
  */
 const subItem = (current: boolean, tall: boolean) =>
   `relative flex ${tall ? "min-h-11" : "min-h-10"} items-center gap-2 rounded-lg py-1.5 pl-3 pr-3 text-[14px] ${
@@ -155,6 +158,7 @@ function IconLink({
   current,
   badge,
   narrowHidden,
+  className = "",
   children,
 }: {
   href: string;
@@ -162,6 +166,7 @@ function IconLink({
   current: boolean;
   badge?: string;
   narrowHidden?: boolean;
+  className?: string;
   children: ReactNode;
 }) {
   return (
@@ -170,7 +175,7 @@ function IconLink({
       aria-label={label}
       title={label}
       aria-current={current ? "page" : undefined}
-      className={`${iconButton} ${narrowHidden ? "max-[479px]:hidden" : ""}`}
+      className={`${iconButton} ${narrowHidden ? "max-[479px]:hidden" : ""} ${className}`}
     >
       <Icon>{children}</Icon>
       {badge ? (
@@ -282,8 +287,9 @@ function GroupBar({
   }
 
   const top = vertical
-    ? "flex h-11 w-full items-center gap-3 whitespace-nowrap rounded-lg px-3 text-left text-[15px] font-semibold"
-    : "flex h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2.5 text-[15px] font-semibold 2xl:px-3";
+    ? "relative flex h-11 w-full items-center gap-3 whitespace-nowrap rounded-lg px-3 text-left text-[15px] font-semibold"
+    : "relative flex h-11 items-center gap-1 whitespace-nowrap rounded-lg px-2.5 text-[15px] font-semibold 2xl:px-3";
+  // A plain link that is the current page: the strong selected fill.
   const tone = (here: boolean) =>
     vertical
       ? here
@@ -291,6 +297,17 @@ function GroupBar({
         : "text-white/90 hover:bg-white/10 hover:text-white"
       : here
         ? "bg-teal-tint text-teal-dark"
+        : "text-ink hover:bg-ground";
+  // A group that holds the current page (its item carries the fill and aria-current): a quieter mark, bold with a
+  // bar, so the one filled item in the menu is the page itself. On /vat both Reporting and Tax hold it; on
+  // Customers both Sales and More do.
+  const groupTone = (holds: boolean) =>
+    vertical
+      ? holds
+        ? "font-bold text-white before:absolute before:inset-y-2.5 before:left-0 before:w-[3px] before:rounded-full before:bg-brass hover:bg-white/10"
+        : "text-white/90 hover:bg-white/10 hover:text-white"
+      : holds
+        ? "font-bold text-teal-dark after:absolute after:inset-x-2.5 after:bottom-1 after:h-[3px] after:rounded-full after:bg-teal hover:bg-ground"
         : "text-ink hover:bg-ground";
 
   return (
@@ -326,7 +343,8 @@ function GroupBar({
               aria-controls={id}
               onClick={() => setOpen(isOpen ? null : g.label)}
               onKeyDown={(e) => onButtonKey(e, g.label)}
-              className={`${top} ${tone(here)}`}
+              data-holds-current={here ? "" : undefined}
+              className={`${top} ${groupTone(here)}`}
             >
               {vertical && <NavIcon label={g.label} />}
               {g.label}
