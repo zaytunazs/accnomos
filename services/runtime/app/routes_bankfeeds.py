@@ -11,6 +11,11 @@ transactions into the bank lines. Same headers as /books/*.
     POST /books/bankfeeds/{id}/disconnect          {confirm: true}: forget it here and end it at TrueLayer
     GET  /books/bankfeeds/duplicates               feed lines left out as already in a statement (kept, not counted)
     POST /books/bankfeeds/duplicates/{line}/restore {confirm: true}: "not a duplicate": add it to the bank lines
+
+In a demo session (`X-Demo-Session`, app/demo.py) the same routes work against TrueLayer's sandbox only, with its mock
+bank only, into that demo's in-memory books; the signed state names the demo session (by a hash), so the callback's
+code connects only in the demo that started it. No sandbox on this server: refused (403) with the reason.
+docs/BANK_FEED_SANDBOX_DEMO.md.
 """
 
 from __future__ import annotations
@@ -29,9 +34,26 @@ from app.routes_books import get_books, require_uk, require_user
 from app.validation import StrictBody
 
 router = APIRouter(prefix="/books/bankfeeds", tags=["bank feeds"])
-#: Connecting reaches the provider with the server's credentials: never from a demo sandbox (app/demo.py).
+
+
+def sandbox_only_in_demo(request: Request) -> None:
+    """A demo session (app/demo.py) may connect, fetch and reconfirm only TrueLayer's sandbox test bank, into the
+    demo's own in-memory books (get_books gives a demo its books; the server's real data is never reached). When this
+    server has no TrueLayer sandbox (off, or pointed at live banks), it is refused with the reason, as before."""
+    if demo.is_demo_request(request) and (why := bf.demo_refusal()) is not None:
+        detail = f"Connecting a bank feed is switched off in the demo sandbox. {why}"
+        raise HTTPException(status_code=403, detail=detail)
+
+
+def _demo_session(request: Request) -> str | None:
+    """This demo's session id (checked: get_books already refused a forged or ended one), or None outside a demo."""
+    s = demo.from_request(request)
+    return s.id if s is not None else None
+
+
 #: Open Banking through TrueLayer reaches UK banks only: books kept in another country upload statements instead.
-NOT_IN_DEMO = [Depends(demo.refuse_external("Connecting a bank feed")), require_uk()]
+#: In a demo, TrueLayer's sandbox only (docs/BANK_FEED_SANDBOX_DEMO.md).
+CALLS_TRUELAYER = [Depends(sandbox_only_in_demo), require_uk()]
 ABROAD = (
     "Connecting a bank works with UK banks only. Upload your bank statement (CSV or PDF) instead: "
     "it is matched the same way."
@@ -43,10 +65,10 @@ def _http(exc: bf.BankFeedError) -> HTTPException:
 
 
 @router.get("", response_model=bf.FeedStatus)
-async def feed_status(books: Books = Depends(get_books)) -> bf.FeedStatus:
+async def feed_status(request: Request, books: Books = Depends(get_books)) -> bf.FeedStatus:
     if not (await rules_for(books)).uk:
         return bf.FeedStatus(available=False, reason=ABROAD)
-    return await bf.status(books)
+    return await bf.status(books, demo=demo.is_demo_request(request))
 
 
 class StartBody(StrictBody):
@@ -58,14 +80,15 @@ class StartResult(BaseModel):
     url: str
 
 
-@router.post("/start", response_model=StartResult, dependencies=NOT_IN_DEMO)
+@router.post("/start", response_model=StartResult, dependencies=CALLS_TRUELAYER)
 async def start(
     body: StartBody,
-    books: Books = Depends(get_books),  # signed in to their books: no anonymous connections
+    request: Request,
+    books: Books = Depends(get_books),  # signed in to their books (or a live demo session): no anonymous connections
     user: str = Depends(require_user),
 ) -> StartResult:
     try:
-        return StartResult(url=bf.start(body.redirect_to, body.binding_hash, user))
+        return StartResult(url=bf.start(body.redirect_to, body.binding_hash, user, _demo_session(request)))
     except bf.BankFeedError as exc:
         raise _http(exc) from exc
 
@@ -97,18 +120,19 @@ class ConnectBody(StrictBody):
     binding: str = Field(min_length=16, max_length=200)
 
 
-@router.post("/connect", response_model=bf.FeedStatus, dependencies=NOT_IN_DEMO)
+@router.post("/connect", response_model=bf.FeedStatus, dependencies=CALLS_TRUELAYER)
 async def connect(
-    body: ConnectBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+    body: ConnectBody, request: Request, books: Books = Depends(get_books), user: str = Depends(require_user)
 ) -> bf.FeedStatus:
+    sid = _demo_session(request)
     try:
-        await bf.connect(books, body.code, body.state, body.binding, user)
+        await bf.connect(books, body.code, body.state, body.binding, user, sid)
     except bf.BankFeedError as exc:
         raise _http(exc) from exc
-    return await bf.status(books)
+    return await bf.status(books, demo=sid is not None)
 
 
-@router.post("/sync", response_model=bf.SyncResult)
+@router.post("/sync", response_model=bf.SyncResult, dependencies=[Depends(sandbox_only_in_demo)])
 async def sync(books: Books = Depends(get_books), user: str = Depends(require_user)) -> bf.SyncResult:
     try:
         return await bf.sync(books, user)
@@ -137,7 +161,9 @@ async def _display_name(request: Request) -> str | None:
         return None
 
 
-@router.post("/{connection_id}/reconfirm", response_model=bf.ReconfirmResult)
+@router.post(
+    "/{connection_id}/reconfirm", response_model=bf.ReconfirmResult, dependencies=[Depends(sandbox_only_in_demo)]
+)
 async def reconfirm(
     connection_id: str,
     body: ConfirmBody,
@@ -161,14 +187,18 @@ class DisconnectResult(BaseModel):
 
 @router.post("/{connection_id}/disconnect", response_model=DisconnectResult)
 async def disconnect(
-    connection_id: str, body: ConfirmBody, books: Books = Depends(get_books), user: str = Depends(require_user)
+    connection_id: str,
+    body: ConfirmBody,
+    request: Request,
+    books: Books = Depends(get_books),
+    user: str = Depends(require_user),
 ) -> DisconnectResult:
     _confirmed(body)
     try:
         warning = await bf.disconnect(books, connection_id, user)
     except FileNotFoundError as exc:
         raise HTTPException(status_code=404, detail="No such bank feed") from exc
-    return DisconnectResult(status=await bf.status(books), warning=warning)
+    return DisconnectResult(status=await bf.status(books, demo=demo.is_demo_request(request)), warning=warning)
 
 
 @router.get("/duplicates", response_model=list[bf.FlaggedDuplicate])

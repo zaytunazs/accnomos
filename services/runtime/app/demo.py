@@ -14,6 +14,9 @@ in-memory fakes instead:
   return to HMRC's sandbox through the relay, with a sandbox test user the relay makes for that demo
   (POST /hmrc/test-user); if the relay can't, the apps simulate the submission and label the receipt
   "Demo — submission simulated". The VAT-number check and Companies House look-ups are refused for demo sessions (403).
+* A bank feed connects TrueLayer's sandbox test bank only ("Bank sandbox (TrueLayer test bank) — no real bank data"),
+  into this session's books, gone with the session (app/routes_bankfeeds.py; docs/BANK_FEED_SANDBOX_DEMO.md). A server
+  without a TrueLayer sandbox refuses it (403), with the reason.
 * AI calls use the server's normal AI configuration, exactly as for a signed-in user.
 
 Two demos (`POST /demo/session?kind=`): `company` (the default, above) and `personal`, a fictional household's

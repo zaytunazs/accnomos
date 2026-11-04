@@ -6,11 +6,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _Fake extends RuntimeClient {
-  _Fake({this.connections = const [], this.available = true})
+  _Fake({this.connections = const [], this.available = true, this.demo = false})
       : super(AppSettings(runtimeUrl: 'http://reader:8780'));
 
   final List<Map<String, dynamic>> connections;
   final bool available;
+  final bool demo;
   int syncs = 0;
 
   @override
@@ -18,6 +19,8 @@ class _Fake extends RuntimeClient {
         'available': available,
         'sandbox': true,
         'connections': connections,
+        if (demo) 'demo': true,
+        if (demo) 'label': 'Bank sandbox (TrueLayer test bank) — no real bank data',
       };
 
   @override
@@ -95,6 +98,19 @@ void main() {
     expect(c.syncs, 1);
     expect(synced, 1);
     expect(find.text('Bank synced: 3 new lines.'), findsOneWidget);
+  });
+
+  testWidgets('Bank sync in a demo: labelled as the test bank, and Sync now once connected', (tester) async {
+    final c = _Fake(demo: true, connections: [
+      {'bank': 'Mock UK Bank (sandbox)', 'last_synced_at': null, 'message': 'Consent runs to 2 Feb 2027.'}
+    ]);
+    await tester.pumpWidget(_app(BankSyncCard(clientFor: () async => c, onSynced: () {})));
+    await tester.pumpAndSettle();
+    expect(find.text('Bank sandbox (TrueLayer test bank) — no real bank data'), findsOneWidget);
+    expect(find.textContaining('Mock UK Bank (sandbox)'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('bank-sync-now')));
+    await tester.pumpAndSettle();
+    expect(c.syncs, 1);
   });
 
   testWidgets('Bank sync hidden where feeds are not offered', (tester) async {

@@ -58,6 +58,67 @@ function SandboxBadge() {
   );
 }
 
+/** The demo's label, everywhere its feed shows: TrueLayer's test bank, never a real one. */
+function DemoBadge({ label }: { label: string }) {
+  return (
+    <span data-testid="bank-sandbox-label" className="rounded-full bg-warn-bg px-2.5 py-0.5 text-[12px] font-extrabold text-warn-ink">
+      {label}
+    </span>
+  );
+}
+
+/** TrueLayer's public sandbox login for its mock bank, to type on TrueLayer's page (like the HMRC test user). */
+function TestLogin({ login }: { login: NonNullable<RtFeedStatus["test_login"]> }) {
+  const [copied, setCopied] = useState<string | null>(null);
+  async function copy(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopied(label);
+    } catch {
+      setCopied(null); // no clipboard here: the value is on screen to type
+    }
+  }
+  return (
+    <div role="group" aria-label="TrueLayer test bank login" className="mt-3 rounded-xl border border-teal bg-teal-tint p-4">
+      <p className="text-[15px] font-extrabold text-teal-dark">TrueLayer test bank login — public sandbox credentials</p>
+      <p className="mt-1 text-sm leading-6">
+        On TrueLayer&apos;s page choose <strong>Mock Bank</strong>, sign in with these, then allow access. They are
+        TrueLayer&apos;s published test credentials (
+        <a href={login.source_url} target="_blank" rel="noreferrer" className="underline underline-offset-2">
+          TrueLayer&apos;s docs
+        </a>
+        ) and work only in its sandbox.
+      </p>
+      <dl className="mt-2 grid grid-cols-[max-content_1fr] items-center gap-x-4 gap-y-1 text-[15px]">
+        {(
+          [
+            ["Username", login.username],
+            ["Password", login.password],
+          ] as const
+        ).map(([label, value]) => (
+          <div key={label} className="contents">
+            <dt className="text-muted">{label}</dt>
+            <dd className="font-bold">
+              <span data-testid={`bank-test-${label.toLowerCase()}`}>{value}</span>{" "}
+              <button
+                type="button"
+                onClick={() => copy(label, value)}
+                aria-label={`Copy ${label}`}
+                className="ml-1 rounded-lg border border-border bg-white px-2 py-0.5 text-[13px] font-bold text-teal-dark hover:bg-ground"
+              >
+                Copy
+              </button>
+              <span aria-live="polite" className="ml-2 text-[13px] font-semibold text-teal-dark">
+                {copied === label ? "Copied" : ""}
+              </span>
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 /** Bank › Bank feed: connect a bank through TrueLayer (Open Banking, read only), reconfirm the 90-day consent, fetch. */
 export default function BankFeeds({ account, onSynced }: { account: AccountInfo | null; onSynced: () => void }) {
   const [status, setStatus] = useState<RtFeedStatus | null>(null);
@@ -215,13 +276,30 @@ export default function BankFeeds({ account, onSynced }: { account: AccountInfo 
 
   if (!status) return null;
   const sandbox = status.sandbox ? " (sandbox)" : "";
+  const demo = status.demo === true;
   return (
     <section id="bank-feed" aria-label="Bank feed" className="scroll-mt-4 rounded-2xl border border-border bg-white p-5">
       <h2 className="flex flex-wrap items-center gap-2 text-lg font-extrabold">
-        Bank feed {status.available && status.sandbox && <SandboxBadge />}
+        Bank feed{" "}
+        {demo && status.label ? <DemoBadge label={status.label} /> : status.available && status.sandbox && <SandboxBadge />}
       </h2>
       {!status.available ? (
         <p className="mt-1 text-sm text-muted">{status.reason}</p>
+      ) : status.connections.length === 0 && demo ? (
+        <div className="mt-1">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="min-w-0 text-sm text-muted">
+              Try the automatic bank feed with TrueLayer&apos;s test bank (Open Banking, read only). You sign in on
+              TrueLayer&apos;s own sandbox page with the test login below; its sample transactions then arrive in this
+              demo&apos;s bank lines, ready to match. No real bank is involved, and the connection is kept only in this
+              demo, which resets after 2 hours.
+            </p>
+            <button type="button" className={primary} disabled={busy !== null} onClick={connect}>
+              {busy === "connect" ? "Opening…" : "Connect the test bank"}
+            </button>
+          </div>
+          {status.test_login && <TestLogin login={status.test_login} />}
+        </div>
       ) : status.connections.length === 0 ? (
         <div className="mt-1 flex flex-wrap items-center justify-between gap-3">
           <p className="min-w-0 text-sm text-muted">
@@ -239,7 +317,10 @@ export default function BankFeeds({ account, onSynced }: { account: AccountInfo 
             <li key={c.id} className="py-3">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-[15px] font-bold text-ink">{c.bank}</p>
+                  <p className="text-[15px] font-bold text-ink">
+                    {c.bank}
+                    {demo && <span className="ml-2 text-sm font-semibold text-warn-ink">· test bank, sample data only</span>}
+                  </p>
                   <p className="text-sm text-muted">
                     {c.accounts.map((a) => `${a.name}${a.last4 ? ` ····${a.last4}` : ""}`).join(", ") || "No accounts shared"}
                   </p>
@@ -334,7 +415,11 @@ export default function BankFeeds({ account, onSynced }: { account: AccountInfo 
           {error}
         </p>
       )}
-      <p className="mt-2 text-xs text-muted">No feed, or your bank isn&apos;t listed? Upload a statement CSV below; lines already fetched are left out.</p>
+      <p className="mt-2 text-xs text-muted">
+        {demo
+          ? "Bank sandbox (TrueLayer test bank) — no real bank data. A statement CSV uploaded below is matched the same way."
+          : "No feed, or your bank isn't listed? Upload a statement CSV below; lines already fetched are left out."}
+      </p>
     </section>
   );
 }

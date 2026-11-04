@@ -2735,6 +2735,12 @@ export interface RtFeedStatus {
   sandbox: boolean;
   reconfirm_days: number;
   connections: RtFeedConnection[];
+  /** A demo session: TrueLayer's sandbox test bank only, into the demo's own books (docs/BANK_FEED_SANDBOX_DEMO.md). */
+  demo?: boolean;
+  /** "Bank sandbox (TrueLayer test bank) — no real bank data" in a demo. */
+  label?: string | null;
+  /** TrueLayer's public sandbox login for its mock bank, for the visitor to type on TrueLayer's page (demo only). */
+  test_login?: { username: string; password: string; source_url: string } | null;
 }
 export interface RtFeedSync {
   new_lines: number;
