@@ -527,6 +527,8 @@ SUMMARIES: dict[str, Summary] = {
     "personal_rules_reordered": lambda r, w: "Changed the order of personal spending rules",
     "personal_line_categorised": lambda r, w: "Put a bank line in a personal spending category",
     "personal_goal_saved": lambda r, w: "Saved a savings goal",
+    "note_saved": lambda r, w: "Saved a note" + (" (spoken)" if r.get("source") == "voice" else ""),
+    "note_deleted": lambda r, w: "Deleted a note",
     "goal_saved": lambda r, w: {"added": "Added a goal", "deleted": "Removed a goal"}.get(
         str(r.get("change") or ""), "Changed a goal"
     ),

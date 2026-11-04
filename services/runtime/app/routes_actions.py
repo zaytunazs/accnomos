@@ -7,7 +7,8 @@ proposal was made with is required: a proposal from another session fails its si
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Callable
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
@@ -59,6 +60,29 @@ def _mail_sender(token: str, request: Request | None = None) -> Any:
 
 class ApproveBody(StrictBody):
     action: ProposedAction
+    # "voice": the user said yes to the assistant's read-back; `heard` is what they said, as transcribed. Recorded in
+    # the actions audit log. Cards that pay or move money refuse a voice approval (actions.TAP_ONLY).
+    via: Literal["tap", "voice"] = "tap"
+    heard: str | None = Field(default=None, max_length=300)
+
+
+def calendar_factory(request: Request) -> Callable[[], Any]:
+    """() -> the caller's calendar, built only when a calendar card or question needs it: the demo's in-memory one,
+    test mode's, or Outlook via Graph (the caller closes it)."""
+    from app import demo
+
+    def make() -> Any:
+        if (sandbox := demo.from_request(request)) is not None:
+            return sandbox.calendar
+        if is_test_mode():
+            from app import testmode
+
+            return testmode.current().calendar
+        from accnomos_connectors.msgraph import GraphCalendarProvider
+
+        return GraphCalendarProvider(graph_token(request))
+
+    return make
 
 
 class RejectBody(StrictBody):
@@ -80,7 +104,15 @@ async def approve(
     token: str = Depends(graph_token),
 ) -> actions.ActionResult:
     """Execute the action once. Approving the same action again returns the first result (status already_done)."""
-    ctx = actions.Context(books=books, user=user, graph_token=token, mail_sender=_mail_sender(token, request))
+    ctx = actions.Context(
+        books=books,
+        user=user,
+        graph_token=token,
+        mail_sender=_mail_sender(token, request),
+        calendar=calendar_factory(request),
+        via=body.via,
+        approval_heard=(body.heard or "").strip() or None if body.via == "voice" else None,
+    )
     try:
         return await actions.approve(body.action, ctx)
     except actions.ActionError as exc:

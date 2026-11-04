@@ -26,11 +26,12 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from app import actions, ask_more, jobs, spending
+from app import assistant_tasks as tasks
 from app import dashboard as dash
 from app.ai import ask as ask_ai
 from app.ai import spending as spending_ai
@@ -39,7 +40,7 @@ from app.ai.config import AiConfig, ai_config_from_request
 from app.books import EVENTS, Books, today
 from app.facts import build_facts
 from app.planner import TZ, plan_intent, uk_day
-from app.routes_actions import graph_token
+from app.routes_actions import calendar_factory, graph_token
 from app.routes_books import business_name, get_books
 from app.schemas import (
     AskAnswer,
@@ -51,6 +52,7 @@ from app.schemas import (
     KeyNumber,
     ProposedAction,
     SuggestedAction,
+    Transcription,
 )
 from app.vat_cycle import VatCycle, vat_cycle
 from app.vat_schemes import scheme_context
@@ -113,6 +115,17 @@ async def spending_answer(books: Books, period: AskPeriod, cfg: AiConfig, busine
     )
 
 
+async def _deadlines(books: Books, cycle: VatCycle) -> list[Any]:
+    """The deadlines Home lists (VAT, Self Assessment for a sole trader), for "when is my next deadline?"."""
+    from app import home_overview
+
+    day = today(TZ)
+    prof = await dash._profile_or_default(books)  # noqa: SLF001 - the same lenient profile read Home uses
+    d = await dash.build(books, day, cycle.start_month, cycle.months, vat_assumed=cycle.assumed)
+    vat = d.vat if d.vat_applies else None
+    return home_overview.deadlines(day, vat, None, prof.kind == "sole_trader", None, None)
+
+
 async def _prepare(
     req: AskRequest,
     books: Books,
@@ -120,6 +133,7 @@ async def _prepare(
     business: str | None,
     token: str,
     cycle: VatCycle,
+    calendar: tasks.CalendarFactory | None = None,
 ) -> AskAnswer | dict[str, Any]:
     """Day-plan intent (code, no model) → instruction (proposed action) → the facts pack for a question about the books.
 
@@ -130,6 +144,22 @@ async def _prepare(
         period = AskPeriod(start=start, end=end)
     if (day := plan_intent(req.question, today(TZ))) is not None:
         return plan_answer(day, period)
+
+    def card(kind: Any, summary: str, preview: dict[str, Any], confirm: str) -> ProposedAction:
+        return actions.new_action(actions.Draft(kind, summary, preview, confirm), token)
+
+    # Notes, to-dos, the calendar and the next deadline (app/assistant_tasks.py): code only, for any kind of books
+    done = await tasks.handle(
+        req.question,
+        books,
+        period,
+        today(TZ),
+        sign=card,
+        calendar=calendar,
+        deadlines=lambda: _deadlines(books, cycle),
+    )
+    if done is not None:
+        return done
     prof = await dash._profile_or_default(books)  # noqa: SLF001 - the same lenient profile read Home uses
     if prof.kind == "personal":  # a household has no VAT return: its questions are about its bank lines
         return await ask_more.household_answer(req.question, books, cfg, period, today(TZ))
@@ -150,8 +180,9 @@ async def _answer(
     business: str | None,
     token: str,
     cycle: VatCycle,
+    calendar: tasks.CalendarFactory | None = None,
 ) -> AskAnswer:
-    ready = await _prepare(req, books, cfg, business, token, cycle)
+    ready = await _prepare(req, books, cfg, business, token, cycle, calendar)
     if isinstance(ready, AskAnswer):
         return ready
     return await ask_ai.answer(req.question, ready, req.history, cfg)
@@ -173,6 +204,7 @@ async def _events(req: AskRequest, ready: AskAnswer | dict[str, Any], cfg: AiCon
 @router.post("/ask", response_model=AskAnswer)
 async def ask(
     body: AskRequest,
+    request: Request,
     stream: bool = Query(
         default=False, description="1: server-sent events (start, token…, answer) instead of one JSON answer"
     ),
@@ -184,7 +216,7 @@ async def ask(
 ) -> Any:
     """An answer about the books, or, for an instruction ("send a £100 invoice to …"), a proposed action to approve."""
     ready = await _prepare(
-        body, books, cfg, business, token, cycle
+        body, books, cfg, business, token, cycle, calendar_factory(request)
     )  # before streaming, so its errors keep their status
     if stream:
         return StreamingResponse(
@@ -199,6 +231,7 @@ async def ask(
 
 @router.post("/ask/voice", response_model=AskVoiceAnswer)
 async def ask_voice(
+    request: Request,
     audio: UploadFile = File(...),
     period: str | None = Form(default=None),
     history: str | None = Form(default=None),
@@ -234,11 +267,39 @@ async def ask_voice(
         raise HTTPException(
             422, f"That question is too long ({len(heard.text)} characters; keep it under 500)"
         ) from exc
-    answer = await _answer(req, books, cfg, business, token, cycle)
+    answer = await _answer(req, books, cfg, business, token, cycle, calendar_factory(request))
     if answer.proposed_action is not None:  # re-signed: the provenance is part of what the user approves
         spoken = answer.proposed_action.model_copy(update={"transcribed_by": heard.by})
         answer = answer.model_copy(update={"proposed_action": actions.sign(spoken, token)})
     return AskVoiceAnswer(**answer.model_dump(), transcript=heard.text, transcribed_by=heard.by)
+
+
+class HeardReply(BaseModel):
+    """POST /books/ask/transcribe: what was said, and which speech-to-text service heard it."""
+
+    transcript: str
+    transcribed_by: Transcription | None = None
+
+
+@router.post("/ask/transcribe", response_model=HeardReply)
+async def transcribe(
+    audio: UploadFile = File(...),
+    _books: Books = Depends(get_books),  # signed in, with books: as for /ask/voice
+    cfg: AiConfig = Depends(ai_config_from_request),
+) -> HeardReply:
+    """Speech to text only, nothing answered or changed: the assistant's "Shall I go ahead?" reply, which the client
+    then sends to POST /actions/approve with `via: "voice"` (the runtime checks the words again there)."""
+    providers = stt.chain(cfg)
+    if not providers:
+        raise HTTPException(400, "Voice needs Muse Voice Transcribe (a Meta API key) or the Spark's Whisper server")
+    try:
+        voice.require_ffmpeg()
+        data = await audio.read(voice.MAX_UPLOAD_BYTES + 1)
+        wav = await voice.to_wav(data, audio.content_type, audio.filename)
+        heard = await stt.transcribe(wav, providers)
+    except voice.VoiceError as exc:
+        raise HTTPException(exc.status, str(exc)) from exc
+    return HeardReply(transcript=heard.text, transcribed_by=heard.by)
 
 
 async def _names(books: Books) -> list[str]:

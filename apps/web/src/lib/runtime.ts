@@ -416,9 +416,26 @@ export const runtime = {
     form.append("history", JSON.stringify(history.slice(-6)));
     return call<RtAskVoiceAnswer>(a, withQuery("/books/ask/voice", vatQuery()), { method: "POST", body: form });
   },
-  /** POST /actions/approve: run a proposed action exactly as Ask returned it (signed; refused if changed or expired). */
-  approveAction: (a: AccountInfo, action: RtProposedAction) =>
-    call<RtActionResult>(a, "/actions/approve", { method: "POST", body: JSON.stringify({ action }) }),
+  /** POST /books/ask/transcribe: speech to text only (the reply to "Shall I go ahead?"); nothing is answered. */
+  transcribe: (a: AccountInfo, audio: Blob) => {
+    const form = new FormData();
+    const ext = audio.type.includes("mp4") ? "m4a" : audio.type.includes("ogg") ? "ogg" : "webm";
+    form.append("audio", audio, `reply.${ext}`);
+    return call<{ transcript: string; transcribed_by?: RtTranscription | null }>(a, "/books/ask/transcribe", { method: "POST", body: form });
+  },
+  /** POST /actions/approve: run a proposed action exactly as Ask returned it (signed; refused if changed or expired).
+   *  `via: "voice"` when a spoken yes approved it; `heard` is what was heard (audited). */
+  approveAction: (a: AccountInfo, action: RtProposedAction, spoken?: { heard: string }) =>
+    call<RtActionResult>(a, "/actions/approve", {
+      method: "POST",
+      body: JSON.stringify(spoken ? { action, via: "voice", heard: spoken.heard.slice(0, 300) } : { action }),
+    }),
+  /** GET /notes: the user's notes, newest first. */
+  notes: (a: AccountInfo) => call<RtNote[]>(a, "/notes"),
+  /** POST /notes: save a typed note straight from the Notes page (the assistant uses a card instead). */
+  addNote: (a: AccountInfo, text: string, due?: string | null) =>
+    call<RtNote>(a, "/notes", { method: "POST", body: JSON.stringify({ text, due: due ?? null, source: "typed" }) }),
+  deleteNote: (a: AccountInfo, id: string) => call<RtNote>(a, `/notes/${encodeURIComponent(id)}`, { method: "DELETE" }),
   /** POST /actions/reject: nothing happens except a line in the actions audit log. */
   rejectAction: (a: AccountInfo, action: RtProposedAction, reason?: string) =>
     call<{ action_id: string; status: "rejected" }>(a, "/actions/reject", {
@@ -2940,7 +2957,21 @@ export type RtActionKind =
   | "close_month" // proposed by the month-end close
   | "add_to_shopping_list"
   | "create_quote"
-  | "convert_quote_to_invoice";
+  | "convert_quote_to_invoice"
+  | "save_note" // spoken or typed in the assistant (app/assistant_tasks.py)
+  | "delete_note"
+  | "add_todo"
+  | "calendar_add_event"
+  | "calendar_remove_event";
+/** A saved note (GET /notes; app/assistant_tasks.py). */
+export interface RtNote {
+  id: string;
+  text: string;
+  due: string | null;
+  source: "voice" | "typed";
+  created: string;
+  created_by: string | null;
+}
 export interface RtProposedAction {
   id: string;
   kind: RtActionKind;
@@ -2952,6 +2983,8 @@ export interface RtProposedAction {
   expires_at: string;
   /** Set when the request was spoken: which speech-to-text service heard it (signed with the rest). */
   transcribed_by?: RtTranscription | null;
+  /** Only the Approve button may approve it, never a spoken yes: it sends or moves money (decided by the runtime). */
+  tap_only?: boolean;
   signature: string;
 }
 /** Who heard a spoken request (services/runtime/app/ai/stt.py): Muse Voice Transcribe, or Whisper on the Spark. */
