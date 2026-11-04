@@ -150,7 +150,9 @@ test("demo sandbox: Add a receipt reads only the upload, with progress, a type t
 
   await row.getByRole("button", { name: "Confirm", exact: true }).click();
   await expect(row).toHaveAttribute("data-stage", /^(ready|needs_a_look)$/, { timeout: 30_000 });
-  await expect(row.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "100");
+  // A finished job folds into the quiet row (ScanProgress.tsx): its bars are gone, the file's stage label stays.
+  await expect(page.locator("[data-scan-quiet]")).toHaveCount(1);
+  await expect(row.getByRole("progressbar")).toHaveCount(0);
   await expect(status(page)).toHaveText("1 new proposal");
   await expect(page.getByText("7 waiting for you")).toBeVisible();
   await expect(page.getByRole("region", { name: "Novex Office Supplies Ltd · £51.90" })).toBeVisible();
