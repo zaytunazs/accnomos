@@ -11,7 +11,7 @@ Rules for editing:
 - Quote the 27 Oct 200-document extraction runs with repairs, re-read and Verifier on (Spark Open 91 % clean / 93 % messy,
   Glimmer 85 % / 80 %), not the earlier 60-document or no-Verifier runs. Always say "synthetic documents".
 - Quote Autopilot with its caveat (17 false posts in 467, all re-dated copies); never shorten it to "0 false posts".
-- Muse Spark 1.3, Muse Voice Transcribe and SAM 3.1 are unit-tested only: never say they were measured or run live.
+- Muse Spark 1.3 is measured (95 % / 96 % on 200 synthetic documents each, `evals/runs/spark13_200`, `spark13_messy_200`); Muse Voice Transcribe and SAM 3.1 have run live (`evals/runs/live_checks_2026-11-04`, `evals/runs/sam_crop_live`). SAM showed no reading gain on synthetic scenes: never say it improves accuracy.
 - **Not on `main` on 28 Oct, so not in the text:** the month-end close agent, company / sole-trader / personal profiles,
   Glimmer on a hosted GPU in the models panel, and the no-sign-in `/judges` page. Add a sentence for each only after it is merged
   and run, and say how it was tested. iPhone is not built: "coming soon" at most.

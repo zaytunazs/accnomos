@@ -23,7 +23,7 @@ the day you record.
 | **`/judges` (no sign-in)** | **Not on `main`**; today judges press *Load sample books* on their own account (never run against a real OneDrive) | As above |
 | iPhone | **Not built** | Say "coming soon", nothing more |
 
-**Do not film:** the mic (never run live), SAM 3.1 (off by default, never run live), the signed-out `/vat` mock-up (its
+**Do not film:** SAM 3.1 as an accuracy gain (it ran live but did not change the reading on synthetic scenes), the signed-out `/vat` mock-up (its
 "Reviewer's note (Muse Spark)" is not backed by any running reviewer), keys, tokens, the HMRC test user's password, or a
 real mailbox.
 
@@ -89,7 +89,7 @@ Synthetic documents: real phone photos will score lower
 ```
 
 Optional second line if there is room: `Second reading: Glimmer caught 8 wrong readings in 400, with 44 false alarms (all to Needs a look)`.
-Do not say Muse Spark 1.3 was measured: it has no eval (unit-tested only).
+Muse Spark 1.3 is measured: every field right 95 % clean / 96 % messy on 200 synthetic documents each (`evals/runs/spark13_200`, `spark13_messy_200`); say "synthetic".
 
 ## How the shots map to the four criteria
 

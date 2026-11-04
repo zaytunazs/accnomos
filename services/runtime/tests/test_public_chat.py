@@ -76,7 +76,7 @@ def test_kb_states_the_honest_limits():
     assert "sandbox only" in text
     assert "no published pricing" in text
     assert "tested with automated tests against fakes" in text
-    assert "has never run live" in text  # SAM 3.1
+    assert "run live on synthetic photos only" in text  # SAM 3.1
 
 
 def test_kb_heading_without_an_id_is_an_error():

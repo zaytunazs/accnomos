@@ -97,7 +97,7 @@ open with one line on what pre-existed and stay within 3:00.
 - [ ] **HMRC wording**: shot 10's caption says "VAT return submitted to sandbox", but `docs/HONESTY.md` says the browser
       flow has not been run end to end against HMRC's sandbox. Run it off camera first; if it fails, use the script's
       fallback (`submission not yet run end to end`).
-- [ ] **Voice** (shot 11, clip 7): never run live. Either run it live once before filming or replace the shot.
+- [x] **Voice** (shot 11, clip 7): run live on 4 Nov 2026 (Android on the owner's phone; `evals/runs/live_checks_2026-11-04/report.md`).
 - [x] **Demo quality**: smooth cursor, human-speed typing, captions burned in at accessible size, no dev overlays,
       SAMPLE — FICTIONAL COMPANY banner on every app screen.
 - [x] **No secrets on screen**: the demo sandbox has no keys, tokens, passwords or real mailboxes.

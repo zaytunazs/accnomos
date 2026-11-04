@@ -38,7 +38,7 @@ const features: Feature[] = [
     does: "Photograph or upload a receipt, or drop it in 00 Inbox. It is read, checked against plain rules, and held on the Review page until you tap Approve or Reject. Approval writes one balanced ledger event that is never edited or deleted; Undo adds a reversing event.",
     ai: "The AI reads the document into a strict list: supplier, VAT number, date, lines, net, VAT and total. It also guesses the category.",
     code: "Code checks the reading: lines and totals add up, VAT maths and rates are right, the VAT number has the right shape, it is not a duplicate, it is in pounds, the date is valid and confidence is high enough. A purchase over £250 with no VAT and no VAT number from a supplier the books do not know yet also waits, asking “Is <supplier> VAT-registered?” — the tick teaches “not registered”, a VAT number seen on an approved receipt teaches “registered”, undoing the approval takes the tick back, and Contacts can change the stored answer. Anything that fails waits in Needs a look.",
-    gap: "Not verified yet: key-mode reading (Muse Spark) is unit-tested only; HEIC photos are copied but not read; evals use made-up receipts, so real phone photos will score lower.",
+    gap: "Not verified yet: reading by Muse Spark 1.3 is measured on made-up documents only; HEIC photos are copied but not read; evals use made-up receipts, so real phone photos will score lower.",
   },
   {
     id: "books",

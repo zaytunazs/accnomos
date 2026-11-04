@@ -425,10 +425,10 @@ account's own OneDrive. A user with several links several accounts; there is sti
 |---|---|---|---|
 | 1 | Intake | Code | Upload to `00 Inbox`, scan, optional Outlook copy (`Mail.Read`, plain-code filters, no AI) |
 | 2 | Crop | **Code** by default (Pillow + Otsu); SAM 3.1 only with `SAM_CROP=1` in key mode; `CROP_MODE=off` disables | Code crop tested; SAM never run |
-| 3 | Extractor | **Muse Glimmer 30B** (local) or **Muse Spark** (key mode), strict-JSON schema | Glimmer run by hand; Spark unit-tested only |
+| 3 | Extractor | **Muse Glimmer 30B** (local) or **Muse Spark** (key mode), strict-JSON schema | Glimmer and Muse Spark 1.3 measured on 200 synthetic documents each (`evals/runs/glimmer_200_v2`, `spark13_200`) |
 | 4 | Checker | **Code**: line and total arithmetic, VAT maths and rates, VAT-number format, duplicate hash, currency, valid date, confidence, and the document's date against the current VAT period (a **warning**, never a fail) | Tested; any failure → *Needs a look* |
 | 5 | Reviewer | **Code** composes the "why" line on each card ("Checker, code"). Models write words only in *Ask*, triage, reminders and the planner rationale | **No separate LLM reviewer exists** |
-| 6 | Verifier | A second reading with a different prompt that never sees the first answer, run only if the checks pass; **code** compares six fields (supplier, VAT number, date, net, VAT, total) | Glimmer/Glimmer run on 20 documents; the open-weights host and Meta paths unit-tested only; `VERIFIER=off` disables it |
+| 6 | Verifier | A second reading with a different prompt that never sees the first answer, run only if the checks pass; **code** compares six fields (supplier, VAT number, date, net, VAT, total) | Glimmer/Glimmer run on 20 documents; Spark Open and Muse Spark 1.3 as Verifier measured on 200 (`evals/runs/spark_open_200`, `spark13_200`); `VERIFIER=off` disables it |
 | 7 | Human | The user taps Approve (or Reject) | Always, unless an Autopilot rule applies |
 | 8 | Poster | Code writes the ledger event | Tested |
 | 9 | Filer | Code renames and files the document; HMRC submission is a separate, explicit web step with a legal declaration | Tested; HMRC sandbox only, never run end to end |

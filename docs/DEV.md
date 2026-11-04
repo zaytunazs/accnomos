@@ -151,11 +151,14 @@ the runtime's look-alike. A normal `pnpm build` folds both away: `out/` contains
 original whenever it is unsure. The result is on the proposal as `crop` plus an ok `CROP` check.
 
 - `CROP_MODE=auto` (default) | `code` | `off`.
-- `SAM_CROP=1` lets key-mode requests call `sam-3.1` on `{MODEL_API_BASE}/responses` first
-  (~$2.50 per 1k images, two calls when "receipt" finds nothing and "invoice" is tried).
-  **Off by default: the request/response shape is unverified** (the Meta docs were unreachable when
-  it was written). Capture a real response, replace `services/runtime/tests/fixtures/sam_response.json`,
-  and check `parse_sam_boxes` against it before turning it on.
+- `SAM_CROP=1` lets `auto` call `sam-3.1` on `{MODEL_API_BASE}/responses` first, with the user's own
+  Meta key or else the server chain's `meta` provider (`META_API_KEY`); not under `X-AI-Route`
+  `local_first` / `local_only` (~$2.50 per 1k images, two calls when "receipt" finds nothing and
+  "invoice" is tried; 30 s per call, then the code crop). The request and the `<|box;…|>` reply
+  follow dev.meta.ai/docs/sam and were checked live on 4 Nov 2026; the fixture
+  `services/runtime/tests/fixtures/sam_response.json` is a captured reply. Live check:
+  `cd evals && python -m harness.sam_crop_live --limit 20 --read` with `META_API_KEY` set
+  (`evals/runs/sam_crop_live/report.md`). Off unless 1; `deploy/docker-compose.yml` passes both variables.
 - Without SAM, Pillow + numpy find the largest bright region (Otsu); accepted at 25–95 % of the frame.
 - Crops keep the upload's format (JPEG, including phone MPO files, PNG, WebP); anything else is passed
   through uncropped so the MIME type stays true.

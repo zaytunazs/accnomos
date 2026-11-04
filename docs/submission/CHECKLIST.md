@@ -42,9 +42,7 @@ run the secrets check in section 8 now, not last.
 - [ ] Decide whether `META_API_KEY` is set on the server. In key mode with no key header the runtime falls back to it,
       so anyone could spend your key on Ask (`docs/HONESTY.md`, Models). Leave it unset on the public demo unless the
       spend cap makes that acceptable.
-- [ ] Optional, if you have credit: the first Muse Spark 1.3 numbers,
-      `cd evals && python -m harness.run_extraction --mode key --out runs/<name>`. Until a report exists say
-      "unit-tested only".
+- [x] Muse Spark 1.3 numbers: `evals/runs/spark13_200`, `spark13_messy_200` (4 Nov 2026).
 - [ ] **The open-weights host** (`BASETEN_API_KEY` on the runtime, set 27 Oct): check the balance or a spend limit covers judging; the
       key-mode Verifier (Muse Spark Open) stops without it.
 - [ ] **The hosted GPU**: the 27 Oct Glimmer evals record a hosted GPU endpoint (`config.base_url` in
@@ -103,7 +101,7 @@ Check the form's own field list on the day; this is what the repo has for each l
 | Live demo | `https://accnomos.com` (and `/judges` only if merged and checked) |
 | Judge access | private field: the judges' account from section 4, or "press Load sample books on your own account" |
 | Android app | Play listing URL and its real status from section 1 |
-| Meta models / tools used | `docs/submission/META_MODELS.md`: Muse Glimmer 30B, Muse Spark 1.3 (unit-tested only), Muse Spark Open (hosted open weights), Muse Voice Transcribe and SAM 3.1 (unit-tested only), Muse Image; Muse Code as a coding assistant |
+| Meta models / tools used | `docs/submission/META_MODELS.md`: Muse Glimmer 30B, Muse Spark 1.3 (measured, the live server's first model), Muse Spark Open (hosted open weights), Muse Voice Transcribe and SAM 3.1 (both run live), Muse Image; Muse Code as a coding assistant |
 | What pre-existed | `docs/PROVENANCE.md`: the owner's own AI server with a local model runtime, nothing else; first commit 6 h 29 min after kickoff |
 | AI coding assistants | Muse Code and other AI tools; every merge reviewed (`docs/reviews/`) |
 | X post (Most Viral) | from section 6 |

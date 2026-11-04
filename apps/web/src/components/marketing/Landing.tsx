@@ -460,7 +460,7 @@ function AskAndActions() {
           <SectionHead id="ask-title" title={BLOCK.voice.title} lead={BLOCK.voice.body} />
           <p className="mt-4 text-[15px] leading-relaxed text-muted">Example: {BLOCK.voice.example}</p>
           <p className="mt-4 text-sm text-muted">
-            Spoken questions use Muse Voice Transcribe when the server has a Meta API key; that path is unit-tested only.
+            Spoken questions use Muse Voice Transcribe when the server has a Meta API key; it is used live, and measured on synthetic recordings only.
           </p>
         </div>
       </div>

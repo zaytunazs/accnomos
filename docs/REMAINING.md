@@ -28,7 +28,7 @@ Severity:
 | Severity | Item |
 |---|---|
 
-| Low | Key-mode extraction (muse-spark-1.3) is unit-tested only. |
+| Low | Standard `muse-spark-1.3` (the user's own key) has no eval; the live server's Contributor model is measured on synthetic documents only (`evals/runs/spark13_200`). |
 
 ## HMRC (sandbox) and VAT periods
 

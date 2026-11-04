@@ -61,6 +61,17 @@ test.describe("desktop", () => {
     await expect(page.getByTestId("row-muse-glimmer")).toContainText("clean documents 85 %; messy documents 80 %; CIS 92.5 %; property 99.1 %");
     await expect(page.getByTestId("row-muse-spark")).toContainText(/document type \d+(\.\d)? %/); // evals/runs/classify
     await expect(page.getByTestId("model-muse-spark")).toContainText("Every other job");
+    // Muse Spark 1.3 measured live on 200 documents (evals/runs/spark13_200, spark13_messy_200) and run live on our server
+    await expect(page.getByTestId("row-muse-spark")).toContainText("clean documents 95 %; messy documents 96 %");
+    await expect(page.getByTestId("model-muse-spark")).toContainText("Run live on our server");
+    await expect(page.getByTestId("model-muse-spark")).not.toContainText("faked HTTP");
+    await expect(page.getByTestId("model-muse-voice-transcribe")).toContainText("Used from the Android app on a real phone");
+    // SAM 3.1 run live (evals/runs/sam_crop_live), with the code crop's earlier figure kept as the fallback's
+    const sam = page.getByTestId("model-sam");
+    await expect(sam).toContainText("Crop, live on the Meta Model API");
+    await expect(sam).toContainText(/a box for \d+ of 20 photos; mean overlap 0\.\d+ against 0\.88 for the plain-code crop/);
+    await expect(sam).not.toContainText("never run live");
+    await expect(page.getByTestId("row-sam")).toContainText(/crop overlap 0\.\d+/);
     await expect(page.getByTestId("model-muse-glimmer")).toContainText(/right account \d+(\.\d)? %/); // evals/runs/bank_ai
     const glimmer = page.getByTestId("model-muse-glimmer");
     await expect(glimmer).toContainText("every figure exact 92.5 %"); // evals/runs/cis_read

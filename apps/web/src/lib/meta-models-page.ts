@@ -67,7 +67,13 @@ const COMMITTED: Record<string, string> = {
   ask_40: "27 Oct 2026",
   autopilot_l2: "27 Oct 2026",
   mail_intake: "27 Oct 2026",
+  spark13_200: "4 Nov 2026",
+  spark13_messy_200: "4 Nov 2026",
 };
+
+/** Live checks against the live API in a demo session (evals/harness/live_checks.py), and the live SAM run. */
+const LIVE_CHECKS = report("live_checks_2026-11-04");
+const SAM_LIVE = report("sam_crop_live");
 
 function extraction(run: string, label: string): Result | null {
   const s = readRun(run, "summary.json");
@@ -154,7 +160,7 @@ function bankCoding(): Result {
   };
 }
 
-/** evals/harness/stt.py writes evals/runs/stt/ when run; until then the voice path is tested with faked HTTP only. */
+/** evals/harness/stt.py writes evals/runs/stt/ (synthetic speech clips, through the Meta Model API). */
 function speech(): Result {
   const s = readRun("stt", "summary.json");
   const muse = ((s?.providers as Json | undefined)?.muse ?? null) as Json | null;
@@ -175,7 +181,7 @@ function speech(): Result {
   return {
     label: "Spoken questions to text",
     value:
-      "Not measured yet: tested with faked HTTP in the request and reply shapes from Meta's own cookbook; the comparison eval (evals/harness/stt.py) has not been run, and there has been no live microphone run.",
+      "Not measured yet: the comparison eval (evals/harness/stt.py) has no committed run.",
     basis: "no run committed",
     report: null,
   };
@@ -194,6 +200,24 @@ function classifier(): Result | null {
     short: `document type ${pct1(s.accuracy_pct)}`,
     basis: `${day(s.generated) ?? "date not recorded"} · ${num(s.docs)} documents`,
     report: report("classify"),
+  };
+}
+
+/** evals/harness/sam_crop_live.py writes evals/runs/sam_crop_live/: SAM 3.1 live against known boxes, then read. */
+function samLive(): Result | null {
+  const s = readRun("sam_crop_live", "summary.json");
+  if (!s) return null;
+  const sam = (s.sam ?? {}) as Json;
+  const code = (s.code ?? {}) as Json;
+  const rs = (s.read_sam ?? {}) as Json;
+  const rc = (s.read_code ?? {}) as Json;
+  const lat = (s.sam_call_latency_s ?? {}) as Json;
+  return {
+    label: "Crop, live on the Meta Model API",
+    short: `crop overlap ${num(sam.mean_iou)}`,
+    value: `a box for ${num(s.sam_box_returned)} of ${num(s.n)} photos; mean overlap ${num(sam.mean_iou)} against ${num(code.mean_iou)} for the plain-code crop; every field read right ${num(rs.all_fields_correct)}/${num(s.n)} after the SAM crop and ${num(rc.all_fields_correct)}/${num(s.n)} after the code crop; median ${num(lat.median)} s a call`,
+    basis: "4 Nov 2026 · 20 synthetic scenes",
+    report: SAM_LIVE,
   };
 }
 
@@ -257,11 +281,13 @@ export function metaModels(): MetaModel[] {
       checks: TEXT_CHECKS,
       results: present([
         classifier(),
+        extraction("spark13_200", "Receipts and invoices, clean (reader and Verifier)"),
+        extraction("spark13_messy_200", "Receipts and invoices, messy photos (reader and Verifier)"),
         {
-          label: classifier() ? "Every other job" : "All jobs",
-          value: "Not measured yet on Muse Spark: tested with faked HTTP only. The same jobs are measured on Muse Glimmer 30B below.",
-          basis: "no run committed",
-          report: null,
+          label: "Every other job",
+          value: "Run live on our server, not scored against an answer key: Ask (typed and spoken), the Home summary, the goals note and the upload's document type and reading were each answered by Muse Spark 1.3 in a demo session. CIS, property, bank, inbox and reminder jobs are measured on Muse Glimmer 30B below.",
+          basis: "4 Nov 2026 · live checks on the live server",
+          report: LIVE_CHECKS,
         },
       ]),
     },
@@ -334,30 +360,44 @@ export function metaModels(): MetaModel[] {
         "The text goes through the same path as a typed question: figures checked against your books, action cards priced in pence by code and waiting for Approve.",
         "The answer, the action card and the audit log say which service heard you (“Transcribed by Muse Voice Transcribe”).",
       ],
-      results: [speech()],
+      results: [
+        speech(),
+        {
+          label: "Used live",
+          value: "Used from the Android app on a real phone by the owner, and in our live checks: two spoken questions (synthetic speech) transcribed by Muse Voice Transcribe on the live server, then answered by Muse Spark 1.3.",
+          basis: "4 Nov 2026 · live server",
+          report: LIVE_CHECKS,
+        },
+      ],
     },
     {
       id: "sam",
       name: "Segment Anything 3.1",
       modelId: "sam-3.1",
-      uses: "Finds and crops the receipt in a phone photo (off by default)",
-      via: "Meta Model API, key mode, only when switched on",
+      uses: "Finds and crops the receipt in a phone photo before it is read",
+      via: "Meta Model API (/responses), when the server owner switches it on",
       what: "Meta's Segment Anything model: finds an object in a photo from a word.",
       jobs: [
         { job: "Finds and crops the receipt or invoice in a messy phone photo before it is read", screen: "Review (photo uploads)" },
       ],
       called: [
-        "The Meta Model API (/responses), key mode only, and only when the server owner switches it on (SAM_CROP=1). Off by default.",
-        "Otherwise, and whenever it is unsure, a plain-code crop runs instead (no AI).",
+        "The Meta Model API (/responses), only when the server owner switches it on (SAM_CROP=1): with your own Meta key in key mode, else the server's. Not when you choose a local model first or local only in Settings › AI.",
+        "Otherwise, and whenever it is unsure, errors or times out, a plain-code crop runs instead (no AI).",
       ],
       checks: [
         "Code accepts the crop only with a confident box (score at least 0.5) covering enough of the photo; any doubt or error keeps the original photo.",
       ],
       results: [
-        {
+        samLive() ?? {
           label: "Crop",
-          value: "Not measured yet: never run live, tested with a faked reply only. The plain-code crop that runs by default scored mean overlap 0.88 against 0.48 for the uncropped photo.",
-          basis: "27 Oct 2026 · 20 synthetic scenes (code crop)",
+          value: "Not measured yet on SAM 3.1.",
+          basis: "no run committed",
+          report: null,
+        },
+        {
+          label: "Plain-code crop (the fallback)",
+          value: "mean overlap 0.88 against 0.48 for the uncropped photo",
+          basis: "27 Oct 2026 · 20 synthetic scenes",
           report: `${REPO}/evals/REPORT_crop_code_20_2026-10-27.md`,
         },
       ],
