@@ -258,8 +258,8 @@ replaces the hero's old sandbox sentence.
 | Deck | Page | Why |
 |------|------|-----|
 | FAQ 1 "Pricing is shown in the app before you pay for anything." | "There is no published pricing: Accnomos is a hackathon build, and nothing in it asks you to pay. The demo with sample books costs nothing to try." | Wrong. The app has no pricing and no payment step (Stripe/PayPal is only for your own invoices). |
-| FAQ 10 "No. Your documents are read to keep your books, and nothing else." | "We do not use your documents to train models: they are read to keep your books, and nothing else. When your server uses an API key, the document goes to that model provider under its own terms." | Too absolute. In key mode a document goes to Meta's Model API or Baseten, whose terms we do not control. |
-| Trust "a second independent reading checks the first" | "a second reading checks the first on key documents" | It is only independent with a Baseten key (Muse Spark Open). In local mode Glimmer checks Glimmer (HONESTY.md, "Models"). |
+| FAQ 10 "No. Your documents are read to keep your books, and nothing else." | "We do not use your documents to train models: they are read to keep your books, and nothing else. When your server uses an API key, the document goes to that model provider under its own terms." | Too absolute. In key mode a document goes to Meta's Model API or the open-weights host, whose terms we do not control. |
+| Trust "a second independent reading checks the first" | "a second reading checks the first on key documents" | It is only independent with a hosted-verifier key (Muse Spark Open). In local mode Glimmer checks Glimmer (HONESTY.md, "Models"). |
 | Voice example "Andy did 2 hours overtime at double time on the Hendon job" | "Andy did 2 hours on the Hendon job" | The timesheet card (`actions.py` `LogTimesheetIntent`) takes staff, job, hours, date and a note. It has no rate or multiplier, so "double time" would not be recorded as such. |
 | FAQ questions end in "." | "?" | Punctuation. |
 

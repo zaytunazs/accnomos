@@ -1,4 +1,4 @@
-# Demo deployment on the DGX Spark (Ollama runs on the host; cloudflared publishes api.accnomos.com).
+# Demo deployment on our own server (the local model server runs on the host; cloudflared publishes api.accnomos.com).
 #   docker compose -f deploy/docker-compose.yml --env-file .env up -d --build
 # Nothing here stores user data; the relay holds only the HMRC client secret from .env. The one exception is the
 # operator's early-adopter list (EARLY_ACCESS_ENABLED=1), kept on the `runtime-data` volume (docs/PRODUCTION.md).
@@ -36,7 +36,7 @@ services:
       RATE_LIMIT_PER_MIN: ${RATE_LIMIT_PER_MIN:-60}
       # Signs chat/voice action proposals so they survive a restart (docs/ACTIONS.md). Set in .env; never commit it.
       ACTIONS_SIGNING_KEY: ${ACTIONS_SIGNING_KEY:-}
-      # Baseten (Muse Spark Open verifier) is used only with BASETEN_ENABLED=1; off by default (owner, 2 Nov 2026).
+      # The hosted Muse Spark Open verifier is used only with BASETEN_ENABLED=1; off by default (owner, 2 Nov 2026).
       BASETEN_ENABLED: ${BASETEN_ENABLED:-0}
       BASETEN_API_KEY: ${BASETEN_API_KEY:-}
       VERIFIER: ${VERIFIER:-}

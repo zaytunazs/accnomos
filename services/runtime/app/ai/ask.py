@@ -7,11 +7,11 @@ it: every figure it quotes must be in the facts, and from the period asked about
 period counts as wrong unless the sentence says which period it is). If it fails either check its words are
 dropped and the answer quotes the facts for the asked period directly.
 
-Backends mirror app/ai/extract.py: Ollama `/api/chat` with `format` = schema and `think: false`;
+Backends mirror app/ai/extract.py: the local model server's `/api/chat` with `format` = schema and `think: false`;
 Meta Model API `/chat/completions` with `response_format` json_schema strict. Both are streamed, with a
 timeout per chunk rather than per answer, and a cap on the reply's length so a runaway cannot spin for minutes.
-(Ollama 0.40's glimmer parser holds a schema-constrained reply until it is complete, so on Glimmer the
-explanation arrives in one piece; OpenAI-compatible servers send it token by token.)
+(The local model server's Glimmer parser holds a schema-constrained reply until it is complete, so on Glimmer the
+explanation arrives in one piece; other chat-completions servers send it token by token.)
 """
 
 from __future__ import annotations

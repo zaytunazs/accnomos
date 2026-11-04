@@ -46,7 +46,7 @@ printed; `MODEL_API_KEY` (the name in Meta's docs) also works. Existing PNGs are
 
 `docs/video/vo/lines.json` holds one line per shot (file name, text, the shot's length). Any TTS works as long as the
 files are named `docs/video/vo/<shot-id>.wav`; `assemble.sh` picks them up by name and warns when one runs longer than
-its shot. The owner's set-up is Kokoro (open model, run locally, voice `bm_george`, British English, 24 kHz mono, the
+its shot. The owner's set-up is an open-source voice model (open model, run locally, voice `bm_george`, British English, 24 kHz mono, the
 same as the teaser):
 
 ```bash

@@ -14,9 +14,9 @@ Accnomos monorepo (public; UK English; no secrets). Many features landed after t
    one contiguous table, 8–12 lines of intro above it. Every claim must point at a file or test that proves it; delete any you cannot prove.
 2. `docs/ARCHITECTURE.md`: folder layout (`_System/*`, `00 Inbox`, `03 Sales`, `03 Bank statements`, `04 Payroll`, `05 VAT returns` …) and
    the header table checked against `services/runtime/app/*.py`; the models table (Glimmer local, Spark key, Muse Voice, Muse Image for
-   brand assets, SAM crop, Spark Open verifier via Baseten) with where each is called. Mark anything unverified.
+   brand assets, SAM crop, Spark Open verifier via the open-weights host) with where each is called. Mark anything unverified.
 3. `docs/HONESTY.md`: one bullet per known gap, pulled from every REVIEW.md "What remains" (deduplicated) plus: no HMRC obligations
-   endpoint, UTC "today" on the runtime, single-worker rate limit, verifier needs a Baseten key, Play signing hash → Entra pending,
+   endpoint, UTC "today" on the runtime, single-worker rate limit, verifier needs a hosted-verifier key, Play signing hash → Entra pending,
    estimates-only payroll (no RTI), bank formats modelled not verified. Keep it a flat list grouped by area.
 4. `docs/DEMO.md`: a 4-minute on-stage script whose numbers are true for the quarter containing 4 Nov 2026 (check `apps/web/public/
    sample-receipt.png` and `docs/reviews/vat-periods/REVIEW.md`); a "if X fails, do Y" line per step; which account is signed in.

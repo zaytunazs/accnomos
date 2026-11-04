@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Personal (household) bank statement gold with Qwen3.8-27B (local vLLM on the Spark, :8000): six months of a
+"""Personal (household) bank statement gold with a second open-weight model (local, :8000): six months of a
 fictional household's current account, for recurring-bill detection and category totals.
 
     python evals/gold/gen_personal.py [--layout starling|tide|barclays] [--households 2]

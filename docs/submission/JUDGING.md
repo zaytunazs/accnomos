@@ -5,11 +5,11 @@ Demo quality, weighted equally.** Every claim names a path in this repo; nothing
 Status words: *run live* = the maintainers' own run, no log committed; *measured* = a committed report under `evals/`;
 *tested on fakes* = automated tests against in-memory fakes or stubs (this proves our logic, not Microsoft, Meta or HMRC).
 
-**Provenance.** Only the owner's DGX Spark with Ollama predates the event; the first commit is 6 h 29 min after kickoff,
+**Provenance.** Only the owner's own AI server with a local model runtime predates the event; the first commit is 6 h 29 min after kickoff,
 and every merge has a second-agent review. Timestamps, commits per day and how each part was built: `docs/PROVENANCE.md`.
 
 **Not on `main` on 28 Oct** (so not claimed below): the month-end close agent, company / sole-trader / personal profiles,
-the Meta models panel with Glimmer on Modal, and the no-sign-in `/judges` page. iPhone is not built.
+the Meta models panel with Glimmer on a hosted GPU, and the no-sign-in `/judges` page. iPhone is not built.
 
 ## 1. Impact
 
@@ -31,7 +31,7 @@ One table with status and evidence for each model: `docs/submission/META_MODELS.
 | Claim | Evidence | Status |
 |---|---|---|
 | Muse Glimmer 30B (open weights) reads receipts, invoices and credit notes into strict JSON, and does Ask, triage, reminders and the planner's words | `services/runtime/app/ai/extract.py`, `services/runtime/app/ai/ask.py`, `docs/META_MODELS.md` | **Measured**: all fields right 85 % clean / 80 % messy on 200 synthetic documents each, mean 17.7 s / 24.1 s (`evals/runs/glimmer_200_v2/summary.json`, `glimmer_messy_200_v2/summary.json`) |
-| Muse Spark Open on Baseten is the key-mode second reader: a different prompt, never sees the first answer; code compares six fields | `services/runtime/app/ai/verify.py`, `services/runtime/tests/test_verify.py` | **Measured** as reader and Verifier: all fields 91 % clean / 93 % messy, about 13 s per document (`evals/runs/spark_open_200/summary.json`, `spark_open_messy_200/summary.json`) |
+| Muse Spark Open (hosted open weights) is the key-mode second reader: a different prompt, never sees the first answer; code compares six fields | `services/runtime/app/ai/verify.py`, `services/runtime/tests/test_verify.py` | **Measured** as reader and Verifier: all fields 91 % clean / 93 % messy, about 13 s per document (`evals/runs/spark_open_200/summary.json`, `spark_open_messy_200/summary.json`) |
 | What the second reading is worth, honestly: Glimmer checking Glimmer caught 8 wrong readings in 400 with 44 false alarms; Spark Open caught 1 with 11; false alarms go to *Needs a look*, the safe direction | `docs/submission/META_MODELS.md` (extraction table), `evals/runs/*/report.md` | Measured, synthetic |
 | Glimmer in other roles: Ask figures exact 32/32 with no invented figure shown; triage category 5/5; Autopilot L2 over 467 documents | `evals/runs/ask_40/report.md`, `evals/runs/mail_intake/report.md`, `evals/runs/autopilot_l2/report.md` | Measured, synthetic |
 | Muse Spark 1.3 (Meta Model API, the user's key) does the same jobs without a GPU | `services/runtime/app/ai/extract.py` (key mode), `services/runtime/tests/` | **Unit-tested only**; never called live by us |

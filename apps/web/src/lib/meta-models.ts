@@ -8,7 +8,7 @@ import { loadAiConfig, RUNTIME_URL } from "./ai-config";
 import type { RtProposal, RtServedBy } from "./runtime";
 
 const PROVIDERS: Record<string, string> = {
-  modal: "Modal",
+  modal: "hosted GPU",
   meta: "Meta Model API",
   spark: "our own server",
   baseten: "hosted open weights",
@@ -18,7 +18,7 @@ const PROVIDERS: Record<string, string> = {
   ollama: "your machine",
 };
 
-/** "Modal", "Meta Model API", "our own server"... for a provider name the runtime records. */
+/** "hosted GPU", "Meta Model API", "our own server"... for a provider name the runtime records. */
 export function providerLabel(name: string): string {
   return PROVIDERS[name] ?? name;
 }
@@ -35,15 +35,15 @@ export function metaModelName(model: string): string {
 
 const seconds = (ms: number) => `${ms < 10_000 ? (ms / 1000).toFixed(1) : Math.round(ms / 1000)} s`;
 
-/** "Muse Glimmer 30B (Modal)" */
+/** "Muse Glimmer 30B (hosted GPU)" */
 export function servedName(s: RtServedBy): string {
   if (s.provider === "test") return "the test stub";
   return `${metaModelName(s.model)} (${providerLabel(s.provider)})`;
 }
 
 /**
- * The Review card's line: "Read by Muse Glimmer 30B (Modal) · 14 s · checked by Muse Spark Open (hosted open weights)", plus
- * "· Modal did not answer" when a provider was skipped. Null when the runtime did not say (older proposals, samples).
+ * The Review card's line: "Read by Muse Glimmer 30B (hosted GPU) · 14 s · checked by Muse Spark Open (hosted open weights)", plus
+ * "· hosted GPU did not answer" when a provider was skipped. Null when the runtime did not say (older proposals, samples).
  */
 export function servedLine(p: Pick<RtProposal, "served_by" | "verification">): string | null {
   const s = p.served_by;
@@ -103,7 +103,7 @@ export const aiHealth = () => getJson<AiHealth>("/ai/health");
 export const aiCalls = () => getJson<AiCall[]>("/ai/calls");
 
 /**
- * POST /ai/warm when this device uses the server's models (no AI of its own chosen), so a cold Modal container is
+ * POST /ai/warm when this device uses the server's models (no AI of its own chosen), so a cold hosted GPU container is
  * starting while the user looks at the page. Fire and forget; the runtime sends at most one ping a minute.
  */
 export function warmServerAi(): void {

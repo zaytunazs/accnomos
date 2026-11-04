@@ -5,7 +5,7 @@ Branch tip 0e306d8f, one commit on top of `muse/cis-eval` (15691214): result fil
 
 ## Claims checked against the raw results
 
-`cis_read` (muse-glimmer:30b on the Spark, local Ollama, run at 13:10 UTC on the `muse/cis-eval` tip):
+`cis_read` (muse-glimmer:30b on the Spark, local model server, run at 13:10 UTC on the `muse/cis-eval` tip):
 
 * `results.jsonl` has 120 rows, one per gold folder in `evals/gold/cis/` (ids match exactly, none repeated).
 * 120 answered, 0 refusals, 0 errors.

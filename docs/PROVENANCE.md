@@ -5,8 +5,8 @@ line on anything that pre-existed. This page is the evidence for both. Every tim
 full (unshallowed) clone and from `gh api repos/zaytunazs/accnomos` on 28 Oct 2026; the commands are at the end so anyone
 can re-run them.
 
-**The one line for the video** (shot 1 of `docs/submission/VIDEO_SCRIPT.md`): *"Before the hackathon I had only my DGX
-Spark with Ollama. Everything else was built after kickoff."* The caption under it names the date and this page.
+**The one line for the video** (shot 1 of `docs/submission/VIDEO_SCRIPT.md`): *"Before the hackathon I had only my own
+AI server with a local model runtime. Everything else was built after kickoff."* The caption under it names the date and this page.
 
 ## Timeline (UTC; UK time was the same that week)
 
@@ -40,7 +40,7 @@ pushed into it). What is in it:
   an in-memory fake (`packages/connectors`), and two FastAPI skeletons (`services/runtime` with `/health` and `/ai/test`,
   `services/hmrc-relay` with `/health`).
 
-The commit carries a `Co-Authored-By: Claude` trailer. Its `/ai/test` stub already names the two modes (a Meta key or a
+The commit carries a coding agent's `Co-Authored-By` trailer. Its `/ai/test` stub already names the two modes (a Meta key or a
 local Glimmer model), but no Meta model had been called by then: the first message reporting a live Glimmer run is
 `8023a01`, 8 h 10 min after kickoff.
 
@@ -48,24 +48,24 @@ local Glimmer model), but no Meta model had been called by then: the first messa
 
 | Item | Pre-existing? | Notes |
 |---|---|---|
-| The owner's **NVIDIA DGX Spark** and its **Ollama** install | **Yes** | Hardware and a model runtime: infrastructure, not product code. Nothing from it is in the repository. |
-| Meta models on that machine (Muse Glimmer 30B), and the Meta-model endpoints Accnomos calls (Meta Model API, Baseten, Modal) | No | Configured after kickoff. |
+| The owner's **own AI server** and its **local model runtime** | **Yes** | Hardware and a model runtime: infrastructure, not product code. Nothing from it is in the repository. |
+| Meta models on that machine (Muse Glimmer 30B), and the Meta-model endpoints Accnomos calls (Meta Model API, the open-weights host, the hosted GPU) | No | Configured after kickoff. |
 | Any Accnomos code, design, brand art, data or docs | No | The repository starts at `58ee050`. Brand art was made with Muse Image during the event (`tools/brand_muse.py`). |
-| Evaluation data | No | Every gold document, bank statement and mailbox fixture under `evals/` is synthetic and was generated during the event (`evals/harness/`, Qwen on the Spark for some fictional names and text). |
+| Evaluation data | No | Every gold document, bank statement and mailbox fixture under `evals/` is synthetic and was generated during the event (`evals/harness/`, a second open-weight model on the Spark for some fictional names and text). |
 | Third-party open-source libraries | Yes, as dependencies | Pulled in through the lockfiles above (Flutter, Next.js, FastAPI, Pillow and so on); not copied into the repository. |
 
 ## Commits per day on `main`
 
 Up to `206848c` (2026-10-28 01:33:20 UTC). Dates are UTC, which was also UK time. "Lines" counts non-merge commits only.
 
-| Day (UTC) | Commits | of which merges | Non-merge | Lines added | Lines removed | Author: Zohaib Sharif | Author: "Claude (Spark)" |
+| Day (UTC) | Commits | of which merges | Non-merge | Lines added | Lines removed | Author: Zohaib Sharif | Author: coding agent on our own server |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | Mon 26 Oct (from 22:29) | 7 | 1 | 6 | 12,239 | 140 | 7 | 0 |
 | Tue 27 Oct | 966 | 106 | 860 | 196,078 | 18,374 | 477 | 489 |
 | Wed 28 Oct (to 01:33) | 29 | 5 | 24 | 1,800 | 167 | 29 | 0 |
 | **Total** | **1,002** | **112** | **890** | **210,117** | **18,681** | **513** | **489** |
 
-"Claude (Spark)" is the git identity of the coding agent that ran on the DGX Spark. Commits under Zohaib Sharif's name
+The last column is the git identity of the coding agent that ran on our own server. Commits under Zohaib Sharif's name
 include agent-written work too (their `Co-Authored-By` trailers say so; see the next section). Generated files
 (lockfiles, eval reports and manifests) are part of the line counts. The table covers `main` only and
 will grow until the deadline: re-run the commands below before quoting it.
@@ -77,9 +77,9 @@ Every line was written during the event with coding assistants, directed and rev
 
 | Assistant | Used for | Trace in git |
 |---|---|---|
-| **Claude** (Claude Code, in cloud sessions and on the Spark) | The first scaffold, the runtime, ledger, relay, most tests, evals harness, docs, and the second-agent review of every branch | 655 commits on `main` carry a `Co-Authored-By: Claude` trailer; 57 merges of `claude/*` branches |
+| **A coding agent** (other AI tools, in cloud sessions and on our own server) | The first scaffold, the runtime, ledger, relay, most tests, evals harness, docs, and the second-agent review of every branch | 655 commits on `main` carry its `Co-Authored-By` trailer; 57 merges of its branches |
 | **Muse Code** (Meta, model `muse-spark-1.3`) | Web and Android screens: the Review inbox and app shell, the VAT return page, the Android Review and Ask screens, and later web and Android feature branches | Commit messages naming Muse Code (first: `d1ccaae`, 23:18 on 26 Oct); 54 merges of `muse/*` branches |
-| **Qwen** (Qwen3.8-27B, local on the Spark through vLLM) | Synthetic eval data (gold documents 061–200, the `ledger2` gold set) and a second reader in the Ask eval | 9 commit messages naming Qwen (first: `93f1d13`, 03:44 on 27 Oct) |
+| **A second open-weight model, not Meta's** (local on our own server) | Synthetic eval data (gold documents 061–200, the `ledger2` gold set) and a second reader in the Ask eval | 9 commit messages naming it (first: `93f1d13`, 03:44 on 27 Oct) |
 
 **Every merge was reviewed.** Each feature branch was read by a second agent before it was merged, and its review is
 committed under `docs/reviews/<branch>/REVIEW.md` (54 reviews in 55 folders on 28 Oct; one folder holds only a task brief):

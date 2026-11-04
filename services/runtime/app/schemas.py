@@ -2,7 +2,7 @@
 
 `ExtractedDoc` is what the vision model returns. `extraction_json_schema()` turns
 its pydantic schema into the *strict* JSON-schema dialect that both backends
-accept (Meta Model API `strict: true` and Ollama `format`): every object closed
+accept (Meta Model API `strict: true` and the local model server's `format`): every object closed
 with `additionalProperties: false`, every property listed in `required`,
 optionals expressed as `anyOf [..., null]`, no `$ref`/`oneOf`/`allOf`.
 """

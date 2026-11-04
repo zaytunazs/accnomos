@@ -97,6 +97,6 @@ Duplicates by kind:
 
 ## Set-up
 
-Model: muse-glimmer:30b (local); verifier on = the same model with the verifier prompt (ollama:muse-glimmer:30b). Books: `tools/seed_demo.py` plan for Bramblewood Joinery Ltd, today 2026-10-27. Rules: {'history': 26, 'regular': 123}. Passes: inbox, dupes.
+Model: muse-glimmer:30b (local); verifier on = the same model with the verifier prompt (muse-glimmer:30b, local). Books: `tools/seed_demo.py` plan for Bramblewood Joinery Ltd, today 2026-10-27. Rules: {'history': 26, 'regular': 123}. Passes: inbox, dupes.
 
 Reproduce: `cd evals && python -m harness.autopilot_sim --verifier on && python -m harness.autopilot_sim --verifier off && python -m harness.autopilot_sim --report`.

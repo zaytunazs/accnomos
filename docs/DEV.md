@@ -32,7 +32,7 @@ WAV mono 16 kHz before Muse Voice Transcribe). Windows: `winget install Gyan.FFm
 Debian/Ubuntu: `apt install ffmpeg` (the runtime Docker image includes it). The runtime checks at startup: without
 ffmpeg it logs a warning, `/health` reports `"voice": false` and `/books/ask/voice` answers 503. Its tests skip the
 conversion cases when ffmpeg is missing. Voice needs a speech-to-text service (`app/ai/stt.py`): Muse Voice Transcribe with the user's key (key mode) or the
-server's `META_API_KEY`, then Whisper on the Spark when `SPARK_WHISPER_URL` is set; with none of them the route answers
+server's `META_API_KEY`, then a local speech-to-text model on our own server when `SPARK_WHISPER_URL` is set; with none of them the route answers
 400. Test mode has no speech-to-text.
 
 **Accountant collaboration** (`docs/ARCHITECTURE.md`): `ACCOUNTANT_TEAM_EMAIL` (empty by default) shows the
@@ -77,7 +77,7 @@ cd evals
 $env:OLLAMA_BASE='http://<spark>:11434'
 ..\.venv\Scripts\python.exe -m harness.run_extraction --mode local --messy --out runs/<name>   # Glimmer
 ..\.venv\Scripts\python.exe -m harness.run_extraction --mode key   --out runs/<name>          # muse-spark-1.3 (MODEL_API_KEY)
-..\.venv\Scripts\python.exe -m harness.judge runs/<name> --escalate claude-sonnet-5-5         # Claude as judge (H19)
+..\.venv\Scripts\python.exe -m harness.judge runs/<name> --escalate <judge-model>         # an AI judge (H19)
 ..\.venv\Scripts\python.exe -m harness.crop_bench --limit 20                                   # crop IoU; adds SAM if MODEL_API_KEY is set
 ```
 
@@ -127,7 +127,7 @@ sets it to 0 and does not even contain `evals/gold`, which it needs.
   29 Oct 2026 for the day planner. The browser's own Graph calls go to a look-alike at `/__test/graph/v1.0` over the
   same storage. `/__test/*` is outside the per-IP rate limit; each reset refills the limit for everything else.
 - The stub AI proves the plumbing, not the models: it never reads a document it was not given the answer to.
-- Every AI call is forced to a stub at `/__test/ai` (Ollama-shaped), whatever the request headers say. It reads a
+- Every AI call is forced to a stub at `/__test/ai` (shaped like the local model server's API), whatever the request headers say. It reads a
   document only if it is a gold receipt rendered by `evals/harness/render.py` (matched by the PNG's sha256) and
   returns its gold fields; Ask gets an answer built from the facts pack, so grounding passes.
 - `POST /__test/reset` empties the caller's tenant's storage (no other tenant's) and reseeds the mailbox (three gold receipts, one newsletter), the calendar and
@@ -164,7 +164,7 @@ original whenever it is unsure. The result is on the proposal as `crop` plus an 
 
 - **Web:** push to `main` → GitHub Actions builds the static export and force-pushes it to branch `site`;
   Plesk's Git extension pulls `site` into `httpdocs` for accnomos.com. `.htaccess` maps `/connect` → `connect.html`.
-- **Runtime + relay:** Docker on the DGX Spark, published as `api.accnomos.com` through a tunnel (never port-forward).
+- **Runtime + relay:** Docker on our own server, published as `api.accnomos.com` through a tunnel (never port-forward).
   Hardening checklist: `deploy/README.md`.
 - **MSAL redirect URIs** registered: `http://localhost:3000/auth/callback.html`, `https://accnomos.com/auth/callback.html`.
 
@@ -174,4 +174,4 @@ original whenever it is unsure. The result is on the proposal as `crop` plus an 
 - Runtime package is `app`; relay package is `relay` (two services, two names — they share one venv).
 - Money is integer pence inside the ledger; the model returns pounds to 2 dp.
 - Every automatic action writes one line to `_System/audit/{yyyy-mm}.jsonl` in the user's folder (format and the full folder layout: `docs/ARCHITECTURE.md`).
-- Branch names: `muse/*` (Muse Code jobs), `claude/*` (Claude Code jobs on the Spark); every merge is reviewed.
+- Branch names: `muse/*` (Muse Code jobs), `claude/*` (coding-agent jobs on our own server); every merge is reviewed.

@@ -104,16 +104,14 @@ void main() {
   group('Ask', () {
     test('names the model that answers, and a household asks about its money',
         () {
-      expect(askModelLabel(AppSettings(), health, demo: true),
-          'muse-spark-1.3-contributor');
-      expect(askModelLabel(AppSettings(), health, demo: false),
-          'muse-spark-1.3-contributor');
+      expect(askModelLabel(AppSettings(), health, demo: true), 'Muse Spark');
+      expect(askModelLabel(AppSettings(), health, demo: false), 'Muse Spark');
       expect(
           askModelLabel(
               AppSettings(aiMode: 'local', aiBaseUrl: 'http://10.0.0.5:11434'),
               health,
               demo: false),
-          'muse-glimmer:30b');
+          'Glimmer 30B');
       final home = askIntro(household: true, model: 'm');
       expect(home, isNot(contains('VAT')));
       expect(home, contains('your own money'));

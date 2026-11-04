@@ -1,4 +1,4 @@
-"""Claude-as-judge for an extraction run (H19: grading only, never in the runtime path).
+"""AI judge (another AI tool) for an extraction run (H19: grading only, never in the runtime path).
 
     cd evals && python -m harness.judge runs/20261027-120000 [--model claude-haiku-5-5]
         [--escalate claude-sonnet-5-5] [--limit N]

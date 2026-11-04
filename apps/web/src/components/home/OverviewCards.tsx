@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import AiWorking from "@/components/AiWorking";
 import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
+import { shortModelName } from "@/lib/ai-config";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
 import { RuntimeErrorNote } from "@/components/States";
 import { useLandlordOn } from "@/lib/property";
@@ -166,7 +167,7 @@ export function SummaryCard() {
         <ByWhom
           className="mt-2"
           code={o.mode === "sample" ? "Sample figures from the fictional Bramblewood books" : "Every figure by code from your books"}
-          ai={byAi ? `worded by your AI (${s.model}), numbers checked by code` : s.fallback_reason ?? "written by code"}
+          ai={byAi ? `worded by your AI (${shortModelName(s.model)}), numbers checked by code` : s.fallback_reason ?? "written by code"}
         />
       ) : null}
       {s ? (

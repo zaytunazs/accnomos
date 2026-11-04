@@ -473,8 +473,8 @@ export const runtime = {
       method: "POST",
       body: JSON.stringify({ question, period: period ?? null, history: history.slice(-6) }),
     }),
-  /** POST /books/ask/voice: a spoken question, transcribed by Muse Voice Transcribe (Whisper on the Spark as the
-   *  fallback), then the same answer. */
+  /** POST /books/ask/voice: a spoken question, transcribed by Muse Voice Transcribe (a local speech-to-text model on our
+   *  own server as the fallback), then the same answer. */
   askVoice: (a: AccountInfo, audio: Blob, period?: RtAskPeriod | null, history: RtAskTurn[] = []) => {
     const form = new FormData();
     const ext = audio.type.includes("mp4") ? "m4a" : audio.type.includes("ogg") ? "ogg" : "webm";
@@ -3081,10 +3081,10 @@ export interface RtProposedAction {
   tap_only?: boolean;
   signature: string;
 }
-/** Who heard a spoken request (services/runtime/app/ai/stt.py): Muse Voice Transcribe, or Whisper on the Spark. */
+/** Who heard a spoken request (services/runtime/app/ai/stt.py): Muse Voice Transcribe, or a local speech-to-text model. */
 export interface RtTranscription {
   provider: string; // muse | whisper
-  label: string; // "Muse Voice Transcribe" | "Whisper on the DGX Spark"
+  label: string; // "Muse Voice Transcribe" | "a local fallback model"
   model: string;
   fallback_reason: string | null; // the first service failed: "<label>: <why>"
 }

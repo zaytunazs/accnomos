@@ -417,7 +417,7 @@ def test_voice_route_with_no_provider_is_400(route, monkeypatch: pytest.MonkeyPa
     monkeypatch.delenv("META_API_KEY")
     monkeypatch.delenv("SPARK_WHISPER_URL")
     r = _ask(client, {**H, "X-AI-Mode": "local"})
-    assert r.status_code == 400 and "Spark's Whisper server" in r.json()["detail"]
+    assert r.status_code == 400 and "local speech-to-text model" in r.json()["detail"]
 
 
 def test_health_lists_speech_to_text_without_secrets(route):

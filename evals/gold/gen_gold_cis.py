@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CIS gold with Qwen3.8-27B (local vLLM on the Spark, OpenAI-compatible, :8000): contractors' monthly payment and
+"""CIS gold with a second open-weight model (local, standard API, :8000): contractors' monthly payment and
 deduction statements, and subcontractors' VAT invoices under the domestic reverse charge, for app/ai/cis_read.py.
 
     python evals/gold/gen_gold_cis.py [--statements 30] [--invoices 30] [--seed 7]
@@ -357,7 +357,8 @@ def write_all(docs: list[dict], out: Path, seed: int, model: str) -> None:
     write_text(
         out / "README.md",
         f"# CIS gold — {LABEL}\n\nMade by `evals/gold/gen_gold_cis.py` (seed {seed}). Names and words by "
-        f"{model}; every figure, date and number by code. {sum(d['kind'] == 'cis_statement' for d in docs)} "
+        "a second open-weight model (not Meta's); "
+        f"every figure, date and number by code. {sum(d['kind'] == 'cis_statement' for d in docs)} "
         f"payment and deduction statements (S…) and {sum(d['kind'] == 'reverse_charge_invoice' for d in docs)} "
         "reverse-charge invoices (R…). Each folder: `document.txt` (what the reader sees) and `expected.json` "
         "(the gold reading, the pence, and the checks that must fail on the distractors). All fictional.\n",

@@ -4,9 +4,9 @@ Code loads the ledger and builds the facts pack; the model only writes words aro
 code then checks every figure and citation (app/ai/ask.py). Nothing is kept after the response.
 An instruction ("send a £100 invoice to JM Trading") gets a proposed action instead (app/actions.py),
 which does nothing until the user approves it with POST /actions/approve.
-A spoken question is transcribed by the speech-to-text chain (app/ai/stt.py: Muse Voice Transcribe first, Whisper on
-the DGX Spark as the fallback) and then takes exactly the same path; which service heard it is returned with the answer
-and kept on any proposal it leads to (and so in the actions audit log).
+A spoken question is transcribed by the speech-to-text chain (app/ai/stt.py: Muse Voice Transcribe first, a local
+speech-to-text model on our own server as the fallback) and then takes exactly the same path; which service heard it
+is returned with the answer and kept on any proposal it leads to (and so in the actions audit log).
 "Plan my Thursday" (typed or spoken) is not a question about the books: code spots it and answers with a
 `plan_day` action for that date, which the app opens as a day plan (POST /plan/day); no model is called.
 
@@ -244,8 +244,9 @@ async def ask_voice(
     """Spoken question (webm/ogg/m4a/wav) -> WAV via ffmpeg -> speech-to-text chain -> the /books/ask answer.
 
     Optional form fields `period` and `history` are JSON shaped as in AskRequest. Muse Voice Transcribe hears it when a
-    Meta key is available (the user's own in key mode, else the server's META_API_KEY); Whisper on the Spark when that
-    fails or is not configured. `transcribed_by` names the one that did."""
+    Meta key is available (the user's own in key mode, else the server's META_API_KEY); the local
+    speech-to-text model on our own server when that fails or is not configured. `transcribed_by` names the one that
+    did."""
     providers = stt.chain(cfg)
     if not providers:
         raise HTTPException(400, _no_voice(cfg))
@@ -280,7 +281,7 @@ def _no_voice(cfg: AiConfig) -> str:
             "Voice input is off while Settings › AI is set to local model only: speech-to-text runs on the Meta "
             "Model API. Type your question instead."
         )
-    return "Voice needs Muse Voice Transcribe (a Meta API key) or the Spark's Whisper server"
+    return "Voice needs Muse Voice Transcribe (a Meta API key) or a local speech-to-text model on our own server"
 
 
 class HeardReply(BaseModel):

@@ -1,4 +1,4 @@
-"""Speech-to-text eval: Muse Voice Transcribe and Whisper on the Spark over the same recordings, side by side.
+"""Speech-to-text eval: Muse Voice Transcribe and a local speech-to-text model over the same recordings, side by side.
 
     cd evals && python -m harness.stt --dry-run          # list the samples and which providers are configured
     cd evals && python -m harness.stt --stub             # the whole pipeline against in-process fakes (no network)

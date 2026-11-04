@@ -47,7 +47,7 @@ Docs: 200 | errors: 0 | messy: True | all fields correct: 80% | mean 24.14 s (ma
 | utility | 15 | 100% | 100% | 0 |
 | zero | 6 | 83% | 100% | 0 |
 
-## Verifier: ollama:muse-glimmer:30b
+## Verifier: muse-glimmer:30b (local)
 
 Docs: 200 | passed checks (so verified): 178 | verified OK: 178 | verifier errors: 0 | all fields agree: 83% | mean 5.13 s
 

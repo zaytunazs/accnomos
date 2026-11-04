@@ -36,7 +36,7 @@ Second-agent review of the judge-facing docs task (`TASK_BRIEF.md`). The branch 
   with a date this quarter or approve such a receipt during set-up. Docs only describe the gap; no asset was changed.
 - **No VAT period picker, and the date-in-period warning is not wired** (no caller of `app/pipeline.py` passes `period_start`/`period_end`).
   This is a product gap and was out of scope for a docs task.
-- **Not checked here:** the live site (accnomos.com / api.accnomos.com), the Flutter build, and any Meta API or Baseten call.
+- **Not checked here:** the live site (accnomos.com / api.accnomos.com), the Flutter build, and any Meta API or the open-weights host call.
   The docs already say all of these are unverified.
 - **README top is 8 lines**, not the 12 the brief allowed. It is shorter, which is fine; noted only for completeness.
 - `TASK_BRIEF.md` was committed in `d65e105` ("wip: checkpoint"). Drop or squash it before merging if the brief should not ship.

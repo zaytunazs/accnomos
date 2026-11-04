@@ -2,7 +2,7 @@
 \
 **Previous attempt (branch claude/extraction-quality) made no changes — do the work this time. Start with 2a and 2b (pure arithmetic in app/checks.py / app/pipeline.py with unit tests, no model needed), commit them, then run the baseline eval, then 2c/2d.**
 
-Accnomos monorepo (public; UK English; no secrets; Glimmer 30B on Ollama :11434 is the model; Qwen on vLLM :8000 may be used only to
+Accnomos monorepo (public; UK English; no secrets; Glimmer 30B on the local model server :11434 is the model; a second local open-weight model may be used only to
 generate extra synthetic documents). Read first `evals/runs/glimmer_messy_200/report.md` (weaknesses: VAT-inclusive net, quantity applied
 twice, handwritten totals, no-VRN handling), `evals/harness/run_extraction.py`, `services/runtime/app/ai/extract.py` (prompt + schema),
 `app/checks.py` (post-read checks), `app/pipeline.py`, `docs/reviews/evals-expand/REVIEW.md`, `docs/reviews/verifier/REVIEW.md`.

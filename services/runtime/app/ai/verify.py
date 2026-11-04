@@ -7,14 +7,14 @@ the first reading's shape. Code compares the two; the model never merges or choo
 
 Backend choice (`select_backend`), keeping the user's own choice of where their documents go:
 
-* local mode -> Glimmer via Ollama with the verifier prompt. The image never leaves the machine,
-  even when the server has a Baseten key.
-* key mode   -> the Meta Model API with the user's own key (`X-Meta-Api-Key`); Muse Spark Open on Baseten first only
-  when the owner switched it on (`BASETEN_ENABLED=1` and `BASETEN_API_KEY`; model from `VERIFIER_MODEL`, else
-  `BASETEN_MODEL`, else the default slug).
-* the server's chain (AI_PROVIDERS, app/ai/providers.py) -> the chain's providers in order (Meta Model API, the
-  Spark), with the same failover and circuit breaker as every other call (app/ai/chain.py). Baseten goes first only
-  with `BASETEN_ENABLED=1` and a key. Baseten is off by default (owner's decision, 2 Nov 2026).
+* local mode -> Glimmer via the local model server with the verifier prompt. The image never leaves the machine,
+  even when the server has a hosted-verifier key.
+* key mode   -> the Meta Model API with the user's own key (`X-Meta-Api-Key`); Muse Spark Open (hosted open
+  weights) first only when the owner switched it on (`BASETEN_ENABLED=1` and `BASETEN_API_KEY`; model from
+  `VERIFIER_MODEL`, else `BASETEN_MODEL`, else the default slug).
+* the server's chain (AI_PROVIDERS, app/ai/providers.py) -> the chain's providers in order (Meta Model API, our
+  own server), with the same failover and circuit breaker as every other call (app/ai/chain.py). The hosted Spark Open
+  goes first only with `BASETEN_ENABLED=1` and a key; it is off by default (owner's decision, 2 Nov 2026).
 
 `VERIFIER=off` on the server disables the verifier entirely.
 """

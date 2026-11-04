@@ -5,7 +5,7 @@ Bramblewood Joinery Ltd. Every document, invoice and statement it writes is labe
 It writes through the runtime's own code (`approve()`, Autopilot, Outlook intake, invoicing, payments, credit notes,
 bank reconcile, jobs, mileage, contacts, payroll, to-dos, the reports export, `Books`), so the result is what the app itself
 would have written after six months of use. Part payments, the overpayment, the exact bank match and the supplier credit note
-use the figures of the ledger2 gold set (`evals/gold/ledger2`, made by Qwen and checked by code), not new ones.
+use the figures of the ledger2 gold set (`evals/gold/ledger2`, made by a second open-weight model and checked by code), not new ones.
 
 What it writes. The dates below assume a run between 1 Oct and 31 Dec 2026 with VAT stagger 1; `--dry-run` prints them for any day.
 

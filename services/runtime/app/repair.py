@@ -1,6 +1,6 @@
 """Deterministic repairs applied to a model extraction before the checks run.
 
-Found by the Claude-as-judge pass over 60 synthetic receipts (27 Oct): two systematic model errors
+Found by the AI-judge pass over 60 synthetic receipts (27 Oct): two systematic model errors
 that code can correct safely, each recorded as a Check so the user sees what was changed.
 Repairs to figures (REPAIR_CODES) are also listed on the proposal as `repaired_by_code`; never silent.
 """

@@ -1,18 +1,18 @@
-# Review: Muse Voice Transcribe first, Whisper on the Spark as fallback (`claude/muse-transcribe`)
+# Review: Muse Voice Transcribe first, a local speech-to-text model on our own server as fallback (`claude/muse-transcribe`)
 
-Branch from `origin/main` (`c353bd4`). No push to main, no PR. Meta's API, Baseten and Modal were not called from here.
+Branch from `origin/main` (`c353bd4`). No push to main, no PR. Meta's API, the open-weights host and the hosted GPU were not called from here.
 
 ## What the brief assumed, and what was there
 
-- The brief says voice "today is transcribed by Whisper on the owner's Spark voice server". **It was not.** `git grep -i
-  'whisper\|transcri\|audio/transcriptions'` over `services`, `apps` and every `origin/*` branch found no Whisper client:
+- The brief says voice "today is transcribed by the local speech-to-text model on the owner's Spark voice server". **It was not.** a case-insensitive `git grep` for speech-to-text
+  clients and `audio/transcriptions` over `services`, `apps` and every `origin/*` branch found no local speech-to-text model client:
   `POST /books/ask/voice` already called Muse Voice Transcribe (`app/ai/voice.py`), key mode only, with a request shape
   taken from research notes. So this branch (a) corrects the Muse request to the documented shape, (b) adds the
-  Whisper client as an OpenAI-compatible `/audio/transcriptions` call configured by `SPARK_WHISPER_URL` (empty = off),
-  and (c) puts both behind a chain. Whether the Spark actually serves Whisper, and under which model id, is for the
+  the local speech-to-text model client as a standard-API `/audio/transcriptions` call configured by `SPARK_WHISPER_URL` (empty = off),
+  and (c) puts both behind a chain. Whether the Spark actually serves the local speech-to-text model, and under which model id, is for the
   owner to set up; `docs/HONESTY.md` says so.
-- The brief points at a Spark Kokoro endpoint "described in docs". No doc describes it (only the teaser's credits name
-  Kokoro, voice `bm_george`). `harness/stt.py --generate` uses Kokoro-FastAPI's OpenAI-compatible
+- The brief points at a voice-model endpoint on the Spark "described in docs". No doc describes it (only the teaser's credits name
+  an open-source voice model, voice `bm_george`). `harness/stt.py --generate` uses the voice-model server's standard-API
   `POST /v1/audio/speech`, base `KOKORO_URL` (default `http://127.0.0.1:8880/v1`).
 
 ## Sources (read 29 Oct 2026)
@@ -21,7 +21,7 @@ Branch from `origin/main` (`c353bd4`). No push to main, no PR. Meta's API, Baset
 |---|---|---|
 | Endpoint, auth, multipart parts, request JSON (`mode`, `model`, `audioEncoding: "WAV"`, `keywords`, `languageBias`), response (`sessionId`, `transcript`, `audioDurationMs`, `turns`), error codes, audio formats (mono 16-bit WAV, 16 or 24 kHz), limits (10 min or 32 MB one-shot; 60 min streaming), streaming handshake, events and close codes | Meta's cookbook `meta-models/meta-model-cookbook`, commit `0a99b98` (7 Oct 2026), `06_muse_voice/README.md`, `06_muse_voice/01_voice_api_fundamentals/{README.md,utils.py,transcribe_file.py}` | Official (Meta's own repo; it links https://dev.meta.ai/docs/speech-to-text and https://dev.meta.ai/docs/api-reference/voice). **dev.meta.ai and developer.meta.com do not resolve from this sandbox**, so the pages the brief names (https://dev.meta.ai/docs/overview, https://dev.meta.ai/docs/models, https://developer.meta.com/ai/resources/blog/meet-muse-voice-transcribe-streaming-speech-to-text/) could not be read directly; search snippets of them agree on the base URL, the two endpoints and the WebSocket auth-in-handshake. |
 | Price, USD 3.00 per 1,000 audio minutes (USD 0.18 an hour), same for streaming and file | orcarouter.ai/blog/muse-voice-transcribe, openrouter.ai/meta/muse-voice-transcribe-1.0, productbuilder.net/models/muse-voice-transcribe-1-0 (web search) | **Third party only**; no Meta pricing page was readable. Recorded as such in `docs/META_MODELS.md`. |
-| Whisper request (`file`, `model`, `language`, `prompt`, `response_format=json` → `{"text"}`) | OpenAI audio API reference, https://platform.openai.com/docs/api-reference/audio/createTranscription | The shape faster-whisper-server / speaches implement; from knowledge, not re-fetched. |
+| The local speech-to-text model request (`file`, `model`, `language`, `prompt`, `response_format=json` → `{"text"}`) | standard audio API reference, https://platform.openai.com/docs/api-reference/audio/createTranscription | The shape a local speech-to-text server implement; from knowledge, not re-fetched. |
 
 ## Design
 
@@ -41,7 +41,7 @@ Branch from `origin/main` (`c353bd4`). No push to main, no PR. Meta's API, Baset
   signed payload when None, so typed proposals sign exactly as before); `actions._claim` and `actions.reject` write it
   to `_System/audit/actions/<yyyy-mm>.jsonl`. `/health` gains `stt` (names, labels, models, configured; no keys, no URLs).
 - **Keywords**: job and staff names from the books (best effort, read in parallel with the ffmpeg step) go to Muse as
-  `keywords` and to Whisper as a `prompt`, so "Hendon" and "Andy" are spelt as in the books.
+  `keywords` and to the local speech-to-text model as a `prompt`, so "Hendon" and "Andy" are spelt as in the books.
 - **Keys and audio**: keys only from the request header or env; held in `SttProvider.key` (`repr=False`), never in an
   error message, log line, answer, audit line or eval output (tested). Audio: unchanged; ffmpeg runs in a temporary
   directory deleted at once, and the WAV bytes go to each provider in memory.
@@ -52,7 +52,7 @@ Branch from `origin/main` (`c353bd4`). No push to main, no PR. Meta's API, Baset
   "Spoken · Transcribed by …" (`SpokenTag`); mic gating moved into `voiceOffReason()` with the same rule as the web.
 - **Eval** (`evals/harness/stt.py`, step `stt` last in `tools/spark_queue.sh`, probe `none`): each provider alone over
   the 14 teaser VO WAVs and 20 UK accounting utterances (`UTTERANCES`, incl. the overtime and bolts sentences and a
-  £450 quote) made by Kokoro into `evals/gold/voice/` when `--generate` is given. Scores WER after normalising (£ →
+  £450 quote) made by an open-source voice model into `evals/gold/voice/` when `--generate` is given. Scores WER after normalising (£ →
   "pounds", number words → digits), whether every number and every pound amount was heard, and latency mean / p50 /
   p95. `--stub` and `--dry-run` work offline. **Not run**: needs the Spark and a key.
 
@@ -60,12 +60,12 @@ Branch from `origin/main` (`c353bd4`). No push to main, no PR. Meta's API, Baset
 
 | Where | New / changed | Result here |
 |---|---|---|
-| `services/runtime/tests/test_stt.py` | 27 new: chain config (user key, server key in local mode, server chain, order and timeouts from env, test mode empty, no key in repr/describe), Muse-first, Whisper after each of 8 Muse failures (500, 429, 413, 400, 401, timeout, connect error, no words), Whisper request shape with and without a key, both failing, single provider, none, **no key in logs (DEBUG incl. httpx) / errors / results**; route: spoken overtime "Andy did 2 hours overtime at double time on the Hendon job last week" heard by Muse → signed `pay_overtime` card with `transcribed_by`, tampering refused (403), approve writes it to the audit; Muse 503 → Whisper with the server key in local mode → card says Whisper, reject audits it; typed proposals sign as before; no provider = 400; `/health.stt` without secrets | pass |
+| `services/runtime/tests/test_stt.py` | 27 new: chain config (user key, server key in local mode, server chain, order and timeouts from env, test mode empty, no key in repr/describe), Muse-first, the local speech-to-text model after each of 8 Muse failures (500, 429, 413, 400, 401, timeout, connect error, no words), the local speech-to-text model request shape with and without a key, both failing, single provider, none, **no key in logs (DEBUG incl. httpx) / errors / results**; route: spoken overtime "Andy did 2 hours overtime at double time on the Hendon job last week" heard by Muse → signed `pay_overtime` card with `transcribed_by`, tampering refused (403), approve writes it to the audit; Muse 503 → the local speech-to-text model with the server key in local mode → card says the local speech-to-text model, reject audits it; typed proposals sign as before; no provider = 400; `/health.stt` without secrets | pass |
 | `services/runtime/tests/test_voice.py` | documented request JSON asserted exactly; keywords only when given; `turns` reply shape; 400 → 422; route returns `transcribed_by`; local-mode message | 28 pass |
 | `services/runtime/tests/test_shopping.py` | the bolts-for-Hendon voice test's fake accepts the new keyword args | pass |
 | `services/runtime/tests/test_security_routes.py` | `ai/stt.py` added to the modules allowed to make HTTP calls (bases: user cfg / `MODEL_API_BASE` / `SPARK_WHISPER_URL`) | pass |
-| `evals/tests/test_stt_harness.py` | 14 new: normalising (7 cases), scoring, the 20 utterances, Kokoro generator against a fake (and resumable, and Kokoro down), providers from env, a stubbed run of both writing the report without the key, dry run | pass |
-| `evals/tests/test_spark_queue.py` | `stt` is the 7th step; with Qwen and Ollama down only `stt` runs | pass |
+| `evals/tests/test_stt_harness.py` | 14 new: normalising (7 cases), scoring, the 20 utterances, the voice-model generator against a fake (and resumable, and the voice model down), providers from env, a stubbed run of both writing the report without the key, dry run | pass |
+| `evals/tests/test_spark_queue.py` | `stt` is the 7th step; with a second open-weight model and the local model server down only `stt` runs | pass |
 | `apps/mobile/test/voice_provider_test.dart` | 3 new: `VoiceAnswer.transcribedBy`, `SpokenTag` widget, `voiceOffReason` | **not run: no Flutter SDK in this sandbox** |
 
 Gates, all from this branch: runtime `pytest -q` 2,390 passed, 2 skipped; `ruff check .` and `ruff format --check .` clean;
@@ -85,8 +85,8 @@ Playwright itself uses: all passed. None of the 8 touches a file this branch cha
   error. The first owner run of `tools/spark_queue.sh --only stt` with a key will show it.
 - **Server key in local mode.** By design, `META_API_KEY` now also transcribes voice for local-mode users. On a public
   server, leave it unset if strangers' audio should not run on the operator's account (HONESTY.md).
-- **Whisper server unknown.** The client assumes an OpenAI-compatible server; a different server (e.g. whisper.cpp's
-  `/inference`) would fail and be reported as "Whisper on the Spark returned HTTP 404".
+- **The local speech-to-text model server unknown.** The client assumes a standard-API server; a different server (e.g. one with its own
+  `/inference` path) would fail and be reported as "a local speech-to-text model on our own server returned HTTP 404".
 - **Provenance after a clarification** is lost when the follow-up is typed or tapped (HONESTY.md).
-- **Eval numbers are synthetic-speech numbers** (Kokoro, one clean voice); real phone audio in a van will be worse.
+- **Eval numbers are synthetic-speech numbers** (an open-source voice model, one clean voice); real phone audio in a van will be worse.
 - Dart changes are unanalysed and untested here.

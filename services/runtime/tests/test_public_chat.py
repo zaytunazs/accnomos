@@ -349,7 +349,11 @@ def test_submission_mode_notes_never_mention_a_launch_or_coming_soon(monkeypatch
     assert "try the demo" in availability.body and "sign in" in availability.body
 
 
-THIRD_PARTY_NAMES = r"whisper|kokoro|ollama|vllm|qwen|comfyui|\bdgx\b|baseten"
+# The same list as tests/test_docs.py NON_META_NAMES and apps/web/scripts/prelaunch-words.mjs THIRD_PARTY_NAMES.
+THIRD_PARTY_NAMES = (
+    r"whisper|kokoro|ollama|vllm|qwen|comfyui|\bdgx\b|\bnvidia\b|\bl40s\b|baseten|\bmodal\b|\bllama\b|\bclaude\b"
+    r"|anthropic|openai|\bchatgpt\b|\bgpt-\d|\bgemini\b|\bmistral\b|deepseek|hugging ?face|systran|speaches"
+)
 
 
 @pytest.mark.parametrize("mode", ["1", "0"])

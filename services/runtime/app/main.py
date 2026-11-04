@@ -76,9 +76,7 @@ app.add_middleware(
 class AiConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    mode: str = Field(
-        max_length=10
-    )  # "key" (user's Meta Model API key) | "local" (Ollama/Glimmer on the user's machine)
+    mode: str = Field(max_length=10)  # "key" (user's Meta Model API key) | "local" (Glimmer on the user's machine)
     base_url: str | None = Field(default=None, max_length=300)
     model: str | None = Field(default=None, max_length=200)
 

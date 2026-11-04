@@ -9,8 +9,8 @@ import { PAGES } from "./pages";
  * is read whole (title, meta description, all text in the DOM including closed menus, and accessible names held in
  * attributes); scripts are left out because test builds carry the pre-launch branch for specs that flip the mode.
  * The production export is checked file by file in CI (scripts/prelaunch-words.mjs).
- * The same read also finds no non-Meta tool, engine or hardware name (Whisper, Kokoro, Ollama, vLLM, Qwen, ComfyUI,
- * DGX, Baseten): a non-Meta fallback is "a local fallback model" on every public or judge-facing page.
+ * The same read also finds no non-Meta model, tool, engine, host, vendor or hardware name (THIRD_PARTY_NAMES in
+ * scripts/prelaunch-words.mjs): a non-Meta fallback is "a local fallback model" on every public or judge-facing page.
  */
 
 async function pageWords(page: Page): Promise<string> {

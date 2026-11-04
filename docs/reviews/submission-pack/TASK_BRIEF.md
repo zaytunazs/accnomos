@@ -8,9 +8,9 @@ The owner (Zohaib Sharif, Zaytuna Business Services Ltd, solo) submits; you draf
 1. `docs/submission/DESCRIPTION.md`: 150-word and 400-word versions of the project description; a one-line tagline; the problem
    (UK small businesses, MTD VAT, bookkeeping cost), the approach (AI proposes, user approves, code calculates; books in the user's
    OneDrive; no user database), what is built, what is honest about limits.
-2. `docs/submission/META_MODELS.md`: every Meta model used and exactly where (Muse Glimmer 30B local via Ollama for reading
+2. `docs/submission/META_MODELS.md`: every Meta model used and exactly where (Muse Glimmer 30B local via the local model server for reading
    receipts/Ask; Muse Spark 1.3 via the Meta Model API; Muse Voice Transcribe; Muse Image for the brand assets; SAM 3.1 crop;
-   Spark Open on Baseten as the verifier) with file paths and which are verified vs modelled; token/cost notes if present in the repo.
+   Spark Open (hosted) as the verifier) with file paths and which are verified vs modelled; token/cost notes if present in the repo.
 3. `docs/submission/VIDEO_SCRIPT.md`: a 3-minute demo video script with timestamps, exact clicks (from `docs/DEMO.md`), on-screen
    captions, and a shot list (web at 1280 px, phone emulator at 390 px); plus a 30-second cut.
 4. `docs/submission/JUDGING.md`: how the project maps to likely criteria (technical depth, use of Meta models, impact, completeness,

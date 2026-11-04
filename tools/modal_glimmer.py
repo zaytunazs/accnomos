@@ -1,4 +1,5 @@
-"""Glimmer 30B on Modal (L40S) behind Ollama's HTTP API: the runtime's first AI provider, and an eval backend.
+"""Glimmer 30B on a hosted GPU behind a local model server's HTTP API: the runtime's first AI provider
+(optional), and an eval backend.
 
     modal deploy tools/modal_glimmer.py          # prints the URL
     modal app stop accnomos-glimmer              # stop billing at once

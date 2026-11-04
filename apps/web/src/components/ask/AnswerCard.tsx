@@ -2,6 +2,7 @@ import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
 import ByWhom from "@/components/ByWhom";
 import type { AccountInfo } from "@azure/msal-browser";
+import { shortModelName } from "@/lib/ai-config";
 import { getFileWebUrl } from "@/lib/graph";
 import type { RtAskAnswer, RtSuggestedAction } from "@/lib/runtime";
 
@@ -198,11 +199,11 @@ export default function AnswerCard({
             <ByWhom
               className="mt-3"
               code="Numbers by code"
-              ai={`${answer.model} is writing the explanation; every figure in it is checked before it stays${suffix}`}
+              ai={`${shortModelName(answer.model)} is writing the explanation; every figure in it is checked before it stays${suffix}`}
             />
           );
         if (answer.model === "code") return <p className="mt-3 text-[13px] text-muted">Worked out by code{suffix}</p>;
-        return <ByWhom className="mt-3" code="Numbers by code" ai={`explanation by ${answer.model}${suffix}`} />;
+        return <ByWhom className="mt-3" code="Numbers by code" ai={`explanation by ${shortModelName(answer.model)}${suffix}`} />;
       })()}
 
       {actions.length > 0 && (

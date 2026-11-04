@@ -2,10 +2,10 @@
 
 GET  /ai/health  the chain (AI_PROVIDERS) and each provider's live health: cheap probes, cached HEALTH_TTL_S.
 GET  /ai/calls   the last 50 AI calls (provider, model, task, latency, fell back?), kept in memory only.
-POST /ai/warm    ping the Modal endpoint so its container is up before a judge's first upload; at most one ping per
+POST /ai/warm    ping the hosted GPU endpoint so its container is up before a judge's first upload; at most one ping per
                  WARM_EVERY_S, on top of the usual per-IP rate limit.
 
-No output carries a key, token or provider URL. The Modal probe is passive by default (its state comes from the
+No output carries a key, token or provider URL. The hosted GPU probe is passive by default (its state comes from the
 last real call and the circuit breaker): an active probe would start a GPU container, which costs money, every time
 someone opened the page. AI_HEALTH_PROBE_MODAL=1 makes it active (test mode always probes, against the stub).
 """
@@ -165,11 +165,11 @@ async def _ping(c: AiConfig) -> None:
 
 @router.post("/warm", response_model=WarmResult)
 async def ai_warm() -> WarmResult:
-    """Start the Modal container now, so the first real call does not wait for a cold start. Returns at once."""
+    """Start the hosted GPU container now, so the first real call does not wait for a cold start. Returns at once."""
     global _last_warm
     modal = next((c for c in providers.configured_chain() if c.provider == "modal"), None)
     if modal is None:
-        return WarmResult(ok=True, warming=False, detail="No Modal provider in this server's chain.")
+        return WarmResult(ok=True, warming=False, detail="No hosted GPU provider in this server's chain.")
     ago = chain.BREAKER.state("modal")["last_ok_s_ago"]
     if ago is not None and ago < MODAL_WARM_FOR_S - 60:
         return WarmResult(ok=True, warming=False, detail=f"Already warm (served {ago} s ago).")
@@ -180,7 +180,7 @@ async def ai_warm() -> WarmResult:
     task = asyncio.create_task(_ping(modal))
     _warming.add(task)
     task.add_done_callback(_warming.discard)
-    return WarmResult(ok=True, warming=True, detail="Warming Muse Glimmer 30B on Modal (60-120 s from cold).")
+    return WarmResult(ok=True, warming=True, detail="Warming Muse Glimmer 30B on the hosted GPU (60-120 s from cold).")
 
 
 def reset() -> None:

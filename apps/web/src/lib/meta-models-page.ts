@@ -200,13 +200,13 @@ function classifier(): Result | null {
 const present = (xs: (Result | null)[]) => xs.filter((x): x is Result => x !== null);
 
 /**
- * The live server's order (owner's decision, 29 Oct 2026): AI_PROVIDERS=meta,spark. Modal is supported by the code
+ * The live server's order (owner's decision, 29 Oct 2026): AI_PROVIDERS=meta,spark. The hosted GPU provider is supported by the code
  * (app/ai/providers.py) but not deployed, so it is mentioned only as an optional extra provider.
  */
 const CHAIN =
   "On our live server, with no AI chosen, calls go in this order: 1st Muse Spark 1.3 on the Meta Model API (Contributor mode for the demo and testing); last, a local fallback model (Muse Glimmer 30B, open weights on our own server). A timeout, outage or rate limit moves the call to the next; a provider that keeps failing is skipped for a while.";
 const MODAL_NOTE =
-  "The code also supports Muse Glimmer 30B on Modal as an optional extra provider in that order; it is not what runs live.";
+  "The code also supports Muse Glimmer 30B on a hosted GPU as an optional extra provider in that order; it is not what runs live.";
 
 /**
  * Owner's correction (29 Oct 2026): the live server runs MODEL_API_MODEL=muse-spark-1.3-contributor for the demo and

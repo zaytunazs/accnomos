@@ -35,7 +35,7 @@ Built 28 Oct 2026 from `main` at 9674a64. One cloud session, Linux. UK English.
   menu): one simple `/property` page for one or two properties: add a property, record rent or a cost, the year with
   your share, entries (tag untagged ones), and the quarterly update (SA105 boxes, the body, *Save file ready to
   submit*, HMRC sandbox connect and send).
-* **Gold generator** `evals/gold/gen_gold_landlord.py`: Qwen names a fictional landlord's world; code fixes every figure
+* **Gold generator** `evals/gold/gen_gold_landlord.py`: a second open-weight model names a fictional landlord's world; code fixes every figure
   of six months of agent statements and seven bills; expectations by category, per owner and the API bodies; every
   file carries `SAMPLE — FICTIONAL COMPANY` (em dash). Not run on the Spark yet.
 

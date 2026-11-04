@@ -406,7 +406,7 @@ def test_warm_pings_modal_once_a_minute(monkeypatch: pytest.MonkeyPatch) -> None
     assert client.post("/ai/warm").json() == {
         "ok": True,
         "warming": False,
-        "detail": "No Modal provider in this server's chain.",
+        "detail": "No hosted GPU provider in this server's chain.",
     }
 
 

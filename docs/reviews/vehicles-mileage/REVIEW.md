@@ -24,7 +24,7 @@ Second-agent review of the vehicles, mileage log and HMRC approved mileage allow
 
 - `1af830e`: `ExtractedDoc` now accepts the code-only category "Motor — mileage allowance". Without a guard, a model reply
   using it would have been accepted and booked as owed to the owner (credit 2300) rather than paid. `extract_document`
-  now turns it into "Sundry" before validation. Test added (fake Ollama call). I also added a test that a rejected claim
+  now turns it into "Sundry" before validation. Test added (fake local-model call). I also added a test that a rejected claim
   is replaced by a new proposal with a fresh id.
 
 ## What remains

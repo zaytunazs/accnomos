@@ -21,7 +21,7 @@
   decision (in this run it removed no false post and cost expected posts).
 - **Shards and timing:** the clean and messy passes were run as two shards of 100 (`--shard k/2`), each on fresh
   seeded books, so a document in the second half never sees a proposal from the first half (gold documents are
-  distinct, so only the same-document condition could notice). Other work on the same machine used Ollama during
+  distinct, so only the same-document condition could notice). Other work on the same machine used the local model server during
   the day, and from the verifier-on clean pass onwards two of these runs shared the GPU, so the times in the table
   above are inflated. The least disturbed measurement is the verifier-on inbox and dupes run on the old code
   (`before_tightening/on_inbox_dupes.log`, 67 documents): **26.1 s mean, 26.2 s median, 34.9 s max per document**,

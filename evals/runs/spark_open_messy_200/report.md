@@ -47,7 +47,7 @@ Docs: 200 | errors: 0 | messy: True | all fields correct: 93% | mean 13.12 s (ma
 | utility | 15 | 87% | 87% | 0 |
 | zero | 6 | 67% | 83% | 0 |
 
-## Verifier: baseten:meta-models/muse-spark-open
+## Verifier: meta-models/muse-spark-open (hosted open weights)
 
 Docs: 200 | passed checks (so verified): 178 | verified OK: 178 | verifier errors: 0 | all fields agree: 98% | mean 7.99 s
 

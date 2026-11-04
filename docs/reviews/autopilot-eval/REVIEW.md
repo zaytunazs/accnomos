@@ -1,6 +1,6 @@
 # Review: claude/autopilot-eval (Autopilot L2 safety eval)
 
-Reviewed and merged by hand on 27 Oct 2026. The lane's own review pass did not run: the Spark's Anthropic API key ran
+Reviewed and merged by hand on 27 Oct 2026. The lane's own review pass did not run: the judge's API key ran
 out of credit while the last shard was running. The last shard (`verifier off`, messy 2/2) and the report were then
 run on the Spark by `jobs/finish_autopilot_eval.sh` with the lane's own harness, unchanged, on Glimmer 30B (local).
 
@@ -15,7 +15,7 @@ run on the Spark by `jobs/finish_autopilot_eval.sh` with the lane's own harness,
   receipts were posted twice before this change; 0 after). A refused document waits in Review.
 - Results in `evals/runs/autopilot_l2/` (`report.md`, `summary.json`, per-shard records, `NOTES.md`, `before_tightening/`).
 
-## Headline (467 documents per mode, Glimmer 30B on the DGX Spark)
+## Headline (467 documents per mode, Glimmer 30B on our own server)
 
 | | verifier on | verifier off |
 |---|---:|---:|
@@ -43,4 +43,4 @@ report counts them as false posts and also shows the rate without them: 0 in 407
 - With `VERIFIER=off` Autopilot can post on a single reading (`docs/AUTOPILOT.md` now says so). Whether L2 should
   require the verifier is a product decision; in this run the verifier removed one false post on clean documents and cost 16 correct posts (132 against 148).
 - Times are inflated (other jobs shared the GPU); the cleanest measurement is about 26 s per document with the verifier.
-- Only Glimmer was measured; Muse Spark 1.3 (key mode) and Spark Open (Baseten) have no numbers yet.
+- Only Glimmer was measured; Muse Spark 1.3 (key mode) and Spark Open (hosted) have no numbers yet.

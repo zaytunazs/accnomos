@@ -19,7 +19,7 @@ const MODELS = [
 ] as const;
 const ROOT = join(process.cwd(), "..", "..");
 const BLOB = "https://github.com/zaytunazs/accnomos/blob/main/";
-const NOT_NAMED = /DGX|Ollama|vLLM|Whisper|Kokoro|Qwen|ComfyUI|Baseten|L40S|coming soon|\bbeta\b|early access|launching/i;
+const NOT_NAMED = /DGX|Ollama|vLLM|Whisper|Kokoro|Qwen|ComfyUI|Baseten|L40S|\bModal\b|NVIDIA|Claude|Anthropic|OpenAI|coming soon|\bbeta\b|early access|launching/i;
 
 async function open(page: Page) {
   await page.goto("/meta-models");
@@ -47,7 +47,7 @@ test.describe("desktop", () => {
       }
     }
 
-    // The live order (AI_PROVIDERS=meta,spark): Meta Model API first, the local fallback last; Modal only as optional.
+    // The live order (AI_PROVIDERS=meta,spark): Meta Model API first, the local fallback last; the hosted GPU only as optional.
     await expect(page.getByTestId("live-order")).toContainText("the Meta Model API (Muse Spark 1.3) answers first and a local fallback model answers last");
     await expect(page.getByTestId("live-order")).toContainText("Muse Spark 1.3 in Contributor mode for the demo and testing");
     await expect(page.getByTestId("live-order")).toContainText("Meta may use the content sent to it to improve its models");
@@ -55,8 +55,8 @@ test.describe("desktop", () => {
     await expect(table.locator("tbody tr").first()).toContainText("Muse Spark");
     await expect(page.getByTestId("model-muse-spark")).toContainText("1st Muse Spark 1.3 on the Meta Model API (Contributor mode for the demo and testing); last, a local fallback model");
     await expect(page.getByTestId("model-muse-glimmer")).toContainText("optional extra provider");
-    const modal = (await page.locator("main").innerText()).split("\n").filter((l) => /Modal/.test(l));
-    for (const line of modal) expect(line, "Modal only as an optional provider").toMatch(/optional extra provider/);
+    const modal = (await page.locator("main").innerText()).split("\n").filter((l) => /hosted GPU/.test(l));
+    for (const line of modal) expect(line, "the hosted GPU only as an optional provider").toMatch(/optional extra provider/);
     // Figures come from the committed runs at build time.
     await expect(page.getByTestId("row-muse-glimmer")).toContainText("clean documents 85 %; messy documents 80 %; CIS 92.5 %; property 99.1 %");
     await expect(page.getByTestId("row-muse-spark")).toContainText(/document type \d+(\.\d)? %/); // evals/runs/classify

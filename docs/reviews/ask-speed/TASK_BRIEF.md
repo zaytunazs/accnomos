@@ -1,6 +1,6 @@
 # Task: Ask speed and grounding — no 120 s timeouts on Glimmer, period-aware grounding, streaming the explanation
 
-Accnomos monorepo (public; UK English; no secrets; Glimmer on Ollama :11434). Read first `evals/runs/ask_40/report.md` (4/35 Glimmer
+Accnomos monorepo (public; UK English; no secrets; Glimmer on the local model server :11434). Read first `evals/runs/ask_40/report.md` (4/35 Glimmer
 timeouts; grounding cannot catch a real figure from the wrong period), `services/runtime/app/facts.py`, `app/ai/ask.py`, `app/routes_ask.py`,
 `app/schemas.py` (`AskAnswer`), `apps/web/src/components/ask/*`, `apps/mobile/lib/screens/ask_screen.dart` (read only), `evals/harness/ask_eval.py`.
 

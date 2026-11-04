@@ -23,11 +23,35 @@ export const PRELAUNCH_WORDS = [
 export const NOT_YET_WORDS = [/\bsoon\b/i, /coming next/i, /not yet available/i];
 
 /**
- * Non-Meta tools, engines and hardware that no public or judge-facing page may name (owner's rule, 29 Oct 2026): a
- * non-Meta fallback is "a local fallback model". Checked on every rendered page by e2e/submission-mode.spec.ts only,
- * not on the export's files: the JS keeps provider ids such as "baseten:" and "ollama:" to map them to Meta names.
+ * Non-Meta models, tools, engines, hosts, vendors and hardware that no public or judge-facing page may name (owner's
+ * rules, 29 Oct and 4 Nov 2026: only Meta is named; the rest is "a local fallback model", "a hosted GPU", "other AI
+ * tools"). Checked on every rendered page by e2e/submission-mode.spec.ts only, not on the export's files: the JS keeps
+ * internal provider ids (the runtime's chain names) to map them to Meta names.
  */
-export const THIRD_PARTY_NAMES = [/whisper/i, /kokoro/i, /ollama/i, /vllm/i, /qwen/i, /comfyui/i, /\bdgx\b/i, /baseten/i];
+export const THIRD_PARTY_NAMES = [
+  /whisper/i,
+  /kokoro/i,
+  /ollama/i,
+  /vllm/i,
+  /qwen/i,
+  /comfyui/i,
+  /\bdgx\b/i,
+  /\bnvidia\b/i,
+  /\bl40s\b/i,
+  /baseten/i,
+  /\bmodal\b/i,
+  /\bllama\b/i,
+  /\bclaude\b/i,
+  /anthropic/i,
+  /openai/i,
+  /\bchatgpt\b|\bgpt-\d/i,
+  /\bgemini\b/i,
+  /\bmistral\b/i,
+  /deepseek/i,
+  /hugging ?face/i,
+  /systran/i,
+  /speaches/i,
+];
 
 /** Each match in `text` as a short quoted excerpt. `extra`: more patterns (NOT_YET_WORDS on rendered pages). */
 export function prelaunchHits(text, extra = []) {

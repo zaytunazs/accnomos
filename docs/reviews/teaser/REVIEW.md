@@ -3,7 +3,7 @@
 Reviewed by the integrator on 28 Oct 2026 before merging (the branch came without a review). One commit:
 `tools/teaser/build.py` renders a 44 s teaser in 16:9 and 1:1, as a *social* cut ("Launching November 2026", two
 "coming soon" beats) and a *submission* cut (only what runs today, ending on "Try the demo"), from the committed app
-screenshots, Muse Image brand art, music synthesised in code (`music.py`) and a Kokoro TTS voice-over (Apache-2.0, the
+screenshots, Muse Image brand art, music synthesised in code (`music.py`) and an open-source voice model voice-over (Apache-2.0, the
 WAVs in `tools/teaser/vo/`). `docs/submission/teaser/` holds the four MP4s, a thumbnail and ready-to-paste posts.
 
 ## Fixed while merging
@@ -17,7 +17,7 @@ fixed without changing behaviour (`strict=False` is what `zip` did; the rest are
 
 - Every screen is sample data and labelled so; the posts keep HONESTY.md's rules (HMRC sandbox only, "MTD-ready", code
   calculates, nothing posts without approval), and the submission cut drops the "coming soon" beats.
-- Credits name the voice (Kokoro, Apache-2.0), the music (own code) and Muse Image.
+- Credits name the voice (an open-source voice model, Apache-2.0), the music (own code) and Muse Image.
 
 ## For the owner
 

@@ -1,4 +1,4 @@
-# Task: Verifier agent (second opinion) — Muse Spark Open on Baseten, or Spark via Meta API, agreeing/disagreeing per field
+# Task: Verifier agent (second opinion) — Muse Spark Open (hosted open weights), or Spark via Meta API, agreeing/disagreeing per field
 
 Accnomos monorepo (public; UK English; no secrets). Read first: `services/runtime/app/{pipeline.py,ai/extract.py,ai/config.py,checks.py,
 schemas.py}`, `evals/harness/{run_extraction,judge}.py`, README (the "Reviewer → Verifier → Human" pipeline).
@@ -10,10 +10,10 @@ disagreement on supplier/date/total/VAT puts the proposal into "Needs a look" wi
 
 ## Implementation
 - `app/ai/verify.py`: `verify(image_bytes, extracted: Doc, cfg) -> Verification(fields: {name: {extractor, verifier, agree: bool}}, agree_all: bool, model: str)`.
-  Backends in priority: (1) Baseten Spark Open — OpenAI-compatible `https://inference.baseten.co/v1/chat/completions`, model
+  Backends in priority: (1) Spark Open on the open-weights host — its standard-API `/v1/chat/completions`, model
   `meta-models/muse-spark-open` (verify slug in docs; env `BASETEN_API_KEY`, `VERIFIER_MODEL`); (2) Meta API `muse-spark-1.3` with the
-  user's key when (1) is not configured; (3) Glimmer via Ollama with a *different* prompt when in local mode. The user's choice of
-  mode/key stays the same headers as today; Baseten key is a server env **only if the owner sets it** (`.env.example` entry, never a real value).
+  user's key when (1) is not configured; (3) Glimmer via the local model server with a *different* prompt when in local mode. The user's choice of
+  mode/key stays the same headers as today; hosted-verifier key is a server env **only if the owner sets it** (`.env.example` entry, never a real value).
 - Compare in code: strings normalised (case, punctuation, whitespace, "Ltd/Limited"), dates by value, money by pence with ±1p tolerance,
   VAT number by digits.
 - Pipeline: run the verifier only when the first extraction passed checks (saves cost); attach `verification` to the proposal; the UI's

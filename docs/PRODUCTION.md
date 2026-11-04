@@ -94,7 +94,7 @@ sign-in and answers only from `services/runtime/app/public_kb.md`. All variables
 | `PUBLIC_CONTACT_EMAIL` | `admin@zaytunauk.co.uk` | Where off-topic or unanswerable questions are referred (also returned to the page). An invalid value falls back to the default |
 | `PUBLIC_CHAT_PER_MIN` | `6` | Questions per minute per visitor IP, on top of `RATE_LIMIT_PER_MIN`. `0` turns this limit off (the e2e suite does) |
 | `PUBLIC_CHAT` | `on` | `off` makes the route answer 503 with the contact address |
-| `PUBLIC_CHAT_AI_MODE` | `local` | The chat's model: the server's own Ollama (`OLLAMA_BASE`, `OLLAMA_MODEL`, Glimmer on the Spark). `key` spends the operator's `META_API_KEY`, so set it only on purpose. Visitors' `X-AI-*` headers are always ignored |
+| `PUBLIC_CHAT_AI_MODE` | `local` | The chat's model: the server's own local model (`OLLAMA_BASE`, `OLLAMA_MODEL`, Glimmer on our own server). `key` spends the operator's `META_API_KEY`, so set it only on purpose. Visitors' `X-AI-*` headers are always ignored |
 | `PUBLIC_CHAT_MODEL` | (`OLLAMA_MODEL`) | A different model name for the chat only |
 | `PUBLIC_SITE_HOSTS` | `accnomos.com` | Hosts an answer may link to (comma-separated, subdomains included); any other link is removed |
 | `PUBLIC_SUBMISSION_MODE` | `1` | Which notes the chat uses: `1` the judged build (no launch date, nothing "coming soon"); `0` the pre-launch notes (public launch November 2026, iPhone app and more mailboxes coming soon). Keep it equal to the web build's `NEXT_PUBLIC_SUBMISSION_MODE` |
@@ -255,8 +255,8 @@ The form gives the same answer for new and repeat addresses, so it cannot be use
 ## 7. The AI provider chain (runtime)
 
 **Recommended production (and judges' demo) setting: `AI_PROVIDERS=modal,meta,spark`.** Every AI call that names no
-backend of its own (no `X-AI-*` headers, or `X-AI-Mode: auto`) tries Muse Glimmer 30B on Modal first, then Muse Spark
-on the Meta Model API with the server's key, and only then the DGX Spark's local Ollama, so the live demo does not depend
+backend of its own (no `X-AI-*` headers, or `X-AI-Mode: auto`) tries Muse Glimmer 30B on a hosted GPU first, then Muse Spark
+on the Meta Model API with the server's key, and only then our own server's local model runtime, so the live demo does not depend
 on the owner's home server. All three serve Meta models. A user who chose their own backend in Settings (their local
 agent, or their own Meta key via `X-Meta-Api-Key`) gets exactly that backend, with no failover, as before.
 Code: `services/runtime/app/ai/providers.py` (the chain), `app/ai/chain.py` (failover, circuit breaker, call record),
@@ -265,25 +265,25 @@ Code: `services/runtime/app/ai/providers.py` (the chain), `app/ai/chain.py` (fai
 | Variable | Value |
 |---|---|
 | `AI_PROVIDERS` | ordered, comma-separated: `modal`, `meta`, `spark`. Unset = no chain (the single `AI_MODE` default, as before) |
-| `MODAL_GLIMMER_URL` | the URL `modal deploy tools/modal_glimmer.py` prints, `https://<workspace>--accnomos-glimmer-serve.<region>.modal.run`. Unset = Modal left out of the chain |
+| `MODAL_GLIMMER_URL` | the URL `modal deploy tools/modal_glimmer.py` prints, `https://<workspace>--accnomos-glimmer-serve.<region>.modal.run`. Unset = the hosted GPU left out of the chain |
 | `MODAL_MODEL` | default `muse-glimmer:30b` |
-| `MODAL_PROXY_TOKEN_ID`, `MODAL_PROXY_TOKEN_SECRET` | a Modal proxy-auth token, sent as `Modal-Key` / `Modal-Secret`; needed when the endpoint was deployed with `MODAL_PROXY_AUTH=1` (recommended). Secrets: server environment only |
+| `MODAL_PROXY_TOKEN_ID`, `MODAL_PROXY_TOKEN_SECRET` | A hosted GPU proxy-auth token, sent as `Modal-Key` / `Modal-Secret`; needed when the endpoint was deployed with `MODAL_PROXY_AUTH=1` (recommended). Secrets: server environment only |
 | `META_API_KEY`, `MODEL_API_BASE`, `MODEL_API_MODEL` | the Meta Model API provider (defaults `https://api.meta.ai/v1`, `muse-spark-1.3`). No key = Meta left out |
-| `OLLAMA_BASE`, `OLLAMA_MODEL` | the DGX Spark (defaults `http://localhost:11434`, `muse-glimmer:30b`) |
-| `<NAME>_CONNECT_S`, `<NAME>_FIRST_TOKEN_S`, `<NAME>_REQUEST_S` | per provider (`MODAL`, `META`, `SPARK`), seconds: connect; the longest wait for a reply to start; the longest one attempt may take. Defaults Modal 10 / 150 / 240 (a cold start is 60-120 s), Meta 10 / 90 / 120, Spark 5 / 180 / 200 |
+| `OLLAMA_BASE`, `OLLAMA_MODEL` | our own server (defaults `http://localhost:11434`, `muse-glimmer:30b`) |
+| `<NAME>_CONNECT_S`, `<NAME>_FIRST_TOKEN_S`, `<NAME>_REQUEST_S` | per provider (`MODAL`, `META`, `SPARK`), seconds: connect; the longest wait for a reply to start; the longest one attempt may take. Defaults hosted GPU 10 / 150 / 240 (a cold start is 60-120 s), Meta 10 / 90 / 120, Spark 5 / 180 / 200 |
 | `AI_BREAKER_FAILURES`, `AI_BREAKER_COOLDOWN_S` | circuit breaker: after this many failures in a row a provider is skipped for this long (defaults 3 and 120) |
-| `AI_HEALTH_PROBE_MODAL` | `1` = `/ai/health` probes Modal for real. Off by default: a probe would start a paid GPU container |
-| `BASETEN_API_KEY` | unchanged: with the chain, the Verifier tries Muse Spark Open on Baseten first, then the chain |
+| `AI_HEALTH_PROBE_MODAL` | `1` = `/ai/health` probes the hosted GPU for real. Off by default: a probe would start a paid GPU container |
+| `BASETEN_API_KEY` | unchanged: with the chain, the Verifier tries Muse Spark Open (hosted open weights) first, then the chain |
 
 Failover happens on a timeout, a connection error, HTTP 5xx, 402 or 429 (billing, rate limit), and 401/403/404/408
 (that provider's own credentials, model or gateway); never on any other 4xx (our own bad request) or on a reply that does
 not parse. A streamed Ask answer fails over only before its first token. Voice transcription has its own chain (`app/ai/stt.py`, `docs/META_MODELS.md`): Muse Voice
-Transcribe on `META_API_KEY` first, then Whisper on the Spark when `SPARK_WHISPER_URL` is set (`STT_PROVIDERS`,
+Transcribe on `META_API_KEY` first, then a local speech-to-text model on our own server when `SPARK_WHISPER_URL` is set (`STT_PROVIDERS`,
 `SPARK_WHISPER_MODEL`, `SPARK_WHISPER_KEY`, `MUSE_STT_TIMEOUT_S`, `WHISPER_STT_TIMEOUT_S`).
 
-Modal side (deploy-time options of `tools/modal_glimmer.py`): deploy with `MODAL_PROXY_AUTH=1`, so a stranger who learns
+Hosted GPU side (deploy-time options of `tools/modal_glimmer.py`): deploy with `MODAL_PROXY_AUTH=1`, so a stranger who learns
 the URL gets a 401 before any GPU starts. `MODAL_KEEP_WARM=08:00-18:00` keeps one container up in that window (about
-$2.00/h: the L40S is $0.000542/s = $1.95/h on modal.com/pricing, checked 28 Oct 2026, plus a few cents of CPU and
+$2.00/h: the cloud GPU is $0.000542/s = $1.95/h on the GPU host's pricing page, checked 28 Oct 2026, plus a few cents of CPU and
 memory); without it the web app's `POST /ai/warm` (sent when someone signed in opens Home or Review without their own AI)
 starts a cold container while they look at the page.
 

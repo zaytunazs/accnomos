@@ -2,9 +2,9 @@
 
 Two backends share one prompt and one strict JSON schema:
 
-* local -> Ollama native `/api/chat`, `images` = raw base64, `format` = schema OBJECT
+* local -> the local model server's native `/api/chat`, `images` = raw base64, `format` = schema OBJECT
   (`format: "json"` with an image returns `{}`).
-* key   -> Meta Model API `/chat/completions` (OpenAI-compatible), image as a data
+* key   -> Meta Model API `/chat/completions` (standard chat-completions API), image as a data
   URL, `response_format` json_schema strict, `reasoning_effort: low`, no tool_choice.
 
 A PDF sends its first page's text with the render; an email body (app/formats.py) sends text only. The text goes

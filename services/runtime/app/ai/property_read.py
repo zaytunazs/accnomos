@@ -2,10 +2,10 @@
 let property (an invoice), a landlord insurance schedule, or a mortgage statement.
 
 Same AI setup and transport as reading receipts (app/ai/extract.py) and CIS documents (app/ai/cis_read.py):
-Glimmer over Ollama in local mode, Muse Spark over the Meta Model API in key mode, one strict JSON schema, the
-document's own text passed as data between markers. The model only reads figures as printed; app/property_readings.py
-fits them into pence, matches the property by code and checks them, and the user approves before anything is kept or
-posted (AI proposes, user approves, code calculates).
+Glimmer over the local model server in local mode, Muse Spark over the Meta Model API in key mode, one strict JSON
+schema, the document's own text passed as data between markers. The model only reads figures as printed;
+app/property_readings.py fits them into pence, matches the property by code and checks them, and the user approves
+before anything is kept or posted (AI proposes, user approves, code calculates).
 """
 
 from __future__ import annotations

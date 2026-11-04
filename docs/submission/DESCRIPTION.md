@@ -13,7 +13,7 @@ Rules for editing:
 - Quote Autopilot with its caveat (17 false posts in 467, all re-dated copies); never shorten it to "0 false posts".
 - Muse Spark 1.3, Muse Voice Transcribe and SAM 3.1 are unit-tested only: never say they were measured or run live.
 - **Not on `main` on 28 Oct, so not in the text:** the month-end close agent, company / sole-trader / personal profiles,
-  Glimmer on Modal in the models panel, and the no-sign-in `/judges` page. Add a sentence for each only after it is merged
+  Glimmer on a hosted GPU in the models panel, and the no-sign-in `/judges` page. Add a sentence for each only after it is merged
   and run, and say how it was tested. iPhone is not built: "coming soon" at most.
 
 ## Tagline
@@ -27,7 +27,7 @@ Rules for editing:
 ---
 Accnomos is bookkeeping and MTD VAT for UK small businesses. Your books are files in your own OneDrive; we keep no database.
 
-Snap a receipt on the Android app, or let one arrive by email, and a Meta model reads it: Muse Glimmer 30B with open weights, or Muse Spark with your key, with Muse Spark Open on Baseten as an independent second reader. Code checks the arithmetic, you approve, and code calculates the nine VAT boxes for an HMRC sandbox submission. Ask answers in plain English, and every figure is checked against your books.
+Snap a receipt on the Android app, or let one arrive by email, and a Meta model reads it: Muse Glimmer 30B with open weights, or Muse Spark with your key, with Muse Spark Open (hosted open weights) as an independent second reader. Code checks the arithmetic, you approve, and code calculates the nine VAT boxes for an HMRC sandbox submission. Ask answers in plain English, and every figure is checked against your books.
 
 Measured on 200 synthetic documents: every field right on 91 % clean and 93 % messy for Spark Open, 85 % and 80 % for Glimmer.
 
@@ -45,9 +45,9 @@ Honestly: only sign-in, receipt-to-VAT-boxes and the model evals ran for real; t
 
 **What is built.** Receipt capture, review and an independent second reading; contacts and ageing; invoicing with part payments and credit notes; bank rules and reconciliation; reports; an audit trail; the VAT return with an HMRC sandbox flow; jobs, mileage and pay-run estimates; Ask, plus chat actions that wait for Approve; a web app and an Android app.
 
-**The Meta models.** Muse Glimmer 30B, Meta's open-weights model, reads documents in local mode. Muse Spark 1.3 does the same with your key. Muse Spark Open on Baseten is the key-mode second reader. Muse Image made the brand art; Muse Code helped write the app.
+**The Meta models.** Muse Glimmer 30B, Meta's open-weights model, reads documents in local mode. Muse Spark 1.3 does the same with your key. Muse Spark Open (hosted open weights) is the key-mode second reader. Muse Image made the brand art; Muse Code helped write the app.
 
 **Measured, and its limits.** On 200 synthetic documents, clean and messy, every field was right on 91 % and 93 % (Spark Open) and 85 % and 80 % (Glimmer); real photos will score lower. Ask got 32 of 32 figures exact. Autopilot, off by default, was tested on 467 documents: no false posts on 154 clean ones, but 17 overall, all re-dated copies of receipts already posted.
 
-**Honest status.** Sign-in and receipt-to-VAT-boxes ran live on a personal account (our record). The rest is tested on fakes. HMRC is sandbox only and not yet run end to end; Spark 1.3 and voice have never been called live; no real-phone Android sign-in is recorded. Demo data is synthetic. Only the owner's DGX Spark and Ollama predate the event (`docs/PROVENANCE.md`); `docs/HONESTY.md` lists every gap.
+**Honest status.** Sign-in and receipt-to-VAT-boxes ran live on a personal account (our record). The rest is tested on fakes. HMRC is sandbox only and not yet run end to end; Spark 1.3 and voice have never been called live; no real-phone Android sign-in is recorded. Demo data is synthetic. Only the owner's own server and the local model server predate the event (`docs/PROVENANCE.md`); `docs/HONESTY.md` lists every gap.
 ---

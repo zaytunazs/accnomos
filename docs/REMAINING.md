@@ -106,7 +106,7 @@ Severity:
 
 | Severity | Item |
 |---|---|
-| Medium | The Baseten verifier (`meta-models/muse-spark-open`) is wired and one real call was checked; its eval over 200 receipts is pending; no real Meta (muse-spark-1.3) verifier call has been made. |
+| Medium | The hosted verifier (`meta-models/muse-spark-open`) is wired and one real call was checked; its eval over 200 receipts is pending; no real Meta (muse-spark-1.3) verifier call has been made. |
 | Medium | Mixed-rate receipts give false alarms; the prompt needs a mixed-rate hint. The catch rate is unmeasured (20 documents, Glimmer on Glimmer): run the full 60 and real photos. |
 | Medium | The SAM 3.1 wire format is unverified, so `SAM_CROP` stays off. Capture a real response first. |
 | Medium | The Muse Voice request (`/asr/transcribe`, multipart parts, response field) comes from research notes. No live mic run in any browser or on the phone. |

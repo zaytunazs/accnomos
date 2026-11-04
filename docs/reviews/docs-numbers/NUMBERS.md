@@ -24,7 +24,7 @@ Python test counts were checked with `pytest --collect-only` on this checkout; t
 | 73 % all fields on 60 documents, supplier/VAT/gross 100, date 98, net 97, status 80, VAT number 95 | README row 43, HONESTY, `docs/META_MODELS.md` | `evals/REPORT_glimmer_messy_60_2026-10-27.md` | yes |
 | Replay of stored readings: 88 -> 91 %, net 93 -> 97 %, status 95 %, false passes 9 -> 11 | README row 92, HONESTY | `evals/harness/replay.py` output, quoted in `docs/reviews/extraction-quality-2` | not re-run here (a replay of the earlier run, now labelled as before the live run) |
 | Supplier-VAT replay: false passes 6 -> 2, 193 -> 197 status matches | README row 92, HONESTY | `evals/runs/supplier_vat_replay/report.md` | yes |
-| Claude judge agrees on 79/200 (167/200 with minor) | HONESTY, `docs/META_MODELS.md` | `evals/JUDGE_glimmer_messy_200_2026-10-27.json` | not re-derived (JSON not recounted) |
+| AI judge agrees on 79/200 (167/200 with minor) | HONESTY, `docs/META_MODELS.md` | `evals/JUDGE_glimmer_messy_200_2026-10-27.json` | not re-derived (JSON not recounted) |
 | Judge on 60: none 18, minor 15, major 22, unparsed 4 | `docs/META_MODELS.md` | `evals/JUDGE_glimmer_messy_60_2026-10-27.json` | not re-derived |
 | "evals/runs/spark_open_200 once it lands" / "eval pending" / "0 extra catches" as the whole verifier story | HONESTY, ARCHITECTURE, `docs/META_MODELS.md`, DESCRIPTION, VIDEO_SCRIPT | the four summaries | fixed: results quoted, 20-document run kept and labelled |
 
@@ -33,8 +33,8 @@ Python test counts were checked with `pytest --collect-only` on this checkout; t
 | Number | Where | Source | Matches |
 |---|---|---|---|
 | Verifier 20 docs: 17/18 agreed, 94 %, 0 extra catches, 1 false alarm, 7.6 s | README, HONESTY, ARCHITECTURE, META_MODELS (both) | `evals/REPORT_verifier_glimmer_messy_20_2026-10-27.md` (94 %, 7.57 s) | yes |
-| Ask numbers exact 28/32 Glimmer, 31/32 Qwen; 4/5 action cards each; 4/35 timeouts quoted as current | README row 45, HONESTY, `docs/META_MODELS.md` | `evals/runs/ask_40/report.md`: 32/32 both; cards 3/5 and 4/5; 0 timeouts (28/32, 31/32 and 4 are the "before" column) | fixed |
-| Ask 32/32, 29/32 own words, citations 32/32, median 16 s (54 s before), Qwen 14 s, slowest 50 s | README row 96, HONESTY, submission, JUDGING | `ask_40/report.md` (16.4 / 49.8 s; Qwen 13.9) | yes |
+| Ask numbers exact 28/32 Glimmer, 31/32 the second model; 4/5 action cards each; 4/35 timeouts quoted as current | README row 45, HONESTY, `docs/META_MODELS.md` | `evals/runs/ask_40/report.md`: 32/32 both; cards 3/5 and 4/5; 0 timeouts (28/32, 31/32 and 4 are the "before" column) | fixed |
+| Ask 32/32, 29/32 own words, citations 32/32, median 16 s (54 s before), the second model 14 s, slowest 50 s | README row 96, HONESTY, submission, JUDGING | `ask_40/report.md` (16.4 / 49.8 s; a second open-weight model 13.9) | yes |
 | Mail intake 12/17 kept, 11/11 decoys, triage filter 13/13, category 5/5, 5 of 17 missed | README, HONESTY, META_MODELS (both), JUDGING | `evals/runs/mail_intake/report.md` | yes |
 | Bank matching 83/83, 83/106 (78 %), was 48 %, part 20 of 106 | README, HONESTY, META_MODELS, JUDGING | `evals/runs/bank_matching/report.md` | yes |
 | Autopilot L2: 467 documents, 154 clean 0 (verifier on) / 1 (off), 139 messy 0, 42 re-photographed 0, 17 in 467 = 3.6 %, 0 in 407, 75 of 200 missed, 132 vs 148 correct posts, 21 of 32 before the rule | README, submission META_MODELS, DESCRIPTION, VIDEO_SCRIPT, JUDGING | `evals/runs/autopilot_l2/report.md`, `docs/reviews/autopilot-eval/REVIEW.md` | yes |

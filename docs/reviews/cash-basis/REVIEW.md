@@ -1,7 +1,7 @@
 # Review: cash basis for sole traders (branch `claude/cash-basis`)
 
-Built on `claude/self-employment` (MTD Income Tax, HMRC sandbox only). Nothing here calls HMRC, Meta, Baseten or
-Modal. Never run against HMRC.
+Built on `claude/self-employment` (MTD Income Tax, HMRC sandbox only). Nothing here calls HMRC, Meta, the open-weights host or
+the hosted GPU. Never run against HMRC.
 
 ## Sources (checked 28 Oct 2026)
 
