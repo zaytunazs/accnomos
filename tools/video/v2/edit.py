@@ -54,11 +54,11 @@ EDL: list[dict] = [
         {"layout": "full", "src": "w-invoice", "segs": ["0..wait+1.4", "ready-0.4..wait2+0.8", "ready2-0.2..end"], "dur": 9.8},
     ]},
     {"id": "s5", "lead": 0.4, "lt": ("Reports and VAT", "Worked out by code from the ledger"), "shots": [
-        {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 5.8},
-        {"layout": "split", "src": "w-vat", "segs": ["0..end"], "phone": "p-vat", "psegs": ["0..end"], "dur": 8.4},
+        {"layout": "full", "src": "w-reports", "segs": ["0..end"], "dur": 6.4},
+        {"layout": "full", "src": "w-vat", "segs": ["0.5..5.5", "13.0..15.5", "17.5..end"], "dur": 10.0},
     ]},
     {"id": "s6", "lead": 0.4, "lt": ("Sole traders, landlords and households", "Quarterly MTD updates · household budget"), "shots": [
-        {"layout": "full", "src": "w-selfemp", "segs": ["0..end"], "dur": 5.6},
+        {"layout": "full", "src": "w-selfemp", "segs": ["0.3..4.8", "8.0..11.5"], "dur": 5.8},
         {"layout": "split", "src": "w-personal", "segs": ["0..end"], "phone": "p-personal", "psegs": ["0..end"], "dur": 7.0},
         {"layout": "full", "src": "w-personal-cal", "segs": ["0..wait+1.2", "ready-0.3..wait2+0.6", "ready2..end"], "dur": 5.6},
     ]},
