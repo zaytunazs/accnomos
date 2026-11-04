@@ -103,23 +103,103 @@ export function workbookSheet(answer: RtAskAnswer): string {
 }
 
 const chip =
-  "inline-block max-w-full break-words rounded-lg border border-border bg-ground px-2.5 py-1 font-mono text-[12px] text-muted hover:border-teal hover:text-teal-dark";
+  "inline-block max-w-full break-words rounded-lg border border-border bg-ground px-2.5 py-1 text-[12px] text-muted hover:border-teal hover:text-teal-dark";
 
-/** One cited file: its Graph web URL when signed in, otherwise the Files page. */
-function CitationChip({ citation, sheet, account }: { citation: string; sheet: string | null; account: AccountInfo | null }) {
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+/** "2026-10" → "Oct 2026". */
+function monthLabel(ym: string): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(ym);
+  return m ? `${MONTHS[Number(m[2]) - 1] ?? m[2]} ${m[1]}` : ym;
+}
+
+/** A cited file, grouped: ledger events of one month become one chip; the paths stay in the tooltip. */
+export interface CitationGroup {
+  label: string; // what the chip says
+  paths: string[]; // every file behind it, in the answer's order
+}
+
+/** The `_System` files by what they are; anything else by its own name (a receipt, a statement, Books.xlsx). */
+function systemFileLabel(path: string): string {
+  const m = /^_System\/([^/]+)(?:\/([^/]+))?/.exec(path);
+  if (!m) return path;
+  switch (m[1]) {
+    case "Contacts":
+      return "Contacts";
+    case "Jobs":
+    case "Staff":
+    case "Timesheets":
+      return "Jobs and timesheets";
+    case "proposals":
+      return "A document waiting in Review";
+    case "Payroll":
+      return "Payroll run";
+    case "Vehicles":
+    case "Mileage":
+      return "Vehicles and mileage";
+    case "vat":
+      return "VAT";
+    case "Todos":
+      return "To-dos";
+    case "Rules":
+      return "Autopilot rules";
+    case "Invoices":
+    case "invoices":
+      return "Invoices";
+    default:
+      return path.split("/").pop() ?? path;
+  }
+}
+
+/**
+ * Chips the reader can take in at a glance: "Ledger · Oct 2026 (3 entries)" rather than five event file names
+ * (`_System/Ledger/events/2026-10/<stamp>-runtime-<hash>.json`); each chip's tooltip lists every path, and the chip
+ * opens the first file (signed in) or the Files page. Books.xlsx keeps its sheet name.
+ */
+export function groupCitations(citations: string[], sheet: string): CitationGroup[] {
+  const groups: CitationGroup[] = [];
+  const ledger = new Map<string, CitationGroup>();
+  for (const c of citations) {
+    const path = c.replace(/\/+$/, "");
+    const ev = /^_System\/Ledger\/events\/(\d{4}-\d{2})\//.exec(path);
+    if (ev) {
+      const g = ledger.get(ev[1]);
+      if (g) g.paths.push(path);
+      else {
+        const made = { label: `Ledger · ${monthLabel(ev[1])}`, paths: [path] };
+        ledger.set(ev[1], made);
+        groups.push(made);
+      }
+      continue;
+    }
+    if (path === "Books.xlsx") {
+      groups.push({ label: `Books.xlsx · ${sheet} sheet`, paths: [path] });
+      continue;
+    }
+    groups.push({ label: path.startsWith("_System/") ? systemFileLabel(path) : path, paths: [path] });
+  }
+  for (const g of ledger.values()) {
+    if (g.paths.length > 1) g.label = `${g.label} (${g.paths.length} entries)`;
+  }
+  return groups;
+}
+
+/** One cited file (or a month of ledger entries): its Graph web URL when signed in, otherwise the Files page. */
+function CitationChip({ group, account }: { group: CitationGroup; account: AccountInfo | null }) {
   const [url, setUrl] = useState<string | null>(null);
+  const first = group.paths[0];
   useEffect(() => {
     if (!account) return;
     let stale = false;
-    void getFileWebUrl(account, citation.replace(/\/+$/, "")).then((u) => {
+    void getFileWebUrl(account, first).then((u) => {
       if (!stale) setUrl(u);
     });
     return () => {
       stale = true;
     };
-  }, [account, citation]);
-  const label = sheet ? `${citation} · ${sheet} sheet` : citation;
-  const title = sheet ? `${citation}, ${sheet} sheet — open the file` : `Open ${citation}`;
+  }, [account, first]);
+  const label = group.label;
+  const title = group.paths.length > 1 ? `${group.paths.join("\n")} — open the first` : `Open ${first}`;
   if (url) {
     return (
       <a href={url} target="_blank" rel="noreferrer" title={title} className={chip}>
@@ -184,9 +264,9 @@ export default function AnswerCard({
 
       {answer.citations.length > 0 && (
         <ul className="mt-3 flex min-w-0 flex-wrap gap-2" aria-label="Files used">
-          {answer.citations.map((c) => (
-            <li key={c} className="min-w-0 max-w-full">
-              <CitationChip citation={c} sheet={c === "Books.xlsx" ? sheet : null} account={account} />
+          {groupCitations(answer.citations, sheet).map((g) => (
+            <li key={g.paths[0]} className="min-w-0 max-w-full">
+              <CitationChip group={g} account={account} />
             </li>
           ))}
         </ul>

@@ -173,7 +173,7 @@ for (const vp of VIEWPORTS) {
         await expect(answer).toContainText("Your net VAT (Box 5) for this quarter is £8.65 (HMRC repays you)");
         const keyNumbers = answer.getByRole("table", { name: "Key numbers" });
         await expect(keyNumbers.getByRole("row").filter({ hasText: "VAT reclaimed (Box 4)" })).toContainText("£8.65");
-        await expect(answer.getByRole("list", { name: "Files used" })).toContainText("_System/Ledger/events/2026-11/");
+        await expect(answer.getByRole("list", { name: "Files used" })).toContainText("Ledger · Nov 2026");
         await expect(answer).toContainText("Numbers by code · explanation by accnomos-test-stub");
       });
 
