@@ -66,6 +66,15 @@ async function sidebar(c: Ctx, name: string | RegExp) {
 async function settingsTab(c: Ctx, name: string) {
   await c.h.click(vis(c.page.getByRole("button", { name, exact: true }).or(c.page.getByRole("tab", { name, exact: true }))), 1000);
 }
+/** Glide to a visible element without scrolling the page (for a screen that should stay put). */
+async function point(c: Ctx, t: string | RegExp, dwell = 900) {
+  const l = vis(c.page.getByText(t));
+  const box = await l.boundingBox().catch(() => null);
+  const vp = c.page.viewportSize();
+  if (!box || box.y < 0 || box.y > vp.height - 20) return;
+  await c.h.moveTo(box.x + Math.min(box.width * 0.5, 160), box.y + box.height / 2);
+  await c.h.hold(dwell);
+}
 async function hoverText(c: Ctx, t: string | RegExp, dwell = 900) {
   const l = vis(c.page.getByText(t));
   if (await l.isVisible().catch(() => false)) await c.h.hover(l, dwell);
@@ -78,10 +87,11 @@ const SHOTS: Record<string, Shot> = {
     run: async (c) => {
       const { page, h } = c;
       await h.park(900, 140);
-      await h.hold(1200);
-      for (const t of [/^VAT return Jul/, /invoices overdue/, /items waiting for your approval/, /Put aside for the VAT bill/, /bank lines to match/]) await hoverText(c, t, 1000);
-      await hoverText(c, /worded by your AI|every figure is already checked|Which Meta model/, 1200);
-      await h.hold(800);
+      await h.hold(1000);
+      for (const t of [/^VAT return/, /invoices overdue/, /items waiting for your approval/, /Put aside for the VAT bill/, /bank lines to match/]) await point(c, t, 1100);
+      await h.scrollBy(140, 900);
+      await point(c, /worded by your AI/, 1800);
+      await h.hold(600);
     },
   },
   "w-home-action": {
@@ -89,7 +99,7 @@ const SHOTS: Record<string, Shot> = {
     run: async (c) => {
       const { page, h } = c;
       await h.park(700, 300);
-      await hoverText(c, /items waiting for your approval/, 900);
+      await point(c, /items waiting for your approval/, 900);
       c.mark("click");
       await h.click(vis(page.getByRole("link", { name: /^Review/ }).or(page.getByRole("button", { name: /^Review →|^Review$/ })).filter({ hasText: "→" })), 300);
       await vis(page.getByRole("heading", { level: 1, name: "Review" })).waitFor({ timeout: 30_000 });
