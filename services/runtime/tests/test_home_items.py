@@ -160,7 +160,7 @@ def test_household_items_never_mention_business_matters() -> None:
     by = {i.id: i for i in items}
     assert by["budget_over:housing"].title == "Housing over budget by £144.00"
     assert by["review"].title == "2 receipts waiting for your approval"
-    assert by["bill_due"].title == "Bt Broadband, about £38.00, due 8 Nov"
+    assert by["bill_due"].title == "BT Broadband, about £38.00, due 8 Nov"
     assert all(i.action.route in ("/personal", "/review") for i in items if i.action)
     text = " ".join(f"{i.title} {i.detail or ''}" for i in items).lower()
     assert not any(w in text for w in ("vat", "turnover", "invoice", "profit"))
@@ -215,3 +215,79 @@ async def test_all_clear_headline_and_model_failure_fall_back(monkeypatch: pytes
 async def test_no_items_keeps_the_paragraph() -> None:
     s = await hs.summarise({"kind": "company", "today": "3 Nov 2026"}, None, [])
     assert s.items == [] and s.summary_md.startswith("There is no bank balance yet")
+
+
+# Calendar clashes ------------------------------------------------------------------------------------------------ #
+
+LONDON = __import__("zoneinfo").ZoneInfo("Europe/London")
+
+
+def ev(id: str, subject: str, d: date, start: str, end: str, **kw) -> SimpleNamespace:
+    from datetime import datetime, time
+
+    def at(hm: str) -> datetime:
+        h, m = map(int, hm.split(":"))
+        return datetime.combine(d, time(h, m), tzinfo=LONDON)
+
+    base = {"is_all_day": False, "show_as": "busy"}
+    return SimpleNamespace(id=id, subject=subject, start=at(start), end=at(end), **{**base, **kw})
+
+
+def test_clashes_ignore_touching_free_and_all_day_events() -> None:
+    d = date(2026, 11, 6)
+    events = [
+        ev("a", "Site visit, Hartwell", d, "10:00", "11:00"),
+        ev("b", "Supplier call", d, "10:30", "11:00"),
+        ev("c", "Lunch", d, "11:00", "12:00"),  # starts as a ends: no clash
+        ev("d", "Focus time", d, "10:15", "10:45", show_as="free"),
+        ev("e", "Bank holiday", d, "00:00", "23:59", is_all_day=True),
+    ]
+    assert [(a.id, b.id) for a, b in hi.clashes(events)] == [("a", "b")]
+
+
+def test_one_calendar_item_per_clash_day() -> None:
+    fri, mon = date(2026, 11, 6), date(2026, 11, 9)
+    drafts = hi.calendar_items(
+        {
+            date(2026, 11, 5): [ev("x", "Alone", date(2026, 11, 5), "09:00", "10:00")],
+            fri: [
+                ev("a", "Site visit, Hartwell", fri, "10:00", "11:00"),
+                ev("b", "Supplier call", fri, "10:30", "11:00"),
+            ],
+            mon: [
+                ev("p", "Quote", mon, "09:00", "10:00"),
+                ev("q", "Dentist", mon, "09:30", "10:30"),
+                ev("r", "Van MOT", mon, "10:00", "11:00"),
+            ],
+        },
+        LONDON,
+    )
+    items = [d.item for d in drafts]
+    assert [i.id for i in items] == ["calendar_conflict:2026-11-06", "calendar_conflict:2026-11-09"]
+    first = items[0]
+    assert first.title == "Two events clash on Fri 6 Nov" and first.priority == 2 and first.tone == "warning"
+    assert first.detail == "Site visit, Hartwell 10:00–11:00 and Supplier call 10:30–11:00"
+    assert first.action is not None and (first.action.label, first.action.route) == ("Open calendar", "/calendar")
+    assert items[1].title == "2 clashes on Mon 9 Nov" and items[1].detail.endswith(", and 1 more")
+
+
+async def test_a_calendar_that_fails_or_is_missing_adds_nothing() -> None:
+    from app import home_overview as ho
+
+    class Broken:
+        async def list_events(self, day, tz="Europe/London"):
+            raise PermissionError("no Calendars.Read")
+
+    assert await ho.calendar_clashes(None, TODAY) == []
+    assert await ho.calendar_clashes(Broken(), TODAY) == []  # type: ignore[arg-type]
+
+    fri = date(2026, 11, 6)
+
+    class Busy:
+        async def list_events(self, day, tz="Europe/London"):
+            if day != fri:
+                return []
+            return [ev("a", "Site visit", fri, "10:00", "11:00"), ev("b", "Supplier call", fri, "10:30", "11:00")]
+
+    got = await ho.calendar_clashes(Busy(), TODAY)  # type: ignore[arg-type]
+    assert [d.item.id for d in got] == ["calendar_conflict:2026-11-06"]

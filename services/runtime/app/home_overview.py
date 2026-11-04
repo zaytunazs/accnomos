@@ -33,6 +33,7 @@ No model call happens unless the summary is asked for with an AI set up; every f
 
 from __future__ import annotations
 
+import asyncio
 import calendar
 import logging
 from collections.abc import Awaitable, Callable, Sequence
@@ -42,6 +43,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel
 
+from accnomos_connectors.base import CalendarProvider
 from accnomos_connectors.msgraph import GraphError
 from accnomos_ledger import LedgerEvent
 from accnomos_ledger.bank import BankLine
@@ -651,6 +653,27 @@ def summary_facts(d: dash.Dashboard, o: dict[str, Any]) -> dict[str, Any]:
     return facts
 
 
+CALENDAR_TIMEOUT_S = 6.0
+
+
+async def calendar_clashes(provider: CalendarProvider | None, today: date) -> list[hi.Draft]:
+    """Clashing events over the next CALENDAR_DAYS days, one item a day. Read defensively: no calendar, a missing
+    Calendars.Read scope, a Graph error or a slow calendar means no items, never a failed Home."""
+    if provider is None:
+        return []
+    from app.planner import TZ  # Europe/London, as the day planner reads the calendar
+
+    days = [today + timedelta(days=i) for i in range(hi.CALENDAR_DAYS)]
+    try:
+        found = await asyncio.wait_for(
+            asyncio.gather(*(provider.list_events(x) for x in days)), timeout=CALENDAR_TIMEOUT_S
+        )
+    except Exception:  # noqa: BLE001 - the calendar is a nice-to-have on Home
+        log.info("home: calendar not read for clashes", exc_info=True)
+        return []
+    return hi.calendar_items(dict(zip(days, found, strict=True)), TZ)
+
+
 def summary_items(
     d: dash.Dashboard,
     o: dict[str, Any],
@@ -734,6 +757,7 @@ async def build(
     *,
     vat_assumed: bool = False,
     cfg: AiConfig | None = None,
+    calendar_provider: CalendarProvider | None = None,
 ) -> Overview:
     reads = _Reads()
     d = await dash.build(books, today, first_vat_month, vat_months, vat_assumed=vat_assumed)
@@ -863,6 +887,7 @@ async def build(
     goals_v = await reads.run("goals", goals_now) or []
     unclosed_v = await reads.run("month-end", unclosed) if business else None
     drafts = summary_items(d, o, today, goals_v, unclosed_v)
+    drafts = hi.order([*drafts, *await calendar_clashes(calendar_provider, today)])
     summary = await home_summary.summarise(summary_facts(d, o), cfg, drafts)
     return Overview(
         today=today,

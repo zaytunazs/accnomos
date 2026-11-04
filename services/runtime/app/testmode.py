@@ -829,6 +829,14 @@ def home_reply(content: str) -> dict[str, Any]:
     return {"summary_md": f"{head} {n.get('in_review', 0)} waiting in Review."}
 
 
+def home_items_reply(content: str) -> dict[str, Any]:
+    """Home's to-do list (app/ai/home_summary.py ITEMS_PROMPT): code's own words back, so tests see the model path."""
+    payload = json.loads(content)
+    items = [{"id": i["id"], "title": i["title"], "detail": i["detail"]} for i in payload["ITEMS"]]
+    c = payload["COUNTS"]
+    return {"headline": f"Test stub: {c['now']} now, {c['soon']} soon.", "items": items}
+
+
 def duplicate_reply(content: str) -> dict[str, Any]:
     """Deterministic duplicate judgement (app/ai/duplicates.py): same, keeping the first name listed."""
     first = re.search(r'^1\. "([^"]+)"', content, re.MULTILINE)
@@ -888,6 +896,8 @@ async def ai_chat(request: Request) -> JSONResponse:
 
     if system == home_summary.SYSTEM_PROMPT:
         return JSONResponse(_ollama(home_reply(messages[-1]["content"])))
+    if system == home_summary.ITEMS_PROMPT:
+        return JSONResponse(_ollama(home_items_reply(messages[-1]["content"])))
     from app.ai import items as items_ai
     from app.ai import spending as spending_ai
 

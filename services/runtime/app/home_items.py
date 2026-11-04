@@ -69,6 +69,13 @@ def plural(n: int, one: str, many: str | None = None) -> str:
     return f"{n} {one if n == 1 else (many or one + 's')}"
 
 
+def payee(label: str) -> str:
+    """A bank payee in readable case: "BT BROADBAND" → "BT Broadband" (short words stay capitals: BT, EE, O2)."""
+    if label != label.upper():
+        return label
+    return " ".join(w if len(w) <= 3 else w.capitalize() for w in label.split())
+
+
 def clip(text: str, limit: int) -> str:
     return text if len(text) <= limit else text[: limit - 1].rstrip() + "…"
 
@@ -130,8 +137,12 @@ def review_item(proposed: int, needs_a_look: int, household: bool) -> Draft | No
     )
 
 
+MAX_GOAL_ITEMS = 2
+
+
 def goal_items(goals: Sequence[Any]) -> list[Draft]:
-    """Goals that are off track, over their limit or missed (app/goals.py GoalProgress)."""
+    """Goals that are off track, over their limit or missed (app/goals.py GoalProgress); at most MAX_GOAL_ITEMS, the
+    most money adrift first, so goals never crowd out the rest of the list (the Goals card lists them all)."""
     out: list[Draft] = []
     for p in goals:
         if p.status not in ("off_track", "over_limit", "missed"):
@@ -149,7 +160,7 @@ def goal_items(goals: Sequence[Any]) -> list[Draft]:
                 money=abs(p.variance_pence or 0),
             )
         )
-    return out
+    return sorted(out, key=lambda d: -d.money)[:MAX_GOAL_ITEMS]
 
 
 # --------------------------------------------------------------------------- #
@@ -374,7 +385,7 @@ def household_items(
                     "bill_due",
                     2,
                     "neutral",
-                    f"{clip(b.label.title(), 26)}, about {gbp(b.amount_pence)}, due {short_day(b.next_due)}",
+                    f"{clip(payee(b.label), 26)}, about {gbp(b.amount_pence)}, due {short_day(b.next_due)}",
                     f"Around {day(b.next_due)} ({when}): an estimate from your statements.",
                     ("See bills", "/personal"),
                     {
@@ -421,6 +432,76 @@ def household_items(
             )
         )
     return order(out)
+
+
+# --------------------------------------------------------------------------- #
+# Calendar clashes (either kind of books)
+# --------------------------------------------------------------------------- #
+
+CALENDAR_DAYS = 14
+
+
+def clashes(events: Sequence[Any]) -> list[tuple[Any, Any]]:
+    """Pairs of timed events that overlap (connectors' CalendarEvent: start, end aware datetimes). All-day events and
+    ones shown as free never clash; touching end-to-start is not a clash. Earliest first."""
+    timed = sorted(
+        (e for e in events if not e.is_all_day and e.show_as != "free" and e.end > e.start),
+        key=lambda e: (e.start, e.end),
+    )
+    out: list[tuple[Any, Any]] = []
+    for i, a in enumerate(timed):
+        for b in timed[i + 1 :]:
+            if b.start >= a.end:
+                break
+            out.append((a, b))
+    return out
+
+
+def calendar_items(by_day: dict[date, list[Any]], tz: Any) -> list[Draft]:
+    """One item per day in the window with a clash; a clash between events that span days is shown on its first day."""
+    out: list[Draft] = []
+    seen: set[tuple[str, str]] = set()
+    for d in sorted(by_day):
+        pairs = [(a, b) for a, b in clashes(by_day[d]) if (a.id, b.id) not in seen]
+        if not pairs:
+            continue
+        seen.update((a.id, b.id) for a, b in pairs)
+        a, b = pairs[0]
+
+        def span(e: Any) -> str:
+            return f"{e.start.astimezone(tz):%H:%M}–{e.end.astimezone(tz):%H:%M}"
+
+        name_a, name_b = (a.subject or "An event").strip(), (b.subject or "an event").strip()
+        when = f"{d:%a} {d.day} {d:%b}"
+        title = f"Two events clash on {when}" if len(pairs) == 1 else f"{len(pairs)} clashes on {when}"
+        detail = f"{name_a} {span(a)} and {name_b} {span(b)}"
+        if len(pairs) > 1:
+            detail += f", and {plural(len(pairs) - 1, 'more')}"
+        out.append(
+            _item(
+                f"calendar_conflict:{d.isoformat()}",
+                2,
+                "warning",
+                title,
+                detail,
+                ("Open calendar", "/calendar"),
+                {
+                    "day": when,
+                    "date": day(d),
+                    "clashes": len(pairs),
+                    "events": [
+                        {
+                            "subject": e.subject,
+                            "from": f"{e.start.astimezone(tz):%H:%M}",
+                            "to": f"{e.end.astimezone(tz):%H:%M}",
+                        }
+                        for e in (a, b)
+                    ],
+                },
+                when=d,
+            )
+        )
+    return out
 
 
 def headline(items: Sequence[SummaryItem]) -> str:
