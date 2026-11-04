@@ -12,7 +12,16 @@ import {
   type VatPeriod,
 } from "@/lib/business";
 import VatStaggerField from "@/components/onboarding/VatStaggerField";
+import RegionFields, {
+  UK_ANSWERS,
+  regionProblem,
+  regionSettings,
+  type RegionAnswers,
+} from "@/components/onboarding/RegionFields";
 import { useNextParam, withNext } from "@/components/connect/ConnectSteps";
+import { errorText, useAccount } from "@/components/jobs/useAccount";
+import { rememberProfile } from "@/lib/profiles";
+import { runtime } from "@/lib/runtime";
 
 const PERIODS: { value: VatPeriod; label: string }[] = [
   { value: "quarterly", label: "Quarterly" },
@@ -20,13 +29,23 @@ const PERIODS: { value: VatPeriod; label: string }[] = [
   { value: "annual", label: "Annual" },
 ];
 
-/** Connect step 3: the name, an optional VAT number, and the VAT period — or nothing VAT at all. */
+/**
+ * Connect step 3: the country first (the UK unless chosen), then for UK books the name, an optional VAT number and
+ * the VAT period (or nothing VAT at all); for books elsewhere the tax they charge, its rate and the currency, saved
+ * to the books' own profile (GET/PUT /profile `country`, `sales_tax`, `currency`), so HMRC's pages stay hidden.
+ */
 export default function BusinessForm() {
   const router = useRouter();
   const next = useNextParam();
+  const account = useAccount();
   const [form, setForm] = useState<Business>(DEFAULT_BUSINESS);
+  const [region, setRegion] = useState<RegionAnswers>(UK_ANSWERS);
+  const [wasAbroad, setWasAbroad] = useState(false);
   const [nameError, setNameError] = useState<string | null>(null);
   const [vatError, setVatError] = useState<string | null>(null);
+  const [regionError, setRegionError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const abroad = region.country !== UK_ANSWERS.country;
 
   useEffect(() => {
     const saved = loadBusiness();
@@ -34,6 +53,25 @@ export default function BusinessForm() {
     // Defer to avoid a synchronous setState in the effect body.
     queueMicrotask(() => setForm(saved));
   }, []);
+
+  useEffect(() => {
+    if (!account) return;
+    runtime.profile(account).then(
+      (p) => {
+        const r = p.region;
+        if (r && !r.uk) {
+          setWasAbroad(true);
+          setRegion({
+            country: r.country,
+            taxName: (p.settings.sales_tax?.name ?? "Sales tax") as RegionAnswers["taxName"],
+            taxRate: r.tax_rate_percent,
+            currency: r.currency,
+          });
+        }
+      },
+      () => undefined, // no profile to read yet: the UK, as before
+    );
+  }, [account]);
 
   const input =
     "mt-1 h-11 w-full rounded-xl border border-border bg-white px-3 text-[15px] text-ink";
@@ -43,21 +81,65 @@ export default function BusinessForm() {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  function handleSubmit(e: FormEvent) {
+  /** Books outside the UK (or moving back to it): the country, tax and currency go to the books' own profile. */
+  async function saveRegion(): Promise<string | null> {
+    if (!account || (!abroad && !wasAbroad)) return null; // UK books: nothing changes, as before
+    try {
+      const p = await runtime.profile(account);
+      const settings = { ...p.settings };
+      delete settings.country;
+      delete settings.currency;
+      delete settings.sales_tax;
+      const saved = await runtime.saveProfile(account, {
+        name: p.exists ? p.name : form.name.trim() || p.name,
+        kind: p.kind,
+        settings: { ...settings, ...regionSettings(region) },
+      });
+      rememberProfile(account.homeAccountId, saved);
+      return null;
+    } catch (err) {
+      return errorText(err);
+    }
+  }
+
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const nameMessage = form.name.trim() === "" ? "Enter your business name." : null;
-    // The VAT number is optional: only a filled-in one is checked.
+    // The VAT number is optional: only a filled-in one is checked. Outside the UK there is no UK VAT number.
     const vatMessage =
-      !form.vatRegistered || form.vatNumber.trim() === "" ? null : validateVatNumber(form.vatNumber);
+      abroad || !form.vatRegistered || form.vatNumber.trim() === "" ? null : validateVatNumber(form.vatNumber);
+    const regionMessage = regionProblem(region);
     setNameError(nameMessage);
     setVatError(vatMessage);
-    if (nameMessage || vatMessage) return;
-    saveBusiness({ ...form, name: form.name.trim(), vatNumber: form.vatNumber.trim() });
+    setRegionError(regionMessage);
+    if (nameMessage || vatMessage || regionMessage) return;
+    setSaving(true);
+    const problem = await saveRegion();
+    setSaving(false);
+    if (problem) {
+      setRegionError(problem);
+      return;
+    }
+    saveBusiness({
+      ...form,
+      name: form.name.trim(),
+      vatNumber: abroad ? "" : form.vatNumber.trim(),
+      vatRegistered: abroad ? false : form.vatRegistered,
+    });
     router.push(withNext("/connect/ready", next));
   }
 
   return (
     <form onSubmit={handleSubmit} noValidate className="mt-6 space-y-4">
+      <RegionFields value={region} onChange={(r) => {
+          setRegion(r);
+          setRegionError(null);
+        }} />
+      {regionError && (
+        <p role="alert" className="text-xs font-semibold text-warn-ink">
+          {regionError}
+        </p>
+      )}
       <div className="rounded-2xl border border-border bg-white p-4">
         <label className={label} htmlFor="business-name">
           Business name
@@ -81,6 +163,7 @@ export default function BusinessForm() {
         )}
       </div>
 
+      {!abroad && (
       <div className="rounded-2xl border border-border bg-white p-4">
         <label className="flex cursor-pointer items-start gap-3" htmlFor="not-vat-registered">
           <input
@@ -102,7 +185,9 @@ export default function BusinessForm() {
         </label>
       </div>
 
-      {form.vatRegistered && (
+      )}
+
+      {!abroad && form.vatRegistered && (
         <>
           <div className="rounded-2xl border border-border bg-white p-4">
             <label className={label} htmlFor="vat-number">
@@ -180,9 +265,10 @@ export default function BusinessForm() {
         </Link>
         <button
           type="submit"
+          disabled={saving}
           className="h-12 flex-1 rounded-xl bg-teal px-5 text-[15px] font-extrabold text-white hover:bg-teal-dark"
         >
-          Save and continue
+          {saving ? "Saving…" : "Save and continue"}
         </button>
       </div>
     </form>

@@ -4,6 +4,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import { aiHeaders, loadAiConfig, RUNTIME_URL, type AiConfig } from "./ai-config";
 import { aiRouteHeaders } from "./ai-route";
 import type { PlanVat } from "./business";
+import { moneySign, type Region } from "./region";
 import { vatQuery } from "./vat-period";
 import { DEMO_HEADER, demoSession } from "./demo";
 import {
@@ -401,7 +402,17 @@ export async function runtimeHealth(): Promise<RtHealth | null> {
 
 /** GET/PUT /profile (services/runtime/app/profile.py): what these books are, from `_System/profile.json`. */
 export type RtProfileKind = "company" | "sole_trader" | "landlord" | "partnership" | "personal";
+export interface RtSalesTax {
+  name: "VAT" | "GST" | "Sales tax" | "None";
+  rate_percent: number;
+  number?: string | null;
+}
 export interface RtProfileSettings {
+  /** ISO 3166-1 alpha-2; missing for UK books (everything as before). */
+  country?: string;
+  /** Books outside the UK only. */
+  currency?: string;
+  sales_tax?: RtSalesTax;
   company_number?: string | null;
   vat_number?: string | null;
   vat_registered?: boolean;
@@ -423,6 +434,8 @@ export interface RtProfile {
   exists: boolean;
   /** What these books have; the nav hides the rest (personal: no vat, invoices, payroll). */
   features: string[];
+  /** Where the books are kept, worked out by the runtime (lib/region.ts). */
+  region?: Region;
 }
 const statementQuery = (start?: string, end?: string) =>
   [start ? `start=${start}` : "", end ? `end=${end}` : ""].filter(Boolean).join("&");
@@ -3608,7 +3621,8 @@ export interface RtGoalPlan {
   estimate: boolean;
 }
 
-export const gbp = (n: number) => `£${n.toFixed(2)}`;
+/** Pounds (or the books' own currency, lib/region.ts) with two decimals: "£12.50", "A$12.50". */
+export const gbp = (n: number) => `${moneySign()}${n.toFixed(2)}`;
 export const ukDate = (iso: string) => {
   const d = new Date(iso);
   return isNaN(d.getTime()) ? iso : d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });

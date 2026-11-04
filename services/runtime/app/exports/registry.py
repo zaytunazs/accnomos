@@ -64,6 +64,7 @@ PLUGINS: list[str] = [
     "app.exports.vat_reports",
     "app.exports.vendors",
     "app.exports.pack",
+    "app.exports.tax_summary",
 ]
 OPTIONAL_PLUGINS: list[str] = [
     "app.accounting_tools.reports",  # fixed-asset schedules, budgets, tracking, cash-flow forecast
@@ -206,11 +207,22 @@ class ExportSpec:
     raw: Callable[[ExportContext], Awaitable[bytes]] | None = None
     slug: str = ""  # file name part; defaults to id
     owner: str = "exports"  # the feature that builds it; a RESERVED id must be registered by its owner
+    #: Which books list it: "any", "uk" (HMRC's reports: VAT, payroll, Income Tax) or "intl" (books kept outside the
+    #: UK, app/region.py). `shown_for` decides.
+    region: Literal["any", "uk", "intl"] = "any"
+
+    def shown_for(self, uk: bool) -> bool:
+        if self.region == "any":
+            return not (uk is False and self.group in UK_GROUPS)
+        return (self.region == "uk") == uk
 
     @property
     def name(self) -> str:
         return self.slug or self.id
 
+
+#: Groups other features register that are HMRC's (payroll, MTD Income Tax): UK books only.
+UK_GROUPS = frozenset({"payroll", "income-tax", "self-employment"})
 
 _REGISTRY: dict[str, ExportSpec] = {}
 

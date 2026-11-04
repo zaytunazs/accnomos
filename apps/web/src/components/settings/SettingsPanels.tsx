@@ -1,5 +1,6 @@
 "use client";
 
+import { useUkBooks } from "@/lib/region";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import ChooseAi from "@/components/ChooseAi";
@@ -118,6 +119,8 @@ export default function SettingsPanels() {
   // Personal books: the Business tab is "Profile", without the business-only sections (business details and VAT
   // number, invoices, online payments, VAT periods and scheme, staff); "Show personal finances" is always on there.
   const household = useHousehold();
+  // Books kept outside the UK: none of HMRC's settings (VAT periods and schemes, payroll staff, MTD switches).
+  const uk = useUkBooks();
   const pendingHash = useRef<string | null>(null);
 
   function choose(g: GroupId) {
@@ -291,6 +294,7 @@ export default function SettingsPanels() {
               <dt className="text-[15px] font-bold text-ink">AI</dt>
               <dd className="text-sm text-muted">{aiSummary}</dd>
             </div>
+            {uk && (
             <div className="flex items-center justify-between gap-3 py-3">
               <dt className="text-[15px] font-bold text-ink">HMRC</dt>
               <dd className="flex flex-wrap items-center gap-3">
@@ -304,6 +308,7 @@ export default function SettingsPanels() {
                 </Link>
               </dd>
             </div>
+            )}
           </dl>
         </section>
 
@@ -435,6 +440,8 @@ export default function SettingsPanels() {
         hidden={group !== "business"}
         className="mt-4 space-y-4"
       >
+        {/* The wizard asks HMRC's and Companies House's questions: UK books only. */}
+        {uk && (
         <div className={card}>
           <h2 className={heading}>Set-up wizard</h2>
           <p className="mt-1 text-sm text-muted">
@@ -446,6 +453,7 @@ export default function SettingsPanels() {
             Open the set-up wizard →
           </Link>
         </div>
+        )}
 
         <ProfileDetails card={card} heading={heading} />
 
@@ -459,22 +467,22 @@ export default function SettingsPanels() {
 
             <OnlinePayments card={card} heading={heading} />
 
-            <VatPeriodSettings card={card} heading={heading} />
+            {uk && <VatPeriodSettings card={card} heading={heading} />}
           </>
         )}
 
-        <SelfEmployedSetting card={card} heading={heading} />
+        {uk && <SelfEmployedSetting card={card} heading={heading} />}
         {!household && (
           <>
-            <VatSchemeSettings card={card} heading={heading} />
+            {uk && <VatSchemeSettings card={card} heading={heading} />}
 
-            <StaffEditor card={card} heading={heading} />
+            {uk && <StaffEditor card={card} heading={heading} />}
 
             <PersonalFinanceSetting card={card} heading={heading} />
           </>
         )}
 
-        <LandlordSetting card={card} heading={heading} />
+        {uk && <LandlordSetting card={card} heading={heading} />}
       </div>
 
       <div

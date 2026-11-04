@@ -1,5 +1,6 @@
 "use client";
 
+import { useUkBooks } from "@/lib/region";
 import { isDemo } from "@/lib/demo";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -110,6 +111,7 @@ export default function SetupChecklist() {
   const [profileDone, setProfileDone] = useState<boolean | null>(null);
   const [wizardDone, setWizardDone] = useState<boolean | null>(null);
   const [household, setHousehold] = useState<HouseholdFacts | null>(null);
+  const uk = useUkBooks();
   const [personal, setPersonal] = useState(false); // the current profile's books are personal (lib/profiles.ts)
 
   useEffect(() => {
@@ -163,7 +165,7 @@ export default function SetupChecklist() {
   if (!account || dismissed || local === null || isDemo()) return null; // a demo's books are already set up
 
   const checking = "Checking your OneDrive…";
-  const steps: Step[] = household
+  const allSteps: Step[] = household
     ? [
         {
           id: "onedrive",
@@ -267,6 +269,12 @@ export default function SetupChecklist() {
       done: triedReceipt,
     },
       ];
+  // Books kept outside the UK: no VAT period or HMRC wizard; the business step asks the country and tax instead.
+  const steps = uk
+    ? allSteps
+    : allSteps
+        .filter((st) => st.id !== "vat" && st.id !== "wizard")
+        .map((st) => (st.id === "business" ? { ...st, label: "Business name, country and tax" } : st));
   const requiredOpen = steps.some((s) => !s.optional && !s.done);
   if (!requiredOpen) return null;
 

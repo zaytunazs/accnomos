@@ -6,16 +6,20 @@ import { runtime } from "@/lib/runtime";
 import { READER_BACK } from "@/lib/service-status";
 import { flushUploads, queueUpload, queuedUploads, subscribeQueue } from "@/lib/upload-queue";
 import { isReaderError, parseRuntimeError } from "@/components/States";
+import { useUkBooks } from "@/lib/region";
 
 const MAX = 5 * 1024 * 1024; // the runtime's limit (routes_bank.py MAX_CSV)
 
-/** Drop (or pick) bank statement CSVs. The runtime files each one as "04 Bank statements/{date}_{bank}.csv". */
+/** Drop (or pick) bank statements: CSV, or a PDF with a text layer (services/runtime/app/bank_pdf.py reads its lines).
+ * The runtime files each one as "04 Bank statements/{date}_{bank}.csv". Books kept outside the UK have no bank
+ * connection (Open Banking reaches UK banks only), so this is how their statements come in. */
 export default function BankUpload({ account, onDone }: { account: AccountInfo | null; onDone: () => void }) {
   const input = useRef<HTMLInputElement | null>(null);
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msgs, setMsgs] = useState<string[]>([]);
   const [waiting, setWaiting] = useState(queuedUploads);
+  const uk = useUkBooks();
 
   /** One file to the runtime, resolving to its result line. */
   const sendOne = useCallback(
@@ -61,8 +65,8 @@ export default function BankUpload({ account, onDone }: { account: AccountInfo |
     setBusy(true);
     const out: string[] = [];
     for (const f of Array.from(files)) {
-      if (!/\.csv$/i.test(f.name)) {
-        out.push(`${f.name}: not a CSV — export the statement as CSV from your bank's website or app.`);
+      if (!/\.(csv|pdf)$/i.test(f.name)) {
+        out.push(`${f.name}: not a CSV or PDF — download the statement as CSV or PDF from your bank's website or app.`);
         continue;
       }
       if (f.size > MAX) {
@@ -95,7 +99,7 @@ export default function BankUpload({ account, onDone }: { account: AccountInfo |
       <input
         ref={input}
         type="file"
-        accept=".csv,text/csv"
+        accept=".csv,text/csv,.pdf,application/pdf"
         multiple
         className="hidden"
         onChange={(e) => upload(e.target.files)}
@@ -119,10 +123,12 @@ export default function BankUpload({ account, onDone }: { account: AccountInfo |
         }`}
       >
         <span className="text-[15px] font-bold">
-          {busy ? "Reading statement…" : "Drop a bank statement CSV here, or choose a file"}
+          {busy ? "Reading statement…" : "Drop a bank statement (CSV or PDF) here, or choose a file"}
         </span>
         <span className="text-[13px] font-medium text-muted">
-          Barclays, Starling, Tide, Monzo, HSBC, Lloyds and most UK bank CSV exports. The same file twice is ignored.
+          {uk
+            ? "Barclays, Starling, Tide, Monzo, HSBC, Lloyds and most UK bank CSV exports, or a statement PDF. The same file twice is ignored."
+            : "Your bank's CSV export or statement PDF. The same file twice is ignored."}
         </span>
       </button>
       {waiting.length > 0 && (

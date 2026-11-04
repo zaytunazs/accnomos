@@ -1,12 +1,14 @@
 /** Formatting and period helpers for Spending, Cheaper options and the shopping list. Figures come from the runtime. */
 
+import { moneySign } from "./region";
+
 /** "1234.5" -> "£1,234.50" (pounds as the runtime sends them, never re-calculated here). */
 export function money(pounds: string | null | undefined, dp = 2): string {
   if (pounds === null || pounds === undefined || pounds === "") return "–";
   const n = Number(pounds);
   if (!Number.isFinite(n)) return pounds;
   const s = Math.abs(n).toLocaleString("en-GB", { minimumFractionDigits: dp, maximumFractionDigits: dp });
-  return `${n < 0 ? "-" : ""}£${s}`;
+  return `${n < 0 ? "-" : ""}${moneySign()}${s}`;
 }
 
 /** A change vs the previous period, signed: "+£53.60" / "-£12.00" / "no change". */

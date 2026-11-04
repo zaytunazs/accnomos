@@ -326,7 +326,7 @@ class _BankScreenState extends State<BankScreen> {
           if (_notice != null) _noticeBox(),
           _heading('Statements'),
           if (_statements.isEmpty)
-            const _EmptyLine('No statements imported yet. Download one from your bank as a CSV and import it here.')
+            const _EmptyLine('No statements imported yet. Download one from your bank as a CSV or PDF and import it here.')
           else
             for (final s in _statements) _statementCard(s),
           const SizedBox(height: 4),

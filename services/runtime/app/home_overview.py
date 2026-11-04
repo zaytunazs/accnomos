@@ -851,11 +851,12 @@ async def build(
     trend_v = await reads.run("trend", trend) if business else None
     cash_v = await reads.run("cash forecast", cash_points) if business else None
     aged_v = await reads.run("aged", aged) if "invoices" in features or business else None
-    property_v = await reads.run("property", props)
-    cis_v = await reads.run("cis", cis) if business else None
+    uk = prof.region.uk  # books kept in another country have none of HMRC's deadlines
+    property_v = await reads.run("property", props) if uk else None
+    cis_v = await reads.run("cis", cis) if business and uk else None
     payroll_v = await reads.run("payroll", payroll) if "payroll" in features else None
     itsa_v = next_itsa(today) if "self_employment" in features or property_v else None
-    sa = prof.kind == "sole_trader" or property_v is not None
+    sa = uk and (prof.kind == "sole_trader" or property_v is not None)
     o: dict[str, Any] = {
         "kind": prof.kind,
         "money": money(lines, today) if lines is not None else None,

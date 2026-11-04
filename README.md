@@ -7,6 +7,7 @@
 Your books are files in your own OneDrive (no Accnomos database); Meta models read and check the paperwork; you approve; code calculates the VAT.
 
 - **Works today (tested, mostly on fakes):** upload a receipt → Muse Glimmer 30B (or Muse Spark) reads it → code checks + an independent second reading → you approve → immutable ledger event → VAT nine boxes by code → HMRC **sandbox** submission (web) → `Books.xlsx`; plus Ask, bank statements, invoicing, jobs, mileage, pay-run estimates, a day planner and an Android app. One row each in the table below.
+- **Outside the UK:** choose the country, the tax (VAT, GST or sales tax) and its rate, and the currency; bookkeeping, invoices, reports (with a Tax summary) and CSV exports work the same, and HMRC filing stays UK-only.
 - **Not yet:** production HMRC filing and any run of most features against a real OneDrive, a real model key or a real phone. `docs/HONESTY.md` lists every known gap.
 - **Run it:** `uv sync --all-packages --all-extras && uv run pytest -q`; `cd apps/web && pnpm install && pnpm run build`; services and web dev servers in `docs/DEV.md`.
 - **Docs:** [Architecture](docs/ARCHITECTURE.md) · [Meta models and evals](docs/META_MODELS.md) · [4-minute demo](docs/DEMO.md) · [Honesty](docs/HONESTY.md) · [What remains](docs/REMAINING.md)

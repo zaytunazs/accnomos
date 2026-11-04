@@ -5,6 +5,24 @@ import { useRouter } from "next/navigation";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
 import { KIND_LABEL, linkedAccounts, profileMeta, rememberProfile, startAdding } from "@/lib/profiles";
 import { runtime, type RtLinkedAccount, type RtProfile, type RtProfileKind, type RtProfileSettings } from "@/lib/runtime";
+import RegionFields, {
+  UK_ANSWERS,
+  regionProblem,
+  regionSettings,
+  type RegionAnswers,
+} from "@/components/onboarding/RegionFields";
+
+/** The region answers a saved profile holds (UK books: the UK). */
+function answersOf(p: RtProfile): RegionAnswers {
+  const r = p.region;
+  if (!r || r.uk) return UK_ANSWERS;
+  return {
+    country: r.country,
+    taxName: p.settings.sales_tax?.name ?? "Sales tax",
+    taxRate: r.tax_rate_percent,
+    currency: r.currency,
+  };
+}
 
 const input = "mt-1 h-11 w-full rounded-xl border border-border bg-white px-3 text-[15px] text-ink";
 const label = "text-xs font-bold text-muted";
@@ -28,6 +46,8 @@ export default function ProfileDetails({ card, heading }: { card: string; headin
   const [name, setName] = useState("");
   const [kind, setKind] = useState<RtProfileKind>("company");
   const [settings, setSettings] = useState<RtProfileSettings>({});
+  const [region, setRegion] = useState<RegionAnswers>(UK_ANSWERS);
+  const abroad = region.country !== UK_ANSWERS.country;
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [here, setHere] = useState<string[]>([]); // sign-ins this browser holds
@@ -48,6 +68,7 @@ export default function ProfileDetails({ card, heading }: { card: string; headin
         setName(p.exists ? p.name : "");
         setKind(p.kind);
         setSettings(p.settings);
+        setRegion(answersOf(p));
         rememberProfile(account.homeAccountId, p);
       },
       (e) => setStatus({ ok: false, text: errorText(e) }),
@@ -59,6 +80,11 @@ export default function ProfileDetails({ card, heading }: { card: string; headin
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!account) return;
+    const problem = regionProblem(region);
+    if (problem) {
+      setStatus({ ok: false, text: problem });
+      return;
+    }
     setSaving(true);
     setStatus(null);
     const { active, all } = await linkedAccounts();
@@ -68,7 +94,7 @@ export default function ProfileDetails({ card, heading }: { card: string; headin
         const m = profileMeta(a.homeAccountId);
         return { username: a.username, name: m?.exists ? m.name : "", kind: m?.exists ? m.kind : null };
       });
-    const body: RtProfileSettings =
+    const uk: RtProfileSettings =
       kind === "personal"
         ? {}
         : kind === "company"
@@ -85,10 +111,15 @@ export default function ProfileDetails({ card, heading }: { card: string; headin
                 vat_number: settings.vat_number || null,
                 vat_registered: !!settings.vat_registered,
               };
+    // Books outside the UK keep no UK-only settings (the runtime drops them too); UK books send no country, as before.
+    const body: RtProfileSettings = abroad
+      ? { ...(kind === "sole_trader" ? { accounting_period_start: uk.accounting_period_start } : {}), ...regionSettings(region) }
+      : uk;
     try {
       const p = await runtime.saveProfile(account, { name, kind, settings: body, linked });
       setProfile(p);
       setSettings(p.settings);
+      setRegion(answersOf(p));
       rememberProfile(account.homeAccountId, p);
       setStatus({ ok: true, text: "Saved to your OneDrive." });
     } catch (err) {
@@ -148,7 +179,8 @@ export default function ProfileDetails({ card, heading }: { card: string; headin
               ))}
             </div>
           </fieldset>
-          {kind === "company" && (
+          <RegionFields value={region} onChange={setRegion} card="" />
+          {kind === "company" && !abroad && (
             <div>
               <label className={label} htmlFor={`${ids}-crn`}>
                 Company number (optional)
@@ -164,6 +196,7 @@ export default function ProfileDetails({ card, heading }: { card: string; headin
           )}
           {(kind === "sole_trader" || kind === "landlord" || kind === "partnership") && (
             <div className="grid gap-3 sm:grid-cols-2">
+              {!abroad && (
               <div>
                 <label className={label} htmlFor={`${ids}-utr`}>
                   UTR (optional)
@@ -176,6 +209,7 @@ export default function ProfileDetails({ card, heading }: { card: string; headin
                   onChange={(e) => set({ utr: e.target.value })}
                 />
               </div>
+              )}
               {kind === "sole_trader" && (
                 <div>
                   <label className={label} htmlFor={`${ids}-start`}>
@@ -193,7 +227,7 @@ export default function ProfileDetails({ card, heading }: { card: string; headin
               )}
             </div>
           )}
-          {kind !== "personal" && (
+          {kind !== "personal" && !abroad && (
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex min-h-11 items-center gap-3 text-[15px] font-semibold text-ink">
                 <input

@@ -651,7 +651,7 @@ async def _needs_a_look(
     """A card with no figures in Needs a look, saying why, and the file filed with it."""
     ctx = ctx or await inbox.scan_context(books, settings.business_name, settings.autopilot_on, settings.period)
     ref = ref or FileRef(id="", path=f.path, name=f.name, size=len(data))
-    p = inbox.placeholder(f.name, sha256_hex(data), message, code)
+    p = inbox.placeholder(f.name, sha256_hex(data), message, code, ctx.vat.tax.currency)
     p = await inbox.commit(books, ctx, p, ref, guess_mime(f.name) or "application/octet-stream")
     f.proposal_id, f.stage, f.route, f.message = p.id, "needs_a_look", "needs_a_look", message
 

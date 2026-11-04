@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+from collections.abc import Mapping
 from datetime import date, datetime, timedelta
 from typing import Literal
 
@@ -50,6 +51,7 @@ from app.invoicing import (
     VatSummaryRow,
     money,
     price_lines,
+    sales_rates,
     uk_date,
 )
 from app.numbering import NUMBER_RE, allocate, safe_number
@@ -117,12 +119,18 @@ def row(q: Quote, today: date | None = None) -> QuoteRow:
     return QuoteRow(**d, days_to_expiry=(q.expiry_date - today).days if status == "sent" else None)
 
 
-def build_quote(number: str, draft: QuoteDraft, user: str, today: date | None = None) -> Quote:
+def build_quote(
+    number: str,
+    draft: QuoteDraft,
+    user: str,
+    today: date | None = None,
+    rates: Mapping[str, int | float] | None = None,
+) -> Quote:
     issue = draft.issue_date or today or london_today()
     expiry = draft.expiry_date or issue + timedelta(days=VALID_DAYS)
     if expiry < issue:
         raise InvoiceError("The expiry date is before the quote date")
-    lines, summary, net, vat = price_lines(draft.lines)
+    lines, summary, net, vat = price_lines(draft.lines, rates)
     return Quote(
         number=number,
         customer=draft.customer,
@@ -174,9 +182,10 @@ async def _fill_customer(books: Books, draft: QuoteDraft) -> QuoteDraft:
 
 async def create_quote(books: Books, draft: QuoteDraft, user: str) -> Quote:
     draft = await _fill_customer(books, draft)
-    build_quote("PENDING", draft, user)  # refuse a bad draft before taking a number
+    rates = await sales_rates(books)
+    build_quote("PENDING", draft, user, rates=rates)  # refuse a bad draft before taking a number
     number = await allocate(books, SEQUENCE, "QU-", _path)
-    q = build_quote(number, draft, user)
+    q = build_quote(number, draft, user, rates=rates)
     await save_quote(books, q)
     await books.audit(f"user:{user}", "quote_created", {"quote": q.number, "total_pence": q.total_pence})
     return q
@@ -186,7 +195,7 @@ async def update_draft(books: Books, number: str, draft: QuoteDraft, user: str) 
     old = await get_quote(books, number)
     if old.status != "draft":
         raise InvoiceStateError(f"Quote {number} is {old.status}; only drafts can be changed")
-    q = build_quote(number, await _fill_customer(books, draft), old.created_by)
+    q = build_quote(number, await _fill_customer(books, draft), old.created_by, rates=await sales_rates(books))
     q.created_at = old.created_at
     await save_quote(books, q)
     await books.audit(f"user:{user}", "quote_edited", {"quote": number, "total_pence": q.total_pence})

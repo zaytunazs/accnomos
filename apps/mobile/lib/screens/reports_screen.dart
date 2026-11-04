@@ -6,6 +6,7 @@ import '../models/vat_return.dart';
 import '../services/auth.dart';
 import '../services/demo.dart';
 import '../services/money.dart';
+import '../services/region.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
@@ -47,6 +48,9 @@ class _ReportsScreenState extends State<ReportsScreen>
   PlReport? _pl;
   AgedReport? _aged;
   VatSummary? _vat;
+
+  /// Books kept outside the UK: GET /exports/tax-summary's preview.
+  Map<String, dynamic>? _taxSummary;
   Trend? _trend;
   bool _saving = false;
   String? _savedName;
@@ -146,22 +150,29 @@ class _ReportsScreenState extends State<ReportsScreen>
     });
     try {
       final client = await _booksClient();
-      if (withPeriods || _periods.isEmpty) {
+      // Books kept outside the UK have no VAT periods or VAT return
+      // (services/region.dart): their Tax summary comes from /exports.
+      final uk = BooksRegion.current.value.uk;
+      if (uk && (withPeriods || _periods.isEmpty)) {
         _periods = VatPeriod.listFromJson(await client.vatPeriods());
       }
       final picked = _picked;
       final results = await Future.wait([
         client.reportsPl(from: _spanStart(picked), to: _spanEnd(picked)),
         client.reportsAged(),
-        client.reportsVat(),
+        uk ? client.reportsVat() : Future.value(<String, dynamic>{}),
         client.reportsTrend(),
+        uk
+            ? Future.value(<String, dynamic>{})
+            : client.exportPreview('tax-summary', from: _spanStart(picked), to: _spanEnd(picked)),
       ]);
       if (!mounted) return;
       setState(() {
         _pl = PlReport.fromJson(results[0]);
         _aged = AgedReport.fromJson(results[1]);
-        _vat = VatSummary.fromJson(results[2]);
+        _vat = uk ? VatSummary.fromJson(results[2]) : null;
         _trend = Trend.fromJson(results[3]);
+        _taxSummary = uk ? null : results[4];
       });
     } catch (e) {
       if (!mounted) return;
@@ -360,11 +371,12 @@ class _ReportsScreenState extends State<ReportsScreen>
           labelColor: AccnomosColors.tealDark,
           unselectedLabelColor: AccnomosColors.muted,
           indicatorColor: AccnomosColors.teal,
-          tabs: const [
-            Tab(text: 'P&L'),
-            Tab(text: 'Aged'),
-            Tab(text: 'VAT'),
-            Tab(text: 'Trend'),
+          tabs: [
+            const Tab(text: 'P&L'),
+            const Tab(text: 'Aged'),
+            // Books kept outside the UK: their Tax summary instead of VAT.
+            Tab(text: BooksRegion.current.value.uk ? 'VAT' : 'Tax'),
+            const Tab(text: 'Trend'),
           ],
         ),
         Expanded(
@@ -375,7 +387,7 @@ class _ReportsScreenState extends State<ReportsScreen>
                   children: [
                     _plTab(),
                     _agedTab(),
-                    _vatTab(),
+                    if (BooksRegion.current.value.uk) _vatTab() else _taxTab(),
                     _trendTab(),
                   ],
                 ),
@@ -447,6 +459,71 @@ class _ReportsScreenState extends State<ReportsScreen>
       return const Center(child: Text('No VAT periods yet.'));
     }
     return VatSummaryView(vat: vat);
+  }
+
+  /// Tax charged on sales against tax paid on purchases, by month
+  /// (services/runtime/app/exports/tax_summary.py), with Save CSV.
+  Widget _taxTab() {
+    final doc = _taxSummary?['doc'];
+    final sections = doc is Map ? doc['sections'] : null;
+    final section = sections is List && sections.isNotEmpty ? sections.first as Map : null;
+    if (section == null) {
+      return const Center(child: Text('No tax summary yet.'));
+    }
+    final columns = [for (final c in (section['columns'] as List? ?? const [])) c as Map];
+    final rows = [for (final r in (section['rows'] as List? ?? const [])) r as Map];
+    String cell(Map c, Object? v) =>
+        c['kind'] == 'money' && v is num ? formatMoneyPence(v) : '${v ?? ''}';
+    return ListView(
+      key: const Key('tax-summary'),
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text('${doc['title']} · ${doc['period']}',
+            style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17)),
+        const SizedBox(height: 8),
+        for (final r in rows)
+          Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            child: Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(cell(columns.first, (r['cells'] as Map)[columns.first['key']]),
+                      style: const TextStyle(fontWeight: FontWeight.w700)),
+                  for (final c in columns.skip(1))
+                    Row(children: [
+                      Expanded(child: Text('${c['label']}', style: const TextStyle(color: AccnomosColors.muted))),
+                      Text(cell(c, (r['cells'] as Map)[c['key']])),
+                    ]),
+                ],
+              ),
+            ),
+          ),
+        if (section['note'] != null)
+          Text('${section['note']}', style: const TextStyle(fontWeight: FontWeight.w700)),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          key: const Key('tax-summary-save'),
+          icon: const Icon(Icons.download_outlined),
+          label: Text(_taxSaved ?? 'Save tax summary CSV to OneDrive'),
+          onPressed: _saveTaxSummary,
+        ),
+      ],
+    );
+  }
+
+  String? _taxSaved;
+
+  Future<void> _saveTaxSummary() async {
+    try {
+      final picked = _picked;
+      final r = await (await _booksClient())
+          .exportSave('tax-summary', from: _spanStart(picked), to: _spanEnd(picked));
+      if (mounted) setState(() => _taxSaved = 'Saved to ${r['path']}');
+    } catch (e) {
+      if (mounted) setState(() => _taxSaved = _friendly(e));
+    }
   }
 
   Widget _trendTab() {

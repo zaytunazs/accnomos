@@ -1,3 +1,5 @@
+import 'region.dart';
+
 /// One money formatter for the whole app: `£1,234.56`, thousands separated,
 /// a leading minus before the pound sign for negatives (`-£4,706.59`, never
 /// `£-…`). [whole] drops the pence; [round] rounds to whole pounds instead of
@@ -16,7 +18,8 @@ String formatMoneyPence(num pence, {bool whole = false, bool round = false}) {
       .toString()
       .replaceAllMapped(RegExp(r'\B(?=(\d{3})+(?!\d))'), (_) => ',');
   final tail = whole ? '' : '.${(units % 100).toString().padLeft(2, '0')}';
-  final text = '£$grouped$tail';
+  // The books' own currency outside the UK (services/region.dart); £ otherwise.
+  final text = '${BooksRegion.current.value.sign}$grouped$tail';
   return negative && (whole ? units != 0 : units != 0) ? '-$text' : text;
 }
 

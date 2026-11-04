@@ -5,7 +5,7 @@ import type { AccountInfo } from "@azure/msal-browser";
 import Modal, { fieldArea, fieldInput, fieldLabel, primaryButton, secondaryButton } from "@/components/invoices/Modal";
 import SignInCta from "@/components/SignInCta";
 import { EmptyState, LoadingSkeleton, RuntimeErrorNote } from "@/components/States";
-import { money, parsePounds, poundsInput, useMsAccount, VAT_CODES } from "@/lib/invoices";
+import { money, parsePounds, poundsInput, useMsAccount, vatCodes } from "@/lib/invoices";
 import { runtime, type RtItem, type RtItemImport, type RtItemIn, type RtSalesVatCode } from "@/lib/runtime";
 
 const action = "text-[13px] font-bold text-teal-dark hover:underline";
@@ -69,7 +69,7 @@ function ItemFormDialog({ account, item, onClose, onSaved }: { account: AccountI
         <div>
           <label className={fieldLabel} htmlFor="item-vat">VAT</label>
           <select id="item-vat" className={fieldInput} value={vat} onChange={(e) => setVat(e.target.value as RtSalesVatCode)}>
-            {VAT_CODES.map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
+            {vatCodes().map((c) => <option key={c.code} value={c.code}>{c.label}</option>)}
           </select>
         </div>
         <div>
@@ -233,7 +233,7 @@ export default function LiveItems() {
                   <p className={`truncate text-[15px] font-bold ${i.archived ? "text-muted" : ""}`}>{i.code} · {i.name}{i.archived && " (archived)"}</p>
                   <p className="text-sm text-muted">
                     Sell {i.sale_price_pence !== null ? money(i.sale_price_pence) : "no price"} · buy {i.purchase_price_pence !== null ? money(i.purchase_price_pence) : "no price"}
-                    {i.unit && ` per ${i.unit}`} · VAT {VAT_CODES.find((c) => c.code === i.vat_code)?.label}
+                    {i.unit && ` per ${i.unit}`} · VAT {vatCodes().find((c) => c.code === i.vat_code)?.label}
                   </p>
                 </div>
                 <div className="flex gap-4">

@@ -8,6 +8,7 @@ import '../services/auth.dart';
 import '../services/demo.dart';
 import '../services/navigation.dart';
 import '../services/proposal_editing.dart';
+import '../services/region.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../services/sign_in_messages.dart';
@@ -15,6 +16,7 @@ import '../widgets/ai_route_picker.dart';
 import '../widgets/calendar_sync.dart';
 import '../theme.dart';
 import 'business_setup_screen.dart';
+import 'region_screen.dart';
 
 const _warnBg = Color(0xFFFFF7ED);
 const _warnBorder = Color(0xFFF3C892);
@@ -808,7 +810,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   /// the same body the web sends.
   Future<void> _saveBusiness() async {
     if (_savingBusiness || !_signedIn) return;
-    final vrnProblem = vrnError(_vrn.text);
+    final vrnProblem = BooksRegion.current.value.uk ? vrnError(_vrn.text) : null;
     if (vrnProblem != null) {
       setState(() => _vrnError = vrnProblem);
       return;
@@ -1111,61 +1113,64 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       enabled: _signedIn,
                     ),
                     const SizedBox(height: 12),
-                    _field(
-                      fieldKey: 'vrnField',
-                      label: 'VAT number',
-                      helper: 'Your 9-digit VAT registration number, e.g. '
-                          '123456789. Checked for format only.',
-                      controller: _vrn,
-                      enabled: _signedIn,
-                      error: _vrnError,
-                      onChanged: (_) {
-                        if (_vrnError != null) {
-                          setState(() => _vrnError = vrnError(_vrn.text));
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 12),
-                    const Text('VAT quarter',
-                        style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            color: AccnomosColors.ink)),
-                    const SizedBox(height: 4),
-                    const Text(
-                        'Your HMRC stagger group. Home, VAT and Reports use it once saved; '
-                        'until then the phone assumes Mar/Jun/Sep/Dec quarters.',
-                        style: TextStyle(
-                            color: AccnomosColors.muted,
-                            fontSize: 12,
-                            height: 1.4)),
-                    const SizedBox(height: 8),
-                    SegmentedButton<int>(
-                      segments: const [
-                        ButtonSegment(value: 1, label: Text('1')),
-                        ButtonSegment(value: 2, label: Text('2')),
-                        ButtonSegment(value: 3, label: Text('3')),
-                      ],
-                      selected: {_stagger},
-                      onSelectionChanged: !_signedIn
-                          ? null
-                          : (selected) =>
-                              setState(() => _stagger = selected.first),
-                    ),
-                    const SizedBox(height: 12),
-                    _field(
-                      fieldKey: 'startMonthField',
-                      label: 'Quarter starts in month (optional)',
-                      helper: 'Only when your quarters start in a custom '
-                          'month, e.g. 5 for May. Takes precedence over the stagger group above.',
-                      controller: _startMonth,
-                      enabled: _signedIn,
-                      error: _startMonthError,
-                      onChanged: (_) {
-                        if (_startMonthError != null) {
-                          setState(() => _startMonthError = null);
-                        }
-                      },
-                    ),
+                    // The VAT number and HMRC's quarters are for UK books only.
+                    if (BooksRegion.current.value.uk) ...[
+                      _field(
+                        fieldKey: 'vrnField',
+                        label: 'VAT number',
+                        helper: 'Your 9-digit VAT registration number, e.g. '
+                            '123456789. Checked for format only.',
+                        controller: _vrn,
+                        enabled: _signedIn,
+                        error: _vrnError,
+                        onChanged: (_) {
+                          if (_vrnError != null) {
+                            setState(() => _vrnError = vrnError(_vrn.text));
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      const Text('VAT quarter',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              color: AccnomosColors.ink)),
+                      const SizedBox(height: 4),
+                      const Text(
+                          'Your HMRC stagger group. Home, VAT and Reports use it once saved; '
+                          'until then the phone assumes Mar/Jun/Sep/Dec quarters.',
+                          style: TextStyle(
+                              color: AccnomosColors.muted,
+                              fontSize: 12,
+                              height: 1.4)),
+                      const SizedBox(height: 8),
+                      SegmentedButton<int>(
+                        segments: const [
+                          ButtonSegment(value: 1, label: Text('1')),
+                          ButtonSegment(value: 2, label: Text('2')),
+                          ButtonSegment(value: 3, label: Text('3')),
+                        ],
+                        selected: {_stagger},
+                        onSelectionChanged: !_signedIn
+                            ? null
+                            : (selected) =>
+                                setState(() => _stagger = selected.first),
+                      ),
+                      const SizedBox(height: 12),
+                      _field(
+                        fieldKey: 'startMonthField',
+                        label: 'Quarter starts in month (optional)',
+                        helper: 'Only when your quarters start in a custom '
+                            'month, e.g. 5 for May. Takes precedence over the stagger group above.',
+                        controller: _startMonth,
+                        enabled: _signedIn,
+                        error: _startMonthError,
+                        onChanged: (_) {
+                          if (_startMonthError != null) {
+                            setState(() => _startMonthError = null);
+                          }
+                        },
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     _profileSection(),
                     const SizedBox(height: 12),
@@ -1269,6 +1274,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             color: AccnomosColors.muted,
                             fontSize: 12,
                             height: 1.4)),
+                    if (_signedIn) ...[
+                      const SizedBox(height: 12),
+                      _regionLink(),
+                    ],
                     if (_signedIn && !AppMode.household) ...[
                       const SizedBox(height: 12),
                       _businessSetupLink(),
@@ -1811,6 +1820,32 @@ class _SettingsScreenState extends State<SettingsScreen> {
             style: TextStyle(
                 color: AccnomosColors.muted, fontSize: 12, height: 1.4)),
       ],
+    );
+  }
+
+  /// Settings › Country and tax: where the books are kept, the tax and its
+  /// rate, and the currency (screens/region_screen.dart).
+  Widget _regionLink() {
+    return ValueListenableBuilder<BooksRegion>(
+      valueListenable: BooksRegion.current,
+      builder: (context, region, _) => Card(
+        key: const Key('region-link'),
+        margin: EdgeInsets.zero,
+        child: ListTile(
+          leading: const Icon(Icons.public_outlined, color: AccnomosColors.teal),
+          title: const Text('Country and tax',
+              style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: Text(region.uk
+              ? 'United Kingdom · VAT · pounds'
+              : '${region.countryName} · ${region.taxLabel} ${region.rateText}% · ${region.currency}'),
+          trailing: const Icon(Icons.chevron_right),
+          onTap: () => Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => RegionScreen(clientFor: _booksClient)))
+              .then((_) {
+            if (mounted) setState(() {});
+          }),
+        ),
+      ),
     );
   }
 

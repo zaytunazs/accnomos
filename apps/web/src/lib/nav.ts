@@ -8,7 +8,8 @@
  * Other work is building some of these pages. A link shows only when its page is in this build (`routes`, read
  * from src/app at build time by lib/routes.server.ts), so nothing in the menu 404s, and only when the profile's kind
  * has the feature (services/runtime/app/profile.py: personal books have no VAT, invoices or payroll; VAT pages need
- * a VAT-registered business; self-employment is for sole traders).
+ * a VAT-registered business; self-employment is for sole traders). Books kept outside the UK have none of HMRC's
+ * pages: the runtime drops vat, payroll and self_employment from their features, and `ukOnly` items hide too.
  *
  * Every item opens its own page with its own heading (e2e/menu-pages.spec.ts): no two labels share a page or an
  * anchor. The same page may appear in two groups only under the same label (Customers under Sales and Contacts).
@@ -29,6 +30,8 @@ export interface NavItem {
   heading?: string;
   /** Only while this device switch is on: Settings › I am self-employed (lib/itsa.ts) or I let property (lib/property.ts). */
   deviceSwitch?: "selfEmployed" | "landlord";
+  /** HMRC's pages (MTD Income Tax, CIS, property for MTD): hidden for books kept outside the UK (lib/region.ts). */
+  ukOnly?: boolean;
 }
 
 export interface NavGroup {
@@ -90,9 +93,9 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { label: "VAT returns", href: "/vat", feature: "vat" },
       // Sole traders (feature self_employment), or anyone who ticked Settings › I am self-employed (TopBar `who`).
-      { label: "Self-employment (MTD Income Tax)", href: "/self-employment", deviceSwitch: "selfEmployed" },
-      { label: "Property (landlords)", href: "/property", deviceSwitch: "landlord" },
-      { label: "CIS (construction)", href: "/cis", kinds: BUSINESS },
+      { label: "Self-employment (MTD Income Tax)", href: "/self-employment", deviceSwitch: "selfEmployed", ukOnly: true },
+      { label: "Property (landlords)", href: "/property", deviceSwitch: "landlord", ukOnly: true },
+      { label: "CIS (construction)", href: "/cis", kinds: BUSINESS, ukOnly: true },
       { label: "Tax settings", href: "/settings/tax", feature: "vat" },
     ],
   },
@@ -159,8 +162,8 @@ export const HOUSEHOLD_GROUPS: NavGroup[] = [
       { heading: "Records", label: "Documents", href: "/files" },
       { heading: "Records", label: "Audit trail", href: "/audit" },
       { heading: "Records", label: "All contacts", href: "/contacts" },
-      { heading: "Tax", label: "Self-employment (MTD Income Tax)", href: "/self-employment", deviceSwitch: "selfEmployed" },
-      { heading: "Tax", label: "Property (landlords)", href: "/property", deviceSwitch: "landlord" },
+      { heading: "Tax", label: "Self-employment (MTD Income Tax)", href: "/self-employment", deviceSwitch: "selfEmployed", ukOnly: true },
+      { heading: "Tax", label: "Property (landlords)", href: "/property", deviceSwitch: "landlord", ukOnly: true },
     ],
   },
 ];
@@ -180,9 +183,15 @@ export interface Who {
   /** Settings › I am self-employed, and › I let property, on this device. */
   selfEmployed?: boolean;
   landlord?: boolean;
+  /** False: the books are kept outside the UK, so HMRC's pages are hidden. Undefined: not known, shown. */
+  uk?: boolean;
 }
 
-function allowed(x: { feature?: string; kinds?: RtProfileKind[]; deviceSwitch?: NavItem["deviceSwitch"] }, who: Who): boolean {
+function allowed(
+  x: { feature?: string; kinds?: RtProfileKind[]; deviceSwitch?: NavItem["deviceSwitch"]; ukOnly?: boolean },
+  who: Who,
+): boolean {
+  if (x.ukOnly && who.uk === false) return false;
   if (x.deviceSwitch && !who[x.deviceSwitch]) return false;
   if (x.feature && who.features && !who.features.includes(x.feature)) return false;
   if (who.personal && x.kinds?.includes("personal")) return true;

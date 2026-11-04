@@ -26,10 +26,10 @@ from app.invoicing import InvoiceDraft, InvoiceError
 from app.paths import INBOX, SALES
 from app.pdf import render_invoice
 from app.reports import is_sample
-from app.routes_books import get_books, require_user
+from app.routes_books import get_books, require_uk, require_user
 from app.validation import StrictBody, UnsafeName
 
-router = APIRouter(prefix="/cis", tags=["cis"])
+router = APIRouter(prefix="/cis", tags=["cis"], dependencies=[require_uk()])
 QUOTES = f"{SALES}/quotes"
 
 

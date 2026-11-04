@@ -29,6 +29,8 @@ import { sampleAged, samplePl, samplePlPrev, samplePlYear, sampleTrend, sampleVa
 import { usePickedPeriod } from "@/lib/vat-period";
 import { useSelfEmployed } from "@/lib/itsa";
 import TrendBars from "./TrendBars";
+import { isUkBooks } from "@/lib/region";
+import type { RtExportPreview } from "@/lib/runtime";
 
 const BUCKETS: RtAgedBucket[] = AGED_BUCKETS;
 const money = (pence: number) => (pence / 100).toLocaleString("en-GB", { style: "currency", currency: "GBP" });
@@ -422,6 +424,101 @@ function VatSummary({ vat }: { vat: RtVatSummary }) {
 /** Which report a page shows: everything (/reports), or one report on its own page. */
 export type ReportOnly = "pl" | "aged";
 
+/**
+ * Books kept outside the UK: tax charged on sales against tax paid on purchases, month by month, with the CSV
+ * (services/runtime/app/exports/tax_summary.py, through /exports). Nothing is filed anywhere.
+ */
+function TaxSummary({ account, span }: { account: AccountInfo; span: { start: string; end: string } | null }) {
+  const [got, setGot] = useState<RtExportPreview | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const q = span ? { from: span.start, to: span.end } : {};
+  const key = JSON.stringify(q);
+
+  useEffect(() => {
+    let stale = false;
+    runtime.exports.preview(account, "tax-summary", JSON.parse(key)).then(
+      (r) => !stale && setGot(r),
+      (e: Error) => !stale && setProblem(parseRuntimeError(e.message).detail || "The tax summary could not be worked out."),
+    );
+    return () => {
+      stale = true;
+    };
+  }, [account, key]);
+
+  async function download() {
+    setBusy(true);
+    try {
+      const { blob, name } = await runtime.exports.file(account, "tax-summary", "csv", JSON.parse(key));
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = name;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setProblem(parseRuntimeError((e as Error).message).detail || "The CSV could not be made.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const section = got?.doc.sections[0];
+  return (
+    <section aria-labelledby="tax-summary-heading" className={card}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <h2 id="tax-summary-heading" className="text-lg font-extrabold">
+            Tax summary
+          </h2>
+          <p className="text-[13px] text-muted">
+            {got ? `${got.doc.title}, ${got.doc.period}. ` : ""}Tax charged on sales against tax paid on purchases.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={download}
+          disabled={busy}
+          className="h-11 rounded-xl border-2 border-teal bg-white px-4 text-[15px] font-bold text-teal-dark disabled:opacity-60 print:hidden"
+        >
+          {busy ? "Preparing…" : "Download tax summary CSV"}
+        </button>
+      </div>
+      {problem && <p className="mt-2 text-sm text-warn-ink">{problem}</p>}
+      {section && (
+        <Scroll label="Tax summary table">
+          <table className="mt-3 w-full min-w-[560px] border-collapse">
+            <thead>
+              <tr>
+                {section.columns.map((c) => (
+                  <th key={c.key} scope="col" className={`${th} ${c.kind === "money" ? "text-right" : ""}`}>
+                    {c.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {section.rows.map((r, i) => (
+                <tr key={i} className={`border-t border-border ${r.style === "total" ? "font-extrabold" : ""}`}>
+                  {section.columns.map((c) => {
+                    const v = r.cells[c.key];
+                    return (
+                      <td key={c.key} className={`${td} ${c.kind === "money" ? "text-right" : ""}`}>
+                        {c.kind === "money" && typeof v === "number" ? money(v) : (v ?? "")}
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Scroll>
+      )}
+      {section?.note && <p className="mt-2 text-sm font-semibold text-ink">{section.note}</p>}
+    </section>
+  );
+}
+
 function Reports({ pl, prev, year, aged, vat, trend, only }: {
   only?: ReportOnly;
   pl: RtProfitAndLoss | null;
@@ -481,7 +578,12 @@ export default function LiveReports({ only }: { only?: ReportOnly } = {}) {
         if (!acct) return setState("demo");
         setAccount(acct);
         setState("live");
-        const [a, v, t] = await Promise.all([runtime.reports.aged(acct), runtime.reports.vat(acct), runtime.reports.trend(acct)]);
+        // Books kept outside the UK have no VAT return: their Tax summary (below) is worked out instead.
+        const [a, v, t] = await Promise.all([
+          runtime.reports.aged(acct),
+          isUkBooks() ? runtime.reports.vat(acct) : Promise.resolve(null),
+          runtime.reports.trend(acct),
+        ]);
         setAged(a);
         setVat(v);
         setTrend(t);
@@ -625,6 +727,7 @@ export default function LiveReports({ only }: { only?: ReportOnly } = {}) {
         <p className="text-sm font-bold text-warn-ink">SAMPLE — FICTIONAL COMPANY · these are the demo books</p>
       )}
       {state === "error" && error ? <RuntimeErrorNote message={error} title="Couldn't work out the reports" /> : null}
+      {state === "live" && account && !isUkBooks() && !only && <TaxSummary account={account} span={span} />}
       {state === "live" && (
         <Reports
           only={only}

@@ -312,7 +312,7 @@ async def _make_invoice(books: Books, sender: MailSender | None, t: Template, in
     if t.approve_automatically and inv.status == "draft":
         if sender is None:
             note = "Not sent: no way to send mail from this call"
-        elif problems := inv_.send_problems(inv, profile, inv.customer.email):
+        elif problems := inv_.send_problems(inv, profile, inv.customer.email, await inv_.abroad(books)):
             note = "Not sent: " + "; ".join(problems)
         else:
             from app.pdf import render_invoice

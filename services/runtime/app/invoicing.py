@@ -42,6 +42,7 @@ import contextlib
 import hashlib
 import re
 from collections import defaultdict
+from collections.abc import Mapping
 from datetime import date, datetime, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Annotated, Any, Literal
@@ -172,6 +173,22 @@ class InvoiceProfile(StrictBody):
         return self.vat_registered or self.vrn is not None
 
 
+async def sales_rates(books: Books) -> dict[str, int | float] | None:
+    """The rate per VAT code for these books' invoices: None (the UK's RATES) for UK books, else the user's one rate
+    for standard and reduced lines (app/region.py)."""
+    from app.region import rules_for
+
+    rules = await rules_for(books)
+    return None if rules.uk else dict(rules.sales_rates())
+
+
+async def abroad(books: Books) -> bool:
+    """Books kept outside the UK (app/region.py): their tax number is not a UK VRN."""
+    from app.region import rules_for
+
+    return not (await rules_for(books)).uk
+
+
 async def load_profile(books: Books) -> InvoiceProfile:
     return InvoiceProfile.model_validate(await books.read_json(PROFILE, {}), **LENIENT)
 
@@ -235,14 +252,14 @@ class LineIn(StrictBody):
 
 
 class InvoiceLine(LineIn):
-    vat_rate: int
+    vat_rate: int | float  # a whole number in the UK (20/5/0); the user's own rate elsewhere (e.g. 8.875)
     net_pence: int
     vat_pence: int
 
 
 class VatSummaryRow(BaseModel):
     vat_code: SalesVatCode
-    vat_rate: int
+    vat_rate: int | float
     net_pence: int
     vat_pence: int
 
@@ -345,23 +362,32 @@ class Invoice(BaseModel):
         return (today - self.due_date).days if self.status == "sent" else None
 
 
-def price_lines(lines: list[LineIn]) -> tuple[list[InvoiceLine], list[VatSummaryRow], int, int]:
-    """(priced lines, VAT summary by code, net, VAT), all in pence. VAT is rounded per line."""
+def price_lines(
+    lines: list[LineIn], rates: Mapping[str, int | float] | None = None
+) -> tuple[list[InvoiceLine], list[VatSummaryRow], int, int]:
+    """(priced lines, VAT summary by code, net, VAT), all in pence. VAT is rounded per line. `rates`: the books' own
+    rate per code outside the UK (app/region.py TaxRules.sales_rates); the UK's RATES when not given."""
+    table = RATES if rates is None else rates
     out: list[InvoiceLine] = []
     groups: dict[str, list[int]] = defaultdict(lambda: [0, 0])
     for ln in lines:
-        rate = RATES[ln.vat_code]
+        rate = _whole(table[ln.vat_code])
         net = pence(ln.quantity * ln.unit_price_pence)
-        vat = pence(Decimal(net) * rate / 100)
+        vat = pence(Decimal(net) * Decimal(str(rate)) / 100)
         out.append(InvoiceLine(**ln.model_dump(), vat_rate=rate, net_pence=net, vat_pence=vat))
         groups[ln.vat_code][0] += net
         groups[ln.vat_code][1] += vat
     order = list(RATES)
     summary = [
-        VatSummaryRow(vat_code=code, vat_rate=RATES[code], net_pence=n, vat_pence=v)  # type: ignore[arg-type]
+        VatSummaryRow(vat_code=code, vat_rate=_whole(table[code]), net_pence=n, vat_pence=v)  # type: ignore[arg-type]
         for code, (n, v) in sorted(groups.items(), key=lambda kv: order.index(kv[0]))
     ]
     return out, summary, sum(ln.net_pence for ln in out), sum(ln.vat_pence for ln in out)
+
+
+def _whole(rate: int | float) -> int | float:
+    """20.0 -> 20, so a whole rate stays an int on the invoice (and in its JSON); 8.875 stays as it is."""
+    return int(rate) if float(rate).is_integer() else float(rate)
 
 
 def reverse_charged(
@@ -385,12 +411,13 @@ def build_invoice(
     user: str,
     today: date | None = None,
     cis_status: cis_mod.Status | None = None,
+    rates: Mapping[str, int | float] | None = None,
 ) -> Invoice:
     issue = draft.issue_date or today or london_today()
     due = draft.due_date or issue + timedelta(days=profile.terms_days)
     if due < issue:
         raise InvoiceError("The due date is before the invoice date")
-    lines, summary, net, vat = price_lines(draft.lines)
+    lines, summary, net, vat = price_lines(draft.lines, rates)
     rc = 0
     if draft.reverse_charge:
         lines, summary, rc = reverse_charged(lines, summary)
@@ -575,10 +602,11 @@ async def create_invoice(books: Books, draft: InvoiceDraft, user: str) -> Invoic
     profile = await load_profile(books)
     draft = await _fill_customer(books, draft)
     status = await cis_status_for(books, draft)
-    build_invoice("PENDING", draft, profile, user, cis_status=status)  # refuse a bad draft before taking a number
+    rates = await sales_rates(books)
+    build_invoice("PENDING", draft, profile, user, cis_status=status, rates=rates)  # refuse a bad draft first
     await _check_hours(books, draft)
     await _check_tracking(books, draft)
-    inv = build_invoice(await allocate_number(books), draft, profile, user, cis_status=status)
+    inv = build_invoice(await allocate_number(books), draft, profile, user, cis_status=status, rates=rates)
     await save_invoice(books, inv)
     await books.audit(f"user:{user}", "invoice_created", {"invoice": inv.number, "total_pence": inv.total_pence})
     return inv
@@ -592,7 +620,12 @@ async def update_draft(books: Books, number: str, draft: InvoiceDraft, user: str
     await _check_hours(books, draft, number)
     await _check_tracking(books, draft)
     inv = build_invoice(
-        number, draft, await load_profile(books), old.created_by, cis_status=await cis_status_for(books, draft)
+        number,
+        draft,
+        await load_profile(books),
+        old.created_by,
+        cis_status=await cis_status_for(books, draft),
+        rates=await sales_rates(books),
     )
     inv.created_at = old.created_at
     inv.payment_link = old.payment_link  # kept; send_problems refuses a link for another amount
@@ -647,8 +680,9 @@ def sale_event(inv: Invoice, user: str, evidence: list[str]) -> LedgerEvent:
     )
 
 
-def send_problems(inv: Invoice, profile: InvoiceProfile, to: str | None) -> list[str]:
-    """Why this invoice cannot be sent yet (empty when it can)."""
+def send_problems(inv: Invoice, profile: InvoiceProfile, to: str | None, abroad: bool = False) -> list[str]:
+    """Why this invoice cannot be sent yet (empty when it can). `abroad`: books kept outside the UK, whose tax number
+    (any format, optional) is not a UK VRN."""
     out = []
     if inv.status != "draft":
         out.append(f"Invoice {inv.number} is already {inv.status}")
@@ -656,7 +690,7 @@ def send_problems(inv: Invoice, profile: InvoiceProfile, to: str | None) -> list
         out.append("Add the customer's email address")
     if not profile.name.strip() or not profile.address.strip():
         out.append("Add your business name and address in the invoice profile")
-    if inv.vat_pence and not profile.vrn:
+    if inv.vat_pence and not profile.vrn and not abroad:
         out.append("Add your VAT registration number to the invoice profile before charging VAT")
     if inv.reverse_charge and not profile.vrn:
         out.append("The reverse charge is only for VAT-registered businesses: add your VAT registration number")
@@ -808,7 +842,7 @@ async def send_invoice(
         return inv
     profile = await load_profile(books)
     to = (to or inv.customer.email or "").strip()
-    if problems := send_problems(inv, profile, to):
+    if problems := send_problems(inv, profile, to, await abroad(books)):
         raise (InvoiceStateError if inv.status != "draft" else InvoiceError)("; ".join(problems))
     if ids := inv.timesheet_entry_ids():  # two drafts from the same hours: refuse the second before emailing
         entries = await jobs.load_entries(books)

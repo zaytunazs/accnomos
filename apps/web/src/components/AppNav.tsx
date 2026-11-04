@@ -51,14 +51,24 @@ const householdLinks: NavLink[] = [
 /** Pages a profile's kind may lack (services/runtime/app/profile.py features): personal books have no VAT,
  *  invoices or payroll; VAT shows only for a VAT-registered business. */
 const FEATURE_OF: Record<string, string> = { "/invoices": "invoices", "/vat": "vat", "/payroll": "payroll" };
+/** HMRC's pages: never linked for books kept outside the UK. */
+const HMRC_ONLY = new Set(["/self-employment", "/property", "/cis", "/vat", "/payroll"]);
 
 /** The current profile's features (null until known: nothing hidden) and whether its books are personal, kept current (profile switch, Settings). */
-function useProfile(): { features: string[] | null; household: boolean } {
-  const [state, setState] = useState<{ features: string[] | null; household: boolean }>({ features: null, household: false });
+function useProfile(): { features: string[] | null; household: boolean; abroad: boolean } {
+  const [state, setState] = useState<{ features: string[] | null; household: boolean; abroad: boolean }>({
+    features: null,
+    household: false,
+    abroad: false,
+  });
   useEffect(() => {
     const read = () => {
       const meta = currentMeta();
-      const next = { features: currentFeatures(), household: meta?.exists === true && meta.kind === "personal" };
+      const next = {
+        features: currentFeatures(),
+        household: meta?.exists === true && meta.kind === "personal",
+        abroad: meta?.region?.uk === false, // books kept outside the UK: no HMRC pages
+      };
       setState((s) => (JSON.stringify(s) === JSON.stringify(next) ? s : next));
     };
     queueMicrotask(read);
@@ -110,6 +120,7 @@ function withBadges(
   signedOut: boolean,
   landlord = false,
   household = false,
+  abroad = false,
 ): NavLink[] {
   const all = [
     ...(household ? householdLinks : links),
@@ -118,6 +129,7 @@ function withBadges(
   ];
   return all
     .filter((l) => selfEmployed || l.href !== "/self-employment")
+    .filter((l) => !abroad || !HMRC_ONLY.has(l.href))
     .filter((l) => !features || !FEATURE_OF[l.href] || features.includes(FEATURE_OF[l.href]))
     .map((l) =>
       l.href === "/review" ? { ...l, badge: review } : l.href === "/" && signedOut ? { ...l, href: "/try" } : l,
@@ -254,6 +266,7 @@ export default function AppNav({ variant = "sidebar" }: { variant?: "sidebar" | 
     signedOut,
     useLandlordOn(),
     profile.household && !signedOut,
+    profile.abroad && !signedOut,
   );
 
   if (variant === "tabs") return <TabBar pathname={pathname} links={navLinks} />;

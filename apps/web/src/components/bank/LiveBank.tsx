@@ -23,6 +23,7 @@ import {
   type RtUnmatchedAction,
   type RtUnmatchedLine,
 } from "@/lib/runtime";
+import { moneySign, useUkBooks } from "@/lib/region";
 
 type Tab = "matches" | "unmatched" | "reconcile" | "rules" | "done";
 
@@ -39,7 +40,7 @@ interface Data {
 /** Signed pence -> "−£38.47" / "£1,200.00". */
 export function money(pence: number): string {
   const s = (Math.abs(pence) / 100).toLocaleString("en-GB", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-  return `${pence < 0 ? "−" : ""}£${s}`;
+  return `${pence < 0 ? "−" : ""}${moneySign()}${s}`;
 }
 
 const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? "" : "s"}`;
@@ -747,6 +748,7 @@ type Act = (key: string, run: (a: AccountInfo) => Promise<string>) => void;
 export type BankView = "all" | "rules" | "reconcile";
 
 export default function LiveBank({ view = "all" }: { view?: BankView } = {}) {
+  const uk = useUkBooks(); // bank connections (Open Banking) reach UK banks only
   const [account, setAccount] = useState<AccountInfo | null>(null);
   const [state, setState] = useState<"checking" | "demo" | "loading" | "live" | "error">("checking");
   const [data, setData] = useState<Data | null>(null);
@@ -919,7 +921,8 @@ export default function LiveBank({ view = "all" }: { view?: BankView } = {}) {
       )}
       {error && <RuntimeErrorNote message={error} />}
       {/* One uploader in a fixed place: inside the empty state it remounted after the first import and lost its result. */}
-      <BankFeeds account={account} onSynced={reload} />
+      {/* Open Banking (TrueLayer) reaches UK banks only: books kept elsewhere upload statements instead. */}
+      {uk && <BankFeeds account={account} onSynced={reload} />}
       <BankUpload account={account} onDone={reload} />
       {data.summary.total === 0 ? (
         <EmptyState
