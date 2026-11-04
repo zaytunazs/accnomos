@@ -19,7 +19,7 @@ Accnomos calls only Meta models at run time. Two of them are Meta open weights.
 
 ## Live call records (provenance)
 
-The server keeps the last 50 AI calls in memory, without their content: `GET https://api.accnomos.com/ai/calls`.
+The server keeps the last 50 AI calls in memory, without their content: `GET https://api.accnomos.com/ai/calls` (so the records below have long rolled off; the *Reproduce it* commands make fresh ones). A longer record of live calls through both providers, step by step, is `evals/runs/live_checks_2026-11-04/report.md`.
 
 Two questions were asked on the live server on 4 Nov 2026 at 03:29 UTC. Both were "How much VAT do I owe this quarter?", against the fictional company demo (`POST /books/ask` with `X-Demo-Session`). The only difference was the route header:
 

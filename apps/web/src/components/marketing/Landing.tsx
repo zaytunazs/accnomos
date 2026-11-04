@@ -592,8 +592,8 @@ function Android() {
             <li>Home, Review, Ask, VAT, and a More tab with files, contacts, invoices, bank, reports and the audit trail.</li>
             <li>Bank CSV upload, reconciling and HMRC filing stay on the web.</li>
             <li className="text-muted">
-              248 automated tests run on every change, but nothing has been tried on a real phone yet. A build has been
-              submitted to Google Play.
+              Automated tests run on every change. The app has run on one real phone (the owner&rsquo;s) and on the emulator,
+              not on other phones yet. A build has been submitted to Google Play and is in Google&rsquo;s review.
             </li>
           </ul>
         </div>

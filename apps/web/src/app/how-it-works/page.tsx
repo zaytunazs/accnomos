@@ -6,7 +6,7 @@ import { GUIDES as guides, GUIDES_URL } from "@/lib/howto-guides";
 
 export const metadata = { title: "How it works · Accnomos" };
 
-const CHECKED = "27 Oct 2026";
+const CHECKED = "4 Nov 2026";
 
 interface Feature {
   id: string;
@@ -24,7 +24,7 @@ const features: Feature[] = [
     does: "Photograph or upload a receipt, or drop it in 00 Inbox. It is read, checked against plain rules, and held on the Review page until you tap Approve or Reject. Approval writes one balanced ledger event that is never edited or deleted; Undo adds a reversing event.",
     ai: "The AI reads the document into a strict list: supplier, VAT number, date, lines, net, VAT and total. It also guesses the category.",
     code: "Code checks the reading: lines and totals add up, VAT maths and rates are right, the VAT number has the right shape, it is not a duplicate, it is in pounds, the date is valid and confidence is high enough. A purchase over £250 with no VAT and no VAT number from a supplier the books do not know yet also waits, asking “Is <supplier> VAT-registered?” — the tick teaches “not registered”, a VAT number seen on an approved receipt teaches “registered”, undoing the approval takes the tick back, and Contacts can change the stored answer. Anything that fails waits in Needs a look.",
-    gap: "Not verified yet: reading by Muse Spark 1.3 is measured on made-up documents only; HEIC photos are copied but not read; evals use made-up receipts, so real phone photos will score lower.",
+    gap: "Not verified yet: reading by Muse Spark 1.3 is measured on made-up documents only (every field right on 95 % clean and 96 % messy); a HEIC photo is converted and read, but only files made by the tests have been tried; evals use made-up receipts, so real phone photos will score lower.",
   },
   {
     id: "books",
@@ -48,7 +48,7 @@ const features: Feature[] = [
     does: "On the VAT page you connect to HMRC (sandbox), see open obligations, confirm the nine boxes, tick the legal declaration and press Submit. The receipt is saved to 06 VAT returns in your OneDrive. That tap is always yours.",
     ai: "No AI anywhere in this flow.",
     code: "Code sends the nine boxes through the relay, which holds the HMRC client secret and adds the fraud-prevention headers. The relay checks the boxes before forwarding.",
-    gap: "Not verified yet: the full browser flow has never been run end to end against HMRC’s sandbox; production filing is not built.",
+    gap: "Not verified yet: the sandbox flow was run end to end once, on 4 Nov 2026, with the demo's calls through our relay and HMRC's own sandbox sign-in (docs/HMRC_SANDBOX_DEMO.md); a signed-in user's own return has not been filed to the sandbox by hand; production filing is not built.",
   },
   {
     id: "ask",
@@ -56,7 +56,7 @@ const features: Feature[] = [
     does: "Ask answers questions about your books (“how much did I spend with Screwfix?”) and can plan a day (“plan my Thursday”). The web streams the answer: key figures first, then the wording. On the mic button you can speak the question instead of typing it.",
     ai: "The model only writes the words. Key figures and quotes come from a facts pack that code builds from your ledger, and code checks every figure the model writes.",
     code: "Code routes the question to the right books and period, checks each figure against the facts, and replaces any invented or wrong-period figure with the quoted facts.",
-    gap: "Not verified yet: voice (Muse Voice Transcribe, with a local fallback model if it fails) is built to the request format in Meta's own cookbook but has never been called live from our CI; no live mic run on any browser or phone. Bank, payroll, jobs and deadlines are not in the facts pack.",
+    gap: "Not verified yet: voice (Muse Voice Transcribe, with a local fallback model if it fails) has been used live from the Android app on one phone and in our live checks with synthetic speech (4 Nov 2026), not from a browser microphone in our checks; CI fakes it. Bank, payroll, jobs and deadlines are not in the facts pack.",
   },
   {
     id: "actions",
@@ -80,7 +80,7 @@ const features: Feature[] = [
     does: "When the first reading passes every code check, a second model reads the same image again with a different prompt, without seeing the first answer. Code compares six fields (supplier, VAT number, date, net, VAT, total). If all six agree the card says so; any disagreement sends the proposal to Needs a look with both readings side by side.",
     ai: "The second model only reads the image again. It never sees the first answer and it never decides.",
     code: "Code compares the six fields (names ignoring case and Ltd/Limited, dates by value, money to the penny, VAT numbers by digits). Nobody picks or merges values: you approve the first reading or reject.",
-    gap: "Not verified yet: local mode verifies with Glimmer and key mode with Muse Spark unless the server owner sets up Muse Spark Open; no real Muse Spark verifier call has been made. Measured on 400 synthetic documents, Muse Spark Open caught 1 wrong reading, missed 6 and raised 11 false alarms (see Meta models used).",
+    gap: "Not verified yet: local mode verifies with Glimmer and key mode with Muse Spark unless the server owner sets up Muse Spark Open (off on the live server since 2 Nov 2026, so the second reading there is Muse Spark checking itself: less independent). Measured on 400 synthetic documents, Muse Spark Open caught 1 wrong reading, missed 6 and raised 11 false alarms (see Meta models used).",
   },
   {
     id: "outlook",
@@ -120,7 +120,7 @@ const features: Feature[] = [
     does: "New invoice → draft saved with the next number → preview renders an A4 PDF (your details, logo, VAT summary by rate, bank details) → Send via Outlook only after you tick the confirmation → the sale is posted once, with the sent PDF kept. Reminder drafts, Mark paid and Void (a reversal, never a delete) are on each invoice.",
     ai: "The model only drafts the reminder wording from facts code gives it (never your bank details); code checks every figure. Everything else is code.",
     code: "Code prices each line (net = qty × price, VAT per line, half up to the penny), numbers drafts in order, emails first then marks sent then posts, so a retry never emails twice or posts twice.",
-    gap: "Not verified yet: never sent from a real mailbox; a customer credit balance is shown but cannot yet be applied to another invoice or refunded in the app.",
+    gap: "Not verified yet: never sent from a real mailbox; applying a customer's credit to another invoice or refunding it is on the web only, not the phone.",
   },
   {
     id: "jobs",
@@ -144,7 +144,7 @@ const features: Feature[] = [
     does: "Payroll prepares a month’s pay run from timesheets (hours × each person’s rate), shows estimated PAYE, employee NI, net pay and employer NI, exports a CSV for your payroll provider to 05 Payroll, and on Confirm posts the provider’s actual gross and employer NI as two balanced adjustments. Accnomos does not run payroll, file RTI or pay HMRC.",
     ai: "No AI.",
     code: "Code works out the estimates from one 2026–27 rate table, saves the run in _System/Payroll/runs, labels every figure an estimate, and only posts the actuals you type in.",
-    gap: "Not verified yet: rates were checked against GOV.UK by hand on 27 Oct 2026 with no test pinning them — re-check each April. Monthly pay only, tax code 1257L month-1 basis, England/NI rates, NI category A; no loans, pensions, statutory pay, benefits or salary sacrifice.",
+    gap: "Not verified yet: the quick estimate is monthly pay only, tax code 1257L month-1 basis, England/NI rates, NI category A; no loans, pensions, statutory pay, benefits or salary sacrifice. The full PAYE payroll's 2026-27 rates were checked against GOV.UK on 28 Oct 2026 and are pinned by tests; re-check each April. Nothing is filed to HMRC.",
   },
   {
     id: "planner",
@@ -168,7 +168,7 @@ const features: Feature[] = [
     does: "The phone app signs in, captures receipts, and covers Review (approve, edit, reject, Autopilot undo), Ask with mic and action cards, Home, VAT with a period picker, and Files, Contacts, Invoices, Jobs, Vehicles, Bank and read-only Payroll under More. There is no HMRC filing on the phone.",
     ai: "Same split as the web: the AI reads documents and writes words; code checks and posts.",
     code: "The phone calls the same runtime routes as the web.",
-    gap: "Not verified yet: the Flutter app has never been built, analysed or tested in this pass; the Play release signing hash may not be registered so sign-in can fail; the VAT stagger is saved but never sent, so VAT uses calendar quarters; the Meta key is not in secure storage.",
+    gap: "Not verified yet: the app has run on one real phone (the owner's, 4 Nov 2026) and on the emulator, not on other phones; sign-in from a Google Play install is untried (the Play signing hash is registered); the Meta key is not in secure storage.",
   },
 ];
 
@@ -219,11 +219,11 @@ const faqs: { q: string; a: string }[] = [
   },
   {
     q: "What has not been tested on real services?",
-    a: "Almost everything beyond one hand-run receipt flow: key-mode models, the Muse Spark Open verifier on real documents, SAM crop, voice, HMRC end to end, real OneDrive, mailbox, calendar and phone runs are tested on fakes or not yet run. The full list is in docs/HONESTY.md and each section above says what is not verified yet.",
+    a: "Most features beyond the Meta paths: the live server's models, voice, the SAM crop, the demo's HMRC sandbox return and TrueLayer sandbox bank feed have run for real (4 Nov 2026, with records in the repo); a real OneDrive, mailbox and calendar, and phones other than the owner's, are tested on fakes or not yet run. The full list is in docs/HONESTY.md and each section above says what is not verified yet.",
   },
   {
     q: "How do I check this page against the code?",
-    a: "Each section names the behaviour; the contracts live in docs/ARCHITECTURE.md, AUTOPILOT.md, ACTIONS.md, INBOX.md, PLANNER.md and HONESTY.md, tested by the runtime tests (services/runtime/tests) and the browser tests (apps/web/e2e). This page was last checked against main on 27 Oct 2026.",
+    a: "Each section names the behaviour; the contracts live in docs/ARCHITECTURE.md, AUTOPILOT.md, ACTIONS.md, INBOX.md, PLANNER.md and HONESTY.md, tested by the runtime tests (services/runtime/tests) and the browser tests (apps/web/e2e). This page was last checked against main on 4 Nov 2026.",
   },
 ];
 

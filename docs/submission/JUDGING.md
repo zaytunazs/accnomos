@@ -1,17 +1,20 @@
 # Judging: every criterion mapped to evidence, and how to run it
 
-Refreshed 28 Oct 2026 against the official criteria: **Impact, Use of Meta AI tooling, Technical depth and execution, and
-Demo quality, weighted equally.** Every claim names a path in this repo; nothing here goes beyond `docs/HONESTY.md`.
-Status words: *run live* = the maintainers' own run, no log committed; *measured* = a committed report under `evals/`;
+Refreshed 4 Nov 2026 against the official criteria: **Impact (30 %), Use of Meta AI tooling (25 %), Technical depth and
+execution (20 %) and Demo quality (25 %)** (the weights as published in the participant guide; check the form on the day).
+Every claim names a path in this repo; nothing here goes beyond `docs/HONESTY.md`.
+Status words: *run live* = run for real against the live server or a real sandbox, with the record named (or, where it says
+"our record", the maintainers' word with no log committed); *measured* = a committed report under `evals/`;
 *tested on fakes* = automated tests against in-memory fakes or stubs (this proves our logic, not Microsoft, Meta or HMRC).
 
 **Provenance.** Only the owner's own AI server with a local model runtime predates the event; the first commit is 6 h 29 min after kickoff,
 and every merge has a second-agent review. Timestamps, commits per day and how each part was built: `docs/PROVENANCE.md`.
 
-**Not on `main` on 28 Oct** (so not claimed below): the month-end close agent, company / sole-trader / personal profiles,
-the Meta models panel with Glimmer on a hosted GPU, and the no-sign-in `/judges` page. iPhone is not built.
+**On `main` since 28 Oct** and claimed below where they are tested: the month-end close, company / sole-trader / personal
+profiles, the Meta models page, the no-sign-in demo sandbox (`/judges`, also linked as *Try the demo*), the personal demo,
+the HMRC sandbox and TrueLayer sandbox in the demo, the hands-free assistant, goals and the calendar. iPhone is not built.
 
-**Android app:** install the APK from [GitHub Releases](https://github.com/zaytunazs/accnomos/releases) (newest `android-*` release; 0.3.18: [accnomos-0.3.18-23.apk](https://github.com/zaytunazs/accnomos/releases/download/android-0.3.18-23/accnomos-0.3.18-23.apk)) and press **Try the demo**: no account needed. The Google Play listing is in Google's review, which takes several days, so use the APK for now.
+**Android app:** install the APK from [GitHub Releases](https://github.com/zaytunazs/accnomos/releases) (newest `android-*` release; 0.3.18: [accnomos-0.3.18-23.apk](https://github.com/zaytunazs/accnomos/releases/download/android-0.3.18-23/accnomos-0.3.18-23.apk)) and press **Try the company demo** (or **Try the personal demo**): no account needed. The Google Play listing is in Google's review, which takes several days, so use the APK for now.
 
 ## 1. Impact
 
@@ -53,20 +56,20 @@ above); every accuracy number is on synthetic documents, and real phone photos w
 | A strict split: models propose, code decides. VAT boxes, ledger, invoice totals, payments, credit notes, reports, mileage and pay estimates are deterministic code; `packages/ledger` has no model imports | `packages/ledger/src`, `packages/ledger/tests/test_vat.py`, `docs/DEV.md` (Conventions), `docs/ARCHITECTURE.md` | Tested |
 | Pipeline: capture, code crop, model read, code repairs and checks, independent second reading, proposal, human Approve, balanced immutable ledger event. The "why" line is code, **not** an LLM reviewer | `services/runtime/app/pipeline.py`, `checks.py`, `approve.py`; `services/runtime/tests/test_books.py`, `test_verify.py` | Tested on fakes; read → approve → VAT boxes run live (our record) |
 | Grounded Ask: every figure in an answer is checked against a code-built facts pack and an invented one is replaced; chat actions return an intent only, code prices the lines and a signed card waits for Approve | `services/runtime/app/ai/ask.py`, `facts.py`, `actions.py`, `tests/test_ask.py`, `test_actions.py`, `apps/web/src/components/ask/AskThread.tsx` | Tested; Ask measured (`evals/runs/ask_40/report.md`) |
-| HMRC MTD VAT: OAuth with PKCE through a relay that holds only the client secret, fraud-prevention headers, return validation; a fulfilled period cannot be submitted twice | `services/hmrc-relay`, `docs/HMRC.md` | Tested on mocks; the owner has connected once; **no end-to-end sandbox submission recorded** |
+| HMRC MTD VAT: OAuth with PKCE through a relay that holds only the client secret, fraud-prevention headers, return validation; a fulfilled period cannot be submitted twice | `services/hmrc-relay`, `docs/HMRC.md`, `docs/HMRC_SANDBOX_DEMO.md` | Tested on mocks; **run live against HMRC's sandbox** on 4 Nov 2026 through the public relay with the demo's call sequence (test user, HMRC's sandbox sign-in, obligations, submit, HMRC's receipt with its form bundle number recorded); the live site's VAT card makes a sandbox test user (checked 4 Nov). Never production |
 | Money as code: part payments, overpayments, credit notes as reversals with the same VAT codes, credits applied or refunded | `services/runtime/app/settlement.py`, `payments.py`, `credit_notes.py`, `credits.py`, `tests/test_payments.py` | Tested on fakes |
 | Bank rules and reconciliation; matching measured (precision 83/83, recall 83/106) | `services/runtime/app/bank_rules.py`, `bank_reconcile.py`, `evals/runs/bank_matching/report.md` | Measured, synthetic |
 | Autopilot L2 with a safety eval that found a real bug (21 of 32 re-photographed receipts posted twice), fixed by a same-document rule (0 of 42 after) | `services/runtime/app/autopilot.py`, `evals/runs/autopilot_l2/`, `docs/reviews/autopilot-eval/REVIEW.md` | Measured, Glimmer, synthetic |
 | Security: log scrubbing, size caps, rate limit, exact-origin CORS, one-time OAuth state, safe file names | `docs/SECURITY.md`, `services/runtime/tests/test_security.py` | Tested; **not load-tested** |
-| Two clients on one stateless runtime: a web app and an Android app (0.3.5+10) with page-by-page parity | `apps/web/src/app`, `apps/mobile/lib/screens`, `apps/mobile/PARITY.md`, `apps/mobile/RELEASE_NOTES.md` | Android **never run on a real device** |
-| Tests, 28 Oct gates (owner's figures): runtime 1260, evals 258, relay 119, Playwright 208 (36 spec files), Flutter 248 | `uv run pytest -q`, `apps/web/e2e/*.spec.ts`, `apps/mobile/test`, `docs/HONESTY.md` | Re-run before quoting; every suite runs on GitHub in `.github/workflows/ci.yml` on every push and PR (`docs/reviews/ci/REVIEW.md`) |
-| Process: every branch reviewed by a second agent before merging, with what was fixed and what remains | `docs/reviews/*/REVIEW.md` (54 reviews), `docs/PROVENANCE.md` | Documented |
+| Two clients on one stateless runtime: a web app and an Android app (0.3.18+23) with page-by-page parity | `apps/web/src/app`, `apps/mobile/lib/screens`, `apps/mobile/PARITY.md`, `apps/mobile/RELEASE_NOTES.md` | Android run on the owner's own phone (4 Nov 2026) and smoke-tested on the emulator (`docs/reviews/final-audit-4nov/REPORT.md`); no other phones |
+| Tests, 4 Nov 2026 (`pytest --collect-only` on `main` at `8debc2e9`): runtime 2789, ledger 101, connectors 67, evals 383, relay 181; Playwright about 300 tests in 84 spec files; Flutter about 470 | `uv run pytest -q`, `apps/web/e2e/*.spec.ts`, `apps/mobile/test`, `docs/HONESTY.md` | Every suite runs on GitHub in `.github/workflows/ci.yml` on every push and PR and was green on that commit (`docs/reviews/ci/REVIEW.md`) |
+| Process: every branch reviewed by a second agent before merging, with what was fixed and what remains | `docs/reviews/*/REVIEW.md` (101 reviews on 4 Nov), `docs/PROVENANCE.md` | Documented |
 
 ## 4. Demo quality
 
 | Claim | Evidence |
 |---|---|
-| A 3:00 script that follows one receipt from the phone to the VAT boxes and the HMRC sandbox, opening with the provenance line, with captions and a fallback for every shot not yet run live | `docs/submission/VIDEO_SCRIPT.md` |
+| A 2:56 video (v3) that opens with the provenance line and shows the live site: Review, Talk, Ask, the TrueLayer sandbox bank feed, the HMRC sandbox return, the personal demo and the in-app Meta model switch (the 28 Oct 3:00 script is kept for the record) | `docs/video/SCRIPT_V3.md`, `docs/video/V3_EDIT.md`, `docs/submission/VIDEO_SCRIPT.md` |
 | A longer click-by-click walkthrough with the expected figures (Box 4 £8.65, Box 7 £43) | `docs/DEMO.md` |
 | The demo's labels are held by an end-to-end test, and every page has a phone-width check | `apps/web/e2e/demo.spec.ts`, `apps/web/e2e/phone.spec.ts` |
 | Storyboard stills from the test-mode dry run (stub AI, not proof of a live run) | `docs/submission/shots/` |
@@ -83,14 +86,14 @@ runtime's memory for 2 hours; nobody else sees your changes and nothing about yo
 
 1. **Review a receipt**: six documents wait in Review; two need a look (an invoice in euros, a malformed VAT number).
 2. **Approve** one: it is posted to the ledger and Books.xlsx.
-3. **VAT return**: pick the previous quarter (*Jul–Sep 2026* in late October 2026) for the 9 boxes worked out by code; *Connect to HMRC (simulated)* → *Show obligations* → *Prepare submission* → tick the declaration → *Submit*: the receipt says **Demo — submission simulated** (HMRC is never contacted from a demo).
+3. **VAT return**: pick the previous quarter (*Jul–Sep 2026* in early November 2026) for the 9 boxes worked out by code; *Make an HMRC sandbox test user* → *Connect to HMRC sandbox* (HMRC's own sandbox sign-in with that test user) → *Show obligations* (HMRC's 2017 test periods) → *Prepare submission* → tick the declaration → *Submit to HMRC sandbox*: HMRC's own sandbox receipt, no real tax filed (`docs/HMRC_SANDBOX_DEMO.md`). If the sandbox cannot be reached the card says so and simulates instead.
 4. **Ask**: "How much VAT do I owe this quarter?"; the figures come from code, the explanation from the server's AI.
-5. **Reports**, 6. **Contacts**, 7. **Bank** (two reconciled statements and bank rules).
+5. **Reports**, 6. **Contacts**, 7. **Bank** (two reconciled statements and bank rules; *Connect the test bank* joins TrueLayer's sandbox Mock Bank with its public `john` / `doe` login, `docs/BANK_FEED_SANDBOX_DEMO.md`).
 
 *Reset demo* (banner and sidebar) starts again from fresh books; *Set up your own books →* leaves the demo for the real
 Microsoft sign-in, which sets up books in your own OneDrive (HMRC through the sandbox). Simulated in a demo: email is
-never sent ("Sent (demo — not actually sent)"), HMRC, Companies House and VAT-number look-ups. Real: the app, the checks,
-the ledger and VAT arithmetic, and the AI the server runs. Why a sandbox rather than a shared sign-in: see
+never sent ("Sent (demo — not actually sent)"), and the Companies House and VAT-number look-ups are off. Real: the app, the
+checks, the ledger and VAT arithmetic, the AI the server runs, HMRC's sandbox and TrueLayer's sandbox. Why a sandbox rather than a shared sign-in: see
 `docs/HONESTY.md` ("Demo sandbox") and the branch review (REVIEW.md, "Why a sandbox").
 
 ## How to run it in 10 minutes (test mode, no accounts)

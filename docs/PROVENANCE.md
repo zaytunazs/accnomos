@@ -2,8 +2,8 @@
 
 The hackathon FAQ asks that the repository holds only work done during the event, and that the demo video opens with one
 line on anything that pre-existed. This page is the evidence for both. Every timestamp below was read from `git log` on a
-full (unshallowed) clone and from `gh api repos/zaytunazs/accnomos` on 28 Oct 2026; the commands are at the end so anyone
-can re-run them.
+full (unshallowed) clone and from `gh api repos/zaytunazs/accnomos` on 28 Oct 2026, and the commit counts were re-run on
+4 Nov 2026; the commands are at the end so anyone can re-run them.
 
 **The one line for the video** (shot 1 of `docs/submission/VIDEO_SCRIPT.md`): *"Before the hackathon I had only my own
 AI server with a local model runtime. Everything else was built after kickoff."* The caption under it names the date and this page.
@@ -20,7 +20,8 @@ week Eastern Time was EDT (UTC−4).
 | **GitHub repository created** (`zaytunazs/accnomos`) | 2026-10-26 22:30:57 | +6 h 31 min | `gh api repos/zaytunazs/accnomos` → `created_at` |
 | First commit message naming a Meta coding tool and model, `d1ccaae` (*web: app shell + Review inbox … (Muse Code, muse-spark-1.3)*) | 2026-10-26 23:18:34 | +7 h 18 min | `git log -i --grep='Muse Code'` |
 | First commit message reporting a live Glimmer run, `8023a01` (*F2: Choose-your-AI screen … tested live against Glimmer on the Spark*) | 2026-10-27 00:09:34 | +8 h 10 min | `git log` |
-| Latest commit on `main` when this page was written, `206848c` | 2026-10-28 01:33:20 | +33 h 33 min | `git log -1 origin/main` |
+| Latest commit on `main` when this page was first written, `206848c` | 2026-10-28 01:33:20 | +33 h 33 min | `git log -1 origin/main` |
+| Latest commit on `main` at the 4 Nov refresh, `8debc2e9` (1,727 commits on `main`) | 2026-11-04 09:42:38 | +8 d 17 h | `git log -1 origin/main`, `git rev-list --count origin/main` |
 | Submission deadline: Wed 4 Nov 2026, 21:00 ET (EST, UTC−5) | 2026-11-05 02:00 | | Hackathon schedule |
 
 No commit on any branch of the remote has an author or committer date before kickoff; the earliest author date on any ref
@@ -56,19 +57,26 @@ local Glimmer model), but no Meta model had been called by then: the first messa
 
 ## Commits per day on `main`
 
-Up to `206848c` (2026-10-28 01:33:20 UTC). Dates are UTC, which was also UK time. "Lines" counts non-merge commits only.
+Up to `8debc2e9` (2026-11-04 09:42:38 UTC; re-run on 4 Nov). Dates are UTC, which was also UK time. "Lines" counts
+non-merge commits only (generated files included).
 
-| Day (UTC) | Commits | of which merges | Non-merge | Lines added | Lines removed | Author: Zohaib Sharif | Author: coding agent on our own server |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Mon 26 Oct (from 22:29) | 7 | 1 | 6 | 12,239 | 140 | 7 | 0 |
-| Tue 27 Oct | 966 | 106 | 860 | 196,078 | 18,374 | 477 | 489 |
-| Wed 28 Oct (to 01:33) | 29 | 5 | 24 | 1,800 | 167 | 29 | 0 |
-| **Total** | **1,002** | **112** | **890** | **210,117** | **18,681** | **513** | **489** |
+| Day (UTC) | Commits | of which merges | Non-merge | Lines added | Lines removed | Author: Zohaib Sharif | Author: coding agent on our own server | Author: coding agent (cloud sessions) |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| Mon 26 Oct (from 22:29) | 7 | 1 | 6 | 12,239 | 140 | 7 | 0 | 0 |
+| Tue 27 Oct | 966 | 106 | 860 | 196,078 | 18,374 | 477 | 489 | 0 |
+| Wed 28 Oct | 407 | 73 | 334 | 137,739 | 3,631 | 177 | 5 | 225 |
+| Thu 29 Oct | 69 | 10 | 59 | 18,992 | 1,628 | 16 | 0 | 53 |
+| Sat 31 Oct | 4 | 0 | 4 | 199 | 16 | 4 | 0 | 0 |
+| Sun 1 Nov | 51 | 7 | 44 | 3,924 | 787 | 39 | 0 | 12 |
+| Mon 2 Nov | 32 | 7 | 25 | 10,030 | 484 | 0 | 0 | 32 |
+| Tue 3 Nov | 56 | 8 | 48 | 16,258 | 1,590 | 0 | 0 | 56 |
+| Wed 4 Nov (to 09:42) | 135 | 17 | 118 | 30,368 | 2,794 | 1 | 0 | 134 |
+| **Total** | **1,727** | **229** | **1,498** | **425,827** | **29,444** | **721** | **494** | **512** |
 
-The last column is the git identity of the coding agent that ran on our own server. Commits under Zohaib Sharif's name
-include agent-written work too (their `Co-Authored-By` trailers say so; see the next section). Generated files
-(lockfiles, eval reports and manifests) are part of the line counts. The table covers `main` only and
-will grow until the deadline: re-run the commands below before quoting it.
+The last two columns are the git identities of the coding agent that ran on our own server and of the same kind of agent
+in cloud sessions. Commits under Zohaib Sharif's name include agent-written work too (their `Co-Authored-By` trailers say
+so; see the next section). Generated files (lockfiles, eval reports, video footage and manifests) are part of the line
+counts. The table covers `main` only; re-run the commands below before quoting it after 4 Nov.
 
 ## How each part was built
 
@@ -77,12 +85,12 @@ Every line was written during the event with coding assistants, directed and rev
 
 | Assistant | Used for | Trace in git |
 |---|---|---|
-| **A coding agent** (other AI tools, in cloud sessions and on our own server) | The first scaffold, the runtime, ledger, relay, most tests, evals harness, docs, and the second-agent review of every branch | 655 commits on `main` carry its `Co-Authored-By` trailer; 57 merges of its branches |
-| **Muse Code** (Meta, model `muse-spark-1.3`) | Web and Android screens: the Review inbox and app shell, the VAT return page, the Android Review and Ask screens, and later web and Android feature branches | Commit messages naming Muse Code (first: `d1ccaae`, 23:18 on 26 Oct); 54 merges of `muse/*` branches |
+| **A coding agent** (other AI tools, in cloud sessions and on our own server) | The first scaffold, the runtime, ledger, relay, most tests, evals harness, docs, and the second-agent review of every branch | 1,222 commits on `main` carry its `Co-Authored-By` trailer; 156 merges of its `claude/*` branches (4 Nov) |
+| **Muse Code** (Meta, model `muse-spark-1.3`) | Web and Android screens: the Review inbox and app shell, the VAT return page, the Android Review and Ask screens, and later web and Android feature branches | Commit messages naming Muse Code (first: `d1ccaae`, 23:18 on 26 Oct); 70 merge commits of `muse/*` branches on `main` (4 Nov) |
 | **A second open-weight model, not Meta's** (local on our own server) | Synthetic eval data (gold documents 061–200, the `ledger2` gold set) and a second reader in the Ask eval | 9 commit messages naming it (first: `93f1d13`, 03:44 on 27 Oct) |
 
 **Every merge was reviewed.** Each feature branch was read by a second agent before it was merged, and its review is
-committed under `docs/reviews/<branch>/REVIEW.md` (54 reviews in 55 folders on 28 Oct; one folder holds only a task brief):
+committed under `docs/reviews/<branch>/REVIEW.md` (101 reviews in 102 folders on 4 Nov; one folder holds only a task brief):
 what was checked, what the reviewer fixed, and what remains. The gaps they leave open are collected in `docs/HONESTY.md`.
 
 ## Re-run the checks

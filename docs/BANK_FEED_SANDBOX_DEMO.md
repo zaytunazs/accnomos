@@ -49,18 +49,18 @@ demo session, so a bank connected there shows there, not on the phone.
 
 ## Live check
 
-**Not run yet: it needs this branch deployed.** On 4 Nov 2026 (about 07:45 UTC) the live runtime
-(`https://api.accnomos.com`) still refused a demo: `GET /books/bankfeeds` answered `available: true, sandbox: true`
-(so its TrueLayer sandbox credentials are set) and `POST /books/bankfeeds/start` answered 403 "Connecting a bank feed is
-switched off in the demo sandbox." The TrueLayer credentials are on the server only, so the TrueLayer half cannot be run
-from the build container before then.
+**Run on 4 Nov 2026 on `accnomos.com`** (main `3c83782c`, which also taught the runtime to accept TrueLayer's base64 credentials
+ids), as the video's bank feed take (`docs/video/V3_EDIT.md`, scene s5a; the capture script is `tools/video/`): Try the demo
+→ Bank → *Connect the test bank* → TrueLayer's sandbox page listed Mock Bank only → signed in as `john` / `doe` → *Allow* →
+back on `/bank` connected ("mock · test bank, sample data only", *Last fetched 4 Nov 2026*). The take fetched 2,145 sample
+lines, all left unmatched because TrueLayer's mock data does not match the demo's books; `integ/4nov-big` (`e0a61829`,
+not yet on `main`) caps the demo's feed at the newest 40 lines of the first account so the Bank page stays a page.
+Earlier the same morning (about 07:45 UTC, before that deploy) the live runtime still refused a demo with 403
+"Connecting a bank feed is switched off in the demo sandbox."
 
-After deploy, check from a browser on `https://accnomos.com`:
+The final audit (4 Nov, 11:00 UK) saw the card on the live site with the label, `john` / `doe` and **Connect the test bank**
+in a fresh demo session, and did not repeat the TrueLayer round trip.
 
-1. Try the demo → Bank: the card shows the label, `john` / `doe` and **Connect the test bank**.
-2. Connect: TrueLayer's sandbox page lists Mock Bank only; sign in as `john` / `doe`; allow. Anything else asked on
-   TrueLayer's pages is a finding: stop and note it here.
-3. Back on `/bank`: "Fetched from your bank feed: N new lines.", the connection "Mock Bank" (or as TrueLayer names it)
-   with its accounts, and the lines under Bank lines. If the callback lands on an error, check that the server's
-   `CORS_ORIGINS` includes `https://accnomos.com` (the state only comes back to an allowed origin's `/bank`) and that
-   `BANKFEEDS_REDIRECT_URI` is the URI registered in TrueLayer's console.
+What is still unproven: `POST /connections/extend` (reconfirm) and a token refresh against TrueLayer; a real bank's own
+sandbox; anything outside the demo (a signed-in user's feed has not been connected to TrueLayer's sandbox from their own
+books).
