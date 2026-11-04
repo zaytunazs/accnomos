@@ -42,7 +42,7 @@ EDL: list[dict] = [
     ]},
     {"id": "s2", "lead": 0.4, "lt": ("Goals and spending", "Progress note by Muse Spark"), "shots": [
         {"layout": "full", "src": "w-goals", "segs": ["0..end"], "dur": 8.2},
-        {"layout": "full", "src": "w-spending", "segs": ["0..end"], "dur": 5.2},
+        {"layout": "full", "src": "w-spending", "segs": ["2.6..end"], "dur": 5.2, "crop": [640, 220, 1280, 720]},
     ]},
     {"id": "s3", "lead": 0.4, "lt": ("Talk to your books", "Muse Voice Transcribe · Muse Spark"), "shots": [
         {"layout": "full", "src": "w-home-action", "segs": ["0.6..end"], "dur": 6.0},
