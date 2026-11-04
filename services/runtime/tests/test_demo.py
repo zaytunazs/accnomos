@@ -140,7 +140,10 @@ def test_a_session_starts_on_the_sample_books_and_is_signed(client: TestClient) 
     raw, _, sig = token.partition(".")
     assert len(raw) >= 32 and len(sig) == 32 and demo.unsign(token) == raw
     assert _names(client, h) == {"SAMPLE 01.png"}
-    assert client.get("/demo/session", headers=h).json()["idle_ttl_s"] == 7200
+    info = client.get("/demo/session", headers=h).json()
+    assert info["idle_ttl_s"] == 7200
+    # Mail is never sent; the VAT card files to HMRC's sandbox (the apps fall back to simulated, labelled, if it can't).
+    assert info["simulated"] == ["mail"] and info["hmrc"] == "sandbox"
     assert client.get("/books/proposals", headers=h).json() == []
 
 

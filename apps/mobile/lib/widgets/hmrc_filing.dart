@@ -80,6 +80,15 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
   bool get _demo => Demo.active;
   Hmrc get _hmrc => widget.deps.hmrc;
 
+  /// This demo's way to HMRC: null until the test user is asked for.
+  DemoHmrc? get _dh => _hmrc.demoHmrc;
+
+  /// A demo on the simulated fallback (the relay couldn't make a sandbox test user).
+  bool get _sim => _demo && _dh != null && !_dh!.sandbox;
+
+  /// The HMRC sandbox test user this demo signs in with.
+  SandboxTestUser? get _sandboxUser => _demo ? _dh?.user : null;
+
   @override
   void initState() {
     super.initState();
@@ -142,7 +151,7 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
     });
     try {
       await _hmrc.startConnect();
-      if (_demo && mounted) {
+      if (_sim && mounted) {
         setState(() => _connected = true); // simulated: no HMRC page to go to
         _loadReceipts();
       }
@@ -151,6 +160,29 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
     } finally {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  /// Demo, step 1: a fresh HMRC sandbox test organisation from the relay (or the simulated fallback, with why).
+  Future<void> _makeTestUser() async {
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final dh = await _hmrc.prepareDemoSandbox();
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _vrn.text = dh.user?.vrn ?? demoVrn;
+    });
+  }
+
+  /// Demo: HMRC's sandbox page failed, so carry on with the simulated flow (and say so).
+  void _simulateInstead() {
+    _hmrc.fallBackToSimulated("HMRC's sandbox sign-in didn't work just now (${_error ?? 'no answer'})");
+    setState(() {
+      _vrn.text = demoVrn;
+      _error = null;
+    });
   }
 
   void _disconnect() {
@@ -242,7 +274,9 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
     final vat = widget.vat;
     if (o == null) return 'Pick an open period from HMRC above.';
     if (!o.open) return 'HMRC already has a return for this period.';
-    if (vat.start != o.start || vat.end != o.end) {
+    // A sandbox test user's periods are HMRC's test data (2017 dates), never the sample books' quarters: the demo
+    // sends the return shown above under HMRC's period key, and says so (_periodNote).
+    if (_sandboxUser == null && (vat.start != o.start || vat.end != o.end)) {
       return "The return above is for ${vat.start} to ${vat.end}; HMRC's period is ${o.start} to ${o.end}. "
           'Pick the matching period at the top.';
     }
@@ -308,7 +342,11 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
           'warnings': vat.warnings,
           'declaration': vatDeclaration,
           'declared_at': at,
-          'environment': _demo ? demoSubmission : 'HMRC sandbox',
+          'environment': _sim
+              ? demoSubmission
+              : _sandboxUser != null
+                  ? 'HMRC sandbox (demo, test user ${_sandboxUser!.userId})'
+                  : 'HMRC sandbox',
           'sent_from': 'Accnomos Android app',
         }),
       );
@@ -318,7 +356,11 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
           'vrn': vrn,
           'periodKey': o.periodKey,
           'submitted_at': at,
-          'environment': _demo ? '$demoSubmission: HMRC was not contacted' : 'HMRC sandbox',
+          'environment': _sim
+              ? '$demoSubmission: HMRC was not contacted'
+              : _sandboxUser != null
+                  ? "HMRC sandbox (demo, test user ${_sandboxUser!.userId}): HMRC's test service, no real tax filed"
+                  : 'HMRC sandbox',
           'hmrc': res.hmrc,
           'correlation_id': res.correlationId,
           'receipt_id': res.receiptId,
@@ -366,15 +408,22 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
               Expanded(
                 child: Text('Connect to HMRC', style: Theme.of(context).textTheme.titleMedium),
               ),
-              _chip(_demo ? 'Demo — HMRC simulated' : 'Sandbox', _demo ? _amberBg : AccnomosColors.tealTint,
-                  _demo ? _amberInk : AccnomosColors.tealDark),
+              Flexible(
+                child: _chip(_sim ? 'Demo — HMRC simulated' : _demo ? sandboxBadge : 'Sandbox',
+                    _sim ? _amberBg : AccnomosColors.tealTint, _sim ? _amberInk : AccnomosColors.tealDark),
+              ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            _demo
-                ? 'In the demo nothing reaches HMRC: connecting, the periods and the submission are simulated, and the receipt says so.'
-                : 'Nothing is sent until you tick the legal declaration and press Submit. The return and HMRC\'s receipt are then saved to $vatReturnsFolder in your books.',
+            _sim
+                ? "HMRC's sandbox can't be used for this demo right now: ${_dh?.reason ?? ''}. So nothing reaches HMRC: "
+                    'connecting, the periods and the submission are simulated, and the receipt says so. Reset the demo to try '
+                    "HMRC's sandbox again."
+                : _demo
+                    ? "This demo files to HMRC's sandbox for real: you sign in on HMRC's own sandbox page with a test user HMRC "
+                        'makes for this demo, then submit the nine boxes above and get HMRC\'s own receipt. $sandboxNote'
+                    : 'Nothing is sent until you tick the legal declaration and press Submit. The return and HMRC\'s receipt are then saved to $vatReturnsFolder in your books.',
             style: const TextStyle(color: AccnomosColors.muted, height: 1.4),
           ),
           const SizedBox(height: 12),
@@ -424,17 +473,43 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
     );
   }
 
-  List<Widget> _disconnectedView() => [
+  List<Widget> _disconnectedView() {
+    final user = _sandboxUser;
+    if (_demo && _dh == null) {
+      return [
+        FilledButton.icon(
+          key: const Key('hmrc-make-test-user'),
+          onPressed: _busy ? null : _makeTestUser,
+          icon: _busy
+              ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+              : const Icon(Icons.person_add_alt),
+          label: Text(_busy ? "Asking HMRC's sandbox…" : 'Make an HMRC sandbox test user'),
+          style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
+        ),
+      ];
+    }
+    return [
+        if (user != null) ...[_testUserBox(user), const SizedBox(height: 12)],
         FilledButton.icon(
           key: const Key('hmrc-connect'),
           onPressed: _busy ? null : _connect,
           icon: _busy
               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
               : const Icon(Icons.link),
-          label: Text(_demo ? 'Connect (simulated)' : 'Connect to HMRC (sandbox)'),
+          label: Text(_sim
+              ? 'Connect (simulated)'
+              : _demo
+                  ? 'Connect to HMRC sandbox'
+                  : 'Connect to HMRC (sandbox)'),
           style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
         ),
-        if (!_demo) ...[
+        if (user != null && _error != null)
+          TextButton(
+            key: const Key('hmrc-simulate-instead'),
+            onPressed: _busy ? null : _simulateInstead,
+            child: const Text('Use the simulated flow instead'),
+          ),
+        if (!_sim) ...[
           const SizedBox(height: 8),
           const Text(
             "Opens HMRC's own sign-in page in your browser, then brings you back here. The app keeps the HMRC session only while it is open.",
@@ -442,6 +517,41 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
           ),
         ],
       ];
+  }
+
+  /// The demo's HMRC sandbox test user, to type on HMRC's sandbox sign-in page.
+  Widget _testUserBox(SandboxTestUser u) => Container(
+        key: const Key('hmrc-test-user'),
+        width: double.infinity,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: AccnomosColors.tealTint,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AccnomosColors.teal),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('HMRC sandbox test user — made just now for this demo',
+                style: TextStyle(fontWeight: FontWeight.w800, color: AccnomosColors.tealDark)),
+            const SizedBox(height: 4),
+            const Text(
+              "Type these on HMRC's sandbox sign-in page (Continue → Sign in to the HMRC online service → User ID and "
+              'password → Give permission). They are HMRC test credentials: they work only on the sandbox.',
+              style: TextStyle(fontSize: 13, height: 1.4),
+            ),
+            for (final (label, value) in [('User ID', u.userId), ('Password', u.password), ('VAT number', u.vrn)])
+              Row(children: [
+                Expanded(child: _receiptRow(label, value)),
+                IconButton(
+                  tooltip: 'Copy $label',
+                  icon: const Icon(Icons.copy, size: 18),
+                  onPressed: () => Clipboard.setData(ClipboardData(text: value)),
+                ),
+              ]),
+          ],
+        ),
+      );
 
   List<Widget> _connectedView() {
     final out = <Widget>[
@@ -453,7 +563,16 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
         decoration: const InputDecoration(labelText: 'VAT registration number', hintText: '9 digits'),
         onChanged: (_) => setState(() {}),
       ),
-      if (!_demo)
+      if (_sandboxUser != null)
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Text(
+            "Connected to HMRC's sandbox as test user ${_sandboxUser!.userId}. Its VAT number is filled in below; the "
+            "periods and the receipt come from HMRC's test service.",
+            style: const TextStyle(height: 1.4),
+          ),
+        ),
+      if (!_demo) // a demo's test user has an open period by default: no scenario to choose
         Theme(
           data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
           child: ExpansionTile(
@@ -594,6 +713,10 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
           '${box5 != null ? ' (box 5: ${box5.display})' : ''}, computed by code from your approved entries.',
           style: const TextStyle(height: 1.4),
         ),
+        if (_sandboxUser != null && _obligation != null && (vat.start != _obligation!.start || vat.end != _obligation!.end))
+          _notice("HMRC's sandbox period ${_obligation!.periodKey} is ${ukDay(_obligation!.start)} – "
+              "${ukDay(_obligation!.end)} (HMRC's test data), not the sample books' quarter: the demo sends the return "
+              "above under HMRC's period key. For a real return the dates must match."),
         const SizedBox(height: 8),
         Material(
           // The tile paints on the nearest Material: give it its own, tinted, so the tick's ink shows.
@@ -623,7 +746,11 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
         style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(48)),
         child: submitting
             ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-            : Text(_demo ? 'Submit (simulated)' : 'Submit to HMRC (sandbox)'),
+            : Text(_sim
+                ? 'Submit (simulated)'
+                : _demo
+                    ? 'Submit to HMRC sandbox'
+                    : 'Submit to HMRC (sandbox)'),
       ),
     ];
   }
@@ -643,8 +770,25 @@ class _HmrcFilingCardState extends State<HmrcFilingCard> with WidgetsBindingObse
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(_demo ? demoSubmission : 'Submitted to HMRC (sandbox)',
+          Text(
+              _sim
+                  ? demoSubmission
+                  : _demo
+                      ? 'Submitted to HMRC sandbox'
+                      : 'Submitted to HMRC (sandbox)',
               style: const TextStyle(fontWeight: FontWeight.w800, color: _greenInk, fontSize: 16)),
+          if (_sandboxUser != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              "HMRC's own sandbox receipt for test user ${_sandboxUser!.userId} (VAT number ${_sandboxUser!.vrn}). $sandboxNote",
+              style: const TextStyle(fontSize: 13, height: 1.4),
+            ),
+          ],
+          if (_sim) ...[
+            const SizedBox(height: 4),
+            const Text('HMRC was not contacted: this receipt was made up by the demo, and nothing was filed anywhere.',
+                style: TextStyle(fontSize: 13, height: 1.4)),
+          ],
           const SizedBox(height: 8),
           if (r != null) ...[
             _receiptRow('Processing date', ukDateTime(r.processingDate)),

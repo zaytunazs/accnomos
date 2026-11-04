@@ -1,6 +1,7 @@
 import type { Page } from "@playwright/test";
-import { RELAY_URL } from "./env.mjs";
+import { WEB_URL } from "./env.mjs";
 import { expect, pickVatPeriod, test, TODAY } from "./fixtures";
+import { routeSandboxRelay, SANDBOX_RECEIPT, SANDBOX_USER } from "./sandbox-relay";
 
 // The demo sandbox (services/runtime/app/demo.py, src/lib/demo.ts): the whole app on the sample books with no
 // sign-in. The e2e runtime runs with DEMO_MODE=1; its first session waits while today's sample books are seeded
@@ -32,28 +33,57 @@ test("Try the demo from the landing: review and approve a receipt, the VAT retur
   await expect(status(page)).toHaveText("Approved · posted to your books · U to undo");
   await expect(page.getByText("5 waiting for you")).toBeVisible();
 
-  // The VAT return, then a submission that is simulated and says so: the relay is never called.
-  let relayCalls = 0;
-  await page.route(`${RELAY_URL}/**`, (route) => {
-    relayCalls++;
-    return route.abort();
-  });
+  // The VAT return, filed to HMRC's sandbox (a routed relay standing in for it): a test user made for this demo, the
+  // sign-in round trip, HMRC's periods for the test VRN, the declaration, and HMRC's receipt. Never "simulated".
+  const calls = await routeSandboxRelay(page);
   await page.goto("/vat");
   await pickVatPeriod(page, "Jul–Sep 2026");
   const ret = page.getByRole("region", { name: /Your return/ });
   await expect(ret).toContainText("Your return · Jul–Sep 2026");
   await expect(ret).not.toContainText("0 approved entries");
   const hmrc = page.getByRole("region", { name: "Connect to HMRC" });
-  await expect(hmrc).toContainText("Demo · HMRC simulated");
-  await hmrc.getByRole("button", { name: "Connect to HMRC (simulated)" }).click();
+  await expect(hmrc).toContainText("HMRC sandbox — real test service, no real tax filed");
+  await expect(hmrc).toContainText("Filing for real needs HMRC's approval");
+  await expect(hmrc).not.toContainText(/simulated/i);
+  await hmrc.getByRole("button", { name: "Make an HMRC sandbox test user" }).click();
+  const user = hmrc.getByRole("group", { name: "HMRC sandbox test user" });
+  await expect(user).toContainText("HMRC sandbox test user — made just now for this demo");
+  await expect(user.getByTestId("sandbox-user-id")).toHaveText(SANDBOX_USER.userId);
+  await expect(user.getByTestId("sandbox-password")).toHaveText(SANDBOX_USER.password);
+  await expect(user.getByTestId("sandbox-vat-number")).toHaveText(SANDBOX_USER.vrn);
+  await expect(user.getByRole("button", { name: "Copy Password" })).toBeVisible();
+  await hmrc.getByRole("button", { name: "Connect to HMRC sandbox" }).click();
+  // Back from HMRC's page: the code is out of the address bar, the tab is connected as the test user.
+  await expect(hmrc.getByText(`Connected to HMRC's sandbox as test user ${SANDBOX_USER.userId}`)).toBeVisible();
+  expect(page.url()).toBe(`${WEB_URL}/vat`);
+  await expect(hmrc.getByLabel("VAT registration number")).toHaveValue(SANDBOX_USER.vrn);
+  await expect(ret).toContainText("Your return · Jul–Sep 2026"); // the picked period survived the round trip
   await hmrc.getByRole("button", { name: "Show obligations" }).click();
-  await expect(hmrc.getByRole("radio", { name: "Choose period 26A3" })).toBeChecked();
+  await expect(hmrc.getByRole("radio", { name: "Choose period 18A2" })).toBeChecked();
   await hmrc.getByRole("button", { name: "Prepare submission" }).click();
+  await expect(hmrc).toContainText("That's expected with sandbox test data");
+  const send = hmrc.getByRole("button", { name: "Submit to HMRC sandbox" });
+  await expect(send).toBeDisabled(); // the declaration first, by a tap
   await hmrc.getByLabel("I confirm the information is true and complete").check();
-  await hmrc.getByRole("button", { name: "Submit (demo — simulated)" }).click();
-  await expect(hmrc.getByRole("heading", { name: "Demo — submission simulated · key 26A3" })).toBeVisible();
-  await expect(hmrc).toContainText("HMRC was not contacted");
-  expect(relayCalls).toBe(0);
+  await send.click();
+  await expect(hmrc.getByRole("heading", { name: "Submitted to HMRC sandbox · key 18A2" })).toBeVisible();
+  await expect(hmrc).toContainText(SANDBOX_RECEIPT.formBundleNumber);
+  await expect(hmrc).toContainText(SANDBOX_RECEIPT.chargeRefNumber);
+  await expect(hmrc).toContainText(`HMRC's own sandbox receipt for test user ${SANDBOX_USER.userId}`);
+  await expect(hmrc).toContainText("Saved to the demo's books: 06 VAT returns/18A2/receipt.json");
+  await expect(hmrc).not.toContainText(/simulated|not contacted/i);
+  expect(calls.map((c) => c.path)).toEqual([
+    "/hmrc/test-user",
+    "/hmrc/authorize",
+    "/hmrc/exchange",
+    `/vat/${SANDBOX_USER.vrn}/obligations`,
+    `/vat/${SANDBOX_USER.vrn}/returns`,
+  ]);
+  const sent = calls[4].body as { method: string; return: { periodKey: string; finalised: boolean; netVatDue: number } };
+  expect(sent.method).toBe("WEB_APP_VIA_SERVER");
+  expect(sent.return.periodKey).toBe("18A2");
+  expect(sent.return.finalised).toBe(true);
+  expect(sent.return.netVatDue).toBeGreaterThan(0); // the demo books' own box 5 for Jul–Sep 2026
 
   // Reset demo: a fresh copy, the approval gone.
   await bar(page).getByRole("button", { name: "Reset demo" }).click();
@@ -114,4 +144,29 @@ test("demo sandbox: Add a receipt reads only the upload, with progress, a type t
   await expect(page.getByText("7 waiting for you")).toBeVisible();
   await expect(page.getByRole("region", { name: "Novex Office Supplies Ltd · £51.90" })).toBeVisible();
   await expect(page.locator("[data-scan-badge]")).toHaveCount(0);
+});
+
+test("no HMRC sandbox for the relay: the demo falls back to simulated, says why, and never claims the sandbox", async ({ page }) => {
+  test.setTimeout(SEED_WAIT + 60_000);
+  await page.clock.install({ time: TODAY });
+  await page.goto("/judges");
+  await page.getByRole("button", { name: "Start the demo" }).click();
+  await expect(bar(page)).toContainText("Demo sandbox with sample data", { timeout: SEED_WAIT });
+  const calls = await routeSandboxRelay(page, { testUser: "unconfigured" });
+  await page.goto("/vat");
+  await pickVatPeriod(page, "Jul–Sep 2026");
+  const hmrc = page.getByRole("region", { name: "Connect to HMRC" });
+  await hmrc.getByRole("button", { name: "Make an HMRC sandbox test user" }).click();
+  await expect(hmrc).toContainText("Demo · HMRC simulated");
+  await expect(hmrc).toContainText("the HMRC relay has no sandbox credentials set up");
+  await expect(hmrc).not.toContainText("HMRC sandbox — real test service");
+  await hmrc.getByRole("button", { name: "Connect to HMRC (simulated)" }).click();
+  await hmrc.getByRole("button", { name: "Show obligations" }).click();
+  await expect(hmrc.getByRole("radio", { name: "Choose period 26A3" })).toBeChecked();
+  await hmrc.getByRole("button", { name: "Prepare submission" }).click();
+  await hmrc.getByLabel("I confirm the information is true and complete").check();
+  await hmrc.getByRole("button", { name: "Submit (demo — simulated)" }).click();
+  await expect(hmrc.getByRole("heading", { name: "Demo — submission simulated · key 26A3" })).toBeVisible();
+  await expect(hmrc).toContainText("HMRC was not contacted");
+  expect(calls.map((c) => c.path)).toEqual(["/hmrc/test-user"]); // the one ask; nothing else reaches the relay
 });

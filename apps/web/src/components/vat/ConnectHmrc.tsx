@@ -13,15 +13,21 @@ import {
   clientFacts,
   DEMO_SUBMISSION,
   disconnect,
+  fallBackToSimulated,
   finishConnect,
   hmrc,
   HmrcAuthError,
+  loadDemoHmrc,
   loadTokens,
+  prepareDemoSandbox,
   rememberVrn,
+  SANDBOX_BADGE,
+  SANDBOX_NOTE,
   savedVrn,
   startConnect,
   takeCallback,
   toReturnBody,
+  type DemoHmrc,
   type Obligation,
   type RelayResult,
   type SubmitReceipt,
@@ -38,7 +44,7 @@ const FRAUD_NOTICE =
   "Submitting sends HMRC's fraud-prevention data with the return: a random ID for this device, your screen and window size, time zone, browser, a hashed ID for your Microsoft account, and your IP address. Nothing is sent until you press Submit.";
 
 const STEPS = ["Declaration", "Submit", "Receipt"] as const;
-const DEMO_VRN = "123456789"; // the sample books' fictional VAT number (lib/demo.ts: HMRC is simulated)
+const DEMO_VRN = "123456789"; // the sample books' fictional VAT number, for a demo on the simulated fallback
 
 /** Where the submission is: 0 = choose the period and declare, 1 = sending, 2 = receipt. */
 function stepIndex(step: Step): number {
@@ -120,6 +126,11 @@ export default function ConnectHmrc() {
   const [receiptsKey, setReceiptsKey] = useState(0);
   const picked = usePickedPeriod();
   const [demo, setDemo] = useState(false);
+  // A demo files to HMRC's sandbox with its own test user, or (if the relay can't make one) is simulated.
+  const [demoHmrc, setDemoHmrc] = useState<DemoHmrc | null>(null);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const sandboxUser = demo && demoHmrc?.mode === "sandbox" ? demoHmrc.user : null;
+  const simulated = demo && demoHmrc?.mode === "simulated";
 
   // Previous submissions, from the receipt files saved in OneDrive (`06 VAT returns/`).
   useEffect(() => {
@@ -162,7 +173,9 @@ export default function ConnectHmrc() {
         setAccount(acct);
         const inDemo = isDemo();
         setDemo(inDemo);
-        setVrn(inDemo ? DEMO_VRN : savedVrn());
+        const dh = loadDemoHmrc();
+        setDemoHmrc(dh);
+        setVrn(inDemo ? (dh?.mode === "sandbox" ? dh.user.vrn : DEMO_VRN) : savedVrn());
         if (cb && "error" in cb) {
           disconnect();
           setError(`HMRC sign-in didn't finish: ${cb.description || cb.error}`);
@@ -213,10 +226,36 @@ export default function ConnectHmrc() {
     setPhase("connecting");
     try {
       await startConnect();
-      if (demo) setPhase("connected"); // simulated: no HMRC sign-in page to go to
+      if (simulated) setPhase("connected"); // simulated: no HMRC sign-in page to go to
     } catch (e) {
       setError((e as Error).message);
       setPhase("disconnected");
+    }
+  }
+
+  /** Demo, step 1: a fresh HMRC sandbox test organisation from the relay (or the simulated fallback, with why). */
+  async function makeTestUser() {
+    setError(null);
+    setPhase("connecting");
+    const dh = await prepareDemoSandbox();
+    setDemoHmrc(dh);
+    setVrn(dh.mode === "sandbox" ? dh.user.vrn : DEMO_VRN);
+    setPhase("disconnected");
+  }
+
+  /** Demo: HMRC's sandbox page failed, so carry on with the simulated flow (and say so). */
+  function simulateInstead() {
+    setDemoHmrc(fallBackToSimulated(`HMRC's sandbox sign-in didn't work just now (${error ?? "no answer"})`));
+    setVrn(DEMO_VRN);
+    setError(null);
+  }
+
+  async function copyField(label: string, value: string) {
+    try {
+      await navigator.clipboard.writeText(value);
+      setCopiedField(label);
+    } catch {
+      setCopiedField(null);
     }
   }
 
@@ -258,7 +297,8 @@ export default function ConnectHmrc() {
       // fulfilled periods submitted even when filed elsewhere. A failed store never
       // replaces the card error — HMRC's own list above still stands.
       try {
-        if (!demo) await runtime.postVatObligations(account, list); // a demo's list is made up: never "HMRC says"
+        // A demo's list is the sandbox test user's (or made up): it isn't about the sample books' own periods.
+        if (!demo) await runtime.postVatObligations(account, list);
       } catch {
         /* the picker just won't know about HMRC's list yet */
       }
@@ -312,7 +352,7 @@ export default function ConnectHmrc() {
               warnings: live.warnings,
               declaration: DECLARATION,
               declared_at: submittedAt,
-              environment: demo ? DEMO_SUBMISSION : "HMRC sandbox",
+              environment: simulated ? DEMO_SUBMISSION : sandboxUser ? `HMRC sandbox (demo, test user ${sandboxUser.userId})` : "HMRC sandbox",
             },
             null,
             2,
@@ -327,7 +367,11 @@ export default function ConnectHmrc() {
               vrn: v,
               periodKey: obligation.periodKey,
               submitted_at: submittedAt,
-              environment: demo ? `${DEMO_SUBMISSION}: HMRC was not contacted` : "HMRC sandbox",
+              environment: simulated
+                ? `${DEMO_SUBMISSION}: HMRC was not contacted`
+                : sandboxUser
+                  ? `HMRC sandbox (demo, test user ${sandboxUser.userId}): HMRC's test service, no real tax filed`
+                  : "HMRC sandbox",
               hmrc: res.hmrc,
               correlation_id: res.correlation_id,
               receipt_id: res.receipt_id,
@@ -361,7 +405,7 @@ export default function ConnectHmrc() {
         </h2>
         <span className="flex items-center gap-2">
           <span className="rounded-full border border-warn-border bg-warn-bg px-3 py-1 text-[13px] font-bold text-warn-ink">
-            {demo ? "Demo · HMRC simulated" : "Sandbox · test data only"}
+            {simulated ? "Demo · HMRC simulated" : demo ? SANDBOX_BADGE : "Sandbox · test data only"}
           </span>
           <Explain title="What sandbox means">
             <p>
@@ -391,18 +435,62 @@ export default function ConnectHmrc() {
 
       {(phase === "disconnected" || phase === "connecting") && (
         <div className="mt-3">
-          {demo ? (
+          {simulated ? (
             <p className="rounded-xl border border-warn-border bg-warn-bg p-3 text-[15px] leading-7 text-warn-ink">
-              This is the demo sandbox: HMRC is not contacted, not even its test service. Connecting, the obligations and the
-              receipt below are simulated so you can see the whole flow. Sign in with Microsoft to connect to HMRC&apos;s sandbox
-              for real.
+              HMRC&apos;s sandbox can&apos;t be used for this demo right now: {demoHmrc?.mode === "simulated" ? demoHmrc.reason : ""}.
+              So HMRC is not contacted, not even its test service: connecting, the obligations and the receipt below are
+              simulated so you can see the whole flow, and the receipt says so. Reset the demo to try HMRC&apos;s sandbox again.
             </p>
+          ) : demo ? (
+            <div className="flex flex-col gap-3">
+              <p className="text-[15px] leading-7">
+                This demo files to HMRC&apos;s sandbox for real: you sign in on HMRC&apos;s own sandbox page with a test user
+                HMRC makes for this demo, then submit the nine boxes above and get HMRC&apos;s own receipt.
+              </p>
+              <p className="rounded-xl bg-ground p-3 text-sm leading-6 text-muted">{SANDBOX_NOTE}</p>
+              {sandboxUser && (
+                <div aria-label="HMRC sandbox test user" role="group" className="rounded-xl border border-teal bg-teal-tint p-4">
+                  <p className="text-[15px] font-extrabold text-teal-dark">HMRC sandbox test user — made just now for this demo</p>
+                  <p className="mt-1 text-sm leading-6">
+                    Type these on HMRC&apos;s sandbox sign-in page (Continue → Sign in to the HMRC online service → User ID and
+                    password → Give permission). They are HMRC test credentials: they work only on the sandbox.
+                  </p>
+                  <dl className="mt-2 grid grid-cols-[max-content_1fr] items-center gap-x-4 gap-y-1 text-[15px]">
+                    {(
+                      [
+                        ["User ID", sandboxUser.userId],
+                        ["Password", sandboxUser.password],
+                        ["VAT number", sandboxUser.vrn],
+                      ] as const
+                    ).map(([label, value]) => (
+                      <div key={label} className="contents">
+                        <dt className="text-muted">{label}</dt>
+                        <dd className="font-bold tabular-nums [overflow-wrap:anywhere]">
+                          <span data-testid={`sandbox-${label.toLowerCase().replace(/ /g, "-")}`}>{value}</span>{" "}
+                          <button
+                            type="button"
+                            onClick={() => copyField(label, value)}
+                            aria-label={`Copy ${label}`}
+                            className="ml-1 rounded-lg border border-border bg-white px-2 py-0.5 text-[13px] font-bold text-teal-dark hover:bg-ground"
+                          >
+                            Copy
+                          </button>
+                          <span aria-live="polite" className="ml-2 text-[13px] font-semibold text-teal-dark">
+                            {copiedField === label ? "Copied" : ""}
+                          </span>
+                        </dd>
+                      </div>
+                    ))}
+                  </dl>
+                </div>
+              )}
+            </div>
           ) : (
             <p className="text-[15px] leading-7">
               Sign in with your HMRC (sandbox) Government Gateway test user to see your VAT obligations and submit the return above.
             </p>
           )}
-          <ul className="mt-2 list-disc pl-5 text-sm leading-6 text-muted">
+          <ul className={`mt-2 list-disc pl-5 text-sm leading-6 text-muted ${simulated ? "hidden" : ""}`}>
             <li>You sign in on HMRC&apos;s own site. We never see your HMRC password.</li>
             <li>The access token stays in this browser tab only and is gone when you close it. Nothing is stored on our servers.</li>
             <li>
@@ -410,14 +498,37 @@ export default function ConnectHmrc() {
               browser, a hashed ID for your Microsoft account, and your IP address.
             </li>
           </ul>
-          <button type="button" onClick={connect} disabled={phase === "connecting"} className={`${primary} mt-4`}>
-            {phase === "connecting" ? "Connecting…" : demo ? "Connect to HMRC (simulated)" : "Connect to HMRC (sandbox)"}
-          </button>
+          {demo && !demoHmrc ? (
+            <button type="button" onClick={makeTestUser} disabled={phase === "connecting"} className={`${primary} mt-4`}>
+              {phase === "connecting" ? "Asking HMRC's sandbox…" : "Make an HMRC sandbox test user"}
+            </button>
+          ) : (
+            <button type="button" onClick={connect} disabled={phase === "connecting"} className={`${primary} mt-4`}>
+              {phase === "connecting"
+                ? "Connecting…"
+                : simulated
+                  ? "Connect to HMRC (simulated)"
+                  : demo
+                    ? "Connect to HMRC sandbox"
+                    : "Connect to HMRC (sandbox)"}
+            </button>
+          )}
+          {sandboxUser && error && (
+            <button type="button" onClick={simulateInstead} className="ml-3 mt-4 h-11 text-sm font-bold text-teal-dark underline underline-offset-2">
+              Use the simulated flow instead
+            </button>
+          )}
         </div>
       )}
 
       {phase === "connected" && (
         <div className="mt-3 flex flex-col gap-4">
+          {sandboxUser && (
+            <p className="text-[15px] leading-7">
+              Connected to HMRC&apos;s sandbox as test user <strong className="tabular-nums">{sandboxUser.userId}</strong>. Its VAT
+              number is filled in below; the periods and the receipt come from HMRC&apos;s test service.
+            </p>
+          )}
           <div className="flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-sm font-semibold">
               VAT registration number
@@ -601,7 +712,7 @@ export default function ConnectHmrc() {
               </label>
               <div className="mt-3 flex flex-col gap-3 sm:flex-row">
                 <button type="button" onClick={submit} disabled={!declared || step === "submitting"} className={primary}>
-                  {step === "submitting" ? "Submitting…" : demo ? "Submit (demo — simulated)" : "Submit to HMRC (sandbox)"}
+                  {step === "submitting" ? "Submitting…" : simulated ? "Submit (demo — simulated)" : demo ? "Submit to HMRC sandbox" : "Submit to HMRC (sandbox)"}
                 </button>
                 <button type="button" onClick={() => setStep("list")} disabled={step === "submitting"} className={secondary}>
                   Back
@@ -616,9 +727,14 @@ export default function ConnectHmrc() {
                 <StepStrip step={step} />
               </div>
               <h3 className="text-[17px] font-extrabold text-teal-dark">
-                {demo ? DEMO_SUBMISSION : "Submitted to HMRC (sandbox)"} · key {obligation.periodKey}
+                {simulated ? DEMO_SUBMISSION : demo ? "Submitted to HMRC sandbox" : "Submitted to HMRC (sandbox)"} · key {obligation.periodKey}
               </h3>
-              {demo && (
+              {sandboxUser && (
+                <p className="mt-2 text-sm leading-6">
+                  HMRC&apos;s own sandbox receipt for test user {sandboxUser.userId} (VAT number {sandboxUser.vrn}). {SANDBOX_NOTE}
+                </p>
+              )}
+              {simulated && (
                 <p className="mt-2 rounded-xl border border-warn-border bg-warn-bg p-3 text-sm text-warn-ink">
                   HMRC was not contacted: this receipt was made up by the demo sandbox, and nothing was filed anywhere. With
                   your own books, the same steps submit to HMRC&apos;s sandbox and show HMRC&apos;s own receipt.

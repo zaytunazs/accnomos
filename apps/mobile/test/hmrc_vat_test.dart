@@ -14,8 +14,9 @@ import 'package:http/testing.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// VAT filing on the phone: PKCE, the MOBILE_APP_VIA_SERVER facts, HMRC's
-/// obligations, the declaration gate, the demo's simulated submission and the
-/// receipt, and money shown as the web shows it.
+/// obligations, the declaration gate, the demo on HMRC's sandbox (its own test
+/// user, HMRC's sign-in and receipt), the simulated fallback when the relay
+/// can't make one, and money shown as the web shows it.
 void main() {
   test('a return that has just gone in is received today, not on its due date', () {
     final o = Obligation(periodKey: '26A3', start: '2026-07-01', end: '2026-09-30', due: '2026-11-07', status: 'O');
@@ -45,6 +46,7 @@ void main() {
   setUp(() {
     SharedPreferences.setMockInitialValues({});
     Hmrc.disconnect();
+    Hmrc.resetDemo();
     Demo.debugSet(null);
     pendingCallback = null;
     final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
@@ -69,6 +71,7 @@ void main() {
     messenger.setMockMethodCallHandler(hmrcChannel, null);
     Demo.debugSet(null);
     Hmrc.disconnect();
+    Hmrc.resetDemo();
   });
 
   group('helpers', () {
@@ -271,14 +274,22 @@ void main() {
       );
     }
 
-    testWidgets('connect, periods, declaration gate, simulated submit and receipt', (tester) async {
+    // The relay has no HMRC credentials (its 503): the one call a demo makes before falling back.
+    MockClient noSandbox() => MockClient((req) async {
+          if (req.url.path == '/hmrc/test-user') {
+            return http.Response('{"detail":"Relay is not configured with HMRC credentials"}', 503);
+          }
+          return fail('a simulated demo must never call the relay: ${req.url}');
+        });
+
+    testWidgets('no sandbox: falls back to simulated, says why, and the receipt says so', (tester) async {
       Demo.debugSet(demo);
       final saved = <String, String>{};
       var posted = 0;
       final hmrc = Hmrc(
         relayUrl: 'https://api.example',
-        client: MockClient((req) async => fail('a demo must never call the relay: ${req.url}')),
-        openUrl: (_) async => fail('a demo opens no HMRC page'),
+        client: noSandbox(),
+        openUrl: (_) async => fail('a simulated demo opens no HMRC page'),
       );
       final deps = VatFilingDeps(
         hmrc: hmrc,
@@ -299,7 +310,13 @@ void main() {
         ),
       ));
       await tester.pumpAndSettle();
+      expect(find.text(sandboxBadge), findsOneWidget); // what a demo tries first
+      await tester.tap(find.byKey(const Key('hmrc-make-test-user')));
+      await tester.pumpAndSettle();
       expect(find.text('Demo — HMRC simulated'), findsOneWidget);
+      expect(find.text(sandboxBadge), findsNothing, reason: 'never claim the sandbox when it is simulated');
+      expect(find.textContaining('the HMRC relay has no sandbox credentials set up'), findsOneWidget);
+      expect(find.text('Connect (simulated)'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('hmrc-connect')));
       await tester.pumpAndSettle();
@@ -325,6 +342,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byKey(const Key('hmrc-receipt')), findsOneWidget);
       expect(find.text(demoSubmission), findsOneWidget);
+      expect(find.textContaining('HMRC was not contacted'), findsOneWidget);
       expect(find.textContaining('DEMO-000000000000'), findsOneWidget);
       expect(saved.keys.length, 2);
       final key = demoObligations(DateTime.now()).firstWhere((o) => o.open).periodKey;
@@ -350,7 +368,7 @@ void main() {
         hmrcBody: vat.hmrcBody,
       );
       final deps = VatFilingDeps(
-        hmrc: Hmrc(relayUrl: 'https://api.example'),
+        hmrc: Hmrc(relayUrl: 'https://api.example', client: noSandbox()),
         accountId: 'demo',
         businessVat: null,
         postObligations: (_) async {},
@@ -364,6 +382,8 @@ void main() {
         home: Scaffold(body: SingleChildScrollView(child: HmrcFilingCard(vat: other, deps: deps, onPickPeriod: (_) {}))),
       ));
       await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('hmrc-make-test-user')));
+      await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('hmrc-connect')));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('hmrc-obligations')));
@@ -371,6 +391,143 @@ void main() {
       expect(find.textContaining('Pick the matching period at the top'), findsOneWidget);
       expect(find.byKey(const Key('hmrc-declare')), findsNothing);
       expect(tester.widget<FilledButton>(find.byKey(const Key('hmrc-submit'))).onPressed, isNull);
+    });
+
+    testWidgets("HMRC sandbox: its own test user, HMRC's sign-in, HMRC's periods and receipt", (tester) async {
+      Demo.debugSet(demo);
+      final saved = <String, String>{};
+      final calls = <http.Request>[];
+      Uri? opened;
+      var posted = 0;
+      final client = MockClient((req) async {
+        calls.add(req);
+        String j(Object o) => json.encode(o);
+        switch (req.url.path) {
+          case '/hmrc/test-user':
+            return http.Response(
+                j({
+                  'userId': '893247528116',
+                  'password': 'sandbox-pass',
+                  'vrn': '510266389',
+                  'organisationDetails': {'name': 'Company ABC Ltd'},
+                }),
+                201);
+          case '/hmrc/authorize':
+            return http.Response(j({'url': 'https://test-www.tax.service.gov.uk/oauth/authorize?x=1', 'state': 'st-9'}), 200);
+          case '/hmrc/exchange':
+            return http.Response(j({'access_token': 'acc', 'refresh_token': 'ref', 'expires_in': 14400}), 200);
+          case '/vat/510266389/obligations':
+            return http.Response(
+                j({
+                  'hmrc': {
+                    'obligations': [
+                      {'periodKey': '18A1', 'start': '2017-01-01', 'end': '2017-03-31', 'due': '2017-05-07', 'status': 'F', 'received': '2017-05-06'},
+                      {'periodKey': '18A2', 'start': '2017-04-01', 'end': '2017-06-30', 'due': '2017-08-07', 'status': 'O'},
+                    ]
+                  },
+                  'fraud_headers_missing': <String>[],
+                }),
+                200);
+          case '/vat/510266389/returns':
+            return http.Response(
+                j({
+                  'hmrc': {
+                    'processingDate': '2026-11-04T05:53:37.493Z',
+                    'formBundleNumber': '409715423288',
+                    'paymentIndicator': 'DD',
+                    'chargeRefNumber': 'mzeEeAVbErCFvD3H',
+                  },
+                  'correlation_id': 'ad2e5631-9d8e-481d-aa35-85fc471e7e07',
+                  'fraud_headers_missing': <String>[],
+                }),
+                201);
+        }
+        return http.Response('{"detail":"unexpected"}', 404);
+      });
+      final hmrc = Hmrc(relayUrl: 'https://api.example', client: client, openUrl: (u) async {
+        opened = u;
+        return true;
+      });
+      final deps = VatFilingDeps(
+        hmrc: hmrc,
+        accountId: 'demo',
+        businessVat: null,
+        postObligations: (_) async => posted++,
+        saveFile: (path, text) async => saved[path] = text,
+        listReceipts: () async => [for (final p in saved.keys.where((k) => k.endsWith('receipt.json'))) (p.split('/')[1], true)],
+      );
+      tester.view.physicalSize = const Size(1080, 5000);
+      tester.view.devicePixelRatio = 2.5;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(MaterialApp(
+        home: Scaffold(body: SingleChildScrollView(child: HmrcFilingCard(vat: demoVat(), deps: deps, onPickPeriod: (_) {}))),
+      ));
+      await tester.pumpAndSettle();
+      expect(find.text(sandboxBadge), findsOneWidget);
+      expect(find.textContaining('simulated'), findsNothing);
+
+      // 1. a fresh sandbox test organisation, shown to type on HMRC's page, with copy buttons
+      await tester.tap(find.byKey(const Key('hmrc-make-test-user')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('hmrc-test-user')), findsOneWidget);
+      expect(find.text('HMRC sandbox test user — made just now for this demo'), findsOneWidget);
+      expect(find.textContaining('893247528116'), findsOneWidget);
+      expect(find.textContaining('sandbox-pass'), findsOneWidget);
+      expect(find.textContaining('510266389'), findsOneWidget);
+      expect(find.byTooltip('Copy Password'), findsOneWidget);
+      expect(find.text('Connect to HMRC sandbox'), findsOneWidget);
+
+      // 2. HMRC's own sandbox sign-in, then the code comes back to the app
+      await tester.tap(find.byKey(const Key('hmrc-connect')));
+      await tester.pumpAndSettle();
+      expect(opened?.host, 'test-www.tax.service.gov.uk');
+      pendingCallback = 'com.accnomos.app://hmrc/callback?code=c-9&state=st-9';
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pumpAndSettle();
+      expect(find.textContaining("Connected to HMRC's sandbox as test user 893247528116"), findsOneWidget);
+      expect(tester.widget<TextField>(find.byKey(const Key('hmrc-vrn'))).controller!.text, '510266389');
+
+      // 3. HMRC's periods for the test VRN (HMRC's 2017 test data): the demo sends its return under 18A2, and says so
+      // The phone's facts (local IPs) are real I/O: let them finish outside the fake clock.
+      Future<void> settleIo() async {
+        for (var i = 0; i < 20; i++) {
+          await tester.runAsync(() => Future<void>.delayed(const Duration(milliseconds: 50)));
+          await tester.pump();
+        }
+        await tester.pumpAndSettle();
+      }
+
+      await tester.tap(find.byKey(const Key('hmrc-obligations')));
+      await settleIo();
+      expect(find.text('Open'), findsOneWidget);
+      expect(find.textContaining("HMRC's sandbox period 18A2"), findsOneWidget);
+      expect(posted, 0); // the test user's periods are not the sample books'
+      FilledButton submit() => tester.widget<FilledButton>(find.byKey(const Key('hmrc-submit')));
+      expect(find.text('Submit to HMRC sandbox'), findsOneWidget);
+      expect(submit().onPressed, isNull, reason: 'Submit stays off until the declaration is ticked');
+      await tester.tap(find.byKey(const Key('hmrc-declare')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('hmrc-submit')));
+      await settleIo();
+
+      // 4. HMRC's receipt, saved to the demo's books
+      final sent = json.decode(calls.last.body) as Map<String, dynamic>;
+      expect(calls.last.url.path, '/vat/510266389/returns');
+      expect(calls.last.headers['X-HMRC-Access-Token'], 'acc');
+      expect(sent['method'], 'MOBILE_APP_VIA_SERVER');
+      expect((sent['return'] as Map)['periodKey'], '18A2');
+      expect((sent['return'] as Map)['netVatDue'], 3807.33);
+      expect(find.text('Submitted to HMRC sandbox'), findsOneWidget);
+      expect(find.textContaining('409715423288'), findsOneWidget);
+      expect(find.textContaining('mzeEeAVbErCFvD3H'), findsOneWidget);
+      expect(find.textContaining("HMRC's own sandbox receipt for test user 893247528116"), findsOneWidget);
+      expect(find.textContaining('simulated'), findsNothing);
+      final receipt = json.decode(saved['06 VAT returns/18A2/receipt.json']!) as Map<String, dynamic>;
+      expect(receipt['environment'], startsWith('HMRC sandbox (demo, test user 893247528116)'));
+      expect((receipt['hmrc'] as Map)['formBundleNumber'], '409715423288');
+      expect(saved.values.any((t) => t.contains('sandbox-pass')), isFalse, reason: 'the password is never saved');
+      expect(calls.map((c) => c.url.path),
+          ['/hmrc/test-user', '/hmrc/authorize', '/hmrc/exchange', '/vat/510266389/obligations', '/vat/510266389/returns']);
     });
   });
 }

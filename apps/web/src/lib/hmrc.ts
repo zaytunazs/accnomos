@@ -147,8 +147,13 @@ function errorMessage(body: unknown, fallback: string): string {
 }
 
 export async function relay<T>(path: string, init: RequestInit & { token?: string } = {}): Promise<T> {
-  // The demo sandbox never contacts HMRC (not even the sandbox): everything below is simulated (demoHmrc).
-  if (isDemo()) throw new RelayError("The demo sandbox doesn't contact HMRC.", 0);
+  // A demo talks to HMRC's sandbox only once it has its own sandbox test user (prepareDemoSandbox); a demo that
+  // fell back to the simulated flow never contacts HMRC at all (demoHmrc below).
+  if (simulatedDemo()) throw new RelayError("This demo is using the simulated HMRC flow, so it doesn't contact HMRC.", 0);
+  return relayFetch<T>(path, init);
+}
+
+async function relayFetch<T>(path: string, init: RequestInit & { token?: string } = {}): Promise<T> {
   const { token, ...rest } = init;
   const headers: Record<string, string> = {};
   if (rest.body) headers["Content-Type"] = "application/json";
@@ -209,8 +214,8 @@ export async function accessToken(kind: HmrcSession = "vat"): Promise<string> {
 /** Start the HMRC consent flow; the relay callback sends the browser back to `/vat#code=…&state=…`
  *  (or `/self-employment#…` for the Income Tax session, which asks for the self-assessment scopes). */
 export async function startConnect(kind: HmrcSession = "vat"): Promise<void> {
-  if (isDemo()) {
-    // Demo: no HMRC sign-in. A stand-in token marks this tab "connected" for the simulated flow.
+  if (simulatedDemo()) {
+    // Demo without HMRC's sandbox: no HMRC sign-in. A stand-in token marks this tab "connected" for the simulated flow.
     saveTokens({ access_token: DEMO_TOKEN, refresh_token: DEMO_TOKEN, expires_in: 2 * 3600, token_type: "demo" }, kind);
     return;
   }
@@ -299,7 +304,84 @@ async function vat<T>(path: string, facts: ClientFacts, extra: Record<string, un
   return relay<RelayResult<T>>(path, { method: "POST", body: JSON.stringify(body), token: await accessToken() });
 }
 
-// --- the demo sandbox: HMRC simulated, never contacted ----------------------------------------------------------
+// --- the demo on HMRC's sandbox ---------------------------------------------------------------------------------
+
+/**
+ * A demo files to HMRC's real sandbox (its test service) with a sandbox test organisation made just now for it by
+ * the relay (POST /hmrc/test-user, HMRC's Create Test User API). The visitor signs in on HMRC's own sandbox page with
+ * that user ID and password, so the token, the obligations and the receipt are HMRC's. Kept in this tab only and
+ * dropped with the demo (lib/demo.ts). If the relay can't make one (no sandbox credentials, HMRC down), the demo
+ * falls back to the simulated flow below and says so, with the reason.
+ */
+export const DEMO_SANDBOX_KEY = "accnomos.hmrc.demo-sandbox";
+
+export interface SandboxTestUser {
+  userId: string;
+  password: string;
+  vrn: string;
+  organisation?: string;
+  created_at: string;
+}
+
+export type DemoHmrc = { mode: "sandbox"; user: SandboxTestUser } | { mode: "simulated"; reason: string };
+
+/** Badge, button and receipt wording for a demo on HMRC's sandbox. */
+export const SANDBOX_BADGE = "HMRC sandbox — real test service, no real tax filed";
+export const SANDBOX_NOTE =
+  "The sandbox is HMRC's own test service: the sign-in, the VAT periods and the receipt come from HMRC, but no real tax is filed. Filing for real needs HMRC's approval of Accnomos for live use.";
+
+export function loadDemoHmrc(): DemoHmrc | null {
+  if (!isDemo()) return null;
+  const d = readJson<DemoHmrc>(store("session"), DEMO_SANDBOX_KEY);
+  if (d?.mode === "sandbox" && d.user?.userId && /^\d{9}$/.test(d.user.vrn ?? "")) return d;
+  if (d?.mode === "simulated") return d;
+  return null;
+}
+
+/** A demo that does not (or not yet) have an HMRC sandbox test user: nothing in it may reach the relay. */
+export function simulatedDemo(): boolean {
+  return isDemo() && loadDemoHmrc()?.mode !== "sandbox";
+}
+
+/** Why the relay couldn't give this demo a sandbox test user, in plain words. */
+function fallbackReason(e: unknown): string {
+  const status = e instanceof RelayError ? e.status : 0;
+  if (status === 0) return "the HMRC relay couldn't be reached";
+  if (status === 503) return "the HMRC relay has no sandbox credentials set up";
+  if (status === 403) return "the HMRC relay isn't pointed at HMRC's sandbox";
+  if (status === 429) return "too many demo test users were asked for just now";
+  return `HMRC's sandbox didn't make a test user (${(e as Error).message})`;
+}
+
+/** Ask the relay for a fresh sandbox test organisation for this demo; on failure, fall back to simulated. */
+export async function prepareDemoSandbox(): Promise<DemoHmrc> {
+  let next: DemoHmrc;
+  try {
+    const u = await relayFetch<{ userId?: string; password?: string; vrn?: string; organisationDetails?: { name?: string } }>(
+      "/hmrc/test-user",
+      { method: "POST" },
+    );
+    if (!u?.userId || !u.password || !/^\d{9}$/.test(u.vrn ?? "")) throw new RelayError("HMRC's answer had no user ID, password and VAT number", 502);
+    next = {
+      mode: "sandbox",
+      user: { userId: u.userId, password: u.password, vrn: u.vrn!, organisation: u.organisationDetails?.name, created_at: new Date().toISOString() },
+    };
+  } catch (e) {
+    next = { mode: "simulated", reason: fallbackReason(e) };
+  }
+  store("session")?.setItem(DEMO_SANDBOX_KEY, JSON.stringify(next));
+  return next;
+}
+
+/** Give up on the sandbox for this demo (HMRC's page failed): the simulated flow, with the reason shown. */
+export function fallBackToSimulated(reason: string): DemoHmrc {
+  disconnect();
+  const next: DemoHmrc = { mode: "simulated", reason };
+  store("session")?.setItem(DEMO_SANDBOX_KEY, JSON.stringify(next));
+  return next;
+}
+
+// --- the demo fallback: HMRC simulated, never contacted ----------------------------------------------------------
 
 const DEMO_TOKEN = "demo-simulated";
 /** Shown on the receipt and saved in it, so a simulated submission can never pass for a real one. */
@@ -339,9 +421,9 @@ const demoHmrc = {
 
 export const hmrc = {
   obligations: (vrn: string, facts: ClientFacts, range: { from: string; to: string; status?: "O" | "F" }, scenario?: string) =>
-    isDemo() ? demoHmrc.obligations(range.to) : vat<{ obligations: Obligation[] }>(`/vat/${vrn}/obligations`, facts, range, scenario),
+    simulatedDemo() ? demoHmrc.obligations(range.to) : vat<{ obligations: Obligation[] }>(`/vat/${vrn}/obligations`, facts, range, scenario),
   submit: (vrn: string, facts: ClientFacts, ret: VatReturnBody, scenario?: string) =>
-    isDemo() ? demoHmrc.submit(ret) : vat<SubmitReceipt>(`/vat/${vrn}/returns`, facts, { return: ret }, scenario),
+    simulatedDemo() ? demoHmrc.submit(ret) : vat<SubmitReceipt>(`/vat/${vrn}/returns`, facts, { return: ret }, scenario),
   view: (vrn: string, facts: ClientFacts, periodKey: string, scenario?: string) =>
     vat<VatReturnBody>(`/vat/${vrn}/returns/${encodeURIComponent(periodKey)}/view`, facts, {}, scenario),
   refresh: (refreshToken: string) =>

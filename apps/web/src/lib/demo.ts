@@ -10,7 +10,8 @@ import { RUNTIME_URL } from "./ai-config";
  * every page treats the device as signed in (and Settings › Disconnect clears it like a real sign-in). While it is
  * there, getMsal() hands out the fake below instead of MSAL: its one account is the demo visitor, and its "token" is
  * the session id, which runtimeHeaders() sends as `X-Demo-Session` and graph.ts sends to the runtime's Graph
- * look-alike. Nothing in a demo talks to Microsoft or HMRC, and nothing is ever emailed.
+ * look-alike. Nothing in a demo talks to Microsoft, and nothing is ever emailed. The VAT card files to HMRC's
+ * sandbox (its test service) with a test user made for the demo, or is simulated and says so (lib/hmrc.ts).
  */
 export const DEMO_KEY = "msal.accnomos-demo.session";
 export const DEMO_HEADER = "X-Demo-Session";
@@ -118,8 +119,9 @@ export async function startDemo(kind?: DemoKind): Promise<DemoSession> {
   const session: DemoSession = { ...body, kind: body.kind ?? want, started_at: Date.now() };
   try {
     window.localStorage.setItem(DEMO_KEY, JSON.stringify(session));
-    // The HMRC (simulated) connection from an earlier demo belongs to that demo.
+    // The HMRC connection and sandbox test user from an earlier demo belong to that demo.
     window.sessionStorage.removeItem("accnomos.hmrc");
+    window.sessionStorage.removeItem("accnomos.hmrc.demo-sandbox");
   } catch {
     throw new Error("This browser won't keep the demo session (storage is blocked). Allow site data and try again.");
   }
@@ -140,6 +142,7 @@ export async function leaveDemo(next = "/connect"): Promise<void> {
   try {
     window.localStorage.removeItem(DEMO_KEY);
     window.sessionStorage.removeItem("accnomos.hmrc");
+    window.sessionStorage.removeItem("accnomos.hmrc.demo-sandbox");
   } catch {
     /* nothing kept */
   }

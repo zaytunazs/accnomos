@@ -17,7 +17,7 @@ const steps: { title: string; href: string; body: string }[] = [
   {
     title: "VAT return",
     href: "/vat",
-    body: "The 9 boxes, worked out by code from approved entries, with the entries behind each box. Connect to HMRC and submit to see the whole flow; in the demo it ends on a receipt labelled “Demo — submission simulated”.",
+    body: "The 9 boxes, worked out by code from approved entries, with the entries behind each box. Connect to HMRC's sandbox (its real test service) with a test user HMRC makes for your demo, submit, and get HMRC's own sandbox receipt. No real tax is filed.",
   },
   {
     title: "Ask",
@@ -113,8 +113,13 @@ export default function JudgesPage() {
             fields printed on them, so you can start without waiting for a model.
           </li>
           <li>
-            <strong>Simulated:</strong> email is never sent (you&apos;ll see “Sent (demo — not actually sent)”), HMRC is never
-            contacted, and the Companies House and VAT-number look-ups are switched off.
+            <strong>HMRC sandbox:</strong> the VAT return goes to HMRC&apos;s sandbox, HMRC&apos;s own test service: a test user
+            made for your demo, HMRC&apos;s sign-in page, HMRC&apos;s periods and receipt. No real tax is filed; live filing needs
+            HMRC&apos;s approval. If the sandbox can&apos;t be reached, the card says so and simulates the submission instead.
+          </li>
+          <li>
+            <strong>Simulated:</strong> email is never sent (you&apos;ll see “Sent (demo — not actually sent)”), and the
+            Companies House and VAT-number look-ups are switched off.
           </li>
           <li>
             <strong>Not stored:</strong> nothing about you. There is no Microsoft account behind the demo, and its books are
