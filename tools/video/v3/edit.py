@@ -761,11 +761,11 @@ def render_features(root: Path, work: Path, fonts: Fonts, scene: dict, out: Path
 
 
 def render_card(root: Path, work: Path, fonts: Fonts, scene: dict, out: Path) -> None:
+    if scene["card"] == "features":
+        return render_features(root, work, fonts, scene, out)
     img = card_image(root, work, fonts, scene["card"])
     dur = scene["dur"]
     # a slow push-in (3 %) so a long card does not look frozen; fade in from black on the first card
-    if scene["card"] == "features":
-        return render_features(root, work, fonts, scene, out)
     z = {"title": 0.03, "end": 0.02, "judges": 0.0}[scene["card"]]
     vf = (
         f"scale={W * 2}:{H * 2},zoompan=z='1+{z}*on/({dur * FPS:.0f})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={round(dur * FPS)}:s={W}x{H}:fps={FPS},"
