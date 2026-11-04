@@ -43,6 +43,7 @@ import os
 import re
 import secrets
 import time
+from dataclasses import replace
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Literal
 from urllib.parse import urlsplit, urlunsplit
@@ -77,6 +78,24 @@ ID_RE = re.compile(r"^[A-Za-z0-9_:-][A-Za-z0-9._:-]{0,127}$")  # ids put in a pa
 OFF_SENTENCE = "Bank feeds are not set up on this server yet. Upload a statement CSV instead."
 
 RECONNECT = "Reconnect your bank to keep it going."
+
+# --- The demo sandbox (app/demo.py; docs/BANK_FEED_SANDBOX_DEMO.md) ---
+#: What a demo's feed card and its connection say, everywhere.
+DEMO_LABEL = "Bank sandbox (TrueLayer test bank) — no real bank data"
+#: In a demo, TrueLayer's picker offers only its sandbox mock bank ("Mock"), never a real bank's own sandbox.
+DEMO_PROVIDERS = "uk-cs-mock"
+#: TrueLayer's public test login for that mock bank (https://docs.truelayer.com/docs/mock-users): `john` / `doe` signs
+#: in and has example data. Published by TrueLayer for anyone's sandbox; not a secret, and not ours.
+DEMO_TEST_LOGIN = {"username": "john", "password": "doe"}
+DEMO_TEST_LOGIN_SOURCE = "https://docs.truelayer.com/docs/mock-users"
+DEMO_OFF = (
+    "Bank sandbox is not set up on this server, so the demo cannot connect a test bank. "
+    "Upload a statement CSV instead: it is matched the same way."
+)
+DEMO_NOT_SANDBOX = (
+    "This server's bank feeds point at live banks, and the demo only ever uses TrueLayer's test bank, so connecting "
+    "a bank is switched off in the demo sandbox. Upload a statement CSV instead."
+)
 ConnectionState = Literal["ok", "reconfirm", "reconnect", "expired", "key_changed"]
 
 
@@ -145,6 +164,21 @@ def _need() -> tuple[TrueLayerConfig, bytes]:
     return cfg, key
 
 
+def demo_refusal() -> str | None:
+    """Why a demo session cannot use bank feeds here, in a sentence; None when the server is on TrueLayer's sandbox."""
+    cfg, key, _ = config()
+    if cfg is None or key is None:
+        return DEMO_OFF
+    if not cfg.sandbox:
+        return DEMO_NOT_SANDBOX
+    return None
+
+
+def demo_hash(session_id: str) -> str:
+    """Names a demo session inside the signed state without carrying its id (the id is the visitor's bearer secret)."""
+    return hashlib.sha256(b"accnomos-bankfeed-demo:" + session_id.encode()).hexdigest()[:32]
+
+
 def key_id(key: bytes) -> str:
     """Names the key a token was sealed with, so a changed key reads as "connect again", not as an error."""
     return hashlib.sha256(b"accnomos-bankfeed-key-id:" + key).hexdigest()[:12]
@@ -206,7 +240,9 @@ def binding_hash(binding: str) -> str:
     return hashlib.sha256(binding.encode()).hexdigest()
 
 
-def make_state(redirect_to: str, binding_hash_: str, user: str) -> str:
+def make_state(redirect_to: str, binding_hash_: str, user: str, demo_session: str | None = None) -> str:
+    """Signed, short-lived; with `demo_session`, bound to that demo session (by a hash, `d`), so the code it brings
+    back can only be connected in the same demo's books, and never in a signed-in user's."""
     body = {
         "r": redirect_to,
         "b": binding_hash_,
@@ -214,6 +250,8 @@ def make_state(redirect_to: str, binding_hash_: str, user: str) -> str:
         "e": int(time.time()) + STATE_TTL_S,
         "n": secrets.token_urlsafe(12),
     }
+    if demo_session is not None:
+        body["d"] = demo_hash(demo_session)
     payload = _b64(json.dumps(body, separators=(",", ":")).encode())
     sig = _b64(hmac.new(_state_key(), payload.encode(), hashlib.sha256).digest())
     return f"{payload}.{sig}"
@@ -228,7 +266,12 @@ def read_state(state: str, use: str | None = None) -> dict[str, Any]:
             raise StateError("bad signature")
         data = json.loads(_unb64(payload))
         expires, nonce = float(data["e"]), str(data["n"])
-        out = {"redirect_to": str(data["r"]), "binding_hash": str(data["b"]), "user_hash": str(data["u"])}
+        out = {
+            "redirect_to": str(data["r"]),
+            "binding_hash": str(data["b"]),
+            "user_hash": str(data["u"]),
+            "demo": str(data["d"]) if data.get("d") is not None else "",
+        }
     except StateError:
         raise
     except (ValueError, KeyError, TypeError, binascii.Error) as exc:
@@ -347,6 +390,14 @@ class ConnectionView(BaseModel):
     synced_to: date | None
 
 
+class TestLogin(BaseModel):
+    """TrueLayer's public sandbox login for its mock bank, shown on a demo's card for the visitor to type."""
+
+    username: str
+    password: str
+    source_url: str = DEMO_TEST_LOGIN_SOURCE
+
+
 class FeedStatus(BaseModel):
     available: bool
     reason: str | None = None  # why not, in a sentence
@@ -354,6 +405,9 @@ class FeedStatus(BaseModel):
     sandbox: bool = True
     reconfirm_days: int = RECONFIRM_DAYS
     connections: list[ConnectionView] = []
+    demo: bool = False  # a demo session: TrueLayer's sandbox test bank only, in the demo's own books
+    label: str | None = None  # DEMO_LABEL in a demo
+    test_login: TestLogin | None = None  # in a demo on the sandbox
 
 
 def _london_day(ts: datetime) -> date:
@@ -397,10 +451,21 @@ def view(conn: FeedConnection, key: bytes | None, on: date) -> ConnectionView:
     )
 
 
-async def status(books: Books) -> FeedStatus:
+async def status(books: Books, demo: bool = False) -> FeedStatus:
     cfg, key, why = config()
     feeds = await load_feeds(books)
     on = today()
+    if demo:
+        refusal = demo_refusal()
+        return FeedStatus(
+            available=refusal is None,
+            reason=refusal,
+            sandbox=True,
+            connections=[view(c, key, on) for c in feeds.connections] if refusal is None else [],
+            demo=True,
+            label=DEMO_LABEL,
+            test_login=TestLogin(**DEMO_TEST_LOGIN) if refusal is None else None,
+        )
     return FeedStatus(
         available=cfg is not None,
         reason=why,
@@ -414,12 +479,17 @@ async def status(books: Books) -> FeedStatus:
 # --------------------------------------------------------------------------- #
 
 
-def start(redirect_to: str, binding_hash_: str, user: str) -> str:
+def start(redirect_to: str, binding_hash_: str, user: str, demo_session: str | None = None) -> str:
+    """TrueLayer's consent URL. For a demo session: only on the sandbox, only its mock bank, state bound to the demo."""
     cfg, _ = _need()
-    return auth_url(cfg, make_state(check_redirect(redirect_to), binding_hash_, user))
+    if demo_session is not None:
+        if (refusal := demo_refusal()) is not None:
+            raise BankFeedError(refusal)
+        cfg = replace(cfg, providers=DEMO_PROVIDERS)
+    return auth_url(cfg, make_state(check_redirect(redirect_to), binding_hash_, user, demo_session))
 
 
-def _finish(state: str, binding: str, user: str) -> None:
+def _finish(state: str, binding: str, user: str, demo_session: str | None = None) -> None:
     try:
         st = read_state(state, use="connect")
     except StateError as exc:
@@ -428,6 +498,9 @@ def _finish(state: str, binding: str, user: str) -> None:
         raise BankFeedError("This bank sign-in was started in another browser")
     if st["user_hash"] != user_hash(user):
         raise BankFeedError("This bank sign-in was started by someone else")
+    want = demo_hash(demo_session) if demo_session is not None else ""
+    if not hmac.compare_digest(st["demo"], want):
+        raise BankFeedError("This bank sign-in was started in another demo session; connect again")
 
 
 def _ts(value: Any) -> datetime | None:
@@ -467,9 +540,14 @@ async def _describe(api: TrueLayerApi, access: str) -> tuple[str, str, datetime 
     return cred, bank, _ts(me.get("consent_created_at")), _ts(me.get("consent_expires_at")), accounts
 
 
-async def connect(books: Books, code: str, state: str, binding: str, user: str) -> FeedConnection:
+async def connect(
+    books: Books, code: str, state: str, binding: str, user: str, demo_session: str | None = None
+) -> FeedConnection:
+    """Exchange the code and save the connection in `books` (a demo's own in-memory books for a demo session)."""
     cfg, key = _need()
-    _finish(state, binding, user)
+    if demo_session is not None and (refusal := demo_refusal()) is not None:
+        raise BankFeedError(refusal)
+    _finish(state, binding, user, demo_session)
     async with client() as http:
         api = TrueLayerApi(cfg, http)
         try:
@@ -509,6 +587,7 @@ async def connect(books: Books, code: str, state: str, binding: str, user: str) 
             "accounts": len(accounts),
             "expires": conn.consent_expires_at.isoformat(),
             "sandbox": cfg.sandbox,
+            **({"demo": True} if demo_session is not None else {}),
         },
     )
     return conn

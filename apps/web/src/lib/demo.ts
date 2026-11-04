@@ -11,7 +11,8 @@ import { RUNTIME_URL } from "./ai-config";
  * there, getMsal() hands out the fake below instead of MSAL: its one account is the demo visitor, and its "token" is
  * the session id, which runtimeHeaders() sends as `X-Demo-Session` and graph.ts sends to the runtime's Graph
  * look-alike. Nothing in a demo talks to Microsoft, and nothing is ever emailed. The VAT card files to HMRC's
- * sandbox (its test service) with a test user made for the demo, or is simulated and says so (lib/hmrc.ts).
+ * sandbox (its test service) with a test user made for the demo, or is simulated and says so (lib/hmrc.ts). Bank's
+ * feed connects TrueLayer's sandbox test bank only (docs/BANK_FEED_SANDBOX_DEMO.md).
  */
 export const DEMO_KEY = "msal.accnomos-demo.session";
 export const DEMO_HEADER = "X-Demo-Session";

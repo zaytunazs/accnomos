@@ -93,6 +93,9 @@ class _BankSyncCardState extends State<BankSyncCard> {
           if (c is Map) Map<String, dynamic>.from(c),
     ];
     final sandbox = s['sandbox'] == true;
+    // A demo session: TrueLayer's test bank only, labelled as such (docs/BANK_FEED_SANDBOX_DEMO.md).
+    final demo = s['demo'] == true;
+    final label = (s['label'] ?? '').toString();
     return Container(
       key: const Key('bank-sync'),
       margin: const EdgeInsets.only(top: 8),
@@ -112,17 +115,33 @@ class _BankSyncCardState extends State<BankSyncCard> {
               child: Text('Automatic bank sync',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             ),
-            if (sandbox)
+            if (sandbox && !(demo && label.isNotEmpty))
               const Text('Bank sandbox',
                   style: TextStyle(color: AccnomosColors.muted, fontSize: 12)),
           ]),
+          if (demo && label.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(label,
+                  key: const Key('bank-sync-demo-label'),
+                  style: const TextStyle(
+                      color: AccnomosColors.muted,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700)),
+            ),
           const SizedBox(height: 6),
           if (conns.isEmpty) ...[
-            const Text(
-              'Connect your bank once and new lines come in by themselves, '
-              'read-only. You set it up on the web, where your bank’s own '
-              'sign-in opens; then sync here any time.',
-              style: TextStyle(color: AccnomosColors.ink, height: 1.4),
+            Text(
+              demo
+                  ? 'In the demo, the bank feed connects TrueLayer’s test bank '
+                      'on the web demo’s Bank page. The web demo is its own '
+                      'demo session, so a bank connected there shows there; a '
+                      'bank connected in this demo session shows here with '
+                      'Sync now.'
+                  : 'Connect your bank once and new lines come in by themselves, '
+                      'read-only. You set it up on the web, where your bank’s own '
+                      'sign-in opens; then sync here any time.',
+              style: const TextStyle(color: AccnomosColors.ink, height: 1.4),
             ),
             const SizedBox(height: 10),
             OutlinedButton.icon(

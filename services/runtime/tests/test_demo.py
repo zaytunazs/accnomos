@@ -396,7 +396,9 @@ async def test_require_without_a_header_is_401(demo_env: None) -> None:
     ],
 )
 def test_connecting_an_outside_provider_is_refused_in_a_demo(path: str) -> None:
-    """Stripe, PayPal and bank feeds are reached with the server's own credentials: a demo never connects one."""
+    """Stripe and PayPal are reached with the server's own credentials: a demo never connects one. A bank feed is
+    refused too when the server has no TrueLayer sandbox (here: none set up); with one, a demo connects TrueLayer's
+    test bank only (tests/test_bank_feeds_demo.py)."""
     from app.main import app
 
     r = TestClient(app).post(path, json={}, headers={demo.HEADER: "any", "X-Graph-Token": "t", "X-User": "u"})
