@@ -230,6 +230,8 @@ export default function SettingsPanels() {
     setSignedIn(false);
     setAiSummary("Not set up");
     setDisconnected(true);
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full reload drops every signed-in state
+    window.location.assign("/"); // signed out: the homepage, not a "Sign in to view" page
   }
 
   const card = "rounded-2xl border border-border bg-white p-4";

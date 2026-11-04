@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { AccountInfo } from "@azure/msal-browser";
 import { getMsal, isPersonalAccount, msalConfigured, SIGN_IN_SCOPES } from "@/lib/msal";
 import { setupBooksFolder, type DriveItem, type SetupProgress } from "@/lib/graph";
-import { addingFrom } from "@/lib/profiles";
+import { addingFrom, signOutToHome } from "@/lib/profiles";
 import { useNextParam, withNext } from "@/components/connect/ConnectSteps";
 import { isDemo, leaveDemo } from "@/lib/demo";
 
@@ -76,8 +76,7 @@ export default function ConnectMicrosoft() {
   }
 
   async function signOut() {
-    const msal = await getMsal();
-    await msal.logoutRedirect();
+    await signOutToHome(account);
   }
 
   async function createFolder() {

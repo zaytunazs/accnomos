@@ -109,10 +109,10 @@ export default function AppShell({ children, routes }: { children: ReactNode; ro
           data-signed-out-chrome=""
           className="sticky top-0 z-40 flex items-center justify-between gap-3 border-b border-border bg-white px-4 py-2.5 min-[900px]:hidden"
         >
-          <span className="flex min-w-0 items-center gap-2.5">
+          <Link href="/" aria-label="Accnomos home" className="flex min-h-11 min-w-0 items-center gap-2.5 rounded-lg">
             <LogoMark />
             <span className="truncate text-lg font-extrabold tracking-tight">Accnomos</span>
-          </span>
+          </Link>
           <Link
             href="/settings"
             className="shrink-0 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-bold text-teal-dark hover:bg-ground"
@@ -129,10 +129,10 @@ export default function AppShell({ children, routes }: { children: ReactNode; ro
             data-signed-out-chrome=""
             className="hidden w-full shrink-0 flex-col gap-6 border-b border-border bg-white p-5 min-[900px]:flex min-[900px]:w-[232px] min-[900px]:border-b-0 min-[900px]:border-r"
           >
-            <div className="flex items-center gap-2.5">
+            <Link href="/" aria-label="Accnomos home" className="flex min-h-11 items-center gap-2.5 rounded-lg">
               <LogoMark />
               <span className="text-lg font-extrabold tracking-tight">Accnomos</span>
-            </div>
+            </Link>
             <AppNav variant="sidebar" />
             <div className="mt-auto flex flex-col gap-3">
               <DemoMenu />

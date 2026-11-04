@@ -17,13 +17,22 @@ export default function HomeGoals() {
   const home = useHome();
   const account = home.mode === "loading" || home.mode === "live" || home.mode === "error" ? home.account : null;
   const [view, setView] = useState<RtGoalsView | null>(null);
+  const [wording, setWording] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!account) return;
     try {
       setError(null);
-      setView(await goalsApi.list(account, todayIso()));
+      // Fast first (code's note), then the AI's note swapped in, so the cards never wait on the model.
+      const fast = await goalsApi.list(account, todayIso(), false);
+      setView(fast);
+      if (!fast.goals.length) return;
+      setWording(true);
+      goalsApi.list(account, todayIso()).then(
+        (full) => setView((cur) => (cur ? { ...cur, note: full.note } : full)),
+        () => undefined, // keep code's note
+      ).finally(() => setWording(false));
     } catch (e) {
       setError(errorText(e));
     }
@@ -93,7 +102,7 @@ export default function HomeGoals() {
                 <GoalCard key={p.goal.id} p={p} sample={sample} detailsHref={`/goals#goal-${p.goal.id}`} />
               ))}
           </div>
-          <GoalsNotePanel note={v.note} sample={sample} />
+          <GoalsNotePanel note={v.note} sample={sample} wording={!sample && wording} />
         </>
       )}
     </section>

@@ -122,7 +122,9 @@ async function call<T>(account: AccountInfo, path: string, init: RequestInit = {
 }
 
 export const goalsApi = {
-  list: (a: AccountInfo, today: string) => call<RtGoalsView>(a, `/books/goals?today=${today}`),
+  /** `noteAi` false: code writes the note (fast); true: the user's AI words it (slow). Pages load the fast one first. */
+  list: (a: AccountInfo, today: string, noteAi = true) =>
+    call<RtGoalsView>(a, `/books/goals?today=${today}${noteAi ? "" : "&note_ai=false"}`),
   add: (a: AccountInfo, g: RtGoalIn) => call<RtGoal>(a, "/books/goals", { method: "POST", body: JSON.stringify(g) }),
   patch: (a: AccountInfo, id: string, patch: Partial<RtGoalIn>) =>
     call<RtGoal>(a, `/books/goals/${encodeURIComponent(id)}`, { method: "PATCH", body: JSON.stringify(patch) }),

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import AiWorking from "@/components/AiWorking";
 import { headline, money, type GoalTone, type RtGoalProgress, type RtGoalsNote } from "@/lib/goals";
 
 /**
@@ -140,7 +141,7 @@ export default function GoalCard({
 }
 
 /** "What your goals are telling you": a calm note, not a chat (design brief §8). */
-export function GoalsNotePanel({ note, sample = false }: { note: RtGoalsNote; sample?: boolean }) {
+export function GoalsNotePanel({ note, sample = false, wording = false }: { note: RtGoalsNote; sample?: boolean; wording?: boolean }) {
   if (!note.note_md) return null;
   const who = sample
     ? "Sample — fictional figures. Code wrote this note."
@@ -151,7 +152,8 @@ export function GoalsNotePanel({ note, sample = false }: { note: RtGoalsNote; sa
     <section
       aria-labelledby="goals-note-title"
       data-goals-note=""
-      className="flex gap-3 rounded-xl border border-[#BFDDD6] bg-teal-tint p-4 sm:p-5"
+      aria-busy={wording ? "true" : undefined}
+      className="relative flex gap-3 overflow-hidden rounded-xl border border-[#BFDDD6] bg-teal-tint p-4 sm:p-5"
     >
       <span aria-hidden="true" className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#BFDDD6] bg-white">
         <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
@@ -162,8 +164,14 @@ export function GoalsNotePanel({ note, sample = false }: { note: RtGoalsNote; sa
         <h3 id="goals-note-title" className="text-base font-bold text-ink">
           What your goals are telling you
         </h3>
-        <p className="mt-1 max-w-3xl text-[15px] leading-6 text-ink">{note.note_md}</p>
-        <p className="mt-2 text-[13px] text-muted">{who}</p>
+        <p aria-live="polite" className={`mt-1 max-w-3xl text-[15px] leading-6 text-ink transition-opacity duration-300 ${wording ? "opacity-80" : ""}`}>
+          {note.note_md}
+        </p>
+        {wording ? (
+          <AiWorking label="Your AI is looking for suggestions — the figures are already checked." />
+        ) : (
+          <p className="mt-2 text-[13px] text-muted">{who}</p>
+        )}
       </div>
     </section>
   );

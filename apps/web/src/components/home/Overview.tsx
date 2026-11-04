@@ -15,7 +15,7 @@ import { useHome } from "./HomeData";
 export type OverviewState =
   | { mode: "waiting" }
   | { mode: "sample"; data: RtHome }
-  | { mode: "live"; data: RtHome }
+  | { mode: "live"; data: RtHome; wording?: boolean }
   | { mode: "error"; message: string };
 
 const OverviewContext = createContext<OverviewState>({ mode: "waiting" });
@@ -43,8 +43,18 @@ export function OverviewData({ children }: { children: React.ReactNode }) {
     let stale = false;
     const business = loadBusiness();
     const vat = business ? deadlinesQuery(business) : "";
-    runtime.home(account, `${vat ? `${vat}&` : ""}today=${todayIso()}`).then(
-      (data) => !stale && setState({ mode: "live", data }),
+    const query = `${vat ? `${vat}&` : ""}today=${todayIso()}`;
+    // Two steps, so Home never waits on the model: every card from a fast call whose summary code writes, then the
+    // same call with the AI wording it, swapped in when (if) it arrives. A failure there keeps code's summary.
+    runtime.home(account, `${query}&summary_ai=false`).then(
+      (data) => {
+        if (stale) return;
+        setState({ mode: "live", data, wording: true });
+        runtime.home(account, `${query}&summary_ai=true`).then(
+          (full) => !stale && setState({ mode: "live", data: { ...data, summary: full.summary } }),
+          () => !stale && setState({ mode: "live", data }),
+        );
+      },
       (e) => !stale && (e as Error).message !== "redirecting for consent" && setState({ mode: "error", message: errorText(e) }),
     );
     return () => {

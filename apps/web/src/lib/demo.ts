@@ -176,7 +176,8 @@ export function createDemoMsal(): IPublicClientApplication {
     setActiveAccount: () => {},
     // "Sign in with Microsoft" from inside a demo: leave it, then sign in for real on /connect.
     loginRedirect: async () => leaveDemo("/connect"),
-    logoutRedirect: async () => leaveDemo("/connect"),
+    logoutRedirect: async () => leaveDemo("/"),
+    clearCache: async () => leaveDemo("/"),
     acquireTokenSilent: async ({ scopes }: { scopes: string[] }) => {
       const s = demoSession();
       if (!s) throw new Error("not signed in");

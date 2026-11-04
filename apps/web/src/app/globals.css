@@ -275,3 +275,24 @@ html[data-signed-in] [data-public-only] {
 html[data-signed-in] [data-signed-out-chrome] {
   display: none !important;
 }
+
+/* "Your AI is wording this…": a thin indeterminate bar along the top of a card while the model's words load
+   (components/AiWorking.tsx). Reduced motion: a still, half-filled bar instead. */
+@keyframes ai-working {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+.ai-working-bar {
+  animation: ai-working 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ai-working-bar {
+    animation: none;
+    transform: none;
+    width: 50% !important;
+  }
+}

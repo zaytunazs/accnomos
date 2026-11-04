@@ -147,7 +147,7 @@ export function DemoMenu() {
       </button>
       <button
         type="button"
-        onClick={() => void leaveDemo("/connect")}
+        onClick={() => void leaveDemo("/")}
         className="h-10 rounded-xl px-3 text-left font-bold text-teal-dark hover:bg-ground"
       >
         Leave demo

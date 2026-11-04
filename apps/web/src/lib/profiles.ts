@@ -204,8 +204,26 @@ export async function signOutOf(account: AccountInfo): Promise<void> {
     /* nothing kept */
   }
   if (s?.owner === account.homeAccountId) clearLive(); // the next account's copy is put back by reconcile()
+  await signOutToHome(account);
+}
+
+/**
+ * Sign out on this device and land on the homepage ("/": the public landing once nobody is signed in, else the next
+ * profile's Home), never on a "Sign in to view" page. The account's tokens are removed from this browser
+ * (`clearCache`); the Microsoft session itself is left alone, so signing back in is quick. A demo is left instead.
+ */
+export async function signOutToHome(account?: AccountInfo | null): Promise<void> {
+  const { isDemo, leaveDemo } = await import("./demo");
+  if (isDemo()) return leaveDemo("/");
   const msal = await getMsal();
-  await msal.logoutRedirect({ account, postLogoutRedirectUri: window.location.origin });
+  try {
+    await msal.clearCache(account ? { account } : undefined);
+  } catch {
+    /* nothing cached */
+  }
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full reload drops every signed-in state
+  window.location.assign("/");
+  await new Promise(() => {}); // like a redirect, never resolves
 }
 
 /** The sign-ins this browser holds, active one first. An account signed in only to read a linked mailbox (Settings ›

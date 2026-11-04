@@ -56,6 +56,7 @@ function SampleGoals() {
 
 function Signed({ account }: { account: AccountInfo }) {
   const [view, setView] = useState<RtGoalsView | null>(null);
+  const [wording, setWording] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -66,7 +67,15 @@ function Signed({ account }: { account: AccountInfo }) {
   const load = useCallback(async () => {
     try {
       setError(null);
-      setView(await goalsApi.list(account, todayIso()));
+      // Fast first (code's note), then the AI's note swapped in, so the cards never wait on the model.
+      const fast = await goalsApi.list(account, todayIso(), false);
+      setView(fast);
+      if (!fast.goals.length) return;
+      setWording(true);
+      goalsApi.list(account, todayIso()).then(
+        (full) => setView((cur) => (cur ? { ...cur, note: full.note } : full)),
+        () => undefined, // keep code's note
+      ).finally(() => setWording(false));
     } catch (e) {
       setError(errorText(e));
     }
@@ -189,7 +198,7 @@ function Signed({ account }: { account: AccountInfo }) {
           ))}
         </div>
       )}
-      <GoalsNotePanel note={view.note} />
+      <GoalsNotePanel note={view.note} wording={wording} />
       {error ? <RuntimeErrorNote message={error} onRetry={() => void load()} /> : null}
     </div>
   );

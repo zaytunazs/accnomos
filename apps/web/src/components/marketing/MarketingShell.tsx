@@ -40,10 +40,10 @@ function SiteFooter() {
     <footer className="on-dark bg-ledger-deep text-ground/80">
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
-          <div className="flex items-center gap-2.5 text-ground">
+          <Link href="/" aria-label="Accnomos home" className="flex w-fit items-center gap-2.5 rounded-lg text-ground">
             <LogoMark className="bg-ground" stroke="#0A4F47" />
             <span className="text-lg font-extrabold tracking-tight">Accnomos</span>
-          </div>
+          </Link>
           {/* Footer microcopy from docs/marketing/COPY.md. */}
           <p className="mt-3 max-w-sm text-sm leading-relaxed">
             Accounting, intelligently done. Your books stay in your OneDrive. Sample figures on this page are fictional.

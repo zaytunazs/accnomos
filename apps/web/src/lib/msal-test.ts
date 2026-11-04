@@ -171,6 +171,12 @@ export function createTestMsal(): IPublicClientApplication {
     },
     clearCache: async ({ account }: { account?: AccountInfo } = {}) => {
       if (account) setLinked(linked().filter((u) => u !== account.username));
+      // As the real clearCache: a signed-in account's tokens go too (no redirect; the caller navigates).
+      const gone = keyOf(account);
+      if (!account || gone) {
+        const keys = gone ? signedInKeys().filter((k) => k !== gone) : [];
+        save(keys, keys[0]);
+      }
     },
     acquireTokenRedirect: async () => {
       // Like the real redirect: the page goes to Microsoft and comes back (here, a reload).

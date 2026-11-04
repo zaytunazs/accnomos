@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState, type ReactNode } from "react";
+import AiWorking from "@/components/AiWorking";
 import ByWhom from "@/components/ByWhom";
 import ExplainMore from "@/components/ExplainMore";
 import { errorText, useAccount } from "@/components/jobs/useAccount";
@@ -70,8 +71,14 @@ export function SummaryCard() {
   const data = useOverviewData();
   const s = data?.summary;
   const byAi = s && s.model !== "code" && !s.fallback_reason;
+  const wording = o.mode === "live" && o.wording === true;
   return (
-    <section aria-labelledby="home-summary" className="col-span-full rounded-2xl border border-teal/30 bg-teal-tint p-4 sm:p-5">
+    <section
+      aria-labelledby="home-summary"
+      aria-busy={wording || !s ? "true" : undefined}
+      className="relative col-span-full overflow-hidden rounded-2xl border border-teal/30 bg-teal-tint p-4 sm:p-5"
+    >
+      {!s && o.mode !== "error" ? <AiWorking label="Working out your figures…" /> : null}
       <div className="flex items-start justify-between gap-2">
         <h2 id="home-summary" className="text-lg font-bold tracking-tight text-teal-dark">
           Your summary
@@ -84,7 +91,7 @@ export function SummaryCard() {
       </div>
       <div aria-live="polite" className="mt-2 min-h-[3.5rem]">
         {s ? (
-          <p data-home-summary="" className="text-[15px] leading-7 text-ink">
+          <p data-home-summary="" className={`text-[15px] leading-7 text-ink transition-opacity duration-300 ${wording ? "opacity-80" : ""}`}>
             {s.summary_md}
           </p>
         ) : o.mode === "error" ? (
@@ -97,7 +104,8 @@ export function SummaryCard() {
           </div>
         )}
       </div>
-      {s ? (
+      {s && wording ? <AiWorking label="Your AI is putting this into words — every figure is already checked." /> : null}
+      {s && !wording ? (
         <ByWhom
           className="mt-2"
           code={o.mode === "sample" ? "Sample figures from the fictional Bramblewood books" : "Every figure by code from your books"}
