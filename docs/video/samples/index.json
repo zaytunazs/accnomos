@@ -1,0 +1,82 @@
+[
+ {
+  "file": "S01_r_trade.json",
+  "gold_case": "r_trade",
+  "supplier": "Hartley & Sons Timber Merchants",
+  "gross_pence": 17752,
+  "side": "purchase",
+  "expected_status": "proposed"
+ },
+ {
+  "file": "S02_r_fuel.json",
+  "gold_case": "r_fuel",
+  "supplier": "Ashcombe Road Service Station",
+  "gross_pence": 8941,
+  "side": "purchase",
+  "expected_status": "proposed"
+ },
+ {
+  "file": "S03_r_cafe.json",
+  "gold_case": "r_cafe",
+  "supplier": "The Copper Kettle Tearoom",
+  "gross_pence": 1752,
+  "side": "purchase",
+  "expected_status": "proposed"
+ },
+ {
+  "file": "S04_pi_merchant.json",
+  "gold_case": "pi_merchant",
+  "supplier": "Pennington Ironmongery Ltd",
+  "gross_pence": 40248,
+  "side": "purchase",
+  "expected_status": "proposed"
+ },
+ {
+  "file": "S05_pi_subcontractor.json",
+  "gold_case": "pi_subcontractor",
+  "supplier": "Tom Whitaker Decorating",
+  "gross_pence": 48000,
+  "side": "purchase",
+  "expected_status": "needs_a_look"
+ },
+ {
+  "file": "S06_utility.json",
+  "gold_case": "utility",
+  "supplier": "Westmoor Energy Supply Ltd",
+  "gross_pence": 24132,
+  "side": "purchase",
+  "expected_status": "proposed"
+ },
+ {
+  "file": "S07_pi_software.json",
+  "gold_case": "pi_software",
+  "supplier": "Larkfield Cloud Services Ltd",
+  "gross_pence": 5400,
+  "side": "purchase",
+  "expected_status": "proposed"
+ },
+ {
+  "file": "S08_sales.json",
+  "gold_case": "sales",
+  "supplier": "Bramblewood Joinery Ltd",
+  "gross_pence": 208800,
+  "side": "sale",
+  "expected_status": "proposed"
+ },
+ {
+  "file": "S09_r_parking.json",
+  "gold_case": "r_parking",
+  "supplier": "Castlegate Car Park",
+  "gross_pence": 450,
+  "side": "purchase",
+  "expected_status": "proposed"
+ },
+ {
+  "file": "S10_credit_note.json",
+  "gold_case": "credit_note",
+  "supplier": "Hartley & Sons Timber Merchants",
+  "gross_pence": -4548,
+  "side": "purchase",
+  "expected_status": "proposed"
+ }
+]

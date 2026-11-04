@@ -1,0 +1,60 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Pennington Ironmongery Ltd",
+  "vat_number": "GB 061 9883 39",
+  "address": "Unit 7, Wharf Road, Stroud, GL5 3JA"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "PIL-44120",
+ "date": "2026-10-09",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Brass butt hinges 100mm (pair)",
+   "qty": 24,
+   "unit_price": 7.35,
+   "net": 176.4,
+   "vat_rate": 20,
+   "vat": 35.28,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Mortice lock 3-lever",
+   "qty": 6,
+   "unit_price": 24.5,
+   "net": 147.0,
+   "vat_rate": 20,
+   "vat": 29.4,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Delivery",
+   "qty": 1,
+   "unit_price": 12.0,
+   "net": 12.0,
+   "vat_rate": 20,
+   "vat": 2.4,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 335.4,
+ "vat_total": 67.08,
+ "gross_total": 402.48,
+ "net_pence": 33540,
+ "vat_pence": 6708,
+ "gross_pence": 40248,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Materials",
+ "printed_text": "PENNINGTON IRONMONGERY LTD\nUnit 7\nWharf Road\nStroud\nGL5 3JA\nVAT Reg No: GB 061 9883 39\n\n                   INVOICE\nNo:   PIL-44120\nDate: 09/10/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION                QTY        NET VAT%\n----------------------------------------------\nBrass butt hinges 100mm (p  24     176.40   20\nMortice lock 3-lever         6     147.00   20\nDelivery                     1      12.00   20\n----------------------------------------------\nNET                                     335.40\nVAT 20%                                  67.08\nTOTAL                                  £402.48\nPaid by: bank transfer\n\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_merchant",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

@@ -1,0 +1,51 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Westmoor Energy Supply Ltd",
+  "vat_number": "GB 050 3703 13",
+  "address": "PO Box 410, Exeter, EX1 9ZZ"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "WES-778213",
+ "date": "2026-10-14",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Business electricity, September 2026",
+   "qty": 1,
+   "unit_price": 186.4,
+   "net": 186.4,
+   "vat_rate": 20,
+   "vat": 37.28,
+   "vat_code": "T1"
+  },
+  {
+   "description": "Standing charge 30 days",
+   "qty": 1,
+   "unit_price": 14.7,
+   "net": 14.7,
+   "vat_rate": 20,
+   "vat": 2.94,
+   "vat_code": "T1"
+  }
+ ],
+ "net_total": 201.1,
+ "vat_total": 40.22,
+ "gross_total": 241.32,
+ "net_pence": 20110,
+ "vat_pence": 4022,
+ "gross_pence": 24132,
+ "vat_code": "T1",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "direct debit",
+ "card_last4": null,
+ "category_hint": "Light and heat",
+ "printed_text": "WESTMOOR ENERGY SUPPLY LTD\nPO Box 410\nExeter\nEX1 9ZZ\nVAT Reg No: GB 050 3703 13\n\n                   INVOICE\nNo:   WES-778213\nDate: 14/10/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION                QTY        NET VAT%\n----------------------------------------------\nBusiness electricity, Sept   1     186.40   20\nStanding charge 30 days      1      14.70   20\n----------------------------------------------\nNET                                     201.10\nVAT 20%                                  40.22\nTOTAL                                  £241.32\nPaid by: direct debit\n\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "utility",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

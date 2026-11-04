@@ -1,0 +1,42 @@
+{
+ "doc_type": "receipt",
+ "supplier": {
+  "name": "Castlegate Car Park",
+  "vat_number": null,
+  "address": "Castlegate, Lewes, BN7 1XX"
+ },
+ "customer": {
+  "name": null
+ },
+ "invoice_number": "88123",
+ "date": "2026-10-20",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Parking 3 hrs",
+   "qty": 1,
+   "unit_price": 4.5,
+   "net": 4.5,
+   "vat_rate": null,
+   "vat": 0.0,
+   "vat_code": "T9"
+  }
+ ],
+ "net_total": 4.5,
+ "vat_total": 0.0,
+ "gross_total": 4.5,
+ "net_pence": 450,
+ "vat_pence": 0,
+ "gross_pence": 450,
+ "vat_code": "T9",
+ "side": "purchase",
+ "expected_status": "proposed",
+ "is_credit_note": false,
+ "payment_method": "cash",
+ "card_last4": null,
+ "category_hint": "Parking",
+ "printed_text": "CASTLEGATE CAR PARK\nCastlegate\nLewes\nBN7 1XX\n\n                   RECEIPT\nNo:   88123\nDate: 20/10/2026\n\nDESCRIPTION                QTY        NET VAT%\n----------------------------------------------\nParking 3 hrs                1       4.50    -\n----------------------------------------------\nNET                                       4.50\nNo VAT charged\nTOTAL                                    £4.50\nPaid by: cash\n\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "r_parking",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}

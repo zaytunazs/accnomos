@@ -1,0 +1,42 @@
+{
+ "doc_type": "purchase_invoice",
+ "supplier": {
+  "name": "Tom Whitaker Decorating",
+  "vat_number": null,
+  "address": "22 Elm Grove, Frome, BA11 2DD"
+ },
+ "customer": {
+  "name": "Bramblewood Joinery Ltd"
+ },
+ "invoice_number": "TW-031",
+ "date": "2026-10-12",
+ "currency": "GBP",
+ "lines": [
+  {
+   "description": "Paint finish, 4 sash windows (labour)",
+   "qty": 1,
+   "unit_price": 480.0,
+   "net": 480.0,
+   "vat_rate": 0,
+   "vat": 0.0,
+   "vat_code": "T0"
+  }
+ ],
+ "net_total": 480.0,
+ "vat_total": 0.0,
+ "gross_total": 480.0,
+ "net_pence": 48000,
+ "vat_pence": 0,
+ "gross_pence": 48000,
+ "vat_code": "T0",
+ "side": "purchase",
+ "expected_status": "needs_a_look",
+ "is_credit_note": false,
+ "payment_method": "bank transfer",
+ "card_last4": null,
+ "category_hint": "Subcontractors",
+ "printed_text": "TOM WHITAKER DECORATING\n22 Elm Grove\nFrome\nBA11 2DD\n\n                   INVOICE\nNo:   TW-031\nDate: 12/10/2026\n\nTo: Bramblewood Joinery Ltd\n\nDESCRIPTION                QTY        NET VAT%\n----------------------------------------------\nPaint finish, 4 sash windo   1     480.00    0\n----------------------------------------------\nNET                                     480.00\nTOTAL                                  £480.00\nPaid by: bank transfer\n\n          SAMPLE — FICTIONAL COMPANY",
+ "notes": "",
+ "gold_case": "pi_subcontractor",
+ "label": "SAMPLE — FICTIONAL COMPANY"
+}
