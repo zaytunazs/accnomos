@@ -49,7 +49,7 @@ class Checker:
         rec: dict[str, Any] = {
             "check": name,
             "request": f"{method} {path}",
-            "headers": {k: v for k, v in headers.items() if k.lower() != "x-demo-session"},
+            "headers": {k: v for k, v in headers.items() if k.lower() not in ("x-demo-session", "x-user")},
             "status": r.status_code,
             "s": round(time.perf_counter() - t0, 2),
         }
@@ -116,7 +116,8 @@ def main() -> None:
         "/demo/session?kind=company",
         keep=lambda b: {x: b.get(x) for x in ("kind", "business", "today")},
     )
-    k.h = {"X-Demo-Session": r.json()["session"]}
+    sess = r.json()
+    k.h = {"X-Demo-Session": sess["session"], "X-User": sess.get("user") or "demo"}  # X-User: the sandbox's own user
     k.step("ai health", "GET", "/ai/health", keep=lambda b: b)
 
     for i, wav in enumerate(args.wav):
