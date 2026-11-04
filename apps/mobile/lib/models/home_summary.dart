@@ -93,7 +93,7 @@ class SummaryItem {
     final p = e['priority'];
     final priority = p is num ? p.toInt().clamp(1, 3) : 2;
     return SummaryItem(
-      id: e['id'] is String ? e['id'] as String : title,
+      id: e['id'] is String ? e['id'] as String : title.trim(),
       title: title.trim(),
       detail: detail is String && detail.trim().isNotEmpty ? detail.trim() : null,
       priority: priority,
