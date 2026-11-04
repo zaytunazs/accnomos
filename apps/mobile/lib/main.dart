@@ -14,6 +14,7 @@ import 'screens/vat_screen.dart';
 import 'screens/welcome_screen.dart';
 import 'services/app_mode.dart';
 import 'services/demo.dart';
+import 'services/navigation.dart';
 import 'theme.dart';
 import 'widgets/brand.dart';
 
@@ -44,9 +45,6 @@ class AccnomosApp extends StatelessWidget {
   }
 }
 
-/// The app's one navigator, so the demo bar (above every route) can close
-/// pushed screens when the demo ends.
-final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 /// `MaterialApp.builder`: during a demo the demo bar sits above every route
 /// (tabs and pushed screens alike), like the website's demo bar; the route
@@ -186,7 +184,13 @@ class _ShellState extends State<Shell> {
     super.initState();
     AppMode.state.addListener(_modeChanged);
     Demo.state.addListener(_demoChanged);
+    AppNav.homeRequests.addListener(_goHome);
     AppMode.refresh();
+  }
+
+  /// The logo (AppNav.goHome): the Home tab.
+  void _goHome() {
+    if (mounted && _tab != 0) _selectTab(0);
   }
 
   void _demoChanged() {
@@ -197,6 +201,7 @@ class _ShellState extends State<Shell> {
   void dispose() {
     AppMode.state.removeListener(_modeChanged);
     Demo.state.removeListener(_demoChanged);
+    AppNav.homeRequests.removeListener(_goHome);
     super.dispose();
   }
 
@@ -263,7 +268,7 @@ class _ShellState extends State<Shell> {
           ? null
           : AppBar(
               titleSpacing: 16,
-              title: const BrandLockup(size: 30),
+              title: const HomeLogoButton(size: 30),
               actions: _tab == 0
                   ? [
                       IconButton(
@@ -404,10 +409,7 @@ class DemoBanner extends StatelessWidget {
           ),
           TextButton(
             key: const Key('demo-exit'),
-            onPressed: () {
-              appNavigatorKey.currentState?.popUntil((r) => r.isFirst);
-              Demo.end();
-            },
+            onPressed: AppNav.exitDemo,
             style: TextButton.styleFrom(
                 foregroundColor: AccnomosColors.markLight,
                 minimumSize: const Size(44, 44)),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/goals.dart';
 import '../theme.dart';
+import '../widgets/loading.dart';
 
 /// Shared pieces of the goal cards (Goals screen and the household Home),
 /// styled like the web's components/goals: a status badge by tone, a large
@@ -226,12 +227,17 @@ class GoalCard extends StatelessWidget {
 
 /// "What your goals are telling you": a calm, pale-teal note.
 class GoalsNotePanel extends StatelessWidget {
-  const GoalsNotePanel({super.key, required this.note});
+  const GoalsNotePanel({super.key, required this.note, this.pending = false});
   final GoalsNote note;
+
+  /// The AI's note is still being written: code's note (if any) shows with
+  /// "Muse Spark is reading your goals…" and a small spinner.
+  final bool pending;
 
   @override
   Widget build(BuildContext context) {
-    if (note.text.trim().isEmpty) return const SizedBox.shrink();
+    final hasText = note.text.trim().isNotEmpty;
+    if (!hasText && !pending) return const SizedBox.shrink();
     return Semantics(
       container: true,
       label: 'What your goals are telling you',
@@ -262,13 +268,34 @@ class GoalsNotePanel extends StatelessWidget {
                           fontSize: 15,
                           color: AccnomosColors.ink)),
                   const SizedBox(height: 6),
-                  Text(note.text,
-                      style: const TextStyle(
-                          color: AccnomosColors.ink, height: 1.45)),
-                  const SizedBox(height: 6),
-                  Text(note.byLine,
-                      style: const TextStyle(
-                          color: AccnomosColors.muted, fontSize: 12)),
+                  if (hasText)
+                    AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 350),
+                      child: Text(note.text,
+                          key: ValueKey(note.text),
+                          style: const TextStyle(
+                              color: AccnomosColors.ink, height: 1.45)),
+                    )
+                  else
+                    const Shimmer(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          SkeletonBox(width: 240),
+                          SizedBox(height: 8),
+                          SkeletonBox(width: 180),
+                        ],
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  if (pending)
+                    const AiWritingBar(
+                        key: Key('note-writing'),
+                        label: 'Muse Spark is reading your goals…')
+                  else
+                    Text(note.byLine,
+                        style: const TextStyle(
+                            color: AccnomosColors.muted, fontSize: 12)),
                 ],
               ),
             ),

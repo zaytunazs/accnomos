@@ -9,6 +9,7 @@ import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
 import '../widgets/brand.dart';
+import '../widgets/loading.dart';
 import 'goals_widgets.dart';
 import 'settings_screen.dart';
 
@@ -52,6 +53,10 @@ class _GoalsScreenState extends State<GoalsScreen> {
   bool _loading = false;
   String? _error;
   GoalsData? _data;
+
+  /// Goals are on screen with code's note; the AI's note is still coming.
+  bool _notePending = false;
+  int _gen = 0;
 
   DateTime get _today => widget.today ?? DateTime.now();
 
@@ -99,20 +104,37 @@ class _GoalsScreenState extends State<GoalsScreen> {
     return booksClient(_settings!, _auth, _account);
   }
 
+  /// The goals with code's note first (quick), then the AI's note in the
+  /// background: the goals never wait for the model.
   Future<void> _reload() async {
+    final gen = ++_gen;
+    bool current() => mounted && gen == _gen;
     setState(() {
       _loading = true;
       _error = null;
     });
+    final RuntimeClient c;
     try {
-      final json = await (await _client()).goals(today: isoDate(_today));
-      if (!mounted) return;
-      setState(() => _data = GoalsData.fromJson(json));
+      c = await _client();
+      final json = await c.goals(today: isoDate(_today), noteAi: false);
+      if (!current()) return;
+      setState(() {
+        _data = GoalsData.fromJson(json);
+        _notePending = true;
+      });
     } catch (e) {
-      if (!mounted) return;
-      setState(() => _error = goalError(e));
+      if (current()) setState(() => _error = goalError(e));
+      return;
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (current()) setState(() => _loading = false);
+    }
+    try {
+      final json = await c.goals(today: isoDate(_today));
+      if (current()) setState(() => _data = GoalsData.fromJson(json));
+    } catch (_) {
+      // Code's note stands.
+    } finally {
+      if (current()) setState(() => _notePending = false);
     }
   }
 
@@ -182,7 +204,14 @@ class _GoalsScreenState extends State<GoalsScreen> {
             : null,
       ),
       body: !_checked
-          ? const Center(child: CircularProgressIndicator())
+          ? ListView(
+              padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+              children: const [
+                SkeletonCard(lines: 2, tinted: true),
+                SizedBox(height: 12),
+                SkeletonCard(lines: 4),
+              ],
+            )
           : RefreshIndicator(
               // Return at once: the reload (the AI note can take a while)
               // shows as the thin bar under the title instead.
@@ -216,18 +245,20 @@ class _GoalsScreenState extends State<GoalsScreen> {
                   else
                     _SampleNote(household: _household),
                   const SizedBox(height: 16),
-                  if (_loading && _data == null)
-                    const Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Center(child: CircularProgressIndicator()),
-                    ),
+                  if (_loading && _data == null) ...const [
+                    SkeletonCard(title: 'What your goals are telling you', lines: 2, tinted: true),
+                    SizedBox(height: 12),
+                    SkeletonCard(lines: 4),
+                    SizedBox(height: 12),
+                    SkeletonCard(lines: 4),
+                  ],
                   if (_error != null)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 12),
                       child: Text('Could not load your goals: $_error',
                           style: const TextStyle(color: Color(0xFF8A3F06))),
                     ),
-                  GoalsNotePanel(note: data.note),
+                  GoalsNotePanel(note: data.note, pending: _signedIn && _notePending),
                   if (_signedIn && _data != null && data.goals.isEmpty)
                     const _EmptyGoals(),
                   for (final g in data.goals)

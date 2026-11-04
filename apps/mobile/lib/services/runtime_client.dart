@@ -480,9 +480,12 @@ class RuntimeClient {
 
   /// Home's other cards and the checked summary. `GET /books/home`, as the
   /// web's Home (services/runtime/app/home_overview.py).
-  Future<Map<String, dynamic>> home({String? today}) async {
+  /// `summaryAi: false` asks for code's own summary (fast, no model call);
+  /// Home shows that first and then swaps in the AI's words.
+  Future<Map<String, dynamic>> home({String? today, bool summaryAi = true}) async {
     _requireBooks();
-    final uri = _uri('/books/home', {'today': ?today});
+    final uri = _uri('/books/home',
+        {'today': ?today, if (!summaryAi) 'summary_ai': 'false'});
     try {
       final response =
           await _http.get(uri, headers: _headers).timeout(_timeout);
@@ -1564,9 +1567,11 @@ class RuntimeClient {
 
   /// Every goal with its progress, code's suggestions and the note.
   /// `GET /books/goals?today=YYYY-MM-DD`.
-  Future<Map<String, dynamic>> goals({String? today}) => _map(
+  /// `noteAi: false` asks for code's own note (fast); the AI's note follows.
+  Future<Map<String, dynamic>> goals({String? today, bool noteAi = true}) => _map(
       'GET', '/books/goals',
-      query: {'today': ?today}, what: 'load your goals');
+      query: {'today': ?today, if (!noteAi) 'note_ai': 'false'},
+      what: 'load your goals');
 
   /// `POST /books/goals` with the GoalIn body (name, kind, start, end and
   /// target_pence / percent / focus / measure / saved_pence).

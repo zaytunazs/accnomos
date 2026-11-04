@@ -12,11 +12,12 @@ import '../services/books_events.dart';
 import '../services/runtime_client.dart';
 import '../services/settings.dart';
 import '../theme.dart';
+import '../widgets/loading.dart';
 import '../widgets/statement_import.dart';
 import '../widgets/tile_grid.dart';
 import 'goals_screen.dart';
 import 'goals_widgets.dart';
-import 'home_screen.dart' show SummaryCard;
+import 'home_screen.dart' show SummaryCard, SummaryCardSkeleton;
 import 'personal_screen.dart';
 import 'review_screen.dart';
 import 'settings_screen.dart';
@@ -66,6 +67,8 @@ class _HouseholdHomeScreenState extends State<HouseholdHomeScreen> {
   GoalsData? _goals;
   int? _receipts;
   HomeSummary? _summary;
+  bool _summaryPending = false;
+  bool _notePending = false;
   bool _billsLoaded = false;
   int _generation = 0;
   int _seenChange = BooksEvents.changed.value;
@@ -152,14 +155,31 @@ class _HouseholdHomeScreenState extends State<HouseholdHomeScreen> {
           _billsNote = '${json['note'] ?? ''}';
           _billsLoaded = true;
         }),
-        soft(c.goals(today: today),
-            (Map<String, dynamic> json) => _goals = GoalsData.fromJson(json)),
+        // Goals with code's note first, then the AI's note swapped in.
+        () async {
+          if (current()) setState(() => _notePending = true);
+          await soft(c.goals(today: today, noteAi: false),
+              (Map<String, dynamic> json) => _goals = GoalsData.fromJson(json));
+          await soft(c.goals(today: today),
+              (Map<String, dynamic> json) => _goals = GoalsData.fromJson(json));
+          if (current()) setState(() => _notePending = false);
+        }(),
         soft(c.dashboard(today: today), (Map<String, dynamic> json) {
           final d = Dashboard.fromJson(json);
           _receipts = (d.attentionProposed ?? 0) + (d.attentionNeedsALook ?? 0);
         }),
-        soft(c.home(today: today),
-            (Map<String, dynamic> json) => _summary = HomeSummary.fromHomeJson(json)),
+        // Code's summary at once, then the AI's words when they arrive.
+        () async {
+          if (current()) setState(() => _summaryPending = true);
+          await soft(c.home(today: today, summaryAi: false),
+              (Map<String, dynamic> json) =>
+                  _summary = HomeSummary.fromHomeJson(json) ?? _summary);
+          await soft(c.home(today: today), (Map<String, dynamic> json) {
+            final worded = HomeSummary.fromHomeJson(json);
+            if (worded != null) _summary = worded;
+          });
+          if (current()) setState(() => _summaryPending = false);
+        }(),
       ]);
     } catch (e) {
       if (current()) setState(() => _error = goalError(e));
@@ -179,7 +199,7 @@ class _HouseholdHomeScreenState extends State<HouseholdHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_checked) return const Center(child: CircularProgressIndicator());
+    if (!_checked) return const _HouseholdSkeleton();
     final signedIn = _account != null;
     final thisMonth = signedIn ? _this : sampleThisMonth;
     final lastMonth = signedIn ? _last : sampleLastMonth;
@@ -209,7 +229,10 @@ class _HouseholdHomeScreenState extends State<HouseholdHomeScreen> {
           ),
           if (signedIn && _summary != null) ...[
             const SizedBox(height: 14),
-            SummaryCard(summary: _summary!),
+            SummaryCard(summary: _summary!, pending: _summaryPending),
+          ] else if (signedIn && _summaryPending) ...[
+            const SizedBox(height: 14),
+            const SummaryCardSkeleton(),
           ],
           if (_error != null) ...[
             const SizedBox(height: 10),
@@ -217,8 +240,8 @@ class _HouseholdHomeScreenState extends State<HouseholdHomeScreen> {
                 style: const TextStyle(color: AccnomosColors.muted, fontSize: 12)),
           ],
           if (_loading && _this == null) ...[
-            const SizedBox(height: 24),
-            const Center(child: CircularProgressIndicator()),
+            const SizedBox(height: 16),
+            const _MonthSkeleton(),
           ],
           if (noStatement) ...[
             const SizedBox(height: 16),
@@ -270,17 +293,20 @@ class _HouseholdHomeScreenState extends State<HouseholdHomeScreen> {
                   else
                     for (final g in goals.mostUrgentFirst.take(3))
                       GoalCard(goal: g, compact: true),
-                  GoalsNotePanel(note: goals.note),
+                  GoalsNotePanel(note: goals.note, pending: signedIn && _notePending),
                 ],
               ),
             ),
+          ] else if (signedIn && _loading) ...[
+            const SizedBox(height: 12),
+            const SkeletonCard(title: 'Goals & progress', lines: 4),
           ],
           if (!noStatement && (!signedIn || _billsLoaded)) ...[
             const SizedBox(height: 12),
             BillsPanel(bills: bills, note: billsNote),
           ] else if (!noStatement && signedIn) ...[
             const SizedBox(height: 12),
-            const _LoadingPanel(title: 'Bills and subscriptions coming up'),
+            const SkeletonCard(title: 'Bills and subscriptions coming up'),
           ],
           if (thisMonth != null && thisMonth.top(5).isNotEmpty) ...[
             const SizedBox(height: 12),
@@ -717,41 +743,40 @@ class WhereItWentPanel extends StatelessWidget {
   }
 }
 
-/// A panel still loading: its title and grey bars, never an empty state.
-class _LoadingPanel extends StatelessWidget {
-  const _LoadingPanel({required this.title});
-  final String title;
+/// Tiles and "This month" while the month's figures load: the shapes of
+/// what is coming, shimmering, never a lone spinner.
+class _MonthSkeleton extends StatelessWidget {
+  const _MonthSkeleton();
 
   @override
-  Widget build(BuildContext context) {
-    Widget bar(double w) => Container(
-          width: w,
-          height: 12,
-          margin: const EdgeInsets.only(top: 10),
-          decoration: BoxDecoration(
-              color: AccnomosColors.ground,
-              borderRadius: BorderRadius.circular(6)),
-        );
-    return Semantics(
-      label: '$title, loading',
-      child: Container(
+  Widget build(BuildContext context) => const Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          TileGrid(children: [
+            SkeletonTile(label: 'Receipts to review'),
+            SkeletonTile(label: 'Lines with no category'),
+            SkeletonTile(label: 'Budgets over'),
+            SkeletonTile(label: 'Next bill'),
+          ]),
+          SizedBox(height: 12),
+          SkeletonCard(title: 'This month', lines: 3),
+          SizedBox(height: 12),
+          SkeletonCard(title: 'Budgets', lines: 4),
+        ],
+      );
+}
+
+/// The whole household Home before the sign-in check has answered.
+class _HouseholdSkeleton extends StatelessWidget {
+  const _HouseholdSkeleton();
+
+  @override
+  Widget build(BuildContext context) => ListView(
         padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AccnomosColors.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(title,
-                style: const TextStyle(
-                    fontWeight: FontWeight.w700, fontSize: 16)),
-            bar(220),
-            bar(160),
-          ],
-        ),
-      ),
-    );
-  }
+        children: const [
+          SummaryCardSkeleton(),
+          SizedBox(height: 16),
+          _MonthSkeleton(),
+        ],
+      );
 }

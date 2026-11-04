@@ -396,7 +396,7 @@ class _HouseholdFake extends RuntimeClient {
       };
 
   @override
-  Future<Map<String, dynamic>> goals({String? today}) async =>
+  Future<Map<String, dynamic>> goals({String? today, bool noteAi = true}) async =>
       goalsJson([goalJson()]);
 
   @override
@@ -423,5 +423,5 @@ class _HouseholdFake extends RuntimeClient {
       };
 
   @override
-  Future<Map<String, dynamic>> home({String? today}) async => {};
+  Future<Map<String, dynamic>> home({String? today, bool summaryAi = true}) async => {};
 }
