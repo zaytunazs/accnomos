@@ -1,5 +1,6 @@
 "use client";
 
+import { LogoMark as BrandMark } from "./marketing/Marks";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -89,15 +90,9 @@ export default function TopBar({ routes }: { routes: string[] }) {
 }
 
 /** The app's mark (the same as the signed-out header's and the public site's). */
+/** The Accnomos mark (components/marketing/Marks.tsx), one drawing everywhere. */
 export function LogoMark() {
-  return (
-    <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal">
-      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
-        <path d="M10 2.5 16.5 6v8L10 17.5 3.5 14V6L10 2.5Z" stroke="#F4F3EE" strokeWidth="1.8" strokeLinejoin="round" />
-        <path d="M7 10.2l2.1 2.1L13.2 8" stroke="#F4F3EE" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </span>
-  );
+  return <BrandMark />;
 }
 
 /** This device looks signed in but MSAL has no account it can use: say so where the account menu would be. */

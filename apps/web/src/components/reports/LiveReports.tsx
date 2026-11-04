@@ -98,7 +98,7 @@ const pct = (current: number, base: number) =>
 /** One horizontal bar per value (this period, previous, last year): inline SVG, never colour alone (the figures sit beside it). */
 function SectionBar({ label, values }: { label: string; values: [number, number, number] }) {
   const names = ["this period", "previous period", "same period last year"];
-  const fills = ["#0f6e63", "#4b5159", "#b45309"];
+  const fills = ["#5a2d00", "#4b5159", "#b45309"];
   const max = Math.max(...values.map(Math.abs), 1);
   return (
     <svg
@@ -252,7 +252,7 @@ function ProfitAndLoss({ pl, prev, year }: { pl: RtProfitAndLoss; prev: RtProfit
 }
 
 const AGED_FILLS: Record<RtAgedBucket, string> = {
-  current: "#0f6e63",
+  current: "#5a2d00",
   "0-30": "#b45309",
   "31-60": "#1d4ed8",
   "61-90": "#be123c",

@@ -157,7 +157,7 @@ export function GoalsNotePanel({ note, sample = false, wording = false }: { note
     >
       <span aria-hidden="true" className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-[#BFDDD6] bg-white">
         <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
-          <path d="M10 2.5v3M10 14.5v3M2.5 10h3M14.5 10h3M5 5l1.8 1.8M13.2 13.2 15 15M5 15l1.8-1.8M13.2 6.8 15 5" stroke="#0A4F47" strokeWidth="1.6" strokeLinecap="round" />
+          <path d="M10 2.5v3M10 14.5v3M2.5 10h3M14.5 10h3M5 5l1.8 1.8M13.2 13.2 15 15M5 15l1.8-1.8M13.2 6.8 15 5" stroke="#3F2000" strokeWidth="1.6" strokeLinecap="round" />
         </svg>
       </span>
       <div className="min-w-0">

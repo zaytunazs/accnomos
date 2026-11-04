@@ -10,7 +10,7 @@ class LogoMark extends StatelessWidget {
 
   final double size;
 
-  /// On the dark-teal hero band: a lighter square so the mark still reads.
+  /// On the dark-brown hero band: a thin gold ring so the brown tile still reads.
   final bool onDark;
 
   @override
@@ -35,33 +35,46 @@ class LogoMark extends StatelessWidget {
 }
 
 class _MarkPainter extends CustomPainter {
+  // The Zaytuna mark (apps/web/public/brand/zaytuna/icon.svg, 108×108 viewBox): an olive branch whose stem is a
+  // tick, with a gold smile under it. The tile behind it is the Container's brown.
+  static const _cream = Color(0xFFF4EDE5);
+  static const _gold = Color(0xFFC9A45C);
+  static const _olive = Color(0xFF8A9A3B);
+
   @override
   void paint(Canvas canvas, Size size) {
-    // The web's 20×20 viewBox, centred at 20/36 of the square.
-    final s = size.width * 20 / 36 / 20;
-    final dx = (size.width - 20 * s) / 2;
-    final dy = (size.height - 20 * s) / 2;
-    Offset p(double x, double y) => Offset(dx + x * s, dy + y * s);
-    final paint = Paint()
-      ..color = AccnomosColors.markLight
+    final s = size.width / 108;
+    canvas.save();
+    canvas.scale(s, s);
+    final stroke = Paint()
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.8 * s
-      ..strokeJoin = StrokeJoin.round
-      ..strokeCap = StrokeCap.round;
-    final hex = Path()
-      ..moveTo(p(10, 2.5).dx, p(10, 2.5).dy)
-      ..lineTo(p(16.5, 6).dx, p(16.5, 6).dy)
-      ..lineTo(p(16.5, 14).dx, p(16.5, 14).dy)
-      ..lineTo(p(10, 17.5).dx, p(10, 17.5).dy)
-      ..lineTo(p(3.5, 14).dx, p(3.5, 14).dy)
-      ..lineTo(p(3.5, 6).dx, p(3.5, 6).dy)
-      ..close();
-    canvas.drawPath(hex, paint);
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    // Tick stem: M33 50 c8 6 14 12 18 20 c7 -21 17 -35 25 -45
     final tick = Path()
-      ..moveTo(p(7, 10.2).dx, p(7, 10.2).dy)
-      ..lineTo(p(9.1, 12.3).dx, p(9.1, 12.3).dy)
-      ..lineTo(p(13.2, 8).dx, p(13.2, 8).dy);
-    canvas.drawPath(tick, paint);
+      ..moveTo(33, 50)
+      ..cubicTo(41, 56, 47, 62, 51, 70)
+      ..cubicTo(58, 49, 68, 35, 76, 25);
+    canvas.drawPath(tick, stroke..color = _cream..strokeWidth = size.width < 30 ? 9 : 7);
+    if (size.width >= 30) {
+      void leaf(double cx, double cy, double rx, double ry, double deg, Color c) {
+        canvas.save();
+        canvas.translate(cx, cy);
+        canvas.rotate(deg * 3.141592653589793 / 180);
+        canvas.drawOval(Rect.fromCenter(center: Offset.zero, width: rx * 2, height: ry * 2), Paint()..color = c);
+        canvas.restore();
+      }
+
+      leaf(45, 38, 5.5, 12, -40, _gold);
+      leaf(64, 32, 5, 11, 35, _gold);
+      leaf(72, 49, 4.5, 10, 70, _olive);
+    }
+    // Smile: M32 78 q22 16 44 0
+    final smile = Path()
+      ..moveTo(32, 78)
+      ..quadraticBezierTo(54, 94, 76, 78);
+    canvas.drawPath(smile, stroke..color = _gold..strokeWidth = size.width < 30 ? 9 : 6.5);
+    canvas.restore();
   }
 
   @override

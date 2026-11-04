@@ -54,7 +54,7 @@ export default function PublicHeader({ path }: { path: string }) {
     <header className="on-dark sticky top-0 z-40 border-b border-white/10 bg-ledger text-ground">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-3 px-4 sm:px-6">
         <Link href="/" className="flex min-w-0 items-center gap-2.5 rounded-lg" aria-label="Accnomos home">
-          <LogoMark className="bg-ground" stroke="#0A4F47" />
+          <LogoMark />
           <span className="text-lg font-extrabold tracking-tight">Accnomos</span>
         </Link>
 

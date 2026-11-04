@@ -41,7 +41,7 @@ function SiteFooter() {
       <div className="mx-auto grid max-w-6xl gap-8 px-4 py-12 sm:px-6 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
         <div>
           <Link href="/" aria-label="Accnomos home" className="flex w-fit items-center gap-2.5 rounded-lg text-ground">
-            <LogoMark className="bg-ground" stroke="#0A4F47" />
+            <LogoMark />
             <span className="text-lg font-extrabold tracking-tight">Accnomos</span>
           </Link>
           {/* Footer microcopy from docs/marketing/COPY.md. */}

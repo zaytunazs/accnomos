@@ -50,13 +50,13 @@ export default function GlobalError({
     borderRadius: "0.75rem",
     border: "1px solid #e3e1d8",
     background: "#fff",
-    color: "#0a4f47",
+    color: "#3f2000",
     fontWeight: 700,
     fontSize: "15px",
     textDecoration: "none",
     cursor: "pointer",
   };
-  const primary: React.CSSProperties = { ...button, background: "#0f6e63", borderColor: "#0f6e63", color: "#fff" };
+  const primary: React.CSSProperties = { ...button, background: "#5a2d00", borderColor: "#5a2d00", color: "#fff" };
 
   return (
     <html lang="en">

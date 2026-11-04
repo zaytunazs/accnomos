@@ -1,33 +1,35 @@
 import 'package:flutter/material.dart';
 
 /// Shared Accnomos palette: the same tokens as the website
-/// (apps/web/src/app/globals.css, the teal-and-white restyle).
+/// (apps/web/src/app/globals.css): the Zaytuna brand chosen by the owner on 4 Nov 2026 — Zaytuna brown
+/// (#5A2D00) for actions, a deep-brown sidebar/hero, a warm off-white page, gold as an accent only. The
+/// names keep "teal" so no screen changes; the values are brown.
 class AccnomosColors {
   const AccnomosColors._();
 
   /// Headings, body text and financial figures.
-  static const Color ink = Color(0xFF172B35);
-  static const Color teal = Color(0xFF0F6E63);
-  static const Color tealDark = Color(0xFF0A4F47);
-  static const Color tealTint = Color(0xFFE8F4F1);
+  static const Color ink = Color(0xFF1F1A16);
+  static const Color teal = Color(0xFF5A2D00);
+  static const Color tealDark = Color(0xFF3F2000);
+  static const Color tealTint = Color(0xFFF4EDE5);
 
   /// The page behind the cards.
-  static const Color ground = Color(0xFFF5F8FA);
-  static const Color muted = Color(0xFF52626D);
+  static const Color ground = Color(0xFFF8F6F3);
+  static const Color muted = Color(0xFF5C534B);
 
   /// Card outlines and separators.
-  static const Color border = Color(0xFFDCE5E9);
+  static const Color border = Color(0xFFE6DED4);
 
   /// The dark-teal navigation and hero colours (the web's sidebar / ledger).
-  static const Color sidebar = Color(0xFF0B3F43);
-  static const Color sidebarActive = Color(0xFF17666A);
-  static const Color ledger = Color(0xFF0A4F47);
+  static const Color sidebar = Color(0xFF2A1A0D);
+  static const Color sidebarActive = Color(0xFF5A2D00);
+  static const Color ledger = Color(0xFF3F2000);
 
   /// The brand gold: a small accent only, never text on white.
-  static const Color brass = Color(0xFFD9B55A);
+  static const Color brass = Color(0xFFC9A45C);
 
   /// Light strokes and text on the dark-teal bands.
-  static const Color markLight = Color(0xFFF4F3EE);
+  static const Color markLight = Color(0xFFF4EDE5);
 
   /// Status text and tints (favourable, attention, negative, information).
   static const Color posText = Color(0xFF166534);
@@ -41,7 +43,7 @@ class AccnomosColors {
 
   /// Budget progress states on the Personal screen: on track, close to
   /// the limit, and over it.
-  static const Color budgetOk = Color(0xFF0A4F47);
+  static const Color budgetOk = Color(0xFF3F2000);
   static const Color budgetNear = Color(0xFFB7791F);
   static const Color budgetOver = Color(0xFFB3261E);
 }

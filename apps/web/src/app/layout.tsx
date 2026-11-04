@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import "./globals.css";
 import SiteShell from "@/components/SiteShell";
@@ -10,6 +10,9 @@ const manrope = Manrope({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
 });
+
+/** Browser chrome colour on phones: the Zaytuna brown of the app bar and the icon. */
+export const viewport: Viewport = { themeColor: "#5A2D00" };
 
 export const metadata: Metadata = {
   title: "Accnomos",

@@ -96,7 +96,7 @@ export default function ConnectMicrosoft() {
   }
 
   const btn = "h-12 rounded-xl px-5 text-[15px] font-bold";
-  const primary = `${btn} w-full bg-[#0F6E63] text-white`;
+  const primary = `${btn} w-full bg-[#5A2D00] text-white`;
 
   return (
     <div className="mt-6 space-y-4">
@@ -143,7 +143,7 @@ export default function ConnectMicrosoft() {
           <button onClick={signIn} className={`${primary} mt-3`}>
             Sign in with another Microsoft account
           </button>
-          <Link href="/" className="mt-2 inline-flex min-h-11 items-center text-sm font-bold text-[#0A4F47]">
+          <Link href="/" className="mt-2 inline-flex min-h-11 items-center text-sm font-bold text-[#3F2000]">
             Cancel
           </Link>
         </div>
@@ -158,7 +158,7 @@ export default function ConnectMicrosoft() {
               ? "Personal account · folder will be OneDrive › Apps › Accnomos"
               : "Work or school account · folder will be OneDrive › Accnomos"}
           </div>
-          <button onClick={signOut} className="mt-2 text-xs font-bold text-[#0A4F47]">
+          <button onClick={signOut} className="mt-2 text-xs font-bold text-[#3F2000]">
             Use a different account
           </button>
         </div>
@@ -175,7 +175,7 @@ export default function ConnectMicrosoft() {
           <div className="text-sm font-bold text-[#1B1F24]">{progress.step}</div>
           <div className="mt-2 h-2 w-full overflow-hidden rounded bg-[#F4F3EE]">
             <div
-              className="h-2 bg-[#0F6E63] transition-all"
+              className="h-2 bg-[#5A2D00] transition-all"
               style={{ width: `${Math.round((progress.done / progress.total) * 100)}%` }}
             />
           </div>
@@ -183,14 +183,14 @@ export default function ConnectMicrosoft() {
       )}
 
       {phase === "ready" && root && (
-        <div className="rounded-2xl border border-[#0F6E63] bg-[#E6F1EF] p-4">
-          <div className="font-extrabold text-[#0A4F47]">Your folder is ready.</div>
+        <div className="rounded-2xl border border-[#5A2D00] bg-[#F4EDE5] p-4">
+          <div className="font-extrabold text-[#3F2000]">Your folder is ready.</div>
           <p className="mt-1 text-sm text-[#1B1F24]">
             These are your books. You can open them without the app, and they stay yours if you disconnect.
           </p>
           <p className="mt-2 text-sm text-[#1B1F24]">
             A company, a sole-trader business or your personal finances?{" "}
-            <Link href="/settings#profile" className="font-bold text-[#0A4F47] underline underline-offset-2">
+            <Link href="/settings#profile" className="font-bold text-[#3F2000] underline underline-offset-2">
               Set up this profile
             </Link>
             .
@@ -198,7 +198,7 @@ export default function ConnectMicrosoft() {
           <div className="mt-3 flex flex-col gap-2">
             <Link
               href={withNext("/connect/ai", next)}
-              className={`${btn} inline-flex items-center justify-center bg-[#0F6E63] text-white`}
+              className={`${btn} inline-flex items-center justify-center bg-[#5A2D00] text-white`}
             >
               Continue
             </Link>
@@ -207,7 +207,7 @@ export default function ConnectMicrosoft() {
                 href={root.webUrl}
                 target="_blank"
                 rel="noreferrer"
-                className={`${btn} inline-flex items-center justify-center border border-[#0F6E63] bg-white text-[#0A4F47]`}
+                className={`${btn} inline-flex items-center justify-center border border-[#5A2D00] bg-white text-[#3F2000]`}
               >
                 Open in OneDrive
               </a>
@@ -220,12 +220,12 @@ export default function ConnectMicrosoft() {
         <div role="alert" className="rounded-2xl border border-[#F3C892] bg-[#FFF7ED] p-4 text-sm text-[#8A3F06]">
           <p>{error}</p>
           {errorKind === "signin" && (
-            <button onClick={signIn} className={`${btn} mt-3 w-full bg-[#0F6E63] text-white`}>
+            <button onClick={signIn} className={`${btn} mt-3 w-full bg-[#5A2D00] text-white`}>
               Try signing in again
             </button>
           )}
           {errorKind === "folder" && account && (
-            <button onClick={createFolder} className={`${btn} mt-3 w-full bg-[#0F6E63] text-white`}>
+            <button onClick={createFolder} className={`${btn} mt-3 w-full bg-[#5A2D00] text-white`}>
               Try creating the folder again
             </button>
           )}
