@@ -123,16 +123,17 @@ const SHOTS: Record<string, Shot> = {
     },
   },
   "w-spending": {
+    // the sample books run to 30 Sep 2026, so this month's categories are empty: show the regular costs to trim
     setup: async ({ page }) => { await go(page, "/spending"); },
     run: async (c) => {
       const { page, h } = c;
       await h.park(800, 250);
-      await h.hold(700);
-      const cat = vis(page.getByRole("heading", { name: "By category" }));
-      await h.scrollIntoView(cat, 900);
-      await h.hover(cat, 900);
-      await h.scrollBy(260, 900);
-      await h.hold(2200);
+      await h.hold(500);
+      const reg = vis(page.getByRole("heading", { name: "Regular costs" }));
+      await h.scrollIntoView(reg, 900);
+      await h.hover(reg, 900);
+      for (const t of [/Northgate Energy Solutions/, /Fictional Volt & Spark Energy/, /Zephyr Energy/]) await point(c, t, 900);
+      await h.hold(1200);
     },
   },
   // s3: Talk, by voice (FAKE_MIC) or typed: add a calendar event, clash check, approve
