@@ -1,4 +1,4 @@
-# X launch thread (Most Viral)
+# X thread (Most Viral)
 
 Five posts for the owner's account, written 28 Oct 2026. Every claim is one `docs/HONESTY.md` allows; the numbers are from
 `docs/submission/META_MODELS.md` and `evals/runs/*/summary.json`. Post it when the video is public (`CHECKLIST.md` section 6).
@@ -12,7 +12,7 @@ once the real hashtag and handle go in.
 
 Do not add: "0 false posts", "files with HMRC" (it is the sandbox), "works on iPhone", "tested on real phones", time or
 money saved, or any number not in `META_MODELS.md`. If the month-end close agent, profiles or `/judges` are merged and run
-by launch day, a sixth post may name them; until then leave them out.
+by the time the video is public, a sixth post may name them; until then leave them out.
 
 ## 1/5 (256 characters)
 
