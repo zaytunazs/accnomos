@@ -1,8 +1,8 @@
 [
  {
   "id": "title",
-  "text": "Before 26 October we had only our own AI server hardware. Its local model setup, and everything you'll see, on the web and on Android, was built during the hackathon.",
-  "say": "Before the twenty-sixth of October we had only our own AI server hardware. Its local model setup, and everything you'll see, on the web and on Android, was built during the hackathon."
+  "text": "Before 26 October we had only our own AI server hardware. Everything else, even its local model setup, we built during the hackathon.",
+  "say": "Before the twenty-sixth of October we had only our own AI server hardware. Everything else, even its local model setup, we built during the hackathon."
  },
  {
   "id": "f1",
@@ -30,7 +30,7 @@
  },
  {
   "id": "s5a",
-  "text": "With the bank feed, new lines arrive at a tap, and code matches them."
+  "text": "New bank lines arrive from the bank feed, and code matches them."
  },
  {
   "id": "s5",
@@ -46,7 +46,7 @@
  },
  {
   "id": "s8",
-  "text": "We hope Accnomos takes the stress out of money, for businesses and for families: less time on paperwork, more time on what matters. In this demo, HMRC filing goes to HMRC's sandbox until HMRC approves the software. Step-by-step how-to guides are on accnomos.com and on GitHub."
+  "text": "We hope Accnomos takes the stress out of money, for businesses and for families. In this demo, HMRC filing goes to HMRC's sandbox. Step-by-step how-to guides are on accnomos.com and on GitHub."
  },
  {
   "id": "u1",
