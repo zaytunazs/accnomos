@@ -314,8 +314,8 @@ def test_vat_periods_lists_current_and_eight_before(client: TestClient) -> None:
 
 
 def test_vat_periods_names_the_period_due_next(client: TestClient) -> None:
-    """The list carries the same `due_period` hint as `/books/vat`, as a period id: the ended period still to file
-    (the Android VAT tab opens on it; without it the tab fell back to the oldest open period, Jan–Mar 2025, all £0.00)."""
+    """The list carries the same `due_period` hint as `/books/vat`, as a period id: the ended period still to file.
+    The Android VAT tab opens on it; without it the tab fell back to the oldest open period (Jan–Mar 2025, £0.00)."""
     body = client.get("/books/vat/periods?today=2026-11-04", headers=H).json()
     assert body["due_period"] == "2026-Q3"
     assert body["due_period"] == client.get("/books/vat?today=2026-11-04", headers=H).json()["due_period"]["period"]
